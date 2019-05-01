@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CC1FC43219
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BFBB4C004C9
 	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3B3552075E
+	by mail.kernel.org (Postfix) with ESMTP id 8D48D2075E
 	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1556750780;
-	bh=k4J5FpJhlAgJ16Pp5cNsgabyRPAvsfRr0/3EL88VutM=;
+	bh=GhZSvQyKOd1yPn+J9hQUgu8RrjDo5ilzVAueJc2+4tw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=r0DE5MajvKqQWtrXR17wK4rI1Y/zCgznLlAr/hpUNrcZ326Pq+epLfmom0vGxAgSz
-	 twAKV2QXCwdZW/PTVL6jW8vWQi84hoQsQBvZPUf3xqFwzFhg6yksn7JxvnedzFAQfM
-	 WZr9gzXMoFZjcZbxZgqXwZLR7nTt2SHzpRjgwvhI=
+	b=bHOMaKiF/kSkxOEMr1Iyk+CcSrImG+Pq53k2RAkuS5wzgq2OZBwAjpd5cR0akhqI4
+	 QDZyBR+Reu+BeMG+39tT4mPs4iRaimqpO0Z1mFl4rWCe5VSTSj2O812/qPsjuXG64O
+	 NCPGKDQp5pPSCyodpdfs7T45X/UgE+HrcW+rE5gM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726224AbfEAWqH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 May 2019 18:46:07 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47212 "EHLO mail.kernel.org"
+        id S1726416AbfEAWqU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 May 2019 18:46:20 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47220 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726327AbfEAWqH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 May 2019 18:46:07 -0400
+        id S1726327AbfEAWqI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 1 May 2019 18:46:08 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 0093621734;
-        Wed,  1 May 2019 22:46:06 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id DA7DF21783;
+        Wed,  1 May 2019 22:46:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1556750767;
-        bh=k4J5FpJhlAgJ16Pp5cNsgabyRPAvsfRr0/3EL88VutM=;
+        s=default; t=1556750768;
+        bh=GhZSvQyKOd1yPn+J9hQUgu8RrjDo5ilzVAueJc2+4tw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=w0Gk63yDzfh6XsEGODolMNkjblpOM+kEHHCK6/D5gE5zZjNtR/VjmPRiSp+r6Ge2Y
-         IxVoeJiYgeiEa65NEmqzIMCBDS2jj9YOg0jCIsiOYg9XlvKqc4gkjVX2cvIk6bLNBB
-         oSaCpgvtkJH9IdF1SX5CO1gHkoeeTWi25YpqCaQU=
+        b=hDbvwal9PolgHXpCoAoua0qXNJaAJ6DPhdeN1dZ73Ppw2vNEodhMnoiJZdUPJVKkY
+         hwbRysc9P7QBAYm9nmpgkgIiz5O914cPMaPaE7j7zOzNhwjhi1b2t7SmKTIhJFRLk0
+         ziH7IFz0puhY3fyDHjhOmVvLq8PhrBafibd2Yzrg=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         Chandan Rajendra <chandan@linux.ibm.com>
-Subject: [PATCH 07/13] fscrypt: handle blocksize < PAGE_SIZE in fscrypt_zeroout_range()
-Date:   Wed,  1 May 2019 15:45:09 -0700
-Message-Id: <20190501224515.43059-8-ebiggers@kernel.org>
+Subject: [PATCH 10/13] ext4: clear BH_Uptodate flag on decryption error
+Date:   Wed,  1 May 2019 15:45:12 -0700
+Message-Id: <20190501224515.43059-11-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.593.g511ec345e18-goog
 In-Reply-To: <20190501224515.43059-1-ebiggers@kernel.org>
 References: <20190501224515.43059-1-ebiggers@kernel.org>
@@ -55,71 +55,39 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Chandan Rajendra <chandan@linux.ibm.com>
 
-Adjust fscrypt_zeroout_range() to encrypt a block at a time rather than
-a page at a time, so that it works when blocksize < PAGE_SIZE.
+If decryption fails, ext4_block_write_begin() can return with the page's
+buffer_head marked with the BH_Uptodate flag.  This commit clears the
+BH_Uptodate flag in such cases.
 
-This isn't optimized for performance, but then again this function
-already wasn't optimized for performance.  As a future optimization, we
-could submit much larger bios here.
-
-This is in preparation for allowing encryption on ext4 filesystems with
-blocksize != PAGE_SIZE.
-
-This is based on work by Chandan Rajendra.
-
+Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/bio.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-index bcab8822217b0..e67e9d4d342b3 100644
---- a/fs/crypto/bio.c
-+++ b/fs/crypto/bio.c
-@@ -73,12 +73,12 @@ EXPORT_SYMBOL(fscrypt_enqueue_decrypt_bio);
- int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
- 				sector_t pblk, unsigned int len)
- {
-+	const unsigned int blockbits = inode->i_blkbits;
-+	const unsigned int blocksize = 1 << blockbits;
- 	struct page *ciphertext_page;
- 	struct bio *bio;
- 	int ret, err = 0;
- 
--	BUG_ON(inode->i_sb->s_blocksize != PAGE_SIZE);
--
- 	ciphertext_page = fscrypt_alloc_bounce_page(GFP_NOWAIT);
- 	if (!ciphertext_page)
- 		return -ENOMEM;
-@@ -86,7 +86,7 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
- 	while (len--) {
- 		err = fscrypt_crypt_block(inode, FS_ENCRYPT, lblk,
- 					  ZERO_PAGE(0), ciphertext_page,
--					  PAGE_SIZE, 0, GFP_NOFS);
-+					  blocksize, 0, GFP_NOFS);
- 		if (err)
- 			goto errout;
- 
-@@ -96,14 +96,11 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
- 			goto errout;
- 		}
- 		bio_set_dev(bio, inode->i_sb->s_bdev);
--		bio->bi_iter.bi_sector =
--			pblk << (inode->i_sb->s_blocksize_bits - 9);
-+		bio->bi_iter.bi_sector = pblk << (blockbits - 9);
- 		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
--		ret = bio_add_page(bio, ciphertext_page,
--					inode->i_sb->s_blocksize, 0);
--		if (ret != inode->i_sb->s_blocksize) {
-+		ret = bio_add_page(bio, ciphertext_page, blocksize, 0);
-+		if (WARN_ON(ret != blocksize)) {
- 			/* should never happen! */
--			WARN_ON(1);
- 			bio_put(bio);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1ef5d791834fc..9382e1bcefe49 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1225,10 +1225,14 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 		if (!buffer_uptodate(*wait_bh))
  			err = -EIO;
- 			goto errout;
+ 	}
+-	if (unlikely(err))
++	if (unlikely(err)) {
+ 		page_zero_new_buffers(page, from, to);
+-	else if (decrypt)
++	} else if (decrypt) {
+ 		err = fscrypt_decrypt_pagecache_blocks(page, PAGE_SIZE, 0);
++		if (err)
++			clear_buffer_uptodate(*wait_bh);
++	}
++
+ 	return err;
+ }
+ #endif
 -- 
 2.21.0.593.g511ec345e18-goog
 
