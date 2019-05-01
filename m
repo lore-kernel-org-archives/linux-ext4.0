@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64052C43219
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDEF1C04AA9
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3289D21734
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 993A9208C3
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1556750784;
-	bh=q1kC+J41Ilz6M2LE4SlqzAEUaIYFUWvVH9qroisdU0E=;
+	s=default; t=1556750785;
+	bh=C8QCwapKW3U1NG9FA0FfajgZX249u2BatzzbutlTbHM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Odji06iK8MwlILNXE2aa9+Qce1oVrPoGO98AEIjhxJ7A79XjXPrwhUd2f4jBSrpNv
-	 qtqRuXUAJGkDeQJvVT+Zg9SiXuvLnNIdNPfvJJcyA4atIePcu/uFKPC/eYvlT1dUp2
-	 6i8SnBrPHGU3JAwo9mRx4VP3P10x5qahR0JEBEbs=
+	b=y30H2+vqRGs++DdoIP1IDn2Y/iRXfWAP6zCIfRg880fdwXBqOKb5PTYgzuXBSfo9u
+	 TieSwPg8S96HF2ovBbUUX1hCS9ubFcCdCUq+FNM+/ZWFtQkdoBmlCZajUopFifujEL
+	 p69Zucvk52+SWi7/CldqYtNWYuzt3rgyzsLg5PtA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726425AbfEAWqX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 May 2019 18:46:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47220 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726296AbfEAWqH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726308AbfEAWqH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 1 May 2019 18:46:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47190 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726167AbfEAWqG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 1 May 2019 18:46:06 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6428321479;
-        Wed,  1 May 2019 22:46:06 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E47A208C3;
+        Wed,  1 May 2019 22:46:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1556750766;
-        bh=q1kC+J41Ilz6M2LE4SlqzAEUaIYFUWvVH9qroisdU0E=;
+        s=default; t=1556750765;
+        bh=C8QCwapKW3U1NG9FA0FfajgZX249u2BatzzbutlTbHM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=pb0L9/GmbMFin/U0fiVPAQA2ygMEs5Mmy7bYHDOiYfGHv4dvPSs3nglRRT2I5K8My
-         aFApPiooqGKATR3BNHg3LGSMl6vw5gus8p9TBcS5rYsqt71948LHyRdDOfnYk9N5Ar
-         TG7HaxjxlhWSi1Iho06ScKDdKUgoNFhKWxnVowXU=
+        b=xWesjP6+4N/fUY8sdSJYz9/5AYkoS6EJvOsiD+JWTI+4Os9xkz2f/ugmZtas1Mmma
+         cZUS6psNpUcyFRIqGQ78jdprtiEFiQSiW+CkONgDZ2k3Rz7VaDuyQWfitlNFiyrnYC
+         0ydXH9LfZ/HI982B1LZzpaIXx4QGiQfYd1iVStUY=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         Chandan Rajendra <chandan@linux.ibm.com>
-Subject: [PATCH 05/13] fscrypt: introduce fscrypt_encrypt_block_inplace()
-Date:   Wed,  1 May 2019 15:45:07 -0700
-Message-Id: <20190501224515.43059-6-ebiggers@kernel.org>
+Subject: [PATCH 02/13] fscrypt: remove the "write" part of struct fscrypt_ctx
+Date:   Wed,  1 May 2019 15:45:04 -0700
+Message-Id: <20190501224515.43059-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.593.g511ec345e18-goog
 In-Reply-To: <20190501224515.43059-1-ebiggers@kernel.org>
 References: <20190501224515.43059-1-ebiggers@kernel.org>
@@ -57,174 +57,103 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-fscrypt_encrypt_page() behaves very differently depending on whether the
-filesystem set FS_CFLG_OWN_PAGES in its fscrypt_operations.  This makes
-the function difficult to understand and document.  It also makes it so
-that all callers have to provide inode and lblk_num, when fscrypt could
-determine these itself for pagecache pages.
-
-Therefore, move the FS_CFLG_OWN_PAGES behavior into a new function
-fscrypt_encrypt_block_inplace().
+Now that fscrypt_ctx is not used for writes, remove the 'w' fields.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/crypto.c      | 52 +++++++++++++++++++++++++----------------
- fs/ubifs/crypto.c       | 12 +++++-----
- include/linux/fscrypt.h | 13 +++++++++++
- 3 files changed, 51 insertions(+), 26 deletions(-)
+ fs/crypto/bio.c         | 11 +++++------
+ fs/crypto/crypto.c      | 14 +++++++-------
+ include/linux/fscrypt.h |  7 ++-----
+ 3 files changed, 14 insertions(+), 18 deletions(-)
 
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index 9107e8fe55897..548ec6bb569cf 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -54,9 +54,8 @@ EXPORT_SYMBOL(fscrypt_decrypt_bio);
+ 
+ static void completion_pages(struct work_struct *work)
+ {
+-	struct fscrypt_ctx *ctx =
+-		container_of(work, struct fscrypt_ctx, r.work);
+-	struct bio *bio = ctx->r.bio;
++	struct fscrypt_ctx *ctx = container_of(work, struct fscrypt_ctx, work);
++	struct bio *bio = ctx->bio;
+ 
+ 	__fscrypt_decrypt_bio(bio, true);
+ 	fscrypt_release_ctx(ctx);
+@@ -65,9 +64,9 @@ static void completion_pages(struct work_struct *work)
+ 
+ void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx, struct bio *bio)
+ {
+-	INIT_WORK(&ctx->r.work, completion_pages);
+-	ctx->r.bio = bio;
+-	fscrypt_enqueue_decrypt_work(&ctx->r.work);
++	INIT_WORK(&ctx->work, completion_pages);
++	ctx->bio = bio;
++	fscrypt_enqueue_decrypt_work(&ctx->work);
+ }
+ EXPORT_SYMBOL(fscrypt_enqueue_decrypt_bio);
+ 
 diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index 9cda0147fca95..e978541e2ec19 100644
+index 4b076f8daab75..ebfa13cfecb7d 100644
 --- a/fs/crypto/crypto.c
 +++ b/fs/crypto/crypto.c
-@@ -199,8 +199,7 @@ int fscrypt_crypt_block(const struct inode *inode, fscrypt_direction_t rw,
+@@ -58,11 +58,11 @@ void fscrypt_enqueue_decrypt_work(struct work_struct *work)
+ EXPORT_SYMBOL(fscrypt_enqueue_decrypt_work);
+ 
  /**
-  * fscypt_encrypt_page() - Encrypts a page
-  * @inode:     The inode for which the encryption should take place
-- * @page:      The page to encrypt. Must be locked for bounce-page
-- *             encryption.
-+ * @page:      The page to encrypt. Must be locked.
-  * @len:       Length of data to encrypt in @page and encrypted
-  *             data in returned page.
-  * @offs:      Offset of data within @page and returned
-@@ -210,12 +209,11 @@ int fscrypt_crypt_block(const struct inode *inode, fscrypt_direction_t rw,
-  *             previously written data.
-  * @gfp_flags: The gfp flag for memory allocation
+- * fscrypt_release_ctx() - Releases an encryption context
+- * @ctx: The encryption context to release.
++ * fscrypt_release_ctx() - Release a decryption context
++ * @ctx: The decryption context to release.
   *
-- * Encrypts @page.  If the filesystem set FS_CFLG_OWN_PAGES, then the data is
-- * encrypted in-place and @page is returned.  Else, a bounce page is allocated,
-- * the data is encrypted into the bounce page, and the bounce page is returned.
-- * The caller is responsible for calling fscrypt_free_bounce_page().
-+ * Encrypts @page.  A bounce page is allocated, the data is encrypted into the
-+ * bounce page, and the bounce page is returned.  The caller is responsible for
-+ * calling fscrypt_free_bounce_page().
-  *
-- * Return: A page containing the encrypted data on success, else an ERR_PTR()
-+ * Return: A page containing the encrypted data on success; else an ERR_PTR()
+- * If the encryption context was allocated from the pre-allocated pool, returns
+- * it to that pool. Else, frees it.
++ * If the decryption context was allocated from the pre-allocated pool, return
++ * it to that pool.  Else, free it.
   */
- struct page *fscrypt_encrypt_page(const struct inode *inode,
- 				struct page *page,
-@@ -224,24 +222,12 @@ struct page *fscrypt_encrypt_page(const struct inode *inode,
- 				u64 lblk_num, gfp_t gfp_flags)
- 
+ void fscrypt_release_ctx(struct fscrypt_ctx *ctx)
  {
--	struct page *ciphertext_page = page;
-+	struct page *ciphertext_page;
- 	int err;
+@@ -79,12 +79,12 @@ void fscrypt_release_ctx(struct fscrypt_ctx *ctx)
+ EXPORT_SYMBOL(fscrypt_release_ctx);
  
--	if (inode->i_sb->s_cop->flags & FS_CFLG_OWN_PAGES) {
--		/* with inplace-encryption we just encrypt the page */
--		err = fscrypt_crypt_block(inode, FS_ENCRYPT, lblk_num, page,
--					  ciphertext_page, len, offs,
--					  gfp_flags);
--		if (err)
--			return ERR_PTR(err);
--
--		return ciphertext_page;
--	}
--
- 	if (WARN_ON_ONCE(!PageLocked(page)))
- 		return ERR_PTR(-EINVAL);
- 
--	/* The encryption operation will require a bounce page. */
- 	ciphertext_page = fscrypt_alloc_bounce_page(gfp_flags);
- 	if (!ciphertext_page)
- 		return ERR_PTR(-ENOMEM);
-@@ -258,6 +244,32 @@ struct page *fscrypt_encrypt_page(const struct inode *inode,
- }
- EXPORT_SYMBOL(fscrypt_encrypt_page);
- 
-+/**
-+ * fscrypt_encrypt_block_inplace() - Encrypt a filesystem block in-place
-+ * @inode:     The inode to which this block belongs
-+ * @page:      The page containing the block to encrypt
-+ * @len:       Size of block to encrypt.  Doesn't need to be a multiple of the
-+ *		fs block size, but must be a multiple of FS_CRYPTO_BLOCK_SIZE.
-+ * @offs:      Byte offset within @page at which the block to encrypt begins
-+ * @lblk_num:  Filesystem logical block number of the block, i.e. the 0-based
-+ *		number of the block within the file
-+ * @gfp_flags: Memory allocation flags
-+ *
-+ * Encrypt a possibly-compressed filesystem block that is located in an
-+ * arbitrary page, not necessarily in the original pagecache page.  The @inode
-+ * and @lblk_num must be specified, as they can't be determined from @page.
-+ *
-+ * Return: 0 on success; -errno on failure
-+ */
-+int fscrypt_encrypt_block_inplace(const struct inode *inode, struct page *page,
-+				  unsigned int len, unsigned int offs,
-+				  u64 lblk_num, gfp_t gfp_flags)
-+{
-+	return fscrypt_crypt_block(inode, FS_ENCRYPT, lblk_num, page, page,
-+				   len, offs, gfp_flags);
-+}
-+EXPORT_SYMBOL(fscrypt_encrypt_block_inplace);
-+
  /**
-  * fscrypt_decrypt_page() - Decrypts a page in-place
-  * @inode:     The corresponding inode for the page to decrypt.
-diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
-index 4aaedf2d7f442..032efdad2e668 100644
---- a/fs/ubifs/crypto.c
-+++ b/fs/ubifs/crypto.c
-@@ -29,8 +29,8 @@ int ubifs_encrypt(const struct inode *inode, struct ubifs_data_node *dn,
+- * fscrypt_get_ctx() - Gets an encryption context
++ * fscrypt_get_ctx() - Get a decryption context
+  * @gfp_flags:   The gfp flag for memory allocation
+  *
+- * Allocates and initializes an encryption context.
++ * Allocate and initialize a decryption context.
+  *
+- * Return: A new encryption context on success; an ERR_PTR() otherwise.
++ * Return: A new decryption context on success; an ERR_PTR() otherwise.
+  */
+ struct fscrypt_ctx *fscrypt_get_ctx(gfp_t gfp_flags)
  {
- 	struct ubifs_info *c = inode->i_sb->s_fs_info;
- 	void *p = &dn->data;
--	struct page *ret;
- 	unsigned int pad_len = round_up(in_len, UBIFS_CIPHER_BLOCK_SIZE);
-+	int err;
- 
- 	ubifs_assert(c, pad_len <= *out_len);
- 	dn->compr_size = cpu_to_le16(in_len);
-@@ -39,11 +39,11 @@ int ubifs_encrypt(const struct inode *inode, struct ubifs_data_node *dn,
- 	if (pad_len != in_len)
- 		memset(p + in_len, 0, pad_len - in_len);
- 
--	ret = fscrypt_encrypt_page(inode, virt_to_page(&dn->data), pad_len,
--			offset_in_page(&dn->data), block, GFP_NOFS);
--	if (IS_ERR(ret)) {
--		ubifs_err(c, "fscrypt_encrypt_page failed: %ld", PTR_ERR(ret));
--		return PTR_ERR(ret);
-+	err = fscrypt_encrypt_block_inplace(inode, virt_to_page(p), pad_len,
-+					    offset_in_page(p), block, GFP_NOFS);
-+	if (err) {
-+		ubifs_err(c, "fscrypt_encrypt_block_inplace() failed: %d", err);
-+		return err;
- 	}
- 	*out_len = pad_len;
- 
 diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 11e7187fa2e52..fc5a81c674c20 100644
+index 77837e72e4add..11e7187fa2e52 100644
 --- a/include/linux/fscrypt.h
 +++ b/include/linux/fscrypt.h
-@@ -106,6 +106,10 @@ extern void fscrypt_release_ctx(struct fscrypt_ctx *);
- extern struct page *fscrypt_encrypt_page(const struct inode *, struct page *,
- 						unsigned int, unsigned int,
- 						u64, gfp_t);
-+extern int fscrypt_encrypt_block_inplace(const struct inode *inode,
-+					 struct page *page, unsigned int len,
-+					 unsigned int offs, u64 lblk_num,
-+					 gfp_t gfp_flags);
- extern int fscrypt_decrypt_page(const struct inode *, struct page *, unsigned int,
- 				unsigned int, u64);
+@@ -63,16 +63,13 @@ struct fscrypt_operations {
+ 	unsigned int max_namelen;
+ };
  
-@@ -288,6 +292,15 @@ static inline struct page *fscrypt_encrypt_page(const struct inode *inode,
- 	return ERR_PTR(-EOPNOTSUPP);
- }
- 
-+static inline int fscrypt_encrypt_block_inplace(const struct inode *inode,
-+						struct page *page,
-+						unsigned int len,
-+						unsigned int offs, u64 lblk_num,
-+						gfp_t gfp_flags)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
- static inline int fscrypt_decrypt_page(const struct inode *inode,
- 				       struct page *page,
- 				       unsigned int len, unsigned int offs,
++/* Decryption work */
+ struct fscrypt_ctx {
+ 	union {
+-		struct {
+-			struct page *bounce_page;	/* Ciphertext page */
+-			struct page *control_page;	/* Original page  */
+-		} w;
+ 		struct {
+ 			struct bio *bio;
+ 			struct work_struct work;
+-		} r;
++		};
+ 		struct list_head free_list;	/* Free list */
+ 	};
+ 	u8 flags;				/* Flags */
 -- 
 2.21.0.593.g511ec345e18-goog
 
