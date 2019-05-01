@@ -2,68 +2,195 @@ Return-Path: <SRS0=0Mrb=TB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3482EC43219
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 03:11:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F506C43219
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 14:21:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0DB392087B
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 03:11:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 555DA20866
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 14:21:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726005AbfEADLi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 30 Apr 2019 23:11:38 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59654 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725799AbfEADLi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Apr 2019 23:11:38 -0400
-Received: from callcc.thunk.org (adsl-173-228-226-134.prtc.net [173.228.226.134])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x413BQ8T005302
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 30 Apr 2019 23:11:27 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id AA396420023; Tue, 30 Apr 2019 23:11:25 -0400 (EDT)
-Date:   Tue, 30 Apr 2019 23:11:25 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Debabrata Banerjee <dbanerje@akamai.com>
-Cc:     Jan Kara <jack@suse.cz>, Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: bad mount opts in no journal mode
-Message-ID: <20190501031125.GC5377@mit.edu>
-Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
-        Debabrata Banerjee <dbanerje@akamai.com>, Jan Kara <jack@suse.cz>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Dmitry Monakhov <dmonakhov@openvz.org>,
-        linux-kernel@vger.kernel.org
-References: <20190429173158.1463-1-dbanerje@akamai.com>
+        id S1726617AbfEAOVe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 May 2019 10:21:34 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40302 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726515AbfEAOVe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 May 2019 10:21:34 -0400
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x41E8lFX010258
+        for <linux-ext4@vger.kernel.org>; Wed, 1 May 2019 10:21:33 -0400
+Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2s7cxy8h8r-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 01 May 2019 10:21:32 -0400
+Received: from localhost
+        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
+        Wed, 1 May 2019 15:21:30 +0100
+Received: from b06cxnps4074.portsmouth.uk.ibm.com (9.149.109.196)
+        by e06smtp01.uk.ibm.com (192.168.101.131) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Wed, 1 May 2019 15:21:27 +0100
+Received: from d06av24.portsmouth.uk.ibm.com (d06av24.portsmouth.uk.ibm.com [9.149.105.60])
+        by b06cxnps4074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x41ELQbC52691046
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 1 May 2019 14:21:26 GMT
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 5E86B4204C;
+        Wed,  1 May 2019 14:21:26 +0000 (GMT)
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 4BDB84204F;
+        Wed,  1 May 2019 14:21:24 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.199.33.136])
+        by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Wed,  1 May 2019 14:21:24 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        hch@infradead.org
+Subject: Re: [PATCH V2 12/13] fscrypt_zeroout_range: Encrypt all zeroed out blocks of a page
+Date:   Wed, 01 May 2019 19:52:02 +0530
+Organization: IBM
+In-Reply-To: <20190430165114.GA48973@gmail.com>
+References: <20190428043121.30925-1-chandan@linux.ibm.com> <20190428043121.30925-13-chandan@linux.ibm.com> <20190430165114.GA48973@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190429173158.1463-1-dbanerje@akamai.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset="us-ascii"
+X-TM-AS-GCONF: 00
+x-cbid: 19050114-4275-0000-0000-000003304E6B
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19050114-4276-0000-0000-0000383FAABA
+Message-Id: <5118219.DRdbvtsWY3@localhost.localdomain>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-05-01_07:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=5 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1905010091
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Apr 29, 2019 at 01:31:58PM -0400, Debabrata Banerjee wrote:
-> Fixes:
-> commit 1e381f60dad9 ("ext4: do not allow journal_opts for fs w/o journal")
+On Tuesday, April 30, 2019 10:21:15 PM IST Eric Biggers wrote:
+> On Sun, Apr 28, 2019 at 10:01:20AM +0530, Chandan Rajendra wrote:
+> > For subpage-sized blocks, this commit adds code to encrypt all zeroed
+> > out blocks mapped by a page.
+> > 
+> > Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
+> > ---
+> >  fs/crypto/bio.c | 40 ++++++++++++++++++----------------------
+> >  1 file changed, 18 insertions(+), 22 deletions(-)
+> > 
+> > diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+> > index 856f4694902d..46dd2ec50c7d 100644
+> > --- a/fs/crypto/bio.c
+> > +++ b/fs/crypto/bio.c
+> > @@ -108,29 +108,23 @@ EXPORT_SYMBOL(fscrypt_pullback_bio_page);
+> >  int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+> >  				sector_t pblk, unsigned int len)
+> >  {
+> > -	struct fscrypt_ctx *ctx;
+> >  	struct page *ciphertext_page = NULL;
+> >  	struct bio *bio;
+> > +	u64 total_bytes, page_bytes;
 > 
-> Instead of removing EXT4_MOUNT_JOURNAL_CHECKSUM from s_def_mount_opt as
-> I assume was intended, all other options were blown away leading to
-> _ext4_show_options() output being incorrect.
+> page_bytes should be 'unsigned int', since it's <= PAGE_SIZE.
 > 
-> Signed-off-by: Debabrata Banerjee <dbanerje@akamai.com>
+> >  	int ret, err = 0;
+> >  
+> > -	BUG_ON(inode->i_sb->s_blocksize != PAGE_SIZE);
+> > -
+> > -	ctx = fscrypt_get_ctx(inode, GFP_NOFS);
+> > -	if (IS_ERR(ctx))
+> > -		return PTR_ERR(ctx);
+> > +	total_bytes = len << inode->i_blkbits;
+> 
+> Should cast len to 'u64' here, in case it's greater than UINT_MAX / blocksize.
+> 
+> >  
+> > -	ciphertext_page = fscrypt_alloc_bounce_page(ctx, GFP_NOWAIT);
+> > -	if (IS_ERR(ciphertext_page)) {
+> > -		err = PTR_ERR(ciphertext_page);
+> > -		goto errout;
+> > -	}
+> > +	while (total_bytes) {
+> > +		page_bytes = min_t(u64, total_bytes, PAGE_SIZE);
+> >  
+> > -	while (len--) {
+> > -		err = fscrypt_do_page_crypto(inode, FS_ENCRYPT, lblk,
+> > -					     ZERO_PAGE(0), ciphertext_page,
+> > -					     PAGE_SIZE, 0, GFP_NOFS);
+> > -		if (err)
+> > +		ciphertext_page = fscrypt_encrypt_page(inode, ZERO_PAGE(0),
+> > +						page_bytes, 0, lblk, GFP_NOFS);
+> > +		if (IS_ERR(ciphertext_page)) {
+> > +			err = PTR_ERR(ciphertext_page);
+> > +			ciphertext_page = NULL;
+> >  			goto errout;
+> > +		}
+> 
+> 'ciphertext_page' is leaked after each loop iteration.  Did you mean to free it,
+> or did you mean to reuse it for subsequent iterations?
 
-Thanks, applied.  Note that the Fixes line should like this:
+Thanks for pointing this out. I actually meant to free it. I will see if I can
+reuse ciphertext_page in my next patchset rather than freeing and allocating
+it each time the loop is executed.
 
-Fixes: 1e381f60dad9 ("ext4: do not allow journal_opts for fs w/o journal")
+> 
+> >  
+> >  		bio = bio_alloc(GFP_NOWAIT, 1);
+> >  		if (!bio) {
+> > @@ -141,9 +135,8 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+> >  		bio->bi_iter.bi_sector =
+> >  			pblk << (inode->i_sb->s_blocksize_bits - 9);
+> 
+> This line uses ->s_blocksize_bits, but your new code uses ->i_blkbits.  AFAIK
+> they'll always be the same, but please pick one or the other to use.
 
-... and be placed along with the Signed-off-by: headers.
+I will fix this.
 
-    	   	  	     	 		- Ted
+> 
+> >  		bio_set_op_attrs(bio, REQ_OP_WRITE, 0);
+> > -		ret = bio_add_page(bio, ciphertext_page,
+> > -					inode->i_sb->s_blocksize, 0);
+> > -		if (ret != inode->i_sb->s_blocksize) {
+> > +		ret = bio_add_page(bio, ciphertext_page, page_bytes, 0);
+> > +		if (ret != page_bytes) {
+> >  			/* should never happen! */
+> >  			WARN_ON(1);
+> >  			bio_put(bio);
+> > @@ -156,12 +149,15 @@ int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+> >  		bio_put(bio);
+> >  		if (err)
+> >  			goto errout;
+> > -		lblk++;
+> > -		pblk++;
+> > +
+> > +		lblk += page_bytes >> inode->i_blkbits;
+> > +		pblk += page_bytes >> inode->i_blkbits;
+> > +		total_bytes -= page_bytes;
+> >  	}
+> >  	err = 0;
+> >  errout:
+> > -	fscrypt_release_ctx(ctx);
+> > +	if (!IS_ERR_OR_NULL(ciphertext_page))
+> > +		fscrypt_restore_control_page(ciphertext_page);
+> >  	return err;
+> >  }
+> >  EXPORT_SYMBOL(fscrypt_zeroout_range);
+> 
+> 
+
+
+-- 
+chandan
+
+
+
