@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8B2FC004C9
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4697DC43219
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 77CA0208C3
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 166992089E
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 May 2019 22:46:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1556750774;
-	bh=9tCtO1UhKlgNaKQ4Vo2fY/f/tx4tAYmrmesoV/TRatQ=;
+	s=default; t=1556750776;
+	bh=xD7PqOfhddvE9okJKFAirf34SL4fz8KKEtN16Qy6Kso=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=JzGz0fXtAKfjnpfOrrj8vwRHojLlj5DdhsYS833lvOIX+qUOCSDcCsmfAX/VRvZ11
-	 EHG37yuOQMBcU9sjNXEAeJi6OU3ZUrIiQNdarYpV1OEpnxygL7Krbj1Z2Qxw92yZvn
-	 zCq3/mdZRcbCmYE+FQ+9n5rup3KCxmFJQtpZ96Ss=
+	b=gBbLK/Sz5UPLD+GYB3/oIzTqnPijIB15vmoBOuCQDiKp3RNRtjK/Br9lcB5g2IGkh
+	 ISzhRjEL8XWZvSY4h0ZER9TRrXRhMhAbIOO7g9+3QRi4lLCuNXaSEzA2uFAxymca1G
+	 MRL9JOGG2wjWsPl30Sfnu9r6i5PN/Me7RqDb0/jc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726391AbfEAWqK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 May 2019 18:46:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47212 "EHLO mail.kernel.org"
+        id S1726404AbfEAWqP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 May 2019 18:46:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47246 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726356AbfEAWqI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 May 2019 18:46:08 -0400
+        id S1726126AbfEAWqJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 1 May 2019 18:46:09 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 91F802177B;
-        Wed,  1 May 2019 22:46:07 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C1E92217D7;
+        Wed,  1 May 2019 22:46:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1556750767;
-        bh=9tCtO1UhKlgNaKQ4Vo2fY/f/tx4tAYmrmesoV/TRatQ=;
+        s=default; t=1556750768;
+        bh=xD7PqOfhddvE9okJKFAirf34SL4fz8KKEtN16Qy6Kso=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=y8YG9UO8QblgY/00eAdvCLakpbi8O0KF/TT7iY9sSVn4VQSaeYjTXnwNvrqb6gLsV
-         jDMN2y3lQSJj/kWEUMrDu4UhojbkBtQDeQGQ5Iv6RT5xF2rYqfSBwvJtSmZDrMw+OC
-         YDAdVpODu1ImUru9vpD37QOyT59qQ/n5Mofd5ExY=
+        b=gilxO/PqfpEGq5c0zQGIqQZrLC3gFUWqXtIObS+nLMp9ZEEI5orwUg2BzcJT9mUB0
+         THM/ewxak22G9gQkbw7qJvZ7zyBtX1k20tFJtJctGjT8wJLhM8WiB18YU5BunF+PRW
+         GFG0+lcuMb/OEg+KZIGOYNlpwWk/GuCg7qsQ78Zk=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         Chandan Rajendra <chandan@linux.ibm.com>
-Subject: [PATCH 09/13] fscrypt: support decrypting multiple filesystem blocks per page
-Date:   Wed,  1 May 2019 15:45:11 -0700
-Message-Id: <20190501224515.43059-10-ebiggers@kernel.org>
+Subject: [PATCH 13/13] ext4: encrypt only up to last block in ext4_bio_write_page()
+Date:   Wed,  1 May 2019 15:45:15 -0700
+Message-Id: <20190501224515.43059-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.593.g511ec345e18-goog
 In-Reply-To: <20190501224515.43059-1-ebiggers@kernel.org>
 References: <20190501224515.43059-1-ebiggers@kernel.org>
@@ -57,12 +57,8 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Rename fscrypt_decrypt_page() to fscrypt_decrypt_pagecache_blocks() and
-redefine its behavior to decrypt all filesystem blocks in the given
-region of the given page, rather than assuming that the region consists
-of just one filesystem block.  Also remove the 'inode' and 'lblk_num'
-parameters, since they can be retrieved from the page as it's already
-assumed to be a pagecache page.
+As an optimization, don't encrypt blocks fully beyond i_size, since
+those definitely won't need to be written out.  Also add a comment.
 
 This is in preparation for allowing encryption on ext4 filesystems with
 blocksize != PAGE_SIZE.
@@ -71,149 +67,34 @@ This is based on work by Chandan Rajendra.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/bio.c         |  5 ++---
- fs/crypto/crypto.c      | 46 ++++++++++++++++++++++++++++-------------
- fs/ext4/inode.c         |  7 +++----
- include/linux/fscrypt.h | 12 +++++------
- 4 files changed, 43 insertions(+), 27 deletions(-)
+ fs/ext4/page-io.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-index e67e9d4d342b3..b4f47b98ee6d9 100644
---- a/fs/crypto/bio.c
-+++ b/fs/crypto/bio.c
-@@ -34,9 +34,8 @@ static void __fscrypt_decrypt_bio(struct bio *bio, bool done)
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 457ddf051608f..ab843ad89df2f 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -468,11 +468,19 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
  
- 	bio_for_each_segment_all(bv, bio, i, iter_all) {
- 		struct page *page = bv->bv_page;
--		int ret = fscrypt_decrypt_page(page->mapping->host, page,
--				PAGE_SIZE, 0, page->index);
--
-+		int ret = fscrypt_decrypt_pagecache_blocks(page, bv->bv_len,
-+							   bv->bv_offset);
- 		if (ret)
- 			SetPageError(page);
- 		else if (done)
-diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index 2e6fb5e4f7a7f..dcf630d7e4460 100644
---- a/fs/crypto/crypto.c
-+++ b/fs/crypto/crypto.c
-@@ -282,29 +282,47 @@ int fscrypt_encrypt_block_inplace(const struct inode *inode, struct page *page,
- EXPORT_SYMBOL(fscrypt_encrypt_block_inplace);
+ 	bh = head = page_buffers(page);
  
- /**
-- * fscrypt_decrypt_page() - Decrypts a page in-place
-- * @inode:     The corresponding inode for the page to decrypt.
-- * @page:      The page to decrypt. Must be locked.
-- * @len:       Number of bytes in @page to be decrypted.
-- * @offs:      Start of data in @page.
-- * @lblk_num:  Logical block number.
-+ * fscrypt_decrypt_pagecache_blocks() - Decrypt filesystem blocks in a pagecache page
-+ * @page:      The locked pagecache page containing the block(s) to decrypt
-+ * @len:       Total size of the block(s) to decrypt.  Must be a nonzero
-+ *		multiple of the filesystem's block size.
-+ * @offs:      Byte offset within @page of the first block to decrypt.  Must be
-+ *		a multiple of the filesystem's block size.
-  *
-- * Decrypts page in-place using the ctx encryption context.
-+ * The specified block(s) are decrypted in-place within the pagecache page,
-+ * which must still be locked and not uptodate.  Normally, blocksize ==
-+ * PAGE_SIZE and the whole page is decrypted at once.
-  *
-- * Called from the read completion callback.
-+ * This is for use by the filesystem's ->readpages() method.
-  *
-- * Return: Zero on success, non-zero otherwise.
-+ * Return: 0 on success; -errno on failure
-  */
--int fscrypt_decrypt_page(const struct inode *inode, struct page *page,
--			unsigned int len, unsigned int offs, u64 lblk_num)
-+int fscrypt_decrypt_pagecache_blocks(struct page *page, unsigned int len,
-+				     unsigned int offs)
- {
-+	const struct inode *inode = page->mapping->host;
-+	const unsigned int blockbits = inode->i_blkbits;
-+	const unsigned int blocksize = 1 << blockbits;
-+	u64 lblk_num = ((u64)page->index << (PAGE_SHIFT - blockbits)) +
-+		       (offs >> blockbits);
-+	unsigned int i;
-+	int err;
-+
- 	if (WARN_ON_ONCE(!PageLocked(page)))
- 		return -EINVAL;
++	/*
++	 * If any blocks are being written to an encrypted file, encrypt them
++	 * into a bounce page.  For simplicity, just encrypt until the last
++	 * block which might be needed.  This may cause some unneeded blocks
++	 * (e.g. holes) to be unnecessarily encrypted, but this is rare and
++	 * can't happen in the common case of blocksize == PAGE_SIZE.
++	 */
+ 	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode) && nr_to_submit) {
+ 		gfp_t gfp_flags = GFP_NOFS;
++		unsigned int enc_bytes = round_up(len, i_blocksize(inode));
  
--	return fscrypt_crypt_block(inode, FS_DECRYPT, lblk_num, page, page,
--				   len, offs, GFP_NOFS);
-+	if (WARN_ON_ONCE(len <= 0 || !IS_ALIGNED(len | offs, blocksize)))
-+		return -EINVAL;
-+
-+	for (i = offs; i < offs + len; i += blocksize, lblk_num++) {
-+		err = fscrypt_crypt_block(inode, FS_DECRYPT, lblk_num, page,
-+					  page, blocksize, i, GFP_NOFS);
-+		if (err)
-+			return err;
-+	}
-+	return 0;
- }
--EXPORT_SYMBOL(fscrypt_decrypt_page);
-+EXPORT_SYMBOL(fscrypt_decrypt_pagecache_blocks);
- 
- /**
-  * fscrypt_decrypt_block_inplace() - Decrypt a filesystem block in-place
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b32a57bc5d5d6..1ef5d791834fc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1228,8 +1228,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	if (unlikely(err))
- 		page_zero_new_buffers(page, from, to);
- 	else if (decrypt)
--		err = fscrypt_decrypt_page(page->mapping->host, page,
--				PAGE_SIZE, 0, page->index);
-+		err = fscrypt_decrypt_pagecache_blocks(page, PAGE_SIZE, 0);
- 	return err;
- }
- #endif
-@@ -4062,8 +4061,8 @@ static int __ext4_block_zero_page_range(handle_t *handle,
- 			/* We expect the key to be set. */
- 			BUG_ON(!fscrypt_has_encryption_key(inode));
- 			BUG_ON(blocksize != PAGE_SIZE);
--			WARN_ON_ONCE(fscrypt_decrypt_page(page->mapping->host,
--						page, PAGE_SIZE, 0, page->index));
-+			WARN_ON_ONCE(fscrypt_decrypt_pagecache_blocks(
-+						page, PAGE_SIZE, 0));
- 		}
- 	}
- 	if (ext4_should_journal_data(inode)) {
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index f4890870ca984..4d6528351f25c 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -112,8 +112,9 @@ extern int fscrypt_encrypt_block_inplace(const struct inode *inode,
- 					 struct page *page, unsigned int len,
- 					 unsigned int offs, u64 lblk_num,
- 					 gfp_t gfp_flags);
--extern int fscrypt_decrypt_page(const struct inode *, struct page *, unsigned int,
--				unsigned int, u64);
-+
-+extern int fscrypt_decrypt_pagecache_blocks(struct page *page, unsigned int len,
-+					    unsigned int offs);
- extern int fscrypt_decrypt_block_inplace(const struct inode *inode,
- 					 struct page *page, unsigned int len,
- 					 unsigned int offs, u64 lblk_num);
-@@ -305,10 +306,9 @@ static inline int fscrypt_encrypt_block_inplace(const struct inode *inode,
- 	return -EOPNOTSUPP;
- }
- 
--static inline int fscrypt_decrypt_page(const struct inode *inode,
--				       struct page *page,
--				       unsigned int len, unsigned int offs,
--				       u64 lblk_num)
-+static inline int fscrypt_decrypt_pagecache_blocks(struct page *page,
-+						   unsigned int len,
-+						   unsigned int offs)
- {
- 	return -EOPNOTSUPP;
- }
+ 	retry_encrypt:
+-		bounce_page = fscrypt_encrypt_pagecache_blocks(page, PAGE_SIZE,
++		bounce_page = fscrypt_encrypt_pagecache_blocks(page, enc_bytes,
+ 							       0, gfp_flags);
+ 		if (IS_ERR(bounce_page)) {
+ 			ret = PTR_ERR(bounce_page);
 -- 
 2.21.0.593.g511ec345e18-goog
 
