@@ -2,106 +2,93 @@ Return-Path: <SRS0=J6NK=TF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A075C04AAB
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 May 2019 11:01:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77F71C004C9
+	for <linux-ext4@archiver.kernel.org>; Sun,  5 May 2019 18:21:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4A952208C0
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 May 2019 11:01:39 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Wpgs5fvs"
+	by mail.kernel.org (Postfix) with ESMTP id 42A8620644
+	for <linux-ext4@archiver.kernel.org>; Sun,  5 May 2019 18:21:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727647AbfEELB3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 5 May 2019 07:01:29 -0400
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:43230 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726524AbfEELB3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2019 07:01:29 -0400
-Received: by mail-pg1-f194.google.com with SMTP id t22so4986471pgi.10;
-        Sun, 05 May 2019 04:01:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=MqZNEgC5BmtoBz8qTi1+bfplbvOpRDZelFl2KhxBBCo=;
-        b=Wpgs5fvscpT1iyfEWSe39xD5Re7uuL7oH9eW7V+DVz2SndW+NU2YmpLxqmm8ceV0kb
-         66RQBkYZ19a1y33ots8Li+fbbHHTho77P0dzHjbsJAd2CBUezqeHiPWm7HoP0Y9NGvpN
-         NTzc5t5QBl/GBbtE5JHvMMnHmPLkItBRPS4uzoGJ5vDs9vPDg29DUZ7Da5F1XkSiw/NC
-         rxWzH0HoKRDHzKJYJYbPF2pB/jyQpJp+a8nlCD+ZDdrXLhwiYcmiGT2FPmNQtUQ/fzPp
-         nqaJL1mfZcgu/h9o/bQqLSQheEQXTDXHh+kPQPHsTZbV3/4kLPfDx2wFiPKMqSOWk0hm
-         YZ7A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=MqZNEgC5BmtoBz8qTi1+bfplbvOpRDZelFl2KhxBBCo=;
-        b=eaWNOHPRIeTZAVYa3zGmKbXcPDwO6UQu0tPaJ+USVxrALkatmPNxd8A2XdmyZeIeJG
-         F7waGgvfk0paTc/cEObmkOCGgWst9nsp8uEKFhqts7pyr5lTwZaMe0sNR64tJ9Ys18aZ
-         PWeRO7kx7l2Yw2mmpozMqxAr5eDtAH1j97W7746GdPio3ZJEiUfXmFM5tlMVMRG9yYUH
-         mMAXNbxA9PONry5e84IBL+3UKEYSOFG3SaYf7T5Lvzg47wyJIcxNjYNjflLniWvTA2CX
-         iV0TA45WeeAYt839UQIlsmntX637DXdVgU4KKWbtl/4TkhofeWh8bSV0UMwu6BmndMZj
-         pOag==
-X-Gm-Message-State: APjAAAVp0/xgKxNmE/3cCNOxJgcP2HsbtmBXxJbShqtcrEcS4R5Gf+Ga
-        UuUlwzrbG1Naa3lln3dzNnCmR191
-X-Google-Smtp-Source: APXvYqz8XyHKNsoBElURCGJZ77p7owPf/I5FH20chofXUubJMocIWSRS1KX1ytccOYvZv7nKagL8IQ==
-X-Received: by 2002:a65:4649:: with SMTP id k9mr472542pgr.239.1557054088443;
-        Sun, 05 May 2019 04:01:28 -0700 (PDT)
-Received: from izt4n3nohp3b5a1z8j8uuaz.localdomain ([149.129.49.136])
-        by smtp.gmail.com with ESMTPSA id 10sm12962955pft.100.2019.05.05.04.01.26
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 05 May 2019 04:01:27 -0700 (PDT)
-From:   Chengguang Xu <cgxu519@gmail.com>
-To:     jack@suse.com, tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chengguang Xu <cgxu519@gmail.com>
-Subject: [PATCH 2/3] jbd2: code cleanup for jbd2_journal_init_revoke_caches()
-Date:   Sun,  5 May 2019 19:01:03 +0800
-Message-Id: <1557054064-3504-2-git-send-email-cgxu519@gmail.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1557054064-3504-1-git-send-email-cgxu519@gmail.com>
-References: <1557054064-3504-1-git-send-email-cgxu519@gmail.com>
+        id S1726965AbfEESVO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 5 May 2019 14:21:14 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59471 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726081AbfEESVN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 5 May 2019 14:21:13 -0400
+Received: from callcc.thunk.org ([66.31.38.53])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x45IL3rr003131
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sun, 5 May 2019 14:21:04 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id CE279420024; Sun,  5 May 2019 14:21:03 -0400 (EDT)
+Date:   Sun, 5 May 2019 14:21:03 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] e2fsck: Check and fix tails of all bitmaps
+Message-ID: <20190505182103.GB10038@mit.edu>
+References: <20190328164218.19265-1-jack@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190328164218.19265-1-jack@suse.cz>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-jbd2_journal_destroy_caches() can handle destruction work
-for all caches, so we don't have to destroy previously
-created cache in error path, it also makes the code simpler.
+On Thu, Mar 28, 2019 at 05:42:18PM +0100, Jan Kara wrote:
+> Currently, e2fsck effectively checks only tail of the last inode and
+> block bitmap in the filesystem. Thus if some previous bitmap has unset
+> bits it goes unnoticed. Mostly these tail bits in the bitmap are ignored
+> however if blocks_per_group are smaller than 8*blocksize, mballoc code
+> in the kernel can get confused when the tail bits are unset and return
+> bogus free extent.
 
-Signed-off-by: Chengguang Xu <cgxu519@gmail.com>
----
- fs/jbd2/revoke.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+This patch isn't quite right; there are two different kinds of "bitmap
+tails".  The one which e2fsck currently validates is the one only
+happens at the last inode and block bitmap, and happens when the
+number of blocks or inodes is not a multiple of the 8*blocksize.
 
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index a1143e57a718..3b46b45d085d 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -194,17 +194,14 @@ int __init jbd2_journal_init_revoke_caches(void)
- 	jbd2_revoke_record_cache = KMEM_CACHE(jbd2_revoke_record_s,
- 					SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY);
- 	if (!jbd2_revoke_record_cache)
--		goto record_cache_failure;
-+		return -ENOMEM;
- 
- 	jbd2_revoke_table_cache = KMEM_CACHE(jbd2_revoke_table_s,
- 					     SLAB_TEMPORARY);
- 	if (!jbd2_revoke_table_cache)
--		goto table_cache_failure;
--	return 0;
--table_cache_failure:
--	jbd2_journal_destroy_revoke_caches();
--record_cache_failure:
- 		return -ENOMEM;
-+
-+	return 0;
- }
- 
- static struct jbd2_revoke_table_s *jbd2_journal_init_revoke_table(int hash_size)
--- 
-2.20.1
+The second is the ones when number of blocks/inodes per block group is
+less than 8*blocksize, and you're quite right that we weren't
+correctly testing for this.
 
+The patch adds a test for the second, but the test added in this patch
+to read_bitmaps() *only* tests for the second, and not the first.  But
+it removes the tests for set bits for the first type of bitmap tails,
+so we would no longer be testing for this kind of file system
+corruption.
+
+I noticed this by inspecting the code, but it was also picked up by
+the regression tests, such as f_end-bitmap.  There were also a large
+number of regression test failures that were *added* by this commit,
+since some of the images for the existing tests had tails at the end
+of inode bitmaps.  So it's pretty obvious that "make -j16 check"
+wasn't run after making this change.  :-/
+
+Tests failed: f_bitmaps f_dup2 f_dup3 f_dup f_end-bitmap f_illbbitmap f_illibitmap f_illitable_flexbg f_lpf f_overfsblks f_super_bad_csum j_corrupt_ext_jnl_sb_csum j_ext_long_trans j_long_trans j_long_trans_mcsum_32bit j_long_trans_mcsum_64bit j_recover_csum2_32bit j_recover_csum2_64bit j_short_trans_64bit j_short_trans j_short_trans_mcsum_64bit j_short_trans_old_csum j_short_trans_open_recover j_short_trans_recover j_short_trans_recover_mcsum_64bit t_replay_and_set
+
+I'm also going to propose that we go about this slightly differently.
+The check to see if the bitmaps have invalid tail bits doesn't take
+that much extra time.  So instead of having a set of flags which
+*request* that we do the check, let's unconditionally do the check,
+but instead of returning an error if there is a problem, we'll reserve
+two flags, and set them if read_bitmaps() detects a tail bitmap
+problem while reading the block or inode problem.
+
+This simplifies the logic in e2fsck, since we don't have to retry the
+call to ext2fs_read_bitmaps() without the tail check if it fails.
+Instead, we just have to check the two new flag bits after calling
+ext2fs_read_bitmaps().
+
+And we'll have to keep check_block_bitmaps() and check_inode_bitmaps()
+to test the first kind of tail bitmaps.
+
+					- Ted
