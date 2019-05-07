@@ -2,121 +2,73 @@ Return-Path: <SRS0=Q1gA=TH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1996BC04AAB
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 May 2019 15:40:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7DF3C004C9
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 May 2019 16:12:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E367920825
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 May 2019 15:40:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B11A320825
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 May 2019 16:12:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="P0NmBCU8"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ekXeAiM+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726682AbfEGPkl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 May 2019 11:40:41 -0400
-Received: from mail-ot1-f66.google.com ([209.85.210.66]:41015 "EHLO
-        mail-ot1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726197AbfEGPkl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 May 2019 11:40:41 -0400
-Received: by mail-ot1-f66.google.com with SMTP id g8so15334328otl.8
-        for <linux-ext4@vger.kernel.org>; Tue, 07 May 2019 08:40:41 -0700 (PDT)
+        id S1726516AbfEGQMT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 May 2019 12:12:19 -0400
+Received: from mail-io1-f47.google.com ([209.85.166.47]:42815 "EHLO
+        mail-io1-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726449AbfEGQMT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 May 2019 12:12:19 -0400
+Received: by mail-io1-f47.google.com with SMTP id c24so2100704iom.9
+        for <linux-ext4@vger.kernel.org>; Tue, 07 May 2019 09:12:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=intel-com.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=eDjq30ddseBaIw6socWxfPv6NTtk+5QW4X1Ug5iEyJk=;
-        b=P0NmBCU8zUOfaF8xaYZsuZ8crvxFB33fl7wDNB9MZv5fgE9bufZ9uXOFacVBRIyhyk
-         7jy7cEut0ZZu1RaoDtrr50BVaB/CX/skGeBOtXxoGAGKW89ZemgDpFwl6g0BCyZNTY71
-         c96Bv/+lzcoe4YYcd5EMePUR4gTK7GrAqK6itLr2obeqWzYKb3Dql3mDDHzIv1x+/JnT
-         zIvYGvdBDonXfV8sEZV0PvMIvA63l1OoRV+8kWQPCfuhVRSXMOb+jYMxWFhFzCGAXSHH
-         RES21PeWYeTfPIbRNgVP3JVS3PVW0F6JNq0X1vpUrTbfXgSQ4Ev5ZlVumch1kGRMghci
-         mHRw==
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=Nf2iVqNOtbifDZcrGvUmE0lDgcMP81Su7AlPzQDta48=;
+        b=ekXeAiM+Ga5gch50IrVK8SVojbxTH4qoUfFdV099UkuGj+gm8xIuMefMx9Oy6zNKTV
+         OKdzMpS9HsoHnqgOy7695Gd90Jt2HdtuWAqug1XNdkvCCDibTmqmT0WZysn3okU2nZMu
+         eJ9gh/9eTaU5zlewz9/jL+4P1b4q5ivOZrnDBxVmMSO3L3/tMPW/u0n3LE8MM9+L3CcW
+         KK3jk+y5NT8uETHy7DEKdNo5VwhPP00oXtQqT0boZDFOYpxgP/lTEDbOUs12TVgtgfQY
+         +IbsaOsHyWgiaORwaPzaKefeEU2VQkQnNtFArVXSorSUZQsVumwV2zKemISVuEblAgVQ
+         FREg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=eDjq30ddseBaIw6socWxfPv6NTtk+5QW4X1Ug5iEyJk=;
-        b=SsiZSQ3DOD7GTqaGhrDEawHOQxtVwHNsBKurwqU9imgmH9Qj6hoIkTCbyfmoH5UXY1
-         D3XXSFM6Ac2aMgyPv3aomKXWZLC43WNKzTtRQbmhl3h0ENMWwSBGqO5tjGdPNHmKkrIi
-         jS/wVHkX5TwaxBwddApxPk6gS6RdJuit70qsqwickGMaXlDGJz+Ogh6VAu2qVrZNqbyD
-         pu/VFaIWnKKke1sVw5alLjljcWc0Gvr+Jygx4zcic73Hq2KZ+xvLTlCkgx9KKJkoR7Ah
-         LqJuycoh8f4t3CtbAj1ci7IzJyZx9BQSfKEECK5cdRbI4vorLpM12yy0sKarSHnHsY4F
-         9ndg==
-X-Gm-Message-State: APjAAAUWQxWgbTpOqHJ4+3WKLuw3uowe5CWDUAxT13kALhxzywXRKcgj
-        Cr2RwyC3QKoe6H9ZnJg6O/KXMzGfdWd4z+j8GJRlpw==
-X-Google-Smtp-Source: APXvYqxgIWANkc/KHq9kAogc8tqlkqRrOccsWEIKbqAeeZcNH5LiQg3MPoGwMh9hdCCYG0LuKCXgqpIi0akzNLzuZFI=
-X-Received: by 2002:a9d:222c:: with SMTP id o41mr22033787ota.353.1557243640877;
- Tue, 07 May 2019 08:40:40 -0700 (PDT)
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=Nf2iVqNOtbifDZcrGvUmE0lDgcMP81Su7AlPzQDta48=;
+        b=q2PU6sz9/w+AlqH5qCGuH2HwywkusIjfpH+oDWYFLRRXSugz8D5b0rCCXqLi7hq1/k
+         0OCNuc3fCP8F3eJDjWNlzEXBgvC3azGBqTAzQXYjFNgN0Fcz6r98znpMDIlTHsT8M+cX
+         O27tPNFSgf0WDcqBuJQuMuTXn+L+V5SwKYM+GQ5cFfROFFbmBCaX10HuLj63S2U7IY0X
+         vax96EhTGXrOwjieso2r0lDxyHJebC/8DmnvHmvOEurYSQ0fHamU7aLBkv92IALbmR1Y
+         F6YMhdtgteD1aEgBwwTyxEu6hRBFbVXu/OhKpJI72qFH1F2IEYXcEbtmxNtdPxDGM7N7
+         rhMA==
+X-Gm-Message-State: APjAAAV4Tvq0qfUN876nKend/A1r4RgT7aKkTQwTK9hq7qmqLGrx2WIA
+        VJFOnTO+pLIqvAaqyr5X1WeyegbQ/IGPbOW/kNgj2XzYbEI=
+X-Google-Smtp-Source: APXvYqx0N9+liuC/J4Eod/7o35XcKe+UkRe1Ex6MB/eBhoOH54+PXOjsiHXW+7Za0g4t9sL+hYJhqW7hUdCfnrhIIHA=
+X-Received: by 2002:a6b:da11:: with SMTP id x17mr4690096iob.78.1557245538320;
+ Tue, 07 May 2019 09:12:18 -0700 (PDT)
 MIME-Version: 1.0
-References: <20190426050039.17460-1-pagupta@redhat.com> <20190426050039.17460-4-pagupta@redhat.com>
-In-Reply-To: <20190426050039.17460-4-pagupta@redhat.com>
-From:   Dan Williams <dan.j.williams@intel.com>
-Date:   Tue, 7 May 2019 08:40:30 -0700
-Message-ID: <CAPcyv4hRdvypEj4LBTMfUFm80BdpRYbOugrkkj-3Kk_LErXPqQ@mail.gmail.com>
-Subject: Re: [PATCH v7 3/6] libnvdimm: add dax_dev sync flag
-To:     Pankaj Gupta <pagupta@redhat.com>
-Cc:     linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        KVM list <kvm@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Christoph Hellwig <hch@infradead.org>,
-        Len Brown <lenb@kernel.org>, Jan Kara <jack@suse.cz>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        lcapitulino@redhat.com, Kevin Wolf <kwolf@redhat.com>,
-        Igor Mammedov <imammedo@redhat.com>,
-        jmoyer <jmoyer@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        David Hildenbrand <david@redhat.com>,
-        david <david@fromorbit.com>, cohuck@redhat.com,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        Paolo Bonzini <pbonzini@redhat.com>, kilobyte@angband.pl,
-        yuval shaia <yuval.shaia@oracle.com>
+From:   Probir Roy <proy.cse@gmail.com>
+Date:   Tue, 7 May 2019 11:12:07 -0500
+Message-ID: <CALe4XzYNBKhtcYvcuME0A29LvPuZEuirD3DLtHnffObRCUU8Rg@mail.gmail.com>
+Subject: Locality of extent status tree traversal
+To:     linux-ext4@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Apr 25, 2019 at 10:02 PM Pankaj Gupta <pagupta@redhat.com> wrote:
->
-> This patch adds 'DAXDEV_SYNC' flag which is set
-> for nd_region doing synchronous flush. This later
-> is used to disable MAP_SYNC functionality for
-> ext4 & xfs filesystem for devices don't support
-> synchronous flush.
->
-> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-[..]
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index 0dd316a74a29..c97fc0cc7167 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -7,6 +7,9 @@
->  #include <linux/radix-tree.h>
->  #include <asm/pgtable.h>
->
-> +/* Flag for synchronous flush */
-> +#define DAXDEV_F_SYNC true
+Hi,
 
-I'd feel better, i.e. it reads more canonically, if this was defined
-as (1UL << 0) and the argument to alloc_dax() was changed to 'unsigned
-long flags' rather than a bool.
+I am running Phoronix-fio benchmark on Linux kernel 4.18.0-rc5. I
+observe the same nodes have been traversed on the extent status tree
+in "ext4_es_lookup_extent" function when ext4 write begins. What's the
+locality signature of "ext4_es_lookup_extent" in general? Is it
+possible that same logical block being looked up repeatedly
+(Temporal)? Is it possible that co-located logical blocks are searched
+by ext4_es_lookup_extent (spatial)?  Or is it totally random?
+
+-- 
+Probir Roy
