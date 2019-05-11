@@ -2,68 +2,120 @@ Return-Path: <SRS0=6qru=TL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.6 required=3.0 tests=DATE_IN_PAST_12_24,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61ACBC04AB1
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 17:41:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88C6DC46460
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 22:07:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3FAC32183F
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 17:41:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3F8792184B
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 22:07:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726103AbfEKRlf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 May 2019 13:41:35 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:51298 "EHLO
+        id S1726130AbfEKWHK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 11 May 2019 18:07:10 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45539 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725879AbfEKRlf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 May 2019 13:41:35 -0400
+        with ESMTP id S1726043AbfEKWHK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 May 2019 18:07:10 -0400
 Received: from callcc.thunk.org (rrcs-67-53-55-100.west.biz.rr.com [67.53.55.100])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x4BHfQIM002914
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x4BM6x67031652
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 11 May 2019 13:41:28 -0400
+        Sat, 11 May 2019 18:07:02 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id B987A420028; Fri, 10 May 2019 21:37:01 -0400 (EDT)
-Date:   Fri, 10 May 2019 21:37:01 -0400
+        id 558B3420024; Sat, 11 May 2019 18:06:59 -0400 (EDT)
+Date:   Sat, 11 May 2019 18:06:59 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Chengguang Xu <cgxu519@gmail.com>
-Cc:     jack@suse.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] jbd2: fix potential double free
-Message-ID: <20190511013701.GD2534@mit.edu>
+To:     Richard Weinberger <richard.weinberger@gmail.com>
+Cc:     Arthur Marsh <arthur.marsh@internode.on.net>,
+        LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+Subject: Re: ext3/ext4 filesystem corruption under post 5.1.0 kernels
+Message-ID: <20190511220659.GB8507@mit.edu>
 Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
-        Chengguang Xu <cgxu519@gmail.com>, jack@suse.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <1557484608-23514-1-git-send-email-cgxu519@gmail.com>
+        Richard Weinberger <richard.weinberger@gmail.com>,
+        Arthur Marsh <arthur.marsh@internode.on.net>,
+        LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+References: <48BA4A6E-5E2A-478E-A96E-A31FA959964C@internode.on.net>
+ <CAFLxGvwnKKHOnM2w8i9hn7LTVYKh5PQP2zYMBmma2k9z7HBpzw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1557484608-23514-1-git-send-email-cgxu519@gmail.com>
+In-Reply-To: <CAFLxGvwnKKHOnM2w8i9hn7LTVYKh5PQP2zYMBmma2k9z7HBpzw@mail.gmail.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, May 10, 2019 at 06:36:48PM +0800, Chengguang Xu wrote:
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 37e16d969925..0f1ac43d0560 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2299,7 +2299,7 @@ static void jbd2_journal_destroy_slabs(void)
->  	}
->  }
->  
-> -static int jbd2_journal_create_slab(size_t size)
-> +static int __init jbd2_journal_create_slab(size_t size)
->  {
->  	static DEFINE_MUTEX(jbd2_slab_create_mutex);
->  	int i = order_base_2(size) - 10;
+On Sat, May 11, 2019 at 02:43:16PM +0200, Richard Weinberger wrote:
+> [CC'in linux-ext4]
+> 
+> On Sat, May 11, 2019 at 1:47 PM Arthur Marsh
+> <arthur.marsh@internode.on.net> wrote:
+> >
+> >
+> > The filesystem with the kernel source tree is the root file system, ext3, mounted as:
+> >
+> > /dev/sdb7 on / type ext3 (rw,relatime,errors=remount-ro)
+> >
+> > After the "Compressing objects" stage, the following appears in dmesg:
+> >
+> > [  848.968550] EXT4-fs error (device sdb7): ext4_get_branch:171: inode #8: block 30343695: comm jbd2/sdb7-8: invalid block
+> > [  849.077426] Aborting journal on device sdb7-8.
+> > [  849.100963] EXT4-fs (sdb7): Remounting filesystem read-only
+> > [  849.100976] jbd2_journal_bmap: journal block not found at offset 989 on sdb7-8
 
-I had to remove this hunk.  It's incorrect, since jbd2_journal_load
-calls this function when mounting file systems.  So it can't be marked
-__init.
+This indicates that the extent tree blocks for the journal was found
+to be corrupt; so the journal couldn't be found.
 
-						- Ted
+> > # fsck -yv
+> > fsck from util-linux 2.33.1
+> > e2fsck 1.45.0 (6-Mar-2019)
+> > /dev/sdb7: recovering journal
+> > /dev/sdb7 contains a file system with errors, check forced.
+
+But e2fsck had no problem finding the journal.
+
+> > Pass 1: Checking inodes, blocks, and sizes
+> > Pass 2: Checking directory structure
+> > Pass 3: Checking directory connectivity
+> > Pass 4: Checking reference counts
+> > Pass 5: Checking group summary information
+> > Free blocks count wrong (4619656, counted=4619444).
+> > Fix? yes
+> >
+> > Free inodes count wrong (15884075, counted=15884058).
+> > Fix? yes
+
+And no other significant problems were found.  (Ext4 never updates or
+relies on the summary number of free blocks and free inodes, since
+updating it is a scalability bottleneck and these values can be
+calculated from the per block group free block/inodes count.  So the
+fact that e2fsck needed to update them is not an issue.)
+
+So that implies that we got one set of values when we read the journal
+inode when attempting to mount the file system, and a *different* set
+of values when e2fsck was run.  Which makes means that we need
+consider the possibility that the problem is below the file system
+layer (e.g., the block layer, device drivers, etc.).
+
+
+> > /dev/sdb7: ***** FILE SYSTEM WAS MODIFIED *****
+> >
+> > Other times, I have gotten:
+> >
+> > "Inodes that were part of a corrupted orphan linked list found."
+> > "Block bitmap differences:"
+> > "Free blocks sound wrong for group"
+> >
+
+This variety of issues also implies that the issue may be in the data
+read by the file system, as opposed to an issue in the file system.
+
+Arthur, can you give us the full details of your hardware
+configuration and your kernel config file?  Also, what kernel git
+commit ID were you testing?
+
+					- Ted
