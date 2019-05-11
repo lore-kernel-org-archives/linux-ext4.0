@@ -2,128 +2,66 @@ Return-Path: <SRS0=6qru=TL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.6 required=3.0 tests=DATE_IN_PAST_12_24,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 710E1C04AB1
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 12:43:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3437CC04AB1
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 17:19:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3A7D021841
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 12:43:31 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ujr0npfL"
+	by mail.kernel.org (Postfix) with ESMTP id 0593D216C4
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 May 2019 17:19:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728520AbfEKMna (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 May 2019 08:43:30 -0400
-Received: from mail-wm1-f66.google.com ([209.85.128.66]:55813 "EHLO
-        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726162AbfEKMna (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 May 2019 08:43:30 -0400
-Received: by mail-wm1-f66.google.com with SMTP id y2so9833260wmi.5;
-        Sat, 11 May 2019 05:43:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=nOvKsBn/LkqXY5E0wRAnpgOTDwuv3IaXSaUHRvhtbCw=;
-        b=ujr0npfLjDrpG3SDlbPpizkVHDvCrYVbU+O2WOtXzHQgaDLNRc2NvY+6hjUuVcuwTF
-         MEIWSK+FksTw4nQouZDfGz3Ikw8aQWg7FPaoG+kdbxDX00Crro/BhqUno68SesPCAd4m
-         S1DB6LOHrZ//7Wl5VMyoeUWByg5O3UDWTMjoiqRHzUmQNCEptvSy6FDXTyz+K4CSOaH1
-         Gyle+Os6rMxCKt0icjzZKeNo3U9fplGzIDB5LSMu+PDox9WbcypAZsCrEuPwuNvHxDPs
-         85RAePnX3uQavrz6leqU3KEMj9r+dxkXP9KCu5wsryNaITDxeC2x7TGNGTeNNPAHN5yO
-         /n0A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=nOvKsBn/LkqXY5E0wRAnpgOTDwuv3IaXSaUHRvhtbCw=;
-        b=a71lCQxD0rp4HGqqM3XSe0LpUyrpLBTPOfynsK3yuRvclBSgN6h3w9G0UGhkwTafRw
-         M54s3tom9PGJ5zMYnO5H2uOSV9Ye4mioD5cTfhIg//3E98T/8F22toM6NtTSQq7XcW19
-         zKVmzg3w5d3b6bS0/VwuGTp4+u/81ASqdx5QjYZom6SGmwdMMH7PA8g5ahz0ktv/v5mZ
-         z2oxC5RC0+VuiSCTJEYx4m2ty+DATGbobHI9++UOHCH85Ch3SMFPbWJbJFXpNOrEMOP+
-         GXNHieFaKzlqjNzldvL8sEQsdmbw046QcuJXulFBch7HtqhUoGCYUp67ViTF5zGtnnI/
-         MPeQ==
-X-Gm-Message-State: APjAAAX94qKM9bzPyqq9lVdKRYpjCMya+1qD3e7zgp6DUfFQ/33e0dsM
-        z8oMfoQ0iQ2bV2FJRf4ZR61UKDXoas8feZYq2XPWAmGL
-X-Google-Smtp-Source: APXvYqwXQpWoN3eXZifOwnGZf9xC6qeNNgfkIo4PC6WVGSAgbUe1HRX8kzrFow2kxA7rdy2P7axfLQc/S/vZB5b1FrQ=
-X-Received: by 2002:a1c:494:: with SMTP id 142mr10613231wme.115.1557578608236;
- Sat, 11 May 2019 05:43:28 -0700 (PDT)
+        id S1727518AbfEKRTo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 11 May 2019 13:19:44 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:47196 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726787AbfEKRTn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 May 2019 13:19:43 -0400
+Received: from callcc.thunk.org (rrcs-67-53-55-100.west.biz.rr.com [67.53.55.100])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x4BHJauK030273
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 11 May 2019 13:19:38 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 51DC2420030; Fri, 10 May 2019 22:09:30 -0400 (EDT)
+Date:   Fri, 10 May 2019 22:09:30 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Colin King <colin.king@canonical.com>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH][next] ext4: fix two cases where a u32 is being checked
+ for a less than zero error return
+Message-ID: <20190511020930.GG2534@mit.edu>
+Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
+        Colin King <colin.king@canonical.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+References: <20190426220908.12790-1-colin.king@canonical.com>
 MIME-Version: 1.0
-References: <48BA4A6E-5E2A-478E-A96E-A31FA959964C@internode.on.net>
-In-Reply-To: <48BA4A6E-5E2A-478E-A96E-A31FA959964C@internode.on.net>
-From:   Richard Weinberger <richard.weinberger@gmail.com>
-Date:   Sat, 11 May 2019 14:43:16 +0200
-Message-ID: <CAFLxGvwnKKHOnM2w8i9hn7LTVYKh5PQP2zYMBmma2k9z7HBpzw@mail.gmail.com>
-Subject: Re: ext3/ext4 filesystem corruption under post 5.1.0 kernels
-To:     Arthur Marsh <arthur.marsh@internode.on.net>
-Cc:     LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190426220908.12790-1-colin.king@canonical.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-[CC'in linux-ext4]
+On Fri, Apr 26, 2019 at 11:09:08PM +0100, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
+> 
+> There are two cases where u32 variables n and err are being checked
+> for less than zero error values, the checks is always false because
+> the variables are not signed. Fix this by making the variables ints.
+> 
+> Addresses-Coverity: ("Unsigned compared against 0")
+> Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
 
-On Sat, May 11, 2019 at 1:47 PM Arthur Marsh
-<arthur.marsh@internode.on.net> wrote:
->
-> I have yet to bisect, but have had trouble with recent, post 5.1.0 kernels built from Linus' git head on both i386 (Pentium 4 pc) and amd64 (Athlon II X4 640).
->
-> The easiest way to trigger the problem is:
->
-> git gc
->
-> on the kernel source tree, although the problem can occur without doing a git gc.
->
-> The filesystem with the kernel source tree is the root file system, ext3, mounted as:
->
-> /dev/sdb7 on / type ext3 (rw,relatime,errors=remount-ro)
->
-> After the "Compressing objects" stage, the following appears in dmesg:
->
-> [  848.968550] EXT4-fs error (device sdb7): ext4_get_branch:171: inode #8: block 30343695: comm jbd2/sdb7-8: invalid block
-> [  849.077426] Aborting journal on device sdb7-8.
-> [  849.100963] EXT4-fs (sdb7): Remounting filesystem read-only
-> [  849.100976] jbd2_journal_bmap: journal block not found at offset 989 on sdb7-8
->
-> fsck -yv
->
-> then reports:
->
-> # fsck -yv
-> fsck from util-linux 2.33.1
-> e2fsck 1.45.0 (6-Mar-2019)
-> /dev/sdb7: recovering journal
-> /dev/sdb7 contains a file system with errors, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> Free blocks count wrong (4619656, counted=4619444).
-> Fix? yes
->
-> Free inodes count wrong (15884075, counted=15884058).
-> Fix? yes
->
->
-> /dev/sdb7: ***** FILE SYSTEM WAS MODIFIED *****
->
-> Other times, I have gotten:
->
-> "Inodes that were part of a corrupted orphan linked list found."
-> "Block bitmap differences:"
-> "Free blocks sound wrong for group"
->
-> No problems have been observed with the 5.1.0 release kernel.
->
-> Any suggestions for narrowing down the issue welcome.
+Thanks, applied.
 
-Can you git-bisect it?
-
--- 
-Thanks,
-//richard
+					- Ted
