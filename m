@@ -2,74 +2,135 @@ Return-Path: <SRS0=I5ct=TP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C288EC04E84
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 15:07:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 431EDC46460
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 20:46:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 934F42084E
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 15:07:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F5772084E
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 20:46:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=cs.utexas.edu header.i=@cs.utexas.edu header.b="YPudYjMi"
+	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="Cy2EIYX1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726899AbfEOPH1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 May 2019 11:07:27 -0400
-Received: from newman.cs.utexas.edu ([128.83.139.110]:37383 "EHLO
-        newman.cs.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726545AbfEOPH1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 May 2019 11:07:27 -0400
-Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
-        (authenticated bits=0)
-        by newman.cs.utexas.edu (8.14.4/8.14.4/Debian-4.1ubuntu1.1) with ESMTP id x4FF7PXr023254
-        (version=TLSv1/SSLv3 cipher=AES128-GCM-SHA256 bits=128 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 15 May 2019 10:07:25 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=cs.utexas.edu;
-        s=default; t=1557932845;
-        bh=RGIPsHixgwKfwe8D6IgkE5UqjPh9RBUW8mqHqD+Co0g=;
-        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
-        b=YPudYjMi9Rna0ivkNiTS/NVKSgY1Y9yGhqxl1Ew7WWlintl18+QgaMmNg3x7vp7lM
-         h4USlnmeKcgOUpG6A3Z70pYhaZ0Oi8XwYE5A/+mgCzZtri+lRvwCjFWQe9obTMxpaA
-         G2Qa0+snlNiCfPj0MkDV5YwWE7sH8WJz+3E66H4g=
-Received: by mail-ot1-f47.google.com with SMTP id 66so349958otq.0
-        for <linux-ext4@vger.kernel.org>; Wed, 15 May 2019 08:07:25 -0700 (PDT)
-X-Gm-Message-State: APjAAAXKa9UyzVh7+HaODolTMexfL92up8kOV0EkZvv/T03m1AWeIC2g
-        ICQ3iOiAa+sHMyr+r5/phei5ltmc3LpvuPQUHxih9A==
-X-Google-Smtp-Source: APXvYqyfQ2098Zp/VfIVt/oScmrIKl34Tl1aLR2uvboW7OHZOG7p3ytlb2kZKpb3/R41DsQs0D5mu/cUw8jhFGd16F8=
-X-Received: by 2002:a9d:6c89:: with SMTP id c9mr6672818otr.52.1557932845205;
- Wed, 15 May 2019 08:07:25 -0700 (PDT)
+        id S1727622AbfEOUqV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 May 2019 16:46:21 -0400
+Received: from mail-ot1-f68.google.com ([209.85.210.68]:37721 "EHLO
+        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727620AbfEOUqU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 May 2019 16:46:20 -0400
+Received: by mail-ot1-f68.google.com with SMTP id r10so1361192otd.4
+        for <linux-ext4@vger.kernel.org>; Wed, 15 May 2019 13:46:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=intel-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=kQMkVem+f5BUJTL0ohOK8s/LBe9AOQLQXzJAVF0NO2o=;
+        b=Cy2EIYX1Pq2jZ4OZSz2yQkq0F9kd5atoA7LKrqdgOhRjKiFVlVYA2gODEElFw67K45
+         tpjRxjmowCB5ex6K1svZPmFMGUJvDyewft/V9f+O8H7U1VGbN+OU4Z/xpXBeMQgdofxU
+         HwFKIrN+ZDE05AjnzxypOVzx8FHhxfQfSPDlE24jH7d0yRidX/qCp6tGapcyXMIsQ/FN
+         xTviZEpkXwuB4/hLQMP71dgjub+M7+e9+NQASiodAsRVquNojGSwTZ5hM/gNAMDb2yEk
+         Teybs5bgEInBpgzEo9DC1MccDV1z1SSDczRUyu9xTatdTpheOTQU+jZivdK6ZvGITWFx
+         bOkw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=kQMkVem+f5BUJTL0ohOK8s/LBe9AOQLQXzJAVF0NO2o=;
+        b=cTzA4viBTZROgEiJ7YbEMkYOob7/M9cjqNMVLYr+yF2i5DyYx/l5BG8JjRvsJ8ok1q
+         /tC2081CMwO4scsn62fRUDr3rZ7JxprK0k+SK7kxsTTcU6tpFy8PxzsCkPMwUXRu9S/Q
+         SnOVaulj9Dad0WxIT7TZTuudZQCrpDRYpaGb68PYgBGDjLndnwkm64SnE5IriY6NPoK4
+         S97d/6BWXQUDP5CXPJa1s9+69e74NlW7/qccGuQdXf0t5CjUA0AxBO1SxgUzJo3mYrps
+         sEkvh8Sp2uvXAmjgaARb1wZwK5rKd/W6VSwBaKq/hgJw3MTr53/tMoC8Ol6MmuYc+VLC
+         1G+A==
+X-Gm-Message-State: APjAAAUbXjnUVBBPwMeow1uD4Tb9shaB8HQ4iTkEoiAX9C90d04ZJsVm
+        g1uNFstf4+ykTJSRBf44YcD+R1soJE2cP3NnhB7xPg==
+X-Google-Smtp-Source: APXvYqzmFFlcg/jPSqhKzy3t5czXCo+ojmXW5WVgFrjk+NAmke64X9x4AGwl9LoR92w5/nxaP9HiWHsnxe/dpzoT3CE=
+X-Received: by 2002:a9d:6116:: with SMTP id i22mr26141595otj.13.1557953179336;
+ Wed, 15 May 2019 13:46:19 -0700 (PDT)
 MIME-Version: 1.0
-References: <20190515150221.16647-1-fdmanana@kernel.org>
-In-Reply-To: <20190515150221.16647-1-fdmanana@kernel.org>
-From:   Vijay Chidambaram <vijay@cs.utexas.edu>
-Date:   Wed, 15 May 2019 10:07:14 -0500
-X-Gmail-Original-Message-ID: <CAHWVdUWQXDf0fDTg=43ySNEbTEqPh1ue6ZujsBX-wTsmLQGz3A@mail.gmail.com>
-Message-ID: <CAHWVdUWQXDf0fDTg=43ySNEbTEqPh1ue6ZujsBX-wTsmLQGz3A@mail.gmail.com>
-Subject: Re: [PATCH] fstests: generic, fsync fuzz tester with fsstress
-To:     Filipe Manana <fdmanana@kernel.org>
-Cc:     fstests <fstests@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Filipe Manana <fdmanana@suse.com>
+References: <20190514145422.16923-1-pagupta@redhat.com> <20190514145422.16923-3-pagupta@redhat.com>
+ <c22d42f6-ef94-0310-36f2-e9085d3464c2@infradead.org> <1112624345.28705248.1557847520326.JavaMail.zimbra@redhat.com>
+In-Reply-To: <1112624345.28705248.1557847520326.JavaMail.zimbra@redhat.com>
+From:   Dan Williams <dan.j.williams@intel.com>
+Date:   Wed, 15 May 2019 13:46:08 -0700
+Message-ID: <CAPcyv4iK1ivHkdw3JQV1wVLeLi0TA++VgKDZvYjPGo_i1j_pbA@mail.gmail.com>
+Subject: Re: [Qemu-devel] [PATCH v9 2/7] virtio-pmem: Add virtio pmem driver
+To:     Pankaj Gupta <pagupta@redhat.com>
+Cc:     Randy Dunlap <rdunlap@infradead.org>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        virtualization@lists.linux-foundation.org,
+        KVM list <kvm@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        Qemu Developers <qemu-devel@nongnu.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Jason Wang <jasowang@redhat.com>, david <david@fromorbit.com>,
+        lcapitulino@redhat.com, adilger kernel <adilger.kernel@dilger.ca>,
+        Ross Zwisler <zwisler@kernel.org>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        dave jiang <dave.jiang@intel.com>, jstaron@google.com,
+        darrick wong <darrick.wong@oracle.com>,
+        vishal l verma <vishal.l.verma@intel.com>,
+        David Hildenbrand <david@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        jmoyer <jmoyer@redhat.com>,
+        Nitesh Narayan Lal <nilal@redhat.com>,
+        Len Brown <lenb@kernel.org>,
+        Adam Borowski <kilobyte@angband.pl>,
+        Rik van Riel <riel@surriel.com>,
+        yuval shaia <yuval.shaia@oracle.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Kevin Wolf <kwolf@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        cohuck@redhat.com, "Rafael J. Wysocki" <rjw@rjwysocki.net>,
+        Igor Mammedov <imammedo@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
-X-Greylist: Sender succeeded SMTP AUTH, not delayed by milter-greylist-4.3.9 (newman.cs.utexas.edu [128.83.139.110]); Wed, 15 May 2019 10:07:25 -0500 (CDT)
-X-Virus-Scanned: clamav-milter 0.98.7 at newman
-X-Virus-Status: Clean
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, May 15, 2019 at 10:02 AM <fdmanana@kernel.org> wrote:
+On Tue, May 14, 2019 at 8:25 AM Pankaj Gupta <pagupta@redhat.com> wrote:
 >
-> From: Filipe Manana <fdmanana@suse.com>
 >
-> Run fsstress, fsync every file and directory, simulate a power failure and
-> then verify the all files and directories exist, with the same data and
-> metadata they had before the power failure.
+> > On 5/14/19 7:54 AM, Pankaj Gupta wrote:
+> > > diff --git a/drivers/virtio/Kconfig b/drivers/virtio/Kconfig
+> > > index 35897649c24f..94bad084ebab 100644
+> > > --- a/drivers/virtio/Kconfig
+> > > +++ b/drivers/virtio/Kconfig
+> > > @@ -42,6 +42,17 @@ config VIRTIO_PCI_LEGACY
+> > >
+> > >       If unsure, say Y.
+> > >
+> > > +config VIRTIO_PMEM
+> > > +   tristate "Support for virtio pmem driver"
+> > > +   depends on VIRTIO
+> > > +   depends on LIBNVDIMM
+> > > +   help
+> > > +   This driver provides access to virtio-pmem devices, storage devices
+> > > +   that are mapped into the physical address space - similar to NVDIMMs
+> > > +    - with a virtio-based flushing interface.
+> > > +
+> > > +   If unsure, say M.
+> >
+> > <beep>
+> > from Documentation/process/coding-style.rst:
+> > "Lines under a ``config`` definition
+> > are indented with one tab, while help text is indented an additional two
+> > spaces."
+>
+> ah... I changed help text and 'checkpatch' did not say anything :( .
+>
+> Will wait for Dan, If its possible to add two spaces to help text while applying
+> the series.
 
-I'm happy to see this sort of crash testing be merged into the Linux
-kernel! I think something like this being run after every
-merge/nightly build will make file systems significantly more robust
-to crash-recovery bugs.
+I'm inclined to handle this with a fixup appended to the end of the
+series just so the patchwork-bot does not get confused by the content
+changing from what was sent to the list.
