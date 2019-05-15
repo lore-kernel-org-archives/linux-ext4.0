@@ -2,115 +2,185 @@ Return-Path: <SRS0=I5ct=TP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D12F2C04E84
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 14:01:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53927C46460
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 15:02:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A360520873
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 14:01:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 262EE20815
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 May 2019 15:02:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1557932552;
+	bh=IGNIfkjfFzi8uBJ6MxS/yUZ4wKNhr2LxIXocL9a3F70=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=vFx1JLqAHU78AA67l3GLw9uX8bOtqMlCkX/utkWehxJMx15fMmGJkrlVxQtf/1fzr
+	 m/qqjyuV7RWB2YSTTmktBe6pNSGUGsJcvLVcTy3iL2arEeynmqeg0eV8gRQ53bvV+v
+	 u0l3tbg/7+sY0Q1zKf2wrRSiTSgf9ygBBfDCS0/M=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727840AbfEOOBy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 May 2019 10:01:54 -0400
-Received: from mx2.suse.de ([195.135.220.15]:43242 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727179AbfEOOBy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 May 2019 10:01:54 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 287F2AF8F;
-        Wed, 15 May 2019 14:01:53 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 3D1341E3C4B; Wed, 15 May 2019 16:01:51 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-ext4@vger.kernel.org>
-Cc:     Chengguang Xu <cgxu519@zoho.com.cn>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/3] ext2: introduce helper for xattr entry validation
-Date:   Wed, 15 May 2019 16:01:42 +0200
-Message-Id: <20190515140144.1183-2-jack@suse.cz>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20190515140144.1183-1-jack@suse.cz>
-References: <20190515140144.1183-1-jack@suse.cz>
+        id S1726718AbfEOPCb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 May 2019 11:02:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56044 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725939AbfEOPCb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 May 2019 11:02:31 -0400
+Received: from localhost.localdomain (bl8-197-74.dsl.telepac.pt [85.241.197.74])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id AB26620815;
+        Wed, 15 May 2019 15:02:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1557932549;
+        bh=IGNIfkjfFzi8uBJ6MxS/yUZ4wKNhr2LxIXocL9a3F70=;
+        h=From:To:Cc:Subject:Date:From;
+        b=fk/zgETlKzPzEQT/7conuXGBKqiE0Kha0Zx2cr80FS2ZyqZGbXgO0f8JrmXPkanOg
+         A32HHJum0Y0FpVMOJyXK5U36t5NwWaqzIS0rcZ8j7IGFCj3tkgsSoysHOHWElJd5n9
+         n44FLdQ0GEkBqjS1uTR5mLeMeifLVJgzqEQZpDNg=
+From:   fdmanana@kernel.org
+To:     fstests@vger.kernel.org
+Cc:     linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        jack@suse.cz, Filipe Manana <fdmanana@suse.com>
+Subject: [PATCH] fstests: generic, fsync fuzz tester with fsstress
+Date:   Wed, 15 May 2019 16:02:21 +0100
+Message-Id: <20190515150221.16647-1-fdmanana@kernel.org>
+X-Mailer: git-send-email 2.11.0
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Chengguang Xu <cgxu519@zoho.com.cn>
+From: Filipe Manana <fdmanana@suse.com>
 
-Introduce helper function ext2_xattr_entry_valid()
-for xattr entry validation and clean up the entry
-check related code.
+Run fsstress, fsync every file and directory, simulate a power failure and
+then verify the all files and directories exist, with the same data and
+metadata they had before the power failure.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Signed-off-by: Chengguang Xu <cgxu519@zoho.com.cn>
-Signed-off-by: Jan Kara <jack@suse.cz>
+This tes has found already 2 bugs in btrfs, that caused mtime and ctime of
+directories not being preserved after replaying the log/journal and loss
+of a directory's attributes (such a UID and GID) after replaying the log.
+The patches that fix the btrfs issues are titled:
+
+  "Btrfs: fix wrong ctime and mtime of a directory after log replay"
+  "Btrfs: fix fsync not persisting changed attributes of a directory"
+
+Running this test 1000 times:
+
+- on xfs, no issues were found
+
+- on ext4 it has resulted in about a dozen journal checksum errors (on a
+  5.0 kernel) that resulted in failure to mount the filesystem after the
+  simulated power failure with dmflakey, which produces the following
+  error in dmesg/syslog:
+
+    [Mon May 13 12:51:37 2019] JBD2: journal checksum error
+    [Mon May 13 12:51:37 2019] EXT4-fs (dm-0): error loading journal
+
+Signed-off-by: Filipe Manana <fdmanana@suse.com>
 ---
- fs/ext2/xattr.c | 32 +++++++++++++++++++++-----------
- 1 file changed, 21 insertions(+), 11 deletions(-)
+ tests/generic/547     | 72 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/547.out |  2 ++
+ tests/generic/group   |  1 +
+ 3 files changed, 75 insertions(+)
+ create mode 100755 tests/generic/547
+ create mode 100644 tests/generic/547.out
 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index db27260d6a5b..fb2e008d4406 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -144,6 +144,22 @@ ext2_xattr_header_valid(struct ext2_xattr_header *header)
- 	return true;
- }
- 
-+static bool
-+ext2_xattr_entry_valid(struct ext2_xattr_entry *entry, size_t end_offs)
+diff --git a/tests/generic/547 b/tests/generic/547
+new file mode 100755
+index 00000000..577b0e9b
+--- /dev/null
++++ b/tests/generic/547
+@@ -0,0 +1,72 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (C) 2019 SUSE Linux Products GmbH. All Rights Reserved.
++#
++# FS QA Test No. 547
++#
++# Run fsstress, fsync every file and directory, simulate a power failure and
++# then verify the all files and directories exist, with the same data and
++# metadata they had before the power failure.
++#
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
 +{
-+	size_t size;
-+
-+	if (entry->e_value_block != 0)
-+		return false;
-+
-+	size = le32_to_cpu(entry->e_value_size);
-+	if (size > end_offs ||
-+	    le16_to_cpu(entry->e_value_offs) + size > end_offs)
-+		return false;
-+
-+	return true;
++	_cleanup_flakey
++	cd /
++	rm -f $tmp.*
 +}
 +
- /*
-  * ext2_xattr_get()
-  *
-@@ -213,14 +229,10 @@ ext2_xattr_get(struct inode *inode, int name_index, const char *name,
- 	error = -ENODATA;
- 	goto cleanup;
- found:
--	/* check the buffer size */
--	if (entry->e_value_block != 0)
--		goto bad_block;
--	size = le32_to_cpu(entry->e_value_size);
--	if (size > inode->i_sb->s_blocksize ||
--	    le16_to_cpu(entry->e_value_offs) + size > inode->i_sb->s_blocksize)
-+	if (!ext2_xattr_entry_valid(entry, inode->i_sb->s_blocksize))
- 		goto bad_block;
- 
-+	size = le32_to_cpu(entry->e_value_size);
- 	if (ext2_xattr_cache_insert(ea_block_cache, bh))
- 		ea_idebug(inode, "cache insert failed");
- 	if (buffer) {
-@@ -481,12 +493,10 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
- 		if (flags & XATTR_CREATE)
- 			goto cleanup;
- 		if (!here->e_value_block && here->e_value_size) {
--			size_t size = le32_to_cpu(here->e_value_size);
--
--			if (le16_to_cpu(here->e_value_offs) + size > 
--			    sb->s_blocksize || size > sb->s_blocksize)
-+			if (!ext2_xattr_entry_valid(here, sb->s_blocksize))
- 				goto bad_block;
--			free += EXT2_XATTR_SIZE(size);
-+			free += EXT2_XATTR_SIZE(
-+					le32_to_cpu(here->e_value_size));
- 		}
- 		free += EXT2_XATTR_LEN(name_len);
- 	}
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/dmflakey
++
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_scratch
++_require_fssum
++_require_dm_target flakey
++
++rm -f $seqres.full
++
++fssum_files_dir=$TEST_DIR/generic-test-$seq
++rm -fr $fssum_files_dir
++mkdir $fssum_files_dir
++
++_scratch_mkfs >>$seqres.full 2>&1
++_require_metadata_journaling $SCRATCH_DEV
++_init_flakey
++_mount_flakey
++
++mkdir $SCRATCH_MNT/test
++args=`_scale_fsstress_args -p 4 -n 100 $FSSTRESS_AVOID -d $SCRATCH_MNT/test`
++args="$args -f mknod=0 -f symlink=0"
++echo "Running fsstress with arguments: $args" >>$seqres.full
++$FSSTRESS_PROG $args >>$seqres.full
++
++# Fsync every file and directory.
++find $SCRATCH_MNT/test -type f,d -exec $XFS_IO_PROG -c "fsync" {} \;
++
++# Compute a digest of the filesystem (using the test directory only, to skip
++# fs specific directories such as "lost+found" on ext4 for example).
++$FSSUM_PROG -A -f -w $fssum_files_dir/fs_digest $SCRATCH_MNT/test
++
++# Simulate a power failure and mount the filesystem to check that all files and
++# directories exist and have all data and metadata preserved.
++_flakey_drop_and_remount
++
++# Compute a new digest and compare it to the one we created previously, they
++# must match.
++$FSSUM_PROG -r $fssum_files_dir/fs_digest $SCRATCH_MNT/test
++
++_unmount_flakey
++
++status=0
++exit
+diff --git a/tests/generic/547.out b/tests/generic/547.out
+new file mode 100644
+index 00000000..0f6f1131
+--- /dev/null
++++ b/tests/generic/547.out
+@@ -0,0 +1,2 @@
++QA output created by 547
++OK
+diff --git a/tests/generic/group b/tests/generic/group
+index 47e81d96..49639fc9 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -549,3 +549,4 @@
+ 544 auto quick clone
+ 545 auto quick cap
+ 546 auto quick clone enospc log
++547 auto quick log
 -- 
-2.16.4
+2.11.0
 
