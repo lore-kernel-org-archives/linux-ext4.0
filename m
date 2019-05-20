@@ -2,51 +2,53 @@ Return-Path: <SRS0=1GTa=TU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2882C04AAC
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 16:30:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1408CC04E87
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 16:30:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 810C92173E
+	by mail.kernel.org (Postfix) with ESMTP id DE73521743
 	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 16:30:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1558369822;
-	bh=qgPdUJE/0daEUKkRjmiTlZG0dOGdMLxQxjTzXSw4Rv0=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=ZF0elzjPjw+Rf0tVWSZ7MFKN0i3P5+GZUFusYxc1IOyjLlVpbXIiR+4Ji3fbN5Eo5
-	 lLRe3L5/8aFh6j3lHN/1sUgcguCvNQSMIwYffDWDbBC9+swrDE7xf7c9GOBEMdrjzS
-	 Gco+/aDMkZIM0fplPgALTojtKKGb66J4JU/56U+c=
+	bh=XtXrJbffquLpHwtOpoiOVw/HH3tmVMU+GtpKaJDAspg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=SNhZMpgON05fvs+Adw7hFFZrzwQi9lcD6ge2njykHto6s47x9AgvnO57NHIV6nDNI
+	 CUbZJIvoo4YvbSALkTjhrmGwuDGv285jIYrb42zauKnONgIg11FdMqSDBMhCJ8MnBP
+	 VF80SrwlMUdgiJNqaWL57s4OmZDuicN0Ypf9srlQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389566AbfETQaW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2389629AbfETQaW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Mon, 20 May 2019 12:30:22 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44866 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:44892 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730795AbfETQaV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 20 May 2019 12:30:21 -0400
+        id S2388958AbfETQaW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 20 May 2019 12:30:22 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C0C1620815;
-        Mon, 20 May 2019 16:30:20 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 76B6A21721;
+        Mon, 20 May 2019 16:30:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1558369821;
-        bh=qgPdUJE/0daEUKkRjmiTlZG0dOGdMLxQxjTzXSw4Rv0=;
-        h=From:To:Cc:Subject:Date:From;
-        b=O2IH3/wClCcNtvPWFoheNIncMp0iBWfW5iJnR9rn/U9EpHAQ4yYvG79uvBTdU2mdy
-         q/0lti2ZK9imVN7kY95KpTwbcixNKBcWoxdHh42Irdd7nmogh191csqMvoScQhkhIQ
-         qdNLPAoXphJvOpr/ts88DJe7IQNk+40IxVhYw594=
+        bh=XtXrJbffquLpHwtOpoiOVw/HH3tmVMU+GtpKaJDAspg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=GHW4B9x7m3ZWBkOgpMwb5OP/nzyIPNmPuX/CqDCRwzqahKES9jD0BvdK2Qn1Rnhei
+         fZhojbcoezA7K8IDMn3+ZvDpLoPcEGTgklnC5mhnC/QmVqknQ9TdAZ6YtZ8+60tvLc
+         0MzpUgCuqHIU7JDRfKRayIfjS1I9Cn2o6KNn9L7w=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org,
         Chandan Rajendra <chandan@linux.ibm.com>
-Subject: [PATCH v2 00/14] fscrypt, ext4: prepare for blocksize != PAGE_SIZE
-Date:   Mon, 20 May 2019 09:29:38 -0700
-Message-Id: <20190520162952.156212-1-ebiggers@kernel.org>
+Subject: [PATCH v2 02/14] fscrypt: remove the "write" part of struct fscrypt_ctx
+Date:   Mon, 20 May 2019 09:29:40 -0700
+Message-Id: <20190520162952.156212-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.1020.gf2820cf01a-goog
+In-Reply-To: <20190520162952.156212-1-ebiggers@kernel.org>
+References: <20190520162952.156212-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -54,71 +56,106 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+From: Eric Biggers <ebiggers@google.com>
 
-This patchset prepares fs/crypto/, and partially ext4, for the
-'blocksize != PAGE_SIZE' case.
+Now that fscrypt_ctx is not used for writes, remove the 'w' fields.
 
-This basically contains the encryption changes from Chandan Rajendra's
-patchset "[V2,00/13] Consolidate FS read I/O callbacks code"
-(https://patchwork.kernel.org/project/linux-fscrypt/list/?series=111039)
-that don't require introducing the read_callbacks and don't depend on
-fsverity stuff.  But they've been reworked to clean things up a lot.
+Reviewed-by: Chandan Rajendra <chandan@linux.ibm.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/bio.c         | 11 +++++------
+ fs/crypto/crypto.c      | 14 +++++++-------
+ include/linux/fscrypt.h |  7 ++-----
+ 3 files changed, 14 insertions(+), 18 deletions(-)
 
-I'd like to apply this patchset for 5.3 in order to make things forward
-for ext4 encryption with 'blocksize != PAGE_SIZE'.
-
-AFAICT, after this patchset the only thing stopping ext4 encryption from
-working with blocksize != PAGE_SIZE is the lack of encryption support in
-block_read_full_page(), which the read_callbacks will address.
-
-This patchset applies to v5.2-rc1, and it can also be retrieved from git
-at https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-branch "fscrypt-subpage-blocks-prep".
-
-Changed since v1 (minor cleanups only):
-
-- In "fscrypt: simplify bounce page handling", also remove
-  the definition of FS_CTX_HAS_BOUNCE_BUFFER_FL.
-
-- In "ext4: decrypt only the needed blocks in ext4_block_write_begin()",
-  simplify the code slightly by moving the IS_ENCRYPTED() check.
-
-- Change __fscrypt_decrypt_bio() in a separate patch rather than as part
-  of "fscrypt: support decrypting multiple filesystem blocks per page".
-  The resulting code is the same, so I kept Chandan's Reviewed-by.
-
-- Improve the commit message of
-  "fscrypt: introduce fscrypt_decrypt_block_inplace()".
-
-Chandan Rajendra (3):
-  ext4: clear BH_Uptodate flag on decryption error
-  ext4: decrypt only the needed blocks in ext4_block_write_begin()
-  ext4: decrypt only the needed block in __ext4_block_zero_page_range()
-
-Eric Biggers (11):
-  fscrypt: simplify bounce page handling
-  fscrypt: remove the "write" part of struct fscrypt_ctx
-  fscrypt: rename fscrypt_do_page_crypto() to fscrypt_crypt_block()
-  fscrypt: clean up some BUG_ON()s in block encryption/decryption
-  fscrypt: introduce fscrypt_encrypt_block_inplace()
-  fscrypt: support encrypting multiple filesystem blocks per page
-  fscrypt: handle blocksize < PAGE_SIZE in fscrypt_zeroout_range()
-  fscrypt: introduce fscrypt_decrypt_block_inplace()
-  fscrypt: support decrypting multiple filesystem blocks per page
-  fscrypt: decrypt only the needed blocks in __fscrypt_decrypt_bio()
-  ext4: encrypt only up to last block in ext4_bio_write_page()
-
- fs/crypto/bio.c             |  73 +++------
- fs/crypto/crypto.c          | 299 ++++++++++++++++++++----------------
- fs/crypto/fscrypt_private.h |  15 +-
- fs/ext4/inode.c             |  37 +++--
- fs/ext4/page-io.c           |  44 +++---
- fs/f2fs/data.c              |  17 +-
- fs/ubifs/crypto.c           |  19 +--
- include/linux/fscrypt.h     |  96 ++++++++----
- 8 files changed, 319 insertions(+), 281 deletions(-)
-
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index c857b70b5328c..c534253483874 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -53,9 +53,8 @@ EXPORT_SYMBOL(fscrypt_decrypt_bio);
+ 
+ static void completion_pages(struct work_struct *work)
+ {
+-	struct fscrypt_ctx *ctx =
+-		container_of(work, struct fscrypt_ctx, r.work);
+-	struct bio *bio = ctx->r.bio;
++	struct fscrypt_ctx *ctx = container_of(work, struct fscrypt_ctx, work);
++	struct bio *bio = ctx->bio;
+ 
+ 	__fscrypt_decrypt_bio(bio, true);
+ 	fscrypt_release_ctx(ctx);
+@@ -64,9 +63,9 @@ static void completion_pages(struct work_struct *work)
+ 
+ void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx, struct bio *bio)
+ {
+-	INIT_WORK(&ctx->r.work, completion_pages);
+-	ctx->r.bio = bio;
+-	fscrypt_enqueue_decrypt_work(&ctx->r.work);
++	INIT_WORK(&ctx->work, completion_pages);
++	ctx->bio = bio;
++	fscrypt_enqueue_decrypt_work(&ctx->work);
+ }
+ EXPORT_SYMBOL(fscrypt_enqueue_decrypt_bio);
+ 
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index 4b076f8daab75..ebfa13cfecb7d 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -58,11 +58,11 @@ void fscrypt_enqueue_decrypt_work(struct work_struct *work)
+ EXPORT_SYMBOL(fscrypt_enqueue_decrypt_work);
+ 
+ /**
+- * fscrypt_release_ctx() - Releases an encryption context
+- * @ctx: The encryption context to release.
++ * fscrypt_release_ctx() - Release a decryption context
++ * @ctx: The decryption context to release.
+  *
+- * If the encryption context was allocated from the pre-allocated pool, returns
+- * it to that pool. Else, frees it.
++ * If the decryption context was allocated from the pre-allocated pool, return
++ * it to that pool.  Else, free it.
+  */
+ void fscrypt_release_ctx(struct fscrypt_ctx *ctx)
+ {
+@@ -79,12 +79,12 @@ void fscrypt_release_ctx(struct fscrypt_ctx *ctx)
+ EXPORT_SYMBOL(fscrypt_release_ctx);
+ 
+ /**
+- * fscrypt_get_ctx() - Gets an encryption context
++ * fscrypt_get_ctx() - Get a decryption context
+  * @gfp_flags:   The gfp flag for memory allocation
+  *
+- * Allocates and initializes an encryption context.
++ * Allocate and initialize a decryption context.
+  *
+- * Return: A new encryption context on success; an ERR_PTR() otherwise.
++ * Return: A new decryption context on success; an ERR_PTR() otherwise.
+  */
+ struct fscrypt_ctx *fscrypt_get_ctx(gfp_t gfp_flags)
+ {
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index d016fa384d607..1c7287f146a98 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -63,16 +63,13 @@ struct fscrypt_operations {
+ 	unsigned int max_namelen;
+ };
+ 
++/* Decryption work */
+ struct fscrypt_ctx {
+ 	union {
+-		struct {
+-			struct page *bounce_page;	/* Ciphertext page */
+-			struct page *control_page;	/* Original page  */
+-		} w;
+ 		struct {
+ 			struct bio *bio;
+ 			struct work_struct work;
+-		} r;
++		};
+ 		struct list_head free_list;	/* Free list */
+ 	};
+ 	u8 flags;				/* Flags */
 -- 
 2.21.0.1020.gf2820cf01a-goog
 
