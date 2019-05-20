@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82E16C04AAC
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 17:28:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67374C072A4
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 17:28:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 59893217D7
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 17:28:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3EF5A2183F
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 May 2019 17:28:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558373332;
-	bh=G6qGhs9z08vCCaPScCujWLwRdyw0LLLfhavJ6hq2ziU=;
+	s=default; t=1558373337;
+	bh=qVob3nr8jHo1l6KeXzwXTXqn1MD2B4dKwyJ/ETAW3OY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Mkq8loJfBtUchB4ETjA6wwFVLA79nPCSs877sFOj8nyq7mrzyHddL+zvh+QocaHgJ
-	 DIf3AISTuOj2sfueWMT8FATP5iFnMO16SijARPa9qlbBNho55OUHiFDykGArXykge3
-	 Ye/CWFQbD2ptoB5jRfjoZaPnmxJ09RogKXbohxIk=
+	b=tiQcxhtE9Q3+C7FqqVlL4Q9n3FluE1ddrdofHECODSLyhz5HhzXRgUxQk7IR1/MLJ
+	 7ABQ3CSUvOaDNAjJ41Y6Dhdfzvs5I6hpvhnxh3+j32lXMrB+ZxHToCgPZo1KFJFbXP
+	 r5jf0oq/3lvebM1J7UKBhiBgWY/7l51A00QhFynQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392944AbfETR2v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 May 2019 13:28:51 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40466 "EHLO mail.kernel.org"
+        id S2392954AbfETR2z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 20 May 2019 13:28:55 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40548 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726672AbfETR2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 20 May 2019 13:28:48 -0400
+        id S2392947AbfETR2x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 20 May 2019 13:28:53 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3DE172171F;
-        Mon, 20 May 2019 17:28:47 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 2A399217D4;
+        Mon, 20 May 2019 17:28:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558373327;
-        bh=G6qGhs9z08vCCaPScCujWLwRdyw0LLLfhavJ6hq2ziU=;
+        s=default; t=1558373332;
+        bh=qVob3nr8jHo1l6KeXzwXTXqn1MD2B4dKwyJ/ETAW3OY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=BD6fzkfmnS0TgqHcU9BjHRDCjGu64xnYFP2zsvQ9zl/xeYodbvotnmxbWL4F0f8qs
-         +Iq3RJveCLSFTVCdMIdcR93DTLf2aw9cvnZW+ZjmHkcsja4VOonVBpp/znKNvxvWma
-         QS+jcFVFgNWIozyxoAnlfS8DghBCCNRFX1Q4WMdg=
+        b=R2Zpy0kxTbXOPenL1Xxbn5zV1RH1q2AuVMsEURpCjLRwdlxD+iA2rRtllfC0IISvJ
+         4UiQHqbBA76SfAyHe6harrutth1Upk5/di6mqqsCHIyfQtFfJP26FfsDcVEigdbeyk
+         uH0d/cKKW0I8lLNGDHINJEsYy0Ah/jQa7qwDZdLw=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     Satya Tangirala <satyat@google.com>, linux-api@vger.kernel.org,
@@ -45,9 +45,9 @@ Cc:     Satya Tangirala <satyat@google.com>, linux-api@vger.kernel.org,
         linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Paul Crowley <paulcrowley@google.com>
-Subject: [PATCH v6 04/16] fscrypt: add ->ci_inode to fscrypt_info
-Date:   Mon, 20 May 2019 10:25:40 -0700
-Message-Id: <20190520172552.217253-5-ebiggers@kernel.org>
+Subject: [PATCH v6 14/16] f2fs: wire up new fscrypt ioctls
+Date:   Mon, 20 May 2019 10:25:50 -0700
+Message-Id: <20190520172552.217253-15-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.1020.gf2820cf01a-goog
 In-Reply-To: <20190520172552.217253-1-ebiggers@kernel.org>
 References: <20190520172552.217253-1-ebiggers@kernel.org>
@@ -60,53 +60,105 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add an inode back-pointer to 'struct fscrypt_info', such that
-inode->i_crypt_info->ci_inode == inode.
+Wire up the new ioctls for adding and removing fscrypt keys to/from the
+filesystem, and the new ioctl for retrieving v2 encryption policies.
 
-This will be useful for:
+FS_IOC_REMOVE_ENCRYPTION_KEY also required making f2fs_drop_inode() call
+fscrypt_drop_inode().
 
-1. Evicting the inodes when a fscrypt key is removed, since we'll track
-   the inodes using a given key by linking their fscrypt_infos together,
-   rather than the inodes directly.  This avoids bloating 'struct inode'
-   with a new list_head.
-
-2. Simplifying the per-file key setup, since the inode pointer won't
-   have to be passed around everywhere just in case something goes wrong
-   and it's needed for fscrypt_warn().
+For more details see Documentation/filesystems/fscrypt.rst and the
+fscrypt patches that added the implementation of these ioctls.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fscrypt_private.h | 3 +++
- fs/crypto/keyinfo.c         | 2 ++
- 2 files changed, 5 insertions(+)
+ fs/f2fs/file.c  | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/f2fs/super.c |  2 ++
+ 2 files changed, 48 insertions(+)
 
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index 52e09ef40bfa6..ac24edfc297f1 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -73,6 +73,9 @@ struct fscrypt_info {
- 	 */
- 	struct fscrypt_mode *ci_mode;
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 45b45f37d347e..d88b77a41117c 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -2107,6 +2107,40 @@ static int f2fs_ioc_get_encryption_pwsalt(struct file *filp, unsigned long arg)
+ 	return err;
+ }
  
-+	/* Back-pointer to the inode */
-+	struct inode *ci_inode;
++static int f2fs_ioc_get_encryption_policy_ex(struct file *filp,
++					     unsigned long arg)
++{
++	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
++		return -EOPNOTSUPP;
 +
- 	/*
- 	 * If non-NULL, then this inode uses a master key directly rather than a
- 	 * derived key, and ci_ctfm will equal ci_master_key->mk_ctfm.
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 479389a4e0559..49764d335c370 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -541,6 +541,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	if (!crypt_info)
- 		return -ENOMEM;
- 
-+	crypt_info->ci_inode = inode;
++	return fscrypt_ioctl_get_policy_ex(filp, (void __user *)arg);
++}
 +
- 	crypt_info->ci_flags = ctx.flags;
- 	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
- 	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
++static int f2fs_ioc_add_encryption_key(struct file *filp, unsigned long arg)
++{
++	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
++		return -EOPNOTSUPP;
++
++	return fscrypt_ioctl_add_key(filp, (void __user *)arg);
++}
++
++static int f2fs_ioc_remove_encryption_key(struct file *filp, unsigned long arg)
++{
++	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
++		return -EOPNOTSUPP;
++
++	return fscrypt_ioctl_remove_key(filp, (const void __user *)arg);
++}
++
++static int f2fs_ioc_get_encryption_key_status(struct file *filp,
++					      unsigned long arg)
++{
++	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
++		return -EOPNOTSUPP;
++
++	return fscrypt_ioctl_get_key_status(filp, (void __user *)arg);
++}
++
+ static int f2fs_ioc_gc(struct file *filp, unsigned long arg)
+ {
+ 	struct inode *inode = file_inode(filp);
+@@ -3012,6 +3046,14 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		return f2fs_ioc_get_encryption_policy(filp, arg);
+ 	case F2FS_IOC_GET_ENCRYPTION_PWSALT:
+ 		return f2fs_ioc_get_encryption_pwsalt(filp, arg);
++	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
++		return f2fs_ioc_get_encryption_policy_ex(filp, arg);
++	case FS_IOC_ADD_ENCRYPTION_KEY:
++		return f2fs_ioc_add_encryption_key(filp, arg);
++	case FS_IOC_REMOVE_ENCRYPTION_KEY:
++		return f2fs_ioc_remove_encryption_key(filp, arg);
++	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
++		return f2fs_ioc_get_encryption_key_status(filp, arg);
+ 	case F2FS_IOC_GARBAGE_COLLECT:
+ 		return f2fs_ioc_gc(filp, arg);
+ 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
+@@ -3137,6 +3179,10 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case F2FS_IOC_SET_ENCRYPTION_POLICY:
+ 	case F2FS_IOC_GET_ENCRYPTION_PWSALT:
+ 	case F2FS_IOC_GET_ENCRYPTION_POLICY:
++	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
++	case FS_IOC_ADD_ENCRYPTION_KEY:
++	case FS_IOC_REMOVE_ENCRYPTION_KEY:
++	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
+ 	case F2FS_IOC_GARBAGE_COLLECT:
+ 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
+ 	case F2FS_IOC_WRITE_CHECKPOINT:
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 6b959bbb336a3..e3bf604e0d58f 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -934,6 +934,8 @@ static int f2fs_drop_inode(struct inode *inode)
+ 		return 0;
+ 	}
+ 	ret = generic_drop_inode(inode);
++	if (!ret)
++		ret = fscrypt_drop_inode(inode);
+ 	trace_f2fs_drop_inode(inode, ret);
+ 	return ret;
+ }
 -- 
 2.21.0.1020.gf2820cf01a-goog
 
