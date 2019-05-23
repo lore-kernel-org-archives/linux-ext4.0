@@ -2,281 +2,411 @@ Return-Path: <SRS0=Ikgj=TX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	T_DKIMWL_WL_HIGH,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B8B4C282DE
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD87DC282DE
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 17:22:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CE1A62175B
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558628472;
-	bh=FknFkuMqIQswK6dizRqW42viEu1UgGSSCdsOrOtPEl4=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=fsge+WfTbdyA/470Jq9IgEPARntlGRTklq3ZHnyhaGnQcSWgekHhMH0aMr/JbO/bQ
-	 kPBd3GNlKmH9bcvhUy0TqCIHLTcXwJWgvc8RhoCyMV/CZHEQe4aNFNvmLfUdAUuhQG
-	 nfVxDkaqfM/EZbYeh8dFVzO7nZME9IdiXfCxO6hM=
+	by mail.kernel.org (Postfix) with ESMTP id 8625720851
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 17:22:50 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="sjyydNsJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731193AbfEWQUg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 May 2019 12:20:36 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56210 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731064AbfEWQUf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 23 May 2019 12:20:35 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 697812175B;
-        Thu, 23 May 2019 16:20:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558628434;
-        bh=FknFkuMqIQswK6dizRqW42viEu1UgGSSCdsOrOtPEl4=;
-        h=From:To:Cc:Subject:Date:From;
-        b=w2vprKRs36OU0mlW6tCtu/R0ScUiml1J+XkD5QpTz49lwK92Ff8FYyXBzhcERt0Xw
-         qjLECrAkRM3bGAZRrvBTTyqAGWm2FPCYcswdDanEQtDYltpVjzrWak1F4NCAu27d1o
-         P3cmKKMMuuIioJq8nr2Kqa7cUdCAfOXXo7e0VRhw=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-api@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>
-Subject: [PATCH v3 00/15] fs-verity: read-only file-based authenticity protection
-Date:   Thu, 23 May 2019 09:17:56 -0700
-Message-Id: <20190523161811.6259-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.21.0
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1731309AbfEWRWu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 May 2019 13:22:50 -0400
+Received: from mail-wr1-f41.google.com ([209.85.221.41]:38594 "EHLO
+        mail-wr1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731304AbfEWRWo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 May 2019 13:22:44 -0400
+Received: by mail-wr1-f41.google.com with SMTP id d18so7153935wrs.5
+        for <linux-ext4@vger.kernel.org>; Thu, 23 May 2019 10:22:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=InxZ5iLACNFG7Vx1pJFG6j1VGK3C8LKW3Pv0n2HdX+A=;
+        b=sjyydNsJzBhRt7U6ln+3IbD5L5Ezv5HWlrW9gK6JoZHadmqbtaTf6UIYof4YJQNjkI
+         knfn9lOG4i3LpC8Rg8Ucmml6uxYOC/vHyqiB7yFhOxYG5UhKLhHi/uc1IO9Kx8Qgm++K
+         6yX5FY9El4TWPjlZjpf8Tv4GX//JNe0nFd09+cGSWHiG3z3t9UNn3ubDWj60uetL67Hh
+         U/q8Y1AzeH7KgRfimm21QLJmJhbSPuxq2F/GI0Xd9CHZUWW5IXB20yX9FKRSbTWMX1IU
+         H4Yk2feL3OV3vjN4KRm2qwt+bIvua+6CmJPRLoarc8mAtE/Ay/55PIH42X9ZpkS4K8Wi
+         daZg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=InxZ5iLACNFG7Vx1pJFG6j1VGK3C8LKW3Pv0n2HdX+A=;
+        b=rTkgDSDJ0RyBnkyhKHpaO2xRZOcpOt0IGu+Uc2320Lk0+tV81LIF1M3J5mDn8rVdQ0
+         w6/YIfipLoC5oh1XS9lL39f/Cn1k9xiSlohRUM0HV++LDgLqtY85aT6DXajQxd6Xa1J9
+         /qmNh+mZRpVMHOlT8PuLK5qmPItQ+a1GjonZg3yX/b74ivQQJ46F4tJoetIZHs5a6hIO
+         TCtpEtcLfoQ+3HfpmPGGerpuO03S9LYD7jdvzPjwahiiDBRFKhqCnAan0Hg4iHp7wGP8
+         NVKW4SU68DKGqBlqWLi8SORekmHxv9kQ670iTILezs31xDTBkUmObwYNSOYV+kxE5Vl6
+         Na4w==
+X-Gm-Message-State: APjAAAXe29XOqCnGvLsRN7KQRvKgeP+RLsP1Re9/Goel36JwYU/cvlZi
+        gKKqrCEgqMETTWWt2FKohqv2iw==
+X-Google-Smtp-Source: APXvYqzF8+G3wET+S+exvjqW8Kxk9v9JrFg/Ri5mOyFh+MPsPVxxp7tvqZ62rRx3VVW1PeiwSCK1fQ==
+X-Received: by 2002:adf:fa4e:: with SMTP id y14mr2229827wrr.149.1558632161613;
+        Thu, 23 May 2019 10:22:41 -0700 (PDT)
+Received: from [192.168.0.102] (84-33-65-143.dyn.eolo.it. [84.33.65.143])
+        by smtp.gmail.com with ESMTPSA id z4sm30491894wru.69.2019.05.23.10.22.39
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 23 May 2019 10:22:40 -0700 (PDT)
+From:   Paolo Valente <paolo.valente@linaro.org>
+Message-Id: <2A58C239-EF3F-422B-8D87-E7A3B500C57C@linaro.org>
+Content-Type: multipart/signed;
+        boundary="Apple-Mail=_D45781B4-9ACB-4EB0-B468-DF882BDE48A5";
+        protocol="application/pgp-signature";
+        micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.8\))
+Subject: Re: CFQ idling kills I/O performance on ext4 with blkio cgroup
+ controller
+Date:   Thu, 23 May 2019 19:22:38 +0200
+In-Reply-To: <6FE0A98F-1E3D-4EF6-8B38-2C85741924A4@linaro.org>
+Cc:     linux-fsdevel@vger.kernel.org,
+        linux-block <linux-block@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, cgroups@vger.kernel.org,
+        kernel list <linux-kernel@vger.kernel.org>,
+        Jens Axboe <axboe@kernel.dk>, Jan Kara <jack@suse.cz>,
+        jmoyer@redhat.com, Theodore Ts'o <tytso@mit.edu>,
+        amakhalov@vmware.com, anishs@vmware.com, srivatsab@vmware.com
+To:     "Srivatsa S. Bhat" <srivatsa@csail.mit.edu>
+References: <8d72fcf7-bbb4-2965-1a06-e9fc177a8938@csail.mit.edu>
+ <1812E450-14EF-4D5A-8F31-668499E13652@linaro.org>
+ <46c6a4be-f567-3621-2e16-0e341762b828@csail.mit.edu>
+ <07D11833-8285-49C2-943D-E4C1D23E8859@linaro.org>
+ <A0DFE635-EFEC-4670-AD70-5D813E170BEE@linaro.org>
+ <5B6570A2-541A-4CF8-98E0-979EA6E3717D@linaro.org>
+ <2CB39B34-21EE-4A95-A073-8633CF2D187C@linaro.org>
+ <FC24E25F-4578-454D-AE2B-8D8D352478D8@linaro.org>
+ <0e3fdf31-70d9-26eb-7b42-2795d4b03722@csail.mit.edu>
+ <F5E29C98-6CC4-43B8-994D-0B5354EECBF3@linaro.org>
+ <686D6469-9DE7-4738-B92A-002144C3E63E@linaro.org>
+ <01d55216-5718-767a-e1e6-aadc67b632f4@csail.mit.edu>
+ <CA8A23E2-6F22-4444-9A20-E052A94CAA9B@linaro.org>
+ <cc148388-3c82-d7c0-f9ff-8c31bb5dc77d@csail.mit.edu>
+ <6FE0A98F-1E3D-4EF6-8B38-2C85741924A4@linaro.org>
+X-Mailer: Apple Mail (2.3445.104.8)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
 
-This is a redesigned version of the fs-verity patchset, implementing
-Ted's suggestion to build the Merkle tree in the kernel
-(https://lore.kernel.org/linux-fsdevel/20190207031101.GA7387@mit.edu/).
-This greatly simplifies the UAPI, since the verity metadata no longer
-needs to be transferred to the kernel.  Now to enable fs-verity on a
-file, one simply calls FS_IOC_ENABLE_VERITY, passing it this structure:
+--Apple-Mail=_D45781B4-9ACB-4EB0-B468-DF882BDE48A5
+Content-Type: multipart/mixed;
+	boundary="Apple-Mail=_3B66D298-FEA1-4A37-ABBE-8A493C140EF6"
 
-	struct fsverity_enable_arg {
-		__u32 version;
-		__u32 hash_algorithm;
-		__u32 block_size;
-		__u32 salt_size;
-		__u64 salt_ptr;
-		__u32 sig_size;
-		__u32 __reserved1;
-		__u64 sig_ptr;
-		__u64 __reserved2[11];
-	};
 
-The filesystem then builds the file's Merkle tree and stores it in a
-filesystem-specific location associated with the file.  Afterwards,
-FS_IOC_MEASURE_VERITY can be used to retrieve the file measurement
-("root hash").  The way the file measurement is computed is also
-effectively part of the API (it has to be), but it's logically
-independent of where/how the filesystem stores the Merkle tree.
+--Apple-Mail=_3B66D298-FEA1-4A37-ABBE-8A493C140EF6
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-The API is fully documented in Documentation/filesystems/fsverity.rst,
-along with other aspects of fs-verity.  I also added an FAQ section that
-answers frequently asked questions about fs-verity, e.g. why isn't it
-all at the VFS level, why isn't it part of IMA, why does the Merkle tree
-need to be stored on-disk, etc.
 
-Overview
---------
 
-This patchset implements fs-verity for ext4 and f2fs.  fs-verity is
-similar to dm-verity, but implemented on a per-file basis: a Merkle tree
-is used to measure (hash) a read-only file's data as it is paged in.
-ext4 and f2fs hide this Merkle tree beyond the end of the file, but
-other filesystems can implement it differently if desired.
+> Il giorno 23 mag 2019, alle ore 11:19, Paolo Valente =
+<paolo.valente@linaro.org> ha scritto:
+>=20
+>=20
+>=20
+>> Il giorno 23 mag 2019, alle ore 04:30, Srivatsa S. Bhat =
+<srivatsa@csail.mit.edu> ha scritto:
+>>=20
+>> On 5/22/19 3:54 AM, Paolo Valente wrote:
+>>>=20
+>>>=20
+>>>> Il giorno 22 mag 2019, alle ore 12:01, Srivatsa S. Bhat =
+<srivatsa@csail.mit.edu> ha scritto:
+>>>>=20
+>>>> On 5/22/19 2:09 AM, Paolo Valente wrote:
+>>>>>=20
+>>>>> First, thank you very much for testing my patches, and, above all, =
+for
+>>>>> sharing those huge traces!
+>>>>>=20
+>>>>> According to the your traces, the residual 20% lower throughput =
+that you
+>>>>> record is due to the fact that the BFQ injection mechanism takes a =
+few
+>>>>> hundredths of seconds to stabilize, at the beginning of the =
+workload.
+>>>>> During that setup time, the throughput is equal to the dreadful =
+~60-90 KB/s
+>>>>> that you see without this new patch.  After that time, there
+>>>>> seems to be no loss according to the trace.
+>>>>>=20
+>>>>> The problem is that a loss lasting only a few hundredths of =
+seconds is
+>>>>> however not negligible for a write workload that lasts only 3-4
+>>>>> seconds.  Could you please try writing a larger file?
+>>>>>=20
+>>>>=20
+>>>> I tried running dd for longer (about 100 seconds), but still saw =
+around
+>>>> 1.4 MB/s throughput with BFQ, and between 1.5 MB/s - 1.6 MB/s with
+>>>> mq-deadline and noop.
+>>>=20
+>>> Ok, then now the cause is the periodic reset of the mechanism.
+>>>=20
+>>> It would be super easy to fill this gap, by just gearing the =
+mechanism
+>>> toward a very aggressive injection.  The problem is maintaining
+>>> control.  As you can imagine from the performance gap between CFQ =
+(or
+>>> BFQ with malfunctioning injection) and BFQ with this fix, it is very
+>>> hard to succeed in maximizing the throughput while at the same time
+>>> preserving control on per-group I/O.
+>>>=20
+>>=20
+>> Ah, I see. Just to make sure that this fix doesn't overly optimize =
+for
+>> total throughput (because of the testcase we've been using) and end =
+up
+>> causing regressions in per-group I/O control, I ran a test with
+>> multiple simultaneous dd instances, each writing to a different
+>> portion of the filesystem (well separated, to induce seeks), and each
+>> dd task bound to its own blkio cgroup. I saw similar results with and
+>> without this patch, and the throughput was equally distributed among
+>> all the dd tasks.
+>>=20
+>=20
+> Thank you very much for pre-testing this change, this let me know in
+> advance that I shouldn't find issues when I'll test regressions, at
+> the end of this change phase.
+>=20
+>>> On the bright side, you might be interested in one of the benefits
+>>> that BFQ gives in return for this ~10% loss of throughput, in a
+>>> scenario that may be important for you (according to affiliation you
+>>> report): from ~500% to ~1000% higher throughput when you have to =
+serve
+>>> the I/O of multiple VMs, and to guarantee at least no starvation to
+>>> any VM [1].  The same holds with multiple clients or containers, and
+>>> in general with any set of entities that may compete for storage.
+>>>=20
+>>> [1] =
+https://www.linaro.org/blog/io-bandwidth-management-for-production-quality=
+-services/
+>>>=20
+>>=20
+>> Great article! :) Thank you for sharing it!
+>=20
+> Thanks! I mentioned it just to better put things into context.
+>=20
+>>=20
+>>>> But I'm not too worried about that difference.
+>>>>=20
+>>>>> In addition, I wanted to ask you whether you measured BFQ =
+throughput
+>>>>> with traces disabled.  This may make a difference.
+>>>>>=20
+>>>>=20
+>>>> The above result (1.4 MB/s) was obtained with traces disabled.
+>>>>=20
+>>>>> After trying writing a larger file, you can try with low_latency =
+on.
+>>>>> On my side, it causes results to become a little unstable across
+>>>>> repetitions (which is expected).
+>>>>>=20
+>>>> With low_latency on, I get between 60 KB/s - 100 KB/s.
+>>>>=20
+>>>=20
+>>> Gosh, full regression.  Fortunately, it is simply meaningless to use
+>>> low_latency in a scenario where the goal is to guarantee per-group
+>>> bandwidths.  Low-latency heuristics, to reach their (low-latency)
+>>> goals, modify the I/O schedule compared to the best schedule for
+>>> honoring group weights and boosting throughput.  So, as recommended =
+in
+>>> BFQ documentation, just switch low_latency off if you want to =
+control
+>>> I/O with groups.  It may still make sense to leave low_latency on
+>>> in some specific case, which I don't want to bother you about.
+>>>=20
+>>=20
+>> My main concern here is about Linux's I/O performance out-of-the-box,
+>> i.e., with all default settings, which are:
+>>=20
+>> - cgroups and blkio enabled (systemd default)
+>> - blkio non-root cgroups in use (this is the implicit systemd =
+behavior
+>> if docker is installed; i.e., it runs tasks under user.slice)
+>> - I/O scheduler with blkio group sched support: bfq
+>> - bfq default configuration: low_latency =3D 1
+>>=20
+>> If this yields a throughput that is 10x-30x slower than what is
+>> achievable, I think we should either fix the code (if possible) or
+>> change the defaults such that they don't lead to this performance
+>> collapse (perhaps default low_latency to 0 if bfq group scheduling
+>> is in use?)
+>=20
+> Yeah, I thought of this after sending my last email yesterday. Group
+> scheduling and low-latency heuristics may simply happen to fight
+> against each other in personal systems.  Let's proceed this way. I'll
+> try first to make the BFQ low-latency mechanism clever enough to not
+> hinder throughput when groups are in place.  If I make it, then we
+> will get the best of the two worlds: group isolation and intra-group
+> low latency; with no configuration change needed.  If I don't make it,
+> I'll try to think of the best solution to cope with this non-trivial
+> situation.
+>=20
+>=20
+>>> However, I feel bad with such a low throughput :)  Would you be so
+>>> kind to provide me with a trace?
+>>>=20
+>> Certainly! Short runs of dd resulted in a lot of variation in the
+>> throughput (between 60 KB/s - 1 MB/s), so I increased dd's runtime
+>> to get repeatable numbers (~70 KB/s). As a result, the trace file
+>> (trace-bfq-boost-injection-low-latency-71KBps) is quite large, and
+>> is available here:
+>>=20
+>> https://www.dropbox.com/s/svqfbv0idcg17pn/bfq-traces.tar.gz?dl=3D0
+>>=20
+>=20
+> Thank you very much for your patience and professional help.
+>=20
+>> Also, I'm very happy to run additional tests or experiments to help
+>> track down this issue. So, please don't hesitate to let me know if
+>> you'd like me to try anything else or get you additional traces etc. =
+:)
+>>=20
+>=20
+> Here's to you!  :) I've attached a new small improvement that may
+> reduce fluctuations (path to apply on top of the others, of course).
+> Unfortunately, I don't expect this change to boost the throughput
+> though.
+>=20
+> In contrast, I've thought of a solution that might be rather
+> effective: making BFQ aware (heuristically) of trivial
+> synchronizations between processes in different groups.  This will
+> require a little more work and time.
+>=20
 
-In general, fs-verity is intended for use on writable filesystems;
-dm-verity is still recommended on read-only ones.
+Hi Srivatsa,
+I'm back :)
 
-Similar to fscrypt, most of the code is in fs/verity/, and not too many
-filesystem-specific changes are needed.  The Merkle tree is built by the
-filesystem when the FS_IOC_ENABLE_VERITY ioctl is executed.
+First, there was a mistake in the last patch I sent you, namely in
+0001-block-bfq-re-sample-req-service-times-when-possible.patch.
+Please don't apply that patch at all.
 
-fs-verity provides a file measurement (hash) in constant time and
-verifies data on-demand.  Thus, it is useful for efficiently verifying
-the authenticity of large files of which only a small portion may be
-accessed, such as Android application package (APK) files.  It may also
-be useful in "audit" use cases where file hashes are logged.
+I've attached a new series of patches instead.  The first patch in this
+series is a fixed version of the faulty patch above (if I'm creating too
+much confusion, I'll send you again all patches to apply on top of
+mainline).
 
-fs-verity also provides better protection against malicious disks than
-an ahead-of-time hash, since fs-verity re-verifies data each time it's
-paged in.  Note, however, that any authenticity guarantee is still
-dependent on verification of the file measurement and other relevant
-metadata in a way that makes sense for the overall system; fs-verity is
-only a tool to help with this.
+This series also implements the more effective idea I told you a few
+hours ago.  In my system, the loss is now around only 10%, even with
+low_latency on.
 
-This patchset doesn't yet include IMA support for fs-verity file
-measurements.  This is planned and we'd like to collaborate with the IMA
-maintainers.  Although fs-verity can be used on its own without IMA,
-fs-verity is primarily a lower level feature (think of it as a way of
-hashing a file), so some users may still need IMA's policy mechanism.
-However, an optional in-kernel signature verification mechanism within
-fs-verity itself is also included.
+Looking forward to your results,
+Paolo
 
-This patchset is based on v5.2-rc1.  It can also be found in git at tag
-fsverity_2019-05-23 of:
 
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
+--Apple-Mail=_3B66D298-FEA1-4A37-ABBE-8A493C140EF6
+Content-Disposition: attachment;
+	filename=patches-with-waker-detection.tgz
+Content-Type: application/octet-stream;
+	x-unix-mode=0644;
+	name="patches-with-waker-detection.tgz"
+Content-Transfer-Encoding: base64
 
-fs-verity has a userspace utility:
+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
+--Apple-Mail=_3B66D298-FEA1-4A37-ABBE-8A493C140EF6
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
 
-xfstests for fs-verity can be found at branch "fsverity" of:
 
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git
+> 
+> Thanks,
+> Paolo
+> 
+> <0001-block-bfq-re-sample-req-service-times-when-possible.patch.gz>
+> 
+>> Thank you!
+>> 
+>> Regards,
+>> Srivatsa
+>> VMware Photon OS
 
-For f2fs, fs-verity is supported by f2fs-tools v1.11.0+.  For ext4,
-e2fsprogs v1.44.5+ has basic fs-verity support, but an additional fix
-for e2fsck is needed too: https://marc.info/?l=linux-ext4&m=155862547309706&w=2
 
-Examples of setting up fs-verity protected files can be found in the
-README.md file of fsverity-utils.
+--Apple-Mail=_3B66D298-FEA1-4A37-ABBE-8A493C140EF6--
 
-Other useful references include:
+--Apple-Mail=_D45781B4-9ACB-4EB0-B468-DF882BDE48A5
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
-  - Documentation/filesystems/fsverity.rst, added by the first patch.
+-----BEGIN PGP SIGNATURE-----
 
-  - LWN coverage of v1 patchset: https://lwn.net/Articles/763729/
+iQIzBAEBCAAdFiEEpYoduex+OneZyvO8OAkCLQGo9oMFAlzm1t4ACgkQOAkCLQGo
+9oPIqQ//Z5mcV5eOga88TOTnk31AOpAjof6PYkaQf54nUFxWT8vDmOb7PC8Qj96r
+uOHZvR1OvbIcg7MY162L7gDu46TWpwSS8HyYtqbE8X/G6ge9e8dxh6YH3ZvRxRXq
+8t3hr6Jwewi6bD/qR/ZfVnxDgY8p0lNnY8lzft2lQyEvuS5Jr7JoktkoUQBS4a17
+m1rS3qR0PrMDEwgaBscQuXe4aGGOpUqw8RhY6D5OLHAu20CqBdRekL+8kCxIPn20
+aUoDRRdMc4PKlW/quCbpKUV5csALG78Se4pKoc9HI4o9pa512WG9oTd/a2TAI3QY
+GU5qLHr+sxHZ2U850J78uGi+InJ1gxTXLuAjiSbGMmWZInaEyvplieR4MC/iYZZA
+BiOR5JHol0T10oWelaHjIFsEreXE439MupDO6VrAXJfYOVAdgJM2ESSRO4lUrR0t
+CZ8GUqFpM4v6qmhfCx4v3N3vuXk5AeFLll1zlf/Sklj5ks4f/UWmtbuUkZUnodA0
+BCgsx/Wmkyo8EilDNQa92uZKcLG430csn13D86TqCR3Jda532swPICXk/KyTOqan
+I/zLYII50shrgEpWt0EzBkw32cckWKGz1krqs/U5dxy9SqnjjWDKVlB5pQIIfgWO
+5tmYt3twzJ935rkfFyqEG3DpVxsffpfX88FtBy6eFPJ/xBeqM/4=
+=uowl
+-----END PGP SIGNATURE-----
 
-  - LWN coverage of v2 patchset: https://lwn.net/Articles/775872/
-
-  - Presentation at Linux Security Summit North America 2018:
-      - Slides: https://schd.ws/hosted_files/lssna18/af/fs-verity%20slide%20deck.pdf
-      - Video: https://www.youtube.com/watch?v=Aw5h6aBhu6M
-
-  - Notes from discussion at LSFMM 2018: https://lwn.net/Articles/752614/
-
-Changed since v2:
-
-  - Large redesign: the Merkle tree is now built by
-    FS_IOC_ENABLE_VERITY, rather than being provided by userspace.  The
-    fsverity_operations provide an interface for filesystems to read and
-    write the Merkle tree from/to a filesystem-specific location.
-
-  - Lot of refactoring, cleanups, and documentation improvements.
-
-  - Many simplifications, such as simplifying the fsverity_descriptor
-    format, dropping CRC-32 support, and limiting the salt size.
-
-  - ext4 and f2fs now store an xattr that gives the location of the
-    fsverity_descriptor, so loading it is more straightforward.
-
-  - f2fs no longer counts the verity metadata in the on-disk i_size,
-    making it consistent with ext4.
-
-  - Replaced the filesystem-specific fs-verity kconfig options with
-    CONFIG_FS_VERITY.
-
-  - Replaced the filesystem-specific verity bit checks with IS_VERITY().
-
-Changed since v1:
-
-  - Added documentation file.
-
-  - Require write permission for FS_IOC_ENABLE_VERITY, rather than
-    CAP_SYS_ADMIN.
-
-  - Eliminated dependency on CONFIG_BLOCK and clarified that filesystems
-    can verify a page at a time rather than a bio at a time.
-
-  - Fixed conditions for verifying holes.
-
-  - ext4 now only allows fs-verity on extent-based files.
-
-  - Eliminated most of the assumptions that the verity metadata is
-    stored beyond EOF, in case filesystems want to do things
-    differently.
-
-  - Other cleanups.
-
-Eric Biggers (15):
-  fs-verity: add a documentation file
-  fs-verity: add MAINTAINERS file entry
-  fs-verity: add UAPI header
-  fs-verity: add Kconfig and the helper functions for hashing
-  fs-verity: add inode and superblock fields
-  fs-verity: add the hook for file ->open()
-  fs-verity: add the hook for file ->setattr()
-  fs-verity: add data verification hooks for ->readpages()
-  fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
-  fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
-  fs-verity: add SHA-512 support
-  fs-verity: support builtin file signatures
-  ext4: add basic fs-verity support
-  ext4: add fs-verity read support
-  f2fs: add fs-verity support
-
- Documentation/filesystems/fsverity.rst | 683 +++++++++++++++++++++++++
- Documentation/filesystems/index.rst    |   1 +
- Documentation/ioctl/ioctl-number.txt   |   1 +
- MAINTAINERS                            |  12 +
- fs/Kconfig                             |   2 +
- fs/Makefile                            |   1 +
- fs/ext4/Makefile                       |   1 +
- fs/ext4/ext4.h                         |  21 +-
- fs/ext4/file.c                         |   4 +
- fs/ext4/inode.c                        |  48 +-
- fs/ext4/ioctl.c                        |  12 +
- fs/ext4/readpage.c                     | 209 ++++++--
- fs/ext4/super.c                        |  18 +-
- fs/ext4/sysfs.c                        |   6 +
- fs/ext4/verity.c                       | 272 ++++++++++
- fs/ext4/xattr.h                        |   2 +
- fs/f2fs/Makefile                       |   1 +
- fs/f2fs/data.c                         |  72 ++-
- fs/f2fs/f2fs.h                         |  21 +-
- fs/f2fs/file.c                         |  38 ++
- fs/f2fs/inode.c                        |   5 +-
- fs/f2fs/super.c                        |   3 +
- fs/f2fs/sysfs.c                        |  11 +
- fs/f2fs/verity.c                       | 224 ++++++++
- fs/f2fs/xattr.h                        |   2 +
- fs/verity/Kconfig                      |  55 ++
- fs/verity/Makefile                     |  10 +
- fs/verity/enable.c                     | 336 ++++++++++++
- fs/verity/fsverity_private.h           | 191 +++++++
- fs/verity/hash_algs.c                  | 279 ++++++++++
- fs/verity/init.c                       |  61 +++
- fs/verity/measure.c                    |  57 +++
- fs/verity/open.c                       | 353 +++++++++++++
- fs/verity/signature.c                  | 207 ++++++++
- fs/verity/verify.c                     | 283 ++++++++++
- include/linux/fs.h                     |  11 +
- include/linux/fsverity.h               | 183 +++++++
- include/uapi/linux/fsverity.h          |  40 ++
- 38 files changed, 3678 insertions(+), 58 deletions(-)
- create mode 100644 Documentation/filesystems/fsverity.rst
- create mode 100644 fs/ext4/verity.c
- create mode 100644 fs/f2fs/verity.c
- create mode 100644 fs/verity/Kconfig
- create mode 100644 fs/verity/Makefile
- create mode 100644 fs/verity/enable.c
- create mode 100644 fs/verity/fsverity_private.h
- create mode 100644 fs/verity/hash_algs.c
- create mode 100644 fs/verity/init.c
- create mode 100644 fs/verity/measure.c
- create mode 100644 fs/verity/open.c
- create mode 100644 fs/verity/signature.c
- create mode 100644 fs/verity/verify.c
- create mode 100644 include/linux/fsverity.h
- create mode 100644 include/uapi/linux/fsverity.h
-
--- 
-2.21.0
-
+--Apple-Mail=_D45781B4-9ACB-4EB0-B468-DF882BDE48A5--
