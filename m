@@ -4,40 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=unavailable
+	SPF_PASS,T_DKIMWL_WL_HIGH,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42D68C282DD
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0501BC282DE
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0DD8921773
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B943A2175B
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:21:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558628465;
-	bh=vg3cdnRZFhzrPL0DnYaa/sFJN4uC7gL9Ehw/yS1owJY=;
+	s=default; t=1558628469;
+	bh=5WbPipLOxWjMdP/sxCKPDChJjQmIeszcPKswgj6mbIc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=BL89abhw5wjJ1jCW87BcyplfCHQQM7LmUrQ+bMzwqrWnisnebV5JhxTXt/VJOwDLg
-	 vD2ALlbNBrbQlUzID7tLCx4rIJHyXs6yN6DQD+Ahf2B8tc+m6DLZ65LUjnIvWtn3Y6
-	 /97onsX3Vo+MZGbHF4jc/vMkAANpKqXxRmPl8BRI=
+	b=LcFrxZ2iQhHN9k5p4VZ2MfU2WOSvoTIDm5CTLKbhsGqGLPD9cISILibdxBTFnGn8f
+	 oN4CKpCqtj1IowDIMARuw4zaF/wMezHn4KhU0m0FXELi82icJ+JMJhTFBlRsoKDi+/
+	 tmzdW/aYAYZl+egprUCv14+heMMp4hMvQ/Rn/QDs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731584AbfEWQVB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 May 2019 12:21:01 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56332 "EHLO mail.kernel.org"
+        id S1731754AbfEWQVH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 May 2019 12:21:07 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56256 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731334AbfEWQUj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 23 May 2019 12:20:39 -0400
+        id S1730893AbfEWQUh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 23 May 2019 12:20:37 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CA79F21872;
-        Thu, 23 May 2019 16:20:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 220DF21841;
+        Thu, 23 May 2019 16:20:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558628438;
-        bh=vg3cdnRZFhzrPL0DnYaa/sFJN4uC7gL9Ehw/yS1owJY=;
+        s=default; t=1558628436;
+        bh=5WbPipLOxWjMdP/sxCKPDChJjQmIeszcPKswgj6mbIc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hZKhu7eAQBXBzuqvQT1ehrPP0lRZ2TmwCgaHO7DU3hml2YNGnNL9F/O4SCTUzB0bH
-         v5XVVeMF6Ii44nYZdMCjBjUEmwf/y2znYA1eWZ6wMyKYXlksKVSpI+s7VbF+6Hchvd
-         xfyVPPZyeZWAJyBIxksUlpU83IoYXfPLFNULGgh4=
+        b=Df8HeU7eZDjVXZTm92TD2yEOkxkRMQQIe28ZU+kOT0kD5L6NRCRZGTpIfdozVbOV9
+         jPHjReoxHP2NoBXjhCr3S5elqfB6GlitVbOogDO99jMR6X5OhJlVIX4u9tEERvpP9T
+         OIma08gcvAT+FyB8cCkZen6Jlc4odRUfN0sLuyZs=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -46,9 +46,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [PATCH v3 08/15] fs-verity: add data verification hooks for ->readpages()
-Date:   Thu, 23 May 2019 09:18:04 -0700
-Message-Id: <20190523161811.6259-9-ebiggers@kernel.org>
+Subject: [PATCH v3 04/15] fs-verity: add Kconfig and the helper functions for hashing
+Date:   Thu, 23 May 2019 09:18:00 -0700
+Message-Id: <20190523161811.6259-5-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20190523161811.6259-1-ebiggers@kernel.org>
 References: <20190523161811.6259-1-ebiggers@kernel.org>
@@ -61,96 +61,211 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add functions that verify data pages that have been read from a
-fs-verity file, against that file's Merkle tree.  These will be called
-from filesystems' ->readpage() and ->readpages() methods.
-
-Since data verification can block, a workqueue is provided for these
-methods to enqueue verification work from their bio completion callback.
-
-See the "Verifying data" section of
-Documentation/filesystems/fsverity.rst for more information.
+Add the beginnings of the fs/verity/ support layer, including the
+Kconfig option and various helper functions for hashing.  To start, only
+SHA-256 is supported, but other hash algorithms can easily be added.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/Makefile           |   3 +-
- fs/verity/fsverity_private.h |   5 +
- fs/verity/init.c             |   8 +
- fs/verity/open.c             |   6 +
- fs/verity/verify.c           | 277 +++++++++++++++++++++++++++++++++++
- include/linux/fsverity.h     |  41 ++++++
- 6 files changed, 339 insertions(+), 1 deletion(-)
- create mode 100644 fs/verity/verify.c
+ fs/Kconfig                   |   2 +
+ fs/Makefile                  |   1 +
+ fs/verity/Kconfig            |  38 +++++
+ fs/verity/Makefile           |   4 +
+ fs/verity/fsverity_private.h |  91 ++++++++++++
+ fs/verity/hash_algs.c        | 274 +++++++++++++++++++++++++++++++++++
+ fs/verity/init.c             |  41 ++++++
+ 7 files changed, 451 insertions(+)
+ create mode 100644 fs/verity/Kconfig
+ create mode 100644 fs/verity/Makefile
+ create mode 100644 fs/verity/fsverity_private.h
+ create mode 100644 fs/verity/hash_algs.c
+ create mode 100644 fs/verity/init.c
 
-diff --git a/fs/verity/Makefile b/fs/verity/Makefile
-index e6a8951c493a5..7fa628cd5eba2 100644
---- a/fs/verity/Makefile
-+++ b/fs/verity/Makefile
-@@ -2,4 +2,5 @@
+diff --git a/fs/Kconfig b/fs/Kconfig
+index cbbffc8b9ef51..937ba42a1874c 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -112,6 +112,8 @@ config MANDATORY_FILE_LOCKING
  
- obj-$(CONFIG_FS_VERITY) += hash_algs.o \
- 			   init.o \
--			   open.o
-+			   open.o \
-+			   verify.o
-diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
-index ef96bec290ff9..9db64f4d178c7 100644
---- a/fs/verity/fsverity_private.h
-+++ b/fs/verity/fsverity_private.h
-@@ -139,5 +139,10 @@ static inline struct fsverity_info *get_verity_info(const struct inode *inode)
- }
+ source "fs/crypto/Kconfig"
  
- int __init fsverity_init_info_cache(void);
-+void __init fsverity_exit_info_cache(void);
++source "fs/verity/Kconfig"
 +
-+/* verify.c */
-+
-+int __init fsverity_init_workqueue(void);
+ source "fs/notify/Kconfig"
  
- #endif /* _FSVERITY_PRIVATE_H */
-diff --git a/fs/verity/init.c b/fs/verity/init.c
-index fff1fd6343357..b593805aafcc8 100644
---- a/fs/verity/init.c
-+++ b/fs/verity/init.c
-@@ -41,7 +41,15 @@ static int __init fsverity_init(void)
- 	if (err)
- 		return err;
- 
-+	err = fsverity_init_workqueue();
-+	if (err)
-+		goto err_exit_info_cache;
-+
- 	pr_debug("Initialized fs-verity\n");
- 	return 0;
-+
-+err_exit_info_cache:
-+	fsverity_exit_info_cache();
-+	return err;
- }
- late_initcall(fsverity_init)
-diff --git a/fs/verity/open.c b/fs/verity/open.c
-index f779a150b4ede..9556ac5f129e5 100644
---- a/fs/verity/open.c
-+++ b/fs/verity/open.c
-@@ -334,3 +334,9 @@ int __init fsverity_init_info_cache(void)
- 		return -ENOMEM;
- 	return 0;
- }
-+
-+void __init fsverity_exit_info_cache(void)
-+{
-+	kmem_cache_destroy(fsverity_info_cachep);
-+	fsverity_info_cachep = NULL;
-+}
-diff --git a/fs/verity/verify.c b/fs/verity/verify.c
+ source "fs/quota/Kconfig"
+diff --git a/fs/Makefile b/fs/Makefile
+index c9aea23aba560..fe7f2c07f482e 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -34,6 +34,7 @@ obj-$(CONFIG_AIO)               += aio.o
+ obj-$(CONFIG_IO_URING)		+= io_uring.o
+ obj-$(CONFIG_FS_DAX)		+= dax.o
+ obj-$(CONFIG_FS_ENCRYPTION)	+= crypto/
++obj-$(CONFIG_FS_VERITY)		+= verity/
+ obj-$(CONFIG_FILE_LOCKING)      += locks.o
+ obj-$(CONFIG_COMPAT)		+= compat.o compat_ioctl.o
+ obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
+diff --git a/fs/verity/Kconfig b/fs/verity/Kconfig
 new file mode 100644
-index 0000000000000..24cfb30ac85e6
+index 0000000000000..c2bca0b01ecfa
 --- /dev/null
-+++ b/fs/verity/verify.c
-@@ -0,0 +1,277 @@
++++ b/fs/verity/Kconfig
+@@ -0,0 +1,38 @@
++# SPDX-License-Identifier: GPL-2.0
++
++config FS_VERITY
++	bool "FS Verity (read-only file-based authenticity protection)"
++	select CRYPTO
++	# SHA-256 is selected as it's intended to be the default hash algorithm.
++	# To avoid bloat, other wanted algorithms must be selected explicitly.
++	select CRYPTO_SHA256
++	help
++	  This option enables fs-verity.  fs-verity is the dm-verity
++	  mechanism implemented at the file level.  On supported
++	  filesystems (currently EXT4 and F2FS), userspace can use an
++	  ioctl to enable verity for a file, which causes the filesystem
++	  to build a Merkle tree for the file.  The filesystem will then
++	  transparently verify any data read from the file against the
++	  Merkle tree.  The file is also made read-only.
++
++	  This serves as an integrity check, but the availability of the
++	  Merkle tree root hash also allows efficiently supporting
++	  various use cases where normally the whole file would need to
++	  be hashed at once, such as: (a) auditing (logging the file's
++	  hash), or (b) authenticity verification (comparing the hash
++	  against a known good value, e.g. from a digital signature).
++
++	  fs-verity is especially useful on large files where not all
++	  the contents may actually be needed.  Also, fs-verity verifies
++	  data each time it is paged back in, which provides better
++	  protection against malicious disks vs. an ahead-of-time hash.
++
++	  If unsure, say N.
++
++config FS_VERITY_DEBUG
++	bool "FS Verity debugging"
++	depends on FS_VERITY
++	help
++	  Enable debugging messages related to fs-verity by default.
++
++	  Say N unless you are an fs-verity developer.
+diff --git a/fs/verity/Makefile b/fs/verity/Makefile
+new file mode 100644
+index 0000000000000..398f3f85fa184
+--- /dev/null
++++ b/fs/verity/Makefile
+@@ -0,0 +1,4 @@
++# SPDX-License-Identifier: GPL-2.0
++
++obj-$(CONFIG_FS_VERITY) += hash_algs.o \
++			   init.o
+diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
+new file mode 100644
+index 0000000000000..abb5f452f11dd
+--- /dev/null
++++ b/fs/verity/fsverity_private.h
+@@ -0,0 +1,91 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * fs-verity: read-only file-based authenticity protection
++ *
++ * Copyright 2019 Google LLC
++ */
++
++#ifndef _FSVERITY_PRIVATE_H
++#define _FSVERITY_PRIVATE_H
++
++#ifdef CONFIG_FS_VERITY_DEBUG
++#define DEBUG
++#endif
++
++#define pr_fmt(fmt) "fs-verity: " fmt
++
++#include <crypto/sha.h>
++#include <linux/fs.h>
++#include <uapi/linux/fsverity.h>
++
++struct ahash_request;
++
++/*
++ * Maximum depth of the Merkle tree.  Up to 64 levels are theoretically possible
++ * with a very small block size, but we'd like to limit stack usage during
++ * verification, and in practice this is plenty.  E.g., with SHA-256 and 4K
++ * blocks, a file with size UINT64_MAX bytes needs just 8 levels.
++ */
++#define FS_VERITY_MAX_LEVELS		16
++
++/*
++ * Largest digest size among all hash algorithms supported by fs-verity.
++ * Currently assumed to be <= size of fsverity_descriptor::root_hash.
++ */
++#define FS_VERITY_MAX_DIGEST_SIZE	SHA256_DIGEST_SIZE
++
++/* A hash algorithm supported by fs-verity */
++struct fsverity_hash_alg {
++	struct crypto_ahash *tfm; /* hash tfm, allocated on demand */
++	const char *name;	  /* crypto API name, e.g. sha256 */
++	unsigned int digest_size; /* digest size in bytes, e.g. 32 for SHA-256 */
++	unsigned int block_size;  /* block size in bytes, e.g. 64 for SHA-512 */
++};
++
++/* Merkle tree parameters: hash algorithm, initial hash state, and topology */
++struct merkle_tree_params {
++	const struct fsverity_hash_alg *hash_alg; /* the hash algorithm */
++	const u8 *hashstate;		/* initial hash state or NULL */
++	unsigned int digest_size;	/* same as hash_alg->digest_size */
++	unsigned int block_size;	/* size of data and tree blocks */
++	unsigned int hashes_per_block;	/* number of hashes per tree block */
++	unsigned int log_blocksize;	/* log2(block_size) */
++	unsigned int log_arity;		/* log2(hashes_per_block) */
++	unsigned int num_levels;	/* number of levels in Merkle tree */
++	u64 data_size;			/* data size in bytes */
++	u64 tree_size;			/* Merkle tree size in bytes */
++
++	/*
++	 * Starting block index for each tree level, ordered from leaf level (0)
++	 * to root level ('num_levels - 1')
++	 */
++	u64 level_start[FS_VERITY_MAX_LEVELS];
++};
++
++/* hash_algs.c */
++
++extern struct fsverity_hash_alg fsverity_hash_algs[];
++
++const struct fsverity_hash_alg *fsverity_get_hash_alg(const struct inode *inode,
++						      unsigned int num);
++const u8 *fsverity_prepare_hash_state(const struct fsverity_hash_alg *alg,
++				      const u8 *salt, size_t salt_size);
++int fsverity_hash_page(const struct merkle_tree_params *params,
++		       const struct inode *inode,
++		       struct ahash_request *req, struct page *page, u8 *out);
++int fsverity_hash_buffer(const struct fsverity_hash_alg *alg,
++			 const void *data, size_t size, u8 *out);
++void __init fsverity_check_hash_algs(void);
++
++/* init.c */
++
++extern void __printf(3, 4) __cold
++fsverity_msg(const struct inode *inode, const char *level,
++	     const char *fmt, ...);
++
++#define fsverity_warn(inode, fmt, ...)		\
++	fsverity_msg((inode), KERN_WARNING, fmt, ##__VA_ARGS__)
++#define fsverity_err(inode, fmt, ...)		\
++	fsverity_msg((inode), KERN_ERR, fmt, ##__VA_ARGS__)
++
++#endif /* _FSVERITY_PRIVATE_H */
+diff --git a/fs/verity/hash_algs.c b/fs/verity/hash_algs.c
+new file mode 100644
+index 0000000000000..1d7dcd3cec406
+--- /dev/null
++++ b/fs/verity/hash_algs.c
+@@ -0,0 +1,274 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * fs/verity/verify.c: data verification functions, i.e. hooks for ->readpages()
++ * fs/verity/hash_algs.c: fs-verity hash algorithms
 + *
 + * Copyright 2019 Google LLC
 + */
@@ -158,339 +273,317 @@ index 0000000000000..24cfb30ac85e6
 +#include "fsverity_private.h"
 +
 +#include <crypto/hash.h>
-+#include <linux/bio.h>
-+#include <linux/ratelimit.h>
++#include <linux/scatterlist.h>
 +
-+static struct workqueue_struct *fsverity_read_workqueue;
++/* The hash algorithms supported by fs-verity */
++struct fsverity_hash_alg fsverity_hash_algs[] = {
++	[FS_VERITY_HASH_ALG_SHA256] = {
++		.name = "sha256",
++		.digest_size = SHA256_DIGEST_SIZE,
++		.block_size = SHA256_BLOCK_SIZE,
++	},
++};
 +
 +/**
-+ * hash_at_level() - compute the location of the block's hash at the given level
++ * fsverity_get_hash_alg() - validate and prepare a hash algorithm
++ * @inode: optional inode for logging purposes
++ * @num: the hash algorithm number
 + *
-+ * @params:	(in) the Merkle tree parameters
-+ * @dindex:	(in) the index of the data block being verified
-+ * @level:	(in) the level of hash we want (0 is leaf level)
-+ * @hindex:	(out) the index of the hash block containing the wanted hash
-+ * @hoffset:	(out) the byte offset to the wanted hash within the hash block
++ * Get the struct fsverity_hash_alg for the given hash algorithm number, and
++ * ensure it has a hash transform ready to go.  The hash transforms are
++ * allocated on-demand so that we don't waste resources unnecessarily, and
++ * because the crypto modules may be initialized later than fsverity.
++ *
++ * Return: pointer to the hash alg on success, else an ERR_PTR()
 + */
-+static void hash_at_level(const struct merkle_tree_params *params,
-+			  pgoff_t dindex, unsigned int level, pgoff_t *hindex,
-+			  unsigned int *hoffset)
++const struct fsverity_hash_alg *fsverity_get_hash_alg(const struct inode *inode,
++						      unsigned int num)
 +{
-+	pgoff_t position;
-+
-+	/* Offset of the hash within the level's region, in hashes */
-+	position = dindex >> (level * params->log_arity);
-+
-+	/* Index of the hash block in the tree overall */
-+	*hindex = params->level_start[level] + (position >> params->log_arity);
-+
-+	/* Offset of the wanted hash (in bytes) within the hash block */
-+	*hoffset = (position & ((1 << params->log_arity) - 1)) <<
-+		   (params->log_blocksize - params->log_arity);
-+}
-+
-+/* Extract a hash from a hash page */
-+static void extract_hash(struct page *hpage, unsigned int hoffset,
-+			 unsigned int hsize, u8 *out)
-+{
-+	void *virt = kmap_atomic(hpage);
-+
-+	memcpy(out, virt + hoffset, hsize);
-+	kunmap_atomic(virt);
-+}
-+
-+static inline int cmp_hashes(const struct fsverity_info *vi,
-+			     const u8 *want_hash, const u8 *real_hash,
-+			     pgoff_t index, int level)
-+{
-+	const unsigned int hsize = vi->tree_params.digest_size;
-+
-+	if (memcmp(want_hash, real_hash, hsize) == 0)
-+		return 0;
-+
-+	fsverity_err(vi->inode,
-+		     "FILE CORRUPTED! index=%lu, level=%d, want_hash=%s:%*phN, real_hash=%s:%*phN",
-+		     index, level,
-+		     vi->tree_params.hash_alg->name, hsize, want_hash,
-+		     vi->tree_params.hash_alg->name, hsize, real_hash);
-+	return -EBADMSG;
-+}
-+
-+/*
-+ * Verify a single data page against the file's Merkle tree.
-+ *
-+ * In principle, we need to verify the entire path to the root node.  However,
-+ * for efficiency the filesystem may cache the hash pages.  Therefore we need
-+ * only ascend the tree until an already-verified page is seen, as indicated by
-+ * the PageChecked bit being set; then verify the path to that page.
-+ *
-+ * This code currently only supports the case where the verity block size is
-+ * equal to PAGE_SIZE.  Doing otherwise would be possible but tricky, since we
-+ * wouldn't be able to use the PageChecked bit.
-+ *
-+ * Note that multiple processes may race to verify a hash page and mark it
-+ * Checked, but it doesn't matter; the result will be the same either way.
-+ *
-+ * Return: true if the page is valid, else false.
-+ */
-+static bool verify_page(struct inode *inode, const struct fsverity_info *vi,
-+			struct ahash_request *req, struct page *data_page)
-+{
-+	const struct merkle_tree_params *params = &vi->tree_params;
-+	const unsigned int hsize = params->digest_size;
-+	const pgoff_t index = data_page->index;
-+	int level = 0;
-+	u8 _want_hash[FS_VERITY_MAX_DIGEST_SIZE];
-+	const u8 *want_hash = NULL;
-+	u8 real_hash[FS_VERITY_MAX_DIGEST_SIZE];
-+	struct page *hpages[FS_VERITY_MAX_LEVELS];
-+	unsigned int hoffsets[FS_VERITY_MAX_LEVELS];
++	struct fsverity_hash_alg *alg;
++	struct crypto_ahash *tfm;
 +	int err;
 +
-+	if (WARN_ON_ONCE(!PageLocked(data_page) || PageUptodate(data_page)))
-+		return false;
++	if (num >= ARRAY_SIZE(fsverity_hash_algs) ||
++	    !fsverity_hash_algs[num].name) {
++		fsverity_warn(inode, "Unknown hash algorithm number: %u", num);
++		return ERR_PTR(-EINVAL);
++	}
++	alg = &fsverity_hash_algs[num];
 +
-+	pr_debug_ratelimited("Verifying data page %lu...\n", index);
-+
++	/* pairs with cmpxchg() below */
++	tfm = READ_ONCE(alg->tfm);
++	if (likely(tfm != NULL))
++		return alg;
 +	/*
-+	 * Starting at the leaves, ascend the tree saving hash pages along the
-+	 * way until we find a verified hash page, indicated by PageChecked; or
-+	 * until we reach the root.
++	 * Using the shash API would make things a bit simpler, but the ahash
++	 * API is preferable as it allows the use of crypto accelerators.
 +	 */
-+	for (level = 0; level < params->num_levels; level++) {
-+		pgoff_t hindex;
-+		unsigned int hoffset;
-+		struct page *hpage;
-+
-+		hash_at_level(params, index, level, &hindex, &hoffset);
-+
-+		pr_debug_ratelimited("Level %d: hindex=%lu, hoffset=%u\n",
-+				     level, hindex, hoffset);
-+
-+		hpage = inode->i_sb->s_vop->read_merkle_tree_page(inode,
-+								  hindex);
-+		if (IS_ERR(hpage)) {
-+			err = PTR_ERR(hpage);
++	tfm = crypto_alloc_ahash(alg->name, 0, 0);
++	if (IS_ERR(tfm)) {
++		if (PTR_ERR(tfm) == -ENOENT)
++			fsverity_warn(inode,
++				      "Missing crypto API support for hash algorithm \"%s\"",
++				      alg->name);
++		else
 +			fsverity_err(inode,
-+				     "Error %d reading Merkle tree page %lu",
-+				     err, hindex);
-+			goto out;
-+		}
-+
-+		if (PageChecked(hpage)) {
-+			extract_hash(hpage, hoffset, hsize, _want_hash);
-+			want_hash = _want_hash;
-+			put_page(hpage);
-+			pr_debug_ratelimited("Hash page already checked, want %s:%*phN\n",
-+					     params->hash_alg->name,
-+					     hsize, want_hash);
-+			break;
-+		}
-+		pr_debug_ratelimited("Hash page not yet checked\n");
-+		hpages[level] = hpage;
-+		hoffsets[level] = hoffset;
++				     "Error allocating hash algorithm \"%s\": %ld",
++				     alg->name, PTR_ERR(tfm));
++		return ERR_CAST(tfm);
 +	}
 +
-+	if (want_hash == NULL) {
-+		want_hash = vi->root_hash;
-+		pr_debug("Want root hash: %s:%*phN\n",
-+			 params->hash_alg->name, hsize, want_hash);
-+	}
++	err = -EINVAL;
++	if (WARN_ON(alg->digest_size != crypto_ahash_digestsize(tfm)))
++		goto err_free_tfm;
++	if (WARN_ON(alg->block_size != crypto_ahash_blocksize(tfm)))
++		goto err_free_tfm;
 +
-+	/* Descend the tree verifying hash pages */
-+	for (; level > 0; level--) {
-+		struct page *hpage = hpages[level - 1];
-+		unsigned int hoffset = hoffsets[level - 1];
++	pr_info("%s using implementation \"%s\"\n",
++		alg->name, crypto_ahash_driver_name(tfm));
 +
-+		err = fsverity_hash_page(params, inode, req, hpage, real_hash);
-+		if (err)
-+			goto out;
-+		err = cmp_hashes(vi, want_hash, real_hash, index, level - 1);
-+		if (err)
-+			goto out;
-+		SetPageChecked(hpage);
-+		extract_hash(hpage, hoffset, hsize, _want_hash);
-+		want_hash = _want_hash;
-+		put_page(hpage);
-+		pr_debug("Verified hash page at level %d, now want %s:%*phN\n",
-+			 level - 1, params->hash_alg->name, hsize, want_hash);
-+	}
++	/* pairs with READ_ONCE() above */
++	if (cmpxchg(&alg->tfm, NULL, tfm) != NULL)
++		crypto_free_ahash(tfm);
 +
-+	/* Finally, verify the data page */
-+	err = fsverity_hash_page(params, inode, req, data_page, real_hash);
-+	if (err)
-+		goto out;
-+	err = cmp_hashes(vi, want_hash, real_hash, index, -1);
-+out:
-+	for (; level > 0; level--)
-+		put_page(hpages[level - 1]);
++	return alg;
 +
-+	return err == 0;
++err_free_tfm:
++	crypto_free_ahash(tfm);
++	return ERR_PTR(err);
 +}
 +
 +/**
-+ * fsverity_verify_page - verify a data page
++ * fsverity_prepare_hash_state() - precompute the initial hash state
++ * @alg: hash algorithm
++ * @salt: a salt which is to be prepended to all data to be hashed
++ * @salt_size: salt size in bytes, possibly 0
 + *
-+ * Verify a page that has just been read from a verity file.  The page must be a
-+ * pagecache page that is still locked and not yet uptodate.
-+ *
-+ * Return: true if the page is valid, else false.
++ * Return: NULL if the salt is empty, otherwise the kmalloc()'ed precomputed
++ *	   initial hash state on success or an ERR_PTR() on failure.
 + */
-+bool fsverity_verify_page(struct page *page)
++const u8 *fsverity_prepare_hash_state(const struct fsverity_hash_alg *alg,
++				      const u8 *salt, size_t salt_size)
 +{
-+	struct inode *inode = page->mapping->host;
-+	const struct fsverity_info *vi = inode->i_verity_info;
-+	struct ahash_request *req;
-+	bool valid;
++	u8 *hashstate = NULL;
++	struct ahash_request *req = NULL;
++	u8 *padded_salt = NULL;
++	size_t padded_salt_size;
++	struct scatterlist sg;
++	DECLARE_CRYPTO_WAIT(wait);
++	int err;
 +
-+	req = ahash_request_alloc(vi->tree_params.hash_alg->tfm, GFP_NOFS);
-+	if (unlikely(!req))
-+		return false;
++	if (salt_size == 0)
++		return NULL;
 +
-+	valid = verify_page(inode, vi, req, page);
++	hashstate = kmalloc(crypto_ahash_statesize(alg->tfm), GFP_KERNEL);
++	if (!hashstate)
++		return ERR_PTR(-ENOMEM);
 +
-+	ahash_request_free(req);
-+
-+	return valid;
-+}
-+EXPORT_SYMBOL_GPL(fsverity_verify_page);
-+
-+#ifdef CONFIG_BLOCK
-+/**
-+ * fsverity_verify_bio - verify a 'read' bio that has just completed
-+ *
-+ * Verify a set of pages that have just been read from a verity file.  The pages
-+ * must be pagecache pages that are still locked and not yet uptodate.  Pages
-+ * that fail verification are set to the Error state.  Verification is skipped
-+ * for pages already in the Error state, e.g. due to fscrypt decryption failure.
-+ *
-+ * This is a helper function for use by the ->readpages() method of filesystems
-+ * that issue bios to read data directly into the page cache.  Filesystems that
-+ * populate the page cache without issuing bios (e.g. non block-based
-+ * filesystems) must instead call fsverity_verify_page() directly on each page.
-+ * All filesystems must also call fsverity_verify_page() on holes.
-+ */
-+void fsverity_verify_bio(struct bio *bio)
-+{
-+	struct inode *inode = bio_first_page_all(bio)->mapping->host;
-+	const struct fsverity_info *vi = inode->i_verity_info;
-+	struct ahash_request *req;
-+	struct bio_vec *bv;
-+	struct bvec_iter_all iter_all;
-+
-+	req = ahash_request_alloc(vi->tree_params.hash_alg->tfm, GFP_NOFS);
-+	if (unlikely(!req)) {
-+		bio_for_each_segment_all(bv, bio, iter_all)
-+			SetPageError(bv->bv_page);
-+		return;
++	req = ahash_request_alloc(alg->tfm, GFP_KERNEL);
++	if (!req) {
++		err = -ENOMEM;
++		goto err_free;
 +	}
 +
-+	bio_for_each_segment_all(bv, bio, iter_all) {
-+		struct page *page = bv->bv_page;
-+
-+		if (!PageError(page) && !verify_page(inode, vi, req, page))
-+			SetPageError(page);
-+	}
-+
-+	ahash_request_free(req);
-+}
-+EXPORT_SYMBOL_GPL(fsverity_verify_bio);
-+#endif /* CONFIG_BLOCK */
-+
-+/**
-+ * fsverity_enqueue_verify_work - enqueue work on the fs-verity workqueue
-+ *
-+ * Enqueue verification work for asynchronous processing.
-+ */
-+void fsverity_enqueue_verify_work(struct work_struct *work)
-+{
-+	queue_work(fsverity_read_workqueue, work);
-+}
-+EXPORT_SYMBOL_GPL(fsverity_enqueue_verify_work);
-+
-+int __init fsverity_init_workqueue(void)
-+{
 +	/*
-+	 * Use an unbound workqueue to allow bios to be verified in parallel
-+	 * even when they happen to complete on the same CPU.  This sacrifices
-+	 * locality, but it's worthwhile since hashing is CPU-intensive.
-+	 *
-+	 * Also use a high-priority workqueue to prioritize verification work,
-+	 * which blocks reads from completing, over regular application tasks.
++	 * Zero-pad the salt to the next multiple of the input size of the hash
++	 * algorithm's compression function, e.g. 64 bytes for SHA-256 or 128
++	 * bytes for SHA-512.  This ensures that the hash algorithm won't have
++	 * any bytes buffered internally after processing the salt, thus making
++	 * salted hashing just as fast as unsalted hashing.
 +	 */
-+	fsverity_read_workqueue = alloc_workqueue("fsverity_read_queue",
-+						  WQ_UNBOUND | WQ_HIGHPRI,
-+						  num_online_cpus());
-+	if (!fsverity_read_workqueue)
++	padded_salt_size = round_up(salt_size, alg->block_size);
++	padded_salt = kzalloc(padded_salt_size, GFP_KERNEL);
++	if (!padded_salt) {
++		err = -ENOMEM;
++		goto err_free;
++	}
++	memcpy(padded_salt, salt, salt_size);
++
++	sg_init_one(&sg, padded_salt, padded_salt_size);
++	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
++					CRYPTO_TFM_REQ_MAY_BACKLOG,
++				   crypto_req_done, &wait);
++	ahash_request_set_crypt(req, &sg, NULL, padded_salt_size);
++
++	err = crypto_wait_req(crypto_ahash_init(req), &wait);
++	if (err)
++		goto err_free;
++
++	err = crypto_wait_req(crypto_ahash_update(req), &wait);
++	if (err)
++		goto err_free;
++
++	err = crypto_ahash_export(req, hashstate);
++	if (err)
++		goto err_free;
++out:
++	kfree(padded_salt);
++	ahash_request_free(req);
++	return hashstate;
++
++err_free:
++	kfree(hashstate);
++	hashstate = ERR_PTR(err);
++	goto out;
++}
++
++/**
++ * fsverity_hash_page() - hash a single data or hash page
++ * @params: the Merkle tree's parameters
++ * @inode: inode for which the hashing is being done
++ * @req: preallocated hash request
++ * @page: the page to hash
++ * @out: output digest, size 'params->digest_size' bytes
++ *
++ * Hash a single data or hash block, assuming block_size == PAGE_SIZE.
++ * The hash is salted if a salt is specified in the Merkle tree parameters.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++int fsverity_hash_page(const struct merkle_tree_params *params,
++		       const struct inode *inode,
++		       struct ahash_request *req, struct page *page, u8 *out)
++{
++	struct scatterlist sg;
++	DECLARE_CRYPTO_WAIT(wait);
++	int err;
++
++	if (WARN_ON(params->block_size != PAGE_SIZE))
++		return -EINVAL;
++
++	sg_init_table(&sg, 1);
++	sg_set_page(&sg, page, PAGE_SIZE, 0);
++	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
++					CRYPTO_TFM_REQ_MAY_BACKLOG,
++				   crypto_req_done, &wait);
++	ahash_request_set_crypt(req, &sg, out, PAGE_SIZE);
++
++	if (params->hashstate) {
++		err = crypto_ahash_import(req, params->hashstate);
++		if (err) {
++			fsverity_err(inode,
++				     "Error %d importing hash state", err);
++			return err;
++		}
++		err = crypto_ahash_finup(req);
++	} else {
++		err = crypto_ahash_digest(req);
++	}
++
++	err = crypto_wait_req(err, &wait);
++	if (err)
++		fsverity_err(inode, "Error %d computing page hash", err);
++	return err;
++}
++
++/**
++ * fsverity_hash_buffer() - hash some data
++ * @alg: the hash algorithm to use
++ * @data: the data to hash
++ * @size: size of data to hash
++ * @out: output digest, size 'alg->digest_size' bytes
++ *
++ * Hash some data which is located in physically contiguous memory (i.e. memory
++ * allocated by kmalloc(), not by vmalloc()).  No salt is used.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++int fsverity_hash_buffer(const struct fsverity_hash_alg *alg,
++			 const void *data, size_t size, u8 *out)
++{
++	struct ahash_request *req;
++	struct scatterlist sg;
++	DECLARE_CRYPTO_WAIT(wait);
++	int err;
++
++	req = ahash_request_alloc(alg->tfm, GFP_KERNEL);
++	if (!req)
 +		return -ENOMEM;
++
++	sg_init_one(&sg, data, size);
++	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
++					CRYPTO_TFM_REQ_MAY_BACKLOG,
++				   crypto_req_done, &wait);
++	ahash_request_set_crypt(req, &sg, out, size);
++
++	err = crypto_wait_req(crypto_ahash_digest(req), &wait);
++
++	ahash_request_free(req);
++	return err;
++}
++
++void __init fsverity_check_hash_algs(void)
++{
++	size_t i;
++
++	/*
++	 * Sanity check the hash algorithms (could be a build-time check, but
++	 * they're in an array)
++	 */
++	for (i = 0; i < ARRAY_SIZE(fsverity_hash_algs); i++) {
++		const struct fsverity_hash_alg *alg = &fsverity_hash_algs[i];
++
++		if (!alg->name)
++			continue;
++
++		BUG_ON(alg->digest_size > FS_VERITY_MAX_DIGEST_SIZE);
++
++		/*
++		 * For efficiency, the implementation currently assumes the
++		 * digest and block sizes are powers of 2.  This limitation can
++		 * be lifted if the code is updated to handle other values.
++		 */
++		BUG_ON(!is_power_of_2(alg->digest_size));
++		BUG_ON(!is_power_of_2(alg->block_size));
++	}
++}
+diff --git a/fs/verity/init.c b/fs/verity/init.c
+new file mode 100644
+index 0000000000000..40076bbe452a4
+--- /dev/null
++++ b/fs/verity/init.c
+@@ -0,0 +1,41 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * fs/verity/init.c: fs-verity module initialization and logging
++ *
++ * Copyright 2019 Google LLC
++ */
++
++#include "fsverity_private.h"
++
++#include <linux/ratelimit.h>
++
++void fsverity_msg(const struct inode *inode, const char *level,
++		  const char *fmt, ...)
++{
++	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
++				      DEFAULT_RATELIMIT_BURST);
++	struct va_format vaf;
++	va_list args;
++
++	if (!__ratelimit(&rs))
++		return;
++
++	va_start(args, fmt);
++	vaf.fmt = fmt;
++	vaf.va = &args;
++	if (inode)
++		printk("%sfs-verity (%s, inode %lu): %pV\n",
++		       level, inode->i_sb->s_id, inode->i_ino, &vaf);
++	else
++		printk("%sfs-verity: %pV\n", level, &vaf);
++	va_end(args);
++}
++
++static int __init fsverity_init(void)
++{
++	fsverity_check_hash_algs();
++
++	pr_debug("Initialized fs-verity\n");
 +	return 0;
 +}
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 29bb4d007ad16..a9f43c66eb572 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -33,6 +33,23 @@ struct fsverity_operations {
- 	 */
- 	int (*get_verity_descriptor)(struct inode *inode, void *buf,
- 				     size_t bufsize);
-+
-+	/**
-+	 * Read a Merkle tree page of the given inode.
-+	 *
-+	 * @inode: the inode
-+	 * @index: 0-based index of the page within the Merkle tree
-+	 *
-+	 * This can be called at any time on an open verity file, as well as
-+	 * between ->begin_enable_verity() and ->end_enable_verity().  It may be
-+	 * called by multiple processes concurrently, even with the same page.
-+	 *
-+	 * Note that this must retrieve a *page*, not necessarily a *block*.
-+	 *
-+	 * Return: the page on success, ERR_PTR() on failure
-+	 */
-+	struct page *(*read_merkle_tree_page)(struct inode *inode,
-+					      pgoff_t index);
- };
- 
- #ifdef CONFIG_FS_VERITY
-@@ -43,6 +60,12 @@ extern int fsverity_file_open(struct inode *inode, struct file *filp);
- extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- extern void fsverity_cleanup_inode(struct inode *inode);
- 
-+/* verify.c */
-+
-+extern bool fsverity_verify_page(struct page *page);
-+extern void fsverity_verify_bio(struct bio *bio);
-+extern void fsverity_enqueue_verify_work(struct work_struct *work);
-+
- #else /* !CONFIG_FS_VERITY */
- 
- /* open.c */
-@@ -62,6 +85,24 @@ static inline void fsverity_cleanup_inode(struct inode *inode)
- {
- }
- 
-+/* verify.c */
-+
-+static inline bool fsverity_verify_page(struct page *page)
-+{
-+	WARN_ON(1);
-+	return false;
-+}
-+
-+static inline void fsverity_verify_bio(struct bio *bio)
-+{
-+	WARN_ON(1);
-+}
-+
-+static inline void fsverity_enqueue_verify_work(struct work_struct *work)
-+{
-+	WARN_ON(1);
-+}
-+
- #endif	/* !CONFIG_FS_VERITY */
- 
- #endif	/* _LINUX_FSVERITY_H */
++late_initcall(fsverity_init)
 -- 
 2.21.0
 
