@@ -1,89 +1,82 @@
 Return-Path: <SRS0=Ikgj=TX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Level: *
+X-Spam-Status: No, score=1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USB_DRIVES autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B3F0C282DD
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 15:31:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B5E2C282DD
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:19:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 658D3206BA
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 15:31:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558625473;
-	bh=R6OUXHozVu/WNCgm4mjk6EqcMyrY+AYZqwiaXY3xGX0=;
-	h=From:To:Subject:Date:List-ID:From;
-	b=tyJjw96upVcAOJLZQR0UrlpFbtzOMOqggPvUwvJhx+TXtScfpKett0AMQQKw5RYuY
-	 rBqHeJUEdfLCn0/QVl8BpqMUUOVN6vZTeCd5v6mPa+KPS9+gvrGpTlLDwXkhkZf1+d
-	 XrYvmp9a/hihl8DO9KPn3qkcsPKVRYOadCOBvJQM=
+	by mail.kernel.org (Postfix) with ESMTP id DC8E52175B
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 May 2019 16:19:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730859AbfEWPbN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 May 2019 11:31:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37406 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730760AbfEWPbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 23 May 2019 11:31:12 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 59C08206BA
-        for <linux-ext4@vger.kernel.org>; Thu, 23 May 2019 15:31:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558625472;
-        bh=R6OUXHozVu/WNCgm4mjk6EqcMyrY+AYZqwiaXY3xGX0=;
-        h=From:To:Subject:Date:From;
-        b=ycSJAVVmMqy8Q1v8L3uc8wIc8X43ZK1bMuDOXOfV3FBZZjFhoM3acpBbtX3Svu9Mt
-         vtAdcJ0x3nMZr/9t81ck+vgcU7QzE5PKifaTlZ3QCuB5/YWAgWDk4lgxYFdTNEPROg
-         2ePXfLQPBTviZBK5h4aUJ1LVEBY2AYTICiFtDBak=
-From:   Eric Biggers <ebiggers@kernel.org>
+        id S1731263AbfEWQT0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 May 2019 12:19:26 -0400
+Received: from toryburch.com ([198.23.132.45]:33822 "EHLO timesharemyths.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1731117AbfEWQT0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 23 May 2019 12:19:26 -0400
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH] e2fsck: handle verity files in scan_extent_node()
-Date:   Thu, 23 May 2019 08:30:33 -0700
-Message-Id: <20190523153033.22487-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.21.0
+Subject: Logo printing on the USB drives
+Message-ID: <bd53fb90b48e3ffe763c978388d47e1b@lucastirepros.com>
+Date:   Thu, 23 May 2019 15:20:26 +0200
+From:   "Stacy" <ryan@tanschmidit.tech>
+Reply-To: lucas@tanschmidit.tech
 MIME-Version: 1.0
+Content-Type: text/plain; format=flowed; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Hi,
 
-Don't report PR_1_EXTENT_END_OUT_OF_BOUNDS on verity files during
-scan_extent_node(), since they will have blocks stored past i_size.
+I am following up on my previous attempt to contact you.
+We wanted to check to see if you need any LOGO promotional products for
+your business?
 
-This was missed during the earlier fix because this check only triggers
-if the inode has enough extents to need at least one extent index node.
+Our company manufactures USB Flash Drives that are custom printed with your
+logo.
+They make the perfect marketing tool for your business or organization.
 
-This bug is causing one of the fs-verity xfstests to fail with the
-reworked fs-verity patchset.
+Looking for other items with your logo?   We can supply anything with your
+logo…
 
-Fixes: 3baafde6a8ae ("e2fsck: allow verity files to have initialized blocks past i_size")
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- e2fsck/pass1.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Most Popular Items right now:
+- T-shirts, Hoodies
+- Table Covers printed with your brand
+- Pens
+- Water Bottles
+- Banners…
+- You name it we can make it and print on it for you!
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 5c413610..524577ae 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2812,8 +2812,9 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
- 		else if (extent.e_lblk < start_block)
- 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
- 		else if ((end_block && last_lblk > end_block) &&
--			 (!(extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT &&
--				last_lblk > eof_block)))
-+			 !(last_lblk > eof_block &&
-+			   ((extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT) ||
-+			    (pctx->inode->i_flags & EXT4_VERITY_FL))))
- 			problem = PR_1_EXTENT_END_OUT_OF_BOUNDS;
- 		else if (is_leaf && extent.e_len == 0)
- 			problem = PR_1_EXTENT_LENGTH_ZERO;
--- 
-2.21.0
+Our USB Pricing is at an ALL TIME LOW.
+We offer low minimum quantities and all memory sizes.
+
+Over 150 Stock Models as well as 100 % custom shaped USB drives in the
+shape of your Logo or
+product or just about anything else you can imagine!
+Ask about our End of the Year Promotions!
+
+We can pre-load your media files, images, presentations and files onto the
+drives for you.
+These are ideal handouts for trade shows, branding, corporate gifts and
+employees.
+
+* Please reply back and let me know what quantity and memory size you need
+for a Fast Quote!
+
+Are you a school or nonprofit?  Please let us know for even further
+discounts.
+
+Let us send you a quote!   We will EARN your business!
+
+Regards,
+
+Stacy Williams
+Custom Logo Products
+Whatsapp: +8617199402387
 
