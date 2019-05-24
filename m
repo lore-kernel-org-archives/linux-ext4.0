@@ -2,91 +2,149 @@ Return-Path: <SRS0=IuoM=TY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02705C072B5
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 May 2019 08:58:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE8EEC282E1
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 May 2019 22:04:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C36B32175B
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 May 2019 08:58:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 84EA221873
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 May 2019 22:04:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1558735483;
+	bh=3DPYimAv7dGFrLAiI90pBPFZSlR28YeUsoKy+dmkXMk=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=ewlu+G0rs4rk5HCGxe3HRu3fyUZFi5KNEuI1yHIjxSGHY3L6TdUyG4uF0Sq5VbtD1
+	 oy/fs1g2uDcLdhzZnLfwV9NMTgLlzYleko3u6JWbtXw0EhHo4TpJHSUdRQleUj8/lS
+	 ppNQTqYbX7O33VwPdGRhpkivsQ7ZY3/SqmQRiMi8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389582AbfEXI6u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 May 2019 04:58:50 -0400
-Received: from sender2-pp-o92.zoho.com.cn ([163.53.93.251]:25989 "EHLO
-        sender1.zoho.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2389281AbfEXI6u (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 May 2019 04:58:50 -0400
-ARC-Seal: i=1; a=rsa-sha256; t=1558688320; cv=none; 
-        d=zoho.com.cn; s=zohoarc; 
-        b=M45pSQbZZBgP7jBvyH778C4VcljIjAJn13eP8km7uUI6UxlB0z2K8vW6MsuBI1Ctx+NRcWMykMYXlB0092EGVRj5MR9pVK43OCAu3xMP3szThX/za5DD0BGXjATKfrJl9z6TH06u7n7OO6O8sEoV+fuTxFd9RdSIIVzDoC1i5/U=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1558688320; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:Reply-To:References:Subject:To:ARC-Authentication-Results; 
-        bh=QsUDYSIU1/wMaLBVBuvuoeLQg3RyvyMrM68dah2MBjo=; 
-        b=AeMJkBhyko2wsYjJS1oOf0JUe0/XVDSiATRj4v2TitftXziobiP3HCTEhpVcRRJSQJYD2CzG32m6yePm2CeRMSD7D87oItUWXqcJImATTvG3Nc1W14ihKUvWewrW2PIjdM+xEAEcrUTX+p4b6as7vngzfFn9aW8vdQConKfnP7c=
-ARC-Authentication-Results: i=1; mx.zoho.com.cn;
-        dkim=pass  header.i=zoho.com.cn;
-        spf=pass  smtp.mailfrom=cgxu519@zoho.com.cn;
-        dmarc=pass header.from=<cgxu519@zoho.com.cn> header.from=<cgxu519@zoho.com.cn>
-Received: from hades (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
-        with SMTPS id 1558688318686511.40783088255955; Fri, 24 May 2019 16:58:38 +0800 (CST)
-Message-ID: <db947cce565d9ae766906d6f131cd9e2cf58cb7f.camel@zoho.com.cn>
-Subject: Re: [PATCH] ext2: optimize ext2_xattr_get()
-From:   "cgxu519@zoho.com.cn" <cgxu519@zoho.com.cn>
-Reply-To: cgxu519@zoho.com.cn
-To:     Jan Kara <jack@suse.cz>
-Cc:     jack@suse.com, linux-ext4@vger.kernel.org
-Date:   Fri, 24 May 2019 16:58:37 +0800
-In-Reply-To: <20190524080740.GA28972@quack2.suse.cz>
-References: <20190521082140.19992-1-cgxu519@zoho.com.cn>
-         <20190523144612.GA18841@quack2.suse.cz>
-         <afa54281eaf134b892d5f93d281d7ddf75bfe3a5.camel@zoho.com.cn>
-         <20190524080740.GA28972@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
+        id S2404341AbfEXWEn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 May 2019 18:04:43 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44296 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2404303AbfEXWEn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 May 2019 18:04:43 -0400
+Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 587FA21851;
+        Fri, 24 May 2019 22:04:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1558735482;
+        bh=3DPYimAv7dGFrLAiI90pBPFZSlR28YeUsoKy+dmkXMk=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=OXjOb5ORLzwBz0a8YjQ6yQJkAR6Kh/pRbJrdGpPLstrZB1Rx+eipcVgRA8mC9jsME
+         cRSxAdRqrltzDJw+47D/G5KBS1tUOyubNjkd6BmwgrHc9HcNLWhf9XvArk0ek2MTse
+         9DM90KahT501RfoeNCX2n2JJiGke37MbHfpD6Jh4=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     fstests@vger.kernel.org
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Subject: [PATCH v2 3/7] common/encrypt: support requiring other encryption settings
+Date:   Fri, 24 May 2019 15:04:21 -0700
+Message-Id: <20190524220425.201170-4-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.22.0.rc1.257.g3120a18244-goog
+In-Reply-To: <20190524220425.201170-1-ebiggers@kernel.org>
+References: <20190524220425.201170-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-X-ZohoCNMailClient: External
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, 2019-05-24 at 10:07 +0200, Jan Kara wrote:
-> On Fri 24-05-19 10:07:05, cgxu519@zoho.com.cn wrote:
-> > On Thu, 2019-05-23 at 16:46 +0200, Jan Kara wrote:
-> > > On Tue 21-05-19 16:21:39, Chengguang Xu wrote:
-> > > > Since xattr entry names are sorted, we don't have
-> > > > to continue when current entry name is greater than
-> > > > target.
-> > > > 
-> > > > Signed-off-by: Chengguang Xu <cgxu519@zoho.com.cn>
-> > > 
-> > > Thanks for the patch! If we are going to do these comparisons in multiple
-> > > places, then please create a helper function to do the comparison (so that
-> > > we have the same comparison in every place). Something like:
-> > > 
-> > > int ext2_xattr_cmp(int name_index, size_t name_len, const char *name,
-> > > 		   struct ext2_xattr_entry *entry)
-> > > 
-> > 
-> > Hi Jan,
-> > 
-> > Thanks for the review and advice. 
-> > 
-> > You are right we should introduce a helper to handle this part of work
-> > and personally I think maybe implementing a helper to find target entry
-> > will be more useful, do you think it makes sense?
-> 
-> It makes sense but ext2_xattr_set() also computes min_offs and last during
-> the search so using the search function in that case won't be a readbility
-> win I guess. So I'm not sure the search function pays off in the end.
+From: Eric Biggers <ebiggers@google.com>
 
-Yes, I noticed that too, I plan to set min_offs pointer as function parameter
-so that we can seperate different search modes based on it.
+Update _require_scratch_encryption() to support checking for kernel
+support for contents and filenames encryption modes besides the default.
+This will be used by some of the ciphertext verification tests.
 
-Thanks,
-Chengguang
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ common/encrypt | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
 
+diff --git a/common/encrypt b/common/encrypt
+index cbe0b73d..a4ffc531 100644
+--- a/common/encrypt
++++ b/common/encrypt
+@@ -4,6 +4,15 @@
+ #
+ # Functions for setting up and testing file encryption
+ 
++#
++# _require_scratch_encryption [-c CONTENTS_MODE] [-n FILENAMES_MODE]
++#
++# Require encryption support on the scratch device.
++#
++# This checks for support for the default type of encryption policy (AES-256-XTS
++# and AES-256-CTS).  Options can be specified to also require support for a
++# different type of encryption policy.
++#
+ _require_scratch_encryption()
+ {
+ 	_require_scratch
+@@ -44,9 +53,58 @@ _require_scratch_encryption()
+ 		_notrun "kernel does not support $FSTYP encryption"
+ 	fi
+ 	rmdir $SCRATCH_MNT/tmpdir
++
++	# If required, check for support for the specific type of encryption
++	# policy required by the test.
++	if [ $# -ne 0 ]; then
++		_require_encryption_policy_support $SCRATCH_MNT "$@"
++	fi
++
+ 	_scratch_unmount
+ }
+ 
++_require_encryption_policy_support()
++{
++	local mnt=$1
++	local dir=$mnt/tmpdir
++	local set_encpolicy_args=""
++	local c
++
++	OPTIND=2
++	while getopts "c:n:" c; do
++		case $c in
++		c|n)
++			set_encpolicy_args+=" -$c $OPTARG"
++			;;
++		*)
++			_fail "Unrecognized option '$c'"
++			;;
++		esac
++	done
++	set_encpolicy_args=${set_encpolicy_args# }
++
++	echo "Checking whether kernel supports encryption policy: $set_encpolicy_args" \
++		>> $seqres.full
++
++	mkdir $dir
++	_require_command "$KEYCTL_PROG" keyctl
++	_new_session_keyring
++	local keydesc=$(_generate_encryption_key)
++	if _set_encpolicy $dir $keydesc $set_encpolicy_args \
++		2>&1 >>$seqres.full | egrep -q 'Invalid argument'; then
++		_notrun "kernel does not support encryption policy: '$set_encpolicy_args'"
++	fi
++	# fscrypt allows setting policies with modes it knows about, even
++	# without kernel crypto API support.  E.g. a policy using Adiantum
++	# encryption can be set on a kernel without CONFIG_CRYPTO_ADIANTUM.
++	# But actually trying to use such an encrypted directory will fail.
++	if ! touch $dir/file; then
++		_notrun "encryption policy '$set_encpolicy_args' is unusable; probably missing kernel crypto API support"
++	fi
++	$KEYCTL_PROG clear @s
++	rm -r $dir
++}
++
+ _scratch_mkfs_encrypted()
+ {
+ 	case $FSTYP in
+-- 
+2.22.0.rc1.257.g3120a18244-goog
 
