@@ -1,48 +1,93 @@
-Return-Path: <SRS0=YAM/=T3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=9WJq=T4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=0.9 required=3.0 tests=DATE_IN_PAST_06_12,
-	DKIM_ADSP_NXDOMAIN,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15A4EC04AB3
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 May 2019 20:47:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB76CC07542
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 May 2019 00:50:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D8A3D2075E
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 May 2019 20:47:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8479420823
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 May 2019 00:50:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727128AbfE0UrR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 27 May 2019 16:47:17 -0400
-Received: from dolcegabbana.com ([198.23.132.36]:60345 "EHLO petraband.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726905AbfE0UrR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 27 May 2019 16:47:17 -0400
-To:     linux-ext4@vger.kernel.org
-Subject: Need traffic for your website?
-Message-ID: <6a7180b3d57c3aa5423d1b1327b74a09@walkeralextra.tech>
-Date:   Mon, 27 May 2019 11:38:27 +0200
-From:   "Alex Walker" <schutz@walkeralextra.tech>
-Reply-To: fanfenqi@sina.com
+        id S1727582AbfE1AuP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 May 2019 20:50:15 -0400
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:47483 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727313AbfE1AuP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 27 May 2019 20:50:15 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R471e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04400;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=24;SR=0;TI=SMTPD_---0TSq1luR_1559004607;
+Received: from JosephdeMacBook-Pro.local(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TSq1luR_1559004607)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Tue, 28 May 2019 08:50:07 +0800
+Subject: Re: [PATCH 2/3] mm: remove cleancache.c
+To:     Juergen Gross <jgross@suse.com>, linux-kernel@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        devel@driverdev.osuosl.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org
+Cc:     Jonathan Corbet <corbet@lwn.net>,
+        Gao Xiang <gaoxiang25@huawei.com>,
+        Chao Yu <yuchao0@huawei.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joel Becker <jlbec@evilplan.org>, ocfs2-devel@oss.oracle.com
+References: <20190527103207.13287-1-jgross@suse.com>
+ <20190527103207.13287-3-jgross@suse.com>
+From:   Joseph Qi <joseph.qi@linux.alibaba.com>
+Message-ID: <7c75d310-1beb-08f3-d590-b4ff2c42cbcd@linux.alibaba.com>
+Date:   Tue, 28 May 2019 08:50:06 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:60.0)
+ Gecko/20100101 Thunderbird/60.7.0
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20190527103207.13287-3-jgross@suse.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi
 
-Do you need traffic for your website, or ecommerce store?
-We can bring 1-2 thousands of visitors to your website daily.
 
-No matter what you are selling, products or service. Getting more traffic
-is the key to your business.
+On 19/5/27 18:32, Juergen Gross wrote:
+> With the removal of tmem and xen-selfballoon the only user of
+> cleancache is gone. Remove it, too.
+> 
+> Signed-off-by: Juergen Gross <jgross@suse.com>
+> ---
+>  Documentation/vm/cleancache.rst  | 296 ------------------------------------
+>  Documentation/vm/frontswap.rst   |  10 +-
+>  Documentation/vm/index.rst       |   1 -
+>  MAINTAINERS                      |   7 -
+>  drivers/staging/erofs/data.c     |   6 -
+>  drivers/staging/erofs/internal.h |   1 -
+>  fs/block_dev.c                   |   5 -
+>  fs/btrfs/extent_io.c             |   9 --
+>  fs/btrfs/super.c                 |   2 -
+>  fs/ext4/readpage.c               |   6 -
+>  fs/ext4/super.c                  |   2 -
+>  fs/f2fs/data.c                   |   3 +-
+>  fs/mpage.c                       |   7 -
+>  fs/ocfs2/super.c                 |   2 -
 
-Please reply if interested, we will go options for you.
+For ocfs2 part,
+Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
 
-Thanks,
-Alex Walker
-Whatsapp: +8617199402387
-
+>  fs/super.c                       |   3 -
+>  include/linux/cleancache.h       | 124 ---------------
+>  include/linux/fs.h               |   5 -
+>  mm/Kconfig                       |  22 ---
+>  mm/Makefile                      |   1 -
+>  mm/cleancache.c                  | 317 ---------------------------------------
+>  mm/filemap.c                     |  11 --
+>  mm/truncate.c                    |  15 +-
