@@ -2,76 +2,72 @@ Return-Path: <SRS0=PW1K=T6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BDADC28CC0
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 May 2019 11:35:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B22BC28CC0
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 May 2019 13:52:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 09CF62585D
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 May 2019 11:35:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4EB0225982
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 May 2019 13:52:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726840AbfE3Lfv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 May 2019 07:35:51 -0400
-Received: from mx2.suse.de ([195.135.220.15]:53642 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726065AbfE3Lfu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 30 May 2019 07:35:50 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 5F18EAEFF;
-        Thu, 30 May 2019 11:35:49 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 0D28E1E3C08; Thu, 30 May 2019 13:35:47 +0200 (CEST)
-Date:   Thu, 30 May 2019 13:35:47 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Chengguang Xu <cgxu519@zoho.com.cn>
-Cc:     jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: add missing brelse() in ext2_new_inode()
-Message-ID: <20190530113547.GD29237@quack2.suse.cz>
-References: <20190530101042.32197-1-cgxu519@zoho.com.cn>
+        id S1726574AbfE3Nwt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 May 2019 09:52:49 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:47744 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725870AbfE3Nws (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 May 2019 09:52:48 -0400
+Received: from callcc.thunk.org ([66.31.38.53])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x4UDptHw021454
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 30 May 2019 09:51:56 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 5B089420481; Thu, 30 May 2019 09:51:55 -0400 (EDT)
+Date:   Thu, 30 May 2019 09:51:55 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.com>
+Subject: Re: How to package e2scrub
+Message-ID: <20190530135155.GD2751@mit.edu>
+References: <20190529120603.xuet53xgs6ahfvpl@work>
+ <20190529235948.GB3671@mit.edu>
+ <20190530095907.GA29237@quack2.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190530101042.32197-1-cgxu519@zoho.com.cn>
+In-Reply-To: <20190530095907.GA29237@quack2.suse.cz>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 30-05-19 18:10:42, Chengguang Xu wrote:
-> There is a missing brelse of bitmap_bh in an error
-> path of ext2_new_inode().
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@zoho.com.cn>
+On Thu, May 30, 2019 at 11:59:07AM +0200, Jan Kara wrote:
+> Yeah, my plan is to just not package cron bits at all since openSUSE / SLES
+> support only systemd init anyway these days (and in fact our distro people
+> want to deprecate cron in favor of systemd). I guess I'll split off the
+> scrub bits into a separate sub-package (likely e2fsprogs will suggest
+> installation of this sub-package) and the service will be disabled by
+> default.
 
-Thanks for the fix! Applied.
+I'm not super-fond of extra sub-packages for their own sake, and the
+extra e2scrub bits are small enough (about 32k?) that I don't believe
+it justifies an extra sub-package; but that's a distribution-level
+packaging decision, so it's certainly fine if we're not completely aligned.
 
-								Honza
-> ---
->  fs/ext2/ialloc.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-> index 334dea4e499d..fda7d3f5b4be 100644
-> --- a/fs/ext2/ialloc.c
-> +++ b/fs/ext2/ialloc.c
-> @@ -509,6 +509,7 @@ struct inode *ext2_new_inode(struct inode *dir, umode_t mode,
->  	/*
->  	 * Scanned all blockgroups.
->  	 */
-> +	brelse(bitmap_bh);
->  	err = -ENOSPC;
->  	goto fail;
->  got:
-> -- 
-> 2.20.1
-> 
-> 
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+My plan is to change the Debian package to turn off the timer unit
+file by default, probably with a NEWS.Debian file[1] which tells users
+how to enable it if they want at package installation time --- but to
+keep the e2scrub bits in the base e2fsprogs package.
+
+[1] https://www.debian.org/doc/manuals/developers-reference/ch06.en.html#bpp-news-debian
+
+Out of curiosity, were any of the complaints that you've heard gone
+beyond people who ran into the various e2scrub/e2scrub_all bugs?  I'm
+curious what their concerns were.
+
+						- Ted
