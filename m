@@ -2,92 +2,126 @@ Return-Path: <SRS0=wnCJ=UF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 98765C28EB4
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 10:59:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 501BBC04AB5
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 12:32:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7BED7206E0
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 10:59:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 243C8204FD
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 12:32:51 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Dbiovk8o"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727669AbfFFK66 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Jun 2019 06:58:58 -0400
-Received: from mx2.suse.de ([195.135.220.15]:32798 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727324AbfFFK66 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 6 Jun 2019 06:58:58 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 7F9F6AF21;
-        Thu,  6 Jun 2019 10:58:56 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id ED0EC1E3F51; Thu,  6 Jun 2019 12:58:55 +0200 (CEST)
-Date:   Thu, 6 Jun 2019 12:58:55 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     ira.weiny@intel.com
-Cc:     Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Jeff Layton <jlayton@kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-xfs@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        John Hubbard <jhubbard@nvidia.com>,
-        =?iso-8859-1?B?Suly9G1l?= Glisse <jglisse@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-ext4@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: [PATCH RFC 07/10] fs/ext4: Fail truncate if pages are GUP pinned
-Message-ID: <20190606105855.GG7433@quack2.suse.cz>
-References: <20190606014544.8339-1-ira.weiny@intel.com>
- <20190606014544.8339-8-ira.weiny@intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190606014544.8339-8-ira.weiny@intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+        id S1727498AbfFFMcu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Jun 2019 08:32:50 -0400
+Received: from mail-lj1-f196.google.com ([209.85.208.196]:32968 "EHLO
+        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726717AbfFFMcu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2019 08:32:50 -0400
+Received: by mail-lj1-f196.google.com with SMTP id v29so1854824ljv.0
+        for <linux-ext4@vger.kernel.org>; Thu, 06 Jun 2019 05:32:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=vaVAGfvIWmlk7NtGq1TPLC8ZKE6xRNld3Q7CKBoUXaw=;
+        b=Dbiovk8ouunaJQRHMVqIJGlVObWaS7VVzG3itjvdtaBAlisSGpHCrhTW1XLyJCJxpP
+         FNUpZoLUKiDRWNKBgTVeP3xhB4UZMqoefcdWr3LbfcZFRz/IjqOzyaesMDl3iW9lwUNO
+         7SrwhBArqdooHDmUBtbcLr4E5XIbMJuNEQD2QSPPVc1v3Ku0MqRo3esEblFfW9X985mK
+         17L3TuBctpvtQamvQpQkYcaGjWg+K5tmsQ86urGgDghsglYJu/yppXA/OtnGxW30yTIg
+         rVWHIywZb2yJpWXSS1fhuarNEmKCWd1t6fJUGw95Us7HocoThFfxJCk3Y1W4XNVtTrLh
+         YOiw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
+         :content-transfer-encoding:message-id:references:to;
+        bh=vaVAGfvIWmlk7NtGq1TPLC8ZKE6xRNld3Q7CKBoUXaw=;
+        b=iHlluuMa0Qj/RVurKY0/wPKu6VwR3IvAsqfLMpA/kFCoC7OFs2fbYRRCU7IlzPE4H7
+         RBLGPcLBll1/sjbMA5Ix5kB8m2MQBdEqHbpinCK0vt6Eqc7xQQ1rxiJ6HcnxeOZ95Kti
+         bnTT8UnYFrqfzyO+TeaQxMaYB+Dlezprz/fZnWMGCSYYvitdJD37UlBrzQfL7NcEI1vM
+         z4Yaboyl5oJSbUVdUFl6nMtRS5YcMnvaL0ba/TblpoPp52boNT0b+z4DJuBv7zIVSTu6
+         C98fUAeUEh1Qua57d23kglgQ18Q3hBBrMh+Tp1p7aaGzT7NS5rs2E3zAoJ8i7enOZG45
+         gu4Q==
+X-Gm-Message-State: APjAAAWhimkCu9CXURXlLJSjn9GVoL8uxW2d8lSKLSsY5SjVXhRcEYwS
+        ct2hK+NKrwzn3JM3VlzIlDF7kb/oa+c=
+X-Google-Smtp-Source: APXvYqwr/K+19LwU85dY7t5VMD74g6wqOViy63CATpp0NDfgRxx+R2Cbr3joSqFaXY7S+zwHhgLATQ==
+X-Received: by 2002:a2e:8591:: with SMTP id b17mr13682386lji.71.1559824368608;
+        Thu, 06 Jun 2019 05:32:48 -0700 (PDT)
+Received: from [192.168.1.192] ([195.208.173.203])
+        by smtp.gmail.com with ESMTPSA id b18sm276929lfi.30.2019.06.06.05.32.46
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 06 Jun 2019 05:32:47 -0700 (PDT)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [HELP] What are the allocated blocks on a newly created ext4 fs ?
+From:   Artem Blagodarenko <artem.blagodarenko@gmail.com>
+In-Reply-To: <b64110a4-8112-a230-2179-5095aa943af9@gmail.com>
+Date:   Thu, 6 Jun 2019 15:32:44 +0300
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <7FD3148B-1E27-4BFA-965C-9FDC7FC8FD96@gmail.com>
+References: <b64110a4-8112-a230-2179-5095aa943af9@gmail.com>
+To:     Jianchao Wang <jianchao.wan9@gmail.com>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 05-06-19 18:45:40, ira.weiny@intel.com wrote:
-> From: Ira Weiny <ira.weiny@intel.com>
-> 
-> If pages are actively gup pinned fail the truncate operation.
-> 
-> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-> ---
->  fs/ext4/inode.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 75f543f384e4..1ded83ec08c0 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4250,6 +4250,9 @@ int ext4_break_layouts(struct inode *inode, loff_t offset, loff_t len)
->  		if (!page)
->  			return 0;
->  
-> +		if (page_gup_pinned(page))
-> +			return -ETXTBSY;
-> +
->  		error = ___wait_var_event(&page->_refcount,
->  				atomic_read(&page->_refcount) == 1,
->  				TASK_INTERRUPTIBLE, 0, 0,
+Hello Jianchao,
 
-This caught my eye. Does this mean that now truncate for a file which has
-temporary gup users (such buffers for DIO) can fail with ETXTBUSY? That
-doesn't look desirable. If we would mandate layout lease while pages are
-pinned as I suggested, this could be dealt with by checking for leases with
-pins (breaking such lease would return error and not break it) and if
-breaking leases succeeds (i.e., there are no long-term pinned pages), we'd
-just wait for the remaining references as we do now.
+Not enought input data to give an answer. It depends on mkfs options. =
+For example, if flex_bg option is enabled, then several block groups are =
+tied together as one logical block group; the bitmap spaces and the =
+inode table space in the first block group, so some groups are not =
+totally free just after FS creating.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> On 6 Jun 2019, at 13:41, Jianchao Wang <jianchao.wan9@gmail.com> =
+wrote:
+>=20
+> Dear all
+>=20
+> After I newly created a ext4 fs and check the mb_group,
+>=20
+>       #group: free  frags first [ 2^0   2^1   2^2   2^3   2^4   2^5   =
+2^6   2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]
+>       #0    : 23513 1     9255  [ 1     0     0     1     1     0     =
+1     1     1     1     0     1     1     2     ]
+>       #1    : 31743 1     1025  [ 1     1     1     1     1     1     =
+1     1     1     1     0     1     1     3     ]
+>                           ^^^^
+>       #2    : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>       #3    : 31743 1     1025  [ 1     1     1     1     1     1     =
+1     1     1     1     0     1     1     3     ]
+>       #4    : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>       #5    : 31743 1     1025  [ 1     1     1     1     1     1     =
+1     1     1     1     0     1     1     3     ]
+>       #6    : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>       #7    : 31743 1     1025  [ 1     1     1     1     1     1     =
+1     1     1     1     0     1     1     3     ]
+>       #8    : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>       #9    : 31743 1     1025  [ 1     1     1     1     1     1     =
+1     1     1     1     0     1     1     3     ]
+>       #10   : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>       #11   : 32768 1     0     [ 0     0     0     0     0     0     =
+0     0     0     0     0     0     0     4     ]
+>=20
+> There are some bgs that have 1024 blocks allocated. What are they for =
+?
+>=20
+BTW, I don=E2=80=99t see from mb_group output why 1024 blocks allocated =
+in group #1
+> Many thanks in advance
+> Jianchao
+
+Best regards,
+Artem Blagodarenko.
+
