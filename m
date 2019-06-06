@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7C90C28EB5
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E23F5C04AB5
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8294B20874
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BCFC620866
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1559836469;
-	bh=VakoX12a67VMpXoD8omvYLbr9jaKgrhfTzhrHZ2klaE=;
+	s=default; t=1559836470;
+	bh=06Qzf2aoQYBF3m7gV8uVH1aCsMgiyeWy0jQ5+XzOuiA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=RHh36xuc79CaG5ayMNS02ll1U08dVJlgHIJPBMBxWxCb6V58dxf+L29MJlIkTSINs
-	 saODimwh1gtjckIQnBH8E9/G4SBh+ZFzKSbwlm2cpg4jrSqhg0WA88YXIpurpziHqj
-	 F7/YS6OhcXiRizbYDVqXpRBoqbDggzLaUfn/diDk=
+	b=Kh8AouLa0SBF+CptRXh3qiI6YLHfC0osSxX27AeBEaOOIpw46o9W2DGU+Z8tIPjif
+	 pd0eQnBoQS8F1JnGmX4/GDwJ8gMYY4lKVzPkcYIaGeIH+TERc+BmK5EBxh4AnRipv9
+	 jJ93FFw9s9FEC7x+0dOZjiHVYMlIhLvEWxar5p3g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729620AbfFFPy0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Jun 2019 11:54:26 -0400
+        id S1729549AbfFFPyH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Jun 2019 11:54:07 -0400
 Received: from mail.kernel.org ([198.145.29.99]:59444 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729550AbfFFPyH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 6 Jun 2019 11:54:07 -0400
+        id S1729530AbfFFPyG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 6 Jun 2019 11:54:06 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CEE5B208C0;
-        Thu,  6 Jun 2019 15:54:06 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C37312083E;
+        Thu,  6 Jun 2019 15:54:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559836447;
-        bh=VakoX12a67VMpXoD8omvYLbr9jaKgrhfTzhrHZ2klaE=;
+        s=default; t=1559836446;
+        bh=06Qzf2aoQYBF3m7gV8uVH1aCsMgiyeWy0jQ5+XzOuiA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AcIQP6GRxBLKHBht/DehbZiivlFPJT+EuIxVAxbJ9WSWnh2tWM5LlhsA/MX1XPb4Y
-         7jghMKJBs0Wkhzg7fEpw9DS4hzPCVIWtNIVgN2GEjY2G1WnNBhLoDB2C4eXzXBcxXT
-         lrY0YDYi55AOHmr7ccNlt9QvFykaDcYlFAU3rd14=
+        b=A2hPX5/WTyWQUX7i8w2t5FlnRmeoA3lmQn1Nq3blHkZ2uxOO5qW3BMQ2lIUZ/D5HZ
+         dIymRvcSHbR7v3ItZ1UJWX+QJRPPUCL2MHDHgxiAYCfPD9dQgeMOANTuRMho/FJKoN
+         GPUDSS8qfQgm4wWdbg6lieIlCOaUUFGrh6j7Cx0U=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -49,9 +49,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v4 08/16] fs-verity: add the hook for file ->setattr()
-Date:   Thu,  6 Jun 2019 08:51:57 -0700
-Message-Id: <20190606155205.2872-9-ebiggers@kernel.org>
+Subject: [PATCH v4 06/16] fs-verity: add inode and superblock fields
+Date:   Thu,  6 Jun 2019 08:51:55 -0700
+Message-Id: <20190606155205.2872-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20190606155205.2872-1-ebiggers@kernel.org>
 References: <20190606155205.2872-1-ebiggers@kernel.org>
@@ -64,72 +64,73 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add a function fsverity_prepare_setattr() which filesystems that support
-fs-verity must call to deny truncates of verity files.
+Analogous to fs/crypto/, add fields to the VFS inode and superblock for
+use by the fs/verity/ support layer:
+
+- ->s_vop: points to the fsverity_operations if the filesystem supports
+  fs-verity, otherwise is NULL.
+
+- ->i_verity_info: points to cached fs-verity information for the inode
+  after someone opens it, otherwise is NULL.
+
+- S_VERITY: bit in ->i_flags that identifies verity inodes, even when
+  they haven't been opened yet and thus still have NULL ->i_verity_info.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/open.c         | 21 +++++++++++++++++++++
- include/linux/fsverity.h |  7 +++++++
- 2 files changed, 28 insertions(+)
+ include/linux/fs.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/verity/open.c b/fs/verity/open.c
-index a8a1261f0e30..91f7e2d05b54 100644
---- a/fs/verity/open.c
-+++ b/fs/verity/open.c
-@@ -302,6 +302,27 @@ int fsverity_file_open(struct inode *inode, struct file *filp)
- }
- EXPORT_SYMBOL_GPL(fsverity_file_open);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f7fdfe93e25d..a80a192cdcf2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -64,6 +64,8 @@ struct workqueue_struct;
+ struct iov_iter;
+ struct fscrypt_info;
+ struct fscrypt_operations;
++struct fsverity_info;
++struct fsverity_operations;
+ struct fs_context;
+ struct fs_parameter_description;
  
-+/**
-+ * fsverity_prepare_setattr - prepare to change a verity inode's attributes
-+ * @dentry: dentry through which the inode is being changed
-+ * @attr: attributes to change
-+ *
-+ * Verity files are immutable, so deny truncates.  This isn't covered by the
-+ * open-time check because sys_truncate() takes a path, not a file descriptor.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
-+{
-+	if (IS_VERITY(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE)) {
-+		pr_debug("Denying truncate of verity file (ino %lu)\n",
-+			 d_inode(dentry)->i_ino);
-+		return -EPERM;
-+	}
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(fsverity_prepare_setattr);
+@@ -723,6 +725,10 @@ struct inode {
+ 	struct fscrypt_info	*i_crypt_info;
+ #endif
+ 
++#ifdef CONFIG_FS_VERITY
++	struct fsverity_info	*i_verity_info;
++#endif
 +
- /**
-  * fsverity_cleanup_inode - free the inode's verity info, if present
-  *
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 1372c236c877..cbcc358d0736 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -46,6 +46,7 @@ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
- /* open.c */
+ 	void			*i_private; /* fs or device private pointer */
+ } __randomize_layout;
  
- extern int fsverity_file_open(struct inode *inode, struct file *filp);
-+extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- extern void fsverity_cleanup_inode(struct inode *inode);
+@@ -1429,6 +1435,9 @@ struct super_block {
+ 	const struct xattr_handler **s_xattr;
+ #ifdef CONFIG_FS_ENCRYPTION
+ 	const struct fscrypt_operations	*s_cop;
++#endif
++#ifdef CONFIG_FS_VERITY
++	const struct fsverity_operations *s_vop;
+ #endif
+ 	struct hlist_bl_head	s_roots;	/* alternate root dentries for NFS */
+ 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
+@@ -1964,6 +1973,7 @@ struct super_operations {
+ #endif
+ #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
+ #define S_CASEFOLD	32768	/* Casefolded file */
++#define S_VERITY	65536	/* Verity file (using fs/verity/) */
  
- #else /* !CONFIG_FS_VERITY */
-@@ -62,6 +63,12 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
- 	return IS_VERITY(inode) ? -EOPNOTSUPP : 0;
- }
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -2005,6 +2015,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+ #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
+ #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
+ #define IS_CASEFOLDED(inode)	((inode)->i_flags & S_CASEFOLD)
++#define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
  
-+static inline int fsverity_prepare_setattr(struct dentry *dentry,
-+					   struct iattr *attr)
-+{
-+	return IS_VERITY(d_inode(dentry)) ? -EOPNOTSUPP : 0;
-+}
-+
- static inline void fsverity_cleanup_inode(struct inode *inode)
- {
- }
+ #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
 -- 
 2.21.0
 
