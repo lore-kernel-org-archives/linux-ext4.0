@@ -2,174 +2,98 @@ Return-Path: <SRS0=wnCJ=UF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_HIGH,UNWANTED_LANGUAGE_BODY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6E53C28EB4
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:36:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C48CFC04AB5
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A127E20684
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:36:00 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="QHJOC2ZZ"
+	by mail.kernel.org (Postfix) with ESMTP id 9550C208C0
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:06 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1559836446;
+	bh=uj7OhOWNAd4Pcxs6nLhO9mFRMaxtTmlWgngVbC8runE=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=ttQwsB4xv6itCWKWDpyZF68FrFIJptsvYkxDUTH7PZ1pp72E9ArQgDX566VPklQyY
+	 WlafxssMNNFtVRurKZZZLrJeTNCA+XNdCm7x1Fep658SPgEAlNI+8vrM1MivBnNLXZ
+	 tTePzSxAsITrov7I5C1AzmzO0MhssHUfk/icFwOE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729356AbfFFPf4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Jun 2019 11:35:56 -0400
-Received: from mail-oi1-f196.google.com ([209.85.167.196]:42057 "EHLO
-        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729137AbfFFPf4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jun 2019 11:35:56 -0400
-Received: by mail-oi1-f196.google.com with SMTP id s184so1861611oie.9
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Jun 2019 08:35:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=intel-com.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=1uRCmoXjULyV6kNTp2XKoB1qQmxkPSNDXYL9A3FHXFA=;
-        b=QHJOC2ZZhCoDsF3kkt0jD8pflX+D1g9wOGO30jisMp6VkS20cZbHhajfwYZJVXdiNh
-         JvAq7go3CRc5C+qomPxstLKznxkYPvd1O8ef7VHSAdG1rMnaPbbiOm9MuPNkCt7QxXaR
-         tW2MckCN4CHKIL8N13EVae4FrQAMJth8VAaKv/3gRwubZltnT7kNI3PWIXvq1c0vgZdi
-         L4XQGyBb2kkKpfIMhfb2YWP8o3M95HB+am83dkZODoLq1I1UWGrX6Sp8tjJSrVa2UG3+
-         kN4AXQu3lycB826+fr4/pUl5FixrZTURACJPQlnP2NuCi+p38m+p145UkX/P89XlKLdK
-         QHrQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=1uRCmoXjULyV6kNTp2XKoB1qQmxkPSNDXYL9A3FHXFA=;
-        b=mf9GoT79b8d3gnAdo7yCvutk8MjhrYjtzEVR6wp3IUF5oWhvE5/UL+xX3Hx5aOMI9O
-         Q7VmV+O/S3GQVag4LNxknftxaAT2uTSoVKQ4WU+ohlBoIgibROldKMUOe56YwW65g/mH
-         FtbgA4qC5mqzTWYeryWI64ZOt64C0kVL3y5pCy2LxNCtxAfzAMQSRD6onXWpm+XXnHVe
-         VmyMlxRvBChg5chPIvlzWHzzF2fE+JNIB5UAwa15t9U1yzvHz+DZYJ0H/c7kWkO6HcBW
-         CTe0QkYUwdCo/pK331QenlqEdKeZ/RLCn8jil/niSxCr1h82urc3yCbxtNdsBTfmrZk6
-         kHmQ==
-X-Gm-Message-State: APjAAAXiCRUY2T/oKtth9+uxKjfC3i2eWN4fZigZWKqJ8Lv7RLWvlbUt
-        BXqKmtySr6J3zzayKHcVVKH9CHBFZ0GRG69d9wox+Q==
-X-Google-Smtp-Source: APXvYqwQgzrGrWeJ2qr6zRt1Kh72wsL96qCKSVk7C2TBZflDvhLK6wlI/C4trmZ0QEDDo8Q9KA4CrwRdXYqf7oGmgHc=
-X-Received: by 2002:aca:bbc5:: with SMTP id l188mr410988oif.73.1559835355090;
- Thu, 06 Jun 2019 08:35:55 -0700 (PDT)
-MIME-Version: 1.0
-References: <20190606014544.8339-1-ira.weiny@intel.com> <20190606104203.GF7433@quack2.suse.cz>
-In-Reply-To: <20190606104203.GF7433@quack2.suse.cz>
-From:   Dan Williams <dan.j.williams@intel.com>
-Date:   Thu, 6 Jun 2019 08:35:42 -0700
-Message-ID: <CAPcyv4h-k_5T39fDY+SVrLXG_XETmgz-6N3NjQUteYG7g9NdDQ@mail.gmail.com>
-Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
-To:     Jan Kara <jack@suse.cz>
-Cc:     "Weiny, Ira" <ira.weiny@intel.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jeff Layton <jlayton@kernel.org>,
+        id S1729528AbfFFPyF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Jun 2019 11:54:05 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59386 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729191AbfFFPyE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 6 Jun 2019 11:54:04 -0400
+Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id B019F20868;
+        Thu,  6 Jun 2019 15:54:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1559836444;
+        bh=uj7OhOWNAd4Pcxs6nLhO9mFRMaxtTmlWgngVbC8runE=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=bXIPkzUfqDRKOSTk0dQNkKJOMbvMLZDYl9MBexWFxlr62YVXk9/stxK01xg9RS7bC
+         OfNgfQWcb5PGe0C9F7MuL3U8kybF4ykAvcr4M08oybWgQu4MQip0PtkQXO5nvGJkkJ
+         Aj8g+E/KT5cfZgrWNGUvcY/CqaT76HuXp6iZ2Uhw=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-integrity@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Victor Hsieh <victorhsieh@google.com>,
         Dave Chinner <david@fromorbit.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        John Hubbard <jhubbard@nvidia.com>,
-        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>
-Content-Type: text/plain; charset="UTF-8"
+        Christoph Hellwig <hch@lst.de>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: [PATCH v4 02/16] fs-verity: add MAINTAINERS file entry
+Date:   Thu,  6 Jun 2019 08:51:51 -0700
+Message-Id: <20190606155205.2872-3-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20190606155205.2872-1-ebiggers@kernel.org>
+References: <20190606155205.2872-1-ebiggers@kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jun 6, 2019 at 3:42 AM Jan Kara <jack@suse.cz> wrote:
->
-> On Wed 05-06-19 18:45:33, ira.weiny@intel.com wrote:
-> > From: Ira Weiny <ira.weiny@intel.com>
-> >
-> > ... V1,000,000   ;-)
-> >
-> > Pre-requisites:
-> >       John Hubbard's put_user_pages() patch series.[1]
-> >       Jan Kara's ext4_break_layouts() fixes[2]
-> >
-> > Based on the feedback from LSFmm and the LWN article which resulted.  I've
-> > decided to take a slightly different tack on this problem.
-> >
-> > The real issue is that there is no use case for a user to have RDMA pinn'ed
-> > memory which is then truncated.  So really any solution we present which:
-> >
-> > A) Prevents file system corruption or data leaks
-> > ...and...
-> > B) Informs the user that they did something wrong
-> >
-> > Should be an acceptable solution.
-> >
-> > Because this is slightly new behavior.  And because this is gonig to be
-> > specific to DAX (because of the lack of a page cache) we have made the user
-> > "opt in" to this behavior.
-> >
-> > The following patches implement the following solution.
-> >
-> > 1) The user has to opt in to allowing GUP pins on a file with a layout lease
-> >    (now made visible).
-> > 2) GUP will fail (EPERM) if a layout lease is not taken
-> > 3) Any truncate or hole punch operation on a GUP'ed DAX page will fail.
-> > 4) The user has the option of holding the layout lease to receive a SIGIO for
-> >    notification to the original thread that another thread has tried to delete
-> >    their data.  Furthermore this indicates that if the user needs to GUP the
-> >    file again they will need to retake the Layout lease before doing so.
-> >
-> >
-> > NOTE: If the user releases the layout lease or if it has been broken by
-> > another operation further GUP operations on the file will fail without
-> > re-taking the lease.  This means that if a user would like to register
-> > pieces of a file and continue to register other pieces later they would
-> > be advised to keep the layout lease, get a SIGIO notification, and retake
-> > the lease.
-> >
-> > NOTE2: Truncation of pages which are not actively pinned will succeed.
-> > Similar to accessing an mmap to this area GUP pins of that memory may
-> > fail.
->
-> So after some through I'm willing accept the fact that pinned DAX pages
-> will just make truncate / hole punch fail and shove it into a same bucket
-> of situations like "user can open a file and unlink won't delete it" or
-> "ETXTBUSY when user is executing a file being truncated".  The problem I
-> have with this proposal is a lack of visibility from sysadmin POV. For
-> ETXTBUSY or "unlinked but open file" sysadmin can just do lsof, find the
-> problematic process and kill it. There's nothing like that with your
-> proposal since currently once you hold page reference, you can unmap the
-> file, drop layout lease, close the file, and there's no trace that you're
-> responsible for the pinned page anymore.
->
-> So I'd like to actually mandate that you *must* hold the file lease until
-> you unpin all pages in the given range (not just that you have an option to
-> hold a lease). And I believe the kernel should actually enforce this. That
-> way we maintain a sane state that if someone uses a physical location of
-> logical file offset on disk, he has a layout lease. Also once this is done,
-> sysadmin has a reasonably easy way to discover run-away RDMA application
-> and kill it if he wishes so.
+From: Eric Biggers <ebiggers@google.com>
 
-Yes, this satisfies the primary concern that made me oppose failing
-truncate. If the administrator determines that reclaiming capacity is
-more important than maintaining active RDMA mappings "lsof + kill" is
-a reasonable way to recover. I'd go so far as to say that anything
-less is an abdication of the kernel's responsibility as an arbiter of
-platform resources.
+fs-verity will be jointly maintained by Eric Biggers and Theodore Ts'o.
 
-> The question is on how to exactly enforce that lease is taken until all
-> pages are unpinned. I belive it could be done by tracking number of
-> long-term pinned pages within a lease. Gup_longterm could easily increment
-> the count when verifying the lease exists, gup_longterm users will somehow
-> need to propagate corresponding 'filp' (struct file pointer) to
-> put_user_pages_longterm() callsites so that they can look up appropriate
-> lease to drop reference - probably I'd just transition all gup_longterm()
-> users to a saner API similar to the one we have in mm/frame_vector.c where
-> we don't hand out page pointers but an encapsulating structure that does
-> all the necessary tracking. Removing a lease would need to block until all
-> pins are released - this is probably the most hairy part since we need to
-> handle a case if application just closes the file descriptor which would
-> release the lease but OTOH we need to make sure task exit does not deadlock.
-> Maybe we could block only on explicit lease unlock and just drop the layout
-> lease on file close and if there are still pinned pages, send SIGKILL to an
-> application as a reminder it did something stupid...
->
-> What do people think about this?
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ MAINTAINERS | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-SIGKILL on close() without explicit unlock and wait-on-last-pin with
-explicit unlock sounds reasonable to me.
+diff --git a/MAINTAINERS b/MAINTAINERS
+index a6954776a37e..655065116f92 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -6505,6 +6505,18 @@ S:	Maintained
+ F:	fs/notify/
+ F:	include/linux/fsnotify*.h
+ 
++FSVERITY: READ-ONLY FILE-BASED AUTHENTICITY PROTECTION
++M:	Eric Biggers <ebiggers@kernel.org>
++M:	Theodore Y. Ts'o <tytso@mit.edu>
++L:	linux-fscrypt@vger.kernel.org
++Q:	https://patchwork.kernel.org/project/linux-fscrypt/list/
++T:	git git://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git fsverity
++S:	Supported
++F:	fs/verity/
++F:	include/linux/fsverity.h
++F:	include/uapi/linux/fsverity.h
++F:	Documentation/filesystems/fsverity.rst
++
+ FUJITSU LAPTOP EXTRAS
+ M:	Jonathan Woithe <jwoithe@just42.net>
+ L:	platform-driver-x86@vger.kernel.org
+-- 
+2.21.0
+
