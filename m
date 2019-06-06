@@ -2,42 +2,42 @@ Return-Path: <SRS0=wnCJ=UF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-14.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE89EC28EB5
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF47EC04AB5
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B95342083E
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9A2C3207E0
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jun 2019 15:54:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1559836472;
-	bh=R0Xg9hjW7/iUgwFsrnDSCb4DdFcBBFRH0I6qO3ipjHY=;
+	s=default; t=1559836479;
+	bh=QoVlW6FRaHiVvUh0XE5dIgyIszpbGCBqsGS91FVP/dk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=JfCGQYqySWLX9uSoMsj2bF2Kgya8gULfRAfzrGzIyIr/jBo4mCa3h1HbUyG2pQ4R7
-	 /DB/9pvKE7elCRXLkimzrZdHoUuUWwy9Xyztk+EIu7xSpESw2dMSo9Dh+rz6LPeHHU
-	 D7zf0fb8pLxjSnK7ENh1vFyVOkY6I+j6JE72sMRc=
+	b=bVn0XR4xGvp3qCoFyimclhn5A587w/91bslq/zneOm/cYvCLemdE9Dy/nuuvEZmrt
+	 goI1ZcL5voO1YGRsP/j5H8xga3Fm9K88f3JbM2UmpVc4mALVpf2r2GzTqnTuMB7XOv
+	 SfXS51uTAUNXTWEKQStbiakwLrDH8Lxvid+5eNeQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729540AbfFFPyG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Jun 2019 11:54:06 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59444 "EHLO mail.kernel.org"
+        id S1729646AbfFFPyi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Jun 2019 11:54:38 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59416 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729521AbfFFPyF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 6 Jun 2019 11:54:05 -0400
+        id S1729156AbfFFPyG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 6 Jun 2019 11:54:06 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B9BFB20874;
+        by mail.kernel.org (Postfix) with ESMTPSA id 3AF8020872;
         Thu,  6 Jun 2019 15:54:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559836445;
-        bh=R0Xg9hjW7/iUgwFsrnDSCb4DdFcBBFRH0I6qO3ipjHY=;
+        s=default; t=1559836444;
+        bh=QoVlW6FRaHiVvUh0XE5dIgyIszpbGCBqsGS91FVP/dk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=eayvQCBnFFdG9ccN1ncyrBrfBPLbd/0DR226BEBmtnhlSvfpDvHlygm3erUU7hXTO
-         POoiwexUfpr3aYh7d+LyWSQ/onbMfGLlULW/QCoKqyW+JbFeWJ1jaOdON8b+fhuZ8y
-         i62wDxlXK/kHSbPoSAuujlWDC7b3sPj+vrkiEBW4=
+        b=fUj3R74HWPHstTbkT/je98jpLeiYEenQLgK5mxvZtrx8aRpJ7zJGYY+ahBoF2DgZx
+         lSOeRF+XEn6Zg1PaZm0jQuW1cL1GfiZFB0t+wVQHZee6uRWftqGHVmkQBGO+6CA0m0
+         JROogS9j2ApQOeTwpbj039cyk0cvmgvkgMojg7c0=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -49,9 +49,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v4 04/16] fs: uapi: define verity bit for FS_IOC_GETFLAGS
-Date:   Thu,  6 Jun 2019 08:51:53 -0700
-Message-Id: <20190606155205.2872-5-ebiggers@kernel.org>
+Subject: [PATCH v4 03/16] fs-verity: add UAPI header
+Date:   Thu,  6 Jun 2019 08:51:52 -0700
+Message-Id: <20190606155205.2872-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20190606155205.2872-1-ebiggers@kernel.org>
 References: <20190606155205.2872-1-ebiggers@kernel.org>
@@ -64,31 +64,84 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add FS_VERITY_FL to the flags for FS_IOC_GETFLAGS, so that applications
-can easily determine whether a file is a verity file at the same time as
-they're checking other file flags.  This flag will be gettable only;
-FS_IOC_SETFLAGS won't allow setting it, since an ioctl must be used
-instead to provide more parameters.
+Add the UAPI header for fs-verity, including two ioctls:
 
-This flag matches the on-disk bit that was already allocated for ext4.
+- FS_IOC_ENABLE_VERITY
+- FS_IOC_MEASURE_VERITY
+
+These ioctls are documented in the "User API" section of
+Documentation/filesystems/fsverity.rst.
+
+Examples of using these ioctls can be found in fsverity-utils
+(https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git).
+
+I've also written xfstests that test these ioctls
+(https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git/log/?h=fsverity).
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/uapi/linux/fs.h | 1 +
- 1 file changed, 1 insertion(+)
+ Documentation/ioctl/ioctl-number.txt |  1 +
+ include/uapi/linux/fsverity.h        | 39 ++++++++++++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+ create mode 100644 include/uapi/linux/fsverity.h
 
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 59c71fa8c553..df261b7e0587 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -306,6 +306,7 @@ struct fscrypt_key {
- #define FS_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define FS_HUGE_FILE_FL			0x00040000 /* Reserved for ext4 */
- #define FS_EXTENT_FL			0x00080000 /* Extents */
-+#define FS_VERITY_FL			0x00100000 /* Verity protected inode */
- #define FS_EA_INODE_FL			0x00200000 /* Inode used for large EA */
- #define FS_EOFBLOCKS_FL			0x00400000 /* Reserved for ext4 */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
+diff --git a/Documentation/ioctl/ioctl-number.txt b/Documentation/ioctl/ioctl-number.txt
+index c9558146ac58..21767c81e86d 100644
+--- a/Documentation/ioctl/ioctl-number.txt
++++ b/Documentation/ioctl/ioctl-number.txt
+@@ -225,6 +225,7 @@ Code  Seq#(hex)	Include File		Comments
+ 'f'	00-0F	fs/ext4/ext4.h		conflict!
+ 'f'	00-0F	linux/fs.h		conflict!
+ 'f'	00-0F	fs/ocfs2/ocfs2_fs.h	conflict!
++'f'	81-8F	linux/fsverity.h
+ 'g'	00-0F	linux/usb/gadgetfs.h
+ 'g'	20-2F	linux/usb/g_printer.h
+ 'h'	00-7F				conflict! Charon filesystem
+diff --git a/include/uapi/linux/fsverity.h b/include/uapi/linux/fsverity.h
+new file mode 100644
+index 000000000000..57d1d7fc0c34
+--- /dev/null
++++ b/include/uapi/linux/fsverity.h
+@@ -0,0 +1,39 @@
++/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
++/*
++ * fs-verity user API
++ *
++ * These ioctls can be used on filesystems that support fs-verity.  See the
++ * "User API" section of Documentation/filesystems/fsverity.rst.
++ *
++ * Copyright 2019 Google LLC
++ */
++#ifndef _UAPI_LINUX_FSVERITY_H
++#define _UAPI_LINUX_FSVERITY_H
++
++#include <linux/ioctl.h>
++#include <linux/types.h>
++
++#define FS_VERITY_HASH_ALG_SHA256	1
++
++struct fsverity_enable_arg {
++	__u32 version;
++	__u32 hash_algorithm;
++	__u32 block_size;
++	__u32 salt_size;
++	__u64 salt_ptr;
++	__u32 sig_size;
++	__u32 __reserved1;
++	__u64 sig_ptr;
++	__u64 __reserved2[11];
++};
++
++struct fsverity_digest {
++	__u16 digest_algorithm;
++	__u16 digest_size; /* input/output */
++	__u8 digest[];
++};
++
++#define FS_IOC_ENABLE_VERITY	_IOW('f', 133, struct fsverity_enable_arg)
++#define FS_IOC_MEASURE_VERITY	_IOWR('f', 134, struct fsverity_digest)
++
++#endif /* _UAPI_LINUX_FSVERITY_H */
 -- 
 2.21.0
 
