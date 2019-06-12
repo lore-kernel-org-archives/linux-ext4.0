@@ -2,148 +2,118 @@ Return-Path: <SRS0=H/bF=UL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54E51C31E4A
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 18:40:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AAE1C31E46
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 18:42:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2779D206E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 18:40:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2DD91206E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 18:42:09 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="zfGP+t+9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2403765AbfFLSkm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jun 2019 14:40:42 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:47570 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726724AbfFLSkm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jun 2019 14:40:42 -0400
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id D20092610C6
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     tytso@mit.edu
-Cc:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v3 1/2] common/casefold: Add infrastructure to test filename casefold feature
-Date:   Wed, 12 Jun 2019 14:40:32 -0400
-Message-Id: <20190612184033.21845-1-krisman@collabora.com>
-X-Mailer: git-send-email 2.20.1
+        id S1727915AbfFLSmG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jun 2019 14:42:06 -0400
+Received: from mail-oi1-f195.google.com ([209.85.167.195]:41600 "EHLO
+        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727683AbfFLSmF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jun 2019 14:42:05 -0400
+Received: by mail-oi1-f195.google.com with SMTP id g7so9268734oia.8
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Jun 2019 11:42:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=intel-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=tLkmphJnLjEku4wPa26GqmShS2e5likwCcmpQlFLS9E=;
+        b=zfGP+t+9ivTiw9crHzyoG37UKVT39+ZjMSRc6i4RLF5qzgoEzM0PJJFpTl3UpomLM/
+         kX7wxsRh/bfXL05Kn2SjQT8PDTQbpZvw2lUD2P17lgifKk9462SiGOzy9eolZxENP8tF
+         +j8h3CL4xbOvN0NcXJng0ZhfijbK4zlpWlo5g45OKeiNBbSWh4j6EO8XjD4uzxYBWXSc
+         XQXw6jfUAUrXoISJcc1nasZDsCw2vNnJrgvivK5m8U97df7yj+O0/KKRytyMUK2vV5wL
+         CVPInnibqz35AZHLe+QENPOC6d6PXPPLQ6FBHTljTMKMRhnltIiFojDH2RTb0H3+DeCQ
+         awHA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=tLkmphJnLjEku4wPa26GqmShS2e5likwCcmpQlFLS9E=;
+        b=RJAJrLeiLFe6gwmW5z50/uo+U5xrl0IICpDExhBIswTTqOlQiWTefxxB0A6MDHaq/L
+         E0XsntknzjtYUXCbq+DD/MF0Scz1j2ZNlDqKBputP9Dhwq/3UoazuHTaMeGTE6aEuR7y
+         I4xosYspBuMtIqKeSjosRm+vKcuO/nNGx107Q4S11jPIlhdnXHHpSl1OkHj+8fvCZ5An
+         CPuwkZrcWGB57W9l4pCq5KLLkyZ6vQCyfsZpnD/gbxJMLMSXcykIuCSj/kkxUWyAMyDe
+         A0jD1iVAJCBOBjf+7Iz/XpJS6Xn18KenIRV36wi80Djxgnu5p/2FixUw1+kL97XXqOS2
+         HGZw==
+X-Gm-Message-State: APjAAAXFUBfYuYkU1J9LmKKUGVrYWCuKTTTqYZerEgpXBA+je09J26Uh
+        VVTdp1xo+MbvgAyN8ghljWjTW76Ccoe1DqUKIZ7dng==
+X-Google-Smtp-Source: APXvYqxw8Jxg8VjrdgkzfIw+Yn35hC16YxwrfmO4tE9KRMFgYTyKNK9pqaozSKJ82RqVYk9X5Uls8HWSSM7jkwOY/uo=
+X-Received: by 2002:aca:ed4c:: with SMTP id l73mr412323oih.149.1560364924898;
+ Wed, 12 Jun 2019 11:42:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20190606014544.8339-1-ira.weiny@intel.com> <20190606104203.GF7433@quack2.suse.cz>
+ <20190606195114.GA30714@ziepe.ca> <20190606222228.GB11698@iweiny-DESK2.sc.intel.com>
+ <20190607103636.GA12765@quack2.suse.cz> <20190607121729.GA14802@ziepe.ca>
+ <20190607145213.GB14559@iweiny-DESK2.sc.intel.com> <20190612102917.GB14578@quack2.suse.cz>
+ <20190612114721.GB3876@ziepe.ca> <20190612120907.GC14578@quack2.suse.cz>
+In-Reply-To: <20190612120907.GC14578@quack2.suse.cz>
+From:   Dan Williams <dan.j.williams@intel.com>
+Date:   Wed, 12 Jun 2019 11:41:53 -0700
+Message-ID: <CAPcyv4ikn219XUgHwsPdYp06vBNAJB9Rk-hjZA-fYT4GB3gi+w@mail.gmail.com>
+Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
+To:     Jan Kara <jack@suse.cz>
+Cc:     Jason Gunthorpe <jgg@ziepe.ca>, Ira Weiny <ira.weiny@intel.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jeff Layton <jlayton@kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        John Hubbard <jhubbard@nvidia.com>,
+        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a set of basic helper functions to simplify the testing of
-casefolding capable filesystems.
+On Wed, Jun 12, 2019 at 5:09 AM Jan Kara <jack@suse.cz> wrote:
+>
+> On Wed 12-06-19 08:47:21, Jason Gunthorpe wrote:
+> > On Wed, Jun 12, 2019 at 12:29:17PM +0200, Jan Kara wrote:
+> >
+> > > > > The main objection to the current ODP & DAX solution is that very
+> > > > > little HW can actually implement it, having the alternative still
+> > > > > require HW support doesn't seem like progress.
+> > > > >
+> > > > > I think we will eventually start seein some HW be able to do this
+> > > > > invalidation, but it won't be universal, and I'd rather leave it
+> > > > > optional, for recovery from truely catastrophic errors (ie my DAX is
+> > > > > on fire, I need to unplug it).
+> > > >
+> > > > Agreed.  I think software wise there is not much some of the devices can do
+> > > > with such an "invalidate".
+> > >
+> > > So out of curiosity: What does RDMA driver do when userspace just closes
+> > > the file pointing to RDMA object? It has to handle that somehow by aborting
+> > > everything that's going on... And I wanted similar behavior here.
+> >
+> > It aborts *everything* connected to that file descriptor. Destroying
+> > everything avoids creating inconsistencies that destroying a subset
+> > would create.
+> >
+> > What has been talked about for lease break is not destroying anything
+> > but very selectively saying that one memory region linked to the GUP
+> > is no longer functional.
+>
+> OK, so what I had in mind was that if RDMA app doesn't play by the rules
+> and closes the file with existing pins (and thus layout lease) we would
+> force it to abort everything. Yes, it is disruptive but then the app didn't
+> obey the rule that it has to maintain file lease while holding pins. Thus
+> such situation should never happen unless the app is malicious / buggy.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
----
- common/casefold | 92 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 92 insertions(+)
- create mode 100644 common/casefold
-
-diff --git a/common/casefold b/common/casefold
-new file mode 100644
-index 000000000000..df01029a3d44
---- /dev/null
-+++ b/common/casefold
-@@ -0,0 +1,92 @@
-+# SPDX-License-Identifier: GPL-2.0+
-+# Copyright (c) 2019 Collabora, Ltd.  All Rights Reserved.
-+#
-+# Common functions for testing filename casefold feature
-+
-+_has_casefold_kernel_support()
-+{
-+	case $FSTYP in
-+		ext4)
-+			test -f '/sys/fs/ext4/features/casefold'
-+			;;
-+		*)
-+			# defaults to unsupported
-+			false
-+			;;
-+	esac
-+}
-+
-+_require_scratch_casefold()
-+{
-+	if ! _has_casefold_kernel_support ; then
-+		_notrun "$FSTYP does not support casefold feature"
-+	fi
-+
-+	if ! _scratch_mkfs_casefold &>>seqres.full; then
-+		_notrun "$FSTYP userspace tools do not support casefold"
-+	fi
-+
-+	# Make sure the kernel can mount a filesystem with the encoding
-+	# defined by the userspace tools.  This will fail if
-+	# the userspace tool used a more recent encoding than the one
-+	# supported in kernel space.
-+	if ! _try_scratch_mount &>>seqres.full; then
-+		_notrun \
-+		    "kernel can't mount filesystem with the encoding set by userspace"
-+	fi
-+	_scratch_unmount
-+
-+	# utilities used by casefold
-+	_require_command "$CHATTR_PROG" chattr
-+	_require_command "$LSATTR_PROG" lsattr
-+}
-+
-+_scratch_mkfs_casefold()
-+{
-+	case $FSTYP in
-+		ext4)
-+			_scratch_mkfs -O casefold $*
-+			;;
-+		*)
-+			_notrun "Don't know how to mkfs with casefold support on $FSTYP"
-+			;;
-+	esac
-+}
-+
-+_scratch_mkfs_casefold_strict()
-+{
-+	case $FSTYP in
-+		ext4)
-+			_scratch_mkfs -O casefold -E encoding_flags=strict
-+			;;
-+		*)
-+			_notrun \
-+			    "Don't know how to mkfs with casefold-strict support on $FSTYP"
-+			;;
-+	esac
-+}
-+
-+# To get the exact disk name, we need some method that does a
-+# getdents() on the parent directory, such that we don't get
-+# normalized/casefolded results.  'Find' works ok.
-+_casefold_check_exact_name()
-+{
-+	local basedir=$1
-+	local exact_name=$2
-+	find ${basedir} | grep -q ${exact_name}
-+}
-+
-+_casefold_set_attr()
-+{
-+	$CHATTR_PROG +F "${1}"
-+}
-+
-+_casefold_unset_attr()
-+{
-+	$CHATTR_PROG -F "${1}"
-+}
-+
-+_casefold_lsattr_dir()
-+{
-+	$LSATTR_PROG -ld "${1}" | _filter_spaces
-+}
--- 
-2.20.1
-
+When you say 'close' do you mean the final release of the fd? The vma
+keeps a reference to a 'struct file' live even after the fd is closed.
