@@ -1,234 +1,120 @@
-Return-Path: <SRS0=H/bF=UL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=PAyA=UM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_MUTT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FB0AC31E46
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 20:40:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10C5BC31E45
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:12:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 42FB121721
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 Jun 2019 20:40:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DDD4720449
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:12:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="sxTZjPEe"
+	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="JRz6imxO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388879AbfFLUkX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jun 2019 16:40:23 -0400
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:41739 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388336AbfFLUkW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Jun 2019 16:40:22 -0400
-Received: by mail-pf1-f193.google.com with SMTP id m30so9835181pff.8
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Jun 2019 13:40:22 -0700 (PDT)
+        id S1732806AbfFMPMb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jun 2019 11:12:31 -0400
+Received: from mail-qk1-f195.google.com ([209.85.222.195]:44914 "EHLO
+        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388153AbfFMPMU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 11:12:20 -0400
+Received: by mail-qk1-f195.google.com with SMTP id p144so845752qke.11
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2019 08:12:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=VlPEcmst0CYRlRshN2RIWjTTM4YgbYOdNEM+OJeaprA=;
-        b=sxTZjPEeGlJ8Se8Oi8Y1wsNVHbsxski8YIb57diaSefr0ZKJqgDVmR6GWn38LAaIaV
-         dXgcbz4Afqb0KaxifNG6DECqHHVgg+HgTO2LeSBu7zhfg79hIl8uJuunQPX8/Y2ZZb/g
-         DSAPt859PP2GCXx0HORJ5Cf38FoBaIHQAnioLDXZRhoGahcu8b2PrnLWiLt5ginBMB6u
-         HhfoH1Fw13Sog21WcHpv3+gtzynyuxgbS4c6wJ9gxiSP6J8Curjmqu/STvwuIK2/9CuH
-         xC6sEiym/4b7J5kJ6PvEPQih5c7sbbHksAWullMPRrU2HZxVFIaVc/AYkZ33wMeMH0ji
-         ehrg==
+        d=ziepe.ca; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=R4sEx9DRCkbOcqkLsi6Jkv1GflPMZb75UMnrOJnbtJI=;
+        b=JRz6imxOTGsNuMS76M162KvumiMVyYkKXhz/IAFwKjp3Igi0hICl/m4BUGOuw61YG6
+         Pf3He7hg9Kt6x6X1WZuq8bUrqc1a1W2UmAo8VaUwVPA2GdvPEx7a5YMbLY0nfJoFWaQM
+         YEbV9dRjW/drtmRraCujxYyThEP6QtwiSJs3iYcbutlXVk7Z5dASy1/Oy0G/oorjue0j
+         RzaH6Drn7BTg39I+BUiwTL6fije0cyR1reQqzW1AIca5v1agyVprI5RgkLHLmKlYW9Fi
+         0n1zTcJtV1luwZoUboeqFK2xDSzt81BhwHG/KONzmn78w16+WuqvsJOUxxwdcX8amTie
+         g0WA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=VlPEcmst0CYRlRshN2RIWjTTM4YgbYOdNEM+OJeaprA=;
-        b=EyUlM4q2qNQqxCUESUv/+ywA6VPjVXK8oExujzYJwaksv2zwoKlp7sTgGMKcQn7Izm
-         Z2AXLqETPyJim4KrY1uW1aXGpBTofA0RTjmCZIa0hs2yQ7yTf9DUndmDRkY4kcf7mw1h
-         q6OXojE9jRTilBg6L7WXtFG8rAMpBY0uhaOXNbJN9CJu1BcpAoO1lu1gbFS5PjeAttbe
-         5ZrXIuSkTeWjcIuggAqhicWg+SltpK0nlvEZhY9twbqw0NlyreqbWO4PsQy5asw0Sc3n
-         iLWl53NJ6vwphbMJUyJaeTHF5B0MlW5FrMacsFNrtSFMNenV4Vcd1zpUITBkbLmBm0Jl
-         tACQ==
-X-Gm-Message-State: APjAAAX+ImpiFMpHKBfJFUjrjhwc8hGv9doLxFe001bSJAZYqllJ4SZL
-        RuaspfzAWvM2xczqj1Htc1L5Qdthz13QqQ==
-X-Google-Smtp-Source: APXvYqzRo/swIjA5qvicIUHq9st+Arak9v/IEFTj4ALgQYBP+lbTa9T66i4vrnAWc9sjD/dWaE9zwg==
-X-Received: by 2002:a63:c508:: with SMTP id f8mr27214665pgd.48.1560372021547;
-        Wed, 12 Jun 2019 13:40:21 -0700 (PDT)
-Received: from cabot.adilger.ext (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id z11sm90727pjn.2.2019.06.12.13.40.20
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 12 Jun 2019 13:40:20 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <044ADDD7-D7C0-4E27-B9E7-E576CDEDD1C4@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_018AF451-3F80-4D65-B644-31EBD05EFA25";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: fsck doesn't seem to understand inline directories
-Date:   Wed, 12 Jun 2019 14:40:18 -0600
-In-Reply-To: <ee4ad9f4-6706-136d-4cd8-dcf1b58e4229@rasmusvillemoes.dk>
-Cc:     linux-ext4 <linux-ext4@vger.kernel.org>,
-        Li Dongyang <dongyangli@ddn.com>
-To:     Rasmus Villemoes <linux@rasmusvillemoes.dk>
-References: <ee4ad9f4-6706-136d-4cd8-dcf1b58e4229@rasmusvillemoes.dk>
-X-Mailer: Apple Mail (2.3273)
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=R4sEx9DRCkbOcqkLsi6Jkv1GflPMZb75UMnrOJnbtJI=;
+        b=S4GXW9Gmtp+nZbd6kowt7nQq6yrL/HXVgpTEp5MeKqRfzjMA50PASqcHCL3KR/o5fc
+         Z0LweGEpvgSvAUoqmOK9jiSgTTF3TDDA6wBplCV8XNxw8NYcfgQuv6tSYgqhFjUiF+i0
+         O0F1dU/8CPbQkFUPCEs7H/Aqw5RqhxvVSsDrX5tNA4rpuiVSMeejpUSlIoXmLPA8TAK3
+         QLMUEsLt9SYi+FAanRo0qJJYz8QIVunqTS3dWYpPUeHew17gXgaj0ASIh7HmuLoWtlv5
+         QRxXHgs92sa0brq0xrAchvgwCUhIubCOzIP1iz/E8N+SmUEvp6JpcbLqjg1YsZU2rCC5
+         eT2A==
+X-Gm-Message-State: APjAAAVFfiU8o5LyxaFCBhlhQAJTdCeWdeFANoZTxi9KRH26cOf4iM+k
+        EcCEcuwHehMxu1uCP6la6PyR8w==
+X-Google-Smtp-Source: APXvYqzM9yCChTgMP3KlIhiG1BK19OOrfQlMOx6JZlNrolhLErYOjGfGuCWD8w4PBuxWllsDgHA6QA==
+X-Received: by 2002:a37:e506:: with SMTP id e6mr3810214qkg.229.1560438740039;
+        Thu, 13 Jun 2019 08:12:20 -0700 (PDT)
+Received: from ziepe.ca (hlfxns017vw-156-34-55-100.dhcp-dynamic.fibreop.ns.bellaliant.net. [156.34.55.100])
+        by smtp.gmail.com with ESMTPSA id n10sm1577550qke.72.2019.06.13.08.12.19
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 13 Jun 2019 08:12:19 -0700 (PDT)
+Received: from jgg by mlx.ziepe.ca with local (Exim 4.90_1)
+        (envelope-from <jgg@ziepe.ca>)
+        id 1hbROk-0001qR-Po; Thu, 13 Jun 2019 12:12:18 -0300
+Date:   Thu, 13 Jun 2019 12:12:18 -0300
+From:   Jason Gunthorpe <jgg@ziepe.ca>
+To:     Dan Williams <dan.j.williams@intel.com>
+Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Jeff Layton <jlayton@kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        John Hubbard <jhubbard@nvidia.com>,
+        =?utf-8?B?SsOpcsO0bWU=?= Glisse <jglisse@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>
+Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
+Message-ID: <20190613151218.GB22901@ziepe.ca>
+References: <20190606222228.GB11698@iweiny-DESK2.sc.intel.com>
+ <20190607103636.GA12765@quack2.suse.cz>
+ <20190607121729.GA14802@ziepe.ca>
+ <20190607145213.GB14559@iweiny-DESK2.sc.intel.com>
+ <20190612102917.GB14578@quack2.suse.cz>
+ <20190612114721.GB3876@ziepe.ca>
+ <20190612120907.GC14578@quack2.suse.cz>
+ <20190612191421.GM3876@ziepe.ca>
+ <20190612221336.GA27080@iweiny-DESK2.sc.intel.com>
+ <CAPcyv4gkksnceCV-p70hkxAyEPJWFvpMezJA1rEj6TEhKAJ7qQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4gkksnceCV-p70hkxAyEPJWFvpMezJA1rEj6TEhKAJ7qQ@mail.gmail.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Wed, Jun 12, 2019 at 03:54:19PM -0700, Dan Williams wrote:
+> > > My preference would be to avoid this scenario, but if it is really
+> > > necessary, we could probably build it with some work.
+> > >
+> > > The only case we use it today is forced HW hot unplug, so it is rarely
+> > > used and only for an 'emergency' like use case.
+> >
+> > I'd really like to avoid this as well.  I think it will be very confusing for
+> > RDMA apps to have their context suddenly be invalid.  I think if we have a way
+> > for admins to ID who is pinning a file the admin can take more appropriate
+> > action on those processes.   Up to and including killing the process.
+> 
+> Can RDMA context invalidation, "device disassociate", be inflicted on
+> a process from the outside? 
 
---Apple-Mail=_018AF451-3F80-4D65-B644-31EBD05EFA25
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Yes, but it is currently only applied to the entire device - ie you do
+'rmmod mlx5_ib' and all the running user space process see that their
+FD has moved to some error and the device is broken.
 
-On Jun 12, 2019, at 8:07 AM, Rasmus Villemoes <linux@rasmusvillemoes.dk> =
-wrote:
->=20
-> Doing a forced check on an ext4 file system with inline_data results =
-in
-> lots of warnings - and I think answering yes to "fixing" those would
-> actually corrupt the fs.
+Targetting the disassociate of only a single FD would be a new thing.
 
-Rasmus,
-This definitely seems like a bug in e2fsck.  It isn't totally =
-surprising, since
-the inline_data feature is not widely used.  We are currently =
-investigating using
-it for regular files, but it doesn't seem worthwhile for directories to =
-me.
-
-Would you be interested to take a look at fixing this?  It seems like it =
-would be
-mostly a matter of adding checks for the EXT2_INLINE_DATA_FL in the =
-various parts
-of e2fsck that are generating the errors, then encapsulating the test =
-script below
-into a new test case for e2fsck.
-
-While there are a few test cases for inline_data =
-(tests/f_inline{data,dir}_*),
-it seems they are all checking for corrupted inline files or =
-directories, and
-not for "valid" inline directories.
-
-It _may_ also be that this is a recent regression, so it wouldn't hurt =
-to try
-your test case with an older version (e.g. 1.43.1 or 1.42.13) to see if =
-it was
-working, and if yes use "git bisect" to track it down.  That would make =
-it pretty
-urgent to fix, since the new e2fsck-1.45.2 release would suddenly =
-corrupt any
-existing inline_data filesystems.
-
-If this didn't work in 1.43.1 or 1.42.13 then it seems unlikely that =
-anyone is
-using inline_data at all, so while it would be good to fix this bug it =
-isn't
-nearly as urgent.
-
-Cheers, Andreas
-
-> To reproduce:
->=20
-> truncate -s 100000000 ext4.img
-> misc/mke2fs -t ext4 -b 4096 -I 512 -O
-> =
-'^dir_nlink,extra_isize,filetype,^huge_file,inline_data,large_file,large_d=
-ir,^meta_bg,^project,^quota,^resize_inode,sparse_super,64bit,metadata_csum=
-_seed,metadata_csum'
-> -U random -v ext4.img
-> mkdir m
-> sudo mount ext4.img m
-> sudo chown $USER:$USER m
-> mkdir m/aa
-> echo 123 > m/aa/123
-> touch m/aa/empty
-> seq 10000 > m/aa/largefile
-> mkdir m/aa/bb
-> mkdir m/cc
-> sudo umount m
-> e2fsck/e2fsck -f -n ext4.img
->=20
-> The last command gives this output:
->=20
-> -----
-> e2fsck 1.45.2 (27-May-2019)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> '..' in /aa (12) is <The NULL inode> (0), should be / (2).
-> Fix? no
->=20
-> Unconnected directory inode 16 (/aa/bb)
-> Connect to /lost+found? no
->=20
-> '..' in /cc (17) is <The NULL inode> (0), should be / (2).
-> Fix? no
->=20
-> Pass 4: Checking reference counts
-> Inode 2 ref count is 5, should be 3.  Fix? no
->=20
-> Inode 12 ref count is 3, should be 1.  Fix? no
->=20
-> Unattached inode 13
-> Connect to /lost+found? no
->=20
-> Unattached zero-length inode 14.  Clear? no
->=20
-> Unattached inode 14
-> Connect to /lost+found? no
->=20
-> Unattached inode 15
-> Connect to /lost+found? no
->=20
-> Unattached inode 16
-> Connect to /lost+found? no
->=20
-> Inode 17 ref count is 2, should be 1.  Fix? no
->=20
-> Pass 5: Checking group summary information
->=20
-> ext4.img: ********** WARNING: Filesystem still has errors **********
->=20
-> ext4.img: 17/24416 files (5.9% non-contiguous), 4096/24414 blocks
-> -----
->=20
-> Am I doing something wrong? The kernel mounting the fs above is 4.15, =
-in
-> case that matters.
->=20
-> Rasmus
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_018AF451-3F80-4D65-B644-31EBD05EFA25
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl0BYzIACgkQcqXauRfM
-H+Av8xAAl1g8fGXNQ1VGziWN4R+NarkYblEa3+TUCPMN98kZQx0S+2LrTV4Ty/5/
-1DbSPZOOV5CKlAztBjwCBIwece6icRTB2cvQGXXxbtJG2gtz4mfKYsN3rH4NeVEk
-ztnjqYNjiBxpBbPEYbjKOAzHreGmD/KdgAqr1SsCR0HIaQSSxv2pBmW1KY07lboO
-Pl6Y5Tks7bKQE/xmBSwilnG6ogedLSOk3ljPcoRcXVtEW1yTZwFiVPY5hJz4pJOW
-B8EzRMTluI3aThhzi7VDs5R3T7i2f8UMJNQM1F0j7bF3R+7tG5RNVW7obXOUA99U
-WToh+S2Q/G1SCYHR87O+mgRBgzUifmflxLDlQYoFrDc/QEd5K8CEY6gZ9REvwcol
-AiL9uhTEENTrEFgibTe8s+n4CDjpNda4wcXcMJjsCcXFy7U+kOXDAZrtkKfmdQWZ
-VTCKLlpL14g3qRDEKUlyHnHw2/j4Q2BX5nMqfkIj+s3ERMCnazEWN/JyOfDQY1sh
-ukaw+KknlfX1iB3Fo0D5jl5jGH5mdOWq/ncL71NMJAxv3JgjK8fnMHYdrZ1UGwk1
-TwEdrBt+4yowQcRLl6ZamDzVl8xCoRzpmLAL6xAD2YgKLd1Jj7CuLT+MblPE5TH6
-BCXi9Q9TDW81bbvHr/U3DOZ6poL81waljLGzq8iErC4rKze7pFk=
-=0Rlg
------END PGP SIGNATURE-----
-
---Apple-Mail=_018AF451-3F80-4D65-B644-31EBD05EFA25--
+Jason
