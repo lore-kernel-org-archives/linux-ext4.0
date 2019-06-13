@@ -2,77 +2,54 @@ Return-Path: <SRS0=PAyA=UM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_MUTT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0AD4C31E49
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:30:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2C4DC31E4A
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:32:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 78FE42082C
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:30:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 98D8F20B7C
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 15:32:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="ez3y4b43"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="iMC2hvEI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727868AbfFMPaE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Jun 2019 11:30:04 -0400
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:46020 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731696AbfFMP3z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 11:29:55 -0400
-Received: by mail-qt1-f196.google.com with SMTP id j19so23007005qtr.12
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2019 08:29:55 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ziepe.ca; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to:user-agent;
-        bh=zI+cml8WbrmbJ9toyFXRrApWdKeWP1klnItjSAKRPGg=;
-        b=ez3y4b43vsN45W2H2bDstmo6Om2wBZpYtJKgMMjQ9NBoecm8EqzxMc/rNSpmMUBedy
-         80Ex/NCrVk0GjamXc8tFY6oZxMeqGSAa2XxliMKTTtJWm/Hdv+7/O2TlnSRLVmYLMjc1
-         8QLaCJlqlQNIG4Wtw5O1fja9ybK4S3vwEG6x4PLpKGnKhfBKyUDjUSuJ7Daf2FmV0ukB
-         Fiy/FGLk6V0O5Od1WI6hEe1YQb2rKTshssT0ZDeknDIfsjbY9xOSOCaaERP1VJPOdnB9
-         Me1HNUVA3ivb0wrw4Jz0PdvTbXzAgXVoN/LwODHkV6bcRV7ByakROGDgfhqlpDrkzCce
-         zwyA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to:user-agent;
-        bh=zI+cml8WbrmbJ9toyFXRrApWdKeWP1klnItjSAKRPGg=;
-        b=PViMIYv6Wem1Zc9lr6roYA+SNLggBMsmvgr1slrkYIOespOcwsCcL1vFiDgMfblG2x
-         tLwlhP/IV1CNTwqWAI3VqV1rRJPJN68clWWSR5sOEu4OUsOjXbBm04jiJuhmk4BNKGqV
-         SNPWxy1J/oaVYpvBdBA9v3TH+QSI9l0N3K746N0N5fkgE6asV51ikq9JqfVkBtAOD5n7
-         3+dfQ5dzhYnRQ92uwEzDPsGtqj67ydYGTPZn/kKUxdza4nxcEfLohPMbcvbIC8pJlKci
-         YurXwx32ZnaDrwr2D0hbej+v+B/tWqOlZ8s1bHnSSpTAiLtz2G5j/Oqf7FNtNLSMUT3+
-         UgMw==
-X-Gm-Message-State: APjAAAV+/rPbezGwOOKoLQQmAqDaMNT/fIzjo2EOAFIrpZBU11gWzjm7
-        AndN43Bb8V4pwfWjb/5ao6y/kw==
-X-Google-Smtp-Source: APXvYqxumou76h8DgPuXHGACUFtVz1bj3RAtdr2UUPeKh8lpCv3ZK4QnjNs+8s/8x74HDjzAfBeu7Q==
-X-Received: by 2002:a0c:b163:: with SMTP id r32mr4246320qvc.169.1560439794791;
-        Thu, 13 Jun 2019 08:29:54 -0700 (PDT)
-Received: from ziepe.ca (hlfxns017vw-156-34-55-100.dhcp-dynamic.fibreop.ns.bellaliant.net. [156.34.55.100])
-        by smtp.gmail.com with ESMTPSA id s66sm1645906qkh.17.2019.06.13.08.29.54
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 13 Jun 2019 08:29:54 -0700 (PDT)
-Received: from jgg by mlx.ziepe.ca with local (Exim 4.90_1)
-        (envelope-from <jgg@ziepe.ca>)
-        id 1hbRfl-0001zA-RQ; Thu, 13 Jun 2019 12:29:53 -0300
-Date:   Thu, 13 Jun 2019 12:29:53 -0300
-From:   Jason Gunthorpe <jgg@ziepe.ca>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        id S1728837AbfFMPcj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jun 2019 11:32:39 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:41576 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728462AbfFMKrr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 06:47:47 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=GEs9TuIKz96lXRS7FnLGyqSMFlOm6a6Nuvp5RkrDbpg=; b=iMC2hvEIOcyryH8ttvBTFCIwJ
+        +/UTOZxleRRIx/Qk3yqPfUzPCOda7GErke13ZzFQak5ewSoRm8WulpfqNH7Zcz8Q/4E8j/T6eNEmH
+        zqn/a0VQTD+joB/VdqCU1xYbOG/t0Yt1iH7D4MVcM+JnmapUwUFZ9n9jOt8V0iESGcP+afyjOL9pH
+        +Z800XzTY/YS/+CM4flrqhchMwkDHfagPOomV5WMld5ChIy1boYvTjVntNNzTcy5LKpr/Bsx2mf7S
+        S446zK0y8A3V0fwGhTmnFSvXqbCAHfkut7f3C9ZExu7tOQe+5MbplKDwi6MAkqGaZIAtnEYCa3p8M
+        bMZjvH0qQ==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92 #3 (Red Hat Linux))
+        id 1hbNGh-0007DC-6o; Thu, 13 Jun 2019 10:47:43 +0000
+Date:   Thu, 13 Jun 2019 03:47:43 -0700
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
         Dan Williams <dan.j.williams@intel.com>,
         Theodore Ts'o <tytso@mit.edu>,
         Jeff Layton <jlayton@kernel.org>, linux-xfs@vger.kernel.org,
         Andrew Morton <akpm@linux-foundation.org>,
         John Hubbard <jhubbard@nvidia.com>,
-        =?utf-8?B?SsOpcsO0bWU=?= Glisse <jglisse@redhat.com>,
+        =?iso-8859-1?B?Suly9G1l?= Glisse <jglisse@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nvdimm@lists.01.org, linux-ext4@vger.kernel.org,
-        linux-mm@kvack.org, linux-rdma@vger.kernel.org
+        linux-mm@kvack.org, Jason Gunthorpe <jgg@ziepe.ca>,
+        linux-rdma@vger.kernel.org
 Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
-Message-ID: <20190613152953.GD22901@ziepe.ca>
+Message-ID: <20190613104743.GH32656@bombadil.infradead.org>
 References: <20190606014544.8339-1-ira.weiny@intel.com>
  <20190606104203.GF7433@quack2.suse.cz>
  <20190606220329.GA11698@iweiny-DESK2.sc.intel.com>
@@ -82,51 +59,67 @@ References: <20190606014544.8339-1-ira.weiny@intel.com>
  <20190612123751.GD32656@bombadil.infradead.org>
  <20190613002555.GH14363@dread.disaster.area>
  <20190613032320.GG32656@bombadil.infradead.org>
+ <20190613043649.GJ14363@dread.disaster.area>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190613032320.GG32656@bombadil.infradead.org>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+In-Reply-To: <20190613043649.GJ14363@dread.disaster.area>
+User-Agent: Mutt/1.9.2 (2017-12-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jun 12, 2019 at 08:23:20PM -0700, Matthew Wilcox wrote:
-> On Thu, Jun 13, 2019 at 10:25:55AM +1000, Dave Chinner wrote:
-> > On Wed, Jun 12, 2019 at 05:37:53AM -0700, Matthew Wilcox wrote:
-> > > That's rather different from the normal meaning of 'exclusive' in the
-> > > context of locks, which is "only one user can have access to this at
-> > > a time".
+On Thu, Jun 13, 2019 at 02:36:49PM +1000, Dave Chinner wrote:
+> On Wed, Jun 12, 2019 at 08:23:20PM -0700, Matthew Wilcox wrote:
+> > On Thu, Jun 13, 2019 at 10:25:55AM +1000, Dave Chinner wrote:
+> > > On Wed, Jun 12, 2019 at 05:37:53AM -0700, Matthew Wilcox wrote:
+> > > > That's rather different from the normal meaning of 'exclusive' in the
+> > > > context of locks, which is "only one user can have access to this at
+> > > > a time".
+> > > 
+> > > Layout leases are not locks, they are a user access policy object.
+> > > It is the process/fd which holds the lease and it's the process/fd
+> > > that is granted exclusive access.  This is exactly the same semantic
+> > > as O_EXCL provides for granting exclusive access to a block device
+> > > via open(), yes?
 > > 
-> > Layout leases are not locks, they are a user access policy object.
-> > It is the process/fd which holds the lease and it's the process/fd
-> > that is granted exclusive access.  This is exactly the same semantic
-> > as O_EXCL provides for granting exclusive access to a block device
-> > via open(), yes?
+> > This isn't my understanding of how RDMA wants this to work, so we should
+> > probably clear that up before we get too far down deciding what name to
+> > give it.
+> > 
+> > For the RDMA usage case, it is entirely possible that both process A
+> > and process B which don't know about each other want to perform RDMA to
+> > file F.  So there will be two layout leases active on this file at the
+> > same time.  It's fine for IOs to simultaneously be active to both leases.
 > 
-> This isn't my understanding of how RDMA wants this to work, so we should
-> probably clear that up before we get too far down deciding what name to
-> give it.
+> Yes, it is.
 > 
-> For the RDMA usage case, it is entirely possible that both process A
-> and process B which don't know about each other want to perform RDMA to
-> file F.  So there will be two layout leases active on this file at the
-> same time.  It's fine for IOs to simultaneously be active to both leases.
-> But if the filesystem wants to move blocks around, it has to break
-> both leases.
+> > But if the filesystem wants to move blocks around, it has to break
+> > both leases.
 > 
-> If Process C tries to do a write to file F without a lease, there's no
-> problem, unless a side-effect of the write would be to change the block
-> mapping, in which case either the leases must break first, or the write
-> must be denied.
-> 
-> Jason, please correct me if I've misunderstood the RDMA needs here.
+> No, the _lease layer_ needs to break both leases when the filesystem
+> calls break_layout().
 
-Yes, I think you've captured it
+That's a distinction without a difference as far as userspace is
+concerned.  If process A asks for an exclusive lease (and gets it),
+then process B asks for an exclusive lease (and gets it), that lease
+isn't exclusive!  It's shared.
 
-Based on Dave's remarks how frequently a filesystem needs to break the
-lease will determine if it is usuable to be combined with RDMA or
-not...
+I think the example you give of O_EXCL is more of a historical accident.
+It's a relatively recent Linuxism that O_EXCL on a block device means
+"this block device is not part of a filesystem", and I don't think
+most userspace programmers are aware of what it means when not paired
+with O_CREAT.
 
-Jason
+> > If Process C tries to do a write to file F without a lease, there's no
+> > problem, unless a side-effect of the write would be to change the block
+> > mapping,
+> 
+> That's a side effect we cannot predict ahead of time. But it's
+> also _completely irrelevant_ to the layout lease layer API and
+> implementation.(*)
+
+It's irrelevant to the naming, but you brought it up as part of the
+semantics.
+
