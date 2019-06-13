@@ -2,178 +2,104 @@ Return-Path: <SRS0=PAyA=UM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F6D5C31E4A
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 16:23:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 781BAC31E45
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 16:26:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 785F021743
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 16:23:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 44FCA20644
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 16:26:11 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel-dk.20150623.gappssmtp.com header.i=@kernel-dk.20150623.gappssmtp.com header.b="Fx7IJ3Rn"
+	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="KHbKhiCE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731027AbfFMQX3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Jun 2019 12:23:29 -0400
-Received: from mail-yb1-f194.google.com ([209.85.219.194]:33993 "EHLO
-        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731020AbfFMIhj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 04:37:39 -0400
-Received: by mail-yb1-f194.google.com with SMTP id x32so7514776ybh.1
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2019 01:37:38 -0700 (PDT)
+        id S2392285AbfFMQ0G (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jun 2019 12:26:06 -0400
+Received: from mail-oi1-f195.google.com ([209.85.167.195]:43153 "EHLO
+        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730967AbfFMQ0G (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 12:26:06 -0400
+Received: by mail-oi1-f195.google.com with SMTP id w79so14882214oif.10
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2019 09:26:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=kernel-dk.20150623.gappssmtp.com; s=20150623;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=xQyhQbksvj61RPrZv6HE/27WZ2p7zM6vRmq6wqbq8Qs=;
-        b=Fx7IJ3Rn6+Ui58vZZjWSalUo87E2IkSKQDLMUtkgAPO4CmSr7POvW2xsqzpKzq5uhF
-         0f7g+rHnj3GBTKOCeRKhjRPPjQ4GVn+bwZdVpu+vrj/dOJr4Jj1ZIkTbJ3YLMTlyMxMN
-         dFMsKo5sE6beFBhyxH44nY5lY9n2acrQ4g7CdoyFqTBJVwOr6pTnEnT5NOllmkVF9RP6
-         IgCU7hIvmaN/Y+hE5quNLy9iXnlQ2onRzC1oZrgFYiPOaJytXxn79iHsne5eQcZMRhvR
-         OnUqbsrKe5fbWBuAfzOebwrdLBXouzVannJlsiiYbLyWJKuNqhB0elmrcQ+PNSaiuFsW
-         y3Vw==
+        d=intel-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=wjBnZv2pCLDEwG4yb+2F3joyqEyCgCcLuoiul4+lDtg=;
+        b=KHbKhiCEqP27YRm90NCLuB4c2IplNhmcOcBL7/TKZlk3SiaZQfwA9S0uY/GsQv03Pr
+         aBL2AWfi8XTIFaky9LKQqE+K/NfNYYNrlmFC/I9jOaxHcs4tAfHfjcUQbqcl3RnXxild
+         Tu3HngJ2BWQbjHKSA518A7LMdZsRAI0y2xoRezHhz45e3uyBcpgMb0voTy98I6u2hRnp
+         NYEu7LcFVoYX1llZ3PhX+HJY3OdLwk1vk8E00NF1S8iWedYKuEKJl7E8AOFKwK6O5TC3
+         f4HIkh3G/dWUfgrFHj9h1Gd+qxz3edzqRbXtlNTkaPme0fjX3JDzh/8PrIf6qw6dZLSg
+         gtaQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=xQyhQbksvj61RPrZv6HE/27WZ2p7zM6vRmq6wqbq8Qs=;
-        b=YXUEDJ9nkwLxlMWUYf3ylabB0y7mkfYDjY4rRNSXySngCYK3ri4Z6fLedaXcfhGvZh
-         t2AUEil8t+G72/GsazNmVGaDKeBd0RggOL5Ydx3xCvs3DiurnQY2rkBfpx4D3qGGAKn5
-         Gt+f5qaByMzuWNYXpvm0BVq43/jQrx+qbBHJC2vxy1KZE18ScnL3/HH3NAgGhG5s0Aca
-         LKfGtbxDDI5Uh9qYBnYf//x/WqONaYoZOx9KjEfZe9Yt4Lkp7/yGaWkmz4LMMfx69w5c
-         nptaU4G0/C0FiySBX8HGY/7nfNTHGy0KwJ9VofdlN+e26qTE/ZNLMIzsRbZPwSo9ecGL
-         aQ2A==
-X-Gm-Message-State: APjAAAVW1Rwhifc9jOxeJcX0ftersw8df2CUvz3ZzQ7VtZfxWIYEFew1
-        vNYp5Z+6w0NMx7SAWg8L8GhMsA==
-X-Google-Smtp-Source: APXvYqyCnK2ALhwLtTPvX0AEYshPEqUIKjRxcqh3pgRhqVo+A2spmhGkm2WC+o0o7oMW27T55jkwSw==
-X-Received: by 2002:a25:7413:: with SMTP id p19mr39487999ybc.310.1560415057147;
-        Thu, 13 Jun 2019 01:37:37 -0700 (PDT)
-Received: from ?IPv6:2600:380:9e2c:9b66:68e0:4c59:dc75:6d4b? ([2600:380:9e2c:9b66:68e0:4c59:dc75:6d4b])
-        by smtp.gmail.com with ESMTPSA id r6sm597826ywd.47.2019.06.13.01.37.30
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 13 Jun 2019 01:37:36 -0700 (PDT)
-Subject: Re: CFQ idling kills I/O performance on ext4 with blkio cgroup
- controller
-To:     "Srivatsa S. Bhat" <srivatsa@csail.mit.edu>,
-        Jan Kara <jack@suse.cz>
-Cc:     Paolo Valente <paolo.valente@linaro.org>,
-        linux-fsdevel@vger.kernel.org,
-        linux-block <linux-block@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, cgroups@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        Jeff Moyer <jmoyer@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-        amakhalov@vmware.com, anishs@vmware.com, srivatsab@vmware.com,
-        Ulf Hansson <ulf.hansson@linaro.org>,
-        Linus Walleij <linus.walleij@linaro.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Stable <stable@vger.kernel.org>
-References: <6FE0A98F-1E3D-4EF6-8B38-2C85741924A4@linaro.org>
- <2A58C239-EF3F-422B-8D87-E7A3B500C57C@linaro.org>
- <a04368ba-f1d5-8f2c-1279-a685a137d024@csail.mit.edu>
- <E270AD92-943E-4529-8158-AB480D6D9DF8@linaro.org>
- <5b71028c-72f0-73dd-0cd5-f28ff298a0a3@csail.mit.edu>
- <FFA44D26-75FF-4A8E-A331-495349BE5FFC@linaro.org>
- <0d6e3c02-1952-2177-02d7-10ebeb133940@csail.mit.edu>
- <7B74A790-BD98-412B-ADAB-3B513FB1944E@linaro.org>
- <6a6f4aa4-fc95-f132-55b2-224ff52bd2d8@csail.mit.edu>
- <7c5e9d11-4a3d-7df4-c1e6-7c95919522ab@csail.mit.edu>
- <20190612130446.GD14578@quack2.suse.cz>
- <dd32ed59-a543-fc76-9a9a-2462f0119270@csail.mit.edu>
-From:   Jens Axboe <axboe@kernel.dk>
-Message-ID: <aca00f05-4d71-7db0-52d6-7aa0932cc5c0@kernel.dk>
-Date:   Thu, 13 Jun 2019 02:37:29 -0600
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.0
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=wjBnZv2pCLDEwG4yb+2F3joyqEyCgCcLuoiul4+lDtg=;
+        b=gn+wKKnyh5L6U6IFUZN6K3OLacZyBlsUTP32uGZDFr/vJYoSiFywiq5YfxB9saSIzI
+         4m80KqyygnAbObASAEH57M3t6uSvPkf/+SJN6ZwnGXnNx8EqkS7aELTiXftky1yt7XqV
+         1OuiNCwBNWf4Y1YynyqwgjrKyR1PU2EMZv+PAZ8K0oPARJ6yHr6Hnm6MO84pSHtA8DZD
+         i2R3jqtikXwDTkdh091PflE1gXjb5K7/jfQ4OenatZAabxbanwwpE7iowUtG0lg7Hz+W
+         wca2DlewyDU8KZNKoShlGlOsOBuhLdHZfo7D5H9WLsQvXmcOK6EKMdSUA3Q2ZMcyCHc3
+         FqLA==
+X-Gm-Message-State: APjAAAVINZ8zWp5+clLLFwyPK3jbNaT4pArzX5oJuU60gamVqKs2HUww
+        36Bi+flFeCMkrh8SEI/UkOfkblP+heSB46zHLgFFAg==
+X-Google-Smtp-Source: APXvYqyIpO3hOidIsXLbc4Y7aCrEkKlPPSiQhXNkmA/XJwYbaL526BswBcBQAMtK33IEuzEN5c+1wA+6c6zViqiveWY=
+X-Received: by 2002:aca:7c5:: with SMTP id 188mr3423005oih.70.1560443165189;
+ Thu, 13 Jun 2019 09:26:05 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <dd32ed59-a543-fc76-9a9a-2462f0119270@csail.mit.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <20190607121729.GA14802@ziepe.ca> <20190607145213.GB14559@iweiny-DESK2.sc.intel.com>
+ <20190612102917.GB14578@quack2.suse.cz> <20190612114721.GB3876@ziepe.ca>
+ <20190612120907.GC14578@quack2.suse.cz> <20190612191421.GM3876@ziepe.ca>
+ <20190612221336.GA27080@iweiny-DESK2.sc.intel.com> <CAPcyv4gkksnceCV-p70hkxAyEPJWFvpMezJA1rEj6TEhKAJ7qQ@mail.gmail.com>
+ <20190612233324.GE14336@iweiny-DESK2.sc.intel.com> <CAPcyv4jf19CJbtXTp=ag7Ns=ZQtqeQd3C0XhV9FcFCwd9JCNtQ@mail.gmail.com>
+ <20190613151354.GC22901@ziepe.ca>
+In-Reply-To: <20190613151354.GC22901@ziepe.ca>
+From:   Dan Williams <dan.j.williams@intel.com>
+Date:   Thu, 13 Jun 2019 09:25:54 -0700
+Message-ID: <CAPcyv4hZsxd+eUrVCQmm-O8Zcu16O5R1d0reTM+JBBn7oP7Uhw@mail.gmail.com>
+Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
+To:     Jason Gunthorpe <jgg@ziepe.ca>
+Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jeff Layton <jlayton@kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        John Hubbard <jhubbard@nvidia.com>,
+        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 6/12/19 1:36 PM, Srivatsa S. Bhat wrote:
-> 
-> [ Adding Greg to CC ]
-> 
-> On 6/12/19 6:04 AM, Jan Kara wrote:
->> On Tue 11-06-19 15:34:48, Srivatsa S. Bhat wrote:
->>> On 6/2/19 12:04 AM, Srivatsa S. Bhat wrote:
->>>> On 5/30/19 3:45 AM, Paolo Valente wrote:
->>>>>
->>> [...]
->>>>> At any rate, since you pointed out that you are interested in
->>>>> out-of-the-box performance, let me complete the context: in case
->>>>> low_latency is left set, one gets, in return for this 12% loss,
->>>>> a) at least 1000% higher responsiveness, e.g., 1000% lower start-up
->>>>> times of applications under load [1];
->>>>> b) 500-1000% higher throughput in multi-client server workloads, as I
->>>>> already pointed out [2].
->>>>>
->>>>
->>>> I'm very happy that you could solve the problem without having to
->>>> compromise on any of the performance characteristics/features of BFQ!
->>>>
->>>>
->>>>> I'm going to prepare complete patches.  In addition, if ok for you,
->>>>> I'll report these results on the bug you created.  Then I guess we can
->>>>> close it.
->>>>>
->>>>
->>>> Sounds great!
->>>>
->>>
->>> Hi Paolo,
->>>
->>> Hope you are doing great!
->>>
->>> I was wondering if you got a chance to post these patches to LKML for
->>> review and inclusion... (No hurry, of course!)
->>>
->>> Also, since your fixes address the performance issues in BFQ, do you
->>> have any thoughts on whether they can be adapted to CFQ as well, to
->>> benefit the older stable kernels that still support CFQ?
->>
->> Since CFQ doesn't exist in current upstream kernel anymore, I seriously
->> doubt you'll be able to get any performance improvements for it in the
->> stable kernels...
->>
-> 
-> I suspected as much, but that seems unfortunate though. The latest LTS
-> kernel is based on 4.19, which still supports CFQ. It would have been
-> great to have a process to address significant issues on older
-> kernels too.
-> 
-> Greg, do you have any thoughts on this? The context is that both CFQ
-> and BFQ I/O schedulers have issues that cause I/O throughput to suffer
-> upto 10x - 30x on certain workloads and system configurations, as
-> reported in [1].
-> 
-> In this thread, Paolo posted patches to fix BFQ performance on
-> mainline. However CFQ suffers from the same performance collapse, but
-> CFQ was removed from the kernel in v5.0. So obviously the usual stable
-> backporting path won't work here for several reasons:
-> 
->    1. There won't be a mainline commit to backport from, as CFQ no
->       longer exists in mainline.
-> 
->    2. This is not a security/stability fix, and is likely to involve
->       invasive changes.
-> 
-> I was wondering if there was a way to address the performance issues
-> in CFQ in the older stable kernels (including the latest LTS 4.19),
-> despite the above constraints, since the performance drop is much too
-> significant. I guess not, but thought I'd ask :-)
-> 
-> [1]. https://lore.kernel.org/lkml/8d72fcf7-bbb4-2965-1a06-e9fc177a8938@csail.mit.edu/
+On Thu, Jun 13, 2019 at 8:14 AM Jason Gunthorpe <jgg@ziepe.ca> wrote:
+>
+> On Wed, Jun 12, 2019 at 06:14:46PM -0700, Dan Williams wrote:
+> > > Effectively, we would need a way for an admin to close a specific file
+> > > descriptor (or set of fds) which point to that file.  AFAIK there is no way to
+> > > do that at all, is there?
+> >
+> > Even if there were that gets back to my other question, does RDMA
+> > teardown happen at close(fd), or at final fput() of the 'struct
+> > file'?
+>
+> AFAIK there is no kernel side driver hook for close(fd).
+>
+> rdma uses a normal chardev so it's lifetime is linked to the file_ops
+> release, which is called on last fput. So all the mmaps, all the dups,
+> everything must go before it releases its resources.
 
-This issue has always been there. There will be no specific patches made
-for stable for something that doesn't even exist in the newer kernels.
-
--- 
-Jens Axboe
-
+Oh, I must have missed where this conversation started talking about
+the driver-device fd. I thought we were talking about the close /
+release of the target file that is MAP_SHARED for the memory
+registration. A release of the driver fd is orthogonal to coordinating
+/ signalling actions relative to the leased file.
