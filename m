@@ -2,127 +2,126 @@ Return-Path: <SRS0=PAyA=UM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_MUTT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F3A5C31E4A
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 17:12:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E05ABC31E49
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 17:18:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 325382053B
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 17:12:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B6B502053B
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 17:18:39 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="lpafWUUx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393447AbfFMRME (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Jun 2019 13:12:04 -0400
-Received: from mga01.intel.com ([192.55.52.88]:41922 "EHLO mga01.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729072AbfFLWMS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Jun 2019 18:12:18 -0400
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from orsmga004.jf.intel.com ([10.7.209.38])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 12 Jun 2019 15:12:17 -0700
-X-ExtLoop1: 1
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by orsmga004.jf.intel.com with ESMTP; 12 Jun 2019 15:12:16 -0700
-Date:   Wed, 12 Jun 2019 15:13:36 -0700
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     Jason Gunthorpe <jgg@ziepe.ca>
-Cc:     Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
+        id S1726989AbfFMRSg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jun 2019 13:18:36 -0400
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:45277 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727071AbfFMRSg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jun 2019 13:18:36 -0400
+Received: by mail-qt1-f195.google.com with SMTP id j19so23421233qtr.12
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Jun 2019 10:18:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=ziepe.ca; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=ECRuDs1AAJXccME5fjhnIagUHhl7wP1zzfkz6zfy+gs=;
+        b=lpafWUUxvoz6cw8t6bvxhkbpKx1MuDJC/6+rsfIk9kELesUHNICDeurjA/f9ZuoaJv
+         lKvrldgcxc6rNvpGlf+9lPT2riW0RE1+HuS2OqxKuK9J/UHHXstRF22tdIYHVfy+KlvT
+         LRXs02nEuzM/Fk4kx+1bbgAFr8bE6dMuPmxEyYZicAywAmS5YuFqquENcwoxV3ALaTJr
+         wrm1jUeHUGOSNU/aAA8xVX35TgozP9YEYH5RVAbReFiyARjThtZ1Rs+sS5w3QP1kXXnb
+         Bg53NxX8LuVo7QxF8lvDT58SoxeM97wjJy7wRjhtAvG+RnkgIyeQxLZquacOghksiJH/
+         /FWA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=ECRuDs1AAJXccME5fjhnIagUHhl7wP1zzfkz6zfy+gs=;
+        b=oWvDe1gfwGHhvdjO9diHNYAK1eg4opG0yNP9uySBwszp9mB28EO73K9YsXc2yFVd3T
+         G6aNqThVaCj0qGRWC3gL1ZIFUSa+nEPBdfRfdM2nQTSzYolPxVzFBrnoXpiq1nkhja2K
+         vnDN3mRCg2WgfZ6Qn52LsfFtH/U+ZAq28f8yvam35Ql5Z12EvHAf84Gb2HqT0Z879lOR
+         qy/3mv03FWodmoWRr24NXefuo78DwjaIZO3yTwpnXvxswQcWb7Z7aszhVlWr8tfIOMnb
+         3hH+tmPRNrUYO3ASuRn9VIdRkL3JnMaebkgDwy0aIrQmqBywdlL21ljNMMY0ORuL3i5K
+         3tDA==
+X-Gm-Message-State: APjAAAXFz/al28p6uzeOm9FiPae7KxbyKqXThTtZ0Gei/HRnYpnUXX+N
+        8gl9b/xltA9RTmU4JDxeFXjjKQ==
+X-Google-Smtp-Source: APXvYqxo9wZDsL+u9xxF1oR9luzN2plR83tNtwXpM5LjZTCeK+hD6TjhoexGVCwTWwyvS0UUHoLRyg==
+X-Received: by 2002:aed:3686:: with SMTP id f6mr53799960qtb.30.1560446315300;
+        Thu, 13 Jun 2019 10:18:35 -0700 (PDT)
+Received: from ziepe.ca (hlfxns017vw-156-34-55-100.dhcp-dynamic.fibreop.ns.bellaliant.net. [156.34.55.100])
+        by smtp.gmail.com with ESMTPSA id l3sm76969qkd.49.2019.06.13.10.18.34
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 13 Jun 2019 10:18:34 -0700 (PDT)
+Received: from jgg by mlx.ziepe.ca with local (Exim 4.90_1)
+        (envelope-from <jgg@ziepe.ca>)
+        id 1hbTMw-000325-3P; Thu, 13 Jun 2019 14:18:34 -0300
+Date:   Thu, 13 Jun 2019 14:18:34 -0300
+From:   Jason Gunthorpe <jgg@ziepe.ca>
+To:     Dan Williams <dan.j.williams@intel.com>
+Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
         Theodore Ts'o <tytso@mit.edu>,
         Jeff Layton <jlayton@kernel.org>,
         Dave Chinner <david@fromorbit.com>,
         Matthew Wilcox <willy@infradead.org>,
-        linux-xfs@vger.kernel.org,
+        linux-xfs <linux-xfs@vger.kernel.org>,
         Andrew Morton <akpm@linux-foundation.org>,
         John Hubbard <jhubbard@nvidia.com>,
-        =?iso-8859-1?B?Suly9G1l?= Glisse <jglisse@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-ext4@vger.kernel.org,
-        linux-mm@kvack.org
+        =?utf-8?B?SsOpcsO0bWU=?= Glisse <jglisse@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>
 Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
-Message-ID: <20190612221336.GA27080@iweiny-DESK2.sc.intel.com>
-References: <20190606104203.GF7433@quack2.suse.cz>
- <20190606195114.GA30714@ziepe.ca>
- <20190606222228.GB11698@iweiny-DESK2.sc.intel.com>
- <20190607103636.GA12765@quack2.suse.cz>
- <20190607121729.GA14802@ziepe.ca>
- <20190607145213.GB14559@iweiny-DESK2.sc.intel.com>
- <20190612102917.GB14578@quack2.suse.cz>
+Message-ID: <20190613171834.GE22901@ziepe.ca>
+References: <20190612102917.GB14578@quack2.suse.cz>
  <20190612114721.GB3876@ziepe.ca>
  <20190612120907.GC14578@quack2.suse.cz>
  <20190612191421.GM3876@ziepe.ca>
+ <20190612221336.GA27080@iweiny-DESK2.sc.intel.com>
+ <CAPcyv4gkksnceCV-p70hkxAyEPJWFvpMezJA1rEj6TEhKAJ7qQ@mail.gmail.com>
+ <20190612233324.GE14336@iweiny-DESK2.sc.intel.com>
+ <CAPcyv4jf19CJbtXTp=ag7Ns=ZQtqeQd3C0XhV9FcFCwd9JCNtQ@mail.gmail.com>
+ <20190613151354.GC22901@ziepe.ca>
+ <CAPcyv4hZsxd+eUrVCQmm-O8Zcu16O5R1d0reTM+JBBn7oP7Uhw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190612191421.GM3876@ziepe.ca>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+In-Reply-To: <CAPcyv4hZsxd+eUrVCQmm-O8Zcu16O5R1d0reTM+JBBn7oP7Uhw@mail.gmail.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jun 12, 2019 at 04:14:21PM -0300, Jason Gunthorpe wrote:
-> On Wed, Jun 12, 2019 at 02:09:07PM +0200, Jan Kara wrote:
-> > On Wed 12-06-19 08:47:21, Jason Gunthorpe wrote:
-> > > On Wed, Jun 12, 2019 at 12:29:17PM +0200, Jan Kara wrote:
-> > > 
-> > > > > > The main objection to the current ODP & DAX solution is that very
-> > > > > > little HW can actually implement it, having the alternative still
-> > > > > > require HW support doesn't seem like progress.
-> > > > > > 
-> > > > > > I think we will eventually start seein some HW be able to do this
-> > > > > > invalidation, but it won't be universal, and I'd rather leave it
-> > > > > > optional, for recovery from truely catastrophic errors (ie my DAX is
-> > > > > > on fire, I need to unplug it).
-> > > > > 
-> > > > > Agreed.  I think software wise there is not much some of the devices can do
-> > > > > with such an "invalidate".
-> > > > 
-> > > > So out of curiosity: What does RDMA driver do when userspace just closes
-> > > > the file pointing to RDMA object? It has to handle that somehow by aborting
-> > > > everything that's going on... And I wanted similar behavior here.
-> > > 
-> > > It aborts *everything* connected to that file descriptor. Destroying
-> > > everything avoids creating inconsistencies that destroying a subset
-> > > would create.
-> > > 
-> > > What has been talked about for lease break is not destroying anything
-> > > but very selectively saying that one memory region linked to the GUP
-> > > is no longer functional.
-> > 
-> > OK, so what I had in mind was that if RDMA app doesn't play by the rules
-> > and closes the file with existing pins (and thus layout lease) we would
-> > force it to abort everything. Yes, it is disruptive but then the app didn't
-> > obey the rule that it has to maintain file lease while holding pins. Thus
-> > such situation should never happen unless the app is malicious / buggy.
+On Thu, Jun 13, 2019 at 09:25:54AM -0700, Dan Williams wrote:
+> On Thu, Jun 13, 2019 at 8:14 AM Jason Gunthorpe <jgg@ziepe.ca> wrote:
+> >
+> > On Wed, Jun 12, 2019 at 06:14:46PM -0700, Dan Williams wrote:
+> > > > Effectively, we would need a way for an admin to close a specific file
+> > > > descriptor (or set of fds) which point to that file.  AFAIK there is no way to
+> > > > do that at all, is there?
+> > >
+> > > Even if there were that gets back to my other question, does RDMA
+> > > teardown happen at close(fd), or at final fput() of the 'struct
+> > > file'?
+> >
+> > AFAIK there is no kernel side driver hook for close(fd).
+> >
+> > rdma uses a normal chardev so it's lifetime is linked to the file_ops
+> > release, which is called on last fput. So all the mmaps, all the dups,
+> > everything must go before it releases its resources.
 > 
-> We do have the infrastructure to completely revoke the entire
-> *content* of a FD (this is called device disassociate). It is
-> basically close without the app doing close. But again it only works
-> with some drivers. However, this is more likely something a driver
-> could support without a HW change though.
-> 
-> It is quite destructive as it forcibly kills everything RDMA related
-> the process(es) are doing, but it is less violent than SIGKILL, and
-> there is perhaps a way for the app to recover from this, if it is
-> coded for it.
+> Oh, I must have missed where this conversation started talking about
+> the driver-device fd. 
 
-I don't think many are...  I think most would effectively be "killed" if this
-happened to them.
+In the first paragraph above where Ira is musing about 'close a
+specific file', he is talking about the driver-device fd.
 
-> 
-> My preference would be to avoid this scenario, but if it is really
-> necessary, we could probably build it with some work.
-> 
-> The only case we use it today is forced HW hot unplug, so it is rarely
-> used and only for an 'emergency' like use case.
+Ie unilaterally closing /dev/uverbs as a punishment for an application
+that used leases wrong: ie that released its lease with the RDMA is
+still ongoing. 
 
-I'd really like to avoid this as well.  I think it will be very confusing for
-RDMA apps to have their context suddenly be invalid.  I think if we have a way
-for admins to ID who is pinning a file the admin can take more appropriate
-action on those processes.   Up to and including killing the process.
-
-Ira
-
+Jason
