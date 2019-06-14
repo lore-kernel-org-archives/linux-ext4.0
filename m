@@ -1,35 +1,35 @@
-Return-Path: <SRS0=PAyA=UM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=UlNu=UN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56637C31E49
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 23:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7360DC31E49
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Jun 2019 02:10:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2DE39207E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jun 2019 23:58:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 52FAD20866
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Jun 2019 02:10:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726900AbfFMX6u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Jun 2019 19:58:50 -0400
-Received: from mga06.intel.com ([134.134.136.31]:12081 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725836AbfFMX6u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Jun 2019 19:58:50 -0400
-X-Amp-Result: UNSCANNABLE
-X-Amp-File-Uploaded: False
-Received: from fmsmga007.fm.intel.com ([10.253.24.52])
-  by orsmga104.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 13 Jun 2019 16:58:49 -0700
-X-ExtLoop1: 1
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by fmsmga007.fm.intel.com with ESMTP; 13 Jun 2019 16:58:49 -0700
-Date:   Thu, 13 Jun 2019 17:00:11 -0700
-From:   Ira Weiny <ira.weiny@intel.com>
+        id S1726788AbfFNCKZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Jun 2019 22:10:25 -0400
+Received: from mail106.syd.optusnet.com.au ([211.29.132.42]:47003 "EHLO
+        mail106.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726167AbfFNCKZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jun 2019 22:10:25 -0400
+Received: from dread.disaster.area (pa49-195-189-25.pa.nsw.optusnet.com.au [49.195.189.25])
+        by mail106.syd.optusnet.com.au (Postfix) with ESMTPS id 6E77A3DCE8B;
+        Fri, 14 Jun 2019 12:10:19 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92)
+        (envelope-from <david@fromorbit.com>)
+        id 1hbbeb-0005G5-AA; Fri, 14 Jun 2019 12:09:21 +1000
+Date:   Fri, 14 Jun 2019 12:09:21 +1000
+From:   Dave Chinner <david@fromorbit.com>
 To:     Jason Gunthorpe <jgg@ziepe.ca>
-Cc:     Matthew Wilcox <willy@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+Cc:     Ira Weiny <ira.weiny@intel.com>,
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
         Dan Williams <dan.j.williams@intel.com>,
         Theodore Ts'o <tytso@mit.edu>,
         Jeff Layton <jlayton@kernel.org>, linux-xfs@vger.kernel.org,
@@ -40,7 +40,7 @@ Cc:     Matthew Wilcox <willy@infradead.org>,
         linux-nvdimm@lists.01.org, linux-ext4@vger.kernel.org,
         linux-mm@kvack.org, linux-rdma@vger.kernel.org
 Subject: Re: [PATCH RFC 00/10] RDMA/FS DAX truncate proposal
-Message-ID: <20190614000010.GA783@iweiny-DESK2.sc.intel.com>
+Message-ID: <20190614020921.GM14363@dread.disaster.area>
 References: <20190606104203.GF7433@quack2.suse.cz>
  <20190606220329.GA11698@iweiny-DESK2.sc.intel.com>
  <20190607110426.GB12765@quack2.suse.cz>
@@ -55,7 +55,13 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <20190613234530.GK22901@ziepe.ca>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.2 cv=D+Q3ErZj c=1 sm=1 tr=0 cx=a_idp_d
+        a=K5LJ/TdJMXINHCwnwvH1bQ==:117 a=K5LJ/TdJMXINHCwnwvH1bQ==:17
+        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=dq6fvYVFJ5YA:10
+        a=7-415B0cAAAA:8 a=MIoJepgKeDxvTzH8FPQA:9 a=CjuIK1q_8ugA:10
+        a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -91,11 +97,20 @@ On Thu, Jun 13, 2019 at 08:45:30PM -0300, Jason Gunthorpe wrote:
 > Because process A had a layout lease (and presumably a MR) and the
 > layout was still modified in way that invalidates the RDMA MR.
 
-Oh sorry I miss read the above...  (got Process A and  B mixed up...)
+The lease holder is allowed to modify the mapping it has a lease
+over. That's necessary so lease holders can write data into
+unallocated space in the file. The lease is there to prevent third
+parties from modifying the layout without the lease holder being
+informed and taking appropriate action to allow that 3rd party
+modification to occur.
 
-Right, but Process A still can't free those blocks because the gup pin exists
-on them...  So yea it can't _just_ be a layout lease which controls this on the
-"file fd".
+If the lease holder modifies the mapping in a way that causes it's
+own internal state to screw up, then that's a bug in the lease
+holder application.
 
-Ira
+Cheers,
 
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
