@@ -1,128 +1,106 @@
-Return-Path: <SRS0=UlNu=UN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Jiwo=UO=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7EF8CC31E4B
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Jun 2019 14:43:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA9DDC31E50
+	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 12:39:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5354E2133D
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Jun 2019 14:43:02 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UJ3SB8Wu"
+	by mail.kernel.org (Postfix) with ESMTP id C932121848
+	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 12:39:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728420AbfFNOnC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Jun 2019 10:43:02 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:45097 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727560AbfFNOnB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Jun 2019 10:43:01 -0400
-Received: by mail-io1-f66.google.com with SMTP id e3so6177652ioc.12
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Jun 2019 07:43:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=/ksnpuaEL/WdDMRC2Xj4Vj7MJKw0QSdyiTPXZRpkEUw=;
-        b=UJ3SB8WuMAhR9IzwD/gfEouFtC+3cZEC5QvuZJZT7aTTrY/0C+OFpvP1liwYWLdY1i
-         YhnO72QpOZ/NuBFQFIHwV04F5V22KKBbLLncwx9zSIeY1FnKg9/oPygH/QNfm7A77OUb
-         uJlZNlj1NhT+3dlnTRCTvPT2SMyH/9gGUKqIeDcqdQAAKSVb3wBJ/3CA+LaMPFYICpWU
-         glpXGbotgydWPn6SKVaLajhnIJ4UXO8mUBHVSmrpzCTSFArkHgjLFICfZLTT9OU1OlfP
-         O6sExFcKP6So+RwFXDJ7sclPK2ZhsG2qc3L+0+WHtLk6LjQZa+eHQ/KCjSkOkM2IQzm0
-         40/Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=/ksnpuaEL/WdDMRC2Xj4Vj7MJKw0QSdyiTPXZRpkEUw=;
-        b=WDINzE9U62rMhHshoD1rgX/e155iFM/XF4r2Roerp/i29jkw+g3cJlUTHuCOm1z2GC
-         91qw2RmWjmB9uDmsNsrqOhAK9gqz7JIVKBJ8xaQz4Mbck3eiTXsGzCH/6DoeqR+JLkFb
-         CObao7ixz1iNNZZ8FXcOPucyt99kc8x+7Uu5xR1xxNHjFRo95bY09qZSN3V9dbmnJ3zr
-         TKLsYhKh2m+5rbcby6spk/xkUzdLDGlSbjxhehQX6vuFkX89r0xvsm1HTYZDj80bilwh
-         BjxybToNd1rJXmuF1D2E92/eaLE5Uc/2wcrsUIJceuz0xd6Pa0fgmimGJ2fTuuN9PwTy
-         Z7fw==
-X-Gm-Message-State: APjAAAXEvbNkbfuSmwfC4C6v7zvgOnpOeGZ/a1wi1eFhW4kVvLZxW3k9
-        z87eXTX/2kZg/+c23TKuFHg7diFEl50=
-X-Google-Smtp-Source: APXvYqxHs+yt5yW/gN0s11krmPhUbXWtEInkvF1Ke79rfQBji/fiyZtLDuq+DoS32BKhe6nSoL6nnQ==
-X-Received: by 2002:a05:6602:2181:: with SMTP id b1mr15881622iob.198.1560523380646;
-        Fri, 14 Jun 2019 07:43:00 -0700 (PDT)
-Received: from C02TN4C6HTD6.us.cray.com (chippewa-nat.cray.com. [136.162.34.1])
-        by smtp.gmail.com with ESMTPSA id i23sm2115531ioj.24.2019.06.14.07.42.57
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 14 Jun 2019 07:42:59 -0700 (PDT)
-From:   Artem Blagodarenko <artem.blagodarenko@gmail.com>
-X-Google-Original-From: Artem Blagodarenko <c17828@cray.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     adilger.kernel@dilger.ca, linux@rasmusvillemoes.dk
-Subject: [PATCH] e2fsck: process empty directory if large_dir and inline_data set
-Date:   Fri, 14 Jun 2019 17:42:37 +0300
-Message-Id: <20190614144237.6010-1-c17828@cray.com>
-X-Mailer: git-send-email 2.14.3
+        id S1726490AbfFOMjv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 15 Jun 2019 08:39:51 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:35245 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725943AbfFOMjv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Jun 2019 08:39:51 -0400
+Received: from callcc.thunk.org (rrcs-74-87-88-165.west.biz.rr.com [74.87.88.165])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5FCdL7J031269
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 15 Jun 2019 08:39:22 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id A4E1B420484; Sat, 15 Jun 2019 08:39:20 -0400 (EDT)
+Date:   Sat, 15 Jun 2019 08:39:20 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-integrity@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v4 01/16] fs-verity: add a documentation file
+Message-ID: <20190615123920.GB6142@mit.edu>
+References: <20190606155205.2872-1-ebiggers@kernel.org>
+ <20190606155205.2872-2-ebiggers@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190606155205.2872-2-ebiggers@kernel.org>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Doing a forced check on an ext4 file system with inline_data and
-large_dir results in lots of fsck messages. To reproduce:
+On Thu, Jun 06, 2019 at 08:51:50AM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Add a documentation file for fs-verity, covering....
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-truncate -s 100000000 ext4.img
-misc/mke2fs -t ext4 -I 512 -O 'inline_data,large_dir' ext4.img
-mkdir m
-sudo mount ext4.img m
-mkdir m/aa
-sudo umount m
-e2fsck/e2fsck -f -n ext4.img
+Looks good; you can add:
 
-The last command gives this output:
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 
-[root@localhost e2fsprogs-kernel]# e2fsck/e2fsck -f -n ext4-2.img
-e2fsck 1.45.2 (27-May-2019)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-'..' in /aa (12) is <The NULL inode> (0), should be / (2).
-Fix? no
 
-Pass 4: Checking reference counts
-Inode 2 ref count is 4, should be 3.  Fix? no
+One minor design point below:
 
-Inode 12 ref count is 2, should be 1.  Fix? no
+> +ext4 stores the verity metadata (Merkle tree and fsverity_descriptor)
+> +past the end of the file, starting at the first page fully beyond
+                                                   ^^^^
+> +i_size.  This approach works because (a) verity files are readonly,
+> +and (b) pages fully beyond i_size aren't visible to userspace but can
+> +be read/written internally by ext4 with only some relatively small
+> +changes to ext4.  This approach avoids having to depend on the
+> +EA_INODE feature and on rearchitecturing ext4's xattr support to
+> +support paging multi-gigabyte xattrs into memory, and to support
+> +encrypting xattrs.  Note that the verity metadata *must* be encrypted
+> +when the file is, since it contains hashes of the plaintext data.
 
-Pass 5: Checking group summary information
+If we ever want to support mounting, say, a file system with 4k blocks
+and fsverity enabled on a architecture with a 16k or 64k page size,
+then "page" in that first sentence will need to become "block".  At
+the moment we only support fsverity when page size == block size, so
+it's not an issue.
 
-ext4-2.img: ********** WARNING: Filesystem still has errors **********
+However, it's worth reflecting on what this means.  In order to
+satisfy this requirement (from the mmap man page):
 
-ext4-2.img: 12/24384 files (0.0% non-contiguous), 17874/97656 blocks
+       A file is mapped in multiples of the page size.  For a file
+       that is not a multiple of the page size, the remaining memory
+       is zeroed when mapped...
 
-Rootcause of this issue is large_dir optimization that is not
-appropriate for inline_data.
+we're going to have to special case how the last page gets mmaped.
+The simplest way to do this will be to map in an anonymous page which
+just has the blocks that are part of the data block copied in, and the
+rest of the page can be zero'ed.
 
-Let's not optimize it if inline_data is set.
+One thing we might consider doing just to make life much easier for
+ourselves (should we ever want to support page size != block size ---
+which I could imagine some folks like Chandan might find desirable) is
+to specify that the fsverity metadata begins at an offset which begins
+at i_size rounded up to the next 64k binary, which should handle all
+current and future architectures' page sizes.
 
-Reported-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Signed-off-by: Artem Blagodarenko <c17828@cray.com>
----
- e2fsck/pass2.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index a7d9c47d..8b40e93d 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -980,7 +980,8 @@ static int check_dir_block(ext2_filsys fs,
- 	 * very large and then the files are deleted. For now, all that is
- 	 * needed is to avoid e2fsck filling in these holes as part of
- 	 * feature flag. */
--	if (db->blk == 0 && ext2fs_has_feature_largedir(fs->super))
-+	if (db->blk == 0 && ext2fs_has_feature_largedir(fs->super) &&
-+	    !ext2fs_has_feature_inline_data(fs->super))
- 		return 0;
- 
- 	if (db->blk == 0 && !inline_data_size) {
--- 
-2.14.3
-
+					- Ted
