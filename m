@@ -2,31 +2,31 @@ Return-Path: <SRS0=Jiwo=UO=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7521DC31E50
-	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 15:11:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61EBAC31E50
+	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 15:22:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 53F3820866
-	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 15:11:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E0CB20868
+	for <linux-ext4@archiver.kernel.org>; Sat, 15 Jun 2019 15:22:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726827AbfFOPL6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 15 Jun 2019 11:11:58 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57874 "EHLO
+        id S1726846AbfFOPWH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 15 Jun 2019 11:22:07 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59288 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725944AbfFOPL6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Jun 2019 11:11:58 -0400
+        with ESMTP id S1725944AbfFOPWH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Jun 2019 11:22:07 -0400
 Received: from callcc.thunk.org (rrcs-74-87-88-165.west.biz.rr.com [74.87.88.165])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5FFBaW6006780
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5FFLh4o009292
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 15 Jun 2019 11:11:37 -0400
+        Sat, 15 Jun 2019 11:21:45 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 29140420484; Sat, 15 Jun 2019 11:11:36 -0400 (EDT)
-Date:   Sat, 15 Jun 2019 11:11:36 -0400
+        id 1D573420484; Sat, 15 Jun 2019 11:21:43 -0400 (EDT)
+Date:   Sat, 15 Jun 2019 11:21:43 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Eric Biggers <ebiggers@kernel.org>
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -38,31 +38,35 @@ Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v4 12/16] fs-verity: add SHA-512 support
-Message-ID: <20190615151136.GM6142@mit.edu>
+Subject: Re: [PATCH v4 13/16] fs-verity: support builtin file signatures
+Message-ID: <20190615152143.GN6142@mit.edu>
 References: <20190606155205.2872-1-ebiggers@kernel.org>
- <20190606155205.2872-13-ebiggers@kernel.org>
+ <20190606155205.2872-14-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190606155205.2872-13-ebiggers@kernel.org>
+In-Reply-To: <20190606155205.2872-14-ebiggers@kernel.org>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jun 06, 2019 at 08:52:01AM -0700, Eric Biggers wrote:
+On Thu, Jun 06, 2019 at 08:52:02AM -0700, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
 > 
-> Add SHA-512 support to fs-verity.  This is primarily a demonstration of
-> the trivial changes needed to support a new hash algorithm in fs-verity;
-> most users will still use SHA-256, due to the smaller space required to
-> store the hashes.  But some users may prefer SHA-512.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> To meet some users' needs, add optional support for having fs-verity
+> handle a portion of the authentication policy in the kernel.  An
+> ".fs-verity" keyring is created to which X.509 certificates can be
+> added; then a sysctl 'fs.verity.require_signatures' can be set to cause
+> the kernel to enforce that all fs-verity files contain a signature of
+> their file measurement by a key in this keyring.
 
-Looks good; you can add:
+I think it might be a good idea to allow the require_signatures
+setting to be set on a per-file system basis, via a mount option?  We
+could plumb it in via a flag in fsverity_info, set by the file system.
+
+Other than this feature request, looks good; you can add:
 
 Reviewed-off-by: Theodore Ts'o <tytso@mit.edu>
 
