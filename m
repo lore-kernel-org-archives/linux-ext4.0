@@ -5,52 +5,52 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 715ECC31E5B
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Jun 2019 17:22:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74AF9C31E5E
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Jun 2019 17:22:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 498BD206E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Jun 2019 17:22:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 501C3217F4
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Jun 2019 17:22:38 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="XJUjnADz"
+	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="WPhIzrHu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730154AbfFSRWX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 19 Jun 2019 13:22:23 -0400
-Received: from mail-io1-f68.google.com ([209.85.166.68]:39317 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730068AbfFSRWX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jun 2019 13:22:23 -0400
-Received: by mail-io1-f68.google.com with SMTP id r185so308204iod.6
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Jun 2019 10:22:23 -0700 (PDT)
+        id S1730298AbfFSRWg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 19 Jun 2019 13:22:36 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:35237 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730188AbfFSRW0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jun 2019 13:22:26 -0400
+Received: by mail-io1-f66.google.com with SMTP id m24so184668ioo.2
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Jun 2019 10:22:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=chromium.org; s=google;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=E3jskMxg6mXOnAk1TRm40OOCGhyEHDf4Luejh67p06E=;
-        b=XJUjnADzObWPEkqAra7JZG2MqVf6jOIl2xtoUl1SDnE0wuok4jfWhzqw1sqdOy1MdG
-         ukIsu9ZRYZ7Odf66ee9EScvXI8+ziKIaEoU1vAYC/d16vXG5k7/dNvwAB5MjWlb1v9J5
-         LJYYWKu+nb0iK/BWTUe5n9zeCPnxh/3JNBMQ4=
+        bh=PDc3/t6pQgXRlrbpZdKVEwq+X2f/5QLw6zNH6ghEEMo=;
+        b=WPhIzrHu8MmV20787TkEtOfYm8/d2xp1ifATc3YV0/Rsg0RGf7SNVNtMk1uBr3yM3O
+         ZzONv6mp3+uKgsCWGg7j7qWkPxVOAYs+9VPxean7qbw9ydspDA8iJKMeRoICmmyuPYCL
+         Gs68n8T05do8PZDva2U27cwXM3i99K4Y387kg=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=E3jskMxg6mXOnAk1TRm40OOCGhyEHDf4Luejh67p06E=;
-        b=buSLazojhPWC/Wy70kAa/fHEADym3ZUG5lGEzhsUMR8n7Bj/hD1gjXQgzydCUpPuTR
-         qBA33KSini0A2/+CeAiNVdKyeWxCJpMACdniHOyZY5q5W4Iyp5yCKI71/YYSs3BUb4DO
-         gPcNcvS0zrE4F086/WTDM5++sW3i8ScNtJVcs35wquGKVNh9CqovEhZqrZaT9N4mAYHk
-         1V+xYU9cZgqXJtHHGTM1ajH5IZBVohIlZBiZsxsE7GjkCXMndtU71rzj9FolvWPsHBAk
-         TtbLyYrW5zArHLfYlfa/GtXHUQrldPU2v8DrAeFPXNo3ZpxvIC2uGEFdo+Wif7EsRLak
-         KaVg==
-X-Gm-Message-State: APjAAAV9t4iUVDMnNfSf2G3z4AEdhYFg1ch2DcRWlj0B48sfY5dl5Bzx
-        A3sEu5zJOXlvZdmlsv1fqHSvDA==
-X-Google-Smtp-Source: APXvYqzUJ4kHlMB8oH2as8CG6GkE5UrM7Ov3FQ1gEUbkCnWiEbXHPUBrf42GwGzGyQpr2zjdPsDhvg==
-X-Received: by 2002:a02:cd82:: with SMTP id l2mr11507623jap.96.1560964942675;
-        Wed, 19 Jun 2019 10:22:22 -0700 (PDT)
+        bh=PDc3/t6pQgXRlrbpZdKVEwq+X2f/5QLw6zNH6ghEEMo=;
+        b=ExuJBShfBeGuOfrTDmldx864iGeVSnHV/g+zxZbj4JYTfSOBOta+br4LPaK2RyEboI
+         lHsaB+vDMgDOeYSPnIOSSDJRSGYX3RsYSw0LBKzgSvZrO61cladoKGh6j79Ne8Bi9XOk
+         pZqSucjTBNZCb4WdQtE7M6NkacvUo1bxF8DF6b38Vd60Ewu3he5AleAuTFsNSa2a19eG
+         5YNq3plqQ9ONpRegqR3J4YgBonK4Xs3dms7bKMxjXuCA+Y65dQG711KfsxhpuyllersE
+         LRYQ70uGTGptPmQl5aE5Wqb9T1+uPZJpNZEWfOwpJ4fNfh70LMFxmc96wswab5yEwBSQ
+         8krA==
+X-Gm-Message-State: APjAAAVeLeQNRsm2QnDuTkCPvhwwNDNqT3CB0YExNZEhpbqbIG+DdChT
+        KvR3NgdrWo1pLVciP1OOann3DA==
+X-Google-Smtp-Source: APXvYqyww/nXaKClg6oe4jKe1+QWUCyNtR9Nkjre2Tn+D5wwr4oCZC/khTMy8wbQr3InQ0out2BhWw==
+X-Received: by 2002:a6b:cf17:: with SMTP id o23mr3506984ioa.176.1560964945770;
+        Wed, 19 Jun 2019 10:22:25 -0700 (PDT)
 Received: from localhost ([2620:15c:183:200:855f:8919:84a7:4794])
-        by smtp.gmail.com with ESMTPSA id y17sm17889989ioa.40.2019.06.19.10.22.21
+        by smtp.gmail.com with ESMTPSA id u26sm22681456iol.1.2019.06.19.10.22.24
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 19 Jun 2019 10:22:22 -0700 (PDT)
+        Wed, 19 Jun 2019 10:22:25 -0700 (PDT)
 From:   Ross Zwisler <zwisler@chromium.org>
 X-Google-Original-From: Ross Zwisler <zwisler@google.com>
 To:     linux-kernel@vger.kernel.org
@@ -61,9 +61,9 @@ Cc:     Ross Zwisler <zwisler@google.com>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
         Fletcher Woodruff <fletcherw@google.com>,
         Justin TerAvest <teravest@google.com>
-Subject: [PATCH 1/3] mm: add filemap_fdatawait_range_keep_errors()
-Date:   Wed, 19 Jun 2019 11:21:54 -0600
-Message-Id: <20190619172156.105508-2-zwisler@google.com>
+Subject: [PATCH 3/3] ext4: use jbd2_inode dirty range scoping
+Date:   Wed, 19 Jun 2019 11:21:56 -0600
+Message-Id: <20190619172156.105508-4-zwisler@google.com>
 X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
 In-Reply-To: <20190619172156.105508-1-zwisler@google.com>
 References: <20190619172156.105508-1-zwisler@google.com>
@@ -74,63 +74,94 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In the spirit of filemap_fdatawait_range() and
-filemap_fdatawait_keep_errors(), introduce
-filemap_fdatawait_range_keep_errors() which both takes a range upon
-which to wait and does not clear errors from the address space.
+Use the newly introduced jbd2_inode dirty range scoping to prevent us
+from waiting forever when trying to complete a journal transaction.
 
 Signed-off-by: Ross Zwisler <zwisler@google.com>
 ---
- include/linux/fs.h |  2 ++
- mm/filemap.c       | 22 ++++++++++++++++++++++
- 2 files changed, 24 insertions(+)
+ fs/ext4/ext4_jbd2.h   | 12 ++++++------
+ fs/ext4/inode.c       | 13 ++++++++++---
+ fs/ext4/move_extent.c |  3 ++-
+ 3 files changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index f7fdfe93e25d3..79fec8a8413f4 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2712,6 +2712,8 @@ extern int filemap_flush(struct address_space *);
- extern int filemap_fdatawait_keep_errors(struct address_space *mapping);
- extern int filemap_fdatawait_range(struct address_space *, loff_t lstart,
- 				   loff_t lend);
-+extern int filemap_fdatawait_range_keep_errors(struct address_space *mapping,
-+		loff_t start_byte, loff_t end_byte);
- 
- static inline int filemap_fdatawait(struct address_space *mapping)
- {
-diff --git a/mm/filemap.c b/mm/filemap.c
-index df2006ba0cfa5..e87252ca0835a 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -553,6 +553,28 @@ int filemap_fdatawait_range(struct address_space *mapping, loff_t start_byte,
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 75a5309f22315..ef8fcf7d0d3b3 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -361,20 +361,20 @@ static inline int ext4_journal_force_commit(journal_t *journal)
  }
- EXPORT_SYMBOL(filemap_fdatawait_range);
  
-+/**
-+ * filemap_fdatawait_range_keep_errors - wait for writeback to complete
-+ * @mapping:		address space structure to wait for
-+ * @start_byte:		offset in bytes where the range starts
-+ * @end_byte:		offset in bytes where the range ends (inclusive)
-+ *
-+ * Walk the list of under-writeback pages of the given address space in the
-+ * given range and wait for all of them.  Unlike filemap_fdatawait_range(),
-+ * this function does not clear error status of the address space.
-+ *
-+ * Use this function if callers don't handle errors themselves.  Expected
-+ * call sites are system-wide / filesystem-wide data flushers: e.g. sync(2),
-+ * fsfreeze(8)
-+ */
-+int filemap_fdatawait_range_keep_errors(struct address_space *mapping,
-+		loff_t start_byte, loff_t end_byte)
-+{
-+	__filemap_fdatawait_range(mapping, start_byte, end_byte);
-+	return filemap_check_and_keep_errors(mapping);
-+}
-+EXPORT_SYMBOL(filemap_fdatawait_range_keep_errors);
+ static inline int ext4_jbd2_inode_add_write(handle_t *handle,
+-					    struct inode *inode)
++		struct inode *inode, loff_t start_byte, loff_t length)
+ {
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_inode_add_write(handle,
+-						    EXT4_I(inode)->jinode);
++		return jbd2_journal_inode_ranged_write(handle,
++				EXT4_I(inode)->jinode, start_byte, length);
+ 	return 0;
+ }
+ 
+ static inline int ext4_jbd2_inode_add_wait(handle_t *handle,
+-					   struct inode *inode)
++		struct inode *inode, loff_t start_byte, loff_t length)
+ {
+ 	if (ext4_handle_valid(handle))
+-		return jbd2_journal_inode_add_wait(handle,
+-						   EXT4_I(inode)->jinode);
++		return jbd2_journal_inode_ranged_wait(handle,
++				EXT4_I(inode)->jinode, start_byte, length);
+ 	return 0;
+ }
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c7f77c6430085..27fec5c594459 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -731,10 +731,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		    !(flags & EXT4_GET_BLOCKS_ZERO) &&
+ 		    !ext4_is_quota_file(inode) &&
+ 		    ext4_should_order_data(inode)) {
++			loff_t start_byte =
++				(loff_t)map->m_lblk << inode->i_blkbits;
++			loff_t length = (loff_t)map->m_len << inode->i_blkbits;
 +
- /**
-  * file_fdatawait_range - wait for writeback to complete
-  * @file:		file pointing to address space structure to wait for
+ 			if (flags & EXT4_GET_BLOCKS_IO_SUBMIT)
+-				ret = ext4_jbd2_inode_add_wait(handle, inode);
++				ret = ext4_jbd2_inode_add_wait(handle, inode,
++						start_byte, length);
+ 			else
+-				ret = ext4_jbd2_inode_add_write(handle, inode);
++				ret = ext4_jbd2_inode_add_write(handle, inode,
++						start_byte, length);
+ 			if (ret)
+ 				return ret;
+ 		}
+@@ -4085,7 +4091,8 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		err = 0;
+ 		mark_buffer_dirty(bh);
+ 		if (ext4_should_order_data(inode))
+-			err = ext4_jbd2_inode_add_write(handle, inode);
++			err = ext4_jbd2_inode_add_write(handle, inode, from,
++					length);
+ 	}
+ 
+ unlock:
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 1083a9f3f16a1..c7ded4e2adff5 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -390,7 +390,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
+ 
+ 	/* Even in case of data=writeback it is reasonable to pin
+ 	 * inode to transaction, to prevent unexpected data loss */
+-	*err = ext4_jbd2_inode_add_write(handle, orig_inode);
++	*err = ext4_jbd2_inode_add_write(handle, orig_inode,
++			(loff_t)orig_page_offset << PAGE_SHIFT, replaced_size);
+ 
+ unlock_pages:
+ 	unlock_page(pagep[0]);
 -- 
 2.22.0.410.gd8fdbe21b5-goog
 
