@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F6EFC48BE3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9E12C48BE1
 	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2DD61206BA
+	by mail.kernel.org (Postfix) with ESMTP id 97DF6206BA
 	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1561066723;
-	bh=IYsyDgSnJLA1mNtcvPo7zQzyr25/CSKA7zsaC7jd6Jc=;
+	bh=tD13SQPiq6U//Di45+l/aLXBU1zkuW4qczDAR3KDkUg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=K0zHgWKEOSjOZ3iI2cnNuSuo55VkIWzU2x/76G2RCPOglr26ov5yDhZE5v8C9oEe2
-	 v4S+FN7Urn38+9MoYdNXsshvEUQMmkktqVs/To+zV+xEDuseMUMRh3TftYz50G6Mqx
-	 WKFLriyZKw3s9QS0x0QrqeUkTF8fTVzTNoTzZGdg=
+	b=fUJHkCY8H6PZyvJZR2Ct+tBS+DRMQ4AVbmk40Up7JRUMykx39T1XTCp6ORFvIAxxA
+	 W8E/Anq9F+iGWPKh68tB2+DHjU3s332uOPHLIcGQ4CU+4rRBpce7f3/5UgTJlexjbL
+	 kc6lkF29hENyqfBO+yqcam/lkmSYYeScq5mQH92M=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726599AbfFTVil (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Jun 2019 17:38:41 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47164 "EHLO mail.kernel.org"
+        id S1726620AbfFTVim (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Jun 2019 17:38:42 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47234 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726067AbfFTVij (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Jun 2019 17:38:39 -0400
+        id S1726554AbfFTVil (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Jun 2019 17:38:41 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id ED56A2089C;
-        Thu, 20 Jun 2019 21:38:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id E485521530;
+        Thu, 20 Jun 2019 21:38:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561066718;
-        bh=IYsyDgSnJLA1mNtcvPo7zQzyr25/CSKA7zsaC7jd6Jc=;
+        s=default; t=1561066720;
+        bh=tD13SQPiq6U//Di45+l/aLXBU1zkuW4qczDAR3KDkUg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=bz5zEEudf2hhKT6/lkvAkkKdXGbtKd76mV7MELR0xqdzYuyzl94bG/i//ynm0U+E5
-         2LVYroRhE9utcovyb5sl6IwCRtIWbxcDyqGiOGVXYRxU+/c9mWL0AbycSU+LE1B8mz
-         YMV6bk0CFVqQmyHL5HjAuU5Bn35wK0cZWBhA0WO8=
+        b=OHRKAUozrSLQsYLc+Vn9OWH/pKZWtrUwNpbkGoIc6ngnZUxSmkx0Cv0OzmA4eYuPL
+         zc6dpyYI7P1ohPcYsAgLTsfxsQ42hQdtrcuAJbw7txyT+3r4HlfINrFI3CioLYXPtC
+         bhnYKW4PJKS/lur1AfMSSKKpCkvvwLtfFcL6u8Fs=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -45,9 +45,9 @@ Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [RFC PATCH v2 3/8] generic: test general behavior of verity files
-Date:   Thu, 20 Jun 2019 14:36:09 -0700
-Message-Id: <20190620213614.113685-4-ebiggers@kernel.org>
+Subject: [RFC PATCH v2 8/8] generic: test the fs-verity built-in signature verification support
+Date:   Thu, 20 Jun 2019 14:36:14 -0700
+Message-Id: <20190620213614.113685-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
 In-Reply-To: <20190620213614.113685-1-ebiggers@kernel.org>
 References: <20190620213614.113685-1-ebiggers@kernel.org>
@@ -60,40 +60,69 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This is a basic fs-verity test which verifies:
-
-- conditions for enabling verity
-- verity files have expected contents and size
-- can't change contents of verity files, but can change metadata
-- can retrieve a verity file's measurement via FS_IOC_MEASURE_VERITY
+Add a basic test for the fs-verity built-in signature verification
+support, which is an optional feature where the kernel can be configured
+to enforce that all verity files are accompanied with a valid signature
+by a key that has been loaded into the fs-verity keyring.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- tests/generic/900     | 190 ++++++++++++++++++++++++++++++++++++++++++
- tests/generic/900.out |  71 ++++++++++++++++
+ common/config         |   1 +
+ common/verity         |  11 ++++
+ tests/generic/905     | 141 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/905.out |  34 ++++++++++
  tests/generic/group   |   1 +
- 3 files changed, 262 insertions(+)
- create mode 100755 tests/generic/900
- create mode 100644 tests/generic/900.out
+ 5 files changed, 188 insertions(+)
+ create mode 100755 tests/generic/905
+ create mode 100644 tests/generic/905.out
 
-diff --git a/tests/generic/900 b/tests/generic/900
+diff --git a/common/config b/common/config
+index 001ddc45..1aaf0a75 100644
+--- a/common/config
++++ b/common/config
+@@ -213,6 +213,7 @@ export XFS_INFO_PROG="$(type -P xfs_info)"
+ export DUPEREMOVE_PROG="$(type -P duperemove)"
+ export CC_PROG="$(type -P cc)"
+ export FSVERITY_PROG="$(type -P fsverity)"
++export OPENSSL_PROG="$(type -P openssl)"
+ 
+ # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
+ # newer systems have udevadm command but older systems like RHEL5 don't.
+diff --git a/common/verity b/common/verity
+index 86fb6585..edd7e523 100644
+--- a/common/verity
++++ b/common/verity
+@@ -35,6 +35,17 @@ _require_scratch_verity()
+ 	FSV_BLOCK_SIZE=$(get_page_size)
+ }
+ 
++# Check for CONFIG_FS_VERITY_BUILTIN_SIGNATURES=y.
++_require_fsverity_builtin_signatures()
++{
++	if [ ! -e /proc/keys ]; then
++		_notrun "kernel doesn't support keyrings"
++	fi
++	if ! awk '{print $9}' /proc/keys | grep -q '^\.fs-verity:$'; then
++		_notrun "kernel doesn't support fs-verity builtin signatures"
++	fi
++}
++
+ _scratch_mkfs_verity()
+ {
+ 	case $FSTYP in
+diff --git a/tests/generic/905 b/tests/generic/905
 new file mode 100755
-index 00000000..144870a6
+index 00000000..db83d221
 --- /dev/null
-+++ b/tests/generic/900
-@@ -0,0 +1,190 @@
++++ b/tests/generic/905
+@@ -0,0 +1,141 @@
 +#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
-+# Copyright 2018 Google LLC
++# Copyright 2019 Google LLC
 +#
-+# FS QA Test generic/900
++# FS QA Test generic/905
 +#
-+# This is a basic fs-verity test which verifies:
-+#
-+# - conditions for enabling verity
-+# - verity files have correct contents and size
-+# - can't change contents of verity files, but can change metadata
-+# - can retrieve a verity file's measurement via FS_IOC_MEASURE_VERITY
++# Test the fs-verity built-in signature verification support.
 +#
 +seq=`basename $0`
 +seqres=$RESULT_DIR/$seq
@@ -106,6 +135,7 @@ index 00000000..144870a6
 +
 +_cleanup()
 +{
++	sysctl -w fs.verity.require_signatures=0 &>/dev/null
 +	cd /
 +	rm -f $tmp.*
 +}
@@ -122,242 +152,160 @@ index 00000000..144870a6
 +_supported_fs generic
 +_supported_os Linux
 +_require_scratch_verity
++_require_fsverity_builtin_signatures
++_require_command "$OPENSSL_PROG" openssl
++_require_command "$KEYCTL_PROG" keyctl
 +
 +_scratch_mkfs_verity &>> $seqres.full
 +_scratch_mount
-+fsv_orig_file=$SCRATCH_MNT/file
++
 +fsv_file=$SCRATCH_MNT/file.fsv
++fsv_orig_file=$SCRATCH_MNT/file
++keyfile=$tmp.key.pem
++certfile=$tmp.cert.pem
++certfileder=$tmp.cert.der
++sigfile=$tmp.sig
++othersigfile=$tmp.othersig
++tmpfile=$tmp.tmp
 +
-+verify_data_readable()
-+{
-+	local file=$1
++# Setup
 +
-+	md5sum $file > /dev/null
-+}
-+
-+verify_data_unreadable()
-+{
-+	local file=$1
-+
-+	# try both reading just the first data block, and reading until EOF
-+	head -c $FSV_BLOCK_SIZE $file 2>&1 >/dev/null | _filter_scratch
-+	md5sum $file |& _filter_scratch
-+}
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file with verity already enabled fails with EEXIST"
-+_fsv_create_enable_file $fsv_file
-+echo "(trying again)"
-+_fsv_enable $fsv_file |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "Enabling verity with invalid hash algorithm fails with EINVAL"
-+_fsv_create_enable_file $fsv_file --hash-alg=257 |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity with invalid block size fails with EINVAL"
-+_fsv_create_enable_file $fsv_file --block-size=1 |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity on directory fails with EISDIR"
-+mkdir $SCRATCH_MNT/dir
-+_fsv_enable $SCRATCH_MNT/dir |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "Enabling verity with too-long salt fails with EMSGSIZE"
-+_fsv_create_enable_file $fsv_file --salt=$(perl -e 'print "A" x 1000') |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file on read-only filesystem fails with EROFS"
-+echo foo > $fsv_file
-+_scratch_remount ro
-+_fsv_enable $fsv_file |& _filter_scratch
-+_scratch_remount rw
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file open for writing fails with ETXTBSY"
-+echo foo > $fsv_file
-+exec 3<> $fsv_file
-+_fsv_enable $fsv_file |& _filter_scratch
-+exec 3<&-
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity can be interrupted"
-+dd if=/dev/zero of=$fsv_file bs=1 count=0 seek=$((1 << 34)) status=none
-+start_time=$(date +%s)
-+$FSVERITY_PROG enable $fsv_file &
-+sleep 0.5
-+kill %1
-+wait
-+elapsed=$(( $(date +%s) - start_time ))
-+if (( elapsed > 5 )); then
-+	echo "Failed to interrupt FS_IOC_ENABLE_VERITY ($elapsed seconds elapsed)"
-+fi
-+
-+_fsv_scratch_begin_subtest "verity file can't be opened for writing"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+echo "* reading"
-+$XFS_IO_PROG -r $fsv_file -c ''
-+echo "* xfs_io writing, should be O_RDWR"
-+$XFS_IO_PROG $fsv_file -c '' |& _filter_scratch
-+echo "* bash >>, should be O_APPEND"
-+bash -c "echo >> $fsv_file" |& _filter_scratch
-+echo "* bash >, should be O_WRONLY|O_CREAT|O_TRUNC"
-+bash -c "echo > $fsv_file" |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "verity file can be read"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be measured"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+_fsv_measure $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be renamed"
-+_fsv_create_enable_file $fsv_file
-+mv $fsv_file $fsv_file.newname
-+
-+_fsv_scratch_begin_subtest "verity file can be unlinked"
-+_fsv_create_enable_file $fsv_file
-+rm $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be linked to"
-+_fsv_create_enable_file $fsv_file
-+ln $fsv_file $fsv_file.newname
-+
-+_fsv_scratch_begin_subtest "verity file can be chmodded"
-+_fsv_create_enable_file $fsv_file
-+chmod 777 $fsv_file
-+chmod 444 $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be chowned"
-+_fsv_create_enable_file $fsv_file
-+chown 1:1 $fsv_file
-+chown 0:0 $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file has correct contents and size"
-+head -c 100000 /dev/urandom > $fsv_orig_file
-+cp $fsv_orig_file $fsv_file
-+_fsv_enable $fsv_file >> $seqres.full
-+cmp $fsv_file $fsv_orig_file
-+stat -c %s $fsv_file
-+_scratch_cycle_mount
-+cmp $fsv_file $fsv_orig_file
-+stat -c %s $fsv_file
-+
-+_fsv_scratch_begin_subtest "Trying to measure non-verity file fails with ENODATA"
-+echo foo > $fsv_file
-+_fsv_measure $fsv_file |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+# Test files <= 1 block in size.  These are a bit of a special case since there
-+# are no hash blocks; the root hash is calculated directly over the data block.
-+for size in 1 $((FSV_BLOCK_SIZE - 1)) $FSV_BLOCK_SIZE; do
-+	_fsv_scratch_begin_subtest "verity on $size-byte file"
-+	head -c $size /dev/urandom > $fsv_orig_file
-+	cp $fsv_orig_file $fsv_file
-+	_fsv_enable $fsv_file
-+	cmp $fsv_orig_file $fsv_file && echo "Files matched"
-+	rm -f $fsv_file
++echo -e "\n# Generating certificates and private keys"
++for suffix in '' '.2'; do
++	if ! $OPENSSL_PROG req -newkey rsa:4096 -nodes -batch -x509 \
++			-keyout $keyfile$suffix -out $certfile$suffix \
++			&>> $seqres.full; then
++		_fail "Failed to generate certificate and private key (see $seqres.full)"
++	fi
++	$OPENSSL_PROG x509 -in $certfile$suffix -out $certfileder$suffix \
++		-outform der
 +done
 +
-+_fsv_scratch_begin_subtest "verity on 100M file (multiple levels in hash tree)"
-+head -c 100000000 /dev/urandom > $fsv_orig_file
-+cp $fsv_orig_file $fsv_file
-+_fsv_enable $fsv_file
-+cmp $fsv_orig_file $fsv_file && echo "Files matched"
++echo -e "\n# Clearing fs-verity keyring"
++$KEYCTL_PROG clear %keyring:.fs-verity
 +
-+_fsv_scratch_begin_subtest "verity on sparse file"
-+dd if=/dev/zero of=$fsv_orig_file bs=1 count=1 seek=1000000 status=none
-+cp $fsv_orig_file $fsv_file
++echo -e "\n# Loading first certificate into fs-verity keyring"
++$KEYCTL_PROG padd asymmetric '' %keyring:.fs-verity \
++	< $certfileder >> $seqres.full
++
++echo -e "\n# Enabling fs.verity.require_signatures"
++sysctl -w fs.verity.require_signatures=1
++
++echo -e "\n# Generating file and signing it for fs-verity"
++head -c 100000 /dev/urandom > $fsv_orig_file
++for suffix in '' '.2'; do
++	$FSVERITY_PROG sign $fsv_orig_file $sigfile$suffix \
++		--key=$keyfile$suffix --cert=$certfile$suffix
++done
++
++echo -e "\n# Signing a different file for fs-verity"
++head -c 100000 /dev/zero > $tmpfile
++$FSVERITY_PROG sign $tmpfile $othersigfile --key=$keyfile --cert=$certfile
++
++# Actual tests
++
++reset_fsv_file()
++{
++	rm -f $fsv_file
++	cp $fsv_orig_file $fsv_file
++}
++
++echo -e "\n# Enabling verity with valid signature (should succeed)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$sigfile
++cmp $fsv_file $fsv_orig_file
++
++echo -e "\n# Enabling verity without signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file |& _filter_scratch
++
++echo -e "\n# Opening verity file without signature (should fail)"
++reset_fsv_file
++sysctl -w fs.verity.require_signatures=0 &>> $seqres.full
 +_fsv_enable $fsv_file
-+cmp $fsv_orig_file $fsv_file && echo "Files matched"
++sysctl -w fs.verity.require_signatures=1 &>> $seqres.full
++_scratch_cycle_mount
++md5sum $fsv_file |& _filter_scratch
++
++echo -e "\n# Enabling verity with wrong file's signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$othersigfile |& _filter_scratch
++
++echo -e "\n# Enabling verity with untrusted signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$sigfile.2 |& _filter_scratch
++
++echo -e "\n# Testing salt"
++reset_fsv_file
++$FSVERITY_PROG sign $fsv_orig_file $sigfile.salted \
++	--key=$keyfile --cert=$certfile --salt=abcd
++_fsv_enable $fsv_file --signature=$sigfile.salted --salt=abcd
++
++echo -e "\n# Testing non-default hash algorithm"
++if _fsv_have_hash_algorithm sha512 $fsv_file; then
++	reset_fsv_file
++	$FSVERITY_PROG sign $fsv_orig_file $sigfile.sha512 \
++		--key=$keyfile --cert=$certfile --hash-alg=sha512
++	_fsv_enable $fsv_file --signature=$sigfile.sha512 --hash-alg=sha512
++fi
++
++echo -e "\n# Testing empty file"
++echo -n > $fsv_file
++$FSVERITY_PROG sign $fsv_file $sigfile.emptyfile --key=$keyfile --cert=$certfile
++_fsv_enable $fsv_file --signature=$sigfile.emptyfile
 +
 +# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/900.out b/tests/generic/900.out
+diff --git a/tests/generic/905.out b/tests/generic/905.out
 new file mode 100644
-index 00000000..ff5162f3
+index 00000000..76707b5c
 --- /dev/null
-+++ b/tests/generic/900.out
-@@ -0,0 +1,71 @@
-+QA output created by 900
++++ b/tests/generic/905.out
+@@ -0,0 +1,34 @@
++QA output created by 905
 +
-+# Enabling verity on file with verity already enabled fails with EEXIST
-+(trying again)
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': File exists
++# Generating certificates and private keys
 +
-+# Enabling verity with invalid hash algorithm fails with EINVAL
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Invalid argument
++# Clearing fs-verity keyring
 +
-+# Enabling verity with invalid block size fails with EINVAL
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Invalid argument
++# Loading first certificate into fs-verity keyring
 +
-+# Enabling verity on directory fails with EISDIR
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/dir': Is a directory
++# Enabling fs.verity.require_signatures
++fs.verity.require_signatures = 1
 +
-+# Enabling verity with too-long salt fails with EMSGSIZE
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Message too long
++# Generating file and signing it for fs-verity
 +
-+# Enabling verity on file on read-only filesystem fails with EROFS
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Read-only file system
++# Signing a different file for fs-verity
 +
-+# Enabling verity on file open for writing fails with ETXTBSY
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Text file busy
++# Enabling verity with valid signature (should succeed)
 +
-+# Enabling verity can be interrupted
++# Enabling verity without signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Bad message
 +
-+# verity file can't be opened for writing
-+* reading
-+* xfs_io writing, should be O_RDWR
-+SCRATCH_MNT/file.fsv: Operation not permitted
-+* bash >>, should be O_APPEND
-+bash: SCRATCH_MNT/file.fsv: Operation not permitted
-+* bash >, should be O_WRONLY|O_CREAT|O_TRUNC
-+bash: SCRATCH_MNT/file.fsv: Operation not permitted
++# Opening verity file without signature (should fail)
++md5sum: SCRATCH_MNT/file.fsv: Bad message
 +
-+# verity file can be read
++# Enabling verity with wrong file's signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Bad message
 +
-+# verity file can be measured
-+sha256:be54121da3877f8852c65136d731784f134c4dd9d95071502e80d7be9f99b263
++# Enabling verity with untrusted signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Required key not available
 +
-+# verity file can be renamed
++# Testing salt
 +
-+# verity file can be unlinked
++# Testing non-default hash algorithm
 +
-+# verity file can be linked to
-+
-+# verity file can be chmodded
-+
-+# verity file can be chowned
-+
-+# verity file has correct contents and size
-+100000
-+100000
-+
-+# Trying to measure non-verity file fails with ENODATA
-+ERROR: FS_IOC_MEASURE_VERITY failed on 'SCRATCH_MNT/file.fsv': No data available
-+
-+# verity on 1-byte file
-+Files matched
-+
-+# verity on 4095-byte file
-+Files matched
-+
-+# verity on 4096-byte file
-+Files matched
-+
-+# verity on 100M file (multiple levels in hash tree)
-+Files matched
-+
-+# verity on sparse file
-+Files matched
++# Testing empty file
 diff --git a/tests/generic/group b/tests/generic/group
-index 0867e455..ed6839a9 100644
+index 5b4c32ff..bfbb4957 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -559,3 +559,4 @@
- 554 auto quick copy_range swap
- 555 auto quick cap
- 556 auto quick casefold
-+900 auto quick verity
+@@ -564,3 +564,4 @@
+ 902 auto quick verity
+ 903 auto quick verity
+ 904 auto quick verity encrypt
++905 auto quick verity
 -- 
 2.22.0.410.gd8fdbe21b5-goog
 
