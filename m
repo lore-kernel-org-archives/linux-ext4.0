@@ -2,148 +2,89 @@ Return-Path: <SRS0=x6sY=UT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F365C43613
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:54:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF587C48BE3
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:25:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D952620652
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:54:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561064097;
-	bh=5T65MwH08DPCQR6AObb40wwVpBHDVj+BLg+tgX4K7ys=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=GsDxxeDy/FkpN7BwmhdvpW0YLi6Wbo+1LXjIRcak0ygjceHjTJcPgRPzETwphOJ2I
-	 DGEC1Ac6T8QiWM4mpY+ixczpwojvlPT5Hs1rgCepn3jCIO+4UmtkaKprokubJiwJga
-	 Iv0TdFJm4ThEKJNgH+fLSkPzpcruUXUtuM5Gqs6A=
+	by mail.kernel.org (Postfix) with ESMTP id C4A8E2070B
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:25:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726282AbfFTUxo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Jun 2019 16:53:44 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56536 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726203AbfFTUxo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Jun 2019 16:53:44 -0400
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 968282089C;
-        Thu, 20 Jun 2019 20:53:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561064023;
-        bh=5T65MwH08DPCQR6AObb40wwVpBHDVj+BLg+tgX4K7ys=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=VF2JxW+yrfzNIJ9WQum6NE7V2kVI3P9PKRHrhzmP43p8kkhwFKNPM7MZixWk2R0cm
-         sjMMr5WQHxJ84SDZ7ya86snh+CgGbfvxc5wYpGldJ44IIocdbrtIG3+uWZ65G9ZCRA
-         xArxpSPxlphQbgJifhhk8HIlAv+Jn9G5T1xvyop4=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-integrity@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v5 03/16] fs-verity: add UAPI header
-Date:   Thu, 20 Jun 2019 13:50:30 -0700
-Message-Id: <20190620205043.64350-4-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
-In-Reply-To: <20190620205043.64350-1-ebiggers@kernel.org>
-References: <20190620205043.64350-1-ebiggers@kernel.org>
+        id S1726432AbfFTVZe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Jun 2019 17:25:34 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54051 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725905AbfFTVZe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jun 2019 17:25:34 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5KLPHSK007114
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 20 Jun 2019 17:25:18 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 86C56420484; Thu, 20 Jun 2019 17:25:17 -0400 (EDT)
+Date:   Thu, 20 Jun 2019 17:25:17 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ross Zwisler <zwisler@chromium.org>
+Cc:     linux-kernel@vger.kernel.org, Ross Zwisler <zwisler@google.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Fletcher Woodruff <fletcherw@google.com>,
+        Justin TerAvest <teravest@google.com>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+Subject: Re: [PATCH v2 2/3] jbd2: introduce jbd2_inode dirty range scoping
+Message-ID: <20190620212517.GC4650@mit.edu>
+Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
+        Ross Zwisler <zwisler@chromium.org>, linux-kernel@vger.kernel.org,
+        Ross Zwisler <zwisler@google.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, Fletcher Woodruff <fletcherw@google.com>,
+        Justin TerAvest <teravest@google.com>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+References: <20190620151839.195506-1-zwisler@google.com>
+ <20190620151839.195506-3-zwisler@google.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190620151839.195506-3-zwisler@google.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Thu, Jun 20, 2019 at 09:18:38AM -0600, Ross Zwisler wrote:
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 5c04181b7c6d8..0e0393e7f41a4 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1397,6 +1413,12 @@ extern int	   jbd2_journal_force_commit(journal_t *);
+>  extern int	   jbd2_journal_force_commit_nested(journal_t *);
+>  extern int	   jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *inode);
+>  extern int	   jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *inode);
+> +extern int	   jbd2_journal_inode_ranged_write(handle_t *handle,
+> +			struct jbd2_inode *inode, loff_t start_byte,
+> +			loff_t length);
+> +extern int	   jbd2_journal_inode_ranged_wait(handle_t *handle,
+> +			struct jbd2_inode *inode, loff_t start_byte,
+> +			loff_t length);
+>  extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
+>  				struct jbd2_inode *inode, loff_t new_size);
+>  extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
 
-Add the UAPI header for fs-verity, including two ioctls:
+You're adding two new functions that are called from outside the jbd2
+subsystem.  To support compiling jbd2 as a module, we also need to add
+EXPORT_SYMBOL declarations for these two functions.
 
-- FS_IOC_ENABLE_VERITY
-- FS_IOC_MEASURE_VERITY
+I'll take care of this when applying this change.
 
-These ioctls are documented in the "User API" section of
-Documentation/filesystems/fsverity.rst.
+Thanks, applied.
 
-Examples of using these ioctls can be found in fsverity-utils
-(https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git).
-
-I've also written xfstests that test these ioctls
-(https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git/log/?h=fsverity).
-
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- Documentation/ioctl/ioctl-number.txt |  1 +
- include/uapi/linux/fsverity.h        | 39 ++++++++++++++++++++++++++++
- 2 files changed, 40 insertions(+)
- create mode 100644 include/uapi/linux/fsverity.h
-
-diff --git a/Documentation/ioctl/ioctl-number.txt b/Documentation/ioctl/ioctl-number.txt
-index c9558146ac5896..21767c81e86d58 100644
---- a/Documentation/ioctl/ioctl-number.txt
-+++ b/Documentation/ioctl/ioctl-number.txt
-@@ -225,6 +225,7 @@ Code  Seq#(hex)	Include File		Comments
- 'f'	00-0F	fs/ext4/ext4.h		conflict!
- 'f'	00-0F	linux/fs.h		conflict!
- 'f'	00-0F	fs/ocfs2/ocfs2_fs.h	conflict!
-+'f'	81-8F	linux/fsverity.h
- 'g'	00-0F	linux/usb/gadgetfs.h
- 'g'	20-2F	linux/usb/g_printer.h
- 'h'	00-7F				conflict! Charon filesystem
-diff --git a/include/uapi/linux/fsverity.h b/include/uapi/linux/fsverity.h
-new file mode 100644
-index 00000000000000..57d1d7fc0c345a
---- /dev/null
-+++ b/include/uapi/linux/fsverity.h
-@@ -0,0 +1,39 @@
-+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
-+/*
-+ * fs-verity user API
-+ *
-+ * These ioctls can be used on filesystems that support fs-verity.  See the
-+ * "User API" section of Documentation/filesystems/fsverity.rst.
-+ *
-+ * Copyright 2019 Google LLC
-+ */
-+#ifndef _UAPI_LINUX_FSVERITY_H
-+#define _UAPI_LINUX_FSVERITY_H
-+
-+#include <linux/ioctl.h>
-+#include <linux/types.h>
-+
-+#define FS_VERITY_HASH_ALG_SHA256	1
-+
-+struct fsverity_enable_arg {
-+	__u32 version;
-+	__u32 hash_algorithm;
-+	__u32 block_size;
-+	__u32 salt_size;
-+	__u64 salt_ptr;
-+	__u32 sig_size;
-+	__u32 __reserved1;
-+	__u64 sig_ptr;
-+	__u64 __reserved2[11];
-+};
-+
-+struct fsverity_digest {
-+	__u16 digest_algorithm;
-+	__u16 digest_size; /* input/output */
-+	__u8 digest[];
-+};
-+
-+#define FS_IOC_ENABLE_VERITY	_IOW('f', 133, struct fsverity_enable_arg)
-+#define FS_IOC_MEASURE_VERITY	_IOWR('f', 134, struct fsverity_digest)
-+
-+#endif /* _UAPI_LINUX_FSVERITY_H */
--- 
-2.22.0.410.gd8fdbe21b5-goog
-
+    		     	       	       - Ted
