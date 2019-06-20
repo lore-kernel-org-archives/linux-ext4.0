@@ -2,42 +2,42 @@ Return-Path: <SRS0=x6sY=UT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4A58C43613
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F019DC43613
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 78A89206BA
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C8D7220657
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:38:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561066724;
-	bh=HeWLaZx8vNDd7SwrPn4f5AIlPq+mBHnG456nIkYnQjs=;
+	s=default; t=1561066725;
+	bh=fZRcCueYWlIUE+x9dYmZJUdxrmHOPyZEN3htnAyEhTU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=T+bsq/zENcIBBRsmm259eWMoTl/Vx1BzIwwwUZ0lUUoliea2H+cOLGxe4qVSX0+t4
-	 jOPLiOFKc6CdIfWQ2u3qDQ/LT4RDuZgf6fAyXYYAV/qouR19ImG86Vojjbz4gGhyAt
-	 gBj2jzNl2Ypr7+0O5+dd2Z6iHU0WgqLZF6NJvvaM=
+	b=zj64WyhFVdWjj8hOIvyvEAJPXKTwO6ZbG6SfsD8/AcPXn+eLO/4RVbXFq2pa+6q7l
+	 +NZlnfZi33Ex1Q+T7vxF1qsCWtnm0uQNRJ5VLmqCVkoJKbBd7Jc4lV85tuSRwMOhhN
+	 rYMJZKmVZ+S2oQxsLLqOls/uhPeKeEauiteuHhxU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726584AbfFTVik (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Jun 2019 17:38:40 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47154 "EHLO mail.kernel.org"
+        id S1726628AbfFTVip (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Jun 2019 17:38:45 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47218 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726032AbfFTVij (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Jun 2019 17:38:39 -0400
+        id S1726551AbfFTVik (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Jun 2019 17:38:40 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 8F1302085A;
-        Thu, 20 Jun 2019 21:38:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 86187214AF;
+        Thu, 20 Jun 2019 21:38:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561066717;
-        bh=HeWLaZx8vNDd7SwrPn4f5AIlPq+mBHnG456nIkYnQjs=;
+        s=default; t=1561066719;
+        bh=fZRcCueYWlIUE+x9dYmZJUdxrmHOPyZEN3htnAyEhTU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rfIKpazNDw1bB4C0/XZpZm2Dww4Ln3wetmFc7WOjsnOQ1Sq6/yvmvnVxmNPqBtTJD
-         xmP+5sfHRul6vItjTbM4Kl5tXBl997Ahf/M1u//ASjVYxdgU6N7dkNeV5LB2I1Sjhi
-         q31wKs8W1kkDNx3SwhIpdTpis6qnIJqwMrzKKZL8=
+        b=rvmexbB6szRvVaiWTEj3W9AkIUBUiWayaOoN1gOpNATayH+V68NpSBXFp7tCmKAXt
+         94p5kJ1NcTHN9KCcF86H3+lOVI/qfIvu37eNRy17ZuoprCj6fj/dSoBrlJNxqbH6pU
+         WgVmfKQJCmHvglPMPJwUaSTSiv/u0FsMiYKYWxm0=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -45,9 +45,9 @@ Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [RFC PATCH v2 2/8] common/verity: add common functions for testing fs-verity
-Date:   Thu, 20 Jun 2019 14:36:08 -0700
-Message-Id: <20190620213614.113685-3-ebiggers@kernel.org>
+Subject: [RFC PATCH v2 7/8] generic: test using fs-verity and fscrypt simultaneously
+Date:   Thu, 20 Jun 2019 14:36:13 -0700
+Message-Id: <20190620213614.113685-8-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
 In-Reply-To: <20190620213614.113685-1-ebiggers@kernel.org>
 References: <20190620213614.113685-1-ebiggers@kernel.org>
@@ -60,236 +60,131 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add common functions for setting up and testing fs-verity, a new feature
-for read-only file-based authenticity protection.  fs-verity will be
-supported by ext4 and f2fs, and perhaps by other filesystems later.
-Running the fs-verity tests requires:
-
-- A kernel with the fs-verity patches from
-  https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-  branch "fsverity" and configured with CONFIG_FS_VERITY.
-- The fsverity utility program from
-  https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
-- e2fsprogs v1.45.2 or later for ext4 tests, or f2fs-tools v1.11.0 or
-  later for f2fs tests.
-
-See the file Documentation/filesystems/fsverity.rst in the kernel tree
-for more information about fs-verity.
+This primarily verifies correct ordering of the hooks for each feature:
+fscrypt needs to be first.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- common/config |   1 +
- common/verity | 189 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 190 insertions(+)
- create mode 100644 common/verity
+ tests/generic/904     | 80 +++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/904.out | 12 +++++++
+ tests/generic/group   |  1 +
+ 3 files changed, 93 insertions(+)
+ create mode 100755 tests/generic/904
+ create mode 100644 tests/generic/904.out
 
-diff --git a/common/config b/common/config
-index bd64be62..001ddc45 100644
---- a/common/config
-+++ b/common/config
-@@ -212,6 +212,7 @@ export CHECKBASHISMS_PROG="$(type -P checkbashisms)"
- export XFS_INFO_PROG="$(type -P xfs_info)"
- export DUPEREMOVE_PROG="$(type -P duperemove)"
- export CC_PROG="$(type -P cc)"
-+export FSVERITY_PROG="$(type -P fsverity)"
- 
- # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
- # newer systems have udevadm command but older systems like RHEL5 don't.
-diff --git a/common/verity b/common/verity
-new file mode 100644
-index 00000000..86fb6585
+diff --git a/tests/generic/904 b/tests/generic/904
+new file mode 100755
+index 00000000..61bdae22
 --- /dev/null
-+++ b/common/verity
-@@ -0,0 +1,189 @@
++++ b/tests/generic/904
+@@ -0,0 +1,80 @@
++#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
 +# Copyright 2018 Google LLC
 +#
-+# Functions for setting up and testing fs-verity
-+
-+_require_scratch_verity()
-+{
-+	_require_scratch
-+	_require_command "$FSVERITY_PROG" fsverity
-+
-+	if ! _scratch_mkfs_verity &>>$seqres.full; then
-+		# ext4: need e2fsprogs v1.44.5 or later (but actually v1.45.2+
-+		#       is needed for some tests to pass, due to an e2fsck bug)
-+		# f2fs: need f2fs-tools v1.11.0 or later
-+		_notrun "$FSTYP userspace tools don't support fs-verity"
-+	fi
-+
-+	# Try to mount the filesystem.  If this fails then either the kernel
-+	# isn't aware of fs-verity, or the mkfs options were not compatible with
-+	# verity (e.g. ext4 with block size != PAGE_SIZE).
-+	if ! _try_scratch_mount &>>$seqres.full; then
-+		_notrun "kernel is unaware of $FSTYP verity feature," \
-+			"or mkfs options are not compatible with verity"
-+	fi
-+	_scratch_unmount
-+
-+	# The filesystem may be aware of fs-verity but have it disabled by
-+	# CONFIG_FS_VERITY=n.  Detect support via sysfs.
-+	if [ ! -e /sys/fs/$FSTYP/features/verity ]; then
-+		_notrun "kernel $FSTYP isn't configured with verity support"
-+	fi
-+
-+	# Merkle tree block size.  Currently all filesystems only support
-+	# PAGE_SIZE for this.  This is also the default for 'fsverity enable'.
-+	FSV_BLOCK_SIZE=$(get_page_size)
-+}
-+
-+_scratch_mkfs_verity()
-+{
-+	case $FSTYP in
-+	ext4|f2fs)
-+		_scratch_mkfs -O verity
-+		;;
-+	*)
-+		_notrun "No verity support for $FSTYP"
-+		;;
-+	esac
-+}
-+
-+_scratch_mkfs_encrypted_verity()
-+{
-+	case $FSTYP in
-+	ext4)
-+		_scratch_mkfs -O encrypt,verity
-+		;;
-+	f2fs)
-+		# f2fs-tools as of v1.11.0 doesn't allow comma-separated
-+		# features with -O.  Instead -O must be supplied multiple times.
-+		_scratch_mkfs -O encrypt -O verity
-+		;;
-+	*)
-+		_notrun "$FSTYP not supported in _scratch_mkfs_encrypted_verity"
-+		;;
-+	esac
-+}
-+
-+_fsv_scratch_begin_subtest()
-+{
-+	local msg=$1
-+
-+	rm -rf "${SCRATCH_MNT:?}"/*
-+	echo -e "\n# $msg"
-+}
-+
-+_fsv_enable()
-+{
-+	$FSVERITY_PROG enable "$@"
-+}
-+
-+_fsv_measure()
-+{
-+        $FSVERITY_PROG measure "$@" | awk '{print $1}'
-+}
-+
-+# Generate a file, then enable verity on it.
-+_fsv_create_enable_file()
-+{
-+	local file=$1
-+	shift
-+
-+	head -c $((FSV_BLOCK_SIZE * 2)) /dev/zero > "$file"
-+	_fsv_enable "$file" "$@"
-+}
-+
-+_fsv_have_hash_algorithm()
-+{
-+	local hash_alg=$1
-+	local test_file=$2
-+
-+	rm -f $test_file
-+	head -c 4096 /dev/zero > $test_file
-+	if ! _fsv_enable --hash-alg=$hash_alg $test_file &>> $seqres.full; then
-+		# no kernel support
-+		return 1
-+	fi
-+	rm -f $test_file
-+	return 0
-+}
-+
++# FS QA Test generic/904
 +#
-+# _fsv_scratch_corrupt_bytes - Write some bytes to a file, bypassing the filesystem
++# Test using fs-verity and fscrypt simultaneously.  This primarily verifies
++# correct ordering of the hooks for each feature: fscrypt needs to be first.
 +#
-+# Write the bytes sent on stdin to the given offset in the given file, but do so
-+# by writing directly to the extents on the block device, with the filesystem
-+# unmounted.  This can be used to corrupt a verity file for testing purposes,
-+# bypassing the restrictions imposed by the filesystem.
-+#
-+# The file is assumed to be located on $SCRATCH_DEV.
-+#
-+_fsv_scratch_corrupt_bytes()
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
 +{
-+	local file=$1
-+	local offset=$2
-+	local lstart lend pstart pend
-+	local dd_cmds=()
-+	local cmd
-+
-+	sync	# Sync to avoid unwritten extents
-+
-+	cat > $tmp.bytes
-+	local end=$(( offset + $(stat -c %s $tmp.bytes ) ))
-+
-+	# For each extent that intersects the requested range in order, add a
-+	# command that writes the next part of the data to that extent.
-+	while read -r lstart lend pstart pend; do
-+		lstart=$((lstart * 512))
-+		lend=$(((lend + 1) * 512))
-+		pstart=$((pstart * 512))
-+		pend=$(((pend + 1) * 512))
-+
-+		if (( lend - lstart != pend - pstart )); then
-+			_fail "Logical and physical extent lengths differ for file '$file'"
-+		elif (( offset < lstart )); then
-+			_fail "Hole in file '$file' at byte $offset.  Next extent begins at byte $lstart"
-+		elif (( offset < lend )); then
-+			local len=$((lend - offset))
-+			local seek=$((pstart + (offset - lstart)))
-+			dd_cmds+=("head -c $len | dd of=$SCRATCH_DEV oflag=seek_bytes seek=$seek status=none")
-+			(( offset += len ))
-+		fi
-+	done < <($XFS_IO_PROG -r -c "fiemap $offset $((end - offset))" "$file" \
-+		 | _filter_xfs_io_fiemap)
-+
-+	if (( offset < end )); then
-+		_fail "Extents of file '$file' ended at byte $offset, but needed until $end"
-+	fi
-+
-+	# Execute the commands to write the data
-+	_scratch_unmount
-+	for cmd in "${dd_cmds[@]}"; do
-+		eval "$cmd"
-+	done < $tmp.bytes
-+	sync	# Sync to flush the block device's pagecache
-+	_scratch_mount
++	cd /
++	rm -f $tmp.*
 +}
 +
-+#
-+# _fsv_scratch_corrupt_merkle_tree - Corrupt a file's Merkle tree
-+#
-+# Like _fsv_scratch_corrupt_bytes(), but this corrupts the file's fs-verity
-+# Merkle tree.  The offset is given as a byte offset into the Merkle tree.
-+#
-+_fsv_scratch_corrupt_merkle_tree()
-+{
-+	local file=$1
-+	local offset=$2
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/verity
++. ./common/encrypt
 +
-+	case $FSTYP in
-+	ext4|f2fs)
-+		# ext4 and f2fs store the Merkle tree after the file contents
-+		# itself, starting at the next 65536-byte aligned boundary.
-+		(( offset += ($(stat -c %s $file) + 65535) & ~65535 ))
-+		_fsv_scratch_corrupt_bytes $file $offset
-+		;;
-+	*)
-+		_fail "_fsv_scratch_corrupt_merkle_tree() unimplemented on $FSTYP"
-+		;;
-+	esac
-+}
++# remove previous $seqres.full before test
++rm -f $seqres.full
++
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_scratch_verity
++_require_scratch_encryption
++_require_command "$KEYCTL_PROG" keyctl
++
++_scratch_mkfs_encrypted_verity &>> $seqres.full
++_scratch_mount
++
++fsv_orig_file=$tmp.file
++edir=$SCRATCH_MNT/edir
++fsv_file=$edir/file.fsv
++
++# Set up an encrypted directory.
++_new_session_keyring
++keydesc=$(_generate_encryption_key)
++mkdir $edir
++_set_encpolicy $edir $keydesc
++
++# Create a file within the encrypted directory and enable verity on it.
++# Then check that it has an encryption policy as well.
++head -c 100000 /dev/zero > $fsv_orig_file
++cp $fsv_orig_file $fsv_file
++_fsv_enable $fsv_file
++echo
++$XFS_IO_PROG -r -c "get_encpolicy" $fsv_file | _filter_scratch \
++	| sed 's/Master key descriptor:.*/Master key descriptor: 0000000000000000/'
++echo
++
++# Verify that the file contents are as expected.  This should be going through
++# both the decryption and verity I/O paths.
++cmp $fsv_orig_file $fsv_file && echo "Files matched"
++
++# Just in case, try again after a mount cycle to empty the page cache.
++_scratch_cycle_mount
++cmp $fsv_orig_file $fsv_file && echo "Files matched"
++
++# Corrupt some bytes as a sanity check that fs-verity is really working.
++# This also verifies that the data on-disk is really encrypted, since otherwise
++# the data being written here would be identical to the old data.
++head -c 1000 /dev/zero | _fsv_scratch_corrupt_bytes $fsv_file 50000
++md5sum $fsv_file |& _filter_scratch
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/904.out b/tests/generic/904.out
+new file mode 100644
+index 00000000..5f4e249a
+--- /dev/null
++++ b/tests/generic/904.out
+@@ -0,0 +1,12 @@
++QA output created by 904
++
++Encryption policy for SCRATCH_MNT/edir/file.fsv:
++	Policy version: 0
++	Master key descriptor: 0000000000000000
++	Contents encryption mode: 1 (AES-256-XTS)
++	Filenames encryption mode: 4 (AES-256-CTS)
++	Flags: 0x02
++
++Files matched
++Files matched
++md5sum: SCRATCH_MNT/edir/file.fsv: Input/output error
+diff --git a/tests/generic/group b/tests/generic/group
+index 3927f779..5b4c32ff 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -563,3 +563,4 @@
+ 901 auto quick verity
+ 902 auto quick verity
+ 903 auto quick verity
++904 auto quick verity encrypt
 -- 
 2.22.0.410.gd8fdbe21b5-goog
 
