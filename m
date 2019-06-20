@@ -4,40 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6EDDC43613
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:53:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AAEAC48BE4
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:53:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8733C2168B
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:53:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 33E8F2082C
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 20:53:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561064027;
-	bh=lz5JpkYzmpTTBeM2ob3LBdeWeHwnBEIFX+pUx3P6ez4=;
+	s=default; t=1561064030;
+	bh=7jX9aA8IE8stWz6zj6E8QX1HMCEanuNDjXJElYmTkkM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=GxqQ7KaiBXPsZy+s07RvdlXTaUmpmeXn9Mlm0CeAMUY3KowWYKE53G4adfLUYfvli
-	 zVCGFllDqeMZrqePLuGGwNNLip/cBNKVtrrqse2AdQBF+4W0M70ibGbb5moMPG7urH
-	 75OPhKNSrkNVOisWUY8vUUp9q3rMTCV5x+Zv2qMQ=
+	b=S7LLiYptE6wcBCb8LRf0vGp4KHnx7cH2+dOR+80+sLbSY5vzst1AR2s6lVNRodoYZ
+	 Dpd8vnJmQSIZHkhdx9DgT4zMCcvoi90vVT/35H5vp1pmM1hNuzA6xzAP6fu1MPmKXe
+	 4H1tmcJr767kANRRz+bOu54Bw13SJ+xT+OHkYvxA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726395AbfFTUxq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Jun 2019 16:53:46 -0400
+        id S1726452AbfFTUxs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Jun 2019 16:53:48 -0400
 Received: from mail.kernel.org ([198.145.29.99]:56566 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725913AbfFTUxo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Jun 2019 16:53:44 -0400
+        id S1726351AbfFTUxr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Jun 2019 16:53:47 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3A4BA208CA;
-        Thu, 20 Jun 2019 20:53:43 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B3768215EA;
+        Thu, 20 Jun 2019 20:53:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561064023;
-        bh=lz5JpkYzmpTTBeM2ob3LBdeWeHwnBEIFX+pUx3P6ez4=;
+        s=default; t=1561064026;
+        bh=7jX9aA8IE8stWz6zj6E8QX1HMCEanuNDjXJElYmTkkM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=lnZsaHaXbNKvT+ATrs0zKxozNjZv/Hg/rnmBxsdpINoJfiHKbEVWuedfwkHFjDO3b
-         v92007qO4SnUWdrLWatHtt/yrEZVNIwKm9s87Rw6HQVOwj2doilz8oHoV+9DZcPdIK
-         Algk5EzI33ZCevsITsLQRzwIdOKQKNQsJTuv70gY=
+        b=RrdlOl3Nwd/Z4Muo8ZjIxtOWBl5qWp/dIGg7LjnewU7tt7Oc58EzolLKFaB19T7SH
+         zPIv3Vir4EoUPeSPcn6vMi0ZXVaMkLAmRIH/vELUvPvtPIEn9RJQqqrkvhx3XUedeX
+         FYbK2BHPNvWVY3CvcWeKmDx8nc3BzX1FtUX1z5+s=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -50,9 +50,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v5 04/16] fs: uapi: define verity bit for FS_IOC_GETFLAGS
-Date:   Thu, 20 Jun 2019 13:50:31 -0700
-Message-Id: <20190620205043.64350-5-ebiggers@kernel.org>
+Subject: [PATCH v5 08/16] fs-verity: add the hook for file ->setattr()
+Date:   Thu, 20 Jun 2019 13:50:35 -0700
+Message-Id: <20190620205043.64350-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
 In-Reply-To: <20190620205043.64350-1-ebiggers@kernel.org>
 References: <20190620205043.64350-1-ebiggers@kernel.org>
@@ -65,32 +65,73 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add FS_VERITY_FL to the flags for FS_IOC_GETFLAGS, so that applications
-can easily determine whether a file is a verity file at the same time as
-they're checking other file flags.  This flag will be gettable only;
-FS_IOC_SETFLAGS won't allow setting it, since an ioctl must be used
-instead to provide more parameters.
-
-This flag matches the on-disk bit that was already allocated for ext4.
+Add a function fsverity_prepare_setattr() which filesystems that support
+fs-verity must call to deny truncates of verity files.
 
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/uapi/linux/fs.h | 1 +
- 1 file changed, 1 insertion(+)
+ fs/verity/open.c         | 21 +++++++++++++++++++++
+ include/linux/fsverity.h |  7 +++++++
+ 2 files changed, 28 insertions(+)
 
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 59c71fa8c553a3..df261b7e0587ed 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -306,6 +306,7 @@ struct fscrypt_key {
- #define FS_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define FS_HUGE_FILE_FL			0x00040000 /* Reserved for ext4 */
- #define FS_EXTENT_FL			0x00080000 /* Extents */
-+#define FS_VERITY_FL			0x00100000 /* Verity protected inode */
- #define FS_EA_INODE_FL			0x00200000 /* Inode used for large EA */
- #define FS_EOFBLOCKS_FL			0x00400000 /* Reserved for ext4 */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
+diff --git a/fs/verity/open.c b/fs/verity/open.c
+index 3a3bb27e23f5e3..21ae0ef254a695 100644
+--- a/fs/verity/open.c
++++ b/fs/verity/open.c
+@@ -296,6 +296,27 @@ int fsverity_file_open(struct inode *inode, struct file *filp)
+ }
+ EXPORT_SYMBOL_GPL(fsverity_file_open);
+ 
++/**
++ * fsverity_prepare_setattr - prepare to change a verity inode's attributes
++ * @dentry: dentry through which the inode is being changed
++ * @attr: attributes to change
++ *
++ * Verity files are immutable, so deny truncates.  This isn't covered by the
++ * open-time check because sys_truncate() takes a path, not a file descriptor.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
++{
++	if (IS_VERITY(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE)) {
++		pr_debug("Denying truncate of verity file (ino %lu)\n",
++			 d_inode(dentry)->i_ino);
++		return -EPERM;
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(fsverity_prepare_setattr);
++
+ /**
+  * fsverity_cleanup_inode - free the inode's verity info, if present
+  *
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index 1372c236c8770c..cbcc358d073652 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -46,6 +46,7 @@ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
+ /* open.c */
+ 
+ extern int fsverity_file_open(struct inode *inode, struct file *filp);
++extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
+ extern void fsverity_cleanup_inode(struct inode *inode);
+ 
+ #else /* !CONFIG_FS_VERITY */
+@@ -62,6 +63,12 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+ 	return IS_VERITY(inode) ? -EOPNOTSUPP : 0;
+ }
+ 
++static inline int fsverity_prepare_setattr(struct dentry *dentry,
++					   struct iattr *attr)
++{
++	return IS_VERITY(d_inode(dentry)) ? -EOPNOTSUPP : 0;
++}
++
+ static inline void fsverity_cleanup_inode(struct inode *inode)
+ {
+ }
 -- 
 2.22.0.410.gd8fdbe21b5-goog
 
