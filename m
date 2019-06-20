@@ -2,34 +2,71 @@ Return-Path: <SRS0=x6sY=UT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D482BC48BE3
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:27:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75DEEC43613
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:29:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AD41B2070B
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:27:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4DEE92085A
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Jun 2019 21:29:41 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="KvOr4Sp+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726430AbfFTV1j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Jun 2019 17:27:39 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54399 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725906AbfFTV1j (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jun 2019 17:27:39 -0400
-Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5KLRR4u007652
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 20 Jun 2019 17:27:27 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id DC7A0420484; Thu, 20 Jun 2019 17:27:26 -0400 (EDT)
-Date:   Thu, 20 Jun 2019 17:27:26 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ross Zwisler <zwisler@chromium.org>
-Cc:     linux-kernel@vger.kernel.org, Ross Zwisler <zwisler@google.com>,
+        id S1726304AbfFTV3k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Jun 2019 17:29:40 -0400
+Received: from mail-ed1-f67.google.com ([209.85.208.67]:42282 "EHLO
+        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726027AbfFTV3k (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jun 2019 17:29:40 -0400
+Received: by mail-ed1-f67.google.com with SMTP id z25so6726808edq.9
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Jun 2019 14:29:39 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to;
+        bh=v3IpD3zOAyT/o3jFLveqYdHxVLapPS/YFt6LidFqVKU=;
+        b=KvOr4Sp+Id3A6XKZfDq0jaToh9hTpDvR4uHERHTmM5jYRInzJr41kiC9SoOmmDJhky
+         oWXqPY/lKaIz9THmlD7IH7YFcmC3tZDq/MG8PgXKGCf9XHFgOdbfcOfRn1VFfw/TeOoP
+         bFK/Xo6W9HJHbqyCJAlgYtMGuDNKG7dFjc43Q=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to;
+        bh=v3IpD3zOAyT/o3jFLveqYdHxVLapPS/YFt6LidFqVKU=;
+        b=rSRDyY0KOuWmD9RHm0KD9fJyabmv7SZyTF6zn7bUNg5LIevFbXJWBtD2MSQ+6ZqKXt
+         A4R0IZOxZPUenMp6k7v3wlsl2SSa3vCA37wwqrXH6IRyo8QJ0QqrE1Kn/dURmGT3Lm6m
+         ko8GHPuwJ8OLEY7LP9HUDVnaVTE250ddNmtcPJCdIqbTJPa6dGR3rr1ecmtWkyzZmwJ5
+         iQjEN8SDLcTY0JXSimvC0La3m23EhSuhp8OdNPvarJh/XceoSR8KJnMq/XvFOrcp6myk
+         dL5vivPQ1GrDkqcyBS7lOvcqgGkYa6R0X/T5BraylWjokp2R7qYj4TC1FvCpNJFcqsVh
+         LCHA==
+X-Gm-Message-State: APjAAAW8rlwXLOFQCMjHdurrhsSHzRwFmIhuMeqcU7blYM1JnlK2ZJKp
+        3xH8sNCjhU0rX7PFM8Hpd91uhnUD9fc=
+X-Google-Smtp-Source: APXvYqwEzR/KM2j8H9hBZwkSsHCwF7uYr/dudYRG7c83QnxGL8x0kiMiaZhVsqQj3qJSztJNzlysyg==
+X-Received: by 2002:a50:aa14:: with SMTP id o20mr75560507edc.165.1561066178423;
+        Thu, 20 Jun 2019 14:29:38 -0700 (PDT)
+Received: from mail-ed1-f51.google.com (mail-ed1-f51.google.com. [209.85.208.51])
+        by smtp.gmail.com with ESMTPSA id z40sm203230edb.61.2019.06.20.14.29.36
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=AEAD-AES128-GCM-SHA256 bits=128/128);
+        Thu, 20 Jun 2019 14:29:37 -0700 (PDT)
+Received: by mail-ed1-f51.google.com with SMTP id r12so6758241edo.5
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Jun 2019 14:29:36 -0700 (PDT)
+X-Received: by 2002:a17:906:b315:: with SMTP id n21mr8174762ejz.312.1561066175899;
+ Thu, 20 Jun 2019 14:29:35 -0700 (PDT)
+MIME-Version: 1.0
+References: <20190620151839.195506-1-zwisler@google.com> <20190620151839.195506-3-zwisler@google.com>
+ <20190620212517.GC4650@mit.edu>
+In-Reply-To: <20190620212517.GC4650@mit.edu>
+From:   Ross Zwisler <zwisler@chromium.org>
+Date:   Thu, 20 Jun 2019 15:29:24 -0600
+X-Gmail-Original-Message-ID: <CAGRrVHw8LuMT7eTnJ4VV9OpnetSSYaLh5nLkN4Anevz6r8KmZA@mail.gmail.com>
+Message-ID: <CAGRrVHw8LuMT7eTnJ4VV9OpnetSSYaLh5nLkN4Anevz6r8KmZA@mail.gmail.com>
+Subject: Re: [PATCH v2 2/3] jbd2: introduce jbd2_inode dirty range scoping
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Ross Zwisler <zwisler@chromium.org>,
+        linux-kernel@vger.kernel.org, Ross Zwisler <zwisler@google.com>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
@@ -37,37 +74,36 @@ Cc:     linux-kernel@vger.kernel.org, Ross Zwisler <zwisler@google.com>,
         Fletcher Woodruff <fletcherw@google.com>,
         Justin TerAvest <teravest@google.com>, Jan Kara <jack@suse.cz>,
         stable@vger.kernel.org
-Subject: Re: [PATCH v2 3/3] ext4: use jbd2_inode dirty range scoping
-Message-ID: <20190620212726.GD4650@mit.edu>
-Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
-        Ross Zwisler <zwisler@chromium.org>, linux-kernel@vger.kernel.org,
-        Ross Zwisler <zwisler@google.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, Fletcher Woodruff <fletcherw@google.com>,
-        Justin TerAvest <teravest@google.com>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org
-References: <20190620151839.195506-1-zwisler@google.com>
- <20190620151839.195506-4-zwisler@google.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190620151839.195506-4-zwisler@google.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jun 20, 2019 at 09:18:39AM -0600, Ross Zwisler wrote:
-> Use the newly introduced jbd2_inode dirty range scoping to prevent us
-> from waiting forever when trying to complete a journal transaction.
-> 
-> Signed-off-by: Ross Zwisler <zwisler@google.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Cc: stable@vger.kernel.org
+On Thu, Jun 20, 2019 at 3:25 PM Theodore Ts'o <tytso@mit.edu> wrote:
+> On Thu, Jun 20, 2019 at 09:18:38AM -0600, Ross Zwisler wrote:
+> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> > index 5c04181b7c6d8..0e0393e7f41a4 100644
+> > --- a/include/linux/jbd2.h
+> > +++ b/include/linux/jbd2.h
+> > @@ -1397,6 +1413,12 @@ extern int        jbd2_journal_force_commit(journal_t *);
+> >  extern int      jbd2_journal_force_commit_nested(journal_t *);
+> >  extern int      jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *inode);
+> >  extern int      jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *inode);
+> > +extern int      jbd2_journal_inode_ranged_write(handle_t *handle,
+> > +                     struct jbd2_inode *inode, loff_t start_byte,
+> > +                     loff_t length);
+> > +extern int      jbd2_journal_inode_ranged_wait(handle_t *handle,
+> > +                     struct jbd2_inode *inode, loff_t start_byte,
+> > +                     loff_t length);
+> >  extern int      jbd2_journal_begin_ordered_truncate(journal_t *journal,
+> >                               struct jbd2_inode *inode, loff_t new_size);
+> >  extern void     jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+>
+> You're adding two new functions that are called from outside the jbd2
+> subsystem.  To support compiling jbd2 as a module, we also need to add
+> EXPORT_SYMBOL declarations for these two functions.
+>
+> I'll take care of this when applying this change.
 
-Applied, thanks.
-
-					- Ted
+Ah, yep, great catch.  Thanks!
