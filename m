@@ -7,58 +7,57 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9192EC43613
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:59:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6325C43613
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:59:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 561E8206B6
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:59:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B742C20821
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:59:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="iop0iBLc"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="j4pMav0S"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726579AbfFUX62 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 21 Jun 2019 19:58:28 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:36844 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726054AbfFUX62 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2019 19:58:28 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNsqBD059305;
-        Fri, 21 Jun 2019 23:57:20 GMT
+        id S1726747AbfFUX7F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 21 Jun 2019 19:59:05 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:50284 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726058AbfFUX7C (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2019 19:59:02 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNt22Y052769;
+        Fri, 21 Jun 2019 23:57:53 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
  cc : date : message-id : in-reply-to : references : mime-version :
  content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=bO+sN6Te54B7Gm32yC/95CPAosLiG+rfFvZuf1HgzMU=;
- b=iop0iBLcfymdJCKdAp5ye36YRtYmpLaZtzpeCNIekVvk8BHvE0TvsQwZPTRe3GvBvnHB
- POhg9g6OZky6l9+XmlonbM47GDVpeHCNptPw1f0SGTFD69qudz5qj2jFjltpAPUFyq13
- w3KNWu+wVs7ezxklCQg9TRG/odCOQBt/cLogJMrLkTERZiJDfOXSZr31CkR+QhJH0+68
- gjtvuKs3csVg+Tg8WtXM+Uv0cSBNM7/LjpN7quqI1LB93qlLu9XwdmKKwOJl6wy5h1U7
- wT8duhrMKfSo1Tj8wa37VlB+1nB222jRZXy16Cni/dLFHtFij5jp8ZgfZ5xzfhH5L5KN WQ== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by userp2120.oracle.com with ESMTP id 2t7809rqv6-1
+ bh=rwZuzZLu2QSuxM1deZeCZnnfsOeZtWtWWa3iVLz4Y0o=;
+ b=j4pMav0SW7e9IFJcTpCLcn4neiQwevtJo2J+lHllOH0GrPdCMsB8iQfSOQ1NgxlBqbVT
+ OICMIQi3C2UlR7VmtDc28J0RWQyGpW/svba+WkpNuDwnYYbtGkzIR9onweaaZ42Hjd4v
+ 7+6DtESjx18TSxlVMjfOZTOLmVoXhIFnHLJx/ZuAg0EjP7ntcN5y53Ydpo+wlR3McVro
+ P/X2vkBxkiaF5hh8rtBC9Y3IHL9TJQU9hmFMqtuN/6D9K20cct8ZF1rNphEDE4665jhl
+ j72tS2nlAV7F8v5YLxysiYVfhqU1R1I/qPp3EaMXTsfzZ3rfbLk0QJO1ozCXzn3jkiUu FA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 2t7809rsyd-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 21 Jun 2019 23:57:20 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNu9VH042326;
-        Fri, 21 Jun 2019 23:57:19 GMT
+        Fri, 21 Jun 2019 23:57:53 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNvFfg108897;
+        Fri, 21 Jun 2019 23:57:52 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by userp3030.oracle.com with ESMTP id 2t77ypesfg-1
+        by userp3020.oracle.com with ESMTP id 2t77ypetb6-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 21 Jun 2019 23:57:19 +0000
-Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5LNvJbZ044395;
-        Fri, 21 Jun 2019 23:57:19 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userp3030.oracle.com with ESMTP id 2t77ypesfc-1
+        Fri, 21 Jun 2019 23:57:52 +0000
+Received: from userp3020.oracle.com (userp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5LNvq84109606;
+        Fri, 21 Jun 2019 23:57:52 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userp3020.oracle.com with ESMTP id 2t77ypetb3-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 21 Jun 2019 23:57:19 +0000
-Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x5LNvIgI031562;
-        Fri, 21 Jun 2019 23:57:18 GMT
+        Fri, 21 Jun 2019 23:57:52 +0000
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x5LNvocq020839;
+        Fri, 21 Jun 2019 23:57:50 GMT
 Received: from localhost (/10.159.131.214)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 21 Jun 2019 23:57:17 +0000
-Subject: [PATCH 3/7] vfs: flush and wait for io when setting the immutable
- flag via FSSETXATTR
+        with ESMTP ; Fri, 21 Jun 2019 16:57:49 -0700
+Subject: [PATCH 7/7] vfs: don't allow writes to swap files
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     matthew.garrett@nebula.com, yuchao0@huawei.com, tytso@mit.edu,
         darrick.wong@oracle.com, ard.biesheuvel@linaro.org,
@@ -72,8 +71,8 @@ Cc:     reiserfs-devel@vger.kernel.org, linux-efi@vger.kernel.org,
         linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org
-Date:   Fri, 21 Jun 2019 16:57:15 -0700
-Message-ID: <156116143526.1664939.6767366095685084430.stgit@magnolia>
+Date:   Fri, 21 Jun 2019 16:57:46 -0700
+Message-ID: <156116146628.1664939.13724544486987830540.stgit@magnolia>
 In-Reply-To: <156116141046.1664939.11424021489724835645.stgit@magnolia>
 References: <156116141046.1664939.11424021489724835645.stgit@magnolia>
 User-Agent: StGit/0.17.1-dirty
@@ -82,8 +81,8 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9295 signatures=668687
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=969 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
  definitions=main-1906210182
 Sender: linux-ext4-owner@vger.kernel.org
@@ -93,185 +92,107 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-When we're using FS_IOC_FSSETXATTR to set the immutable flag on a file,
-we need to ensure that userspace can't continue to write the file after
-the file becomes immutable.  To make that happen, we have to flush all
-the dirty pagecache pages to disk to ensure that we can fail a page
-fault on a mmap'd region, wait for pending directio to complete, and
-hope the caller locked out any new writes by holding the inode lock.
+Don't let userspace write to an active swap file because the kernel
+effectively has a long term lease on the storage and things could get
+seriously corrupted if we let this happen.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/btrfs/ioctl.c   |    3 +++
- fs/ext4/ioctl.c    |    3 +++
- fs/f2fs/file.c     |    3 +++
- fs/xfs/xfs_ioctl.c |   39 +++++++++++++++++++++++++++++++++------
- include/linux/fs.h |   37 +++++++++++++++++++++++++++++++++++++
- 5 files changed, 79 insertions(+), 6 deletions(-)
+ fs/attr.c     |    3 +++
+ mm/filemap.c  |    3 +++
+ mm/memory.c   |    4 +++-
+ mm/mmap.c     |    2 ++
+ mm/swapfile.c |   15 +++++++++++++--
+ 5 files changed, 24 insertions(+), 3 deletions(-)
 
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index f431813b2454..63a9281e6ce0 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -432,6 +432,9 @@ static int btrfs_ioctl_fssetxattr(struct file *file, void __user *arg)
+diff --git a/fs/attr.c b/fs/attr.c
+index 1fcfdcc5b367..42f4d4fb0631 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -236,6 +236,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **de
+ 	if (IS_IMMUTABLE(inode))
+ 		return -EPERM;
  
- 	__btrfs_ioctl_fsgetxattr(binode, &old_fa);
- 	ret = vfs_ioc_fssetxattr_check(inode, &old_fa, &fa);
-+	if (ret)
-+		goto out_unlock;
-+	ret = vfs_ioc_fssetxattr_flush_data(inode, &fa);
- 	if (ret)
- 		goto out_unlock;
- 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a05341b94d98..6037585c1520 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1115,6 +1115,9 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		inode_lock(inode);
- 		ext4_fsgetxattr(inode, &old_fa);
- 		err = vfs_ioc_fssetxattr_check(inode, &old_fa, &fa);
-+		if (err)
-+			goto out;
-+		err = vfs_ioc_fssetxattr_flush_data(inode, &fa);
- 		if (err)
- 			goto out;
- 		flags = (ei->i_flags & ~EXT4_FL_XFLAG_VISIBLE) |
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index d3cf4bdb8738..97f4bb36540f 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -2832,6 +2832,9 @@ static int f2fs_ioc_fssetxattr(struct file *filp, unsigned long arg)
- 
- 	__f2fs_ioc_fsgetxattr(inode, &old_fa);
- 	err = vfs_ioc_fssetxattr_check(inode, &old_fa, &fa);
-+	if (err)
-+		goto out;
-+	err = vfs_ioc_fssetxattr_flush_data(inode, &fa);
- 	if (err)
- 		goto out;
- 	flags = (fi->i_flags & ~F2FS_FL_XFLAG_VISIBLE) |
-diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index b494e7e881e3..88583b3e1e76 100644
---- a/fs/xfs/xfs_ioctl.c
-+++ b/fs/xfs/xfs_ioctl.c
-@@ -1014,6 +1014,28 @@ xfs_diflags_to_linux(
- #endif
- }
- 
-+/*
-+ * Lock the inode against file io and page faults, then flush all dirty pages
-+ * and wait for writeback and direct IO operations to finish.  Returns with
-+ * the relevant inode lock flags set in @join_flags.  Caller is responsible for
-+ * unlocking even on error return.
-+ */
-+static int
-+xfs_ioctl_setattr_flush(
-+	struct xfs_inode	*ip,
-+	int			*join_flags)
-+{
-+	/* Already locked the inode from IO?  Assume we're done. */
-+	if (((*join_flags) & (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL)) ==
-+			     (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL))
-+		return 0;
++	if (IS_SWAPFILE(inode))
++		return -ETXTBSY;
 +
-+	/* Lock and flush all mappings and IO in preparation for flag change */
-+	*join_flags = XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL;
-+	xfs_ilock(ip, *join_flags);
-+	return inode_flush_data(VFS_I(ip));
-+}
+ 	if ((ia_valid & (ATTR_MODE | ATTR_UID | ATTR_GID | ATTR_TIMES_SET)) &&
+ 	    IS_APPEND(inode))
+ 		return -EPERM;
+diff --git a/mm/filemap.c b/mm/filemap.c
+index dad85e10f5f8..fd80bc20e30a 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2938,6 +2938,9 @@ inline ssize_t generic_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ 	if (IS_IMMUTABLE(inode))
+ 		return -EPERM;
+ 
++	if (IS_SWAPFILE(inode))
++		return -ETXTBSY;
 +
- static int
- xfs_ioctl_setattr_xflags(
- 	struct xfs_trans	*tp,
-@@ -1099,23 +1121,22 @@ xfs_ioctl_setattr_dax_invalidate(
- 	if (!(fa->fsx_xflags & FS_XFLAG_DAX) && !IS_DAX(inode))
+ 	if (!iov_iter_count(from))
  		return 0;
  
--	if (S_ISDIR(inode->i_mode))
-+	if (!S_ISREG(inode->i_mode))
- 		return 0;
+diff --git a/mm/memory.c b/mm/memory.c
+index 4311cfdade90..c04c6a689995 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2235,7 +2235,9 @@ static vm_fault_t do_page_mkwrite(struct vm_fault *vmf)
  
--	/* lock, flush and invalidate mapping in preparation for flag change */
--	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
--	error = filemap_write_and_wait(inode->i_mapping);
-+	error = xfs_ioctl_setattr_flush(ip, join_flags);
+ 	vmf->flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
+ 
+-	if (vmf->vma->vm_file && IS_IMMUTABLE(file_inode(vmf->vma->vm_file)))
++	if (vmf->vma->vm_file &&
++	    (IS_IMMUTABLE(file_inode(vmf->vma->vm_file)) ||
++	     IS_SWAPFILE(file_inode(vmf->vma->vm_file))))
+ 		return VM_FAULT_SIGBUS;
+ 
+ 	ret = vmf->vma->vm_ops->page_mkwrite(vmf);
+diff --git a/mm/mmap.c b/mm/mmap.c
+index ac1e32205237..031807339869 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -1488,6 +1488,8 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
+ 					return -EACCES;
+ 				if (IS_IMMUTABLE(file_inode(file)))
+ 					return -EPERM;
++				if (IS_SWAPFILE(file_inode(file)))
++					return -ETXTBSY;
+ 			}
+ 
+ 			/*
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 596ac98051c5..390859785558 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -3165,6 +3165,19 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
  	if (error)
- 		goto out_unlock;
- 	error = invalidate_inode_pages2(inode->i_mapping);
- 	if (error)
- 		goto out_unlock;
+ 		goto bad_swap;
  
--	*join_flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
- 	return 0;
- 
- out_unlock:
--	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
-+	if (*join_flags)
-+		xfs_iunlock(ip, *join_flags);
-+	*join_flags = 0;
- 	return error;
- 
- }
-@@ -1337,6 +1358,12 @@ xfs_ioctl_setattr(
- 	if (code)
- 		goto error_free_dquots;
- 
-+	if (!join_flags && vfs_ioc_fssetxattr_need_flush(VFS_I(ip), fa)) {
-+		code = xfs_ioctl_setattr_flush(ip, &join_flags);
-+		if (code)
-+			goto error_free_dquots;
++	/*
++	 * Flush any pending IO and dirty mappings before we start using this
++	 * swap file.
++	 */
++	if (S_ISREG(inode->i_mode)) {
++		inode->i_flags |= S_SWAPFILE;
++		error = inode_flush_data(inode);
++		if (error) {
++			inode->i_flags &= ~S_SWAPFILE;
++			goto bad_swap;
++		}
 +	}
 +
- 	tp = xfs_ioctl_setattr_get_trans(ip, join_flags);
- 	if (IS_ERR(tp)) {
- 		code = PTR_ERR(tp);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ed9a74cf5ef3..b4553d01e254 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3607,5 +3607,42 @@ static inline int vfs_ioc_setflags_flush_data(struct inode *inode, int flags)
- int vfs_ioc_fssetxattr_check(struct inode *inode, const struct fsxattr *old_fa,
- 			     struct fsxattr *fa);
+ 	mutex_lock(&swapon_mutex);
+ 	prio = -1;
+ 	if (swap_flags & SWAP_FLAG_PREFER)
+@@ -3185,8 +3198,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	atomic_inc(&proc_poll_event);
+ 	wake_up_interruptible(&proc_poll_wait);
  
-+/*
-+ * Do we need to flush the file data before changing attributes?  When we're
-+ * setting the immutable flag we must stop all directio writes and flush the
-+ * dirty pages so that we can fail the page fault on the next write attempt.
-+ */
-+static inline bool vfs_ioc_fssetxattr_need_flush(struct inode *inode,
-+						 struct fsxattr *fa)
-+{
-+	if (S_ISREG(inode->i_mode) && !IS_IMMUTABLE(inode) &&
-+	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE))
-+		return true;
-+
-+	return false;
-+}
-+
-+/*
-+ * Flush all pending IO and dirty mappings before setting S_IMMUTABLE on an
-+ * inode via FS_IOC_SETXATTR.  If the flush fails we'll clear the flag before
-+ * returning error.
-+ *
-+ * Note: the caller should be holding i_mutex, or else be sure that
-+ * they have exclusive access to the inode structure.
-+ */
-+static inline int vfs_ioc_fssetxattr_flush_data(struct inode *inode,
-+						struct fsxattr *fa)
-+{
-+	int ret;
-+
-+	if (!vfs_ioc_fssetxattr_need_flush(inode, fa))
-+		return 0;
-+
-+	inode_set_flags(inode, S_IMMUTABLE, S_IMMUTABLE);
-+	ret = inode_flush_data(inode);
-+	if (ret)
-+		inode_set_flags(inode, 0, S_IMMUTABLE);
-+	return ret;
-+}
- 
- #endif /* _LINUX_FS_H */
+-	if (S_ISREG(inode->i_mode))
+-		inode->i_flags |= S_SWAPFILE;
+ 	error = 0;
+ 	goto out;
+ bad_swap:
 
