@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6C8AC43613
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:58:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4265C43613
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:58:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AD45020881
-	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:58:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 970FF20821
+	for <linux-ext4@archiver.kernel.org>; Fri, 21 Jun 2019 23:58:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="EN0d442h"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="OcnqzjPS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726533AbfFUX6O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 21 Jun 2019 19:58:14 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:49558 "EHLO
+        id S1726643AbfFUX6g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 21 Jun 2019 19:58:36 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:49948 "EHLO
         userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726054AbfFUX6N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2019 19:58:13 -0400
+        with ESMTP id S1726054AbfFUX6e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jun 2019 19:58:34 -0400
 Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNtT3B053502;
-        Fri, 21 Jun 2019 23:57:05 GMT
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNsvRV052754;
+        Fri, 21 Jun 2019 23:57:29 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
  cc : date : message-id : in-reply-to : references : mime-version :
  content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=twjcs7hmw0I/0y9CON1SwlujfVo0pxMu7JFwyONml5Y=;
- b=EN0d442hHQvSNNdl/RDvWSv64qxAaUqBJ+XWzb9wmHNittQOUUWson32FwnA5XsOJ7B1
- iGsLJuG230CgcItr8GkMiTTOOQPd++pT+F2FFKTrjIIUW23zuCjPo4q9zWJSRjhtqh4y
- tHUs2KjIj99SfJcNC3WfbXVxr7c5JoLZ6M05US2Y9VlFyVrcg+sjXlOJohNfSt1B3GLs
- aTA1JLQMueHt86DwwYNKh4l87ElhhVid89sOr4rk8MXfz9FIGnNxYLjrMalcbFp/7Ylc
- 5dsT5NuF7PizftC8G7G17VjxcDrejTJ0B4mzo+6ilFAPLgyMkxYtyhCXIMImzP87l7n9 2g== 
+ bh=H3uevlbLebMWG9Gcus8tT+xdX29l/sejQz3Gcj6GgOM=;
+ b=OcnqzjPSKPtrxCRWYar6ofhsldYVF9c+tkfBHXonTVfuZMYUnfzwd+pZBE075w5zCRmi
+ ZvsUfy3kAcVu/YedEjN9R/6USufYjacFfPaKsIdUv80jaVBQnD/OAu6lBasg+yQiEqjP
+ eKuWczOltqaQsSQOKOYn/WyUhF9mG4q9hlyIS5IHkJIYG9MP/Y+1AJ1FU73ge2OLZkP1
+ hZaOIE2TRbrQFAunY0/VNR5vRAiBxDfmhK6deScIzINNLh1gycqSUk/W9IUPYABlnujp
+ Ix4fU3tFgbn/QJ+lm60ma+H/Asm2thRj0sXAL9MfISyk+U6RhkB3o0SFsco43PF8crSz hg== 
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by userp2130.oracle.com with ESMTP id 2t7809rswm-1
+        by userp2130.oracle.com with ESMTP id 2t7809rsx8-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 21 Jun 2019 23:57:05 +0000
+        Fri, 21 Jun 2019 23:57:29 +0000
 Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNtKFi168028;
-        Fri, 21 Jun 2019 23:57:04 GMT
+        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5LNvQ7S171581;
+        Fri, 21 Jun 2019 23:57:28 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3030.oracle.com with ESMTP id 2t7rdy0612-1
+        by aserp3030.oracle.com with ESMTP id 2t7rdy064m-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 21 Jun 2019 23:57:04 +0000
+        Fri, 21 Jun 2019 23:57:28 +0000
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5LNuhUw170079;
-        Fri, 21 Jun 2019 23:57:04 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3030.oracle.com with ESMTP id 2t7rdy060u-1
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5LNvS47171635;
+        Fri, 21 Jun 2019 23:57:28 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by aserp3030.oracle.com with ESMTP id 2t7rdy064f-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 21 Jun 2019 23:57:04 +0000
-Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x5LNv2Il019145;
-        Fri, 21 Jun 2019 23:57:02 GMT
+        Fri, 21 Jun 2019 23:57:28 +0000
+Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x5LNvPo2020773;
+        Fri, 21 Jun 2019 23:57:26 GMT
 Received: from localhost (/10.159.131.214)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 21 Jun 2019 16:57:02 -0700
-Subject: [PATCH 1/7] mm/fs: don't allow writes to immutable files
+        with ESMTP ; Fri, 21 Jun 2019 16:57:25 -0700
+Subject: [PATCH 4/7] vfs: don't allow most setxattr to immutable files
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     matthew.garrett@nebula.com, yuchao0@huawei.com, tytso@mit.edu,
         darrick.wong@oracle.com, ard.biesheuvel@linaro.org,
@@ -71,8 +71,8 @@ Cc:     reiserfs-devel@vger.kernel.org, linux-efi@vger.kernel.org,
         linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org
-Date:   Fri, 21 Jun 2019 16:56:58 -0700
-Message-ID: <156116141836.1664939.12249697737780481978.stgit@magnolia>
+Date:   Fri, 21 Jun 2019 16:57:23 -0700
+Message-ID: <156116144305.1664939.3544724373475771930.stgit@magnolia>
 In-Reply-To: <156116141046.1664939.11424021489724835645.stgit@magnolia>
 References: <156116141046.1664939.11424021489724835645.stgit@magnolia>
 User-Agent: StGit/0.17.1-dirty
@@ -82,7 +82,7 @@ Content-Transfer-Encoding: 7bit
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9295 signatures=668687
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
  suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=315 adultscore=0
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=885 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
  definitions=main-1906210182
 Sender: linux-ext4-owner@vger.kernel.org
@@ -99,108 +99,61 @@ or renamed, no link can be created to this file, most of the file's
 metadata can not be modified, and the file can not be opened in write
 mode."
 
-Once the flag is set, it is enforced for quite a few file operations,
-such as fallocate, fpunch, fzero, rm, touch, open, etc.  However, we
-don't check for immutability when doing a write(), a PROT_WRITE mmap(),
-a truncate(), or a write to a previously established mmap.
-
-If a program has an open write fd to a file that the administrator
-subsequently marks immutable, the program still can change the file
-contents.  Weird!
-
-The ability to write to an immutable file does not follow the manpage
-promise that immutable files cannot be modified.  Worse yet it's
-inconsistent with the behavior of other syscalls which don't allow
-modifications of immutable files.
-
-Therefore, add the necessary checks to make the write, mmap, and
-truncate behavior consistent with what the manpage says and consistent
-with other syscalls on filesystems which support IMMUTABLE.
+However, we don't actually check the immutable flag in the setattr code,
+which means that we can update inode flags and project ids and extent
+size hints on supposedly immutable files.  Therefore, reject setflags
+and fssetxattr calls on an immutable file if the file is immutable and
+will remain that way.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/attr.c    |   13 ++++++-------
- mm/filemap.c |    3 +++
- mm/memory.c  |    3 +++
- mm/mmap.c    |    8 ++++++--
- 4 files changed, 18 insertions(+), 9 deletions(-)
+ fs/inode.c |   27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
 
-diff --git a/fs/attr.c b/fs/attr.c
-index d22e8187477f..1fcfdcc5b367 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -233,19 +233,18 @@ int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **de
+diff --git a/fs/inode.c b/fs/inode.c
+index 6374ad2ef25b..220caefc31f7 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -2204,6 +2204,14 @@ int vfs_ioc_setflags_check(struct inode *inode, int oldflags, int flags)
+ 	    !capable(CAP_LINUX_IMMUTABLE))
+ 		return -EPERM;
  
- 	WARN_ON_ONCE(!inode_is_locked(inode));
- 
--	if (ia_valid & (ATTR_MODE | ATTR_UID | ATTR_GID | ATTR_TIMES_SET)) {
--		if (IS_IMMUTABLE(inode) || IS_APPEND(inode))
--			return -EPERM;
--	}
-+	if (IS_IMMUTABLE(inode))
++	/*
++	 * We aren't allowed to change any other flags if the immutable flag is
++	 * already set and is not being unset.
++	 */
++	if ((oldflags & FS_IMMUTABLE_FL) && (flags & FS_IMMUTABLE_FL) &&
++	    oldflags != flags)
 +		return -EPERM;
 +
-+	if ((ia_valid & (ATTR_MODE | ATTR_UID | ATTR_GID | ATTR_TIMES_SET)) &&
-+	    IS_APPEND(inode))
-+		return -EPERM;
+ 	return 0;
+ }
+ EXPORT_SYMBOL(vfs_ioc_setflags_check);
+@@ -2246,6 +2254,25 @@ int vfs_ioc_fssetxattr_check(struct inode *inode, const struct fsxattr *old_fa,
+ 	    !S_ISREG(inode->i_mode) && !S_ISDIR(inode->i_mode))
+ 		return -EINVAL;
  
- 	/*
- 	 * If utimes(2) and friends are called with times == NULL (or both
- 	 * times are UTIME_NOW), then we need to check for write permission
- 	 */
- 	if (ia_valid & ATTR_TOUCH) {
--		if (IS_IMMUTABLE(inode))
--			return -EPERM;
--
- 		if (!inode_owner_or_capable(inode)) {
- 			error = inode_permission(inode, MAY_WRITE);
- 			if (error)
-diff --git a/mm/filemap.c b/mm/filemap.c
-index aac71aef4c61..dad85e10f5f8 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2935,6 +2935,9 @@ inline ssize_t generic_write_checks(struct kiocb *iocb, struct iov_iter *from)
- 	loff_t count;
- 	int ret;
- 
-+	if (IS_IMMUTABLE(inode))
-+		return -EPERM;
++	/*
++	 * We aren't allowed to change any fields if the immutable flag is
++	 * already set and is not being unset.
++	 */
++	if ((old_fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
++	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE)) {
++		if (old_fa->fsx_xflags != fa->fsx_xflags)
++			return -EPERM;
++		if (old_fa->fsx_projid != fa->fsx_projid)
++			return -EPERM;
++		if ((fa->fsx_xflags & (FS_XFLAG_EXTSIZE |
++				       FS_XFLAG_EXTSZINHERIT)) &&
++		    old_fa->fsx_extsize != fa->fsx_extsize)
++			return -EPERM;
++		if ((old_fa->fsx_xflags & FS_XFLAG_COWEXTSIZE) &&
++		    old_fa->fsx_cowextsize != fa->fsx_cowextsize)
++			return -EPERM;
++	}
 +
- 	if (!iov_iter_count(from))
- 		return 0;
- 
-diff --git a/mm/memory.c b/mm/memory.c
-index ddf20bd0c317..4311cfdade90 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2235,6 +2235,9 @@ static vm_fault_t do_page_mkwrite(struct vm_fault *vmf)
- 
- 	vmf->flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
- 
-+	if (vmf->vma->vm_file && IS_IMMUTABLE(file_inode(vmf->vma->vm_file)))
-+		return VM_FAULT_SIGBUS;
-+
- 	ret = vmf->vma->vm_ops->page_mkwrite(vmf);
- 	/* Restore original flags so that caller is not surprised */
- 	vmf->flags = old_flags;
-diff --git a/mm/mmap.c b/mm/mmap.c
-index 7e8c3e8ae75f..ac1e32205237 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -1483,8 +1483,12 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
- 		case MAP_SHARED_VALIDATE:
- 			if (flags & ~flags_mask)
- 				return -EOPNOTSUPP;
--			if ((prot&PROT_WRITE) && !(file->f_mode&FMODE_WRITE))
--				return -EACCES;
-+			if (prot & PROT_WRITE) {
-+				if (!(file->f_mode & FMODE_WRITE))
-+					return -EACCES;
-+				if (IS_IMMUTABLE(file_inode(file)))
-+					return -EPERM;
-+			}
- 
- 			/*
- 			 * Make sure we don't allow writing to an append-only
+ 	/* Extent size hints of zero turn off the flags. */
+ 	if (fa->fsx_extsize == 0)
+ 		fa->fsx_xflags &= ~(FS_XFLAG_EXTSIZE | FS_XFLAG_EXTSZINHERIT);
 
