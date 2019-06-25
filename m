@@ -2,177 +2,121 @@ Return-Path: <SRS0=MPzU=UY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AD3BC4646C
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jun 2019 03:06:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0DE7C48BD4
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jun 2019 06:23:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 12B4920663
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jun 2019 03:06:22 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="BXJlUqAK"
+	by mail.kernel.org (Postfix) with ESMTP id A28992085A
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jun 2019 06:23:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728211AbfFYDGQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Jun 2019 23:06:16 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:44288 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726461AbfFYDGQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jun 2019 23:06:16 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5P2xZkP183824;
-        Tue, 25 Jun 2019 03:04:56 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=y1nTqvm5zm2oVuuxHsrGpbU4gEqHpmqSXspC8Bne9NM=;
- b=BXJlUqAKvMETApXDcsKgEZiNdrmlXkQGnY88kMW3AMxNKcXyyaE6UXAlpYECy+ntv7pH
- 6uhEP1tj4tycY9LMVwQSwCJ1OFoN8XiURaWWP5MgMDhRGeWBYKJ5F+hDMXeWyXvzw09Y
- W93kGqDhXdEUxHJGprg0ZqzGMSQuXc6a6uPIBselde0/QnSPFrNudLSF4JrDCRjZHlSe
- PtPwNFzZ3qhrAqfZeA252/OTt3UOJ6W5XclgLFaB43nqCHJq7hk5QCcLKtksxGRz16et
- vcWpg2Ca0sMBi64yleW6uVf2BPJY2qw2eabFh6Nu+9cNmwvp3CwrP4l2harCRSOmeEeb 1g== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2130.oracle.com with ESMTP id 2t9brt1hg7-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Jun 2019 03:04:56 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5P34h96101926;
-        Tue, 25 Jun 2019 03:04:55 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3020.oracle.com with ESMTP id 2t9p6tx2qw-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Tue, 25 Jun 2019 03:04:55 +0000
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5P34tbP102400;
-        Tue, 25 Jun 2019 03:04:55 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3020.oracle.com with ESMTP id 2t9p6tx2qp-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Jun 2019 03:04:54 +0000
-Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x5P34gx0001788;
-        Tue, 25 Jun 2019 03:04:42 GMT
-Received: from localhost (/67.169.218.210)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 24 Jun 2019 20:04:41 -0700
-Date:   Mon, 24 Jun 2019 20:04:39 -0700
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-efi@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        yuchao0@huawei.com, linux-mm@kvack.org, clm@fb.com,
-        adilger.kernel@dilger.ca, matthew.garrett@nebula.com,
-        linux-nilfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        devel@lists.orangefs.org, josef@toxicpanda.com,
-        reiserfs-devel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        dsterba@suse.com, jaegeuk@kernel.org, tytso@mit.edu,
-        ard.biesheuvel@linaro.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        jk@ozlabs.org, jack@suse.com, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com
-Subject: Re: [Ocfs2-devel] [PATCH 2/7] vfs: flush and wait for io when
- setting the immutable flag via SETFLAGS
-Message-ID: <20190625030439.GA5379@magnolia>
-References: <156116141046.1664939.11424021489724835645.stgit@magnolia>
- <156116142734.1664939.5074567130774423066.stgit@magnolia>
- <20190624113737.GG32376@quack2.suse.cz>
- <20190624215817.GE1611011@magnolia>
+        id S1729255AbfFYGXT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Jun 2019 02:23:19 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:55708 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729252AbfFYGXT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Jun 2019 02:23:19 -0400
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x5P6HC2T070724
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Jun 2019 02:23:18 -0400
+Received: from e06smtp07.uk.ibm.com (e06smtp07.uk.ibm.com [195.75.94.103])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2tbdhvhhh2-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Jun 2019 02:23:18 -0400
+Received: from localhost
+        by e06smtp07.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
+        Tue, 25 Jun 2019 07:23:16 +0100
+Received: from b06cxnps4076.portsmouth.uk.ibm.com (9.149.109.198)
+        by e06smtp07.uk.ibm.com (192.168.101.137) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Tue, 25 Jun 2019 07:23:11 +0100
+Received: from d06av26.portsmouth.uk.ibm.com (d06av26.portsmouth.uk.ibm.com [9.149.105.62])
+        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x5P6NA8M37421188
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 25 Jun 2019 06:23:11 GMT
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id B4137AE057;
+        Tue, 25 Jun 2019 06:23:10 +0000 (GMT)
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 22F32AE053;
+        Tue, 25 Jun 2019 06:23:09 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.124.35.58])
+        by d06av26.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Tue, 25 Jun 2019 06:23:08 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        hch@infradead.org
+Subject: Re: [PATCH V3 0/7] Consolidate FS read I/O callbacks code
+Date:   Tue, 25 Jun 2019 11:54:18 +0530
+Organization: IBM
+In-Reply-To: <20190621221550.GF167064@gmail.com>
+References: <20190616160813.24464-1-chandan@linux.ibm.com> <20190621221550.GF167064@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190624215817.GE1611011@magnolia>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9298 signatures=668687
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1906250023
+Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset="us-ascii"
+X-TM-AS-GCONF: 00
+x-cbid: 19062506-0028-0000-0000-0000037D4CB7
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19062506-0029-0000-0000-0000243D6CB7
+Message-Id: <1680442.JJIz71cjaA@localhost.localdomain>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-06-25_05:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1906250050
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 24, 2019 at 02:58:17PM -0700, Darrick J. Wong wrote:
-> On Mon, Jun 24, 2019 at 01:37:37PM +0200, Jan Kara wrote:
-> > On Fri 21-06-19 16:57:07, Darrick J. Wong wrote:
-> > > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > > 
-> > > When we're using FS_IOC_SETFLAGS to set the immutable flag on a file, we
-> > > need to ensure that userspace can't continue to write the file after the
-> > > file becomes immutable.  To make that happen, we have to flush all the
-> > > dirty pagecache pages to disk to ensure that we can fail a page fault on
-> > > a mmap'd region, wait for pending directio to complete, and hope the
-> > > caller locked out any new writes by holding the inode lock.
-> > > 
-> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+On Saturday, June 22, 2019 3:45:51 AM IST Eric Biggers wrote:
+> On Sun, Jun 16, 2019 at 09:38:06PM +0530, Chandan Rajendra wrote:
+> > This patchset moves the "FS read I/O callbacks" code into a file of its
+> > own (i.e. fs/read_callbacks.c) and modifies the generic
+> > do_mpage_readpge() to make use of the functionality provided.
 > > 
-> > Seeing the way this worked out, is there a reason to have separate
-> > vfs_ioc_setflags_flush_data() instead of folding the functionality in
-> > vfs_ioc_setflags_check() (possibly renaming it to
-> > vfs_ioc_setflags_prepare() to indicate it does already some changes)? I
-> > don't see any place that would need these two separated...
-> 
-> XFS needs them to be separated.
-> 
-> If we even /think/ that we're going to be setting the immutable flag
-> then we need to grab the IOLOCK and the MMAPLOCK to prevent further
-> writes while we drain all the directio writes and dirty data.  IO
-> completions for the write draining can take the ILOCK, which means that
-> we can't have grabbed it yet.
-> 
-> Next, we grab the ILOCK so we can check the new flags against the inode
-> and then update the inode core.
-> 
-> For most filesystems I think it suffices to inode_lock and then do both,
-> though.
-
-Heh, lol, that applies to fssetxattr, not to setflags, because xfs
-setflags implementation open-codes the relevant fssetxattr pieces.
-So for setflags we can combine both parts into a single _prepare
-function.
-
---D
-
-> > > +/*
-> > > + * Flush all pending IO and dirty mappings before setting S_IMMUTABLE on an
-> > > + * inode via FS_IOC_SETFLAGS.  If the flush fails we'll clear the flag before
-> > > + * returning error.
-> > > + *
-> > > + * Note: the caller should be holding i_mutex, or else be sure that
-> > > + * they have exclusive access to the inode structure.
-> > > + */
-> > > +static inline int vfs_ioc_setflags_flush_data(struct inode *inode, int flags)
-> > > +{
-> > > +	int ret;
-> > > +
-> > > +	if (!vfs_ioc_setflags_need_flush(inode, flags))
-> > > +		return 0;
-> > > +
-> > > +	inode_set_flags(inode, S_IMMUTABLE, S_IMMUTABLE);
-> > > +	ret = inode_flush_data(inode);
-> > > +	if (ret)
-> > > +		inode_set_flags(inode, 0, S_IMMUTABLE);
-> > > +	return ret;
-> > > +}
+> > "FS read I/O callbacks" code implements the state machine that needs
+> > to be executed after reading data from files that are encrypted and/or
+> > have verity metadata associated with them.
 > > 
-> > Also this sets S_IMMUTABLE whenever vfs_ioc_setflags_need_flush() returns
-> > true. That is currently the right thing but seems like a landmine waiting
-> > to trip? So I'd just drop the vfs_ioc_setflags_need_flush() abstraction to
-> > make it clear what's going on.
-> 
-> Ok.
-> 
-> --D
-> 
+> > With these changes in place, the patchset changes Ext4 to use
+> > mpage_readpage[s] instead of its own custom ext4_readpage[s]()
+> > functions. This is done to reduce duplication of code across
+> > filesystems. Also, "FS read I/O callbacks" source files will be built
+> > only if CONFIG_FS_ENCRYPTION is enabled.
 > > 
-> > 								Honza
-> > -- 
-> > Jan Kara <jack@suse.com>
-> > SUSE Labs, CR
+> > The patchset also modifies fs/buffer.c to get file
+> > encryption/decryption to work with subpage-sized blocks.
+> > 
+> > The patches can also be obtained from
+> > https://github.com/chandanr/linux.git at branch subpage-encryption-v3.
+> > 
 > 
-> _______________________________________________
-> Ocfs2-devel mailing list
-> Ocfs2-devel@oss.oracle.com
-> https://oss.oracle.com/mailman/listinfo/ocfs2-devel
+> FWIW: while doing my review I put together an (untested) incremental patch that
+> addresses my comments on the code, so I've provided it below in case you want to
+> start with it when addressing my comments.
+> 
+> This is just a single diff against your subpage-encryption-v3 branch, so of
+> course it would still need to be folded into the appropriate patches.  Also see
+> my suggestions in reply to patch 2 about how to better organize the series.  I
+> also left TODOs in kerneldoc comments that still need to be updated.
+> 
+
+Thanks for all your help. I will post the next version of the patchset
+addressing all your review comments.
+
+-- 
+chandan
+
+
+
