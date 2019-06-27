@@ -1,84 +1,128 @@
-Return-Path: <SRS0=SjVU=UZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=3dsC=U2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_MUTT
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D940C48BD6
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jun 2019 22:47:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7DABC48BD9
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jun 2019 00:22:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D481214DA
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Jun 2019 22:47:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7F77A20815
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jun 2019 00:22:54 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="nB7qaexU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726418AbfFZWrj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Jun 2019 18:47:39 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:33891 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726354AbfFZWrj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2019 18:47:39 -0400
-Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x5QMl9xf027338
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 26 Jun 2019 18:47:10 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 9C2EC42002E; Wed, 26 Jun 2019 18:47:09 -0400 (EDT)
-Date:   Wed, 26 Jun 2019 18:47:09 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     syzbot <syzbot+4bfbbf28a2e50ab07368@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, davem@davemloft.net, eladr@mellanox.com,
-        idosch@mellanox.com, jiri@mellanox.com, john.stultz@linaro.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tglx@linutronix.de
-Subject: Re: INFO: rcu detected stall in ext4_write_checks
-Message-ID: <20190626224709.GH3116@mit.edu>
-Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
-        syzbot <syzbot+4bfbbf28a2e50ab07368@syzkaller.appspotmail.com>,
-        adilger.kernel@dilger.ca, davem@davemloft.net, eladr@mellanox.com,
-        idosch@mellanox.com, jiri@mellanox.com, john.stultz@linaro.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tglx@linutronix.de
-References: <000000000000d3f34b058c3d5a4f@google.com>
- <20190626184251.GE3116@mit.edu>
- <20190626210351.GF3116@mit.edu>
+        id S1726752AbfF0AWt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Jun 2019 20:22:49 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:58130 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726489AbfF0AWs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jun 2019 20:22:48 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5R095sZ153911;
+        Thu, 27 Jun 2019 00:21:35 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=OZ6e0FbvZ6ih1IklP3kOWEbcdJlaHfvXLF3leRVcWUY=;
+ b=nB7qaexUVLsnWtZZL8ilmpxLc4CbV8CD4zkMKrWoh3xml3JhUaIp9+OiX8KWgEiq+QTV
+ TmxH5cPDR/GN/Mim9pS0HSeUZriivu5IXjKymJeB4VlwuYqux8YFE96Q7ZuFaywS9GAs
+ IfOynDYAH9wgXQWBBSy6D0VCSg6NmF9n/ECyAKjhrIbHx+AeA7tGFvV0wlMxz0hVhnnB
+ xmxNQ5IUCjtH5vC5g7w5I84m4u6ESWlV3qRYMg8v1xYN3YBxl87OiOZnnvitl0kRmOQG
+ ZRsajauz8/ilsNemW/ld4kcCe0+NXHIqitakDgA0iOejAf6kjQWlHHswxg9S0B9x2R/i YA== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2130.oracle.com with ESMTP id 2t9brtd8qm-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 27 Jun 2019 00:21:34 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5R0I1KJ030470;
+        Thu, 27 Jun 2019 00:19:34 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3030.oracle.com with ESMTP id 2t99f4r2nb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Thu, 27 Jun 2019 00:19:34 +0000
+Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5R0JYLu032344;
+        Thu, 27 Jun 2019 00:19:34 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3030.oracle.com with ESMTP id 2t99f4r2n4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 27 Jun 2019 00:19:34 +0000
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x5R0JTqS006644;
+        Thu, 27 Jun 2019 00:19:29 GMT
+Received: from localhost (/10.145.178.41)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Wed, 26 Jun 2019 17:19:28 -0700
+Date:   Wed, 26 Jun 2019 17:19:26 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     Al Viro <viro@zeniv.linux.org.uk>, matthew.garrett@nebula.com,
+        yuchao0@huawei.com, tytso@mit.edu, shaggy@kernel.org,
+        ard.biesheuvel@linaro.org, josef@toxicpanda.com, clm@fb.com,
+        adilger.kernel@dilger.ca, jk@ozlabs.org, jack@suse.com,
+        dsterba@suse.com, jaegeuk@kernel.org, cluster-devel@redhat.com,
+        jfs-discussion@lists.sourceforge.net, linux-efi@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, reiserfs-devel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-mtd@lists.infradead.org,
+        ocfs2-devel@oss.oracle.com, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org
+Subject: Re: [PATCH 2/5] vfs: create a generic checking function for
+ FS_IOC_FSSETXATTR
+Message-ID: <20190627001926.GL5171@magnolia>
+References: <156151632209.2283456.3592379873620132456.stgit@magnolia>
+ <156151633829.2283456.834142172527987802.stgit@magnolia>
+ <20190626041133.GB32272@ZenIV.linux.org.uk>
+ <20190626153542.GE5171@magnolia>
+ <20190626154302.GA31445@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190626210351.GF3116@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20190626154302.GA31445@infradead.org>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9300 signatures=668687
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1906270000
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-More details about what is going on.  First, it requires root, because
-one of that is required is using sched_setattr (which is enough to
-shoot yourself in the foot):
+On Wed, Jun 26, 2019 at 08:43:02AM -0700, Christoph Hellwig wrote:
+> On Wed, Jun 26, 2019 at 08:35:42AM -0700, Darrick J. Wong wrote:
+> > > static inline void simple_fill_fsxattr(struct fsxattr *fa, unsigned xflags)
+> > > {
+> > > 	memset(fa, 0, sizeof(*fa));
+> > > 	fa->fsx_xflags = xflags;
+> > > }
+> > > 
+> > > and let the compiler optimize the crap out?
+> > 
+> > The v2 series used to do that, but Christoph complained that having a
+> > helper for a two-line memset and initialization was silly[1] so now we
+> > have this version.
+> > 
+> > I don't mind reinstating it as a static inline helper, but I'd like some
+> > input from any of the btrfs developers (or you, Al) about which form is
+> > preferred.
+> 
+> I complained having that helper in btrfs.  I think Al wants a generic
+> one, which at least makes a little more sense.
 
-sched_setattr(0, {size=0, sched_policy=0x6 /* SCHED_??? */, sched_flags=0, sched_nice=0, sched_priority=0, sched_runtime=2251799813724439, sched_deadline=4611686018427453437, sched_period=0}, 0) = 0
+Ok.
 
-This is setting the scheduler policy to be SCHED_DEADLINE, with a
-runtime parameter of 2251799.813724439 seconds (or 26 days) and a
-deadline of 4611686018.427453437 seconds (or 146 *years*).  This means
-a particular kernel thread can run for up to 26 **days** before it is
-scheduled away, and if a kernel reads gets woken up or sent a signal,
-no worries, it will wake up roughly seven times the interval that Rip
-Van Winkle spent snoozing in a cave in the Catskill Mountains (in
-Washington Irving's short story).
+> That being said I wonder if we should lift these attr ioctls to
+> file op methods and deal with all that crap in VFS code instead of
+> having all those duplicated ioctl parsers.
 
-We then kick off a half-dozen threads all running:
+That sounds like an excellent next patchset. :)
 
-   sendfile(fd, fd, &pos, 0x8080fffffffe);
-
-(and since count is a ridiculously large number, this gets cut down to):
-
-   sendfile(fd, fd, &pos, 2147479552);
-
-Is it any wonder that we are seeing RCU stalls?   :-)
-
-      	  	      	     	    - Ted
+--D
