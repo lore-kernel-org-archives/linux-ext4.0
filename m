@@ -7,57 +7,58 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EFA9C5B57A
-	for <linux-ext4@archiver.kernel.org>; Fri, 28 Jun 2019 18:36:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA106C5B57A
+	for <linux-ext4@archiver.kernel.org>; Fri, 28 Jun 2019 18:36:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B1E72083B
-	for <linux-ext4@archiver.kernel.org>; Fri, 28 Jun 2019 18:36:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 899CB20828
+	for <linux-ext4@archiver.kernel.org>; Fri, 28 Jun 2019 18:36:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="InU5VQwU"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="jRRaM6/c"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727134AbfF1Sg3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 28 Jun 2019 14:36:29 -0400
-Received: from aserp2120.oracle.com ([141.146.126.78]:54990 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727100AbfF1Sg2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jun 2019 14:36:28 -0400
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5SIYg95028012;
-        Fri, 28 Jun 2019 18:35:13 GMT
+        id S1727108AbfF1SgZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 28 Jun 2019 14:36:25 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:57350 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727100AbfF1SgY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jun 2019 14:36:24 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5SIYQRG108883;
+        Fri, 28 Jun 2019 18:34:57 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
  cc : date : message-id : in-reply-to : references : mime-version :
  content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=mV9lFn0ZU5Q9Z/uVcSNUaPT4H36wgugtQJzUEwexaJw=;
- b=InU5VQwU/9kdWgyHNdeqJamZTFjgL8ed4NsqyIJsp1hQoTRw+cuss3QKw28DrcV+MwR5
- NeB4fDw3S211SaxJkEgWs/ZkYiDTII3xYEWMTlWXM6xHHN1Rt8aCBLQgFhwcOBsGPjd+
- L+wFuDCjf8ij8nvQzq781+D4e/bjHz9pWruNxQdDbokTlTpBPvyyLbHVQSgy1RyPAMiE
- JbrP87fbggSJM8vshLS1qI0MLBNpYz/DX7cBYg9uy+2ZB3lAIlhxzDquuSXcLj6p6BWP
- 09uZZfbWmNnvcjsl2cOOUYvGPzOx2719utSM0C6FKO5h1+pepugx0bbxDLfeyC7E5WIe qg== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by aserp2120.oracle.com with ESMTP id 2t9c9q72t0-1
+ bh=hDvAuKrMfSUW7AbzqNfZSt/8R1aeCpTe5TGF8T8lRYc=;
+ b=jRRaM6/cr2s1fN3nJa8yFGdPIm650NetSXoqzer/0L2yCpma7vUORBQ7mNoB6zegt3yV
+ 2WaPx92M+xx36rc1eyqskvJFn7teZ2EjeHlgbNGpAU6lHKWmerm/E2KLpNPo+wGArDa1
+ K8c2RTjP5b+vZvA0NI05COGDHcOesafa6zvfR7n2l6a4vNBTxFEAFBe9kju/lSpjuOFA
+ sfZS2IZRGf2rVNN8QJ4XjaPhFu7Dg9WBD5nM9iuWr+1Q8xXsS4BvM2zQ5vYY9tZSIFZD
+ S1ts7ni4Y8CuHWQnPN6AP834iFHazwJqlHUIP93kvyf0vy/iHyKGjVX9sQiIRpp9eMnJ xw== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 2t9brtq3hf-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 28 Jun 2019 18:35:13 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5SIXc0S078839;
-        Fri, 28 Jun 2019 18:35:12 GMT
+        Fri, 28 Jun 2019 18:34:57 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x5SIXXPt000897;
+        Fri, 28 Jun 2019 18:34:56 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3030.oracle.com with ESMTP id 2t9acdyegn-1
+        by userp3020.oracle.com with ESMTP id 2tat7e3gab-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Fri, 28 Jun 2019 18:35:12 +0000
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5SIZCBn081341;
-        Fri, 28 Jun 2019 18:35:12 GMT
+        Fri, 28 Jun 2019 18:34:56 +0000
+Received: from userp3020.oracle.com (userp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x5SIYuM8003117;
+        Fri, 28 Jun 2019 18:34:56 GMT
 Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3030.oracle.com with ESMTP id 2t9acdyegg-1
+        by userp3020.oracle.com with ESMTP id 2tat7e3ga7-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 28 Jun 2019 18:35:12 +0000
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x5SIZA31029198;
-        Fri, 28 Jun 2019 18:35:10 GMT
+        Fri, 28 Jun 2019 18:34:56 +0000
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x5SIYsCq029052;
+        Fri, 28 Jun 2019 18:34:54 GMT
 Received: from localhost (/67.169.218.210)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 28 Jun 2019 11:35:10 -0700
-Subject: [PATCH 4/4] vfs: don't allow most setxattr to immutable files
+        with ESMTP ; Fri, 28 Jun 2019 11:34:54 -0700
+Subject: [PATCH 2/4] vfs: flush and wait for io when setting the immutable
+ flag via SETFLAGS
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     matthew.garrett@nebula.com, yuchao0@huawei.com, tytso@mit.edu,
         darrick.wong@oracle.com, ard.biesheuvel@linaro.org,
@@ -71,8 +72,8 @@ Cc:     reiserfs-devel@vger.kernel.org, linux-efi@vger.kernel.org,
         linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org
-Date:   Fri, 28 Jun 2019 11:35:07 -0700
-Message-ID: <156174690758.1557469.9258105121276292687.stgit@magnolia>
+Date:   Fri, 28 Jun 2019 11:34:51 -0700
+Message-ID: <156174689192.1557469.17945809794748607270.stgit@magnolia>
 In-Reply-To: <156174687561.1557469.7505651950825460767.stgit@magnolia>
 References: <156174687561.1557469.7505651950825460767.stgit@magnolia>
 User-Agent: StGit/0.17.1-dirty
@@ -82,7 +83,7 @@ Content-Transfer-Encoding: 7bit
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9302 signatures=668688
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
  suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=902 adultscore=0
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=753 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
  definitions=main-1906280210
 Sender: linux-ext4-owner@vger.kernel.org
@@ -92,68 +93,84 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-The chattr manpage has this to say about immutable files:
-
-"A file with the 'i' attribute cannot be modified: it cannot be deleted
-or renamed, no link can be created to this file, most of the file's
-metadata can not be modified, and the file can not be opened in write
-mode."
-
-However, we don't actually check the immutable flag in the setattr code,
-which means that we can update inode flags and project ids and extent
-size hints on supposedly immutable files.  Therefore, reject setflags
-and fssetxattr calls on an immutable file if the file is immutable and
-will remain that way.
+When we're using FS_IOC_SETFLAGS to set the immutable flag on a file, we
+need to ensure that userspace can't continue to write the file after the
+file becomes immutable.  To make that happen, we have to flush all the
+dirty pagecache pages to disk to ensure that we can fail a page fault on
+a mmap'd region, wait for pending directio to complete, and hope the
+caller locked out any new writes by holding the inode lock.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/inode.c |   27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ fs/inode.c         |   21 +++++++++++++++++++--
+ include/linux/fs.h |   11 +++++++++++
+ 2 files changed, 30 insertions(+), 2 deletions(-)
 
 
 diff --git a/fs/inode.c b/fs/inode.c
-index cf07378e5731..4261c709e50e 100644
+index f08711b34341..65a412af3ffb 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
-@@ -2214,6 +2214,14 @@ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
+@@ -2193,7 +2193,8 @@ EXPORT_SYMBOL(current_time);
+ 
+ /*
+  * Generic function to check FS_IOC_SETFLAGS values and reject any invalid
+- * configurations.
++ * configurations.  Once we're done, prepare the inode for whatever changes
++ * are coming down the pipeline.
+  *
+  * Note: the caller should be holding i_mutex, or else be sure that they have
+  * exclusive access to the inode structure.
+@@ -2201,6 +2202,8 @@ EXPORT_SYMBOL(current_time);
+ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
+ 			     unsigned int flags)
+ {
++	int ret;
++
+ 	/*
+ 	 * The IMMUTABLE and APPEND_ONLY flags can only be changed by
+ 	 * the relevant capability.
+@@ -2211,7 +2214,21 @@ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
  	    !capable(CAP_LINUX_IMMUTABLE))
  		return -EPERM;
  
+-	return 0;
 +	/*
-+	 * We aren't allowed to change any other flags if the immutable flag is
-+	 * already set and is not being unset.
++	 * Now that we're done checking the new flags, flush all pending IO and
++	 * dirty mappings before setting S_IMMUTABLE on an inode via
++	 * FS_IOC_SETFLAGS.  If the flush fails we'll clear the flag before
++	 * returning error.
 +	 */
-+	if ((oldflags & FS_IMMUTABLE_FL) && (flags & FS_IMMUTABLE_FL) &&
-+	    oldflags != flags)
-+		return -EPERM;
++	if (!S_ISREG(inode->i_mode) || IS_IMMUTABLE(inode) ||
++	    !(flags & FS_IMMUTABLE_FL))
++		return 0;
 +
- 	/*
- 	 * Now that we're done checking the new flags, flush all pending IO and
- 	 * dirty mappings before setting S_IMMUTABLE on an inode via
-@@ -2284,6 +2292,25 @@ int vfs_ioc_fssetxattr_check(struct inode *inode, const struct fsxattr *old_fa,
- 	    !(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
- 		return -EINVAL;
++	inode_set_flags(inode, S_IMMUTABLE, S_IMMUTABLE);
++	ret = inode_drain_writes(inode);
++	if (ret)
++		inode_set_flags(inode, 0, S_IMMUTABLE);
++	return ret;
+ }
+ EXPORT_SYMBOL(vfs_ioc_setflags_prepare);
  
-+	/*
-+	 * We aren't allowed to change any fields if the immutable flag is
-+	 * already set and is not being unset.
-+	 */
-+	if ((old_fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
-+	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE)) {
-+		if (old_fa->fsx_xflags != fa->fsx_xflags)
-+			return -EPERM;
-+		if (old_fa->fsx_projid != fa->fsx_projid)
-+			return -EPERM;
-+		if ((fa->fsx_xflags & (FS_XFLAG_EXTSIZE |
-+				       FS_XFLAG_EXTSZINHERIT)) &&
-+		    old_fa->fsx_extsize != fa->fsx_extsize)
-+			return -EPERM;
-+		if ((old_fa->fsx_xflags & FS_XFLAG_COWEXTSIZE) &&
-+		    old_fa->fsx_cowextsize != fa->fsx_cowextsize)
-+			return -EPERM;
-+	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 91482ab4556a..0efe749de577 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3567,4 +3567,15 @@ static inline void simple_fill_fsxattr(struct fsxattr *fa, __u32 xflags)
+ 	fa->fsx_xflags = xflags;
+ }
+ 
++/*
++ * Flush file data before changing attributes.  Caller must hold any locks
++ * required to prevent further writes to this file until we're done setting
++ * flags.
++ */
++static inline int inode_drain_writes(struct inode *inode)
++{
++	inode_dio_wait(inode);
++	return filemap_write_and_wait(inode->i_mapping);
++}
 +
- 	/* Extent size hints of zero turn off the flags. */
- 	if (fa->fsx_extsize == 0)
- 		fa->fsx_xflags &= ~(FS_XFLAG_EXTSIZE | FS_XFLAG_EXTSZINHERIT);
+ #endif /* _LINUX_FS_H */
 
