@@ -2,42 +2,42 @@ Return-Path: <SRS0=sYTr=U6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65B6BC0650E
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A256AC06510
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2AEEE208CA
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 71B4520881
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561995274;
-	bh=+2AtK+m1zS4U5ujdwP+YvogNtuzOymz2bglsCjDqhkU=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=bxDMjrcZFDkTbWXE1OW59Uysw3m6mS0GifMBiHjP4nGsldPoYl7TyFqAi0zwkBJo2
-	 18lHSUxIM7ZOebjoKLEA0SxUxDUnl1vTMAXNsfWHNofb2Sd8N/JthBd37VyCqWHiye
-	 J+6bDNNqr0mlkCQOPXjXaIk7TDONMS6WjO4zzMzQ=
+	s=default; t=1561995275;
+	bh=n1sDOWKS9YdwJeROw9cb0Thz+/MZ4edbJBN02TvYaQ4=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=PAREVXkxhQ2o0Nj8NxrkifHiURm8vYj6jo9pPcMdaa0XEMToH+yg2HMdOupUfI3nm
+	 2J7agTFTuCdHNeV7bpjE9PNTw6zjpexagnOqK25/xqTuEuYeDn7yzA9AWKMUNmu7zl
+	 ovyzVqcJI818yztyvT0RlrA0s48KWpwOKd4P5KZM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729597AbfGAPea (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 11:34:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42656 "EHLO mail.kernel.org"
+        id S1729380AbfGAPeE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 11:34:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42526 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728263AbfGAPeG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 11:34:06 -0400
+        id S1726076AbfGAPeD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jul 2019 11:34:03 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 54475214AE;
-        Mon,  1 Jul 2019 15:34:04 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E69920881;
+        Mon,  1 Jul 2019 15:34:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561995244;
-        bh=+2AtK+m1zS4U5ujdwP+YvogNtuzOymz2bglsCjDqhkU=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=2naWryMMeRQ4JmcPCZY4NVUpj4J/w5XmkVuTR2m2s4WydiHeSV6cJe6fKF8+42HZ7
-         kL2TZ8YJ7sDgFR6CeJYkbdABRqdWzOfeNmx13lt1pw7GKvvVtx2dbLnyVili1aJJVA
-         m2cviEWtExgAz3PEXuqBgRB0vhlyhU9EasWEqrgE=
+        s=default; t=1561995241;
+        bh=n1sDOWKS9YdwJeROw9cb0Thz+/MZ4edbJBN02TvYaQ4=;
+        h=From:To:Cc:Subject:Date:From;
+        b=tJMrjjP+fGbYnIHgEA3mtIdRLt3f7/+2LUKAu+amEdQOdn6fXNmkuJKr3utxUweCK
+         +TNmg+Q85kDoCtfX7Xy3mwsEsOQ2vnKx/HArgL6zo/cN/dTqvdUuSJkmr1Q1Upms5X
+         PYZvBXazAOtZ2AAdaF/3z4FbLWpVxw1Z15y8nrL0=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -50,12 +50,10 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v6 05/17] fs-verity: add Kconfig and the helper functions for hashing
-Date:   Mon,  1 Jul 2019 08:32:25 -0700
-Message-Id: <20190701153237.1777-6-ebiggers@kernel.org>
+Subject: [PATCH v6 00/17] fs-verity: read-only file-based authenticity protection
+Date:   Mon,  1 Jul 2019 08:32:20 -0700
+Message-Id: <20190701153237.1777-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
-In-Reply-To: <20190701153237.1777-1-ebiggers@kernel.org>
-References: <20190701153237.1777-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -63,530 +61,286 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Hello,
 
-Add the beginnings of the fs/verity/ support layer, including the
-Kconfig option and various helper functions for hashing.  To start, only
-SHA-256 is supported, but other hash algorithms can easily be added.
+This is a redesigned version of the fs-verity patchset, implementing
+Ted's suggestion to build the Merkle tree in the kernel
+(https://lore.kernel.org/linux-fsdevel/20190207031101.GA7387@mit.edu/).
+This greatly simplifies the UAPI, since the verity metadata no longer
+needs to be transferred to the kernel.  Now to enable fs-verity on a
+file, one simply calls FS_IOC_ENABLE_VERITY, passing it this structure:
 
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/Kconfig                   |   2 +
- fs/Makefile                  |   1 +
- fs/verity/Kconfig            |  38 +++++
- fs/verity/Makefile           |   4 +
- fs/verity/fsverity_private.h |  88 +++++++++++
- fs/verity/hash_algs.c        | 274 +++++++++++++++++++++++++++++++++++
- fs/verity/init.c             |  41 ++++++
- 7 files changed, 448 insertions(+)
+	struct fsverity_enable_arg {
+		__u32 version;
+		__u32 hash_algorithm;
+		__u32 block_size;
+		__u32 salt_size;
+		__u64 salt_ptr;
+		__u32 sig_size;
+		__u32 __reserved1;
+		__u64 sig_ptr;
+		__u64 __reserved2[11];
+	};
+
+The filesystem then builds the file's Merkle tree and stores it in a
+filesystem-specific location associated with the file.  Afterwards,
+FS_IOC_MEASURE_VERITY can be used to retrieve the file measurement
+("root hash").  The way the file measurement is computed is also
+effectively part of the API (it has to be), but it's logically
+independent of where/how the filesystem stores the Merkle tree.
+
+The API is fully documented in Documentation/filesystems/fsverity.rst,
+along with other aspects of fs-verity.  I also added an FAQ section that
+answers frequently asked questions about fs-verity, e.g. why isn't it
+all at the VFS level, why isn't it part of IMA, why does the Merkle tree
+need to be stored on-disk, etc.
+
+Overview
+--------
+
+This patchset implements fs-verity for ext4 and f2fs.  fs-verity is
+similar to dm-verity, but implemented on a per-file basis: a Merkle tree
+is used to measure (hash) a read-only file's data as it is paged in.
+ext4 and f2fs hide this Merkle tree beyond the end of the file, but
+other filesystems can implement it differently if desired.
+
+In general, fs-verity is intended for use on writable filesystems;
+dm-verity is still recommended on read-only ones.
+
+Similar to fscrypt, most of the code is in fs/verity/, and not too many
+filesystem-specific changes are needed.  The Merkle tree is built by the
+filesystem when the FS_IOC_ENABLE_VERITY ioctl is executed.
+
+fs-verity provides a file measurement (hash) in constant time and
+verifies data on-demand.  Thus, it is useful for efficiently verifying
+the authenticity of large files of which only a small portion may be
+accessed, such as Android application package (APK) files.  It may also
+be useful in "audit" use cases where file hashes are logged.
+
+fs-verity can also provide better protection against malicious disks
+than an ahead-of-time hash, since fs-verity re-verifies data each time
+it's paged in.  Note, however, that any authenticity guarantee is still
+dependent on verification of the file measurement and other relevant
+metadata in a way that makes sense for the overall system; fs-verity is
+only a tool to help with this.
+
+This patchset doesn't include IMA support for fs-verity file
+measurements.  This is planned and we'd like to collaborate with the IMA
+maintainers.  Although fs-verity can be used on its own without IMA,
+fs-verity is primarily a lower level feature (think of it as a way of
+hashing a file), so some users may still need IMA's policy mechanism.
+However, an optional in-kernel signature verification mechanism within
+fs-verity itself is also included.
+
+This patchset is based on v5.2-rc3.  It can also be found in git at tag
+fsverity_2019-07-01 of:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
+
+fs-verity has a userspace utility:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
+
+xfstests for fs-verity can be found at branch "fsverity" of:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git
+
+fs-verity is supported by f2fs-tools v1.11.0+ and e2fsprogs v1.45.2+.
+
+Examples of setting up fs-verity protected files can be found in the
+README.md file of fsverity-utils.
+
+Other useful references include:
+
+  - Documentation/filesystems/fsverity.rst, added by the first patch.
+
+  - LWN coverage of v3 patchset: https://lwn.net/Articles/790185/
+
+  - LWN coverage of v2 patchset: https://lwn.net/Articles/775872/
+
+  - LWN coverage of v1 patchset: https://lwn.net/Articles/763729/
+
+  - Presentation at Linux Security Summit North America 2018:
+      - Slides: https://schd.ws/hosted_files/lssna18/af/fs-verity%20slide%20deck.pdf
+      - Video: https://www.youtube.com/watch?v=Aw5h6aBhu6M
+      (This corresponded to the v1 patchset; changes have been made since then.)
+
+  - LWN coverage of LSFMM 2018 discussion: https://lwn.net/Articles/752614/
+
+Changed since v5:
+
+  - Switched to using detached signatures.  This simplifies the
+    signature verification code considerably.
+
+  - On f2fs, forbid enabling verity on files that have atomic or
+    volatile writes pending.
+
+  - Initialize quotas before evicting inline data.
+
+  - Prevent writing verity metadata beyond s_maxbytes.
+
+  - Switched from truncate_inode_pages() to invalidate_inode_pages2()
+    (fixes FS_IOC_ENABLE_VERITY on ext4 with data=journal)
+
+  - Always truncate the verity metadata if there's an error writing it,
+    even if the error doesn't occur until ->end_enable_verity().
+
+  - Updated the ext4 on-disk format documentation.
+
+  - A few minor cleanups.
+
+Changed since v4:
+
+  - Made ext4 and f2fs store the verity metadata beginning at a 64K
+    aligned boundary, to be ready for architectures with 64K pages.
+
+  - Made ext4 store the verity descriptor size in the file data stream,
+    so that no xattr is needed.
+
+  - Added support for empty files.
+
+  - A few minor cleanups.
+
+Changed since v3:
+
+  - The FS_IOC_GETFLAGS ioctl now returns the verity flag.
+
+  - Fixed setting i_verity_info too early.
+
+  - Restored pagecache invalidation in FS_IOC_ENABLE_VERITY.
+
+  - Fixed truncation of fsverity_enable_arg::hash_algorithm.
+
+  - Reject empty files for both open and enable, not just enable.
+
+  - Added a couple more FAQ entries to the documentation.
+
+  - A few minor cleanups.
+
+  - Rebased onto v5.2-rc3.
+
+Changed since v2:
+
+  - Large redesign: the Merkle tree is now built by
+    FS_IOC_ENABLE_VERITY, rather than being provided by userspace.  The
+    fsverity_operations provide an interface for filesystems to read and
+    write the Merkle tree from/to a filesystem-specific location.
+
+  - Lot of refactoring, cleanups, and documentation improvements.
+
+  - Many simplifications, such as simplifying the fsverity_descriptor
+    format, dropping CRC-32 support, and limiting the salt size.
+
+  - ext4 and f2fs now store an xattr that gives the location of the
+    fsverity_descriptor, so loading it is more straightforward.
+
+  - f2fs no longer counts the verity metadata in the on-disk i_size,
+    making it consistent with ext4.
+
+  - Replaced the filesystem-specific fs-verity kconfig options with
+    CONFIG_FS_VERITY.
+
+  - Replaced the filesystem-specific verity bit checks with IS_VERITY().
+
+Changed since v1:
+
+  - Added documentation file.
+
+  - Require write permission for FS_IOC_ENABLE_VERITY, rather than
+    CAP_SYS_ADMIN.
+
+  - Eliminated dependency on CONFIG_BLOCK and clarified that filesystems
+    can verify a page at a time rather than a bio at a time.
+
+  - Fixed conditions for verifying holes.
+
+  - ext4 now only allows fs-verity on extent-based files.
+
+  - Eliminated most of the assumptions that the verity metadata is
+    stored beyond EOF, in case filesystems want to do things
+    differently.
+
+  - Other cleanups.
+
+Eric Biggers (17):
+  fs-verity: add a documentation file
+  fs-verity: add MAINTAINERS file entry
+  fs-verity: add UAPI header
+  fs: uapi: define verity bit for FS_IOC_GETFLAGS
+  fs-verity: add Kconfig and the helper functions for hashing
+  fs-verity: add inode and superblock fields
+  fs-verity: add the hook for file ->open()
+  fs-verity: add the hook for file ->setattr()
+  fs-verity: add data verification hooks for ->readpages()
+  fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
+  fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
+  fs-verity: add SHA-512 support
+  fs-verity: support builtin file signatures
+  ext4: add basic fs-verity support
+  ext4: add fs-verity read support
+  ext4: update on-disk format documentation for fs-verity
+  f2fs: add fs-verity support
+
+ Documentation/filesystems/ext4/inodes.rst   |   6 +-
+ Documentation/filesystems/ext4/overview.rst |   1 +
+ Documentation/filesystems/ext4/super.rst    |   2 +
+ Documentation/filesystems/ext4/verity.rst   |  41 ++
+ Documentation/filesystems/fsverity.rst      | 725 ++++++++++++++++++++
+ Documentation/filesystems/index.rst         |   1 +
+ Documentation/ioctl/ioctl-number.txt        |   1 +
+ MAINTAINERS                                 |  12 +
+ fs/Kconfig                                  |   2 +
+ fs/Makefile                                 |   1 +
+ fs/ext4/Makefile                            |   1 +
+ fs/ext4/ext4.h                              |  23 +-
+ fs/ext4/file.c                              |   4 +
+ fs/ext4/inode.c                             |  48 +-
+ fs/ext4/ioctl.c                             |  12 +
+ fs/ext4/readpage.c                          | 207 +++++-
+ fs/ext4/super.c                             |  18 +-
+ fs/ext4/sysfs.c                             |   6 +
+ fs/ext4/verity.c                            | 364 ++++++++++
+ fs/f2fs/Makefile                            |   1 +
+ fs/f2fs/data.c                              |  72 +-
+ fs/f2fs/f2fs.h                              |  23 +-
+ fs/f2fs/file.c                              |  40 ++
+ fs/f2fs/inode.c                             |   5 +-
+ fs/f2fs/super.c                             |   3 +
+ fs/f2fs/sysfs.c                             |  11 +
+ fs/f2fs/verity.c                            | 245 +++++++
+ fs/f2fs/xattr.h                             |   2 +
+ fs/verity/Kconfig                           |  55 ++
+ fs/verity/Makefile                          |  10 +
+ fs/verity/enable.c                          | 355 ++++++++++
+ fs/verity/fsverity_private.h                | 185 +++++
+ fs/verity/hash_algs.c                       | 279 ++++++++
+ fs/verity/init.c                            |  61 ++
+ fs/verity/measure.c                         |  57 ++
+ fs/verity/open.c                            | 356 ++++++++++
+ fs/verity/signature.c                       | 159 +++++
+ fs/verity/verify.c                          | 281 ++++++++
+ include/linux/fs.h                          |  11 +
+ include/linux/fsverity.h                    | 209 ++++++
+ include/uapi/linux/fs.h                     |   1 +
+ include/uapi/linux/fsverity.h               |  40 ++
+ 42 files changed, 3875 insertions(+), 61 deletions(-)
+ create mode 100644 Documentation/filesystems/ext4/verity.rst
+ create mode 100644 Documentation/filesystems/fsverity.rst
+ create mode 100644 fs/ext4/verity.c
+ create mode 100644 fs/f2fs/verity.c
  create mode 100644 fs/verity/Kconfig
  create mode 100644 fs/verity/Makefile
+ create mode 100644 fs/verity/enable.c
  create mode 100644 fs/verity/fsverity_private.h
  create mode 100644 fs/verity/hash_algs.c
  create mode 100644 fs/verity/init.c
+ create mode 100644 fs/verity/measure.c
+ create mode 100644 fs/verity/open.c
+ create mode 100644 fs/verity/signature.c
+ create mode 100644 fs/verity/verify.c
+ create mode 100644 include/linux/fsverity.h
+ create mode 100644 include/uapi/linux/fsverity.h
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index f1046cf6ad85..4b66dafbdc7b 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -113,6 +113,8 @@ config MANDATORY_FILE_LOCKING
- 
- source "fs/crypto/Kconfig"
- 
-+source "fs/verity/Kconfig"
-+
- source "fs/notify/Kconfig"
- 
- source "fs/quota/Kconfig"
-diff --git a/fs/Makefile b/fs/Makefile
-index c9aea23aba56..fe7f2c07f482 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -34,6 +34,7 @@ obj-$(CONFIG_AIO)               += aio.o
- obj-$(CONFIG_IO_URING)		+= io_uring.o
- obj-$(CONFIG_FS_DAX)		+= dax.o
- obj-$(CONFIG_FS_ENCRYPTION)	+= crypto/
-+obj-$(CONFIG_FS_VERITY)		+= verity/
- obj-$(CONFIG_FILE_LOCKING)      += locks.o
- obj-$(CONFIG_COMPAT)		+= compat.o compat_ioctl.o
- obj-$(CONFIG_BINFMT_AOUT)	+= binfmt_aout.o
-diff --git a/fs/verity/Kconfig b/fs/verity/Kconfig
-new file mode 100644
-index 000000000000..c2bca0b01ecf
---- /dev/null
-+++ b/fs/verity/Kconfig
-@@ -0,0 +1,38 @@
-+# SPDX-License-Identifier: GPL-2.0
-+
-+config FS_VERITY
-+	bool "FS Verity (read-only file-based authenticity protection)"
-+	select CRYPTO
-+	# SHA-256 is selected as it's intended to be the default hash algorithm.
-+	# To avoid bloat, other wanted algorithms must be selected explicitly.
-+	select CRYPTO_SHA256
-+	help
-+	  This option enables fs-verity.  fs-verity is the dm-verity
-+	  mechanism implemented at the file level.  On supported
-+	  filesystems (currently EXT4 and F2FS), userspace can use an
-+	  ioctl to enable verity for a file, which causes the filesystem
-+	  to build a Merkle tree for the file.  The filesystem will then
-+	  transparently verify any data read from the file against the
-+	  Merkle tree.  The file is also made read-only.
-+
-+	  This serves as an integrity check, but the availability of the
-+	  Merkle tree root hash also allows efficiently supporting
-+	  various use cases where normally the whole file would need to
-+	  be hashed at once, such as: (a) auditing (logging the file's
-+	  hash), or (b) authenticity verification (comparing the hash
-+	  against a known good value, e.g. from a digital signature).
-+
-+	  fs-verity is especially useful on large files where not all
-+	  the contents may actually be needed.  Also, fs-verity verifies
-+	  data each time it is paged back in, which provides better
-+	  protection against malicious disks vs. an ahead-of-time hash.
-+
-+	  If unsure, say N.
-+
-+config FS_VERITY_DEBUG
-+	bool "FS Verity debugging"
-+	depends on FS_VERITY
-+	help
-+	  Enable debugging messages related to fs-verity by default.
-+
-+	  Say N unless you are an fs-verity developer.
-diff --git a/fs/verity/Makefile b/fs/verity/Makefile
-new file mode 100644
-index 000000000000..398f3f85fa18
---- /dev/null
-+++ b/fs/verity/Makefile
-@@ -0,0 +1,4 @@
-+# SPDX-License-Identifier: GPL-2.0
-+
-+obj-$(CONFIG_FS_VERITY) += hash_algs.o \
-+			   init.o
-diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
-new file mode 100644
-index 000000000000..9697aaebb5dc
---- /dev/null
-+++ b/fs/verity/fsverity_private.h
-@@ -0,0 +1,88 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * fs-verity: read-only file-based authenticity protection
-+ *
-+ * Copyright 2019 Google LLC
-+ */
-+
-+#ifndef _FSVERITY_PRIVATE_H
-+#define _FSVERITY_PRIVATE_H
-+
-+#ifdef CONFIG_FS_VERITY_DEBUG
-+#define DEBUG
-+#endif
-+
-+#define pr_fmt(fmt) "fs-verity: " fmt
-+
-+#include <crypto/sha.h>
-+#include <linux/fs.h>
-+#include <uapi/linux/fsverity.h>
-+
-+struct ahash_request;
-+
-+/*
-+ * Implementation limit: maximum depth of the Merkle tree.  For now 8 is plenty;
-+ * it's enough for over U64_MAX bytes of data using SHA-256 and 4K blocks.
-+ */
-+#define FS_VERITY_MAX_LEVELS		8
-+
-+/*
-+ * Largest digest size among all hash algorithms supported by fs-verity.
-+ * Currently assumed to be <= size of fsverity_descriptor::root_hash.
-+ */
-+#define FS_VERITY_MAX_DIGEST_SIZE	SHA256_DIGEST_SIZE
-+
-+/* A hash algorithm supported by fs-verity */
-+struct fsverity_hash_alg {
-+	struct crypto_ahash *tfm; /* hash tfm, allocated on demand */
-+	const char *name;	  /* crypto API name, e.g. sha256 */
-+	unsigned int digest_size; /* digest size in bytes, e.g. 32 for SHA-256 */
-+	unsigned int block_size;  /* block size in bytes, e.g. 64 for SHA-256 */
-+};
-+
-+/* Merkle tree parameters: hash algorithm, initial hash state, and topology */
-+struct merkle_tree_params {
-+	const struct fsverity_hash_alg *hash_alg; /* the hash algorithm */
-+	const u8 *hashstate;		/* initial hash state or NULL */
-+	unsigned int digest_size;	/* same as hash_alg->digest_size */
-+	unsigned int block_size;	/* size of data and tree blocks */
-+	unsigned int hashes_per_block;	/* number of hashes per tree block */
-+	unsigned int log_blocksize;	/* log2(block_size) */
-+	unsigned int log_arity;		/* log2(hashes_per_block) */
-+	unsigned int num_levels;	/* number of levels in Merkle tree */
-+	u64 tree_size;			/* Merkle tree size in bytes */
-+
-+	/*
-+	 * Starting block index for each tree level, ordered from leaf level (0)
-+	 * to root level ('num_levels - 1')
-+	 */
-+	u64 level_start[FS_VERITY_MAX_LEVELS];
-+};
-+
-+/* hash_algs.c */
-+
-+extern struct fsverity_hash_alg fsverity_hash_algs[];
-+
-+const struct fsverity_hash_alg *fsverity_get_hash_alg(const struct inode *inode,
-+						      unsigned int num);
-+const u8 *fsverity_prepare_hash_state(const struct fsverity_hash_alg *alg,
-+				      const u8 *salt, size_t salt_size);
-+int fsverity_hash_page(const struct merkle_tree_params *params,
-+		       const struct inode *inode,
-+		       struct ahash_request *req, struct page *page, u8 *out);
-+int fsverity_hash_buffer(const struct fsverity_hash_alg *alg,
-+			 const void *data, size_t size, u8 *out);
-+void __init fsverity_check_hash_algs(void);
-+
-+/* init.c */
-+
-+extern void __printf(3, 4) __cold
-+fsverity_msg(const struct inode *inode, const char *level,
-+	     const char *fmt, ...);
-+
-+#define fsverity_warn(inode, fmt, ...)		\
-+	fsverity_msg((inode), KERN_WARNING, fmt, ##__VA_ARGS__)
-+#define fsverity_err(inode, fmt, ...)		\
-+	fsverity_msg((inode), KERN_ERR, fmt, ##__VA_ARGS__)
-+
-+#endif /* _FSVERITY_PRIVATE_H */
-diff --git a/fs/verity/hash_algs.c b/fs/verity/hash_algs.c
-new file mode 100644
-index 000000000000..c0457915ca10
---- /dev/null
-+++ b/fs/verity/hash_algs.c
-@@ -0,0 +1,274 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * fs/verity/hash_algs.c: fs-verity hash algorithms
-+ *
-+ * Copyright 2019 Google LLC
-+ */
-+
-+#include "fsverity_private.h"
-+
-+#include <crypto/hash.h>
-+#include <linux/scatterlist.h>
-+
-+/* The hash algorithms supported by fs-verity */
-+struct fsverity_hash_alg fsverity_hash_algs[] = {
-+	[FS_VERITY_HASH_ALG_SHA256] = {
-+		.name = "sha256",
-+		.digest_size = SHA256_DIGEST_SIZE,
-+		.block_size = SHA256_BLOCK_SIZE,
-+	},
-+};
-+
-+/**
-+ * fsverity_get_hash_alg() - validate and prepare a hash algorithm
-+ * @inode: optional inode for logging purposes
-+ * @num: the hash algorithm number
-+ *
-+ * Get the struct fsverity_hash_alg for the given hash algorithm number, and
-+ * ensure it has a hash transform ready to go.  The hash transforms are
-+ * allocated on-demand so that we don't waste resources unnecessarily, and
-+ * because the crypto modules may be initialized later than fs/verity/.
-+ *
-+ * Return: pointer to the hash alg on success, else an ERR_PTR()
-+ */
-+const struct fsverity_hash_alg *fsverity_get_hash_alg(const struct inode *inode,
-+						      unsigned int num)
-+{
-+	struct fsverity_hash_alg *alg;
-+	struct crypto_ahash *tfm;
-+	int err;
-+
-+	if (num >= ARRAY_SIZE(fsverity_hash_algs) ||
-+	    !fsverity_hash_algs[num].name) {
-+		fsverity_warn(inode, "Unknown hash algorithm number: %u", num);
-+		return ERR_PTR(-EINVAL);
-+	}
-+	alg = &fsverity_hash_algs[num];
-+
-+	/* pairs with cmpxchg() below */
-+	tfm = READ_ONCE(alg->tfm);
-+	if (likely(tfm != NULL))
-+		return alg;
-+	/*
-+	 * Using the shash API would make things a bit simpler, but the ahash
-+	 * API is preferable as it allows the use of crypto accelerators.
-+	 */
-+	tfm = crypto_alloc_ahash(alg->name, 0, 0);
-+	if (IS_ERR(tfm)) {
-+		if (PTR_ERR(tfm) == -ENOENT)
-+			fsverity_warn(inode,
-+				      "Missing crypto API support for hash algorithm \"%s\"",
-+				      alg->name);
-+		else
-+			fsverity_err(inode,
-+				     "Error allocating hash algorithm \"%s\": %ld",
-+				     alg->name, PTR_ERR(tfm));
-+		return ERR_CAST(tfm);
-+	}
-+
-+	err = -EINVAL;
-+	if (WARN_ON(alg->digest_size != crypto_ahash_digestsize(tfm)))
-+		goto err_free_tfm;
-+	if (WARN_ON(alg->block_size != crypto_ahash_blocksize(tfm)))
-+		goto err_free_tfm;
-+
-+	pr_info("%s using implementation \"%s\"\n",
-+		alg->name, crypto_ahash_driver_name(tfm));
-+
-+	/* pairs with READ_ONCE() above */
-+	if (cmpxchg(&alg->tfm, NULL, tfm) != NULL)
-+		crypto_free_ahash(tfm);
-+
-+	return alg;
-+
-+err_free_tfm:
-+	crypto_free_ahash(tfm);
-+	return ERR_PTR(err);
-+}
-+
-+/**
-+ * fsverity_prepare_hash_state() - precompute the initial hash state
-+ * @alg: hash algorithm
-+ * @salt: a salt which is to be prepended to all data to be hashed
-+ * @salt_size: salt size in bytes, possibly 0
-+ *
-+ * Return: NULL if the salt is empty, otherwise the kmalloc()'ed precomputed
-+ *	   initial hash state on success or an ERR_PTR() on failure.
-+ */
-+const u8 *fsverity_prepare_hash_state(const struct fsverity_hash_alg *alg,
-+				      const u8 *salt, size_t salt_size)
-+{
-+	u8 *hashstate = NULL;
-+	struct ahash_request *req = NULL;
-+	u8 *padded_salt = NULL;
-+	size_t padded_salt_size;
-+	struct scatterlist sg;
-+	DECLARE_CRYPTO_WAIT(wait);
-+	int err;
-+
-+	if (salt_size == 0)
-+		return NULL;
-+
-+	hashstate = kmalloc(crypto_ahash_statesize(alg->tfm), GFP_KERNEL);
-+	if (!hashstate)
-+		return ERR_PTR(-ENOMEM);
-+
-+	req = ahash_request_alloc(alg->tfm, GFP_KERNEL);
-+	if (!req) {
-+		err = -ENOMEM;
-+		goto err_free;
-+	}
-+
-+	/*
-+	 * Zero-pad the salt to the next multiple of the input size of the hash
-+	 * algorithm's compression function, e.g. 64 bytes for SHA-256 or 128
-+	 * bytes for SHA-512.  This ensures that the hash algorithm won't have
-+	 * any bytes buffered internally after processing the salt, thus making
-+	 * salted hashing just as fast as unsalted hashing.
-+	 */
-+	padded_salt_size = round_up(salt_size, alg->block_size);
-+	padded_salt = kzalloc(padded_salt_size, GFP_KERNEL);
-+	if (!padded_salt) {
-+		err = -ENOMEM;
-+		goto err_free;
-+	}
-+	memcpy(padded_salt, salt, salt_size);
-+
-+	sg_init_one(&sg, padded_salt, padded_salt_size);
-+	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
-+					CRYPTO_TFM_REQ_MAY_BACKLOG,
-+				   crypto_req_done, &wait);
-+	ahash_request_set_crypt(req, &sg, NULL, padded_salt_size);
-+
-+	err = crypto_wait_req(crypto_ahash_init(req), &wait);
-+	if (err)
-+		goto err_free;
-+
-+	err = crypto_wait_req(crypto_ahash_update(req), &wait);
-+	if (err)
-+		goto err_free;
-+
-+	err = crypto_ahash_export(req, hashstate);
-+	if (err)
-+		goto err_free;
-+out:
-+	ahash_request_free(req);
-+	kfree(padded_salt);
-+	return hashstate;
-+
-+err_free:
-+	kfree(hashstate);
-+	hashstate = ERR_PTR(err);
-+	goto out;
-+}
-+
-+/**
-+ * fsverity_hash_page() - hash a single data or hash page
-+ * @params: the Merkle tree's parameters
-+ * @inode: inode for which the hashing is being done
-+ * @req: preallocated hash request
-+ * @page: the page to hash
-+ * @out: output digest, size 'params->digest_size' bytes
-+ *
-+ * Hash a single data or hash block, assuming block_size == PAGE_SIZE.
-+ * The hash is salted if a salt is specified in the Merkle tree parameters.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+int fsverity_hash_page(const struct merkle_tree_params *params,
-+		       const struct inode *inode,
-+		       struct ahash_request *req, struct page *page, u8 *out)
-+{
-+	struct scatterlist sg;
-+	DECLARE_CRYPTO_WAIT(wait);
-+	int err;
-+
-+	if (WARN_ON(params->block_size != PAGE_SIZE))
-+		return -EINVAL;
-+
-+	sg_init_table(&sg, 1);
-+	sg_set_page(&sg, page, PAGE_SIZE, 0);
-+	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
-+					CRYPTO_TFM_REQ_MAY_BACKLOG,
-+				   crypto_req_done, &wait);
-+	ahash_request_set_crypt(req, &sg, out, PAGE_SIZE);
-+
-+	if (params->hashstate) {
-+		err = crypto_ahash_import(req, params->hashstate);
-+		if (err) {
-+			fsverity_err(inode,
-+				     "Error %d importing hash state", err);
-+			return err;
-+		}
-+		err = crypto_ahash_finup(req);
-+	} else {
-+		err = crypto_ahash_digest(req);
-+	}
-+
-+	err = crypto_wait_req(err, &wait);
-+	if (err)
-+		fsverity_err(inode, "Error %d computing page hash", err);
-+	return err;
-+}
-+
-+/**
-+ * fsverity_hash_buffer() - hash some data
-+ * @alg: the hash algorithm to use
-+ * @data: the data to hash
-+ * @size: size of data to hash, in bytes
-+ * @out: output digest, size 'alg->digest_size' bytes
-+ *
-+ * Hash some data which is located in physically contiguous memory (i.e. memory
-+ * allocated by kmalloc(), not by vmalloc()).  No salt is used.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+int fsverity_hash_buffer(const struct fsverity_hash_alg *alg,
-+			 const void *data, size_t size, u8 *out)
-+{
-+	struct ahash_request *req;
-+	struct scatterlist sg;
-+	DECLARE_CRYPTO_WAIT(wait);
-+	int err;
-+
-+	req = ahash_request_alloc(alg->tfm, GFP_KERNEL);
-+	if (!req)
-+		return -ENOMEM;
-+
-+	sg_init_one(&sg, data, size);
-+	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP |
-+					CRYPTO_TFM_REQ_MAY_BACKLOG,
-+				   crypto_req_done, &wait);
-+	ahash_request_set_crypt(req, &sg, out, size);
-+
-+	err = crypto_wait_req(crypto_ahash_digest(req), &wait);
-+
-+	ahash_request_free(req);
-+	return err;
-+}
-+
-+void __init fsverity_check_hash_algs(void)
-+{
-+	size_t i;
-+
-+	/*
-+	 * Sanity check the hash algorithms (could be a build-time check, but
-+	 * they're in an array)
-+	 */
-+	for (i = 0; i < ARRAY_SIZE(fsverity_hash_algs); i++) {
-+		const struct fsverity_hash_alg *alg = &fsverity_hash_algs[i];
-+
-+		if (!alg->name)
-+			continue;
-+
-+		BUG_ON(alg->digest_size > FS_VERITY_MAX_DIGEST_SIZE);
-+
-+		/*
-+		 * For efficiency, the implementation currently assumes the
-+		 * digest and block sizes are powers of 2.  This limitation can
-+		 * be lifted if the code is updated to handle other values.
-+		 */
-+		BUG_ON(!is_power_of_2(alg->digest_size));
-+		BUG_ON(!is_power_of_2(alg->block_size));
-+	}
-+}
-diff --git a/fs/verity/init.c b/fs/verity/init.c
-new file mode 100644
-index 000000000000..40076bbe452a
---- /dev/null
-+++ b/fs/verity/init.c
-@@ -0,0 +1,41 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * fs/verity/init.c: fs-verity module initialization and logging
-+ *
-+ * Copyright 2019 Google LLC
-+ */
-+
-+#include "fsverity_private.h"
-+
-+#include <linux/ratelimit.h>
-+
-+void fsverity_msg(const struct inode *inode, const char *level,
-+		  const char *fmt, ...)
-+{
-+	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
-+	struct va_format vaf;
-+	va_list args;
-+
-+	if (!__ratelimit(&rs))
-+		return;
-+
-+	va_start(args, fmt);
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+	if (inode)
-+		printk("%sfs-verity (%s, inode %lu): %pV\n",
-+		       level, inode->i_sb->s_id, inode->i_ino, &vaf);
-+	else
-+		printk("%sfs-verity: %pV\n", level, &vaf);
-+	va_end(args);
-+}
-+
-+static int __init fsverity_init(void)
-+{
-+	fsverity_check_hash_algs();
-+
-+	pr_debug("Initialized fs-verity\n");
-+	return 0;
-+}
-+late_initcall(fsverity_init)
 -- 
 2.22.0
 
