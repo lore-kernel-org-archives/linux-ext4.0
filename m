@@ -2,42 +2,42 @@ Return-Path: <SRS0=sYTr=U6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42FABC0650E
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 18:27:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24142C06510
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 18:27:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 17CC621721
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 18:27:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0292E21852
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 18:27:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1562005651;
-	bh=h8X5PV0gURpdX3fp8i8QmUWNau3EZlWkadg+5EMJTw8=;
+	s=default; t=1562005652;
+	bh=LFrGT1iwmeY9I51yPhoLeorTghMaFfwgfEhKM8SuBCc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=A2ek4VStAVD7nghObSOLcS3jM9wmvLK6xthH1uCKLgrp8TV5uFfhvOSnufOdxC41c
-	 4B1hGU4CLToV4geWK1mOGR5Y1tu+EIKPbFdhL+wa30JP4zvJ07dh2yWf57VZ1PDPGa
-	 5yEo0s+ODkpUGuhjqjlQklw7YW0fvVHDb1Ohy6vY=
+	b=hZ06AN7+gBxub8KnlnElbFsK87B3Dsf1uOwfIZGRbV396F9ylB86YOJAbwdzZWYjJ
+	 bTCSsW382tI2G0HWIQWEeNdjpPpynD0q/04i4nIyk69KekRYBA2q6yzb/6+2wqkK25
+	 schODFIN2U/EGUJeHuRFjF+LAe4/nBRgkuZC9Zmc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726747AbfGAS1a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 14:27:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42070 "EHLO mail.kernel.org"
+        id S1726798AbfGAS1b (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 14:27:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42114 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726442AbfGAS13 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 14:27:29 -0400
+        id S1726652AbfGAS1b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jul 2019 14:27:31 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2DF0321841;
-        Mon,  1 Jul 2019 18:27:28 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7C16821851;
+        Mon,  1 Jul 2019 18:27:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1562005648;
-        bh=h8X5PV0gURpdX3fp8i8QmUWNau3EZlWkadg+5EMJTw8=;
+        s=default; t=1562005649;
+        bh=LFrGT1iwmeY9I51yPhoLeorTghMaFfwgfEhKM8SuBCc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=1wTKmYV16nhawJp+A/nsuDx+zHyhaR3fOXdx7SSvs80cI8J61FDYtNk4KstfEMRem
-         u7g5SYngIfgKdnyl7A1V4s4eracmGn96Zjjd2lfkri8YOX0IEfKh+tXIrwnfv64WHg
-         ssEh2++KpxUCS0YUkv0YEpYcUNCu1LKtSh3KbkWA=
+        b=1zMx86pNqhRCpfpeK9DK1yqycB0XgEK01Rx6kc+Gy9juq3z9XiJoBRNChEi4YjBZV
+         XTAW/g98YLlu8BOcZOA3RcSw92PxfAVzgj+ykuUW0oZmnMTXEFRWZgosDgFak+jU+O
+         bOSxFv6mqFZxnQHa6Mqi0UPktA4CtFdIHWnLsbwk=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -45,9 +45,9 @@ Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [RFC PATCH v3 2/8] common/verity: add common functions for testing fs-verity
-Date:   Mon,  1 Jul 2019 11:25:41 -0700
-Message-Id: <20190701182547.165856-3-ebiggers@kernel.org>
+Subject: [RFC PATCH v3 6/8] generic: test that fs-verity is using the correct measurement values
+Date:   Mon,  1 Jul 2019 11:25:45 -0700
+Message-Id: <20190701182547.165856-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0.410.gd8fdbe21b5-goog
 In-Reply-To: <20190701182547.165856-1-ebiggers@kernel.org>
 References: <20190701182547.165856-1-ebiggers@kernel.org>
@@ -60,246 +60,156 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add common functions for setting up and testing fs-verity, a new feature
-for read-only file-based authenticity protection.  fs-verity will be
-supported by ext4 and f2fs, and perhaps by other filesystems later.
-Running the fs-verity tests requires:
-
-- A kernel with the fs-verity patches from
-  https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-  branch "fsverity" and configured with CONFIG_FS_VERITY.
-- The fsverity utility program from
-  https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
-- e2fsprogs v1.45.2 or later for ext4 tests, or f2fs-tools v1.11.0 or
-  later for f2fs tests.
-
-See the file Documentation/filesystems/fsverity.rst in the kernel tree
-for more information about fs-verity.
+This test verifies that fs-verity is doing its Merkle tree-based hashing
+correctly, i.e. that it hasn't been broken by a change.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- common/config |   1 +
- common/verity | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 200 insertions(+)
- create mode 100644 common/verity
+ tests/generic/903     | 112 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/903.out |   5 ++
+ tests/generic/group   |   1 +
+ 3 files changed, 118 insertions(+)
+ create mode 100755 tests/generic/903
+ create mode 100644 tests/generic/903.out
 
-diff --git a/common/config b/common/config
-index bd64be62..001ddc45 100644
---- a/common/config
-+++ b/common/config
-@@ -212,6 +212,7 @@ export CHECKBASHISMS_PROG="$(type -P checkbashisms)"
- export XFS_INFO_PROG="$(type -P xfs_info)"
- export DUPEREMOVE_PROG="$(type -P duperemove)"
- export CC_PROG="$(type -P cc)"
-+export FSVERITY_PROG="$(type -P fsverity)"
- 
- # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
- # newer systems have udevadm command but older systems like RHEL5 don't.
-diff --git a/common/verity b/common/verity
-new file mode 100644
-index 00000000..a8aae51e
+diff --git a/tests/generic/903 b/tests/generic/903
+new file mode 100755
+index 00000000..55f4a3ba
 --- /dev/null
-+++ b/common/verity
-@@ -0,0 +1,199 @@
++++ b/tests/generic/903
+@@ -0,0 +1,112 @@
++#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
 +# Copyright 2018 Google LLC
 +#
-+# Functions for setting up and testing fs-verity
-+
-+_require_scratch_verity()
-+{
-+	_require_scratch
-+	_require_command "$FSVERITY_PROG" fsverity
-+
-+	if ! _scratch_mkfs_verity &>>$seqres.full; then
-+		# ext4: need e2fsprogs v1.44.5 or later (but actually v1.45.2+
-+		#       is needed for some tests to pass, due to an e2fsck bug)
-+		# f2fs: need f2fs-tools v1.11.0 or later
-+		_notrun "$FSTYP userspace tools don't support fs-verity"
-+	fi
-+
-+	# Try to mount the filesystem.  If this fails then either the kernel
-+	# isn't aware of fs-verity, or the mkfs options were not compatible with
-+	# verity (e.g. ext4 with block size != PAGE_SIZE).
-+	if ! _try_scratch_mount &>>$seqres.full; then
-+		_notrun "kernel is unaware of $FSTYP verity feature," \
-+			"or mkfs options are not compatible with verity"
-+	fi
-+
-+	# The filesystem may be aware of fs-verity but have it disabled by
-+	# CONFIG_FS_VERITY=n.  Detect support via sysfs.
-+	if [ ! -e /sys/fs/$FSTYP/features/verity ]; then
-+		_notrun "kernel $FSTYP isn't configured with verity support"
-+	fi
-+
-+	# The filesystem may have fs-verity enabled but not actually usable by
-+	# default.  E.g., ext4 only supports verity on extent-based files, so it
-+	# doesn't work on ext3-style filesystems.  So, try actually using it.
-+	echo foo > $SCRATCH_MNT/tmpfile
-+	if ! _fsv_enable $SCRATCH_MNT/tmpfile; then
-+		_notrun "$FSTYP verity isn't usable by default with these mkfs options"
-+	fi
-+	rm -f $SCRATCH_MNT/tmpfile
-+
-+	_scratch_unmount
-+
-+	# Merkle tree block size.  Currently all filesystems only support
-+	# PAGE_SIZE for this.  This is also the default for 'fsverity enable'.
-+	FSV_BLOCK_SIZE=$(get_page_size)
-+}
-+
-+_scratch_mkfs_verity()
-+{
-+	case $FSTYP in
-+	ext4|f2fs)
-+		_scratch_mkfs -O verity
-+		;;
-+	*)
-+		_notrun "No verity support for $FSTYP"
-+		;;
-+	esac
-+}
-+
-+_scratch_mkfs_encrypted_verity()
-+{
-+	case $FSTYP in
-+	ext4)
-+		_scratch_mkfs -O encrypt,verity
-+		;;
-+	f2fs)
-+		# f2fs-tools as of v1.11.0 doesn't allow comma-separated
-+		# features with -O.  Instead -O must be supplied multiple times.
-+		_scratch_mkfs -O encrypt -O verity
-+		;;
-+	*)
-+		_notrun "$FSTYP not supported in _scratch_mkfs_encrypted_verity"
-+		;;
-+	esac
-+}
-+
-+_fsv_scratch_begin_subtest()
-+{
-+	local msg=$1
-+
-+	rm -rf "${SCRATCH_MNT:?}"/*
-+	echo -e "\n# $msg"
-+}
-+
-+_fsv_enable()
-+{
-+	$FSVERITY_PROG enable "$@"
-+}
-+
-+_fsv_measure()
-+{
-+        $FSVERITY_PROG measure "$@" | awk '{print $1}'
-+}
-+
-+# Generate a file, then enable verity on it.
-+_fsv_create_enable_file()
-+{
-+	local file=$1
-+	shift
-+
-+	head -c $((FSV_BLOCK_SIZE * 2)) /dev/zero > "$file"
-+	_fsv_enable "$file" "$@"
-+}
-+
-+_fsv_have_hash_algorithm()
-+{
-+	local hash_alg=$1
-+	local test_file=$2
-+
-+	rm -f $test_file
-+	head -c 4096 /dev/zero > $test_file
-+	if ! _fsv_enable --hash-alg=$hash_alg $test_file &>> $seqres.full; then
-+		# no kernel support
-+		return 1
-+	fi
-+	rm -f $test_file
-+	return 0
-+}
-+
++# FS QA Test generic/903
 +#
-+# _fsv_scratch_corrupt_bytes - Write some bytes to a file, bypassing the filesystem
++# Test that fs-verity is using the correct measurement values.  This test
++# verifies that fs-verity is doing its Merkle tree-based hashing correctly,
++# i.e. that it hasn't been broken by a change.
 +#
-+# Write the bytes sent on stdin to the given offset in the given file, but do so
-+# by writing directly to the extents on the block device, with the filesystem
-+# unmounted.  This can be used to corrupt a verity file for testing purposes,
-+# bypassing the restrictions imposed by the filesystem.
-+#
-+# The file is assumed to be located on $SCRATCH_DEV.
-+#
-+_fsv_scratch_corrupt_bytes()
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
 +{
-+	local file=$1
-+	local offset=$2
-+	local lstart lend pstart pend
-+	local dd_cmds=()
-+	local cmd
++	cd /
++	rm -f $tmp.*
++}
 +
-+	sync	# Sync to avoid unwritten extents
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/verity
 +
-+	cat > $tmp.bytes
-+	local end=$(( offset + $(stat -c %s $tmp.bytes ) ))
++# remove previous $seqres.full before test
++rm -f $seqres.full
 +
-+	# For each extent that intersects the requested range in order, add a
-+	# command that writes the next part of the data to that extent.
-+	while read -r lstart lend pstart pend; do
-+		lstart=$((lstart * 512))
-+		lend=$(((lend + 1) * 512))
-+		pstart=$((pstart * 512))
-+		pend=$(((pend + 1) * 512))
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_scratch_verity
++if [ $FSV_BLOCK_SIZE != 4096 ]; then
++	_notrun "4096-byte verity block size not supported on this platform"
++fi
 +
-+		if (( lend - lstart != pend - pstart )); then
-+			_fail "Logical and physical extent lengths differ for file '$file'"
-+		elif (( offset < lstart )); then
-+			_fail "Hole in file '$file' at byte $offset.  Next extent begins at byte $lstart"
-+		elif (( offset < lend )); then
-+			local len=$((lend - offset))
-+			local seek=$((pstart + (offset - lstart)))
-+			dd_cmds+=("head -c $len | dd of=$SCRATCH_DEV oflag=seek_bytes seek=$seek status=none")
-+			(( offset += len ))
++_scratch_mkfs_verity &>> $seqres.full
++_scratch_mount
++fsv_orig_file=$SCRATCH_MNT/file
++fsv_file=$SCRATCH_MNT/file.fsv
++
++algs=(sha256 sha512)
++
++# Try files with 0, 1, and multiple Merkle tree levels.
++file_sizes=(0 4096 65536 65536 100000000)
++
++# Try both unsalted and salted, and check that empty salt is the same as no salt
++salts=('' '' '' '--salt=' '--salt=f3c93fa6fb828c0e1587e5714ecf6f56')
++
++# The expected file measurements are here rather than in the expected output
++# file because not all hash algorithms may be available.
++sha256_vals=(
++sha256:3d248ca542a24fc62d1c43b916eae5016878e2533c88238480b26128a1f1af95
++sha256:babc284ee4ffe7f449377fbf6692715b43aec7bc39c094a95878904d34bac97e
++sha256:011e3f2b1dc89b75d78cddcc2a1b85cd8a64b2883e5f20f277ae4c0617e0404f
++sha256:011e3f2b1dc89b75d78cddcc2a1b85cd8a64b2883e5f20f277ae4c0617e0404f
++sha256:9d33cab743468fcbe4edab91a275b30dd543c12dd5e6ce6f2f737f66a1558f06
++)
++sha512_vals=(
++sha512:ccf9e5aea1c2a64efa2f2354a6024b90dffde6bbc017825045dce374474e13d10adb9dadcc6ca8e17a3c075fbd31336e8f266ae6fa93a6c3bed66f9e784e5abf
++sha512:928922686c4caf32175f5236a7f964e9925d10a74dc6d8344a8bd08b23c228ff5792573987d7895f628f39c4f4ebe39a7367d7aeb16aaa0cd324ac1d53664e61
++sha512:eab7224ce374a0a4babcb2db25e24836247f38b87806ad9be9e5ba4daac2f5b814fc0cbdfd9f1f8499b3c9a6c1b38fe08974cce49883ab4ccd04462fd2f9507f
++sha512:eab7224ce374a0a4babcb2db25e24836247f38b87806ad9be9e5ba4daac2f5b814fc0cbdfd9f1f8499b3c9a6c1b38fe08974cce49883ab4ccd04462fd2f9507f
++sha512:f7083a38644880d25539488313e9e5b41a4d431a0e383945129ad2c36e3c1d0f28928a424641bb1363c12b6e770578102566acea73baf1ce8ee15336f5ba2446
++)
++
++test_alg()
++{
++	local alg=$1
++	local -n vals=${alg}_vals
++	local i
++	local file_size
++	local expected actual salt_arg
++
++	_fsv_scratch_begin_subtest "Check for expected measurement values ($alg)"
++
++	if ! _fsv_have_hash_algorithm $alg $fsv_file; then
++		if [ "$alg" = sha256 ]; then
++			_fail "Something is wrong - sha256 hash should always be available"
 +		fi
-+	done < <($XFS_IO_PROG -r -c "fiemap $offset $((end - offset))" "$file" \
-+		 | _filter_xfs_io_fiemap)
-+
-+	if (( offset < end )); then
-+		_fail "Extents of file '$file' ended at byte $offset, but needed until $end"
++		return 0
 +	fi
 +
-+	# Execute the commands to write the data
-+	_scratch_unmount
-+	for cmd in "${dd_cmds[@]}"; do
-+		eval "$cmd"
-+	done < $tmp.bytes
-+	sync	# Sync to flush the block device's pagecache
-+	_scratch_mount
++	for i in ${!file_sizes[@]}; do
++		file_size=${file_sizes[$i]}
++		expected=${vals[$i]}
++		salt_arg=${salts[$i]}
++
++		head -c $file_size /dev/zero > $fsv_orig_file
++		cp $fsv_orig_file $fsv_file
++		_fsv_enable --hash-alg=$alg $salt_arg $fsv_file
++		actual=$(_fsv_measure $fsv_file)
++		if [ "$actual" != "$expected" ]; then
++			echo "Mismatch: expected $expected, kernel calculated $actual (file_size=$file_size)"
++		fi
++		cmp $fsv_orig_file $fsv_file
++		rm -f $fsv_file
++	done
 +}
 +
-+#
-+# _fsv_scratch_corrupt_merkle_tree - Corrupt a file's Merkle tree
-+#
-+# Like _fsv_scratch_corrupt_bytes(), but this corrupts the file's fs-verity
-+# Merkle tree.  The offset is given as a byte offset into the Merkle tree.
-+#
-+_fsv_scratch_corrupt_merkle_tree()
-+{
-+	local file=$1
-+	local offset=$2
++for alg in ${algs[@]}; do
++	test_alg $alg
++done
 +
-+	case $FSTYP in
-+	ext4|f2fs)
-+		# ext4 and f2fs store the Merkle tree after the file contents
-+		# itself, starting at the next 65536-byte aligned boundary.
-+		(( offset += ($(stat -c %s $file) + 65535) & ~65535 ))
-+		_fsv_scratch_corrupt_bytes $file $offset
-+		;;
-+	*)
-+		_fail "_fsv_scratch_corrupt_merkle_tree() unimplemented on $FSTYP"
-+		;;
-+	esac
-+}
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/903.out b/tests/generic/903.out
+new file mode 100644
+index 00000000..02508828
+--- /dev/null
++++ b/tests/generic/903.out
+@@ -0,0 +1,5 @@
++QA output created by 903
++
++# Check for expected measurement values (sha256)
++
++# Check for expected measurement values (sha512)
+diff --git a/tests/generic/group b/tests/generic/group
+index 62fc73fa..97fd5a32 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -563,3 +563,4 @@
+ 900 auto quick verity
+ 901 auto quick verity
+ 902 auto quick verity
++903 auto quick verity
 -- 
 2.22.0.410.gd8fdbe21b5-goog
 
