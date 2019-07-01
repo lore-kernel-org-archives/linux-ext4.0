@@ -4,40 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D2BFC0651A
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B0B9FC0650E
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 463FB21473
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 807CD21473
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561995264;
-	bh=L+AIuRxIiUWphoWiVAD6FM91CwzKUITTDRCJ2I5wCbg=;
+	s=default; t=1561995265;
+	bh=UHMEZquVp+ldesIUu/G2OCD2a4fRDxKXlFi53PXUgIE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=CZwDy2cIJa0PJkPT5d6c6Wt+M5XKioQykHyPWf4eF/r/0I2he7FpdVZm0P6Lvemer
-	 aTQCRCF+gSP+dcwAVjMVmsCF2kJ/XDAesw2EhFr4qbTdDn+RIqLPJu6D0QrT498lyu
-	 teS0+rK3oQ7O+GT+E3tJpyzLNxIVgBHjGZGCzQdo=
+	b=qJvlbVz80udxtHU6zPbt5AjmlSm/H014yNCoc/HIpA9HX4kBakP/JP/R19YJdNoEg
+	 eRZ1Liz+01VVnO3TFxef00/Il5H+BS1yA6wfPJCUeXZ5xn2Nb/FOjrTR0c3xfs0TPF
+	 6yArZ7PJ9QT9IWQAjUbTpMwBDcZbR1KNAqYxCniw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729463AbfGAPeK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 11:34:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42836 "EHLO mail.kernel.org"
+        id S1729432AbfGAPeI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 11:34:08 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42612 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729450AbfGAPeJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 11:34:09 -0400
+        id S1729407AbfGAPeF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jul 2019 11:34:05 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3778D2184E;
-        Mon,  1 Jul 2019 15:34:08 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C128A21479;
+        Mon,  1 Jul 2019 15:34:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561995248;
-        bh=L+AIuRxIiUWphoWiVAD6FM91CwzKUITTDRCJ2I5wCbg=;
+        s=default; t=1561995244;
+        bh=UHMEZquVp+ldesIUu/G2OCD2a4fRDxKXlFi53PXUgIE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=aW7VNaWXsyY/K2A5tIChycsil7p1/Z2NfHMBaM4BBCX1cKxSA15G2BGeC4NdqexRK
-         H4zG3M4XRD1EXD1fPhD1by+kc1nmFZnXZWsLoRiIKzrkrE+I70HF7vqCIVd2VbO/7q
-         gMlIjKwS1x632kXbFUUP1B5n454bBoz/b9cdbV/A=
+        b=U583/iix48mhcuoEjdbkZi/fRIUSj74S3yobiEgV43qWjThvUiJp8GkRqSP/tHUJ5
+         zHipaLq+ZfKH7xAvgNDGQ25AKG9+wdwwqqABprncWxy/2/n7PcP4rsFfysjrBhQ0xR
+         2Lv+K0k8CacGLQzDTGXwiE5XBqHo+tMubkrx9fOE=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -50,9 +50,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v6 12/17] fs-verity: add SHA-512 support
-Date:   Mon,  1 Jul 2019 08:32:32 -0700
-Message-Id: <20190701153237.1777-13-ebiggers@kernel.org>
+Subject: [PATCH v6 04/17] fs: uapi: define verity bit for FS_IOC_GETFLAGS
+Date:   Mon,  1 Jul 2019 08:32:24 -0700
+Message-Id: <20190701153237.1777-5-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190701153237.1777-1-ebiggers@kernel.org>
 References: <20190701153237.1777-1-ebiggers@kernel.org>
@@ -65,61 +65,33 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add SHA-512 support to fs-verity.  This is primarily a demonstration of
-the trivial changes needed to support a new hash algorithm in fs-verity;
-most users will still use SHA-256, due to the smaller space required to
-store the hashes.  But some users may prefer SHA-512.
+Add FS_VERITY_FL to the flags for FS_IOC_GETFLAGS, so that applications
+can easily determine whether a file is a verity file at the same time as
+they're checking other file flags.  This flag will be gettable only;
+FS_IOC_SETFLAGS won't allow setting it, since an ioctl must be used
+instead to provide more parameters.
+
+This flag matches the on-disk bit that was already allocated for ext4.
 
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/fsverity_private.h  | 2 +-
- fs/verity/hash_algs.c         | 5 +++++
- include/uapi/linux/fsverity.h | 1 +
- 3 files changed, 7 insertions(+), 1 deletion(-)
+ include/uapi/linux/fs.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
-index eaa2b3b93bbf..02a547f0667c 100644
---- a/fs/verity/fsverity_private.h
-+++ b/fs/verity/fsverity_private.h
-@@ -29,7 +29,7 @@ struct ahash_request;
-  * Largest digest size among all hash algorithms supported by fs-verity.
-  * Currently assumed to be <= size of fsverity_descriptor::root_hash.
-  */
--#define FS_VERITY_MAX_DIGEST_SIZE	SHA256_DIGEST_SIZE
-+#define FS_VERITY_MAX_DIGEST_SIZE	SHA512_DIGEST_SIZE
- 
- /* A hash algorithm supported by fs-verity */
- struct fsverity_hash_alg {
-diff --git a/fs/verity/hash_algs.c b/fs/verity/hash_algs.c
-index c0457915ca10..27cbecb86be7 100644
---- a/fs/verity/hash_algs.c
-+++ b/fs/verity/hash_algs.c
-@@ -17,6 +17,11 @@ struct fsverity_hash_alg fsverity_hash_algs[] = {
- 		.digest_size = SHA256_DIGEST_SIZE,
- 		.block_size = SHA256_BLOCK_SIZE,
- 	},
-+	[FS_VERITY_HASH_ALG_SHA512] = {
-+		.name = "sha512",
-+		.digest_size = SHA512_DIGEST_SIZE,
-+		.block_size = SHA512_BLOCK_SIZE,
-+	},
- };
- 
- /**
-diff --git a/include/uapi/linux/fsverity.h b/include/uapi/linux/fsverity.h
-index 57d1d7fc0c34..da0daf6c193b 100644
---- a/include/uapi/linux/fsverity.h
-+++ b/include/uapi/linux/fsverity.h
-@@ -14,6 +14,7 @@
- #include <linux/types.h>
- 
- #define FS_VERITY_HASH_ALG_SHA256	1
-+#define FS_VERITY_HASH_ALG_SHA512	2
- 
- struct fsverity_enable_arg {
- 	__u32 version;
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 59c71fa8c553..df261b7e0587 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -306,6 +306,7 @@ struct fscrypt_key {
+ #define FS_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+ #define FS_HUGE_FILE_FL			0x00040000 /* Reserved for ext4 */
+ #define FS_EXTENT_FL			0x00080000 /* Extents */
++#define FS_VERITY_FL			0x00100000 /* Verity protected inode */
+ #define FS_EA_INODE_FL			0x00200000 /* Inode used for large EA */
+ #define FS_EOFBLOCKS_FL			0x00400000 /* Reserved for ext4 */
+ #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
 -- 
 2.22.0
 
