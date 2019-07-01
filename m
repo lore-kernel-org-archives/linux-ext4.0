@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0B9FC0650E
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4839C0650E
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 807CD21473
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9422521473
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561995265;
-	bh=UHMEZquVp+ldesIUu/G2OCD2a4fRDxKXlFi53PXUgIE=;
+	s=default; t=1561995266;
+	bh=0hPtZ5ATLcwZg69TymZau8/2PrUXxseXmNOiyD/GVSQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qJvlbVz80udxtHU6zPbt5AjmlSm/H014yNCoc/HIpA9HX4kBakP/JP/R19YJdNoEg
-	 eRZ1Liz+01VVnO3TFxef00/Il5H+BS1yA6wfPJCUeXZ5xn2Nb/FOjrTR0c3xfs0TPF
-	 6yArZ7PJ9QT9IWQAjUbTpMwBDcZbR1KNAqYxCniw=
+	b=NgmiHaqypc764qIVnaJshWYqvjkSfCaGxOMdoLboJhIMCCP/7Xer5aS3XvGSNwksd
+	 vEaw9RHsZfUnFEj3U/rY9NuLONnvEJUtFD/KC0lk2zNjt99RPaTLS/JCAkDQ9OE/5v
+	 3tpRyTUZylSmDAxzohKtRgRCVOgvhpYkYJ/kbFBs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729432AbfGAPeI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 11:34:08 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42612 "EHLO mail.kernel.org"
+        id S1729569AbfGAPeZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 11:34:25 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42816 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729407AbfGAPeF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 11:34:05 -0400
+        id S1729443AbfGAPeI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jul 2019 11:34:08 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C128A21479;
-        Mon,  1 Jul 2019 15:34:03 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id A361D2184C;
+        Mon,  1 Jul 2019 15:34:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561995244;
-        bh=UHMEZquVp+ldesIUu/G2OCD2a4fRDxKXlFi53PXUgIE=;
+        s=default; t=1561995248;
+        bh=0hPtZ5ATLcwZg69TymZau8/2PrUXxseXmNOiyD/GVSQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=U583/iix48mhcuoEjdbkZi/fRIUSj74S3yobiEgV43qWjThvUiJp8GkRqSP/tHUJ5
-         zHipaLq+ZfKH7xAvgNDGQ25AKG9+wdwwqqABprncWxy/2/n7PcP4rsFfysjrBhQ0xR
-         2Lv+K0k8CacGLQzDTGXwiE5XBqHo+tMubkrx9fOE=
+        b=QrdQcOz8heVitF8EJx6T3cP/4SyZN7WNpyQs1YGrgMIKt5b3i72pAfBJHgxOiAI3c
+         na1QpNm0KiKl5PMfhjsxCubUMo7KIumvu5UB4BysRXMv+uf5b8r8ia492qNvx9V2nA
+         L6fCkNhvaww6kMR7eRZvriVTIYaEPld9c99mvV3w=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -50,9 +50,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v6 04/17] fs: uapi: define verity bit for FS_IOC_GETFLAGS
-Date:   Mon,  1 Jul 2019 08:32:24 -0700
-Message-Id: <20190701153237.1777-5-ebiggers@kernel.org>
+Subject: [PATCH v6 11/17] fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
+Date:   Mon,  1 Jul 2019 08:32:31 -0700
+Message-Id: <20190701153237.1777-12-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190701153237.1777-1-ebiggers@kernel.org>
 References: <20190701153237.1777-1-ebiggers@kernel.org>
@@ -65,33 +65,128 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add FS_VERITY_FL to the flags for FS_IOC_GETFLAGS, so that applications
-can easily determine whether a file is a verity file at the same time as
-they're checking other file flags.  This flag will be gettable only;
-FS_IOC_SETFLAGS won't allow setting it, since an ioctl must be used
-instead to provide more parameters.
+Add a function for filesystems to call to implement the
+FS_IOC_MEASURE_VERITY ioctl.  This ioctl retrieves the file measurement
+that fs-verity calculated for the given file and is enforcing for reads;
+i.e., reads that don't match this hash will fail.  This ioctl can be
+used for authentication or logging of file measurements in userspace.
 
-This flag matches the on-disk bit that was already allocated for ext4.
+See the "FS_IOC_MEASURE_VERITY" section of
+Documentation/filesystems/fsverity.rst for the documentation.
 
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/uapi/linux/fs.h | 1 +
- 1 file changed, 1 insertion(+)
+ fs/verity/Makefile       |  1 +
+ fs/verity/measure.c      | 57 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/fsverity.h | 11 ++++++++
+ 3 files changed, 69 insertions(+)
+ create mode 100644 fs/verity/measure.c
 
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 59c71fa8c553..df261b7e0587 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -306,6 +306,7 @@ struct fscrypt_key {
- #define FS_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define FS_HUGE_FILE_FL			0x00040000 /* Reserved for ext4 */
- #define FS_EXTENT_FL			0x00080000 /* Extents */
-+#define FS_VERITY_FL			0x00100000 /* Verity protected inode */
- #define FS_EA_INODE_FL			0x00200000 /* Inode used for large EA */
- #define FS_EOFBLOCKS_FL			0x00400000 /* Reserved for ext4 */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
+diff --git a/fs/verity/Makefile b/fs/verity/Makefile
+index 04b37475fd28..6f7675ae0a31 100644
+--- a/fs/verity/Makefile
++++ b/fs/verity/Makefile
+@@ -3,5 +3,6 @@
+ obj-$(CONFIG_FS_VERITY) += enable.o \
+ 			   hash_algs.o \
+ 			   init.o \
++			   measure.o \
+ 			   open.o \
+ 			   verify.o
+diff --git a/fs/verity/measure.c b/fs/verity/measure.c
+new file mode 100644
+index 000000000000..05049b68c745
+--- /dev/null
++++ b/fs/verity/measure.c
+@@ -0,0 +1,57 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * fs/verity/measure.c: ioctl to get a verity file's measurement
++ *
++ * Copyright 2019 Google LLC
++ */
++
++#include "fsverity_private.h"
++
++#include <linux/uaccess.h>
++
++/**
++ * fsverity_ioctl_measure() - get a verity file's measurement
++ *
++ * Retrieve the file measurement that the kernel is enforcing for reads from a
++ * verity file.  See the "FS_IOC_MEASURE_VERITY" section of
++ * Documentation/filesystems/fsverity.rst for the documentation.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++int fsverity_ioctl_measure(struct file *filp, void __user *_uarg)
++{
++	const struct inode *inode = file_inode(filp);
++	struct fsverity_digest __user *uarg = _uarg;
++	const struct fsverity_info *vi;
++	const struct fsverity_hash_alg *hash_alg;
++	struct fsverity_digest arg;
++
++	vi = fsverity_get_info(inode);
++	if (!vi)
++		return -ENODATA; /* not a verity file */
++	hash_alg = vi->tree_params.hash_alg;
++
++	/*
++	 * The user specifies the digest_size their buffer has space for; we can
++	 * return the digest if it fits in the available space.  We write back
++	 * the actual size, which may be shorter than the user-specified size.
++	 */
++
++	if (get_user(arg.digest_size, &uarg->digest_size))
++		return -EFAULT;
++	if (arg.digest_size < hash_alg->digest_size)
++		return -EOVERFLOW;
++
++	memset(&arg, 0, sizeof(arg));
++	arg.digest_algorithm = hash_alg - fsverity_hash_algs;
++	arg.digest_size = hash_alg->digest_size;
++
++	if (copy_to_user(uarg, &arg, sizeof(arg)))
++		return -EFAULT;
++
++	if (copy_to_user(uarg->digest, vi->measurement, hash_alg->digest_size))
++		return -EFAULT;
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(fsverity_ioctl_measure);
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index b0b1854a9450..9ebb97c174c7 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -116,6 +116,10 @@ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
+ 
+ extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
+ 
++/* measure.c */
++
++extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
++
+ /* open.c */
+ 
+ extern int fsverity_file_open(struct inode *inode, struct file *filp);
+@@ -143,6 +147,13 @@ static inline int fsverity_ioctl_enable(struct file *filp,
+ 	return -EOPNOTSUPP;
+ }
+ 
++/* measure.c */
++
++static inline int fsverity_ioctl_measure(struct file *filp, void __user *arg)
++{
++	return -EOPNOTSUPP;
++}
++
+ /* open.c */
+ 
+ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
 -- 
 2.22.0
 
