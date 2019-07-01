@@ -2,345 +2,148 @@ Return-Path: <SRS0=sYTr=U6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A256AC06510
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6DB13C0650E
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:46:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 71B4520881
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561995275;
-	bh=n1sDOWKS9YdwJeROw9cb0Thz+/MZ4edbJBN02TvYaQ4=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=PAREVXkxhQ2o0Nj8NxrkifHiURm8vYj6jo9pPcMdaa0XEMToH+yg2HMdOupUfI3nm
-	 2J7agTFTuCdHNeV7bpjE9PNTw6zjpexagnOqK25/xqTuEuYeDn7yzA9AWKMUNmu7zl
-	 ovyzVqcJI818yztyvT0RlrA0s48KWpwOKd4P5KZM=
+	by mail.kernel.org (Postfix) with ESMTP id 47BCA20B7C
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:46:00 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="x/SdHBcY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729380AbfGAPeE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 11:34:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42526 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726076AbfGAPeD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 11:34:03 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7E69920881;
-        Mon,  1 Jul 2019 15:34:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561995241;
-        bh=n1sDOWKS9YdwJeROw9cb0Thz+/MZ4edbJBN02TvYaQ4=;
-        h=From:To:Cc:Subject:Date:From;
-        b=tJMrjjP+fGbYnIHgEA3mtIdRLt3f7/+2LUKAu+amEdQOdn6fXNmkuJKr3utxUweCK
-         +TNmg+Q85kDoCtfX7Xy3mwsEsOQ2vnKx/HArgL6zo/cN/dTqvdUuSJkmr1Q1Upms5X
-         PYZvBXazAOtZ2AAdaF/3z4FbLWpVxw1Z15y8nrL0=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-integrity@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v6 00/17] fs-verity: read-only file-based authenticity protection
-Date:   Mon,  1 Jul 2019 08:32:20 -0700
-Message-Id: <20190701153237.1777-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.22.0
+        id S1729846AbfGAPpz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 11:45:55 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:38790 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727373AbfGAPpy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Jul 2019 11:45:54 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x61Fd1eX135390;
+        Mon, 1 Jul 2019 15:44:10 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=pYgOiYG9niz5w5j2Xs2uAj2RGhsP9dEqiFiqy+v2SHk=;
+ b=x/SdHBcYO8s8zWcphUBtW0vaxMhmfi55Tc3O1uqVw5wFQoSV0TdcaQrd5DCa4/j3leVl
+ afbReE/QG5U9d5RMDtBeMdXqUXH0ZjmvMBZR4Bqmxg/kAljEVFLfyeY/NtPkYHmHYr9X
+ LYGxft84ZgeBGOpFpDLQVRFORBGkrIKz998fNMkSDSFhU9OkEimNW4ZMMNbmgLHWe6Wa
+ H32awHJIcTvxMIApJV/pr3XFucA4iWiPO5eUtLjVkO8Vi1P6W9rEo/9vB6C/HmqfVy1z
+ wSoSDGjT9hh0PbsVNlgPWgfY33Zl0N02nGKztDfgCPOv1W9YyXHHcQeRRazJE5zmpoPz vg== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2120.oracle.com with ESMTP id 2te61ppf40-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 01 Jul 2019 15:44:09 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x61FcFES032310;
+        Mon, 1 Jul 2019 15:42:09 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by userp3020.oracle.com with ESMTP id 2tebbj8db7-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Mon, 01 Jul 2019 15:42:09 +0000
+Received: from userp3020.oracle.com (userp3020.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x61Fg9hp040678;
+        Mon, 1 Jul 2019 15:42:09 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3020.oracle.com with ESMTP id 2tebbj8dap-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 01 Jul 2019 15:42:09 +0000
+Received: from abhmp0001.oracle.com (abhmp0001.oracle.com [141.146.116.7])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x61Fg3SU026276;
+        Mon, 1 Jul 2019 15:42:04 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 01 Jul 2019 08:42:02 -0700
+Date:   Mon, 1 Jul 2019 08:42:00 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     matthew.garrett@nebula.com, yuchao0@huawei.com, tytso@mit.edu,
+        ard.biesheuvel@linaro.org, josef@toxicpanda.com, hch@infradead.org,
+        clm@fb.com, adilger.kernel@dilger.ca, viro@zeniv.linux.org.uk,
+        jack@suse.com, dsterba@suse.com, jaegeuk@kernel.org, jk@ozlabs.org
+Cc:     reiserfs-devel@vger.kernel.org, linux-efi@vger.kernel.org,
+        devel@lists.orangefs.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-nilfs@vger.kernel.org,
+        linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: [PATCH v2 4/4] vfs: don't allow most setxattr to immutable files
+Message-ID: <20190701154200.GK1404256@magnolia>
+References: <156174687561.1557469.7505651950825460767.stgit@magnolia>
+ <156174690758.1557469.9258105121276292687.stgit@magnolia>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <156174690758.1557469.9258105121276292687.stgit@magnolia>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9305 signatures=668688
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=991 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1907010188
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
-
-This is a redesigned version of the fs-verity patchset, implementing
-Ted's suggestion to build the Merkle tree in the kernel
-(https://lore.kernel.org/linux-fsdevel/20190207031101.GA7387@mit.edu/).
-This greatly simplifies the UAPI, since the verity metadata no longer
-needs to be transferred to the kernel.  Now to enable fs-verity on a
-file, one simply calls FS_IOC_ENABLE_VERITY, passing it this structure:
-
-	struct fsverity_enable_arg {
-		__u32 version;
-		__u32 hash_algorithm;
-		__u32 block_size;
-		__u32 salt_size;
-		__u64 salt_ptr;
-		__u32 sig_size;
-		__u32 __reserved1;
-		__u64 sig_ptr;
-		__u64 __reserved2[11];
-	};
-
-The filesystem then builds the file's Merkle tree and stores it in a
-filesystem-specific location associated with the file.  Afterwards,
-FS_IOC_MEASURE_VERITY can be used to retrieve the file measurement
-("root hash").  The way the file measurement is computed is also
-effectively part of the API (it has to be), but it's logically
-independent of where/how the filesystem stores the Merkle tree.
-
-The API is fully documented in Documentation/filesystems/fsverity.rst,
-along with other aspects of fs-verity.  I also added an FAQ section that
-answers frequently asked questions about fs-verity, e.g. why isn't it
-all at the VFS level, why isn't it part of IMA, why does the Merkle tree
-need to be stored on-disk, etc.
-
-Overview
---------
-
-This patchset implements fs-verity for ext4 and f2fs.  fs-verity is
-similar to dm-verity, but implemented on a per-file basis: a Merkle tree
-is used to measure (hash) a read-only file's data as it is paged in.
-ext4 and f2fs hide this Merkle tree beyond the end of the file, but
-other filesystems can implement it differently if desired.
-
-In general, fs-verity is intended for use on writable filesystems;
-dm-verity is still recommended on read-only ones.
-
-Similar to fscrypt, most of the code is in fs/verity/, and not too many
-filesystem-specific changes are needed.  The Merkle tree is built by the
-filesystem when the FS_IOC_ENABLE_VERITY ioctl is executed.
-
-fs-verity provides a file measurement (hash) in constant time and
-verifies data on-demand.  Thus, it is useful for efficiently verifying
-the authenticity of large files of which only a small portion may be
-accessed, such as Android application package (APK) files.  It may also
-be useful in "audit" use cases where file hashes are logged.
-
-fs-verity can also provide better protection against malicious disks
-than an ahead-of-time hash, since fs-verity re-verifies data each time
-it's paged in.  Note, however, that any authenticity guarantee is still
-dependent on verification of the file measurement and other relevant
-metadata in a way that makes sense for the overall system; fs-verity is
-only a tool to help with this.
-
-This patchset doesn't include IMA support for fs-verity file
-measurements.  This is planned and we'd like to collaborate with the IMA
-maintainers.  Although fs-verity can be used on its own without IMA,
-fs-verity is primarily a lower level feature (think of it as a way of
-hashing a file), so some users may still need IMA's policy mechanism.
-However, an optional in-kernel signature verification mechanism within
-fs-verity itself is also included.
-
-This patchset is based on v5.2-rc3.  It can also be found in git at tag
-fsverity_2019-07-01 of:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-
-fs-verity has a userspace utility:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
-
-xfstests for fs-verity can be found at branch "fsverity" of:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git
-
-fs-verity is supported by f2fs-tools v1.11.0+ and e2fsprogs v1.45.2+.
-
-Examples of setting up fs-verity protected files can be found in the
-README.md file of fsverity-utils.
-
-Other useful references include:
-
-  - Documentation/filesystems/fsverity.rst, added by the first patch.
-
-  - LWN coverage of v3 patchset: https://lwn.net/Articles/790185/
-
-  - LWN coverage of v2 patchset: https://lwn.net/Articles/775872/
-
-  - LWN coverage of v1 patchset: https://lwn.net/Articles/763729/
-
-  - Presentation at Linux Security Summit North America 2018:
-      - Slides: https://schd.ws/hosted_files/lssna18/af/fs-verity%20slide%20deck.pdf
-      - Video: https://www.youtube.com/watch?v=Aw5h6aBhu6M
-      (This corresponded to the v1 patchset; changes have been made since then.)
-
-  - LWN coverage of LSFMM 2018 discussion: https://lwn.net/Articles/752614/
-
-Changed since v5:
-
-  - Switched to using detached signatures.  This simplifies the
-    signature verification code considerably.
-
-  - On f2fs, forbid enabling verity on files that have atomic or
-    volatile writes pending.
-
-  - Initialize quotas before evicting inline data.
-
-  - Prevent writing verity metadata beyond s_maxbytes.
-
-  - Switched from truncate_inode_pages() to invalidate_inode_pages2()
-    (fixes FS_IOC_ENABLE_VERITY on ext4 with data=journal)
-
-  - Always truncate the verity metadata if there's an error writing it,
-    even if the error doesn't occur until ->end_enable_verity().
-
-  - Updated the ext4 on-disk format documentation.
-
-  - A few minor cleanups.
-
-Changed since v4:
-
-  - Made ext4 and f2fs store the verity metadata beginning at a 64K
-    aligned boundary, to be ready for architectures with 64K pages.
-
-  - Made ext4 store the verity descriptor size in the file data stream,
-    so that no xattr is needed.
-
-  - Added support for empty files.
-
-  - A few minor cleanups.
-
-Changed since v3:
-
-  - The FS_IOC_GETFLAGS ioctl now returns the verity flag.
-
-  - Fixed setting i_verity_info too early.
-
-  - Restored pagecache invalidation in FS_IOC_ENABLE_VERITY.
-
-  - Fixed truncation of fsverity_enable_arg::hash_algorithm.
-
-  - Reject empty files for both open and enable, not just enable.
-
-  - Added a couple more FAQ entries to the documentation.
-
-  - A few minor cleanups.
-
-  - Rebased onto v5.2-rc3.
-
-Changed since v2:
-
-  - Large redesign: the Merkle tree is now built by
-    FS_IOC_ENABLE_VERITY, rather than being provided by userspace.  The
-    fsverity_operations provide an interface for filesystems to read and
-    write the Merkle tree from/to a filesystem-specific location.
-
-  - Lot of refactoring, cleanups, and documentation improvements.
-
-  - Many simplifications, such as simplifying the fsverity_descriptor
-    format, dropping CRC-32 support, and limiting the salt size.
-
-  - ext4 and f2fs now store an xattr that gives the location of the
-    fsverity_descriptor, so loading it is more straightforward.
-
-  - f2fs no longer counts the verity metadata in the on-disk i_size,
-    making it consistent with ext4.
-
-  - Replaced the filesystem-specific fs-verity kconfig options with
-    CONFIG_FS_VERITY.
-
-  - Replaced the filesystem-specific verity bit checks with IS_VERITY().
-
-Changed since v1:
-
-  - Added documentation file.
-
-  - Require write permission for FS_IOC_ENABLE_VERITY, rather than
-    CAP_SYS_ADMIN.
-
-  - Eliminated dependency on CONFIG_BLOCK and clarified that filesystems
-    can verify a page at a time rather than a bio at a time.
-
-  - Fixed conditions for verifying holes.
-
-  - ext4 now only allows fs-verity on extent-based files.
-
-  - Eliminated most of the assumptions that the verity metadata is
-    stored beyond EOF, in case filesystems want to do things
-    differently.
-
-  - Other cleanups.
-
-Eric Biggers (17):
-  fs-verity: add a documentation file
-  fs-verity: add MAINTAINERS file entry
-  fs-verity: add UAPI header
-  fs: uapi: define verity bit for FS_IOC_GETFLAGS
-  fs-verity: add Kconfig and the helper functions for hashing
-  fs-verity: add inode and superblock fields
-  fs-verity: add the hook for file ->open()
-  fs-verity: add the hook for file ->setattr()
-  fs-verity: add data verification hooks for ->readpages()
-  fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
-  fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
-  fs-verity: add SHA-512 support
-  fs-verity: support builtin file signatures
-  ext4: add basic fs-verity support
-  ext4: add fs-verity read support
-  ext4: update on-disk format documentation for fs-verity
-  f2fs: add fs-verity support
-
- Documentation/filesystems/ext4/inodes.rst   |   6 +-
- Documentation/filesystems/ext4/overview.rst |   1 +
- Documentation/filesystems/ext4/super.rst    |   2 +
- Documentation/filesystems/ext4/verity.rst   |  41 ++
- Documentation/filesystems/fsverity.rst      | 725 ++++++++++++++++++++
- Documentation/filesystems/index.rst         |   1 +
- Documentation/ioctl/ioctl-number.txt        |   1 +
- MAINTAINERS                                 |  12 +
- fs/Kconfig                                  |   2 +
- fs/Makefile                                 |   1 +
- fs/ext4/Makefile                            |   1 +
- fs/ext4/ext4.h                              |  23 +-
- fs/ext4/file.c                              |   4 +
- fs/ext4/inode.c                             |  48 +-
- fs/ext4/ioctl.c                             |  12 +
- fs/ext4/readpage.c                          | 207 +++++-
- fs/ext4/super.c                             |  18 +-
- fs/ext4/sysfs.c                             |   6 +
- fs/ext4/verity.c                            | 364 ++++++++++
- fs/f2fs/Makefile                            |   1 +
- fs/f2fs/data.c                              |  72 +-
- fs/f2fs/f2fs.h                              |  23 +-
- fs/f2fs/file.c                              |  40 ++
- fs/f2fs/inode.c                             |   5 +-
- fs/f2fs/super.c                             |   3 +
- fs/f2fs/sysfs.c                             |  11 +
- fs/f2fs/verity.c                            | 245 +++++++
- fs/f2fs/xattr.h                             |   2 +
- fs/verity/Kconfig                           |  55 ++
- fs/verity/Makefile                          |  10 +
- fs/verity/enable.c                          | 355 ++++++++++
- fs/verity/fsverity_private.h                | 185 +++++
- fs/verity/hash_algs.c                       | 279 ++++++++
- fs/verity/init.c                            |  61 ++
- fs/verity/measure.c                         |  57 ++
- fs/verity/open.c                            | 356 ++++++++++
- fs/verity/signature.c                       | 159 +++++
- fs/verity/verify.c                          | 281 ++++++++
- include/linux/fs.h                          |  11 +
- include/linux/fsverity.h                    | 209 ++++++
- include/uapi/linux/fs.h                     |   1 +
- include/uapi/linux/fsverity.h               |  40 ++
- 42 files changed, 3875 insertions(+), 61 deletions(-)
- create mode 100644 Documentation/filesystems/ext4/verity.rst
- create mode 100644 Documentation/filesystems/fsverity.rst
- create mode 100644 fs/ext4/verity.c
- create mode 100644 fs/f2fs/verity.c
- create mode 100644 fs/verity/Kconfig
- create mode 100644 fs/verity/Makefile
- create mode 100644 fs/verity/enable.c
- create mode 100644 fs/verity/fsverity_private.h
- create mode 100644 fs/verity/hash_algs.c
- create mode 100644 fs/verity/init.c
- create mode 100644 fs/verity/measure.c
- create mode 100644 fs/verity/open.c
- create mode 100644 fs/verity/signature.c
- create mode 100644 fs/verity/verify.c
- create mode 100644 include/linux/fsverity.h
- create mode 100644 include/uapi/linux/fsverity.h
-
--- 
-2.22.0
-
+From: Darrick J. Wong <darrick.wong@oracle.com>
+
+The chattr manpage has this to say about immutable files:
+
+"A file with the 'i' attribute cannot be modified: it cannot be deleted
+or renamed, no link can be created to this file, most of the file's
+metadata can not be modified, and the file can not be opened in write
+mode."
+
+However, we don't actually check the immutable flag in the setattr code,
+which means that we can update inode flags and project ids and extent
+size hints on supposedly immutable files.  Therefore, reject setflags
+and fssetxattr calls on an immutable file if the file is immutable and
+will remain that way.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+v2: use memcmp instead of open coding a bunch of checks
+---
+ fs/inode.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index cf07378e5731..31f694e405fe 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -2214,6 +2214,14 @@ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
+ 	    !capable(CAP_LINUX_IMMUTABLE))
+ 		return -EPERM;
+ 
++	/*
++	 * We aren't allowed to change any other flags if the immutable flag is
++	 * already set and is not being unset.
++	 */
++	if ((oldflags & FS_IMMUTABLE_FL) && (flags & FS_IMMUTABLE_FL) &&
++	    oldflags != flags)
++		return -EPERM;
++
+ 	/*
+ 	 * Now that we're done checking the new flags, flush all pending IO and
+ 	 * dirty mappings before setting S_IMMUTABLE on an inode via
+@@ -2284,6 +2292,15 @@ int vfs_ioc_fssetxattr_check(struct inode *inode, const struct fsxattr *old_fa,
+ 	    !(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
+ 		return -EINVAL;
+ 
++	/*
++	 * We aren't allowed to change any fields if the immutable flag is
++	 * already set and is not being unset.
++	 */
++	if ((old_fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
++	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
++	    memcmp(fa, old_fa, offsetof(struct fsxattr, fsx_pad)))
++		return -EPERM;
++
+ 	/* Extent size hints of zero turn off the flags. */
+ 	if (fa->fsx_extsize == 0)
+ 		fa->fsx_xflags &= ~(FS_XFLAG_EXTSIZE | FS_XFLAG_EXTSZINHERIT);
