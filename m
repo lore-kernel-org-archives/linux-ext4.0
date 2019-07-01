@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 80F80C06510
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DC1BC0650E
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5AE34208E4
+	by mail.kernel.org (Postfix) with ESMTP id EAE9D208E4
 	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jul 2019 15:34:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1561995252;
-	bh=Cy1L9jt6MHwD/IPoiTyfEfNZpTQyN4KOskp1d2y368g=;
+	s=default; t=1561995253;
+	bh=A41vt4jGxIjxms6taEMGdqC+r7hlRcG0OlJSTNYg6+U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=DIVPQVEeq4oTk/aWqFNCHYPspkWI5O9RXiwDjCYZv1yeO4+re0Z4tIWbSnAb/Bwt5
-	 AnEwuUdn7ytiV2tEdNrBukM6rAbZ/jem0bkBzVghXdYaEGqEbWHsydycAtQ+VbxEuY
-	 CDbbpiZgCwtGgfIBuYgB97d2ocqFnoWuMPPsQEFE=
+	b=yrXvu/iBPmlzUPrlOkjRTCwz/DdCEsedoN56/LuZyeBDroe1ADrxM6SRaSiUbio57
+	 x/I1+3D39moQq//pbihtXCWzfH1/uDnzoF/dY+grsPYSF71XvEsvcrMhEikK1odtG5
+	 595PJ4zKJ49ef9KsYFF8zljov6PdZc65xE/d1seY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729499AbfGAPeL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jul 2019 11:34:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42796 "EHLO mail.kernel.org"
+        id S1729502AbfGAPeM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jul 2019 11:34:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42776 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729427AbfGAPeJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jul 2019 11:34:09 -0400
+        id S1729475AbfGAPeL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jul 2019 11:34:11 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1B034216F4;
-        Mon,  1 Jul 2019 15:34:07 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6CBEF21851;
+        Mon,  1 Jul 2019 15:34:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1561995247;
-        bh=Cy1L9jt6MHwD/IPoiTyfEfNZpTQyN4KOskp1d2y368g=;
+        s=default; t=1561995250;
+        bh=A41vt4jGxIjxms6taEMGdqC+r7hlRcG0OlJSTNYg6+U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=M3CTLyY64CLrt24huAljl/rYE1OGquME91QBCgceiXC66oPnXkWE+z9PDGoibWHU2
-         cS1mcj4oUX586vaWYV7e4tXHXge+Y+WJzPa5noO3WvpR9Pu3+CGn0/L/xPNyNAkWQk
-         /NSZHqftwD8QVWeOdi9cEFbfztGoehsaQ0flrxK4=
+        b=iD3SKZ4NuFdVsvtTwHp67q1eLCgKv2yQih/QpjUim8OmpZnbzQ7oZYjMXY6u0gEAF
+         k4Z4Btr2h50/1QSnvfvHDqxAUosnpP3S4X9u6kVl1RL7GZnMGJX6lq/nnHFBQ2r4Rl
+         TN6KX7sDkc7P2+SgJ6zcV67wWlDIRxUtX3jf9tyo=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -50,9 +50,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Christoph Hellwig <hch@lst.de>,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         Linus Torvalds <torvalds@linux-foundation.org>
-Subject: [PATCH v6 10/17] fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
-Date:   Mon,  1 Jul 2019 08:32:30 -0700
-Message-Id: <20190701153237.1777-11-ebiggers@kernel.org>
+Subject: [PATCH v6 16/17] ext4: update on-disk format documentation for fs-verity
+Date:   Mon,  1 Jul 2019 08:32:36 -0700
+Message-Id: <20190701153237.1777-17-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190701153237.1777-1-ebiggers@kernel.org>
 References: <20190701153237.1777-1-ebiggers@kernel.org>
@@ -65,477 +65,112 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add a function for filesystems to call to implement the
-FS_IOC_ENABLE_VERITY ioctl.  This ioctl enables fs-verity on a file.
+Document the format of verity files on ext4, and the corresponding inode
+and superblock flags.
 
-See the "FS_IOC_ENABLE_VERITY" section of
-Documentation/filesystems/fsverity.rst for the documentation.
-
-Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/Makefile       |   3 +-
- fs/verity/enable.c       | 341 +++++++++++++++++++++++++++++++++++++++
- include/linux/fsverity.h |  64 ++++++++
- 3 files changed, 407 insertions(+), 1 deletion(-)
- create mode 100644 fs/verity/enable.c
+ Documentation/filesystems/ext4/inodes.rst   |  6 ++-
+ Documentation/filesystems/ext4/overview.rst |  1 +
+ Documentation/filesystems/ext4/super.rst    |  2 +
+ Documentation/filesystems/ext4/verity.rst   | 41 +++++++++++++++++++++
+ 4 files changed, 48 insertions(+), 2 deletions(-)
+ create mode 100644 Documentation/filesystems/ext4/verity.rst
 
-diff --git a/fs/verity/Makefile b/fs/verity/Makefile
-index 7fa628cd5eba..04b37475fd28 100644
---- a/fs/verity/Makefile
-+++ b/fs/verity/Makefile
-@@ -1,6 +1,7 @@
- # SPDX-License-Identifier: GPL-2.0
+diff --git a/Documentation/filesystems/ext4/inodes.rst b/Documentation/filesystems/ext4/inodes.rst
+index 6bd35e506b6f..e851e6ca31fa 100644
+--- a/Documentation/filesystems/ext4/inodes.rst
++++ b/Documentation/filesystems/ext4/inodes.rst
+@@ -277,6 +277,8 @@ The ``i_flags`` field is a combination of these values:
+      - This is a huge file (EXT4\_HUGE\_FILE\_FL).
+    * - 0x80000
+      - Inode uses extents (EXT4\_EXTENTS\_FL).
++   * - 0x100000
++     - Verity protected file (EXT4\_VERITY\_FL).
+    * - 0x200000
+      - Inode stores a large extended attribute value in its data blocks
+        (EXT4\_EA\_INODE\_FL).
+@@ -299,9 +301,9 @@ The ``i_flags`` field is a combination of these values:
+      - Reserved for ext4 library (EXT4\_RESERVED\_FL).
+    * -
+      - Aggregate flags:
+-   * - 0x4BDFFF
++   * - 0x705BDFFF
+      - User-visible flags.
+-   * - 0x4B80FF
++   * - 0x604BC0FF
+      - User-modifiable flags. Note that while EXT4\_JOURNAL\_DATA\_FL and
+        EXT4\_EXTENTS\_FL can be set with setattr, they are not in the kernel's
+        EXT4\_FL\_USER\_MODIFIABLE mask, since it needs to handle the setting of
+diff --git a/Documentation/filesystems/ext4/overview.rst b/Documentation/filesystems/ext4/overview.rst
+index cbab18baba12..123ebfde47ee 100644
+--- a/Documentation/filesystems/ext4/overview.rst
++++ b/Documentation/filesystems/ext4/overview.rst
+@@ -24,3 +24,4 @@ order.
+ .. include:: bigalloc.rst
+ .. include:: inlinedata.rst
+ .. include:: eainode.rst
++.. include:: verity.rst
+diff --git a/Documentation/filesystems/ext4/super.rst b/Documentation/filesystems/ext4/super.rst
+index 04ff079a2acf..6eae92054827 100644
+--- a/Documentation/filesystems/ext4/super.rst
++++ b/Documentation/filesystems/ext4/super.rst
+@@ -696,6 +696,8 @@ the following:
+        (RO\_COMPAT\_READONLY)
+    * - 0x2000
+      - Filesystem tracks project quotas. (RO\_COMPAT\_PROJECT)
++   * - 0x8000
++     - Verity inodes may be present on the filesystem. (RO\_COMPAT\_VERITY)
  
--obj-$(CONFIG_FS_VERITY) += hash_algs.o \
-+obj-$(CONFIG_FS_VERITY) += enable.o \
-+			   hash_algs.o \
- 			   init.o \
- 			   open.o \
- 			   verify.o
-diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+ .. _super_def_hash:
+ 
+diff --git a/Documentation/filesystems/ext4/verity.rst b/Documentation/filesystems/ext4/verity.rst
 new file mode 100644
-index 000000000000..782b2911463e
+index 000000000000..3e4c0ee0e068
 --- /dev/null
-+++ b/fs/verity/enable.c
-@@ -0,0 +1,341 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * fs/verity/enable.c: ioctl to enable verity on a file
-+ *
-+ * Copyright 2019 Google LLC
-+ */
++++ b/Documentation/filesystems/ext4/verity.rst
+@@ -0,0 +1,41 @@
++.. SPDX-License-Identifier: GPL-2.0
 +
-+#include "fsverity_private.h"
++Verity files
++------------
 +
-+#include <crypto/hash.h>
-+#include <linux/mount.h>
-+#include <linux/pagemap.h>
-+#include <linux/sched/signal.h>
-+#include <linux/uaccess.h>
++ext4 supports fs-verity, which is a filesystem feature that provides
++Merkle tree based hashing for individual readonly files.  Most of
++fs-verity is common to all filesystems that support it; see
++:ref:`Documentation/filesystems/fsverity.rst <fsverity>` for the
++fs-verity documentation.  However, the on-disk layout of the verity
++metadata is filesystem-specific.  On ext4, the verity metadata is
++stored after the end of the file data itself, in the following format:
 +
-+static int build_merkle_tree_level(struct inode *inode, unsigned int level,
-+				   u64 num_blocks_to_hash,
-+				   const struct merkle_tree_params *params,
-+				   u8 *pending_hashes,
-+				   struct ahash_request *req)
-+{
-+	const struct fsverity_operations *vops = inode->i_sb->s_vop;
-+	unsigned int pending_size = 0;
-+	u64 dst_block_num;
-+	u64 i;
-+	int err;
++- Zero-padding to the next 65536-byte boundary.  This padding need not
++  actually be allocated on-disk, i.e. it may be a hole.
 +
-+	if (WARN_ON(params->block_size != PAGE_SIZE)) /* checked earlier too */
-+		return -EINVAL;
++- The Merkle tree, as documented in
++  :ref:`Documentation/filesystems/fsverity.rst
++  <fsverity_merkle_tree>`, with the tree levels stored in order from
++  root to leaf, and the tree blocks within each level stored in their
++  natural order.
 +
-+	if (level < params->num_levels) {
-+		dst_block_num = params->level_start[level];
-+	} else {
-+		if (WARN_ON(num_blocks_to_hash != 1))
-+			return -EINVAL;
-+		dst_block_num = 0; /* unused */
-+	}
++- Zero-padding to the next filesystem block boundary.
 +
-+	for (i = 0; i < num_blocks_to_hash; i++) {
-+		struct page *src_page;
++- The verity descriptor, as documented in
++  :ref:`Documentation/filesystems/fsverity.rst <fsverity_descriptor>`,
++  with optionally appended signature blob.
 +
-+		if ((pgoff_t)i % 10000 == 0 || i + 1 == num_blocks_to_hash)
-+			pr_debug("Hashing block %llu of %llu for level %u\n",
-+				 i + 1, num_blocks_to_hash, level);
++- Zero-padding to the next offset that is 4 bytes before a filesystem
++  block boundary.
 +
-+		if (level == 0)
-+			/* Leaf: hashing a data block */
-+			src_page = read_mapping_page(inode->i_mapping, i, NULL);
-+		else
-+			/* Non-leaf: hashing hash block from level below */
-+			src_page = vops->read_merkle_tree_page(inode,
-+					params->level_start[level - 1] + i);
-+		if (IS_ERR(src_page)) {
-+			err = PTR_ERR(src_page);
-+			fsverity_err(inode,
-+				     "Error %d reading Merkle tree page %llu",
-+				     err, params->level_start[level - 1] + i);
-+			return err;
-+		}
++- The size of the verity descriptor in bytes, as a 4-byte little
++  endian integer.
 +
-+		err = fsverity_hash_page(params, inode, req, src_page,
-+					 &pending_hashes[pending_size]);
-+		put_page(src_page);
-+		if (err)
-+			return err;
-+		pending_size += params->digest_size;
++Verity inodes have EXT4_VERITY_FL set, and they must use extents, i.e.
++EXT4_EXTENTS_FL must be set and EXT4_INLINE_DATA_FL must be clear.
++They can have EXT4_ENCRYPT_FL set, in which case the verity metadata
++is encrypted as well as the data itself.
 +
-+		if (level == params->num_levels) /* Root hash? */
-+			return 0;
-+
-+		if (pending_size + params->digest_size > params->block_size ||
-+		    i + 1 == num_blocks_to_hash) {
-+			/* Flush the pending hash block */
-+			memset(&pending_hashes[pending_size], 0,
-+			       params->block_size - pending_size);
-+			err = vops->write_merkle_tree_block(inode,
-+					pending_hashes,
-+					dst_block_num,
-+					params->log_blocksize);
-+			if (err) {
-+				fsverity_err(inode,
-+					     "Error %d writing Merkle tree block %llu",
-+					     err, dst_block_num);
-+				return err;
-+			}
-+			dst_block_num++;
-+			pending_size = 0;
-+		}
-+
-+		if (fatal_signal_pending(current))
-+			return -EINTR;
-+		cond_resched();
-+	}
-+	return 0;
-+}
-+
-+/*
-+ * Build the Merkle tree for the given inode using the given parameters, and
-+ * return the root hash in @root_hash.
-+ *
-+ * The tree is written to a filesystem-specific location as determined by the
-+ * ->write_merkle_tree_block() method.  However, the blocks that comprise the
-+ * tree are the same for all filesystems.
-+ */
-+static int build_merkle_tree(struct inode *inode,
-+			     const struct merkle_tree_params *params,
-+			     u8 *root_hash)
-+{
-+	u8 *pending_hashes;
-+	struct ahash_request *req;
-+	u64 blocks;
-+	unsigned int level;
-+	int err = -ENOMEM;
-+
-+	if (inode->i_size == 0) {
-+		/* Empty file is a special case; root hash is all 0's */
-+		memset(root_hash, 0, params->digest_size);
-+		return 0;
-+	}
-+
-+	pending_hashes = kmalloc(params->block_size, GFP_KERNEL);
-+	req = ahash_request_alloc(params->hash_alg->tfm, GFP_KERNEL);
-+	if (!pending_hashes || !req)
-+		goto out;
-+
-+	/*
-+	 * Build each level of the Merkle tree, starting at the leaf level
-+	 * (level 0) and ascending to the root node (level 'num_levels - 1').
-+	 * Then at the end (level 'num_levels'), calculate the root hash.
-+	 */
-+	blocks = (inode->i_size + params->block_size - 1) >>
-+		 params->log_blocksize;
-+	for (level = 0; level <= params->num_levels; level++) {
-+		err = build_merkle_tree_level(inode, level, blocks, params,
-+					      pending_hashes, req);
-+		if (err)
-+			goto out;
-+		blocks = (blocks + params->hashes_per_block - 1) >>
-+			 params->log_arity;
-+	}
-+	memcpy(root_hash, pending_hashes, params->digest_size);
-+	err = 0;
-+out:
-+	kfree(pending_hashes);
-+	ahash_request_free(req);
-+	return err;
-+}
-+
-+static int enable_verity(struct file *filp,
-+			 const struct fsverity_enable_arg *arg)
-+{
-+	struct inode *inode = file_inode(filp);
-+	const struct fsverity_operations *vops = inode->i_sb->s_vop;
-+	struct merkle_tree_params params = { };
-+	struct fsverity_descriptor *desc;
-+	size_t desc_size = sizeof(*desc);
-+	struct fsverity_info *vi;
-+	int err;
-+
-+	/* Start initializing the fsverity_descriptor */
-+	desc = kzalloc(desc_size, GFP_KERNEL);
-+	if (!desc)
-+		return -ENOMEM;
-+	desc->version = 1;
-+	desc->hash_algorithm = arg->hash_algorithm;
-+	desc->log_blocksize = ilog2(arg->block_size);
-+
-+	/* Get the salt if the user provided one */
-+	if (arg->salt_size &&
-+	    copy_from_user(desc->salt,
-+			   (const u8 __user *)(uintptr_t)arg->salt_ptr,
-+			   arg->salt_size)) {
-+		err = -EFAULT;
-+		goto out;
-+	}
-+	desc->salt_size = arg->salt_size;
-+
-+	desc->data_size = cpu_to_le64(inode->i_size);
-+
-+	pr_debug("Building Merkle tree...\n");
-+
-+	/* Prepare the Merkle tree parameters */
-+	err = fsverity_init_merkle_tree_params(&params, inode,
-+					       arg->hash_algorithm,
-+					       desc->log_blocksize,
-+					       desc->salt, desc->salt_size);
-+	if (err)
-+		goto out;
-+
-+	/* Tell the filesystem that verity is being enabled on the file */
-+	err = vops->begin_enable_verity(filp);
-+	if (err)
-+		goto out;
-+
-+	/* Build the Merkle tree */
-+	BUILD_BUG_ON(sizeof(desc->root_hash) < FS_VERITY_MAX_DIGEST_SIZE);
-+	err = build_merkle_tree(inode, &params, desc->root_hash);
-+	if (err) {
-+		fsverity_err(inode, "Error %d building Merkle tree", err);
-+		goto rollback;
-+	}
-+	pr_debug("Done building Merkle tree.  Root hash is %s:%*phN\n",
-+		 params.hash_alg->name, params.digest_size, desc->root_hash);
-+
-+	/*
-+	 * Create the fsverity_info.  Don't bother trying to save work by
-+	 * reusing the merkle_tree_params from above.  Instead, just create the
-+	 * fsverity_info from the fsverity_descriptor as if it were just loaded
-+	 * from disk.  This is simpler, and it serves as an extra check that the
-+	 * metadata we're writing is valid before actually enabling verity.
-+	 */
-+	vi = fsverity_create_info(inode, desc, desc_size);
-+	if (IS_ERR(vi)) {
-+		err = PTR_ERR(vi);
-+		goto rollback;
-+	}
-+
-+	/* Tell the filesystem to finish enabling verity on the file */
-+	err = vops->end_enable_verity(filp, desc, desc_size, params.tree_size);
-+	if (err) {
-+		fsverity_err(inode, "%ps() failed with err %d",
-+			     vops->end_enable_verity, err);
-+		fsverity_free_info(vi);
-+	} else if (WARN_ON(!IS_VERITY(inode))) {
-+		err = -EINVAL;
-+		fsverity_free_info(vi);
-+	} else {
-+		/* Successfully enabled verity */
-+
-+		/*
-+		 * Readers can start using ->i_verity_info immediately, so it
-+		 * can't be rolled back once set.  So don't set it until just
-+		 * after the filesystem has successfully enabled verity.
-+		 */
-+		fsverity_set_info(inode, vi);
-+	}
-+out:
-+	kfree(params.hashstate);
-+	kfree(desc);
-+	return err;
-+
-+rollback:
-+	(void)vops->end_enable_verity(filp, NULL, 0, params.tree_size);
-+	goto out;
-+}
-+
-+/**
-+ * fsverity_ioctl_enable() - enable verity on a file
-+ *
-+ * Enable fs-verity on a file.  See the "FS_IOC_ENABLE_VERITY" section of
-+ * Documentation/filesystems/fsverity.rst for the documentation.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+int fsverity_ioctl_enable(struct file *filp, const void __user *uarg)
-+{
-+	struct inode *inode = file_inode(filp);
-+	struct fsverity_enable_arg arg;
-+	int err;
-+
-+	if (copy_from_user(&arg, uarg, sizeof(arg)))
-+		return -EFAULT;
-+
-+	if (arg.version != 1)
-+		return -EINVAL;
-+
-+	if (arg.__reserved1 ||
-+	    memchr_inv(arg.__reserved2, 0, sizeof(arg.__reserved2)))
-+		return -EINVAL;
-+
-+	if (arg.block_size != PAGE_SIZE)
-+		return -EINVAL;
-+
-+	if (arg.salt_size > FIELD_SIZEOF(struct fsverity_descriptor, salt))
-+		return -EMSGSIZE;
-+
-+	if (arg.sig_size)
-+		return -EINVAL;
-+
-+	/*
-+	 * Require a regular file with write access.  But the actual fd must
-+	 * still be readonly so that we can lock out all writers.  This is
-+	 * needed to guarantee that no writable fds exist to the file once it
-+	 * has verity enabled, and to stabilize the data being hashed.
-+	 */
-+
-+	err = inode_permission(inode, MAY_WRITE);
-+	if (err)
-+		return err;
-+
-+	if (IS_APPEND(inode))
-+		return -EPERM;
-+
-+	if (S_ISDIR(inode->i_mode))
-+		return -EISDIR;
-+
-+	if (!S_ISREG(inode->i_mode))
-+		return -EINVAL;
-+
-+	err = mnt_want_write_file(filp);
-+	if (err) /* -EROFS */
-+		return err;
-+
-+	err = deny_write_access(filp);
-+	if (err) /* -ETXTBSY */
-+		goto out_drop_write;
-+
-+	inode_lock(inode);
-+
-+	if (IS_VERITY(inode)) {
-+		err = -EEXIST;
-+		goto out_unlock;
-+	}
-+
-+	err = enable_verity(filp, &arg);
-+	if (err)
-+		goto out_unlock;
-+
-+	/*
-+	 * Some pages of the file may have been evicted from pagecache after
-+	 * being used in the Merkle tree construction, then read into pagecache
-+	 * again by another process reading from the file concurrently.  Since
-+	 * these pages didn't undergo verification against the file measurement
-+	 * which fs-verity now claims to be enforcing, we have to wipe the
-+	 * pagecache to ensure that all future reads are verified.
-+	 */
-+	filemap_write_and_wait(inode->i_mapping);
-+	invalidate_inode_pages2(inode->i_mapping);
-+
-+	/*
-+	 * allow_write_access() is needed to pair with deny_write_access().
-+	 * Regardless, the filesystem won't allow writing to verity files.
-+	 */
-+out_unlock:
-+	inode_unlock(inode);
-+	allow_write_access(filp);
-+out_drop_write:
-+	mnt_drop_write_file(filp);
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(fsverity_ioctl_enable);
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 95c257cd7ff0..b0b1854a9450 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -17,6 +17,42 @@
- /* Verity operations for filesystems */
- struct fsverity_operations {
- 
-+	/**
-+	 * Begin enabling verity on the given file.
-+	 *
-+	 * @filp: a readonly file descriptor for the file
-+	 *
-+	 * The filesystem must do any needed filesystem-specific preparations
-+	 * for enabling verity, e.g. evicting inline data.
-+	 *
-+	 * i_rwsem is held for write.
-+	 *
-+	 * Return: 0 on success, -errno on failure
-+	 */
-+	int (*begin_enable_verity)(struct file *filp);
-+
-+	/**
-+	 * End enabling verity on the given file.
-+	 *
-+	 * @filp: a readonly file descriptor for the file
-+	 * @desc: the verity descriptor to write, or NULL on failure
-+	 * @desc_size: size of verity descriptor, or 0 on failure
-+	 * @merkle_tree_size: total bytes the Merkle tree took up
-+	 *
-+	 * If desc == NULL, then enabling verity failed and the filesystem only
-+	 * must do any necessary cleanups.  Else, it must also store the given
-+	 * verity descriptor to a fs-specific location associated with the inode
-+	 * and do any fs-specific actions needed to mark the inode as a verity
-+	 * inode, e.g. setting a bit in the on-disk inode.  The filesystem is
-+	 * also responsible for setting the S_VERITY flag in the VFS inode.
-+	 *
-+	 * i_rwsem is held for write.
-+	 *
-+	 * Return: 0 on success, -errno on failure
-+	 */
-+	int (*end_enable_verity)(struct file *filp, const void *desc,
-+				 size_t desc_size, u64 merkle_tree_size);
-+
- 	/**
- 	 * Get the verity descriptor of the given inode.
- 	 *
-@@ -50,6 +86,22 @@ struct fsverity_operations {
- 	 */
- 	struct page *(*read_merkle_tree_page)(struct inode *inode,
- 					      pgoff_t index);
-+
-+	/**
-+	 * Write a Merkle tree block to the given inode.
-+	 *
-+	 * @inode: the inode for which the Merkle tree is being built
-+	 * @buf: block to write
-+	 * @index: 0-based index of the block within the Merkle tree
-+	 * @log_blocksize: log base 2 of the Merkle tree block size
-+	 *
-+	 * This is only called between ->begin_enable_verity() and
-+	 * ->end_enable_verity().  i_rwsem is held for write.
-+	 *
-+	 * Return: 0 on success, -errno on failure
-+	 */
-+	int (*write_merkle_tree_block)(struct inode *inode, const void *buf,
-+				       u64 index, int log_blocksize);
- };
- 
- #ifdef CONFIG_FS_VERITY
-@@ -60,6 +112,10 @@ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
- 	return READ_ONCE(inode->i_verity_info);
- }
- 
-+/* enable.c */
-+
-+extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
-+
- /* open.c */
- 
- extern int fsverity_file_open(struct inode *inode, struct file *filp);
-@@ -79,6 +135,14 @@ static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
- 	return NULL;
- }
- 
-+/* enable.c */
-+
-+static inline int fsverity_ioctl_enable(struct file *filp,
-+					const void __user *arg)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
- /* open.c */
- 
- static inline int fsverity_file_open(struct inode *inode, struct file *filp)
++Verity files cannot have blocks allocated past the end of the verity
++metadata.
 -- 
 2.22.0
 
