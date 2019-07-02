@@ -2,152 +2,104 @@ Return-Path: <SRS0=WYnR=U7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EE64C06510
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jul 2019 10:45:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33E0DC06511
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jul 2019 17:33:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D99EC2089C
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jul 2019 10:45:50 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kdVby+/P"
+	by mail.kernel.org (Postfix) with ESMTP id 1CF9D21721
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jul 2019 17:33:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726702AbfGBKpp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Jul 2019 06:45:45 -0400
-Received: from mail-yb1-f193.google.com ([209.85.219.193]:41634 "EHLO
-        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725780AbfGBKpp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jul 2019 06:45:45 -0400
-Received: by mail-yb1-f193.google.com with SMTP id y67so1127843yba.8;
-        Tue, 02 Jul 2019 03:45:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=vlidC+hQ/gD/8v9eleM4nXtfiap8zhCG0j5qbLCVw18=;
-        b=kdVby+/PzZu5i6Y9UcQYatHEHHsEPhAQY+mjVHF6xlggt8o+nszbdHXCHfEBil5H5H
-         UL+/28eYKfUAOv8AvNzRMQHWK/y4MABFSamQhRwNZH1hpEc5BUQCjqITvhev6DLWRzG3
-         uOgpinFcBt7pSePpbwiWspS3cbj7dBXMod+4Z94YngJ+nIPc3qdhbsYftXAC3oBGhakE
-         Bt+6iCjbrfqQEg0SzB1WdrzlyuHEb0JfhuYdop7KFU8fbo4QPvOCj4+Z+NVkWFYsg5RT
-         IRHHoit1jxeDZWaJHULPmpdSPTutxwczS9nSE3h7MYk2MPhM/kHniCv9ovLGXWy3LfTv
-         lmfQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=vlidC+hQ/gD/8v9eleM4nXtfiap8zhCG0j5qbLCVw18=;
-        b=kOQko23Rc0IeST7t53H2gjWohdZk/9tmrCy9j0Rme3aK0mIIU5LjQKBiS+ejJnCJLr
-         eXv3MY5B5zssNxt6ivw3b3ZBvK1ZL89h6U4Y+3AIy7lCyyPMsPb/G6izNdRCpd06xd6E
-         pLh/ruAZmfaEUtviP+xATCFMGfeg5ePmN+63xu/FldL9ljRQfqyluhxF2LBRFjCNOzmg
-         NH1VOREpBkgGMKCPlQ1BVPd3q1TOF4cF+KqV12p2Ladm8UDSa0rsfY1id/BS+Xr1YQRm
-         UvHTCY97g7hTBu2cu7OTDhNjAo9ZikyO8JHLd7mxjGRiEsZr/AWbSs/fESX06x1R833k
-         KGPw==
-X-Gm-Message-State: APjAAAV+qRNH++e6+G9m8S/OV+UlGtYWnV7DHAfM2HUbmIWLZUzkYUAg
-        YebvmfFBvHMYW+g+t12VT1xBFQeakkjTeDO9KTg=
-X-Google-Smtp-Source: APXvYqzMdrjXgWGhi/zPaZxEj+t8DhHrW56qP/YMhmryxOT2o02rqdhc3hQ5y4gjPvsnd8KwypjTK3Tgmn2Zfydvxjo=
-X-Received: by 2002:a25:8109:: with SMTP id o9mr16913558ybk.132.1562064343920;
- Tue, 02 Jul 2019 03:45:43 -0700 (PDT)
+        id S1726732AbfGBRdK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Jul 2019 13:33:10 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39746 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726150AbfGBRdK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jul 2019 13:33:10 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x62HX2i8005893
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 2 Jul 2019 13:33:03 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id C545142002E; Tue,  2 Jul 2019 13:33:01 -0400 (EDT)
+Date:   Tue, 2 Jul 2019 13:33:01 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Parisc List <linux-parisc@vger.kernel.org>
+Subject: Re: [BUG] mke2fs produces corrupt filesystem if badblock list
+ contains a block under 251
+Message-ID: <20190702173301.GA3032@mit.edu>
+References: <1562021070.2762.36.camel@HansenPartnership.com>
+ <20190702002355.GB3315@mit.edu>
+ <1562028814.2762.50.camel@HansenPartnership.com>
 MIME-Version: 1.0
-References: <156174687561.1557469.7505651950825460767.stgit@magnolia>
- <156174690758.1557469.9258105121276292687.stgit@magnolia> <20190701154200.GK1404256@magnolia>
-In-Reply-To: <20190701154200.GK1404256@magnolia>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Tue, 2 Jul 2019 13:45:32 +0300
-Message-ID: <CAOQ4uxizFXgSa4KzkwxmoPAvpiENg=y0=fsxEC1PkCX5J1ybag@mail.gmail.com>
-Subject: Re: [PATCH v2 4/4] vfs: don't allow most setxattr to immutable files
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     matthew.garrett@nebula.com, Chao Yu <yuchao0@huawei.com>,
-        Theodore Tso <tytso@mit.edu>,
-        Ard Biesheuvel <ard.biesheuvel@linaro.org>,
-        Josef Bacik <josef@toxicpanda.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Chris Mason <clm@fb.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.com>,
-        David Sterba <dsterba@suse.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, jk@ozlabs.org,
-        reiserfs-devel@vger.kernel.org, linux-efi@vger.kernel.org,
-        devel@lists.orangefs.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>, linux-nilfs@vger.kernel.org,
-        linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1562028814.2762.50.camel@HansenPartnership.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jul 1, 2019 at 7:31 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
->
-> From: Darrick J. Wong <darrick.wong@oracle.com>
->
-> The chattr manpage has this to say about immutable files:
->
-> "A file with the 'i' attribute cannot be modified: it cannot be deleted
-> or renamed, no link can be created to this file, most of the file's
-> metadata can not be modified, and the file can not be opened in write
-> mode."
->
-> However, we don't actually check the immutable flag in the setattr code,
-> which means that we can update inode flags and project ids and extent
-> size hints on supposedly immutable files.  Therefore, reject setflags
-> and fssetxattr calls on an immutable file if the file is immutable and
-> will remain that way.
->
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-> v2: use memcmp instead of open coding a bunch of checks
+On Mon, Jul 01, 2019 at 05:53:34PM -0700, James Bottomley wrote:
+> 
+> Actually, we control the location of the IPL, so as long as mke2fs
+> errors out if we get it wrong I can add an offset so it begins at
+> sector 258.  Palo actually executed mke2fs when you initialize the
+> partition so it can add any options it likes. I was also thinking I
+> should update palo to support ext4 as well.
 
+If you never going to resize the boot partition, because it's fixed
+size, you might as we not waste space on the reserving blocks for
+online resize.  So having the palo bootloader be very restrictive
+about what features it enables probably makes sense.
 
-Thanks,
+> Well, we don't have to use badblocks to achieve this, but we would like
+> a way to make an inode cover the reserved physical area of the IPL. 
+> Effectively it's a single contiguous area on disk with specific
+> absolute alignment constraints.  It doesn't actually matter if it
+> appears in the directory tree.
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+If you don't mind that it is visible in the namespace, you could take
+advantage of the existing mk_hugefile feature[1][2]
 
+[1] http://man7.org/linux/man-pages/man5/mke2fs.conf.5.html
+[2] https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git/tree/misc/mk_hugefiles.c
 
-> ---
->  fs/inode.c |   17 +++++++++++++++++
->  1 file changed, 17 insertions(+)
->
-> diff --git a/fs/inode.c b/fs/inode.c
-> index cf07378e5731..31f694e405fe 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -2214,6 +2214,14 @@ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
->             !capable(CAP_LINUX_IMMUTABLE))
->                 return -EPERM;
->
-> +       /*
-> +        * We aren't allowed to change any other flags if the immutable flag is
-> +        * already set and is not being unset.
-> +        */
-> +       if ((oldflags & FS_IMMUTABLE_FL) && (flags & FS_IMMUTABLE_FL) &&
-> +           oldflags != flags)
-> +               return -EPERM;
-> +
->         /*
->          * Now that we're done checking the new flags, flush all pending IO and
->          * dirty mappings before setting S_IMMUTABLE on an inode via
-> @@ -2284,6 +2292,15 @@ int vfs_ioc_fssetxattr_check(struct inode *inode, const struct fsxattr *old_fa,
->             !(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
->                 return -EINVAL;
->
-> +       /*
-> +        * We aren't allowed to change any fields if the immutable flag is
-> +        * already set and is not being unset.
-> +        */
-> +       if ((old_fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
-> +           (fa->fsx_xflags & FS_XFLAG_IMMUTABLE) &&
-> +           memcmp(fa, old_fa, offsetof(struct fsxattr, fsx_pad)))
-> +               return -EPERM;
-> +
->         /* Extent size hints of zero turn off the flags. */
->         if (fa->fsx_extsize == 0)
->                 fa->fsx_xflags &= ~(FS_XFLAG_EXTSIZE | FS_XFLAG_EXTSZINHERIT);
+# cat >> /etc/mke2fs.conf < EOF
+
+[fs_types]
+    palo_boot = {
+    	features = ^resize_inode
+	blocksize = 1024		 
+    	make_hugefiles = true
+	num_hugefiles = 1
+	hugefiles_dir = /palo
+	hugefiles_name = IPL
+	hugefiles_size = 214k
+	hugefiles_align = 256k
+	hugefiles_align_disk = true
+    }
+EOF
+# mke2fs -T palo_boot /dev/sda1
+
+Something like this will create a 1k block file system, containing a
+zero-filled /palo/IPL which is 214k long, aligned with respect to the
+beginning of the disk at an 256k boundary.  (This feature was
+sponsored by the letters, 'S', 'M', and 'R'.  :-)
+
+If you wanted it to be hidden from the file system you could just drop
+the hugefiles_dir line above, and then after mounting the file system
+run open the /IPL file and then execute the EXT4_IOC_SWAP_BOOT ioctl
+on it.  This will move those blocks so they are owned by inode #5, an
+inode reserved for the boot loader.
+
+Cheers,
+
+       	       	    	       - Ted
