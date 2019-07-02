@@ -2,75 +2,117 @@ Return-Path: <SRS0=bhvm=VA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=BIGNUM_EMAILS,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.0 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27CAAC5B57D
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Jul 2019 00:27:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5B1AC06511
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Jul 2019 00:27:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 06D0E21E6E
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Jul 2019 00:27:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C99DA21E70
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Jul 2019 00:27:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727082AbfGCA1f (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Jul 2019 20:27:35 -0400
+        id S1727185AbfGCA1g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Jul 2019 20:27:36 -0400
 Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:32964 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726291AbfGCA1f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jul 2019 20:27:35 -0400
+        with ESMTP id S1727065AbfGCA1g (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jul 2019 20:27:36 -0400
 Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x62LvS8G031701
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x62LTWOr020348
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 2 Jul 2019 17:57:29 -0400
+        Tue, 2 Jul 2019 17:29:33 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 8CE0E42002E; Tue,  2 Jul 2019 17:57:28 -0400 (EDT)
-Date:   Tue, 2 Jul 2019 17:57:28 -0400
+        id 463F3420031; Tue,  2 Jul 2019 17:29:32 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     Dan Carpenter <dan.carpenter@oracle.com>,
-        linux-ext4@vger.kernel.org, kernel@collabora.com
-Subject: Re: [PATCH] ext4: Fix coverity warning on error path of filename
- setup
-Message-ID: <20190702215728.GI3032@mit.edu>
-References: <20190624122906.GA30836@mwanda>
- <85r27dlay3.fsf@collabora.com>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: rename htree_inline_dir_to_tree() to ext4_inlinedir_to_tree()
+Date:   Tue,  2 Jul 2019 17:29:25 -0400
+Message-Id: <20190702212925.29989-3-tytso@mit.edu>
+X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190702212925.29989-1-tytso@mit.edu>
+References: <20190702212925.29989-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <85r27dlay3.fsf@collabora.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jun 28, 2019 at 04:19:32PM -0400, Gabriel Krisman Bertazi wrote:
-> Dan Carpenter <dan.carpenter@oracle.com> writes:
-> 
-> > Hello Gabriel Krisman Bertazi,
-> >
-> > The patch 3ae72562ad91: "ext4: optimize case-insensitive lookups"
-> > from Jun 19, 2019, leads to the following static checker warning:
-> 
-> Hi,
-> 
-> The patch below should fix this issue.
-> 
-> -- >8 --
-> Subject: [PATCH] ext4: Fix coverity warning on error path of filename setup
-> 
-> Fix the following coverity warning reported by Dan Carpenter:
-> 
-> fs/ext4/namei.c:1311 ext4_fname_setup_ci_filename()
-> 	  warn: 'cf_name->len' unsigned <= 0
-> 
-> Fixes: 3ae72562ad91 ("ext4: optimize case-insensitive lookups")
-> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Clean up namespace pollution by the inline_data code.
 
-Applied, thanks.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h   | 10 +++++-----
+ fs/ext4/inline.c | 10 +++++-----
+ fs/ext4/namei.c  |  8 ++++----
+ 3 files changed, 14 insertions(+), 14 deletions(-)
 
-					- Ted
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 83128bdd7abb..bf660aa7a9e0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3104,11 +3104,11 @@ extern int ext4_try_create_inline_dir(handle_t *handle,
+ extern int ext4_read_inline_dir(struct file *filp,
+ 				struct dir_context *ctx,
+ 				int *has_inline_data);
+-extern int htree_inlinedir_to_tree(struct file *dir_file,
+-				   struct inode *dir, ext4_lblk_t block,
+-				   struct dx_hash_info *hinfo,
+-				   __u32 start_hash, __u32 start_minor_hash,
+-				   int *has_inline_data);
++extern int ext4_inlinedir_to_tree(struct file *dir_file,
++				  struct inode *dir, ext4_lblk_t block,
++				  struct dx_hash_info *hinfo,
++				  __u32 start_hash, __u32 start_minor_hash,
++				  int *has_inline_data);
+ extern struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+ 					struct ext4_filename *fname,
+ 					struct ext4_dir_entry_2 **res_dir,
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 796137bb7dfa..88cdf3c90bd1 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1324,11 +1324,11 @@ int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
+  * inlined dir.  It returns the number directory entries loaded
+  * into the tree.  If there is an error it is returned in err.
+  */
+-int htree_inlinedir_to_tree(struct file *dir_file,
+-			    struct inode *dir, ext4_lblk_t block,
+-			    struct dx_hash_info *hinfo,
+-			    __u32 start_hash, __u32 start_minor_hash,
+-			    int *has_inline_data)
++int ext4_inlinedir_to_tree(struct file *dir_file,
++			   struct inode *dir, ext4_lblk_t block,
++			   struct dx_hash_info *hinfo,
++			   __u32 start_hash, __u32 start_minor_hash,
++			   int *has_inline_data)
+ {
+ 	int err = 0, count = 0;
+ 	unsigned int parent_ino;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 183ad614ae3d..c9568fee9e11 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1104,10 +1104,10 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 		hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 		if (ext4_has_inline_data(dir)) {
+ 			int has_inline_data = 1;
+-			count = htree_inlinedir_to_tree(dir_file, dir, 0,
+-							&hinfo, start_hash,
+-							start_minor_hash,
+-							&has_inline_data);
++			count = ext4_inlinedir_to_tree(dir_file, dir, 0,
++						       &hinfo, start_hash,
++						       start_minor_hash,
++						       &has_inline_data);
+ 			if (has_inline_data) {
+ 				*next_hash = ~0;
+ 				return count;
+-- 
+2.22.0
+
