@@ -2,100 +2,121 @@ Return-Path: <SRS0=UnnD=VC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_2 autolearn=unavailable
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFDB9C468AB
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jul 2019 20:17:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C51BC468A7
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jul 2019 21:43:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9CF012133F
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jul 2019 20:17:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CBF12133F
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jul 2019 21:43:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="FOFnX6fs";
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="FOFnX6fs"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="1fHUiSCg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727842AbfGEURV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 5 Jul 2019 16:17:21 -0400
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:59920 "EHLO
-        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725813AbfGEURV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jul 2019 16:17:21 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by bedivere.hansenpartnership.com (Postfix) with ESMTP id 7EED28EE1F7;
-        Fri,  5 Jul 2019 13:17:21 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=hansenpartnership.com;
-        s=20151216; t=1562357841;
-        bh=Rr0/c3YY6b7M6XGt7eOf4jjmV2d3TMURmcZoEpYrahY=;
-        h=Subject:From:To:Date:In-Reply-To:References:From;
-        b=FOFnX6fsexFCfW5mVUquzMC+bE32BwR1CPHjvlO4jFuhi/W5UwqdXK99onoRuLSlD
-         vPV4PeI6GTA25+sQ+tDl9kUxG7ZGE8Bx6Owp9UlW/go1GD22tDCYa0f/VEnIOtJPql
-         9AAD+80Vj6CtXPqU0XebDXt9F4MGG3Vuj7/a/8Nk=
-Received: from bedivere.hansenpartnership.com ([127.0.0.1])
-        by localhost (bedivere.hansenpartnership.com [127.0.0.1]) (amavisd-new, port 10024)
-        with ESMTP id 3-_X30Ba98IQ; Fri,  5 Jul 2019 13:17:21 -0700 (PDT)
-Received: from jarvis.lan (unknown [50.35.68.20])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by bedivere.hansenpartnership.com (Postfix) with ESMTPSA id 27D648EE0CF;
-        Fri,  5 Jul 2019 13:17:21 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=hansenpartnership.com;
-        s=20151216; t=1562357841;
-        bh=Rr0/c3YY6b7M6XGt7eOf4jjmV2d3TMURmcZoEpYrahY=;
-        h=Subject:From:To:Date:In-Reply-To:References:From;
-        b=FOFnX6fsexFCfW5mVUquzMC+bE32BwR1CPHjvlO4jFuhi/W5UwqdXK99onoRuLSlD
-         vPV4PeI6GTA25+sQ+tDl9kUxG7ZGE8Bx6Owp9UlW/go1GD22tDCYa0f/VEnIOtJPql
-         9AAD+80Vj6CtXPqU0XebDXt9F4MGG3Vuj7/a/8Nk=
-Message-ID: <1562357840.10899.9.camel@HansenPartnership.com>
-Subject: [PATCH 4/4] palo: add support for formatting as ext4
-From:   James Bottomley <James.Bottomley@HansenPartnership.com>
-To:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        id S1728209AbfGEVnU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 5 Jul 2019 17:43:20 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:59946 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726559AbfGEVnU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jul 2019 17:43:20 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x65LdCZ4047322;
+        Fri, 5 Jul 2019 21:43:02 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=N0Xj0V7McXFWZJIEb4PS0gMpz9E6oJverdvCiNgsT24=;
+ b=1fHUiSCgQ3/Oo4+qpeQZhYdPyQESNPPEJgin9+woFwEllfl3Y8W2NiWeY8CRSH7GDhjR
+ 9FMmzL4Tnwxxt7WYreRInEZBUqf28NtDmK6HinaBkuJcqSKrHud/Hk8xqKJhryFu93as
+ xOR6YmYnsOJcHpUoUGbxmmhYWykth6++sioTy3U9HzVveds09MKxOi0sLqdtlh8Lftba
+ 9UXVZ3sh0AwvC6h6RWzR1kin015MUAKl+fRZZv94LR5K5AVOIlLMX5BLAgUc+caDuVw/
+ rqQfHYbkBmp0FirdYxDi7Dgasgwbu6YoADadt+yQ4f9l6wQEe5R1/O6kSov6S5zfouz2 qw== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by aserp2120.oracle.com with ESMTP id 2te5tc4mb9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 05 Jul 2019 21:43:02 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x65LbRX8036346;
+        Fri, 5 Jul 2019 21:41:02 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserp3030.oracle.com with ESMTP id 2th5qmxfqs-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 05 Jul 2019 21:41:02 +0000
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x65LexAA014956;
+        Fri, 5 Jul 2019 21:40:59 GMT
+Received: from localhost (/10.159.235.234)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 05 Jul 2019 14:40:59 -0700
+Date:   Fri, 5 Jul 2019 14:40:58 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc:     Matthew Wilcox <willy@infradead.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
         Parisc List <linux-parisc@vger.kernel.org>
-Date:   Fri, 05 Jul 2019 13:17:20 -0700
-In-Reply-To: <1562357231.10899.5.camel@HansenPartnership.com>
-References: <1562357231.10899.5.camel@HansenPartnership.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.26.6 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Subject: Re: Question about ext4 testing: need to produce a high depth extent
+ tree to verify mapping code
+Message-ID: <20190705214058.GD5161@magnolia>
+References: <1562021070.2762.36.camel@HansenPartnership.com>
+ <20190702002355.GB3315@mit.edu>
+ <1562028814.2762.50.camel@HansenPartnership.com>
+ <20190702173301.GA3032@mit.edu>
+ <1562095894.3321.52.camel@HansenPartnership.com>
+ <20190702203937.GG3032@mit.edu>
+ <1562343948.2953.8.camel@HansenPartnership.com>
+ <20190705173905.GA32320@bombadil.infradead.org>
+ <1562352542.2953.10.camel@HansenPartnership.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1562352542.2953.10.camel@HansenPartnership.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9309 signatures=668688
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1907050274
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9309 signatures=668688
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1907050274
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that iplboot can read ext4 filesystem, allow palo to create them
-with the palo --format-as=4 option.
+On Fri, Jul 05, 2019 at 11:49:02AM -0700, James Bottomley wrote:
+> On Fri, 2019-07-05 at 10:39 -0700, Matthew Wilcox wrote:
+> > On Fri, Jul 05, 2019 at 09:25:48AM -0700, James Bottomley wrote:
+> > > Now the problem: I'd like to do some testing with high depth extent
+> > > trees to make sure I got this right, but the files we load at boot
+> > > are ~20MB in size and I'm having a hard time fragmenting the
+> > > filesystem enough to produce a reasonable extent (I've basically
+> > > only got to a two level tree with two entries at the top).  Is
+> > > there an easy way of producing a high depth extent tree for a 20MB
+> > > file?
+> > 
+> > Create a series of 4kB files numbered sequentially, each 4kB in size
+> > until you fill the partition.  Delete the even numbered ones.  Create
+> > a 20MB file.
+> 
+> Well, I know *how* to do it ... I was just hoping, in the interests of
+> creative laziness, that someone else had produced a script for this
+> before I had to ... particularly one which leaves more randomized gaps.
 
-Signed-off-by: James Bottomley <James.Bottomley@HansenPartnership.com>
----
- palo/palo.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+If you don't care about the contents of the file you could just build
+src/punch-alternating.c from xfstests and use it to turn your 20M file
+into holy cheese.
 
-diff --git a/palo/palo.c b/palo/palo.c
-index e088993..26da01b 100644
---- a/palo/palo.c
-+++ b/palo/palo.c
-@@ -506,8 +506,8 @@ do_formatted(int init, int media, const char *medianame, int partition,
- 	    }
- 	}
- 
--	sprintf(cmd, "mke2fs %s -O^resize_inode -b %d -l %s %s", do_format == 3 ? "-j" : "",
--		EXT2_BLOCKSIZE, badblockfilename, partitionname);
-+	sprintf(cmd, "mke2fs -t ext%d -O^resize_inode -b %d -l %s %s",
-+		do_format, EXT2_BLOCKSIZE, badblockfilename, partitionname);
- 
- 	if (verbose)
- 	    printf("Executing: %s\n", cmd);
-@@ -868,6 +868,8 @@ main(int argc, char *argv[])
- 		format_as = 2;
- 	    else if(strcmp(optarg, "3") == 0)
- 		format_as = 3;
-+	    else if (strcmp(optarg, "4") == 0)
-+		format_as = 4;
- 	    else
- 		error(0, argv[0]);
- 	    break;
--- 
-2.16.4
+(Granted if you actually need 5,120 extents then you probably ought to
+make it a 40M file and /then/ run it through the cheese grater....)
 
+--D
+
+> James
+> 
