@@ -1,92 +1,103 @@
-Return-Path: <SRS0=NrDr=VI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=m0JA=VJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D98D5C742A1
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Jul 2019 23:43:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87229C742A5
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Jul 2019 07:02:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B932320645
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Jul 2019 23:43:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 678BB2084B
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Jul 2019 07:02:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729136AbfGKXnx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 11 Jul 2019 19:43:53 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59157 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729127AbfGKXnx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Jul 2019 19:43:53 -0400
-Received: from callcc.thunk.org (guestnat-104-133-8-97.corp.google.com [104.133.8.97] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x6BNhnEN031151
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 11 Jul 2019 19:43:50 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 9EF29420036; Thu, 11 Jul 2019 19:43:48 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] e2scrub_all: only run in service mode when periodic_e2scrub=1
-Date:   Thu, 11 Jul 2019 19:43:46 -0400
-Message-Id: <20190711234346.30454-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.22.0
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1726127AbfGLHC4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 Jul 2019 03:02:56 -0400
+Received: from out30-57.freemail.mail.aliyun.com ([115.124.30.57]:56008 "EHLO
+        out30-57.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726078AbfGLHCz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 12 Jul 2019 03:02:55 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R601e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04407;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0TWgXO5w_1562914972;
+Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TWgXO5w_1562914972)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Fri, 12 Jul 2019 15:02:53 +0800
+From:   Joseph Qi <joseph.qi@linux.alibaba.com>
+To:     akpm@linux-foundation.org
+Cc:     Theodore Ts'o <tytso@mit.edu>, Ross Zwisler <zwisler@chromium.org>,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com
+Subject: [PATCH 2/2] jbd2: remove jbd2_journal_inode_add_[write|wait]
+Date:   Fri, 12 Jul 2019 15:02:52 +0800
+Message-Id: <1562914972-97318-2-git-send-email-joseph.qi@linux.alibaba.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1562914972-97318-1-git-send-email-joseph.qi@linux.alibaba.com>
+References: <1562914972-97318-1-git-send-email-joseph.qi@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-By default, e2scrub_all will not actually trigger online scrubs unless
-periodic_e2scrub=1 is set in /etc/e2scrub.conf.
+Since ext4/ocfs2 are using jbd2_inode dirty range scoping APIs now,
+jbd2_journal_inode_add_[write|wait] are not used any more, remove them.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
 ---
- scrub/e2scrub.conf.in | 4 ++++
- scrub/e2scrub_all.in  | 6 ++++++
- 2 files changed, 10 insertions(+)
+ fs/jbd2/journal.c     |  2 --
+ fs/jbd2/transaction.c | 12 ------------
+ include/linux/jbd2.h  |  2 --
+ 3 files changed, 16 deletions(-)
 
-diff --git a/scrub/e2scrub.conf.in b/scrub/e2scrub.conf.in
-index 5c030877..661fc13f 100644
---- a/scrub/e2scrub.conf.in
-+++ b/scrub/e2scrub.conf.in
-@@ -1,5 +1,9 @@
- # e2scrub configuration file
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 953990e..1c58859 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -89,8 +89,6 @@
+ EXPORT_SYMBOL(jbd2_journal_invalidatepage);
+ EXPORT_SYMBOL(jbd2_journal_try_to_free_buffers);
+ EXPORT_SYMBOL(jbd2_journal_force_commit);
+-EXPORT_SYMBOL(jbd2_journal_inode_add_write);
+-EXPORT_SYMBOL(jbd2_journal_inode_add_wait);
+ EXPORT_SYMBOL(jbd2_journal_inode_ranged_write);
+ EXPORT_SYMBOL(jbd2_journal_inode_ranged_wait);
+ EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 990e7b5..9bf793d 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2619,18 +2619,6 @@ static int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode,
+ 	return 0;
+ }
  
-+# Uncomment to enable automatic periodic runs of e2scrub_all
-+# (either via cron or via a systemd timer)
-+# periodic_e2scrub=1
-+
- # e-mail destination used by e2scrub_fail when problems are found with
- # the file system.
- # recipient=root
-diff --git a/scrub/e2scrub_all.in b/scrub/e2scrub_all.in
-index f342faf2..5bdbd116 100644
---- a/scrub/e2scrub_all.in
-+++ b/scrub/e2scrub_all.in
-@@ -25,6 +25,7 @@ if (( $EUID != 0 )); then
-     exit 1
- fi
- 
-+periodic_e2scrub=0
- scrub_all=0
- snap_size_mb=256
- reap=0
-@@ -79,6 +80,11 @@ while getopts "nrAV" opt; do
- done
- shift "$((OPTIND - 1))"
- 
-+if [ -n "${SERVICE_MODE}" -a "${reap}" -ne 1 -a "${periodic_e2scrub}" -ne 1 ]
-+then
-+    exitcode 0
-+fi
-+
- # If some prerequisite packages are not installed, exit with a code
- # indicating success to avoid spamming the sysadmin with fail messages
- # when e2scrub_all is run out of cron or a systemd timer.
+-int jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *jinode)
+-{
+-	return jbd2_journal_file_inode(handle, jinode,
+-			JI_WRITE_DATA | JI_WAIT_DATA, 0, LLONG_MAX);
+-}
+-
+-int jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *jinode)
+-{
+-	return jbd2_journal_file_inode(handle, jinode, JI_WAIT_DATA, 0,
+-			LLONG_MAX);
+-}
+-
+ int jbd2_journal_inode_ranged_write(handle_t *handle,
+ 		struct jbd2_inode *jinode, loff_t start_byte, loff_t length)
+ {
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index df03825..603fbc4 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1410,8 +1410,6 @@ extern int	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
+ extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
+ extern int	   jbd2_journal_force_commit(journal_t *);
+ extern int	   jbd2_journal_force_commit_nested(journal_t *);
+-extern int	   jbd2_journal_inode_add_write(handle_t *handle, struct jbd2_inode *inode);
+-extern int	   jbd2_journal_inode_add_wait(handle_t *handle, struct jbd2_inode *inode);
+ extern int	   jbd2_journal_inode_ranged_write(handle_t *handle,
+ 			struct jbd2_inode *inode, loff_t start_byte,
+ 			loff_t length);
 -- 
-2.22.0
+1.8.3.1
 
