@@ -2,73 +2,156 @@ Return-Path: <SRS0=gxr5=VK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8622C742D7
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 00:30:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59C9EC31E40
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 16:58:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C15F2208E4
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 00:30:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1562977812;
-	bh=iJbSToUKeVYGNujDmnFLtUwMKQq+JLbjdgAreetA7s0=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=1JmbO0ABOrGkWsOGbW9doB8Rt8mt+TGeBV1NmwsUFmmllsC79hyx+I/pssZXcWz/1
-	 v4n+09y2gKOe7N+PoV29xLZcko2lOK/SbxBZ+l+tkmgQvaM5DcETnaWgBPoq1yAIyC
-	 HHJ3cIdr95Ryg2M/hlVBzMGriloPPuALuqVBknSE=
+	by mail.kernel.org (Postfix) with ESMTP id 2B95A20644
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 16:58:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727471AbfGMAaD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 Jul 2019 20:30:03 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41442 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727118AbfGMAaD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 Jul 2019 20:30:03 -0400
-Subject: Re: [GIT PULL] vfs: standardize parameter checking for
- SETFLAGS/FSSETXATTR ioctls
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1562977802;
-        bh=iJbSToUKeVYGNujDmnFLtUwMKQq+JLbjdgAreetA7s0=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=lOZr7A+dZnT0PMtb2rXLyPCdO+SwOB5lZ92s0flb/WbGU18CxJZjJUqXjOoniJH11
-         ajIEAS1i1x8CjvYZW+ZZetSPpYNb6UDdeJneEseTK/zcqcBX4bhvKUEkMUaiuOjdC1
-         agBPmUihym+eQoWJIBnR0nRnebu/v4pjRsg7Sd9o=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20190711141825.GV1404256@magnolia>
-References: <20190711141825.GV1404256@magnolia>
-X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20190711141825.GV1404256@magnolia>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
- tags/vfs-fix-ioctl-checking-3
-X-PR-Tracked-Commit-Id: dbc77f31e58b2902a5e7643761c04bf69f57a32a
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 5010fe9f095414b959fd6fda63986dc90fd0c419
-Message-Id: <156297780234.21817.9681885311019311111.pr-tracker-bot@kernel.org>
-Date:   Sat, 13 Jul 2019 00:30:02 +0000
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-kernel@vger.kernel.org,
-        sandeen@sandeen.net, hch@lst.de,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>
+        id S1727818AbfGMQ6W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 13 Jul 2019 12:58:22 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:43945 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727768AbfGMQ6W (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Jul 2019 12:58:22 -0400
+Received: from callcc.thunk.org (75-104-90-136.mobility.exede.net [75.104.90.136] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x6DGw0an000584
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 13 Jul 2019 12:58:07 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 549E4420036; Sat, 13 Jul 2019 12:57:59 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, Philipp Thomas <pth@suse.de>,
+        Benno Schulenberg <vertaling@coevern.nl>,
+        =?UTF-8?q?Tr=E1=BA=A7n=20Ng=E1=BB=8Dc=20Qu=C3=A2n?= 
+        <vnwildman@gmail.com>, Petr Pisar <petr.pisar@atlas.cz>
+Subject: [PATCH] po: remove unnecessary/buggy positional parameter specifiers
+Date:   Sat, 13 Jul 2019 12:57:52 -0400
+Message-Id: <20190713165752.7820-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.22.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Thu, 11 Jul 2019 07:18:25 -0700:
+The strings in e2fsck/problem.c use a special %-expansion scheme,
+where %b gets expanded to a block number, %i gets expanded to an inode
+number, etc., where these values are in a problem context data
+structure.  As such, there is no need to use a printf style positional
+indicator (e.g., %2$s).  Indeed, the use of things like %1$i or %2$b
+will cause the %-expansion code to just print %1$i or %2$b, instead of
+the inode or block number, respectively.
 
-> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/vfs-fix-ioctl-checking-3
+Addresses-Debian-Bug: #892173
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/5010fe9f095414b959fd6fda63986dc90fd0c419
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: Philipp Thomas <pth@suse.de>
+Cc: Benno Schulenberg <vertaling@coevern.nl>
+Cc: Trần Ngọc Quân <vnwildman@gmail.com>
+Cc: Petr Pisar <petr.pisar@atlas.cz>
+---
+ po/cs.po | 6 +++---
+ po/de.po | 6 +++---
+ po/nl.po | 2 +-
+ po/vi.po | 2 +-
+ 4 files changed, 8 insertions(+), 8 deletions(-)
 
-Thank you!
-
+diff --git a/po/cs.po b/po/cs.po
+index 368eb520..dcd0d0e7 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -1939,7 +1939,7 @@ msgstr ""
+ #. @-expanded: inode %i extended attribute block %b passes checks, but checksum does not match block.  
+ #: e2fsck/problem.c:1052
+ msgid "@i %i @a @b %b passes checks, but checksum does not match @b.  "
+-msgstr "Block %2$b rozšířeného atributu iuzlu %1$i projde kontrolami, ale kontrolní součet bloku neodpovídá. "
++msgstr "Block %b rozšířeného atributu iuzlu %i projde kontrolami, ale kontrolní součet bloku neodpovídá. "
+ 
+ # ??? WTF
+ #. @-expanded: Interior extent node level %N of inode %i:\n
+@@ -1977,7 +1977,7 @@ msgstr "Iuzel %i má nastaven příznak INLINE_DATA_FL na systému souborů bez
+ #. @-expanded: inode %i block %b conflicts with critical metadata, skipping block checks.\n
+ #: e2fsck/problem.c:1080
+ msgid "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
+-msgstr "Blok %2$b iuzlu %1$i se neslučuje s kritickými metadaty, kontrola bloku se vynechá.\n"
++msgstr "Blok %b iuzlu %i se neslučuje s kritickými metadaty, kontrola bloku se vynechá.\n"
+ 
+ #. @-expanded: directory inode %i block %b should be at block %c.  
+ #: e2fsck/problem.c:1085
+@@ -2613,7 +2613,7 @@ msgstr "Iuzel adresáře %i, %B: adresář prošel kontrolami, ale součet nesou
+ #. @-expanded: Inline directory inode %i size (%N) must be a multiple of 4.\n
+ #: e2fsck/problem.c:1679
+ msgid "Inline @d @i %i size (%N) must be a multiple of 4.\n"
+-msgstr "Velikost (%2$N) iuzlu %1$i vestavěného adresáře musí být násobek čtyř.\n"
++msgstr "Velikost (%N) iuzlu %i vestavěného adresáře musí být násobek čtyř.\n"
+ 
+ #. @-expanded: Fixing size of inline directory inode %i failed.\n
+ #: e2fsck/problem.c:1684
+diff --git a/po/de.po b/po/de.po
+index e09e3d95..1fce5cf8 100644
+--- a/po/de.po
++++ b/po/de.po
+@@ -2064,7 +2064,7 @@ msgstr ""
+ msgid ""
+ "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
+ msgstr ""
+-"Block %2$b von Inode %1$i steht in Konflikt mit kritischen Metadaten, "
++"Block %b von Inode %i steht in Konflikt mit kritischen Metadaten, "
+ "Blockprüfungen werden übersprungen.\n"
+ 
+ #. @-expanded: directory inode %i block %b should be at block %c.  
+@@ -2349,13 +2349,13 @@ msgstr ""
+ #: e2fsck/problem.c:1314
+ msgid "@i %i @x tree (at level %b) could be shorter.  "
+ msgstr ""
+-"Der Erweiterungsbaum von Inode %1$i (auf Ebene %2$b) könnte kürzer sein.  "
++"Der Erweiterungsbaum von Inode %i (auf Ebene %b) könnte kürzer sein.  "
+ 
+ #. @-expanded: inode %i extent tree (at level %b) could be narrower.  
+ #: e2fsck/problem.c:1319
+ msgid "@i %i @x tree (at level %b) could be narrower.  "
+ msgstr ""
+-"Der Erweiterungsbaum von Inode %1$i (auf Ebene %2$b) könnte schmaler sein.  "
++"Der Erweiterungsbaum von Inode %i (auf Ebene %b) könnte schmaler sein.  "
+ 
+ #. @-expanded: Pass 2: Checking directory structure\n
+ #: e2fsck/problem.c:1326
+diff --git a/po/nl.po b/po/nl.po
+index 3b1e0c19..a95baf1a 100644
+--- a/po/nl.po
++++ b/po/nl.po
+@@ -2068,7 +2068,7 @@ msgstr ""
+ msgid ""
+ "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
+ msgstr ""
+-"Blok %2$b van inode %1$i conflicteert met kritieke metadata; blokcontroles "
++"Blok %b van inode %i conflicteert met kritieke metadata; blokcontroles "
+ "worden overgeslagen.\n"
+ 
+ #. @-expanded: directory inode %i block %b should be at block %c.  
+diff --git a/po/vi.po b/po/vi.po
+index f38cd773..2c0c96f1 100644
+--- a/po/vi.po
++++ b/po/vi.po
+@@ -1528,7 +1528,7 @@ msgstr "Đang định vị lại %s của @g %g từ %b sang %c…\n"
+ #: e2fsck/problem.c:684
+ #, c-format
+ msgid "Relocating @g %g's %s to %c...\n"
+-msgstr "Đang định vị lại %2$s của @g %1$g sang %3$c…\n"
++msgstr "Đang định vị lại %s của @g %g sang %c…\n"
+ 
+ #. @-expanded: Warning: could not read block %b of %s: %m\n
+ #: e2fsck/problem.c:689
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+2.22.0
+
