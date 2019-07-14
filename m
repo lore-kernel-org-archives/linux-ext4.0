@@ -1,157 +1,221 @@
-Return-Path: <SRS0=gxr5=VK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=dEMr=VL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 59C9EC31E40
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 16:58:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1031C73C66
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Jul 2019 14:48:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2B95A20644
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jul 2019 16:58:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A5B8E205F4
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Jul 2019 14:48:17 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="qDfJqkhv"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727818AbfGMQ6W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 13 Jul 2019 12:58:22 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:43945 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727768AbfGMQ6W (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Jul 2019 12:58:22 -0400
-Received: from callcc.thunk.org (75-104-90-136.mobility.exede.net [75.104.90.136] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x6DGw0an000584
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 13 Jul 2019 12:58:07 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 549E4420036; Sat, 13 Jul 2019 12:57:59 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, Philipp Thomas <pth@suse.de>,
-        Benno Schulenberg <vertaling@coevern.nl>,
-        =?UTF-8?q?Tr=E1=BA=A7n=20Ng=E1=BB=8Dc=20Qu=C3=A2n?= 
-        <vnwildman@gmail.com>, Petr Pisar <petr.pisar@atlas.cz>
-Subject: [PATCH] po: remove unnecessary/buggy positional parameter specifiers
-Date:   Sat, 13 Jul 2019 12:57:52 -0400
-Message-Id: <20190713165752.7820-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.22.0
+        id S1728346AbfGNOsQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 14 Jul 2019 10:48:16 -0400
+Received: from mail-ed1-f68.google.com ([209.85.208.68]:35304 "EHLO
+        mail-ed1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728362AbfGNOsP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Jul 2019 10:48:15 -0400
+Received: by mail-ed1-f68.google.com with SMTP id w20so13062968edd.2
+        for <linux-ext4@vger.kernel.org>; Sun, 14 Jul 2019 07:48:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=hy169g8Lox0WjwNa4b+zp9/64BOx2Hykf6MoysyzbyM=;
+        b=qDfJqkhv+PeM8i4Vhi7D1ipptr7S663xKsAmSBA2CKg+Umsac68Z3LKvOc1LthziJt
+         uac1l65OCcZ/uWWwlX9T1JniSL3EiC06GffOb+e3uoOYGnBoxgoiFzRCeUWwSAv2Yvnf
+         SYQEmCuGl2CenAC532BSRLxUEFwpatlHTBg59D9oAeN/Xm5pAwlimQ4/7kZ2qxBEhBLZ
+         nW8poMpnV5QeFH4z5bPprqef+T4CBVanBUrmXIT2Od34P3knxOpdjOQwHBoXvicz1rLu
+         oSgQoEaKpLEyD6k0b2iLzQSpUlgto57fqDJ/BmOOq89dWz1swDNTFhlzqr1XI/SNso42
+         A/Xg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=hy169g8Lox0WjwNa4b+zp9/64BOx2Hykf6MoysyzbyM=;
+        b=iwVvlWRu3Eo6BeUPV6d9p1K8r9WqdYVfKrHqSB8F7G1bONlUAZieoSCcnDnY3bjCdT
+         hOLcWfyvInQuQtgBYnQKuRV3e/K6iiV/RTo726mlNRZ5Y9QLrV0/jrobmDuZ4R2CBnNy
+         xy7C6Cmfm13i/W7kWYzBKrP/utZE42MJUGrhyYJYLyjKjt1JkPqUFLtgfnvG5YcOFYVb
+         4CjVFUbtrEw+VXX1Mjbt72NwramjBZOlvQEd4N700utJv7Qf62YpGczvR++fCMoRtFC+
+         xHSX9dmjnZQ2KKlfVwJe40U8ggJg3EBmJ7L/NA7xzM2jOEQUq5WStY5G0pUe1ur04L5O
+         3bag==
+X-Gm-Message-State: APjAAAXDUS0BbAFuRa//ZNc/BamDm4P91siQb5MZ/Uj+E0UnDQV7tB9W
+        vJAT34g713Hz2QKO73HPbAVvsmITsNT9aDcFg4HkbA==
+X-Google-Smtp-Source: APXvYqwu8FY6LIl+s3s47q2KUxAhOGJHQqSYTQTDa938MOOpf93YR+WR/jyjgM1fffyG1L7qU0vEITvwu0QhD5js5qc=
+X-Received: by 2002:a17:906:644c:: with SMTP id l12mr15866907ejn.142.1563115692435;
+ Sun, 14 Jul 2019 07:48:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+References: <20190626210351.GF3116@mit.edu> <20190626224709.GH3116@mit.edu>
+ <CACT4Y+YTpUErjEmjrqki-tJ0Lyx0c53MQDGVS4CixfmcAnuY=A@mail.gmail.com>
+ <20190705151658.GP26519@linux.ibm.com> <CACT4Y+aNLHrYj1pYbkXO7CKESLeB-5enkSDK7ksgkMA3KtwJ+w@mail.gmail.com>
+ <20190705191055.GT26519@linux.ibm.com> <20190706042801.GD11665@mit.edu>
+ <20190706061631.GV26519@linux.ibm.com> <20190706150226.GG11665@mit.edu>
+ <20190706180311.GW26519@linux.ibm.com> <20190707011655.GA22081@linux.ibm.com>
+In-Reply-To: <20190707011655.GA22081@linux.ibm.com>
+From:   Dmitry Vyukov <dvyukov@google.com>
+Date:   Sun, 14 Jul 2019 17:48:00 +0300
+Message-ID: <CACT4Y+asYe-uH9OV5R0Nkb-JKP4erYUZ68S9gYNnGg6v+fD20w@mail.gmail.com>
+Subject: Re: INFO: rcu detected stall in ext4_write_checks
+To:     "Paul E. McKenney" <paulmck@linux.ibm.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        syzbot <syzbot+4bfbbf28a2e50ab07368@syzkaller.appspotmail.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        David Miller <davem@davemloft.net>, eladr@mellanox.com,
+        Ido Schimmel <idosch@mellanox.com>,
+        Jiri Pirko <jiri@mellanox.com>,
+        John Stultz <john.stultz@linaro.org>,
+        linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>,
+        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The strings in e2fsck/problem.c use a special %-expansion scheme,
-where %b gets expanded to a block number, %i gets expanded to an inode
-number, etc., where these values are in a problem context data
-structure.  As such, there is no need to use a printf style positional
-indicator (e.g., %2$s).  Indeed, the use of things like %1$i or %2$b
-will cause the %-expansion code to just print %1$i or %2$b, instead of
-the inode or block number, respectively.
+On Sun, Jul 7, 2019 at 4:17 AM Paul E. McKenney <paulmck@linux.ibm.com> wrote:
+> > > > I suppose RCU could take the dueling-banjos approach and use increasingly
+> > > > aggressive scheduler policies itself, up to and including SCHED_DEADLINE,
+> > > > until it started getting decent forward progress.  However, that
+> > > > sounds like the something that just might have unintended consequences,
+> > > > particularly if other kernel subsystems were to also play similar
+> > > > games of dueling banjos.
+> > >
+> > > So long as the RCU threads are well-behaved, using SCHED_DEADLINE
+> > > shouldn't have much of an impact on the system --- and the scheduling
+> > > parameters that you can specify on SCHED_DEADLINE allows you to
+> > > specify the worst-case impact on the system while also guaranteeing
+> > > that the SCHED_DEADLINE tasks will urn in the first place.  After all,
+> > > that's the whole point of SCHED_DEADLINE.
+> > >
+> > > So I wonder if the right approach is during the the first userspace
+> > > system call to shced_setattr to enable a (any) real-time priority
+> > > scheduler (SCHED_DEADLINE, SCHED_FIFO or SCHED_RR) on a userspace
+> > > thread, before that's allowed to proceed, the RCU kernel threads are
+> > > promoted to be SCHED_DEADLINE with appropriately set deadline
+> > > parameters.  That way, a root user won't be able to shoot the system
+> > > in the foot, and since the vast majority of the time, there shouldn't
+> > > be any processes running with real-time priorities, we won't be
+> > > changing the behavior of a normal server system.
+> >
+> > It might well be.  However, running the RCU kthreads at real-time
+> > priority does not come for free.  For example, it tends to crank up the
+> > context-switch rate.
+> >
+> > Plus I have taken several runs at computing SCHED_DEADLINE parameters,
+> > but things like the rcuo callback-offload threads have computational
+> > requirements that are controlled not by RCU, and not just by the rest of
+> > the kernel, but also by userspace (keeping in mind the example of opening
+> > and closing a file in a tight loop, each pass of which queues a callback).
+> > I suspect that RCU is not the only kernel subsystem whose computational
+> > requirements are set not by the subsystem, but rather by external code.
+> >
+> > OK, OK, I suppose I could just set insanely large SCHED_DEADLINE
+> > parameters, following syzkaller's example, and then trust my ability to
+> > keep the RCU code from abusing the resulting awesome power.  But wouldn't
+> > a much nicer approach be to put SCHED_DEADLINE between SCHED_RR/SCHED_FIFO
+> > priorities 98 and 99 or some such?  Then the same (admittedly somewhat
+> > scary) result could be obtained much more simply via SCHED_FIFO or
+> > SCHED_RR priority 99.
+> >
+> > Some might argue that this is one of those situations where simplicity
+> > is not necessarily an advantage, but then again, you can find someone
+> > who will complain about almost anything.  ;-)
+> >
+> > > (I suspect there might be some audio applications that might try to
+> > > set real-time priorities, but for desktop systems, it's probably more
+> > > important that the system not tie its self into knots since the
+> > > average desktop user isn't going to be well equipped to debug the
+> > > problem.)
+> >
+> > Not only that, but if core counts continue to increase, and if reliance
+> > on cloud computing continues to grow, there are going to be an increasing
+> > variety of mixed workloads in increasingly less-controlled environments.
+> >
+> > So, yes, it would be good to solve this problem in some reasonable way.
+> >
+> > I don't see this as urgent just yet, but I am sure you all will let
+> > me know if I am mistaken on that point.
+> >
+> > > > Alternatively, is it possible to provide stricter admission control?
+> > >
+> > > I think that's an orthogonal issue; better admission control would be
+> > > nice, but it looks to me that it's going to be fundamentally an issue
+> > > of tweaking hueristics, and a fool-proof solution that will protect
+> > > against all malicious userspace applications (including syzkaller) is
+> > > going to require solving the halting problem.  So while it would be
+> > > nice to improve the admission control, I don't think that's a going to
+> > > be a general solution.
+> >
+> > Agreed, and my earlier point about the need to trust the coding abilities
+> > of those writing ultimate-priority code is all too consistent with your
+> > point about needing to solve the halting problem.  Nevertheless,  I believe
+> > that we could make something that worked reasonably well in practice.
+> >
+> > Here are a few components of a possible solution, in practice, but
+> > of course not in theory:
+> >
+> > 1.    We set limits to SCHED_DEADLINE parameters, perhaps novel ones.
+> >       For one example, insist on (say) 10 milliseconds of idle time
+> >       every second on each CPU.  Yes, you can configure beyond that
+> >       given sufficient permissions, but if you do so, you just voided
+> >       your warranty.
+> >
+> > 2.    Only allow SCHED_DEADLINE on nohz_full CPUs.  (Partial solution,
+> >       given that such a CPU might be running in the kernel or have
+> >       more than one runnable task.  Just for fun, I will suggest the
+> >       option of disabling SCHED_DEADLINE during such times.)
+> >
+> > 3.    RCU detects slowdowns, and does something TBD to increase its
+> >       priority, but only while the slowdown persists.  This likely
+> >       relies on scheduling-clock interrupts to detect the slowdowns,
+> >       so there might be additional challenges on a fully nohz_full
+> >       system.
+>
+> 4.      SCHED_DEADLINE treats the other three scheduling classes as each
+>         having a period, deadline, and a modest CPU consumption budget
+>         for the members of the class in aggregate.  But this has to have
+>         been discussed before.  How did that go?
+>
+> > 5.    Your idea here.
 
-Addresses-Debian-Bug: #892173
+Trying to digest this thread.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: Philipp Thomas <pth@suse.de>
-Cc: Benno Schulenberg <vertaling@coevern.nl>
-Cc: Trần Ngọc Quân <vnwildman@gmail.com>
-Cc: Petr Pisar <petr.pisar@atlas.cz>
----
- po/cs.po | 6 +++---
- po/de.po | 6 +++---
- po/nl.po | 2 +-
- po/vi.po | 2 +-
- 4 files changed, 8 insertions(+), 8 deletions(-)
+Do I understand correctly that setting rcutree.kthread_prio=99 won't
+help because the deadline priority is higher?
+And there are no other existing mechanisms to either fix the stalls
+nor make kernel reject the non well-behaving parameters? Kernel tries
+to filter out non well-behaving parameters, but the check detects only
+obvious misconfigurations, right?
+This reminds of priority inversion/inheritance problem. I wonder if
+there are other kernel subsystems that suffer from the same problem.
+E.g. the background kernel thread that destroys net namespaces and any
+other type of async work. A high prio user process can overload the
+queue and make kernel eat all memory. May be relatively easy to do
+even unintentionally. I suspect the problem is not specific to rcu and
+plumbing just rcu may just make the next problem pop up.
+Should user be able to starve basic kernel services? User should be
+able to prioritize across user processes (potentially in radical
+ways), but perhaps it should not be able to badly starve kernel
+functions that just happened to be asynchronous? I guess it's not as
+simple as setting the highest prio for all kernel threads because in
+normal case we want to reduce latency of user work by making the work
+async. But user must not be able to starve kernel threads
+infinitely... sounds like something similar to the deadline scheduling
+-- kernel threads need to get at least some time slice per unit of
+time.
 
-diff --git a/po/cs.po b/po/cs.po
-index 368eb520..dcd0d0e7 100644
---- a/po/cs.po
-+++ b/po/cs.po
-@@ -1939,7 +1939,7 @@ msgstr ""
- #. @-expanded: inode %i extended attribute block %b passes checks, but checksum does not match block.  
- #: e2fsck/problem.c:1052
- msgid "@i %i @a @b %b passes checks, but checksum does not match @b.  "
--msgstr "Block %2$b rozšířeného atributu iuzlu %1$i projde kontrolami, ale kontrolní součet bloku neodpovídá. "
-+msgstr "Block %b rozšířeného atributu iuzlu %i projde kontrolami, ale kontrolní součet bloku neodpovídá. "
- 
- # ??? WTF
- #. @-expanded: Interior extent node level %N of inode %i:\n
-@@ -1977,7 +1977,7 @@ msgstr "Iuzel %i má nastaven příznak INLINE_DATA_FL na systému souborů bez
- #. @-expanded: inode %i block %b conflicts with critical metadata, skipping block checks.\n
- #: e2fsck/problem.c:1080
- msgid "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
--msgstr "Blok %2$b iuzlu %1$i se neslučuje s kritickými metadaty, kontrola bloku se vynechá.\n"
-+msgstr "Blok %b iuzlu %i se neslučuje s kritickými metadaty, kontrola bloku se vynechá.\n"
- 
- #. @-expanded: directory inode %i block %b should be at block %c.  
- #: e2fsck/problem.c:1085
-@@ -2613,7 +2613,7 @@ msgstr "Iuzel adresáře %i, %B: adresář prošel kontrolami, ale součet nesou
- #. @-expanded: Inline directory inode %i size (%N) must be a multiple of 4.\n
- #: e2fsck/problem.c:1679
- msgid "Inline @d @i %i size (%N) must be a multiple of 4.\n"
--msgstr "Velikost (%2$N) iuzlu %1$i vestavěného adresáře musí být násobek čtyř.\n"
-+msgstr "Velikost (%N) iuzlu %i vestavěného adresáře musí být násobek čtyř.\n"
- 
- #. @-expanded: Fixing size of inline directory inode %i failed.\n
- #: e2fsck/problem.c:1684
-diff --git a/po/de.po b/po/de.po
-index e09e3d95..1fce5cf8 100644
---- a/po/de.po
-+++ b/po/de.po
-@@ -2064,7 +2064,7 @@ msgstr ""
- msgid ""
- "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
- msgstr ""
--"Block %2$b von Inode %1$i steht in Konflikt mit kritischen Metadaten, "
-+"Block %b von Inode %i steht in Konflikt mit kritischen Metadaten, "
- "Blockprüfungen werden übersprungen.\n"
- 
- #. @-expanded: directory inode %i block %b should be at block %c.  
-@@ -2349,13 +2349,13 @@ msgstr ""
- #: e2fsck/problem.c:1314
- msgid "@i %i @x tree (at level %b) could be shorter.  "
- msgstr ""
--"Der Erweiterungsbaum von Inode %1$i (auf Ebene %2$b) könnte kürzer sein.  "
-+"Der Erweiterungsbaum von Inode %i (auf Ebene %b) könnte kürzer sein.  "
- 
- #. @-expanded: inode %i extent tree (at level %b) could be narrower.  
- #: e2fsck/problem.c:1319
- msgid "@i %i @x tree (at level %b) could be narrower.  "
- msgstr ""
--"Der Erweiterungsbaum von Inode %1$i (auf Ebene %2$b) könnte schmaler sein.  "
-+"Der Erweiterungsbaum von Inode %i (auf Ebene %b) könnte schmaler sein.  "
- 
- #. @-expanded: Pass 2: Checking directory structure\n
- #: e2fsck/problem.c:1326
-diff --git a/po/nl.po b/po/nl.po
-index 3b1e0c19..a95baf1a 100644
---- a/po/nl.po
-+++ b/po/nl.po
-@@ -2068,7 +2068,7 @@ msgstr ""
- msgid ""
- "@i %i block %b conflicts with critical metadata, skipping block checks.\n"
- msgstr ""
--"Blok %2$b van inode %1$i conflicteert met kritieke metadata; blokcontroles "
-+"Blok %b van inode %i conflicteert met kritieke metadata; blokcontroles "
- "worden overgeslagen.\n"
- 
- #. @-expanded: directory inode %i block %b should be at block %c.  
-diff --git a/po/vi.po b/po/vi.po
-index f38cd773..2c0c96f1 100644
---- a/po/vi.po
-+++ b/po/vi.po
-@@ -1528,7 +1528,7 @@ msgstr "Đang định vị lại %s của @g %g từ %b sang %c…\n"
- #: e2fsck/problem.c:684
- #, c-format
- msgid "Relocating @g %g's %s to %c...\n"
--msgstr "Đang định vị lại %2$s của @g %1$g sang %3$c…\n"
-+msgstr "Đang định vị lại %s của @g %g sang %c…\n"
- 
- #. @-expanded: Warning: could not read block %b of %s: %m\n
- #: e2fsck/problem.c:689
--- 
-2.22.0
-
+But short term I don't see any other solution than stop testing
+sched_setattr because it does not check arguments enough to prevent
+system misbehavior. Which is a pity because syzkaller has found some
+bad misconfigurations that were oversight on checking side.
+Any other suggestions?
