@@ -1,68 +1,96 @@
-Return-Path: <SRS0=rBIL=VP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=KrOM=VQ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,T_TVD_FUZZY_SECURITIES autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 372B5C7618F
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jul 2019 21:25:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC128C76197
+	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jul 2019 00:19:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0CBF421849
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jul 2019 21:25:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1563485131;
-	bh=QSjKxnyyjUS5qeIMjpSly2y9idAnIcgsFVzIc/n29Sc=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:List-ID:From;
-	b=RglW9v/wofBBsLIiyKvFAzvZTnrHzutnWVvMtQ7zPGM//OTSk8zPGl4ivSY+9Ot6D
-	 r1SZAsgz1It0E+qwKHuGuZsesnHa3NVXV3YZMLg8aeCBZuUTBDO/uN8ct2i49EK9kq
-	 NEczaMBvYbItyNlz+bCopLqtx9YLIsqoUujcai8w=
+	by mail.kernel.org (Postfix) with ESMTP id C6CA321849
+	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jul 2019 00:19:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728056AbfGRVZa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jul 2019 17:25:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43028 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727767AbfGRVZa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Jul 2019 17:25:30 -0400
-Received: from akpm3.svl.corp.google.com (unknown [104.133.8.64])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6E3D3208C0;
-        Thu, 18 Jul 2019 21:25:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1563485129;
-        bh=QSjKxnyyjUS5qeIMjpSly2y9idAnIcgsFVzIc/n29Sc=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=E+us1ULsoV9MECFZGnNhxcZg4FyqgZ9STSCtJJvWR2zOHHNWjwM6ukBOyl4ClhOcS
-         jqvpd0TQFage7kwZw1wU/ykl1U2NuwGtPWoFHx3zTn70lZQ4mW1ca5SJFFqO1stIQn
-         qXr1OdC43MX+BRTjhtRtPsvU9SsYmCfTxASHeQvo=
-Date:   Thu, 18 Jul 2019 14:25:28 -0700
-From:   Andrew Morton <akpm@linux-foundation.org>
-To:     Joseph Qi <joseph.qi@linux.alibaba.com>
-Cc:     Ross Zwisler <zwisler@google.com>, linux-ext4@vger.kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, ocfs2-devel@oss.oracle.com
-Subject: Re: [Ocfs2-devel] [PATCH 1/2] ocfs2: use jbd2_inode dirty range
- scoping
-Message-Id: <20190718142528.3ccfe164ca0ef260a2d9dee3@linux-foundation.org>
-In-Reply-To: <aa1380c2-01d2-1142-b712-9f7ff01d0b2d@linux.alibaba.com>
-References: <1562977611-8412-1-git-send-email-joseph.qi@linux.alibaba.com>
-        <1a6e9c7b-b5ac-d745-17f2-7ef2073e9e8b@linux.alibaba.com>
-        <aa1380c2-01d2-1142-b712-9f7ff01d0b2d@linux.alibaba.com>
-X-Mailer: Sylpheed 3.7.0 (GTK+ 2.24.32; x86_64-pc-linux-gnu)
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+        id S1726147AbfGSATF convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jul 2019 20:19:05 -0400
+Received: from [185.234.218.148] ([185.234.218.148]:30282 "EHLO webmail.co.za"
+        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726015AbfGSATF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Jul 2019 20:19:05 -0400
+Reply-To: clinton.morgan@opendoorssecurities.co.uk
+From:   opendoorssecurities1@webmail.co.za
+To:     linux-ext4@vger.kernel.org
+Subject: Your diplomatic luggage
+Date:   18 Jul 2019 17:18:57 -0700
+Message-ID: <20190718171857.6AB44FAE8AF3B891@webmail.co.za>
+MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="utf-8"
+Content-Transfer-Encoding: 8BIT
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 18 Jul 2019 08:54:35 +0800 Joseph Qi <joseph.qi@linux.alibaba.com> wrote:
-
-> Ping...
-> If something else should be updated, please let me know.
-
-I'll be processing this (and a ton of other stuff) after the 5.3 merge
-window closes.
-
+I'm Clinton Morgan, I have been instructed to notify you of the 
+availability of a package deposited by your relative (our client) 
+in your name at the event of demise. We are entrusted and 
+empowered with diplomatic immunity and status to safe keep 
+valuable packages and baggage in trust for our reputable clients.
+ 
+We work in collaboration with top firms and government bodies of 
+various countries as we have earned a reputation as a service 
+whose hallmarks in reliability and confidentiality are revered. 
+Our clienteles also includes international missions, fellow 
+diplomats as well as embassies of different countries.
+ 
+A financial security package was deposited by a benefactor whose 
+identity can not be disclosed due to a binding Non-Disclosure 
+Agreement, specifically instructing us to contact you in the 
+event of demise. The Non Circumvention and Non Disclosure 
+Agreement signed with the benefactor  mandates and authorises us 
+to fully divulge and disclose the benefactor's identity 18 months 
+after the beneficiary has received the funds. We confirm that 
+these funds are fully free of any liens or encumbrances and are 
+clean, clear and non-criminal origin and are available in the 
+form of
+CASH.
+ 
+By this notice, you are hereby advised to send your Full Contact 
+Information as well as the name of the closest airport to your 
+city in the format stated below. The funds with the 
+documentations of origin will be brought to your country of 
+residence by 3 Diplomats. You will be accompanied to your bank 
+(solely by your request) to deposit the funds in your name with 
+the documentations of its origin which authenticates the facts 
+that the funds are clean with no link to terrorism or drugs as 
+well as exonerates you from any form of investigations and 
+interrogation.
+ 
+ 
+Kindly ensure that no mistake or error is made in the information 
+provide below and it should be forwarded in the manner stated 
+below:
+ 
+Your Full Name: ______________________________
+ 
+Your cell number:______________________________
+ 
+Your Complete Address: ________________________________
+ 
+Name of City of Residence: ____________________
+ 
+Name of Closest Airport to your city of 
+Residence:_________________________________
+ 
+I hereby confirm the the information provided above is correct 
+and accurate to the best of my knowledge.
+Congratulations in advance.
+ 
+Thank you and I sincerely Remain,
+ 
+ 
+Clinton Morgan
+Email: clinton.morgan@opendoorssecurities.co.uk
