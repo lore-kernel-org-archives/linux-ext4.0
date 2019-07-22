@@ -1,149 +1,205 @@
-Return-Path: <SRS0=dyYK=VR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=UfVM=VT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84938C76186
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jul 2019 16:53:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40DA6C76195
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 Jul 2019 04:02:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D05A20578
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jul 2019 16:53:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D22821953
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 Jul 2019 04:02:18 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ndPpUtgc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726709AbfGTQxW convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 20 Jul 2019 12:53:22 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41606 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726221AbfGTQxW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 20 Jul 2019 12:53:22 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3376D288E4
-        for <linux-ext4@vger.kernel.org>; Sat, 20 Jul 2019 16:53:21 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 2663B288E0; Sat, 20 Jul 2019 16:53:21 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
+        id S1725821AbfGVECR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 22 Jul 2019 00:02:17 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:38012 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725811AbfGVECR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jul 2019 00:02:17 -0400
+Received: by mail-pf1-f194.google.com with SMTP id y15so16714749pfn.5
+        for <linux-ext4@vger.kernel.org>; Sun, 21 Jul 2019 21:02:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=yJ06wLAoc93T2zJLDjet6UoqPS3jlCdAc99zjZMvBAU=;
+        b=ndPpUtgcO/CePzXDJF19xZ347C8DYqBjM4C0l+JHfKfT8WnRiC9a1ckue/A1zIYJZi
+         y0fTJA4trd9Rm/f3sAxXF3bOK+dAD+AqMO9jCeFg+thpuUQp8GmZCoO0ln1eWfXJOroN
+         6EGIH9iMqfKiP2ri1qiYsYnY/PF1vtBZBIXWjOBMmlJpj+rUsoSm0Zojn/3JkYYohiGJ
+         snZjRxuL9Pxv8Drsw/sKLMg6oiJNWRQFYe+ibC0vqLHsIaSgpw9V7Y/+HjPmQLLMnrja
+         aw764l9Dct2u6F8XT3C5L+P6UtcczDuiTw1Q1dUA/WkLEU56gLrapA43b55SgR7OqhXz
+         ldXw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=yJ06wLAoc93T2zJLDjet6UoqPS3jlCdAc99zjZMvBAU=;
+        b=d2Iws5RRFfL9QiomlaTDknCxK99AM6WvfiGMoL6Ke30dxGh5yED73BRECzVTme8uHF
+         HgIkKLcr/ZDxPfz+XCzS7wjAc1fe9Z3qqlU16t17At2R1+HEA09VCNUQg6v58aqNbqJp
+         peqCpjo8Xn8HVr6RE4iVNmKWPmd3nS9Sv0788z4675e3OTytpC9u24G2Twh8FtNyovzP
+         Ar05zyMJ8qSk4DQ8+tHZV5f93nvN2pFgsBT5oGS+v59f4Pt52aoiw8bbQ1kmHWxJvQEw
+         hcxiSH6IzQFrElyW0kg6Id+Da4H3l1GFG87uyAVd5J5j0Cb7XbWFr2y6Cc2VjxyJLYVD
+         Lj2w==
+X-Gm-Message-State: APjAAAX5Hro5b2aGJGA+ngLYIFVNF/Eq4FeDsTUqpuV6DQMgbeLSme/l
+        kjzWH3UuFT08CXO90l9Vg6Qezc2S
+X-Google-Smtp-Source: APXvYqzixb9rzacaS21RZ2Ku4WBo3OEuYrt3PBXwMpkekuWp+Z95bIlrZOnFCR1P97QaDiF2tmqKJA==
+X-Received: by 2002:a17:90a:8a84:: with SMTP id x4mr73499664pjn.105.1563768136169;
+        Sun, 21 Jul 2019 21:02:16 -0700 (PDT)
+Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
+        by smtp.googlemail.com with ESMTPSA id f14sm37420625pfn.53.2019.07.21.21.02.15
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Sun, 21 Jul 2019 21:02:15 -0700 (PDT)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 203317] WARNING: CPU: 2 PID: 925 at fs/ext4/inode.c:3897
- ext4_set_page_dirty+0x39/0x50
-Date:   Sat, 20 Jul 2019 16:53:20 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: slacker702@gmail.com
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-203317-13602-8FKJBkQhTg@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-203317-13602@https.bugzilla.kernel.org/>
-References: <bug-203317-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Subject: [PATCH 02/11] jbd2: add fast commit fields to journal_s structure
+Date:   Sun, 21 Jul 2019 21:00:02 -0700
+Message-Id: <20190722040011.18892-2-harshadshirwadkar@gmail.com>
+X-Mailer: git-send-email 2.22.0.657.g960e92d24f-goog
+In-Reply-To: <20190722040011.18892-1-harshadshirwadkar@gmail.com>
+References: <20190722040011.18892-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=203317
+For fast commits, JBD2 as of now allocates a default of 128 blocks at
+the end of the journalling area. Although JBD2 owns these blocks, it
+doesn't control what exactly should be written in these blocks. It
+just provides the right abstraction for making these blocks usable by
+file systems. This patch adds necessary fields to manage these fast
+commit blocks.
 
-slack3r (slacker702@gmail.com) changed:
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+---
+ include/linux/jbd2.h | 78 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 78 insertions(+)
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |slacker702@gmail.com
-
---- Comment #3 from slack3r (slacker702@gmail.com) ---
-Got similar here:
-[ 3651.932517] WARNING: CPU: 3 PID: 3625 at fs/ext4/inode.c:3925
-ext4_set_page_dirty+0x3e/0x50 [ext4]
-[ 3651.932522] Modules linked in: fuse ebtable_filter ebtables ip6table_filter
-ip6_tables iptable_filter nct6775 msr hwmon_vid sunrpc intel_rapl
-x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm mousedev joydev
-crct10dif_pclmul crc32_pclmul ghash_clmulni_intel snd_hda_codec_hdmi
-aesni_intel snd_hda_codec_realtek snd_hda_codec_generic ledtrig_audio
-aes_x86_64 crypto_simd snd_hda_intel iTCO_wdt iTCO_vendor_support cryptd
-snd_hda_codec glue_helper snd_hda_core i2c_i801 snd_hwdep snd_pcm snd_timer snd
-e1000e mxm_wmi soundcore intel_pch_thermal mei_me mei input_leds intel_cstate
-led_class evdev intel_uncore mac_hid pcc_cpufreq intel_rapl_perf wmi loop sg
-ip_tables x_tables ext4 crc32c_generic crc16 mbcache jbd2 sd_mod serio_raw
-atkbd libps2 ahci libahci libata crc32c_intel scsi_mod i8042 serio hid_logitech
-ff_memless i915 intel_gtt i2c_algo_bit cec rc_core drm_kms_helper syscopyarea
-sysfillrect sysimgblt fb_sys_fops drm agpgart
-[ 3651.932597] CPU: 3 PID: 3625 Comm: kworker/u8:3 Not tainted 5.2.1-1-mainline
-#1
-[ 3651.932599] Hardware name: To Be Filled By O.E.M. To Be Filled By
-O.E.M./Z170M Extreme4, BIOS P7.20 12/13/2016
-[ 3651.932610] Workqueue: writeback wb_workfn (flush-8:0)
-[ 3651.932662] RIP: 0010:ext4_set_page_dirty+0x3e/0x50 [ext4]
-[ 3651.932669] Code: 48 8b 00 a8 01 75 16 48 8b 57 08 48 8d 42 ff 83 e2 01 48
-0f 44 c7 48 8b 00 a8 08 74 0d 48 8b 07 f6 c4 20 74 0f e9 72 75 8d f1 <0f> 0b 48
-8b 07 f6 c4 20 75 f1 0f 0b e9 61 75 8d f1 90 0f 1f 44 00
-[ 3651.932672] RSP: 0018:ffffb250c86ab700 EFLAGS: 00010246
-[ 3651.932677] RAX: 02ffff0000002036 RBX: ffff9ee52c494880 RCX:
-0000000000000000
-[ 3651.932679] RDX: 0000000000000000 RSI: 0000000206000000 RDI:
-ffffe7a6481cdc40
-[ 3651.932684] RBP: ffffe7a6481cdc40 R08: 0000000206000000 R09:
-0000000000000000
-[ 3651.932686] R10: ffff9ee55baacb98 R11: 0000000000000000 R12:
-0000000000207371
-[ 3651.932688] R13: ffff9ee52c7556c0 R14: ffff9ee54e66a790 R15:
-0000000000000000
-[ 3651.932692] FS:  0000000000000000(0000) GS:ffff9ee56eb80000(0000)
-knlGS:0000000000000000
-[ 3651.932695] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[ 3651.932697] CR2: 0000556097c527c0 CR3: 0000000159a0a003 CR4:
-00000000003606e0
-[ 3651.932699] Call Trace:
-[ 3651.932888]  i915_gem_userptr_put_pages+0x13f/0x1c0 [i915]
-[ 3651.933030]  __i915_gem_object_put_pages+0x5e/0xa0 [i915]
-[ 3651.933187]  userptr_mn_invalidate_range_start+0x209/0x260 [i915]
-[ 3651.933212]  __mmu_notifier_invalidate_range_start+0x57/0xa0
-[ 3651.933229]  page_mkclean_one+0x1b6/0x1d0
-[ 3651.933243]  rmap_walk_file+0xf4/0x260
-[ 3651.933253]  page_mkclean+0xa4/0xc0
-[ 3651.933261]  ? page_referenced_one+0x170/0x170
-[ 3651.933269]  ? pmdp_collapse_flush+0x10/0x10
-[ 3651.933276]  clear_page_dirty_for_io+0x9c/0x240
-[ 3651.933353]  mpage_submit_page+0x1f/0x70 [ext4]
-[ 3651.933410]  mpage_process_page_bufs+0xe7/0xf0 [ext4]
-[ 3651.933458]  mpage_prepare_extent_to_map+0x1c4/0x280 [ext4]
-[ 3651.933513]  ext4_writepages+0x4f7/0xef0 [ext4]
-[ 3651.933527]  ? update_blocked_averages+0x894/0xa90
-[ 3651.933538]  ? cpumask_next_and+0x19/0x20
-[ 3651.933547]  ? do_writepages+0x43/0xd0
-[ 3651.933599]  ? ext4_mark_inode_dirty+0x1e0/0x1e0 [ext4]
-[ 3651.933606]  do_writepages+0x43/0xd0
-[ 3651.933645]  __writeback_single_inode+0x3d/0x3d0
-[ 3651.933653]  writeback_sb_inodes+0x1f0/0x430
-[ 3651.933666]  __writeback_inodes_wb+0x4c/0xc0
-[ 3651.933674]  wb_writeback+0x28f/0x340
-[ 3651.933688]  ? get_nr_inodes+0x32/0x50
-[ 3651.933695]  wb_workfn+0x3b6/0x480
-[ 3651.933714]  process_one_work+0x1d1/0x3e0
-[ 3651.933730]  worker_thread+0x4a/0x3d0
-[ 3651.933752]  kthread+0xfb/0x130
-[ 3651.933761]  ? process_one_work+0x3e0/0x3e0
-[ 3651.933774]  ? kthread_park+0x90/0x90
-[ 3651.933786]  ret_from_fork+0x35/0x40
-[ 3651.933799] ---[ end trace 7a0001b6900a9f55 ]---
-
-Kernel version: 5.2.1
-
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b7eed49b8ecd..6133a0cd22da 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -66,6 +66,7 @@ void __jbd2_debug(int level, const char *file, const char *func,
+ extern void *jbd2_alloc(size_t size, gfp_t flags);
+ extern void jbd2_free(void *ptr, size_t size);
+ 
++#define JBD2_FAST_COMMIT_BLOCKS 128
+ #define JBD2_MIN_JOURNAL_BLOCKS 1024
+ 
+ #ifdef __KERNEL__
+@@ -918,6 +919,34 @@ struct journal_s
+ 	 */
+ 	unsigned long		j_last;
+ 
++	/**
++	 * @j_first_fc:
++	 *
++	 * The block number of the first fast commit block in the journal
++	 */
++	unsigned long		j_first_fc;
++
++	/**
++	 * @j_current_fc:
++	 *
++	 * Journal fc block iterator
++	 */
++	unsigned long		j_fc_off;
++
++	/**
++	 * @j_last_fc:
++	 *
++	 * The block number of the last fast commit block in the journal
++	 */
++	unsigned long		j_last_fc;
++
++	/**
++	 * @j_do_full_commit:
++	 *
++	 * Force a full commit. If this flag is set JBD2 won't try fast commits
++	 */
++	bool			j_do_full_commit;
++
+ 	/**
+ 	 * @j_dev: Device where we store the journal.
+ 	 */
+@@ -987,6 +1016,15 @@ struct journal_s
+ 	 */
+ 	tid_t			j_transaction_sequence;
+ 
++	/**
++	 * @j_subtid:
++	 *
++	 * One plus the sequence number of the most recently committed fast
++	 * commit. This represents the sub transaction ID for the next fast
++	 * commit.
++	 */
++	tid_t			j_subtid;
++
+ 	/**
+ 	 * @j_commit_sequence:
+ 	 *
+@@ -1068,6 +1106,20 @@ struct journal_s
+ 	 */
+ 	int			j_wbufsize;
+ 
++	/**
++	 * @j_fc_wbuf:
++	 *
++	 * Array of bhs for fast commit transactions
++	 */
++	struct buffer_head	**j_fc_wbuf;
++
++	/**
++	 * @j_fc_wbufsize:
++	 *
++	 * Size of @j_fc_wbufsize array.
++	 */
++	int			j_fc_wbufsize;
++
+ 	/**
+ 	 * @j_last_sync_writer:
+ 	 *
+@@ -1167,6 +1219,32 @@ struct journal_s
+ 	 */
+ 	struct lockdep_map	j_trans_commit_map;
+ #endif
++	/**
++	 * @j_fc_commit_callback:
++	 *
++	 * File-system specific function that performs actual fast commit
++	 * operation. Should return 0 if the fast commit was successful, in that
++	 * case, JBD2 will just increment journal->j_subtid and move on. If it
++	 * returns < 0, JBD2 will fall-back to full commit.
++	 */
++	int (*j_fc_commit_callback)(struct journal_s *journal, tid_t tid,
++				    tid_t subtid);
++	/**
++	 * @j_fc_replay_callback:
++	 *
++	 * File-system specific function that performs replay of a fast
++	 * commit. JBD2 calls this function for each fast commit block found in
++	 * the journal.
++	 */
++	int (*j_fc_replay_callback)(struct journal_s *journal,
++				    struct buffer_head *bh);
++	/**
++	 * @j_fc_cleanup_callback:
++	 *
++	 * Clean-up after fast commit or full commit. JBD2 calls this function
++	 * after every commit operation.
++	 */
++	void (*j_fc_cleanup_callback)(struct journal_s *journal);
+ };
+ 
+ #define jbd2_might_wait_for_commit(j) \
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.22.0.657.g960e92d24f-goog
+
