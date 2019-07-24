@@ -5,35 +5,35 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B1194C76191
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 20:00:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82291C76186
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 20:06:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 870D9205C9
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 20:00:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 584CA214AF
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 20:06:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2405215AbfGXUAS convert rfc822-to-8bit (ORCPT
+        id S2404699AbfGXUFZ convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Jul 2019 16:00:18 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56056 "EHLO
+        Wed, 24 Jul 2019 16:05:25 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56252 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2405203AbfGXUAP (ORCPT
+        by vger.kernel.org with ESMTP id S2405837AbfGXUDb (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Jul 2019 16:00:15 -0400
+        Wed, 24 Jul 2019 16:03:31 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6B1FA287A2
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Jul 2019 20:00:14 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id F11062890C
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Jul 2019 20:03:30 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 5E51328763; Wed, 24 Jul 2019 20:00:14 +0000 (UTC)
+        id E31F82891F; Wed, 24 Jul 2019 20:03:30 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 204297] New: Creating CephFS volume in LXD hangs LXC command,
- kernel bug in logs.
-Date:   Wed, 24 Jul 2019 20:00:13 +0000
+Subject: [Bug 204297] Creating CephFS volume in LXD hangs LXC command, kernel
+ bug in logs.
+Date:   Wed, 24 Jul 2019 20:03:30 +0000
 X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
+X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
+X-Bugzilla-Component: Other
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
@@ -43,10 +43,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression attachments.created
-Message-ID: <bug-204297-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: component
+Message-ID: <bug-204297-13602-iigeT9KTOM@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-204297-13602@https.bugzilla.kernel.org/>
+References: <bug-204297-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -60,34 +60,11 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=204297
 
-            Bug ID: 204297
-           Summary: Creating CephFS volume in LXD hangs LXC command,
-                    kernel bug in logs.
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.15.0-54-generic
-          Hardware: x86-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: bill@servernet.co
-        Regression: No
+Bill (bill@servernet.co) changed:
 
-Created attachment 283941
-  --> https://bugzilla.kernel.org/attachment.cgi?id=283941&action=edit
-Stacktrace
-
-System is still responsive, however any attempt to interact with the cephfs
-locks the process and it cannot be killed.
-
-Log is attached.
-
-The cephfs is already created, this happens while creating a storage volume in
-LXD, which uses the CephFS mount.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+          Component|ext4                        |Other
 
 -- 
 You are receiving this mail because:
