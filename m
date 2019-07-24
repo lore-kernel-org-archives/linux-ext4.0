@@ -2,168 +2,110 @@ Return-Path: <SRS0=K227=VV=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83AADC7618B
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 12:05:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8185C7618B
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 16:08:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5E7A9229ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 12:05:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 981032173B
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jul 2019 16:08:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727720AbfGXMFX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Jul 2019 08:05:23 -0400
-Received: from szxga07-in.huawei.com ([45.249.212.35]:36042 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727412AbfGXMFX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Jul 2019 08:05:23 -0400
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id D1AF773AC3B3BFAE40A0;
-        Wed, 24 Jul 2019 20:05:21 +0800 (CST)
-Received: from huawei.com (10.90.53.225) by DGGEMS404-HUB.china.huawei.com
- (10.3.19.204) with Microsoft SMTP Server id 14.3.439.0; Wed, 24 Jul 2019
- 20:05:51 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>
-Subject: [PATCH] ext4: fix potential use after free in system zone via remount with noblock_validity
-Date:   Wed, 24 Jul 2019 20:11:08 +0800
-Message-ID: <1563970268-33688-1-git-send-email-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.7.4
+        id S1727786AbfGXQIA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Jul 2019 12:08:00 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52127 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726099AbfGXQH7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jul 2019 12:07:59 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x6OG7nte005051
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 24 Jul 2019 12:07:50 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 1A6EB4202F5; Wed, 24 Jul 2019 12:07:49 -0400 (EDT)
+Date:   Wed, 24 Jul 2019 12:07:49 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     harshad shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 01/11] ext4: add handling for extended mount options
+Message-ID: <20190724160749.GF4565@mit.edu>
+References: <20190722040011.18892-1-harshadshirwadkar@gmail.com>
+ <41522E01-D5E5-4DC6-8AD4-09E3FA19F112@dilger.ca>
+ <20190722210235.GE16313@mit.edu>
+ <7AD1A611-9BD2-4F32-9568-D0A517047EF0@dilger.ca>
+ <CAD+ocbwCYZDrj9D=85AVaB_RLYjUFwNs1V02fRn4tHh04_k7_A@mail.gmail.com>
+ <20190724061231.GA7074@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190724061231.GA7074@magnolia>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remount process will release system zone which was allocated before if
-"noblock_validity" is specified. If we mount an ext4 file system to two
-mountpoints whit default mount options, and then remount one of them
-with "noblock_validity", it may trigger a use after free problem when
-someone accessing the other one.
+On Tue, Jul 23, 2019 at 11:12:31PM -0700, Darrick J. Wong wrote:
+> On Tue, Jul 23, 2019 at 11:03:54PM -0700, harshad shirwadkar wrote:
+> > Before I respond to your questions, I would like to explain how fast
+> > commits differ from ijournal in a few key aspects (I will make sure to
+> > explain it in detail in patch 00/11 and documentation):
+> 
+> Please do; I hadn't realized there were also journal ondisk format
+> changes, and these must be recorded in the ext4 disk format
+> documentation.
 
- # mount /dev/sda foo
- # mount /dev/sda bar
+Actually, the changes are almost entirely in the on-disk journal
+layer.  The addition of the feature flag is really a UI issue, and
+worth some discussion.
 
-User access mountpoint "foo"   |   Remount mountpoint "bar"
-                               |
-ext4_map_blocks()              |   ext4_remount()
-check_block_validity()         |   ext4_setup_system_zone()
-ext4_data_block_valid()        |   ext4_release_system_zone()
-                               |   free system_blks rb nodes
-access system_blks rb nodes    |
-trigger use after free         |
+One of the goals was to make it easy to allow kernels which didn't
+understand fast commit to be able to mount a file system which had
+been cleanly unmounted --- but of course, if the file system needs
+recovery, and fast commits are in the journal, we can't allow a fast
+commit oblivious kernel (or e2fsck) from trying to replay the journal.
 
-This patch lock the system zone when accessing it to prevent it being
-released when doing a remount with "noblock_validity" mount option.
+One way to do this would be with a mount option, but that's a bit ugly
+--- and a mount option in /etc/fstab will cause a failure if a kernel
+which doesn't understand that mount option is booted.
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Cc: stable@vger.kernel.org
----
- fs/ext4/block_validity.c | 21 +++++++++++++++++++--
- fs/ext4/ext4.h           |  2 ++
- fs/ext4/super.c          |  1 +
- 3 files changed, 22 insertions(+), 2 deletions(-)
+So the basic idea is to have a compat feature which means, "please use
+fast commits if present", and then when the file system is mounted on
+a fast-commit capable kernel, the incompat feature meaning "we're
+using the fast commit feature".  (This is same design pattern used
+with the HAS_JOURNAL compat feature and the NEEDS_RECOVERY incompat
+feature.)
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 8e83741..d9c4792 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -191,7 +191,7 @@ int ext4_setup_system_zone(struct super_block *sb)
- 
- 	if (!test_opt(sb, BLOCK_VALIDITY)) {
- 		if (sbi->system_blks.rb_node)
--			ext4_release_system_zone(sb);
-+			ext4_release_system_zone_lock(sb);
- 		return 0;
- 	}
- 	if (sbi->system_blks.rb_node)
-@@ -239,6 +239,14 @@ void ext4_release_system_zone(struct super_block *sb)
- 	EXT4_SB(sb)->system_blks = RB_ROOT;
- }
- 
-+/* Called when (re)mounting the filesystem without BLOCK_VALIDITY */
-+void ext4_release_system_zone_lock(struct super_block *sb)
-+{
-+	spin_lock(&EXT4_SB(sb)->system_blks_lock);
-+	ext4_release_system_zone(sb);
-+	spin_unlock(&EXT4_SB(sb)->system_blks_lock);
-+}
-+
- /*
-  * Returns 1 if the passed-in block region (start_blk,
-  * start_blk+count) is valid; 0 if some part of the block region
-@@ -248,7 +256,7 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 			  unsigned int count)
- {
- 	struct ext4_system_zone *entry;
--	struct rb_node *n = sbi->system_blks.rb_node;
-+	struct rb_node *n;
- 
- 	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
- 	    (start_blk + count < start_blk) ||
-@@ -256,6 +264,13 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 		sbi->s_es->s_last_error_block = cpu_to_le64(start_blk);
- 		return 0;
- 	}
-+
-+	/*
-+	 * Lock the system zone to prevent it being released concurrently
-+	 * when doing a remount with "noblock_validity" mount option.
-+	 */
-+	spin_lock(&sbi->system_blks_lock);
-+	n = sbi->system_blks.rb_node;
- 	while (n) {
- 		entry = rb_entry(n, struct ext4_system_zone, node);
- 		if (start_blk + count - 1 < entry->start_blk)
-@@ -264,9 +279,11 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 			n = n->rb_right;
- 		else {
- 			sbi->s_es->s_last_error_block = cpu_to_le64(start_blk);
-+			spin_unlock(&sbi->system_blks_lock);
- 			return 0;
- 		}
- 	}
-+	spin_unlock(&sbi->system_blks_lock);
- 	return 1;
- }
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bf660aa..fd34a7b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1421,6 +1421,7 @@ struct ext4_sb_info {
- 	int s_jquota_fmt;			/* Format of quota to use */
- #endif
- 	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
-+	spinlock_t system_blks_lock;
- 	struct rb_root system_blks;
- 
- #ifdef EXTENTS_STATS
-@@ -3191,6 +3192,7 @@ extern void ext4_exit_sysfs(void);
- 
- /* block_validity */
- extern void ext4_release_system_zone(struct super_block *sb);
-+extern void ext4_release_system_zone_lock(struct super_block *sb);
- extern int ext4_setup_system_zone(struct super_block *sb);
- extern int __init ext4_init_system_zone(void);
- extern void ext4_exit_system_zone(void);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4079605..c95f972 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4490,6 +4490,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	ext4_set_resv_clusters(sb);
- 
-+	spin_lock_init(&sbi->system_blks_lock);
- 	err = ext4_setup_system_zone(sb);
- 	if (err) {
- 		ext4_msg(sb, KERN_ERR, "failed to initialize system "
--- 
-2.7.4
+The next question is whether to use the compat and incompat feature
+flags in the jbd2 superblock, or ext4-specific compat flags.  For the
+incompat flag, there's no reason not to use the journal incompat flag.
+But for the compat flag, we have better infrastructure for setting and
+clearing ext4-level compat feature flags.  Aside from that, though,
+there's no reason why we couldn't use the s_feature_compat field in
+the journal superblock --- in which case, *all* of the on-diks format
+changes would purely be on the jbd2 side of the ledger.
 
+> Every feature flag you add doubles the size of the testing matrix.
+> If I were you I'd only want to test the (fastcommit) and (!fastcommit)
+> scenarios.
+
+Sure, absolutely.  On the other hand, as the saying goes, "there comes
+a time in any project where it's time to shoot the engineers and put
+the d*mned thing into production".  One of the reasons why we're super
+interested in this feature is to claw back the performance hit of
+fde872682e17 ("ext4: force inode writes when nfsd calls
+commit_metadata").  I fully expect that this feature is going to make
+big difference to a number of customer workloads, so there is some
+urgency to getting this feature into production.
+
+On the flip side, if we leave some performance wins on the table, it's
+absolutely true that it makes it harder to add those optimizations
+later, and it increases the testing load, not to mention the forwards
+and backwards compatibility issues.  It's an engineering trade-off.
+
+    	      		    	     	     - Ted
