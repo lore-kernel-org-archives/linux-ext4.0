@@ -2,367 +2,191 @@ Return-Path: <SRS0=NlID=V3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA9C0C76186
-	for <linux-ext4@archiver.kernel.org>; Tue, 30 Jul 2019 01:51:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 27870C433FF
+	for <linux-ext4@archiver.kernel.org>; Tue, 30 Jul 2019 02:06:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8E32820693
-	for <linux-ext4@archiver.kernel.org>; Tue, 30 Jul 2019 01:51:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E6735206B8
+	for <linux-ext4@archiver.kernel.org>; Tue, 30 Jul 2019 02:06:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GYkm93F1"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=wdc.com header.i=@wdc.com header.b="VU3eTnD9";
+	dkim=pass (1024-bit key) header.d=sharedspace.onmicrosoft.com header.i=@sharedspace.onmicrosoft.com header.b="GULdEayi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731069AbfG3Bvn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 29 Jul 2019 21:51:43 -0400
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:43567 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730837AbfG3Bu1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2019 21:50:27 -0400
-Received: by mail-pf1-f194.google.com with SMTP id i189so28949610pfg.10;
-        Mon, 29 Jul 2019 18:50:26 -0700 (PDT)
+        id S1731104AbfG3CGi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 29 Jul 2019 22:06:38 -0400
+Received: from esa1.hgst.iphmx.com ([68.232.141.245]:31233 "EHLO
+        esa1.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727539AbfG3CGh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jul 2019 22:06:37 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
+  d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
+  t=1564452396; x=1595988396;
+  h=from:to:cc:subject:date:message-id:references:
+   content-transfer-encoding:mime-version;
+  bh=DAWwB4PthrIkhHgU0udUzp8i81R1gkPBRTHtTf/eUlU=;
+  b=VU3eTnD9njipZiprlruw9/gCR1IgJy4yE7NOBxRYXmGtPFoPgr7J7RMB
+   8UKSMc4H1K6bsRYykCPgMWlC9Zn36WDPXV9CUN0Q3vnMtizWqKrmDL7er
+   3RJqDIR8uefl4+Wvvlba9jHkBrwfZnjg1fCeTBlETiEzwXa2Dr1V2z5Tr
+   pGwGbErtRu6q00e7yFUAIQpEeicY5LiLSZ+FKB7oBB+GIsiyV8VwhOssr
+   f+15NW22MAMXzM71ZXS1/HEMM7Ch+HPkUCHlNCm9sdlvJFrUgRc9GOuG/
+   SCLZ5julwyKnXBMkJs/DaTjCl5KbHkj+T67o7rW7EZikEaCybxDyH+EQR
+   g==;
+IronPort-SDR: Zyh2aOGVFAiKoOA+aNLiUiELN8oVwQSJO6d4ES9JPlgs0gEyUUAA5OvZnV8kG5w1DfOILnWD+W
+ HmCQpUErw71HvQfhtaV+mgEkQYmv0uKkAC7qEmogtslsFfYZFMavfH+POGD72xt4r7W1btR5bq
+ 2ky0Y0YiKoRRBrfvY3rUXG0j8iK5V8AoGcaw8JE1JbzLzofJKcvbQs0gcr7chFiRkZinfEhNLi
+ M/yes8nkvSSxjzpf1om38E0gcZ+S6MrkoFvBCBRDwmRtbY23QJ/VeSb19NgUvzcqE6uq6ou+BG
+ Vlo=
+X-IronPort-AV: E=Sophos;i="5.64,325,1559491200"; 
+   d="scan'208";a="220903382"
+Received: from mail-sn1nam04lp2052.outbound.protection.outlook.com (HELO NAM04-SN1-obe.outbound.protection.outlook.com) ([104.47.44.52])
+  by ob1.hgst.iphmx.com with ESMTP; 30 Jul 2019 10:06:35 +0800
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=ROo4ky4MySbdSFuZTfy+a/pt7L9qpw6ifz4JfydK1EeNKf5ds/1gYbembAqegm9sSMJFnctpCQuL7OwcxK+U8tiVB+Yj2C7G9TlznQ4JTOA3Eu4FyciYodhvlMNPPwFLKcaKcAmEFZsQYx/S/pFP4LHeaGrflXRK/ultDKredCyCRz6F8Nc27Y0y6tuLwmy5SiL/FTZ4yhXgFvMwdP68GCRW00szwbRcIzqtAjc5RoovXTTfYwB4rBfz+jp9WRdYaGNBbH7g6spw3lSQ8QT8uao0Vho9QAFYewkVeSnW+wqzS9Qt0gBcQaBOlFnd2SS8QBqUjv9IpHr1EE7xIc0+7A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=rZGJJzk0BFAD8E2zFAkqogu/xXdmRo6CozZ14BjqTuc=;
+ b=clqRR08gzZpYJs4thf6Jk5wSke91arx2wj15ouZs5ivO96vNd10XneDYI5v+DYYwM9F0+JteDfql3oXHinX9cJGAuih7/2tG0amF1gr027N5noWb3JGWS4/rb+ixr46nqxKnTbTYEBznPSuGg22DGROPJOmR3Nez9zVNtIqLxb89FXgkgKLYfmeSlS7WrHZogSPGuCztA5lP0ePFd6i6F3/RPYAHMSgZ50bQJ2LHc2tCxN4aTbNovmekChn/wI4Y2lV6S6GY6kzwFiVvQ6nvPhG+tOuXr95y+NlX8FgWXXbp1dkc2tUSFUPnDkXn2v3fdA0wqIPwvsYQldd+pv8Ptg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1;spf=pass
+ smtp.mailfrom=wdc.com;dmarc=pass action=none header.from=wdc.com;dkim=pass
+ header.d=wdc.com;arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=CJvht37EZemmcnBgtlNiz9+F+TMC9CP5JC3nxpy4VdY=;
-        b=GYkm93F1cJJjois+RV8eMjig9xIYQGk+SUnlQDx43S+Uu/41dHNKq90eVf618tDeUr
-         WEhiGiy+V5MiKxL76vvoq57Fv52TCb6McUeald2lUzRsAlH+djZTCx912xz1xe/0uhYF
-         raBQiGP750m/gqcyG2+H2THhlCHvYbdV9cbIZ5XSHgORnKCeuL6V7rrfuzm7WbifsB/e
-         G0zvOt+LVA9KtaEu6+9piTZLiIDyeuqyGnhvHXnLUfRKpsjGvo2fnsVCgoerB7LL2t1j
-         DkiSzSFuxoUY16+Xnrx6oiR20x5Cq+JMCahtn/DNTqBOsUs+1/tmZeAf61XUNw7gdTOR
-         tE4A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=CJvht37EZemmcnBgtlNiz9+F+TMC9CP5JC3nxpy4VdY=;
-        b=c++eOynR/75hAdNEql4xAgHunXxIBT+8EGE07x4qh7Ucp1Gnq0easXXS4ZrJN7N0O8
-         uWtSETtaZALUQaBh9dupvKV3UPlJHrjHFU4FLfVDoKUTw1rkLuLEY3HylviYu+jR6jEm
-         70OJ8inwjyLZgQmDKsuCbmt2m0K/Adjj3fsijx3a84VgEdcl/+cVFB4RHjRv9bm3E+H+
-         sG8vC9IiXmrswO3XQFXnlBKGnF/ymtT+y567iWO21ehoEOAMZ31CefRQNZam5DGTRE7d
-         D+/wNeSNq7TLtX1zFwoXUDc6rM8szU1zoeC/q+mXceXH/3Ex5rMou+KjwXz9e9GXCbFG
-         ByOg==
-X-Gm-Message-State: APjAAAUV74SSj7Px5abA2h87lpafIpkSjbsOvzBIMa5twm2zMT9V2xWM
-        iv7J6BMSvYxRIyOrlnUjpRU=
-X-Google-Smtp-Source: APXvYqw9HM2FyYpOSBZ+oV02s33RW4zpOn3lB0rMSooqL418lTjpdNtWteRxv46hIS/3Tw3gww5h6Q==
-X-Received: by 2002:a62:e315:: with SMTP id g21mr40609144pfh.225.1564451426354;
-        Mon, 29 Jul 2019 18:50:26 -0700 (PDT)
-Received: from deepa-ubuntu.lan (c-98-234-52-230.hsd1.ca.comcast.net. [98.234.52.230])
-        by smtp.gmail.com with ESMTPSA id r6sm138807156pjb.22.2019.07.29.18.50.24
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Mon, 29 Jul 2019 18:50:25 -0700 (PDT)
-From:   Deepa Dinamani <deepa.kernel@gmail.com>
-To:     viro@zeniv.linux.org.uk, linux-kernel@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, arnd@arndb.de,
-        y2038@lists.linaro.org, aivazian.tigran@gmail.com, al@alarsen.net,
-        coda@cs.cmu.edu, darrick.wong@oracle.com, dushistov@mail.ru,
-        dwmw2@infradead.org, hch@infradead.org, jack@suse.com,
-        jaharkes@cs.cmu.edu, luisbg@kernel.org, nico@fluxnic.net,
-        phillip@squashfs.org.uk, richard@nod.at, salah.triki@gmail.com,
-        shaggy@kernel.org, linux-xfs@vger.kernel.org,
-        codalist@coda.cs.cmu.edu, linux-ext4@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        jfs-discussion@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org
-Subject: [PATCH 06/20] fs: Fill in max and min timestamps in superblock
-Date:   Mon, 29 Jul 2019 18:49:10 -0700
-Message-Id: <20190730014924.2193-7-deepa.kernel@gmail.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20190730014924.2193-1-deepa.kernel@gmail.com>
-References: <20190730014924.2193-1-deepa.kernel@gmail.com>
+ d=sharedspace.onmicrosoft.com; s=selector2-sharedspace-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=rZGJJzk0BFAD8E2zFAkqogu/xXdmRo6CozZ14BjqTuc=;
+ b=GULdEayiUswnt8nFYDPNrQd+YCZ0Uf4XxxJMt9AHqk0JVWvPO5htVUtRdMw3EQMtMVY1JL4qzJlhXb1O0LvO7fzqYhPo8Lh6rlYiBrq/DoYbFsD7z/t71HaYNaaW3VCCP2Qf5G4+ZvdS7bJzm7rl1lw8bvnRaE8+8UaGxxkCAoQ=
+Received: from BYAPR04MB5816.namprd04.prod.outlook.com (20.179.58.207) by
+ BYAPR04MB4101.namprd04.prod.outlook.com (52.135.215.160) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.2115.15; Tue, 30 Jul 2019 02:06:33 +0000
+Received: from BYAPR04MB5816.namprd04.prod.outlook.com
+ ([fe80::65a9:db0a:646d:eb1e]) by BYAPR04MB5816.namprd04.prod.outlook.com
+ ([fe80::65a9:db0a:646d:eb1e%6]) with mapi id 15.20.2115.005; Tue, 30 Jul 2019
+ 02:06:33 +0000
+From:   Damien Le Moal <Damien.LeMoal@wdc.com>
+To:     Andreas Dilger <adilger@dilger.ca>
+CC:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Naohiro Aota <Naohiro.Aota@wdc.com>,
+        Masato Suzuki <masato.suzuki@wdc.com>
+Subject: Re: [PATCH] ext4: Fix deadlock on page reclaim
+Thread-Topic: [PATCH] ext4: Fix deadlock on page reclaim
+Thread-Index: AQHVQswib+fLuRINzEOhyZKScmS/IQ==
+Date:   Tue, 30 Jul 2019 02:06:33 +0000
+Message-ID: <BYAPR04MB5816BD641DF55A93986DF826E7DC0@BYAPR04MB5816.namprd04.prod.outlook.com>
+References: <20190725093358.30679-1-damien.lemoal@wdc.com>
+ <20190725115442.GA15733@infradead.org>
+ <20190726224423.GE7777@dread.disaster.area> <20190726225508.GA13729@mit.edu>
+ <BYAPR04MB58162929012135E47C68923AE7C30@BYAPR04MB5816.namprd04.prod.outlook.com>
+ <3D2360FA-AD48-48AE-B1CE-D1CF58C1B8AB@dilger.ca>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Damien.LeMoal@wdc.com; 
+x-originating-ip: [199.255.47.11]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 34d260bd-0935-4578-fc3c-08d714928b8c
+x-ms-office365-filtering-ht: Tenant
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600148)(711020)(4605104)(1401327)(4618075)(2017052603328)(7193020);SRVR:BYAPR04MB4101;
+x-ms-traffictypediagnostic: BYAPR04MB4101:
+x-microsoft-antispam-prvs: <BYAPR04MB41010BF909DC7CB87B70861BE7DC0@BYAPR04MB4101.namprd04.prod.outlook.com>
+wdcipoutbound: EOP-TRUE
+x-ms-oob-tlc-oobclassifiers: OLM:7219;
+x-forefront-prvs: 0114FF88F6
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(4636009)(396003)(136003)(346002)(376002)(39860400002)(366004)(189003)(199004)(6506007)(25786009)(102836004)(186003)(256004)(26005)(74316002)(53546011)(6246003)(8936002)(14444005)(3846002)(8676002)(33656002)(305945005)(81166006)(66066001)(6116002)(4326008)(99286004)(446003)(76176011)(7696005)(68736007)(486006)(81156014)(476003)(66556008)(66946007)(76116006)(6916009)(54906003)(229853002)(86362001)(6436002)(9686003)(66476007)(5660300002)(55016002)(66446008)(64756008)(71190400001)(91956017)(71200400001)(52536014)(2906002)(7736002)(14454004)(478600001)(53936002)(316002);DIR:OUT;SFP:1102;SCL:1;SRVR:BYAPR04MB4101;H:BYAPR04MB5816.namprd04.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: KyudndvP1MUGxdyTNylfLU3zyh8YljkUXBPfWOxxrqrQdXoaYoZCO/u3mbas/cX536DFD6rS8ddUDQdMsbPNQueOksxj5EuNcF2tNFsa2Kup1XmIn+89GixXv2dF5+FhK9mhafIgE2SA95FcfGeYzeNfBTLHKYYMb3hJtR9eOVe71wemcMxowC0NOhhHEgQasgcc6gtMy7N7NJwu6qGwZHWIGKjggEDWxsW/gfY6O80y9E5LiXEvG+c7Tf4tccB1yDuObUYmwsB2mmZlyASnY4GuDLJ6BoXnTfXw3hZg6c7m3bqybi/RBk6iNnKe/tC97vcmzSIpbCah97d7yOe+5yviJva6RlVAPX9a5lnLR01A8Ivl6mpYcLlvypYOO0fq3i1/xqbFrhdw0bUpNNpwrwg9n90RDeypWk8F88HQUQw=
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+X-OriginatorOrg: wdc.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 34d260bd-0935-4578-fc3c-08d714928b8c
+X-MS-Exchange-CrossTenant-originalarrivaltime: 30 Jul 2019 02:06:33.3688
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: b61c8803-16f3-4c35-9b17-6f65f441df86
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: Damien.LeMoal@wdc.com
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR04MB4101
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fill in the appropriate limits to avoid inconsistencies
-in the vfs cached inode times when timestamps are
-outside the permitted range.
-
-Even though some filesystems are read-only, fill in the
-timestamps to reflect the on-disk representation.
-
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
-Cc: aivazian.tigran@gmail.com
-Cc: al@alarsen.net
-Cc: coda@cs.cmu.edu
-Cc: darrick.wong@oracle.com
-Cc: dushistov@mail.ru
-Cc: dwmw2@infradead.org
-Cc: hch@infradead.org
-Cc: jack@suse.com
-Cc: jaharkes@cs.cmu.edu
-Cc: luisbg@kernel.org
-Cc: nico@fluxnic.net
-Cc: phillip@squashfs.org.uk
-Cc: richard@nod.at
-Cc: salah.triki@gmail.com
-Cc: shaggy@kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: codalist@coda.cs.cmu.edu
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-mtd@lists.infradead.org
-Cc: jfs-discussion@lists.sourceforge.net
-Cc: reiserfs-devel@vger.kernel.org
----
- fs/befs/linuxvfs.c       | 2 ++
- fs/bfs/inode.c           | 2 ++
- fs/coda/inode.c          | 3 +++
- fs/cramfs/inode.c        | 2 ++
- fs/efs/super.c           | 2 ++
- fs/ext2/super.c          | 2 ++
- fs/freevxfs/vxfs_super.c | 2 ++
- fs/jffs2/fs.c            | 3 +++
- fs/jfs/super.c           | 2 ++
- fs/minix/inode.c         | 2 ++
- fs/qnx4/inode.c          | 2 ++
- fs/qnx6/inode.c          | 2 ++
- fs/reiserfs/super.c      | 3 +++
- fs/romfs/super.c         | 2 ++
- fs/squashfs/super.c      | 2 ++
- fs/ufs/super.c           | 7 +++++++
- fs/xfs/xfs_super.c       | 2 ++
- 17 files changed, 42 insertions(+)
-
-diff --git a/fs/befs/linuxvfs.c b/fs/befs/linuxvfs.c
-index 462d096ff3e9..64cdf4d8e424 100644
---- a/fs/befs/linuxvfs.c
-+++ b/fs/befs/linuxvfs.c
-@@ -893,6 +893,8 @@ befs_fill_super(struct super_block *sb, void *data, int silent)
- 	sb_set_blocksize(sb, (ulong) befs_sb->block_size);
- 	sb->s_op = &befs_sops;
- 	sb->s_export_op = &befs_export_operations;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = 0xffffffffffffll;
- 	root = befs_iget(sb, iaddr2blockno(sb, &(befs_sb->root_dir)));
- 	if (IS_ERR(root)) {
- 		ret = PTR_ERR(root);
-diff --git a/fs/bfs/inode.c b/fs/bfs/inode.c
-index 5e97bed073d7..f8ce1368218b 100644
---- a/fs/bfs/inode.c
-+++ b/fs/bfs/inode.c
-@@ -324,6 +324,8 @@ static int bfs_fill_super(struct super_block *s, void *data, int silent)
- 		return -ENOMEM;
- 	mutex_init(&info->bfs_lock);
- 	s->s_fs_info = info;
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
- 
- 	sb_set_blocksize(s, BFS_BSIZE);
- 
-diff --git a/fs/coda/inode.c b/fs/coda/inode.c
-index 321f56e487cb..b1c70e2b9b1e 100644
---- a/fs/coda/inode.c
-+++ b/fs/coda/inode.c
-@@ -188,6 +188,9 @@ static int coda_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_magic = CODA_SUPER_MAGIC;
- 	sb->s_op = &coda_super_operations;
- 	sb->s_d_op = &coda_dentry_operations;
-+	sb->s_time_gran = 1;
-+	sb->s_time_min = S64_MIN;
-+	sb->s_time_max = S64_MAX;
- 
- 	error = super_setup_bdi(sb);
- 	if (error)
-diff --git a/fs/cramfs/inode.c b/fs/cramfs/inode.c
-index 9352487bd0fc..4d1d8b7761ed 100644
---- a/fs/cramfs/inode.c
-+++ b/fs/cramfs/inode.c
-@@ -597,6 +597,8 @@ static int cramfs_finalize_super(struct super_block *sb,
- 
- 	/* Set it all up.. */
- 	sb->s_flags |= SB_RDONLY;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = 0;
- 	sb->s_op = &cramfs_ops;
- 	root = get_cramfs_inode(sb, cramfs_root, 0);
- 	if (IS_ERR(root))
-diff --git a/fs/efs/super.c b/fs/efs/super.c
-index 867fc24dee20..4a6ebff2af76 100644
---- a/fs/efs/super.c
-+++ b/fs/efs/super.c
-@@ -257,6 +257,8 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
- 	if (!sb)
- 		return -ENOMEM;
- 	s->s_fs_info = sb;
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
-  
- 	s->s_magic		= EFS_SUPER_MAGIC;
- 	if (!sb_set_blocksize(s, EFS_BLOCKSIZE)) {
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 44eb6e7eb492..baa36c6fb71e 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -1002,6 +1002,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sb->s_maxbytes = ext2_max_size(sb->s_blocksize_bits);
- 	sb->s_max_links = EXT2_LINK_MAX;
-+	sb->s_time_min = S32_MIN;
-+	sb->s_time_max = S32_MAX;
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV) {
- 		sbi->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
-diff --git a/fs/freevxfs/vxfs_super.c b/fs/freevxfs/vxfs_super.c
-index a89f68c3cbed..578a5062706e 100644
---- a/fs/freevxfs/vxfs_super.c
-+++ b/fs/freevxfs/vxfs_super.c
-@@ -229,6 +229,8 @@ static int vxfs_fill_super(struct super_block *sbp, void *dp, int silent)
- 
- 	sbp->s_op = &vxfs_super_ops;
- 	sbp->s_fs_info = infp;
-+	sbp->s_time_min = 0;
-+	sbp->s_time_max = U32_MAX;
- 
- 	if (!vxfs_try_sb_magic(sbp, silent, 1,
- 			(__force __fs32)cpu_to_le32(VXFS_SUPER_MAGIC))) {
-diff --git a/fs/jffs2/fs.c b/fs/jffs2/fs.c
-index 8a20ddd25f2d..d0b59d03a7a9 100644
---- a/fs/jffs2/fs.c
-+++ b/fs/jffs2/fs.c
-@@ -590,6 +590,9 @@ int jffs2_do_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_blocksize = PAGE_SIZE;
- 	sb->s_blocksize_bits = PAGE_SHIFT;
- 	sb->s_magic = JFFS2_SUPER_MAGIC;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = U32_MAX;
-+
- 	if (!sb_rdonly(sb))
- 		jffs2_start_garbage_collect_thread(c);
- 	return 0;
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index f4e10cb9f734..b2dc4d1f9dcc 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -503,6 +503,8 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sb->s_fs_info = sbi;
- 	sb->s_max_links = JFS_LINK_MAX;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = U32_MAX;
- 	sbi->sb = sb;
- 	sbi->uid = INVALID_UID;
- 	sbi->gid = INVALID_GID;
-diff --git a/fs/minix/inode.c b/fs/minix/inode.c
-index f96073f25432..7cb5fd38eb14 100644
---- a/fs/minix/inode.c
-+++ b/fs/minix/inode.c
-@@ -277,6 +277,8 @@ static int minix_fill_super(struct super_block *s, void *data, int silent)
- 
- 	/* set up enough so that it can read an inode */
- 	s->s_op = &minix_sops;
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
- 	root_inode = minix_iget(s, MINIX_ROOT_INO);
- 	if (IS_ERR(root_inode)) {
- 		ret = PTR_ERR(root_inode);
-diff --git a/fs/qnx4/inode.c b/fs/qnx4/inode.c
-index 922d083bbc7c..e8da1cde87b9 100644
---- a/fs/qnx4/inode.c
-+++ b/fs/qnx4/inode.c
-@@ -201,6 +201,8 @@ static int qnx4_fill_super(struct super_block *s, void *data, int silent)
- 	s->s_op = &qnx4_sops;
- 	s->s_magic = QNX4_SUPER_MAGIC;
- 	s->s_flags |= SB_RDONLY;	/* Yup, read-only yet */
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
- 
- 	/* Check the superblock signature. Since the qnx4 code is
- 	   dangerous, we should leave as quickly as possible
-diff --git a/fs/qnx6/inode.c b/fs/qnx6/inode.c
-index 0f8b0ff1ba43..345db56c98fd 100644
---- a/fs/qnx6/inode.c
-+++ b/fs/qnx6/inode.c
-@@ -429,6 +429,8 @@ static int qnx6_fill_super(struct super_block *s, void *data, int silent)
- 	s->s_op = &qnx6_sops;
- 	s->s_magic = QNX6_SUPER_MAGIC;
- 	s->s_flags |= SB_RDONLY;        /* Yup, read-only yet */
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
- 
- 	/* ease the later tree level calculations */
- 	sbi = QNX6_SB(s);
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index ab028ea0e561..d69b4ac0ae2f 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -1976,6 +1976,9 @@ static int reiserfs_fill_super(struct super_block *s, void *data, int silent)
- 		goto error_unlocked;
- 	}
- 
-+	s->s_time_min = 0;
-+	s->s_time_max = U32_MAX;
-+
- 	rs = SB_DISK_SUPER_BLOCK(s);
- 	/*
- 	 * Let's do basic sanity check to verify that underlying device is not
-diff --git a/fs/romfs/super.c b/fs/romfs/super.c
-index 7d580f7c3f1d..a42c0e3079dc 100644
---- a/fs/romfs/super.c
-+++ b/fs/romfs/super.c
-@@ -478,6 +478,8 @@ static int romfs_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_maxbytes = 0xFFFFFFFF;
- 	sb->s_magic = ROMFS_MAGIC;
- 	sb->s_flags |= SB_RDONLY | SB_NOATIME;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = 0;
- 	sb->s_op = &romfs_super_ops;
- 
- #ifdef CONFIG_ROMFS_ON_MTD
-diff --git a/fs/squashfs/super.c b/fs/squashfs/super.c
-index effa638d6d85..a9e9837617a9 100644
---- a/fs/squashfs/super.c
-+++ b/fs/squashfs/super.c
-@@ -183,6 +183,8 @@ static int squashfs_fill_super(struct super_block *sb, void *data, int silent)
- 		(u64) le64_to_cpu(sblk->id_table_start));
- 
- 	sb->s_maxbytes = MAX_LFS_FILESIZE;
-+	sb->s_time_min = 0;
-+	sb->s_time_max = U32_MAX;
- 	sb->s_flags |= SB_RDONLY;
- 	sb->s_op = &squashfs_super_ops;
- 
-diff --git a/fs/ufs/super.c b/fs/ufs/super.c
-index 4ed0dca52ec8..1da0be667409 100644
---- a/fs/ufs/super.c
-+++ b/fs/ufs/super.c
-@@ -843,6 +843,10 @@ static int ufs_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	sb->s_maxbytes = MAX_LFS_FILESIZE;
- 
-+	sb->s_time_gran = NSEC_PER_SEC;
-+	sb->s_time_min = S32_MIN;
-+	sb->s_time_max = S32_MAX;
-+
- 	switch (sbi->s_mount_opt & UFS_MOUNT_UFSTYPE) {
- 	case UFS_MOUNT_UFSTYPE_44BSD:
- 		UFSD("ufstype=44bsd\n");
-@@ -861,6 +865,9 @@ static int ufs_fill_super(struct super_block *sb, void *data, int silent)
- 		uspi->s_fshift = 9;
- 		uspi->s_sbsize = super_block_size = 1536;
- 		uspi->s_sbbase =  0;
-+		sb->s_time_gran = 1;
-+		sb->s_time_min = S64_MIN;
-+		sb->s_time_max = S64_MAX;
- 		flags |= UFS_TYPE_UFS2 | UFS_DE_44BSD | UFS_UID_44BSD | UFS_ST_44BSD | UFS_CG_44BSD;
- 		break;
- 		
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index a14d11d78bd8..1a0daf46bae8 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -1685,6 +1685,8 @@ xfs_fs_fill_super(
- 	sb->s_maxbytes = xfs_max_file_offset(sb->s_blocksize_bits);
- 	sb->s_max_links = XFS_MAXLINK;
- 	sb->s_time_gran = 1;
-+	sb->s_time_min = S32_MIN;
-+	sb->s_time_max = S32_MAX;
- 	set_posix_acl_flag(sb);
- 
- 	/* version 5 superblocks support inode version counters. */
--- 
-2.17.1
-
+Andreas,=0A=
+=0A=
+On 2019/07/30 3:40, Andreas Dilger wrote:=0A=
+> On Jul 26, 2019, at 8:59 PM, Damien Le Moal <damien.lemoal@wdc.com> wrote=
+:=0A=
+>>=0A=
+>> On 2019/07/27 7:55, Theodore Y. Ts'o wrote:=0A=
+>>> On Sat, Jul 27, 2019 at 08:44:23AM +1000, Dave Chinner wrote:=0A=
+>>>>>=0A=
+>>>>> This looks like something that could hit every file systems, so=0A=
+>>>>> shouldn't we fix this in common code?  We could also look into=0A=
+>>>>> just using memalloc_nofs_save for the page cache allocation path=0A=
+>>>>> instead of the per-mapping gfp_mask.=0A=
+>>>>=0A=
+>>>> I think it has to be the entire IO path - any allocation from the=0A=
+>>>> underlying filesystem could recurse into the top level filesystem=0A=
+>>>> and then deadlock if the memory reclaim submits IO or blocks on=0A=
+>>>> IO completion from the upper filesystem. That's a bloody big hammer=0A=
+>>>> for something that is only necessary when there are stacked=0A=
+>>>> filesystems like this....=0A=
+>>>=0A=
+>>> Yeah.... that's why using memalloc_nofs_save() probably makes the most=
+=0A=
+>>> sense, and dm_zoned should use that before it calls into ext4.=0A=
+>>=0A=
+>> Unfortunately, with this particular setup, that will not solve the probl=
+em.=0A=
+>> dm-zoned submit BIOs to its backend drive in response to XFS activity. T=
+he=0A=
+>> requests for these BIOs are passed along to the kernel tcmu HBA and end =
+up in=0A=
+>> that HBA command ring. The commands themselves are read from the ring an=
+d=0A=
+>> executed by the tcmu-runner user process which executes them doing=0A=
+>> pread()/pwrite() to the ext4 file. The tcmu-runner process being a diffe=
+rent=0A=
+>> context than the dm-zoned worker thread issuing the BIO,=0A=
+>> memalloc_nofs_save/restore() calls in dm-zoned will have no effect.=0A=
+> =0A=
+> One way to handle this is to pass on PF_MEMALLOC/memalloc_nofs_save state=
+=0A=
+> in the BIO so that the worker thread will also get the correct behaviour=
+=0A=
+> when it is processing this IO submission.=0A=
+=0A=
+But there is no BIO to work with here: dm-zoned BIOs are transformed into a=
+n=0A=
+application (tcmu-runner running the ZBC file handler) calls to pread()/pwr=
+ite()=0A=
+into an ext4 file. And processing of these calls trigger the direct reclaim=
+ and=0A=
+FS recursion which cause the deadlock. So BIOs are not the proper vehicle t=
+o=0A=
+transport the information about the NOFS allocation.=0A=
+=0A=
+If we had a pread_nofs()/pwrite_nofs(), that would work. Or we could define=
+ a=0A=
+RWF_NORECLAIM flag for pwritev2()/preadv2(). This last one could actually b=
+e the=0A=
+cleanest approach.=0A=
+=0A=
+Best regards.=0A=
+=0A=
+-- =0A=
+Damien Le Moal=0A=
+Western Digital Research=0A=
