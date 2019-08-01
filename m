@@ -2,75 +2,129 @@ Return-Path: <SRS0=Ly7y=V5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B08CC32754
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:17:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B1D10C32751
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:57:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5BED8214DA
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:17:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 824E420B7C
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:57:18 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Y8pJZD60"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729691AbfHABRD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Jul 2019 21:17:03 -0400
-Received: from Galois.linutronix.de ([193.142.43.55]:33583 "EHLO
-        Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729531AbfHABRC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:17:02 -0400
-Received: from localhost ([127.0.0.1] helo=nanos.tec.linutronix.de)
-        by Galois.linutronix.de with esmtp (Exim 4.80)
-        (envelope-from <tglx@linutronix.de>)
-        id 1hszhI-0002ID-DM; Thu, 01 Aug 2019 03:16:00 +0200
-Message-Id: <20190801010944.268628059@linutronix.de>
-User-Agent: quilt/0.65
-Date:   Thu, 01 Aug 2019 03:01:30 +0200
-From:   Thomas Gleixner <tglx@linutronix.de>
-To:     LKML <linux-kernel@vger.kernel.org>
-Cc:     Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@kernel.org>,
-        Sebastian Siewior <bigeasy@linutronix.de>,
-        Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Julia Cartwright <julia@ni.com>, linux-ext4@vger.kernel.org,
-        "Theodore Tso" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Mark Fasheh <mark@fasheh.com>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Joel Becker <jlbec@evilplan.org>
-Subject: [patch V2 4/7] fs/jbd2: Remove jbd_trylock_bh_state()
-References: <20190801010126.245731659@linutronix.de>
+        id S1728582AbfHAB5S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Jul 2019 21:57:18 -0400
+Received: from mail-ot1-f65.google.com ([209.85.210.65]:34239 "EHLO
+        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726334AbfHAB5S (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:57:18 -0400
+Received: by mail-ot1-f65.google.com with SMTP id n5so72498090otk.1
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Jul 2019 18:57:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:references:from:message-id:date:user-agent:mime-version
+         :in-reply-to:content-language:content-transfer-encoding;
+        bh=m/KDAm617lM5vMHWnb0yOVA/uQsQ8BKEofp9Ibmuy+c=;
+        b=Y8pJZD60Zx9glbWxSAu63w226o90IYuRm9tYE2znEwqdkIW3uNCqI1Bl7K9A17ywI5
+         0HMR5qijDNK2Dya47dPxe1bHlafZCpLbiPCCahGrusRWbqa0dgVnPLZoks6hYN9pUx9F
+         taPW7AZ1OqmlnRIasXkfj4dhy0tEITsPGe3d5fQ47mFfqYLGptF9Yy36B6WHXoWg4CSN
+         oxK3nBzGY5eVaKpbWuoLt+ZvEsMpO+tLiwNAhfvhVsfYoilSplXmkvxHJcHhvTygl1mX
+         dw4bbxj5pJYtIc44kSIYo9plqX9FCer3EsMOa76HukneSsiccSA42AFCvND+5yGMGAWP
+         MbJg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=m/KDAm617lM5vMHWnb0yOVA/uQsQ8BKEofp9Ibmuy+c=;
+        b=T0Uqo3DuJWcCWfL8OFTfVWKOaU6PrUftOhXMQ8HGHDdE54bIL6jmwW3ha97grGJRN2
+         FzTK4feUO+kPTP+aAnn5/lKZbjKQbNR1UDbx1FAn4tBrYMvoZlnv0S2p+nuJu4oqwkrM
+         cE6BZeRY8fgWUN5AWl+twDxMXP1DJQQi32VPBEKU8kDtbkRbdBECIH2l/YdSluheTcZm
+         G4fTQIXFccrQC9Fw8vvQWUCQrP3zp1sx0agpDjEw4iXSKcP2EwLFiJQmV6Om4fWHr96y
+         0zPsX9ort0r79mPfv5pknEzwmYmdwHUUb8oLRvDZGu9cY51/W3mslaOLz14PFan3zO+v
+         cTSg==
+X-Gm-Message-State: APjAAAVd48X3lT+2wfSDV1QCLu0pyouZQg9SAGYSSKVLEtiuszoQ+glR
+        6m2Ogk8e9DCpyjRYwm/yIzmH7K4e
+X-Google-Smtp-Source: APXvYqysgfpXWcQ4FYeg4LSCS7cjS6U+wZlCdw1WFQx39YMJ+ftEpDHOSuH4Riuig9KpwKhUeuLscQ==
+X-Received: by 2002:a05:6830:1249:: with SMTP id s9mr95590850otp.33.1564624636918;
+        Wed, 31 Jul 2019 18:57:16 -0700 (PDT)
+Received: from JosephdeMacBook-Pro.local ([205.204.117.13])
+        by smtp.gmail.com with ESMTPSA id w9sm23378022otk.16.2019.07.31.18.57.15
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 31 Jul 2019 18:57:16 -0700 (PDT)
+Subject: Re: [PATCH] ext4: disable mount with both dioread_nolock and
+ nodelalloc
+To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>,
+        linux-ext4@vger.kernel.org
+References: <20190731130600.7867-1-xiaoguang.wang@linux.alibaba.com>
+From:   Joseph Qi <jiangqi903@gmail.com>
+Message-ID: <1e05adf4-cb79-c503-4c7d-bf7f7eb2f218@gmail.com>
+Date:   Thu, 1 Aug 2019 09:57:12 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:60.0)
+ Gecko/20100101 Thunderbird/60.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20190731130600.7867-1-xiaoguang.wang@linux.alibaba.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-No users.
-
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Cc: linux-ext4@vger.kernel.org
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.com>
----
- include/linux/jbd2.h |    5 -----
- 1 file changed, 5 deletions(-)
-
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -347,11 +347,6 @@ static inline void jbd_lock_bh_state(str
- 	bit_spin_lock(BH_State, &bh->b_state);
- }
- 
--static inline int jbd_trylock_bh_state(struct buffer_head *bh)
--{
--	return bit_spin_trylock(BH_State, &bh->b_state);
--}
--
- static inline int jbd_is_locked_bh_state(struct buffer_head *bh)
- {
- 	return bit_spin_is_locked(BH_State, &bh->b_state);
 
 
+On 19/7/31 21:06, Xiaoguang Wang wrote:
+> Mount with both dioread_nolock and nodelalloc will result in huge
+> performance drop, which indeed is an known issue, so before we fix
+> this issue, currently we disable this behaviour. Below test reproducer
+> can reveal this performance drop.
+> 
+>     mount -o remount,dioread_nolock,delalloc /dev/vdb1
+>     rm -f testfile
+>     start_time=$(date +%s)
+>     dd if=/dev/zero of=testfile bs=4096 count=$((1024*256))
+>     sync
+>     end_time=$(date +%s)
+>     echo $((end_time - start_time))
+> 
+>     mount -o remount,dioread_nolock,nodelalloc /dev/vdb1
+>     rm -f testfile
+>     start_time=$(date +%s)
+>     dd if=/dev/zero of=testfile bs=4096 count=$((1024*256))
+>     sync
+>     end_time=$(date +%s)
+>     echo $((end_time - start_time))
+> 
+> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+> ---
+>  fs/ext4/super.c | 6 ++++++
+>  1 file changed, 6 insertions(+)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 4079605d437a..1a2b2c0cd1b8 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2098,6 +2098,12 @@ static int parse_options(char *options, struct super_block *sb,
+>  		int blocksize =
+>  			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+>  
+> +		if (!test_opt(sb, DELALLOC)) {
+> +			ext4_msg(sb, KERN_ERR, "can't mount with "
+> +				 "both dioread_nolock and nodelalloc");
+> +			return 0;
+> +		}
+> +
+I suggest move it down to keep blocksize check logic together.
+
+Other than that, looks good to me.
+Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+
+>  		if (blocksize < PAGE_SIZE) {
+>  			ext4_msg(sb, KERN_ERR, "can't mount with "
+>  				 "dioread_nolock if block size != PAGE_SIZE");
+> 
