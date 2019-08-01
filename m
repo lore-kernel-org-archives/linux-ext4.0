@@ -2,29 +2,29 @@ Return-Path: <SRS0=Ly7y=V5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9CBDC32751
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF848C41514
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A75592067D
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A550021773
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729565AbfHABQr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Jul 2019 21:16:47 -0400
-Received: from Galois.linutronix.de ([193.142.43.55]:33548 "EHLO
+        id S1729605AbfHABQw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Jul 2019 21:16:52 -0400
+Received: from Galois.linutronix.de ([193.142.43.55]:33568 "EHLO
         Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729399AbfHABQj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:39 -0400
+        with ESMTP id S1729398AbfHABQq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:46 -0400
 Received: from localhost ([127.0.0.1] helo=nanos.tec.linutronix.de)
         by Galois.linutronix.de with esmtp (Exim 4.80)
         (envelope-from <tglx@linutronix.de>)
-        id 1hszhE-0002I1-Vj; Thu, 01 Aug 2019 03:15:57 +0200
-Message-Id: <20190801010126.245731659@linutronix.de>
+        id 1hszhJ-0002IH-9s; Thu, 01 Aug 2019 03:16:02 +0200
+Message-Id: <20190801010944.364767635@linutronix.de>
 User-Agent: quilt/0.65
-Date:   Thu, 01 Aug 2019 03:01:26 +0200
+Date:   Thu, 01 Aug 2019 03:01:31 +0200
 From:   Thomas Gleixner <tglx@linutronix.de>
 To:     LKML <linux-kernel@vger.kernel.org>
 Cc:     Peter Zijlstra <peterz@infradead.org>,
@@ -32,52 +32,74 @@ Cc:     Peter Zijlstra <peterz@infradead.org>,
         Sebastian Siewior <bigeasy@linutronix.de>,
         Anna-Maria Gleixner <anna-maria@linutronix.de>,
         Steven Rostedt <rostedt@goodmis.org>,
-        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>,
-        "Theodore Tso" <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>,
+        Julia Cartwright <julia@ni.com>, linux-ext4@vger.kernel.org,
+        "Theodore Tso" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
+        linux-fsdevel@vger.kernel.org, Mark Fasheh <mark@fasheh.com>,
         Joseph Qi <joseph.qi@linux.alibaba.com>,
         Joel Becker <jlbec@evilplan.org>
-Subject: [patch V2 0/7] fs: Substitute bit-spinlocks for PREEMPT_RT and
- debugging
+Subject: [patch V2 5/7] fs/jbd2: Simplify journal_unmap_buffer()
+References: <20190801010126.245731659@linutronix.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Bit spinlocks are problematic if PREEMPT_RT is enabled. They disable
-preemption, which is undesired for latency reasons and breaks when regular
-spinlocks are taken within the bit_spinlock locked region because regular
-spinlocks are converted to 'sleeping spinlocks' on RT.
+journal_unmap_buffer() checks first whether the buffer head is a journal.
+If so it takes locks and then invokes jbd2_journal_grab_journal_head()
+followed by another check whether this is journal head buffer.
 
-Bit spinlocks are also not covered by lock debugging, e.g. lockdep. With
-the spinlock substitution in place, they can be exposed via a new config
-switch: CONFIG_DEBUG_BIT_SPINLOCKS.
+The double checking is pointless.
 
-This series handles only buffer head and jbd2, but does not touch the
-hlist_bl bit-spinlock usage. See V1 for further details:
+Replace the initial check with jbd2_journal_grab_journal_head() which
+alredy checks whether the buffer head is actually a journal.
 
-  https://lkml.kernel.org/r/20190730112452.871257694@linutronix.de
+Allows also early access to the journal head pointer for the upcoming
+conversion of state lock to a regular spinlock.
 
-Changes vs. V1:
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-ext4@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>
+---
+V2: New patch
+---
+ fs/jbd2/transaction.c |    8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-  - Collected reviewed-by tags for the BH_Uptodate part
-
-  - Reworked the JBD2 part according to Jan's review:
-
-     - Convert state lock to a regular spinlock unconditionally
-
-     - Refactor jbd2_journal_put_journal_head() to be RT friendly by
-       restricting the bit-spinlock held section to the minimum required
-       operations.
-
-       That part is probably over-engineered, but I'm sure Jan will tell me
-       sooner than later.
-
-Thanks,
-
-        tglx
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2196,7 +2196,8 @@ static int journal_unmap_buffer(journal_
+ 	 * holding the page lock. --sct
+ 	 */
+ 
+-	if (!buffer_jbd(bh))
++	jh = jbd2_journal_grab_journal_head(bh);
++	if (!jh)
+ 		goto zap_buffer_unlocked;
+ 
+ 	/* OK, we have data buffer in journaled mode */
+@@ -2204,10 +2205,6 @@ static int journal_unmap_buffer(journal_
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
+ 
+-	jh = jbd2_journal_grab_journal_head(bh);
+-	if (!jh)
+-		goto zap_buffer_no_jh;
+-
+ 	/*
+ 	 * We cannot remove the buffer from checkpoint lists until the
+ 	 * transaction adding inode to orphan list (let's call it T)
+@@ -2329,7 +2326,6 @@ static int journal_unmap_buffer(journal_
+ 	 */
+ 	jh->b_modified = 0;
+ 	jbd2_journal_put_journal_head(jh);
+-zap_buffer_no_jh:
+ 	spin_unlock(&journal->j_list_lock);
+ 	jbd_unlock_bh_state(bh);
+ 	write_unlock(&journal->j_state_lock);
 
 
