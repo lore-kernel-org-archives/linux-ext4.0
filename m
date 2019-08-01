@@ -2,29 +2,29 @@ Return-Path: <SRS0=Ly7y=V5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 03675C32751
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9CBDC32751
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D6D8C2067D
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A75592067D
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729425AbfHABQj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Jul 2019 21:16:39 -0400
-Received: from Galois.linutronix.de ([193.142.43.55]:33542 "EHLO
+        id S1729565AbfHABQr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Jul 2019 21:16:47 -0400
+Received: from Galois.linutronix.de ([193.142.43.55]:33548 "EHLO
         Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726448AbfHABQi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:38 -0400
+        with ESMTP id S1729399AbfHABQj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:39 -0400
 Received: from localhost ([127.0.0.1] helo=nanos.tec.linutronix.de)
         by Galois.linutronix.de with esmtp (Exim 4.80)
         (envelope-from <tglx@linutronix.de>)
-        id 1hszhG-0002I7-RD; Thu, 01 Aug 2019 03:15:58 +0200
-Message-Id: <20190801010944.065808812@linutronix.de>
+        id 1hszhE-0002I1-Vj; Thu, 01 Aug 2019 03:15:57 +0200
+Message-Id: <20190801010126.245731659@linutronix.de>
 User-Agent: quilt/0.65
-Date:   Thu, 01 Aug 2019 03:01:28 +0200
+Date:   Thu, 01 Aug 2019 03:01:26 +0200
 From:   Thomas Gleixner <tglx@linutronix.de>
 To:     LKML <linux-kernel@vger.kernel.org>
 Cc:     Peter Zijlstra <peterz@infradead.org>,
@@ -40,184 +40,44 @@ Cc:     Peter Zijlstra <peterz@infradead.org>,
         Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
         Joseph Qi <joseph.qi@linux.alibaba.com>,
         Joel Becker <jlbec@evilplan.org>
-Subject: [patch V2 2/7] fs/buffer: Move BH_Uptodate_Lock locking into wrapper
- functions
-References: <20190801010126.245731659@linutronix.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Subject: [patch V2 0/7] fs: Substitute bit-spinlocks for PREEMPT_RT and
+ debugging
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Bit spinlocks are problematic if PREEMPT_RT is enabled, because they
-disable preemption, which is undesired for latency reasons and breaks when
-regular spinlocks are taken within the bit_spinlock locked region because
-regular spinlocks are converted to 'sleeping spinlocks' on RT. So RT
-replaces the bit spinlocks with regular spinlocks to avoid this problem.
+Bit spinlocks are problematic if PREEMPT_RT is enabled. They disable
+preemption, which is undesired for latency reasons and breaks when regular
+spinlocks are taken within the bit_spinlock locked region because regular
+spinlocks are converted to 'sleeping spinlocks' on RT.
 
-To avoid ifdeffery at the source level, wrap all BH_Uptodate_Lock bitlock
-operations with inline functions, so the spinlock substitution can be done
-at one place.
+Bit spinlocks are also not covered by lock debugging, e.g. lockdep. With
+the spinlock substitution in place, they can be exposed via a new config
+switch: CONFIG_DEBUG_BIT_SPINLOCKS.
 
-Using regular spinlocks can also be enabled for lock debugging purposes so
-the lock operations become visible to lockdep.
+This series handles only buffer head and jbd2, but does not touch the
+hlist_bl bit-spinlock usage. See V1 for further details:
 
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Matthew Wilcox <willy@infradead.org>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
----
-V2: Collected Reviewed-by tag
----
- fs/buffer.c                 |   20 ++++++--------------
- fs/ext4/page-io.c           |    6 ++----
- fs/ntfs/aops.c              |   10 +++-------
- include/linux/buffer_head.h |   16 ++++++++++++++++
- 4 files changed, 27 insertions(+), 25 deletions(-)
+  https://lkml.kernel.org/r/20190730112452.871257694@linutronix.de
 
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -275,8 +275,7 @@ static void end_buffer_async_read(struct
- 	 * decide that the page is now completely done.
- 	 */
- 	first = page_buffers(page);
--	local_irq_save(flags);
--	bit_spin_lock(BH_Uptodate_Lock, &first->b_state);
-+	flags = bh_uptodate_lock_irqsave(first);
- 	clear_buffer_async_read(bh);
- 	unlock_buffer(bh);
- 	tmp = bh;
-@@ -289,8 +288,7 @@ static void end_buffer_async_read(struct
- 		}
- 		tmp = tmp->b_this_page;
- 	} while (tmp != bh);
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
-+	bh_uptodate_unlock_irqrestore(first, flags);
- 
- 	/*
- 	 * If none of the buffers had errors and they are all
-@@ -302,9 +300,7 @@ static void end_buffer_async_read(struct
- 	return;
- 
- still_busy:
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
--	return;
-+	bh_uptodate_unlock_irqrestore(first, flags);
- }
- 
- /*
-@@ -331,8 +327,7 @@ void end_buffer_async_write(struct buffe
- 	}
- 
- 	first = page_buffers(page);
--	local_irq_save(flags);
--	bit_spin_lock(BH_Uptodate_Lock, &first->b_state);
-+	flags = bh_uptodate_lock_irqsave(first);
- 
- 	clear_buffer_async_write(bh);
- 	unlock_buffer(bh);
-@@ -344,15 +339,12 @@ void end_buffer_async_write(struct buffe
- 		}
- 		tmp = tmp->b_this_page;
- 	}
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
-+	bh_uptodate_unlock_irqrestore(first, flags);
- 	end_page_writeback(page);
- 	return;
- 
- still_busy:
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
--	return;
-+	bh_uptodate_unlock_irqrestore(first, flags);
- }
- EXPORT_SYMBOL(end_buffer_async_write);
- 
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -90,8 +90,7 @@ static void ext4_finish_bio(struct bio *
- 		 * We check all buffers in the page under BH_Uptodate_Lock
- 		 * to avoid races with other end io clearing async_write flags
- 		 */
--		local_irq_save(flags);
--		bit_spin_lock(BH_Uptodate_Lock, &head->b_state);
-+		flags = bh_uptodate_lock_irqsave(head);
- 		do {
- 			if (bh_offset(bh) < bio_start ||
- 			    bh_offset(bh) + bh->b_size > bio_end) {
-@@ -103,8 +102,7 @@ static void ext4_finish_bio(struct bio *
- 			if (bio->bi_status)
- 				buffer_io_error(bh);
- 		} while ((bh = bh->b_this_page) != head);
--		bit_spin_unlock(BH_Uptodate_Lock, &head->b_state);
--		local_irq_restore(flags);
-+		bh_uptodate_unlock_irqrestore(head, flags);
- 		if (!under_io) {
- 			fscrypt_free_bounce_page(bounce_page);
- 			end_page_writeback(page);
---- a/fs/ntfs/aops.c
-+++ b/fs/ntfs/aops.c
-@@ -92,8 +92,7 @@ static void ntfs_end_buffer_async_read(s
- 				"0x%llx.", (unsigned long long)bh->b_blocknr);
- 	}
- 	first = page_buffers(page);
--	local_irq_save(flags);
--	bit_spin_lock(BH_Uptodate_Lock, &first->b_state);
-+	flags = bh_uptodate_lock_irqsave(first);
- 	clear_buffer_async_read(bh);
- 	unlock_buffer(bh);
- 	tmp = bh;
-@@ -108,8 +107,7 @@ static void ntfs_end_buffer_async_read(s
- 		}
- 		tmp = tmp->b_this_page;
- 	} while (tmp != bh);
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
-+	bh_uptodate_unlock_irqrestore(first, flags);
- 	/*
- 	 * If none of the buffers had errors then we can set the page uptodate,
- 	 * but we first have to perform the post read mst fixups, if the
-@@ -142,9 +140,7 @@ static void ntfs_end_buffer_async_read(s
- 	unlock_page(page);
- 	return;
- still_busy:
--	bit_spin_unlock(BH_Uptodate_Lock, &first->b_state);
--	local_irq_restore(flags);
--	return;
-+	bh_uptodate_unlock_irqrestore(first, flags);
- }
- 
- /**
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -78,6 +78,22 @@ struct buffer_head {
- 	atomic_t b_count;		/* users using this buffer_head */
- };
- 
-+static inline unsigned long bh_uptodate_lock_irqsave(struct buffer_head *bh)
-+{
-+	unsigned long flags;
-+
-+	local_irq_save(flags);
-+	bit_spin_lock(BH_Uptodate_Lock, &bh->b_state);
-+	return flags;
-+}
-+
-+static inline void
-+bh_uptodate_unlock_irqrestore(struct buffer_head *bh, unsigned long flags)
-+{
-+	bit_spin_unlock(BH_Uptodate_Lock, &bh->b_state);
-+	local_irq_restore(flags);
-+}
-+
- /*
-  * macro tricks to expand the set_buffer_foo(), clear_buffer_foo()
-  * and buffer_foo() functions.
+Changes vs. V1:
+
+  - Collected reviewed-by tags for the BH_Uptodate part
+
+  - Reworked the JBD2 part according to Jan's review:
+
+     - Convert state lock to a regular spinlock unconditionally
+
+     - Refactor jbd2_journal_put_journal_head() to be RT friendly by
+       restricting the bit-spinlock held section to the minimum required
+       operations.
+
+       That part is probably over-engineered, but I'm sure Jan will tell me
+       sooner than later.
+
+Thanks,
+
+        tglx
 
 
