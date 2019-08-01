@@ -2,138 +2,106 @@ Return-Path: <SRS0=Ly7y=V5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06A91C19759
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 10:26:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E413C19759
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 11:29:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7F1772087E
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 10:26:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3482E2171F
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 11:29:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kpnmail.nl header.i=@kpnmail.nl header.b="miL2DKdG"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Wjf8pXaw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729753AbfHAK0V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Aug 2019 06:26:21 -0400
-Received: from cpsmtpb-ews06.kpnxchange.com ([213.75.39.9]:57445 "EHLO
-        cpsmtpb-ews06.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727763AbfHAK0V (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2019 06:26:21 -0400
-X-Greylist: delayed 782 seconds by postgrey-1.27 at vger.kernel.org; Thu, 01 Aug 2019 06:26:20 EDT
-Received: from cpsps-ews07.kpnxchange.com ([10.94.84.174]) by cpsmtpb-ews06.kpnxchange.com with Microsoft SMTPSVC(7.5.7601.17514);
-         Thu, 1 Aug 2019 12:13:16 +0200
-X-Brand: 7Ljiz6bi2A==
-X-KPN-SpamVerdict: e1=0;e2=0;e3=0;e4=(e4=10;e1=10;e3=10;e2=11);EVW:Whi
-        te;BM:NotScanned;FinalVerdict:Clean
-X-CMAE-Analysis: v=2.3 cv=Ts83ewfh c=1 sm=1 tr=0 cx=a_idp_d
-         a=dZ5u/0G9QtS9WKCcNUBnHQ==:117 a=dZ5u/0G9QtS9WKCcNUBnHQ==:17
-         a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=UhJ12kwm0HYA:10 a=FmdZ9Uzk2mMA:10
-         a=r77TgQKjGQsHNAKrUKIA:9 a=M-rc62OlvcSaV9L3cLUA:9
-         a=hOO6_UPpzl2U96Ot:21 a=BVo32mUrhiHiCgx8:21 a=QEXdDO2ut3YA:10
-         a=NbuKjTMiSAsWWIzmN0sA:9 a=R2cbvPwrlzGk4xld:21 a=C87xB8CrJAm-BvCX:21
-         a=B2y7HmGcmWMA:10
-X-CM-AcctID: kpn@feedback.cloudmark.com
-Received: from smtp.kpnmail.nl ([195.121.84.13]) by cpsps-ews07.kpnxchange.com over TLS secured channel with Microsoft SMTPSVC(8.5.9600.16384);
-         Thu, 1 Aug 2019 12:13:16 +0200
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=kpnmail.nl; s=kpnmail01;
-        h=content-type:mime-version:date:message-id:from:to:subject;
-        bh=dERS7ecwKT/KaYdVxeGYsSGm6pOl1HlR5/bPZwv1EsU=;
-        b=miL2DKdGUOPTQZ5Q33S3t/LnoyscLDcYeSAPgpr5aA+1ERPoXuCo4kTpY9fKVbdWgE+nYVX/ZGFeY
-         8LGP8W8iLlNvoS9nGRyudTyRDc2i0Ol3YR2tanTmTP1zSLbgEl/lUDwaDzvWGB2HQd9mOenSzbdeCM
-         b2IDHve6NlO2v+u4=
-X-KPN-VerifiedSender: No
-X-CMASSUN: 33|chbpyXWllezQk0E0QPssg8Sr7XRtEls4tws9xhhyIlRwd0rZuJ0cx6W7wl1RJD4
- iRcwKkRRDhe752m7T9avpGg==
-X-Originating-IP: 77.173.60.12
-Received: from [192.168.1.37] (unknown [77.173.60.12])
-        by smtp.kpnmail.nl (Halon) with ESMTPSA
-        id f8f6df0e-b444-11e9-aa6d-005056998788;
-        Thu, 01 Aug 2019 12:13:14 +0200 (CEST)
-Subject: Re: [PATCH] po: remove unnecessary/buggy positional parameter
- specifiers
-To:     Theodore Ts'o <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     =?UTF-8?B?VHLhuqduIE5n4buNYyBRdcOibg==?= <vnwildman@gmail.com>
-References: <20190713165752.7820-1-tytso@mit.edu>
-From:   Benno Schulenberg <coordinator@translationproject.org>
-Openpgp: preference=signencrypt
-Message-ID: <366cbf75-891e-a799-ea4a-f67f935cfdd4@translationproject.org>
-Date:   Thu, 1 Aug 2019 12:13:16 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.8.0
+        id S1731025AbfHAL31 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Aug 2019 07:29:27 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:45814 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730946AbfHAL31 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Aug 2019 07:29:27 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=ksRJLOMTOIWRq2Nag2thMkKvE3lWaLrnStcxxBgysnw=; b=Wjf8pXawCgcKFVf3bV3iZbnJj
+        rX+WDMifwGDiVc6ecMzHbsMT/+jfAGFFMugdHvw6yBSTK2tn/Q2Syt1Nwxm9oCCVHkDM78I/RIZUk
+        2m7+IzAEQpvn/0rkMsTYP3zgSsxUxl05sRnKRrkqE9q2n46dcLvOao+xLjN4Q3wAYafVTbDxZFd7z
+        UmhJLhJPbpNXPZishSqd2zv3poZ1lQ1U0UsPMZ9mCaz9/iLnd/tJwBaSsLDdYfcOGixo7gWzMT8DD
+        Ff36e4PoTKL35KsJGZCYslDjYcnwWBiXJDap1Co63OVM8uSON30wBYA7ntBMnnquigXHA15H7/BFi
+        cOaFb6Z6w==;
+Received: from j217100.upc-j.chello.nl ([24.132.217.100] helo=hirez.programming.kicks-ass.net)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92 #3 (Red Hat Linux))
+        id 1ht9GN-0001Zu-6n; Thu, 01 Aug 2019 11:28:51 +0000
+Received: by hirez.programming.kicks-ass.net (Postfix, from userid 1000)
+        id 9B7432029F4C7; Thu,  1 Aug 2019 13:28:49 +0200 (CEST)
+Date:   Thu, 1 Aug 2019 13:28:49 +0200
+From:   Peter Zijlstra <peterz@infradead.org>
+To:     Thomas Gleixner <tglx@linutronix.de>
+Cc:     LKML <linux-kernel@vger.kernel.org>,
+        Ingo Molnar <mingo@kernel.org>,
+        Sebastian Siewior <bigeasy@linutronix.de>,
+        Anna-Maria Gleixner <anna-maria@linutronix.de>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.com>,
+        Theodore Tso <tytso@mit.edu>, Mark Fasheh <mark@fasheh.com>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Joel Becker <jlbec@evilplan.org>, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [patch V2 6/7] fs/jbd2: Make state lock a spinlock
+Message-ID: <20190801112849.GB31381@hirez.programming.kicks-ass.net>
+References: <20190801010126.245731659@linutronix.de>
+ <20190801010944.457499601@linutronix.de>
 MIME-Version: 1.0
-In-Reply-To: <20190713165752.7820-1-tytso@mit.edu>
-Content-Type: multipart/mixed;
- boundary="------------782203746864B24412C31F2B"
-Content-Language: en-US
-X-OriginalArrivalTime: 01 Aug 2019 10:13:16.0927 (UTC) FILETIME=[BC7EB8F0:01D54851]
-X-RcptDomain: vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190801010944.457499601@linutronix.de>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------782203746864B24412C31F2B
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
+On Thu, Aug 01, 2019 at 03:01:32AM +0200, Thomas Gleixner wrote:
 
+> @@ -1931,7 +1932,7 @@ static void __jbd2_journal_temp_unlink_b
+>  	transaction_t *transaction;
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+> -	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
+> +	assert_spin_locked(&jh->state_lock);
+>  	transaction = jh->b_transaction;
+>  	if (transaction)
+>  		assert_spin_locked(&transaction->t_journal->j_list_lock);
 
-Op 13-07-19 om 18:57 schreef Theodore Ts'o:
-> The strings in e2fsck/problem.c use a special %-expansion scheme,
-> where %b gets expanded to a block number, %i gets expanded to an inode
-> number, etc., where these values are in a problem context data
-> structure.  As such, there is no need to use a printf style positional
-> indicator (e.g., %2$s).  Indeed, the use of things like %1$i or %2$b
-> will cause the %-expansion code to just print %1$i or %2$b, instead of
-> the inode or block number, respectively.
-> 
-> Addresses-Debian-Bug: #892173
+> @@ -2415,7 +2416,7 @@ void __jbd2_journal_file_buffer(struct j
+>  	int was_dirty = 0;
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+> -	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
+> +	assert_spin_locked(&jh->state_lock);
+>  	assert_spin_locked(&transaction->t_journal->j_list_lock);
+>  
+>  	J_ASSERT_JH(jh, jh->b_jlist < BJ_Types);
 
-The proposed corrections have been applied by the translators to the Czech,
-Dutch and German PO files, and manually by myself to the Vietnamese PO file .
+> @@ -2500,7 +2501,7 @@ void __jbd2_journal_refile_buffer(struct
+>  	int was_dirty, jlist;
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+> -	J_ASSERT_JH(jh, jbd_is_locked_bh_state(bh));
+> +	assert_spin_locked(&jh->state_lock);
+>  	if (jh->b_transaction)
+>  		assert_spin_locked(&jh->b_transaction->t_journal->j_list_lock);
+>  
 
-Attached is a small patch to remove a superfluous no-c-format tag.
+Do those want to be:
 
-Benno
+  lockdep_assert_held(&jh->state_lock);
 
---------------782203746864B24412C31F2B
-Content-Type: text/x-patch;
- name="0001-e2fsck-remove-an-ineffective-because-trailing-xgette.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="0001-e2fsck-remove-an-ineffective-because-trailing-xgette.pa";
- filename*1="tch"
-
-From eaf3e708719d60942cfadfb64c8f73e8bb54a2a5 Mon Sep 17 00:00:00 2001
-From: Benno Schulenberg <bensberg@telfort.nl>
-Date: Thu, 1 Aug 2019 12:03:31 +0200
-Subject: [PATCH] e2fsck: remove an ineffective (because trailing)
- xgettext:no-c-format tag
-
-Signed-off-by: Benno Schulenberg <bensberg@telfort.nl>
----
- e2fsck/problem.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index c45c6b78..5971a503 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -705,7 +705,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Relocating group number's information to X */
- 	{ PR_1_RELOC_TO,
- 	  /* xgettext:no-c-format */
--	  N_("Relocating @g %g's %s to %c...\n"), /* xgettext:no-c-format */
-+	  N_("Relocating @g %g's %s to %c...\n"),
- 	  PROMPT_NONE, PR_PREEN_OK, 0, 0, 0 },
- 
- 	/* Warning: could not read block number of relocation process */
--- 
-2.22.0
-
-
---------------782203746864B24412C31F2B--
+instead? The difference is of course that lockdep_assert_held() requires
+the current context to hold the lock, where assert_*_locked() merely
+checks _someone_ holds it.
