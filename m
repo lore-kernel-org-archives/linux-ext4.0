@@ -6,25 +6,25 @@ X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C87C32751
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D844C32751
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 517372067D
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ED0C32067D
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Aug 2019 01:16:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729339AbfHABQd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Jul 2019 21:16:33 -0400
-Received: from Galois.linutronix.de ([193.142.43.55]:33537 "EHLO
+        id S1729444AbfHABQj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Jul 2019 21:16:39 -0400
+Received: from Galois.linutronix.de ([193.142.43.55]:33544 "EHLO
         Galois.linutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726448AbfHABQd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:33 -0400
+        with ESMTP id S1729398AbfHABQh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jul 2019 21:16:37 -0400
 Received: from localhost ([127.0.0.1] helo=nanos.tec.linutronix.de)
         by Galois.linutronix.de with esmtp (Exim 4.80)
         (envelope-from <tglx@linutronix.de>)
-        id 1hszhF-0002I4-U4; Thu, 01 Aug 2019 03:15:58 +0200
-Message-Id: <20190801010943.975240672@linutronix.de>
+        id 1hszhH-0002IA-Ks; Thu, 01 Aug 2019 03:15:59 +0200
+Message-Id: <20190801010944.174039805@linutronix.de>
 User-Agent: quilt/0.65
-Date:   Thu, 01 Aug 2019 03:01:27 +0200
+Date:   Thu, 01 Aug 2019 03:01:29 +0200
 From:   Thomas Gleixner <tglx@linutronix.de>
 To:     LKML <linux-kernel@vger.kernel.org>
 Cc:     Peter Zijlstra <peterz@infradead.org>,
@@ -34,13 +34,14 @@ Cc:     Peter Zijlstra <peterz@infradead.org>,
         Steven Rostedt <rostedt@goodmis.org>,
         Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>,
         "Theodore Tso" <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
+        Matthew Wilcox <willy@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
         Joseph Qi <joseph.qi@linux.alibaba.com>,
         Joel Becker <jlbec@evilplan.org>
-Subject: [patch V2 1/7] locking/lockdep: Add Kconfig option for bit spinlocks
+Subject: [patch V2 3/7] fs/buffer: Substitute BH_Uptodate_Lock for RT and bit
+ spinlock debugging
 References: <20190801010126.245731659@linutronix.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -49,41 +50,89 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Some usage sites of bit spinlocks have a substitution with regular
-spinlocks which depends on CONFIG_PREEMPT_RT. But this substitution can
-also be used to expose these locks to the regular lock debugging
-infrastructure, e.g. lockdep.
+Bit spinlocks are problematic if PREEMPT_RT is enabled. They disable
+preemption, which is undesired for latency reasons and breaks when regular
+spinlocks are taken within the bit_spinlock locked region because regular
+spinlocks are converted to 'sleeping spinlocks' on RT.
 
-As this increases the size of affected data structures significantly this
-is guarded by a separate Kconfig switch.
+Substitute the BH_Uptodate_Lock bit spinlock with a regular spinlock for
+PREEMPT_RT enabled kernels.
 
-Note, that only the bit spinlocks which have a substitution implemented
-will be covered by this. All other bit spinlocks evade lock debugging as
-before.
+Bit spinlocks are also not covered by lock debugging, e.g. lockdep. With
+the spinlock substitution in place, they can be exposed via
+CONFIG_DEBUG_BIT_SPINLOCKS.
 
 Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Matthew Wilcox <willy@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org
 ---
- lib/Kconfig.debug |   10 ++++++++++
- 1 file changed, 10 insertions(+)
+V2: Collected Reviewed-by tag
+---
+ fs/buffer.c                 |    1 +
+ include/linux/buffer_head.h |   31 +++++++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+)
 
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -1201,6 +1201,16 @@ config DEBUG_RWSEMS
- 	  This debugging feature allows mismatched rw semaphore locks
- 	  and unlocks to be detected and reported.
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3360,6 +3360,7 @@ struct buffer_head *alloc_buffer_head(gf
+ 	struct buffer_head *ret = kmem_cache_zalloc(bh_cachep, gfp_flags);
+ 	if (ret) {
+ 		INIT_LIST_HEAD(&ret->b_assoc_buffers);
++		buffer_head_init_locks(ret);
+ 		preempt_disable();
+ 		__this_cpu_inc(bh_accounting.nr);
+ 		recalc_bh_state();
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -76,8 +76,35 @@ struct buffer_head {
+ 	struct address_space *b_assoc_map;	/* mapping this buffer is
+ 						   associated with */
+ 	atomic_t b_count;		/* users using this buffer_head */
++
++#if defined(CONFIG_PREEMPT_RT) || defined(CONFIG_DEBUG_BIT_SPINLOCKS)
++	spinlock_t b_uptodate_lock;
++#endif
+ };
  
-+config DEBUG_BIT_SPINLOCKS
-+	bool "Bit spinlock debugging"
-+	depends on DEBUG_SPINLOCK
-+	help
-+	  This debugging feature substitutes bit spinlocks in some use
-+	  cases, e.g. buffer head, zram, with with regular spinlocks so
-+	  these locks are exposed to lock debugging features.
++#if defined(CONFIG_PREEMPT_RT) || defined(CONFIG_DEBUG_BIT_SPINLOCKS)
 +
-+	  Not all bit spinlocks are covered by this.
++static inline unsigned long bh_uptodate_lock_irqsave(struct buffer_head *bh)
++{
++	unsigned long flags;
 +
- config DEBUG_LOCK_ALLOC
- 	bool "Lock debugging: detect incorrect freeing of live locks"
- 	depends on DEBUG_KERNEL && LOCK_DEBUGGING_SUPPORT
++	spin_lock_irqsave(&bh->b_uptodate_lock, flags);
++	return flags;
++}
++
++static inline void
++bh_uptodate_unlock_irqrestore(struct buffer_head *bh, unsigned long flags)
++{
++	spin_unlock_irqrestore(&bh->b_uptodate_lock, flags);
++}
++
++static inline void buffer_head_init_locks(struct buffer_head *bh)
++{
++	spin_lock_init(&bh->b_uptodate_lock);
++}
++
++#else /* PREEMPT_RT || DEBUG_BIT_SPINLOCKS */
++
+ static inline unsigned long bh_uptodate_lock_irqsave(struct buffer_head *bh)
+ {
+ 	unsigned long flags;
+@@ -94,6 +121,10 @@ bh_uptodate_unlock_irqrestore(struct buf
+ 	local_irq_restore(flags);
+ }
+ 
++static inline void buffer_head_init_locks(struct buffer_head *bh) { }
++
++#endif /* !PREEMPT_RT && !DEBUG_BIT_SPINLOCKS */
++
+ /*
+  * macro tricks to expand the set_buffer_foo(), clear_buffer_foo()
+  * and buffer_foo() functions.
 
 
