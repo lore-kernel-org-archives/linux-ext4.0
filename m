@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F7C9C433FF
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4F04C32756
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 13AA7208C4
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A5599217F5
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730800AbfHIW7K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Aug 2019 18:59:10 -0400
-Received: from mga12.intel.com ([192.55.52.136]:47931 "EHLO mga12.intel.com"
+        id S1731054AbfHIW73 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Aug 2019 18:59:29 -0400
+Received: from mga11.intel.com ([192.55.52.93]:23377 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730724AbfHIW7I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Aug 2019 18:59:08 -0400
+        id S1730744AbfHIW7J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Aug 2019 18:59:09 -0400
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by fmsmga106.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:07 -0700
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by fmsmga102.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:08 -0700
 X-IronPort-AV: E=Sophos;i="5.64,367,1559545200"; 
-   d="scan'208";a="374631601"
+   d="scan'208";a="199539307"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga005-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:07 -0700
+  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:08 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Jason Gunthorpe <jgg@ziepe.ca>,
@@ -40,9 +40,9 @@ Cc:     Jason Gunthorpe <jgg@ziepe.ca>,
         linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
         linux-ext4@vger.kernel.org, linux-mm@kvack.org,
         Ira Weiny <ira.weiny@intel.com>
-Subject: [RFC PATCH v2 17/19] RDMA/umem: Convert to vaddr_[pin|unpin]* operations.
-Date:   Fri,  9 Aug 2019 15:58:31 -0700
-Message-Id: <20190809225833.6657-18-ira.weiny@intel.com>
+Subject: [RFC PATCH v2 18/19] {mm,procfs}: Add display file_pins proc
+Date:   Fri,  9 Aug 2019 15:58:32 -0700
+Message-Id: <20190809225833.6657-19-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190809225833.6657-1-ira.weiny@intel.com>
 References: <20190809225833.6657-1-ira.weiny@intel.com>
@@ -55,179 +55,271 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-In order to properly track the pinning information we need to keep a
-vaddr_pin object around.  Store that within the umem object directly.
+Now that we have the file pins information stored add a new procfs entry
+to display them to the user.
 
-The vaddr_pin object allows the GUP code to associate any files it pins
-with the RDMA file descriptor associated with this GUP.
+NOTE output will be dependant on where the file pin is tied to.  Some
+processes may have the pin associated with a file descriptor in which
+case that file is reported as well.
 
-Furthermore, use the vaddr_pin object to store the owning mm while we
-are at it.
+Others are associated directly with the process mm and are reported as
+such.
 
-No references need to be taken on the owing file as the lifetime of that
-object is tied to all the umems being destroyed first.
+For example of a file pinned to an RDMA open context (fd 4) and a file
+pinned to the mm of that process:
+
+4: /dev/infiniband/uverbs0
+   /mnt/pmem/foo
+/mnt/pmem/bar
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- drivers/infiniband/core/umem.c     | 26 +++++++++++++++++---------
- drivers/infiniband/core/umem_odp.c | 16 ++++++++--------
- include/rdma/ib_umem.h             |  2 +-
- 3 files changed, 26 insertions(+), 18 deletions(-)
+ fs/proc/base.c | 214 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 214 insertions(+)
 
-diff --git a/drivers/infiniband/core/umem.c b/drivers/infiniband/core/umem.c
-index 965cf9dea71a..a9ce3e3816ef 100644
---- a/drivers/infiniband/core/umem.c
-+++ b/drivers/infiniband/core/umem.c
-@@ -54,7 +54,8 @@ static void __ib_umem_release(struct ib_device *dev, struct ib_umem *umem, int d
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index ebea9501afb8..f4d219172235 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -2995,6 +2995,7 @@ static int proc_stack_depth(struct seq_file *m, struct pid_namespace *ns,
+  */
+ static const struct file_operations proc_task_operations;
+ static const struct inode_operations proc_task_inode_operations;
++static const struct file_operations proc_pid_file_pins_operations;
  
- 	for_each_sg_page(umem->sg_head.sgl, &sg_iter, umem->sg_nents, 0) {
- 		page = sg_page_iter_page(&sg_iter);
--		put_user_pages_dirty_lock(&page, 1, umem->writable && dirty);
-+		vaddr_unpin_pages_dirty_lock(&page, 1, &umem->vaddr_pin,
-+					     umem->writable && dirty);
- 	}
- 
- 	sg_free_table(&umem->sg_head);
-@@ -243,8 +244,15 @@ struct ib_umem *ib_umem_get(struct ib_udata *udata, unsigned long addr,
- 	umem->length     = size;
- 	umem->address    = addr;
- 	umem->writable   = ib_access_writable(access);
--	umem->owning_mm = mm = current->mm;
--	mmgrab(mm);
-+	umem->vaddr_pin.mm = mm = current->mm;
-+	mmgrab(umem->vaddr_pin.mm);
+ static const struct pid_entry tgid_base_stuff[] = {
+ 	DIR("task",       S_IRUGO|S_IXUGO, proc_task_inode_operations, proc_task_operations),
+@@ -3024,6 +3025,7 @@ static const struct pid_entry tgid_base_stuff[] = {
+ 	ONE("stat",       S_IRUGO, proc_tgid_stat),
+ 	ONE("statm",      S_IRUGO, proc_pid_statm),
+ 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
++	REG("file_pins",  S_IRUGO, proc_pid_file_pins_operations),
+ #ifdef CONFIG_NUMA
+ 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),
+ #endif
+@@ -3422,6 +3424,7 @@ static const struct pid_entry tid_base_stuff[] = {
+ 	ONE("stat",      S_IRUGO, proc_tid_stat),
+ 	ONE("statm",     S_IRUGO, proc_pid_statm),
+ 	REG("maps",      S_IRUGO, proc_pid_maps_operations),
++	REG("file_pins", S_IRUGO, proc_pid_file_pins_operations),
+ #ifdef CONFIG_PROC_CHILDREN
+ 	REG("children",  S_IRUGO, proc_tid_children_operations),
+ #endif
+@@ -3718,3 +3721,214 @@ void __init set_proc_pid_nlink(void)
+ 	nlink_tid = pid_entry_nlink(tid_base_stuff, ARRAY_SIZE(tid_base_stuff));
+ 	nlink_tgid = pid_entry_nlink(tgid_base_stuff, ARRAY_SIZE(tgid_base_stuff));
+ }
 +
-+	/* No need to get a reference to the core file object here.  The key is
-+	 * that sys_file reference is held by the ufile.  Any duplication of
-+	 * sys_file by the core will keep references active until all those
-+	 * contexts are closed out.  No matter which process hold them open.
-+	 */
-+	umem->vaddr_pin.f_owner = context->ufile->sys_file;
- 
- 	if (access & IB_ACCESS_ON_DEMAND) {
- 		if (WARN_ON_ONCE(!context->invalidate_range)) {
-@@ -292,11 +300,11 @@ struct ib_umem *ib_umem_get(struct ib_udata *udata, unsigned long addr,
- 
- 	while (npages) {
- 		down_read(&mm->mmap_sem);
--		ret = get_user_pages(cur_base,
-+		ret = vaddr_pin_pages(cur_base,
- 				     min_t(unsigned long, npages,
- 					   PAGE_SIZE / sizeof (struct page *)),
--				     gup_flags | FOLL_LONGTERM,
--				     page_list, NULL);
-+				     gup_flags,
-+				     page_list, &umem->vaddr_pin);
- 		if (ret < 0) {
- 			up_read(&mm->mmap_sem);
- 			goto umem_release;
-@@ -336,7 +344,7 @@ struct ib_umem *ib_umem_get(struct ib_udata *udata, unsigned long addr,
- 	free_page((unsigned long) page_list);
- umem_kfree:
- 	if (ret) {
--		mmdrop(umem->owning_mm);
-+		mmdrop(umem->vaddr_pin.mm);
- 		kfree(umem);
- 	}
- 	return ret ? ERR_PTR(ret) : umem;
-@@ -345,7 +353,7 @@ EXPORT_SYMBOL(ib_umem_get);
- 
- static void __ib_umem_release_tail(struct ib_umem *umem)
- {
--	mmdrop(umem->owning_mm);
-+	mmdrop(umem->vaddr_pin.mm);
- 	if (umem->is_odp)
- 		kfree(to_ib_umem_odp(umem));
- 	else
-@@ -369,7 +377,7 @@ void ib_umem_release(struct ib_umem *umem)
- 
- 	__ib_umem_release(umem->context->device, umem, 1);
- 
--	atomic64_sub(ib_umem_num_pages(umem), &umem->owning_mm->pinned_vm);
-+	atomic64_sub(ib_umem_num_pages(umem), &umem->vaddr_pin.mm->pinned_vm);
- 	__ib_umem_release_tail(umem);
- }
- EXPORT_SYMBOL(ib_umem_release);
-diff --git a/drivers/infiniband/core/umem_odp.c b/drivers/infiniband/core/umem_odp.c
-index 2a75c6f8d827..53085896d718 100644
---- a/drivers/infiniband/core/umem_odp.c
-+++ b/drivers/infiniband/core/umem_odp.c
-@@ -278,11 +278,11 @@ static int get_per_mm(struct ib_umem_odp *umem_odp)
- 	 */
- 	mutex_lock(&ctx->per_mm_list_lock);
- 	list_for_each_entry(per_mm, &ctx->per_mm_list, ucontext_list) {
--		if (per_mm->mm == umem_odp->umem.owning_mm)
-+		if (per_mm->mm == umem_odp->umem.vaddr_pin.mm)
- 			goto found;
- 	}
- 
--	per_mm = alloc_per_mm(ctx, umem_odp->umem.owning_mm);
-+	per_mm = alloc_per_mm(ctx, umem_odp->umem.vaddr_pin.mm);
- 	if (IS_ERR(per_mm)) {
- 		mutex_unlock(&ctx->per_mm_list_lock);
- 		return PTR_ERR(per_mm);
-@@ -355,8 +355,8 @@ struct ib_umem_odp *ib_alloc_odp_umem(struct ib_umem_odp *root,
- 	umem->writable   = root->umem.writable;
- 	umem->is_odp = 1;
- 	odp_data->per_mm = per_mm;
--	umem->owning_mm  = per_mm->mm;
--	mmgrab(umem->owning_mm);
-+	umem->vaddr_pin.mm  = per_mm->mm;
-+	mmgrab(umem->vaddr_pin.mm);
- 
- 	mutex_init(&odp_data->umem_mutex);
- 	init_completion(&odp_data->notifier_completion);
-@@ -389,7 +389,7 @@ struct ib_umem_odp *ib_alloc_odp_umem(struct ib_umem_odp *root,
- out_page_list:
- 	vfree(odp_data->page_list);
- out_odp_data:
--	mmdrop(umem->owning_mm);
-+	mmdrop(umem->vaddr_pin.mm);
- 	kfree(odp_data);
- 	return ERR_PTR(ret);
- }
-@@ -399,10 +399,10 @@ int ib_umem_odp_get(struct ib_umem_odp *umem_odp, int access)
- {
- 	struct ib_umem *umem = &umem_odp->umem;
- 	/*
--	 * NOTE: This must called in a process context where umem->owning_mm
-+	 * NOTE: This must called in a process context where umem->vaddr_pin.mm
- 	 * == current->mm
- 	 */
--	struct mm_struct *mm = umem->owning_mm;
-+	struct mm_struct *mm = umem->vaddr_pin.mm;
- 	int ret_val;
- 
- 	umem_odp->page_shift = PAGE_SHIFT;
-@@ -581,7 +581,7 @@ int ib_umem_odp_map_dma_pages(struct ib_umem_odp *umem_odp, u64 user_virt,
- 			      unsigned long current_seq)
- {
- 	struct task_struct *owning_process  = NULL;
--	struct mm_struct *owning_mm = umem_odp->umem.owning_mm;
-+	struct mm_struct *owning_mm = umem_odp->umem.vaddr_pin.mm;
- 	struct page       **local_page_list = NULL;
- 	u64 page_mask, off;
- 	int j, k, ret = 0, start_idx, npages = 0;
-diff --git a/include/rdma/ib_umem.h b/include/rdma/ib_umem.h
-index 1052d0d62be7..ab677c799e29 100644
---- a/include/rdma/ib_umem.h
-+++ b/include/rdma/ib_umem.h
-@@ -43,7 +43,6 @@ struct ib_umem_odp;
- 
- struct ib_umem {
- 	struct ib_ucontext     *context;
--	struct mm_struct       *owning_mm;
- 	size_t			length;
- 	unsigned long		address;
- 	u32 writable : 1;
-@@ -52,6 +51,7 @@ struct ib_umem {
- 	struct sg_table sg_head;
- 	int             nmap;
- 	unsigned int    sg_nents;
-+	struct vaddr_pin vaddr_pin;
- };
- 
- /* Returns the offset of the umem start relative to the first page. */
++/**
++ * file_pin information below.
++ */
++
++struct proc_file_pins_private {
++	struct inode *inode;
++	struct task_struct *task;
++	struct mm_struct *mm;
++	struct files_struct *files;
++	unsigned int nr_pins;
++	struct xarray fps;
++} __randomize_layout;
++
++static void release_fp(struct proc_file_pins_private *priv)
++{
++	up_read(&priv->mm->mmap_sem);
++	mmput(priv->mm);
++}
++
++static void print_fd_file_pin(struct seq_file *m, struct file *file,
++			    unsigned long i)
++{
++	struct file_file_pin *fp;
++	struct file_file_pin *tmp;
++
++	if (list_empty_careful(&file->file_pins))
++		return;
++
++	seq_printf(m, "%lu: ", i);
++	seq_file_path(m, file, "\n");
++	seq_putc(m, '\n');
++
++	list_for_each_entry_safe(fp, tmp, &file->file_pins, list) {
++		seq_puts(m, "   ");
++		seq_file_path(m, fp->file, "\n");
++		seq_putc(m, '\n');
++	}
++}
++
++/* We are storing the index's within the FD table for later retrieval */
++static int store_fd(const void *priv , struct file *file, unsigned i)
++{
++	struct proc_file_pins_private *fp_priv;
++
++	/* cast away const... */
++	fp_priv = (struct proc_file_pins_private *)priv;
++
++	if (list_empty_careful(&file->file_pins))
++		return 0;
++
++	/* can't sleep in the iterate of the fd table */
++	xa_store(&fp_priv->fps, fp_priv->nr_pins, xa_mk_value(i), GFP_ATOMIC);
++	fp_priv->nr_pins++;
++
++	return 0;
++}
++
++static void store_mm_pins(struct proc_file_pins_private *priv)
++{
++	struct mm_file_pin *fp;
++	struct mm_file_pin *tmp;
++
++	list_for_each_entry_safe(fp, tmp, &priv->mm->file_pins, list) {
++		xa_store(&priv->fps, priv->nr_pins, fp, GFP_KERNEL);
++		priv->nr_pins++;
++	}
++}
++
++
++static void *fp_start(struct seq_file *m, loff_t *ppos)
++{
++	struct proc_file_pins_private *priv = m->private;
++	unsigned int pos = *ppos;
++
++	priv->task = get_proc_task(priv->inode);
++	if (!priv->task)
++		return ERR_PTR(-ESRCH);
++
++	if (!priv->mm || !mmget_not_zero(priv->mm))
++		return NULL;
++
++	priv->files = get_files_struct(priv->task);
++	down_read(&priv->mm->mmap_sem);
++
++	xa_destroy(&priv->fps);
++	priv->nr_pins = 0;
++
++	/* grab fds of "files" which have pins and store as xa values */
++	if (priv->files)
++		iterate_fd(priv->files, 0, store_fd, priv);
++
++	/* store mm_file_pins as xa entries */
++	store_mm_pins(priv);
++
++	if (pos >= priv->nr_pins) {
++		release_fp(priv);
++		return NULL;
++	}
++
++	return xa_load(&priv->fps, pos);
++}
++
++static void *fp_next(struct seq_file *m, void *v, loff_t *pos)
++{
++	struct proc_file_pins_private *priv = m->private;
++
++	(*pos)++;
++	if ((*pos) >= priv->nr_pins) {
++		release_fp(priv);
++		return NULL;
++	}
++
++	return xa_load(&priv->fps, *pos);
++}
++
++static void fp_stop(struct seq_file *m, void *v)
++{
++	struct proc_file_pins_private *priv = m->private;
++
++	if (v)
++		release_fp(priv);
++
++	if (priv->task) {
++		put_task_struct(priv->task);
++		priv->task = NULL;
++	}
++
++	if (priv->files) {
++		put_files_struct(priv->files);
++		priv->files = NULL;
++	}
++}
++
++static int show_fp(struct seq_file *m, void *v)
++{
++	struct proc_file_pins_private *priv = m->private;
++
++	if (xa_is_value(v)) {
++		struct file *file;
++		unsigned long fd = xa_to_value(v);
++
++		rcu_read_lock();
++		file = fcheck_files(priv->files, fd);
++		if (file)
++			print_fd_file_pin(m, file, fd);
++		rcu_read_unlock();
++	} else {
++		struct mm_file_pin *fp = v;
++
++		seq_puts(m, "mm: ");
++		seq_file_path(m, fp->file, "\n");
++	}
++
++	return 0;
++}
++
++static const struct seq_operations proc_pid_file_pins_op = {
++	.start	= fp_start,
++	.next	= fp_next,
++	.stop	= fp_stop,
++	.show	= show_fp
++};
++
++static int proc_file_pins_open(struct inode *inode, struct file *file)
++{
++	struct proc_file_pins_private *priv = __seq_open_private(file,
++						&proc_pid_file_pins_op,
++						sizeof(*priv));
++
++	if (!priv)
++		return -ENOMEM;
++
++	xa_init(&priv->fps);
++	priv->inode = inode;
++	priv->mm = proc_mem_open(inode, PTRACE_MODE_READ);
++	priv->task = NULL;
++	if (IS_ERR(priv->mm)) {
++		int err = PTR_ERR(priv->mm);
++
++		seq_release_private(inode, file);
++		return err;
++	}
++
++	return 0;
++}
++
++static int proc_file_pins_release(struct inode *inode, struct file *file)
++{
++	struct seq_file *seq = file->private_data;
++	struct proc_file_pins_private *priv = seq->private;
++
++	/* This is for "protection" not sure when these may end up not being
++	 * NULL here... */
++	WARN_ON(priv->files);
++	WARN_ON(priv->task);
++
++	if (priv->mm)
++		mmdrop(priv->mm);
++
++	xa_destroy(&priv->fps);
++
++	return seq_release_private(inode, file);
++}
++
++static const struct file_operations proc_pid_file_pins_operations = {
++	.open		= proc_file_pins_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= proc_file_pins_release,
++};
 -- 
 2.20.1
 
