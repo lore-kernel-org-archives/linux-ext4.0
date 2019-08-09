@@ -1,175 +1,127 @@
-Return-Path: <SRS0=bW8Q=WE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=1y6H=WF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83856C32756
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Aug 2019 19:03:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1E5DC433FF
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 01:31:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5871821874
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Aug 2019 19:03:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA65A2173E
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 01:31:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=cmpxchg-org.20150623.gappssmtp.com header.i=@cmpxchg-org.20150623.gappssmtp.com header.b="HIQxeRJU"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="SsTSodQl";
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="gVh1xkQi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390307AbfHHTDE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Aug 2019 15:03:04 -0400
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:42663 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733248AbfHHTDE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Aug 2019 15:03:04 -0400
-Received: by mail-pg1-f193.google.com with SMTP id t132so44529952pgb.9
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Aug 2019 12:03:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cmpxchg-org.20150623.gappssmtp.com; s=20150623;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :user-agent;
-        bh=YaDw968sYZinLHwfTVtmoWadaU+xxvDOnKy5RkNnHhY=;
-        b=HIQxeRJULmhNEAqcWiiIVZr0UAHZw/vMZ/YXLmvIkXIat0A1z75P9Q0d/P74XRw3do
-         R7+ctJwPKZUsckjeTNvykCKZsWrBGUXA5z5ZhyRNBYXd8H4O6Fr/Cfh1Tgcp0VtQSpzQ
-         sHkoTTEtlwzMapLsx/9XmEPsqlkUGcTTXFX0+zFyl6atF/lOxErRKyNsY876FIdy4kom
-         iHrVYxjJMl+rUFyMB+98d2/kmsgt03t7E0C/Gw5ePaTD8Sis0vFdJXbU/8NWpzUYzFd/
-         +GAdy2lZyujaVYVCBCBCH4QSjJMb3LYnJxKiTOIRpKMlA/KjrXwRHyDPiu3C/9kVghl3
-         PqlA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
-         :content-disposition:user-agent;
-        bh=YaDw968sYZinLHwfTVtmoWadaU+xxvDOnKy5RkNnHhY=;
-        b=l+QUhFhLnT97aSZMIJ8B/2ancU7TgYnQq3MaCGGgco0uxsLV6hoCsJ5H1ak/hUZqDf
-         YNl91sQXlrmaYg0OjdNaKlDS6A26LDqvYRx1G3JFD54cJVA9OZWv3Y6zkcOcfSdeAHcR
-         4cEBpfDPZtZ5BTZm0e0bvyHbsInMORdDAinyWpIwDogVReguZ42MGfW9Q8EIKnI8Z5oS
-         xQtJk2yXGmAAMbJAA7lIoEz2VIrRl4Zz/Rq+5JPY0cCW2BRdlItv5LgS7+A24mabfr7r
-         9C/MlRll4y0RAaKr8mRhtcP0GLUjgpOZZ4O8RsqQkK9xA884aOVa6KWo4tv6T2HosNG1
-         Kshw==
-X-Gm-Message-State: APjAAAXWIVXQP/+8LTuiSwlnZOVfyGxqrPhltEOPsjlK42lCy+L0h2Wy
-        MUZFLUMVHaOqUqzMiTMAYh6z8Lcx1yo=
-X-Google-Smtp-Source: APXvYqyauxFlil+jXyg34wXrmqepCBj1OqcfC1/2Gy4eTEI53he4OQNjlsbx5piBhi7v9zETXwpdnA==
-X-Received: by 2002:a17:90a:8b98:: with SMTP id z24mr5545969pjn.77.1565290983429;
-        Thu, 08 Aug 2019 12:03:03 -0700 (PDT)
-Received: from localhost ([2620:10d:c091:500::1:e15f])
-        by smtp.gmail.com with ESMTPSA id t6sm22068113pgu.23.2019.08.08.12.03.02
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 08 Aug 2019 12:03:02 -0700 (PDT)
-Date:   Thu, 8 Aug 2019 15:03:00 -0400
-From:   Johannes Weiner <hannes@cmpxchg.org>
-To:     Jens Axboe <axboe@kernel.dk>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH RESEND] block: annotate refault stalls from IO submission
-Message-ID: <20190808190300.GA9067@cmpxchg.org>
+        id S2405167AbfHIBb2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Aug 2019 21:31:28 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:57892 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732796AbfHIBb2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Aug 2019 21:31:28 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x791Sw3s013874;
+        Fri, 9 Aug 2019 01:31:24 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2019-08-05;
+ bh=hPVSpA8g72KdoIKpyeBaTutMNPniNhafljipnDqtxtk=;
+ b=SsTSodQl5wnAmJ7e4J63a239yWLmN7bR7+ez3z0tuQogRqiYRercWHCUNkE8X3zLuuv5
+ o6KeSMj5sS+Bk4pwQG3nSBQ2JNM3qNox5bds7hSavK1iOqk5dbKcBvEdHsyfHM1rRbRM
+ 1fj2Xoi7xVN6fmgSV9BIKtmbvyZG7t3bVFLwLmR43SAWUxDkTa+fyigGkjFDOfzDQ8np
+ PQxIOnskqv0m7HbSURWK4xzuqDAL2wOJT7whPd6LuffzFbR4U/9uwcNihHu+U3m41KbS
+ t8DGpnM/n0cDeWdgxGwC2XyJAXWwqJc83ziJbpDdZBOgZutL2/iyY9LaN0C/a8hPF282 Hw== 
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=hPVSpA8g72KdoIKpyeBaTutMNPniNhafljipnDqtxtk=;
+ b=gVh1xkQiJ3hI0YqMR9gxeaKi6qpbIrTNOca/3MGdUUpXTCuu4IaQNAQQy7QdaVXng0ld
+ e4M3Nfj5/GeAy6TySNWp8iDLu1APwLS2uA9IlJlx9Ry9K8jEIjQ/fdM9vzPLy0ppcCAv
+ /SJ8U7narMir0hWOtHmXoR7TsIHbrTCeelzFgaSYfZrzrpyru8sYCTZK5QKgfA5aFcfj
+ MNlZKXgCyjLR/YOg6NrFowK02Qz1EnFuwYAboZAZiCgU9Mttqb8m4hsE777t/mX6qvnj
+ r5fdhj9/2V7Jly4wBAZ/uEV4TIKn6eA2PrJM5pbk7UE1Kxazo55tRaI0o6mLmzy3bQ3w EQ== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by userp2130.oracle.com with ESMTP id 2u8hps4cgc-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 09 Aug 2019 01:31:24 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x791SMh3140961;
+        Fri, 9 Aug 2019 01:31:23 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserp3020.oracle.com with ESMTP id 2u8x9f129e-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 09 Aug 2019 01:31:23 +0000
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x791VL9a001422;
+        Fri, 9 Aug 2019 01:31:22 GMT
+Received: from localhost (/10.145.178.70)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 08 Aug 2019 18:00:59 -0700
+Date:   Thu, 8 Aug 2019 18:00:58 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Qu Wenruo <quwenruo.btrfs@gmx.com>
+Cc:     linux-ext4@vger.kernel.org,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
+Subject: Re: mke2fs accepts block size not mentioned in its man page
+Message-ID: <20190809010058.GA7125@magnolia>
+References: <ce9edecb-6f04-77d3-32f1-2b9de6cd3d7e@gmx.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-User-Agent: Mutt/1.12.0 (2019-05-25)
+In-Reply-To: <ce9edecb-6f04-77d3-32f1-2b9de6cd3d7e@gmx.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9343 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1906280000 definitions=main-1908090014
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9343 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1906280000
+ definitions=main-1908090014
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-psi tracks the time tasks wait for refaulting pages to become
-uptodate, but it does not track the time spent submitting the IO. The
-submission part can be significant if backing storage is contended or
-when cgroup throttling (io.latency) is in effect - a lot of time is
-spent in submit_bio(). In that case, we underreport memory pressure.
+On Fri, Jul 05, 2019 at 01:35:02PM +0800, Qu Wenruo wrote:
+> Hi,
+> 
+> Just doing some tests on aarch64 with 64K page size.
+> 
+> Man page of mke2fs only mentions 3 valid block size: 1k, 2k, 4k.
+> But in real world, we can pass 64K as block size for it without any problem:
+> 
+>   $mke2fs -F -t ext3 -b 65536 /dev/loop1
+>   Warning: blocksize 65536 not usable on most systems.
+>   mke2fs 1.45.2 (27-May-2019)
+>   /dev/loop1 contains a btrfs file system
+>   Discarding device blocks: done
+>   Creating filesystem with 81920 64k blocks and 81920 inodes
+>   Filesystem UUID: 311bb224-6d2d-44a7-9790-92c4878d6549
+>   [...]
+> 
+> It's great to see mke2fs accepts 64K as nodesize, which allows
+> btrfs-convert to work.
+> (If blocksize is default to 4K or doesn't accept 64K page size,
+> btrfs-convert can work but can't be mounted on system with 64K page size)
+> 
+> Shouldn't the man page mention all valid values?
 
-Annotate submit_bio() to account submission time as memory stall when
-the bio is reading userspace workingset pages.
+You'd think so, but 64k blocks only works on machines with 64k pages,
+so that's why it doesn't mention anything beyond the lowest common
+denominator. :/
 
-Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
----
- block/bio.c               |  3 +++
- block/blk-core.c          | 23 ++++++++++++++++++++++-
- include/linux/blk_types.h |  1 +
- 3 files changed, 26 insertions(+), 1 deletion(-)
+--D
 
-diff --git a/block/bio.c b/block/bio.c
-index 299a0e7651ec..4196865dd300 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -806,6 +806,9 @@ void __bio_add_page(struct bio *bio, struct page *page,
- 
- 	bio->bi_iter.bi_size += len;
- 	bio->bi_vcnt++;
-+
-+	if (!bio_flagged(bio, BIO_WORKINGSET) && unlikely(PageWorkingset(page)))
-+		bio_set_flag(bio, BIO_WORKINGSET);
- }
- EXPORT_SYMBOL_GPL(__bio_add_page);
- 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index d0cc6e14d2f0..1b1705b7dde7 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -36,6 +36,7 @@
- #include <linux/blk-cgroup.h>
- #include <linux/debugfs.h>
- #include <linux/bpf.h>
-+#include <linux/psi.h>
- 
- #define CREATE_TRACE_POINTS
- #include <trace/events/block.h>
-@@ -1128,6 +1129,10 @@ EXPORT_SYMBOL_GPL(direct_make_request);
-  */
- blk_qc_t submit_bio(struct bio *bio)
- {
-+	bool workingset_read = false;
-+	unsigned long pflags;
-+	blk_qc_t ret;
-+
- 	if (blkcg_punt_bio_submit(bio))
- 		return BLK_QC_T_NONE;
- 
-@@ -1146,6 +1151,8 @@ blk_qc_t submit_bio(struct bio *bio)
- 		if (op_is_write(bio_op(bio))) {
- 			count_vm_events(PGPGOUT, count);
- 		} else {
-+			if (bio_flagged(bio, BIO_WORKINGSET))
-+				workingset_read = true;
- 			task_io_account_read(bio->bi_iter.bi_size);
- 			count_vm_events(PGPGIN, count);
- 		}
-@@ -1160,7 +1167,21 @@ blk_qc_t submit_bio(struct bio *bio)
- 		}
- 	}
- 
--	return generic_make_request(bio);
-+	/*
-+	 * If we're reading data that is part of the userspace
-+	 * workingset, count submission time as memory stall. When the
-+	 * device is congested, or the submitting cgroup IO-throttled,
-+	 * submission can be a significant part of overall IO time.
-+	 */
-+	if (workingset_read)
-+		psi_memstall_enter(&pflags);
-+
-+	ret = generic_make_request(bio);
-+
-+	if (workingset_read)
-+		psi_memstall_leave(&pflags);
-+
-+	return ret;
- }
- EXPORT_SYMBOL(submit_bio);
- 
-diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-index 1b1fa1557e68..a9dadfc16a92 100644
---- a/include/linux/blk_types.h
-+++ b/include/linux/blk_types.h
-@@ -209,6 +209,7 @@ enum {
- 	BIO_BOUNCED,		/* bio is a bounce bio */
- 	BIO_USER_MAPPED,	/* contains user pages */
- 	BIO_NULL_MAPPED,	/* contains invalid user pages */
-+	BIO_WORKINGSET,		/* contains userspace workingset pages */
- 	BIO_QUIET,		/* Make BIO Quiet */
- 	BIO_CHAIN,		/* chained bio, ->bi_remaining in effect */
- 	BIO_REFFED,		/* bio has elevated ->bi_cnt */
--- 
-2.22.0
+> Thanks,
+> Qu
+> 
+
+
 
