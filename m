@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4F04C32756
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 313D0C32756
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A5599217F5
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 11B8D208C4
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 22:59:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731054AbfHIW73 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Aug 2019 18:59:29 -0400
+        id S1730694AbfHIW7G (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Aug 2019 18:59:06 -0400
 Received: from mga11.intel.com ([192.55.52.93]:23377 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730744AbfHIW7J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Aug 2019 18:59:09 -0400
+        id S1730647AbfHIW7F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Aug 2019 18:59:05 -0400
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga004.fm.intel.com ([10.253.24.48])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:08 -0700
+Received: from fmsmga007.fm.intel.com ([10.253.24.52])
+  by fmsmga102.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:05 -0700
 X-IronPort-AV: E=Sophos;i="5.64,367,1559545200"; 
-   d="scan'208";a="199539307"
+   d="scan'208";a="176932450"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:08 -0700
+  by fmsmga007-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Aug 2019 15:59:04 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Jason Gunthorpe <jgg@ziepe.ca>,
@@ -40,9 +40,9 @@ Cc:     Jason Gunthorpe <jgg@ziepe.ca>,
         linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
         linux-ext4@vger.kernel.org, linux-mm@kvack.org,
         Ira Weiny <ira.weiny@intel.com>
-Subject: [RFC PATCH v2 18/19] {mm,procfs}: Add display file_pins proc
-Date:   Fri,  9 Aug 2019 15:58:32 -0700
-Message-Id: <20190809225833.6657-19-ira.weiny@intel.com>
+Subject: [RFC PATCH v2 15/19] mm/gup: Introduce vaddr_pin_pages()
+Date:   Fri,  9 Aug 2019 15:58:29 -0700
+Message-Id: <20190809225833.6657-16-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190809225833.6657-1-ira.weiny@intel.com>
 References: <20190809225833.6657-1-ira.weiny@intel.com>
@@ -55,271 +55,112 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Now that we have the file pins information stored add a new procfs entry
-to display them to the user.
+The addition of FOLL_LONGTERM has taken on additional meaning for CMA
+pages.
 
-NOTE output will be dependant on where the file pin is tied to.  Some
-processes may have the pin associated with a file descriptor in which
-case that file is reported as well.
+In addition subsystems such as RDMA require new information to be passed
+to the GUP interface to track file owning information.  As such a simple
+FOLL_LONGTERM flag is no longer sufficient for these users to pin pages.
 
-Others are associated directly with the process mm and are reported as
-such.
-
-For example of a file pinned to an RDMA open context (fd 4) and a file
-pinned to the mm of that process:
-
-4: /dev/infiniband/uverbs0
-   /mnt/pmem/foo
-/mnt/pmem/bar
+Introduce a new GUP like call which takes the newly introduced vaddr_pin
+information.  Failure to pass the vaddr_pin object back to a vaddr_put*
+call will result in a failure if pins were created on files during the
+pin operation.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
----
- fs/proc/base.c | 214 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 214 insertions(+)
 
-diff --git a/fs/proc/base.c b/fs/proc/base.c
-index ebea9501afb8..f4d219172235 100644
---- a/fs/proc/base.c
-+++ b/fs/proc/base.c
-@@ -2995,6 +2995,7 @@ static int proc_stack_depth(struct seq_file *m, struct pid_namespace *ns,
-  */
- static const struct file_operations proc_task_operations;
- static const struct inode_operations proc_task_inode_operations;
-+static const struct file_operations proc_pid_file_pins_operations;
+---
+Changes from list:
+	Change to vaddr_put_pages_dirty_lock
+	Change to vaddr_unpin_pages_dirty_lock
+
+ include/linux/mm.h |  5 ++++
+ mm/gup.c           | 59 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 64 insertions(+)
+
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 657c947bda49..90c5802866df 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1603,6 +1603,11 @@ int account_locked_vm(struct mm_struct *mm, unsigned long pages, bool inc);
+ int __account_locked_vm(struct mm_struct *mm, unsigned long pages, bool inc,
+ 			struct task_struct *task, bool bypass_rlim);
  
- static const struct pid_entry tgid_base_stuff[] = {
- 	DIR("task",       S_IRUGO|S_IXUGO, proc_task_inode_operations, proc_task_operations),
-@@ -3024,6 +3025,7 @@ static const struct pid_entry tgid_base_stuff[] = {
- 	ONE("stat",       S_IRUGO, proc_tgid_stat),
- 	ONE("statm",      S_IRUGO, proc_pid_statm),
- 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
-+	REG("file_pins",  S_IRUGO, proc_pid_file_pins_operations),
- #ifdef CONFIG_NUMA
- 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),
- #endif
-@@ -3422,6 +3424,7 @@ static const struct pid_entry tid_base_stuff[] = {
- 	ONE("stat",      S_IRUGO, proc_tid_stat),
- 	ONE("statm",     S_IRUGO, proc_pid_statm),
- 	REG("maps",      S_IRUGO, proc_pid_maps_operations),
-+	REG("file_pins", S_IRUGO, proc_pid_file_pins_operations),
- #ifdef CONFIG_PROC_CHILDREN
- 	REG("children",  S_IRUGO, proc_tid_children_operations),
- #endif
-@@ -3718,3 +3721,214 @@ void __init set_proc_pid_nlink(void)
- 	nlink_tid = pid_entry_nlink(tid_base_stuff, ARRAY_SIZE(tid_base_stuff));
- 	nlink_tgid = pid_entry_nlink(tgid_base_stuff, ARRAY_SIZE(tgid_base_stuff));
++long vaddr_pin_pages(unsigned long addr, unsigned long nr_pages,
++		     unsigned int gup_flags, struct page **pages,
++		     struct vaddr_pin *vaddr_pin);
++void vaddr_unpin_pages_dirty_lock(struct page **pages, unsigned long nr_pages,
++				  struct vaddr_pin *vaddr_pin, bool make_dirty);
+ bool mapping_inode_has_layout(struct vaddr_pin *vaddr_pin, struct page *page);
+ 
+ /* Container for pinned pfns / pages */
+diff --git a/mm/gup.c b/mm/gup.c
+index eeaa0ddd08a6..6d23f70d7847 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -2536,3 +2536,62 @@ int get_user_pages_fast(unsigned long start, int nr_pages,
+ 	return ret;
  }
+ EXPORT_SYMBOL_GPL(get_user_pages_fast);
 +
 +/**
-+ * file_pin information below.
++ * vaddr_pin_pages pin pages by virtual address and return the pages to the
++ * user.
++ *
++ * @addr, start address
++ * @nr_pages, number of pages to pin
++ * @gup_flags, flags to use for the pin
++ * @pages, array of pages returned
++ * @vaddr_pin, initalized meta information this pin is to be associated
++ * with.
++ *
++ * NOTE regarding vaddr_pin:
++ *
++ * Some callers can share pins via file descriptors to other processes.
++ * Callers such as this should use the f_owner field of vaddr_pin to indicate
++ * the file the fd points to.  All other callers should use the mm this pin is
++ * being made against.  Usually "current->mm".
++ *
++ * Expects mmap_sem to be read locked.
 + */
-+
-+struct proc_file_pins_private {
-+	struct inode *inode;
-+	struct task_struct *task;
-+	struct mm_struct *mm;
-+	struct files_struct *files;
-+	unsigned int nr_pins;
-+	struct xarray fps;
-+} __randomize_layout;
-+
-+static void release_fp(struct proc_file_pins_private *priv)
++long vaddr_pin_pages(unsigned long addr, unsigned long nr_pages,
++		     unsigned int gup_flags, struct page **pages,
++		     struct vaddr_pin *vaddr_pin)
 +{
-+	up_read(&priv->mm->mmap_sem);
-+	mmput(priv->mm);
-+}
++	long ret;
 +
-+static void print_fd_file_pin(struct seq_file *m, struct file *file,
-+			    unsigned long i)
++	gup_flags |= FOLL_LONGTERM;
++
++	if (!vaddr_pin || (!vaddr_pin->mm && !vaddr_pin->f_owner))
++		return -EINVAL;
++
++	ret = __gup_longterm_locked(current,
++				    vaddr_pin->mm,
++				    addr, nr_pages,
++				    pages, NULL, gup_flags,
++				    vaddr_pin);
++	return ret;
++}
++EXPORT_SYMBOL(vaddr_pin_pages);
++
++/**
++ * vaddr_unpin_pages_dirty_lock - counterpart to vaddr_pin_pages
++ *
++ * @pages, array of pages returned
++ * @nr_pages, number of pages in pages
++ * @vaddr_pin, same information passed to vaddr_pin_pages
++ * @make_dirty: whether to mark the pages dirty
++ *
++ * The semantics are similar to put_user_pages_dirty_lock but a vaddr_pin used
++ * in vaddr_pin_pages should be passed back into this call for propper
++ * tracking.
++ */
++void vaddr_unpin_pages_dirty_lock(struct page **pages, unsigned long nr_pages,
++				  struct vaddr_pin *vaddr_pin, bool make_dirty)
 +{
-+	struct file_file_pin *fp;
-+	struct file_file_pin *tmp;
-+
-+	if (list_empty_careful(&file->file_pins))
-+		return;
-+
-+	seq_printf(m, "%lu: ", i);
-+	seq_file_path(m, file, "\n");
-+	seq_putc(m, '\n');
-+
-+	list_for_each_entry_safe(fp, tmp, &file->file_pins, list) {
-+		seq_puts(m, "   ");
-+		seq_file_path(m, fp->file, "\n");
-+		seq_putc(m, '\n');
-+	}
++	__put_user_pages_dirty_lock(vaddr_pin, pages, nr_pages, make_dirty);
 +}
-+
-+/* We are storing the index's within the FD table for later retrieval */
-+static int store_fd(const void *priv , struct file *file, unsigned i)
-+{
-+	struct proc_file_pins_private *fp_priv;
-+
-+	/* cast away const... */
-+	fp_priv = (struct proc_file_pins_private *)priv;
-+
-+	if (list_empty_careful(&file->file_pins))
-+		return 0;
-+
-+	/* can't sleep in the iterate of the fd table */
-+	xa_store(&fp_priv->fps, fp_priv->nr_pins, xa_mk_value(i), GFP_ATOMIC);
-+	fp_priv->nr_pins++;
-+
-+	return 0;
-+}
-+
-+static void store_mm_pins(struct proc_file_pins_private *priv)
-+{
-+	struct mm_file_pin *fp;
-+	struct mm_file_pin *tmp;
-+
-+	list_for_each_entry_safe(fp, tmp, &priv->mm->file_pins, list) {
-+		xa_store(&priv->fps, priv->nr_pins, fp, GFP_KERNEL);
-+		priv->nr_pins++;
-+	}
-+}
-+
-+
-+static void *fp_start(struct seq_file *m, loff_t *ppos)
-+{
-+	struct proc_file_pins_private *priv = m->private;
-+	unsigned int pos = *ppos;
-+
-+	priv->task = get_proc_task(priv->inode);
-+	if (!priv->task)
-+		return ERR_PTR(-ESRCH);
-+
-+	if (!priv->mm || !mmget_not_zero(priv->mm))
-+		return NULL;
-+
-+	priv->files = get_files_struct(priv->task);
-+	down_read(&priv->mm->mmap_sem);
-+
-+	xa_destroy(&priv->fps);
-+	priv->nr_pins = 0;
-+
-+	/* grab fds of "files" which have pins and store as xa values */
-+	if (priv->files)
-+		iterate_fd(priv->files, 0, store_fd, priv);
-+
-+	/* store mm_file_pins as xa entries */
-+	store_mm_pins(priv);
-+
-+	if (pos >= priv->nr_pins) {
-+		release_fp(priv);
-+		return NULL;
-+	}
-+
-+	return xa_load(&priv->fps, pos);
-+}
-+
-+static void *fp_next(struct seq_file *m, void *v, loff_t *pos)
-+{
-+	struct proc_file_pins_private *priv = m->private;
-+
-+	(*pos)++;
-+	if ((*pos) >= priv->nr_pins) {
-+		release_fp(priv);
-+		return NULL;
-+	}
-+
-+	return xa_load(&priv->fps, *pos);
-+}
-+
-+static void fp_stop(struct seq_file *m, void *v)
-+{
-+	struct proc_file_pins_private *priv = m->private;
-+
-+	if (v)
-+		release_fp(priv);
-+
-+	if (priv->task) {
-+		put_task_struct(priv->task);
-+		priv->task = NULL;
-+	}
-+
-+	if (priv->files) {
-+		put_files_struct(priv->files);
-+		priv->files = NULL;
-+	}
-+}
-+
-+static int show_fp(struct seq_file *m, void *v)
-+{
-+	struct proc_file_pins_private *priv = m->private;
-+
-+	if (xa_is_value(v)) {
-+		struct file *file;
-+		unsigned long fd = xa_to_value(v);
-+
-+		rcu_read_lock();
-+		file = fcheck_files(priv->files, fd);
-+		if (file)
-+			print_fd_file_pin(m, file, fd);
-+		rcu_read_unlock();
-+	} else {
-+		struct mm_file_pin *fp = v;
-+
-+		seq_puts(m, "mm: ");
-+		seq_file_path(m, fp->file, "\n");
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct seq_operations proc_pid_file_pins_op = {
-+	.start	= fp_start,
-+	.next	= fp_next,
-+	.stop	= fp_stop,
-+	.show	= show_fp
-+};
-+
-+static int proc_file_pins_open(struct inode *inode, struct file *file)
-+{
-+	struct proc_file_pins_private *priv = __seq_open_private(file,
-+						&proc_pid_file_pins_op,
-+						sizeof(*priv));
-+
-+	if (!priv)
-+		return -ENOMEM;
-+
-+	xa_init(&priv->fps);
-+	priv->inode = inode;
-+	priv->mm = proc_mem_open(inode, PTRACE_MODE_READ);
-+	priv->task = NULL;
-+	if (IS_ERR(priv->mm)) {
-+		int err = PTR_ERR(priv->mm);
-+
-+		seq_release_private(inode, file);
-+		return err;
-+	}
-+
-+	return 0;
-+}
-+
-+static int proc_file_pins_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *seq = file->private_data;
-+	struct proc_file_pins_private *priv = seq->private;
-+
-+	/* This is for "protection" not sure when these may end up not being
-+	 * NULL here... */
-+	WARN_ON(priv->files);
-+	WARN_ON(priv->task);
-+
-+	if (priv->mm)
-+		mmdrop(priv->mm);
-+
-+	xa_destroy(&priv->fps);
-+
-+	return seq_release_private(inode, file);
-+}
-+
-+static const struct file_operations proc_pid_file_pins_operations = {
-+	.open		= proc_file_pins_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= proc_file_pins_release,
-+};
++EXPORT_SYMBOL(vaddr_unpin_pages_dirty_lock);
 -- 
 2.20.1
 
