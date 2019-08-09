@@ -6,24 +6,24 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A6F39C31E40
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:42:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EC98C433FF
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:42:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 86C3B214C6
+	by mail.kernel.org (Postfix) with ESMTP id F405B21743
 	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:42:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406831AbfHIMmm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2406832AbfHIMmm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Fri, 9 Aug 2019 08:42:42 -0400
-Received: from mx2.suse.de ([195.135.220.15]:37626 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:37688 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726157AbfHIMml (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2406761AbfHIMml (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Fri, 9 Aug 2019 08:42:41 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 1D886AF3B;
+        by mx1.suse.de (Postfix) with ESMTP id 61291AF80;
         Fri,  9 Aug 2019 12:42:39 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 6B76D1E47C5; Fri,  9 Aug 2019 14:42:38 +0200 (CEST)
+        id 7A5211E47C9; Fri,  9 Aug 2019 14:42:38 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
@@ -31,10 +31,11 @@ Cc:     <linux-ext4@vger.kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
         Ingo Molnar <mingo@kernel.org>,
         Steven Rostedt <rostedt@goodmis.org>,
         Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/7] jbd2: Move dropping of jh reference out of un/re-filing functions
-Date:   Fri,  9 Aug 2019 14:42:29 +0200
-Message-Id: <20190809124233.13277-4-jack@suse.cz>
+        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 7/7] jbd2: Free journal head outside of locked region
+Date:   Fri,  9 Aug 2019 14:42:33 +0200
+Message-Id: <20190809124233.13277-8-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20190809124233.13277-1-jack@suse.cz>
 References: <20190809124233.13277-1-jack@suse.cz>
@@ -43,156 +44,93 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-__jbd2_journal_unfile_buffer() and __jbd2_journal_refile_buffer() drop
-transaction's jh reference when they remove jh from a transaction. This
-will be however inconvenient once we move state lock into journal_head
-itself as we still need to unlock it and we'd need to grab jh reference
-just for that. Move dropping of jh reference out of these functions into
-the few callers.
+From: Thomas Gleixner <tglx@linutronix.de>
 
+On PREEMPT_RT bit-spinlocks have the same semantics as on PREEMPT_RT=n,
+i.e. they disable preemption. That means functions which are not safe to be
+called in preempt disabled context on RT trigger a might_sleep() assert.
+
+The journal head bit spinlock is mostly held for short code sequences with
+trivial RT safe functionality, except for one place:
+
+jbd2_journal_put_journal_head() invokes __journal_remove_journal_head()
+with the journal head bit spinlock held. __journal_remove_journal_head()
+invokes kmem_cache_free() which must not be called with preemption disabled
+on RT.
+
+Jan suggested to rework the removal function so the actual free happens
+outside the bit-spinlocked region.
+
+Split it into two parts:
+
+  - Do the sanity checks and the buffer head detach under the lock
+
+  - Do the actual free after dropping the lock
+
+There is error case handling in the free part which needs to dereference
+the b_size field of the now detached buffer head. Due to paranoia (caused
+by ignorance) the size is retrieved in the detach function and handed into
+the free function. Might be over-engineered, but better safe than sorry.
+
+This makes the journal head bit-spinlock usage RT compliant and also avoids
+nested locking which is not covered by lockdep.
+
+Suggested-by: Jan Kara <jack@suse.com>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-ext4@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c      |  5 ++++-
- fs/jbd2/transaction.c | 23 +++++++++++++++--------
- include/linux/jbd2.h  |  2 +-
- 3 files changed, 20 insertions(+), 10 deletions(-)
+ fs/jbd2/journal.c | 20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 132fb92098c7..a0a191f3df77 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -918,6 +918,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		transaction_t *cp_transaction;
- 		struct buffer_head *bh;
- 		int try_to_free = 0;
-+		bool drop_ref;
- 
- 		jh = commit_transaction->t_forget;
- 		spin_unlock(&journal->j_list_lock);
-@@ -1022,8 +1023,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 				try_to_free = 1;
- 		}
- 		JBUFFER_TRACE(jh, "refile or unfile buffer");
--		__jbd2_journal_refile_buffer(jh);
-+		drop_ref = __jbd2_journal_refile_buffer(jh);
- 		jbd_unlock_bh_state(bh);
-+		if (drop_ref)
-+			jbd2_journal_put_journal_head(jh);
- 		if (try_to_free)
- 			release_buffer_page(bh);	/* Drops bh reference */
- 		else
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index f9b81cfdd8be..c4fe050e78c6 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1595,6 +1595,7 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
- 			__jbd2_journal_file_buffer(jh, transaction, BJ_Forget);
- 		} else {
- 			__jbd2_journal_unfile_buffer(jh);
-+			jbd2_journal_put_journal_head(jh);
- 			if (!buffer_jbd(bh)) {
- 				spin_unlock(&journal->j_list_lock);
- 				goto not_jbd;
-@@ -1968,17 +1969,15 @@ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh)
- }
- 
- /*
-- * Remove buffer from all transactions.
-+ * Remove buffer from all transactions. The caller is responsible for dropping
-+ * the jh reference that belonged to the transaction.
-  *
-  * Called with bh_state lock and j_list_lock
-- *
-- * jh and bh may be already freed when this function returns.
-  */
- static void __jbd2_journal_unfile_buffer(struct journal_head *jh)
- {
- 	__jbd2_journal_temp_unlink_buffer(jh);
- 	jh->b_transaction = NULL;
--	jbd2_journal_put_journal_head(jh);
- }
- 
- void jbd2_journal_unfile_buffer(journal_t *journal, struct journal_head *jh)
-@@ -1992,6 +1991,7 @@ void jbd2_journal_unfile_buffer(journal_t *journal, struct journal_head *jh)
- 	__jbd2_journal_unfile_buffer(jh);
- 	spin_unlock(&journal->j_list_lock);
- 	jbd_unlock_bh_state(bh);
-+	jbd2_journal_put_journal_head(jh);
- 	__brelse(bh);
- }
- 
-@@ -2130,6 +2130,7 @@ static int __dispose_buffer(struct journal_head *jh, transaction_t *transaction)
- 	} else {
- 		JBUFFER_TRACE(jh, "on running transaction");
- 		__jbd2_journal_unfile_buffer(jh);
-+		jbd2_journal_put_journal_head(jh);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index eee350fef339..c79e6de2fcfc 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2533,17 +2533,23 @@ static void __journal_remove_journal_head(struct buffer_head *bh)
+ 	J_ASSERT_BH(bh, buffer_jbd(bh));
+ 	J_ASSERT_BH(bh, jh2bh(jh) == bh);
+ 	BUFFER_TRACE(bh, "remove journal_head");
++
++	/* Unlink before dropping the lock */
++	bh->b_private = NULL;
++	jh->b_bh = NULL;	/* debug, really */
++	clear_buffer_jbd(bh);
++}
++
++static void journal_release_journal_head(struct journal_head *jh, size_t b_size)
++{
+ 	if (jh->b_frozen_data) {
+ 		printk(KERN_WARNING "%s: freeing b_frozen_data\n", __func__);
+-		jbd2_free(jh->b_frozen_data, bh->b_size);
++		jbd2_free(jh->b_frozen_data, b_size);
  	}
- 	return may_free;
- }
-@@ -2493,9 +2494,11 @@ void jbd2_journal_file_buffer(struct journal_head *jh,
-  * Called under j_list_lock
-  * Called under jbd_lock_bh_state(jh2bh(jh))
-  *
-- * jh and bh may be already free when this function returns
-+ * When this function returns true, there's no next transaction to refile to
-+ * and the caller has to drop jh reference through
-+ * jbd2_journal_put_journal_head().
-  */
--void __jbd2_journal_refile_buffer(struct journal_head *jh)
-+bool __jbd2_journal_refile_buffer(struct journal_head *jh)
- {
- 	int was_dirty, jlist;
- 	struct buffer_head *bh = jh2bh(jh);
-@@ -2507,7 +2510,7 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
- 	/* If the buffer is now unused, just drop it. */
- 	if (jh->b_next_transaction == NULL) {
- 		__jbd2_journal_unfile_buffer(jh);
--		return;
-+		return true;
+ 	if (jh->b_committed_data) {
+ 		printk(KERN_WARNING "%s: freeing b_committed_data\n", __func__);
+-		jbd2_free(jh->b_committed_data, bh->b_size);
++		jbd2_free(jh->b_committed_data, b_size);
  	}
+-	bh->b_private = NULL;
+-	jh->b_bh = NULL;	/* debug, really */
+-	clear_buffer_jbd(bh);
+ 	journal_free_journal_head(jh);
+ }
  
- 	/*
-@@ -2535,6 +2538,7 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
- 
- 	if (was_dirty)
- 		set_buffer_jbddirty(bh);
-+	return false;
+@@ -2561,9 +2567,11 @@ void jbd2_journal_put_journal_head(struct journal_head *jh)
+ 	if (!jh->b_jcount) {
+ 		__journal_remove_journal_head(bh);
+ 		jbd_unlock_bh_journal_head(bh);
++		journal_release_journal_head(jh, bh->b_size);
+ 		__brelse(bh);
+-	} else
++	} else {
+ 		jbd_unlock_bh_journal_head(bh);
++	}
  }
  
  /*
-@@ -2546,15 +2550,18 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
- void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
- {
- 	struct buffer_head *bh = jh2bh(jh);
-+	bool drop;
- 
- 	/* Get reference so that buffer cannot be freed before we unlock it */
- 	get_bh(bh);
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
--	__jbd2_journal_refile_buffer(jh);
-+	drop = __jbd2_journal_refile_buffer(jh);
- 	jbd_unlock_bh_state(bh);
- 	spin_unlock(&journal->j_list_lock);
- 	__brelse(bh);
-+	if (drop)
-+		jbd2_journal_put_journal_head(jh);
- }
- 
- /*
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index f53b13b20e83..6aa66c42599d 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1252,7 +1252,7 @@ JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
- 
- /* Filing buffers */
- extern void jbd2_journal_unfile_buffer(journal_t *, struct journal_head *);
--extern void __jbd2_journal_refile_buffer(struct journal_head *);
-+extern bool __jbd2_journal_refile_buffer(struct journal_head *);
- extern void jbd2_journal_refile_buffer(journal_t *, struct journal_head *);
- extern void __jbd2_journal_file_buffer(struct journal_head *, transaction_t *, int);
- extern void __journal_free_buffer(struct journal_head *bh);
 -- 
 2.16.4
 
