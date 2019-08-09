@@ -4,101 +4,117 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F6F6C433FF
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:52:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81544C31E40
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 18:18:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3596521743
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:52:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6815220B7C
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 18:18:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406706AbfHIMwU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Aug 2019 08:52:20 -0400
-Received: from mx2.suse.de ([195.135.220.15]:42354 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726505AbfHIMwU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Aug 2019 08:52:20 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 9D5A4AF84;
-        Fri,  9 Aug 2019 12:52:19 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 63D061E47C1; Fri,  9 Aug 2019 14:42:38 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@kernel.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/7] jbd2: Simplify journal_unmap_buffer()
-Date:   Fri,  9 Aug 2019 14:42:27 +0200
-Message-Id: <20190809124233.13277-2-jack@suse.cz>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20190809124233.13277-1-jack@suse.cz>
-References: <20190809124233.13277-1-jack@suse.cz>
+        id S2437128AbfHISSl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Aug 2019 14:18:41 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:60958 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726582AbfHISSl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Aug 2019 14:18:41 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-107.corp.google.com [104.133.0.107] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x79IIbSx005817
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 9 Aug 2019 14:18:37 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id BE7EE4218F1; Fri,  9 Aug 2019 14:18:36 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: add a new ioctl EXT4_IOC_GETSTATE
+Date:   Fri,  9 Aug 2019 14:18:31 -0400
+Message-Id: <20190809181831.10618-3-tytso@mit.edu>
+X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190809181831.10618-1-tytso@mit.edu>
+References: <20190809181831.10618-1-tytso@mit.edu>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Thomas Gleixner <tglx@linutronix.de>
+The new ioctl EXT4_IOC_GETSTATE returns some of the dynamic state of
+an ext4 inode for debugging purposes.
 
-journal_unmap_buffer() checks first whether the buffer head is a journal.
-If so it takes locks and then invokes jbd2_journal_grab_journal_head()
-followed by another check whether this is journal head buffer.
-
-The double checking is pointless.
-
-Replace the initial check with jbd2_journal_grab_journal_head() which
-alredy checks whether the buffer head is actually a journal.
-
-Allows also early access to the journal head pointer for the upcoming
-conversion of state lock to a regular spinlock.
-
-Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/jbd2/transaction.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/ext4/ext4.h  | 11 +++++++++++
+ fs/ext4/ioctl.c | 17 +++++++++++++++++
+ 2 files changed, 28 insertions(+)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 990e7b5062e7..f9b81cfdd8be 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2196,7 +2196,8 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
- 	 * holding the page lock. --sct
- 	 */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index f6c305b43ffa..58b7a0905186 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -651,6 +651,7 @@ enum {
+ #define EXT4_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
+ /* ioctl codes 19--2F are reserved for fscrypt */
+ #define EXT4_IOC_CLEAR_ES_CACHE		_IO('f', 30)
++#define EXT4_IOC_GETSTATE		_IOW('f', 30, __u32)
  
--	if (!buffer_jbd(bh))
-+	jh = jbd2_journal_grab_journal_head(bh);
-+	if (!jh)
- 		goto zap_buffer_unlocked;
+ #define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
+ #define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
+@@ -664,6 +665,16 @@ enum {
+ #define EXT4_GOING_FLAGS_LOGFLUSH		0x1	/* flush log but not data */
+ #define EXT4_GOING_FLAGS_NOLOGFLUSH		0x2	/* don't flush log nor data */
  
- 	/* OK, we have data buffer in journaled mode */
-@@ -2204,10 +2205,6 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
++/*
++ * Flags returned by EXT4_IOC_GETSTATE
++ *
++ * We only expose to userspace a subset of the state flags in
++ * i_state_flags
++ */
++#define EXT4_STATE_FLAG_EXT_PRECACHED	0x00000001
++#define EXT4_STATE_FLAG_NEW		0x00000002
++#define EXT4_STATE_FLAG_NEWENTRY	0x00000004
++#define EXT4_STATE_FLAG_DA_ALLOC_CLOSE	0x00000008
  
--	jh = jbd2_journal_grab_journal_head(bh);
--	if (!jh)
--		goto zap_buffer_no_jh;
--
- 	/*
- 	 * We cannot remove the buffer from checkpoint lists until the
- 	 * transaction adding inode to orphan list (let's call it T)
-@@ -2329,7 +2326,6 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
- 	 */
- 	jh->b_modified = 0;
- 	jbd2_journal_put_journal_head(jh);
--zap_buffer_no_jh:
- 	spin_unlock(&journal->j_list_lock);
- 	jbd_unlock_bh_state(bh);
- 	write_unlock(&journal->j_state_lock);
+ #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
+ /*
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 15b1047878ab..ffb7bde4900d 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1123,6 +1123,22 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		return 0;
+ 	}
+ 
++	case EXT4_IOC_GETSTATE:
++	{
++		__u32	state = 0;
++
++		if (ext4_test_inode_state(inode, EXT4_STATE_EXT_PRECACHED))
++			state |= EXT4_STATE_FLAG_EXT_PRECACHED;
++		if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
++			state |= EXT4_STATE_FLAG_NEW;
++		if (ext4_test_inode_state(inode, EXT4_STATE_NEWENTRY))
++			state |= EXT4_STATE_FLAG_NEWENTRY;
++		if (ext4_test_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE))
++			state |= EXT4_STATE_FLAG_DA_ALLOC_CLOSE;
++
++		return put_user(state, (__u32 __user *) arg);
++	}
++
+ 	case EXT4_IOC_FSGETXATTR:
+ 	{
+ 		struct fsxattr fa;
+@@ -1242,6 +1258,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	case EXT4_IOC_SHUTDOWN:
+ 	case FS_IOC_GETFSMAP:
+ 	case EXT4_IOC_CLEAR_ES_CACHE:
++	case EXT4_IOC_GETSTATE:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
 -- 
-2.16.4
+2.22.0
 
