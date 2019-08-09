@@ -2,119 +2,66 @@ Return-Path: <SRS0=1y6H=WF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 283B8C31E40
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 11:01:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 54E99C433FF
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:42:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DDA692084D
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 11:01:16 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=googlemail.com header.i=@googlemail.com header.b="pTkiyQwv"
+	by mail.kernel.org (Postfix) with ESMTP id 2D5A521783
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Aug 2019 12:42:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2405954AbfHILBQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Aug 2019 07:01:16 -0400
-Received: from mail-yb1-f172.google.com ([209.85.219.172]:37785 "EHLO
-        mail-yb1-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726363AbfHILBQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Aug 2019 07:01:16 -0400
-Received: by mail-yb1-f172.google.com with SMTP id t5so2029233ybt.4
-        for <linux-ext4@vger.kernel.org>; Fri, 09 Aug 2019 04:01:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=googlemail.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=oNJcrRXO6dvn3mxMEzBC05MZsfpfTkVuV/BgddKCBgg=;
-        b=pTkiyQwvczm4P8hJpKinsvpOIVCZqIF6FogYvmH0kUldf3TrXTM8PHcqICC2+WvWVp
-         18TR1G/iNs+DUvgNaDS4sLsrMU9iXyWm4NuGsmTgpVL2NmYuML9aT3ew13D+Oik0oeW5
-         /p9VEEU7yFc39eDngMW27kmQ89gkeA/UgZMUJeIWD+B5AuKFV9SB/ZPVcwZCDA58R+kP
-         A/B5Id3zsxnsyMyr6CDkMh6Th2q7WJvsMNX0b6n3aZ/5bvX5nEE16Axym7ElHcm5yg90
-         X1NGz3akMQtawzQJr4zCezXag18k61AHanMh5GcFpXTTLpPUlw1v4ntn4mBCPaaw9KT0
-         QsWQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=oNJcrRXO6dvn3mxMEzBC05MZsfpfTkVuV/BgddKCBgg=;
-        b=lG4Gioa/l8zG/zrIzpD1LDnYnPrc+bbnw7aHPH+ScreqqJhOZ2aeX5NfGzguMyeVWQ
-         Bg80NQYlIGQ8FqQbSwZxU2wOEXIh9LKjF6dns5I2eikoAbQWfb2vX+sMLirCjZSZ9o1k
-         vQ/20veL0BSdB+QX5S3P/hw6A2ReI7pl2eEs3WITF8iJOThjfmjBMDhy42+UNUvOUcO9
-         TaKsMbeIPqP1MBjHtZGULxKIXTpDI9hs0rpcsCLM1epWiY3xRd7jQ+VVc9OejNUdT8e0
-         sYqFV9Iz2y9wALFMScRtlEH+U3GFz3Txy464ioGgrcd85HUYXEkANBN6SQEXhy2DSMG1
-         Tv2w==
-X-Gm-Message-State: APjAAAX3czBKxsfT6gpyf4qrEzGl1CPq6ZvIf0Dm5MoY9CSU7YbKPHHl
-        vGUvg5/5L5kMHju8RGjwQTy5zh2L7KX05zo2eqMr+0bp0Bc=
-X-Google-Smtp-Source: APXvYqx+sesqKcY75BmOXtb6Jt4RyPvX8NYSZ1Ob7VqDMJziWyJwP4uq0hXCpmOYtqUHlK1qo1LcBHNpPZA25MTV6yU=
-X-Received: by 2002:a25:900c:: with SMTP id s12mr13047304ybl.244.1565348475201;
- Fri, 09 Aug 2019 04:01:15 -0700 (PDT)
-MIME-Version: 1.0
-From:   Mike Fleetwood <mike.fleetwood@googlemail.com>
-Date:   Fri, 9 Aug 2019 12:01:03 +0100
-Message-ID: <CAMU1PDjZNXr6Y26EUtCSZFnjJfx7MgCLWNWNRgBb9dSN1pdK_g@mail.gmail.com>
-Subject: Is it supported to change an ext2/3/4 label while mounted?
-To:     linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+        id S2406778AbfHIMmk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Aug 2019 08:42:40 -0400
+Received: from mx2.suse.de ([195.135.220.15]:37640 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2406518AbfHIMmk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Aug 2019 08:42:40 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 1D4AEAF10;
+        Fri,  9 Aug 2019 12:42:39 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 616771E47C2; Fri,  9 Aug 2019 14:42:38 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>, Thomas Gleixner <tglx@linutronix.de>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@kernel.org>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Anna-Maria Gleixner <anna-maria@linutronix.de>,
+        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/7 v2] jbd2: Bit spinlock conversions
+Date:   Fri,  9 Aug 2019 14:42:26 +0200
+Message-Id: <20190809124233.13277-1-jack@suse.cz>
+X-Mailer: git-send-email 2.16.4
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+Hello,
 
-For Btrfs and more recently XFS they explicitly support changing the
-label while mounted.  Documentation is available saying it can be done
-and stracing shows it is using a file system specific ioctl() to make
-the change.
+This series is derived from Thomas' series to get rid of bit spinlocks in
+buffer head code. These patches convert BH_State bit spinlock to an ordinary
+spinlock inside struct journal_head and somewhat reduce the critical section
+under BH_JournalHead bit spinlock so that it is fine for RT. 
 
-However for ext2/3/4 file systems I can't find anything explicitly
-documented, and stracing "tune2fs -L" shows that it writes directly to
-the block device while the file system is mounted.  That seems unsafe as
-I presume the kernel would be expecting to have exclusive access to the
-block device while the file system is mounted.  However it always seems
-to work.  I am wondering if it is safe and supported to change an
-ext2/3/4 file system label while it is mounted?
+Motivation from original Thomas' series:
 
-(I have a old GParted enhancement request for this, hence the question.
-https://bugzilla.gnome.org/show_bug.cgi?id=600496)
+Bit spinlocks are problematic if PREEMPT_RT is enabled. They disable
+preemption, which is undesired for latency reasons and breaks when regular
+spinlocks are taken within the bit_spinlock locked region because regular
+spinlocks are converted to 'sleeping spinlocks' on RT.
 
-Thanks,
-Mike
+Bit spinlocks are also not covered by lock debugging, e.g. lockdep. With
+the spinlock substitution in place, they can be exposed via a new config
+switch: CONFIG_DEBUG_BIT_SPINLOCKS.
 
+Ted, can you pick up these patches? Thanks!
 
-# mkfs.btrfs /dev/sdb1
-# mount /dev/db1 /mnt/1
-# strace btrfs filesystem label /mnt/1 btrfs_label
-...
-open("/mnt/1", O_RDONLY|O_NOATIME)      = 3
-ioctl(3, BTRFS_IOC_SET_FSLABEL, "btrfs_label") = 0
+Changes since v1:
+* Fixed up compilation breakage on UP due to missing linux/spinlock.h include
 
-
-# mkfs.xfs /dev/sdb2
-# mount /dev/sdb2 /mnt/2
-# strace  xfs_io -c "label -s xfs_label" /mnt/2
-...
-open("/mnt/2", O_RDONLY)                = 3
-...
-ioctl(3, BTRFS_IOC_SET_FSLABEL, "xfs_label") = 0
-
-
-# mkfs.ext2 /dev/sdb3
-# mount /dev/sdb3 /mnt/3
-# strace tune2fs -L ext2_label /dev/sdb3
-...
-open("/dev/sdb3", O_RDWR)               = 3
-...
-lseek(3, 134217728, SEEK_SET)           = 134217728
-write(3, "\0\200\0\0\0\0\2\0\231\31\0\0\217\367\1\0\365\177\0\0\0\0\0\0\2\0\0\0\2\0\0\0"...,
-1024) = 1024
-lseek(3, 402653184, SEEK_SET)           = 402653184
-write(3, "\0\200\0\0\0\0\2\0\231\31\0\0\217\367\1\0\365\177\0\0\0\0\0\0\2\0\0\0\2\0\0\0"...,
-1024) = 1024
-fsync(3)                                = 0
-lseek(3, 1072, SEEK_SET)                = 1072
-write(3, "\vM", 2)                      = 2
-lseek(3, 1144, SEEK_SET)                = 1144
-write(3, "ext2_label", 10)              = 10
-fsync(3)                                = 0
-close(3)
+								Honza
