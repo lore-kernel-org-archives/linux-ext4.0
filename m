@@ -2,48 +2,51 @@ Return-Path: <SRS0=18j+=WH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CBA70C433FF
-	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D1A6C0650F
+	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C3E32173B
-	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 323AE2173B
+	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1565559433;
-	bh=M5OO0DAuM0LyMiWiAitlxQ1KgWp1hgxg7lV0HmBjAzE=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=gmsShDf9phRBfPRziGinZqZL/wC7DkhN1/0jpz/qeOtkp6daTWVVJEDupjs1XD18h
-	 8EFyCHEE/kzHkxptX+MPmV8s0+hosyFbIf0Z3L3kJmkEd9nZ/cgdJ+jAIgftYX5WWS
-	 eTq5L706jiEnwkk4hFAsmLat5z39FmnL1LC8E1No=
+	s=default; t=1565559434;
+	bh=swoMgo/n2caW8yJE4pfd10ANnvVz7VhP4yS8JJAp8jA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=ZWBi9Na+NIuo/TISiv3qT2D4yg0xDPyWlzMfkO/7AnPUtqvHjzl00K8xzphuSWvIe
+	 0qweXf/XUI7DINAIyMJhxVwdNSklUBIyO8FxrnwadN8QcGzvAm60bgHJ+dHu3IeAn6
+	 i+kmtJEuPXzaOrE+Fk1QUH4RT0Uuu+nf+lewFR2A=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726296AbfHKVhN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1726525AbfHKVhN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sun, 11 Aug 2019 17:37:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33492 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:33498 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726011AbfHKVhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726055AbfHKVhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Sun, 11 Aug 2019 17:37:13 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2C4332084D;
+        by mail.kernel.org (Postfix) with ESMTPSA id 6B08F2085A;
         Sun, 11 Aug 2019 21:37:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1565559432;
-        bh=M5OO0DAuM0LyMiWiAitlxQ1KgWp1hgxg7lV0HmBjAzE=;
-        h=From:To:Cc:Subject:Date:From;
-        b=1Uu7QZwbKglvie2v3Mu15XkOb3jsT8kJ2qcgpC7QaCRTFHn0D6ojqNFFMwovEZYXA
-         1oIU5mXMWyju0Xfp4QxhNpuvHKtzyNnAODDXuttxUaiEF2iqP4U867di7+PWESxY+q
-         hnmDWTYRGPfxheR6V0VpqsRVMIz/EkS8hqRxlnXM=
+        bh=swoMgo/n2caW8yJE4pfd10ANnvVz7VhP4yS8JJAp8jA=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=jjl93+AdEy/Khgm0sMNr6vNO8vy8+xtaJ1FK03uu8Hf21CqlupuirV1lgPjpC3eNP
+         j+mTgk8XFhCfbLOy7kGcp4S1eFQLrYp4GRpbcPes0lSBHhMTW696YwxCNtGfdaz31s
+         NC8T+kUaShHNtQ9bCRN/9r60OPepWkiFcKwiowmo=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH 0/6] fs-verity fixups
-Date:   Sun, 11 Aug 2019 14:35:51 -0700
-Message-Id: <20190811213557.1970-1-ebiggers@kernel.org>
+Subject: [PATCH 1/6] fs-verity: fix crash on read error in build_merkle_tree_level()
+Date:   Sun, 11 Aug 2019 14:35:52 -0700
+Message-Id: <20190811213557.1970-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190811213557.1970-1-ebiggers@kernel.org>
+References: <20190811213557.1970-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -51,26 +54,59 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-A few fixes and cleanups for fs-verity.
+From: Eric Biggers <ebiggers@google.com>
 
-If there are no objections, I'll fold these into the original patches.
+In build_merkle_tree_level(), use a separate fsverity_err() statement
+when failing to read a data page, rather than incorrectly reusing the
+one for failure to read a Merkle tree page and accessing level_start[]
+out of bounds due to 'params->level_start[level - 1]' when level == 0.
 
-Eric Biggers (6):
-  fs-verity: fix crash on read error in build_merkle_tree_level()
-  ext4: skip truncate when verity in progress in ->write_begin()
-  f2fs: skip truncate when verity in progress in ->write_begin()
-  ext4: remove ext4_bio_encrypted()
-  ext4: fix comment in ext4_end_enable_verity()
-  f2fs: use EFSCORRUPTED in f2fs_get_verity_descriptor()
-
- fs/ext4/inode.c    |  7 +++++--
- fs/ext4/readpage.c |  9 ---------
- fs/ext4/verity.c   |  2 +-
- fs/f2fs/data.c     |  2 +-
- fs/f2fs/verity.c   |  2 +-
+Fixes: 248676649d53 ("fs-verity: implement FS_IOC_ENABLE_VERITY ioctl")
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
  fs/verity/enable.c | 24 ++++++++++++++++--------
- 6 files changed, 24 insertions(+), 22 deletions(-)
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
+diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+index 3371d51563962..eabc6ac199064 100644
+--- a/fs/verity/enable.c
++++ b/fs/verity/enable.c
+@@ -43,19 +43,27 @@ static int build_merkle_tree_level(struct inode *inode, unsigned int level,
+ 			pr_debug("Hashing block %llu of %llu for level %u\n",
+ 				 i + 1, num_blocks_to_hash, level);
+ 
+-		if (level == 0)
++		if (level == 0) {
+ 			/* Leaf: hashing a data block */
+ 			src_page = read_mapping_page(inode->i_mapping, i, NULL);
+-		else
++			if (IS_ERR(src_page)) {
++				err = PTR_ERR(src_page);
++				fsverity_err(inode,
++					     "Error %d reading data page %llu",
++					     err, i);
++				return err;
++			}
++		} else {
+ 			/* Non-leaf: hashing hash block from level below */
+ 			src_page = vops->read_merkle_tree_page(inode,
+ 					params->level_start[level - 1] + i);
+-		if (IS_ERR(src_page)) {
+-			err = PTR_ERR(src_page);
+-			fsverity_err(inode,
+-				     "Error %d reading Merkle tree page %llu",
+-				     err, params->level_start[level - 1] + i);
+-			return err;
++			if (IS_ERR(src_page)) {
++				err = PTR_ERR(src_page);
++				fsverity_err(inode,
++					     "Error %d reading Merkle tree page %llu",
++					     err, params->level_start[level - 1] + i);
++				return err;
++			}
+ 		}
+ 
+ 		err = fsverity_hash_page(params, inode, req, src_page,
 -- 
 2.22.0
 
