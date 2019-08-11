@@ -7,43 +7,43 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28E41C433FF
-	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59CCAC0650F
+	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E354A21743
-	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 270EF2087B
+	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1565559435;
-	bh=jLSRndS90GZ1sS5nNH8viZnBJzvjYmn5wdaigS/eBOQ=;
+	s=default; t=1565559436;
+	bh=u8BxT9tQSHf5ZOVsehPoiYiYgC4+Zhfv2J2bExWNYqQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=dZ7ZFX6cuhnqhnIamosQr2TiQNFb7XXpjQqVtaL9KGAEoFNKeGJ2E+GbBB4Ar/xb0
-	 FMIPowzu+zqXOqCn3zJvCAZLVG/Mm5EHXZhkja036tfEnRxRv68vtWS4W2CuHvvTga
-	 V6tfvZExsgE+LMN2crI9UNTv2tddacnqEXhAc04k=
+	b=L2XBsmjArNfE5Gm3EvfNcLSt+qXlCsszzcAmOH/GYla+kQHT+tl2n2QmLzUX1x5sF
+	 wlL1s5vA8PR+9/eUZ6hN1E2fJkOOpIyXyMUgfTAaWQZ9uOr3AFOXyUFOWHxcG8MPYu
+	 LhChHLYKCGr9BAUmzFJ5UT2NCY9zg5gzewBKXRYs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726558AbfHKVhO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 11 Aug 2019 17:37:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33502 "EHLO mail.kernel.org"
+        id S1726582AbfHKVhP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 11 Aug 2019 17:37:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33520 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726155AbfHKVhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 11 Aug 2019 17:37:13 -0400
+        id S1726055AbfHKVhO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 11 Aug 2019 17:37:14 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A8EEE2085B;
-        Sun, 11 Aug 2019 21:37:12 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B4C5E2173C;
+        Sun, 11 Aug 2019 21:37:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1565559432;
-        bh=jLSRndS90GZ1sS5nNH8viZnBJzvjYmn5wdaigS/eBOQ=;
+        s=default; t=1565559433;
+        bh=u8BxT9tQSHf5ZOVsehPoiYiYgC4+Zhfv2J2bExWNYqQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=zXNM5iORw1W3gqfwS4dRHQM5oTQW4JpvBOt9qx/RkXXhm/+qlhiuvoOMgKnPClO/F
-         iu1M7eO0iSxh2ichFx9CUOQMUB7gmhmbSzVBOpx3WSxi7luktLQgJJIjpjP3ks/YuF
-         plLF6RnO9ZoGWqRyhEbFBqZYpQCJz97ubZTca+RA=
+        b=Q2oOqANPN/hXWIFA8+pGhszghBRjkfyAX2dae3QJMC1lP+6wiUBR5fv6sPW5uaCu1
+         b4ZkAGpYnIZ0R4diwtbEmI2QGLtphv/ht7O+e9ZEL8DSbWX6+5gBzQFVT+olcR/VYs
+         5Me/KYJFmTBNQWy0EYjfQLAEmouY1g4bmkI4wB2A=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH 2/6] ext4: skip truncate when verity in progress in ->write_begin()
-Date:   Sun, 11 Aug 2019 14:35:53 -0700
-Message-Id: <20190811213557.1970-3-ebiggers@kernel.org>
+Subject: [PATCH 6/6] f2fs: use EFSCORRUPTED in f2fs_get_verity_descriptor()
+Date:   Sun, 11 Aug 2019 14:35:57 -0700
+Message-Id: <20190811213557.1970-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190811213557.1970-1-ebiggers@kernel.org>
 References: <20190811213557.1970-1-ebiggers@kernel.org>
@@ -56,46 +56,26 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-When an error (e.g. ENOSPC) occurs during ext4_write_begin() when called
-from ext4_write_merkle_tree_block(), skip truncating the file.  i_size
-is not meaningful in this case, and the truncation is handled by
-ext4_end_enable_verity() instead.  Also, this was triggering the
-WARN_ON(!inode_is_locked(inode)) in ext4_truncate().
+EFSCORRUPTED is now defined in f2fs.h, so use it instead of EUCLEAN.
 
-Fixes: ea54d7e4c0f8 ("ext4: add basic fs-verity support")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/inode.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/f2fs/verity.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b2c8d09acf652..cf0fce1173a4c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1340,6 +1340,9 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+diff --git a/fs/f2fs/verity.c b/fs/f2fs/verity.c
+index 6bc3470d99d00..a401ef72bc821 100644
+--- a/fs/f2fs/verity.c
++++ b/fs/f2fs/verity.c
+@@ -210,7 +210,7 @@ static int f2fs_get_verity_descriptor(struct inode *inode, void *buf,
+ 	if (pos + size < pos || pos + size > inode->i_sb->s_maxbytes ||
+ 	    pos < f2fs_verity_metadata_pos(inode) || size > INT_MAX) {
+ 		f2fs_warn(F2FS_I_SB(inode), "invalid verity xattr");
+-		return -EUCLEAN; /* EFSCORRUPTED */
++		return -EFSCORRUPTED;
  	}
- 
- 	if (ret) {
-+		bool extended = (pos + len > inode->i_size) &&
-+				!ext4_verity_in_progress(inode);
-+
- 		unlock_page(page);
- 		/*
- 		 * __block_write_begin may have instantiated a few blocks
-@@ -1349,11 +1352,11 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 		 * Add inode to orphan list in case we crash before
- 		 * truncate finishes
- 		 */
--		if (pos + len > inode->i_size && ext4_can_truncate(inode))
-+		if (extended && ext4_can_truncate(inode))
- 			ext4_orphan_add(handle, inode);
- 
- 		ext4_journal_stop(handle);
--		if (pos + len > inode->i_size) {
-+		if (extended) {
- 			ext4_truncate_failed_write(inode);
- 			/*
- 			 * If truncate failed early the inode might
+ 	if (buf_size) {
+ 		if (size > buf_size)
 -- 
 2.22.0
 
