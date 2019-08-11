@@ -7,43 +7,43 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D1A6C0650F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6DAFC32757
 	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 323AE2173B
+	by mail.kernel.org (Postfix) with ESMTP id B6B8F2173B
 	for <linux-ext4@archiver.kernel.org>; Sun, 11 Aug 2019 21:37:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1565559434;
-	bh=swoMgo/n2caW8yJE4pfd10ANnvVz7VhP4yS8JJAp8jA=;
+	bh=p/SZRYcADvPD/FuvRi8uPfjTa+Ri4JfMVG7sxvqkbAc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ZWBi9Na+NIuo/TISiv3qT2D4yg0xDPyWlzMfkO/7AnPUtqvHjzl00K8xzphuSWvIe
-	 0qweXf/XUI7DINAIyMJhxVwdNSklUBIyO8FxrnwadN8QcGzvAm60bgHJ+dHu3IeAn6
-	 i+kmtJEuPXzaOrE+Fk1QUH4RT0Uuu+nf+lewFR2A=
+	b=hTIK9ZrMJLS7etKmOEvWfzyxjKz8cME2fqr/wppiZz1YXWnurrYRz0FpTNfidp2lC
+	 +OItAFQzh5IWer+1rPuj29HGD8WGUU0WI/mupGFvS1s+ig/+CzfUXZppHT4w5HhpU+
+	 OP9kyQWOt7SW/goVF00qU/mzEQhQb1i0hw6V7lWc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726525AbfHKVhN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 11 Aug 2019 17:37:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33498 "EHLO mail.kernel.org"
+        id S1726538AbfHKVhO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 11 Aug 2019 17:37:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33516 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726055AbfHKVhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 11 Aug 2019 17:37:13 -0400
+        id S1726527AbfHKVhO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 11 Aug 2019 17:37:14 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6B08F2085A;
-        Sun, 11 Aug 2019 21:37:12 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6E842216F4;
+        Sun, 11 Aug 2019 21:37:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1565559432;
-        bh=swoMgo/n2caW8yJE4pfd10ANnvVz7VhP4yS8JJAp8jA=;
+        s=default; t=1565559433;
+        bh=p/SZRYcADvPD/FuvRi8uPfjTa+Ri4JfMVG7sxvqkbAc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jjl93+AdEy/Khgm0sMNr6vNO8vy8+xtaJ1FK03uu8Hf21CqlupuirV1lgPjpC3eNP
-         j+mTgk8XFhCfbLOy7kGcp4S1eFQLrYp4GRpbcPes0lSBHhMTW696YwxCNtGfdaz31s
-         NC8T+kUaShHNtQ9bCRN/9r60OPepWkiFcKwiowmo=
+        b=xzkZzx7MZETwgWv7D7aFx91csOHB28dyd6s+TrD52+T1/aASBZcbWvrg4J5chjSfr
+         CUKVkJv1IaQYj7PXsiKRu2IpxBRYzEmPfdaQO6yA0mNU+XUJLEg9jvbGPH95m3DegH
+         ZzFpHKz0y61SdzkGZTEyCxSofY5+xsab/e2wYfG8=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH 1/6] fs-verity: fix crash on read error in build_merkle_tree_level()
-Date:   Sun, 11 Aug 2019 14:35:52 -0700
-Message-Id: <20190811213557.1970-2-ebiggers@kernel.org>
+Subject: [PATCH 5/6] ext4: fix comment in ext4_end_enable_verity()
+Date:   Sun, 11 Aug 2019 14:35:56 -0700
+Message-Id: <20190811213557.1970-6-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190811213557.1970-1-ebiggers@kernel.org>
 References: <20190811213557.1970-1-ebiggers@kernel.org>
@@ -56,57 +56,24 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-In build_merkle_tree_level(), use a separate fsverity_err() statement
-when failing to read a data page, rather than incorrectly reusing the
-one for failure to read a Merkle tree page and accessing level_start[]
-out of bounds due to 'params->level_start[level - 1]' when level == 0.
-
-Fixes: 248676649d53 ("fs-verity: implement FS_IOC_ENABLE_VERITY ioctl")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/enable.c | 24 ++++++++++++++++--------
- 1 file changed, 16 insertions(+), 8 deletions(-)
+ fs/ext4/verity.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/verity/enable.c b/fs/verity/enable.c
-index 3371d51563962..eabc6ac199064 100644
---- a/fs/verity/enable.c
-+++ b/fs/verity/enable.c
-@@ -43,19 +43,27 @@ static int build_merkle_tree_level(struct inode *inode, unsigned int level,
- 			pr_debug("Hashing block %llu of %llu for level %u\n",
- 				 i + 1, num_blocks_to_hash, level);
- 
--		if (level == 0)
-+		if (level == 0) {
- 			/* Leaf: hashing a data block */
- 			src_page = read_mapping_page(inode->i_mapping, i, NULL);
--		else
-+			if (IS_ERR(src_page)) {
-+				err = PTR_ERR(src_page);
-+				fsverity_err(inode,
-+					     "Error %d reading data page %llu",
-+					     err, i);
-+				return err;
-+			}
-+		} else {
- 			/* Non-leaf: hashing hash block from level below */
- 			src_page = vops->read_merkle_tree_page(inode,
- 					params->level_start[level - 1] + i);
--		if (IS_ERR(src_page)) {
--			err = PTR_ERR(src_page);
--			fsverity_err(inode,
--				     "Error %d reading Merkle tree page %llu",
--				     err, params->level_start[level - 1] + i);
--			return err;
-+			if (IS_ERR(src_page)) {
-+				err = PTR_ERR(src_page);
-+				fsverity_err(inode,
-+					     "Error %d reading Merkle tree page %llu",
-+					     err, params->level_start[level - 1] + i);
-+				return err;
-+			}
- 		}
- 
- 		err = fsverity_hash_page(params, inode, req, src_page,
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index bb0a3b8e6ea71..d0d8a9795dd62 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -196,7 +196,7 @@ static int ext4_end_enable_verity(struct file *filp, const void *desc,
+ 				  size_t desc_size, u64 merkle_tree_size)
+ {
+ 	struct inode *inode = file_inode(filp);
+-	const int credits = 2; /* superblock and inode for ext4_orphan_add() */
++	const int credits = 2; /* superblock and inode for ext4_orphan_del() */
+ 	handle_t *handle;
+ 	int err = 0;
+ 	int err2;
 -- 
 2.22.0
 
