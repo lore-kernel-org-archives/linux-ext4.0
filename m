@@ -2,142 +2,66 @@ Return-Path: <SRS0=Z9Kk=WI=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33129C31E40
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Aug 2019 17:56:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA4E0C433FF
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Aug 2019 18:01:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 08F8D206C2
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Aug 2019 17:56:22 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="aT1+Cp+K"
+	by mail.kernel.org (Postfix) with ESMTP id 89BF520663
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Aug 2019 18:01:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726674AbfHLR4R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Aug 2019 13:56:17 -0400
-Received: from mail-qt1-f194.google.com ([209.85.160.194]:39841 "EHLO
-        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726632AbfHLR4R (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Aug 2019 13:56:17 -0400
-Received: by mail-qt1-f194.google.com with SMTP id l9so103631494qtu.6
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Aug 2019 10:56:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ziepe.ca; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to:user-agent;
-        bh=YeHGfRcz7/xDdQu045YPZqSeRdWuIL5U3pex4BeV6Co=;
-        b=aT1+Cp+KGWQyozFDowVXklkNZVi/kM9KamsNgl23DUo+IJyNPad8EzXuoAG7s3f5bf
-         bOSW7DhNODTjMskeg1DRPDb4g7NB2wX2AWkHQuyR0cct0HrdnZzak9aU8g7CHTL0qHoO
-         IKZcX3vXDSq/u24mEPYpzVVHpbOB2TSRpMchVGlB+vxEwN6TXEtwOQ8uYyw5P8+cz9Hd
-         j1BzALymBU6a7rw2q7wWcxOSnVbjWppZ0IMW4+9rMtyvhB+q0F08Mu3PWUPEGDQxvNfD
-         RqDlAaDfsxyO370w/XugHLZnyfoDs8iN8igYYDuAHaeRZtKy3Zg+yOMKiyalzWN131uL
-         Eqkw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to:user-agent;
-        bh=YeHGfRcz7/xDdQu045YPZqSeRdWuIL5U3pex4BeV6Co=;
-        b=BnKD7QV3VE5O3kNGCEdC4/wWHiTA8xZUHwySojFmnKXiwmm0u0y7e+E91TTD6qqReR
-         zDFNYJ7CAdQMuiGAot0QQaomfUit7fJSvtBtPSewF+FiYAc6DTvusy53S0BydjxQ3toB
-         rwGhxoEiHTa6cH2/HHb4Yca7Xo+XgjlbBXFW3DCoUfuHTysPU8PRXhY7n9VP31xO4KeK
-         raUPlJNKl+fHWmanc5+kZ/YzwlReC9eoTPc/YbHcI5PtzXMBEyPrmgvCj1/YKlILMGiz
-         3c+yFP0J4ZhrY2yEWLRs6zevbv0x7mv8prfwxJzjlG+xvRKntfP/AHfQTqW8jklaB1Ox
-         pAIA==
-X-Gm-Message-State: APjAAAXKmN/T+YkrMBRLx/F9gppmsf/1kXey9KP7DK4ylMz9u8S8DZmC
-        kERtkVfKcHZJsQZ8mc6LnTNYbw==
-X-Google-Smtp-Source: APXvYqx5MBD9MG64lV9iZUYWN/EeNo5U4lzvE+q4eQc5jVQAxZ4QmzhDKvfOk+m1tNY0/uiYKcLUcw==
-X-Received: by 2002:ac8:43c4:: with SMTP id w4mr15414493qtn.238.1565632576300;
-        Mon, 12 Aug 2019 10:56:16 -0700 (PDT)
-Received: from ziepe.ca (hlfxns017vw-156-34-55-100.dhcp-dynamic.fibreop.ns.bellaliant.net. [156.34.55.100])
-        by smtp.gmail.com with ESMTPSA id r15sm5883158qtp.94.2019.08.12.10.56.15
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 12 Aug 2019 10:56:15 -0700 (PDT)
-Received: from jgg by mlx.ziepe.ca with local (Exim 4.90_1)
-        (envelope-from <jgg@ziepe.ca>)
-        id 1hxEYJ-0004LN-Ev; Mon, 12 Aug 2019 14:56:15 -0300
-Date:   Mon, 12 Aug 2019 14:56:15 -0300
-From:   Jason Gunthorpe <jgg@ziepe.ca>
-To:     Ira Weiny <ira.weiny@intel.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Michal Hocko <mhocko@suse.com>,
-        Dave Chinner <david@fromorbit.com>, linux-xfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [RFC PATCH v2 16/19] RDMA/uverbs: Add back pointer to system
- file object
-Message-ID: <20190812175615.GI24457@ziepe.ca>
-References: <20190809225833.6657-1-ira.weiny@intel.com>
- <20190809225833.6657-17-ira.weiny@intel.com>
- <20190812130039.GD24457@ziepe.ca>
- <20190812172826.GA19746@iweiny-DESK2.sc.intel.com>
+        id S1726632AbfHLSBN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Aug 2019 14:01:13 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:49625 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726219AbfHLSBN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Aug 2019 14:01:13 -0400
+Received: from callcc.thunk.org (guestnat-104-133-9-109.corp.google.com [104.133.9.109] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x7CI16QP027591
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 12 Aug 2019 14:01:08 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 6C9184218EF; Mon, 12 Aug 2019 14:01:06 -0400 (EDT)
+Date:   Mon, 12 Aug 2019 14:01:06 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     harshad shirwadkar <harshadshirwadkar@gmail.com>
+Cc:     Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH v2 05/12] jbd2: fast-commit commit path new APIs
+Message-ID: <20190812180106.GB28705@mit.edu>
+References: <20190809034552.148629-1-harshadshirwadkar@gmail.com>
+ <20190809034552.148629-6-harshadshirwadkar@gmail.com>
+ <20190812160445.GA28705@mit.edu>
+ <CAD+ocbxwraTHT0wPCZgtjC8mJ7OU6wpkd7PgC7_YW=G9W-arDQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190812172826.GA19746@iweiny-DESK2.sc.intel.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+In-Reply-To: <CAD+ocbxwraTHT0wPCZgtjC8mJ7OU6wpkd7PgC7_YW=G9W-arDQ@mail.gmail.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Aug 12, 2019 at 10:28:27AM -0700, Ira Weiny wrote:
-> On Mon, Aug 12, 2019 at 10:00:40AM -0300, Jason Gunthorpe wrote:
-> > On Fri, Aug 09, 2019 at 03:58:30PM -0700, ira.weiny@intel.com wrote:
-> > > From: Ira Weiny <ira.weiny@intel.com>
-> > > 
-> > > In order for MRs to be tracked against the open verbs context the ufile
-> > > needs to have a pointer to hand to the GUP code.
-> > > 
-> > > No references need to be taken as this should be valid for the lifetime
-> > > of the context.
-> > > 
-> > > Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-> > >  drivers/infiniband/core/uverbs.h      | 1 +
-> > >  drivers/infiniband/core/uverbs_main.c | 1 +
-> > >  2 files changed, 2 insertions(+)
-> > > 
-> > > diff --git a/drivers/infiniband/core/uverbs.h b/drivers/infiniband/core/uverbs.h
-> > > index 1e5aeb39f774..e802ba8c67d6 100644
-> > > +++ b/drivers/infiniband/core/uverbs.h
-> > > @@ -163,6 +163,7 @@ struct ib_uverbs_file {
-> > >  	struct page *disassociate_page;
-> > >  
-> > >  	struct xarray		idr;
-> > > +	struct file             *sys_file; /* backpointer to system file object */
-> > >  };
-> > 
-> > The 'struct file' has a lifetime strictly shorter than the
-> > ib_uverbs_file, which is kref'd on its own lifetime. Having a back
-> > pointer like this is confouding as it will be invalid for some of the
-> > lifetime of the struct.
-> 
-> Ah...  ok.  I really thought it was the other way around.
-> 
-> __fput() should not call ib_uverbs_close() until the last reference on struct
-> file is released...  What holds references to struct ib_uverbs_file past that?
+On Mon, Aug 12, 2019 at 10:41:48AM -0700, harshad shirwadkar wrote:
+> I see, so you mean each fsync() call will result in exactly one inode
+> to be committed (the inode on which fsync was called), right? I agree
+> this doesn't need to go through JBD2 but we need a mechanism to inform
+> JBD2 about this fast commit since JBD2 maintains sub-transaction ID.
+> JBD2 will in turn need to make sure that a subtid was allocated for
+> such a fast commit and it was incremented once the fast commit was
+> successful as well.
 
-Child fds hold onto the internal ib_uverbs_file until they are closed
+Why does JBD2 need to maintain the sub-transaction ID?  We can only
+have a single fast commit happening at a time, and while a fast commit
+is happening we can't allow a full commit from happening (or vice
+versa).  So we need a mutex which enforces this, the transaction id
+can just be a field in the transaction structure.
 
-> Perhaps I need to add this (untested)?
-> 
-> diff --git a/drivers/infiniband/core/uverbs_main.c
-> b/drivers/infiniband/core/uverbs_main.c
-> index f628f9e4c09f..654e774d9cf2 100644
-> +++ b/drivers/infiniband/core/uverbs_main.c
-> @@ -1125,6 +1125,8 @@ static int ib_uverbs_close(struct inode *inode, struct file *filp)
->         list_del_init(&file->list);
->         mutex_unlock(&file->device->lists_mutex);
->  
-> +       file->sys_file = NULL;
+Cheers,
 
-Now this has unlocked updates to that data.. you'd need some lock and
-get not zero pattern
-
-Jason
+					- Ted
