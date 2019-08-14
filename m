@@ -2,121 +2,147 @@ Return-Path: <SRS0=MYho=WK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FF07C433FF
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Aug 2019 08:07:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7D1FC433FF
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Aug 2019 09:48:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 62CA1205C9
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Aug 2019 08:07:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 884E720843
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Aug 2019 09:48:58 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=mbobrowski-org.20150623.gappssmtp.com header.i=@mbobrowski-org.20150623.gappssmtp.com header.b="SvtDodok"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726585AbfHNIG5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Aug 2019 04:06:57 -0400
-Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:55107 "EHLO
-        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725905AbfHNIG5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Aug 2019 04:06:57 -0400
-Received: from dread.disaster.area (pa49-195-190-67.pa.nsw.optusnet.com.au [49.195.190.67])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 044DB2AD83C;
-        Wed, 14 Aug 2019 18:06:53 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92)
-        (envelope-from <david@fromorbit.com>)
-        id 1hxoHz-0000t6-39; Wed, 14 Aug 2019 18:05:47 +1000
-Date:   Wed, 14 Aug 2019 18:05:47 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Ira Weiny <ira.weiny@intel.com>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Jason Gunthorpe <jgg@ziepe.ca>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Michal Hocko <mhocko@suse.com>, linux-xfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [RFC PATCH v2 01/19] fs/locks: Export F_LAYOUT lease to user
- space
-Message-ID: <20190814080547.GJ6129@dread.disaster.area>
-References: <20190809225833.6657-1-ira.weiny@intel.com>
- <20190809225833.6657-2-ira.weiny@intel.com>
- <20190809235231.GC7777@dread.disaster.area>
- <20190812173626.GB19746@iweiny-DESK2.sc.intel.com>
+        id S1726525AbfHNJs5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Aug 2019 05:48:57 -0400
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:44724 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725800AbfHNJs5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Aug 2019 05:48:57 -0400
+Received: by mail-pg1-f196.google.com with SMTP id i18so52822383pgl.11
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Aug 2019 02:48:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=mbobrowski-org.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:content-transfer-encoding:in-reply-to
+         :user-agent;
+        bh=Ve+BsJCVJIEcifwtByCuOW28rmegYHRoXiLEkQ98LcE=;
+        b=SvtDodok5nVnLyoolfForJK0EHeOoyIDE5YgsUdqEMry1xgwS6kWH5illdoZweCHeq
+         UYls/IAXDe9T4P8V69E/48WknUmCXkPKyZv83mXWJA4WEUbv55J3rNP1cHgnh5Mm4MwB
+         dzIUL4v6Cd2JT3H8lVc3EIPMDG8AoyqwdDuOTT3dCbCBXP/LWRqZF0SatqAnHgBFtb+B
+         M8Sc0VvG+qa64YHj1lop64haV2iZDuq1V16Fwdoq+Ljr7FN7bfd3o+sLaRx/j1lJCQ5z
+         M7lZdLSKtn8+SrlNQHNEyVdT7kUWwxaiRUc4z7PNcyqG1KkNX/SPqZWPlllEN8jSfxCZ
+         SpcA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:content-transfer-encoding
+         :in-reply-to:user-agent;
+        bh=Ve+BsJCVJIEcifwtByCuOW28rmegYHRoXiLEkQ98LcE=;
+        b=Av5AYFrdvE+M5Nez077caNCMvnDcDvs6zt+LsDw/Pj4Irh2yLc2VhG3k+jae8vrYYj
+         UW4eqjiP8xj9/PPr+lKuANJfUf01VILtnWhszZ/xEVKxnm2sidHWEL7L2CD20lhHv6/X
+         mLSjmrN3a4wwvjtMCWSQRRY9IQR6D0qXNUETOvWbCReZHhBYcPIeCXQ23xkH4WNgJ8rP
+         Q0bndohzMgOqH2wcfTvCw3rDMPuEhgpbl0avzYS+0oKH+2HpbeYbwZ/+LqYG61lpThy5
+         Q4vv8XCg8cebJ2GlMrPN7ARV7n5KIvggM2jh4VdnXXJGhYltIy+Ul4+2S7GR0H2TGadI
+         pKqA==
+X-Gm-Message-State: APjAAAVG0SFu61kVKWjkQCC5YkHpQck5CF1XOwbf7vfYV876eDqskBFr
+        RvATAoEHH8jDiak7i3PgYykr
+X-Google-Smtp-Source: APXvYqxMlpcm6/wPGb0sQMZFIa96c2xrKfs+EEDRJyQn8exRvnglI6LUZzNlec+lxXfArVXrgPFpnQ==
+X-Received: by 2002:a65:4c4d:: with SMTP id l13mr37500934pgr.156.1565776136665;
+        Wed, 14 Aug 2019 02:48:56 -0700 (PDT)
+Received: from poseidon.bobrowski.net ([114.78.226.167])
+        by smtp.gmail.com with ESMTPSA id r137sm28915301pfc.145.2019.08.14.02.48.53
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Wed, 14 Aug 2019 02:48:56 -0700 (PDT)
+Date:   Wed, 14 Aug 2019 19:48:50 +1000
+From:   Matthew Bobrowski <mbobrowski@mbobrowski.org>
+To:     RITESH HARJANI <riteshh@linux.ibm.com>
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        jack@suse.cz, tytso@mit.edu
+Subject: Re: [PATCH 0/5] ext4: direct IO via iomap infrastructure
+Message-ID: <20190814094848.GA23465@poseidon.bobrowski.net>
+References: <cover.1565609891.git.mbobrowski@mbobrowski.org>
+ <20190812173150.AF04F5204F@d06av21.portsmouth.uk.ibm.com>
+ <20190813111004.GA12682@poseidon.bobrowski.net>
+ <20190813122723.AE6264C040@d06av22.portsmouth.uk.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <20190812173626.GB19746@iweiny-DESK2.sc.intel.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20190813122723.AE6264C040@d06av22.portsmouth.uk.ibm.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=FNpr/6gs c=1 sm=1 tr=0
-        a=TR82T6zjGmBjdfWdGgpkDw==:117 a=TR82T6zjGmBjdfWdGgpkDw==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=FmdZ9Uzk2mMA:10
-        a=QyXUC8HyAAAA:8 a=7-415B0cAAAA:8 a=368o0BqEERmTqRvZ4WsA:9
-        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Aug 12, 2019 at 10:36:26AM -0700, Ira Weiny wrote:
-> On Sat, Aug 10, 2019 at 09:52:31AM +1000, Dave Chinner wrote:
-> > On Fri, Aug 09, 2019 at 03:58:15PM -0700, ira.weiny@intel.com wrote:
-> > > +	/*
-> > > +	 * NOTE on F_LAYOUT lease
-> > > +	 *
-> > > +	 * LAYOUT lease types are taken on files which the user knows that
-> > > +	 * they will be pinning in memory for some indeterminate amount of
-> > > +	 * time.
-> > 
-> > Indeed, layout leases have nothing to do with pinning of memory.
+On Tue, Aug 13, 2019 at 05:57:22PM +0530, RITESH HARJANI wrote:
+> On 8/13/19 4:40 PM, Matthew Bobrowski wrote:
+> > On Mon, Aug 12, 2019 at 11:01:50PM +0530, RITESH HARJANI wrote:
+> > > I was under the assumption that we need to maintain
+> > > ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) or
+> > > atomic_read(&EXT4_I(inode)->i_unwritten))
+> > > in case of non-AIO directIO or AIO directIO case as well (when we may
+> > > allocate unwritten extents),
+> > > to protect with some kind of race with other parts of code(maybe
+> > > truncate/bufferedIO/fallocate not sure?) which may call for
+> > > ext4_can_extents_be_merged()
+> > > to check if extents can be merged or not.
+> > > 
+> > > Is it not the case?
+> > > Now that directIO code has no way of specifying that this inode has
+> > > unwritten extent, will it not race with any other path, where this info was
+> > > necessary (like
+> > > in above func ext4_can_extents_be_merged())?
+> > Ah yes, I was under the same assumption when reviewing the code
+> > initially and one of my first solutions was to also use this dynamic
+> > 'state' flag in the ->end_io() handler. But, I fell flat on my face as
+> > that deemed to be problematic... This is because there can be multiple
+> > direct IOs to unwritten extents against the same inode, so you cannot
+> > possibly get away with tracking them using this single inode flag. So,
+> > hence the reason why we drop using EXT4_STATE_DIO_UNWRITTEN and use
+> > IOMAP_DIO_UNWRITTEN instead in the ->end_io() handler, which tracks
+> > whether _this_ particular IO has an underlying unwritten extent.
 > 
-> Yep, Fair enough.  I'll rework the comment.
+> Thanks for taking time to explain this.
 > 
-> > That's something an application taht uses layout leases might do,
-> > but it largely irrelevant to the functionality layout leases
-> > provide. What needs to be done here is explain what the layout lease
-> > API actually guarantees w.r.t. the physical file layout, not what
-> > some application is going to do with a lease. e.g.
-> > 
-> > 	The layout lease F_RDLCK guarantees that the holder will be
-> > 	notified that the physical file layout is about to be
-> > 	changed, and that it needs to release any resources it has
-> > 	over the range of this lease, drop the lease and then
-> > 	request it again to wait for the kernel to finish whatever
-> > 	it is doing on that range.
-> > 
-> > 	The layout lease F_RDLCK also allows the holder to modify
-> > 	the physical layout of the file. If an operation from the
-> > 	lease holder occurs that would modify the layout, that lease
-> > 	holder does not get notification that a change will occur,
-> > 	but it will block until all other F_RDLCK leases have been
-> > 	released by their holders before going ahead.
-> > 
-> > 	If there is a F_WRLCK lease held on the file, then a F_RDLCK
-> > 	holder will fail any operation that may modify the physical
-> > 	layout of the file. F_WRLCK provides exclusive physical
-> > 	modification access to the holder, guaranteeing nothing else
-> > 	will change the layout of the file while it holds the lease.
-> > 
-> > 	The F_WRLCK holder can change the physical layout of the
-> > 	file if it so desires, this will block while F_RDLCK holders
-> > 	are notified and release their leases before the
-> > 	modification will take place.
-> > 
-> > We need to define the semantics we expose to userspace first.....
+> But what I meant was this (I may be wrong here since I haven't really looked
+> into it),
+> but for my understanding I would like to discuss this -
 > 
-> Agreed.  I believe I have implemented the semantics you describe above.  Do I
-> have your permission to use your verbiage as part of reworking the comment and
-> commit message?
+> So earlier with this flag(EXT4_STATE_DIO_UNWRITTEN) we were determining on
+> whether a newextent can be merged with ex1 in function
+> ext4_extents_can_be_merged. But now since we have removed that flag we have
+> no way of knowing that whether
+> this inode has any unwritten extents or not from any DIO path.
+> What I meant is isn't this removal of setting/unsetting of
+> flag(EXT4_STATE_DIO_UNWRITTEN)
+> changing the behavior of this func - ext4_extents_can_be_merged?
 
-Of course. :)
+Ah yes, I see. I believe that what you're saying is correct and I
+think we will need to account for this case. But, I haven't thought
+about how to do this just yet.
 
-Cheers,
+> Also - could you please explain why this check returns 0 in the first place
+> (line 1762 - 1766 below)?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I cannot explain why, because I myself don't know exactly why in this
+particular case the extents cannot be merged. Perhaps `git blame` is
+our friend and we can direct that question accordingly, or someone
+else on this mailing list knows the answer. :-)
+
+> 1733 int
+> 1734 ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent
+> *ex1,
+> 1735                                 struct ext4_extent *ex2)
+> <...>
+> 
+> 1762         if (ext4_ext_is_unwritten(ex1) &&
+> 1763             (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
+> 1764              atomic_read(&EXT4_I(inode)->i_unwritten) ||
+> 1765              (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
+> 1766                 return 0;
+
+--M
+
