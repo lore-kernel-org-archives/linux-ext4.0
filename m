@@ -7,62 +7,63 @@ X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2B13C3A59E
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 06:43:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE5A2C3A5A2
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 06:43:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5FAD62087E
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 06:43:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A0202087E
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 06:43:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="TVv8ux+x"
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="idcoeYfT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728282AbfHUGm5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 21 Aug 2019 02:42:57 -0400
-Received: from mailout1.samsung.com ([203.254.224.24]:10395 "EHLO
-        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728250AbfHUGmt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Aug 2019 02:42:49 -0400
-Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
-        by mailout1.samsung.com (KnoxPortal) with ESMTP id 20190821064246epoutp01e6352d3a756dcec59c7390d6d929d684~83QEHG-Dm1114111141epoutp01b
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Aug 2019 06:42:46 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20190821064246epoutp01e6352d3a756dcec59c7390d6d929d684~83QEHG-Dm1114111141epoutp01b
+        id S1728232AbfHUGmp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 21 Aug 2019 02:42:45 -0400
+Received: from mailout3.samsung.com ([203.254.224.33]:34165 "EHLO
+        mailout3.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728216AbfHUGmo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Aug 2019 02:42:44 -0400
+Received: from epcas2p4.samsung.com (unknown [182.195.41.56])
+        by mailout3.samsung.com (KnoxPortal) with ESMTP id 20190821064241epoutp03f4510b1d287170bfd2fcbc0653da945c~83P_4Kqr-1495114951epoutp03g
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Aug 2019 06:42:41 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout3.samsung.com 20190821064241epoutp03f4510b1d287170bfd2fcbc0653da945c~83P_4Kqr-1495114951epoutp03g
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-        s=mail20170921; t=1566369766;
-        bh=5IRlHuEkcQOCy+sESryaGK2Vl6raRZeU9YxYhLk96AY=;
+        s=mail20170921; t=1566369761;
+        bh=nePUznyEzQN2tvbKGNQVLTfqjckap+uH4JSQl4+ch64=;
         h=From:To:Cc:Subject:Date:References:From;
-        b=TVv8ux+xnM0kzSu9X5T+yL6124jIoIZhVT908IdSRYCpRjPYXl2fk0Bj7h7uTDBhc
-         PlUPwkm3fhUR/DK7QcL6f28c+CAh6IrqMYEKTdNsmM3VR5hCTXIfETB6Vffx7cIS/W
-         h93zUelUxLBuQwgmbOisxoaJZMq96xBqAzSILO2Q=
-Received: from epsnrtp4.localdomain (unknown [182.195.42.165]) by
-        epcas2p4.samsung.com (KnoxPortal) with ESMTP id
-        20190821064246epcas2p46aa2363c453d0816b5eae31671ceaab1~83QDXRLKm1664716647epcas2p44;
-        Wed, 21 Aug 2019 06:42:46 +0000 (GMT)
-Received: from epsmges2p4.samsung.com (unknown [182.195.40.181]) by
-        epsnrtp4.localdomain (Postfix) with ESMTP id 46CylS647jzMqYkb; Wed, 21 Aug
-        2019 06:42:44 +0000 (GMT)
-Received: from epcas2p4.samsung.com ( [182.195.41.56]) by
-        epsmges2p4.samsung.com (Symantec Messaging Gateway) with SMTP id
-        93.3F.04112.4E7EC5D5; Wed, 21 Aug 2019 15:42:44 +0900 (KST)
+        b=idcoeYfTBC26p7Bs0H2u7rIF85oHBnNl8TRRMx+p8x7RqhMLT7LG/pgu3kvIv3NCT
+         RY9CtviB5HNhLxGly4+IWB6aKGFhdi5bHI7or/zna8Z03UIC4eLfy3jWy3crFDAzJ1
+         iYU38G+AB3qhPe6Q5fe3BX1snc7JxgAU4iT1qx5A=
+Received: from epsnrtp2.localdomain (unknown [182.195.42.163]) by
+        epcas2p2.samsung.com (KnoxPortal) with ESMTP id
+        20190821064240epcas2p20900643c8de55a181c2996aac1b0833a~83P_NaVe12515525155epcas2p29;
+        Wed, 21 Aug 2019 06:42:40 +0000 (GMT)
+Received: from epsmges2p3.samsung.com (unknown [182.195.40.191]) by
+        epsnrtp2.localdomain (Postfix) with ESMTP id 46CylL0jTBzMqYkV; Wed, 21 Aug
+        2019 06:42:38 +0000 (GMT)
+Received: from epcas2p2.samsung.com ( [182.195.41.54]) by
+        epsmges2p3.samsung.com (Symantec Messaging Gateway) with SMTP id
+        0A.53.04068.DD7EC5D5; Wed, 21 Aug 2019 15:42:38 +0900 (KST)
 Received: from epsmtrp2.samsung.com (unknown [182.195.40.14]) by
-        epcas2p1.samsung.com (KnoxPortal) with ESMTPA id
-        20190821064244epcas2p1e3d77667eed99670611d9353cf365f8b~83QB6TTuq0242202422epcas2p1e;
-        Wed, 21 Aug 2019 06:42:44 +0000 (GMT)
-Received: from epsmgms1p1new.samsung.com (unknown [182.195.42.41]) by
+        epcas2p4.samsung.com (KnoxPortal) with ESMTPA id
+        20190821064237epcas2p4d8bc4858fda55be213eb51b19e52fc71~83P7Z1Gqi1664116641epcas2p4j;
+        Wed, 21 Aug 2019 06:42:37 +0000 (GMT)
+Received: from epsmgms1p2new.samsung.com (unknown [182.195.42.42]) by
         epsmtrp2.samsung.com (KnoxPortal) with ESMTP id
-        20190821064244epsmtrp29678be437d037ce9caa184fdd262a64c~83QB5MerG2242122421epsmtrp2o;
-        Wed, 21 Aug 2019 06:42:44 +0000 (GMT)
-X-AuditID: b6c32a48-f1fff70000001010-de-5d5ce7e49cf8
+        20190821064237epsmtrp270332e118998ecd0be549cd882da5d56~83P7Y218Z2242122421epsmtrp2g;
+        Wed, 21 Aug 2019 06:42:37 +0000 (GMT)
+X-AuditID: b6c32a47-5a1ff70000000fe4-b9-5d5ce7dd8159
 Received: from epsmtip1.samsung.com ( [182.195.34.30]) by
-        epsmgms1p1new.samsung.com (Symantec Messaging Gateway) with SMTP id
-        17.12.03706.4E7EC5D5; Wed, 21 Aug 2019 15:42:44 +0900 (KST)
+        epsmgms1p2new.samsung.com (Symantec Messaging Gateway) with SMTP id
+        46.E2.03638.DD7EC5D5; Wed, 21 Aug 2019 15:42:37 +0900 (KST)
 Received: from KORDO035251 (unknown [12.36.165.204]) by epsmtip1.samsung.com
         (KnoxPortal) with ESMTPA id
-        20190821064243epsmtip1e5ee582abd1b9fa164ad5cc11fb9592e~83QBWXge90467104671epsmtip1E;
-        Wed, 21 Aug 2019 06:42:43 +0000 (GMT)
+        20190821064236epsmtip19eaf3f73889496a58e92a8bc022c5984~83P61ZcSp0421904219epsmtip1l;
+        Wed, 21 Aug 2019 06:42:36 +0000 (GMT)
 From:   "boojin.kim" <boojin.kim@samsung.com>
-To:     "'Jaegeuk Kim'" <jaegeuk@kernel.org>,
-        "'Chao Yu'" <chao@kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+To:     "'Theodore Y. Ts'o'" <tytso@mit.edu>,
+        "'Jaegeuk Kim'" <jaegeuk@kernel.org>,
+        "'Eric Biggers'" <ebiggers@kernel.org>,
+        <linux-fscrypt@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>
 Cc:     "'Herbert Xu'" <herbert@gondor.apana.org.au>,
         "'David S. Miller'" <davem@davemloft.net>,
         "'Eric Biggers'" <ebiggers@kernel.org>,
@@ -86,327 +87,443 @@ Cc:     "'Herbert Xu'" <herbert@gondor.apana.org.au>,
         <linux-samsung-soc@vger.kernel.org>,
         <linux-arm-kernel@lists.infradead.org>,
         <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH 9/9] fs: f2fs: support diskcipher
-Date:   Wed, 21 Aug 2019 15:42:43 +0900
-Message-ID: <004501d557eb$a31dd4f0$e9597ed0$@samsung.com>
+Subject: [PATCH 7/9] fscrypt: support diskcipher
+Date:   Wed, 21 Aug 2019 15:42:36 +0900
+Message-ID: <004301d557eb$9ef2c8e0$dcd85aa0$@samsung.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 X-Mailer: Microsoft Outlook 14.0
-Thread-Index: AdVX6LxzK3qdVI3wS/yWqol0XSZg9A==
+Thread-Index: AdVX6NYYas7Ah3LbRl6gWv/zKu666g==
 Content-Language: ko
-X-Brightmail-Tracker: H4sIAAAAAAAAA02TfUwbdRjH/d1d7465mluH+lt9qzeJbpPS6yj+MGO+ke3itojxjykb4oWe
-        lHh9Sa/FsahjZnSAxG4mYtsVsuA0W80EC2LdKCFdXTMEayQssKBzAdGxwUwZxM1NbXss8t/n
-        efJ8n+f55slD45oApaVrbC7RaRMkllxB9J5Zh/Knft9dYfCeNaCF640E6hw8i6MvfvaS6PuP
-        hzEUTB4gUHTuiAqd7LuFow9mHkRTnQEcjd30qJB38gqOkskuCoUnz6tQ9MIGdPGXGxjyt0+Q
-        6KeOrWimfZFAfdFzBBo5FSRR/F8vQL5kP4Y8Xy0A1NByg0KJkzufXcP3nBjH+APdb/O9A3n8
-        yLCbD4eaSH7ifB/Jdx/bx58+Oo/x7w99h/PX+kdJ/sOeEODnww+XrSyXNllEwSw6daKtym6u
-        sVWXsNteqXyh0lRk4PK5YvQUq7MJVrGELd1elr+lRkp7Z3W1guROp8oEWWYLNm9y2t0uUWex
-        y64SVnSYJQfHOfSyYJXdtmp9ld36NGcwGE3pyjcky+TVi8ARf2bPYEOHqh7MbGwGOTRkCuHk
-        6I+gGaygNUwEwOZEw1KQAjA2348rwSKAvtBV4o4kmPSTGdYwUQAXw1qFLwMYP1GbYZLZALsT
-        oWynXKYXwIH9o0QmwJl/KDiVimU7rWY4eKi9PssEkwe/jXVhGVYzxfDv4ACh8Cp4zj+VZZx5
-        BH4zG8SVLXQwMnwFZDiX0cPOnjim1OTCI02e7NqQ2U/D2YNNS4JS+Ov1SyqFV8OZRA+lsBbO
-        z0VJhffB0c8/pRRxC4BDNz1LRRthYPpgehqdnrAOdp4qyCBk1sL4haXd7oGNZ25TSloNGz0a
-        RfgYbEuNYEpaC/9seU9J8/DWJ73gEHg0sMxkYJnJwDIzgf/HHgVECNwnOmRrtSgbHYXLjx0G
-        2b9Yz0fAwA/bY4ChAbtSHRnfVaFRCbVynTUGII2zueo9wfIKjdos1O0VnfZKp1sS5RgwpW9w
-        GNfeW2VPf5nNVcmZjEVFhmITMhUZEXu/Onz3+G4NUy24xLdE0SE67+gwOkdbD3aqce/ruo5W
-        O+Ur3TGWNO3Fy9800nGtPvlR/9w79gJ5hzS4NpKcmE7dHupY89Clx6Uq77acxHHQ5p7b6p5d
-        5Q8eX9gy3faZ47D0ZGnhc1+2YiaKvusP21+pJy57TrcOtXzNbH6Xu/Yi43v1eX1X3kuW+G/8
-        2GvGB3y7zP6Xjw3WsYRsEbj1uFMW/gMNo7CALQQAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFnrNIsWRmVeSWpSXmKPExsWy7bCSnO6T5zGxBnM/iFl8/dLBYrH+1DFm
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFprOLsWRmVeSWpSXmKPExsWy7bCmme695zGxBmcSLb5+6WCxWH/qGLPF
+        6rv9bBanp55lsphzvoXFYu+72awWa/f8YbbofiVj8WT9LGaLG7/aWC36H79mtjh/fgO7xabH
+        11gt9t7Strh/7yeTxcx5d9gsLi1yt3g17xuLxZ69J1ksLu+aw2Zx5H8/o8WM8/uYLNo2fmW0
+        aO35yW5xfG24g6THlpU3mTxaNpd7bDug6nH5bKnHplWdbB53ru1h89i8pN5j94LPTB5NZ44y
+        e7zfd5XNo2/LKkaPz5vkAniicmwyUhNTUosUUvOS81My89JtlbyD453jTc0MDHUNLS3MlRTy
+        EnNTbZVcfAJ03TJzgF5XUihLzCkFCgUkFhcr6dvZFOWXlqQqZOQXl9gqpRak5BQYGhboFSfm
+        Fpfmpesl5+daGRoYGJkCVSbkZMw7/5O5YGZkxcz7CxgbGKd7djFyckgImEgsO/aBvYuRi0NI
+        YAejxJ6mJiYI5xOjxOzvF6Ccb4wSnz7vYodpOXPhChtEYi+jxKXpa6Ccl4wS618vZgOpYhPQ
+        lth8fBUjSEJE4B6jxK4lM8GqmAX+sUs8+XSIBaRKWMBA4sClHjCbRUBVYv6cyUBFHBy8ApYS
+        P86Wg4R5BQQlTs58AlbCLCAvsf3tHGaIMxQkdpx9zQhSLiKgJ/GiSwaiRERidmcbVEkrh8SR
+        7hoI20Xix98eNghbWOLV8S1Q30hJfH63FypeL3F12WJwYEgI9DBKnPnVBlVkLDHrWTvYLmYB
+        TYn1u/RBTAkBZYkjt6Au45PoOPyXHSLMK9HRJgTRqCIx99NlJoiwlMSHnjoI00PidhPTBEbF
+        WUg+nIXkw1lIXpmFsHUBI8sqRrHUguLc9NRiowJj5KjexAjOFFruOxi3nfM5xCjAwajEw5tw
+        PTpWiDWxrLgy9xCjBAezkghvxZyoWCHelMTKqtSi/Pii0pzU4kOMpsDwn8gsJZqcD8xieSXx
+        hqZGZmYGlqYWpmZGFkrivJu4b8YICaQnlqRmp6YWpBbB9DFxcEo1MO5nitrMvedP2a3tiZmb
+        7RfeVw3iE5t5rCvkj4F/0c9P6n93Jsnl/WWZ12sv9lPuy5UfZoJRtUlRl2PzMrXz1yQz+4mI
+        PNBc5Ni+XWpTOfMZJn5bX06vnwd6pyz4GKnwx8rjqbYMw4VrkR9O5pwxvH/zpsEfEefbngbX
+        DxYKVW+5VSRrJvIvTImlOCPRUIu5qDgRALv6JuYqBAAA
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFnrFIsWRmVeSWpSXmKPExsWy7bCSnO7d5zGxBjv2yFh8/dLBYrH+1DFm
         i9V3+9ksTk89y2Qx53wLi8Xed7NZLdbu+cNs0f1KxuLJ+lnMFjd+tbFa9D9+zWxx/vwGdotN
         j6+xWuy9pW1x/95PJouZ8+6wWVxa5G7xat43Fos9e0+yWFzeNYfN4sj/fkaLGef3MVm0bfzK
         aNHa85Pd4vjacAdJjy0rbzJ5tGwu99h2QNXj8tlSj02rOtk87lzbw+axeUm9x+4Fn5k8ms4c
-        ZfZ4v+8qm0ffllWMHp83yQXwRHHZpKTmZJalFunbJXBlPH5zn7HgiH3FqdZFrA2Mr4y7GDk5
-        JARMJOacn8nWxcjFISSwm1Fi9f4fzBAJKYmt7XugbGGJ+y1HWEFsIYHnjBLH+rJBbDYBbYnN
-        x1cxgjSLCOxilDi6s5sNJMEsMI1DYtcHcRBbWMBQYsK8BhYQm0VAVWLnoQ1MIDavgKXE7zkH
-        WCBsQYmTM58A2RxAvXoSbRsZIcbIS2x/OwfqBgWJHWdfg8VFgErWbznCBFEjIjG7s415AqPg
-        LCSTZiFMmoVk0iwkHQsYWVYxSqYWFOem5xYbFhjmpZbrFSfmFpfmpesl5+duYgQnAS3NHYyX
-        l8QfYhTgYFTi4d1xMzpWiDWxrLgy9xCjBAezkghvxZyoWCHelMTKqtSi/Pii0pzU4kOM0hws
-        SuK8T/OORQoJpCeWpGanphakFsFkmTg4pRoYp387Uzvve4emXIrU/YToF0zq/051vg7NYSlT
-        qDRWr9TJELWe3mih13/ukJJZ7tJ7F4/ULTpzQTQx2k6lwXqnwonfE3Jz77o1Vrh+PvldI6Z3
-        890tbEEzXHPM73Y9+LDtwcxJv3/xWehoTf8wr53ZaWpYn2CZ1cQrAr/mbTr9/efZBct+z5Pc
-        o8RSnJFoqMVcVJwIAG6nrC7+AgAA
-X-CMS-MailID: 20190821064244epcas2p1e3d77667eed99670611d9353cf365f8b
+        ZfZ4v+8qm0ffllWMHp83yQXwRHHZpKTmZJalFunbJXBlzDv/k7lgZmTFzPsLGBsYp3t2MXJy
+        SAiYSJy5cIWti5GLQ0hgN6PEuWMHWCESUhJb2/cwQ9jCEvdbjrBCFD1nlFjQ8IcdJMEmoC2x
+        +fgqRpCEiMAjRon/LxeAJZgFpnFI7PogDmILCxhIHLjUwwJiswioSsyfMxloHQcHr4ClxI+z
+        5SBhXgFBiZMzn7CAhJkF9CTaNjJCTJGX2P52DtQNChI7zr5mBCkRASp50SUDUSIiMbuzjXkC
+        o+AsJINmIQyahWTQLCQdCxhZVjFKphYU56bnFhsWGOWllusVJ+YWl+al6yXn525iBKcALa0d
+        jCdOxB9iFOBgVOLh3XEzOlaINbGsuDL3EKMEB7OSCG/FnKhYId6UxMqq1KL8+KLSnNTiQ4zS
+        HCxK4rzy+ccihQTSE0tSs1NTC1KLYLJMHJxSDYzSXX/3Xt60OXLd8k2d33IeCFlefJUwnamu
+        pS5k77/dBWGz9bZmCnAsjt978jWvSbFwYnmzZpL05kvH8hp+qN3+pdHFv/R4n5viBR5j0RuT
+        NsyrqzKR3sxdtXLr5E3v9204xJLvdmDaCxeLzrci35/wnL1y5S6vn+mJpR4+3538uTa6H2RI
+        O3dGiaU4I9FQi7moOBEAcCg2h/0CAAA=
+X-CMS-MailID: 20190821064237epcas2p4d8bc4858fda55be213eb51b19e52fc71
 X-Msg-Generator: CA
 Content-Type: text/plain; charset="utf-8"
 X-Sendblock-Type: AUTO_CONFIDENTIAL
 CMS-TYPE: 102P
 DLP-Filter: Pass
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20190821064244epcas2p1e3d77667eed99670611d9353cf365f8b
-References: <CGME20190821064244epcas2p1e3d77667eed99670611d9353cf365f8b@epcas2p1.samsung.com>
+X-CMS-RootMailID: 20190821064237epcas2p4d8bc4858fda55be213eb51b19e52fc71
+References: <CGME20190821064237epcas2p4d8bc4858fda55be213eb51b19e52fc71@epcas2p4.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-F2FS checks the crypto properties of the inode, and if it is a diskcipher,
-sets it to BIO before submitting the BIO.
-When using diskcipher, F2FS does not encrypt the data before submitting
-the bio and decrypt the data on complete of the BIO.
+This patch support fscrypt to use diskcipher in a specific crypto mode
+(FSCRYPT_MODE_PRIVATE).
+Fscrypt allocates diskcipher and sets the key on diskcipher.
+Fscrypt doesn't handle additional data encryption when using diskcipher.
 
-F2FS uses DUN(device unit number) as the IV(initial vector)
-for cryptographic operations.
-DUN can support the Garbage collection of f2fs.
-Even if a data is moved in the storage device by garbage collection,
-the data has same DUN, so that the data can be decrypted.
-F2FS calculates DUN of data and sets it to BIO.
-
+Cc: Theodore Y. Ts'o <tytso@mit.edu>
 Cc: Jaegeuk Kim <jaegeuk@kernel.org>
-Cc: Chao Yu <chao@kernel.org>
+Cc: Eric Biggers <ebiggers@kernel.org>
 Signed-off-by: Boojin Kim <boojin.kim@samsung.com>
 ---
- fs/f2fs/data.c | 98
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/f2fs/f2fs.h |  2 +-
- 2 files changed, 97 insertions(+), 3 deletions(-)
+ fs/buffer.c                   |  2 ++
+ fs/crypto/bio.c               | 43 ++++++++++++++++++++++++++-----
+ fs/crypto/fscrypt_private.h   | 28 +++++++++++++++++++-
+ fs/crypto/keysetup.c          | 60
++++++++++++++++++++++++++++++++++++++++++--
+ fs/crypto/keysetup_v1.c       |  2 +-
+ include/linux/fscrypt.h       | 19 ++++++++++++++
+ include/uapi/linux/fscrypt.h  |  2 ++
+ tools/include/uapi/linux/fs.h |  1 +
+ 8 files changed, 147 insertions(+), 10 deletions(-)
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 3dfefab..c8252bf 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -85,6 +85,52 @@ struct bio_post_read_ctx {
- 	unsigned int enabled_steps;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 131d39e..a7de079 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3129,6 +3129,8 @@ static int submit_bh_wbc(int op, int op_flags, struct
+buffer_head *bh,
+ 		wbc_account_cgroup_owner(wbc, bh->b_page, bh->b_size);
+ 	}
+ 
++	if (bio->bi_opf & REQ_CRYPT)
++		bio->bi_aux_private = bh->b_private;
+ 	submit_bio(bio);
+ 	return 0;
+ }
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index 82da251..9e4bf9b 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -24,6 +24,7 @@
+ #include <linux/module.h>
+ #include <linux/bio.h>
+ #include <linux/namei.h>
++#include <crypto/diskcipher.h>
+ #include "fscrypt_private.h"
+ 
+ static void __fscrypt_decrypt_bio(struct bio *bio, bool done)
+@@ -81,13 +82,19 @@ int fscrypt_zeroout_range(const struct inode *inode,
+pgoff_t lblk,
+ 	if (!ciphertext_page)
+ 		return -ENOMEM;
+ 
+-	while (len--) {
+-		err = fscrypt_crypt_block(inode, FS_ENCRYPT, lblk,
+-					  ZERO_PAGE(0), ciphertext_page,
+-					  blocksize, 0, GFP_NOFS);
+-		if (err)
+-			goto errout;
++	if (__fscrypt_disk_encrypted(inode)) {
++		memset(page_address(ciphertext_page), 0, PAGE_SIZE);
++		ciphertext_page->mapping = inode->i_mapping;
++	}
+ 
++	while (len--) {
++		if (!__fscrypt_disk_encrypted(inode))  {
++			err = fscrypt_crypt_block(inode, FS_ENCRYPT, lblk,
++						  ZERO_PAGE(0),
+ciphertext_page,
++						  blocksize, 0, GFP_NOFS);
++			if (err)
++				goto errout;
++		}
+ 		bio = bio_alloc(GFP_NOWAIT, 1);
+ 		if (!bio) {
+ 			err = -ENOMEM;
+@@ -103,6 +110,7 @@ int fscrypt_zeroout_range(const struct inode *inode,
+pgoff_t lblk,
+ 			err = -EIO;
+ 			goto errout;
+ 		}
++		fscrypt_set_bio(inode, bio, 0);
+ 		err = submit_bio_wait(bio);
+ 		if (err == 0 && bio->bi_status)
+ 			err = -EIO;
+@@ -118,3 +126,26 @@ int fscrypt_zeroout_range(const struct inode *inode,
+pgoff_t lblk,
+ 	return err;
+ }
+ EXPORT_SYMBOL(fscrypt_zeroout_range);
++
++int fscrypt_disk_encrypted(const struct inode *inode)
++{
++	return __fscrypt_disk_encrypted(inode);
++}
++
++void fscrypt_set_bio(const struct inode *inode, struct bio *bio, u64 dun)
++{
++#ifdef CONFIG_CRYPTO_DISKCIPHER
++	if (__fscrypt_disk_encrypted(inode))
++		crypto_diskcipher_set(bio, inode->i_crypt_info->ci_dtfm,
++					inode, dun);
++#endif
++}
++
++void *fscrypt_get_diskcipher(const struct inode *inode)
++{
++#ifdef CONFIG_CRYPTO_DISKCIPHER
++	if (fscrypt_has_encryption_key(inode))
++		return inode->i_crypt_info->ci_dtfm;
++#endif
++	return NULL;
++}
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index e84efc0..d2b5fb6 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -163,6 +163,10 @@ struct fscrypt_info {
+ 	/* The actual crypto transform used for encryption and decryption */
+ 	struct crypto_skcipher *ci_ctfm;
+ 
++	/* Cipher for inline encryption engine */
++#ifdef CONFIG_CRYPTO_DISKCIPHER
++	struct crypto_diskcipher *ci_dtfm;
++#endif
+ 	/*
+ 	 * Cipher for ESSIV IV generation.  Only set for CBC contents
+ 	 * encryption, otherwise is NULL.
+@@ -226,6 +230,10 @@ static inline bool fscrypt_valid_enc_modes(u32
+contents_mode,
+ 	    filenames_mode == FSCRYPT_MODE_ADIANTUM)
+ 		return true;
+ 
++	if (contents_mode == FSCRYPT_MODE_PRIVATE &&
++		filenames_mode == FSCRYPT_MODE_AES_256_CTS)
++		return true;
++
+ 	return false;
+ }
+ 
+@@ -438,13 +446,19 @@ extern int __init fscrypt_init_keyring(void);
+ 
+ /* keysetup.c */
+ 
++enum cipher_flags {
++	CRYPT_MODE_SKCIPHER,
++	CRYPT_MODE_ESSIV,
++	CRYPT_MODE_DISKCIPHER,
++};
++
+ struct fscrypt_mode {
+ 	const char *friendly_name;
+ 	const char *cipher_str;
+ 	int keysize;
+ 	int ivsize;
+ 	bool logged_impl_name;
+-	bool needs_essiv;
++	enum cipher_flags flags;
  };
  
-+/* device unit number for iv sector */
-+#define PG_DUN(i, p)	\
-+	((((i)->i_ino & 0xffffffff) << 32) | (p & 0xffffffff))
-+
-+static inline bool f2fs_may_encrypt_bio(struct inode *inode,
-+		struct f2fs_io_info *fio)
+ static inline bool
+@@ -453,6 +467,18 @@ fscrypt_mode_supports_direct_key(const struct
+fscrypt_mode *mode)
+ 	return mode->ivsize >= offsetofend(union fscrypt_iv, nonce);
+ }
+ 
++static inline int __fscrypt_disk_encrypted(const struct inode *inode)
 +{
-+#ifdef CONFIG_CRYPTO_DISKCIPHER
-+	if (fio && (fio->type != DATA || fio->encrypted_page))
-+		return false;
-+
-+	return (f2fs_encrypted_file(inode) &&
-+			fscrypt_disk_encrypted(inode));
-+#else
-+	return false;
++#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
++#if IS_ENABLED(CONFIG_CRYPTO_DISKCIPHER)
++	if (inode && inode->i_crypt_info)
++		return S_ISREG(inode->i_mode) &&
++			(inode->i_crypt_info->ci_dtfm != NULL);
 +#endif
-+}
-+
-+static inline bool f2fs_bio_disk_encrypted(unsigned int bi_opf)
-+{
-+	if (bi_opf & REQ_CRYPT)
-+		return true;
-+	else
-+		return false;
-+}
-+
-+static bool f2fs_mergeable_bio(struct bio *bio, u64 dun, void *ci,
-+				bool bio_encrypted)
-+{
-+#ifdef CONFIG_CRYPTO_DISKCIPHER
-+	if (!bio)
-+		return true;
-+
-+	/* if both of them are not encrypted, no further check is needed */
-+	if (!f2fs_bio_disk_encrypted(bio->bi_opf) && !bio_encrypted)
-+		return true;
-+
-+	if (bio->bi_aux_private == ci)
-+		return bio_end_dun(bio) == dun;
-+	else
-+		return false;
-+#else
-+	return true;
 +#endif
++	return 0;
 +}
 +
- static void __read_end_io(struct bio *bio)
- {
- 	struct page *page;
-@@ -174,6 +220,9 @@ static void f2fs_read_end_io(struct bio *bio)
- 		bio->bi_status = BLK_STS_IOERR;
- 	}
+ extern struct crypto_skcipher *
+ fscrypt_allocate_skcipher(struct fscrypt_mode *mode, const u8 *raw_key,
+ 			  const struct inode *inode);
+diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
+index d71c2d6..06d9609 100644
+--- a/fs/crypto/keysetup.c
++++ b/fs/crypto/keysetup.c
+@@ -11,6 +11,7 @@
+ #include <crypto/aes.h>
+ #include <crypto/sha.h>
+ #include <crypto/skcipher.h>
++#include <crypto/diskcipher.h>
+ #include <linux/key.h>
  
-+	if (f2fs_bio_disk_encrypted(bio->bi_opf))
-+		goto end_io;
-+
- 	if (f2fs_bio_post_read_required(bio)) {
- 		struct bio_post_read_ctx *ctx = bio->bi_private;
+ #include "fscrypt_private.h"
+@@ -35,7 +36,7 @@ static struct fscrypt_mode available_modes[] = {
+ 		.cipher_str = "cbc(aes)",
+ 		.keysize = 16,
+ 		.ivsize = 16,
+-		.needs_essiv = true,
++		.flags = CRYPT_MODE_ESSIV,
+ 	},
+ 	[FSCRYPT_MODE_AES_128_CTS] = {
+ 		.friendly_name = "AES-128-CTS-CBC",
+@@ -49,6 +50,13 @@ static struct fscrypt_mode available_modes[] = {
+ 		.keysize = 32,
+ 		.ivsize = 32,
+ 	},
++	[FSCRYPT_MODE_PRIVATE] = {
++		.friendly_name = "AES-256-XTS-DISK",
++		.cipher_str = "xts(aes)-disk",
++		.keysize = 64,
++		.ivsize = 16,
++		.flags = CRYPT_MODE_DISKCIPHER,
++	},
+ };
  
-@@ -182,6 +231,7 @@ static void f2fs_read_end_io(struct bio *bio)
- 		return;
- 	}
- 
-+end_io:
- 	__read_end_io(bio);
+ static struct fscrypt_mode *
+@@ -111,6 +119,35 @@ struct crypto_skcipher
+*fscrypt_allocate_skcipher(struct fscrypt_mode *mode,
+ 	return ERR_PTR(err);
  }
  
-@@ -362,7 +412,10 @@ static void __submit_merged_bio(struct f2fs_bio_info
-*io)
- 	if (!io->bio)
- 		return;
- 
--	bio_set_op_attrs(io->bio, fio->op, fio->op_flags);
-+	if (f2fs_bio_disk_encrypted(io->bio->bi_opf))
-+		bio_set_op_attrs(io->bio, fio->op, fio->op_flags |
-REQ_CRYPT);
-+	else
-+		bio_set_op_attrs(io->bio, fio->op, fio->op_flags);
- 
- 	if (is_read_io(fio->op))
- 		trace_f2fs_prepare_read_bio(io->sbi->sb, fio->type,
-io->bio);
-@@ -476,6 +529,7 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
- 	struct bio *bio;
- 	struct page *page = fio->encrypted_page ?
- 			fio->encrypted_page : fio->page;
-+	struct inode *inode = fio->page->mapping->host;
- 
- 	if (!f2fs_is_valid_blkaddr(fio->sbi, fio->new_blkaddr,
- 			fio->is_por ? META_POR : (__is_meta_io(fio) ?
-@@ -502,6 +556,9 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
- 	inc_page_count(fio->sbi, is_read_io(fio->op) ?
- 			__read_io_type(page): WB_DATA_TYPE(fio->page));
- 
-+	if (f2fs_may_encrypt_bio(inode, fio))
-+		fscrypt_set_bio(inode, bio, PG_DUN(inode,
-fio->page->index));
++#if defined(CONFIG_CRYPTO_DISKCIPHER)
++/* Create a diskcipher cipher object for the given encryption mode and key
+*/
++static struct crypto_diskcipher *fscrypt_allocate_diskcipher(
++		struct fscrypt_mode *mode, const u8 *raw_key,
++			   const struct inode *inode)
++{
++	struct crypto_diskcipher *tfm;
++	int err;
++	bool force = (mode->flags == CRYPT_MODE_DISKCIPHER) ? 0 : 1;
 +
- 	__submit_bio(fio->sbi, bio, fio->type);
- 	return 0;
- }
-@@ -604,6 +661,9 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
- 	enum page_type btype = PAGE_TYPE_OF_BIO(fio->type);
- 	struct f2fs_bio_info *io = sbi->write_io[btype] + fio->temp;
- 	struct page *bio_page;
-+	struct inode *inode;
-+	bool bio_encrypted;
-+	u64 dun;
- 
- 	f2fs_bug_on(sbi, is_read_io(fio->op));
- 
-@@ -624,6 +684,9 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
- 	verify_fio_blkaddr(fio);
- 
- 	bio_page = fio->encrypted_page ? fio->encrypted_page : fio->page;
-+	inode = fio->page->mapping->host;
-+	dun = PG_DUN(inode, fio->page->index);
-+	bio_encrypted = f2fs_may_encrypt_bio(inode, fio);
- 
- 	/* set submitted = true as a return value */
- 	fio->submitted = true;
-@@ -633,6 +696,10 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
- 	if (io->bio && !io_is_mergeable(sbi, io->bio, io, fio,
- 			io->last_block_in_bio, fio->new_blkaddr))
- 		__submit_merged_bio(io);
-+
-+	if (!f2fs_mergeable_bio(io->bio, dun,
-+			fscrypt_get_diskcipher(inode), bio_encrypted))
-+		__submit_merged_bio(io);
- alloc_new:
- 	if (io->bio == NULL) {
- 		if ((fio->type == DATA || fio->type == NODE) &&
-@@ -644,6 +711,9 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
- 		io->bio = __bio_alloc(sbi, fio->new_blkaddr, fio->io_wbc,
- 						BIO_MAX_PAGES, false,
- 						fio->type, fio->temp);
-+		if (bio_encrypted)
-+			fscrypt_set_bio(inode, io->bio, dun);
-+
- 		io->fio = *fio;
- 	}
- 
-@@ -691,7 +761,7 @@ static struct bio *f2fs_grab_read_bio(struct inode
-*inode, block_t blkaddr,
- 	bio->bi_end_io = f2fs_read_end_io;
- 	bio_set_op_attrs(bio, REQ_OP_READ, op_flag);
- 
--	if (f2fs_encrypted_file(inode))
-+	if (f2fs_encrypted_file(inode) && !fscrypt_disk_encrypted(inode))
- 		post_read_steps |= 1 << STEP_DECRYPT;
- 
- 	if (f2fs_need_verity(inode, first_idx))
-@@ -731,6 +801,10 @@ static int f2fs_submit_page_read(struct inode *inode,
-struct page *page,
- 	}
- 	ClearPageError(page);
- 	inc_page_count(sbi, F2FS_RD_DATA);
-+
-+	if (f2fs_may_encrypt_bio(inode, NULL))
-+		fscrypt_set_bio(inode, bio, PG_DUN(inode, page->index));
-+
- 	__submit_bio(sbi, bio, DATA);
- 	return 0;
- }
-@@ -1665,6 +1739,8 @@ static int f2fs_read_single_page(struct inode *inode,
-struct page *page,
- 	sector_t last_block_in_file;
- 	sector_t block_nr;
- 	int ret = 0;
-+	bool bio_encrypted;
-+	u64 dun;
- 
- 	block_in_file = (sector_t)page_index(page);
- 	last_block = block_in_file + nr_pages;
-@@ -1734,6 +1810,15 @@ static int f2fs_read_single_page(struct inode *inode,
-struct page *page,
- 		__submit_bio(F2FS_I_SB(inode), bio, DATA);
- 		bio = NULL;
- 	}
-+
-+	dun = PG_DUN(inode, page->index);
-+	bio_encrypted = f2fs_may_encrypt_bio(inode, NULL);
-+	if (!f2fs_mergeable_bio(bio, dun, fscrypt_get_diskcipher(inode),
-+				bio_encrypted)) {
-+		__submit_bio(F2FS_I_SB(inode), bio, DATA);
-+		bio = NULL;
++	tfm = crypto_alloc_diskcipher(mode->cipher_str, 0, 0, force);
++	if (IS_ERR(tfm)) {
++		fscrypt_warn(inode->i_sb,
++				 "error allocating '%s' transform for inode
+%lu: %ld",
++				 mode->cipher_str, inode->i_ino,
+PTR_ERR(tfm));
++		return tfm;
 +	}
++	err = crypto_diskcipher_setkey(tfm, raw_key, mode->keysize, 0);
++	if (err)
++		goto err_free_dtfm;
 +
- 	if (bio == NULL) {
- 		bio = f2fs_grab_read_bio(inode, block_nr, nr_pages,
- 				is_readahead ? REQ_RAHEAD : 0, page->index);
-@@ -1742,6 +1827,8 @@ static int f2fs_read_single_page(struct inode *inode,
-struct page *page,
- 			bio = NULL;
- 			goto out;
- 		}
-+		if (f2fs_may_encrypt_bio(inode, NULL))
-+			fscrypt_set_bio(inode, bio, dun);
++	return tfm;
++
++err_free_dtfm:
++	crypto_free_diskcipher(tfm);
++	return ERR_PTR(err);
++}
++#endif
++
+ static int derive_essiv_salt(const u8 *key, int keysize, u8 *salt)
+ {
+ 	struct crypto_shash *tfm = READ_ONCE(essiv_hash_tfm);
+@@ -187,13 +224,29 @@ int fscrypt_set_derived_key(struct fscrypt_info *ci,
+const u8 *derived_key)
+ 	struct crypto_skcipher *ctfm;
+ 	int err;
+ 
++#if defined(CONFIG_CRYPTO_DISKCIPHER)
++	if (S_ISREG(ci->ci_inode->i_mode) &&
++		(mode->flags == CRYPT_MODE_DISKCIPHER)) {
++		ci->ci_dtfm = fscrypt_allocate_diskcipher(mode, derived_key,
++
+ci->ci_inode);
++		if (IS_ERR(ci->ci_dtfm)) {
++			fscrypt_warn(ci->ci_inode,
++				     "Error allocating Diskcipher: %p",
++				     PTR_ERR(ci->ci_dtfm));
++			ci->ci_dtfm = NULL;
++			return -EINVAL;
++		}
++		return 0;
++	}
++#endif
++
+ 	ctfm = fscrypt_allocate_skcipher(mode, derived_key, ci->ci_inode);
+ 	if (IS_ERR(ctfm))
+ 		return PTR_ERR(ctfm);
+ 
+ 	ci->ci_ctfm = ctfm;
+ 
+-	if (mode->needs_essiv) {
++	if (mode->flags == CRYPT_MODE_ESSIV) {
+ 		err = init_essiv_generator(ci, derived_key, mode->keysize);
+ 		if (err) {
+ 			fscrypt_warn(ci->ci_inode,
+@@ -394,6 +447,9 @@ static void put_crypt_info(struct fscrypt_info *ci)
+ 		   !fscrypt_is_direct_key_policy(&ci->ci_policy)) {
+ 		crypto_free_skcipher(ci->ci_ctfm);
+ 		crypto_free_cipher(ci->ci_essiv_tfm);
++#if defined(CONFIG_CRYPTO_DISKCIPHER)
++		crypto_free_diskcipher(ci->ci_dtfm);
++#endif
  	}
  
- 	/*
-@@ -1870,6 +1957,9 @@ static int encrypt_one_page(struct f2fs_io_info *fio)
- 	f2fs_wait_on_block_writeback(inode, fio->old_blkaddr);
+ 	key = ci->ci_master_key;
+diff --git a/fs/crypto/keysetup_v1.c b/fs/crypto/keysetup_v1.c
+index 0727251..22d0330 100644
+--- a/fs/crypto/keysetup_v1.c
++++ b/fs/crypto/keysetup_v1.c
+@@ -271,7 +271,7 @@ static int setup_v1_file_key_direct(struct fscrypt_info
+*ci,
+ 	}
  
- retry_encrypt:
-+	if (fscrypt_disk_encrypted(inode))
-+		return 0;
+ 	/* ESSIV implies 16-byte IVs which implies !DIRECT_KEY */
+-	if (WARN_ON(mode->needs_essiv))
++	if (WARN_ON(mode->flags == CRYPT_MODE_ESSIV))
+ 		return -EINVAL;
+ 
+ 	dk = fscrypt_get_direct_key(ci, raw_master_key);
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index f622f74..e0f99db 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -274,6 +274,11 @@ static inline void fscrypt_set_ops(struct super_block
+*sb,
+ {
+ 	sb->s_cop = s_cop;
+ }
 +
- 	fio->encrypted_page = fscrypt_encrypt_pagecache_blocks(fio->page,
- 							       PAGE_SIZE, 0,
- 							       gfp_flags);
-@@ -2804,6 +2894,10 @@ static void f2fs_dio_submit_bio(struct bio *bio,
-struct inode *inode,
- 	if (!dio)
- 		goto out;
- 
-+	if (dio->inode && fscrypt_has_encryption_key(dio->inode))
-+		fscrypt_set_bio(inode, bio, PG_DUN(inode,
-+				file_offset >> PAGE_SHIFT));
++void fscrypt_set_bio(const struct inode *inode, struct bio *bio, u64 dun);
++void *fscrypt_get_diskcipher(const struct inode *inode);
++int fscrypt_disk_encrypted(const struct inode *inode);
 +
- 	dio->inode = inode;
- 	dio->orig_end_io = bio->bi_end_io;
- 	dio->orig_private = bio->bi_private;
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index 0cbf1d4..8447542 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -3706,7 +3706,7 @@ static inline bool f2fs_force_buffered_io(struct inode
-*inode,
- 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
- 	int rw = iov_iter_rw(iter);
+ #else  /* !CONFIG_FS_ENCRYPTION */
  
--	if (f2fs_post_read_required(inode))
-+	if (f2fs_post_read_required(inode) &&
-!fscrypt_disk_encrypted(inode))
- 		return true;
- 	if (f2fs_is_multi_device(sbi))
- 		return true;
+ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+@@ -556,6 +561,20 @@ static inline void fscrypt_set_ops(struct super_block
+*sb,
+ {
+ }
+ 
++static inline int fscrypt_disk_encrypted(const struct inode *inode)
++{
++	return 0;
++}
++
++static inline void fscrypt_set_bio(const struct inode *inode,
++					struct bio *bio, u64 dun)
++{
++}
++
++static inline void *fscrypt_get_diskcipher(const struct inode *inode)
++{
++	return NULL;
++}
+ #endif	/* !CONFIG_FS_ENCRYPTION */
+ 
+ /**
+diff --git a/include/uapi/linux/fscrypt.h b/include/uapi/linux/fscrypt.h
+index 39ccfe9..b9978c4 100644
+--- a/include/uapi/linux/fscrypt.h
++++ b/include/uapi/linux/fscrypt.h
+@@ -25,6 +25,7 @@
+ #define FSCRYPT_MODE_AES_128_CBC		5
+ #define FSCRYPT_MODE_AES_128_CTS		6
+ #define FSCRYPT_MODE_ADIANTUM			9
++#define FSCRYPT_MODE_PRIVATE			127
+ #define __FSCRYPT_MODE_MAX			9
+ 
+ /*
+@@ -173,6 +174,7 @@ struct fscrypt_get_key_status_arg {
+ #define FS_ENCRYPTION_MODE_SPECK128_256_XTS	7	/* removed */
+ #define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8	/* removed */
+ #define FS_ENCRYPTION_MODE_ADIANTUM	FSCRYPT_MODE_ADIANTUM
++#define FS_ENCRYPTION_MODE_PRIVATE	FSCRYPT_MODE_PRIVATE
+ #define FS_KEY_DESC_PREFIX		FSCRYPT_KEY_DESC_PREFIX
+ #define FS_KEY_DESC_PREFIX_SIZE		FSCRYPT_KEY_DESC_PREFIX_SIZE
+ #define FS_MAX_KEY_SIZE			FSCRYPT_MAX_KEY_SIZE
+diff --git a/tools/include/uapi/linux/fs.h b/tools/include/uapi/linux/fs.h
+index 2a616aa..dd3566a 100644
+--- a/tools/include/uapi/linux/fs.h
++++ b/tools/include/uapi/linux/fs.h
+@@ -237,6 +237,7 @@ struct fsxattr {
+ #define FS_ENCRYPTION_MODE_SPECK128_256_XTS	7 /* Removed, do not use. */
+ #define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8 /* Removed, do not use. */
+ #define FS_ENCRYPTION_MODE_ADIANTUM		9
++#define FS_ENCRYPTION_MODE_PRIVATE		127
+ 
+ struct fscrypt_policy {
+ 	__u8 version;
 -- 
 2.7.4
 
