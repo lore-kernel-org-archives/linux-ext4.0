@@ -2,71 +2,119 @@ Return-Path: <SRS0=6yK3=WR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,PDS_TONAME_EQ_TOLOCAL_SHORT,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 66929C3A5A1
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 08:17:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E75BC3A59E
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 12:09:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3C567233A0
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 08:17:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6DA3122D6D
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Aug 2019 12:09:59 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel-dk.20150623.gappssmtp.com header.i=@kernel-dk.20150623.gappssmtp.com header.b="1mTbly5h"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726741AbfHUIRw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 21 Aug 2019 04:17:52 -0400
-Received: from helcar.hmeau.com ([216.24.177.18]:58150 "EHLO fornost.hmeau.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726217AbfHUIRw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Aug 2019 04:17:52 -0400
-Received: from gondolin.me.apana.org.au ([192.168.0.6] helo=gondolin.hengli.com.au)
-        by fornost.hmeau.com with esmtps (Exim 4.89 #2 (Debian))
-        id 1i0Lnm-0003cr-QG; Wed, 21 Aug 2019 18:17:07 +1000
-Received: from herbert by gondolin.hengli.com.au with local (Exim 4.80)
-        (envelope-from <herbert@gondor.apana.org.au>)
-        id 1i0Lng-00061p-Pw; Wed, 21 Aug 2019 18:17:00 +1000
-Date:   Wed, 21 Aug 2019 18:17:00 +1000
-From:   Herbert Xu <herbert@gondor.apana.org.au>
-To:     "boojin.kim" <boojin.kim@samsung.com>
-Cc:     "'David S. Miller'" <davem@davemloft.net>,
+        id S1727352AbfHUMJz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 21 Aug 2019 08:09:55 -0400
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:43864 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727144AbfHUMJy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Aug 2019 08:09:54 -0400
+Received: by mail-pl1-f194.google.com with SMTP id 4so1225869pld.10
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Aug 2019 05:09:54 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20150623.gappssmtp.com; s=20150623;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=UT6yE/roxwyyBSRfLOwrFlilraLjBXjoNWJQAsldDVo=;
+        b=1mTbly5hNN6suDS+BwBXn5tZNQRoJv3U+6eGIZWkxOpX8gp4MfK0srbyshCamPl8cE
+         oynbwAZaUVd3iYuDw/fFqllqnUyyMdhGmWDFTWD0+uRBHO1RABomqwNTPTloesNaBCP/
+         OF0wNlT1X2HUApuEYt9hqsB3ukfCOmKOxQ9VlFGyTVla9DArrhzV46cf0e1hqSL0Em1S
+         kMKT+OUOB39Lc9u+MllIcA6W2VixaWAmIOOCqIPym//+KF+bJLzrXd5uXWfD6RF+tn8O
+         fEItbmLNgpz+3xyfCw5xuoCb8BCqv/jPsevOVEPakCBbt5mOdjvlnK19JQHJXISJTFII
+         +AuQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=UT6yE/roxwyyBSRfLOwrFlilraLjBXjoNWJQAsldDVo=;
+        b=pvLSVBWp8zqTZD7YhS4kEuy2diY0fp2StzFITwFwkpUkX7Ks5fePfc47t9TCdXF4S0
+         /702gNNEhNS4vgWkGq2rRMk9y24Oz6AO9mYGstZ3k4h7/jKn3vuktreRj11k0rOreMt5
+         HtSZU9vtrkjUb3VLqzEhjkdxvy3B8R18AX3hQtOUk3W4P2G+5jHl0IASXH9/hDSWel74
+         5Q38ZfvEdnazk8DkfedIy3nq9VYakfnyx+Xg5o8DMCezgBF+/E6IvbFsbUhyqTX2b7fw
+         9YxDNSrOu8WLOkp8KQynw6lKxwdN1UQBsm5bX3PCnDG+rasvuNXzhoPZJtjYOGXUF4pL
+         Kp4w==
+X-Gm-Message-State: APjAAAXf8dH/rIBOLU0b3dqyGqy274CJB4QUVlUf4onzUKQCnCaoJDs+
+        7vmJaqhOqb8HDDNF+PtApOLR0A==
+X-Google-Smtp-Source: APXvYqxsoe31YiWALXWqRLHXasZTZR3nM8GXNUHwTUUu4EkoxYDPJeCxhjU4HkYSZ/HpLNbIJ9AOOg==
+X-Received: by 2002:a17:902:a410:: with SMTP id p16mr17723995plq.150.1566389394293;
+        Wed, 21 Aug 2019 05:09:54 -0700 (PDT)
+Received: from [192.168.1.188] (66.29.164.166.static.utbb.net. [66.29.164.166])
+        by smtp.gmail.com with ESMTPSA id z4sm22521476pfg.166.2019.08.21.05.09.51
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 21 Aug 2019 05:09:53 -0700 (PDT)
+Subject: Re: [PATCH 5/9] block: support diskcipher
+To:     "boojin.kim" <boojin.kim@samsung.com>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc:     'Herbert Xu' <herbert@gondor.apana.org.au>,
+        "'David S. Miller'" <davem@davemloft.net>,
         'Eric Biggers' <ebiggers@kernel.org>,
         "'Theodore Y. Ts'o'" <tytso@mit.edu>, 'Chao Yu' <chao@kernel.org>,
         'Jaegeuk Kim' <jaegeuk@kernel.org>,
         'Andreas Dilger' <adilger.kernel@dilger.ca>,
         dm-devel@redhat.com, 'Mike Snitzer' <snitzer@redhat.com>,
         'Alasdair Kergon' <agk@redhat.com>,
-        'Jens Axboe' <axboe@kernel.dk>,
         'Krzysztof Kozlowski' <krzk@kernel.org>,
         'Kukjin Kim' <kgene@kernel.org>,
         'Jaehoon Chung' <jh80.chung@samsung.com>,
         'Ulf Hansson' <ulf.hansson@linaro.org>,
-        linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-samsung-soc@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-crypto@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-mmc@vger.kernel.org, linux-samsung-soc@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-arm-kernel@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 6/9] dm crypt: support diskcipher
-Message-ID: <20190821081700.GA23138@gondor.apana.org.au>
-References: <CGME20190821075742epcas2p4b9104e8249067c048d4050f2888da0a9@epcas2p4.samsung.com>
- <001b01d557f6$1c49fd40$54ddf7c0$@samsung.com>
+References: <CGME20190821064226epcas2p2835b8a9084988b79107e54abfc5e7dab@epcas2p2.samsung.com>
+ <004101d557eb$98b00060$ca100120$@samsung.com>
+From:   Jens Axboe <axboe@kernel.dk>
+Message-ID: <6ea5e5db-4dd4-719f-3b3e-b89099636ea6@kernel.dk>
+Date:   Wed, 21 Aug 2019 06:09:50 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <001b01d557f6$1c49fd40$54ddf7c0$@samsung.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <004101d557eb$98b00060$ca100120$@samsung.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Aug 21, 2019 at 04:57:41PM +0900, boojin.kim wrote:
->
-> Can you tell me which patch you mentioned? Is this?
-> https://patches.linaro.org/project/linux-crypto/list/?series=22762
+On 8/21/19 12:42 AM, boojin.kim wrote:
+> This patch supports crypto information to be maintained via BIO
+> and passed to the storage driver.
+> 
+> To do this, 'bi_aux_private', 'REQ_CYPTE' and 'bi_dun' are added
+> to the block layer.
+> 
+> 'bi_aux_private' is added for loading additional private information into
+> BIO.
+> 'REQ_CRYPT' is added to distinguish that bi_aux_private is being used
+> for diskcipher.
+> F2FS among encryption users uses DUN(device unit number) as
+> the IV(initial vector) for cryptographic operations.
+> DUN is stored in 'bi_dun' of bi_iter as a specific value for each BIO.
+> 
+> Before attempting to merge the two BIOs, the operation is also added to
+> verify that the crypto information contained in two BIOs is consistent.
 
-Yes this is the one.
+This isn't going to happen. With this, and the inline encryption
+proposed by Google, we'll bloat the bio even more. At least the Google
+approach didn't include bio iter changes as well.
 
-Cheers,
+Please work it out between yourselves so we can have a single, clean
+abstraction that works for both.
+
 -- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Jens Axboe
+
