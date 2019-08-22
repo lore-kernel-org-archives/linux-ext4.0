@@ -7,55 +7,52 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EF87C3A5A1
-	for <linux-ext4@archiver.kernel.org>; Thu, 22 Aug 2019 08:26:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB734C3A5A1
+	for <linux-ext4@archiver.kernel.org>; Thu, 22 Aug 2019 08:26:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5881A2342E
-	for <linux-ext4@archiver.kernel.org>; Thu, 22 Aug 2019 08:26:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A6C082342F
+	for <linux-ext4@archiver.kernel.org>; Thu, 22 Aug 2019 08:26:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="tyWTmYDb"
+	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="Dpd8d9RG"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732343AbfHVI05 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 22 Aug 2019 04:26:57 -0400
+        id S1732345AbfHVI07 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 22 Aug 2019 04:26:59 -0400
 Received: from mail-eopbgr760081.outbound.protection.outlook.com ([40.107.76.81]:44341
         "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1732339AbfHVI0z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Aug 2019 04:26:55 -0400
+        id S1731002AbfHVI06 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Aug 2019 04:26:58 -0400
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=Onn32XhvuU01RmBnShtTJAVdbPySULdn8AnczMniOdcDkEdwXG7IL+qaKMeiOlvpOKMTAOkAkNq4hPsJ61E6pUvMlDBPaguPdKFdtu3oOwosA+vUzYoqDXiFZeYaCvKApee/kqF8arX6Zx6BaK2a40QHlF7A8bbri6cynMgZjihRzGi9f36HdX9/+O8sSEEg0Fg61/GhTIAb+odHqgeVQD2dLCVfqbKofsETiVrGY+/6sV7WA5JUxQiMbMekG26Rwh3ho3qa8jEnq3rSkDsLjpzFebgJdlfMB9LC5ILkCQEYHeHiu6ZaItFFH1xVIPRSljxzb///Ec+UoyCGB2bWxA==
+ b=IAev75N830kTJnnWK8liSJtQ+R2y6uuxxmMlYxUfkvymQPAF2vbxiuUF4e0gbKy7BB9qzaW5klbUsblI8/ih+LTOZuguv+aEvZFz3TmkoowxKfMZ71Ju99a23uODrxSA1UvZY8ugoCsMmf0Ol/PGpSjZeknQlKYujoYfBjMkIKSOD9JIm8bH8i9UIYADpcny33An7F9GRqc5R7IHypDL3vlP2Lb8JELQtIvtCJoC59OW1F5MGyauXM9ZhokE/aC3cYRXR2LFIxWEvENJhXhyPwU/6gT0WzTDLV4IrxZyqYlxlgQxnqSMXCnMiuJicpMzO2Lfj9dPSORcweNxWX8Fsw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+J8mCNol/xzTx+9RAO7/H+bcCPc7BcpTejsZU+1MTYc=;
- b=KpFPmeIT5E/7ffK/9mLwqsMRGIM9FikIQWU4vdgdCjJdKIY/mgQF0HMo9O9BrkMgWiATcP7DR4XAdWr+x639sBnt+GMtrDkv/e18IGXzIY5/3XadwdtKvGjbjMCvlMsOkrkSFYEcWg2l7bIcFv+LPHChRuZCl84XniQZAKevi0lY5OJfl8qHRvf2lcsai4wr4ZF09EDe0rK7DCcV+fMgLuCDTWiE69Z/HPcgV7aF/2QD466arQ/FVCNpTr8Xay4P+2E4wvVkpdmihT5wDobG6Khqd3Ee3izB0RkgZrX1cLro/lYksHgRLR1EziOLf7jMRpvbryH7PWR7lKGYDm4a6Q==
+ bh=XDgdYrGJwlidN5ze1xlZJMNNZgR5rMkucms7pyJi3ew=;
+ b=KEmztfHl9iuVy8oHc8nzsiaF0Vq8ehYnVo+rA4Ct/98xy0nnaxfOZtmYZ5FBgXgWiwOeVnZoyxaoqBKwBmS9F+tREwG+mZuzcD0dsdebhuUcZJeuDnXdcaSZxgSY7LDB2PLVAqBPb2dnSNOh6PVSoSFZoX8zUNYbDf5VPhcgrKgNaJeY5m3rb2p7+tuWoHPj1YdZkm9kZ6C8BZOZWy5/OFQAKJ3b/07h1J+tWkJ9HA7cRWzSeS/byZa9Th2XUxhnJtNCkpgj28tGkiAP8TkqTKPoZRYCJHSPlGS3v/eEZ1PPLkhg39ttSOdmn8Tie0uD8mwP9uUE5WtyoMQY0UpvwQ==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
  header.d=ddn.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+J8mCNol/xzTx+9RAO7/H+bcCPc7BcpTejsZU+1MTYc=;
- b=tyWTmYDbYQpoDXZ7WS00ukVM/1NDgzrfWpZffLsFWZXYeRR3Nc5/pOruL8hzrKLzkeIfOkYMQMdg5gDOJK1OA/oOW1tR6Wkabwjo/1TNMBogIHOPiQN9mavz+1wpqmWoUPvZ68NWeIarBjEZIzZbNwZyh6BWmYUjNU9n1XyCeR0=
+ bh=XDgdYrGJwlidN5ze1xlZJMNNZgR5rMkucms7pyJi3ew=;
+ b=Dpd8d9RGMK2Td8tCPg3AKP13XRs8kIKTseNQIOCyiKkW4pG5DFlm1+/rUjB8+NjeV/8QbGNNmQF5QCWJb7prQlPtmCEKJhwpqebJeoAivYPd9eDNJ91kflNOqNxuaR7M1UfGcClvg2zS/zy2E8nAEeCDLk4jOKSoh49Nq6UbzjU=
 Received: from BL0PR1901MB2004.namprd19.prod.outlook.com (52.132.24.157) by
  BL0PR1901MB2196.namprd19.prod.outlook.com (52.132.23.33) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2178.18; Thu, 22 Aug 2019 08:26:51 +0000
+ 15.20.2178.18; Thu, 22 Aug 2019 08:26:47 +0000
 Received: from BL0PR1901MB2004.namprd19.prod.outlook.com
  ([fe80::8106:5cf4:d22e:3737]) by BL0PR1901MB2004.namprd19.prod.outlook.com
  ([fe80::8106:5cf4:d22e:3737%7]) with mapi id 15.20.2178.020; Thu, 22 Aug 2019
- 08:26:51 +0000
+ 08:26:47 +0000
 From:   Dongyang Li <dongyangli@ddn.com>
 To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 CC:     "adilger@dilger.ca" <adilger@dilger.ca>
-Subject: [PATCH v2 3/4] ext2fs: rename "s_overhead_blocks" to
- "s_overhead_clusters"
-Thread-Topic: [PATCH v2 3/4] ext2fs: rename "s_overhead_blocks" to
- "s_overhead_clusters"
-Thread-Index: AQHVWMNYyqZsv0l+JUmWybgurjZ4aQ==
-Date:   Thu, 22 Aug 2019 08:26:50 +0000
-Message-ID: <20190822082617.19180-3-dongyangli@ddn.com>
-References: <20190822082617.19180-1-dongyangli@ddn.com>
-In-Reply-To: <20190822082617.19180-1-dongyangli@ddn.com>
+Subject: [PATCH v2 1/4] libext2fs: optimize ext2fs_convert_subcluster_bitmap()
+Thread-Topic: [PATCH v2 1/4] libext2fs: optimize
+ ext2fs_convert_subcluster_bitmap()
+Thread-Index: AQHVWMNWV7baaE571kmJTLMb3XylQQ==
+Date:   Thu, 22 Aug 2019 08:26:47 +0000
+Message-ID: <20190822082617.19180-1-dongyangli@ddn.com>
 Accept-Language: en-GB, en-US
 Content-Language: en-US
 X-MS-Has-Attach: 
@@ -69,119 +66,104 @@ x-ms-exchange-messagesentrepresentingtype: 1
 x-mailer: git-send-email 2.22.1
 x-originating-ip: [220.233.193.222]
 x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 0e54a19d-229e-469b-882e-08d726da7b1a
+x-ms-office365-filtering-correlation-id: 2267a6f4-966b-4cf0-6960-08d726da78cf
 x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600166)(711020)(4605104)(1401327)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:BL0PR1901MB2196;
 x-ms-traffictypediagnostic: BL0PR1901MB2196:
-x-microsoft-antispam-prvs: <BL0PR1901MB2196B49B715C50B7D173E4BACDA50@BL0PR1901MB2196.namprd19.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:345;
+x-microsoft-antispam-prvs: <BL0PR1901MB2196590A2645860E09687BCBCDA50@BL0PR1901MB2196.namprd19.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:4502;
 x-forefront-prvs: 01371B902F
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(4636009)(366004)(39850400004)(136003)(346002)(396003)(376002)(199004)(189003)(1076003)(71200400001)(256004)(81156014)(486006)(8676002)(476003)(2906002)(8936002)(66066001)(6916009)(11346002)(25786009)(64756008)(446003)(4326008)(66946007)(3846002)(2351001)(5660300002)(6116002)(2616005)(66476007)(66446008)(66556008)(71190400001)(50226002)(316002)(186003)(86362001)(36756003)(6436002)(14454004)(99286004)(478600001)(76176011)(386003)(5640700003)(6486002)(2501003)(26005)(6512007)(52116002)(102836004)(7736002)(14444005)(6506007)(53936002)(305945005)(81166006);DIR:OUT;SFP:1101;SCL:1;SRVR:BL0PR1901MB2196;H:BL0PR1901MB2004.namprd19.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(4636009)(366004)(39850400004)(136003)(346002)(396003)(376002)(199004)(189003)(1076003)(71200400001)(256004)(81156014)(486006)(8676002)(476003)(2906002)(8936002)(66066001)(6916009)(25786009)(64756008)(4326008)(66946007)(3846002)(2351001)(5660300002)(6116002)(2616005)(66476007)(66446008)(66556008)(71190400001)(50226002)(316002)(186003)(86362001)(36756003)(6436002)(14454004)(99286004)(478600001)(386003)(5640700003)(6486002)(2501003)(26005)(6512007)(52116002)(102836004)(7736002)(6506007)(53936002)(305945005)(81166006);DIR:OUT;SFP:1101;SCL:1;SRVR:BL0PR1901MB2196;H:BL0PR1901MB2004.namprd19.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
 received-spf: None (protection.outlook.com: ddn.com does not designate
  permitted sender hosts)
 x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: yUxW813XpuQGJqNDM5Kv9snrO4y14dUtti+I+BDje2i2SwhMks3OVJOy8YJDCsEBCQqljW1YTgS79+wB/spfZlRMCwNFUwBO3oLcLIq6YRAq2ioe/mDeQNbAWIoBzpZo3s3NXq0KvZJB+yQB4g8VuPUw5IIhNLwO7lzZOtUSk2VV3eDflhn9Obxcnp9FSte4f5pwHd5PLg8BE3YylI7aF9amk1ThZyit2peBZbKXLDLSUGiDH0eaIwnZl722GvEoouSw4gyQ/A20HdaGb8QuIXJVnpDF6LpNHNFDLbxqT6/gAqO7ainLy5/LcJWoQpVtI/2/GDZggJXgMFVSImFklns4gs8nzxIHfKE9XXjEjgpMYDmyX2UsC0TFy3HYpopElaL3B868ftHkpsLEioAIpy6MFNoBnMn7vnoxwDJYSjI=
+x-microsoft-antispam-message-info: S/IIctyTPZzpvhYPWNPqDtTi3UeVQctvdAq9blaScNz8NZItMS80YV6PS8wCtz7dHuyN3v3BP69uUkM4wVG2fTlNnZwtKsZGv+UH6xhbrf7SHA4eoYinbNQ0xSXTs/KRGMZZeTIrVr/ShAAFitmS9D2CwVo6GxZMsIHbzzoSKX+/xyLeGjdo+EwQbW+GwOMOVfkM9o1hCmHTLNA3lo0IX1HFrtKbCcfvtAGpCbeRE4loASWYNOX7vglhbD4HcAz/hBKi3T36fptMao+zH1EoL9a6i9w5TtqSxqyIulExag9g5F0Nz6Xb6spCv+hhcjkWnIrpan/D1YJLp0CIMTDBa0dGdROK2yjyDF3WEZNH+wV1iuD7lv0tTesago65J9lj8J9T6d37S7v5wr6SGHRTrNNEaKI/PD0smrMyGVgUGxE=
 x-ms-exchange-transport-forked: True
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 X-OriginatorOrg: ddn.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 0e54a19d-229e-469b-882e-08d726da7b1a
-X-MS-Exchange-CrossTenant-originalarrivaltime: 22 Aug 2019 08:26:50.9145
+X-MS-Exchange-CrossTenant-Network-Message-Id: 2267a6f4-966b-4cf0-6960-08d726da78cf
+X-MS-Exchange-CrossTenant-originalarrivaltime: 22 Aug 2019 08:26:47.1827
  (UTC)
 X-MS-Exchange-CrossTenant-fromentityheader: Hosted
 X-MS-Exchange-CrossTenant-id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
 X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: ZOi8QJYhP2i3oyjPQSl8MAtOeA7ewv1pNWRBs/cIpLYhCPhGJ5vegdW9d0yLBR6w
+X-MS-Exchange-CrossTenant-userprincipalname: l5B8oMSsW3d9JtydiqlQLEzssDodeaxHP76+y+i1Q3VoXITyoAEczfl6TkJlQ9Rr
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR1901MB2196
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Rename s_overhead_blocks field from struct ext2_super_block to
-make it consistent with the kernel counterpart.
+For a bigalloc filesystem, converting the block bitmap from blocks
+to chunks in ext2fs_convert_subcluster_bitmap() can take a long time
+when the device is huge, because we test the bitmap
+bit-by-bit using ext2fs_test_block_bitmap2().
+Use ext2fs_find_first_set_block_bitmap2() which is more efficient
+for mke2fs when the fs is mostly empty.
+
+e2fsck can also benefit from this during pass1 block scanning.
+
+Time taken for "mke2fs -O bigalloc,extent -C 131072 -b 4096" on a 1PB
+device:
+
+without patch:
+real    27m49.457s
+user    21m36.474s
+sys     6m9.514s
+
+with patch:
+real    6m31.908s
+user    0m1.806s
+sys    6m29.697s
 
 Signed-off-by: Li Dongyang <dongyangli@ddn.com>
 ---
- debugfs/set_fields.c        | 2 +-
- lib/e2p/ls.c                | 6 +++---
- lib/ext2fs/ext2_fs.h        | 2 +-
- lib/ext2fs/swapfs.c         | 2 +-
- lib/ext2fs/tst_super_size.c | 2 +-
- 5 files changed, 7 insertions(+), 7 deletions(-)
+ lib/ext2fs/gen_bitmap64.c | 20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index 5142554d..f497bd92 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -160,7 +160,7 @@ static struct field_set_info super_fields[] =3D {
- 	{ "usr_quota_inum", &set_sb.s_usr_quota_inum, NULL, 4, parse_uint },
- 	{ "grp_quota_inum", &set_sb.s_grp_quota_inum, NULL, 4, parse_uint },
- 	{ "prj_quota_inum", &set_sb.s_prj_quota_inum, NULL, 4, parse_uint },
--	{ "overhead_blocks", &set_sb.s_overhead_blocks, NULL, 4, parse_uint },
-+	{ "overhead_clusters", &set_sb.s_overhead_clusters, NULL, 4, parse_uint }=
-,
- 	{ "backup_bgs", &set_sb.s_backup_bgs[0], NULL, 4, parse_uint,
- 	  FLAG_ARRAY, 2 },
- 	{ "checksum", &set_sb.s_checksum, NULL, 4, parse_uint },
-diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-index 5a446178..5ca750f6 100644
---- a/lib/e2p/ls.c
-+++ b/lib/e2p/ls.c
-@@ -272,9 +272,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
- 	fprintf(f, "Inode count:              %u\n", sb->s_inodes_count);
- 	fprintf(f, "Block count:              %llu\n", e2p_blocks_count(sb));
- 	fprintf(f, "Reserved block count:     %llu\n", e2p_r_blocks_count(sb));
--	if (sb->s_overhead_blocks)
--		fprintf(f, "Overhead blocks:          %u\n",
--			sb->s_overhead_blocks);
-+	if (sb->s_overhead_clusters)
-+		fprintf(f, "Overhead clusters:          %u\n",
-+			sb->s_overhead_clusters);
- 	fprintf(f, "Free blocks:              %llu\n", e2p_free_blocks_count(sb))=
-;
- 	fprintf(f, "Free inodes:              %u\n", sb->s_free_inodes_count);
- 	fprintf(f, "First block:              %u\n", sb->s_first_data_block);
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index cbb44bdb..5737dc61 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -742,7 +742,7 @@ struct ext2_super_block {
- /*200*/	__u8	s_mount_opts[64];
- /*240*/	__u32	s_usr_quota_inum;	/* inode number of user quota file */
- 	__u32	s_grp_quota_inum;	/* inode number of group quota file */
--	__u32	s_overhead_blocks;	/* overhead blocks/clusters in fs */
-+	__u32	s_overhead_clusters;	/* overhead blocks/clusters in fs */
- /*24c*/	__u32	s_backup_bgs[2];	/* If sparse_super2 enabled */
- /*254*/	__u8	s_encrypt_algos[4];	/* Encryption algorithms in use  */
- /*258*/	__u8	s_encrypt_pw_salt[16];	/* Salt used for string2key algorithm =
-*/
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index a1560045..63b24330 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -121,7 +121,7 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
- 	/* sb->s_mount_opts is __u8 and does not need swabbing */
- 	sb->s_usr_quota_inum =3D ext2fs_swab32(sb->s_usr_quota_inum);
- 	sb->s_grp_quota_inum =3D ext2fs_swab32(sb->s_grp_quota_inum);
--	sb->s_overhead_blocks =3D ext2fs_swab32(sb->s_overhead_blocks);
-+	sb->s_overhead_clusters =3D ext2fs_swab32(sb->s_overhead_clusters);
- 	sb->s_backup_bgs[0] =3D ext2fs_swab32(sb->s_backup_bgs[0]);
- 	sb->s_backup_bgs[1] =3D ext2fs_swab32(sb->s_backup_bgs[1]);
- 	/* sb->s_encrypt_algos is __u8 and does not need swabbing */
-diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
-index a932685d..ab38dd59 100644
---- a/lib/ext2fs/tst_super_size.c
-+++ b/lib/ext2fs/tst_super_size.c
-@@ -135,7 +135,7 @@ int main(int argc, char **argv)
- 	check_field(s_mount_opts, 64);
- 	check_field(s_usr_quota_inum, 4);
- 	check_field(s_grp_quota_inum, 4);
--	check_field(s_overhead_blocks, 4);
-+	check_field(s_overhead_clusters, 4);
- 	check_field(s_backup_bgs, 8);
- 	check_field(s_encrypt_algos, 4);
- 	check_field(s_encrypt_pw_salt, 16);
+diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
+index 6e4d8b71..f1dd1891 100644
+--- a/lib/ext2fs/gen_bitmap64.c
++++ b/lib/ext2fs/gen_bitmap64.c
+@@ -799,8 +799,7 @@ errcode_t ext2fs_convert_subcluster_bitmap(ext2_filsys =
+fs,
+ 	ext2fs_generic_bitmap_64 bmap, cmap;
+ 	ext2fs_block_bitmap	gen_bmap =3D *bitmap, gen_cmap;
+ 	errcode_t		retval;
+-	blk64_t			i, b_end, c_end;
+-	int			n, ratio;
++	blk64_t			i, next, b_end, c_end;
+=20
+ 	bmap =3D (ext2fs_generic_bitmap_64) gen_bmap;
+ 	if (fs->cluster_ratio_bits =3D=3D ext2fs_get_bitmap_granularity(gen_bmap)=
+)
+@@ -817,18 +816,13 @@ errcode_t ext2fs_convert_subcluster_bitmap(ext2_filsy=
+s fs,
+ 	bmap->end =3D bmap->real_end;
+ 	c_end =3D cmap->end;
+ 	cmap->end =3D cmap->real_end;
+-	n =3D 0;
+-	ratio =3D 1 << fs->cluster_ratio_bits;
+ 	while (i < bmap->real_end) {
+-		if (ext2fs_test_block_bitmap2(gen_bmap, i)) {
+-			ext2fs_mark_block_bitmap2(gen_cmap, i);
+-			i +=3D ratio - n;
+-			n =3D 0;
+-			continue;
+-		}
+-		i++; n++;
+-		if (n >=3D ratio)
+-			n =3D 0;
++		retval =3D ext2fs_find_first_set_block_bitmap2(gen_bmap,
++						i, bmap->real_end, &next);
++		if (retval)
++			break;
++		ext2fs_mark_block_bitmap2(gen_cmap, next);
++		i =3D EXT2FS_C2B(fs, EXT2FS_B2C(fs, next) + 1);
+ 	}
+ 	bmap->end =3D b_end;
+ 	cmap->end =3D c_end;
 --=20
 2.22.1
 
