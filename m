@@ -2,122 +2,142 @@ Return-Path: <SRS0=6hZc=WT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8388C3A5A2
-	for <linux-ext4@archiver.kernel.org>; Fri, 23 Aug 2019 13:09:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62260C3A5A4
+	for <linux-ext4@archiver.kernel.org>; Fri, 23 Aug 2019 13:24:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A47C021848
-	for <linux-ext4@archiver.kernel.org>; Fri, 23 Aug 2019 13:09:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 424502173E
+	for <linux-ext4@archiver.kernel.org>; Fri, 23 Aug 2019 13:24:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389118AbfHWNJ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 23 Aug 2019 09:09:26 -0400
-Received: from out30-45.freemail.mail.aliyun.com ([115.124.30.45]:54469 "EHLO
-        out30-45.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727894AbfHWNJ0 (ORCPT
+        id S2390236AbfHWNYa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 23 Aug 2019 09:24:30 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:19672 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1732332AbfHWNYa (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Aug 2019 09:09:26 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04426;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0TaDOlSd_1566565734;
-Received: from JosephdeMacBook-Pro.local(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TaDOlSd_1566565734)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 23 Aug 2019 21:08:54 +0800
-Subject: Re: [RFC] performance regression with "ext4: Allow parallel DIO
- reads"
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Joseph Qi <jiangqi903@gmail.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>,
-        Liu Bo <bo.liu@linux.alibaba.com>
-References: <20190728225122.GG7777@dread.disaster.area>
- <960bb915-20cc-26a0-7abc-bfca01aa39c0@gmail.com>
- <20190815151336.GO14313@quack2.suse.cz>
- <075fd06f-b0b4-4122-81c6-e49200d5bd17@linux.alibaba.com>
- <20190816145719.GA3041@quack2.suse.cz>
- <a8ddec64-d87c-ae7a-9b02-2f24da2396e9@linux.alibaba.com>
- <20190820160805.GB10232@mit.edu>
- <f89131c9-6f84-ac3c-b53c-d3d55887ea89@linux.alibaba.com>
- <20190822054001.GT7777@dread.disaster.area>
- <f0eb766f-3c04-2a53-1669-4088e09d8f73@linux.alibaba.com>
- <20190823101623.GV7777@dread.disaster.area>
-From:   Joseph Qi <joseph.qi@linux.alibaba.com>
-Message-ID: <707b1a60-00f0-847e-02f9-e63d20eab47e@linux.alibaba.com>
-Date:   Fri, 23 Aug 2019 21:08:53 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:60.0)
- Gecko/20100101 Thunderbird/60.8.0
+        Fri, 23 Aug 2019 09:24:30 -0400
+Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x7NDMoi2113729;
+        Fri, 23 Aug 2019 09:24:18 -0400
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2ujfdvv7b1-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 23 Aug 2019 09:24:18 -0400
+Received: from m0098417.ppops.net (m0098417.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x7NDNNjU115808;
+        Fri, 23 Aug 2019 09:24:17 -0400
+Received: from ppma04dal.us.ibm.com (7a.29.35a9.ip4.static.sl-reverse.com [169.53.41.122])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2ujfdvv7af-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 23 Aug 2019 09:24:17 -0400
+Received: from pps.filterd (ppma04dal.us.ibm.com [127.0.0.1])
+        by ppma04dal.us.ibm.com (8.16.0.27/8.16.0.27) with SMTP id x7NDLKas022452;
+        Fri, 23 Aug 2019 13:24:16 GMT
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+        by ppma04dal.us.ibm.com with ESMTP id 2uj2eyd8kh-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 23 Aug 2019 13:24:16 +0000
+Received: from b01ledav006.gho.pok.ibm.com (b01ledav006.gho.pok.ibm.com [9.57.199.111])
+        by b01cxnp23033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x7NDOGuV43778486
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 23 Aug 2019 13:24:16 GMT
+Received: from b01ledav006.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id F0B7DAC062;
+        Fri, 23 Aug 2019 13:24:15 +0000 (GMT)
+Received: from b01ledav006.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 969FBAC05E;
+        Fri, 23 Aug 2019 13:24:12 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.199.53.214])
+        by b01ledav006.gho.pok.ibm.com (Postfix) with ESMTP;
+        Fri, 23 Aug 2019 13:24:12 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org
+Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, hch@infradead.org,
+        chandanrlinux@gmail.com
+Subject: [PATCH V5 1/7] buffer_head: Introduce BH_Read_Cb flag
+Date:   Fri, 23 Aug 2019 18:55:36 +0530
+Message-Id: <20190823132542.13434-2-chandan@linux.ibm.com>
+X-Mailer: git-send-email 2.19.1
+In-Reply-To: <20190823132542.13434-1-chandan@linux.ibm.com>
+References: <20190823132542.13434-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
-In-Reply-To: <20190823101623.GV7777@dread.disaster.area>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
 Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-08-23_05:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1906280000 definitions=main-1908230138
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Decryption of file content encrypted using fscrypt relies on
+bio->bi_private holding a pointer to an encryption context
+i.e. Decryption operation is not performed for bios having a NULL value
+at bio->bi_private.
 
+The same logic cannot be used on buffer heads because,
+1. In Btrfs, write_dev_supers() sets bh->b_private to 'struct
+   btrfs_device' pointer and submits the buffer head for a write
+   operation.
+   1. In btrfs/146 test, the write operation fails and hence the
+      endio function clears the BH_Uptodate flag.
+   2. A read operation initiated later will submit the buffer head to
+      the block layer. During endio processing, bh_>b_private would have a
+      non-NULL value.
 
-On 19/8/23 18:16, Dave Chinner wrote:
-> On Fri, Aug 23, 2019 at 03:57:02PM +0800, Joseph Qi wrote:
->> Hi Dave,
->>
->> On 19/8/22 13:40, Dave Chinner wrote:
->>> On Wed, Aug 21, 2019 at 09:04:57AM +0800, Joseph Qi wrote:
->>>> Hi Ted，
->>>>
->>>> On 19/8/21 00:08, Theodore Y. Ts'o wrote:
->>>>> On Tue, Aug 20, 2019 at 11:00:39AM +0800, Joseph Qi wrote:
->>>>>>
->>>>>> I've tested parallel dio reads with dioread_nolock, it doesn't have
->>>>>> significant performance improvement and still poor compared with reverting
->>>>>> parallel dio reads. IMO, this is because with parallel dio reads, it take
->>>>>> inode shared lock at the very beginning in ext4_direct_IO_read().
->>>>>
->>>>> Why is that a problem?  It's a shared lock, so parallel threads should
->>>>> be able to issue reads without getting serialized?
->>>>>
->>>> The above just tells the result that even mounting with dioread_nolock,
->>>> parallel dio reads still has poor performance than before (w/o parallel
->>>> dio reads).
->>>>
->>>>> Are you using sufficiently fast storage devices that you're worried
->>>>> about cache line bouncing of the shared lock?  Or do you have some
->>>>> other concern, such as some other thread taking an exclusive lock?
->>>>>
->>>> The test case is random read/write described in my first mail. And
->>>
->>> Regardless of dioread_nolock, ext4_direct_IO_read() is taking
->>> inode_lock_shared() across the direct IO call.  And writes in ext4
->>> _always_ take the inode_lock() in ext4_file_write_iter(), even
->>> though it gets dropped quite early when overwrite && dioread_nolock
->>> is set.  But just taking the lock exclusively in write fro a short
->>> while is enough to kill all shared locking concurrency...
->>>
->>>> from my preliminary investigation, shared lock consumes more in such
->>>> scenario.
->>>
->>> If the write lock is also shared, then there should not be a
->>> scalability issue. The shared dio locking is only half-done in ext4,
->>> so perhaps comparing your workload against XFS would be an
->>> informative exercise... 
->>
->> I've done the same test workload on xfs, it behaves the same as ext4
->> after reverting parallel dio reads and mounting with dioread_lock.
-> 
-> Ok, so the problem is not shared locking scalability ('cause that's
-> what XFS does and it scaled fine), the problem is almost certainly
-> that ext4 is using exclusive locking during writes...
-> 
+2. Another instance is when an Ext4 metadata block with BH_Uptodate set and
+   also part of the in-memory JBD list undergoes the following,
+   1. A sync() syscall is invoked by the userspace and the write
+      operation on the metadata block is initiated.
+   2. Due to an I/O failure, the BH_Uptodate flag is cleared by
+      end_buffer_async_write(). The bh->b_private member would be
+      pointing to a journal head structure.
+   3. In such a case, a read operation invoked on the block mapped by the
+      buffer head will initiate a read from the disk since the buffer head is
+      missing the BH_Uptodate flag.
+   4. After the read I/O request is submitted, end_buffer_async_read()
+      will find a non-NULL value at bh->b_private.
+   This scenario was observed when executing generic/475 test case.
 
-Agree. Maybe I've misled you in my previous mails.I meant shared lock makes worse in case of mixed random read/write, since
-we would always take inode lock during write.
-And it also conflicts with dioread_nolock. It won't take any inode lock
-before with dioread_nolock during read, but now it always takes a shared
-lock.
+Hence this commit introduces a new buffer head flag to reliably check for
+decryption of a buffer head's contents after the block has been read
+from the disk.
 
-Thanks,
-Joseph
+Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
+---
+ include/linux/buffer_head.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 7b73ef7f902d..08f217ba8114 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -38,6 +38,7 @@ enum bh_state_bits {
+ 	BH_Meta,	/* Buffer contains metadata */
+ 	BH_Prio,	/* Buffer should be submitted with REQ_PRIO */
+ 	BH_Defer_Completion, /* Defer AIO completion to workqueue */
++	BH_Read_Cb,	     /* Block's contents needs to be decrypted */
  
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+@@ -134,6 +135,7 @@ BUFFER_FNS(Unwritten, unwritten)
+ BUFFER_FNS(Meta, meta)
+ BUFFER_FNS(Prio, prio)
+ BUFFER_FNS(Defer_Completion, defer_completion)
++BUFFER_FNS(Read_Cb, read_cb)
+ 
+ #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
+ 
+-- 
+2.19.1
+
