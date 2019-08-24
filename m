@@ -2,148 +2,82 @@ Return-Path: <SRS0=u900=WU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBD7FC3A59E
-	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 05:09:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11361C3A59E
+	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 21:24:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B7CA42082F
-	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 05:09:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D9D3A20870
+	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 21:24:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726009AbfHXFIi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 24 Aug 2019 01:08:38 -0400
-Received: from mga03.intel.com ([134.134.136.65]:26578 "EHLO mga03.intel.com"
+        id S1727879AbfHXVYz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 24 Aug 2019 17:24:55 -0400
+Received: from ms.lwn.net ([45.79.88.28]:50340 "EHLO ms.lwn.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725616AbfHXFIi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 24 Aug 2019 01:08:38 -0400
-X-Amp-Result: UNSCANNABLE
-X-Amp-File-Uploaded: False
-Received: from orsmga002.jf.intel.com ([10.7.209.21])
-  by orsmga103.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 23 Aug 2019 22:08:37 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.64,424,1559545200"; 
-   d="scan'208";a="191147429"
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by orsmga002.jf.intel.com with ESMTP; 23 Aug 2019 22:08:36 -0700
-Date:   Fri, 23 Aug 2019 22:08:36 -0700
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Jason Gunthorpe <jgg@ziepe.ca>, Jan Kara <jack@suse.cz>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Michal Hocko <mhocko@suse.com>, linux-xfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-ext4@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [RFC PATCH v2 00/19] RDMA/FS DAX truncate proposal V1,000,002 ;-)
-Message-ID: <20190824050836.GC1092@iweiny-DESK2.sc.intel.com>
-References: <20190820011210.GP7777@dread.disaster.area>
- <20190820115515.GA29246@ziepe.ca>
- <20190821180200.GA5965@iweiny-DESK2.sc.intel.com>
- <20190821181343.GH8653@ziepe.ca>
- <20190821185703.GB5965@iweiny-DESK2.sc.intel.com>
- <20190821194810.GI8653@ziepe.ca>
- <20190821204421.GE5965@iweiny-DESK2.sc.intel.com>
- <20190823032345.GG1119@dread.disaster.area>
- <20190823120428.GA12968@ziepe.ca>
- <20190824001124.GI1119@dread.disaster.area>
+        id S1727690AbfHXVYy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 24 Aug 2019 17:24:54 -0400
+Received: from lwn.net (localhost [127.0.0.1])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ms.lwn.net (Postfix) with ESMTPSA id 1BB5B300;
+        Sat, 24 Aug 2019 21:24:54 +0000 (UTC)
+Date:   Sat, 24 Aug 2019 15:24:53 -0600
+From:   Jonathan Corbet <corbet@lwn.net>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Ayush Ranjan <ayushr2@illinois.edu>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-doc@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2] Ext4 documentation fixes.
+Message-ID: <20190824152453.03737143@lwn.net>
+In-Reply-To: <DEDD6BA5-6E18-4ED6-9EF6-E11EDA593700@dilger.ca>
+References: <CA+UE=SPyMXZUhHFm0KgvihPdaE=yH5ra6n1C4XhKgM6aGheo=A@mail.gmail.com>
+        <DEDD6BA5-6E18-4ED6-9EF6-E11EDA593700@dilger.ca>
+Organization: LWN.net
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190824001124.GI1119@dread.disaster.area>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Aug 24, 2019 at 10:11:24AM +1000, Dave Chinner wrote:
-> On Fri, Aug 23, 2019 at 09:04:29AM -0300, Jason Gunthorpe wrote:
-> > On Fri, Aug 23, 2019 at 01:23:45PM +1000, Dave Chinner wrote:
+On Thu, 15 Aug 2019 09:16:23 -0700
+Andreas Dilger <adilger@dilger.ca> wrote:
+
+> On Aug 15, 2019, at 09:11, Ayush Ranjan <ayushr2@illinois.edu> wrote:
 > > 
-> > > > But the fact that RDMA, and potentially others, can "pass the
-> > > > pins" to other processes is something I spent a lot of time trying to work out.
-> > > 
-> > > There's nothing in file layout lease architecture that says you
-> > > can't "pass the pins" to another process.  All the file layout lease
-> > > requirements say is that if you are going to pass a resource for
-> > > which the layout lease guarantees access for to another process,
-> > > then the destination process already have a valid, active layout
-> > > lease that covers the range of the pins being passed to it via the
-> > > RDMA handle.
+> > This commit aims to fix the following issues in ext4 documentation:
+> > - Flexible block group docs said that the aim was to group block
+> >   metadata together instead of block group metadata.
+> > - The documentation consistly uses "location" instead of "block number".
+> >   It is easy to confuse location to be an absolute offset on disk. Added
+> >   a line to clarify all location values are in terms of block numbers.
+> > - Dirent2 docs said that the rec_len field is shortened instead of the
+> >   name_len field.
+> > - Typo in bg_checksum description.
+> > - Inode size is 160 bytes now, and hence i_extra_isize is now 32.
+> > - Cluster size formula was incorrect, it did not include the +10 to
+> >   s_log_cluster_size value.
+> > - Typo: there were two s_wtime_hi in the superblock struct.
+> > - Superblock struct was outdated, added the new fields which were part
+> >   of s_reserved earlier.
+> > - Multiple mount protection seems to be implemented in fs/ext4/mmp.c.
 > > 
-> > How would the kernel detect and enforce this? There are many ways to
-> > pass a FD.
+> > Signed-off-by: Ayush Ranjan <ayushr2@illinois.edu>  
 > 
-> AFAIC, that's not really a kernel problem. It's more of an
-> application design constraint than anything else. i.e. if the app
-> passes the IB context to another process without a lease, then the
-> original process is still responsible for recalling the lease and
-> has to tell that other process to release the IB handle and it's
-> resources.
-> 
-> > IMHO it is wrong to try and create a model where the file lease exists
-> > independently from the kernel object relying on it. In other words the
-> > IB MR object itself should hold a reference to the lease it relies
-> > upon to function properly.
-> 
-> That still doesn't work. Leases are not individually trackable or
-> reference counted objects objects - they are attached to a struct
-> file bUt, in reality, they are far more restricted than a struct
-> file.
-> 
-> That is, a lease specifically tracks the pid and the _open fd_ it
-> was obtained for, so it is essentially owned by a specific process
-> context.  Hence a lease is not able to be passed to a separate
-> process context and have it still work correctly for lease break
-> notifications.  i.e. the layout break signal gets delivered to
-> original process that created the struct file, if it still exists
-> and has the original fd still open. It does not get sent to the
-> process that currently holds a reference to the IB context.
->
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-The fcntl man page says:
+I've applied this to the docs tree.
 
-"Leases are associated with an open file description (see open(2)).  This means
-that duplicate file descriptors (created by, for example, fork(2) or dup(2))
-refer to the same lease, and this lease may be modified or released using any
-of these descriptors.  Furthermore,  the lease is released by either an
-explicit F_UNLCK operation on any of these duplicate file descriptors, or when
-all such file descriptors have been closed."
+However, Ayush: the patch was rather badly corrupted by your mail client.
+I managed to fix it up, but please in the future verify that you can email
+a patch to yourself and apply it before submitting it.  There may be some
+useful hints in Documentation/process/email-clients.rst .
 
-From this I took it that the child process FD would have the lease as well
-_and_ could release it.  I _assumed_ that applied to SCM_RIGHTS but it does not
-seem to work the same way as dup() so I'm not so sure.
+Thanks,
 
-Ira
-
-> 
-> So while a struct file passed to another process might still have
-> an active lease, and you can change the owner of the struct file
-> via fcntl(F_SETOWN), you can't associate the existing lease with a
-> the new fd in the new process and so layout break signals can't be
-> directed at the lease fd....
-> 
-> This really means that a lease can only be owned by a single process
-> context - it can't be shared across multiple processes (so I was
-> wrong about dup/pass as being a possible way of passing them)
-> because there's only one process that can "own" a struct file, and
-> that where signals are sent when the lease needs to be broken.
-> 
-> So, fundamentally, if you want to pass a resource that pins a file
-> layout between processes, both processes need to hold a layout lease
-> on that file range. And that means exclusive leases and passing
-> layouts between processes are fundamentally incompatible because you
-> can't hold two exclusive leases on the same file range....
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+jon
