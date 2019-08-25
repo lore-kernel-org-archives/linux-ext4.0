@@ -1,79 +1,54 @@
-Return-Path: <SRS0=u900=WU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=A3mL=WV=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0BBFC3A59E
-	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 23:09:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B269C3A59E
+	for <linux-ext4@archiver.kernel.org>; Sun, 25 Aug 2019 03:13:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7D9242133F
-	for <linux-ext4@archiver.kernel.org>; Sat, 24 Aug 2019 23:09:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F1B3F214AF
+	for <linux-ext4@archiver.kernel.org>; Sun, 25 Aug 2019 03:13:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728058AbfHXXJi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 24 Aug 2019 19:09:38 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48341 "EHLO
+        id S1728332AbfHYDNJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 24 Aug 2019 23:13:09 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:34849 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727950AbfHXXJi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Aug 2019 19:09:38 -0400
+        with ESMTP id S1728243AbfHYDNJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 24 Aug 2019 23:13:09 -0400
 Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x7ON9UHx008124
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x7P3Ch3k026346
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 24 Aug 2019 19:09:31 -0400
+        Sat, 24 Aug 2019 23:12:44 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 267C242049E; Sat, 24 Aug 2019 19:09:30 -0400 (EDT)
-Date:   Sat, 24 Aug 2019 19:09:30 -0400
+        id 20B7742049E; Sat, 24 Aug 2019 23:12:43 -0400 (EDT)
+Date:   Sat, 24 Aug 2019 23:12:43 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Jonathan Corbet <corbet@lwn.net>
-Cc:     Andreas Dilger <adilger@dilger.ca>,
-        Ayush Ranjan <ayushr2@illinois.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-doc@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2] Ext4 documentation fixes.
-Message-ID: <20190824230930.GB5163@mit.edu>
-Mail-Followup-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Ayush Ranjan <ayushr2@illinois.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-doc@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-References: <CA+UE=SPyMXZUhHFm0KgvihPdaE=yH5ra6n1C4XhKgM6aGheo=A@mail.gmail.com>
- <DEDD6BA5-6E18-4ED6-9EF6-E11EDA593700@dilger.ca>
- <20190824152453.03737143@lwn.net>
+To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] jbd2: add missing tracepoint for reserved handle
+Message-ID: <20190825031243.GA25396@mit.edu>
+References: <20190815134446.28547-1-xiaoguang.wang@linux.alibaba.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190824152453.03737143@lwn.net>
+In-Reply-To: <20190815134446.28547-1-xiaoguang.wang@linux.alibaba.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Aug 24, 2019 at 03:24:53PM -0600, Jonathan Corbet wrote:
-> I've applied this to the docs tree.
+On Thu, Aug 15, 2019 at 09:44:46PM +0800, Xiaoguang Wang wrote:
+> This issue was found when I use ebpf to trace every jbd2
+> handle's running info in dioread_nolock case.
 > 
-> However, Ayush: the patch was rather badly corrupted by your mail client.
-> I managed to fix it up, but please in the future verify that you can email
-> a patch to yourself and apply it before submitting it.  There may be some
-> useful hints in Documentation/process/email-clients.rst .
+> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
 
-Hi Jon,
+Thanks, applied.
 
-If you haven't pushed out your doc tree, can you please drop it?  I've
-already applied an (improved) version of this patch to the ext4 tree,
-and I actually have some plans to do further fixups of ext4 on-disk
-format documentation in the ext4 tree.  So it would be easier if we
-keep ext4 documentation updates in the ext4 git tree.
-
-Thanks,
-
-					- Ted
+						- Ted
