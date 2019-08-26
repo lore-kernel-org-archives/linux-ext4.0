@@ -2,236 +2,198 @@ Return-Path: <SRS0=WH3g=WW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D258C3A59E
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:56:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82936C3A59E
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 08:13:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B1CF21848
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:56:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="aMPdFhIK"
+	by mail.kernel.org (Postfix) with ESMTP id 5A91E206B7
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 08:13:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729314AbfHZF4S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Aug 2019 01:56:18 -0400
-Received: from mail-eopbgr750075.outbound.protection.outlook.com ([40.107.75.75]:49989
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        id S1730400AbfHZINI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Aug 2019 04:13:08 -0400
+Received: from szxga05-in.huawei.com ([45.249.212.191]:5212 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727797AbfHZF4S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Aug 2019 01:56:18 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=HsSlwuv5afJdrkX0YbvY2yHkhQma3jqFcfFC/wtbDNPWlmnfCCruj213q3VhPjye0h2w3cHYVdmAxL0f3zTtLmbN2/faCdN2OjRV9mchNMF7Tda3KHUp1xZbRCIx6pj78xHpoepjaT+Wnp6awaoJYpiZ3ck2QGxuwSX/gzkCU1nPyio6m9FReM/UTSfHJBIVeZhlAjAUmPBrNWnCZd0lZ3rfiVBaNWvSC0PoGew7ZyWuGCAsO64RqHrs/FTPdxQo7DCFJWVIg0R/Myo6s48LtqVqGW/59AxTzqBbXZAlPPnIIlB2ptwcX+47HvFmMn+lnxj5jHukFCxjEwMr2I0sng==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=fZ1oMMcw8mO9vV8w5hRRgzbaIrTnBzSQaCI0iNc3s4E=;
- b=loXGuUXUPg1XtXRnVADn5UNyoIEJWWySTTjvuwbpFqzfykWVSUrKLS36pQ00xTqEuD0rwo6zO5YsgCvpVwiUeRSUBSUbobaZ+NROFWtuaahK5VV1MGbwfGERDXd64L8mv2s+CtSIsg213BUSGNCGQcvMzCScnLqhUOBbDX3BdV/EtpUPocZGVBJSgDhRMMLjDuVr1oK55XE16aDDO6nzo5iwHZlXBnRJikW90OSgBTbUCjRukxeA3Nm2QEsSswvIDOuFJFcMQh4R1nh3X39q84vfgKmmpZqrKI9pZCxtZbTVmKKByUNjA9iTIJkG4CRLAodIB+a15ZKHs9DJwmKGpg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
- header.d=ddn.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=fZ1oMMcw8mO9vV8w5hRRgzbaIrTnBzSQaCI0iNc3s4E=;
- b=aMPdFhIKk1BH33lJrm/V+n+Nql74vHstfEyZN19SBJJDB+osb2twTKtDSc0GzhV08uh6Yws6CfKE9Orwimlzrkt1dLgHn/DxPGuc9jcjJ6e9EfJR4+kY0+2NZQIalFOWiJWqcijI8i2fS+xVg9XD942AGKc0qJ3QTVC2VwVFh3o=
-Received: from BL0PR1901MB2004.namprd19.prod.outlook.com (52.132.24.157) by
- BL0PR1901MB1985.namprd19.prod.outlook.com (52.132.22.31) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2178.16; Mon, 26 Aug 2019 05:53:34 +0000
-Received: from BL0PR1901MB2004.namprd19.prod.outlook.com
- ([fe80::8106:5cf4:d22e:3737]) by BL0PR1901MB2004.namprd19.prod.outlook.com
- ([fe80::8106:5cf4:d22e:3737%7]) with mapi id 15.20.2199.021; Mon, 26 Aug 2019
- 05:53:34 +0000
-From:   Dongyang Li <dongyangli@ddn.com>
-To:     "adilger@dilger.ca" <adilger@dilger.ca>
-CC:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH v2 4/4] mke2fs: set overhead in super block for bigalloc
-Thread-Topic: [PATCH v2 4/4] mke2fs: set overhead in super block for bigalloc
-Thread-Index: AQHVWMNZPnxfhKjn7UWVswnRm8HqlKcMy2UAgAAoQwA=
-Date:   Mon, 26 Aug 2019 05:53:33 +0000
-Message-ID: <82090b26ca1b80e757048e0043d4489e5b3e6508.camel@ddn.com>
-References: <20190822082617.19180-1-dongyangli@ddn.com>
-         <20190822082617.19180-4-dongyangli@ddn.com>
-         <F25195AC-DF10-47E0-9445-074D47DACDB4@dilger.ca>
-In-Reply-To: <F25195AC-DF10-47E0-9445-074D47DACDB4@dilger.ca>
-Accept-Language: en-GB, en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=dongyangli@ddn.com; 
-x-originating-ip: [220.233.193.222]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: ad5c6e8f-8cde-40e9-508b-08d729e9bb30
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600166)(711020)(4605104)(1401327)(2017052603328)(7193020);SRVR:BL0PR1901MB1985;
-x-ms-traffictypediagnostic: BL0PR1901MB1985:
-x-microsoft-antispam-prvs: <BL0PR1901MB1985E5622E0D06F5070FFCC6CDA10@BL0PR1901MB1985.namprd19.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:2733;
-x-forefront-prvs: 01415BB535
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(4636009)(39840400004)(376002)(366004)(136003)(396003)(346002)(199004)(189003)(86362001)(7736002)(14454004)(478600001)(118296001)(53936002)(66476007)(316002)(99286004)(66556008)(64756008)(66446008)(305945005)(66946007)(2351001)(76176011)(91956017)(5660300002)(76116006)(8936002)(11346002)(446003)(186003)(229853002)(2616005)(476003)(71200400001)(71190400001)(25786009)(486006)(53546011)(6506007)(26005)(14444005)(256004)(102836004)(6246003)(36756003)(4326008)(3846002)(6116002)(2501003)(81156014)(8676002)(1730700003)(81166006)(6916009)(6512007)(2906002)(6486002)(5640700003)(66066001)(6436002);DIR:OUT;SFP:1101;SCL:1;SRVR:BL0PR1901MB1985;H:BL0PR1901MB2004.namprd19.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: ddn.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: VAqn3EfJrLg9Ot3hF+40CgdxDOj5FP+Z/fERF1dcb+6864tSPNHEAvh3/07c1GMiM+XT0fgaeJYNt+d4zFtTtop6qrXfmtkCM2DdO6CBCcmLRw+jvfT/ei6FFb0n+KBNaDBZ1YxjQCJQ7xraPGxGFKyLPu5JTmN20B2rFWh0R3YqeZ9X6wleHS3DKkEl551+Dc+iyVvMqnGII4/yR85hwqR6HjLwCy7Ua8+Urqhuy4/SWi981zOQ9iQqin9Y1oYCabzzamb4Im2az184aVVdIfJRtZDxxD2HG0o/upvM0MTnadZIGGYDXMXYwqmxy8n+KDW22nL9WZePqp7jFFTEuGoZKKKGu6OzFOR9ljN7hp8EZq6Jdj8xJpABiHF1J2Mt1zB7NkHiyCTT0banEzHsLHVYe+R9r73xIzLzFuwR8Mk=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <D13C59A2439EF4478806183ED9C7BF8E@namprd19.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1729535AbfHZINI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Aug 2019 04:13:08 -0400
+Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 60D501EF688B42FADD9F;
+        Mon, 26 Aug 2019 16:13:02 +0800 (CST)
+Received: from [127.0.0.1] (10.74.221.148) by DGGEMS412-HUB.china.huawei.com
+ (10.3.19.212) with Microsoft SMTP Server id 14.3.439.0; Mon, 26 Aug 2019
+ 16:12:51 +0800
+Subject: Re: [PATCH] ext4: change the type of ext4 cache stats to
+ percpu_counter to improve performance
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, Yang Guo <guoyang2@huawei.com>,
+        "Andreas Dilger" <adilger.kernel@dilger.ca>
+References: <1566528454-13725-1-git-send-email-zhangshaokun@hisilicon.com>
+ <20190825032524.GD5163@mit.edu> <20190825172803.GA9505@sol.localdomain>
+From:   Shaokun Zhang <zhangshaokun@hisilicon.com>
+Message-ID: <98d6d036-e4cd-9dc1-9238-aa170b89eeec@hisilicon.com>
+Date:   Mon, 26 Aug 2019 16:12:51 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101
+ Thunderbird/45.1.1
 MIME-Version: 1.0
-X-OriginatorOrg: ddn.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ad5c6e8f-8cde-40e9-508b-08d729e9bb30
-X-MS-Exchange-CrossTenant-originalarrivaltime: 26 Aug 2019 05:53:33.6951
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: njtqCL0P2pG1asHNeREi1UaEVnWc49fph4zf1pb7YGld46CV3FjgIWSFq9TwHQp+
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR1901MB1985
+In-Reply-To: <20190825172803.GA9505@sol.localdomain>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.74.221.148]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-T24gU3VuLCAyMDE5LTA4LTI1IGF0IDIxOjI5IC0wNjAwLCBBbmRyZWFzIERpbGdlciB3cm90ZToN
-Cj4gT24gQXVnIDIyLCAyMDE5LCBhdCAyOjI2IEFNLCBEb25neWFuZyBMaSA8ZG9uZ3lhbmdsaUBk
-ZG4uY29tPiB3cm90ZToNCj4gPiBJZiBvdmVyaGVhZCBpcyBub3QgcmVjb3JkZWQgaW4gdGhlIHN1
-cGVyIGJsb2NrLCBpdCBpcyBjYWN1bGF0ZWQNCj4gPiBkdXJpbmcgbW91bnQgaW4ga2VybmVsLCBm
-b3IgYmlnYWxsb2MgZmlsZSBzeXN0ZW1zIHRoZSBpdCB0YWtlcw0KPiA+IE8oZ3JvdXBzKioyKSBp
-biB0aW1lLg0KPiA+IEZvciBhIDFQQiBkZWl2Y2Ugd2l0aCAzMksgY2x1c3RlIHNpemUgaXQgdGFr
-ZXMgfjEyIG1pbnMgdG8NCj4gPiBtb3VudCwgd2l0aCBtb3N0IG9mIHRoZSB0aW1lIHNwZW50IG9u
-IGZpZ3VyaW5nIG91dCBvdmVyaGVhZC4NCj4gPiANCj4gPiBXaGlsZSB3ZSBjYW4gbm90IGltcHJv
-dmUgdGhlIG92ZXJoZWFkIGFsZ29yaXRobSBpbiBrZXJuZWwNCj4gPiBkdWUgdG8gdGhlIG5hdHVy
-ZSBvZiBiaWdhbGxvYywgd2UgY2FuIHdvcmsgb3V0IHRoZSBvdmVyaGVhZA0KPiA+IGR1cmluZyBt
-a2UyZnMgYW5kIHNldCBpdCBpbiB0aGUgc3VwZXIgYmxvY2ssIGF2b2lkaW5nIGNhbGN1bGF0aW5n
-DQo+ID4gaXQgZXZlcnkgdGltZSB3aGVuIGl0IG1vdW50cy4NCj4gDQo+IEl0IHdvdWxkIGFsc28g
-YmUgZ29vZCB0byBnZXQgYW4gZXh0NCBwYXRjaCB0byBzYXZlIHRoZSBjYWxjdWxhdGVkDQo+IG92
-ZXJoZWFkIHRvIHNfb3ZlcmhlYWRfY2x1c3RlcnMgaWYgdGhlIGtlcm5lbCBmaW5kcyBpdCB1bnNl
-dD8NCj4gVGhhdCBpc24ndCBhbnkgbGVzcyBhY2N1cmF0ZSB0aGFuIHJlY29tcHV0aW5nIGl0IGVh
-Y2ggdGltZSwgYW5kDQo+IGF2b2lkcyBleHRyYSBvdmVyaGVhZCBvbiBlYWNoIG1vdW50IGZvciBm
-aWxlc3lzdGVtcyB0aGF0IGRpZCBub3QNCj4gZ2V0IGl0IHNldCBhdCBta2UyZnMgdGltZS4NClNv
-dW5kcyBnb29kLCB3ZSBhbHNvIG5lZWQgdG8gdXBkYXRlIHRoZSBvdmVyaGVhZCB3aGVuIHJlc2l6
-ZSBoYXBwZW5zLg0KPiANCj4gPiBPdmVyaGVhZCBpcyBzX2ZpcnN0X2RhdGFfYmxvY2sgcGx1cyBp
-bnRlcm5hbCBqb3VybmFsIGJsb2NrcyBwbHVzDQo+ID4gdGhlIGJsb2NrIGFuZCBpbm9kZSBiaXRt
-YXBzLCBpbm9kZSB0YWJsZSwgc3VwZXIgYmxvY2sgYmFja3VwcyBhbmQNCj4gPiBncm91cCBkZXNj
-cmlwdG9yIGJsb2NrcyBmb3IgZXZlcnkgZ3JvdXAuIFRoaXMgcGF0Y2ggaW50cm9kdWNlcw0KPiA+
-IGV4dDJmc19jb3VudF91c2VkX2NsdXN0ZXJzKCksIHdoaWNoIGNhbGN1bGF0ZXMgdGhlIGNsdXN0
-ZXJzIHVzZWQNCj4gPiBpbiB0aGUgYmxvY2sgYml0bWFwIGZvciB0aGUgZ2l2ZW4gcmFuZ2UuDQo+
-ID4gDQo+ID4gV2hlbiBiYWQgYmxvY2tzIGFyZSBpbnZvbHZlZCwgaXQgZ2V0cyB0cmlja3kgYmVj
-YXVzZSB0aGUgYmxvY2tzDQo+ID4gY291bnRlZCBhcyBvdmVyaGVhZCBhbmQgdGhlIGJhZCBibG9j
-a3MgY2FuIGVuZCB1cCBpbiB0aGUgc2FtZQ0KPiA+IGFsbG9jYXRpb24gY2x1c3Rlci4NCj4gDQo+
-IE9uIHRoZSBvdGhlciBoYW5kLCB3b3VsZCBpdCBiZSB3cm9uZyBpZiB0aGUgYmFkIGJsb2NrcyBh
-cmUgc3RvcmVkDQo+IGluICJzX292ZXJoZWFkX2NsdXN0ZXJzIj8NCklNSE8gdGhlIGJhZCBibG9j
-a3MgYXJlIGNvbnNpZGVyZWQgYXMgdXNlZCBibG9ja3MsIG92ZXJoZWFkIGlzIHRoZQ0KZmlsZXN5
-c3RlbSBzdHJ1Y3R1cmVzLCBzbyB0aGV5IGFyZSBkaWZmZXJlbnQuDQpTb21lb25lIHBsZWFzZSBj
-b3JyZWN0IG1lIGlmIEknbSB3cm9uZywgY29uc2lkZXJpbmcgYmFkIGJsb2NrcyBhcw0Kb3Zlcmhl
-YWQgd2lsbCBtYWtlIHRoaXMgaGVhcHMgZWFzaWVyLg0KPiANCj4gPiBJbiB0aGlzIGNhc2Ugd2Ug
-d2lsbCB1bm1hcmsgdGhlIGJhZCBibG9ja3MgZnJvbQ0KPiA+IHRoZSBibG9jayBiaXRtYXAsIGNv
-dmVydCB0byBjbHVzdGVyIGJpdG1hcCBhbmQgZ2V0IHRoZSBvdmVyaGVhZCwNCj4gDQo+ICh0eXBv
-KSAiY29udmVydCINCj4gDQo+ID4gdGhlbiBtYXJrIHRoZSBiYWQgYmxvY2tzIGJhY2sgaW4gdGhl
-IGNsdXN0ZXIgYml0bWFwLg0KPiANCj4gSW4gdGhpcyBjYXNlLCBzaG91bGQgdGhlIGJhZCBibG9j
-ayBudW1iZXJzIGJlIGNvbnZlcnRlZCB0bw0KPiBjbHVzdGVycyBkdXJpbmcgdGhlIHNlY29uZCBp
-dGVyYXRpb24/DQpleHQyZnNfbWFya19nZW5lcmljX2JtYXAoKSB3aWxsIGRvIHRoYXQgZm9yIHVz
-Lg0KPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBMaSBEb25neWFuZyA8ZG9uZ3lhbmdsaUBkZG4uY29t
-Pg0KPiA+IC0tLQ0KPiA+IGxpYi9leHQyZnMvZXh0MmZzLmggICAgICAgfCAgMiArKw0KPiA+IGxp
-Yi9leHQyZnMvZ2VuX2JpdG1hcDY0LmMgfCAzNSArKysrKysrKysrKysrKysrKysrKysrKysrKysN
-Cj4gPiBtaXNjL21rZTJmcy5jICAgICAgICAgICAgIHwgNTANCj4gPiArKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKy0NCj4gPiAzIGZpbGVzIGNoYW5nZWQsIDg2IGluc2VydGlv
-bnMoKyksIDEgZGVsZXRpb24oLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvbGliL2V4dDJmcy9l
-eHQyZnMuaCBiL2xpYi9leHQyZnMvZXh0MmZzLmgNCj4gPiBpbmRleCA1OWZkOTc0Mi4uYThkZGI5
-ZTQgMTAwNjQ0DQo+ID4gLS0tIGEvbGliL2V4dDJmcy9leHQyZnMuaA0KPiA+ICsrKyBiL2xpYi9l
-eHQyZnMvZXh0MmZzLmgNCj4gPiBAQCAtMTQzNyw2ICsxNDM3LDggQEAgZXJyY29kZV90DQo+ID4g
-ZXh0MmZzX3NldF9nZW5lcmljX2JtYXBfcmFuZ2UoZXh0MmZzX2dlbmVyaWNfYml0bWFwIGJtYXAs
-DQo+ID4gCQkJCQl2b2lkICppbik7DQo+ID4gZXJyY29kZV90IGV4dDJmc19jb252ZXJ0X3N1YmNs
-dXN0ZXJfYml0bWFwKGV4dDJfZmlsc3lzIGZzLA0KPiA+IAkJCQkJICAgZXh0MmZzX2Jsb2NrX2Jp
-dG1hcA0KPiA+ICpiaXRtYXApOw0KPiA+ICtlcnJjb2RlX3QgZXh0MmZzX2NvdW50X3VzZWRfY2x1
-c3RlcnMoZXh0Ml9maWxzeXMgZnMsIGJsazY0X3QNCj4gPiBzdGFydCwNCj4gPiArCQkJCSAgICAg
-YmxrNjRfdCBlbmQsIGJsazY0X3QgKm91dCk7DQo+ID4gDQo+ID4gLyogZ2V0X251bV9kaXJzLmMg
-Ki8NCj4gPiBleHRlcm4gZXJyY29kZV90IGV4dDJmc19nZXRfbnVtX2RpcnMoZXh0Ml9maWxzeXMg
-ZnMsIGV4dDJfaW5vX3QNCj4gPiAqcmV0X251bV9kaXJzKTsNCj4gPiBkaWZmIC0tZ2l0IGEvbGli
-L2V4dDJmcy9nZW5fYml0bWFwNjQuYyBiL2xpYi9leHQyZnMvZ2VuX2JpdG1hcDY0LmMNCj4gPiBp
-bmRleCBmMWRkMTg5MS4uYjIzNzA2NjcgMTAwNjQ0DQo+ID4gLS0tIGEvbGliL2V4dDJmcy9nZW5f
-Yml0bWFwNjQuYw0KPiA+ICsrKyBiL2xpYi9leHQyZnMvZ2VuX2JpdG1hcDY0LmMNCj4gPiBAQCAt
-OTQwLDMgKzk0MCwzOCBAQCBlcnJjb2RlX3QNCj4gPiBleHQyZnNfZmluZF9maXJzdF9zZXRfZ2Vu
-ZXJpY19ibWFwKGV4dDJmc19nZW5lcmljX2JpdG1hcCBiaXRtYXAsDQo+ID4gDQo+ID4gCXJldHVy
-biBFTk9FTlQ7DQo+ID4gfQ0KPiA+ICsNCj4gPiArZXJyY29kZV90IGV4dDJmc19jb3VudF91c2Vk
-X2NsdXN0ZXJzKGV4dDJfZmlsc3lzIGZzLCBibGs2NF90DQo+ID4gc3RhcnQsDQo+ID4gKwkJCQkg
-ICAgIGJsazY0X3QgZW5kLCBibGs2NF90ICpvdXQpDQo+ID4gK3sNCj4gPiArCWJsazY0X3QJCW5l
-eHQ7DQo+ID4gKwlibGs2NF90CQl0b3Rfc2V0ID0gMDsNCj4gPiArCWVycmNvZGVfdAlyZXR2YWw7
-DQo+ID4gKw0KPiA+ICsJd2hpbGUgKHN0YXJ0IDwgZW5kKSB7DQo+ID4gKwkJcmV0dmFsID0gZXh0
-MmZzX2ZpbmRfZmlyc3Rfc2V0X2Jsb2NrX2JpdG1hcDIoZnMtDQo+ID4gPmJsb2NrX21hcCwNCj4g
-PiArCQkJCQkJCXN0YXJ0LCBlbmQsDQo+ID4gJm5leHQpOw0KPiA+ICsJCWlmIChyZXR2YWwpIHsN
-Cj4gPiArCQkJaWYgKHJldHZhbCA9PSBFTk9FTlQpDQo+ID4gKwkJCQlyZXR2YWwgPSAwOw0KPiA+
-ICsJCQlicmVhazsNCj4gPiArCQl9DQo+ID4gKwkJc3RhcnQgPSBuZXh0Ow0KPiA+ICsNCj4gPiAr
-CQlyZXR2YWwgPSBleHQyZnNfZmluZF9maXJzdF96ZXJvX2Jsb2NrX2JpdG1hcDIoZnMtDQo+ID4g
-PmJsb2NrX21hcCwNCj4gPiArCQkJCQkJCXN0YXJ0LCBlbmQsDQo+ID4gJm5leHQpOw0KPiA+ICsJ
-CWlmIChyZXR2YWwgPT0gMCkgew0KPiA+ICsJCQl0b3Rfc2V0ICs9IG5leHQgLSBzdGFydDsNCj4g
-PiArCQkJc3RhcnQgID0gbmV4dCArIDE7DQo+ID4gKwkJfSBlbHNlIGlmIChyZXR2YWwgPT0gRU5P
-RU5UKSB7DQo+ID4gKwkJCXJldHZhbCA9IDA7DQo+ID4gKwkJCXRvdF9zZXQgKz0gZW5kIC0gc3Rh
-cnQgKyAxOw0KPiA+ICsJCQlicmVhazsNCj4gPiArCQl9IGVsc2UNCj4gPiArCQkJYnJlYWs7DQo+
-ID4gKwl9DQo+ID4gKw0KPiA+ICsJaWYgKCFyZXR2YWwpDQo+ID4gKwkJKm91dCA9IEVYVDJGU19O
-VU1fQjJDKGZzLCB0b3Rfc2V0KTsNCj4gPiArCXJldHVybiByZXR2YWw7DQo+ID4gK30NCj4gPiBk
-aWZmIC0tZ2l0IGEvbWlzYy9ta2UyZnMuYyBiL21pc2MvbWtlMmZzLmMNCj4gPiBpbmRleCAzMGUz
-NTNkMy4uMTkyOGM5YmYgMTAwNjQ0DQo+ID4gLS0tIGEvbWlzYy9ta2UyZnMuYw0KPiA+ICsrKyBi
-L21pc2MvbWtlMmZzLmMNCj4gPiBAQCAtMjkxMiw2ICsyOTEyLDggQEAgaW50IG1haW4gKGludCBh
-cmdjLCBjaGFyICphcmd2W10pDQo+ID4gCWVycmNvZGVfdAlyZXR2YWwgPSAwOw0KPiA+IAlleHQy
-X2ZpbHN5cwlmczsNCj4gPiAJYmFkYmxvY2tzX2xpc3QJYmJfbGlzdCA9IDA7DQo+ID4gKwliYWRi
-bG9ja3NfaXRlcmF0ZQliYl9pdGVyOw0KPiA+ICsJYmxrX3QJCWJsazsNCj4gPiAJdW5zaWduZWQg
-aW50CWpvdXJuYWxfYmxvY2tzID0gMDsNCj4gPiAJdW5zaWduZWQgaW50CWksIGNoZWNraW50ZXJ2
-YWw7DQo+ID4gCWludAkJbWF4X21udF9jb3VudDsNCj4gPiBAQCAtMjkyMiw2ICsyOTI0LDcgQEAg
-aW50IG1haW4gKGludCBhcmdjLCBjaGFyICphcmd2W10pDQo+ID4gCWNoYXIJCW9wdF9zdHJpbmdb
-NDBdOw0KPiA+IAljaGFyCQkqaGFzaF9hbGdfc3RyOw0KPiA+IAlpbnQJCWl0YWJsZV96ZXJvZWQg
-PSAwOw0KPiA+ICsJYmxrNjRfdAkJb3ZlcmhlYWQ7DQo+ID4gDQo+ID4gI2lmZGVmIEVOQUJMRV9O
-TFMNCj4gPiAJc2V0bG9jYWxlKExDX01FU1NBR0VTLCAiIik7DQo+ID4gQEAgLTMyMTMsNiArMzIx
-NiwyMyBAQCBpbnQgbWFpbiAoaW50IGFyZ2MsIGNoYXIgKmFyZ3ZbXSkNCj4gPiAJaWYgKCFxdWll
-dCkNCj4gPiAJCXByaW50ZigiJXMiLCBfKCJkb25lICAgICAgICAgICAgICAgICAgICAgICAgICAg
-IFxuIikpOw0KPiA+IA0KPiA+ICsJLyoNCj4gPiArCSAqIFVubWFyayBiYWQgYmxvY2tzIHRvIGNh
-bGN1bGF0ZSBvdmVyaGVhZCwgYmVjYXVzZSBtZXRhZGF0YQ0KPiA+ICsgCSAqIGJsb2NrcyBhbmQg
-YmFkIGJsb2NrcyBjYW4gbGFuZCBvbiB0aGUgc2FtZSBhbGxvY2F0aW9uDQo+ID4gY2x1c3Rlci4N
-Cj4gPiArIAkgKi8NCj4gPiArCWlmIChiYl9saXN0KSB7DQo+ID4gKwkJcmV0dmFsID0gZXh0MmZz
-X2JhZGJsb2Nrc19saXN0X2l0ZXJhdGVfYmVnaW4oYmJfbGlzdCwNCj4gPiArCQkJCQkJCSAgICAg
-JmJiX2l0ZXIpOw0KPiA+ICsJCWlmIChyZXR2YWwpIHsNCj4gPiArCQkJY29tX2VycigiZXh0MmZz
-X2JhZGJsb2Nrc19saXN0X2l0ZXJhdGVfYmVnaW4iLA0KPiA+IHJldHZhbCwNCj4gPiArCQkJCSIl
-cyIsIF8oIndoaWxlIHVubWFya2luZyBiYWQgYmxvY2tzIikpOw0KPiA+ICsJCQlleGl0KDEpOw0K
-PiA+ICsJCX0NCj4gPiArCQl3aGlsZSAoZXh0MmZzX2JhZGJsb2Nrc19saXN0X2l0ZXJhdGUoYmJf
-aXRlciwgJmJsaykpDQo+ID4gKwkJCWV4dDJmc191bm1hcmtfYmxvY2tfYml0bWFwMihmcy0+Ymxv
-Y2tfbWFwLA0KPiA+IGJsayk7DQo+ID4gKwkJZXh0MmZzX2JhZGJsb2Nrc19saXN0X2l0ZXJhdGVf
-ZW5kKGJiX2l0ZXIpOw0KPiA+ICsJfQ0KPiA+ICsNCj4gPiAJcmV0dmFsID0gZXh0MmZzX2NvbnZl
-cnRfc3ViY2x1c3Rlcl9iaXRtYXAoZnMsICZmcy0+YmxvY2tfbWFwKTsNCj4gPiAJaWYgKHJldHZh
-bCkgew0KPiA+IAkJY29tX2Vycihwcm9ncmFtX25hbWUsIHJldHZhbCwgIiVzIiwNCj4gPiBAQCAt
-MzIyMCw2ICszMjQwLDI4IEBAIGludCBtYWluIChpbnQgYXJnYywgY2hhciAqYXJndltdKQ0KPiA+
-IAkJZXhpdCgxKTsNCj4gPiAJfQ0KPiA+IA0KPiA+ICsJcmV0dmFsID0gZXh0MmZzX2NvdW50X3Vz
-ZWRfY2x1c3RlcnMoZnMsIGZzLT5zdXBlci0NCj4gPiA+c19maXJzdF9kYXRhX2Jsb2NrLA0KPiA+
-ICsJCQkJCWV4dDJmc19ibG9ja3NfY291bnQoZnMtPnN1cGVyKQ0KPiA+IC0gMSwNCj4gPiArCQkJ
-CQkmb3ZlcmhlYWQpOw0KPiA+ICsJaWYgKHJldHZhbCkgew0KPiA+ICsJCWNvbV9lcnIocHJvZ3Jh
-bV9uYW1lLCByZXR2YWwsICIlcyIsDQo+ID4gKwkJCV8oIndoaWxlIGNhbGN1bGF0aW5nIG92ZXJo
-ZWFkIikpOw0KPiA+ICsJCWV4aXQoMSk7DQo+ID4gKwl9DQo+ID4gKw0KPiA+ICsJaWYgKGJiX2xp
-c3QpIHsNCj4gPiArCQlyZXR2YWwgPSBleHQyZnNfYmFkYmxvY2tzX2xpc3RfaXRlcmF0ZV9iZWdp
-bihiYl9saXN0LA0KPiA+ICsJCQkJCQkJICAgICAmYmJfaXRlcik7DQo+ID4gKwkJaWYgKHJldHZh
-bCkgew0KPiA+ICsJCQljb21fZXJyKCJleHQyZnNfYmFkYmxvY2tzX2xpc3RfaXRlcmF0ZV9iZWdp
-biIsDQo+ID4gcmV0dmFsLA0KPiA+ICsJCQkJIiVzIiwgXygid2hpbGUgbWFya2luZyBiYWQgYmxv
-Y2tzIGFzDQo+ID4gdXNlZCIpKTsNCj4gPiArCQkJZXhpdCgxKTsNCj4gPiArCQl9DQo+ID4gKwkJ
-d2hpbGUgKGV4dDJmc19iYWRibG9ja3NfbGlzdF9pdGVyYXRlKGJiX2l0ZXIsICZibGspKQ0KPiA+
-ICsJCQlleHQyZnNfbWFya19ibG9ja19iaXRtYXAyKGZzLT5ibG9ja19tYXAsIGJsayk7DQo+ID4g
-KwkJZXh0MmZzX2JhZGJsb2Nrc19saXN0X2l0ZXJhdGVfZW5kKGJiX2l0ZXIpOw0KPiA+ICsJfQ0K
-PiA+ICsNCj4gPiAJaWYgKHN1cGVyX29ubHkpIHsNCj4gPiAJCWNoZWNrX3BsYXVzaWJpbGl0eShk
-ZXZpY2VfbmFtZSwgQ0hFQ0tfRlNfRVhJU1QsIE5VTEwpOw0KPiA+IAkJcHJpbnRmKF8oIiVzIG1h
-eSBiZSBmdXJ0aGVyIGNvcnJ1cHRlZCBieSBzdXBlcmJsb2NrDQo+ID4gcmV3cml0ZVxuIiksDQo+
-ID4gQEAgLTMzMTcsNiArMzM1OSw3IEBAIGludCBtYWluIChpbnQgYXJnYywgY2hhciAqYXJndltd
-KQ0KPiA+IAkJZnJlZShqb3VybmFsX2RldmljZSk7DQo+ID4gCX0gZWxzZSBpZiAoKGpvdXJuYWxf
-c2l6ZSkgfHwNCj4gPiAJCSAgIGV4dDJmc19oYXNfZmVhdHVyZV9qb3VybmFsKCZmc19wYXJhbSkp
-IHsNCj4gPiArCQlvdmVyaGVhZCArPSBFWFQyRlNfTlVNX0IyQyhmcywgam91cm5hbF9ibG9ja3Mp
-Ow0KPiA+IAkJaWYgKHN1cGVyX29ubHkpIHsNCj4gPiAJCQlwcmludGYoIiVzIiwgXygiU2tpcHBp
-bmcgam91cm5hbCBjcmVhdGlvbiBpbg0KPiA+IHN1cGVyLW9ubHkgbW9kZVxuIikpOw0KPiA+IAkJ
-CWZzLT5zdXBlci0+c19qb3VybmFsX2ludW0gPSBFWFQyX0pPVVJOQUxfSU5POw0KPiA+IEBAIC0z
-MzU5LDggKzM0MDIsMTMgQEAgbm9fam91cm5hbDoNCj4gPiAJCQkgICAgICAgZnMtPnN1cGVyLT5z
-X21tcF91cGRhdGVfaW50ZXJ2YWwpOw0KPiA+IAl9DQo+ID4gDQo+ID4gLQlpZiAoZXh0MmZzX2hh
-c19mZWF0dXJlX2JpZ2FsbG9jKCZmc19wYXJhbSkpDQo+ID4gKwlvdmVyaGVhZCArPSBmcy0+c3Vw
-ZXItPnNfZmlyc3RfZGF0YV9ibG9jazsNCj4gPiArDQo+ID4gKwlpZiAoZXh0MmZzX2hhc19mZWF0
-dXJlX2JpZ2FsbG9jKCZmc19wYXJhbSkpIHsNCj4gPiArCQlpZiAoIXN1cGVyX29ubHkpDQo+ID4g
-KwkJCWZzLT5zdXBlci0+c19vdmVyaGVhZF9jbHVzdGVycyA9IG92ZXJoZWFkOw0KPiA+IAkJZml4
-X2NsdXN0ZXJfYmdfY291bnRzKGZzKTsNCj4gPiArCX0NCj4gDQo+IFNob3VsZCB3ZSBjb25zaWRl
-ciB0byBhbHdheXMgc3RvcmUgdGhlIG92ZXJoZWFkIHZhbHVlIGludG8gdGhlDQo+IHN1cGVyYmxv
-Y2ssDQo+IHJlZ2FyZGxlc3Mgb2Ygd2hldGhlciBiaWdhbGxvYyBpcyBlbmFibGVkIG9yIG5vdD8N
-Cj4gDQo+IENoZWVycywgQW5kcmVhcw0KPiANCj4gDQo+IA0KPiANCj4gDQo=
+Hi Eric,
+
+On 2019/8/26 1:28, Eric Biggers wrote:
+> On Sat, Aug 24, 2019 at 11:25:24PM -0400, Theodore Y. Ts'o wrote:
+>> On Fri, Aug 23, 2019 at 10:47:34AM +0800, Shaokun Zhang wrote:
+>>> From: Yang Guo <guoyang2@huawei.com>
+>>>
+>>> @es_stats_cache_hits and @es_stats_cache_misses are accessed frequently in
+>>> ext4_es_lookup_extent function, it would influence the ext4 read/write
+>>> performance in NUMA system.
+>>> Let's optimize it using percpu_counter, it is profitable for the
+>>> performance.
+>>>
+>>> The test command is as below:
+>>> fio -name=randwrite -numjobs=8 -filename=/mnt/test1 -rw=randwrite
+>>> -ioengine=libaio -direct=1 -iodepth=64 -sync=0 -norandommap -group_reporting
+>>> -runtime=120 -time_based -bs=4k -size=5G
+>>>
+>>> And the result is better 10% than the initial implement:
+>>> without the patch，IOPS=197k, BW=770MiB/s (808MB/s)(90.3GiB/120002msec)
+>>> with the patch,  IOPS=218k, BW=852MiB/s (894MB/s)(99.9GiB/120002msec)
+>>>
+>>> Cc: "Theodore Ts'o" <tytso@mit.edu>
+>>> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+>>> Signed-off-by: Yang Guo <guoyang2@huawei.com>
+>>> Signed-off-by: Shaokun Zhang <zhangshaokun@hisilicon.com>
+>>
+>> Applied with some adjustments so it would apply.  I also changed the patch summary to:
+>>
+>>     ext4: use percpu_counters for extent_status cache hits/misses
+>>
+>>     	      		      	  		- Ted
+> 
+> This patch is causing the following.  Probably because there's no calls to
+> percpu_counter_destroy() for the new counters?
+> 
+
+Apologies, We missed it and let's fix it soon.
+
+Thanks,
+Shaokun
+
+> ==================================================================
+> BUG: KASAN: use-after-free in __list_del_entry_valid+0x168/0x180 lib/list_debug.c:51
+> Read of size 8 at addr ffff888063168fa8 by task umount/611
+> 
+> CPU: 1 PID: 611 Comm: umount Not tainted 5.3.0-rc4-00015-gcc08b68e62ec #6
+> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.12.0-20181126_142135-anatol 04/01/2014
+> Call Trace:
+>  __dump_stack lib/dump_stack.c:77 [inline]
+>  dump_stack+0x86/0xca lib/dump_stack.c:113
+>  print_address_description+0x6e/0x2e7 mm/kasan/report.c:351
+>  __kasan_report.cold+0x1b/0x35 mm/kasan/report.c:482
+>  kasan_report+0x12/0x17 mm/kasan/common.c:612
+>  __asan_report_load8_noabort+0x14/0x20 mm/kasan/generic_report.c:132
+>  __list_del_entry_valid+0x168/0x180 lib/list_debug.c:51
+>  __list_del_entry include/linux/list.h:131 [inline]
+>  list_del include/linux/list.h:139 [inline]
+>  percpu_counter_destroy+0x5d/0x230 lib/percpu_counter.c:157
+>  ext4_put_super+0x319/0xbb0 fs/ext4/super.c:1010
+>  generic_shutdown_super+0x128/0x320 fs/super.c:458
+>  kill_block_super+0x97/0xe0 fs/super.c:1310
+>  deactivate_locked_super+0x7b/0xd0 fs/super.c:331
+>  deactivate_super+0x138/0x150 fs/super.c:362
+>  cleanup_mnt+0x298/0x3f0 fs/namespace.c:1102
+>  __cleanup_mnt+0xd/0x10 fs/namespace.c:1109
+>  task_work_run+0x103/0x180 kernel/task_work.c:113
+>  tracehook_notify_resume include/linux/tracehook.h:188 [inline]
+>  exit_to_usermode_loop+0x10b/0x130 arch/x86/entry/common.c:163
+>  prepare_exit_to_usermode arch/x86/entry/common.c:194 [inline]
+>  syscall_return_slowpath arch/x86/entry/common.c:274 [inline]
+>  do_syscall_64+0x343/0x450 arch/x86/entry/common.c:299
+>  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> RIP: 0033:0x7f7caed23d77
+> Code: 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 31 f6 e9 09 00 00 00 66 0f 1f 84 00 00 00 00 00 b8 a6 00 8
+> RSP: 002b:00007ffe960e7c98 EFLAGS: 00000246 ORIG_RAX: 00000000000000a6
+> RAX: 0000000000000000 RBX: 0000560c039e1060 RCX: 00007f7caed23d77
+> RDX: 0000000000000001 RSI: 0000000000000000 RDI: 0000560c039e3c90
+> RBP: 0000560c039e3c90 R08: 0000560c039e2ec0 R09: 0000000000000014
+> R10: 00000000000006b4 R11: 0000000000000246 R12: 00007f7caf225e64
+> R13: 0000000000000000 R14: 0000560c039e1240 R15: 00007ffe960e7f20
+> 
+> Allocated by task 596:
+>  save_stack mm/kasan/common.c:69 [inline]
+>  set_track mm/kasan/common.c:77 [inline]
+>  __kasan_kmalloc.part.0+0x41/0xb0 mm/kasan/common.c:487
+>  __kasan_kmalloc.constprop.0+0xba/0xc0 mm/kasan/common.c:468
+>  kasan_kmalloc+0x9/0x10 mm/kasan/common.c:501
+>  kmem_cache_alloc_trace+0x11e/0x2e0 mm/slab.c:3550
+>  kmalloc include/linux/slab.h:552 [inline]
+>  kzalloc include/linux/slab.h:748 [inline]
+>  ext4_fill_super+0x111/0x80a0 fs/ext4/super.c:3610
+>  mount_bdev+0x286/0x350 fs/super.c:1283
+>  ext4_mount+0x10/0x20 fs/ext4/super.c:6007
+>  legacy_get_tree+0x101/0x1f0 fs/fs_context.c:661
+>  vfs_get_tree+0x86/0x2e0 fs/super.c:1413
+>  do_new_mount fs/namespace.c:2791 [inline]
+>  do_mount+0x1093/0x1b30 fs/namespace.c:3111
+>  ksys_mount+0x7d/0xd0 fs/namespace.c:3320
+>  __do_sys_mount fs/namespace.c:3334 [inline]
+>  __se_sys_mount fs/namespace.c:3331 [inline]
+>  __x64_sys_mount+0xb9/0x150 fs/namespace.c:3331
+>  do_syscall_64+0x8f/0x450 arch/x86/entry/common.c:296
+>  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> 
+> Freed by task 600:
+>  save_stack mm/kasan/common.c:69 [inline]
+>  set_track mm/kasan/common.c:77 [inline]
+>  __kasan_slab_free+0x127/0x1f0 mm/kasan/common.c:449
+>  kasan_slab_free+0xe/0x10 mm/kasan/common.c:457
+>  __cache_free mm/slab.c:3425 [inline]
+>  kfree+0xc1/0x1e0 mm/slab.c:3756
+>  ext4_put_super+0x78c/0xbb0 fs/ext4/super.c:1061
+>  generic_shutdown_super+0x128/0x320 fs/super.c:458
+>  kill_block_super+0x97/0xe0 fs/super.c:1310
+>  deactivate_locked_super+0x7b/0xd0 fs/super.c:331
+>  deactivate_super+0x138/0x150 fs/super.c:362
+>  cleanup_mnt+0x298/0x3f0 fs/namespace.c:1102
+>  __cleanup_mnt+0xd/0x10 fs/namespace.c:1109
+>  task_work_run+0x103/0x180 kernel/task_work.c:113
+>  tracehook_notify_resume include/linux/tracehook.h:188 [inline]
+>  exit_to_usermode_loop+0x10b/0x130 arch/x86/entry/common.c:163
+>  prepare_exit_to_usermode arch/x86/entry/common.c:194 [inline]
+>  syscall_return_slowpath arch/x86/entry/common.c:274 [inline]
+>  do_syscall_64+0x343/0x450 arch/x86/entry/common.c:299
+>  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> 
+> The buggy address belongs to the object at ffff888063168980
+>  which belongs to the cache kmalloc-4k of size 4096
+> The buggy address is located 1576 bytes inside of
+>  4096-byte region [ffff888063168980, ffff888063169980)
+> The buggy address belongs to the page:
+> page:ffffea00015acec0 refcount:1 mapcount:0 mapping:ffff88806d000900 index:0x0 compound_mapcount: 0
+> flags: 0x100000000010200(slab|head)
+> raw: 0100000000010200 ffffea00015b9f08 ffffea0001749e58 ffff88806d000900
+> raw: 0000000000000000 ffff888063168980 0000000100000001
+> page dumped because: kasan: bad access detected
+> 
+> Memory state around the buggy address:
+>  ffff888063168e80: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>  ffff888063168f00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>> ffff888063168f80: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>                                   ^
+>  ffff888063169000: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>  ffff888063169080: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+> ==================================================================
+> 
+> .
+> 
+
