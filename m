@@ -2,221 +2,181 @@ Return-Path: <SRS0=WH3g=WW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50184C3A59E
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:07:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25A30C3A59E
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:55:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0CE8C2173E
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:07:50 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="So4vBQD0"
+	by mail.kernel.org (Postfix) with ESMTP id E8C0E21848
+	for <linux-ext4@archiver.kernel.org>; Mon, 26 Aug 2019 05:55:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727207AbfHZFHu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Aug 2019 01:07:50 -0400
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:45873 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726441AbfHZFHu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Aug 2019 01:07:50 -0400
-Received: by mail-pl1-f196.google.com with SMTP id y8so9406735plr.12
-        for <linux-ext4@vger.kernel.org>; Sun, 25 Aug 2019 22:07:49 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=Xmihh81w3U6cpqDunTSNiKgrFgCkfaddfnQQPuPGejA=;
-        b=So4vBQD0JAeoZlB4H9X2AOzjC0xv6BV2XoiFf8YEI/uqdaZJJtyi6A0hFyHWpBvfJb
-         uZz0zUprYwxvGgSJuA5te3gRowIbI5dIYjhdBgInSkLrU4gbhwpeev1KWwHfJ0AjyFHU
-         oKIL2ZUpzF3M43hq0fmNkyUy9LxqG1mdzFqwl3LUa7kJg929KJPkF8rpdehjsoiN4la6
-         8+9R4jSbmrL6krsu4EFOob3/4bIsm2+Ay4JrvNaY+8yy5b0eQFBJ4dVUHpx/SZopwBYO
-         SBxp22PboTuJxmi8pZmgNJRsTmMNuIYz1+L3Uf8RTXn501cMxgZ8/wo2CdXgmf+wKfR6
-         y4xw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=Xmihh81w3U6cpqDunTSNiKgrFgCkfaddfnQQPuPGejA=;
-        b=MSxDqZr4yZtxk02i5L+kH0H+66klROWa4kLC4yJevF/7KGyyFO7NN+Mt9N5hKeozm0
-         +PjZwDfilavoEBA2wBo8iDfzC9580K9fcDorEsugjbr2mwQRFnv3yBzrZNBd1Vw2hTAo
-         wSjgxSnaHGs20HCW2WzMlF8EDa+zvzKq6xwZnrmpTm5uWKtdOuJrZ3OD6Pib3JlBXRoF
-         cgggcHFyzG7K05+bmOrxfY7S/vkpd2h7aWGNwpBp/QwJbTpTwkb6XittuTfROWFu3gN4
-         51pyqvq+aeavH3w7iiOjugEndQPp07GRdWPDHsq2mPqBxWRmR/K2iIo32XwFru2R0SOg
-         cvNg==
-X-Gm-Message-State: APjAAAXObgj3ZBgAAedYJa2/VWu0M4wkMKaOscy36+b7CpfD9xUc08SG
-        Lb2k7YSi2vunubonlI1k1AVnAA==
-X-Google-Smtp-Source: APXvYqxmzVoebW/P178FKOomDFgkVVbD0MV/U44t0ix5irTWfBcOLIs6FlJs+8pMZcbVhmSDWHTBMw==
-X-Received: by 2002:a17:902:f096:: with SMTP id go22mr17561895plb.58.1566796069246;
-        Sun, 25 Aug 2019 22:07:49 -0700 (PDT)
-Received: from cabot.adilger.ext (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id s13sm5042568pfm.12.2019.08.25.22.07.48
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 25 Aug 2019 22:07:48 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <7303B125-6C0E-41C2-A71E-4AF8C9776468@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_0C4A5CBD-E6D7-4AD4-A1DF-E72829DB7298";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] ext4: attempt to shrink directory on dentry removal
-Date:   Sun, 25 Aug 2019 23:07:46 -0600
-In-Reply-To: <20190821182740.97127-1-harshadshirwadkar@gmail.com>
-Cc:     linux-ext4@vger.kernel.org
-To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-References: <20190821182740.97127-1-harshadshirwadkar@gmail.com>
-X-Mailer: Apple Mail (2.3273)
+        id S1729216AbfHZFzV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Aug 2019 01:55:21 -0400
+Received: from mail104.syd.optusnet.com.au ([211.29.132.246]:36676 "EHLO
+        mail104.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725806AbfHZFzV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Aug 2019 01:55:21 -0400
+Received: from dread.disaster.area (pa49-181-255-194.pa.nsw.optusnet.com.au [49.181.255.194])
+        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 1199A43F692;
+        Mon, 26 Aug 2019 15:55:12 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92)
+        (envelope-from <david@fromorbit.com>)
+        id 1i27yA-0002Rg-EJ; Mon, 26 Aug 2019 15:55:10 +1000
+Date:   Mon, 26 Aug 2019 15:55:10 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     Ira Weiny <ira.weiny@intel.com>
+Cc:     Jason Gunthorpe <jgg@ziepe.ca>, Jan Kara <jack@suse.cz>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        John Hubbard <jhubbard@nvidia.com>,
+        Michal Hocko <mhocko@suse.com>, linux-xfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+        linux-ext4@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [RFC PATCH v2 00/19] RDMA/FS DAX truncate proposal V1,000,002 ;-)
+Message-ID: <20190826055510.GL1119@dread.disaster.area>
+References: <20190820115515.GA29246@ziepe.ca>
+ <20190821180200.GA5965@iweiny-DESK2.sc.intel.com>
+ <20190821181343.GH8653@ziepe.ca>
+ <20190821185703.GB5965@iweiny-DESK2.sc.intel.com>
+ <20190821194810.GI8653@ziepe.ca>
+ <20190821204421.GE5965@iweiny-DESK2.sc.intel.com>
+ <20190823032345.GG1119@dread.disaster.area>
+ <20190823120428.GA12968@ziepe.ca>
+ <20190824001124.GI1119@dread.disaster.area>
+ <20190824050836.GC1092@iweiny-DESK2.sc.intel.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190824050836.GC1092@iweiny-DESK2.sc.intel.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.2 cv=D+Q3ErZj c=1 sm=1 tr=0
+        a=YO9NNpcXwc8z/SaoS+iAiA==:117 a=YO9NNpcXwc8z/SaoS+iAiA==:17
+        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=FmdZ9Uzk2mMA:10
+        a=7-415B0cAAAA:8 a=l-5HZ6ThFU8XlB48y_YA:9 a=qRlaua0cGjGJrKa9:21
+        a=OEwtXWmnxFRK9C0v:21 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Fri, Aug 23, 2019 at 10:08:36PM -0700, Ira Weiny wrote:
+> On Sat, Aug 24, 2019 at 10:11:24AM +1000, Dave Chinner wrote:
+> > On Fri, Aug 23, 2019 at 09:04:29AM -0300, Jason Gunthorpe wrote:
+> > > On Fri, Aug 23, 2019 at 01:23:45PM +1000, Dave Chinner wrote:
+> > > 
+> > > > > But the fact that RDMA, and potentially others, can "pass the
+> > > > > pins" to other processes is something I spent a lot of time trying to work out.
+> > > > 
+> > > > There's nothing in file layout lease architecture that says you
+> > > > can't "pass the pins" to another process.  All the file layout lease
+> > > > requirements say is that if you are going to pass a resource for
+> > > > which the layout lease guarantees access for to another process,
+> > > > then the destination process already have a valid, active layout
+> > > > lease that covers the range of the pins being passed to it via the
+> > > > RDMA handle.
+> > > 
+> > > How would the kernel detect and enforce this? There are many ways to
+> > > pass a FD.
+> > 
+> > AFAIC, that's not really a kernel problem. It's more of an
+> > application design constraint than anything else. i.e. if the app
+> > passes the IB context to another process without a lease, then the
+> > original process is still responsible for recalling the lease and
+> > has to tell that other process to release the IB handle and it's
+> > resources.
+> > 
+> > > IMHO it is wrong to try and create a model where the file lease exists
+> > > independently from the kernel object relying on it. In other words the
+> > > IB MR object itself should hold a reference to the lease it relies
+> > > upon to function properly.
+> > 
+> > That still doesn't work. Leases are not individually trackable or
+> > reference counted objects objects - they are attached to a struct
+> > file bUt, in reality, they are far more restricted than a struct
+> > file.
+> > 
+> > That is, a lease specifically tracks the pid and the _open fd_ it
+> > was obtained for, so it is essentially owned by a specific process
+> > context.  Hence a lease is not able to be passed to a separate
+> > process context and have it still work correctly for lease break
+> > notifications.  i.e. the layout break signal gets delivered to
+> > original process that created the struct file, if it still exists
+> > and has the original fd still open. It does not get sent to the
+> > process that currently holds a reference to the IB context.
+> >
+> 
+> The fcntl man page says:
+> 
+> "Leases are associated with an open file description (see open(2)).  This means
+> that duplicate file descriptors (created by, for example, fork(2) or dup(2))
+> refer to the same lease, and this lease may be modified or released using any
+> of these descriptors.  Furthermore,  the lease is released by either an
+> explicit F_UNLCK operation on any of these duplicate file descriptors, or when
+> all such file descriptors have been closed."
 
---Apple-Mail=_0C4A5CBD-E6D7-4AD4-A1DF-E72829DB7298
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Right, the lease is attached to the struct file, so it follows
+where-ever the struct file goes. That doesn't mean it's actually
+useful when the struct file is duplicated and/or passed to another
+process. :/
 
-On Aug 21, 2019, at 12:27 PM, Harshad Shirwadkar =
-<harshadshirwadkar@gmail.com> wrote:
->=20
-> On every dentry deletion, this patch traverses directory inode in
-> reverse direction and frees up empty dirent blocks until it finds a
-> non-empty dirent block. We leverage the fact that we never clear
-> dentry name when we delete dentrys by merging them with the previous
-> one. So, even though the dirent block has only fake dentry which spans
-> across the entire block, we can use the name in this dead entry to
-> perform dx lookup and find intermediate dx node blocks as well as
-> offset inside these blocks.
+AFAICT, the problem is that when we take another reference to the
+struct file, or when the struct file is passed to a different
+process, nothing updates the lease or lease state attached to that
+struct file.
 
+> From this I took it that the child process FD would have the lease as well
+> _and_ could release it.  I _assumed_ that applied to SCM_RIGHTS but it does not
+> seem to work the same way as dup() so I'm not so sure.
 
-One high-level limitation with this implementation is that it is =
-unlikely
-to remove any directory blocks until the directory is almost entirely
-empty since "rm -r" will return entries in hash order, which does not
-match the order that the leaf blocks are allocated in the file.  Even
-worse, if files in the directory are not deleted in hash order, no leaf
-block will be completely empty until about 99% of the files have been
-deleted - assume 24-byte filenames in 4096-byte blocks means up to 128
-entries per block, typically 3/4 full, or 1/96 entries will be left in
-each block before it becomes empty.
+Sure, that part works because the struct file is passed. It doesn't
+end up with the same fd number in the other process, though.
 
-One option that was discussed in the past is to use the high 4 bits
-of dx_entry->block (i.e. the opposite of dx_get_block()) to store the
-"fullness" of each block (in 1/16th of a block, or 256-byte increments
-for 4096-byte blocks) and try to merge entries into an adjacent block
-if it becomes mostly empty (e.g. if the current block plus the neighbour
-are below 50% full).  That allows removing blocks much earlier as the
-directory shrinks, rather than waiting until each block is completely
-empty.  A fullness of "0" would mean "unset", since we don't set it
-yet, and once this feature is available there would never be a block
-that is entirely empty.
+The issue is that layout leases need to notify userspace when they
+are broken by the kernel, so a lease stores the owner pid/tid in the
+file->f_owner field via __f_setown(). It also keeps a struct fasync
+attached to the file_lock that records the fd that the lease was
+created on.  When a signal needs to be sent to userspace for that
+lease, we call kill_fasync() and that walks the list of fasync
+structures on the lease and calls:
 
-> As of now, we only support non-indexed directories and indexed
-> directories with no intermediate dx nodes. This technique can also be
-> used to remove intermediate dx nodes. But it needs a little more
-> interesting logic to make that happen since we don't store directory
-> entry name in intermediate nodes.
->=20
-> Ran kvm-xfstests smoke test-suite and verified that there are no
-> failures. Also, verified that when all the files are deleted in a
-> directory, directory shrinks to either 4k for non-indexed directories
-> or 8k for indexed directories with 1 level.
->=20
-> This patch is an improvement over previous patch that I sent out
-> earlier this month. So, if this patch looks alright, then we can drop
-> the other shrinking patch.
->=20
+	send_sigio(fown, fa->fa_fd, band);
 
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
->=20
-> ---
-> This patch supersedes the other directory shrinking patch sent in Aug
-> 2019 ("ext4: shrink directory when last block is empty").
->=20
-> fs/ext4/namei.c | 176 ++++++++++++++++++++++++++++++++++++++++++++++++
-> 1 file changed, 176 insertions(+)
->=20
->=20
->=20
-> +static inline bool is_empty_dirent_block(struct inode *dir,
-> +					 struct buffer_head *bh)
-> +{
-> +	struct ext4_dir_entry_2 *de =3D (struct ext4_dir_entry_2 =
-*)bh->b_data;
-> +	int	csum_size =3D 0;
-> +
-> +	if (ext4_has_metadata_csum(dir->i_sb))
-> +		csum_size =3D sizeof(struct ext4_dir_entry_tail);
-> +
-> +	return ext4_rec_len_from_disk(de->rec_len, =
-dir->i_sb->s_blocksize) =3D=3D
-> +			dir->i_sb->s_blocksize - csum_size && de->inode =
-=3D=3D 0;
-> +}
+And it does for every fasync struct attached to a lease. Yes, a
+lease can track multiple fds, but it can only track them in a single
+process context. The moment the struct file is shared with another
+process, the lease is no longer capable of sending notifications to
+all the lease holders.
 
-This may not always detect empty directory blocks properly, because
-ext4_generic_delete_entry() will only merge deleted entries with the
-previous entry.  It at least appears possible that if entries are not
-deleted in the proper order (e.g. in reverse of the order they are
-listed in the directory) there may be multiple empty entries in a block,
-and the above check will fail.
+Yes, you can change the owning process via F_SETOWNER, but that's
+still only a single process context, and you can't change the fd in
+the fasync list. You can add new fd to an existing lease by calling
+F_SETLEASE on the new fd, but you still only have a single process
+owner context for signal delivery.
 
-Instead, this checks should walk all entries in a block and return false
-if any one of them has a non-zero de->inode.  In the common case there
-may be only a single entry, or the first entry will be used, so it
-should be fairly quick to decide that the block cannot be removed.
+As such, leases that require callbacks to userspace are currently
+only valid within the process context the lease was taken in.
+Indeed, even closing the fd the lease was taken on without
+F_UNLCKing it first doesn't mean the lease has been torn down if
+there is some other reference to the struct file. That means the
+original lease owner will still get SIGIO delivered to that fd on a
+lease break regardless of whether it is open or not. ANd if we
+implement "layout lease not released within SIGIO response timeout"
+then that process will get killed, despite the fact it may not even
+have a reference to that file anymore.
 
-Another option is to change ext4_generic_delete_entry() to also try
-to merge with the immediately following entry to ensure that an empty
-block always has rec_len of the full blocksize.  However, I think this
-is probably not a worthwhile effort since it would be better to support
-removing blocks that are partly empty rather than entirely empty.
+So, AFAICT, leases that require userspace callbacks only work within
+their original process context while they original fd is still open.
 
-> @@ -2510,6 +2684,8 @@ static int ext4_delete_entry(handle_t *handle,
-> 	if (unlikely(err))
-> 		goto out;
->=20
-> +	ext4_try_dir_shrink(handle, dir);
-> +
-> 	return 0;
+Cheers,
 
-I think it would be inefficient to try shrinking the directory after
-_every_ directory entry is removed.  Instead, there should be some
-way to determine here if ext4_generic_delete_entry() removed the last
-entry from the directory block, and only shrink in that case.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_0C4A5CBD-E6D7-4AD4-A1DF-E72829DB7298
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl1jaSIACgkQcqXauRfM
-H+CADBAApQ0nfqCcRzZ8Aaf7XQJkO6erU/GZmdGCUdXByVyMuwYsUstGEXhM0vRT
-72iHl6lqg8HlJ9lZq+DchhRps6K3pES5H4pmYazwWogYmI/F1aGntizqMwPBvMhl
-ZyLFlfyTzc9GWQxvARe625DX7XPDaiCT7Ul5L5lXMJyMdn4AXhJw2wSEAg8eqW8q
-CIolld1Ifk0ACE2irFGXhaH2YRzC0gTdt8lbHUXCc6J7ZWOmjIYz9oXN0fHHeMvl
-dAcnBouTsEVUyUMDkhKrw889hMm1xL1GEsweOLbRCdFZExGnXJOoQ93heoRTl+Q+
-aoV87odYqxhb6JJic4P0uzGr/Y4vC1Buz7IbKVO1qd+7HvLK5MHEsJzOgQPp9exN
-H7VZ4uNtb8JFfiwGGMRFDOvajv2BRwGHlGLaN3BBXLIUIQpDlgmzJjkDBSdaUSmW
-xeXJtVGpCmZG7FCUw1v1B8anhXujXnInhsuixI6XIdgcxgc09YveLVPXVm8TANTi
-6psQ32Ams7ztzamTwwvIyAgkaPVuS3iqJWVHH0gIm8jdgVXOkwZhZ9P+4FLBg4bs
-0fNnRCteE0ryCCtVlbIef2kE+xIGEjgQSaB/Qo4KR7n6NNk57CDz4OoDTX8vVA6q
-YfBkLCqPwQoxjDrLm1MP5oB+724e8gWPOzWVOxGi6sqnPs/irBY=
-=AMXd
------END PGP SIGNATURE-----
-
---Apple-Mail=_0C4A5CBD-E6D7-4AD4-A1DF-E72829DB7298--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
