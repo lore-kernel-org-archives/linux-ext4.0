@@ -2,67 +2,68 @@ Return-Path: <SRS0=Kp8Y=WX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F5E0C3A5A6
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:06:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD344C3A59F
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:28:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 61AC4206E0
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:06:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 993FD20644
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:28:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728632AbfH0CGR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Aug 2019 22:06:17 -0400
-Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:40163 "EHLO
-        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728457AbfH0CGQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Aug 2019 22:06:16 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e07417;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0TaZ3wnw_1566871553;
-Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TaZ3wnw_1566871553)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Tue, 27 Aug 2019 10:05:53 +0800
-From:   Joseph Qi <joseph.qi@linux.alibaba.com>
-To:     Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-        Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: [PATCH 2/3] Revert "ext4: fix off-by-one error when writing back pages before dio read"
-Date:   Tue, 27 Aug 2019 10:05:51 +0800
-Message-Id: <1566871552-60946-3-git-send-email-joseph.qi@linux.alibaba.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
-References: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
+        id S1728546AbfH0C2F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Aug 2019 22:28:05 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:55330 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727227AbfH0C2F (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Aug 2019 22:28:05 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x7R2Rv9I010408
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 26 Aug 2019 22:27:58 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 1850A42049E; Mon, 26 Aug 2019 22:27:57 -0400 (EDT)
+Date:   Mon, 26 Aug 2019 22:27:57 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: attempt to shrink directory on dentry removal
+Message-ID: <20190827022756.GG28066@mit.edu>
+References: <20190821182740.97127-1-harshadshirwadkar@gmail.com>
+ <7303B125-6C0E-41C2-A71E-4AF8C9776468@dilger.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <7303B125-6C0E-41C2-A71E-4AF8C9776468@dilger.ca>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This reverts commit e5465795cac4 ("ext4: fix off-by-one error when
-writing back pages before dio read").
-It is related to the following revert 16c54688592c ("ext4: Allow
-parallel DIO reads") which causes significant performance regression in
-mixed random read/write scenario.
+On Sun, Aug 25, 2019 at 11:07:46PM -0600, Andreas Dilger wrote:
+> This may not always detect empty directory blocks properly, because
+> ext4_generic_delete_entry() will only merge deleted entries with the
+> previous entry.  It at least appears possible that if entries are not
+> deleted in the proper order (e.g. in reverse of the order they are
+> listed in the directory) there may be multiple empty entries in a block,
+> and the above check will fail.
 
-Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
----
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I don't think that's a problem.  We always merge with the previous
+entry, whether it's an empty/deleted entry or an in-use entry.  So
+long as all implementations do this, it works just fine.  If there is
+an ext2/3/4 implementation which deletes the entry by simply clearing
+the inode number *without* merging with the previous one, it's
+possible that we might get confused.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0f505f0..16077ec 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3875,7 +3875,7 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- 	 */
- 	inode_lock_shared(inode);
- 	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
--					   iocb->ki_pos + count - 1);
-+					   iocb->ki_pos + count);
- 	if (ret)
- 		goto out_unlock;
- 	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
--- 
-1.8.3.1
+But that's easily fixed, too.  In ext4_generic_delete_entry(), we just
+need to add a check so that we check to see if the subsequent entry
+(if it exists) has a zero de->inode value.  If so, then we absorb the
+current directory entry to include the deleted subsequent entry and
+repeat the check.
 
+						- Ted
