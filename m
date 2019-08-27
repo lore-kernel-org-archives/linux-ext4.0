@@ -2,170 +2,161 @@ Return-Path: <SRS0=Kp8Y=WX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72A04C3A59F
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 01:00:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D97E2C3A59F
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:06:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 447982070B
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 01:00:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B1555206E0
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Aug 2019 02:06:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728124AbfH0BAZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Aug 2019 21:00:25 -0400
-Received: from out30-57.freemail.mail.aliyun.com ([115.124.30.57]:55969 "EHLO
-        out30-57.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728036AbfH0BAZ (ORCPT
+        id S1728543AbfH0CGB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Aug 2019 22:06:01 -0400
+Received: from out30-56.freemail.mail.aliyun.com ([115.124.30.56]:32863 "EHLO
+        out30-56.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728457AbfH0CGB (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Aug 2019 21:00:25 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R471e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e07417;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0TaZ2tmY_1566867620;
-Received: from JosephdeMacBook-Pro.local(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TaZ2tmY_1566867620)
+        Mon, 26 Aug 2019 22:06:01 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R121e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04446;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0TaZ5o.3_1566871553;
+Received: from localhost(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0TaZ5o.3_1566871553)
           by smtp.aliyun-inc.com(127.0.0.1);
-          Tue, 27 Aug 2019 09:00:21 +0800
-Subject: Re: [RFC] performance regression with "ext4: Allow parallel DIO
- reads"
-To:     Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.cz>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Joseph Qi <jiangqi903@gmail.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>,
-        Liu Bo <bo.liu@linux.alibaba.com>
-References: <075fd06f-b0b4-4122-81c6-e49200d5bd17@linux.alibaba.com>
- <20190816145719.GA3041@quack2.suse.cz>
- <a8ddec64-d87c-ae7a-9b02-2f24da2396e9@linux.alibaba.com>
- <20190820160805.GB10232@mit.edu>
- <f89131c9-6f84-ac3c-b53c-d3d55887ea89@linux.alibaba.com>
- <20190822054001.GT7777@dread.disaster.area>
- <f0eb766f-3c04-2a53-1669-4088e09d8f73@linux.alibaba.com>
- <20190823101623.GV7777@dread.disaster.area>
- <707b1a60-00f0-847e-02f9-e63d20eab47e@linux.alibaba.com>
- <20190824021840.GW7777@dread.disaster.area>
- <20190826083958.GA10614@quack2.suse.cz>
- <94515D9C-045C-46EA-9F3C-E13CB2DAA1F9@dilger.ca>
+          Tue, 27 Aug 2019 10:05:53 +0800
 From:   Joseph Qi <joseph.qi@linux.alibaba.com>
-Message-ID: <a5c6b0cc-60d1-eac2-65a5-b40998c28de9@linux.alibaba.com>
-Date:   Tue, 27 Aug 2019 09:00:20 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:60.0)
- Gecko/20100101 Thunderbird/60.8.0
-MIME-Version: 1.0
-In-Reply-To: <94515D9C-045C-46EA-9F3C-E13CB2DAA1F9@dilger.ca>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+To:     Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org, Dave Chinner <david@fromorbit.com>
+Subject: [PATCH 3/3] Revert "ext4: Allow parallel DIO reads"
+Date:   Tue, 27 Aug 2019 10:05:52 +0800
+Message-Id: <1566871552-60946-4-git-send-email-joseph.qi@linux.alibaba.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
+References: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+This reverts commit 16c54688592c ("ext4: Allow parallel DIO reads").
 
+This commit causes significant performance regression in mixed random
+read/write scenario. As discussed, it is because current implementation
+is incomplete. So revert it at present.
 
-On 19/8/27 03:10, Andreas Dilger wrote:
-> On Aug 26, 2019, at 2:39 AM, Jan Kara <jack@suse.cz> wrote:
->>
->> On Sat 24-08-19 12:18:40, Dave Chinner wrote:
->>> On Fri, Aug 23, 2019 at 09:08:53PM +0800, Joseph Qi wrote:
->>>>
->>>>
->>>> On 19/8/23 18:16, Dave Chinner wrote:
->>>>> On Fri, Aug 23, 2019 at 03:57:02PM +0800, Joseph Qi wrote:
->>>>>> Hi Dave,
->>>>>>
->>>>>> On 19/8/22 13:40, Dave Chinner wrote:
->>>>>>> On Wed, Aug 21, 2019 at 09:04:57AM +0800, Joseph Qi wrote:
->>>>>>>> Hi Ted，
->>>>>>>>
->>>>>>>> On 19/8/21 00:08, Theodore Y. Ts'o wrote:
->>>>>>>>> On Tue, Aug 20, 2019 at 11:00:39AM +0800, Joseph Qi wrote:
->>>>>>>>>>
->>>>>>>>>> I've tested parallel dio reads with dioread_nolock, it
->>>>>>>>>> doesn't have significant performance improvement and still
->>>>>>>>>> poor compared with reverting parallel dio reads. IMO, this
->>>>>>>>>> is because with parallel dio reads, it take inode shared
->>>>>>>>>> lock at the very beginning in ext4_direct_IO_read().
->>>>>>>>>
->>>>>>>>> Why is that a problem?  It's a shared lock, so parallel
->>>>>>>>> threads should be able to issue reads without getting
->>>>>>>>> serialized?
->>>>>>>>>
->>>>>>>> The above just tells the result that even mounting with
->>>>>>>> dioread_nolock, parallel dio reads still has poor performance
->>>>>>>> than before (w/o parallel dio reads).
->>>>>>>>
->>>>>>>>> Are you using sufficiently fast storage devices that you're
->>>>>>>>> worried about cache line bouncing of the shared lock?  Or do
->>>>>>>>> you have some other concern, such as some other thread
->>>>>>>>> taking an exclusive lock?
->>>>>>>>>
->>>>>>>> The test case is random read/write described in my first
->>>>>>>> mail. And
->>>>>>>
->>>>>>> Regardless of dioread_nolock, ext4_direct_IO_read() is taking
->>>>>>> inode_lock_shared() across the direct IO call.  And writes in
->>>>>>> ext4 _always_ take the inode_lock() in ext4_file_write_iter(),
->>>>>>> even though it gets dropped quite early when overwrite &&
->>>>>>> dioread_nolock is set.  But just taking the lock exclusively
->>>>>>> in write fro a short while is enough to kill all shared
->>>>>>> locking concurrency...
->>>>>>>
->>>>>>>> from my preliminary investigation, shared lock consumes more
->>>>>>>> in such scenario.
->>>>>>>
->>>>>>> If the write lock is also shared, then there should not be a
->>>>>>> scalability issue. The shared dio locking is only half-done in
->>>>>>> ext4, so perhaps comparing your workload against XFS would be
->>>>>>> an informative exercise...
->>>>>>
->>>>>> I've done the same test workload on xfs, it behaves the same as
->>>>>> ext4 after reverting parallel dio reads and mounting with
->>>>>> dioread_lock.
->>>>>
->>>>> Ok, so the problem is not shared locking scalability ('cause
->>>>> that's what XFS does and it scaled fine), the problem is almost
->>>>> certainly that ext4 is using exclusive locking during
->>>>> writes...
->>>>>
->>>>
->>>> Agree. Maybe I've misled you in my previous mails.I meant shared
->>>> lock makes worse in case of mixed random read/write, since we
->>>> would always take inode lock during write.  And it also conflicts
->>>> with dioread_nolock. It won't take any inode lock before with
->>>> dioread_nolock during read, but now it always takes a shared
->>>> lock.
->>>
->>> No, you didn't mislead me. IIUC, the shared locking was added to the
->>> direct IO read path so that it can't run concurrently with
->>> operations like hole punch that free the blocks the dio read might
->>> currently be operating on (use after free).
->>>
->>> i.e. the shared locking fixes an actual bug, but the performance
->>> regression is a result of only partially converting the direct IO
->>> path to use shared locking. Only half the job was done from a
->>> performance perspective. Seems to me that the two options here to
->>> fix the performance regression are to either finish the shared
->>> locking conversion, or remove the shared locking on read and re-open
->>> a potential data exposure issue...
->>
->> We actually had a separate locking mechanism in ext4 code to avoid stale
->> data exposure during hole punch when unlocked DIO reads were running. But
->> it was kind of ugly and making things complex. I agree we need to move ext4
->> DIO path conversion further to avoid taking exclusive lock when we won't
->> actually need it.
-> 
-> It seems to me that the right solution for the short term is to revert
-> the patch in question, since that appears to be incomplete, and reverting
-> it will restore the performance.  I haven't seen any comments posted with
-> a counter-example that the original patch actually improved performance,
-> or that reverting it will cause some other performance regression.
-> 
-> We can then leave implementing a more complete solution to a later kernel.
-> 
-Thanks for the discussion.
-So if no one else objects reverting parallel dio reads at present, I'll
-send out the revert patches.
+The following data are tested on Intel P3600 NVMe.
 
-Thanks,
-Joseph
+fio -name=parallel_dio_reads_test -filename=/mnt/nvme0n1/testfile
+-direct=1 -iodepth=1 -thread -rw=randrw -ioengine=psync -bs=$bs
+-size=20G -numjobs=8 -runtime=600 -group_reporting
 
+w/ = with parallel dio reads
+w/o =  reverting parallel dio reads
+
+bs=4k:
+------------------------------------------------------------
+    |            READ           |           WRITE          |
+------------------------------------------------------------
+w/  | 30898KB/s,7724,555.00us   | 30875KB/s,7718,479.70us  |
+------------------------------------------------------------
+w/o | 117915KB/s,29478,248.18us | 117854KB/s,29463,21.91us |
+------------------------------------------------------------
+
+bs=16k:
+------------------------------------------------------------
+    |            READ           |           WRITE          |
+------------------------------------------------------------
+w/  | 58961KB/s,3685,835.28us   | 58877KB/s,3679,1335.98us |
+------------------------------------------------------------
+w/o | 218409KB/s,13650,554.46us | 218257KB/s,13641,29.22us |
+------------------------------------------------------------
+
+bs=64k
+--------------------------------------------------------------
+    |            READ            |           WRITE           |
+--------------------------------------------------------------
+w/  | 119396KB/s,1865,1759.38us  | 119159KB/s,1861,2532.26us |
+--------------------------------------------------------------
+w/o | 422815KB/s,6606,1146.05us  | 421619KB/s,6587,60.72us   |
+--------------------------------------------,-----------------
+
+bs=512k
+--------------------------------------------------------------
+    |            READ            |           WRITE           |
+--------------------------------------------------------------
+w/  | 392973KB/s,767,5046.35us   | 393165KB/s,767,5359.86us  |
+--------------------------------------------------------------
+w/o | 590266KB/s,1152,4312.01us  | 590554KB/s,1153,2606.82us |
+--------------------------------------------------------------
+
+bs=1M
+--------------------------------------------------------------
+    |            READ            |           WRITE           |
+--------------------------------------------------------------
+w/  | 487779KB/s,476,8058.55us   | 485592KB/s,474,8630.51us  |
+--------------------------------------------------------------
+w/o | 593927KB/s,580,7623.63us   | 591265KB/s,577,6163.42us  |
+--------------------------------------------------------------
+
+Signed-off-by: Joseph Qi <joseph.qi@linux.alibaba.com>
+---
+ fs/ext4/inode.c | 39 +++++++++++++++++++++++----------------
+ 1 file changed, 23 insertions(+), 16 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 16077ec..e6b1740 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3863,25 +3863,32 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
+ 
+ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
+ {
+-	struct address_space *mapping = iocb->ki_filp->f_mapping;
+-	struct inode *inode = mapping->host;
+-	size_t count = iov_iter_count(iter);
++	int unlocked = 0;
++	struct inode *inode = iocb->ki_filp->f_mapping->host;
+ 	ssize_t ret;
+ 
+-	/*
+-	 * Shared inode_lock is enough for us - it protects against concurrent
+-	 * writes & truncates and since we take care of writing back page cache,
+-	 * we are protected against page writeback as well.
+-	 */
+-	inode_lock_shared(inode);
+-	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
+-					   iocb->ki_pos + count);
+-	if (ret)
+-		goto out_unlock;
++	if (ext4_should_dioread_nolock(inode)) {
++		/*
++		 * Nolock dioread optimization may be dynamically disabled
++		 * via ext4_inode_block_unlocked_dio(). Check inode's state
++		 * while holding extra i_dio_count ref.
++		 */
++		inode_dio_begin(inode);
++		smp_mb();
++		if (unlikely(ext4_test_inode_state(inode,
++						   EXT4_STATE_DIOREAD_LOCK)))
++			inode_dio_end(inode);
++		else
++			unlocked = 1;
++	}
++
+ 	ret = __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev,
+-				   iter, ext4_dio_get_block, NULL, NULL, 0);
+-out_unlock:
+-	inode_unlock_shared(inode);
++				   iter, ext4_dio_get_block,
++				   NULL, NULL,
++				   unlocked ? 0 : DIO_LOCKING);
++	if (unlocked)
++		inode_dio_end(inode);
++
+ 	return ret;
+ }
+ 
+-- 
+1.8.3.1
 
