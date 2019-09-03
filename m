@@ -2,100 +2,77 @@ Return-Path: <SRS0=1bIv=W6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CD0DC3A5A2
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04AF3C3A5A2
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:37:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 272B5215EA
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567528356;
-	bh=zolING5hlu8g7qofoznCBJkqeBldmDU3UTOfPwpXwwM=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=sjfV+iGiUT/sbO3j1PHIQmUN9iiFYBqQqBaWWREHZybEsRF5uUAtGx8i6xyhn3DaG
-	 PSSoTXyb3emJA8bu4lurG79S6P4Wqb7h2dwCsox4z6JkVpzi7lfX461a0vq9NnXMm+
-	 0ssUaXb1LANS32V91Fjacay62T5HI7wpE2Fx9djQ=
+	by mail.kernel.org (Postfix) with ESMTP id C72D2233A1
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:37:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="a996jW3Q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731346AbfICQcb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Sep 2019 12:32:31 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55800 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731426AbfICQcQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 3 Sep 2019 12:32:16 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E636723431;
-        Tue,  3 Sep 2019 16:32:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567528335;
-        bh=zolING5hlu8g7qofoznCBJkqeBldmDU3UTOfPwpXwwM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hpUHl6S1H6/2RUTV0FRcWpmXtgVDdc/1leU03/nocSNoiQDRcQr1TvsoEGbAY6mP1
-         Q95n+5rpJ8TKwXGLeNiFefKirXih0oBFzBWKiL1Gi/FDEIbxSr3NtxueAG+wb+w3oC
-         u36OqXZxPiznE7pDWqmwiusduOprI4uTgVB/YzmM=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Arthur Marsh <arthur.marsh@internode.on.net>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 165/167] ext4: fix block validity checks for journal inodes using indirect blocks
-Date:   Tue,  3 Sep 2019 12:25:17 -0400
-Message-Id: <20190903162519.7136-165-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190903162519.7136-1-sashal@kernel.org>
-References: <20190903162519.7136-1-sashal@kernel.org>
+        id S1731083AbfICQhE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Sep 2019 12:37:04 -0400
+Received: from mail-io1-f41.google.com ([209.85.166.41]:47033 "EHLO
+        mail-io1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730832AbfICQhA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Sep 2019 12:37:00 -0400
+Received: by mail-io1-f41.google.com with SMTP id x4so37262345iog.13;
+        Tue, 03 Sep 2019 09:37:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=86NmJMb/PMXwG/w20757BijiqFPtv6jsMz3d0NJXQY0=;
+        b=a996jW3QaxWUE7wDbAblf3oagbPf4XFwKXdaxLmQMvelz5tqGRy6Wn9tgzMdI5OgSF
+         9lWVwAzlgZZxhk1USQe8VlIWHF54xkZXguBnLeiLk+5JwhzSL3NYguTo9jaMQweTQlx7
+         6jgZyFxLMkTyES8GWkRxdBCCjOp6buAvBePOeDhADN8AER3uc2ARVLeGXW9ctcklk0tT
+         8MPmXndEB3ajmSnJmZ/l3v8hHo/NnJmpL5VZwhnamE6PuyI2d33ciw+Nmoy1Vuc3SK4T
+         k5lZTPNU5dJMH5POmYJtJMVDuMjR3lsMfDsGB+2hdLsGk3afAUVC/xhrTvt0JHaaeoge
+         lYeg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=86NmJMb/PMXwG/w20757BijiqFPtv6jsMz3d0NJXQY0=;
+        b=hWaxqD8ADpYmP5JPsvgXsUFgUI9G70D1Ll2UQp1xRoxErbC19oai75CfiIyQY0WmyN
+         P+OtlcSVJHYCGD/y88COlHhyF960AdRZOoyg2VbRV8kzjqfIemrCJTi0AkCMxAJgXJkx
+         dfIapDr+0Zd490bK8qUwPzWqivnbpTSqWFhwV/NZt9wzqpaKKKFcXO8LWG8dJREKdb8Z
+         FJ88GVRJAomRH/S9mOIdvawAHokpChpzYpLn8YKrQE0EYqGPQahFZEuND3puG0wCDYMx
+         SvoImtZCwMnwJdReB/EqHINiFhBbwd8XZMYC7/VB7Es53yNzfirr2aoenFzUZWtrUKbf
+         n/Ng==
+X-Gm-Message-State: APjAAAXvCTKrdAWytUAubMSkuhiCPCzWDXQEDRfDRUDB+6DInoctqGCN
+        eFSBX46FQIMitne2VOcn07kZnQqEc482l42/PqY=
+X-Google-Smtp-Source: APXvYqxw4eC5fbEEGGIKB6d8XCBCVkWxCov0hCXx3VO6dvzkd/8wVoYdi3MD6BsiuI5pf228iDaCqPDsf1BkJ2DJHjg=
+X-Received: by 2002:a02:23cc:: with SMTP id u195mr38523370jau.136.1567528619842;
+ Tue, 03 Sep 2019 09:36:59 -0700 (PDT)
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+References: <1567523922.5576.57.camel@lca.pw> <CABeXuvoPdAbDr-ELxNqUPg5n84fubZJZKiryERrXdHeuLhBQjQ@mail.gmail.com>
+In-Reply-To: <CABeXuvoPdAbDr-ELxNqUPg5n84fubZJZKiryERrXdHeuLhBQjQ@mail.gmail.com>
+From:   Deepa Dinamani <deepa.kernel@gmail.com>
+Date:   Tue, 3 Sep 2019 09:36:47 -0700
+Message-ID: <CABeXuvq7n+ZW7-HOiur+cyQXBjYKKWw1nRgFTJXTBZ9JNusPeg@mail.gmail.com>
+Subject: Re: "beyond 2038" warnings from loopback mount is noisy
+To:     Qian Cai <cai@lca.pw>
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Arnd Bergmann <arnd@arndb.de>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+We might also want to consider updating the file system the LTP is
+being run on here.
 
-[ Upstream commit 170417c8c7bb2cbbdd949bf5c443c0c8f24a203b ]
-
-Commit 345c0dbf3a30 ("ext4: protect journal inode's blocks using
-block_validity") failed to add an exception for the journal inode in
-ext4_check_blockref(), which is the function used by ext4_get_branch()
-for indirect blocks.  This caused attempts to read from the ext3-style
-journals to fail with:
-
-[  848.968550] EXT4-fs error (device sdb7): ext4_get_branch:171: inode #8: block 30343695: comm jbd2/sdb7-8: invalid block
-
-Fix this by adding the missing exception check.
-
-Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
-Reported-by: Arthur Marsh <arthur.marsh@internode.on.net>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/block_validity.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 9409b1e11a22e..cd7129b622f85 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -275,6 +275,11 @@ int ext4_check_blockref(const char *function, unsigned int line,
- 	__le32 *bref = p;
- 	unsigned int blk;
- 
-+	if (ext4_has_feature_journal(inode->i_sb) &&
-+	    (inode->i_ino ==
-+	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
-+		return 0;
-+
- 	while (bref < p+max) {
- 		blk = le32_to_cpu(*bref++);
- 		if (blk &&
--- 
-2.20.1
-
+-Deepa
