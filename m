@@ -7,45 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B4CCFC3A5A2
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7E63C3A5A2
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8DD11238C5
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 802AF215EA
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Sep 2019 16:32:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567528336;
-	bh=yruG6zYRqI5FfoP6ioRKtGvCg1Enlfzh6rJyvHXfJSE=;
+	s=default; t=1567528346;
+	bh=4UCNBBxw3LhMunVdWAChjEp/I1fLorG7hxA5sRYINWg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=MYaWr91Zi/+O176rBAliVs38XpVcIE8haWN7PE8kPMEUCZ7mkfKJjlMuZT5muwDNQ
-	 4AGsmHdWKcRng+bBB/RuS3BgiWPnTR2cq0v5zFgVm/KpfpxlrNr5xDOa5t3zOerJQh
-	 t7aAVrnJi/rHMTYLttkvk1Ks9ZzXpMrsafM5hvx8=
+	b=BtD4j7G0LUfaIldyficYXZ+BqvM11h2aFy7B8l3RHFhWqocUDDFH7TxtB/p9KKdz2
+	 T8N7g6b61/EcJ7x7lwmztBbRmt3EgcCxOM8Ci8Qx6bvQXkPop6h1YTRcjaWSSfbTfJ
+	 cJvbPyYpqNtOvQ3/8LZj0R9bBgBNu6P36xWAccrY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731412AbfICQcP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Sep 2019 12:32:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55770 "EHLO mail.kernel.org"
+        id S1731317AbfICQcZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Sep 2019 12:32:25 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55858 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730214AbfICQcP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 3 Sep 2019 12:32:15 -0400
+        id S1731431AbfICQcR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 3 Sep 2019 12:32:17 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id BADE6238C7;
-        Tue,  3 Sep 2019 16:32:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0C964215EA;
+        Tue,  3 Sep 2019 16:32:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567528334;
-        bh=yruG6zYRqI5FfoP6ioRKtGvCg1Enlfzh6rJyvHXfJSE=;
+        s=default; t=1567528336;
+        bh=4UCNBBxw3LhMunVdWAChjEp/I1fLorG7hxA5sRYINWg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WVTi4ZV/E9IaigAGJOtcWfATBHZ3GB19otH+z+A9B1fgyKUYjAvxbisOoyaE6E+f7
-         I4zisdWzHUrq3tBI/sWm1MMCkE0dXt+qtWVeEzv0fTAs/TLUrWEyQSG7FzOUw5bATT
-         jPakjaABNZpX245JXAHcM/1DU8tBO9Eef4N7wBbc=
+        b=AvX/AsKiN5L3MmSggGQmEx+Ngq7mvRY3gs7uvjeaGXZW96tnA/OeVJJ4QvI/HBaQ8
+         knkWtxmkavC/C3oIqiNmmbqooMdZB7ivpfcqtelgxNrtsRa7AKGuuH5cBG/2RqgKDW
+         3hzYsZSrHka23wr7nuecu7S79KhtXggdO8VguI68=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Dan Rue <dan.rue@linaro.org>,
-        Naresh Kamboju <naresh.kamboju@linaro.org>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 164/167] ext4: don't perform block validity checks on the journal inode
-Date:   Tue,  3 Sep 2019 12:25:16 -0400
-Message-Id: <20190903162519.7136-164-sashal@kernel.org>
+Cc:     Colin Ian King <colin.king@canonical.com>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 166/167] ext4: unsigned int compared against zero
+Date:   Tue,  3 Sep 2019 12:25:18 -0400
+Message-Id: <20190903162519.7136-166-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190903162519.7136-1-sashal@kernel.org>
 References: <20190903162519.7136-1-sashal@kernel.org>
@@ -58,57 +58,37 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+From: Colin Ian King <colin.king@canonical.com>
 
-[ Upstream commit 0a944e8a6c66ca04c7afbaa17e22bf208a8b37f0 ]
+[ Upstream commit fbbbbd2f28aec991f3fbc248df211550fbdfd58c ]
 
-Since the journal inode is already checked when we added it to the
-block validity's system zone, if we check it again, we'll just trigger
-a failure.
+There are two cases where u32 variables n and err are being checked
+for less than zero error values, the checks is always false because
+the variables are not signed. Fix this by making the variables ints.
 
-This was causing failures like this:
-
-[   53.897001] EXT4-fs error (device sda): ext4_find_extent:909: inode
-#8: comm jbd2/sda-8: pblk 121667583 bad header/extent: invalid extent entries - magic f30a, entries 8, max 340(340), depth 0(0)
-[   53.931430] jbd2_journal_bmap: journal block not found at offset 49 on sda-8
-[   53.938480] Aborting journal on device sda-8.
-
-... but only if the system was under enough memory pressure that
-logical->physical mapping for the journal inode gets pushed out of the
-extent cache.  (This is why it wasn't noticed earlier.)
-
+Addresses-Coverity: ("Unsigned compared against 0")
 Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
-Reported-by: Dan Rue <dan.rue@linaro.org>
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Tested-by: Naresh Kamboju <naresh.kamboju@linaro.org>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/extents.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ fs/ext4/block_validity.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 45aea792d22a0..00bf0b67aae87 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -518,10 +518,14 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 	}
- 	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
- 		return bh;
--	err = __ext4_ext_check(function, line, inode,
--			       ext_block_hdr(bh), depth, pblk);
--	if (err)
--		goto errout;
-+	if (!ext4_has_feature_journal(inode->i_sb) ||
-+	    (inode->i_ino !=
-+	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum))) {
-+		err = __ext4_ext_check(function, line, inode,
-+				       ext_block_hdr(bh), depth, pblk);
-+		if (err)
-+			goto errout;
-+	}
- 	set_buffer_verified(bh);
- 	/*
- 	 * If this is a leaf block, cache all of its entries
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index cd7129b622f85..e8e27cdc2f677 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -142,7 +142,8 @@ static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
+ 	struct inode *inode;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_map_blocks map;
+-	u32 i = 0, err = 0, num, n;
++	u32 i = 0, num;
++	int err = 0, n;
+ 
+ 	if ((ino < EXT4_ROOT_INO) ||
+ 	    (ino > le32_to_cpu(sbi->s_es->s_inodes_count)))
 -- 
 2.20.1
 
