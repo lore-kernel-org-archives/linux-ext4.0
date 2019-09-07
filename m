@@ -1,80 +1,56 @@
-Return-Path: <SRS0=aXja=XC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=sq9n=XD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.4 required=3.0 tests=DATE_IN_PAST_12_24,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 146A8C43331
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Sep 2019 10:06:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90A24C433EF
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E6EA420854
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Sep 2019 10:06:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7461220678
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730209AbfIGKGv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Sep 2019 06:06:51 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:53378 "EHLO
+        id S1727536AbfIHIw1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Sep 2019 04:52:27 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36715 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726012AbfIGKGv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Sep 2019 06:06:51 -0400
-Received: from callcc.thunk.org ([109.144.218.169])
+        with ESMTP id S1727359AbfIHIw1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Sep 2019 04:52:27 -0400
+Received: from callcc.thunk.org (110.8.30.213.rev.vodafone.pt [213.30.8.110])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x87A6fVQ015639
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x888qH17025741
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 7 Sep 2019 06:06:45 -0400
+        Sun, 8 Sep 2019 04:52:19 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 9027442049E; Sat,  7 Sep 2019 06:06:40 -0400 (EDT)
-Date:   Sat, 7 Sep 2019 06:06:40 -0400
+        id 55520420842; Sat,  7 Sep 2019 12:00:04 -0400 (EDT)
+Date:   Sat, 7 Sep 2019 12:00:04 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Andreas Dilger <adilger@dilger.ca>
-Cc:     Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org
-Subject: Re: [PATCH v3] e2fsck: check for consistent encryption policies
-Message-ID: <20190907100640.GA6778@mit.edu>
-References: <20190823162339.186643-1-ebiggers@kernel.org>
- <20190904155524.GA41757@gmail.com>
- <28D1848F-B84A-4D2A-880E-F0C8E8FD36C7@dilger.ca>
+To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: disable mount with both dioread_nolock and
+ nodelalloc
+Message-ID: <20190907160004.GB23683@mit.edu>
+References: <20190731130600.7867-1-xiaoguang.wang@linux.alibaba.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <28D1848F-B84A-4D2A-880E-F0C8E8FD36C7@dilger.ca>
+In-Reply-To: <20190731130600.7867-1-xiaoguang.wang@linux.alibaba.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 06, 2019 at 10:23:03PM -0600, Andreas Dilger wrote:
-> If the number of files in the array get very large, then doubling the
-> array size at the end may consume a *lot* of memory.  It would be
-> somewhat better to cap new_capacity by the number of inodes in the
-> filesystem, and better yet scale the array size by a fraction of the
-> total number of inodes that have already been processed, but this array
-> might still be several GB of RAM.
-> 
-> What about using run-length encoding for this?  It is unlikely that many
-> different encryption policies are in a filesystem, and inodes tend to be
-> allocated in groups by users, so it is likely that you will get large runs
-> of inodes with the same policy_id, and this could save considerable space.
+On Wed, Jul 31, 2019 at 09:06:00PM +0800, Xiaoguang Wang wrote:
+> Mount with both dioread_nolock and nodelalloc will result in huge
+> performance drop, which indeed is an known issue, so before we fix
+> this issue, currently we disable this behaviour. Below test reproducer
+> can reveal this performance drop.
 
-One approach that we could use is to allocate a separate bitmap for
-each policy.  EXT2FS_BMAP_RBTREE effectively will use RLE.  The
-downside is that if the inodes are not sparse, it will be quite
-heavyweight; each extent costs 40 bytes.
+Is it really worth it to disable this combination?  Nothing goes
+*wrong* per se; it's just slower than we would like.
 
-So for file system with a very large number of policies (as opposed
-less than two or three, which will be the case with the vast majority
-of Android devices) this could be quite expensive.
-
-Of course, we don't have to use an rbtree; the bitarray will be
-created sequentially, so in theory we could create a new bitmap
-backend which uses a sorted list, which is O(1) for ordered insert and
-o(log n) for lookups.  That could be about 12 bytes per extent.  And
-of course, we don't have to implement the sorted list back end right
-away, switching it is just a matter of changing a parameter to
-ext2fs_alloc_generic_bitmap().
-
-      	     	       	    	     	      - Ted
-
+	    	     	  	      	 - Ted
