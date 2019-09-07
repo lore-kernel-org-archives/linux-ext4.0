@@ -6,70 +6,53 @@ X-Spam-Status: No, score=-4.4 required=3.0 tests=DATE_IN_PAST_12_24,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
 	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA088C4332F
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 285B9C4360D
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 93594214D9
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0CA4F20678
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 08:52:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727551AbfIHIw3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Sep 2019 04:52:29 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36720 "EHLO
+        id S1727568AbfIHIw1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Sep 2019 04:52:27 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36718 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727538AbfIHIw1 (ORCPT
+        with ESMTP id S1727497AbfIHIw1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Sep 2019 04:52:27 -0400
 Received: from callcc.thunk.org (110.8.30.213.rev.vodafone.pt [213.30.8.110])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x888qHDE025742
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x888qH5V025743
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Sun, 8 Sep 2019 04:52:19 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id F03B9420848; Sat,  7 Sep 2019 12:21:45 -0400 (EDT)
-Date:   Sat, 7 Sep 2019 12:21:45 -0400
+        id 31D9042049E; Sat,  7 Sep 2019 11:57:47 -0400 (EDT)
+Date:   Sat, 7 Sep 2019 11:57:47 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/2] jbd2: add new tracepoint jbd2_sleep_on_shadow
-Message-ID: <20190907162145.GC23683@mit.edu>
-References: <20190902145442.1921-1-xiaoguang.wang@linux.alibaba.com>
+To:     Ayush Ranjan <ayush.ranjan98@gmail.com>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jonathan Corbet <corbet@lwn.net>, linux-ext4@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Ext4 Docs: Add missing bigalloc documentation.
+Message-ID: <20190907155747.GA23683@mit.edu>
+References: <20190831154419.GA30357@fa19-cs241-404.cs.illinois.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190902145442.1921-1-xiaoguang.wang@linux.alibaba.com>
+In-Reply-To: <20190831154419.GA30357@fa19-cs241-404.cs.illinois.edu>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Sep 02, 2019 at 10:54:41PM +0800, Xiaoguang Wang wrote:
-> Sometimes process will be stalled in "wait_on_bit_io(&bh->b_state,
-> BH_Shadow, TASK_UNINTERRUPTIBLE)" for a while, and in order to analyse
-> app's latency thoroughly, add a new tracepoint to track this delay.
+On Sat, Aug 31, 2019 at 10:44:19AM -0500, Ayush Ranjan wrote:
+> There was a broken link for bigalloc. The page
+> https://ext4.wiki.kernel.org/index.php/Bigalloc was not migrated into
+> the current documentation sources. This patch adds the contents of that
+> missing page into the section for Bigalloc itself.
 > 
-> Trace info likes below:
-> fsstress-5068  [008] .... 11007.757543: jbd2_sleep_on_shadow: dev 254,17 sleep 1
-> fsstress-5070  [007] .... 11007.757544: jbd2_sleep_on_shadow: dev 254,17 sleep 2
-> fsstress-5069  [009] .... 11007.757548: jbd2_sleep_on_shadow: dev 254,17 sleep 2
-> fsstress-5067  [011] .... 11007.757569: jbd2_sleep_on_shadow: dev 254,17 sleep 1
-> fsstress-5063  [007] .... 11007.757651: jbd2_sleep_on_shadow: dev 254,17 sleep 2
-> fsstress-5070  [007] .... 11007.757792: jbd2_sleep_on_shadow: dev 254,17 sleep 0
-> fsstress-5071  [011] .... 11007.763493: jbd2_sleep_on_shadow: dev 254,17 sleep 1
-> 
-> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+> Signed-off-by: Ayush Ranjan <ayushr2@illinois.edu>
 
-I think maybe it might be better to use units of microseconds and then
-change sleep to usleep so the units are clear?  This is a spinlock, so
-it should be quick.
+Thanks, applied.
 
-For the other patch in this series, milliseconds seems fine, but if we
-change the trace info to use "msleep" instead that would be clearer
---- or you could change it to use microseconds as well just for
-consistency; I think either would be fine.
-
-What do you think?
-
-Cheers,
-
-						- Ted
+					- Ted
