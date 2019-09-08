@@ -2,189 +2,136 @@ Return-Path: <SRS0=sq9n=XD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D376C49ED4
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 17:51:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1532BC433EF
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 23:18:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2EBEC214DB
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 17:51:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE2C1216C8
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Sep 2019 23:18:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ENwRMQ79"
+	dkim=pass (2048-bit key) header.d=mbobrowski-org.20150623.gappssmtp.com header.i=@mbobrowski-org.20150623.gappssmtp.com header.b="ZdGMKj3J"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730616AbfIHRv0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Sep 2019 13:51:26 -0400
-Received: from mail-io1-f68.google.com ([209.85.166.68]:39488 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726535AbfIHRv0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Sep 2019 13:51:26 -0400
-Received: by mail-io1-f68.google.com with SMTP id d25so23689653iob.6;
-        Sun, 08 Sep 2019 10:51:25 -0700 (PDT)
+        id S1731245AbfIHXSp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Sep 2019 19:18:45 -0400
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:37225 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731239AbfIHXSp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Sep 2019 19:18:45 -0400
+Received: by mail-pl1-f195.google.com with SMTP id b10so5726693plr.4
+        for <linux-ext4@vger.kernel.org>; Sun, 08 Sep 2019 16:18:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:date:to:cc:subject:message-id:mime-version:content-disposition
-         :content-transfer-encoding:user-agent;
-        bh=XetzNUYbniOZ6Af7Q3Cl4LlL+EZ3+sdepj4c/tskqUQ=;
-        b=ENwRMQ79kVyLASpfx5qsOGgWmSoOQCC3CjMv0h93JRCsv6asVgPwhNePnUauZplvtJ
-         +TmvWOe0PDRp3INhbrs0NtniNHtPdpRnm2nBDqCGggW5UltP6jmgB4b2jOdeR4valsyN
-         cW+IDDQi08zKeZ1GUi8YsdxjjBgV0lZjw4IMTG6CPI+GTSW4b1xGog6ZAa6WepEd5Pug
-         Uw5NMCL8cnBiVWaEQCjzSrcP+jpUSQDAs3f+NZQ0XzqQqT1SLwnhG7oNPv97dEjqLn/t
-         vMhyJIJOaKrX4TFjt31hgXicB9/PSOXwa260epPU+3523Ic/0pEAaEL4ID5wU9stA4hV
-         vALw==
+        d=mbobrowski-org.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
+         :user-agent;
+        bh=XtR7NCgyk644foWKKHXjEJ6/aEwW4hMsIVC72BpYIGw=;
+        b=ZdGMKj3JQmVvUv0XrUuGvoVeuGBdaceDsst0Bae7Ult/3N20J8XEaQhflBHoSnHEKq
+         fK9jhq3pRqSol0sQSBdErl9eJ0BLRA+cePcHfh9ZTDGbKfMMs8muItQ9ya++kwyuz9pe
+         MhfA3X8gAOaN5VK+mRH5lVzbG1fT7zSKJ5R5zCKjA4cxU9fNghlHEV1RMdCvgaaH7Y1v
+         WzH/aN3RjjgKNSCQf7/KkNKVs3VCnudYqhL1UEuf0E/KbEXkkWDMdGO48Gf2q+AysavQ
+         71zuaYw1PTTP4k4gsSDh0Q/GtQAETRNP8d2L6P5xriHdt+tch0uD+bwX7p8ylbcZLzNY
+         yJPg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:date:to:cc:subject:message-id:mime-version
-         :content-disposition:content-transfer-encoding:user-agent;
-        bh=XetzNUYbniOZ6Af7Q3Cl4LlL+EZ3+sdepj4c/tskqUQ=;
-        b=DKlvBKSjoBDH6Imqn/40c4TYPmiSgDXMOXozRRIXEzgpXmD4/R4Lgo3rD5B8BlPY3V
-         x36lQQRPv7axZ5CaYcyu1FxbHCI6tbSzqTw+dkOiDUsU2hJU4X8QXBXIoRR0GJYXLM0v
-         kCm4cEu7EkWlywW2jD5x7L8Fi6s5xXjV8BfsrZU2mwuD3R6jbma2FzjJBTwYT80gonlz
-         XESGD148e7SUV+576VOM0O+AZitvE4EYpCeYP4k0m2oio6i7PR6lOffb90COOC57B8i9
-         ALQeXTopsampVTRijUlWWmryMuAsa8YpGBUKQTtc3icBYt8IxipLwcnGGN/EzAuNWOTe
-         iTeA==
-X-Gm-Message-State: APjAAAUfu4gaWQzDommCkpBOjT7PgQLfqPRfzOj/NksQxCvibduFqgNF
-        bFDIUXjLUb4G0L56SWE20yBLEo4SccU=
-X-Google-Smtp-Source: APXvYqw9LgovXRvHjqmLu2RfEcYbkrVFPLZtSSEeRPuo6p9FqQRCcU56lm/2t2OxVPPrfxNwLL0EXQ==
-X-Received: by 2002:a6b:6e0a:: with SMTP id d10mr7833585ioh.141.1567965084446;
-        Sun, 08 Sep 2019 10:51:24 -0700 (PDT)
-Received: from fa19-cs241-404 ([192.17.168.68])
-        by smtp.gmail.com with ESMTPSA id t15sm10745100ioc.68.2019.09.08.10.51.23
-        (version=TLS1 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
-        Sun, 08 Sep 2019 10:51:23 -0700 (PDT)
-From:   Ayush Ranjan <ayush.ranjan98@gmail.com>
-X-Google-Original-From: Ayush Ranjan <ayushr2@illinois.edu>
-Date:   Sun, 8 Sep 2019 12:51:23 -0500
-To:     Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>
-Cc:     linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] Ext4 Documentation: Add missing quota section.
-Message-ID: <20190908175123.GA14145@fa19-cs241-404.cs.illinois.edu>
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
+         :content-disposition:user-agent;
+        bh=XtR7NCgyk644foWKKHXjEJ6/aEwW4hMsIVC72BpYIGw=;
+        b=A1yQI18e9MbDbx3W4TQSy8+DdZAI2fhPqXmkOxgtfaYcVfPxsWSwDgkJOyrrty6oqV
+         JDMdLKaXhIjxNUg+YDbLAf3E6FCFHcUDPrj3LZDk97wwSoN6OJqk2SFAtdzr4tE3sUgw
+         HgDcTlEJOsuNtVOGtqukIYfn4PEZVOTiu777UrfQzvJgKbznET/HcyNDxVpfjvNySJt5
+         f1Z/9vemcSuvDDQJ8+usBYMrjDMkbh/sGE/e8NftK1SznqNEBM7WCM98hBHnkWFcvX+k
+         lK8XRwB0tpPXYOkbdZRQb5nr5Hr6IEWF3dmzP2hLxWmcmUq+2LmpAzH4GUR3T7Wy7y/2
+         RfEA==
+X-Gm-Message-State: APjAAAX/gZ+Il5wnA2ToxKBhI2QgspIpUakMXE2+R3tErfcgAR605V7P
+        b2jh49aY0tTMgYsdtx8+DezI
+X-Google-Smtp-Source: APXvYqzuHNJSxE4foCmCR4AX0Qdzr7GwzQpWQ3r7Cjh/5P38YK9XxY50BnDmvN9BwUKuJBHZ+4LAZw==
+X-Received: by 2002:a17:902:42a5:: with SMTP id h34mr21599455pld.266.1567984719116;
+        Sun, 08 Sep 2019 16:18:39 -0700 (PDT)
+Received: from bobrowski ([110.232.114.101])
+        by smtp.gmail.com with ESMTPSA id az9sm10756029pjb.22.2019.09.08.16.18.35
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 08 Sep 2019 16:18:38 -0700 (PDT)
+Date:   Mon, 9 Sep 2019 09:18:32 +1000
+From:   Matthew Bobrowski <mbobrowski@mbobrowski.org>
+To:     tytso@mit.edu, jack@suse.cz, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        david@fromorbit.com, hch@infradead.org, darrick.wong@oracle.com
+Subject: [PATCH v2 0/6] ext4: port direct IO to iomap infrastructure
+Message-ID: <cover.1567978633.git.mbobrowski@mbobrowski.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-User-Agent: Mutt/1.5.24 (2015-08-30)
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There were a few broken links for quota. The page
-https://ext4.wiki.kernel.org/index.php/Quota was not migrated into
-the current documentation sources. This patch adds the contents of that
-missing page as a new section in the overview page. Also fixes those
-broken links by replacing them with cross document links to this new
-quota section.
+This patch series ports the ext4 direct IO paths to make use of the
+iomap infrastructure. The legacy buffer_head based direct IO paths
+have subsequently been removed as they're now no longer in use. The
+result of this change is that the direct IO implementation is much
+cleaner and keeps the code isolated from the buffer_head internals. In
+addition to this, a slight performance boost could be expected while
+using O_SYNC | O_DIRECT IO.
 
-Signed-off-by: Ayush Ranjan <ayushr2@illinois.edu>
----
- Documentation/filesystems/ext4/overview.rst |  1 +
- Documentation/filesystems/ext4/quota.rst    | 53 +++++++++++++++++++++
- Documentation/filesystems/ext4/super.rst    |  6 +--
- 3 files changed, 57 insertions(+), 3 deletions(-)
- create mode 100644 Documentation/filesystems/ext4/quota.rst
+The changes have been tested using xfstests in both DAX and non-DAX
+modes using various filesystem configurations i.e. 4k, dioread_nolock.
 
-diff --git a/Documentation/filesystems/ext4/overview.rst b/Documentation/filesystems/ext4/overview.rst
-index cbab18bab..f97ea68ea 100644
---- a/Documentation/filesystems/ext4/overview.rst
-+++ b/Documentation/filesystems/ext4/overview.rst
-@@ -24,3 +24,4 @@ order.
- .. include:: bigalloc.rst
- .. include:: inlinedata.rst
- .. include:: eainode.rst
-+.. include:: quota.rst
-diff --git a/Documentation/filesystems/ext4/quota.rst b/Documentation/filesystems/ext4/quota.rst
-new file mode 100644
-index 000000000..8964c26cb
---- /dev/null
-+++ b/Documentation/filesystems/ext4/quota.rst
-@@ -0,0 +1,53 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+.. _quota:
-+
-+Quota Feature
-+-------------
-+
-+The quota feature (``EXT4_FEATURE_RO_COMPAT_QUOTA``) causes the quota
-+files (i.e., user.quota and group.quota which existed in the older quota
-+design) to be hidden inodes, so they can not be corrupted by user space
-+programs. Instead, these inodes are managed directly via e2fsprogs, and
-+journaled quota will be automatically enabled by the kernel as soon as
-+the file system is mounted. This way, it strongly reduces the
-+possibility that the usage tracking performed by the file system will
-+get out of sync.
-+
-+Kernel Support
-+~~~~~~~~~~~~~~
-+
-+Support for the quota feature first appeared in the 3.6 upstream kernel
-+version. There is a bug which will not be fixed until v3.8 which will
-+cause ext4 to fail to mount a file system with quotas if the quota code
-+is built as a module. So users who wish to experiment with this feature
-+are strongly encouraged to build with the following configuration
-+options:
-+
-+- ``CONFIG_QUOTA=y``
-+- ``CONFIG_QUOTATREE=y``
-+- ``CONFIG_QUOTACTL=y``
-+
-+E2fsprogs Support
-+~~~~~~~~~~~~~~~~~
-+
-+Support for the quota feature first appeared in e2fsprogs 1.42, although
-+it is not enabled by default. It must enabled via a compile-time
-+configuration option, --enable-quota. There are bug fixes which have
-+been applied in various 1.42.x maintenance branch releases, so users who
-+wish to experiment with the quota feature are strongly encouraged
-+upgrade to the latest e2fsprogs 1.42.x maintenance release. As of this
-+writing the following bugs are still in e2fsprogs 1.42.7, which means
-+use of file systems with the quota feature in production can not be
-+recommended:
-+
-+- The e2fsck check of the on-disk quota inodes won't notice if there is
-+  a missing uid record. (i.e., if some uid, say daemon owns a bunch of
-+  files, but that uid record is not in the quota inode, e2fsck won't say
-+  boo.)
-+- If e2fsck *does* notice a discrepancy between the usage information
-+  recorded in the hidden quota inodes, and the actual number of blocks
-+  used by a particular user id or group id, it will overwrite the user
-+  or group quota inode with all of the information it has.
-+  Unfortunately, in the process it will zero out all of the current
-+  quota limits set. This is unfortunate....
-diff --git a/Documentation/filesystems/ext4/super.rst b/Documentation/filesystems/ext4/super.rst
-index 04ff079a2..2a9e1438f 100644
---- a/Documentation/filesystems/ext4/super.rst
-+++ b/Documentation/filesystems/ext4/super.rst
-@@ -404,11 +404,11 @@ The ext4 superblock is laid out as follows in
-    * - 0x240
-      - \_\_le32
-      - s\_usr\_quota\_inum
--     - Inode number of user `quota <quota>`__ file.
-+     - Inode number of user :ref:`quota <quota>` file.
-    * - 0x244
-      - \_\_le32
-      - s\_grp\_quota\_inum
--     - Inode number of group `quota <quota>`__ file.
-+     - Inode number of group :ref:`quota <quota>` file.
-    * - 0x248
-      - \_\_le32
-      - s\_overhead\_blocks
-@@ -678,7 +678,7 @@ the following:
-    * - 0x80
-      - This filesystem has a snapshot (RO\_COMPAT\_HAS\_SNAPSHOT).
-    * - 0x100
--     - `Quota <Quota>`__ (RO\_COMPAT\_QUOTA).
-+     - :ref:`Quota <quota>` (RO\_COMPAT\_QUOTA).
-    * - 0x200
-      - This filesystem supports “bigalloc”, which means that file extents are
-        tracked in units of clusters (of blocks) instead of blocks
+Changes since v1:
+
+ - The error handling code within ext4_dio_write_end_io() has been
+   moved out into a common helper ext4_handle_failed_inode_extension(),
+   which is now used by both DAX and direct IO paths.
+
+ - Simplified the conditional statement in ext4_iomap_begin() that
+   determined which flags needed to be passed to ext4_map_blocks().
+
+ - Split up patch 4/5 by taking out the hunk of code in
+   ext4_iomap_begin() that determined the flag that should be assigned
+   to iomap->type.
+
+ - Introduced comments to snippets of code that are not immediately
+   unambiguous and applied other minor cleanups based on the feedback
+   that was received.
+
+In the previous patch series, there was a relatively lengthy
+discussion around the merging of unwritten extents. The buffer_head
+direct IO implementation made use of inode and end_io flags to track
+whether an unwritten extent is eligible to be merged, or not. We don't
+make use of these flags in the new direct IO iomap implementation,
+effectively making the extent merging checks that make use these flags
+redundant. However, it appears that even if additional merges and
+splits are performed, it isn't deemed problematic as such and that's
+due to the way that the filesystem now accommdates for unexpected
+extent splits. The only real concern is the potential wasted
+performance due to the unnecessary merge and split performed under
+specific workloads. The full discussion that goes through these
+details starts from here:
+https://www.spinics.net/lists/linux-ext4/msg67173.html.
+
+Thank you to all that took the time to review and provide constructive
+feedback for previous patch series, highly appreciated.
+
+Matthew Bobrowski (6):
+  ext4: introduce direct IO read path using iomap infrastructure
+  ext4: move inode extension/truncate code out from ext4_iomap_end()
+  iomap: modify ->end_io() calling convention
+  ext4: reorder map.m_flags checks in ext4_iomap_begin()
+  ext4: introduce direct IO write path using iomap infrastructure
+  ext4: cleanup legacy buffer_head direct IO code
+
+ fs/ext4/ext4.h        |   3 -
+ fs/ext4/extents.c     |  11 +-
+ fs/ext4/file.c        | 363 +++++++++++++++++++++++------
+ fs/ext4/inode.c       | 516 +++++-------------------------------------
+ fs/iomap/direct-io.c  |   9 +-
+ fs/xfs/xfs_file.c     |   8 +-
+ include/linux/iomap.h |   4 +-
+ 7 files changed, 365 insertions(+), 549 deletions(-)
+
 -- 
-2.23.0
+2.20.1
 
