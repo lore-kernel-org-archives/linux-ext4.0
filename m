@@ -2,429 +2,195 @@ Return-Path: <SRS0=9YdN=XF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 239C5C49ED7
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 20:32:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31410C49ED7
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 21:57:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B90CB21479
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 20:32:47 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="rO6gOexD"
+	by mail.kernel.org (Postfix) with ESMTP id F38E621019
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 21:57:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725856AbfIJUcr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Sep 2019 16:32:47 -0400
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:33822 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725263AbfIJUcr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Sep 2019 16:32:47 -0400
-Received: by mail-pg1-f194.google.com with SMTP id n9so10335070pgc.1
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Sep 2019 13:32:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=DtTDgtWjiEGV1WjHPEWFUJOEpkNW4rP9QU8XkQoZi7s=;
-        b=rO6gOexDOOYeVEcspLuklVG5rSeb24bWi/CpSdVJ4wToda1Hcv6VlqhcmcFqtGVrpy
-         Wa6Ci8zcRCQAC2PH8fNgzreOTDOa1kMU7pCIHC/KKjauoFdruHA9hdCGCmk2vhv/0cCC
-         EF0Pk8iVp9SlSds3Pku/nktl/i62R1iCK9Zpt1NnqVgG5yD62K3Wlhj3WYTmTg13X45x
-         ddg0L4RLqa1mJPlAMJEVD/AFo3UaFjFDUq0PFEg8mCJByDqbNlCnNDgnk7yAJBSoy5Dp
-         rNtstj8PAzdTpJ76LP8FJb21dY7YfOo2n5HIdYNxDJus33TcgLUxGuFKYubPi2oss2AS
-         joYg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=DtTDgtWjiEGV1WjHPEWFUJOEpkNW4rP9QU8XkQoZi7s=;
-        b=XGu7Kk338eSZz7ugClhrJ0vvgCnpC//sqQRfj8hHSZ4KVxfu4y7tfZHlCV8MuwQYxW
-         QMQXzaR4Tv/hWsgXx4rTEVFMaD9o7fccXIZKxICQMD2cwKemcVUL5JM8Z+4EVhS2Ezey
-         0Tp6Fx8K4wjT0MtMKDyZjiA8i7VtxVFVgljwaEz9ORGjKAfnXc4YelpUVltMNBMq/fPM
-         j6grejv0Qc4fv1XBKMeBXgQW/hRDkVX/EHQ62rcgAAqo7pmLyUq+RcOhTpQ0mYQaxwri
-         2ONaUdHs47cZIhNAnhalyzY6ZvD8Fk06IzdHMDOgNN7cgVgaYTqTj3fPtUcvx9ZrVtNB
-         05Yg==
-X-Gm-Message-State: APjAAAVWxvqakozhD29oOSxguGgrQuTCwQzq8l4DTJCu1iUKaCIXn2aH
-        pRwFXo5GWFv83i9cpARJvWur5G0JmRU=
-X-Google-Smtp-Source: APXvYqwcwWXORWc363ayNkDZ7iZNKKfrvWMPtHqC8Qxzn7/J61DpDrT4+mi1dmwZt89kDPjvVri3gQ==
-X-Received: by 2002:a62:61c5:: with SMTP id v188mr38129145pfb.194.1568147565859;
-        Tue, 10 Sep 2019 13:32:45 -0700 (PDT)
-Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id bb7sm495074pjb.2.2019.09.10.13.32.44
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 10 Sep 2019 13:32:44 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <13257F13-1017-489E-A822-69EC510C9EEC@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_4AF1C7A4-1F5A-454B-8E0A-27CCA54F4EC0";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [RFC] jbd2: reclaim journal space asynchronously when free space
- is low
-Date:   Tue, 10 Sep 2019 14:32:49 -0600
-In-Reply-To: <8edec7d4-2b6e-cce3-1011-5189aca3e462@linux.alibaba.com>
-Cc:     linux-ext4@vger.kernel.org
-To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-References: <20190826035459.4121-1-xiaoguang.wang@linux.alibaba.com>
- <8edec7d4-2b6e-cce3-1011-5189aca3e462@linux.alibaba.com>
-X-Mailer: Apple Mail (2.3273)
+        id S1725880AbfIJV5X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Sep 2019 17:57:23 -0400
+Received: from mx2.suse.de ([195.135.220.15]:51480 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725263AbfIJV5X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 10 Sep 2019 17:57:23 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 82253ABB2;
+        Tue, 10 Sep 2019 21:57:20 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id DA5781E43AC; Tue, 10 Sep 2019 23:57:20 +0200 (CEST)
+Date:   Tue, 10 Sep 2019 23:57:20 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+        Theodore Ts'o <tytso@mit.edu>, hch@infradead.org,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 0/3] Revert parallel dio reads
+Message-ID: <20190910215720.GA7561@quack2.suse.cz>
+References: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
+ <20190827115118.GY7777@dread.disaster.area>
+ <20190829105858.GA22939@quack2.suse.cz>
+ <20190910141041.134674C072@d06av22.portsmouth.uk.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190910141041.134674C072@d06av22.portsmouth.uk.ibm.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Hello,
 
---Apple-Mail=_4AF1C7A4-1F5A-454B-8E0A-27CCA54F4EC0
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+On Tue 10-09-19 19:40:40, Ritesh Harjani wrote:
+> > > Before doing this, you might want to have a chat and co-ordinate
+> > > with the folks that are currently trying to port the ext4 direct IO
+> > > code to use the iomap infrastructure:
+> > > 
+> > > https://lore.kernel.org/linux-ext4/20190827095221.GA1568@poseidon.bobrowski.net/T/#t
+> > > 
+> > > That is going to need the shared locking on read and will work just
+> > > fine with shared locking on write, too (it's the code that XFS uses
+> > > for direct IO). So it might be best here if you work towards shared
+> > > locking on the write side rather than just revert the shared locking
+> > > on the read side....
+> > 
+> > Yeah, after converting ext4 DIO path to iomap infrastructure, using shared
+> > inode lock for all aligned non-extending DIO writes will be easy so I'd
+> > prefer if we didn't have to redo the iomap conversion patches due to these
+> > reverts.
+> 
+> I was looking into this to see what is required to convert this into
+> shared locking for DIO write side.
+> Why do you say shared inode lock only for *aligned non-extending DIO
+> writes*?
+> non-extending means overwrite case only, which still in today's code is
+> not under any exclusive inode_lock (except the orphan handling and truncate
+> handling in case of error after IO is completed). But even with
+> current code the perf problem is reported right?
 
-On Sep 9, 2019, at 12:10 AM, Xiaoguang Wang =
-<xiaoguang.wang@linux.alibaba.com> wrote:
->=20
-> Any suggestions to this patch? Though I also think this patch needs =
-some
-> more improvements and more performance tests :)
+Yes, the problem is even with current code. It is that we first acquire
+inode_rwsem in exclusive mode in ext4_file_write_iter() and only later
+relax that to no lock later. And this is what is causing low performance
+for mixed read-write workload because the exclusive lock has to wait for
+all shared holders and vice versa...
 
-What we've done in the past is to increase the journal size until this =
-is
-no longer a problem.  For metadata-intensive filesystems we use a =
-journal
-size of up to 4GB, and default to 1GB for data servers.  One benefit of
-this over forcing checkpoints is that it allows IO aggregation from the
-dirty buffers before they are forced to disk, which reduces impact on =
-the
-foreground workload.  However, it does use a lot of RAM.
+> If we see in today's code (including in iomap new code for overwrite case
+> where we downgrade the lock).
+> We call for inode_unlock in case of overwrite and then do the IO, since we
+> don't have to allocate any blocks in this case.
+> 
+> 
+> 	/*
+> 	 * Make all waiters for direct IO properly wait also for extent
+> 	 * conversion. This also disallows race between truncate() and
+> 	 * overwrite DIO as i_dio_count needs to be incremented under
+>  	 * i_mutex.
+> 	 */
+> 	inode_dio_begin(inode);
+> 	/* If we do a overwrite dio, i_mutex locking can be released */
+> 	overwrite = *((int *)iocb->private);
+> 	if (overwrite)
+> 		inode_unlock(inode);
+> 	
+> 	write data (via __blockdev_direct_IO)
+> 
+> 	inode_dio_end(inode);
+> 	/* take i_mutex locking again if we do a ovewrite dio */
+> 	if (overwrite)
+> 		inode_lock(inode);
+> 
+> 
+> 
+> What can we do next:-
+> 
+> Earlier the DIO reads was not having any inode_locking.
+> IIUC, the inode_lock_shared() in the DIO reads case was added to
+> protect the race against reading back uninitialized/stale data for e.g.
+> in case of truncate or writeback etc.
 
-> Currently I have two other thoughts:
-> 1, add codes to count the number of transactions to be checkpointted, =
-with
-> this information, we can make some better decisions, for example, when =
-it's
-> appropriate to reclaim journal space asynchronously.
+Not quite. Places that are prone to exposing stale block content (such as
+truncate) wait for running DIO (inode_dio_wait()). Just with unlocked read
+DIO we had to have special wait mechanisms to disable unlocked DIO for a
+while so that we can actually safely drain all running DIOs without new
+ones being submitted and then perform e.g. truncate. So it was more a
+complexity of the locking mechanism.
 
-You can check some stats about transactions and checkpointing like:
+> So as Dave suggested, shouldn't we add the complete shared locking in DIO
+> writes cases as well (except for unaligned writes, since it may required
+> zeroing of partial blocks).
+> 
+> 
+> Could you please help me understand how we can go about it?
+> I was thinking if we can create uninitialized blocks beyond EOF, so that
+> any parallel read should only read 0 from that area and we may not require
+> exclusive inode_lock. The block creation is anyway protected
+> with i_data_sem in ext4_map_blocks.
 
-$ cat /proc/fs/jbd2/dm-12-8/info
-6490 transaction, each up to 8192 blocks
-average:
-  0ms waiting for transaction
-  5227ms running transaction
-  0ms transaction was being locked
-  0ms flushing data (in ordered mode)
-  196ms logging transaction
-  134327us average transaction commit time
-  320 handles per transaction
-  18 blocks per transaction
-  19 logged blocks per transaction
+So doing file size changes (i.e., file expansion) without exclusive
+inode_lock would be tricky. I wouldn't really like to go there at least
+initially. My plan would be to do it similarly to XFS like:
 
-In the situation you describe, where the journal is full, there should =
-be
-a non-zero "waiting for transaction".
+Do a quick check whether IO is going to grow inode size or is unaligned. If
+yes, mode = exclusive, else mode = shared. Then lock inode rwsem is
+appropriate mode, do ext4_write_checks() (which may find out exclusive lock
+is actually needed so in that case mode = exclusive and restart). Then call
+iomap code to do direct IO.
 
-If you are adding more stats (e.g. decaying average number of =
-transactions
-to be checkpointed), this is where it should go.
+> I do see that in case of bufferedIO writes, we use ext4_get_block_unwritten
+> for dioread_nolock case. Which should
+> be true for even writes extending beyond EOF. This will
+> create uninitialized and mapped blocks only (even beyond EOF).
+> But all of this happen under exclusive inode_lock() in ext4_file_write_iter.
 
+I guess this is mostly because we don't bother to check in
+ext4_write_begin() whether we are extending the file or not and filling
+holes needs unwritten extents. Also before DIO reads got changed to be
+under shared inode rwsem, the following was possible:
 
-> 2, add a new mount option to control whether enable or disable this =
-feature.
+CPU1					CPU2
+DIO read from file f offset 4096
+  flush cache
+					grow 'f' from 4096 to 8192 by write
+					  blocks get allocated, page cache
+					  dirtied
+  map blocks, submit IO
+    - reads stale contents
 
-I think this is critical for any feature.  It is useful both for testing
-(e.g. does it improve/hurt performance), but also in case there are bugs
-seen in the field then the feature can be turned off without having to
-patch, build, and install a new kernel.
+> Whereas in case of DIO writes extending beyond EOF, we pass
+> EXT4_GET_BLOCKS_CREATE in ext4_map_blocks which may allocate
+> initialized & mapped blocks.
+> Do you know why so?
 
-Rather than just enable/disable the feature, the tunable should be the
-number of pending transactions before checkpoint is started, or number
-of free journal blocks (percentage if < 100?) at which to start =
-checkpoint.
+Not using unwritten extents is faster if that is safe. So that's why DIO
+code uses them if possible.
 
->> In current jbd2's implemention, jbd2 won't reclaim journal space =
-unless
->> free journal space is lower than specified threshold, see logic in
->> add_transaction_credits():
->>         write_lock(&journal->j_state_lock);
->>         if (jbd2_log_space_left(journal) < =
-jbd2_space_needed(journal))
->>             __jbd2_log_wait_for_space(journal);
->>         write_unlock(&journal->j_state_lock);
->> Indeed with this logic, we can also have many transactions queued to =
-be
->> checkpointd, which means these transactions still occupy jbd2 space.
->> Recently I have seen some disadvantages caused by this logic:
->> Some of our applications will get stuck in below stack periodically:
->>         __jbd2_log_wait_for_space+0xd5/0x200 [jbd2]
->>         start_this_handle+0x31b/0x8f0 [jbd2]
->>         jbd2__journal_start+0xcd/0x1f0 [jbd2]
->>         __ext4_journal_start_sb+0x69/0xe0 [ext4]
->>         ext4_dirty_inode+0x32/0x70 [ext4]
->>         __mark_inode_dirty+0x15f/0x3a0
->>         generic_update_time+0x87/0xe0
->>         file_update_time+0xbd/0x120
->>         __generic_file_aio_write+0x198/0x3e0
->>         generic_file_aio_write+0x5d/0xc0
->>         ext4_file_write+0xb5/0x460 [ext4]
->>         do_sync_write+0x8d/0xd0
->>         vfs_write+0xbd/0x1e0
->>         SyS_write+0x7f/0xe0
->> Meanwhile I found io usage in these applications' machines are =
-relatively
->> low, journal space is somewhat like a global lock, in high =
-concurrency case,
->> if many tasks contend for journal credits, they will easily hit above =
-stack
->> and be stuck in waitting for free journal space, so I wonder whether =
-we can
->> reclaim journal space asynchronously when free space is lower than a =
-specified
->> threshold, to avoid that all applications are stalled at the same =
-time.
->> I think this will be more useful in high speed store, journal space =
-will be
->> reclaimed in background quickly, and applications will less likely to =
-be
->> stucked by above issue. To improve this case, we use workqueue to =
-queue a
->> work in background to reclaim journal space.
->> I also construct a test case to verify improvement, test case will =
-create
->> 1000000 directories, use 1, 2, 4, 8 and 16 tasks per test round. For =
-example,
->> in 8 tasks case, create 8 processes and every process creates 125000 =
-directories,
->> 16 tasks case, every process creates 62500 directories. Every test =
-case run
->> 5 iterations.
->> Tested in my vm(16cores, 8G memory), count the run time per test =
-round.
->> Without this patch,
->> 16 tasks:  35s 34s 33s 34s 34s total: 170s, avg: 34s
->> 8  tasks:  33s 35s 34s 35s 35s total: 172s, avg: 34.4s
->> 4  tasks:  36s 38s 39s 39s 41s total: 193s, avg: 38.6s
->> 2  tasks:  53s 54s 52s 55s 54s total: 268s, avg: 53.6s
->> 1  tasks:  65s 65s 65s 65s 64s total: 324s, avg: 64.8s
->> With this patch:
->> 16 tasks:  29s 32s 32s 31s 33s total: 157s, avg: 31.4s
->> 8  tasks:  30s 31s 30s 31s 30s total: 152s, avg: 30.4s
->> 4  tasks:  33s 34s 32s 33s 37s total: 169s, avg: 33.8s
->> 2  tasks:  47s 48s 46s 49s 48s total: 238s, avg: 47.6s
->> 1  tasks:  56s 55s 56s 54s 55s total: 276s, avg: 55.2s
->> =46rom above test, we can have 10% improvements.
->> Run same test in physical machine with nvme store, get such test =
-results:
->> without patch(count the total time spending to create 5000000 =
-sub-directories):
->> 64 tasks  32 tasks 16 tasks  8 tasks  4 tasks  2 tasks  1 tasks
->>      66s       64s      67s      71s      81s     108s     133s
->> with patch:
->> 64 tasks  32 tasks 16 tasks  8 tasks  4 tasks  2 tasks  1 tasks
->>     66s        64s      69s      72s      80s     103s     112s
->> Seems that improvements are only somewhat significant in low =
-concurrency
->> case, I guess it's because that the checkpoint work in nvme is quick.
->> In high concurrency case, the overhead caused by waitting for log =
-space
->> may not a big bottleneck, I'll look into this issue more.
->> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
->> ---
->>  fs/jbd2/checkpoint.c  |  4 ++--
->>  fs/jbd2/journal.c     | 26 ++++++++++++++++++++++++++
->>  fs/jbd2/transaction.c | 12 +++++++++++-
->>  include/linux/jbd2.h  | 23 ++++++++++++++++++++++-
->>  4 files changed, 61 insertions(+), 4 deletions(-)
->> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
->> index a1909066bde6..da0920cbc1d3 100644
->> --- a/fs/jbd2/checkpoint.c
->> +++ b/fs/jbd2/checkpoint.c
->> @@ -105,12 +105,12 @@ static int __try_to_free_cp_buf(struct =
-journal_head *jh)
->>   * Called under j-state_lock *only*.  It will be unlocked if we have =
-to wait
->>   * for a checkpoint to free up some space in the log.
->>   */
->> -void __jbd2_log_wait_for_space(journal_t *journal)
->> +void __jbd2_log_wait_for_space(journal_t *journal, int scale)
->>  {
->>  	int nblocks, space_left;
->>  	/* assert_spin_locked(&journal->j_state_lock); */
->>  -	nblocks =3D jbd2_space_needed(journal);
->> +	nblocks =3D jbd2_space_needed(journal) * scale;
->>  	while (jbd2_log_space_left(journal) < nblocks) {
->>  		write_unlock(&journal->j_state_lock);
->>  		mutex_lock_io(&journal->j_checkpoint_mutex);
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index 953990eb70a9..871c3d251fdb 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -1100,6 +1100,21 @@ static void jbd2_stats_proc_exit(journal_t =
-*journal)
->>  	remove_proc_entry(journal->j_devname, proc_jbd2_stats);
->>  }
->>  +/*
->> + * Start to reclaim journal space asynchronously.
->> + */
->> +void jbd2_reclaim_log_space_async(struct work_struct *work)
->> +{
->> +	journal_t *journal =3D container_of(work, journal_t, =
-j_reclaim_work);
->> +
->> +	write_lock(&journal->j_state_lock);
->> +	/* See comments in add_transaction_credits() */
->> +	if (jbd2_log_space_left(journal) < jbd2_space_needed(journal) * =
-2)
->> +		__jbd2_log_wait_for_space(journal, 2);
->> +	journal->j_async_reclaim_run =3D 0;
->> +	write_unlock(&journal->j_state_lock);
->> +}
->> +
->>  /*
->>   * Management for journal control blocks: functions to create and
->>   * destroy journal_t structures, and to initialise and read existing
->> @@ -1142,6 +1157,15 @@ static journal_t *journal_init_common(struct =
-block_device *bdev,
->>  	/* The journal is marked for error until we succeed with =
-recovery! */
->>  	journal->j_flags =3D JBD2_ABORT;
->>  +	journal->j_reclaim_wq =3D alloc_workqueue("jbd2-reclaim-wq",
->> +					WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
->> +	if (!journal->j_reclaim_wq) {
->> +		pr_err("%s: failed to create workqueue\n", __func__);
->> +		goto err_cleanup;
->> +	}
->> +	INIT_WORK(&journal->j_reclaim_work, =
-jbd2_reclaim_log_space_async);
->> +	journal->j_async_reclaim_run =3D 0;
->> +
->>  	/* Set up a default-sized revoke table for the new mount. */
->>  	err =3D jbd2_journal_init_revoke(journal, =
-JOURNAL_REVOKE_DEFAULT_HASH);
->>  	if (err)
->> @@ -1718,6 +1742,7 @@ int jbd2_journal_destroy(journal_t *journal)
->>  	if (journal->j_running_transaction)
->>  		jbd2_journal_commit_transaction(journal);
->>  +	flush_workqueue(journal->j_reclaim_wq);
->>  	/* Force any old transactions to disk */
->>    	/* Totally anal locking here... */
->> @@ -1768,6 +1793,7 @@ int jbd2_journal_destroy(journal_t *journal)
->>  		jbd2_journal_destroy_revoke(journal);
->>  	if (journal->j_chksum_driver)
->>  		crypto_free_shash(journal->j_chksum_driver);
->> +	destroy_workqueue(journal->j_reclaim_wq);
->>  	kfree(journal->j_wbuf);
->>  	kfree(journal);
->>  diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
->> index 990e7b5062e7..27f9d47c620e 100644
->> --- a/fs/jbd2/transaction.c
->> +++ b/fs/jbd2/transaction.c
->> @@ -247,6 +247,16 @@ static int add_transaction_credits(journal_t =
-*journal, int blocks,
->>  		return 1;
->>  	}
->>  +	/*
->> +	 * If free journal space is lower than =
-(jbd2_space_needed(journal) * 2),
->> +	 * let's reclaim some journal space early and do it =
-asynchronously.
->> +	 */
->> +	if (journal->j_async_reclaim_run =3D=3D 0 &&
->> +	    jbd2_log_space_left(journal) < (jbd2_space_needed(journal) * =
-2)) {
->> +		journal->j_async_reclaim_run =3D 1;
->> +		queue_work(journal->j_reclaim_wq, =
-&journal->j_reclaim_work);
->> +	}
->> +
->>  	/*
->>  	 * The commit code assumes that it can get enough log space
->>  	 * without forcing a checkpoint.  This is *critical* for
->> @@ -264,7 +274,7 @@ static int add_transaction_credits(journal_t =
-*journal, int blocks,
->>  		jbd2_might_wait_for_commit(journal);
->>  		write_lock(&journal->j_state_lock);
->>  		if (jbd2_log_space_left(journal) < =
-jbd2_space_needed(journal))
->> -			__jbd2_log_wait_for_space(journal);
->> +			__jbd2_log_wait_for_space(journal, 1);
->>  		write_unlock(&journal->j_state_lock);
->>  		return 1;
->>  	}
->> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
->> index df03825ad1a1..acc93597271b 100644
->> --- a/include/linux/jbd2.h
->> +++ b/include/linux/jbd2.h
->> @@ -1152,6 +1152,27 @@ struct journal_s
->>  	 */
->>  	__u32 j_csum_seed;
->>  +	/**
->> +	 * @j_async_reclaim_run:
->> +	 *
->> +	 * Is there a work running asynchronously to reclaim journal =
-space.
->> +	 */
->> +	int j_async_reclaim_run;
->> +
->> +	/**
->> +	 * @j_reclaim_work:
->> +	 *
->> +	 * Work_struct to reclaim journal space.
->> +	 */
->> +	struct work_struct j_reclaim_work;
->> +
->> +	/**
->> +	 * @j_reclaim_wq:
->> +	 *
->> +	 * Workqueue for reclaim journal space asynchronously.
->> +	 */
->> +	struct workqueue_struct *j_reclaim_wq;
->> +
->>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
->>  	/**
->>  	 * @j_trans_commit_map:
->> @@ -1498,7 +1519,7 @@ int jbd2_complete_transaction(journal_t =
-*journal, tid_t tid);
->>  int jbd2_log_do_checkpoint(journal_t *journal);
->>  int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t =
-tid);
->>  -void __jbd2_log_wait_for_space(journal_t *journal);
->> +void __jbd2_log_wait_for_space(journal_t *journal, int scale);
->>  extern void __jbd2_journal_drop_transaction(journal_t *, =
-transaction_t *);
->>  extern int jbd2_cleanup_journal_tail(journal_t *);
->>=20
+> Do you think we can create uninit. blocks in dioread_nolock AIO/non-AIO DIO
+> writes cases as well with only shared inode lock mode?
+> Do you see any problems with this?
+> Or do you have any other suggestion?
 
+Not uninit but unwritten. Yes, we can do that. After all e.g. page writeback
+creates extents like this without any inode rwsem protection.
 
-Cheers, Andreas
+> In case of XFS -
+> I do see it promotes the demotes the shared lock (IOLOCK_XXX) in
+> xfs_file_aio_write_checks. But I don't know if after that, whether
+> it only holds the shared lock while doing the DIO IO?
+> And how does it protects against the parallel DIO reads which can
+> potentially expose any stale data?
 
+XFS protects DIO submission with shared IOLOCK. Stale data exposure is
+solved by using unwritten extents similarly to what ext4 does.
 
-
-
-
-
---Apple-Mail=_4AF1C7A4-1F5A-454B-8E0A-27CCA54F4EC0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl14CHIACgkQcqXauRfM
-H+A48g/+KNPxT1SSdiAD8hUC3LfpxPC8c0lUaqql/Pl3DnNqZ0wDceKLvYixHvi2
-Zr9NrGAOj25HORq/giJHCZV/MatNJp/jvxt3F8KG2Kcypc9CSZcJw7taY7hOtVYc
-NO9TN0zW6J5v8y8CQHFvOq+bsteur/bOY5+R540sJCwDaVHnPvxrvyC7v9Mc+BQg
-gbuIrSJFrgO5bhHCozzaHP9jMo3gh5WwriTxu1GSnNZ2004Yq24fn4M22CgYQOpn
-k+XLvBQ1sBHQggleEe8tS4PXndx691AxvoRu7K8lCqqZEixt88moRy5IsOkJoWOC
-9kckrm5vNGyjxTB2KRVMLf2N9M7uyGxOiVqquVv5uGAvT2CnpdmsHmwE14f2epj/
-Qhqp6RumGXniMArygOxLJZNhZEaqYXznV7Dy2ckKF4kH0RnqKQyI8FFxcNF6jTOb
-X6oSOQIF+ZUshuVgEM3OhKVkFr36U8sl52MRcfsRvqAJ4+NtjuvhI7RQQk5MttCZ
-aRJeIc0dbgZmaOWcMOWD8erS+m7YhNTiMoi+gYNEhTxmEdytvzTq17WJlt0wIB3M
-ukV+ovMhKmwsDxrnw6eenhR54uRc8Xxaxr0pePO4dUQHE4jg7Qr+i97Fsdfu9oK1
-Q6MqM0ByuBXj6mhvkxADUPBDJxOr7pYc/O+dy6YkaS7YB0+IhUk=
-=60Df
------END PGP SIGNATURE-----
-
---Apple-Mail=_4AF1C7A4-1F5A-454B-8E0A-27CCA54F4EC0--
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
