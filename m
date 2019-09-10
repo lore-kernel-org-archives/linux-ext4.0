@@ -2,70 +2,67 @@ Return-Path: <SRS0=9YdN=XF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.0 required=3.0
-	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0828C49ED8
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:50:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB741C49ED7
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:50:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE113206A5
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:50:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AD71C2089F
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:50:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2436510AbfIJPuB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2436513AbfIJPuB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 10 Sep 2019 11:50:01 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:2376 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727024AbfIJPuB (ORCPT
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:7496 "EHLO
+        mx0b-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2404484AbfIJPuB (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 10 Sep 2019 11:50:01 -0400
-Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x8AFlgPn095779;
-        Tue, 10 Sep 2019 11:49:54 -0400
+Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x8AFleNk008160;
+        Tue, 10 Sep 2019 11:49:47 -0400
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxe2b9w3b-1
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxcvdkudx-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 10 Sep 2019 11:49:54 -0400
-Received: from m0098394.ppops.net (m0098394.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x8AFm0gS098993;
-        Tue, 10 Sep 2019 11:49:54 -0400
-Received: from ppma01wdc.us.ibm.com (fd.55.37a9.ip4.static.sl-reverse.com [169.55.85.253])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxe2b9w2h-1
+        Tue, 10 Sep 2019 11:49:46 -0400
+Received: from m0127361.ppops.net (m0127361.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x8AFlfvK008177;
+        Tue, 10 Sep 2019 11:49:43 -0400
+Received: from ppma04dal.us.ibm.com (7a.29.35a9.ip4.static.sl-reverse.com [169.53.41.122])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxcvdkuak-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 10 Sep 2019 11:49:54 -0400
-Received: from pps.filterd (ppma01wdc.us.ibm.com [127.0.0.1])
-        by ppma01wdc.us.ibm.com (8.16.0.27/8.16.0.27) with SMTP id x8AFjPj8019834;
-        Tue, 10 Sep 2019 15:49:53 GMT
-Received: from b01cxnp22036.gho.pok.ibm.com (b01cxnp22036.gho.pok.ibm.com [9.57.198.26])
-        by ppma01wdc.us.ibm.com with ESMTP id 2uv4673y4y-1
+        Tue, 10 Sep 2019 11:49:42 -0400
+Received: from pps.filterd (ppma04dal.us.ibm.com [127.0.0.1])
+        by ppma04dal.us.ibm.com (8.16.0.27/8.16.0.27) with SMTP id x8AFjO1v009935;
+        Tue, 10 Sep 2019 15:49:36 GMT
+Received: from b01cxnp22033.gho.pok.ibm.com (b01cxnp22033.gho.pok.ibm.com [9.57.198.23])
+        by ppma04dal.us.ibm.com with ESMTP id 2uv4672w9p-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 10 Sep 2019 15:49:53 +0000
+        Tue, 10 Sep 2019 15:49:36 +0000
 Received: from b01ledav004.gho.pok.ibm.com (b01ledav004.gho.pok.ibm.com [9.57.199.109])
-        by b01cxnp22036.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x8AFnq0a41746750
+        by b01cxnp22033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x8AFnZYL49217796
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 10 Sep 2019 15:49:52 GMT
+        Tue, 10 Sep 2019 15:49:36 GMT
 Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 50AE1112064;
-        Tue, 10 Sep 2019 15:49:52 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id CF4BC11206B;
+        Tue, 10 Sep 2019 15:49:35 +0000 (GMT)
 Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id E8507112067;
-        Tue, 10 Sep 2019 15:49:48 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 44234112062;
+        Tue, 10 Sep 2019 15:49:32 +0000 (GMT)
 Received: from localhost.localdomain.com (unknown [9.102.1.89])
         by b01ledav004.gho.pok.ibm.com (Postfix) with ESMTP;
-        Tue, 10 Sep 2019 15:49:48 +0000 (GMT)
+        Tue, 10 Sep 2019 15:49:31 +0000 (GMT)
 From:   Chandan Rajendra <chandan@linux.ibm.com>
-To:     viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
+To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, viro@zeniv.linux.org.uk
 Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
         adilger.kernel@dilger.ca, ebiggers@kernel.org, hch@infradead.org,
         chandanrlinux@gmail.com
-Subject: [PATCH RESEND V5 4/7] fs/buffer.c: add decryption support via read_callbacks
-Date:   Tue, 10 Sep 2019 21:21:12 +0530
-Message-Id: <20190910155115.28550-5-chandan@linux.ibm.com>
+Subject: [PATCH RESEND V5 0/7] Consolidate FS read I/O callbacks code
+Date:   Tue, 10 Sep 2019 21:21:08 +0530
+Message-Id: <20190910155115.28550-1-chandan@linux.ibm.com>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190910155115.28550-1-chandan@linux.ibm.com>
-References: <20190910155115.28550-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
@@ -81,94 +78,124 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This commit sets up read_callbacks context for buffer heads whose
-contents need to be decrypted on endio.
+This patchset moves the "FS read I/O callbacks" code into a file of its
+own (i.e. fs/read_callbacks.c) and modifies the generic
+do_mpage_readpge() to make use of the functionality provided.
 
-Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
----
- fs/buffer.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+"FS read I/O callbacks" code implements the state machine that needs
+to be executed after reading data from files that are encrypted and/or
+have verity metadata associated with them.
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index ce357602f471..96c4c9840746 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -45,6 +45,7 @@
- #include <linux/bit_spinlock.h>
- #include <linux/pagevec.h>
- #include <linux/sched/mm.h>
-+#include <linux/read_callbacks.h>
- #include <trace/events/block.h>
- 
- static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
-@@ -245,11 +246,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
- 	return ret;
- }
- 
--/*
-- * I/O completion handler for block_read_full_page() - pages
-- * which come unlocked at the end of I/O.
-- */
--static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
-+void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- {
- 	unsigned long flags;
- 	struct buffer_head *first;
-@@ -257,8 +254,6 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- 	struct page *page;
- 	int page_uptodate = 1;
- 
--	BUG_ON(!buffer_async_read(bh));
--
- 	page = bh->b_page;
- 	if (uptodate) {
- 		set_buffer_uptodate(bh);
-@@ -306,6 +301,17 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- 	return;
- }
- 
-+/*
-+ * I/O completion handler for block_read_full_page().  Pages are unlocked
-+ * after the I/O completes and the read callbacks (if any) have executed.
-+ */
-+static void __end_buffer_async_read(struct buffer_head *bh, int uptodate)
-+{
-+	BUG_ON(!buffer_async_read(bh));
-+
-+	read_callbacks_endio_bh(bh, uptodate, end_buffer_async_read);
-+}
-+
- /*
-  * Completion handler for block_write_full_page() - pages which are unlocked
-  * during I/O, and which have PageWriteback cleared upon I/O completion.
-@@ -378,7 +384,7 @@ EXPORT_SYMBOL(end_buffer_async_write);
-  */
- static void mark_buffer_async_read(struct buffer_head *bh)
- {
--	bh->b_end_io = end_buffer_async_read;
-+	bh->b_end_io = __end_buffer_async_read;
- 	set_buffer_async_read(bh);
- }
- 
-@@ -2293,10 +2299,15 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
- 	 */
- 	for (i = 0; i < nr; i++) {
- 		bh = arr[i];
--		if (buffer_uptodate(bh))
--			end_buffer_async_read(bh, 1);
--		else
-+		if (buffer_uptodate(bh)) {
-+			__end_buffer_async_read(bh, 1);
-+		} else {
-+			if (WARN_ON(read_callbacks_setup_bh(inode, bh))) {
-+				__end_buffer_async_read(bh, 0);
-+				continue;
-+			}
- 			submit_bh(REQ_OP_READ, 0, bh);
-+		}
- 	}
- 	return 0;
- }
+With these changes in place, the patchset changes Ext4 to use
+mpage_readpage[s] instead of its own custom ext4_readpage[s]()
+functions. This is done to reduce duplication of code across
+filesystems. Also, "FS read I/O callbacks" source files will be built
+only if CONFIG_FS_ENCRYPTION is enabled.
+
+The patchset also modifies fs/buffer.c to get file
+encryption/decryption to work with subpage-sized blocks.
+
+The patches can also be obtained from
+https://github.com/chandanr/linux.git at branch subpage-encryption-v5.
+
+Changelog:
+V4 -> V5:
+   1. Since F2FS uses its own workqueue and also since its
+      decompression logic isn't an fs independent entity like fscrypt or
+      fsverity, this patchset drops support for F2FS.
+      The patchset still helps in removing a copy of
+      do_mpage_readpage() from Ext4 (i.e. ext4_readpage()) and also
+      prevents a copy of block_read_full_page() from being added into
+      Ext4 by adding support to "read callbacks" API invocations into
+      block_read_full_page().
+
+V3 -> V4:
+   1. A new buffer_head flag (i.e. BH_Read_Cb) is introduced to reliably
+      check if a buffer head's content has to be decrypted.
+   2. Fix layering violation. Now the code flow for decryption happens as shown below,
+      FS => read callbacks => fscrypt
+   3. Select FS_READ_CALLBACKS from FS specific kconfig file if FS_ENCRYPTION
+      is enabled.
+   4. Make 'struct read_callbacks_ctx' an opaque structure.
+   5. Make use of FS' endio function rather than implementing one in read
+      callbacks.
+   6. Make read_callbacks.h self-contained.
+   7. Split patchset to separate out ext4 and f2fs changes.
+   
+V2 -> V3:
+1. Split the V2 patch "Consolidate 'read callbacks' into a new file" into
+   three patches,
+   - Introduce the read_callbacks functionality.
+   - Convert encryption to use read_callbacks.
+   - Remove union from struct fscrypt_context.
+2. fs/Kconfig
+   Do not explicitly set the default value of 'n' for FS_READ_CALLBACKS.
+3. fs/crypto/Kconfig
+   Select CONFIG_FS_READ_CALLBACKS only if CONFIG_BLOCK is selected.
+4. Remove verity associated code in read_callbacks code.
+5. Introduce a callback argument to read_callbacks_setup() function
+   which gets invoked for each page for bio. F2FS uses this to perform
+   custom operations like decrementing the value of f2fs_sb_info->nr_pages[].
+6. Encapsulate the details of "read callbacks" (e.g. Usage of "struct
+   read_callbacks *ctx") within its own functions. When CONFIG_FS_READ_CALLBACKS
+   is set to 'n', the corresponding stub functions return approriate error
+   values.
+7. Split fscrypt_decrypt() function into fscrypt_decrypt_bio() and
+   fscrypt_decrypt_bh().
+8. Split end_read_callbacks() function into end_read_callbacks_bio() and
+   end_read_callbacks_bh().
+
+V1 -> V2:
+1. Removed the phrase "post_read_process" from file names and
+   functions. Instead we now use the phrase "read_callbacks" in its
+   place.
+2. When performing changes associated with (1), the changes made by
+   the patch "Remove the term 'bio' from post read processing" are
+   made in the earlier patch "Consolidate 'read callbacks' into a new
+   file". Hence the patch "Remove the term 'bio' from post read
+   processing" is removed from the patchset.
+
+RFC V2 -> V1:
+1. Test and verify FS_CFLG_OWN_PAGES subset of fscrypt_encrypt_page()
+   code by executing fstests on UBIFS.
+2. Implement F2fs function call back to check if the contents of a
+   page holding a verity file's data needs to be verified.
+
+RFC V1 -> RFC V2:
+1. Describe the purpose of "Post processing code" in the cover letter.
+2. Fix build errors when CONFIG_FS_VERITY is enabled.
+
+Chandan Rajendra (7):
+  buffer_head: Introduce BH_Read_Cb flag
+  FS: Introduce read callbacks
+  fs/mpage.c: Integrate read callbacks
+  fs/buffer.c: add decryption support via read_callbacks
+  ext4: Wire up ext4_readpage[s] to use mpage_readpage[s]
+  ext4: Enable encryption for subpage-sized blocks
+  fscrypt: remove struct fscrypt_ctx
+
+ Documentation/filesystems/fscrypt.rst |   4 +-
+ fs/Kconfig                            |   3 +
+ fs/Makefile                           |   1 +
+ fs/buffer.c                           |  33 ++-
+ fs/crypto/bio.c                       |  18 --
+ fs/crypto/crypto.c                    |  89 +-------
+ fs/crypto/fscrypt_private.h           |   3 -
+ fs/ext4/Kconfig                       |   1 +
+ fs/ext4/Makefile                      |   2 +-
+ fs/ext4/inode.c                       |   5 +-
+ fs/ext4/readpage.c                    | 295 --------------------------
+ fs/ext4/super.c                       |   7 -
+ fs/f2fs/Kconfig                       |   1 +
+ fs/mpage.c                            |  24 ++-
+ fs/read_callbacks.c                   | 285 +++++++++++++++++++++++++
+ include/linux/buffer_head.h           |   2 +
+ include/linux/fscrypt.h               |  32 ---
+ include/linux/read_callbacks.h        |  48 +++++
+ 18 files changed, 391 insertions(+), 462 deletions(-)
+ delete mode 100644 fs/ext4/readpage.c
+ create mode 100644 fs/read_callbacks.c
+ create mode 100644 include/linux/read_callbacks.h
+
 -- 
 2.19.1
-
