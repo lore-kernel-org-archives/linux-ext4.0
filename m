@@ -2,187 +2,143 @@ Return-Path: <SRS0=9YdN=XF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.0 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE397C4740A
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 14:10:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD295C49ED8
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:49:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA4192081B
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 14:10:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AE700206A5
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Sep 2019 15:49:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732351AbfIJOKu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Sep 2019 10:10:50 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:13484 "EHLO
+        id S1730127AbfIJPt4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Sep 2019 11:49:56 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:10104 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725942AbfIJOKu (ORCPT
+        by vger.kernel.org with ESMTP id S1727024AbfIJPtz (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 10 Sep 2019 10:10:50 -0400
-Received: from pps.filterd (m0098404.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x8AEAEUC001380
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Sep 2019 10:10:49 -0400
-Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxcwp1bwa-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 10 Sep 2019 10:10:49 -0400
-Received: from localhost
-        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
-        Tue, 10 Sep 2019 15:10:47 +0100
-Received: from b06cxnps3075.portsmouth.uk.ibm.com (9.149.109.195)
-        by e06smtp01.uk.ibm.com (192.168.101.131) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Tue, 10 Sep 2019 15:10:44 +0100
-Received: from d06av22.portsmouth.uk.ibm.com (d06av22.portsmouth.uk.ibm.com [9.149.105.58])
-        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x8AEAhDx33554446
+        Tue, 10 Sep 2019 11:49:55 -0400
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x8AFlhmP095873;
+        Tue, 10 Sep 2019 11:49:43 -0400
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxe2b9vvk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 10 Sep 2019 11:49:43 -0400
+Received: from m0098394.ppops.net (m0098394.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x8AFmn9m106442;
+        Tue, 10 Sep 2019 11:49:42 -0400
+Received: from ppma04dal.us.ibm.com (7a.29.35a9.ip4.static.sl-reverse.com [169.53.41.122])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2uxe2b9vv1-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 10 Sep 2019 11:49:42 -0400
+Received: from pps.filterd (ppma04dal.us.ibm.com [127.0.0.1])
+        by ppma04dal.us.ibm.com (8.16.0.27/8.16.0.27) with SMTP id x8AFjOrQ009923;
+        Tue, 10 Sep 2019 15:49:41 GMT
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+        by ppma04dal.us.ibm.com with ESMTP id 2uv4672waf-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 10 Sep 2019 15:49:41 +0000
+Received: from b01ledav004.gho.pok.ibm.com (b01ledav004.gho.pok.ibm.com [9.57.199.109])
+        by b01cxnp23033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x8AFneaW53084670
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 10 Sep 2019 14:10:43 GMT
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 00E574C050;
-        Tue, 10 Sep 2019 14:10:43 +0000 (GMT)
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 134674C072;
-        Tue, 10 Sep 2019 14:10:41 +0000 (GMT)
-Received: from [9.199.159.63] (unknown [9.199.159.63])
-        by d06av22.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Tue, 10 Sep 2019 14:10:40 +0000 (GMT)
-Subject: Re: [PATCH 0/3] Revert parallel dio reads
-To:     Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, hch@infradead.org
-Cc:     Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-References: <1566871552-60946-1-git-send-email-joseph.qi@linux.alibaba.com>
- <20190827115118.GY7777@dread.disaster.area>
- <20190829105858.GA22939@quack2.suse.cz>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Tue, 10 Sep 2019 19:40:40 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        Tue, 10 Sep 2019 15:49:40 GMT
+Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 70313112065;
+        Tue, 10 Sep 2019 15:49:40 +0000 (GMT)
+Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 61AEB112062;
+        Tue, 10 Sep 2019 15:49:37 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.102.1.89])
+        by b01ledav004.gho.pok.ibm.com (Postfix) with ESMTP;
+        Tue, 10 Sep 2019 15:49:37 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
+Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, hch@infradead.org,
+        chandanrlinux@gmail.com
+Subject: [PATCH RESEND V5 1/7] buffer_head: Introduce BH_Read_Cb flag
+Date:   Tue, 10 Sep 2019 21:21:09 +0530
+Message-Id: <20190910155115.28550-2-chandan@linux.ibm.com>
+X-Mailer: git-send-email 2.19.1
+In-Reply-To: <20190910155115.28550-1-chandan@linux.ibm.com>
+References: <20190910155115.28550-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
-In-Reply-To: <20190829105858.GA22939@quack2.suse.cz>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-x-cbid: 19091014-4275-0000-0000-00000363F9DB
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19091014-4276-0000-0000-000038764E55
-Message-Id: <20190910141041.134674C072@d06av22.portsmouth.uk.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-09-10_09:,,
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-09-10_11:,,
  signatures=0
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
  malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
  clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
  mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1906280000 definitions=main-1909100139
+ scancount=1 engine=8.0.1-1906280000 definitions=main-1909100149
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Decryption of file content encrypted using fscrypt relies on
+bio->bi_private holding a pointer to an encryption context
+i.e. Decryption operation is not performed for bios having a NULL value
+at bio->bi_private.
 
->> Before doing this, you might want to have a chat and co-ordinate
->> with the folks that are currently trying to port the ext4 direct IO
->> code to use the iomap infrastructure:
->>
->> https://lore.kernel.org/linux-ext4/20190827095221.GA1568@poseidon.bobrowski.net/T/#t
->>
->> That is going to need the shared locking on read and will work just
->> fine with shared locking on write, too (it's the code that XFS uses
->> for direct IO). So it might be best here if you work towards shared
->> locking on the write side rather than just revert the shared locking
->> on the read side....
-> 
-> Yeah, after converting ext4 DIO path to iomap infrastructure, using shared
-> inode lock for all aligned non-extending DIO writes will be easy so I'd
-> prefer if we didn't have to redo the iomap conversion patches due to these
-> reverts.
+The same logic cannot be used on buffer heads because,
+1. In Btrfs, write_dev_supers() sets bh->b_private to 'struct
+   btrfs_device' pointer and submits the buffer head for a write
+   operation.
+   1. In btrfs/146 test, the write operation fails and hence the
+      endio function clears the BH_Uptodate flag.
+   2. A read operation initiated later will submit the buffer head to
+      the block layer. During endio processing, bh_>b_private would have a
+      non-NULL value.
 
-I was looking into this to see what is required to convert this into 
-shared locking for DIO write side.
-Why do you say shared inode lock only for *aligned non-extending DIO 
-writes*?
-non-extending means overwrite case only, which still in today's code is
-not under any exclusive inode_lock (except the orphan handling and 
-truncate handling in case of error after IO is completed). But even with
-current code the perf problem is reported right?
+2. Another instance is when an Ext4 metadata block with BH_Uptodate set and
+   also part of the in-memory JBD list undergoes the following,
+   1. A sync() syscall is invoked by the userspace and the write
+      operation on the metadata block is initiated.
+   2. Due to an I/O failure, the BH_Uptodate flag is cleared by
+      end_buffer_async_write(). The bh->b_private member would be
+      pointing to a journal head structure.
+   3. In such a case, a read operation invoked on the block mapped by the
+      buffer head will initiate a read from the disk since the buffer head is
+      missing the BH_Uptodate flag.
+   4. After the read I/O request is submitted, end_buffer_async_read()
+      will find a non-NULL value at bh->b_private.
+   This scenario was observed when executing generic/475 test case.
 
-If we see in today's code (including in iomap new code for overwrite 
-case where we downgrade the lock).
-We call for inode_unlock in case of overwrite and then do the IO, since 
-we don't have to allocate any blocks in this case.
+Hence this commit introduces a new buffer head flag to reliably check for
+decryption of a buffer head's contents after the block has been read
+from the disk.
 
+Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
+---
+ include/linux/buffer_head.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-	/*
-	 * Make all waiters for direct IO properly wait also for extent
-	 * conversion. This also disallows race between truncate() and
-	 * overwrite DIO as i_dio_count needs to be incremented under
-  	 * i_mutex.
-	 */
-	inode_dio_begin(inode);
-	/* If we do a overwrite dio, i_mutex locking can be released */
-	overwrite = *((int *)iocb->private);
-	if (overwrite)
-		inode_unlock(inode);
-	
-	write data (via __blockdev_direct_IO)
-
-	inode_dio_end(inode);
-	/* take i_mutex locking again if we do a ovewrite dio */
-	if (overwrite)
-		inode_lock(inode);
-
-
-
-What can we do next:-
-
-Earlier the DIO reads was not having any inode_locking.
-IIUC, the inode_lock_shared() in the DIO reads case was added to
-protect the race against reading back uninitialized/stale data for e.g.
-in case of truncate or writeback etc.
-
-So as Dave suggested, shouldn't we add the complete shared locking in 
-DIO writes cases as well (except for unaligned writes, since it may 
-required zeroing of partial blocks).
-
-
-Could you please help me understand how we can go about it?
-I was thinking if we can create uninitialized blocks beyond EOF, so that
-any parallel read should only read 0 from that area and we may not 
-require exclusive inode_lock. The block creation is anyway protected
-with i_data_sem in ext4_map_blocks.
-
-
-I do see that in case of bufferedIO writes, we use 
-ext4_get_block_unwritten for dioread_nolock case. Which should
-be true for even writes extending beyond EOF. This will
-create uninitialized and mapped blocks only (even beyond EOF).
-But all of this happen under exclusive inode_lock() in ext4_file_write_iter.
-
-
-Whereas in case of DIO writes extending beyond EOF, we pass
-EXT4_GET_BLOCKS_CREATE in ext4_map_blocks which may allocate
-initialized & mapped blocks.
-Do you know why so?
-
-
-Do you think we can create uninit. blocks in dioread_nolock AIO/non-AIO 
-DIO writes cases as well with only shared inode lock mode?
-Do you see any problems with this?
-Or do you have any other suggestion?
-
-
-In case of XFS -
-I do see it promotes the demotes the shared lock (IOLOCK_XXX) in 
-xfs_file_aio_write_checks. But I don't know if after that, whether
-it only holds the shared lock while doing the DIO IO?
-And how does it protects against the parallel DIO reads which can 
-potentially expose any stale data?
-
-
-Appreciate any help & inputs from FS developers.
-
--ritesh
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 7b73ef7f902d..08f217ba8114 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -38,6 +38,7 @@ enum bh_state_bits {
+ 	BH_Meta,	/* Buffer contains metadata */
+ 	BH_Prio,	/* Buffer should be submitted with REQ_PRIO */
+ 	BH_Defer_Completion, /* Defer AIO completion to workqueue */
++	BH_Read_Cb,	     /* Block's contents needs to be decrypted */
+ 
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+@@ -134,6 +135,7 @@ BUFFER_FNS(Unwritten, unwritten)
+ BUFFER_FNS(Meta, meta)
+ BUFFER_FNS(Prio, prio)
+ BUFFER_FNS(Defer_Completion, defer_completion)
++BUFFER_FNS(Read_Cb, read_cb)
+ 
+ #define bh_offset(bh)		((unsigned long)(bh)->b_data & ~PAGE_MASK)
+ 
+-- 
+2.19.1
 
