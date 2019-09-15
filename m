@@ -6,38 +6,39 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A765CC4CEC6
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Sep 2019 06:57:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E446EC4CEC6
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Sep 2019 06:59:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8747421479
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Sep 2019 06:57:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3C3D20830
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Sep 2019 06:59:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726399AbfIOG46 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 15 Sep 2019 02:56:58 -0400
-Received: from gardel.0pointer.net ([85.214.157.71]:38262 "EHLO
+        id S1725991AbfIOG7r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 15 Sep 2019 02:59:47 -0400
+Received: from gardel.0pointer.net ([85.214.157.71]:38278 "EHLO
         gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725991AbfIOG45 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Sep 2019 02:56:57 -0400
-X-Greylist: delayed 313 seconds by postgrey-1.27 at vger.kernel.org; Sun, 15 Sep 2019 02:56:57 EDT
-Received: from gardel-login.0pointer.net (gardel.0pointer.net [85.214.157.71])
-        by gardel.0pointer.net (Postfix) with ESMTP id 51E95E811E1;
-        Sun, 15 Sep 2019 08:56:56 +0200 (CEST)
+        with ESMTP id S1725788AbfIOG7r (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Sep 2019 02:59:47 -0400
+Received: from gardel-login.0pointer.net (gardel.0pointer.net [IPv6:2a01:238:43ed:c300:10c3:bcf3:3266:da74])
+        by gardel.0pointer.net (Postfix) with ESMTP id 502B3E81176;
+        Sun, 15 Sep 2019 08:51:43 +0200 (CEST)
 Received: by gardel-login.0pointer.net (Postfix, from userid 1000)
-        id F3F4B160ADC; Sun, 15 Sep 2019 08:56:55 +0200 (CEST)
-Date:   Sun, 15 Sep 2019 08:56:55 +0200
+        id C5A95160ADC; Sun, 15 Sep 2019 08:51:42 +0200 (CEST)
+Date:   Sun, 15 Sep 2019 08:51:42 +0200
 From:   Lennart Poettering <mzxreary@0pointer.de>
 To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     "Alexander E. Patrakov" <patrakov@gmail.com>,
-        "Ahmed S. Darwish" <darwish.07@gmail.com>,
+Cc:     "Ahmed S. Darwish" <darwish.07@gmail.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.cz>, Ray Strode <rstrode@redhat.com>,
         William Jon McCann <mccann@jhu.edu>,
+        "Alexander E. Patrakov" <patrakov@gmail.com>,
         zhangjs <zachary@baishancloud.com>, linux-ext4@vger.kernel.org,
         lkml <linux-kernel@vger.kernel.org>
 Subject: Re: Linux 5.3-rc8
-Message-ID: <20190915065655.GB29681@gardel-login>
-References: <CAHk-=whW_AB0pZ0u6P9uVSWpqeb5t2NCX_sMpZNGy8shPDyDNg@mail.gmail.com>
+Message-ID: <20190915065142.GA29681@gardel-login>
+References: <CAHk-=wjo6qDvh_fUnd2HdDb63YbWN09kE0FJPgCW+nBaWMCNAQ@mail.gmail.com>
+ <20190911160729.GF2740@mit.edu>
+ <CAHk-=whW_AB0pZ0u6P9uVSWpqeb5t2NCX_sMpZNGy8shPDyDNg@mail.gmail.com>
  <CAHk-=wi_yXK5KSmRhgNRSmJSD55x+2-pRdZZPOT8Fm1B8w6jUw@mail.gmail.com>
  <20190911173624.GI2740@mit.edu>
  <20190912034421.GA2085@darwi-home-pc>
@@ -45,57 +46,74 @@ References: <CAHk-=whW_AB0pZ0u6P9uVSWpqeb5t2NCX_sMpZNGy8shPDyDNg@mail.gmail.com>
  <CAHk-=wjyH910+JRBdZf_Y9G54c1M=LBF8NKXB6vJcm9XjLnRfg@mail.gmail.com>
  <20190914150206.GA2270@darwi-home-pc>
  <CAHk-=wjuVT+2oj_U2V94MBVaJdWsbo1RWzy0qXQSMAUnSaQzxw@mail.gmail.com>
- <214fed0e-6659-def9-b5f8-a9d7a8cb72af@gmail.com>
- <CAHk-=wiB0e_uGpidYHf+dV4eeT+XmG-+rQBx=JJ110R48QFFWw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAHk-=wiB0e_uGpidYHf+dV4eeT+XmG-+rQBx=JJ110R48QFFWw@mail.gmail.com>
+In-Reply-To: <CAHk-=wjuVT+2oj_U2V94MBVaJdWsbo1RWzy0qXQSMAUnSaQzxw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sa, 14.09.19 09:52, Linus Torvalds (torvalds@linux-foundation.org) wrote:
+On Sa, 14.09.19 09:30, Linus Torvalds (torvalds@linux-foundation.org) wrote:
 
-> On Sat, Sep 14, 2019 at 9:35 AM Alexander E. Patrakov
-> <patrakov@gmail.com> wrote:
+> >     => src/random-seed/random-seed.c:
+> >     /*
+> >      * Let's make this whole job asynchronous, i.e. let's make
+> >      * ourselves a barrier for proper initialization of the
+> >      * random pool.
+> >      */
+> >      k = getrandom(buf, buf_size, GRND_NONBLOCK);
+> >      if (k < 0 && errno == EAGAIN && synchronous) {
+> >          log_notice("Kernel entropy pool is not initialized yet, "
+> >                     "waiting until it is.");
 > >
-> > Let me repeat: not -EINVAL, please. Please find some other error code,
-> > so that the application could sensibly distinguish between this case
-> > (low quality entropy is in the buffer) and the "kernel is too dumb" case
-> > (and no entropy is in the buffer).
+> >          k = getrandom(buf, buf_size, 0); /* retry synchronously */
+> >      }
 >
-> I'm not convinced we want applications to see that difference.
+> Yeah, the above is yet another example of completely broken garbage.
 >
-> The fact is, every time an application thinks it cares, it has caused
-> problems. I can just see systemd saying "ok, the kernel didn't block,
-> so I'll just do
->
->    while (getrandom(x) == -ENOENTROPY)
->        sleep(1);
->
-> instead. Which is still completely buggy garbage.
->
-> The fact is, we can't guarantee entropy in general. It's probably
-> there is practice, particularly with user space saving randomness from
-> last boot etc, but that kind of data may be real entropy, but the
-> kernel cannot *guarantee* that it is.
+> You can't just wait and block at boot. That is simply 100%
+> unacceptable, and always has been, exactly because that may
+> potentially mean waiting forever since you didn't do anything that
+> actually is likely to add any entropy.
 
-I am not expecting the kernel to guarantee entropy. I just expecting
-the kernel to not give me garbage knowingly. It's OK if it gives me
-garbage unknowingly, but I have a problem if it gives me trash all the
-time.
+Oh man. Just spend 5min to understand the situation, before claiming
+this was garbage or that was garbage. The code above does not block
+boot. It blocks startup of services that explicit order themselves
+after the code above. There's only a few services that should do that,
+and the main system boots up just fine without waiting for this.
 
-There's benefit in being able to wait until the pool is initialized
-before we update the random seed stored on disk with a new one, and
-there's benefit in being able to wait until the pool is initialized
-before we let cryptsetup read a fresh, one-time key for dm-crypt from
-/dev/urandom. I fully understand that any such reporting for
-initialization is "best-effort", i.e. to the point where we don't know
-anything to the contrary, but at least give userspace that.
+Primary example for stuff that orders itself after the above,
+correctly: cryptsetup entries that specify /dev/urandom as password
+source (i.e. swap space and stuff, that wants a new key on every
+boot). If we don't wait for the initialized pool for cases like that
+the password for that swap space is not actually going to be random,
+and that defeats its purpose.
+
+Another example: the storing of an updated random seed file on
+disk. We should only do that if the seed on disk is actually properly
+random, i.e. comes from an initialized pool. Hence we wait for the
+pool to be initialized before reading the seed from the pool, and
+writing it to disk.
+
+I'd argue that doing things like this is not "garbage", like you say,
+but *necessary* to make this stuff safe and secure.
+
+And no, other stuff is not delayed for this (but there are bugs of
+course, some random services in 3rd party packages that set too
+agressive deps, but that needs to be fixed there, and not in the
+kernel).
+
+Anyway, I really don't appreciate your tone, and being sucked into
+messy LKML discussions. I generally stay away from LKML, and gah, you
+remind me why. Just tone it down, not everything you never bothered to
+understand is "garbage".
+
+And please don't break /dev/urandom again. The above code is the ony
+way I see how we can make /dev/urandom-derived swap encryption safe,
+and the only way I can see how we can sanely write a valid random seed
+to disk after boot. You guys changed semantics on /dev/urandom all the
+time in the past, don't break API again, thank you very much.
 
 Lennart
-
---
-Lennart Poettering, Berlin
