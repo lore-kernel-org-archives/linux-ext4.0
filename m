@@ -3,72 +3,122 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29D94C49ED7
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Sep 2019 18:04:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F2F1C4CECE
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Sep 2019 18:08:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0BC5420650
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Sep 2019 18:04:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 43A07206A4
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Sep 2019 18:08:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389732AbfIPSEo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Sep 2019 14:04:44 -0400
-Received: from depni-mx.sinp.msu.ru ([213.131.7.21]:25 "EHLO
-        depni-mx.sinp.msu.ru" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726872AbfIPSEo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Sep 2019 14:04:44 -0400
-X-Greylist: delayed 565 seconds by postgrey-1.27 at vger.kernel.org; Mon, 16 Sep 2019 14:04:43 EDT
-Received: from spider (unknown [109.63.188.125])
-        by depni-mx.sinp.msu.ru (Postfix) with ESMTPSA id 218DA1BF402;
-        Mon, 16 Sep 2019 20:55:26 +0300 (MSK)
-From:   Serge Belyshev <belyshev@depni.sinp.msu.ru>
+        id S2390025AbfIPSIE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Sep 2019 14:08:04 -0400
+Received: from gardel.0pointer.net ([85.214.157.71]:39562 "EHLO
+        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389924AbfIPSIE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Sep 2019 14:08:04 -0400
+Received: from gardel-login.0pointer.net (gardel.0pointer.net [IPv6:2a01:238:43ed:c300:10c3:bcf3:3266:da74])
+        by gardel.0pointer.net (Postfix) with ESMTP id 21DEFE80FFC;
+        Mon, 16 Sep 2019 20:08:02 +0200 (CEST)
+Received: by gardel-login.0pointer.net (Postfix, from userid 1000)
+        id C5C67160ADC; Mon, 16 Sep 2019 20:08:01 +0200 (CEST)
+Date:   Mon, 16 Sep 2019 20:08:01 +0200
+From:   Lennart Poettering <mzxreary@0pointer.de>
 To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     Andy Lutomirski <luto@kernel.org>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Willy Tarreau <w@1wt.eu>,
-        Vito Caputo <vcaputo@pengaru.com>,
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "Alexander E. Patrakov" <patrakov@gmail.com>,
         "Ahmed S. Darwish" <darwish.07@gmail.com>,
-        Lennart Poettering <mzxreary@0pointer.de>,
+        Michael Kerrisk <mtk.manpages@gmail.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.cz>, Ray Strode <rstrode@redhat.com>,
         William Jon McCann <mccann@jhu.edu>,
-        "Alexander E. Patrakov" <patrakov@gmail.com>,
         zhangjs <zachary@baishancloud.com>, linux-ext4@vger.kernel.org,
         lkml <linux-kernel@vger.kernel.org>
-Subject: Re: Linux 5.3-rc8
-References: <CAHk-=wjuVT+2oj_U2V94MBVaJdWsbo1RWzy0qXQSMAUnSaQzxw@mail.gmail.com>
-        <20190915065142.GA29681@gardel-login>
-        <CAHk-=wiDNRPzuNE-eXs7QOpgPVLXsZOXEMQE9RmAWABiiZrSAQ@mail.gmail.com>
-        <20190916014050.GA7002@darwi-home-pc>
-        <20190916014833.cbetw4sqm3lq4x6m@shells.gnugeneration.com>
-        <20190916024904.GA22035@mit.edu> <20190916042952.GB23719@1wt.eu>
-        <CAHk-=wg4cONuiN32Tne28Cg2kEx6gsJCoOVroqgPFT7_Kg18Hg@mail.gmail.com>
-        <20190916061252.GA24002@1wt.eu>
-        <CAHk-=wjWSRzTjwN9F5gQcxtPkAgaRHJOOOTUjVakqP-Nzg9BXA@mail.gmail.com>
-        <20190916172117.GB15263@mit.edu>
-        <CAHk-=wgs65hez6ctK7J2k46BdQzvKU5avExPOTTJsZu6iqA-ow@mail.gmail.com>
-Date:   Mon, 16 Sep 2019 20:55:15 +0300
-In-Reply-To: <CAHk-=wgs65hez6ctK7J2k46BdQzvKU5avExPOTTJsZu6iqA-ow@mail.gmail.com>
-        (Linus Torvalds's message of "Mon, 16 Sep 2019 10:44:31 -0700")
-Message-ID: <8736gwt9bw.fsf@depni.sinp.msu.ru>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+Subject: Re: [PATCH RFC v2] random: optionally block in getrandom(2) when the
+ CRNG is uninitialized
+Message-ID: <20190916180801.GB30990@gardel-login>
+References: <CAHk-=whW_AB0pZ0u6P9uVSWpqeb5t2NCX_sMpZNGy8shPDyDNg@mail.gmail.com>
+ <CAHk-=wi_yXK5KSmRhgNRSmJSD55x+2-pRdZZPOT8Fm1B8w6jUw@mail.gmail.com>
+ <20190911173624.GI2740@mit.edu>
+ <20190912034421.GA2085@darwi-home-pc>
+ <20190912082530.GA27365@mit.edu>
+ <CAHk-=wjyH910+JRBdZf_Y9G54c1M=LBF8NKXB6vJcm9XjLnRfg@mail.gmail.com>
+ <20190914122500.GA1425@darwi-home-pc>
+ <008f17bc-102b-e762-a17c-e2766d48f515@gmail.com>
+ <20190915052242.GG19710@mit.edu>
+ <CAHk-=wgg2T=3KxrO-BY3nHJgMEyApjnO3cwbQb_0vxsn9qKN8Q@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAHk-=wgg2T=3KxrO-BY3nHJgMEyApjnO3cwbQb_0vxsn9qKN8Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On So, 15.09.19 10:32, Linus Torvalds (torvalds@linux-foundation.org) wrote:
 
->  - add new GRND_SECURE and GRND_INSECURE flags that have the actual
-> useful behaviors that we currently pretty much lack
+> [ Added Lennart, who was active in the other thread ]
 >
->  - consider the old 0-3 flag values legacy, deprecated, and unsafe
-> because they _will_ time out to fix the existing problem we have right
-> now because of their bad behavior.
+> On Sat, Sep 14, 2019 at 10:22 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> >
+> > Thus, add an optional configuration option which stops getrandom(2)
+> > from blocking, but instead returns "best efforts" randomness, which
+> > might not be random or secure at all.
+>
+> So I hate having a config option for something like this.
+>
+> How about this attached patch instead? It only changes the waiting
+> logic, and I'll quote the comment in full, because I think that
+> explains not only the rationale, it explains every part of the patch
+> (and is most of the patch anyway):
+>
+>  * We refuse to wait very long for a blocking getrandom().
+>  *
+>  * The crng may not be ready during boot, but if you ask for
+>  * blocking random numbers very early, there is no guarantee
+>  * that you'll ever get any timely entropy.
+>  *
+>  * If you are sure you need entropy and that you can generate
+>  * it, you need to ask for non-blocking random state, and then
+>  * if that fails you must actively _do_something_ that causes
+>  * enough system activity, perhaps asking the user to type
+>  * something on the keyboard.
 
-Just for the record because I did not see it mentioned in this thread,
-this patch by Andy Lutomirski, posted two weeks ago, adds GRND_INSECURE
-and makes GRND_RANDOM a no-op:
+You are requesting a UI change here. Maybe the kernel shouldn't be the
+one figuring out UI.
 
-https://lore.kernel.org/lkml/cover.1567126741.git.luto@kernel.org/
+I mean, as I understand you are unhappy with behaviour you saw on
+systemd systems; we can certainly improve behaviour of systemd in
+userspace alone, i.e. abort the getrandom() after a while in userspace
+and log about it using typical userspace logging to the console. I am
+not sure why you want to do all that in the kernel, the kernel isn't
+great at user interaction, and really shouldn't be.
+
+If all you want is abort the getrandom() after 30s and a friendly
+message on screen, by all means, let's add that to systemd, I have
+zero problem with that. systemd has infrastructure for pushing that to
+the user, the kernel doesn't really have that so nicely.
+
+It appears to me you subscribe too much to an idea that userspace
+people are not smart enough and couldn't implement something like
+this. Turns out we can though, and there's no need to add logic that
+appears to follow the logic of "never trust userspace"...
+
+i.e. why not just consider this all just a feature request for the
+systemd-random-seed.service, i.e. the service you saw the issue with
+to handle this on its own?
+
+> Hmm? No strange behavior. No odd config variables. A bounded total
+> boot-time wait of 30s (which is a completely random number, but I
+> claimed it as the "big red button" time).
+
+As mentioned, in systemd's case, updating the random seed on disk
+is entirely fine to take 5h or so. I don't really think we really need
+to bound this in kernel space.
+
+Lennart
+
+--
+Lennart Poettering, Berlin
