@@ -2,80 +2,48 @@ Return-Path: <SRS0=KkTy=XM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0E82C4CECD
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 01:42:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 08D27C4CECE
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 02:07:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A115B206A1
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 01:42:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1568684520;
-	bh=qyph07UWpAex17FgoCL1r5b+7tyl4ETGGhdXOzgUefU=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=HtM3GwCBts/9vvWwBVXWj5xz6dy/gJ7kpaU8PsBgA9ix2PW41zT1rHMLM9REWCl9l
-	 JsTk2P+ovN8Ll+aeaENghMIr5Fbb1xTxisqfIm/DPMcN558acwxRkwo5oTpSRAADSD
-	 kUxBOg8Y6r/bPlMq/OMAe9jZKBN7GzhWag0I4W6E=
+	by mail.kernel.org (Postfix) with ESMTP id D2F5C20880
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 02:07:17 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (1024-bit key) header.d=codon.org.uk header.i=@codon.org.uk header.b="xHErRN1q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391751AbfIQBmA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Sep 2019 21:42:00 -0400
-Received: from mail-lj1-f196.google.com ([209.85.208.196]:38819 "EHLO
-        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728211AbfIQBl7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Sep 2019 21:41:59 -0400
-Received: by mail-lj1-f196.google.com with SMTP id y23so1765372ljn.5
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Sep 2019 18:41:57 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=eFonvhfNYcxKepSfnQcuhKAjMEuQmhnrqu5ZWiTPe6o=;
-        b=Bmy2g+SI64cuFudCSab745GhMwBUH8vFBHoCEPyte/aVPJTeqvf0Ub3G6d17emIl2S
-         cXEEoOWnhpdJi6yi8YT0lVGj2snzwX9DRJYCmT2Fi2PkFCGtXGxs2cGseskytXSyw5ue
-         jAlwgncWpCtsxiLRT6WPIAxhjk0PtHEWVcWT4=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=eFonvhfNYcxKepSfnQcuhKAjMEuQmhnrqu5ZWiTPe6o=;
-        b=QbpbQeYOxcXp+oTp7dPCOD9UPROmVAVACyTLRa7UgnC5dcV7IcNNXHDWvJ+NAZl6Ji
-         DbSEJ+bDrJYoY0BhqAu7qKEJafect8WwQtxDhrJuSkxpHPXfisTV1m9XQTgg9N8Wzea2
-         NCmlK52S515MApEiOj5GH3oKRPKLd/OxWsLEc1f0kfWtBI7PH4kY8PzcdtTo+CM4w/Jq
-         mbYQYzNHbGWjEyPs82YO82dxZXQ+j6GN9XQfxPY1EeOgeufj2RArr6YZ2gF0yWZ9fHAx
-         5khyw7ezhkrjYAn4yCEL4G80M96tpt5jSbVeHRfsrXOiT9bQYDpQeJkGX5TrB/PRuPlX
-         Bb1g==
-X-Gm-Message-State: APjAAAWS6IwLQF+/+xnzUeNoO29ednPVTPLHEfUjM8wtYzRwO2N0xFfE
-        8TBfAL4nkoYWbrBQLeIm8z2WhYUREfE=
-X-Google-Smtp-Source: APXvYqyDiPCaYV+XViDMdqmMlrGA9qu4dQg+qrRAs1+wADldz+3HzvMAfKkRlHiQuI8A2Qcmv0fH+w==
-X-Received: by 2002:a2e:7a16:: with SMTP id v22mr390573ljc.61.1568684516946;
-        Mon, 16 Sep 2019 18:41:56 -0700 (PDT)
-Received: from mail-lf1-f51.google.com (mail-lf1-f51.google.com. [209.85.167.51])
-        by smtp.gmail.com with ESMTPSA id f21sm120189lfm.90.2019.09.16.18.41.52
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 16 Sep 2019 18:41:53 -0700 (PDT)
-Received: by mail-lf1-f51.google.com with SMTP id r2so1462990lfn.8
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Sep 2019 18:41:52 -0700 (PDT)
-X-Received: by 2002:ac2:5a4c:: with SMTP id r12mr577900lfn.52.1568684512695;
- Mon, 16 Sep 2019 18:41:52 -0700 (PDT)
+        id S2391951AbfIQCHP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Sep 2019 22:07:15 -0400
+Received: from cavan.codon.org.uk ([93.93.128.6]:48057 "EHLO
+        cavan.codon.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728556AbfIQCHP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Sep 2019 22:07:15 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=codon.org.uk; s=63138784; h=Subject:Message-ID:From:CC:To:
+        Content-Transfer-Encoding:Content-Type:MIME-Version:References:In-Reply-To:
+        Date:Sender:Reply-To:Content-ID:Content-Description:Resent-Date:Resent-From:
+        Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=vVkn2O/9lGVNrbPzlDo6XOPFmZ8O6RHYGV95uzIF1K4=; b=xHErRN1qIc/xI/5awjhwSFsV39
+        Jd9w5VmsEBkVcocyN4+byYKC0GvQw6HOLfxqIGFvGkmhMLkHpkK7APEYxO1WvsGH0CUhzKlGGbygr
+        RAUxRzG0L+yl27dmbBDl2HOHvXNGY76txjx0WFC6l+aRu4i59Oek1fIlAqQE5MpUQLhE=;
+Received: from 199-83-223-235.public.monkeybrains.net ([199.83.223.235] helo=[192.168.1.141])
+        by cavan.codon.org.uk with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.89)
+        (envelope-from <mjg59@srcf.ucam.org>)
+        id 1iA2tG-000305-SF; Tue, 17 Sep 2019 03:06:53 +0100
+Date:   Mon, 16 Sep 2019 18:46:07 -0700
+User-Agent: K-9 Mail for Android
+In-Reply-To: <CAHk-=whfPwei+yf9vBgfSuG5HDtiYmt3nOu9Js+vkTYSrMf2ow@mail.gmail.com>
+References: <20190916042952.GB23719@1wt.eu> <CAHk-=wg4cONuiN32Tne28Cg2kEx6gsJCoOVroqgPFT7_Kg18Hg@mail.gmail.com> <20190916061252.GA24002@1wt.eu> <CAHk-=wjWSRzTjwN9F5gQcxtPkAgaRHJOOOTUjVakqP-Nzg9BXA@mail.gmail.com> <20190916172117.GB15263@mit.edu> <CAHk-=wgs65hez6ctK7J2k46BdQzvKU5avExPOTTJsZu6iqA-ow@mail.gmail.com> <20190916230217.vmgvsm6o2o4uq5j7@srcf.ucam.org> <CAHk-=whwSt4RqzqM7cA5SAhj+wkORfr1bG=+yydTJPtayQ0JwQ@mail.gmail.com> <20190916231103.bic65ab4ifv7vhio@srcf.ucam.org> <CAHk-=wjwJDznDUsiaXH=UCxFRQxNEpj2tTCa0GvZm2WB4+hJ4A@mail.gmail.com> <20190916232922.GA7880@darwi-home-pc> <CAHk-=wh2PuYtuUVt523j20cTceN+ps8UNJY=uRWQuRaDeDyLQw@mail.gmail.com> <BEF07E89-E36D-480F-AB1E-25C80C9DABE7@srcf.ucam.org> <CAHk-=whfPwei+yf9vBgfSuG5HDtiYmt3nOu9Js+vkTYSrMf2ow@mail.gmail.com>
 MIME-Version: 1.0
-References: <20190916042952.GB23719@1wt.eu> <CAHk-=wg4cONuiN32Tne28Cg2kEx6gsJCoOVroqgPFT7_Kg18Hg@mail.gmail.com>
- <20190916061252.GA24002@1wt.eu> <CAHk-=wjWSRzTjwN9F5gQcxtPkAgaRHJOOOTUjVakqP-Nzg9BXA@mail.gmail.com>
- <20190916172117.GB15263@mit.edu> <CAHk-=wgs65hez6ctK7J2k46BdQzvKU5avExPOTTJsZu6iqA-ow@mail.gmail.com>
- <20190916230217.vmgvsm6o2o4uq5j7@srcf.ucam.org> <CAHk-=whwSt4RqzqM7cA5SAhj+wkORfr1bG=+yydTJPtayQ0JwQ@mail.gmail.com>
- <20190916231103.bic65ab4ifv7vhio@srcf.ucam.org> <CAHk-=wjwJDznDUsiaXH=UCxFRQxNEpj2tTCa0GvZm2WB4+hJ4A@mail.gmail.com>
- <20190916232922.GA7880@darwi-home-pc> <CAHk-=wh2PuYtuUVt523j20cTceN+ps8UNJY=uRWQuRaDeDyLQw@mail.gmail.com>
- <BEF07E89-E36D-480F-AB1E-25C80C9DABE7@srcf.ucam.org>
-In-Reply-To: <BEF07E89-E36D-480F-AB1E-25C80C9DABE7@srcf.ucam.org>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Mon, 16 Sep 2019 18:41:36 -0700
-X-Gmail-Original-Message-ID: <CAHk-=whfPwei+yf9vBgfSuG5HDtiYmt3nOu9Js+vkTYSrMf2ow@mail.gmail.com>
-Message-ID: <CAHk-=whfPwei+yf9vBgfSuG5HDtiYmt3nOu9Js+vkTYSrMf2ow@mail.gmail.com>
-Subject: Re: Linux 5.3-rc8
-To:     Matthew Garrett <mjg59@srcf.ucam.org>
-Cc:     "Ahmed S. Darwish" <darwish.07@gmail.com>,
+Content-Type: text/plain;
+ charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+CC:     "Ahmed S. Darwish" <darwish.07@gmail.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Willy Tarreau <w@1wt.eu>,
         Vito Caputo <vcaputo@pengaru.com>,
         Lennart Poettering <mzxreary@0pointer.de>,
@@ -85,28 +53,48 @@ Cc:     "Ahmed S. Darwish" <darwish.07@gmail.com>,
         "Alexander E. Patrakov" <patrakov@gmail.com>,
         zhangjs <zachary@baishancloud.com>, linux-ext4@vger.kernel.org,
         lkml <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+From:   Matthew Garrett <mjg59@srcf.ucam.org>
+Message-ID: <C4F7DC65-50B9-4D70-8E9B-0A6FF5C1070A@srcf.ucam.org>
+X-SA-Do-Not-Run: Yes
+X-SA-Exim-Connect-IP: 199.83.223.235
+X-SA-Exim-Mail-From: mjg59@srcf.ucam.org
+Subject: Re: Linux 5.3-rc8
+X-SA-Exim-Version: 4.2.1 (built Tue, 02 Aug 2016 21:08:31 +0000)
+X-SA-Exim-Scanned: No (on cavan.codon.org.uk); Unknown failure
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Sep 16, 2019 at 6:24 PM Matthew Garrett <mjg59@srcf.ucam.org> wrote:
+On 16 September 2019 18:41:36 GMT-07:00, Linus Torvalds <torvalds@linux-fou=
+ndation=2Eorg> wrote:
+>On Mon, Sep 16, 2019 at 6:24 PM Matthew Garrett <mjg59@srcf=2Eucam=2Eorg>
+>wrote:
+>>
+>> Exactly the scenario where you want getrandom() to block, yes=2E
 >
-> Exactly the scenario where you want getrandom() to block, yes.
+>It *would* block=2E Just not forever=2E
 
-It *would* block. Just not forever.
+It's already not forever - there's enough running in the background of tha=
+t system that it'll unblock eventually=2E=20
 
-And btw, the whole "generate key at boot when nothing else is going
-on" is already broken, so presumably nobody actually does it.
+>And btw, the whole "generate key at boot when nothing else is going
+>on" is already broken, so presumably nobody actually does it=2E
 
-See why I'm saying "hypothetical"? You're doing it again.
+If nothing ever did this, why was getrandom() designed in a way to protect=
+ against this situation?=20
 
-> >Then you have to ignore the big warning too.
+>See why I'm saying "hypothetical"? You're doing it again=2E
 >
-> The big warning that's only printed in dmesg?
+>> >Then you have to ignore the big warning too=2E
+>>
+>> The big warning that's only printed in dmesg?
+>
+>Well, the patch actually made getrandom() return en error too, but you
+>seem more interested in the hypotheticals than in arguing actualities=2E
 
-Well, the patch actually made getrandom() return en error too, but you
-seem more interested in the hypotheticals than in arguing actualities.
+If you want to be safe, terminate the process=2E
 
-          Linus
+
+--=20
+Matthew Garrett | mjg59@srcf=2Eucam=2Eorg
