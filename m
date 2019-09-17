@@ -5,23 +5,24 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85976C4CEC9
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 15:08:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FB9AC4CEC9
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 15:09:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 58BD32189D
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 15:08:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CD7FC218AC
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Sep 2019 15:09:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728940AbfIQPIl convert rfc822-to-8bit (ORCPT
+        id S1729145AbfIQPJd convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 17 Sep 2019 11:08:41 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45366 "EHLO mail.kernel.org"
+        Tue, 17 Sep 2019 11:09:33 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45922 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728802AbfIQPIk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 17 Sep 2019 11:08:40 -0400
+        id S1728802AbfIQPJd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 17 Sep 2019 11:09:33 -0400
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 204779] Xubuntu 18.04 sometimes freezes when turned on on logo
-Date:   Tue, 17 Sep 2019 15:08:40 +0000
+Subject: [Bug 204779] Xubuntu 18.04 Sometimes freezes when turned off on the
+ logo
+Date:   Tue, 17 Sep 2019 15:09:32 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -36,8 +37,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: component product
-Message-ID: <bug-204779-13602-t5OftIkXA4@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: short_desc
+Message-ID: <bug-204779-13602-hmVtPqlsDR@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-204779-13602@https.bugzilla.kernel.org/>
 References: <bug-204779-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -56,8 +57,9 @@ Maxim (0963499018m@gmail.com) changed:
 
            What    |Removed                     |Added
 ----------------------------------------------------------------------------
-          Component|ext4                        |Bug Tracker
-            Product|File System                 |Other
+            Summary|Xubuntu 18.04 sometimes     |Xubuntu 18.04 Sometimes
+                   |freezes when turned on on   |freezes when turned off on
+                   |logo                        |the logo
 
 -- 
 You are receiving this mail because:
