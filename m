@@ -2,41 +2,42 @@ Return-Path: <SRS0=rV8s=XP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B090C49ED7
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90C54C3A5A2
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 43DB020B7C
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EE4D20B7C
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1568990229;
-	bh=UdNzovcKyZpZxczO/+ZLqGn4wfUX7R9VU6/eNsOHJVI=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=0uhY0uwF+PSMERseaAQFzdnp9wjvlWR0g3Y4hw07TCOis1UYCkjm9aoZEq29GrBrf
-	 oJCzvEY5Fznfp/WA3Hxt5rIJd/Dqqzu0XZyrZbFHPoTPH3BGxk3CMwPfbvjnIA29cG
-	 n/zFhSxtHjrNCWwGTF4XXgrggZaIJ29gJ4MpRpVY=
+	s=default; t=1568990234;
+	bh=kHRw263jBX10OebCpVsHw8yXgkHI5XAiaesnjRNlA+g=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=o0mDxBoHS6gcFZJUVZ6ANwLgmlq4rVXn003GzkRboZBgRTY85G7j0aMiafKTFX5CK
+	 sRM/iMynxSHAdIy2MwGNZXyUMWMR1jGyavdhZCi0A1vxilBjHP8SodUEXDBPaWNXvm
+	 9lnsCLU/PMBWxbXrNPFQWZTYO1vMi+48yxDJrwUI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392430AbfITOgf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Sep 2019 10:36:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48824 "EHLO mail.kernel.org"
+        id S2392698AbfITOhJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Sep 2019 10:37:09 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48962 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388039AbfITOgd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Sep 2019 10:36:33 -0400
+        id S2392427AbfITOgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Sep 2019 10:36:35 -0400
 Received: from localhost (c-67-180-165-146.hsd1.ca.comcast.net [67.180.165.146])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7C0F4206C2;
-        Fri, 20 Sep 2019 14:36:32 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id ACCBB21907;
+        Fri, 20 Sep 2019 14:36:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1568990192;
-        bh=UdNzovcKyZpZxczO/+ZLqGn4wfUX7R9VU6/eNsOHJVI=;
-        h=From:To:Cc:Subject:Date:From;
-        b=PsuELdiTwZ0uKFAseBBIl+FQ0jl+wrcFUUF7O+agBb8n4p/1RXoRd+Gj+s1nnTKVP
-         /vAFAl6VvdLTOmFytk5ShVdgJ7wNzqTFir9jPam6YTzprE+wYYjQyw5JX4H4JXB/gh
-         BabaDD/Dla7e99lS72oDsItadPSr4V3dJPpGIErY=
+        s=default; t=1568990194;
+        bh=kHRw263jBX10OebCpVsHw8yXgkHI5XAiaesnjRNlA+g=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=anKKxAyVh/1IJmtvyICh43rKDNgKQ4FpuIN/dn0vWAIrk0bPPojuOPyRvuXEKrDeJ
+         nQobi34/sCVTnLtUmusGdxgZAmkxUxKKcJkvUvQyhdv5/hT4/Nfd1l6Zmgvj38xZ1w
+         +bccizQ421SdfyMrzusR6oyjuh30ag5yFy+/zp6E=
 From:   Andy Lutomirski <luto@kernel.org>
 To:     Theodore Tso <tytso@google.com>
 Cc:     LKML <linux-kernel@vger.kernel.org>,
@@ -53,10 +54,12 @@ Cc:     LKML <linux-kernel@vger.kernel.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         linux-man <linux-man@vger.kernel.org>,
         Andy Lutomirski <luto@kernel.org>
-Subject: [PATCH v2 0/7] Rework random blocking
-Date:   Fri, 20 Sep 2019 07:36:22 -0700
-Message-Id: <cover.1568990048.git.luto@kernel.org>
+Subject: [PATCH v2 3/7] random: Ignore GRND_RANDOM in getentropy(2)
+Date:   Fri, 20 Sep 2019 07:36:25 -0700
+Message-Id: <900d198c4a57aa4c81d506b7d16f996c4414c3dc.1568990048.git.luto@kernel.org>
 X-Mailer: git-send-email 2.21.0
+In-Reply-To: <cover.1568990048.git.luto@kernel.org>
+References: <cover.1568990048.git.luto@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -64,52 +67,45 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This makes two major semantic changes to Linux's random APIs:
+The separate blocking pool is going away.  Start by ignoring
+GRND_RANDOM in getentropy(2).
 
-It adds getentropy(..., GRND_INSECURE).  This causes getentropy to
-always return *something*.  There is no guarantee whatsoever that
-the result will be cryptographically random or even unique, but the
-kernel will give the best quality random output it can.  The name is
-a big hint: the resulting output is INSECURE.
+This should not materially break any API.  Any code that worked
+without this change should work at least as well with this change.
 
-The purpose of this is to allow programs that genuinely want
-best-effort entropy to get it without resorting to /dev/urandom.
-Plenty of programs do this because they need to do *something*
-during boot and they can't afford to wait.  Calling it "INSECURE" is
-probably the best we can do to discourage using this API for things
-that need security.
+Signed-off-by: Andy Lutomirski <luto@kernel.org>
+---
+ drivers/char/random.c       | 3 ---
+ include/uapi/linux/random.h | 2 +-
+ 2 files changed, 1 insertion(+), 4 deletions(-)
 
-This series also removes the blocking pool and makes /dev/random
-work just like getentropy(..., 0) and makes GRND_RANDOM a no-op.  I
-believe that Linux's blocking pool has outlived its usefulness.
-Linux's CRNG generates output that is good enough to use even for
-key generation.  The blocking pool is not stronger in any material
-way, and keeping it around requires a lot of infrastructure of
-dubious value.
-
-This series should not break any existing programs.  /dev/urandom is
-unchanged.  /dev/random will still block just after booting, but it
-will block less than it used to.  getentropy() with existing flags
-will return output that is, for practical purposes, just as strong
-as before.
-
-Changes from v1:
- - Rebased to v5.3.  No other changes.
-
-Andy Lutomirski (7):
-  random: Don't wake crng_init_wait when crng_init == 1
-  random: Add GRND_INSECURE to return best-effort non-cryptographic
-    bytes
-  random: Ignore GRND_RANDOM in getentropy(2)
-  random: Make /dev/random be almost like /dev/urandom
-  random: Remove the blocking pool
-  random: Delete code to pull data into pools
-  random: Remove kernel.random.read_wakeup_threshold
-
- drivers/char/random.c       | 234 ++++--------------------------------
- include/uapi/linux/random.h |   4 +-
- 2 files changed, 27 insertions(+), 211 deletions(-)
-
+diff --git a/drivers/char/random.c b/drivers/char/random.c
+index acabb870f222..1ad2c7eaf675 100644
+--- a/drivers/char/random.c
++++ b/drivers/char/random.c
+@@ -2135,9 +2135,6 @@ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
+ 	if (count > INT_MAX)
+ 		count = INT_MAX;
+ 
+-	if (flags & GRND_RANDOM)
+-		return _random_read(flags & GRND_NONBLOCK, buf, count);
+-
+ 	if (!(flags & GRND_INSECURE) && !crng_ready()) {
+ 		if (flags & GRND_NONBLOCK)
+ 			return -EAGAIN;
+diff --git a/include/uapi/linux/random.h b/include/uapi/linux/random.h
+index c092d20088d3..dcc1b3e6106f 100644
+--- a/include/uapi/linux/random.h
++++ b/include/uapi/linux/random.h
+@@ -48,7 +48,7 @@ struct rand_pool_info {
+  * Flags for getrandom(2)
+  *
+  * GRND_NONBLOCK	Don't block and return EAGAIN instead
+- * GRND_RANDOM		Use the /dev/random pool instead of /dev/urandom
++ * GRND_RANDOM		No effect
+  * GRND_INSECURE	Return non-cryptographic random bytes
+  */
+ #define GRND_NONBLOCK	0x0001
 -- 
 2.21.0
 
