@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 141BAC49ED7
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CCC7C49ED7
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DFE352080F
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 358332080F
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:37:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1568990222;
-	bh=48YHBcgZFu1F8D2WFbpxkLRezHZiaeSa/tHcV9zv9WI=;
+	s=default; t=1568990224;
+	bh=Xa5lUKuEKR/Mj/s8RMBKL11PjH1zbgHgXvtpnqsOn+I=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=DlgYgS7bLouFsj/XWQNCqJlYzTWej12bva1HWfypZCcokKZCo0gP4S3m9ke0y9rhV
-	 Y1wi+iPixPl9c5Q02i+ffyFwOB66Qxme7B2Eo8f1iehsWV9TslNkKpPVnttNp0r9DX
-	 ST0zzrvf0qiI7Dcs0k7YahUJLBLEUqGhHpKCkX6k=
+	b=nCmo/IGGqaVYWtoB2Wcvza+DWmg2Wp9X6mu9XEMCIplnVT7SVHkzpBBlJQhXTGxh+
+	 3cCkCJVwE6382l3NAiVwXT6VWM9p7e+lDfbpSyNE8rhkrHvIAg9a+fHkwEWRkCC6SN
+	 GMqviJJMf5XQ7jC2bq0KIvG+dYi8g+ATGJdlC0n0=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392242AbfITOg6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Sep 2019 10:36:58 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49090 "EHLO mail.kernel.org"
+        id S2392042AbfITOgh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Sep 2019 10:36:37 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48998 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2392496AbfITOgi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Sep 2019 10:36:38 -0400
+        id S2392458AbfITOgg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Sep 2019 10:36:36 -0400
 Received: from localhost (c-67-180-165-146.hsd1.ca.comcast.net [67.180.165.146])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 739D22196E;
-        Fri, 20 Sep 2019 14:36:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6E418218AE;
+        Fri, 20 Sep 2019 14:36:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1568990197;
-        bh=48YHBcgZFu1F8D2WFbpxkLRezHZiaeSa/tHcV9zv9WI=;
+        s=default; t=1568990195;
+        bh=Xa5lUKuEKR/Mj/s8RMBKL11PjH1zbgHgXvtpnqsOn+I=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=YbsVw4SDrXKVLW2Ro5x3VmOWumryYqEkpKnfpuvWi8L9E0zkTp9UaYB6MlnmwWN/k
-         apCt+7Mxms39DF7fLnYteSStWhKluhjNyjnSXQKcBv9Qc56sTqe6nIqqRM9m/BrfUf
-         VoGe5XyS9dTNhxoIAchcfvTruCdz8IOnRdOQLwX8=
+        b=auASqbp4NCulMrJTRWJf4LXFic5L3p2Gu4oJq2LL2f3fV73TmO42qvMn2dWsLhK9F
+         MjiEpJRwZt6kibtZIcQ4MDifqQP0W8evATN3Gv3RtlyE1yqvijE+wVc6bAkmYkbejj
+         Gkn0WW+2L5mgdqW2IWy87j1sHFInWcULd3gzy8AQ=
 From:   Andy Lutomirski <luto@kernel.org>
 To:     Theodore Tso <tytso@google.com>
 Cc:     LKML <linux-kernel@vger.kernel.org>,
@@ -54,9 +54,9 @@ Cc:     LKML <linux-kernel@vger.kernel.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         linux-man <linux-man@vger.kernel.org>,
         Andy Lutomirski <luto@kernel.org>
-Subject: [PATCH v2 7/7] random: Remove kernel.random.read_wakeup_threshold
-Date:   Fri, 20 Sep 2019 07:36:29 -0700
-Message-Id: <66b16acf2953fc033abc9641b9cf43d23e75a8e9.1568990048.git.luto@kernel.org>
+Subject: [PATCH v2 4/7] random: Make /dev/random be almost like /dev/urandom
+Date:   Fri, 20 Sep 2019 07:36:26 -0700
+Message-Id: <b3108e0defc82daee3f14a0c794464b6e74c5e71.1568990048.git.luto@kernel.org>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <cover.1568990048.git.luto@kernel.org>
 References: <cover.1568990048.git.luto@kernel.org>
@@ -67,57 +67,119 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It has no effect any more, so remove it.  We can revert this if
-there is some user code that expects to be able to set this sysctl.
+This patch changes the read semantics of /dev/random to be the same
+as /dev/urandom except that reads will block until the CRNG is
+ready.
+
+None of the cleanups that this enables have been done yet.  As a
+result, this gives a warning about an unused function.
 
 Signed-off-by: Andy Lutomirski <luto@kernel.org>
 ---
- drivers/char/random.c | 18 +-----------------
- 1 file changed, 1 insertion(+), 17 deletions(-)
+ drivers/char/random.c | 55 +++++++++++--------------------------------
+ 1 file changed, 14 insertions(+), 41 deletions(-)
 
 diff --git a/drivers/char/random.c b/drivers/char/random.c
-index 99fea5cc29a8..2a284f30cac4 100644
+index 1ad2c7eaf675..29a158d9353c 100644
 --- a/drivers/char/random.c
 +++ b/drivers/char/random.c
-@@ -369,12 +369,6 @@
- #define ENTROPY_SHIFT 3
- #define ENTROPY_BITS(r) ((r)->entropy_count >> ENTROPY_SHIFT)
+@@ -354,7 +354,6 @@
+ #define INPUT_POOL_WORDS	(1 << (INPUT_POOL_SHIFT-5))
+ #define OUTPUT_POOL_SHIFT	10
+ #define OUTPUT_POOL_WORDS	(1 << (OUTPUT_POOL_SHIFT-5))
+-#define SEC_XFER_SIZE		512
+ #define EXTRACT_SIZE		10
  
--/*
-- * The minimum number of bits of entropy before we wake up a read on
-- * /dev/random.  Should be enough to do a significant reseed.
-- */
--static int random_read_wakeup_bits = 64;
+ 
+@@ -803,7 +802,6 @@ static void credit_entropy_bits(struct entropy_store *r, int nbits)
+ 		if (entropy_bits >= random_read_wakeup_bits &&
+ 		    wq_has_sleeper(&random_read_wait)) {
+ 			wake_up_interruptible(&random_read_wait);
+-			kill_fasync(&fasync, SIGIO, POLL_IN);
+ 		}
+ 		/* If the input pool is getting full, and the blocking
+ 		 * pool has room, send some entropy to the blocking
+@@ -1031,6 +1029,7 @@ static void crng_reseed(struct crng_state *crng, struct entropy_store *r)
+ 		crng_init = 2;
+ 		process_random_ready_list();
+ 		wake_up_interruptible(&crng_init_wait);
++		kill_fasync(&fasync, SIGIO, POLL_IN);
+ 		pr_notice("random: crng init done\n");
+ 		if (unseeded_warning.missed) {
+ 			pr_notice("random: %d get_random_xx warning(s) missed "
+@@ -1921,43 +1920,6 @@ void rand_initialize_disk(struct gendisk *disk)
+ }
+ #endif
+ 
+-static ssize_t
+-_random_read(int nonblock, char __user *buf, size_t nbytes)
+-{
+-	ssize_t n;
 -
- /*
-  * If the entropy count falls under this number of bits, then we
-  * should wake up processes which are selecting or polling on write
-@@ -1982,8 +1976,7 @@ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
+-	if (nbytes == 0)
+-		return 0;
+-
+-	nbytes = min_t(size_t, nbytes, SEC_XFER_SIZE);
+-	while (1) {
+-		n = extract_entropy_user(&blocking_pool, buf, nbytes);
+-		if (n < 0)
+-			return n;
+-		trace_random_read(n*8, (nbytes-n)*8,
+-				  ENTROPY_BITS(&blocking_pool),
+-				  ENTROPY_BITS(&input_pool));
+-		if (n > 0)
+-			return n;
+-
+-		/* Pool is (near) empty.  Maybe wait and retry. */
+-		if (nonblock)
+-			return -EAGAIN;
+-
+-		wait_event_interruptible(random_read_wait,
+-		    blocking_pool.initialized &&
+-		    (ENTROPY_BITS(&input_pool) >= random_read_wakeup_bits));
+-		if (signal_pending(current))
+-			return -ERESTARTSYS;
+-	}
+-}
+-
+-static ssize_t
+-random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+-{
+-	return _random_read(file->f_flags & O_NONBLOCK, buf, nbytes);
+-}
+-
+ static ssize_t
+ urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+ {
+@@ -1981,15 +1943,26 @@ urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+ 	return ret;
+ }
  
- #include <linux/sysctl.h>
++static ssize_t
++random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
++{
++	int ret;
++
++	ret = wait_for_random_bytes();
++	if (ret != 0)
++		return ret;
++	return urandom_read(file, buf, nbytes, ppos);
++}
++
+ static __poll_t
+ random_poll(struct file *file, poll_table * wait)
+ {
+ 	__poll_t mask;
  
--static int min_read_thresh = 8, min_write_thresh;
--static int max_read_thresh = OUTPUT_POOL_WORDS * 32;
-+static int min_write_thresh;
- static int max_write_thresh = INPUT_POOL_WORDS * 32;
- static int random_min_urandom_seed = 60;
- static char sysctl_bootid[16];
-@@ -2058,15 +2051,6 @@ struct ctl_table random_table[] = {
- 		.proc_handler	= proc_do_entropy,
- 		.data		= &input_pool.entropy_count,
- 	},
--	{
--		.procname	= "read_wakeup_threshold",
--		.data		= &random_read_wakeup_bits,
--		.maxlen		= sizeof(int),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= &min_read_thresh,
--		.extra2		= &max_read_thresh,
--	},
- 	{
- 		.procname	= "write_wakeup_threshold",
- 		.data		= &random_write_wakeup_bits,
+-	poll_wait(file, &random_read_wait, wait);
++	poll_wait(file, &crng_init_wait, wait);
+ 	poll_wait(file, &random_write_wait, wait);
+ 	mask = 0;
+-	if (ENTROPY_BITS(&input_pool) >= random_read_wakeup_bits)
++	if (crng_ready())
+ 		mask |= EPOLLIN | EPOLLRDNORM;
+ 	if (ENTROPY_BITS(&input_pool) < random_write_wakeup_bits)
+ 		mask |= EPOLLOUT | EPOLLWRNORM;
 -- 
 2.21.0
 
