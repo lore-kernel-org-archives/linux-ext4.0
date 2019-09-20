@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BDDAC49ED7
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A471C3A5A2
 	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 21:31:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CAEDC2080F
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 21:31:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5ED7E2080F
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 21:31:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569015081;
-	bh=K1XKfl1E4n/4AYgHzqCbFj+SYp7RMDnxwNgkzlIr6u8=;
+	s=default; t=1569015082;
+	bh=oTUYbLrG6Vu8sjSve+NxU8IwPYokjqHXVSHgKbyi51k=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=0oWuAKxf1wrtoc89TSqoXkrsOOXVwEjXWm1b4WWg5ONHNSGE+cCfPkrbHe6CBmm40
-	 7Oj7cBzSR0mZJ591b3qACryc2aQxMNVAabcM49EUTVDMcOhx93Wd7vu3sbkEe2DSfX
-	 3c/8RRAqWkWB0Y0OZORorLYCdlcwbnzpFfPOeX6g=
+	b=0r5LW4w3k+Hj522GwDO3xlkOhHSIYbNlNTPlRSDN3anPIpwG+NHtrPrbn41zIaUcf
+	 pQlgjMrRpgWA8t1HoasbiW8ke/52i6MehVriPXa41MCkGnsIc+aoGLGUpCea1HVi4i
+	 fDQOKtrad1S0k6HT90bLtgQLJtJ7fHzyvEhUWi8c=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389650AbfITVbV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2389932AbfITVbV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Fri, 20 Sep 2019 17:31:21 -0400
 Received: from mail.kernel.org ([198.145.29.99]:39378 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729725AbfITVbV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2389460AbfITVbV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Fri, 20 Sep 2019 17:31:21 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 98BF720B7C
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2019 21:31:20 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 32ED2208C3
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2019 21:31:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569015080;
-        bh=K1XKfl1E4n/4AYgHzqCbFj+SYp7RMDnxwNgkzlIr6u8=;
+        s=default; t=1569015081;
+        bh=oTUYbLrG6Vu8sjSve+NxU8IwPYokjqHXVSHgKbyi51k=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Llu57tAW4C/oJTO/BlBU+YvouPbdBAekovXEJvC2FzmiscCgSDxpTMUxHidBvasd7
-         p2T6sHg/1EDKZg7shijB1Ay6H1GiDG1M7Hv0rUiRLDD46BUUfWh8yyfTbUwMgM9I1u
-         4oJ81xBxq25fAAGa3wt8uvI3HRP4w7qDO2KEjY6Q=
+        b=d1dJQJ7fInPHthnJkEFkqizCIAPIyCYtjMZesOQPDcRWJoz5Se9aPm7drw0iA1yX5
+         Rf87bDhD2dTro7KIylAXNOx4DzIPeLJhU73IN19uY84iXWphbsCryzcsgPjueDRnIX
+         8E7EQPiZiVd/x2Ty+UQGIfFqqysMIEAI3gBsRHZg=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 3/6] ext4.5: document the verity feature
-Date:   Fri, 20 Sep 2019 14:29:51 -0700
-Message-Id: <20190920212954.205789-4-ebiggers@kernel.org>
+Subject: [PATCH 6/6] tune2fs.8: tweak the documentation for the encrypt feature
+Date:   Fri, 20 Sep 2019 14:29:54 -0700
+Message-Id: <20190920212954.205789-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.23.0.351.gc4317032e6-goog
 In-Reply-To: <20190920212954.205789-1-ebiggers@kernel.org>
 References: <20190920212954.205789-1-ebiggers@kernel.org>
@@ -55,43 +55,27 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
+Try to make it clearer that enabling 'encrypt' just enables *support*
+for encryption; it doesn't actually encrypt anything by itself.
+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/ext4.5.in | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ misc/tune2fs.8.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/misc/ext4.5.in b/misc/ext4.5.in
-index 40e75f81..627c0dad 100644
---- a/misc/ext4.5.in
-+++ b/misc/ext4.5.in
-@@ -312,6 +312,18 @@ the file system using
- and it also speeds up the time required for
- .BR mke2fs (8)
- to create the file system.
-+.TP
-+.B verity
-+.br
-+Enables support for verity protected files.  Verity files are readonly,
-+and their data is transparently verified against a Merkle tree hidden
-+past the end of the file.  Using the Merkle tree's root hash, a verity
-+file can be efficiently authenticated, independent of the file's size.
-+.IP
-+This feature is most useful for authenticating important read-only files
-+on read-write file systems.  If the file system itself is read-only,
-+then using dm-verity to authenticate the entire block device may provide
-+much better security.
- .SH MOUNT OPTIONS
- This section describes mount options which are specific to ext2, ext3,
- and ext4.  Other generic mount options may be used as well; see
-@@ -774,6 +786,8 @@ ext4, 4.13
- ext4, 4.13
- .IP "\fBcasefold\fR" 2i
- ext4, 5.2
-+.IP "\fBverity\fR" 2i
-+ext4, 5.4
- .SH SEE ALSO
- .BR mke2fs (8),
- .BR mke2fs.conf (5),
+diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
+index f7c7d42d..74eebb6a 100644
+--- a/misc/tune2fs.8.in
++++ b/misc/tune2fs.8.in
+@@ -550,7 +550,7 @@ extended attributes per file.
+ currently only supports setting this filesystem feature.
+ .TP
+ .B encrypt
+-Enable file system level encryption.
++Enable support for file system level encryption.
+ .B Tune2fs
+ currently only supports setting this filesystem feature.
+ .TP
 -- 
 2.23.0.351.gc4317032e6-goog
 
