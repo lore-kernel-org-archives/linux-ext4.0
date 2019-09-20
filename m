@@ -2,145 +2,159 @@ Return-Path: <SRS0=rV8s=XP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05848C3A5A2
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:34:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0551C4CEC9
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:36:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D128F206C2
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:34:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 983A921A4A
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Sep 2019 14:36:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1568990046;
-	bh=5T/4VfiO/HqhsBQATWPC19/qw+SPrKZRtyV53KT0GwQ=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=ZbjhunlebEgrATPE/vo6yn2J1F6h0M7EtSDHjExpZWXavISmu8Yn+3bgEJXxGHrYA
-	 vbYWYkzPEln7qnco81l3iyEYHAHzrj89X80zHitNr2woiavmo84/knO4QRQQmeZmdo
-	 Z4KawfaQYasqhbbfSBd8pzRbz/Mxesy4DLozs0/U=
+	s=default; t=1568990199;
+	bh=X4irArokqxNk8ds89THjZ+EOtSp5mEI9ypOKtb4645w=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=jyL/HqtlZNX6yG7PnGeEO5vs0awXknznBnVvG731ye8JOKCS/aN+XKphluZ8lM6WL
+	 MTIbdNshiHyb/T9fW+n5Qi+VU7EzC8+4tsiixrZ20ONVPA7wegVFsLkENooB/fz9LT
+	 At+TNmKeB1vG+gmMu58Y8LMwwTSrv6hAXQnTnq3I=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391641AbfITOeE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Sep 2019 10:34:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46818 "EHLO mail.kernel.org"
+        id S2392538AbfITOgi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Sep 2019 10:36:38 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49058 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391630AbfITOeB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Sep 2019 10:34:01 -0400
-Received: from mail-wr1-f46.google.com (mail-wr1-f46.google.com [209.85.221.46])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S2392475AbfITOgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Sep 2019 10:36:37 -0400
+Received: from localhost (c-67-180-165-146.hsd1.ca.comcast.net [67.180.165.146])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 81D1F21882
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2019 14:34:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C76E92190F;
+        Fri, 20 Sep 2019 14:36:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1568990040;
-        bh=5T/4VfiO/HqhsBQATWPC19/qw+SPrKZRtyV53KT0GwQ=;
-        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
-        b=ERG/TepvuolOT6Mw8ez/j7trPLA7A2UHhgppUbM1UKt5I3anQ/LyiAyc1Gzj2TlKM
-         sADxzjaDUCB5buPl3eS2UovJkkkCM5lajx430tmkdOhaMKDDGW+G/nttRZzcXhrsdr
-         zAieZhwuQe6tN6TAp81EjJVKtEqxNKxDSB5o4mHU=
-Received: by mail-wr1-f46.google.com with SMTP id v8so7033462wrt.2
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Sep 2019 07:34:00 -0700 (PDT)
-X-Gm-Message-State: APjAAAVI1HdsDoQ1oMJ9Mc8szRBxdAjvKsrzYiyuBoXzwRNozlhWcf+Y
-        QGBnP2Z8fK213RnagA5fhVD8zJVYTjfGk6wYBX4CDw==
-X-Google-Smtp-Source: APXvYqw97uK1m0GzlqxXwrKua5Pdc2B9TF8UZRisIXGn8aSTnAlq1AfsIBHJ3uk1lXhVKnKKQuKNgHptfa8+mPFi7KY=
-X-Received: by 2002:adf:fe0f:: with SMTP id n15mr12713274wrr.343.1568990038968;
- Fri, 20 Sep 2019 07:33:58 -0700 (PDT)
-MIME-Version: 1.0
-References: <20190912034421.GA2085@darwi-home-pc> <20190912082530.GA27365@mit.edu>
- <CAHk-=wjyH910+JRBdZf_Y9G54c1M=LBF8NKXB6vJcm9XjLnRfg@mail.gmail.com>
- <20190914122500.GA1425@darwi-home-pc> <008f17bc-102b-e762-a17c-e2766d48f515@gmail.com>
- <20190915052242.GG19710@mit.edu> <CAHk-=wgg2T=3KxrO-BY3nHJgMEyApjnO3cwbQb_0vxsn9qKN8Q@mail.gmail.com>
- <20190918211503.GA1808@darwi-home-pc> <20190918211713.GA2225@darwi-home-pc>
- <CAHk-=wiCqDiU7SE3FLn2W26MS_voUAuqj5XFa1V_tiGTrrW-zQ@mail.gmail.com> <20190920134609.GA2113@pc>
-In-Reply-To: <20190920134609.GA2113@pc>
+        s=default; t=1568990196;
+        bh=X4irArokqxNk8ds89THjZ+EOtSp5mEI9ypOKtb4645w=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=w/himErLA2djSrkVZuIRWCSYP46YJO2FotcSuYSnWM0qBfJcKrF3eA6lZYsRCc87Y
+         yWyN+wCxGxQizegWWXjUgCLZP60zTOU9fYOjvPVohxLQAlVfzKjbgqLZULH7ZsxLYr
+         JWEB99pST3yZWavwK9bBbioPeZezo9VWyoy2QWSA=
 From:   Andy Lutomirski <luto@kernel.org>
-Date:   Fri, 20 Sep 2019 07:33:47 -0700
-X-Gmail-Original-Message-ID: <CALCETrWvE5es3i+to33y6jw=Yf0Tw6ZfV-6QWjZT5v0fo76tWw@mail.gmail.com>
-Message-ID: <CALCETrWvE5es3i+to33y6jw=Yf0Tw6ZfV-6QWjZT5v0fo76tWw@mail.gmail.com>
-Subject: Re: [PATCH RFC v4 1/1] random: WARN on large getrandom() waits and
- introduce getrandom2()
-To:     "Ahmed S. Darwish" <darwish.07@gmail.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+To:     Theodore Tso <tytso@google.com>
+Cc:     LKML <linux-kernel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Kees Cook <keescook@chromium.org>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>,
+        "Ahmed S. Darwish" <darwish.07@gmail.com>,
         Lennart Poettering <mzxreary@0pointer.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>,
         "Eric W. Biederman" <ebiederm@xmission.com>,
         "Alexander E. Patrakov" <patrakov@gmail.com>,
         Michael Kerrisk <mtk.manpages@gmail.com>,
         Willy Tarreau <w@1wt.eu>,
         Matthew Garrett <mjg59@srcf.ucam.org>,
-        lkml <linux-kernel@vger.kernel.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        linux-man <linux-man@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        linux-man <linux-man@vger.kernel.org>,
+        Andy Lutomirski <luto@kernel.org>
+Subject: [PATCH v2 6/7] random: Delete code to pull data into pools
+Date:   Fri, 20 Sep 2019 07:36:28 -0700
+Message-Id: <67ba15c4b1737623f3b9d968a252094051781835.1568990048.git.luto@kernel.org>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <cover.1568990048.git.luto@kernel.org>
+References: <cover.1568990048.git.luto@kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 20, 2019 at 6:46 AM Ahmed S. Darwish <darwish.07@gmail.com> wrote:
->
-> Hi,
->
-> On Wed, Sep 18, 2019 at 04:57:58PM -0700, Linus Torvalds wrote:
-> > On Wed, Sep 18, 2019 at 2:17 PM Ahmed S. Darwish <darwish.07@gmail.com> wrote:
-> > >
-> > > Since Linux v3.17, getrandom(2) has been created as a new and more
-> > > secure interface for pseudorandom data requests.  It attempted to
-> > > solve three problems, as compared to /dev/urandom:
->   >
-> > I don't think your patch is really _wrong_, but I think it's silly to
-> > introduce a new system call, when we have 30 bits left in the flags of
-> > the old one, and the old system call checked them.
-> >
-> > So it's much simpler and more straightforward to  just introduce a
-> > single new bit #2 that says "I actually know what I'm doing, and I'm
-> > explicitly asking for secure/insecure random data".
-> >
-> > And then say that the existing bit #1 just means "I want to wait for entropy".
-> >
-> > So then you end up with this:
-> >
-> >     /*
-> >      * Flags for getrandom(2)
-> >      *
-> >      * GRND_NONBLOCK    Don't block and return EAGAIN instead
-> >      * GRND_WAIT_ENTROPY        Explicitly wait for entropy
-> >      * GRND_EXPLICIT    Make it clear you know what you are doing
-> >      */
-> >     #define GRND_NONBLOCK               0x0001
-> >     #define GRND_WAIT_ENTROPY   0x0002
-> >     #define GRND_EXPLICIT               0x0004
+There is no pool that pulls, so it was just dead code.
 
-What is this GRND_EXPLICIT thing?
+Signed-off-by: Andy Lutomirski <luto@kernel.org>
+---
+ drivers/char/random.c | 40 ----------------------------------------
+ 1 file changed, 40 deletions(-)
 
-A few weeks ago, I sent a whole series to address this, and I
-obviously didn't cc enough people.  I'll resend a rebased version
-today.  Meanwhile, some comments on this whole mess:
+diff --git a/drivers/char/random.c b/drivers/char/random.c
+index 4521138231ed..99fea5cc29a8 100644
+--- a/drivers/char/random.c
++++ b/drivers/char/random.c
+@@ -528,10 +528,8 @@ struct entropy_store {
+ 	const struct poolinfo *poolinfo;
+ 	__u32 *pool;
+ 	const char *name;
+-	struct entropy_store *pull;
+ 
+ 	/* read-write data: */
+-	unsigned long last_pulled;
+ 	spinlock_t lock;
+ 	unsigned short add_ptr;
+ 	unsigned short input_rotate;
+@@ -1347,41 +1345,6 @@ EXPORT_SYMBOL_GPL(add_disk_randomness);
+  *
+  *********************************************************************/
+ 
+-/*
+- * This utility inline function is responsible for transferring entropy
+- * from the primary pool to the secondary extraction pool. We make
+- * sure we pull enough for a 'catastrophic reseed'.
+- */
+-static void _xfer_secondary_pool(struct entropy_store *r, size_t nbytes);
+-static void xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
+-{
+-	if (!r->pull ||
+-	    r->entropy_count >= (nbytes << (ENTROPY_SHIFT + 3)) ||
+-	    r->entropy_count > r->poolinfo->poolfracbits)
+-		return;
+-
+-	_xfer_secondary_pool(r, nbytes);
+-}
+-
+-static void _xfer_secondary_pool(struct entropy_store *r, size_t nbytes)
+-{
+-	__u32	tmp[OUTPUT_POOL_WORDS];
+-
+-	int bytes = nbytes;
+-
+-	/* pull at least as much as a wakeup */
+-	bytes = max_t(int, bytes, random_read_wakeup_bits / 8);
+-	/* but never more than the buffer size */
+-	bytes = min_t(int, bytes, sizeof(tmp));
+-
+-	trace_xfer_secondary_pool(r->name, bytes * 8, nbytes * 8,
+-				  ENTROPY_BITS(r), ENTROPY_BITS(r->pull));
+-	bytes = extract_entropy(r->pull, tmp, bytes,
+-				random_read_wakeup_bits / 8, 0);
+-	mix_pool_bytes(r, tmp, bytes);
+-	credit_entropy_bits(r, bytes*8);
+-}
+-
+ /*
+  * This function decides how many bytes to actually take from the
+  * given pool, and also debits the entropy count accordingly.
+@@ -1545,7 +1508,6 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
+ 			spin_unlock_irqrestore(&r->lock, flags);
+ 			trace_extract_entropy(r->name, EXTRACT_SIZE,
+ 					      ENTROPY_BITS(r), _RET_IP_);
+-			xfer_secondary_pool(r, EXTRACT_SIZE);
+ 			extract_buf(r, tmp);
+ 			spin_lock_irqsave(&r->lock, flags);
+ 			memcpy(r->last_data, tmp, EXTRACT_SIZE);
+@@ -1554,7 +1516,6 @@ static ssize_t extract_entropy(struct entropy_store *r, void *buf,
+ 	}
+ 
+ 	trace_extract_entropy(r->name, nbytes, ENTROPY_BITS(r), _RET_IP_);
+-	xfer_secondary_pool(r, nbytes);
+ 	nbytes = account(r, nbytes, min, reserved);
+ 
+ 	return _extract_entropy(r, buf, nbytes, fips_enabled);
+@@ -1765,7 +1726,6 @@ static void __init init_std_data(struct entropy_store *r)
+ 	ktime_t now = ktime_get_real();
+ 	unsigned long rv;
+ 
+-	r->last_pulled = jiffies;
+ 	mix_pool_bytes(r, &now, sizeof(now));
+ 	for (i = r->poolinfo->poolbytes; i > 0; i -= sizeof(rv)) {
+ 		if (!arch_get_random_seed_long(&rv) &&
+-- 
+2.21.0
 
-As I think everyone mostly agrees in this whole thread, getrandom()
-can't just magically start returning non-random results.  That would
-be a big problem.
-
-Linus, I disagree that blocking while waiting for randomness is an
-error.  Sometimes you want to generate a key, you want to finish as
-quickly as possible, and you don't want to be in the business of
-fiddling with the setup of the kernel RNG.  I would argue that *most*
-crypto applications are in this category.  I think that the kernel
-should, instead, handle this mess itself.  As a first pass, it could
-be as simple as noticing that someone is blocking on randomness and
-kicking off a thread that does some randomish reads to the rootfs.
-This would roughly simulate the old behavior in which an ext4 rootfs
-did more IO than necessary.  A fancier version would, as discussed in
-this thread, do more clever things.
-
-(As an aside, I am not a fan of xoring or adding stuff to the CRNG
-state.  We should just use an actual crypto primitive for this.
-Accumulate the state in a buffer and SHA-512 it.  Or use something
-like the Keccak duplex sponge.  But this is a discussion for another
-day.)
-
-So I'm going to resend my series.  You can all fight over whether the
-patch that actually goes in should be based on my series or based on
-this patch.
-
---Andy
