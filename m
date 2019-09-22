@@ -1,68 +1,76 @@
-Return-Path: <SRS0=Pzpj=XQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=+Cd7=XR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_GIT
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD0D2C4360D
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Sep 2019 21:50:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7781AC3A5A6
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 Sep 2019 07:05:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A01442184C
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Sep 2019 21:50:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569102637;
-	bh=c7YA1/Vng4BpJGQFV0of9o0HhJIA4f7Ju3nwdGDs/AM=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=0rltqQvtSJO0iLn5aVcaYw0n/ToMF67lcpVojno2ipgPSvkVXAHfzLI2uerZJjh5r
-	 JSKa+935fmeFjWCbv/+ohGLjw2CXKvt2/mhTd/pwIgyqKPPP18jHA/6CY665bFcK4p
-	 GqKbmFaSXFye45cMvHmnu6tGLU1UX3KTzjrIw3Zc=
+	by mail.kernel.org (Postfix) with ESMTP id 491F82070C
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 Sep 2019 07:05:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726634AbfIUVuY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Sep 2019 17:50:24 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48372 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726617AbfIUVuY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 21 Sep 2019 17:50:24 -0400
-Subject: Re: [GIT PULL] ext4 updates for 5.4
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569102623;
-        bh=c7YA1/Vng4BpJGQFV0of9o0HhJIA4f7Ju3nwdGDs/AM=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=PdEvwGIlMcglrIC0oQXj8ApwOXneZRmmBu8Nx/PcuO+tDOAU1iuOQwmjwx6n5NBBI
-         T5VuQE6UsqWmiiOvJrHHa7DkeAA1lC9Qp6rKFdpzGjW5DwJ+jQqIjEhdTJ1hlXeXVz
-         8/q7KyeocioBKLLy3q7edGUc4MKDBUCjWl2RXO8Q=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20190919205641.GA23449@mit.edu>
-References: <20190919205641.GA23449@mit.edu>
-X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20190919205641.GA23449@mit.edu>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
- tags/ext4_for_linus
-X-PR-Tracked-Commit-Id: 040823b5372b445d1d9483811e85a24d71314d33
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 70cb0d02b58128db07fc39b5e87a2873e2c16bde
-Message-Id: <156910262382.18589.3090864205440048270.pr-tracker-bot@kernel.org>
-Date:   Sat, 21 Sep 2019 21:50:23 +0000
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
+        id S1727598AbfIVHFR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 22 Sep 2019 03:05:17 -0400
+Received: from out30-44.freemail.mail.aliyun.com ([115.124.30.44]:47010 "EHLO
+        out30-44.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727548AbfIVHFR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 22 Sep 2019 03:05:17 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04420;MF=xiaoguang.wang@linux.alibaba.com;NM=1;PH=DS;RN=1;SR=0;TI=SMTPD_---0Td0uxnO_1569135907;
+Received: from localhost(mailfrom:xiaoguang.wang@linux.alibaba.com fp:SMTPD_---0Td0uxnO_1569135907)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Sun, 22 Sep 2019 15:05:11 +0800
+From:   Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+To:     linux-ext4@vger.kernel.org
+Subject: [PATCH 0/2] make jbd2 support checkpoint asynchronously
+Date:   Sun, 22 Sep 2019 15:04:57 +0800
+Message-Id: <20190922070459.39797-1-xiaoguang.wang@linux.alibaba.com>
+X-Mailer: git-send-email 2.14.4.44.g2045bb6
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Thu, 19 Sep 2019 16:56:41 -0400:
+In current jbd2's implemention, jbd2 won't reclaim journal space unless
+free journal space is lower than specified threshold, see logic in
+add_transaction_credits():
+        write_lock(&journal->j_state_lock);
+        if (jbd2_log_space_left(journal) < jbd2_space_needed(journal))
+            __jbd2_log_wait_for_space(journal);
+        write_unlock(&journal->j_state_lock);
 
-> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+Indeed with this logic, we can also have many transactions queued to be
+checkpointd, which means these transactions still occupy jbd2 space.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/70cb0d02b58128db07fc39b5e87a2873e2c16bde
+Journal space is somewhat like a global lock. In high concurrency case,
+if many tasks contend for journal credits, they will easily be blocked in
+waitting for free journal space, so I wonder whether we can reclaim journal
+space asynchronously when free space is lower than a specified threshold,
+to avoid that all applications are stalled at the same time. This will be
+more useful in high speed store, journal space will be reclaimed in background
+quickly, and applications will less likely to be stucked,  to improve this
+case, we use workqueue to queue a work in background to reclaim journal space.
 
-Thank you!
+I have used fs_mark to have performance test, in most cases, we have performance
+improvement, in specific case, we can have above 14.4% improvement, see patch
+"ext4: add async_checkpoint mount option" for detailed test info.
+
+Xiaoguang Wang (2):
+  jbd2: checkpoint asynchronously when free journal space is lower than
+    threshold
+  ext4: add async_checkpoint mount option
+
+ fs/ext4/ext4.h        |  2 ++
+ fs/ext4/super.c       | 71 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/jbd2/checkpoint.c  | 28 +++++++++++++++++---
+ fs/jbd2/journal.c     | 15 +++++++++--
+ fs/jbd2/transaction.c | 16 ++++++++++++
+ include/linux/jbd2.h  | 48 +++++++++++++++++++++++++++++++++-
+ 6 files changed, 174 insertions(+), 6 deletions(-)
 
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+1.8.3.1
+
