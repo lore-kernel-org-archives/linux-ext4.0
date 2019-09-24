@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A3E2C4320D
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Sep 2019 16:50:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 185BEC4320D
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Sep 2019 16:57:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 21B4E21D82
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Sep 2019 16:50:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D58E2217D9
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Sep 2019 16:57:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569343834;
-	bh=njBB+IB4r6yFfFj2xSacfNYuNP/RiOK6tDTc1PA/MAU=;
+	s=default; t=1569344246;
+	bh=1e/bd42Kt+/IBhPNaZvPHL/uh41AfV+WOZQC0Q6o0IE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qYKvIkqDqdpBU8SaIVtlvPNbSmcJ6kw+e6gs0cPlbr9t/5Brc3tWc0VwTE/7he75O
-	 VclacRYt2+GII8lgr3RUEbV5FvjBNZ71z6zBF+MTgNF3Ido7tyrhEQAPjaOeaifC1x
-	 FC69eKomu0mOYaf30halSiNSN/61vH6mynlhg9jo=
+	b=WK4/lSzqadLqMmVwczE+9T8wDziM6FS1NCeAnsVjT0x2zjzeb1h374NvGHdV68oMB
+	 9zMIdkwOyDJVFm+YkJa55Tb1isMvAi7Ggsz2CGqUnkEj1dJmzgFQuY3MQwntRsRlR0
+	 NdZSNegdmFcFwxvqq7RtZy7U3+c92EDHt4m01r68=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2410787AbfIXQud (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Sep 2019 12:50:33 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43350 "EHLO mail.kernel.org"
+        id S1732077AbfIXQ5W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Sep 2019 12:57:22 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40602 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2410772AbfIXQuc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Sep 2019 12:50:32 -0400
+        id S2410132AbfIXQsq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 24 Sep 2019 12:48:46 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DC09321906;
-        Tue, 24 Sep 2019 16:50:29 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4966E21D7B;
+        Tue, 24 Sep 2019 16:48:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569343830;
-        bh=njBB+IB4r6yFfFj2xSacfNYuNP/RiOK6tDTc1PA/MAU=;
+        s=default; t=1569343725;
+        bh=1e/bd42Kt+/IBhPNaZvPHL/uh41AfV+WOZQC0Q6o0IE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=htltPvXe0gtTEvj25L0kocCVKeonURkuwz/UwG/lwMUVEAcLfj5PIR6WmX1DPO50+
-         VJZBVsnR61wg43/CnyecXhvA6/LfjkF6WgS8HFCtd+7KtHHEC7e7T7hlkv3BCHh0gu
-         7LSJV8WiVcToyBfm6DhZb+8gfc4WRmDQA1clPrbU=
+        b=lcGQDt+VxzKN+KS3pVJy/1by4QKBlSStnCN/BwZAd/m8D62p4Au2d5kutahfsU9Mv
+         sFHxgwPxeOrrQoEmCV96KmCkrcz5Cj5bmHdd0ob54Dz2brEtIvFs1bYX1zmyuaFMpo
+         7JFBAxJREGuWUv0VHlSSQUHYg8JCy8ZxQSLI8crA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "zhangyi (F)" <yi.zhang@huawei.com>,
         syzbot+1e470567330b7ad711d5@syzkaller.appspotmail.com,
         Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 50/50] ext4: fix potential use after free after remounting with noblock_validity
-Date:   Tue, 24 Sep 2019 12:48:47 -0400
-Message-Id: <20190924164847.27780-50-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 70/70] ext4: fix potential use after free after remounting with noblock_validity
+Date:   Tue, 24 Sep 2019 12:45:49 -0400
+Message-Id: <20190924164549.27058-70-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190924164847.27780-1-sashal@kernel.org>
-References: <20190924164847.27780-1-sashal@kernel.org>
+In-Reply-To: <20190924164549.27058-1-sashal@kernel.org>
+References: <20190924164549.27058-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -101,7 +101,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 147 insertions(+), 52 deletions(-)
 
 diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index e8e27cdc2f677..7edc8172c53ad 100644
+index 8e83741b02e03..d4d4fdfac1a65 100644
 --- a/fs/ext4/block_validity.c
 +++ b/fs/ext4/block_validity.c
 @@ -38,6 +38,7 @@ int __init ext4_init_system_zone(void)
@@ -244,7 +244,7 @@ index e8e27cdc2f677..7edc8172c53ad 100644
  			if (err < 0)
  				break;
  			i += n;
-@@ -180,93 +231,129 @@ static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
+@@ -180,94 +231,130 @@ static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
  	return err;
  }
  
@@ -291,6 +291,7 @@ index e8e27cdc2f677..7edc8172c53ad 100644
 +		return -ENOMEM;
 +
  	for (i=0; i < ngroups; i++) {
+ 		cond_resched();
  		if (ext4_bg_has_super(sb, i) &&
  		    ((i < 5) || ((i % flex_size) == 0)))
 -			add_system_zone(sbi, ext4_group_first_block_no(sb, i),
@@ -417,10 +418,10 @@ index e8e27cdc2f677..7edc8172c53ad 100644
  
  int ext4_check_blockref(const char *function, unsigned int line,
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1ee51d3a978ad..f8456a423c4ea 100644
+index 1cb67859e0518..0014b1c5e6be1 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -194,6 +194,14 @@ struct ext4_map_blocks {
+@@ -184,6 +184,14 @@ struct ext4_map_blocks {
  	unsigned int m_flags;
  };
  
@@ -435,7 +436,7 @@ index 1ee51d3a978ad..f8456a423c4ea 100644
  /*
   * Flags for ext4_io_end->flags
   */
-@@ -1409,7 +1417,7 @@ struct ext4_sb_info {
+@@ -1420,7 +1428,7 @@ struct ext4_sb_info {
  	int s_jquota_fmt;			/* Format of quota to use */
  #endif
  	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
