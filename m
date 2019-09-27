@@ -2,157 +2,64 @@ Return-Path: <SRS0=SFt/=XW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	HK_RANDOM_FROM,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11FE9C4360C
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 06:16:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17116C4360C
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 11:16:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DF0CC206B7
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 06:16:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EB1D12146E
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 11:16:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725820AbfI0GQw convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 27 Sep 2019 02:16:52 -0400
-Received: from szxga08-in.huawei.com ([45.249.212.255]:40758 "EHLO huawei.com"
+        id S1727296AbfI0LQF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 27 Sep 2019 07:16:05 -0400
+Received: from mx2.suse.de ([195.135.220.15]:52380 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725804AbfI0GQw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 27 Sep 2019 02:16:52 -0400
-Received: from DGGEMM401-HUB.china.huawei.com (unknown [172.30.72.56])
-        by Forcepoint Email with ESMTP id 45D4CE15EA39F4430FDB;
-        Fri, 27 Sep 2019 14:16:49 +0800 (CST)
-Received: from DGGEMM422-HUB.china.huawei.com (10.1.198.39) by
- DGGEMM401-HUB.china.huawei.com (10.3.20.209) with Microsoft SMTP Server (TLS)
- id 14.3.439.0; Fri, 27 Sep 2019 14:16:47 +0800
-Received: from DGGEMM532-MBX.china.huawei.com ([169.254.7.3]) by
- dggemm422-hub.china.huawei.com ([10.1.198.39]) with mapi id 14.03.0439.000;
- Fri, 27 Sep 2019 14:16:37 +0800
-From:   Guiyao <guiyao@huawei.com>
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-CC:     "tytso@mit.edu" <tytso@mit.edu>,
-        Mingfangsen <mingfangsen@huawei.com>
-Subject: [PATCH]e2fsprogs: Check device id in advance to skip fake device
- name
-Thread-Topic: [PATCH]e2fsprogs: Check device id in advance to skip fake
- device name
-Thread-Index: AdV02MES0JCmsThxSjmE5ZL4UzwrvgAIfIqQ
-Date:   Fri, 27 Sep 2019 06:16:37 +0000
-Message-ID: <005F77DB9A260B4E91664DDF22573C66E9CF24E9@DGGEMM532-MBX.china.huawei.com>
-Accept-Language: zh-CN, en-US
-Content-Language: zh-CN
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [10.173.220.158]
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
-X-CFilter-Loop: Reflected
+        id S1727289AbfI0LQF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 27 Sep 2019 07:16:05 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 9DEDDB052;
+        Fri, 27 Sep 2019 11:16:03 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 3B2291E3F02; Fri, 27 Sep 2019 13:16:20 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-ext4@vger.kernel.org>
+Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 02/15] jbd2: Fixup stale comment in commit code
+Date:   Fri, 27 Sep 2019 13:15:23 +0200
+Message-Id: <20190927111536.16455-3-jack@suse.cz>
+X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20190927111536.16455-1-jack@suse.cz>
+References: <20190927111536.16455-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+jbd2_journal_next_log_block() does not look at
+transaction->t_outstanding_credits. Remove the misleading comment.
 
-In some cases, using resize2fs to resize one fs will return "fail".
-Reproduce steps are as follows,
-1. create 2 folders, for example "mnt" and "tmp"
-2. mount /dev/sdb onto tmp as tmpfs
-3. mount /dev/sdb onto mnt as ext4 or other normal file system
-4. try to resize /dev/sdb, it FAILED! -> "Couldn't find valid filesystem superblock."
-5. if mount mnt firstly, resize2fs command will succeed.
-
-In check_mntent_file func, firstly try to find out the input device name in mtab_file line by line,
-and it will leave from loop once one item matched.
-Then, check the mount point's st_dev of matched item,
-if it is not same with the input device's st_dev, it will return fail.
-In this case, the first matched item in mtab_file is "tmp" mount point,
-it is only named as "/dev/sdb", which actually is not sdb's real mount point.
-Finally, the name is matched, but st_dev is not matched, and then resize command fails.
-
-Here, we check the st_dev immediately once the name is matched.
-If st_dev not same, continue to next loop.
-
-
-Signed-off-by: GuiYao <guiyao@huawei.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- lib/ext2fs/ismounted.c | 49 +++++++++++++++++-------------------------
- 1 file changed, 20 insertions(+), 29 deletions(-)
+ fs/jbd2/commit.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c index 6cd497dc..265d27f7 100644
---- a/lib/ext2fs/ismounted.c
-+++ b/lib/ext2fs/ismounted.c
-@@ -98,6 +98,9 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,  {
- 	struct mntent 	*mnt;
- 	struct stat	st_buf;
-+#ifndef __GNU__
-+	struct stat	dir_st_buf;
-+#endif  /* __GNU__ */
- 	errcode_t	retval = 0;
- 	dev_t		file_dev=0, file_rdev=0;
- 	ino_t		file_ino=0;
-@@ -128,13 +131,26 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- 	while ((mnt = getmntent (f)) != NULL) {
- 		if (mnt->mnt_fsname[0] != '/')
- 			continue;
--		if (strcmp(file, mnt->mnt_fsname) == 0)
-+#ifndef __GNU__
-+		if (stat(mnt->mnt_dir, &dir_st_buf) != 0)
-+			continue;
-+#endif  /* __GNU__ */
-+		if (strcmp(file, mnt->mnt_fsname) == 0) { #ifndef __GNU__
-+			if (file_rdev && (file_rdev == dir_st_buf.st_dev))
-+				break;
-+			continue;
-+#else
- 			break;
-+#endif  /* __GNU__ */
-+		}
- 		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
- 			if (ext2fsP_is_disk_device(st_buf.st_mode)) {  #ifndef __GNU__
--				if (file_rdev && (file_rdev == st_buf.st_rdev))
--					break;
-+				if (file_rdev && (file_rdev == st_buf.st_rdev)) {
-+					if (file_rdev == dir_st_buf.st_dev)
-+						break;
-+				}
- 				if (check_loop_mounted(mnt->mnt_fsname,
- 						st_buf.st_rdev, file_dev,
- 						file_ino) == 1)
-@@ -168,32 +184,7 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
- #endif	/* __GNU__ */
- 		goto errout;
- 	}
--#ifndef __GNU__ /* The GNU hurd is deficient; what else is new? */
--	/* Validate the entry in case /etc/mtab is out of date */
--	/*
--	 * We need to be paranoid, because some broken distributions
--	 * (read: Slackware) don't initialize /etc/mtab before checking
--	 * all of the non-root filesystems on the disk.
--	 */
--	if (stat(mnt->mnt_dir, &st_buf) < 0) {
--		retval = errno;
--		if (retval == ENOENT) {
--#ifdef DEBUG
--			printf("Bogus entry in %s!  (%s does not exist)\n",
--			       mtab_file, mnt->mnt_dir);
--#endif /* DEBUG */
--			retval = 0;
--		}
--		goto errout;
--	}
--	if (file_rdev && (st_buf.st_dev != file_rdev)) {
--#ifdef DEBUG
--		printf("Bogus entry in %s!  (%s not mounted on %s)\n",
--		       mtab_file, file, mnt->mnt_dir);
--#endif /* DEBUG */
--		goto errout;
--	}
--#endif /* __GNU__ */
-+
- 	*mount_flags = EXT2_MF_MOUNTED;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 132fb92098c7..c6d39f2ad828 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -642,8 +642,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
  
- #ifdef MNTOPT_RO
---
-1.8.3.1
+ 		/*
+ 		 * start_this_handle() uses t_outstanding_credits to determine
+-		 * the free space in the log, but this counter is changed
+-		 * by jbd2_journal_next_log_block() also.
++		 * the free space in the log.
+ 		 */
+ 		atomic_dec(&commit_transaction->t_outstanding_credits);
+ 
+-- 
+2.16.4
+
