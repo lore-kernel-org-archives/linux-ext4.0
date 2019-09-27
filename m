@@ -2,75 +2,121 @@ Return-Path: <SRS0=SFt/=XW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D1CFC4360C
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 11:16:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 18677C4360C
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 13:57:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DB0922146E
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 11:16:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EDA97217D7
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Sep 2019 13:57:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727305AbfI0LQQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 27 Sep 2019 07:16:16 -0400
-Received: from mx2.suse.de ([195.135.220.15]:52454 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727314AbfI0LQG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 27 Sep 2019 07:16:06 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id D7262B135;
-        Fri, 27 Sep 2019 11:16:03 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 4F0ED1E4825; Fri, 27 Sep 2019 13:16:20 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-ext4@vger.kernel.org>
-Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/15] jbd2: Drop pointless wakeup from jbd2_journal_stop()
-Date:   Fri, 27 Sep 2019 13:15:28 +0200
-Message-Id: <20190927111536.16455-8-jack@suse.cz>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20190927111536.16455-1-jack@suse.cz>
-References: <20190927111536.16455-1-jack@suse.cz>
+        id S1727076AbfI0N5L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 27 Sep 2019 09:57:11 -0400
+Received: from gardel.0pointer.net ([85.214.157.71]:51550 "EHLO
+        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726251AbfI0N5L (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Sep 2019 09:57:11 -0400
+Received: from gardel-login.0pointer.net (gardel.0pointer.net [IPv6:2a01:238:43ed:c300:10c3:bcf3:3266:da74])
+        by gardel.0pointer.net (Postfix) with ESMTP id D409AE80A99;
+        Fri, 27 Sep 2019 15:57:08 +0200 (CEST)
+Received: by gardel-login.0pointer.net (Postfix, from userid 1000)
+        id 88319160AE4; Fri, 27 Sep 2019 15:57:08 +0200 (CEST)
+Date:   Fri, 27 Sep 2019 15:57:08 +0200
+From:   Lennart Poettering <mzxreary@0pointer.de>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     "Alexander E. Patrakov" <patrakov@gmail.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        "Ahmed S. Darwish" <darwish.07@gmail.com>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Willy Tarreau <w@1wt.eu>,
+        Matthew Garrett <mjg59@srcf.ucam.org>,
+        Vito Caputo <vcaputo@pengaru.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>, Ray Strode <rstrode@redhat.com>,
+        William Jon McCann <mccann@jhu.edu>,
+        zhangjs <zachary@baishancloud.com>, linux-ext4@vger.kernel.org,
+        lkml <linux-kernel@vger.kernel.org>
+Subject: Re: Linux 5.3-rc8
+Message-ID: <20190927135708.GD11791@gardel-login>
+References: <20190917052438.GA26923@1wt.eu>
+ <2508489.jOnZlRuxVn@merkaba>
+ <20190917121156.GC6762@mit.edu>
+ <20190917123015.sirlkvy335crozmj@debian-stretch-darwi.lab.linutronix.de>
+ <20190917160844.GC31567@gardel-login>
+ <CAHk-=wgsWTCZ=LPHi7BXzFCoWbyp3Ey-zZbaKzWixO91Ryr9=A@mail.gmail.com>
+ <20190917174219.GD31798@gardel-login>
+ <87zhj15qgf.fsf@x220.int.ebiederm.org>
+ <84824f79-2d12-0fd5-5b32-b0360eb075ac@gmail.com>
+ <CAHk-=whYhC-qXHdEypy6iC7SzPA+KvWphLXSGF+mvGCGHGjNZw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAHk-=whYhC-qXHdEypy6iC7SzPA+KvWphLXSGF+mvGCGHGjNZw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When we drop last handle from a transaction and journal->j_barrier_count
-> 0, jbd2_journal_stop() wakes up journal->j_wait_transaction_locked
-wait queue. This looks pointless - wait for outstanding handles always
-happens on journal->j_wait_updates waitqueue.
-journal->j_wait_transaction_locked is used to wait for transaction state
-changes and by start_this_handle() for waiting until
-journal->j_barrier_count drops to 0. The first case is clearly
-irrelevant here since only jbd2 thread changes transaction state. The
-second case looks related but jbd2_journal_unlock_updates() is
-responsible for the wakeup in this case. So just drop the wakeup.
+On Mi, 18.09.19 13:26, Linus Torvalds (torvalds@linux-foundation.org) wrote:
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/transaction.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+> On Wed, Sep 18, 2019 at 1:15 PM Alexander E. Patrakov
+> <patrakov@gmail.com> wrote:
+> >
+> > No, this is not the solution, if we take seriously not only getrandom
+> > hangs, but also urandom warnings. In some setups (root on LUKS is one of
+> > them) they happen early in the initramfs. Therefore "restoring" entropy
+> > from the previous boot by a script that runs from the main system is too
+> > late. That's why it is suggested to load at least a part of the random
+> > seed in the boot loader, and that has not been commonly implemented.
+>
+> Honestly, I think the bootloader suggestion is naive and silly too.
+>
+> Yes, we now support it. And no, I don't think people will trust that
+> either. And I suspect for good reason: there's really very little
+> reason to believe that bootloaders would be any better than any other
+> part of the system.
+>
+> So right now some people trust bootloaders exactly _because_ there
+> basically is just one or two that do this, and the people who use them
+> are usually the people who wrote them or are at least closely
+> associated with them. That will change, and then people will say "why
+> would I trust that, when we know of bug Xyz".
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index cd00b20bc692..ece3e97279c2 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1828,11 +1828,8 @@ int jbd2_journal_stop(handle_t *handle)
- 	 * once we do this, we must not dereference transaction
- 	 * pointer again.
- 	 */
--	if (atomic_dec_and_test(&transaction->t_updates)) {
-+	if (atomic_dec_and_test(&transaction->t_updates))
- 		wake_up(&journal->j_wait_updates);
--		if (journal->j_barrier_count)
--			wake_up(&journal->j_wait_transaction_locked);
--	}
- 
- 	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
- 
--- 
-2.16.4
+Doing the random seed in the boot loader is nice for two reasons:
 
+1. It runs very very early, so that the OS can come up with fully
+   initialized entropy right from the beginning.
+
+2. The boot loader generally has found some disk to read the kernel from,
+   i.e. has a place where stuff can be stored and which can be updated
+   (most modern boot loaders can write to disk these days, and so can
+   EFI). Thus, it can derive a new random seed from a stored seed on disk
+   and pass it to the OS *AND* update it right away on disk ensuring that
+   it is never reused again. The point where the OS kernel comes to an
+   equivalent point where it can write to disk is much much later,
+   i.e. after the initrd, after the transition to the actual OS, ony
+   after /var has been remounted writable.
+
+So to me this is not about trust, but about "first place we can read
+*AND* write a seed on disk".
+
+i.e. the key to grok here: it's not OK to use a stored seed unless you
+can at the same time update the it on disk, as only that protects you
+from reusing the key if the system's startup is aborted due to power
+failure or such.
+
+> Adding an EFI variable (or other platform nonvolatile thing), and
+> reading (and writing to it) purely from the kernel ends up being one
+> of those things where you can then say "ok, if we trust the platform
+> AT ALL, we can trust that". Since you can't reasonably do things like
+> add EFI variables to your distro image by mistake.
+
+NVRAM backing EFI vars sucks. Nothing you want to update on every
+cycle. It's OK to update during OS installation, but during every
+single boot? I'd rather not.
+
+Lennart
+
+--
+Lennart Poettering, Berlin
