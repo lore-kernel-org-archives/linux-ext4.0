@@ -2,308 +2,146 @@ Return-Path: <SRS0=0sa6=XZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25AAFC32792
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2907C32792
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:21:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EB67221927
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569878372;
-	bh=w0eG8OHvLX9hX9jqfcfhWWWjTXO75ag0H25Oobm4RoE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=vA1mvy3oMUBO/1PS3txCttJU/ZIwHqLBJF1Tyd5aRAj7ljoCw3edgkzxhcuKk5Etw
-	 j3ecymJRrHvmKJDiJtE/c+A6RYkqPw4KjwLO2r7GrBSF2NkxDLH48M1C0PuxiKvVWd
-	 sfN7NL9988H3Ek4lufK23SJYMZ8D912lXo9GVtKM=
+	by mail.kernel.org (Postfix) with ESMTP id 7C9E3207FA
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:21:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732366AbfI3VT2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Sep 2019 17:19:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47228 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731761AbfI3VT1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Sep 2019 17:19:27 -0400
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E5CD5218DE;
-        Mon, 30 Sep 2019 21:19:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569878366;
-        bh=w0eG8OHvLX9hX9jqfcfhWWWjTXO75ag0H25Oobm4RoE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=fdxtnJmjGiVC+ZYnP/T5civFuJBBnP4Lq6lM8Ptp4w1S8bnFWGTKHyd65By+ttKG8
-         hIZbvGLtBQTlUmoyhuNcQkvox9B/rxMPmXyF9QxDuKoJj44XSEBPO4rdfHZMATkDtf
-         mi2Kf/5qcWdO8XDosIdjyNfUQnkR4aZxCHYGv1kQ=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>
-Subject: [PATCH v4 2/8] common/verity: add common functions for testing fs-verity
-Date:   Mon, 30 Sep 2019 14:15:47 -0700
-Message-Id: <20190930211553.64208-3-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
-In-Reply-To: <20190930211553.64208-1-ebiggers@kernel.org>
-References: <20190930211553.64208-1-ebiggers@kernel.org>
+        id S1731678AbfI3VVy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 30 Sep 2019 17:21:54 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54332 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727884AbfI3VVx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2019 17:21:53 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-98.corp.google.com [104.133.0.98] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x8ULLjDG008724
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 30 Sep 2019 17:21:46 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 4295F42014C; Mon, 30 Sep 2019 17:21:45 -0400 (EDT)
+Date:   Mon, 30 Sep 2019 17:21:45 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 17/19] jbd2: Rename h_buffer_credits to h_total_credits
+Message-ID: <20190930212145.GC4001@mit.edu>
+References: <20190930104339.24919-17-jack@suse.cz>
+ <201909302058.uxNSY0q3%lkp@intel.com>
+ <20190930150553.GB4001@mit.edu>
+ <20190930162536.GB13973@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190930162536.GB13973@quack2.suse.cz>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Mon, Sep 30, 2019 at 06:25:36PM +0200, Jan Kara wrote:
+> The problem was that my patches were based on a kernel that didn't have
+> this code yet. I've rebased now on current Linus' tree and fixed this up in
+> my local tree (along with couple documentation warnings). But I don't think
+> it's worth resending just for this.
 
-Add common functions for setting up and testing fs-verity.  fs-verity is
-an ext4 and f2fs filesystem feature which provides Merkle tree based
-hashing (similar to dm-verity) for individual read-only files, mainly
-for the purpose of efficient authenticity verification.  Other
-filesystems may add fs-verity support later, using the same API.
+Oh, agreed, it's not worth resending for this; it was a quick fixup.
 
-Running the fs-verity tests will require:
+How much testing have you given this patch series?  I did a quick
+xfstests run, and I found the following new failures when this was
+applied on top of the dev branch on ext4.git (e.g., what got sent to
+Linus as a pull request).
 
-- Kernel v5.4-rc1 or later configured with CONFIG_FS_VERITY=y
+ext4/4k: 
+  Failures: ext4/026 generic/233
+ext4/1k: 
+  Failures: ext4/026
+ext4/ext3: 
+  Failures: ext4/026 generic/233
+ext4/encrypt: 
+  Failures: generic/083
+ext4/nojournal:
+  Failures: ext4/301
+ext4/adv: 
+  Failures: ext4/026 generic/233 generic/269 generic/270 generic/476
+ext4/dioread_nolock: 
+  Failures: ext4/026 generic/233
+ext4/data_journal: 
+  Failures: generic/233
+ext4/bigalloc: 
+  Failures: generic/013 generic/014 generic/051 generic/083
+    generic/232 generic/233 generic/269 generic/270 generic/299
+    generic/429 generic/475 generic/476
+ext4/bigalloc_1k: 
+  Failures: ext4/026 generic/013 generic/014 generic/032 generic/051
+    generic/068 generic/083 generic/232 generic/233 generic/269
+    generic/270 generic/320 generic/475 generic/476
 
-- The 'fsverity' utility program from
-  https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
+I haven't trianged them all yet, but here are the details for the two
+biggies: ext4/026 and generic/233.
 
-- e2fsprogs v1.45.2 or later for ext4 tests, or f2fs-tools v1.11.0 or
-  later for f2fs tests
+					- Ted
 
-Some individual tests will have additional requirements.
+ext4/026		[14:11:43][   14.287850] run fstests ext4/026 at 2019-09-30 14:11:43
+[   14.821933] WARNING: CPU: 0 PID: 1542 at fs/jbd2/revoke.c:394 jbd2_journal_revoke+0x14b/0x160
+[   14.824000] CPU: 0 PID: 1542 Comm: rm Not tainted 5.3.0-rc4-xfstests-00019-ga8d18e88fd60-dirty #1201
+[   14.826111] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.12.0-1 04/01/2014
+[   14.828039] RIP: 0010:jbd2_journal_revoke+0x14b/0x160
+[   14.829217] Code: 4c 89 f7 e8 77 8c ef ff eb a6 e8 d0 8d ef ff 48 85 c0 49 89 c6 74 99 48 8b 00 a9 00 00 10 00 0f 84 5b ff ff ff e9 71 06 00 00 <0f> 0b eb 89 0f 0b 0f 0b 66 66 2e 0f 1f 84 00 00 00 00 00 66 90 0f
+[   14.833505] RSP: 0018:ffffae0ec2683ad8 EFLAGS: 00010246
+[   14.834721] RAX: 0000000000000000 RBX: ffff951876a9f410 RCX: 1111111111111120
+[   14.836287] RDX: 0000000000000004 RSI: 0000000000000006 RDI: ffff951876a9f410
+[   14.837853] RBP: ffff951874f1f6c8 R08: 0000000373745034 R09: 0000000000000000
+[   14.839244] R10: 0000000000000000 R11: 0000000000000000 R12: 000000000000840d
+[   14.840799] R13: ffff951876695000 R14: ffff951876a9f410 R15: 0000000000000001
+[   14.842349] FS:  00007f39e17b5540(0000) GS:ffff95187d800000(0000) knlGS:0000000000000000
+[   14.844125] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   14.845403] CR2: 00007f39e16ba4a0 CR3: 0000000075b9e006 CR4: 0000000000360ef0
+[   14.847055] Call Trace:
+[   14.847628]  __ext4_forget+0xf2/0x280
+[   14.848470]  ext4_free_blocks+0x9c8/0xc00
+[   14.849270]  ? __lock_acquire+0x447/0x7c0
+[   14.850174]  ? kvm_sched_clock_read+0x14/0x30
+[   14.851182]  ext4_remove_blocks+0x33c/0x630
+[   14.852190]  ext4_ext_rm_leaf+0x1fb/0x7a0
+[   14.853493]  ext4_ext_remove_space+0x556/0xa80
+[   14.855020]  ? ext4_es_remove_extent+0x9d/0x180
+[   14.856325]  ext4_truncate+0x413/0x520
+[   14.857374]  ext4_evict_inode+0x29c/0x670
+[   14.858329]  evict+0xd0/0x1a0
+[   14.859157]  ext4_xattr_inode_array_free+0x27/0x40
+[   14.860341]  ext4_evict_inode+0x31c/0x670
+[   14.861344]  evict+0xd0/0x1a0
+[   14.862107]  do_unlinkat+0x1cd/0x2e0
+[   14.862769]  do_syscall_64+0x50/0x1b0
+[   14.863387]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+[   14.864219] RIP: 0033:0x7f39e16deff7
+[   14.864813] Code: 73 01 c3 48 8b 0d 99 ee 0c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 b8 07 01 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 69 ee 0c 00 f7 d8 64 89 01 48
+[   14.867949] RSP: 002b:00007fff3ed46068 EFLAGS: 00000246 ORIG_RAX: 0000000000000107
+[   14.869197] RAX: ffffffffffffffda RBX: 0000561d094937b0 RCX: 00007f39e16deff7
+[   14.870371] RDX: 0000000000000000 RSI: 0000561d09492340 RDI: 00000000ffffff9c
+[   14.871544] RBP: 0000561d094922b0 R08: 0000000000000003 R09: 0000000000000000
+[   14.872766] R10: 0000000000000100 R11: 0000000000000246 R12: 00007fff3ed46250
+[   14.873950] R13: 0000000000000000 R14: 0000561d094937b0 R15: 0000000000000000
+[   14.875156] irq event stamp: 2176
+[   14.875720] hardirqs last  enabled at (2175): [<ffffffffb16663e1>] kmem_cache_free+0x51/0x220
+[   14.877150] hardirqs last disabled at (2176): [<ffffffffb14016aa>] trace_hardirqs_off_thunk+0x1a/0x20
+[   14.878702] softirqs last  enabled at (814): [<ffffffffb14297f3>] fpu__clear+0xb3/0x1b0
+[   14.880055] softirqs last disabled at (812): [<ffffffffb14297b5>] fpu__clear+0x75/0x1b0
+[   14.881926] ---[ end trace 4d44757f1901181f ]---
+_check_dmesg: something found in dmesg (see /results/ext4/results-4k/ext4/026.dmesg)
+ [14:11:44]
 
-For more information about fs-verity, see
-https://www.kernel.org/doc/html/latest/filesystems/fsverity.html
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- common/config |   1 +
- common/verity | 199 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 200 insertions(+)
- create mode 100644 common/verity
-
-diff --git a/common/config b/common/config
-index 4c86a492..fb4097b8 100644
---- a/common/config
-+++ b/common/config
-@@ -213,6 +213,7 @@ export CHECKBASHISMS_PROG="$(type -P checkbashisms)"
- export XFS_INFO_PROG="$(type -P xfs_info)"
- export DUPEREMOVE_PROG="$(type -P duperemove)"
- export CC_PROG="$(type -P cc)"
-+export FSVERITY_PROG="$(type -P fsverity)"
- 
- # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
- # newer systems have udevadm command but older systems like RHEL5 don't.
-diff --git a/common/verity b/common/verity
-new file mode 100644
-index 00000000..a8aae51e
---- /dev/null
-+++ b/common/verity
-@@ -0,0 +1,199 @@
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright 2018 Google LLC
-+#
-+# Functions for setting up and testing fs-verity
-+
-+_require_scratch_verity()
-+{
-+	_require_scratch
-+	_require_command "$FSVERITY_PROG" fsverity
-+
-+	if ! _scratch_mkfs_verity &>>$seqres.full; then
-+		# ext4: need e2fsprogs v1.44.5 or later (but actually v1.45.2+
-+		#       is needed for some tests to pass, due to an e2fsck bug)
-+		# f2fs: need f2fs-tools v1.11.0 or later
-+		_notrun "$FSTYP userspace tools don't support fs-verity"
-+	fi
-+
-+	# Try to mount the filesystem.  If this fails then either the kernel
-+	# isn't aware of fs-verity, or the mkfs options were not compatible with
-+	# verity (e.g. ext4 with block size != PAGE_SIZE).
-+	if ! _try_scratch_mount &>>$seqres.full; then
-+		_notrun "kernel is unaware of $FSTYP verity feature," \
-+			"or mkfs options are not compatible with verity"
-+	fi
-+
-+	# The filesystem may be aware of fs-verity but have it disabled by
-+	# CONFIG_FS_VERITY=n.  Detect support via sysfs.
-+	if [ ! -e /sys/fs/$FSTYP/features/verity ]; then
-+		_notrun "kernel $FSTYP isn't configured with verity support"
-+	fi
-+
-+	# The filesystem may have fs-verity enabled but not actually usable by
-+	# default.  E.g., ext4 only supports verity on extent-based files, so it
-+	# doesn't work on ext3-style filesystems.  So, try actually using it.
-+	echo foo > $SCRATCH_MNT/tmpfile
-+	if ! _fsv_enable $SCRATCH_MNT/tmpfile; then
-+		_notrun "$FSTYP verity isn't usable by default with these mkfs options"
-+	fi
-+	rm -f $SCRATCH_MNT/tmpfile
-+
-+	_scratch_unmount
-+
-+	# Merkle tree block size.  Currently all filesystems only support
-+	# PAGE_SIZE for this.  This is also the default for 'fsverity enable'.
-+	FSV_BLOCK_SIZE=$(get_page_size)
-+}
-+
-+_scratch_mkfs_verity()
-+{
-+	case $FSTYP in
-+	ext4|f2fs)
-+		_scratch_mkfs -O verity
-+		;;
-+	*)
-+		_notrun "No verity support for $FSTYP"
-+		;;
-+	esac
-+}
-+
-+_scratch_mkfs_encrypted_verity()
-+{
-+	case $FSTYP in
-+	ext4)
-+		_scratch_mkfs -O encrypt,verity
-+		;;
-+	f2fs)
-+		# f2fs-tools as of v1.11.0 doesn't allow comma-separated
-+		# features with -O.  Instead -O must be supplied multiple times.
-+		_scratch_mkfs -O encrypt -O verity
-+		;;
-+	*)
-+		_notrun "$FSTYP not supported in _scratch_mkfs_encrypted_verity"
-+		;;
-+	esac
-+}
-+
-+_fsv_scratch_begin_subtest()
-+{
-+	local msg=$1
-+
-+	rm -rf "${SCRATCH_MNT:?}"/*
-+	echo -e "\n# $msg"
-+}
-+
-+_fsv_enable()
-+{
-+	$FSVERITY_PROG enable "$@"
-+}
-+
-+_fsv_measure()
-+{
-+        $FSVERITY_PROG measure "$@" | awk '{print $1}'
-+}
-+
-+# Generate a file, then enable verity on it.
-+_fsv_create_enable_file()
-+{
-+	local file=$1
-+	shift
-+
-+	head -c $((FSV_BLOCK_SIZE * 2)) /dev/zero > "$file"
-+	_fsv_enable "$file" "$@"
-+}
-+
-+_fsv_have_hash_algorithm()
-+{
-+	local hash_alg=$1
-+	local test_file=$2
-+
-+	rm -f $test_file
-+	head -c 4096 /dev/zero > $test_file
-+	if ! _fsv_enable --hash-alg=$hash_alg $test_file &>> $seqres.full; then
-+		# no kernel support
-+		return 1
-+	fi
-+	rm -f $test_file
-+	return 0
-+}
-+
-+#
-+# _fsv_scratch_corrupt_bytes - Write some bytes to a file, bypassing the filesystem
-+#
-+# Write the bytes sent on stdin to the given offset in the given file, but do so
-+# by writing directly to the extents on the block device, with the filesystem
-+# unmounted.  This can be used to corrupt a verity file for testing purposes,
-+# bypassing the restrictions imposed by the filesystem.
-+#
-+# The file is assumed to be located on $SCRATCH_DEV.
-+#
-+_fsv_scratch_corrupt_bytes()
-+{
-+	local file=$1
-+	local offset=$2
-+	local lstart lend pstart pend
-+	local dd_cmds=()
-+	local cmd
-+
-+	sync	# Sync to avoid unwritten extents
-+
-+	cat > $tmp.bytes
-+	local end=$(( offset + $(stat -c %s $tmp.bytes ) ))
-+
-+	# For each extent that intersects the requested range in order, add a
-+	# command that writes the next part of the data to that extent.
-+	while read -r lstart lend pstart pend; do
-+		lstart=$((lstart * 512))
-+		lend=$(((lend + 1) * 512))
-+		pstart=$((pstart * 512))
-+		pend=$(((pend + 1) * 512))
-+
-+		if (( lend - lstart != pend - pstart )); then
-+			_fail "Logical and physical extent lengths differ for file '$file'"
-+		elif (( offset < lstart )); then
-+			_fail "Hole in file '$file' at byte $offset.  Next extent begins at byte $lstart"
-+		elif (( offset < lend )); then
-+			local len=$((lend - offset))
-+			local seek=$((pstart + (offset - lstart)))
-+			dd_cmds+=("head -c $len | dd of=$SCRATCH_DEV oflag=seek_bytes seek=$seek status=none")
-+			(( offset += len ))
-+		fi
-+	done < <($XFS_IO_PROG -r -c "fiemap $offset $((end - offset))" "$file" \
-+		 | _filter_xfs_io_fiemap)
-+
-+	if (( offset < end )); then
-+		_fail "Extents of file '$file' ended at byte $offset, but needed until $end"
-+	fi
-+
-+	# Execute the commands to write the data
-+	_scratch_unmount
-+	for cmd in "${dd_cmds[@]}"; do
-+		eval "$cmd"
-+	done < $tmp.bytes
-+	sync	# Sync to flush the block device's pagecache
-+	_scratch_mount
-+}
-+
-+#
-+# _fsv_scratch_corrupt_merkle_tree - Corrupt a file's Merkle tree
-+#
-+# Like _fsv_scratch_corrupt_bytes(), but this corrupts the file's fs-verity
-+# Merkle tree.  The offset is given as a byte offset into the Merkle tree.
-+#
-+_fsv_scratch_corrupt_merkle_tree()
-+{
-+	local file=$1
-+	local offset=$2
-+
-+	case $FSTYP in
-+	ext4|f2fs)
-+		# ext4 and f2fs store the Merkle tree after the file contents
-+		# itself, starting at the next 65536-byte aligned boundary.
-+		(( offset += ($(stat -c %s $file) + 65535) & ~65535 ))
-+		_fsv_scratch_corrupt_bytes $file $offset
-+		;;
-+	*)
-+		_fail "_fsv_scratch_corrupt_merkle_tree() unimplemented on $FSTYP"
-+		;;
-+	esac
-+}
--- 
-2.23.0.444.g18eeb5a265-goog
-
+generic/233 		[14:18:34][   19.736637] run fstests generic/233 at 2019-09-30 14:18:34
+[   21.400934] EXT4-fs (vdc): Delayed block allocation failed for inode 131809 at logical offset 209 with max blocks 9 with error 122
+[   21.404197] EXT4-fs (vdc): This should not happen!! Data will be lost
+[   21.404197]
+ [14:18:36] 2s
