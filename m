@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-10.0 required=3.0
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B82AC388F3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 765D5C388F4
 	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 10:43:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0949F206BB
+	by mail.kernel.org (Postfix) with ESMTP id 4759E216F4
 	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 10:43:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730839AbfI3Knc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Sep 2019 06:43:32 -0400
-Received: from mx2.suse.de ([195.135.220.15]:57676 "EHLO mx1.suse.de"
+        id S1730828AbfI3Knb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 30 Sep 2019 06:43:31 -0400
+Received: from mx2.suse.de ([195.135.220.15]:57688 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730815AbfI3KnZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1730820AbfI3KnZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Mon, 30 Sep 2019 06:43:25 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id EB09CAF19;
-        Mon, 30 Sep 2019 10:43:20 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 1ED31B126;
+        Mon, 30 Sep 2019 10:43:21 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id D0D281E480A; Mon, 30 Sep 2019 12:43:39 +0200 (CEST)
+        id D80121E4826; Mon, 30 Sep 2019 12:43:39 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
 Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 05/19] ext4: Avoid unnecessary revokes in ext4_alloc_branch()
-Date:   Mon, 30 Sep 2019 12:43:23 +0200
-Message-Id: <20190930104339.24919-5-jack@suse.cz>
+Subject: [PATCH 07/19] ext4, jbd2: Provide accessor function for handle credits
+Date:   Mon, 30 Sep 2019 12:43:25 +0200
+Message-Id: <20190930104339.24919-7-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20190930103544.11479-1-jack@suse.cz>
 References: <20190930103544.11479-1-jack@suse.cz>
@@ -39,75 +39,113 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Error cleanup path in ext4_alloc_branch() calls ext4_forget() on freshly
-allocated indirect blocks with 'metadata' set to 1. This results in
-generating revoke records for these blocks. However this is unnecessary
-as the freed blocks are only allocated in the current transaction and
-thus they will never be journalled. Make this cleanup path similar to
-e.g. cleanup in ext4_splice_branch() and use ext4_free_blocks() to
-handle block forgetting by passing EXT4_FREE_BLOCKS_FORGET and not
-EXT4_FREE_BLOCKS_METADATA to ext4_free_blocks(). This also allows
-allocating transaction not to reserve any credits for revoke records.
+Provide accessor function to get number of credits available in a handle
+and use it from ext4. Later, computation of available credits won't be
+so straightforward.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/indirect.c | 28 +++++++++++++++++++---------
- 1 file changed, 19 insertions(+), 9 deletions(-)
+ fs/ext4/ext4_jbd2.c  | 13 +++++++------
+ fs/ext4/ext4_jbd2.h  |  7 -------
+ fs/ext4/xattr.c      |  2 +-
+ include/linux/jbd2.h |  6 ++++++
+ 4 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 36699a131168..602abae08387 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -331,11 +331,14 @@ static int ext4_alloc_branch(handle_t *handle,
- 	for (i = 0; i <= indirect_blks; i++) {
- 		if (i == indirect_blks) {
- 			new_blocks[i] = ext4_mb_new_blocks(handle, ar, &err);
--		} else
-+		} else {
- 			ar->goal = new_blocks[i] = ext4_new_meta_blocks(handle,
- 					ar->inode, ar->goal,
- 					ar->flags & EXT4_MB_DELALLOC_RESERVED,
- 					NULL, &err);
-+			/* Simplify error cleanup... */
-+			branch[i+1].bh = NULL;
-+		}
- 		if (err) {
- 			i--;
- 			goto failed;
-@@ -377,18 +380,25 @@ static int ext4_alloc_branch(handle_t *handle,
- 	}
- 	return 0;
- failed:
-+	if (i == indirect_blks) {
-+		/* Free data blocks */
-+		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
-+				 ar->len, 0);
-+		i--;
-+	}
- 	for (; i >= 0; i--) {
- 		/*
- 		 * We want to ext4_forget() only freshly allocated indirect
--		 * blocks.  Buffer for new_blocks[i-1] is at branch[i].bh and
--		 * buffer at branch[0].bh is indirect block / inode already
--		 * existing before ext4_alloc_branch() was called.
-+		 * blocks. Buffer for new_blocks[i] is at branch[i+1].bh
-+		 * (buffer at branch[0].bh is indirect block / inode already
-+		 * existing before ext4_alloc_branch() was called). Also
-+		 * because blocks are freshly allocated, we don't need to
-+		 * revoke them which is why we don't set
-+		 * EXT4_FREE_BLOCKS_METADATA.
- 		 */
--		if (i > 0 && i != indirect_blks && branch[i].bh)
--			ext4_forget(handle, 1, ar->inode, branch[i].bh,
--				    branch[i].bh->b_blocknr);
--		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
--				 (i == indirect_blks) ? ar->len : 1, 0);
-+		ext4_free_blocks(handle, ar->inode, branch[i+1].bh,
-+				 new_blocks[i], 1,
-+				 branch[i+1].bh ? EXT4_FREE_BLOCKS_FORGET : 0);
- 	}
- 	return err;
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 2b98d893cda9..731bbfdbce5b 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -119,8 +119,8 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
+ 		return ext4_get_nojournal();
+ 
+ 	sb = handle->h_journal->j_private;
+-	trace_ext4_journal_start_reserved(sb, handle->h_buffer_credits,
+-					  _RET_IP_);
++	trace_ext4_journal_start_reserved(sb,
++				jbd2_handle_buffer_credits(handle), _RET_IP_);
+ 	err = ext4_journal_check_start(sb);
+ 	if (err < 0) {
+ 		jbd2_journal_free_reserved(handle);
+@@ -138,10 +138,10 @@ int __ext4_journal_ensure_credits(handle_t *handle, int check_cred,
+ {
+ 	if (!ext4_handle_valid(handle))
+ 		return 0;
+-	if (handle->h_buffer_credits >= check_cred)
++	if (jbd2_handle_buffer_credits(handle) >= check_cred)
+ 		return 0;
+ 	return ext4_journal_extend(handle,
+-				   extend_cred - handle->h_buffer_credits);
++			   extend_cred - jbd2_handle_buffer_credits(handle));
  }
+ 
+ static void ext4_journal_abort_handle(const char *caller, unsigned int line,
+@@ -289,7 +289,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 				       handle->h_type,
+ 				       handle->h_line_no,
+ 				       handle->h_requested_credits,
+-				       handle->h_buffer_credits, err);
++				       jbd2_handle_buffer_credits(handle), err);
+ 				return err;
+ 			}
+ 			ext4_error_inode(inode, where, line,
+@@ -300,7 +300,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+ 					 handle->h_type,
+ 					 handle->h_line_no,
+ 					 handle->h_requested_credits,
+-					 handle->h_buffer_credits, err);
++					 jbd2_handle_buffer_credits(handle),
++					 err);
+ 		}
+ 	} else {
+ 		if (inode)
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 481bf770a374..a4b980eae4da 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -288,13 +288,6 @@ static inline int ext4_handle_is_aborted(handle_t *handle)
+ 	return 0;
+ }
+ 
+-static inline int ext4_handle_has_enough_credits(handle_t *handle, int needed)
+-{
+-	if (ext4_handle_valid(handle) && handle->h_buffer_credits < needed)
+-		return 0;
+-	return 1;
+-}
+-
+ #define ext4_journal_start_sb(sb, type, nblocks)			\
+ 	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks), 0)
+ 
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index f84617302f07..17d7eea144e8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -2314,7 +2314,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 						   flags & XATTR_CREATE);
+ 		brelse(bh);
+ 
+-		if (!ext4_handle_has_enough_credits(handle, credits)) {
++		if (jbd2_handle_buffer_credits(handle) < credits) {
+ 			error = -ENOSPC;
+ 			goto cleanup;
+ 		}
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b20ef2c0812d..c2ad74ea6015 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1647,6 +1647,12 @@ static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
+ 	return tid;
+ }
+ 
++
++static inline int jbd2_handle_buffer_credits(handle_t *handle)
++{
++	return handle->h_buffer_credits;
++}
++
+ #ifdef __KERNEL__
+ 
+ #define buffer_trace_init(bh)	do {} while (0)
 -- 
 2.16.4
 
