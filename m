@@ -1,164 +1,124 @@
-Return-Path: <SRS0=H3pp=XY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=0sa6=XZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A33DC352A9
-	for <linux-ext4@archiver.kernel.org>; Sun, 29 Sep 2019 09:05:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A12BC4360C
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 07:30:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1B4712081B
-	for <linux-ext4@archiver.kernel.org>; Sun, 29 Sep 2019 09:05:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F13B72081B
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 07:30:48 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="RIUESRFx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725958AbfI2JFP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 29 Sep 2019 05:05:15 -0400
-Received: from gardel.0pointer.net ([85.214.157.71]:53304 "EHLO
-        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725379AbfI2JFP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Sep 2019 05:05:15 -0400
-Received: from gardel-login.0pointer.net (gardel.0pointer.net [85.214.157.71])
-        by gardel.0pointer.net (Postfix) with ESMTP id 20337E80A99;
-        Sun, 29 Sep 2019 11:05:13 +0200 (CEST)
-Received: by gardel-login.0pointer.net (Postfix, from userid 1000)
-        id BB79E160AE4; Sun, 29 Sep 2019 11:05:12 +0200 (CEST)
-Date:   Sun, 29 Sep 2019 11:05:12 +0200
-From:   Lennart Poettering <mzxreary@0pointer.de>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     "Alexander E. Patrakov" <patrakov@gmail.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        "Ahmed S. Darwish" <darwish.07@gmail.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Willy Tarreau <w@1wt.eu>,
-        Matthew Garrett <mjg59@srcf.ucam.org>,
-        Vito Caputo <vcaputo@pengaru.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>, Ray Strode <rstrode@redhat.com>,
-        William Jon McCann <mccann@jhu.edu>,
-        zhangjs <zachary@baishancloud.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>
-Subject: Re: Linux 5.3-rc8
-Message-ID: <20190929090512.GB13049@gardel-login>
-References: <20190917121156.GC6762@mit.edu>
- <20190917123015.sirlkvy335crozmj@debian-stretch-darwi.lab.linutronix.de>
- <20190917160844.GC31567@gardel-login>
- <CAHk-=wgsWTCZ=LPHi7BXzFCoWbyp3Ey-zZbaKzWixO91Ryr9=A@mail.gmail.com>
- <20190917174219.GD31798@gardel-login>
- <87zhj15qgf.fsf@x220.int.ebiederm.org>
- <84824f79-2d12-0fd5-5b32-b0360eb075ac@gmail.com>
- <CAHk-=whYhC-qXHdEypy6iC7SzPA+KvWphLXSGF+mvGCGHGjNZw@mail.gmail.com>
- <20190927135708.GD11791@gardel-login>
- <CAHk-=widBVsz+JZYnkV8xvCt+XMzkO6Gz3KZQ_gULXpMpUZfMA@mail.gmail.com>
+        id S1729515AbfI3HaN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 30 Sep 2019 03:30:13 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:35606 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725767AbfI3HaN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2019 03:30:13 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=+RxVhfg/XqKkmLaVbtiYHGOh1FSjmgcY7SoSeeOxLws=; b=RIUESRFxLtDN6yOAeQnqRT2Tl
+        imOaYQBEHlXioRQUhAXw+pEyGz4F5u2Xd9pigFxiSivWCGTMUCoGIYzxyVeMIWpaOQZVML65ZJb6C
+        ZwefEhmPzjdTla9bwPzNMaDGwktKVErqLCxH1FeWc7vaqZ8Lq2LUsEl4RexprH62pddRzCo6Uv4Hu
+        jelEw3faOMfP7i+paWjjWyDnS4IZbf9PHyDhKlqDWzt4zbyzUVAplr6d5tcGTWahipCOzg7QcxRBe
+        c984nCz/UvNNxmzCNIkhw3HPOV+VVaGduUTWtfqTOkd+Lu2L75NBXHYFvOO4lOAfqyP5IGXyJuJdW
+        jDMQWAJTg==;
+Received: from j217100.upc-j.chello.nl ([24.132.217.100] helo=noisy.programming.kicks-ass.net)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.2 #3 (Red Hat Linux))
+        id 1iEq7r-00013E-Gb; Mon, 30 Sep 2019 07:29:43 +0000
+Received: from hirez.programming.kicks-ass.net (hirez.programming.kicks-ass.net [192.168.1.225])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (Client did not present a certificate)
+        by noisy.programming.kicks-ass.net (Postfix) with ESMTPS id E24CE301B59;
+        Mon, 30 Sep 2019 09:28:50 +0200 (CEST)
+Received: by hirez.programming.kicks-ass.net (Postfix, from userid 1000)
+        id A0F3F2651BB8E; Mon, 30 Sep 2019 09:29:38 +0200 (CEST)
+Date:   Mon, 30 Sep 2019 09:29:38 +0200
+From:   Peter Zijlstra <peterz@infradead.org>
+To:     Qian Cai <cai@lca.pw>
+Cc:     akpm@linux-foundation.org, mingo@redhat.com, will@kernel.org,
+        linux-kernel@vger.kernel.org, linux-api@vger.kernel.org,
+        maarten.lankhorst@linux.intel.com, mripard@kernel.org,
+        sean@poorly.run, airlied@linux.ie, daniel@ffwll.ch,
+        dri-devel@lists.freedesktop.org, gregkh@linuxfoundation.org,
+        jslaby@suse.com, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, joonas.lahtinen@linux.intel.com,
+        rodrigo.vivi@intel.com, intel-gfx@lists.freedesktop.org,
+        tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        tj@kernel.org, mark@fasheh.com, jlbec@evilplan.or,
+        joseph.qi@linux.alibaba.com, ocfs2-devel@oss.oracle.com,
+        davem@davemloft.net, st@kernel.org, daniel@iogearbox.net,
+        netdev@vger.kernel.org, bpf@vger.kernel.org, duyuyang@gmail.com,
+        juri.lelli@redhat.com, vincent.guittot@linaro.org,
+        hannes@cmpxchg.org, mhocko@kernel.org, vdavydov.dev@gmail.com,
+        cgroups@vger.kernel.org, linux-mm@kvack.org,
+        alexander.levin@microsoft.com
+Subject: Re: [PATCH -next] treewide: remove unused argument in lock_release()
+Message-ID: <20190930072938.GK4553@hirez.programming.kicks-ass.net>
+References: <1568909380-32199-1-git-send-email-cai@lca.pw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAHk-=widBVsz+JZYnkV8xvCt+XMzkO6Gz3KZQ_gULXpMpUZfMA@mail.gmail.com>
+In-Reply-To: <1568909380-32199-1-git-send-email-cai@lca.pw>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fr, 27.09.19 08:58, Linus Torvalds (torvalds@linux-foundation.org) wrote:
+On Thu, Sep 19, 2019 at 12:09:40PM -0400, Qian Cai wrote:
+> Since the commit b4adfe8e05f1 ("locking/lockdep: Remove unused argument
+> in __lock_release"), @nested is no longer used in lock_release(), so
+> remove it from all lock_release() calls and friends.
 
-> On Fri, Sep 27, 2019 at 6:57 AM Lennart Poettering <mzxreary@0pointer.de> wrote:
-> >
-> > Doing the random seed in the boot loader is nice for two reasons:
-> >
-> > 1. It runs very very early, so that the OS can come up with fully
-> >    initialized entropy right from the beginning.
->
-> Oh, that part I love.
->
-> But I don't believe in your second case:
->
-> > 2. The boot loader generally has found some disk to read the kernel from,
-> >    i.e. has a place where stuff can be stored and which can be updated
-> >    (most modern boot loaders can write to disk these days, and so can
-> >    EFI). Thus, it can derive a new random seed from a stored seed on disk
-> >    and pass it to the OS *AND* update it right away on disk ensuring that
-> >    it is never reused again.
->
-> No. This is absolutely no different at all from user space doing it
-> early with a file.
->
-> All the same "golden image" issues exist, and in general the less the
-> boot loader writes to disk, the better.
->
-> Plus it doesn't actually work anyway in the one situation where people
-> _really_ want it - embedded devices, where the kernel image is quite
-> possibly in read-only flash that needs major setup for updates.
->
-> PLUS.
->
-> Your "it can update it right away on disk" is just crazy talk. With
-> WHAT? It has no randomness to play with, and it doesn't have time to
-> do jitter entropy stuff.
+Right; I never did this cleanup for not wanting the churn, but as long
+as it applies I'll take it.
 
-So these two issues are addressed by the logic implemented in sd-boot
-(systemd's boot loader) like this:
+> Signed-off-by: Qian Cai <cai@lca.pw>
+> ---
+>  drivers/gpu/drm/drm_connector.c               |  2 +-
+>  drivers/gpu/drm/i915/gem/i915_gem_shrinker.c  |  6 +++---
+>  drivers/gpu/drm/i915/gt/intel_engine_pm.c     |  2 +-
+>  drivers/gpu/drm/i915/i915_request.c           |  2 +-
+>  drivers/tty/tty_ldsem.c                       |  8 ++++----
+>  fs/dcache.c                                   |  2 +-
+>  fs/jbd2/transaction.c                         |  4 ++--
+>  fs/kernfs/dir.c                               |  4 ++--
+>  fs/ocfs2/dlmglue.c                            |  2 +-
+>  include/linux/jbd2.h                          |  2 +-
+>  include/linux/lockdep.h                       | 21 ++++++++++-----------
+>  include/linux/percpu-rwsem.h                  |  4 ++--
+>  include/linux/rcupdate.h                      |  2 +-
+>  include/linux/rwlock_api_smp.h                | 16 ++++++++--------
+>  include/linux/seqlock.h                       |  4 ++--
+>  include/linux/spinlock_api_smp.h              |  8 ++++----
+>  include/linux/ww_mutex.h                      |  2 +-
+>  include/net/sock.h                            |  2 +-
+>  kernel/bpf/stackmap.c                         |  2 +-
+>  kernel/cpu.c                                  |  2 +-
+>  kernel/locking/lockdep.c                      |  3 +--
+>  kernel/locking/mutex.c                        |  4 ++--
+>  kernel/locking/rtmutex.c                      |  6 +++---
+>  kernel/locking/rwsem.c                        | 10 +++++-----
+>  kernel/printk/printk.c                        | 10 +++++-----
+>  kernel/sched/core.c                           |  2 +-
+>  lib/locking-selftest.c                        | 24 ++++++++++++------------
+>  mm/memcontrol.c                               |  2 +-
+>  net/core/sock.c                               |  2 +-
+>  tools/lib/lockdep/include/liblockdep/common.h |  3 +--
+>  tools/lib/lockdep/include/liblockdep/mutex.h  |  2 +-
+>  tools/lib/lockdep/include/liblockdep/rwlock.h |  2 +-
+>  tools/lib/lockdep/preload.c                   | 16 ++++++++--------
+>  33 files changed, 90 insertions(+), 93 deletions(-)
 
-The old seed is read off the ESP seed file. We then calculate two hash
-sums in counter mode from it (SHA256), one we pass to the OS as seed
-to initialize the random pool from. The other we use to update the ESP
-seed file with. Unless you are capable of breaking SHA256 this means
-the seed passed to the OS and the new seed stored on disk are derived
-from the same seed but in a way you cannot determine one if you
-managed to learn the other. Moreover, on each boot you are guaranteed
-to get two new seeds, each time, and you cannot derive the sums used
-on previous boots from those. This means we are robust towards
-potential seed reuse when turning the system forcibly off during boot.
-
-Now, what's still missing in the above is protection against "golden
-image" issues, as you correctly pointed out. To deal with that the
-SHA256 sums are not just hashed from the old seed and the counter, but
-also include a system specific "system token" (you may also call it
-"salt") which is stored in an EFI variable, persistently, which was
-created once, during system installation. This hence gives you the
-behaviour your are looking for, using the NVRAM like you suggested,
-but we don't need to write the EFI vars all the time, as instead we
-update the seed file stored in the ESP each time, and updating the ESP
-should be safer and less problematic (i.e. if everything is done right
-it's a single sector write).
-
-To make this safer, on EFI firmwares that support the RNG protocol we
-also include some data derived from that in the hash, just for good
-measure. To sumarize:
-
-NEWDISKSEED = SHA256(OLDDISKSEED || SYSTEMTOKEN || EFIRNGVAL || "1")
-SEEDFORLINUX = SHA256(OLDDISKSEED || SYSTEMTOKEN || EFIRNGVAL || "2")
-
-(and no, this is not a crypto scheme I designed, but something
-Dr. Bertram Poettering (my brother, a cryptographer) suggested)
-
-> So all it can do is a really bad job at taking the previous random
-> seed, doing some transformation on it, and add a little bit of
-> whatever system randomness it can find. None of which is any better
-> than what the kernel can do.
-
-Well, the kernel cannot hash and rewrite the old seed file early enough,
-it's that simple. It can do that only when /var becomes writable,
-i.e. very late during boot, much later than when we need entropy
-for. The boot loader on the hand, can hash and rewrite the old seed
-file even before the kernel initializes, and that's the big benefit!
-
-> End result: you'd need to have the kernel update whatever bootloader
-> data later on, and I'm not seeing that happening. Afaik the current
-> bootloader interface has no way to specify how to update it when you
-> actually have better randomness.
-
-So, you could, but don't have to update the ESP random seed file from
-the OS too, every now and then, but the security of the model dos not
-rely on that.
-
-(And yes, the above doesn't help if you have a fully R/O medium, but
-those tend to be embedded devices, and I am much less concerned about
-those, the designers really can deal with the RNG seed issues
-themselves, and maybe provide some hw to do it; it's the generic user
-PCs that we should be concerned about, and for those the above should
-generally work)
-
-Lennart
-
---
-Lennart Poettering, Berlin
+Thanks!
