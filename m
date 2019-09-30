@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4466BC388F3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7156AC4CECE
 	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1889F21920
+	by mail.kernel.org (Postfix) with ESMTP id 43F9721927
 	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1569878370;
-	bh=AMDvMUxHbc7BlvkjtIaFkKhE6Cd5lcHwTQo1pPRNo/Y=;
+	bh=9UhgddTaavLuhdplB1poq3TFBlFYIObQrc+iqLwnCDk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qth9BgsaLfc1SkFhLtC0KyqRXb2bH86Arl0BZXHW4AkSiUVUubI8qxzGGOwNNqD7i
-	 K3Ye1JrmoYjXWXTlt22ccrlMr4djzvms9m/MxUItPSG7Qdf+wP/t4yE8C2Wfqi3Yap
-	 /Fob+wRzVfxOaHVccBonHL9KxuTCLxUZeoblPo48=
+	b=UckIyht8Wu01P6WWrkB6swrRU4HqOAPgH0XlQ4rDlVuhHg14utu7+5i/4GDyOWDo+
+	 VV2nz9WGF5mrWznKGhPgow0S8OxNR0KoJHMjkZQcBll4dLSqXHLsonslSj860WDlDY
+	 wll+rHvmCsfmd4rG3JnJU2oXXG0c9WY8W8RjCuDU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732429AbfI3VT3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1732436AbfI3VT3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Mon, 30 Sep 2019 17:19:29 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47300 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:47244 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729880AbfI3VT2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Sep 2019 17:19:28 -0400
+        id S1732362AbfI3VT3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 30 Sep 2019 17:19:29 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id F255721A4A;
-        Mon, 30 Sep 2019 21:19:26 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0775821A4C;
+        Mon, 30 Sep 2019 21:19:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569878367;
-        bh=AMDvMUxHbc7BlvkjtIaFkKhE6Cd5lcHwTQo1pPRNo/Y=;
+        s=default; t=1569878368;
+        bh=9UhgddTaavLuhdplB1poq3TFBlFYIObQrc+iqLwnCDk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=uB0xtTS1aIv1/FSjpYLoJGgwF4OqSt3yqFeujVF4uKEFRLWL1fCMJkF711AQVGqkc
-         uWN8/YoWRWtrQGhMol6emuqnAA7l8bE5sIAiRpoe/dbXS51P2NsNtincyjKlvVrRZQ
-         zN8vokcJzyjIFyImheo3FQ8NOENCAnRmUcLN7tjk=
+        b=OEUf6GR7sHRbWgy7UrYMF81xx6PGyl3AADS8DiDNKM7SCJzB3mrliZ7I8E8LzwkYX
+         fVGWbRMqQO6PjCK+J/myYivWJlxC0KqCYEHGICCmA7eWeZhaHpl3Mqy4FAg/jXOQgc
+         LdRCF/rSi9wKNczospIq7W0ROJibS15KC8/WSkT8=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         "Theodore Y . Ts'o" <tytso@mit.edu>
-Subject: [PATCH v4 5/8] generic: test corrupting verity files
-Date:   Mon, 30 Sep 2019 14:15:50 -0700
-Message-Id: <20190930211553.64208-6-ebiggers@kernel.org>
+Subject: [PATCH v4 8/8] generic: test the fs-verity built-in signature verification support
+Date:   Mon, 30 Sep 2019 14:15:53 -0700
+Message-Id: <20190930211553.64208-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
 In-Reply-To: <20190930211553.64208-1-ebiggers@kernel.org>
 References: <20190930211553.64208-1-ebiggers@kernel.org>
@@ -59,36 +59,81 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This test corrupts various parts of the contents of a verity file, or
-parts of its Merkle tree, by writing directly to the block device.  It
-verifies that this causes I/O errors when the relevant part of the
-contents is later read by any means.
+Add a basic test for the fs-verity built-in signature verification
+support, which is an optional feature where the kernel can be configured
+to enforce that all verity files are accompanied with a valid signature
+by a key that has been loaded into the fs-verity keyring.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- tests/generic/902     | 154 ++++++++++++++++++++++++++++++++++++++++++
- tests/generic/902.out |  91 +++++++++++++++++++++++++
+ common/config         |   1 +
+ common/verity         |  16 +++++
+ tests/generic/905     | 150 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/905.out |  42 ++++++++++++
  tests/generic/group   |   1 +
- 3 files changed, 246 insertions(+)
- create mode 100755 tests/generic/902
- create mode 100644 tests/generic/902.out
+ 5 files changed, 210 insertions(+)
+ create mode 100755 tests/generic/905
+ create mode 100644 tests/generic/905.out
 
-diff --git a/tests/generic/902 b/tests/generic/902
+diff --git a/common/config b/common/config
+index fb4097b8..c7a1c61c 100644
+--- a/common/config
++++ b/common/config
+@@ -214,6 +214,7 @@ export XFS_INFO_PROG="$(type -P xfs_info)"
+ export DUPEREMOVE_PROG="$(type -P duperemove)"
+ export CC_PROG="$(type -P cc)"
+ export FSVERITY_PROG="$(type -P fsverity)"
++export OPENSSL_PROG="$(type -P openssl)"
+ 
+ # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
+ # newer systems have udevadm command but older systems like RHEL5 don't.
+diff --git a/common/verity b/common/verity
+index a8aae51e..bcb5670d 100644
+--- a/common/verity
++++ b/common/verity
+@@ -45,6 +45,17 @@ _require_scratch_verity()
+ 	FSV_BLOCK_SIZE=$(get_page_size)
+ }
+ 
++# Check for CONFIG_FS_VERITY_BUILTIN_SIGNATURES=y.
++_require_fsverity_builtin_signatures()
++{
++	if [ ! -e /proc/keys ]; then
++		_notrun "kernel doesn't support keyrings"
++	fi
++	if ! awk '{print $9}' /proc/keys | grep -q '^\.fs-verity:$'; then
++		_notrun "kernel doesn't support fs-verity builtin signatures"
++	fi
++}
++
+ _scratch_mkfs_verity()
+ {
+ 	case $FSTYP in
+@@ -92,6 +103,11 @@ _fsv_measure()
+         $FSVERITY_PROG measure "$@" | awk '{print $1}'
+ }
+ 
++_fsv_sign()
++{
++	$FSVERITY_PROG sign "$@"
++}
++
+ # Generate a file, then enable verity on it.
+ _fsv_create_enable_file()
+ {
+diff --git a/tests/generic/905 b/tests/generic/905
 new file mode 100755
-index 00000000..5ef2cca1
+index 00000000..e42b012d
 --- /dev/null
-+++ b/tests/generic/902
-@@ -0,0 +1,154 @@
++++ b/tests/generic/905
+@@ -0,0 +1,150 @@
 +#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
-+# Copyright 2018 Google LLC
++# Copyright 2019 Google LLC
 +#
-+# FS QA Test generic/902
++# FS QA Test generic/905
 +#
-+# Test corrupting verity files.  This test corrupts various parts of the
-+# contents of a verity file, or parts of its Merkle tree, by writing directly to
-+# the block device.  It verifies that this causes I/O errors when the relevant
-+# part of the contents is later read by any means.
++# Test the fs-verity built-in signature verification support.
 +#
 +seq=`basename $0`
 +seqres=$RESULT_DIR/$seq
@@ -101,6 +146,7 @@ index 00000000..5ef2cca1
 +
 +_cleanup()
 +{
++	sysctl -w fs.verity.require_signatures=0 &>/dev/null
 +	cd /
 +	rm -f $tmp.*
 +}
@@ -117,228 +163,177 @@ index 00000000..5ef2cca1
 +_supported_fs generic
 +_supported_os Linux
 +_require_scratch_verity
++_require_fsverity_builtin_signatures
++_require_command "$OPENSSL_PROG" openssl
++_require_command "$KEYCTL_PROG" keyctl
 +
 +_scratch_mkfs_verity &>> $seqres.full
 +_scratch_mount
-+fsv_orig_file=$SCRATCH_MNT/file
++
 +fsv_file=$SCRATCH_MNT/file.fsv
++fsv_orig_file=$SCRATCH_MNT/file
++keyfile=$tmp.key.pem
++certfile=$tmp.cert.pem
++certfileder=$tmp.cert.der
++sigfile=$tmp.sig
++otherfile=$SCRATCH_MNT/otherfile
++othersigfile=$tmp.othersig
 +
-+setup_zeroed_file()
-+{
-+	local len=$1
-+	local sparse=$2
++# Setup
 +
-+	if $sparse; then
-+		dd if=/dev/zero of=$fsv_orig_file bs=1 count=0 seek=$len \
-+			status=none
-+	else
-+		head -c $len /dev/zero > $fsv_orig_file
++echo -e "\n# Generating certificates and private keys"
++for suffix in '' '.2'; do
++	if ! $OPENSSL_PROG req -newkey rsa:4096 -nodes -batch -x509 \
++			-keyout $keyfile$suffix -out $certfile$suffix \
++			&>> $seqres.full; then
++		_fail "Failed to generate certificate and private key (see $seqres.full)"
 +	fi
++	$OPENSSL_PROG x509 -in $certfile$suffix -out $certfileder$suffix \
++		-outform der
++done
++
++echo -e "\n# Clearing fs-verity keyring"
++$KEYCTL_PROG clear %keyring:.fs-verity
++
++echo -e "\n# Loading first certificate into fs-verity keyring"
++$KEYCTL_PROG padd asymmetric '' %keyring:.fs-verity \
++	< $certfileder >> $seqres.full
++
++echo -e "\n# Enabling fs.verity.require_signatures"
++sysctl -w fs.verity.require_signatures=1
++
++echo -e "\n# Generating file and signing it for fs-verity"
++head -c 100000 /dev/zero > $fsv_orig_file
++for suffix in '' '.2'; do
++	_fsv_sign $fsv_orig_file $sigfile$suffix --key=$keyfile$suffix \
++		--cert=$certfile$suffix | _filter_scratch
++done
++
++echo -e "\n# Signing a different file for fs-verity"
++head -c 100000 /dev/zero | tr '\0' 'X' > $otherfile
++_fsv_sign $otherfile $othersigfile --key=$keyfile --cert=$certfile \
++	| _filter_scratch
++
++# Actual tests
++
++reset_fsv_file()
++{
++	rm -f $fsv_file
 +	cp $fsv_orig_file $fsv_file
-+	_fsv_enable $fsv_file
-+	md5sum $fsv_file |& _filter_scratch
 +}
 +
-+filter_sigbus()
-+{
-+	sed -e 's/.*Bus error.*/Bus error/'
-+}
++echo -e "\n# Enabling verity with valid signature (should succeed)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$sigfile
++cmp $fsv_file $fsv_orig_file
 +
-+round_up_to_page_boundary()
-+{
-+	local n=$1
-+	local page_size=$(get_page_size)
++echo -e "\n# Enabling verity without signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file |& _filter_scratch
 +
-+	echo $(( (n + page_size - 1) & ~(page_size - 1) ))
-+}
++echo -e "\n# Opening verity file without signature (should fail)"
++reset_fsv_file
++sysctl -w fs.verity.require_signatures=0 &>> $seqres.full
++_fsv_enable $fsv_file
++sysctl -w fs.verity.require_signatures=1 &>> $seqres.full
++_scratch_cycle_mount
++md5sum $fsv_file |& _filter_scratch
 +
-+corruption_test()
-+{
-+	local file_len=$1
-+	local zap_offset=$2
-+	local zap_len=$3
-+	local is_merkle_tree=${4:-false} # if true, zap tree instead of data
-+	local use_sparse_file=${5:-false}
-+	local page_aligned_eof=$(round_up_to_page_boundary $file_len)
-+	local measurement
++echo -e "\n# Enabling verity with untrusted signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$sigfile.2 |& _filter_scratch
 +
-+	if $is_merkle_tree; then
-+		local corrupt_func=_fsv_scratch_corrupt_merkle_tree
-+	else
-+		local corrupt_func=_fsv_scratch_corrupt_bytes
-+	fi
++echo -e "\n# Enabling verity with wrong file's signature (should fail)"
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$othersigfile |& _filter_scratch
 +
-+	local msg="Corruption test:"
-+	msg+=" file_len=$file_len"
-+	if $use_sparse_file; then
-+		msg+=" (sparse)"
-+	fi
-+	msg+=" zap_offset=$zap_offset"
-+	if $is_merkle_tree; then
-+		msg+=" (in Merkle tree)"
-+	fi
-+	msg+=" zap_len=$zap_len"
++echo -e "\n# Enabling verity with malformed signature (should fail)"
++echo foobarbaz > $tmp.malformed_sig
++reset_fsv_file
++_fsv_enable $fsv_file --signature=$tmp.malformed_sig |& _filter_scratch
 +
-+	_fsv_scratch_begin_subtest "$msg"
-+	setup_zeroed_file $file_len $use_sparse_file
++echo -e "\n# Testing salt"
++reset_fsv_file
++_fsv_sign $fsv_orig_file $sigfile.salted --key=$keyfile --cert=$certfile \
++	--salt=abcd | _filter_scratch
++_fsv_enable $fsv_file --signature=$sigfile.salted --salt=abcd
++cmp $fsv_file $fsv_orig_file
++
++echo -e "\n# Testing non-default hash algorithm"
++if _fsv_have_hash_algorithm sha512 $fsv_file; then
++	reset_fsv_file
++	_fsv_sign $fsv_orig_file $sigfile.sha512 --key=$keyfile \
++		--cert=$certfile --hash-alg=sha512 > /dev/null
++	_fsv_enable $fsv_file --signature=$sigfile.sha512 --hash-alg=sha512
 +	cmp $fsv_file $fsv_orig_file
-+	echo "Corrupting bytes..."
-+	head -c $zap_len /dev/zero | tr '\0' X \
-+		| $corrupt_func $fsv_file $zap_offset
++fi
 +
-+	echo "Validating corruption (reading full file)..."
-+	_scratch_cycle_mount
-+	md5sum $fsv_file |& _filter_scratch
-+
-+	echo "Validating corruption (direct I/O)..."
-+	_scratch_cycle_mount
-+	dd if=$fsv_file bs=$FSV_BLOCK_SIZE iflag=direct status=none \
-+		of=/dev/null |& _filter_scratch
-+
-+	if ! $is_merkle_tree; then
-+		echo "Validating corruption (reading just corrupted part)..."
-+		dd if=$fsv_file bs=1 skip=$zap_offset count=$zap_len \
-+			of=/dev/null status=none |& _filter_scratch
-+	fi
-+
-+	echo "Validating corruption (reading full file via mmap)..."
-+	bash -c "trap '' SIGBUS; $XFS_IO_PROG -r $fsv_file \
-+		-c 'mmap -r 0 $page_aligned_eof' \
-+		-c 'mread 0 $file_len'" |& filter_sigbus
-+
-+	if ! $is_merkle_tree; then
-+		echo "Validating corruption (reading just corrupted part via mmap)..."
-+		bash -c "trap '' SIGBUS; $XFS_IO_PROG -r $fsv_file \
-+			-c 'mmap -r 0 $page_aligned_eof' \
-+			-c 'mread $zap_offset $zap_len'" |& filter_sigbus
-+	fi
-+}
-+
-+corruption_test 131072 0 1
-+corruption_test 131072 4095 1
-+corruption_test 131072 65536 65536
-+corruption_test 131072 131071 1
-+
-+# Non-zeroed bytes in the final partial block beyond EOF should cause reads to
-+# fail too.  Such bytes would be visible via mmap().
-+corruption_test 130999 131000 72
-+
-+# Merkle tree corruption.
-+corruption_test 200000 100 10 true
-+
-+# Sparse file.  Corrupting the Merkle tree should still cause reads to fail,
-+# i.e. the filesystem must verify holes.
-+corruption_test 200000 100 10 true true
++echo -e "\n# Testing empty file"
++echo -n > $fsv_file
++_fsv_sign $fsv_file $sigfile.emptyfile --key=$keyfile --cert=$certfile | \
++		_filter_scratch
++_fsv_enable $fsv_file --signature=$sigfile.emptyfile
 +
 +# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/902.out b/tests/generic/902.out
+diff --git a/tests/generic/905.out b/tests/generic/905.out
 new file mode 100644
-index 00000000..15fe691e
+index 00000000..4b28757a
 --- /dev/null
-+++ b/tests/generic/902.out
-@@ -0,0 +1,91 @@
-+QA output created by 902
++++ b/tests/generic/905.out
+@@ -0,0 +1,42 @@
++QA output created by 905
 +
-+# Corruption test: file_len=131072 zap_offset=0 zap_len=1
-+0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading just corrupted part)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
-+Validating corruption (reading just corrupted part via mmap)...
-+Bus error
++# Generating certificates and private keys
 +
-+# Corruption test: file_len=131072 zap_offset=4095 zap_len=1
-+0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading just corrupted part)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
-+Validating corruption (reading just corrupted part via mmap)...
-+Bus error
++# Clearing fs-verity keyring
 +
-+# Corruption test: file_len=131072 zap_offset=65536 zap_len=65536
-+0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading just corrupted part)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
-+Validating corruption (reading just corrupted part via mmap)...
-+Bus error
++# Loading first certificate into fs-verity keyring
 +
-+# Corruption test: file_len=131072 zap_offset=131071 zap_len=1
-+0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading just corrupted part)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
-+Validating corruption (reading just corrupted part via mmap)...
-+Bus error
++# Enabling fs.verity.require_signatures
++fs.verity.require_signatures = 1
 +
-+# Corruption test: file_len=130999 zap_offset=131000 zap_len=72
-+f5cca0d7fbb8b02bc6118a9954d5d306  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading just corrupted part)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
-+Validating corruption (reading just corrupted part via mmap)...
-+Bus error
++# Generating file and signing it for fs-verity
++Signed file 'SCRATCH_MNT/file' (sha256:ecabbfca4efd69a721be824965da10d27900b109549f96687b35a4d91d810dac)
++Signed file 'SCRATCH_MNT/file' (sha256:ecabbfca4efd69a721be824965da10d27900b109549f96687b35a4d91d810dac)
 +
-+# Corruption test: file_len=200000 zap_offset=100 (in Merkle tree) zap_len=10
-+4a1e4325031b13f933ac4f1db9ecb63f  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
++# Signing a different file for fs-verity
++Signed file 'SCRATCH_MNT/otherfile' (sha256:b2a419c5a8c767a78c6275d6729794bf51e52ddf8713e31d12a93d61d961f49f)
 +
-+# Corruption test: file_len=200000 (sparse) zap_offset=100 (in Merkle tree) zap_len=10
-+4a1e4325031b13f933ac4f1db9ecb63f  SCRATCH_MNT/file.fsv
-+Corrupting bytes...
-+Validating corruption (reading full file)...
-+md5sum: SCRATCH_MNT/file.fsv: Input/output error
-+Validating corruption (direct I/O)...
-+dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
-+Validating corruption (reading full file via mmap)...
-+Bus error
++# Enabling verity with valid signature (should succeed)
++
++# Enabling verity without signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Operation not permitted
++
++# Opening verity file without signature (should fail)
++md5sum: SCRATCH_MNT/file.fsv: Operation not permitted
++
++# Enabling verity with untrusted signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Required key not available
++
++# Enabling verity with wrong file's signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Key was rejected by service
++
++# Enabling verity with malformed signature (should fail)
++ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Bad message
++
++# Testing salt
++Signed file 'SCRATCH_MNT/file' (sha256:1cb173bcd199133eb80e9ea4f0f741001b9e73227aa8812685156f2bc8ff45f5)
++
++# Testing non-default hash algorithm
++
++# Testing empty file
++Signed file 'SCRATCH_MNT/file.fsv' (sha256:3d248ca542a24fc62d1c43b916eae5016878e2533c88238480b26128a1f1af95)
 diff --git a/tests/generic/group b/tests/generic/group
-index a0450d42..22df626f 100644
+index c996542a..78aba1e7 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -572,3 +572,4 @@
- 567 auto quick rw punch
- 900 auto quick verity
- 901 auto quick verity
-+902 auto quick verity
+@@ -575,3 +575,4 @@
+ 902 auto quick verity
+ 903 auto quick verity
+ 904 auto quick verity encrypt
++905 auto quick verity
 -- 
 2.23.0.444.g18eeb5a265-goog
 
