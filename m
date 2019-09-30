@@ -2,88 +2,106 @@ Return-Path: <SRS0=0sa6=XZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F558C32792
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 16:25:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58048C35280
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B6EB2075D
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 16:25:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2042D21920
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1569878367;
+	bh=vrx6r+SGfrTyFSiHE5OHRltvBYxK9kX4SHueCOiMXmE=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=w9MFR50j/cNdiyk6FSnp/y7TWItgwfEQI1U8RJh7FRfEr2T87nfsxVIGZviZGBjUj
+	 LZjoQDMTX5kVncJoeq1qFFf35VmNyn04M1U0WyW2XZNzDDdRN6Fvk+7A0S0YsNbG6+
+	 tooI4OQZqiKZzw90QGRr71T9z4AHlAlvIX1Asoyc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732047AbfI3QZT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Sep 2019 12:25:19 -0400
-Received: from mx2.suse.de ([195.135.220.15]:58112 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727767AbfI3QZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Sep 2019 12:25:19 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id C2474ACC0;
-        Mon, 30 Sep 2019 16:25:17 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id E8A581E3C1B; Mon, 30 Sep 2019 18:25:36 +0200 (CEST)
-Date:   Mon, 30 Sep 2019 18:25:36 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     kbuild test robot <lkp@intel.com>, Jan Kara <jack@suse.cz>,
-        kbuild-all@01.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 17/19] jbd2: Rename h_buffer_credits to h_total_credits
-Message-ID: <20190930162536.GB13973@quack2.suse.cz>
-References: <20190930104339.24919-17-jack@suse.cz>
- <201909302058.uxNSY0q3%lkp@intel.com>
- <20190930150553.GB4001@mit.edu>
+        id S1732108AbfI3VT0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 30 Sep 2019 17:19:26 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47220 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731206AbfI3VT0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 30 Sep 2019 17:19:26 -0400
+Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 92FA921855;
+        Mon, 30 Sep 2019 21:19:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1569878365;
+        bh=vrx6r+SGfrTyFSiHE5OHRltvBYxK9kX4SHueCOiMXmE=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=kCBgjUOHkr02WThgME0Yy4+Mefza47yGqPOkgp0zAnQ81ZR2EO+TnpIV1GHfcLbYf
+         Efmkgpwee/BTVol0SZaCHPrapw8opKPbne2URif9cU6ddGj2kMbenTS84x6BhVFRcz
+         fOLPsFLVKsDXtF3gLEovbn5YoJ+VvakO+A0vXVng=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     fstests@vger.kernel.org
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>
+Subject: [PATCH v4 1/8] common/filter: add _filter_xfs_io_fiemap()
+Date:   Mon, 30 Sep 2019 14:15:46 -0700
+Message-Id: <20190930211553.64208-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
+In-Reply-To: <20190930211553.64208-1-ebiggers@kernel.org>
+References: <20190930211553.64208-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190930150553.GB4001@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 30-09-19 11:05:53, Theodore Y. Ts'o wrote:
-> On Mon, Sep 30, 2019 at 08:26:27PM +0800, kbuild test robot wrote:
-> > Hi Jan,
-> > 
-> > I love your patch! Yet something to improve:
-> > 
-> > [auto build test ERROR on ext4/dev]
-> > [cannot apply to v5.3 next-20190930]
-> > [if your patch is applied to the wrong git tree, please drop us a note to help
-> > improve the system. BTW, we also suggest to use '--base' option to specify the
-> > base tree in git format-patch, please see https://stackoverflow.com/a/37406982]
-> > 
-> > url:    https://github.com/0day-ci/linux/commits/Jan-Kara/ext4-Fix-transaction-overflow-due-to-revoke-descriptors/20190930-184615
-> > base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-> > config: x86_64-randconfig-a004-201939 (attached as .config)
-> > compiler: gcc-5 (Ubuntu 5.5.0-12ubuntu1) 5.5.0 20171010
-> > reproduce:
-> >         # save the attached .config to linux build tree
-> >         make ARCH=x86_64 
-> > 
-> > If you fix the issue, kindly add following tag
-> > Reported-by: kbuild test robot <lkp@intel.com>
-> > 
-> > All errors (new ones prefixed by >>):
-> > 
-> >    fs/jbd2/transaction.c: In function 'jbd2_journal_start_reserved':
-> > >> fs/jbd2/transaction.c:596:20: error: 'handle_t {aka struct jbd2_journal_handle}' has no member named 'h_buffer_credits'
-> >         line_no, handle->h_buffer_credits);
-> >                        ^
-> 
-> Yep, it looks like this instance of h_buffer_credits was missed in the
-> patch, probably because Jan wasn't building with tracepoints enabled.
-> I noticed this when I tried to do a test build.
+From: Eric Biggers <ebiggers@google.com>
 
-The problem was that my patches were based on a kernel that didn't have
-this code yet. I've rebased now on current Linus' tree and fixed this up in
-my local tree (along with couple documentation warnings). But I don't think
-it's worth resending just for this.
+Add _filter_xfs_io_fiemap() to clean up the output of
+'xfs_io -c fiemap'.  This will be used by a function in common/verity.
 
-								Honza
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ common/filter | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/common/filter b/common/filter
+index 26fc2132..2477f386 100644
+--- a/common/filter
++++ b/common/filter
+@@ -541,6 +541,30 @@ _filter_filefrag()
+ 	      $flags, "\n"'
+ }
+ 
++# Clean up the extents list output of 'xfs_io -c fiemap', e.g.
++#
++#	file:
++#		0: [0..79]: 628365312..628365391
++#		1: [80..159]: hole
++#		2: [160..319]: 628365472..628365631
++# =>
++#	0  79   628365312  628365391
++#	160  319   628365472  628365631
++#
++# The fields are:
++#
++#	first_logical_block last_logical_block first_physical_block last_physical_block
++#
++# Blocks are 512 bytes, and holes are omitted.
++#
++_filter_xfs_io_fiemap()
++{
++	 grep -E '^[[:space:]]+[0-9]+:' \
++		 | grep -v '\<hole\>' \
++		 | sed -E 's/^[[:space:]]+[0-9]+://' \
++		 | tr '][.:' ' '
++}
++
+ # We generate WARNINGs on purpose when applications mix buffered/mmap IO with
+ # direct IO on the same file. This is a helper for _check_dmesg() to filter out
+ # such warnings.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.23.0.444.g18eeb5a265-goog
+
