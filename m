@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1310C35280
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4466BC388F3
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ABFDE2190F
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1889F21920
+	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:19:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569878369;
-	bh=OMTHCwqwJ1GzMSx0iOVcEh3EWgyzdmHyM9IeuQTR06A=;
+	s=default; t=1569878370;
+	bh=AMDvMUxHbc7BlvkjtIaFkKhE6Cd5lcHwTQo1pPRNo/Y=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=zNnsraHS0c9Viz61iQaWlO7rEfGtcLBRbScruleZ9IoVRwPHQ694/9ZBiMhLK+479
-	 eBRLk4GZyJWoKljM6Xgu4AnSadUpI1kGybMkSyhgSd7CNlhbU+eHxGnXcymmAwgXY4
-	 pye3gI0Lu3jjB2UeEXpKyHEV6AoC90p71Xocz4zk=
+	b=qth9BgsaLfc1SkFhLtC0KyqRXb2bH86Arl0BZXHW4AkSiUVUubI8qxzGGOwNNqD7i
+	 K3Ye1JrmoYjXWXTlt22ccrlMr4djzvms9m/MxUItPSG7Qdf+wP/t4yE8C2Wfqi3Yap
+	 /Fob+wRzVfxOaHVccBonHL9KxuTCLxUZeoblPo48=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732428AbfI3VT3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1732429AbfI3VT3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Mon, 30 Sep 2019 17:19:29 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47244 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:47300 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731206AbfI3VT1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 30 Sep 2019 17:19:27 -0400
+        id S1729880AbfI3VT2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 30 Sep 2019 17:19:28 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4AA9C215EA;
+        by mail.kernel.org (Postfix) with ESMTPSA id F255721A4A;
         Mon, 30 Sep 2019 21:19:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569878366;
-        bh=OMTHCwqwJ1GzMSx0iOVcEh3EWgyzdmHyM9IeuQTR06A=;
+        s=default; t=1569878367;
+        bh=AMDvMUxHbc7BlvkjtIaFkKhE6Cd5lcHwTQo1pPRNo/Y=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=x+C0V9AgkHApWBc7Zd0/S46nAK+WxBm3gSSITjDRw+pfsdfk+9nrcTF9qPv8OjYO9
-         mLTmssgk/z4fcHbKiMsY4vHhZ0b3xn5hynPLOOIgT0QfEQETyl8V9YhIWa29EthIO7
-         VbNABAzQ6njz0tOTng2dZQzRNbGVcri/sp6Y7n1o=
+        b=uB0xtTS1aIv1/FSjpYLoJGgwF4OqSt3yqFeujVF4uKEFRLWL1fCMJkF711AQVGqkc
+         uWN8/YoWRWtrQGhMol6emuqnAA7l8bE5sIAiRpoe/dbXS51P2NsNtincyjKlvVrRZQ
+         zN8vokcJzyjIFyImheo3FQ8NOENCAnRmUcLN7tjk=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         "Theodore Y . Ts'o" <tytso@mit.edu>
-Subject: [PATCH v4 3/8] generic: test general behavior of verity files
-Date:   Mon, 30 Sep 2019 14:15:48 -0700
-Message-Id: <20190930211553.64208-4-ebiggers@kernel.org>
+Subject: [PATCH v4 5/8] generic: test corrupting verity files
+Date:   Mon, 30 Sep 2019 14:15:50 -0700
+Message-Id: <20190930211553.64208-6-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
 In-Reply-To: <20190930211553.64208-1-ebiggers@kernel.org>
 References: <20190930211553.64208-1-ebiggers@kernel.org>
@@ -59,40 +59,36 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This is a basic fs-verity test which verifies:
-
-- conditions for enabling verity
-- verity files have expected contents and size
-- can't change contents of verity files, but can change metadata
-- can retrieve a verity file's measurement via FS_IOC_MEASURE_VERITY
+This test corrupts various parts of the contents of a verity file, or
+parts of its Merkle tree, by writing directly to the block device.  It
+verifies that this causes I/O errors when the relevant part of the
+contents is later read by any means.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- tests/generic/900     | 199 ++++++++++++++++++++++++++++++++++++++++++
- tests/generic/900.out |  74 ++++++++++++++++
+ tests/generic/902     | 154 ++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/902.out |  91 +++++++++++++++++++++++++
  tests/generic/group   |   1 +
- 3 files changed, 274 insertions(+)
- create mode 100755 tests/generic/900
- create mode 100644 tests/generic/900.out
+ 3 files changed, 246 insertions(+)
+ create mode 100755 tests/generic/902
+ create mode 100644 tests/generic/902.out
 
-diff --git a/tests/generic/900 b/tests/generic/900
+diff --git a/tests/generic/902 b/tests/generic/902
 new file mode 100755
-index 00000000..04cbcfdf
+index 00000000..5ef2cca1
 --- /dev/null
-+++ b/tests/generic/900
-@@ -0,0 +1,199 @@
++++ b/tests/generic/902
+@@ -0,0 +1,154 @@
 +#! /bin/bash
 +# SPDX-License-Identifier: GPL-2.0
 +# Copyright 2018 Google LLC
 +#
-+# FS QA Test generic/900
++# FS QA Test generic/902
 +#
-+# This is a basic fs-verity test which verifies:
-+#
-+# - conditions for enabling verity
-+# - verity files have correct contents and size
-+# - can't change contents of verity files, but can change metadata
-+# - can retrieve a verity file's measurement via FS_IOC_MEASURE_VERITY
++# Test corrupting verity files.  This test corrupts various parts of the
++# contents of a verity file, or parts of its Merkle tree, by writing directly to
++# the block device.  It verifies that this causes I/O errors when the relevant
++# part of the contents is later read by any means.
 +#
 +seq=`basename $0`
 +seqres=$RESULT_DIR/$seq
@@ -127,248 +123,222 @@ index 00000000..04cbcfdf
 +fsv_orig_file=$SCRATCH_MNT/file
 +fsv_file=$SCRATCH_MNT/file.fsv
 +
-+verify_data_readable()
++setup_zeroed_file()
 +{
-+	local file=$1
++	local len=$1
++	local sparse=$2
 +
-+	md5sum $file > /dev/null
-+}
-+
-+verify_data_unreadable()
-+{
-+	local file=$1
-+
-+	# try both reading just the first data block, and reading until EOF
-+	head -c $FSV_BLOCK_SIZE $file 2>&1 >/dev/null | _filter_scratch
-+	md5sum $file |& _filter_scratch
-+}
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file with verity already enabled fails with EEXIST"
-+_fsv_create_enable_file $fsv_file
-+echo "(trying again)"
-+_fsv_enable $fsv_file |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "Enabling verity with invalid hash algorithm fails with EINVAL"
-+_fsv_create_enable_file $fsv_file --hash-alg=257 |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity with invalid block size fails with EINVAL"
-+_fsv_create_enable_file $fsv_file --block-size=1 |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity on directory fails with EISDIR"
-+mkdir $SCRATCH_MNT/dir
-+_fsv_enable $SCRATCH_MNT/dir |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "Enabling verity with too-long salt fails with EMSGSIZE"
-+_fsv_create_enable_file $fsv_file --salt=$(perl -e 'print "A" x 1000') |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file on read-only filesystem fails with EROFS"
-+echo foo > $fsv_file
-+_scratch_remount ro
-+_fsv_enable $fsv_file |& _filter_scratch
-+_scratch_remount rw
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file open for writing fails with ETXTBSY"
-+echo foo > $fsv_file
-+exec 3<> $fsv_file
-+_fsv_enable $fsv_file |& _filter_scratch
-+exec 3<&-
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "Enabling verity can be interrupted"
-+dd if=/dev/zero of=$fsv_file bs=1 count=0 seek=$((1 << 34)) status=none
-+start_time=$(date +%s)
-+$FSVERITY_PROG enable $fsv_file &
-+sleep 0.5
-+kill %1
-+wait
-+elapsed=$(( $(date +%s) - start_time ))
-+if (( elapsed > 5 )); then
-+	echo "Failed to interrupt FS_IOC_ENABLE_VERITY ($elapsed seconds elapsed)"
-+fi
-+
-+_fsv_scratch_begin_subtest "Enabling verity on file with verity already being enabled fails with EBUSY"
-+dd if=/dev/zero of=$fsv_file bs=1 count=0 seek=$((1 << 34)) status=none
-+start_time=$(date +%s)
-+$FSVERITY_PROG enable $fsv_file &
-+sleep 0.5
-+_fsv_enable $fsv_file |& _filter_scratch
-+kill %1
-+wait
-+
-+_fsv_scratch_begin_subtest "verity file can't be opened for writing"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+echo "* reading"
-+$XFS_IO_PROG -r $fsv_file -c ''
-+echo "* xfs_io writing, should be O_RDWR"
-+$XFS_IO_PROG $fsv_file -c '' |& _filter_scratch
-+echo "* bash >>, should be O_APPEND"
-+bash -c "echo >> $fsv_file" |& _filter_scratch
-+echo "* bash >, should be O_WRONLY|O_CREAT|O_TRUNC"
-+bash -c "echo > $fsv_file" |& _filter_scratch
-+
-+_fsv_scratch_begin_subtest "verity file can be read"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+verify_data_readable $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be measured"
-+_fsv_create_enable_file $fsv_file >> $seqres.full
-+_fsv_measure $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be renamed"
-+_fsv_create_enable_file $fsv_file
-+mv $fsv_file $fsv_file.newname
-+
-+_fsv_scratch_begin_subtest "verity file can be unlinked"
-+_fsv_create_enable_file $fsv_file
-+rm $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be linked to"
-+_fsv_create_enable_file $fsv_file
-+ln $fsv_file $fsv_file.newname
-+
-+_fsv_scratch_begin_subtest "verity file can be chmodded"
-+_fsv_create_enable_file $fsv_file
-+chmod 777 $fsv_file
-+chmod 444 $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file can be chowned"
-+_fsv_create_enable_file $fsv_file
-+chown 1:1 $fsv_file
-+chown 0:0 $fsv_file
-+
-+_fsv_scratch_begin_subtest "verity file has correct contents and size"
-+head -c 100000 /dev/urandom > $fsv_orig_file
-+cp $fsv_orig_file $fsv_file
-+_fsv_enable $fsv_file >> $seqres.full
-+cmp $fsv_file $fsv_orig_file
-+stat -c %s $fsv_file
-+_scratch_cycle_mount
-+cmp $fsv_file $fsv_orig_file
-+stat -c %s $fsv_file
-+
-+_fsv_scratch_begin_subtest "Trying to measure non-verity file fails with ENODATA"
-+echo foo > $fsv_file
-+_fsv_measure $fsv_file |& _filter_scratch
-+verify_data_readable $fsv_file
-+
-+# Test files <= 1 block in size.  These are a bit of a special case since there
-+# are no hash blocks; the root hash is calculated directly over the data block.
-+for size in 1 $((FSV_BLOCK_SIZE - 1)) $FSV_BLOCK_SIZE; do
-+	_fsv_scratch_begin_subtest "verity on $size-byte file"
-+	head -c $size /dev/urandom > $fsv_orig_file
++	if $sparse; then
++		dd if=/dev/zero of=$fsv_orig_file bs=1 count=0 seek=$len \
++			status=none
++	else
++		head -c $len /dev/zero > $fsv_orig_file
++	fi
 +	cp $fsv_orig_file $fsv_file
 +	_fsv_enable $fsv_file
-+	cmp $fsv_orig_file $fsv_file && echo "Files matched"
-+	rm -f $fsv_file
-+done
++	md5sum $fsv_file |& _filter_scratch
++}
 +
-+_fsv_scratch_begin_subtest "verity on 100M file (multiple levels in hash tree)"
-+head -c 100000000 /dev/urandom > $fsv_orig_file
-+cp $fsv_orig_file $fsv_file
-+_fsv_enable $fsv_file
-+cmp $fsv_orig_file $fsv_file && echo "Files matched"
++filter_sigbus()
++{
++	sed -e 's/.*Bus error.*/Bus error/'
++}
 +
-+_fsv_scratch_begin_subtest "verity on sparse file"
-+dd if=/dev/zero of=$fsv_orig_file bs=1 count=1 seek=1000000 status=none
-+cp $fsv_orig_file $fsv_file
-+_fsv_enable $fsv_file
-+cmp $fsv_orig_file $fsv_file && echo "Files matched"
++round_up_to_page_boundary()
++{
++	local n=$1
++	local page_size=$(get_page_size)
++
++	echo $(( (n + page_size - 1) & ~(page_size - 1) ))
++}
++
++corruption_test()
++{
++	local file_len=$1
++	local zap_offset=$2
++	local zap_len=$3
++	local is_merkle_tree=${4:-false} # if true, zap tree instead of data
++	local use_sparse_file=${5:-false}
++	local page_aligned_eof=$(round_up_to_page_boundary $file_len)
++	local measurement
++
++	if $is_merkle_tree; then
++		local corrupt_func=_fsv_scratch_corrupt_merkle_tree
++	else
++		local corrupt_func=_fsv_scratch_corrupt_bytes
++	fi
++
++	local msg="Corruption test:"
++	msg+=" file_len=$file_len"
++	if $use_sparse_file; then
++		msg+=" (sparse)"
++	fi
++	msg+=" zap_offset=$zap_offset"
++	if $is_merkle_tree; then
++		msg+=" (in Merkle tree)"
++	fi
++	msg+=" zap_len=$zap_len"
++
++	_fsv_scratch_begin_subtest "$msg"
++	setup_zeroed_file $file_len $use_sparse_file
++	cmp $fsv_file $fsv_orig_file
++	echo "Corrupting bytes..."
++	head -c $zap_len /dev/zero | tr '\0' X \
++		| $corrupt_func $fsv_file $zap_offset
++
++	echo "Validating corruption (reading full file)..."
++	_scratch_cycle_mount
++	md5sum $fsv_file |& _filter_scratch
++
++	echo "Validating corruption (direct I/O)..."
++	_scratch_cycle_mount
++	dd if=$fsv_file bs=$FSV_BLOCK_SIZE iflag=direct status=none \
++		of=/dev/null |& _filter_scratch
++
++	if ! $is_merkle_tree; then
++		echo "Validating corruption (reading just corrupted part)..."
++		dd if=$fsv_file bs=1 skip=$zap_offset count=$zap_len \
++			of=/dev/null status=none |& _filter_scratch
++	fi
++
++	echo "Validating corruption (reading full file via mmap)..."
++	bash -c "trap '' SIGBUS; $XFS_IO_PROG -r $fsv_file \
++		-c 'mmap -r 0 $page_aligned_eof' \
++		-c 'mread 0 $file_len'" |& filter_sigbus
++
++	if ! $is_merkle_tree; then
++		echo "Validating corruption (reading just corrupted part via mmap)..."
++		bash -c "trap '' SIGBUS; $XFS_IO_PROG -r $fsv_file \
++			-c 'mmap -r 0 $page_aligned_eof' \
++			-c 'mread $zap_offset $zap_len'" |& filter_sigbus
++	fi
++}
++
++corruption_test 131072 0 1
++corruption_test 131072 4095 1
++corruption_test 131072 65536 65536
++corruption_test 131072 131071 1
++
++# Non-zeroed bytes in the final partial block beyond EOF should cause reads to
++# fail too.  Such bytes would be visible via mmap().
++corruption_test 130999 131000 72
++
++# Merkle tree corruption.
++corruption_test 200000 100 10 true
++
++# Sparse file.  Corrupting the Merkle tree should still cause reads to fail,
++# i.e. the filesystem must verify holes.
++corruption_test 200000 100 10 true true
 +
 +# success, all done
 +status=0
 +exit
-diff --git a/tests/generic/900.out b/tests/generic/900.out
+diff --git a/tests/generic/902.out b/tests/generic/902.out
 new file mode 100644
-index 00000000..93f91f27
+index 00000000..15fe691e
 --- /dev/null
-+++ b/tests/generic/900.out
-@@ -0,0 +1,74 @@
-+QA output created by 900
++++ b/tests/generic/902.out
+@@ -0,0 +1,91 @@
++QA output created by 902
 +
-+# Enabling verity on file with verity already enabled fails with EEXIST
-+(trying again)
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': File exists
++# Corruption test: file_len=131072 zap_offset=0 zap_len=1
++0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading just corrupted part)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
++Validating corruption (reading just corrupted part via mmap)...
++Bus error
 +
-+# Enabling verity with invalid hash algorithm fails with EINVAL
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Invalid argument
++# Corruption test: file_len=131072 zap_offset=4095 zap_len=1
++0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading just corrupted part)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
++Validating corruption (reading just corrupted part via mmap)...
++Bus error
 +
-+# Enabling verity with invalid block size fails with EINVAL
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Invalid argument
++# Corruption test: file_len=131072 zap_offset=65536 zap_len=65536
++0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading just corrupted part)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
++Validating corruption (reading just corrupted part via mmap)...
++Bus error
 +
-+# Enabling verity on directory fails with EISDIR
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/dir': Is a directory
++# Corruption test: file_len=131072 zap_offset=131071 zap_len=1
++0dfbe8aa4c20b52e1b8bf3cb6cbdf193  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading just corrupted part)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
++Validating corruption (reading just corrupted part via mmap)...
++Bus error
 +
-+# Enabling verity with too-long salt fails with EMSGSIZE
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Message too long
++# Corruption test: file_len=130999 zap_offset=131000 zap_len=72
++f5cca0d7fbb8b02bc6118a9954d5d306  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading just corrupted part)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
++Validating corruption (reading just corrupted part via mmap)...
++Bus error
 +
-+# Enabling verity on file on read-only filesystem fails with EROFS
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Read-only file system
++# Corruption test: file_len=200000 zap_offset=100 (in Merkle tree) zap_len=10
++4a1e4325031b13f933ac4f1db9ecb63f  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
 +
-+# Enabling verity on file open for writing fails with ETXTBSY
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Text file busy
-+
-+# Enabling verity can be interrupted
-+
-+# Enabling verity on file with verity already being enabled fails with EBUSY
-+ERROR: FS_IOC_ENABLE_VERITY failed on 'SCRATCH_MNT/file.fsv': Device or resource busy
-+
-+# verity file can't be opened for writing
-+* reading
-+* xfs_io writing, should be O_RDWR
-+SCRATCH_MNT/file.fsv: Operation not permitted
-+* bash >>, should be O_APPEND
-+bash: SCRATCH_MNT/file.fsv: Operation not permitted
-+* bash >, should be O_WRONLY|O_CREAT|O_TRUNC
-+bash: SCRATCH_MNT/file.fsv: Operation not permitted
-+
-+# verity file can be read
-+
-+# verity file can be measured
-+sha256:be54121da3877f8852c65136d731784f134c4dd9d95071502e80d7be9f99b263
-+
-+# verity file can be renamed
-+
-+# verity file can be unlinked
-+
-+# verity file can be linked to
-+
-+# verity file can be chmodded
-+
-+# verity file can be chowned
-+
-+# verity file has correct contents and size
-+100000
-+100000
-+
-+# Trying to measure non-verity file fails with ENODATA
-+ERROR: FS_IOC_MEASURE_VERITY failed on 'SCRATCH_MNT/file.fsv': No data available
-+
-+# verity on 1-byte file
-+Files matched
-+
-+# verity on 4095-byte file
-+Files matched
-+
-+# verity on 4096-byte file
-+Files matched
-+
-+# verity on 100M file (multiple levels in hash tree)
-+Files matched
-+
-+# verity on sparse file
-+Files matched
++# Corruption test: file_len=200000 (sparse) zap_offset=100 (in Merkle tree) zap_len=10
++4a1e4325031b13f933ac4f1db9ecb63f  SCRATCH_MNT/file.fsv
++Corrupting bytes...
++Validating corruption (reading full file)...
++md5sum: SCRATCH_MNT/file.fsv: Input/output error
++Validating corruption (direct I/O)...
++dd: error reading 'SCRATCH_MNT/file.fsv': Input/output error
++Validating corruption (reading full file via mmap)...
++Bus error
 diff --git a/tests/generic/group b/tests/generic/group
-index 7cf4f6c4..8c5212a1 100644
+index a0450d42..22df626f 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -570,3 +570,4 @@
- 565 auto quick copy_range
- 566 auto quick quota metadata
+@@ -572,3 +572,4 @@
  567 auto quick rw punch
-+900 auto quick verity
+ 900 auto quick verity
+ 901 auto quick verity
++902 auto quick verity
 -- 
 2.23.0.444.g18eeb5a265-goog
 
