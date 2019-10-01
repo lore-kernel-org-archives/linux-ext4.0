@@ -2,65 +2,65 @@ Return-Path: <SRS0=Lxat=X2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89CE3ECE58A
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6951AECE58C
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 58AF921783
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 41AB821783
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BEIj0pSG"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rce9Wv7G"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733118AbfJAHmH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 1 Oct 2019 03:42:07 -0400
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:38939 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732982AbfJAHmG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2019 03:42:06 -0400
-Received: by mail-pf1-f194.google.com with SMTP id v4so7301149pff.6
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2019 00:42:05 -0700 (PDT)
+        id S1733120AbfJAHmI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 1 Oct 2019 03:42:08 -0400
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:44485 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725777AbfJAHmI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2019 03:42:08 -0400
+Received: by mail-pf1-f195.google.com with SMTP id q21so7287445pfn.11
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2019 00:42:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=IG/o22FPTmuzsi+5RtU+Zm5XgdntXDau0oWlT14o+EA=;
-        b=BEIj0pSG5WVGIxXPxW3D5Kfd/8B0po/MdSLT5syvlQ+fHbe6gUbg7Y1xQ1RYbJ1FYI
-         4Bufg81XQ75BjmxdwN/Lfa4Vv8uCKrJnL3jvkVPOmUly8ryJmrO87njFJPmvRGcs2s1+
-         nZ0Ixa92AxZ8SIVznaVfPWQIhXyE4aYdFK3Lk47bEHhBIzOh41srEi/bQNO6iVHqE6u1
-         stzvq0G/f4X56Hc9rnOvQ1lc2g9zu+DqsREk23gAFENZSEr6LuVn4mDnomo7aHYnNjrg
-         mZ+jVNf7XCJThe41n34FpK9ovb2dbEuWS5CpFOBeP8iE4DEfZWBL04i6Df1pZgMfJGH/
-         9CIA==
+        bh=J3uAdSaeo3SK4NEMv1bA39yXg1xoIX91DGqpS4F5v5A=;
+        b=rce9Wv7GrLZkgaLuV3U+iCNJp3FWNl2LqRhBZZQ+9PrbHABzwvzE8SR6MBlHujsaz7
+         og4Gzj15dP4N19e8sDftD+7sJyKlfjH5TeZ+sks+vtL0Of8i6DjsD5EE0cgkyIJvMsbn
+         ipOx94pRPjxYdsIVp+uN7nHaVtnnqsaLM7NqCpwXbSkCBljay/+TfPUxRFXlqlWRxUqs
+         fBsMVvrHzXZsSFVFgol9f0c62KI6ADosxQoljtzbvyuTXaMCevH+O6aMMHeZL9yADfiw
+         tVy8f8Gm6GGviNL09RlgI2GFgIhg1cEoEBRygkdxz1azKBFCc70xJLlmJRGScRDuNMvC
+         DeKw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=IG/o22FPTmuzsi+5RtU+Zm5XgdntXDau0oWlT14o+EA=;
-        b=JJABDNHvRvxGuSQ04t1Lr+xi7Pg9dRS9UDDJTAKa04ojTCFyolCWb3M9PYOeSCV6tx
-         t/E2BU+RZ6BjOV5K9ehu/2Vp95LpGRV3fyNd1PglUjh5d4EQzTzXBM2d4R1Lgg/FwB3S
-         FBC3mmqiwik1qtKIgRvc4yHovPXqXn0TZ9L4474oHwsBr2zGe4iU/xA1QaEsBelBtrBg
-         qer60rTYVTJFb360V8pYHWxbgqRzwh+GDsMwCleM7PGIkY8i3ScuIvRSIFlJ9KBBnneb
-         nkJZJdpANlg1bBqtjAGbIYGt+WNFFtVMfee7P/+6WlMxSO+EjWHQ56YL3mjS2YVYX9c4
-         WGFw==
-X-Gm-Message-State: APjAAAWA8OKO6j71+bSo5dvop5xlTFhsx1vtJP4uJJUurWK2tK8d+xJu
-        Su37Bc4PeS/M88fP4Bd0CXad7IzihJ8=
-X-Google-Smtp-Source: APXvYqwMzFoq0u5anKYfPaMDmdfHDBcU76sc/ykGRBksNPmwA1dglWCT03GGeUfHn/LQI97H+JU57g==
-X-Received: by 2002:aa7:920d:: with SMTP id 13mr25970072pfo.17.1569915724883;
-        Tue, 01 Oct 2019 00:42:04 -0700 (PDT)
+        bh=J3uAdSaeo3SK4NEMv1bA39yXg1xoIX91DGqpS4F5v5A=;
+        b=ohB/mwljGq+mBMV4KFrCO543cg+yoYbAbSU0pkfIZqeskz2TsDABeruAd/rN/dMzZH
+         jIBnEI2uNQ3/0VNUui4i+xUJzxtmGqkj0v2IH+HGSQLnCNa78z5V+k6hPDXhrbtPfCdz
+         fGZj4yui5j1igPTlAUyzcddkmKP+Su+04Bj8D1kzdEL4kTlonbTtOc4vS4Vn9wEc/HCy
+         NhzTFZZWul1CQnAzeaF4OiKXDKRELtMGOSyCRHr2G6amtuVPkHqthvqs7rVZzk8YRNxb
+         GybRXrGQMI3/dMiTKXdNKJOJ/sxz5HIkJWzioqpUXJNV8BJkxwUkuZU7tkPu2hTiodqG
+         5Zgg==
+X-Gm-Message-State: APjAAAXiyk4zzsK4+Bn8M0JxdIP2kRa+Forkf7VjbBVbrE+AkuHjzdNj
+        HHF6de2fnRsn9EtKpRqwzKM5aD6d85g=
+X-Google-Smtp-Source: APXvYqwsQQNxTZSgFmEhArypNBP/jxe1i/tNY9CO6pt9VAzDzJsbvoZvM1WpoI3iyJ+c5jjVvHy6mA==
+X-Received: by 2002:aa7:998f:: with SMTP id k15mr27228769pfh.203.1569915726947;
+        Tue, 01 Oct 2019 00:42:06 -0700 (PDT)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id q13sm2287668pjq.0.2019.10.01.00.42.04
+        by smtp.googlemail.com with ESMTPSA id q13sm2287668pjq.0.2019.10.01.00.42.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 01 Oct 2019 00:42:04 -0700 (PDT)
+        Tue, 01 Oct 2019 00:42:06 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v3 05/13] jbd2: fast-commit recovery path changes
-Date:   Tue,  1 Oct 2019 00:40:54 -0700
-Message-Id: <20191001074101.256523-6-harshadshirwadkar@gmail.com>
+Subject: [PATCH v3 08/13] ext4: fast-commit commit range tracking
+Date:   Tue,  1 Oct 2019 00:40:57 -0700
+Message-Id: <20191001074101.256523-9-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
 In-Reply-To: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
 References: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
@@ -71,195 +71,163 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch adds fast-commit recovery path changes for JBD2. If we find
-a fast commit block that is valid in our recovery phase call file
-system specific routine to handle that block.
-
-We also clear the fast commit flag in jbd2_mark_journal_empty() which
-is called after successful recovery as well successful
-checkpointing. This allows JBD2 journal to be compatible with older
-versions when there are no fast commit blocks.
+With this patch, we track logical range of file offsets that need to
+be committed using fast commit. This allows us to find file extents
+that need to be committed during the commit time.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/jbd2/journal.c    | 12 +++++++++
- fs/jbd2/recovery.c   | 63 +++++++++++++++++++++++++++++++++++++++++---
- include/linux/jbd2.h | 13 +++++++++
- 3 files changed, 84 insertions(+), 4 deletions(-)
+ fs/ext4/ext4_jbd2.c | 34 ++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4_jbd2.h |  2 ++
+ fs/ext4/inline.c    |  4 +++-
+ fs/ext4/inode.c     | 17 ++++++++++++++++-
+ 4 files changed, 55 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 14d549445418..e0684212384d 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1635,6 +1635,7 @@ int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
- static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
- {
- 	journal_superblock_t *sb = journal->j_superblock;
-+	bool had_fast_commit = false;
- 
- 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
- 	lock_buffer(journal->j_sb_buffer);
-@@ -1648,9 +1649,20 @@ static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
- 
- 	sb->s_sequence = cpu_to_be32(journal->j_tail_sequence);
- 	sb->s_start    = cpu_to_be32(0);
-+	if (jbd2_has_feature_fast_commit(journal)) {
-+		/*
-+		 * When journal is clean, no need to commit fast commit flag and
-+		 * make file system incompatible with older kernels.
-+		 */
-+		jbd2_clear_feature_fast_commit(journal);
-+		had_fast_commit = true;
-+	}
- 
- 	jbd2_write_superblock(journal, write_op);
- 
-+	if (had_fast_commit)
-+		jbd2_set_feature_fast_commit(journal);
-+
- 	/* Log is no longer empty */
- 	write_lock(&journal->j_state_lock);
- 	journal->j_flags |= JBD2_FLUSHED;
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index a4967b27ffb6..c1f4c94ed375 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -35,7 +35,6 @@ struct recovery_info
- 	int		nr_revoke_hits;
- };
- 
--enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
- static int do_one_pass(journal_t *journal,
- 				struct recovery_info *info, enum passtype pass);
- static int scan_revoke_records(journal_t *, struct buffer_head *,
-@@ -225,8 +224,12 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- /* Make sure we wrap around the log correctly! */
- #define wrap(journal, var)						\
- do {									\
--	if (var >= (journal)->j_last)					\
--		var -= ((journal)->j_last - (journal)->j_first);	\
-+	unsigned long _wrap_last =					\
-+		jbd2_has_feature_fast_commit(journal) ?			\
-+			(journal)->j_last_fc : (journal)->j_last;	\
-+									\
-+	if (var >= _wrap_last)						\
-+		var -= (_wrap_last - (journal)->j_first);		\
- } while (0)
- 
- /**
-@@ -413,6 +416,51 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 		return tag->t_checksum == cpu_to_be16(csum32);
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index e70ad7a8e46e..0bb8de2139a5 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -405,6 +405,40 @@ void ext4_fc_del(struct inode *inode)
+ 	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
  }
  
-+static int fc_do_one_pass(journal_t *journal,
-+			  struct recovery_info *info, enum passtype pass)
++void ext4_fc_update_commit_range(struct inode *inode, ext4_lblk_t start,
++				 ext4_lblk_t end)
 +{
-+	unsigned int expected_commit_id = info->end_transaction;
-+	unsigned long next_fc_block;
-+	struct buffer_head *bh;
-+	unsigned int seq;
-+	journal_header_t *jhdr;
-+	int err = 0;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	tid_t running_txn_tid = get_running_txn_tid(inode->i_sb);
 +
-+	next_fc_block = journal->j_first_fc;
++	if (!ext4_should_fast_commit(inode->i_sb))
++		return;
 +
-+	while (next_fc_block <= journal->j_last_fc) {
-+		jbd_debug(3, "Fast commit replay: next block %lld",
-+			  next_fc_block);
-+		err = jread(&bh, journal, next_fc_block);
-+		if (err)
-+			break;
++	if (inode->i_ino < EXT4_FIRST_INO(inode->i_sb))
++		ext4_debug("Special inode %ld being modified\n", inode->i_ino);
 +
-+		jhdr = (journal_header_t *)bh->b_data;
-+		seq = be32_to_cpu(jhdr->h_sequence);
-+		if (be32_to_cpu(jhdr->h_magic) != JBD2_MAGIC_NUMBER ||
-+		    seq != expected_commit_id) {
-+			break;
-+		}
-+		jbd_debug(3, "Processing fast commit blk with seq %d",
-+			  seq);
-+		if (journal->j_fc_replay_callback) {
-+			err = journal->j_fc_replay_callback(
-+						journal, bh, pass,
-+						next_fc_block -
-+						journal->j_first_fc);
-+			if (err)
-+				break;
-+		}
-+		next_fc_block++;
++	if (!EXT4_SB(inode->i_sb)->s_fc_eligible)
++		return;
++
++	write_lock(&ei->i_fc.fc_lock);
++	if (ei->i_fc.fc_tid == running_txn_tid) {
++		ei->i_fc.fc_lblk_start = ei->i_fc.fc_lblk_start < start ?
++					 ei->i_fc.fc_lblk_start : start;
++		ei->i_fc.fc_lblk_end = ei->i_fc.fc_lblk_end > end ?
++				     ei->i_fc.fc_lblk_end : end;
++		write_unlock(&ei->i_fc.fc_lock);
++		return;
 +	}
 +
-+	if (err)
-+		jbd_debug(3, "Fast commit replay failed, err = %d\n", err);
++	ext4_reset_inode_fc_info(&ei->i_fc);
++	ei->i_fc.fc_eligible = true;
++	ei->i_fc.fc_lblk_start = start;
++	ei->i_fc.fc_lblk_end = end;
++	ei->i_fc.fc_tid = running_txn_tid;
++	write_unlock(&ei->i_fc.fc_lock);
 +
-+	return err;
 +}
 +
-+
- static int do_one_pass(journal_t *journal,
- 			struct recovery_info *info, enum passtype pass)
+ void ext4_fc_mark_new(struct inode *inode)
  {
-@@ -470,7 +518,7 @@ static int do_one_pass(journal_t *journal,
- 				break;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 65f20fbfb002..2cb7e7e1f025 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -501,6 +501,8 @@ ext4_fc_mark_ineligible(struct inode *inode)
+ 	spin_unlock(&sbi->s_fc_lock);
+ }
  
- 		jbd_debug(2, "Scanning for sequence ID %u at %lu/%lu\n",
--			  next_commit_ID, next_log_block, journal->j_last);
-+			  next_commit_ID, next_log_block, journal->j_last_fc);
++void ext4_fc_update_commit_range(struct inode *inode, ext4_lblk_t start,
++				 ext4_lblk_t end);
  
- 		/* Skip over each chunk of the transaction looking
- 		 * either the next descriptor block or the final commit
-@@ -768,6 +816,8 @@ static int do_one_pass(journal_t *journal,
- 			if (err)
- 				goto failed;
- 			continue;
-+		case JBD2_FC_BLOCK:
-+			continue;
+ void ext4_fc_mark_new(struct inode *inode);
+ bool ext4_is_inode_fc_ineligible(struct inode *inode);
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index fbd561cba098..66b2c0e3f7e4 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -966,8 +966,10 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
+ 	 * But it's important to update i_size while still holding page lock:
+ 	 * page writeout could otherwise come in and zero beyond i_size.
+ 	 */
+-	if (pos+copied > inode->i_size)
++	if (pos+copied > inode->i_size) {
++		ext4_fc_update_commit_range(inode, inode->i_size, pos + copied);
+ 		i_size_write(inode, pos+copied);
++	}
+ 	unlock_page(page);
+ 	put_page(page);
  
- 		default:
- 			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
-@@ -799,6 +849,11 @@ static int do_one_pass(journal_t *journal,
- 				success = -EIO;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6d2efbd9aba9..ea039e3e1a4d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1549,6 +1549,8 @@ static int ext4_journalled_write_end(struct file *file,
+ 			SetPageUptodate(page);
+ 	}
+ 	size_changed = ext4_update_inode_size(inode, pos + copied);
++	ext4_fc_update_commit_range(inode, pos, pos + copied);
++
+ 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+ 	unlock_page(page);
+@@ -2610,8 +2612,12 @@ static int mpage_map_and_submit_extent(handle_t *handle,
+ 		i_size = i_size_read(inode);
+ 		if (disksize > i_size)
+ 			disksize = i_size;
+-		if (disksize > EXT4_I(inode)->i_disksize)
++		if (disksize > EXT4_I(inode)->i_disksize) {
++			ext4_fc_update_commit_range(inode,
++						    EXT4_I(inode)->i_disksize,
++						    disksize);
+ 			EXT4_I(inode)->i_disksize = disksize;
++		}
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 		err2 = ext4_mark_inode_dirty(handle, inode);
+ 		ext4_fc_enqueue_inode(handle, inode);
+@@ -3220,6 +3226,8 @@ static int ext4_da_write_end(struct file *file,
  		}
  	}
-+
-+
-+	if (jbd2_has_feature_fast_commit(journal) && pass != PASS_REVOKE)
-+		fc_do_one_pass(journal, info, pass);
-+
- 	if (block_error && success == 0)
- 		success = -EIO;
- 	return success;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index c6a2b82de4cf..312103fc9581 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -762,6 +762,8 @@ jbd2_time_diff(unsigned long start, unsigned long end)
  
- #define JBD2_NR_BATCH	64
- 
-+enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
++	ext4_fc_update_commit_range(inode, pos, pos + copied);
 +
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-@@ -1243,6 +1245,17 @@ struct journal_s
- 	 * after every commit operation.
- 	 */
- 	void (*j_fc_cleanup_callback)(struct journal_s *journal);
-+
-+	/*
-+	 * @j_fc_replay_callback:
-+	 *
-+	 * File-system specific function that performs replay of a fast
-+	 * commit. JBD2 calls this function for each fast commit block found in
-+	 * the journal.
-+	 */
-+	int (*j_fc_replay_callback)(struct journal_s *journal,
-+				    struct buffer_head *bh,
-+				    enum passtype pass, int off);
- };
+ 	if (write_mode != CONVERT_INLINE_DATA &&
+ 	    ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) &&
+ 	    ext4_has_inline_data(inode))
+@@ -3627,6 +3635,7 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+ 		goto orphan_del;
+ 	}
  
- #define jbd2_might_wait_for_commit(j) \
++	ext4_fc_update_commit_range(inode, offset, offset + written);
+ 	if (ext4_update_inode_size(inode, offset + written)) {
+ 		ext4_mark_inode_dirty(handle, inode);
+ 		ext4_fc_enqueue_inode(handle, inode);
+@@ -3751,6 +3760,7 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
+ 		ext4_update_i_disksize(inode, inode->i_size);
+ 		ext4_journal_stop(handle);
+ 	}
++	ext4_fc_update_commit_range(inode, offset, offset + count);
+ 
+ 	BUG_ON(iocb->private == NULL);
+ 
+@@ -3869,6 +3879,8 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
+ 				ext4_mark_inode_dirty(handle, inode);
+ 				ext4_fc_enqueue_inode(handle, inode);
+ 			}
++			ext4_fc_update_commit_range(inode, offset,
++						    offset + end);
+ 		}
+ 		err = ext4_journal_stop(handle);
+ 		if (ret == 0)
+@@ -5327,6 +5339,9 @@ static int ext4_do_update_inode(handle_t *handle,
+ 			cpu_to_le16(ei->i_file_acl >> 32);
+ 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
+ 	if (ei->i_disksize != ext4_isize(inode->i_sb, raw_inode)) {
++		ext4_fc_update_commit_range(inode,
++					    ext4_isize(inode->i_sb, raw_inode),
++					    ei->i_disksize);
+ 		ext4_isize_set(raw_inode, ei->i_disksize);
+ 		need_datasync = 1;
+ 	}
 -- 
 2.23.0.444.g18eeb5a265-goog
 
