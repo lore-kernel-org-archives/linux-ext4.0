@@ -1,147 +1,242 @@
-Return-Path: <SRS0=0sa6=XZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Lxat=X2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2907C32792
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:21:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B9C0C388F3
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7C9E3207FA
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Sep 2019 21:21:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3288E21783
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gV14bNcs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731678AbfI3VVy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Sep 2019 17:21:54 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54332 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727884AbfI3VVx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Sep 2019 17:21:53 -0400
-Received: from callcc.thunk.org (guestnat-104-133-0-98.corp.google.com [104.133.0.98] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x8ULLjDG008724
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 30 Sep 2019 17:21:46 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 4295F42014C; Mon, 30 Sep 2019 17:21:45 -0400 (EDT)
-Date:   Mon, 30 Sep 2019 17:21:45 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 17/19] jbd2: Rename h_buffer_credits to h_total_credits
-Message-ID: <20190930212145.GC4001@mit.edu>
-References: <20190930104339.24919-17-jack@suse.cz>
- <201909302058.uxNSY0q3%lkp@intel.com>
- <20190930150553.GB4001@mit.edu>
- <20190930162536.GB13973@quack2.suse.cz>
+        id S1728926AbfJAHmD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 1 Oct 2019 03:42:03 -0400
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:44478 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728249AbfJAHmD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2019 03:42:03 -0400
+Received: by mail-pf1-f196.google.com with SMTP id q21so7287321pfn.11
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2019 00:42:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=OURPjTRTXuglZULKxoZ5ncYc60pHs4vLUxcp1tLNHN0=;
+        b=gV14bNcsprFFBpLd/QTHUYWCcZsRupt2vO3cwEORjMQGdPSyWyEJE4mHPZK1JJ5QQ6
+         V0CYxZjp0yGrd35EFL9o1cKHcvl1qkkII/L08h2YkF2fmpSiGRTEtdf3YXrSnohqsPJ6
+         +nVmnrkWv8hsB/dHIMpYuR3ydRWPtEDQribRB1CZdKISCXCk/Oz0HtyykwosBjRMHgYW
+         XJvoku+P8lZEo/CBu2ydAfvsXVTjEVKXSy/SVEh0utDrRX8JlByZ68/Hs1jgI6+3rTd8
+         TUTMtfTBdZefMsAMiF+gQ4Yx1y2dMI6LPHASXkVvWRGD4WftnfaNpr9U7KA8R5WOS5Ph
+         Fk6Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=OURPjTRTXuglZULKxoZ5ncYc60pHs4vLUxcp1tLNHN0=;
+        b=V9sKgiNdlIb9rco4wOnmEFmmBfCCUr7pV3KP5tLtqn70gYKp58HVeqW87NGniGkJKj
+         AlH50foHD+wHXRKUtUjMRNqdZ+KTQooNdtZBojcpcozDshZQO2BuJ7P5ee4TuvVcEIFa
+         3xb+LBlZTv2rf1AdrLkX/lRRbKsubihVTi4hhnS77K1kZH9xf1LCm4VNpTRM7S4knrDm
+         xfV7LwdrSJadQRr4c8/93tyBytn5S1OHlV8ydJZ4RIoOA9b4myNAJswSTlHqGYGYluG3
+         eJB1TiYsMXMcdULyx3HFGw63iE6RUhSpniND2dMfy6V8B3AxqVPZSnjEQ4RAMGG93M8B
+         tfOg==
+X-Gm-Message-State: APjAAAVwwWn3dPwjg6ZH3ZiAUV8COJlBBxeh6UQXp1VJnM64jxL2QiBc
+        cZ6fW83WBAlM1iIJlo1ZKebBuRhJYrk=
+X-Google-Smtp-Source: APXvYqySgwa9yveskwbdNaN1pdtM+37UA/mkuM4tNXGuKzQilOyQQmjISnZAVKT5IPAx67GLaZPfQw==
+X-Received: by 2002:a62:19c7:: with SMTP id 190mr26555009pfz.105.1569915722234;
+        Tue, 01 Oct 2019 00:42:02 -0700 (PDT)
+Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
+        by smtp.googlemail.com with ESMTPSA id q13sm2287668pjq.0.2019.10.01.00.42.01
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 01 Oct 2019 00:42:01 -0700 (PDT)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH v3 01/13] ext4: add handling for extended mount options
+Date:   Tue,  1 Oct 2019 00:40:50 -0700
+Message-Id: <20191001074101.256523-2-harshadshirwadkar@gmail.com>
+X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
+In-Reply-To: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
+References: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190930162536.GB13973@quack2.suse.cz>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Sep 30, 2019 at 06:25:36PM +0200, Jan Kara wrote:
-> The problem was that my patches were based on a kernel that didn't have
-> this code yet. I've rebased now on current Linus' tree and fixed this up in
-> my local tree (along with couple documentation warnings). But I don't think
-> it's worth resending just for this.
+We are running out of mount option bits. This patch adds handling for
+using s_mount_opt2 and also adds ability to turn on / off the fast
+commit feature. In order to use fast commits, new version e2fsprogs
+needs to set the fast feature commit flag. This also makes sure that
+we have fast commit compatible e2fsprogs before starting to use the
+feature. Mount flag "no_fastcommit", introuced in this patch, can be
+passed to disable the feature at mount time.
 
-Oh, agreed, it's not worth resending for this; it was a quick fixup.
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h       |  4 ++++
+ fs/ext4/super.c      | 27 ++++++++++++++++++++++-----
+ include/linux/jbd2.h |  5 ++++-
+ 3 files changed, 30 insertions(+), 6 deletions(-)
 
-How much testing have you given this patch series?  I did a quick
-xfstests run, and I found the following new failures when this was
-applied on top of the dev branch on ext4.git (e.g., what got sent to
-Linus as a pull request).
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bf660aa7a9e0..becbda38b7db 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1146,6 +1146,8 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT2_EXPLICIT_JOURNAL_CHECKSUM	0x00000008 /* User explicitly
+ 						specified journal checksum */
+ 
++#define EXT4_MOUNT2_JOURNAL_FAST_COMMIT	0x00000010 /* Journal fast commit */
++
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+ #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
+@@ -1643,6 +1645,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
+ #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
+ #define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
++#define EXT4_FEATURE_COMPAT_FAST_COMMIT		0x0400
+ 
+ #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+@@ -1743,6 +1746,7 @@ EXT4_FEATURE_COMPAT_FUNCS(xattr,		EXT_ATTR)
+ EXT4_FEATURE_COMPAT_FUNCS(resize_inode,		RESIZE_INODE)
+ EXT4_FEATURE_COMPAT_FUNCS(dir_index,		DIR_INDEX)
+ EXT4_FEATURE_COMPAT_FUNCS(sparse_super2,	SPARSE_SUPER2)
++EXT4_FEATURE_COMPAT_FUNCS(fast_commit,		FAST_COMMIT)
+ 
+ EXT4_FEATURE_RO_COMPAT_FUNCS(sparse_super,	SPARSE_SUPER)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(large_file,	LARGE_FILE)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4079605d437a..e376ac040cce 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1455,6 +1455,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
++	Opt_no_fastcommit
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1537,6 +1538,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable=%u"},
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
++	{Opt_no_fastcommit, "no_fastcommit"},
+ 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+ 	{Opt_nombcache, "nombcache"},
+@@ -1659,6 +1661,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+ #define MOPT_NO_EXT3	0x0200
+ #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
+ #define MOPT_STRING	0x0400
++#define MOPT_2		0x0800
+ 
+ static const struct mount_opts {
+ 	int	token;
+@@ -1751,6 +1754,8 @@ static const struct mount_opts {
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+ 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
++	{Opt_no_fastcommit, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
++	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
+ 	{Opt_err, 0, 0}
+ };
+ 
+@@ -1858,8 +1863,9 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			set_opt2(sb, EXPLICIT_DELALLOC);
+ 		} else if (m->mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) {
+ 			set_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM);
+-		} else
++		} else if (m->mount_opt) {
+ 			return -1;
++		}
+ 	}
+ 	if (m->flags & MOPT_CLEAR_ERR)
+ 		clear_opt(sb, ERRORS_MASK);
+@@ -2027,10 +2033,17 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			WARN_ON(1);
+ 			return -1;
+ 		}
+-		if (arg != 0)
+-			sbi->s_mount_opt |= m->mount_opt;
+-		else
+-			sbi->s_mount_opt &= ~m->mount_opt;
++		if (m->flags & MOPT_2) {
++			if (arg != 0)
++				sbi->s_mount_opt2 |= m->mount_opt;
++			else
++				sbi->s_mount_opt2 &= ~m->mount_opt;
++		} else {
++			if (arg != 0)
++				sbi->s_mount_opt |= m->mount_opt;
++			else
++				sbi->s_mount_opt &= ~m->mount_opt;
++		}
+ 	}
+ 	return 1;
+ }
+@@ -3733,6 +3746,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	set_opt(sb, POSIX_ACL);
+ #endif
++	if (ext4_has_feature_fast_commit(sb))
++		set_opt2(sb, JOURNAL_FAST_COMMIT);
++
+ 	/* don't forget to enable journal_csum when metadata_csum is enabled. */
+ 	if (ext4_has_metadata_csum(sb))
+ 		set_opt(sb, JOURNAL_CHECKSUM);
+@@ -4334,6 +4350,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		sbi->s_def_mount_opt &= ~EXT4_MOUNT_JOURNAL_CHECKSUM;
+ 		clear_opt(sb, JOURNAL_CHECKSUM);
+ 		clear_opt(sb, DATA_FLAGS);
++		clear_opt2(sb, JOURNAL_FAST_COMMIT);
+ 		sbi->s_journal = NULL;
+ 		needs_recovery = 0;
+ 		goto no_journal;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index df03825ad1a1..b7eed49b8ecd 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -288,6 +288,7 @@ typedef struct journal_superblock_s
+ #define JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT	0x00000004
+ #define JBD2_FEATURE_INCOMPAT_CSUM_V2		0x00000008
+ #define JBD2_FEATURE_INCOMPAT_CSUM_V3		0x00000010
++#define JBD2_FEATURE_INCOMPAT_FAST_COMMIT	0x00000020
+ 
+ /* See "journal feature predicate functions" below */
+ 
+@@ -298,7 +299,8 @@ typedef struct journal_superblock_s
+ 					JBD2_FEATURE_INCOMPAT_64BIT | \
+ 					JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT | \
+ 					JBD2_FEATURE_INCOMPAT_CSUM_V2 | \
+-					JBD2_FEATURE_INCOMPAT_CSUM_V3)
++					JBD2_FEATURE_INCOMPAT_CSUM_V3 | \
++					JBD2_FEATURE_INCOMPAT_FAST_COMMIT)
+ 
+ #ifdef __KERNEL__
+ 
+@@ -1235,6 +1237,7 @@ JBD2_FEATURE_INCOMPAT_FUNCS(64bit,		64BIT)
+ JBD2_FEATURE_INCOMPAT_FUNCS(async_commit,	ASYNC_COMMIT)
+ JBD2_FEATURE_INCOMPAT_FUNCS(csum2,		CSUM_V2)
+ JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
++JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
+ 
+ /*
+  * Journal flag definitions
+-- 
+2.23.0.444.g18eeb5a265-goog
 
-ext4/4k: 
-  Failures: ext4/026 generic/233
-ext4/1k: 
-  Failures: ext4/026
-ext4/ext3: 
-  Failures: ext4/026 generic/233
-ext4/encrypt: 
-  Failures: generic/083
-ext4/nojournal:
-  Failures: ext4/301
-ext4/adv: 
-  Failures: ext4/026 generic/233 generic/269 generic/270 generic/476
-ext4/dioread_nolock: 
-  Failures: ext4/026 generic/233
-ext4/data_journal: 
-  Failures: generic/233
-ext4/bigalloc: 
-  Failures: generic/013 generic/014 generic/051 generic/083
-    generic/232 generic/233 generic/269 generic/270 generic/299
-    generic/429 generic/475 generic/476
-ext4/bigalloc_1k: 
-  Failures: ext4/026 generic/013 generic/014 generic/032 generic/051
-    generic/068 generic/083 generic/232 generic/233 generic/269
-    generic/270 generic/320 generic/475 generic/476
-
-I haven't trianged them all yet, but here are the details for the two
-biggies: ext4/026 and generic/233.
-
-					- Ted
-
-ext4/026		[14:11:43][   14.287850] run fstests ext4/026 at 2019-09-30 14:11:43
-[   14.821933] WARNING: CPU: 0 PID: 1542 at fs/jbd2/revoke.c:394 jbd2_journal_revoke+0x14b/0x160
-[   14.824000] CPU: 0 PID: 1542 Comm: rm Not tainted 5.3.0-rc4-xfstests-00019-ga8d18e88fd60-dirty #1201
-[   14.826111] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.12.0-1 04/01/2014
-[   14.828039] RIP: 0010:jbd2_journal_revoke+0x14b/0x160
-[   14.829217] Code: 4c 89 f7 e8 77 8c ef ff eb a6 e8 d0 8d ef ff 48 85 c0 49 89 c6 74 99 48 8b 00 a9 00 00 10 00 0f 84 5b ff ff ff e9 71 06 00 00 <0f> 0b eb 89 0f 0b 0f 0b 66 66 2e 0f 1f 84 00 00 00 00 00 66 90 0f
-[   14.833505] RSP: 0018:ffffae0ec2683ad8 EFLAGS: 00010246
-[   14.834721] RAX: 0000000000000000 RBX: ffff951876a9f410 RCX: 1111111111111120
-[   14.836287] RDX: 0000000000000004 RSI: 0000000000000006 RDI: ffff951876a9f410
-[   14.837853] RBP: ffff951874f1f6c8 R08: 0000000373745034 R09: 0000000000000000
-[   14.839244] R10: 0000000000000000 R11: 0000000000000000 R12: 000000000000840d
-[   14.840799] R13: ffff951876695000 R14: ffff951876a9f410 R15: 0000000000000001
-[   14.842349] FS:  00007f39e17b5540(0000) GS:ffff95187d800000(0000) knlGS:0000000000000000
-[   14.844125] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   14.845403] CR2: 00007f39e16ba4a0 CR3: 0000000075b9e006 CR4: 0000000000360ef0
-[   14.847055] Call Trace:
-[   14.847628]  __ext4_forget+0xf2/0x280
-[   14.848470]  ext4_free_blocks+0x9c8/0xc00
-[   14.849270]  ? __lock_acquire+0x447/0x7c0
-[   14.850174]  ? kvm_sched_clock_read+0x14/0x30
-[   14.851182]  ext4_remove_blocks+0x33c/0x630
-[   14.852190]  ext4_ext_rm_leaf+0x1fb/0x7a0
-[   14.853493]  ext4_ext_remove_space+0x556/0xa80
-[   14.855020]  ? ext4_es_remove_extent+0x9d/0x180
-[   14.856325]  ext4_truncate+0x413/0x520
-[   14.857374]  ext4_evict_inode+0x29c/0x670
-[   14.858329]  evict+0xd0/0x1a0
-[   14.859157]  ext4_xattr_inode_array_free+0x27/0x40
-[   14.860341]  ext4_evict_inode+0x31c/0x670
-[   14.861344]  evict+0xd0/0x1a0
-[   14.862107]  do_unlinkat+0x1cd/0x2e0
-[   14.862769]  do_syscall_64+0x50/0x1b0
-[   14.863387]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-[   14.864219] RIP: 0033:0x7f39e16deff7
-[   14.864813] Code: 73 01 c3 48 8b 0d 99 ee 0c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 b8 07 01 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 69 ee 0c 00 f7 d8 64 89 01 48
-[   14.867949] RSP: 002b:00007fff3ed46068 EFLAGS: 00000246 ORIG_RAX: 0000000000000107
-[   14.869197] RAX: ffffffffffffffda RBX: 0000561d094937b0 RCX: 00007f39e16deff7
-[   14.870371] RDX: 0000000000000000 RSI: 0000561d09492340 RDI: 00000000ffffff9c
-[   14.871544] RBP: 0000561d094922b0 R08: 0000000000000003 R09: 0000000000000000
-[   14.872766] R10: 0000000000000100 R11: 0000000000000246 R12: 00007fff3ed46250
-[   14.873950] R13: 0000000000000000 R14: 0000561d094937b0 R15: 0000000000000000
-[   14.875156] irq event stamp: 2176
-[   14.875720] hardirqs last  enabled at (2175): [<ffffffffb16663e1>] kmem_cache_free+0x51/0x220
-[   14.877150] hardirqs last disabled at (2176): [<ffffffffb14016aa>] trace_hardirqs_off_thunk+0x1a/0x20
-[   14.878702] softirqs last  enabled at (814): [<ffffffffb14297f3>] fpu__clear+0xb3/0x1b0
-[   14.880055] softirqs last disabled at (812): [<ffffffffb14297b5>] fpu__clear+0x75/0x1b0
-[   14.881926] ---[ end trace 4d44757f1901181f ]---
-_check_dmesg: something found in dmesg (see /results/ext4/results-4k/ext4/026.dmesg)
- [14:11:44]
-
-
-generic/233 		[14:18:34][   19.736637] run fstests generic/233 at 2019-09-30 14:18:34
-[   21.400934] EXT4-fs (vdc): Delayed block allocation failed for inode 131809 at logical offset 209 with max blocks 9 with error 122
-[   21.404197] EXT4-fs (vdc): This should not happen!! Data will be lost
-[   21.404197]
- [14:18:36] 2s
