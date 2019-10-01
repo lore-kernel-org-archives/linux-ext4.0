@@ -2,68 +2,66 @@ Return-Path: <SRS0=Lxat=X2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4135ECE589
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D53CECE58A
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7BD2D21783
-	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3227221783
+	for <linux-ext4@archiver.kernel.org>; Tue,  1 Oct 2019 07:42:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Z/CP4mk3"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tdifwMp+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730124AbfJAHmE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1732953AbfJAHmE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 1 Oct 2019 03:42:04 -0400
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:46144 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729189AbfJAHmE (ORCPT
+Received: from mail-pf1-f177.google.com ([209.85.210.177]:39415 "EHLO
+        mail-pf1-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728249AbfJAHmE (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Oct 2019 03:42:04 -0400
-Received: by mail-pg1-f193.google.com with SMTP id a3so8972566pgm.13
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2019 00:42:03 -0700 (PDT)
+Received: by mail-pf1-f177.google.com with SMTP id v4so7301058pff.6
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Oct 2019 00:42:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=EGqBedYLzZgUreszGDKD1/yH1H0MhImKzKjZTUiPsyc=;
-        b=Z/CP4mk3S1ZRZup5pJYGSEmJ35y9fopeQEMYsEaFKg503JhkjzNsHkoYRT7D+w/pLq
-         r8xi3fAPR0G7IYX0qo/vxVxjRgVvBHCRPS7YUX34mXlTbWBIIy5QEUuSe17+1xdj8YoH
-         IUhsxZP+t3N3Ue1C7xK6yn+8xw4IpAxaPWYqBEd3CddJzj6QOTdYqkUROMCCwZL9NtRK
-         V4FX5URSqYFYZcEu8DVTScJpZrJikEmRj6fo5G3eECNkiD+d07KOISVv5BWcPZmDRnl0
-         S0wRby3Om5zEe0yc83tJxj0jC39ynORXhQHtBVLbzHjApjor+YeE4z1bc1n8/FS4vv//
-         wZkQ==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=pXj9qX4zwEp9vOKqWNSfk580fjJgOhzVTrplm2CaoDM=;
+        b=tdifwMp+iV9Jy06tN4UGZZqXl045/gLOY8yy9kRBJkhhzzrNUXdPX9IDl0AtLmc7g/
+         HGjn0+wK/2gNVfA4cpnC6V/TlaiG2nGKn/WwogXiE1n6TILibmYwJMxSqE4UU7SLUW1E
+         /wVZUifXvAEuyhgFl1acxjYWQ8oBHFJ6oZPz4ECKwL+8UvnJj1fIsByfgi4Am8RG3yDJ
+         L3BBcR/7yQW7qgIB0hvzSFM43xL5F4biivMzYtcr7PpKkooXxhSPwSLPKJhX6usv/Zhb
+         qrnlIaqOY2MiVrFdvp9/CS5hujyoI7iSX2U6JPDWYpN/7TfIuaiMbouGzyJmlzDo9d6t
+         /h7Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=EGqBedYLzZgUreszGDKD1/yH1H0MhImKzKjZTUiPsyc=;
-        b=cJsNcZYg8Km/aHtqGkvPcY/D7ptF6gAaXC6j4gOxeRcNr98RVpsm3SoVydMDgBN9pK
-         ovtAZU5TRIVJMa5r49aIdAkmGMt6zspOBuyg0aXkxPE9eY29c0iDut3+jqautyvlgWlt
-         I5/vTO0q7/jCXWSDtnsffehxCqoSchg6L6XnzQcZylxhJaCX+cTyE6MBf6nPxw3jaIcG
-         CYBNu4K+EsHP47SfRd5YoELkA8RAJzx6q8akQjcEzq4fMIMY27FGI5BSJOqde135gUI7
-         I0eYUGR7mGrH69H8rwdqUn4kHswmzWkSuYt9NfO2xPx+KvxuWowfPbumth/ODi9RM8gU
-         Xp1Q==
-X-Gm-Message-State: APjAAAXAEuzAzTz3jxCjhbZ1yc9PQwbnEEphKlDxKZ+G0sJmOY7TdKHo
-        AkkuzjFfqCP3k1OxPAmaBfXvlIF64zg=
-X-Google-Smtp-Source: APXvYqwVBVXCjahgXEAWnWCG9lt9GPt0iHB/KEDhZHxOI9F+qJHoTzUwM9KPxWjXqRFKpV8xkp6i2Q==
-X-Received: by 2002:aa7:96b8:: with SMTP id g24mr7778057pfk.163.1569915722862;
-        Tue, 01 Oct 2019 00:42:02 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=pXj9qX4zwEp9vOKqWNSfk580fjJgOhzVTrplm2CaoDM=;
+        b=pPrZK+Ub4NwCfk8YdgayF3yuc4hGJLPUXB0kWjRcw0EKw/6Oi9uo9N4HEA7dfP0OyL
+         9QfzVffnal4VQWLIDDoALWUgOd5VcO1rNrokxf6IKrsvmonbAPGIciGPiu0Rv8mnLC9T
+         I1pp/wK6t8pitf7oh+Xs3jBgPYRaa10s4g1ss0WeARx4Xe5jR0ihi7ecfWQtClsbjjIR
+         kPm6ljt1f9POQWIKPecsmCI7RvQrLUTiEgEKM1RosnfbeFh0gz3zDC4pNPbQOxeTeWvS
+         BvXCjpfwMj/7GYvfCZsQxcQc4y1fDuSGmRIF66qqOIZu6kdxPQef+dra1RBsQpBIaGVN
+         7rew==
+X-Gm-Message-State: APjAAAV4UJEWMXgqEZWVOc60oVOZP/5aj7pXqYxF9w4b8WgnioW6NxCi
+        7pM0cSAMpC6cgZX2VC1SpRX5MPA98qI=
+X-Google-Smtp-Source: APXvYqyOgvt+KnkiwlLmPmD9XheEhKNHXtsG6SXHV4Qs096CQwrGpLz37Y4+G+LT0dwguV4ak60/Rw==
+X-Received: by 2002:a63:e658:: with SMTP id p24mr29844335pgj.61.1569915721511;
+        Tue, 01 Oct 2019 00:42:01 -0700 (PDT)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id q13sm2287668pjq.0.2019.10.01.00.42.02
+        by smtp.googlemail.com with ESMTPSA id q13sm2287668pjq.0.2019.10.01.00.42.00
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 01 Oct 2019 00:42:02 -0700 (PDT)
+        Tue, 01 Oct 2019 00:42:00 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v3 02/13] jbd2: fast commit setup and enable
-Date:   Tue,  1 Oct 2019 00:40:51 -0700
-Message-Id: <20191001074101.256523-3-harshadshirwadkar@gmail.com>
+Subject: [PATCH v3 00/13] ext4: add fast commit support
+Date:   Tue,  1 Oct 2019 00:40:49 -0700
+Message-Id: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.23.0.444.g18eeb5a265-goog
-In-Reply-To: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
-References: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -71,230 +69,119 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch allows file systems to turn fast commits on and thereby
-restrict the normal journalling space to total journal blocks minus
-JBD2_FAST_COMMIT_BLOCKS. Fast commits are not actually performed, just
-the interface to turn fast commits on is opened.
+This patch series adds support for fast commits which is a simplified
+version of the scheme proposed by Park and Shin, in their paper,
+"iJournaling: Fine-Grained Journaling for Improving the Latency of
+Fsync System Call"[1]. The basic idea of fast commits is to make JBD2
+give the client file system an opportunity to perform a faster
+commit. Only if the file system cannot perform such a commit
+operation, then JBD2 should fall back to traditional commits.
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- fs/ext4/super.c      |  5 +++-
- fs/jbd2/journal.c    | 68 +++++++++++++++++++++++++++++++++-----------
- include/linux/jbd2.h | 39 +++++++++++++++++++++++++
- 3 files changed, 95 insertions(+), 17 deletions(-)
+Because JBD2 operates at block granularity, for every file system
+metadata update it commits all the changed blocks are written to the
+journal at commit time. This is inefficient because updates to some
+blocks that JBD2 commits are derivable from some other blocks. For
+example, if a new extent is added to an inode, then corresponding
+updates to the inode table, the block bitmap, the group descriptor and
+the superblock can be derived based on just the extent information and
+the corresponding inode information. So, if we take this relationship
+between blocks into account and replay the journalled blocks smartly,
+we could increase performance of file system commits significantly.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e376ac040cce..7725eb2105f4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4933,7 +4933,10 @@ static int ext4_load_journal(struct super_block *sb,
- 		if (save)
- 			memcpy(save, ((char *) es) +
- 			       EXT4_S_ERR_START, EXT4_S_ERR_LEN);
--		err = jbd2_journal_load(journal);
-+		if (test_opt2(sb, JOURNAL_FAST_COMMIT))
-+			err = jbd2_journal_load_with_fc(journal);
-+		else
-+			err = jbd2_journal_load(journal);
- 		if (save)
- 			memcpy(((char *) es) + EXT4_S_ERR_START,
- 			       save, EXT4_S_ERR_LEN);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 953990eb70a9..7c13834873ad 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1159,12 +1159,15 @@ static journal_t *journal_init_common(struct block_device *bdev,
- 	journal->j_blk_offset = start;
- 	journal->j_maxlen = len;
- 	n = journal->j_blocksize / sizeof(journal_block_tag_t);
--	journal->j_wbufsize = n;
-+	journal->j_wbufsize = n - JBD2_FAST_COMMIT_BLOCKS;
- 	journal->j_wbuf = kmalloc_array(n, sizeof(struct buffer_head *),
- 					GFP_KERNEL);
- 	if (!journal->j_wbuf)
- 		goto err_cleanup;
- 
-+	journal->j_fc_wbuf = &journal->j_wbuf[journal->j_wbufsize];
-+	journal->j_fc_wbufsize = JBD2_FAST_COMMIT_BLOCKS;
-+
- 	bh = getblk_unmovable(journal->j_dev, start, journal->j_blocksize);
- 	if (!bh) {
- 		pr_err("%s: Cannot get buffer for journal superblock\n",
-@@ -1297,11 +1300,19 @@ static int journal_reset(journal_t *journal)
- 	}
- 
- 	journal->j_first = first;
--	journal->j_last = last;
- 
--	journal->j_head = first;
--	journal->j_tail = first;
--	journal->j_free = last - first;
-+	if (jbd2_has_feature_fast_commit(journal)) {
-+		journal->j_last_fc = last;
-+		journal->j_last = last - JBD2_FAST_COMMIT_BLOCKS;
-+		journal->j_first_fc = journal->j_last + 1;
-+		journal->j_fc_off = 0;
-+	} else {
-+		journal->j_last = last;
-+	}
-+
-+	journal->j_head = journal->j_first;
-+	journal->j_tail = journal->j_first;
-+	journal->j_free = journal->j_last - journal->j_first;
- 
- 	journal->j_tail_sequence = journal->j_transaction_sequence;
- 	journal->j_commit_sequence = journal->j_transaction_sequence - 1;
-@@ -1626,22 +1637,21 @@ static int load_superblock(journal_t *journal)
- 	journal->j_tail_sequence = be32_to_cpu(sb->s_sequence);
- 	journal->j_tail = be32_to_cpu(sb->s_start);
- 	journal->j_first = be32_to_cpu(sb->s_first);
--	journal->j_last = be32_to_cpu(sb->s_maxlen);
- 	journal->j_errno = be32_to_cpu(sb->s_errno);
- 
-+	if (jbd2_has_feature_fast_commit(journal)) {
-+		journal->j_last_fc = be32_to_cpu(sb->s_maxlen);
-+		journal->j_last = journal->j_last_fc - JBD2_FAST_COMMIT_BLOCKS;
-+		journal->j_first_fc = journal->j_last + 1;
-+		journal->j_fc_off = 0;
-+	} else {
-+		journal->j_last = be32_to_cpu(sb->s_maxlen);
-+	}
-+
- 	return 0;
- }
- 
--
--/**
-- * int jbd2_journal_load() - Read journal from disk.
-- * @journal: Journal to act on.
-- *
-- * Given a journal_t structure which tells us which disk blocks contain
-- * a journal, read the journal from disk to initialise the in-memory
-- * structures.
-- */
--int jbd2_journal_load(journal_t *journal)
-+static int __jbd2_journal_load(journal_t *journal, bool enable_fc)
- {
- 	int err;
- 	journal_superblock_t *sb;
-@@ -1684,6 +1694,12 @@ int jbd2_journal_load(journal_t *journal)
- 		return -EFSCORRUPTED;
- 	}
- 
-+	if (enable_fc)
-+		jbd2_journal_set_features(journal, 0, 0,
-+					  JBD2_FEATURE_INCOMPAT_FAST_COMMIT);
-+	else
-+		jbd2_journal_clear_features(journal, 0, 0,
-+					    JBD2_FEATURE_INCOMPAT_FAST_COMMIT);
- 	/* OK, we've finished with the dynamic journal bits:
- 	 * reinitialise the dynamic contents of the superblock in memory
- 	 * and reset them on disk. */
-@@ -1699,6 +1715,26 @@ int jbd2_journal_load(journal_t *journal)
- 	return -EIO;
- }
- 
-+/**
-+ * int jbd2_journal_load() - Read journal from disk.
-+ * @journal: Journal to act on.
-+ *
-+ * Given a journal_t structure which tells us which disk blocks contain
-+ * a journal, read the journal from disk to initialise the in-memory
-+ * structures.
-+ */
-+int jbd2_journal_load(journal_t *journal)
-+{
-+	return __jbd2_journal_load(journal, false);
-+}
-+
-+/* Same as above but also enables fast commits. */
-+int jbd2_journal_load_with_fc(journal_t *journal)
-+{
-+	return __jbd2_journal_load(journal, true);
-+}
-+
-+
- /**
-  * void jbd2_journal_destroy() - Release a journal_t structure.
-  * @journal: Journal to act on.
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index b7eed49b8ecd..84d04e1f3d92 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -67,6 +67,7 @@ extern void *jbd2_alloc(size_t size, gfp_t flags);
- extern void jbd2_free(void *ptr, size_t size);
- 
- #define JBD2_MIN_JOURNAL_BLOCKS 1024
-+#define JBD2_FAST_COMMIT_BLOCKS 128
- 
- #ifdef __KERNEL__
- 
-@@ -918,6 +919,30 @@ struct journal_s
- 	 */
- 	unsigned long		j_last;
- 
-+	/**
-+	 * @j_first_fc:
-+	 *
-+	 * The block number of the first fast commit block in the journal
-+	 * [j_state_lock].
-+	 */
-+	unsigned long		j_first_fc;
-+
-+	/**
-+	 * @j_fc_off:
-+	 *
-+	 * Number of fast commit blocks currently allocated.
-+	 * [j_state_lock].
-+	 */
-+	unsigned long		j_fc_off;
-+
-+	/**
-+	 * @j_last_fc:
-+	 *
-+	 * The block number one beyond the last fast commit block in the journal
-+	 * [j_state_lock].
-+	 */
-+	unsigned long		j_last_fc;
-+
- 	/**
- 	 * @j_dev: Device where we store the journal.
- 	 */
-@@ -1061,6 +1086,12 @@ struct journal_s
- 	 */
- 	struct buffer_head	**j_wbuf;
- 
-+	/**
-+	 * @j_fc_wbuf: Array of fast commit bhs for
-+	 * jbd2_journal_commit_transaction.
-+	 */
-+	struct buffer_head	**j_fc_wbuf;
-+
- 	/**
- 	 * @j_wbufsize:
- 	 *
-@@ -1068,6 +1099,13 @@ struct journal_s
- 	 */
- 	int			j_wbufsize;
- 
-+	/**
-+	 * @j_fc_wbufsize:
-+	 *
-+	 * Size of @j_fc_wbuf array.
-+	 */
-+	int			j_fc_wbufsize;
-+
- 	/**
- 	 * @j_last_sync_writer:
- 	 *
-@@ -1398,6 +1436,7 @@ extern int	   jbd2_journal_set_features
- extern void	   jbd2_journal_clear_features
- 		   (journal_t *, unsigned long, unsigned long, unsigned long);
- extern int	   jbd2_journal_load       (journal_t *journal);
-+extern int	   jbd2_journal_load_with_fc(journal_t *journal);
- extern int	   jbd2_journal_destroy    (journal_t *);
- extern int	   jbd2_journal_recover    (journal_t *journal);
- extern int	   jbd2_journal_wipe       (journal_t *, int);
+Fast commits introduced in this patch have two main contributions:
+
+(1) Making JBD2 fast commit aware, so that clients of JBD2 can
+    implement fast commits
+
+(2) Add support in ext4 to use JBD2's new interfaces and implement
+    fast commits
+
+Testing
+-------
+
+e2fsprogs was updated to set fast commit feature flag and to ignore
+fast commit blocks during e2fsck.
+
+https://github.com/harshadjs/e2fsprogs.git
+
+After applying all the patches in this series, following runs of
+xfstests were performed:
+
+- kvm-xfstest.sh -g log -c 4k
+- kvm-xfstests.sh smoke
+
+All the log tests were successful and smoke tests didn't introduce any
+additional failures.
+
+Performance Evaluation
+----------------------
+
+Ext4 file system performance was tested with and without fast commit
+using fs_mark benchmark. Following was the command used:
+
+Command: ./fs_mark -t 8 -n 1024 -s 65536 -w 4096 -d /mnt
+
+Results:
+Without Fast Commit: 1501.2 files/sec
+With Fast commits: 3055 files/sec
+~103% write performance improvement
+
+Changes since V2:
+
+- Added ability to support new file creation in fast commits. This
+  allows us to use fs_mark benchmark for performance testing
+
+- Added support for asynchronous fast commits
+
+- Many cleanups and bug fixes
+
+- Re-organized the patch set, moved most of the new code to
+  ext4_jbd2.c instead of super.c
+
+- Handling of review comments on previous patchset
+
+Harshad Shirwadkar(13):
+ docs: Add fast commit documentation
+ ext4: add support for asynchronous fast commits
+ ext4: fast-commit recovery path changes
+ ext4: fast-commit commit path changes
+ ext4: fast-commit commit range tracking
+ ext4: track changed files for fast commit
+ ext4: add fields that are needed to track changed files
+ jbd2: fast-commit recovery path changes
+ jbd2: fast-commit commit path new APIs
+ jbd2: fast-commit commit path changes
+ jbd2: fast commit setup and enable
+ ext4: add handling for extended mount options
+ ext4: add fast commit support
+
+ Documentation/filesystems/ext4/journal.rst |   98 +-
+ Documentation/filesystems/journalling.rst  |   22
+ fs/ext4/acl.c                              |    1
+ fs/ext4/balloc.c                           |    7
+ fs/ext4/ext4.h                             |   86 +
+ fs/ext4/ext4_jbd2.c                        |  902 +++++++++++++++++++
+ fs/ext4/ext4_jbd2.h                        |   98 ++
+ fs/ext4/extents.c                          |   43
+ fs/ext4/fsync.c                            |    7
+ fs/ext4/ialloc.c                           |   60 -
+ fs/ext4/inline.c                           |   14
+ fs/ext4/inode.c                            |   77 +
+ fs/ext4/ioctl.c                            |    9
+ fs/ext4/mballoc.c                          |   83 +
+ fs/ext4/mballoc.h                          |    2
+ fs/ext4/migrate.c                          |    1
+ fs/ext4/namei.c                            |   16
+ fs/ext4/super.c                            |   55 +
+ fs/ext4/xattr.c                            |    1
+ fs/jbd2/commit.c                           |   98 ++
+ fs/jbd2/journal.c                          |  343 ++++++-
+ fs/jbd2/recovery.c                         |   63 +
+ fs/jbd2/transaction.c                      |    3
+ include/linux/jbd2.h                       |  117 ++
+ include/trace/events/ext4.h                |   61 +
+ include/trace/events/jbd2.h                |    9
+ 26 files changed, 2170 insertions(+), 106 deletions(-)
 -- 
 2.23.0.444.g18eeb5a265-goog
 
