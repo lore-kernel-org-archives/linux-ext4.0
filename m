@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0EEAC4CED1
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C649C32792
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A559420867
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3C47720867
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388107AbfJCWGD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 18:06:03 -0400
-Received: from mx2.suse.de ([195.135.220.15]:49710 "EHLO mx1.suse.de"
+        id S2388127AbfJCWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Oct 2019 18:06:04 -0400
+Received: from mx2.suse.de ([195.135.220.15]:49700 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387716AbfJCWF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 3 Oct 2019 18:05:56 -0400
+        id S2387641AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Oct 2019 18:05:55 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 97997B15E;
+        by mx1.suse.de (Postfix) with ESMTP id 6D962B14A;
         Thu,  3 Oct 2019 22:05:52 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 66B0A1E481A; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
+        id 27EB61E481C; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
 Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 22/22] jbd2: Provide trace event for handle restarts
-Date:   Fri,  4 Oct 2019 00:06:08 +0200
-Message-Id: <20191003220613.10791-22-jack@suse.cz>
+Subject: [PATCH 10/22] ocfs2: Use accessor function for h_buffer_credits
+Date:   Fri,  4 Oct 2019 00:05:56 +0200
+Message-Id: <20191003220613.10791-10-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,74 +38,157 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Provide trace event for handle restarts to ease debugging.
+Use the jbd2 accessor function for h_buffer_credits.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c       |  8 +++++++-
- include/trace/events/jbd2.h | 16 +++++++++++++++-
- 2 files changed, 22 insertions(+), 2 deletions(-)
+ fs/ocfs2/alloc.c   | 32 ++++++++++++++++----------------
+ fs/ocfs2/journal.c |  4 ++--
+ 2 files changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 66fad49d45df..624c33028663 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -732,6 +732,7 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int revoke_records,
- 	journal_t *journal;
- 	tid_t		tid;
- 	int		need_to_start;
-+	int		ret;
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index f9baefc76cf9..88534eb0e7c2 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -2288,9 +2288,9 @@ static int ocfs2_extend_rotate_transaction(handle_t *handle, int subtree_depth,
+ 	int ret = 0;
+ 	int credits = (path->p_tree_depth - subtree_depth) * 2 + 1 + op_credits;
  
- 	/* If we've had an abort of any type, don't even think about
- 	 * actually doing the restart! */
-@@ -757,7 +758,12 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, int revoke_records,
- 		DIV_ROUND_UP(revoke_records,
- 			     journal->j_revoke_records_per_block);
- 	handle->h_revoke_credits = revoke_records;
--	return start_this_handle(journal, handle, gfp_mask);
-+	ret = start_this_handle(journal, handle, gfp_mask);
-+	trace_jbd2_handle_restart(journal->j_fs_dev->bd_dev,
-+				 ret ? 0 : handle->h_transaction->t_tid,
-+				 handle->h_type, handle->h_line_no,
-+				 handle->h_total_credits);
-+	return ret;
+-	if (handle->h_buffer_credits < credits)
++	if (jbd2_handle_buffer_credits(handle) < credits)
+ 		ret = ocfs2_extend_trans(handle,
+-					 credits - handle->h_buffer_credits);
++				credits - jbd2_handle_buffer_credits(handle));
+ 
+ 	return ret;
  }
- EXPORT_SYMBOL(jbd2__journal_restart);
+@@ -2367,7 +2367,7 @@ static int ocfs2_rotate_tree_right(handle_t *handle,
+ 				   struct ocfs2_path *right_path,
+ 				   struct ocfs2_path **ret_left_path)
+ {
+-	int ret, start, orig_credits = handle->h_buffer_credits;
++	int ret, start, orig_credits = jbd2_handle_buffer_credits(handle);
+ 	u32 cpos;
+ 	struct ocfs2_path *left_path = NULL;
+ 	struct super_block *sb = ocfs2_metadata_cache_get_super(et->et_ci);
+@@ -3148,7 +3148,7 @@ static int ocfs2_rotate_tree_left(handle_t *handle,
+ 				  struct ocfs2_path *path,
+ 				  struct ocfs2_cached_dealloc_ctxt *dealloc)
+ {
+-	int ret, orig_credits = handle->h_buffer_credits;
++	int ret, orig_credits = jbd2_handle_buffer_credits(handle);
+ 	struct ocfs2_path *tmp_path = NULL, *restart_path = NULL;
+ 	struct ocfs2_extent_block *eb;
+ 	struct ocfs2_extent_list *el;
+@@ -3386,8 +3386,8 @@ static int ocfs2_merge_rec_right(struct ocfs2_path *left_path,
+ 							right_path);
  
-diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
-index 2310b259329f..d16a32867f3a 100644
---- a/include/trace/events/jbd2.h
-+++ b/include/trace/events/jbd2.h
-@@ -133,7 +133,7 @@ TRACE_EVENT(jbd2_submit_inode_data,
- 		  (unsigned long) __entry->ino)
- );
+ 		ret = ocfs2_extend_rotate_transaction(handle, subtree_index,
+-						      handle->h_buffer_credits,
+-						      right_path);
++					jbd2_handle_buffer_credits(handle),
++					right_path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+ 			goto out;
+@@ -3548,8 +3548,8 @@ static int ocfs2_merge_rec_left(struct ocfs2_path *right_path,
+ 							right_path);
  
--TRACE_EVENT(jbd2_handle_start,
-+DECLARE_EVENT_CLASS(jbd2_handle_start_class,
- 	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
- 		 unsigned int line_no, int requested_blocks),
+ 		ret = ocfs2_extend_rotate_transaction(handle, subtree_index,
+-						      handle->h_buffer_credits,
+-						      left_path);
++					jbd2_handle_buffer_credits(handle),
++					left_path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+ 			goto out;
+@@ -3623,7 +3623,7 @@ static int ocfs2_merge_rec_left(struct ocfs2_path *right_path,
+ 		    le16_to_cpu(el->l_next_free_rec) == 1) {
+ 			/* extend credit for ocfs2_remove_rightmost_path */
+ 			ret = ocfs2_extend_rotate_transaction(handle, 0,
+-					handle->h_buffer_credits,
++					jbd2_handle_buffer_credits(handle),
+ 					right_path);
+ 			if (ret) {
+ 				mlog_errno(ret);
+@@ -3669,7 +3669,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
+ 	if (ctxt->c_split_covers_rec && ctxt->c_has_empty_extent) {
+ 		/* extend credit for ocfs2_remove_rightmost_path */
+ 		ret = ocfs2_extend_rotate_transaction(handle, 0,
+-				handle->h_buffer_credits,
++				jbd2_handle_buffer_credits(handle),
+ 				path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+@@ -3725,7 +3725,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
  
-@@ -161,6 +161,20 @@ TRACE_EVENT(jbd2_handle_start,
- 		  __entry->type, __entry->line_no, __entry->requested_blocks)
- );
+ 		/* extend credit for ocfs2_remove_rightmost_path */
+ 		ret = ocfs2_extend_rotate_transaction(handle, 0,
+-					handle->h_buffer_credits,
++					jbd2_handle_buffer_credits(handle),
+ 					path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+@@ -3755,7 +3755,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
  
-+DEFINE_EVENT(jbd2_handle_start_class, jbd2_handle_start,
-+	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
-+		 unsigned int line_no, int requested_blocks),
-+
-+	TP_ARGS(dev, tid, type, line_no, requested_blocks)
-+);
-+
-+DEFINE_EVENT(jbd2_handle_start_class, jbd2_handle_restart,
-+	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
-+		 unsigned int line_no, int requested_blocks),
-+
-+	TP_ARGS(dev, tid, type, line_no, requested_blocks)
-+);
-+
- TRACE_EVENT(jbd2_handle_extend,
- 	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
- 		 unsigned int line_no, int buffer_credits,
+ 		/* extend credit for ocfs2_remove_rightmost_path */
+ 		ret = ocfs2_extend_rotate_transaction(handle, 0,
+-				handle->h_buffer_credits,
++				jbd2_handle_buffer_credits(handle),
+ 				path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+@@ -3799,7 +3799,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
+ 		if (ctxt->c_split_covers_rec) {
+ 			/* extend credit for ocfs2_remove_rightmost_path */
+ 			ret = ocfs2_extend_rotate_transaction(handle, 0,
+-					handle->h_buffer_credits,
++					jbd2_handle_buffer_credits(handle),
+ 					path);
+ 			if (ret) {
+ 				mlog_errno(ret);
+@@ -5358,7 +5358,7 @@ static int ocfs2_truncate_rec(handle_t *handle,
+ 	if (ocfs2_is_empty_extent(&el->l_recs[0]) && index > 0) {
+ 		/* extend credit for ocfs2_remove_rightmost_path */
+ 		ret = ocfs2_extend_rotate_transaction(handle, 0,
+-				handle->h_buffer_credits,
++				jbd2_handle_buffer_credits(handle),
+ 				path);
+ 		if (ret) {
+ 			mlog_errno(ret);
+@@ -5427,8 +5427,8 @@ static int ocfs2_truncate_rec(handle_t *handle,
+ 	}
+ 
+ 	ret = ocfs2_extend_rotate_transaction(handle, 0,
+-					      handle->h_buffer_credits,
+-					      path);
++					jbd2_handle_buffer_credits(handle),
++					path);
+ 	if (ret) {
+ 		mlog_errno(ret);
+ 		goto out;
+diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+index 930e3d388579..019aaf2a3f8a 100644
+--- a/fs/ocfs2/journal.c
++++ b/fs/ocfs2/journal.c
+@@ -419,7 +419,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
+ 	if (!nblocks)
+ 		return 0;
+ 
+-	old_nblocks = handle->h_buffer_credits;
++	old_nblocks = jbd2_handle_buffer_credits(handle);
+ 
+ 	trace_ocfs2_extend_trans(old_nblocks, nblocks);
+ 
+@@ -460,7 +460,7 @@ int ocfs2_allocate_extend_trans(handle_t *handle, int thresh)
+ 
+ 	BUG_ON(!handle);
+ 
+-	old_nblks = handle->h_buffer_credits;
++	old_nblks = jbd2_handle_buffer_credits(handle);
+ 	trace_ocfs2_allocate_extend_trans(old_nblks, thresh);
+ 
+ 	if (old_nblks < thresh)
 -- 
 2.16.4
 
