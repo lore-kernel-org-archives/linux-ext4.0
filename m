@@ -2,71 +2,102 @@ Return-Path: <SRS0=KV+B=X4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D70EC10F14
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 21:34:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 840C9C10F14
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 21:50:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1B4B22086A
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 21:34:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D91A2086A
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 21:50:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733197AbfJCVeD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 17:34:03 -0400
-Received: from edison.jonmasters.org ([173.255.233.168]:45010 "EHLO
-        edison.jonmasters.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731694AbfJCVeD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Oct 2019 17:34:03 -0400
-X-Greylist: delayed 1394 seconds by postgrey-1.27 at vger.kernel.org; Thu, 03 Oct 2019 17:34:03 EDT
-Received: from boston.jonmasters.org ([50.195.43.97] helo=tonnant.bos.jonmasters.org)
-        by edison.jonmasters.org with esmtpsa (TLS1.0:RSA_AES_128_CBC_SHA1:16)
-        (Exim 4.71)
-        (envelope-from <jcm@jonmasters.org>)
-        id 1iG8N4-0002a7-GX; Thu, 03 Oct 2019 21:10:46 +0000
-To:     "Ahmed S. Darwish" <darwish.07@gmail.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     Jan Kara <jack@suse.cz>, zhangjs <zachary@baishancloud.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20190910042107.GA1517@darwi-home-pc>
-From:   Jon Masters <jcm@jonmasters.org>
-Message-ID: <60fc1d03-314a-6b0a-2c8f-100394b05969@jonmasters.org>
-Date:   Thu, 3 Oct 2019 17:10:45 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
+        id S1728874AbfJCVuP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Oct 2019 17:50:15 -0400
+Received: from mx2.suse.de ([195.135.220.15]:46854 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726669AbfJCVuO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Oct 2019 17:50:14 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id B3BE3AFC1;
+        Thu,  3 Oct 2019 21:50:12 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 705781E4812; Thu,  3 Oct 2019 23:50:34 +0200 (CEST)
+Date:   Thu, 3 Oct 2019 23:50:34 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 17/19] jbd2: Rename h_buffer_credits to h_total_credits
+Message-ID: <20191003215034.GF17911@quack2.suse.cz>
+References: <20190930104339.24919-17-jack@suse.cz>
+ <201909302058.uxNSY0q3%lkp@intel.com>
+ <20190930150553.GB4001@mit.edu>
+ <20190930162536.GB13973@quack2.suse.cz>
+ <20190930212145.GC4001@mit.edu>
+ <20191001075908.GB25062@quack2.suse.cz>
+ <20191003083316.GA17911@quack2.suse.cz>
+ <20191003132909.GC3226@mit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20190910042107.GA1517@darwi-home-pc>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-SA-Exim-Connect-IP: 50.195.43.97
-X-SA-Exim-Mail-From: jcm@jonmasters.org
-Subject: Re: Linux 5.3-rc8
-X-SA-Exim-Version: 4.2.1 (built Sun, 08 Nov 2009 07:31:22 +0000)
-X-SA-Exim-Scanned: Yes (on edison.jonmasters.org)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191003132909.GC3226@mit.edu>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 9/10/19 12:21 AM, Ahmed S. Darwish wrote:
+On Thu 03-10-19 09:29:09, Theodore Y. Ts'o wrote:
+> On Thu, Oct 03, 2019 at 10:33:16AM +0200, Jan Kara wrote:
+> > 
+> > I'm not yet sure about some failures in ext4/adv and ext4/bigalloc configs.
+> > Where can I find what mkfs & mount options do you use for these? I've
+> > looked at xfstests-bld but I didn't find the configs there... Thanks!
+> 
+> The configs are in [1] the mount options for adv and bigalloc are in
+> [2] and [3], respectively.
+> 
+> [1] https://github.com/tytso/xfstests-bld/blob/master/kvm-xfstests/test-appliance/files/root/fs
+> [2] https://github.com/tytso/xfstests-bld/blob/master/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/adv
+> [3] https://github.com/tytso/xfstests-bld/blob/master/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/bigalloc
 
-> Can this even be considered a user-space breakage? I'm honestly not
-> sure. On my modern RDRAND-capable x86, just running rng-tools rngd(8)
-> early-on fixes the problem. I'm not sure about the status of older
-> CPUs though.
+Thanks. Somehow I didn't see them.
 
-Tangent: I asked aloud on Twitter last night if anyone had exploited
-Rowhammer-like effects to generate entropy...and sure enough, the usual
-suspects have: https://arxiv.org/pdf/1808.04286.pdf
+> It shouldn't be terribly difficult for you to use kvm-xfstests on
+> SuSE, if you just want to try using the test appliance directly.  I'm
+> happy to update the documentation to include the necessary SuSE
+> packages needed to run kvm-xfstests; it shouldn't be that hard to
+> translate them from the Debian prerequisites to SuSE package names.
+> See [4] for details.
+> 
+> [4] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
 
-While this requires low level access to a memory controller, it's
-perhaps an example of something a platform designer could look at as a
-source to introduce boot-time entropy for e.g. EFI_RNG_PROTOCOL even on
-an existing platform without dedicated hardware for the purpose.
+Yeah, I guess I should do that. The only problem with this is that I have
+my own VM setup I use for xfstests runs (and other kernel debugging) and it
+just works good enough that switching to using kvm-xfstests never gets high
+enough on my todo list :). I'll give it more priority...
 
-Just a thought.
+								Honza
 
-Jon.
+
+> Note: if you want to run tests manually (which can be handy if you
+> want to try tweaking the tests, just do this:
+> 
+> % kvm-xfstests shell
+> ...
+> root@kvm-xfstests:~# FSTESTSET=ext4/301
+> root@kvm-xfstests:~# FSTESTCFG=adv
+> root@kvm-xfstests:~# ./runtests.sh
+> 
+> The xfstests installation is in /root/xfstests.  Other valid settings
+> for FSTESTCFG include: ext4/adv, ext4/all, btrfs/default, btrfs, xfs,
+> nfs, nfs/loopback_v3, and so on.  See [1] for other fs configs that
+> you can use for testing.
+> 
+> Cheers,
+> 
+> 							- Ted
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
