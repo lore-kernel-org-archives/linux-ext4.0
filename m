@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F4199C4CED1
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 776C1C10F14
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D44D72133F
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 56D7B2133F
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387974AbfJCWF4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 18:05:56 -0400
-Received: from mx2.suse.de ([195.135.220.15]:49714 "EHLO mx1.suse.de"
+        id S2388104AbfJCWGC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Oct 2019 18:06:02 -0400
+Received: from mx2.suse.de ([195.135.220.15]:49732 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1731130AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 3 Oct 2019 18:05:55 -0400
+        id S2387909AbfJCWF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Oct 2019 18:05:56 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 7EBF5B154;
+        by mx1.suse.de (Postfix) with ESMTP id 831D1B158;
         Thu,  3 Oct 2019 22:05:52 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 554631E4816; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
+        id 4B1DD1E4812; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
 Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 17/22] jbd2: Drop jbd2_space_needed()
-Date:   Fri,  4 Oct 2019 00:06:03 +0200
-Message-Id: <20191003220613.10791-17-jack@suse.cz>
+Subject: [PATCH 14/22] jbd2: Drop pointless wakeup from jbd2_journal_stop()
+Date:   Fri,  4 Oct 2019 00:06:00 +0200
+Message-Id: <20191003220613.10791-14-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,69 +38,39 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The function is now just a trivial wrapper returning
-journal->j_max_transaction_buffers. Drop it.
+When we drop last handle from a transaction and journal->j_barrier_count
+> 0, jbd2_journal_stop() wakes up journal->j_wait_transaction_locked
+wait queue. This looks pointless - wait for outstanding handles always
+happens on journal->j_wait_updates waitqueue.
+journal->j_wait_transaction_locked is used to wait for transaction state
+changes and by start_this_handle() for waiting until
+journal->j_barrier_count drops to 0. The first case is clearly
+irrelevant here since only jbd2 thread changes transaction state. The
+second case looks related but jbd2_journal_unlock_updates() is
+responsible for the wakeup in this case. So just drop the wakeup.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/checkpoint.c  | 2 +-
- fs/jbd2/transaction.c | 5 +++--
- include/linux/jbd2.h  | 9 ---------
- 3 files changed, 4 insertions(+), 12 deletions(-)
+ fs/jbd2/transaction.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index a1909066bde6..8fff6677a5da 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -110,7 +110,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 	int nblocks, space_left;
- 	/* assert_spin_locked(&journal->j_state_lock); */
- 
--	nblocks = jbd2_space_needed(journal);
-+	nblocks = journal->j_max_transaction_buffers;
- 	while (jbd2_log_space_left(journal) < nblocks) {
- 		write_unlock(&journal->j_state_lock);
- 		mutex_lock_io(&journal->j_checkpoint_mutex);
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index a364d0623884..a4ee905db00f 100644
+index a160c3f665f9..d648cec3f90f 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -270,12 +270,13 @@ static int add_transaction_credits(journal_t *journal, int blocks,
- 	 * *before* starting to dirty potentially checkpointed buffers
- 	 * in the new transaction.
+@@ -1831,11 +1831,8 @@ int jbd2_journal_stop(handle_t *handle)
+ 	 * once we do this, we must not dereference transaction
+ 	 * pointer again.
  	 */
--	if (jbd2_log_space_left(journal) < jbd2_space_needed(journal)) {
-+	if (jbd2_log_space_left(journal) < journal->j_max_transaction_buffers) {
- 		atomic_sub(total, &t->t_outstanding_credits);
- 		read_unlock(&journal->j_state_lock);
- 		jbd2_might_wait_for_commit(journal);
- 		write_lock(&journal->j_state_lock);
--		if (jbd2_log_space_left(journal) < jbd2_space_needed(journal))
-+		if (jbd2_log_space_left(journal) <
-+					journal->j_max_transaction_buffers)
- 			__jbd2_log_wait_for_space(journal);
- 		write_unlock(&journal->j_state_lock);
- 		return 1;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 1bb37d3e3839..dd8905763a3b 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1560,15 +1560,6 @@ static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
- 	return journal->j_chksum_driver != NULL;
- }
+-	if (atomic_dec_and_test(&transaction->t_updates)) {
++	if (atomic_dec_and_test(&transaction->t_updates))
+ 		wake_up(&journal->j_wait_updates);
+-		if (journal->j_barrier_count)
+-			wake_up(&journal->j_wait_transaction_locked);
+-	}
  
--/*
-- * Return the minimum number of blocks which must be free in the journal
-- * before a new transaction may be started.  Must be called under j_state_lock.
-- */
--static inline int jbd2_space_needed(journal_t *journal)
--{
--	return journal->j_max_transaction_buffers;
--}
--
- /*
-  * Return number of free blocks in the log. Must be called under j_state_lock.
-  */
+ 	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
+ 
 -- 
 2.16.4
 
