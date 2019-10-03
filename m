@@ -4,32 +4,33 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ACC69C10F14
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70ECEC4CED1
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 81EA820867
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4AC7320867
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388135AbfJCWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 18:06:04 -0400
-Received: from mx2.suse.de ([195.135.220.15]:49710 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387734AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2387819AbfJCWFz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 3 Oct 2019 18:05:55 -0400
+Received: from mx2.suse.de ([195.135.220.15]:49626 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1731123AbfJCWFx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Oct 2019 18:05:53 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 6A747B139;
+        by mx1.suse.de (Postfix) with ESMTP id 3CA23B11A;
         Thu,  3 Oct 2019 22:05:52 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 32B541E481E; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
+        id 145BC1E4816; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
-Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 13/22] jbd2: Drop pointless check from jbd2_journal_stop()
-Date:   Fri,  4 Oct 2019 00:05:59 +0200
-Message-Id: <20191003220613.10791-13-jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+Subject: [PATCH 04/22] ext4: Fix credit estimate for final inode freeing
+Date:   Fri,  4 Oct 2019 00:05:50 +0200
+Message-Id: <20191003220613.10791-4-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,43 +39,36 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If a transaction is larger than journal->j_max_transaction_buffers, that
-is a bug and not a trigger for transaction commit. Also the very next
-attempt to start new handle will start transaction commit anyway. So
-just remove the pointless check. Arguably, we could start transaction
-commit whenever the transaction size is *close* to
-journal->j_max_transaction_buffers. This has a potential to reduce
-latency of the next jbd2_journal_start() at the cost of somewhat smaller
-transactions. However for this to have any effect, it would mean that
-there isn't someone already waiting in jbd2_journal_start() which means
-metadata load for the fs is pretty light anyway so probably this
-optimization is not worth it.
+Estimate for the number of credits needed for final freeing of inode in
+ext4_evict_inode() was to small. We may modify 4 blocks (inode & sb for
+orphan deletion, bitmap & group descriptor for inode freeing) and not
+just 3.
 
+Fixes: e50e5129f384 ("ext4: xattr-in-inode support")
+CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 6f560713f7f0..a160c3f665f9 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1803,13 +1803,10 @@ int jbd2_journal_stop(handle_t *handle)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 516faa280ced..e6b631d50c26 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -196,7 +196,12 @@ void ext4_evict_inode(struct inode *inode)
+ {
+ 	handle_t *handle;
+ 	int err;
+-	int extra_credits = 3;
++	/*
++	 * Credits for final inode cleanup and freeing:
++	 * sb + inode (ext4_orphan_del()), block bitmap, group descriptor
++	 * (xattr block freeind), bitmap, group descriptor (inode freeing)
++	 */
++	int extra_credits = 6;
+ 	struct ext4_xattr_inode_array *ea_inode_array = NULL;
  
- 	/*
- 	 * If the handle is marked SYNC, we need to set another commit
--	 * going!  We also want to force a commit if the current
--	 * transaction is occupying too much of the log, or if the
--	 * transaction is too old now.
-+	 * going!  We also want to force a commit if the transaction is too
-+	 * old now.
- 	 */
- 	if (handle->h_sync ||
--	    (atomic_read(&transaction->t_outstanding_credits) >
--	     journal->j_max_transaction_buffers) ||
- 	    time_after_eq(jiffies, transaction->t_expires)) {
- 		/* Do this even for aborted journals: an abort still
- 		 * completes the commit thread, it just doesn't write
+ 	trace_ext4_evict_inode(inode);
 -- 
 2.16.4
 
