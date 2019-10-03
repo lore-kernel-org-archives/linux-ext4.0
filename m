@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C649C32792
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACC69C10F14
 	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3C47720867
+	by mail.kernel.org (Postfix) with ESMTP id 81EA820867
 	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:06:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388127AbfJCWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2388135AbfJCWGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 3 Oct 2019 18:06:04 -0400
-Received: from mx2.suse.de ([195.135.220.15]:49700 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:49710 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387641AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2387734AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Thu, 3 Oct 2019 18:05:55 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 6D962B14A;
+        by mx1.suse.de (Postfix) with ESMTP id 6A747B139;
         Thu,  3 Oct 2019 22:05:52 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 27EB61E481C; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
+        id 32B541E481E; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
 Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/22] ocfs2: Use accessor function for h_buffer_credits
-Date:   Fri,  4 Oct 2019 00:05:56 +0200
-Message-Id: <20191003220613.10791-10-jack@suse.cz>
+Subject: [PATCH 13/22] jbd2: Drop pointless check from jbd2_journal_stop()
+Date:   Fri,  4 Oct 2019 00:05:59 +0200
+Message-Id: <20191003220613.10791-13-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,157 +38,43 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the jbd2 accessor function for h_buffer_credits.
+If a transaction is larger than journal->j_max_transaction_buffers, that
+is a bug and not a trigger for transaction commit. Also the very next
+attempt to start new handle will start transaction commit anyway. So
+just remove the pointless check. Arguably, we could start transaction
+commit whenever the transaction size is *close* to
+journal->j_max_transaction_buffers. This has a potential to reduce
+latency of the next jbd2_journal_start() at the cost of somewhat smaller
+transactions. However for this to have any effect, it would mean that
+there isn't someone already waiting in jbd2_journal_start() which means
+metadata load for the fs is pretty light anyway so probably this
+optimization is not worth it.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ocfs2/alloc.c   | 32 ++++++++++++++++----------------
- fs/ocfs2/journal.c |  4 ++--
- 2 files changed, 18 insertions(+), 18 deletions(-)
+ fs/jbd2/transaction.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
-index f9baefc76cf9..88534eb0e7c2 100644
---- a/fs/ocfs2/alloc.c
-+++ b/fs/ocfs2/alloc.c
-@@ -2288,9 +2288,9 @@ static int ocfs2_extend_rotate_transaction(handle_t *handle, int subtree_depth,
- 	int ret = 0;
- 	int credits = (path->p_tree_depth - subtree_depth) * 2 + 1 + op_credits;
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6f560713f7f0..a160c3f665f9 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1803,13 +1803,10 @@ int jbd2_journal_stop(handle_t *handle)
  
--	if (handle->h_buffer_credits < credits)
-+	if (jbd2_handle_buffer_credits(handle) < credits)
- 		ret = ocfs2_extend_trans(handle,
--					 credits - handle->h_buffer_credits);
-+				credits - jbd2_handle_buffer_credits(handle));
- 
- 	return ret;
- }
-@@ -2367,7 +2367,7 @@ static int ocfs2_rotate_tree_right(handle_t *handle,
- 				   struct ocfs2_path *right_path,
- 				   struct ocfs2_path **ret_left_path)
- {
--	int ret, start, orig_credits = handle->h_buffer_credits;
-+	int ret, start, orig_credits = jbd2_handle_buffer_credits(handle);
- 	u32 cpos;
- 	struct ocfs2_path *left_path = NULL;
- 	struct super_block *sb = ocfs2_metadata_cache_get_super(et->et_ci);
-@@ -3148,7 +3148,7 @@ static int ocfs2_rotate_tree_left(handle_t *handle,
- 				  struct ocfs2_path *path,
- 				  struct ocfs2_cached_dealloc_ctxt *dealloc)
- {
--	int ret, orig_credits = handle->h_buffer_credits;
-+	int ret, orig_credits = jbd2_handle_buffer_credits(handle);
- 	struct ocfs2_path *tmp_path = NULL, *restart_path = NULL;
- 	struct ocfs2_extent_block *eb;
- 	struct ocfs2_extent_list *el;
-@@ -3386,8 +3386,8 @@ static int ocfs2_merge_rec_right(struct ocfs2_path *left_path,
- 							right_path);
- 
- 		ret = ocfs2_extend_rotate_transaction(handle, subtree_index,
--						      handle->h_buffer_credits,
--						      right_path);
-+					jbd2_handle_buffer_credits(handle),
-+					right_path);
- 		if (ret) {
- 			mlog_errno(ret);
- 			goto out;
-@@ -3548,8 +3548,8 @@ static int ocfs2_merge_rec_left(struct ocfs2_path *right_path,
- 							right_path);
- 
- 		ret = ocfs2_extend_rotate_transaction(handle, subtree_index,
--						      handle->h_buffer_credits,
--						      left_path);
-+					jbd2_handle_buffer_credits(handle),
-+					left_path);
- 		if (ret) {
- 			mlog_errno(ret);
- 			goto out;
-@@ -3623,7 +3623,7 @@ static int ocfs2_merge_rec_left(struct ocfs2_path *right_path,
- 		    le16_to_cpu(el->l_next_free_rec) == 1) {
- 			/* extend credit for ocfs2_remove_rightmost_path */
- 			ret = ocfs2_extend_rotate_transaction(handle, 0,
--					handle->h_buffer_credits,
-+					jbd2_handle_buffer_credits(handle),
- 					right_path);
- 			if (ret) {
- 				mlog_errno(ret);
-@@ -3669,7 +3669,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
- 	if (ctxt->c_split_covers_rec && ctxt->c_has_empty_extent) {
- 		/* extend credit for ocfs2_remove_rightmost_path */
- 		ret = ocfs2_extend_rotate_transaction(handle, 0,
--				handle->h_buffer_credits,
-+				jbd2_handle_buffer_credits(handle),
- 				path);
- 		if (ret) {
- 			mlog_errno(ret);
-@@ -3725,7 +3725,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
- 
- 		/* extend credit for ocfs2_remove_rightmost_path */
- 		ret = ocfs2_extend_rotate_transaction(handle, 0,
--					handle->h_buffer_credits,
-+					jbd2_handle_buffer_credits(handle),
- 					path);
- 		if (ret) {
- 			mlog_errno(ret);
-@@ -3755,7 +3755,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
- 
- 		/* extend credit for ocfs2_remove_rightmost_path */
- 		ret = ocfs2_extend_rotate_transaction(handle, 0,
--				handle->h_buffer_credits,
-+				jbd2_handle_buffer_credits(handle),
- 				path);
- 		if (ret) {
- 			mlog_errno(ret);
-@@ -3799,7 +3799,7 @@ static int ocfs2_try_to_merge_extent(handle_t *handle,
- 		if (ctxt->c_split_covers_rec) {
- 			/* extend credit for ocfs2_remove_rightmost_path */
- 			ret = ocfs2_extend_rotate_transaction(handle, 0,
--					handle->h_buffer_credits,
-+					jbd2_handle_buffer_credits(handle),
- 					path);
- 			if (ret) {
- 				mlog_errno(ret);
-@@ -5358,7 +5358,7 @@ static int ocfs2_truncate_rec(handle_t *handle,
- 	if (ocfs2_is_empty_extent(&el->l_recs[0]) && index > 0) {
- 		/* extend credit for ocfs2_remove_rightmost_path */
- 		ret = ocfs2_extend_rotate_transaction(handle, 0,
--				handle->h_buffer_credits,
-+				jbd2_handle_buffer_credits(handle),
- 				path);
- 		if (ret) {
- 			mlog_errno(ret);
-@@ -5427,8 +5427,8 @@ static int ocfs2_truncate_rec(handle_t *handle,
- 	}
- 
- 	ret = ocfs2_extend_rotate_transaction(handle, 0,
--					      handle->h_buffer_credits,
--					      path);
-+					jbd2_handle_buffer_credits(handle),
-+					path);
- 	if (ret) {
- 		mlog_errno(ret);
- 		goto out;
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index 930e3d388579..019aaf2a3f8a 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -419,7 +419,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
- 	if (!nblocks)
- 		return 0;
- 
--	old_nblocks = handle->h_buffer_credits;
-+	old_nblocks = jbd2_handle_buffer_credits(handle);
- 
- 	trace_ocfs2_extend_trans(old_nblocks, nblocks);
- 
-@@ -460,7 +460,7 @@ int ocfs2_allocate_extend_trans(handle_t *handle, int thresh)
- 
- 	BUG_ON(!handle);
- 
--	old_nblks = handle->h_buffer_credits;
-+	old_nblks = jbd2_handle_buffer_credits(handle);
- 	trace_ocfs2_allocate_extend_trans(old_nblks, thresh);
- 
- 	if (old_nblks < thresh)
+ 	/*
+ 	 * If the handle is marked SYNC, we need to set another commit
+-	 * going!  We also want to force a commit if the current
+-	 * transaction is occupying too much of the log, or if the
+-	 * transaction is too old now.
++	 * going!  We also want to force a commit if the transaction is too
++	 * old now.
+ 	 */
+ 	if (handle->h_sync ||
+-	    (atomic_read(&transaction->t_outstanding_credits) >
+-	     journal->j_max_transaction_buffers) ||
+ 	    time_after_eq(jiffies, transaction->t_expires)) {
+ 		/* Do this even for aborted journals: an abort still
+ 		 * completes the commit thread, it just doesn't write
 -- 
 2.16.4
 
