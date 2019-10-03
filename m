@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 839EDC4CED1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0591ECE58D
 	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:05:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5FC322133F
+	by mail.kernel.org (Postfix) with ESMTP id A0CD32133F
 	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 22:05:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388018AbfJCWF4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 18:05:56 -0400
+        id S2387855AbfJCWF6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Oct 2019 18:05:58 -0400
 Received: from mx2.suse.de ([195.135.220.15]:49698 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387660AbfJCWFz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 3 Oct 2019 18:05:55 -0400
+        id S2387926AbfJCWF4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Oct 2019 18:05:56 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 5FF22B131;
+        by mx1.suse.de (Postfix) with ESMTP id 8E333B15C;
         Thu,  3 Oct 2019 22:05:52 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 2D5D51E4814; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
+        id 5FD701E4818; Fri,  4 Oct 2019 00:06:14 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-ext4@vger.kernel.org>
 Cc:     Ted Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 12/22] jbd2: Reorganize jbd2_journal_stop()
-Date:   Fri,  4 Oct 2019 00:05:58 +0200
-Message-Id: <20191003220613.10791-12-jack@suse.cz>
+Subject: [PATCH 20/22] jbd2: Make credit checking more strict
+Date:   Fri,  4 Oct 2019 00:06:06 +0200
+Message-Id: <20191003220613.10791-20-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,93 +38,29 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move code in jbd2_journal_stop() around a bit. It removes some
-unnecessary code duplication and will make factoring out parts common
-with jbd2__journal_restart() easier.
+Make checking of available credits in jbd2_journal_dirty_metadata() more
+strict. There should be always enough credits in the handle to write all
+potential revoke descriptors. Also we warn in case there are not enough
+credits since this is a bug in the filesystem.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 40 ++++++++++++++++------------------------
- 1 file changed, 16 insertions(+), 24 deletions(-)
+ fs/jbd2/transaction.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index bee8498d7792..6f560713f7f0 100644
+index 8851cbbe3579..66fad49d45df 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -1706,41 +1706,34 @@ int jbd2_journal_stop(handle_t *handle)
- 	tid_t tid;
- 	pid_t pid;
- 
-+	if (--handle->h_ref > 0) {
-+		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-+						 handle->h_ref);
-+		if (is_handle_aborted(handle))
-+			return -EIO;
-+		return 0;
-+	}
- 	if (!transaction) {
- 		/*
--		 * Handle is already detached from the transaction so
--		 * there is nothing to do other than decrease a refcount,
--		 * or free the handle if refcount drops to zero
-+		 * Handle is already detached from the transaction so there is
-+		 * nothing to do other than free the handle.
+@@ -1458,7 +1458,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ 		 * of the transaction. This needs to be done
+ 		 * once a transaction -bzzz
  		 */
--		if (--handle->h_ref > 0) {
--			jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
--							 handle->h_ref);
--			return err;
--		} else {
--			if (handle->h_rsv_handle)
--				jbd2_free_handle(handle->h_rsv_handle);
--			goto free_and_exit;
--		}
-+		if (handle->h_rsv_handle)
-+			jbd2_free_handle(handle->h_rsv_handle);
-+		goto free_and_exit;
- 	}
- 	journal = transaction->t_journal;
-+	tid = transaction->t_tid;
- 
- 	J_ASSERT(journal_current_handle() == handle);
-+	J_ASSERT(atomic_read(&transaction->t_updates) > 0);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else
--		J_ASSERT(atomic_read(&transaction->t_updates) > 0);
--
--	if (--handle->h_ref > 0) {
--		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
--			  handle->h_ref);
--		return err;
--	}
- 
- 	jbd_debug(4, "Handle %p going down\n", handle);
- 	trace_jbd2_handle_stats(journal->j_fs_dev->bd_dev,
--				transaction->t_tid,
--				handle->h_type, handle->h_line_no,
-+				tid, handle->h_type, handle->h_line_no,
- 				jiffies - handle->h_start_jiffies,
- 				handle->h_sync, handle->h_requested_credits,
- 				(handle->h_requested_credits -
-@@ -1825,7 +1818,7 @@ int jbd2_journal_stop(handle_t *handle)
- 		jbd_debug(2, "transaction too old, requesting commit for "
- 					"handle %p\n", handle);
- 		/* This is non-blocking */
--		jbd2_log_start_commit(journal, transaction->t_tid);
-+		jbd2_log_start_commit(journal, tid);
- 
- 		/*
- 		 * Special case: JBD2_SYNC synchronous updates require us
-@@ -1841,7 +1834,6 @@ int jbd2_journal_stop(handle_t *handle)
- 	 * once we do this, we must not dereference transaction
- 	 * pointer again.
- 	 */
--	tid = transaction->t_tid;
- 	if (atomic_dec_and_test(&transaction->t_updates)) {
- 		wake_up(&journal->j_wait_updates);
- 		if (journal->j_barrier_count)
+-		if (handle->h_total_credits <= 0) {
++		if (WARN_ON_ONCE(jbd2_handle_buffer_credits(handle) <= 0)) {
+ 			ret = -ENOSPC;
+ 			goto out_unlock_bh;
+ 		}
 -- 
 2.16.4
 
