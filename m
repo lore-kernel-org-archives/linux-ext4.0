@@ -2,122 +2,191 @@ Return-Path: <SRS0=KV+B=X4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22F17C4CED1
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 17:05:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EDB1C32792
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 17:39:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 038A12133F
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 17:05:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 05F532086A
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Oct 2019 17:39:30 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="JOEOwCab"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393375AbfJCRF0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Oct 2019 13:05:26 -0400
-Received: from mga18.intel.com ([134.134.136.126]:14911 "EHLO mga18.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2393369AbfJCRFZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 3 Oct 2019 13:05:25 -0400
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by orsmga106.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 03 Oct 2019 10:05:24 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.67,253,1566889200"; 
-   d="scan'208";a="392014697"
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by fmsmga005.fm.intel.com with ESMTP; 03 Oct 2019 10:05:23 -0700
-Date:   Thu, 3 Oct 2019 10:05:23 -0700
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Jeff Layton <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-mm@kvack.org,
-        Dave Chinner <david@fromorbit.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Jason Gunthorpe <jgg@ziepe.ca>
-Subject: Re: Lease semantic proposal
-Message-ID: <20191003170523.GC31174@iweiny-DESK2.sc.intel.com>
-References: <20190923190853.GA3781@iweiny-DESK2.sc.intel.com>
- <5d5a93637934867e1b3352763da8e3d9f9e6d683.camel@kernel.org>
- <20191001181659.GA5500@iweiny-DESK2.sc.intel.com>
- <20191003090110.GC17911@quack2.suse.cz>
+        id S1731819AbfJCQBc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Oct 2019 12:01:32 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:44004 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729059AbfJCQBb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Oct 2019 12:01:31 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x93Fi0vC161752;
+        Thu, 3 Oct 2019 16:01:27 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2019-08-05;
+ bh=rNBtmtHREfv8c6ONI1o8qK4NHG7WS6woT+AdeaU3liE=;
+ b=JOEOwCab9Zda/ADJGGLciblj75OfaG+CyR3wJ1WVkh35LwVEPuwaIRHiRz1js4BjQ6l2
+ GLnrIQE4Uscjc/NwFaK/DNjyatb/VgQaAfXkWf5gn7/NZk5I6tmXAVIJyTMu5ENpwjS/
+ OzZiY4uFG4ewz6lFLI54khY+gYNwQ62S+mIhZANJPyZLPWK0REQMQ5CxCOtFG4eaozh7
+ Zxj913vOoKHt5A6FhiyVrNrq69lirYChIe32mB8NRNkILlxE1ObH3y5Ru7fLXb1raO4i
+ nNoJvq8NH7aRWi5+iJtQRPpr1ltWBK14OIqOw6l1vjDw8WTF4BuGB+p5z/1wAk5YZaQn gA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2120.oracle.com with ESMTP id 2va05s53n1-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 03 Oct 2019 16:01:27 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x93Ficaq068586;
+        Thu, 3 Oct 2019 16:01:27 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3020.oracle.com with ESMTP id 2vdk0sbwf1-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 03 Oct 2019 16:01:27 +0000
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x93G1Om2010865;
+        Thu, 3 Oct 2019 16:01:24 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 03 Oct 2019 09:01:23 -0700
+Date:   Thu, 3 Oct 2019 09:01:22 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+Subject: Re: [PATCH] ext2fs: add ext2fs_read_sb that returns superblock
+Message-ID: <20191003160122.GB13093@magnolia>
+References: <20190905110110.32627-1-c17828@cray.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20191003090110.GC17911@quack2.suse.cz>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+In-Reply-To: <20190905110110.32627-1-c17828@cray.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9398 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1908290000 definitions=main-1910030143
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9398 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1908290000
+ definitions=main-1910030143
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Oct 03, 2019 at 11:01:10AM +0200, Jan Kara wrote:
-> On Tue 01-10-19 11:17:00, Ira Weiny wrote:
-> > On Mon, Sep 23, 2019 at 04:17:59PM -0400, Jeff Layton wrote:
-> > > On Mon, 2019-09-23 at 12:08 -0700, Ira Weiny wrote:
-> > > 
-> > > Will userland require any special privileges in order to set an
-> > > F_UNBREAK lease? This seems like something that could be used for DoS. I
-> > > assume that these will never time out.
-> > 
-> > Dan and I discussed this some more and yes I think the uid of the process needs
-> > to be the owner of the file.  I think that is a reasonable mechanism.
+On Thu, Sep 05, 2019 at 02:01:10PM +0300, Artem Blagodarenko wrote:
+> tune2fs is used to make e2label duties.  ext2fs_open2() reads group
+> descriptors which are not used during disk label obtaining, but takes
+> a lot of time on large partitions.
 > 
-> Honestly, I'm not convinced anything more than open-for-write should be
-> required. Sure unbreakable lease may result in failing truncate and other
-> ops but as we discussed at LFS/MM, this is not hugely different from
-> executing a file resulting in ETXTBUSY for any truncate attempt (even from
-> root). So sufficiently priviledged user has to be able to easily find which
-> process(es) owns the lease so that he can kill it / take other
-> administrative action to release the lease. But that's about it.
-
-Well that was kind of what I was thinking.  However I wanted to be careful
-about requiring write permission when doing a F_RDLCK.  I think that it has to
-be clearly documented _why_ write permission is required.
-
+> This patch adds ext2fs_read_sb(), there only initialized superblock
+> is returned This saves time dramatically.
+> 
+> Signed-off-by: Artem Blagodarenko <c17828@cray.com>
+> Cray-bug-id: LUS-5777
+> ---
+>  lib/ext2fs/ext2fs.h |  2 ++
+>  lib/ext2fs/openfs.c | 16 ++++++++++++++++
+>  misc/tune2fs.c      | 23 +++++++++++++++--------
+>  3 files changed, 33 insertions(+), 8 deletions(-)
+> 
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 59fd9742..3a63b74d 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1630,6 +1630,8 @@ extern int ext2fs_journal_sb_start(int blocksize);
+>  extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
+>  			     unsigned int block_size, io_manager manager,
+>  			     ext2_filsys *ret_fs);
+> +extern errcode_t ext2fs_read_sb(const char *name, io_manager manager,
+> +				struct ext2_super_block * super);
+>  extern errcode_t ext2fs_open2(const char *name, const char *io_options,
+>  			      int flags, int superblock,
+>  			      unsigned int block_size, io_manager manager,
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index 51b54a44..95f45d84 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -99,6 +99,22 @@ static void block_sha_map_free_entry(void *data)
+>  	return;
+>  }
 >  
-> > > How will we deal with the case where something is is squatting on an
-> > > F_UNBREAK lease and isn't letting it go?
-> > 
-> > That is a good question.  I had not considered someone taking the UNBREAK
-> > without pinning the file.
+> +errcode_t ext2fs_read_sb(const char *name, io_manager manager,
+> +			 struct ext2_super_block * super)
+> +{
+> +	io_channel	io;
+> +	errcode_t	retval = 0;
+> +
+> +	retval = manager->open(name, 0, &io);
+> +	if (!retval) {
+> +		retval = io_channel_read_blk(io, 1, -SUPERBLOCK_SIZE,
+> +				     super);
+> +		io_channel_close(io);
+> +	}
+> +
+> +	return retval;
+> +}
+> +
+>  /*
+>   *  Note: if superblock is non-zero, block-size must also be non-zero.
+>   * 	Superblock and block_size can be zero to use the default size.
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 7d2d38d7..fea607e1 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -2879,6 +2879,21 @@ int tune2fs_main(int argc, char **argv)
+>  #endif
+>  		io_ptr = unix_io_manager;
+>  
+> +	if (print_label) {
+> +		/* For e2label emulation */
+> +		struct ext2_super_block sb;
+> +
+> +		/* Read only superblock. Nothing else metters.*/
+
+                                                      matters. */
+
+> +		retval = ext2fs_read_sb(device_name, io_ptr, &sb);
+> +		if (!retval) {
+> +			printf("%.*s\n", (int) sizeof(sb.s_volume_name),
+> +			       sb.s_volume_name);
+> +		}
+
+Um, does this drop the error without making a report?
+
+> +
+> +		remove_error_table(&et_ext2_error_table);
+> +		return retval;
+> +	}
+
+I wonder if ext[24] should implement FS_IOC_[GS]ETFSLABEL for mounted
+filesystems ... ?
+
+--D
+
+> +
+>  retry_open:
+>  	if ((open_flag & EXT2_FLAG_RW) == 0 || f_flag)
+>  		open_flag |= EXT2_FLAG_SKIP_MMP;
+> @@ -2972,14 +2987,6 @@ retry_open:
+>  	sb = fs->super;
+>  	fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
+>  
+> -	if (print_label) {
+> -		/* For e2label emulation */
+> -		printf("%.*s\n", (int) sizeof(sb->s_volume_name),
+> -		       sb->s_volume_name);
+> -		remove_error_table(&et_ext2_error_table);
+> -		goto closefs;
+> -	}
+> -
+>  	retval = ext2fs_check_if_mounted(device_name, &mount_flags);
+>  	if (retval) {
+>  		com_err("ext2fs_check_if_mount", retval,
+> -- 
+> 2.14.3
 > 
-> IMHO the same answer as above - sufficiently priviledged user should be
-> able to easily find the process holding the lease and kill it. Given the
-> lease owner has to have write access to the file, he better should be from
-> the same "security domain"...
-> 
-> > > Leases are technically "owned" by the file description -- we can't
-> > > necessarily trace it back to a single task in a threaded program. The
-> > > kernel task that set the lease may have exited by the time we go
-> > > looking.
-> > > 
-> > > Will we be content trying to determine this using /proc/locks+lsof, etc,
-> > > or will we need something better?
-> > 
-> > I think using /proc/locks is our best bet.  Similar to my intention to report
-> > files being pinned.[1]
-> > 
-> > In fact should we consider files with F_UNBREAK leases "pinned" and just report
-> > them there?
-> 
-> As Jeff wrote later, /proc/locks is not enough. You need PID(s) which have
-> access to the lease and hold it alive. Your /proc/<pid>/ files you had in your
-> patches should do that, shouldn't they? Maybe they were not tied to the
-> right structure... They really need to be tied to the existence of a lease.
-
-Yes, sorry.  I misspoke above.
-
-Right now /proc/<pid>/file_pins indicates that the file is pinned by GUP.  I
-think it may be reasonable to extend that to any file which has F_UNBREAK
-specified.  'file_pins' may be the wrong name when we include F_UNBREAK'ed
-leased files, so I will think on the name.  But I think this is possible and
-desired.
-
-Ira
-
