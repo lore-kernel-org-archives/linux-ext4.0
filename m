@@ -1,94 +1,154 @@
-Return-Path: <SRS0=dpVp=YA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Iv1J=YB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	HK_RANDOM_FROM,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35985C352AA
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Oct 2019 10:16:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0E5FC10F14
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Oct 2019 03:43:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 10BC2206BB
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Oct 2019 10:16:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9EDEB206C0
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Oct 2019 03:43:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727793AbfJGKQV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Oct 2019 06:16:21 -0400
-Received: from mx2.suse.de ([195.135.220.15]:58894 "EHLO mx1.suse.de"
+        id S1729879AbfJHDnC convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Oct 2019 23:43:02 -0400
+Received: from szxga08-in.huawei.com ([45.249.212.255]:36428 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727755AbfJGKQV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 7 Oct 2019 06:16:21 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 688B2B206;
-        Mon,  7 Oct 2019 10:16:18 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id E6A461E4813; Fri,  4 Oct 2019 09:51:00 +0200 (CEST)
-Date:   Fri, 4 Oct 2019 09:51:00 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Ira Weiny <ira.weiny@intel.com>, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-mm@kvack.org,
-        Jeff Layton <jlayton@kernel.org>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Jason Gunthorpe <jgg@ziepe.ca>
-Subject: Re: Lease semantic proposal
-Message-ID: <20191004075100.GA12412@quack2.suse.cz>
-References: <20190923190853.GA3781@iweiny-DESK2.sc.intel.com>
- <20190923222620.GC16973@dread.disaster.area>
- <20190925234602.GB12748@iweiny-DESK2.sc.intel.com>
- <20190930084233.GO16973@dread.disaster.area>
+        id S1729772AbfJHDnC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 7 Oct 2019 23:43:02 -0400
+Received: from DGGEMM406-HUB.china.huawei.com (unknown [172.30.72.54])
+        by Forcepoint Email with ESMTP id A91DC9CD7BE5900EBA13;
+        Tue,  8 Oct 2019 11:42:59 +0800 (CST)
+Received: from DGGEMM532-MBX.china.huawei.com ([169.254.7.168]) by
+ DGGEMM406-HUB.china.huawei.com ([10.3.20.214]) with mapi id 14.03.0439.000;
+ Tue, 8 Oct 2019 11:42:53 +0800
+From:   Guiyao <guiyao@huawei.com>
+To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+CC:     "tytso@mit.edu" <tytso@mit.edu>,
+        Mingfangsen <mingfangsen@huawei.com>,
+        "ebiggers@google.com" <ebiggers@google.com>,
+        "aceballos@gmail.com" <aceballos@gmail.com>,
+        "vertaling@coevern.nl" <vertaling@coevern.nl>
+Subject: [PATCH] e2fsprogs: Check device id in advance to skip fake device
+ name
+Thread-Topic: [PATCH] e2fsprogs: Check device id in advance to skip fake
+ device name
+Thread-Index: AdV9ilnP4am9Fx3mSHqwErCX4XHRfQ==
+Date:   Tue, 8 Oct 2019 03:42:52 +0000
+Message-ID: <005F77DB9A260B4E91664DDF22573C66E9CFF3AA@DGGEMM532-MBX.china.huawei.com>
+Accept-Language: zh-CN, en-US
+Content-Language: zh-CN
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [10.173.220.158]
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190930084233.GO16973@dread.disaster.area>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 30-09-19 18:42:33, Dave Chinner wrote:
-> On Wed, Sep 25, 2019 at 04:46:03PM -0700, Ira Weiny wrote:
-> > On Tue, Sep 24, 2019 at 08:26:20AM +1000, Dave Chinner wrote:
-> > > Hence, AFIACT, the above definition of a F_RDLCK|F_LAYOUT lease
-> > > doesn't appear to be compatible with the semantics required by
-> > > existing users of layout leases.
-> > 
-> > I disagree.  Other than the addition of F_UNBREAK, I think this is consistent
-> > with what is currently implemented.  Also, by exporting all this to user space
-> > we can now write tests for it independent of the RDMA pinning.
-> 
-> The current usage of F_RDLCK | F_LAYOUT by the pNFS code allows
-> layout changes to occur to the file while the layout lease is held.
+Hi,
 
-I remember you saying that in the past conversations. But I agree with Ira
-that I don't see where in the code this would be implemented. AFAICS
-break_layout() called from xfs_break_leased_layouts() simply breaks all the
-leases with F_LAYOUT set attached to the inode... Now I'm not any expert on
-file leases but what am I missing?
+In some cases, using resize2fs to resize one fs will return "fail".
+Reproduce steps are as follows,
+1. create 2 folders, for example "mnt" and "tmp"
+2. mount /dev/sdb onto tmp as tmpfs
+3. mount /dev/sdb onto mnt as ext4 or other normal file system 4. try to resize /dev/sdb, it FAILED! -> "Couldn't find valid filesystem superblock."
+5. if mount mnt firstly, resize2fs command will succeed.
 
-> IOWs, your definition of F_RDLCK | F_LAYOUT not being allowed
-> to change the is in direct contradition to existing users.
-> 
-> I've said this several times over the past few months now: shared
-> layout leases must allow layout modifications to be made. Only
-> allowing an exclusive layout lease to modify the layout rules out
-> many potential use cases for direct data placement and p2p DMA
-> applications, not to mention conflicts with the existing pNFS usage.
-> Layout leases need to support more than just RDMA, and tailoring the
-> API to exactly the immediate needs of RDMA is just going to make it
-> useless for anything else.
+In check_mntent_file func, firstly try to find out the input device name in mtab_file line by line, and it will leave from loop once one item matched.
+Then, check the mount point's st_dev of matched item, if it is not same with the input device's st_dev, it will return fail.
+In this case, the first matched item in mtab_file is "tmp" mount point, it is only named as "/dev/sdb", which actually is not sdb's real mount point.
+Finally, the name is matched, but st_dev is not matched, and then resize command fails.
 
-I agree we should not tailor the layout lease definition to just RDMA
-usecase. But let's talk about the semantics once our confusion about how
-pNFS currently uses layout leases is clear out.
+Here, we check the st_dev immediately once the name is matched.
+If st_dev not same, continue to next loop.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+Signed-off-by: GuiYao <guiyao@huawei.com>
+---
+ lib/ext2fs/ismounted.c | 49 +++++++++++++++++-------------------------
+ 1 file changed, 20 insertions(+), 29 deletions(-)
+
+diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c index 6cd497dc..265d27f7 100644
+--- a/lib/ext2fs/ismounted.c
++++ b/lib/ext2fs/ismounted.c
+@@ -98,6 +98,9 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,  {
+ 	struct mntent 	*mnt;
+ 	struct stat	st_buf;
++#ifndef __GNU__
++	struct stat	dir_st_buf;
++#endif  /* __GNU__ */
+ 	errcode_t	retval = 0;
+ 	dev_t		file_dev=0, file_rdev=0;
+ 	ino_t		file_ino=0;
+@@ -128,13 +131,26 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
+ 	while ((mnt = getmntent (f)) != NULL) {
+ 		if (mnt->mnt_fsname[0] != '/')
+ 			continue;
+-		if (strcmp(file, mnt->mnt_fsname) == 0)
++#ifndef __GNU__
++		if (stat(mnt->mnt_dir, &dir_st_buf) != 0)
++			continue;
++#endif  /* __GNU__ */
++		if (strcmp(file, mnt->mnt_fsname) == 0) { #ifndef __GNU__
++			if (file_rdev && (file_rdev == dir_st_buf.st_dev))
++				break;
++			continue;
++#else
+ 			break;
++#endif  /* __GNU__ */
++		}
+ 		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
+ 			if (ext2fsP_is_disk_device(st_buf.st_mode)) {  #ifndef __GNU__
+-				if (file_rdev && (file_rdev == st_buf.st_rdev))
+-					break;
++				if (file_rdev && (file_rdev == st_buf.st_rdev)) {
++					if (file_rdev == dir_st_buf.st_dev)
++						break;
++				}
+ 				if (check_loop_mounted(mnt->mnt_fsname,
+ 						st_buf.st_rdev, file_dev,
+ 						file_ino) == 1)
+@@ -168,32 +184,7 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
+ #endif	/* __GNU__ */
+ 		goto errout;
+ 	}
+-#ifndef __GNU__ /* The GNU hurd is deficient; what else is new? */
+-	/* Validate the entry in case /etc/mtab is out of date */
+-	/*
+-	 * We need to be paranoid, because some broken distributions
+-	 * (read: Slackware) don't initialize /etc/mtab before checking
+-	 * all of the non-root filesystems on the disk.
+-	 */
+-	if (stat(mnt->mnt_dir, &st_buf) < 0) {
+-		retval = errno;
+-		if (retval == ENOENT) {
+-#ifdef DEBUG
+-			printf("Bogus entry in %s!  (%s does not exist)\n",
+-			       mtab_file, mnt->mnt_dir);
+-#endif /* DEBUG */
+-			retval = 0;
+-		}
+-		goto errout;
+-	}
+-	if (file_rdev && (st_buf.st_dev != file_rdev)) {
+-#ifdef DEBUG
+-		printf("Bogus entry in %s!  (%s not mounted on %s)\n",
+-		       mtab_file, file, mnt->mnt_dir);
+-#endif /* DEBUG */
+-		goto errout;
+-	}
+-#endif /* __GNU__ */
++
+ 	*mount_flags = EXT2_MF_MOUNTED;
+ 
+ #ifdef MNTOPT_RO
+--
+1.8.3.1
