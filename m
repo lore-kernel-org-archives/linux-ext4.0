@@ -2,230 +2,365 @@ Return-Path: <SRS0=6gQd=YD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91D42C10F14
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Oct 2019 10:40:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 992C8C4360C
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Oct 2019 16:45:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7654B20640
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Oct 2019 10:40:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6EDE020B7C
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Oct 2019 16:45:49 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="Os7EBDKX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731166AbfJJKkB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Oct 2019 06:40:01 -0400
-Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:44364 "EHLO
-        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726524AbfJJKj5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 10 Oct 2019 06:39:57 -0400
-Received: from dread.disaster.area (pa49-195-199-207.pa.nsw.optusnet.com.au [49.195.199.207])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 8EAC7363939;
-        Thu, 10 Oct 2019 21:39:50 +1100 (AEDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.2)
-        (envelope-from <david@fromorbit.com>)
-        id 1iIVrJ-0002Pu-Fz; Thu, 10 Oct 2019 21:39:49 +1100
-Date:   Thu, 10 Oct 2019 21:39:49 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Ira Weiny <ira.weiny@intel.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, Jeff Layton <jlayton@kernel.org>,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Jason Gunthorpe <jgg@ziepe.ca>
-Subject: Re: Lease semantic proposal
-Message-ID: <20191010103949.GJ16973@dread.disaster.area>
-References: <20190923190853.GA3781@iweiny-DESK2.sc.intel.com>
- <20190923222620.GC16973@dread.disaster.area>
- <20190925234602.GB12748@iweiny-DESK2.sc.intel.com>
- <20190930084233.GO16973@dread.disaster.area>
- <20191001210156.GB5500@iweiny-DESK2.sc.intel.com>
+        id S1726182AbfJJQps (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Oct 2019 12:45:48 -0400
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:45084 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726038AbfJJQps (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Oct 2019 12:45:48 -0400
+Received: by mail-qk1-f194.google.com with SMTP id z67so6176941qkb.12
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Oct 2019 09:45:47 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=nj4bBE3BvV1UZmyzEaSgOKADKX40E4zF9+r4XI1/Wek=;
+        b=Os7EBDKXyoW+fAsiMGwPkWaJKN2cj791yXW0+gXvda4+hk83J5H5/ZcsiVWlPHzE8u
+         OuR5IUq73yjlijc8EoLnLvfYRkNyosO8FqSmPCZiAE4m+JEk9UPy9AFxxgJBv/DyrsgU
+         S/GAT1PB+FmZYVCC/JzXR4KeCc+N311tjGLqKjIKIUhdZDOM5iInPA1pPVsqCkUM6O6v
+         xBEdrwKc/YLkutH+oTv+8w8vMEpeJPVJP61ws38FeL7W/NnruWKDjRvNw1nt/pCzg5WQ
+         JGAFxKJeqGoLmTEFd1x8kPodcFsonn9FWsNvbzvbwNtkJgNy/woTYAZBPSLHiRE275jZ
+         Bqzg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=nj4bBE3BvV1UZmyzEaSgOKADKX40E4zF9+r4XI1/Wek=;
+        b=fjSTahGUSMQ4Vi53QbqXfnHVwftHaQTq/BFj+HIw7F3qZcGzvEDp8twfZsxbcpR1C+
+         N+1+vG7i1psPnfcjOT6pJZQf2MAA+AXeEFeUgoWj0w9t+j3poCUBpM54aZhXA05gNv8n
+         nKruWifqM58l2gKo9IOhg8wyS9Mj7r0kuifSctXCU/e3CgJXOdR/IUVG3qEZS/2Dw4Nh
+         W+q3epX83CVXZsjsjVcnTfcp3FNxGy6BVaUmcaaaM/wlEq9NFQit+a40+MFDj22OwR0w
+         eaH7gbpRKKPNFxZ09VMRW8fp2Xf/jg9xAmHQ3xMEzkRz48giXAah9M9iqT/hnBHe7EEy
+         EQDA==
+X-Gm-Message-State: APjAAAX3Y04K4POBW8QkiyMBeP3clHRZyuDBSfHcHBT5ofjFc2BHgLsM
+        Rn/nRvHoPtvv/t1GM1fNCp/851l0SbxTTFQxup7h
+X-Google-Smtp-Source: APXvYqzNNtlA3inul5Iqv5pB+oARi4Ks+TQRGWB0sy3UY/cN0R4wyNPc5/Z1sHW3QqssHcQt+uX4n2nD6C7DbKbXeR8=
+X-Received: by 2002:a05:620a:136e:: with SMTP id d14mr10633675qkl.393.1570725947085;
+ Thu, 10 Oct 2019 09:45:47 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191001210156.GB5500@iweiny-DESK2.sc.intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=D+Q3ErZj c=1 sm=1 tr=0
-        a=U3CgBz6+VuTzJ8lMfNbwVQ==:117 a=U3CgBz6+VuTzJ8lMfNbwVQ==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=XobE76Q3jBoA:10
-        a=7-415B0cAAAA:8 a=ggloQwHdSGxR348sj_4A:9 a=jAk1Iep39hKxJieh:21
-        a=cqC_HWLn8bbLdgcc:21 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+References: <20191010023931.230475-1-yzaikin@google.com> <ECADFF3FD767C149AD96A924E7EA6EAF977C135F@USCULXMSG01.am.sony.com>
+In-Reply-To: <ECADFF3FD767C149AD96A924E7EA6EAF977C135F@USCULXMSG01.am.sony.com>
+From:   Iurii Zaikin <yzaikin@google.com>
+Date:   Thu, 10 Oct 2019 09:45:09 -0700
+Message-ID: <CAAXuY3rk8_Eu_09jGbE66irtnjFzz4=6RxmZ6eMpBLdqpo5xfw@mail.gmail.com>
+Subject: Re: [PATCH linux-kselftest/test v2] ext4: add kunit test for decoding
+ extended timestamps
+To:     "Bird, Timothy" <Tim.Bird@sony.com>
+Cc:     "open list:KERNEL SELFTEST FRAMEWORK" 
+        <linux-kselftest@vger.kernel.org>, linux-ext4@vger.kernel.org,
+        Shuah Khan <skhan@linuxfoundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        kunit-dev@googlegroups.com,
+        Brendan Higgins <brendanhiggins@google.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Oct 01, 2019 at 02:01:57PM -0700, Ira Weiny wrote:
-> On Mon, Sep 30, 2019 at 06:42:33PM +1000, Dave Chinner wrote:
-> > On Wed, Sep 25, 2019 at 04:46:03PM -0700, Ira Weiny wrote:
-> > > On Tue, Sep 24, 2019 at 08:26:20AM +1000, Dave Chinner wrote:
-> > > > Hence, AFIACT, the above definition of a F_RDLCK|F_LAYOUT lease
-> > > > doesn't appear to be compatible with the semantics required by
-> > > > existing users of layout leases.
-> > > 
-> > > I disagree.  Other than the addition of F_UNBREAK, I think this is consistent
-> > > with what is currently implemented.  Also, by exporting all this to user space
-> > > we can now write tests for it independent of the RDMA pinning.
-> > 
-> > The current usage of F_RDLCK | F_LAYOUT by the pNFS code allows
-> > layout changes to occur to the file while the layout lease is held.
-> 
-> This was not my understanding.
-
-These are the remote procerdeure calls that the pNFS client uses to
-map and/or allocate space in the file it has a lease on:
-
-struct export_operations {
-....
-        int (*map_blocks)(struct inode *inode, loff_t offset,
-                          u64 len, struct iomap *iomap,
-                          bool write, u32 *device_generation);
-        int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
-                             int nr_iomaps, struct iattr *iattr);
-};
-
-.map_blocks() allows the pnfs client to allocate blocks in the
-storage.  .commit_blocks() is called once the write is complete to
-do things like unwritten extent conversion on extents that it
-allocated. In the XFS implementation of these methods, they call
-directly into the XFS same block mapping code that the
-read/write/mmap IO paths call into.
-
-A typical pNFS use case is a HPC clusters, where thousands of nodes
-might all be writing to separate parts of a huge sparse file (e.g.
-out of core sparse matrix solver) and are reading/writing direct to
-the storage via iSER or some other low level IB/RDMA storage
-protocol.  Every write on every pNFS client needs space allocation,
-so the pNFS server is basically just providing a remote interface to
-the XFS space allocation interfaces for direct IO on the pNFS
-clients.
-
-IOWs, there can be thousands of concurrent pNFS layout leases on a
-single inode at any given time and they can all be allocating space,
-too.
-
-> > IOWs, your definition of F_RDLCK | F_LAYOUT not being allowed
-> > to change the is in direct contradition to existing users.
-> > 
-> > I've said this several times over the past few months now: shared
-> > layout leases must allow layout modifications to be made.
-> 
-> I don't understand what the point of having a layout lease is then?
-
-It's a *notification* mechanism.
-
-Multiple processes can modify the file layout at the same time -
-XFs was designed as a multi-write filesystem from the ground up and
-we make use of that with shared IO locks for direct IO writes. 
-
-The read layout lease model we've used for pNFS is essentially the
-same concurrent writer model that direct IO in XFS uses. And to
-enable concurrent writers, we use shared locking for the the layout
-leases.
-
-IOWs, the pNFS client IO model is very similar to local direct IO,
-except for the fact they can remotely cache layout mappings.  Hence
-if you do a server-side local buffered write (delayed allocation),
-truncate, punch a hole, etc, (or a remote operation through the NFS
-server that ends up in these same paths) the mappings those pNFS
-clients hold are no longer guaranteed to cover valid data and/or
-have correct physical mappings for valid data held on the server.
-
-At this point, the layouts need to be invalidated, and so the layout
-lease is broken by the filesystem operations that may cause an
-issue. The pNFS server reacts to the lease break by recalling the
-client layout(s) and the pNFS client has to request a new layout
-from the server to be able to directly access the storage again.
-
-i.e. the layout lease is primarily a *notification* mechanism to
-allow safe interop between application level direct access
-mechanisms and local filesystem access.
-
-What you are trying to do is turn this multi-writer layout lease
-notification mechanism into a single writer access control
-mechanism. i.e. F_UNBREAK is all about /control/ of the layout and
-who can and can't modify it, regardless of whether they write
-permissions have been granted or not.
-
-It seems I have been unable to get this point across despite trying
-for months now: access control is not a function provided by layout
-leases. If you need to guarantee exclusive access to a file so
-nobody else can modify it, direct access or through the filesystem,
-then that is what permission bits, ACLs, file locks, LSMs, etc are
-for. Don't try to overload a layout change notification mechanism
-with data access controls.
-
-> I apologize for not understanding this.  My reading of the code is that layout
-> changes require the read layout to be broken prior to proceeding.
-
-There's a difference between additive layout changes (such as
-allocating unwritten extents over a hole before a write) that don't
-pose any risk of uninitialised data exposure or use-after free.
-These sorts of layout changes are allowed while holding a layout
-lease.
-
-pNFS clients can only do additive changes to the layout via the
-export ops above. Further, technically speaking (because we don't
-currently implement this), local direct IO read/write is allowed
-without breaking layout leases as DIO writes can only trigger
-additive changes to the layout.
-
-The layout changes we need notification about (i.e. lease breaks)
-are subtractive layout changes (truncate, hole punch, copy-on-write)
-and ethereal layout changes (e.g. delayed allocation, where data is
-in memory but has no physical space allocated). Those are the ones
-that lead to problems with direct access, either in terms of
-in-correct in-memory state (pages mapped into RDMA hardware that no
-longer have backing store) or the file mapping the application has
-cached (e.g. via fiemap or pNFS file layouts) is no longer valid.
-
-These subtractive/ethereal layout changes are the ones that need to
-break _all_ outstanding layout leases, because nobody knows ahead of
-time which applications might be impacted by the layout modification
-that is about to occur.
-
-IOWs, layout leases are not intended to directly control who can and
-who can't modify the layout of a file, they are for issuing
-notifications to parties using direct storage access that a
-potentially dangerous layout change is about to be made to a file
-they are directly accessing....
-
-> The break layout code does this by creating a F_WRLCK of type FL_LAYOUT which
-> conflicts with the F_RDLCK of type FL_LAYOUT...
-
-Yes, but that's an internal implementation detail of how leases are
-broken. __break_lease(O_WRONLY) means "break all leases", and it
-does that by creating a temporary exclusive lease and then breaking
-all the leases on the inode that conflict with that lease. Which, by
-definition, is all of the leases of the same type. It never attaches
-that temporary lease to the inode - it is only used for comparison
-and is discarded once the lease break is done.
-
-That doesn't mean this behaviour is intended to be part of the
-visible layout lease user API, nor that it means F_WRLCK layout
-leases are something that is supposed to provide exlusive
-modification access to the file layout. It's just an implementation
-mechanism that simplifies breaking existing leases.
-
-> Also, I don't see any code which limits the number of read layout holders which
-> can be present
-
-There is no limit on the number of holders that can have read
-layouts...
-
-> and all of them will be revoked by the above code.
-
-Yup, that's what breaking leases does right now - it notifies all
-lease holders that a potentially problematic layout change is about
-to be made.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+On Wed, Oct 9, 2019 at 8:47 PM <Tim.Bird@sony.com> wrote:
+>
+>
+> > -----Original Message-----
+> > From Iurii Zaikin on Wednesday, October 09, 2019 4:40 PM
+> >
+> > KUnit tests for decoding extended 64 bit timestamps.
+> >
+> > Signed-off-by: Iurii Zaikin <yzaikin@google.com>
+> > ---
+> >  fs/ext4/Kconfig      |  12 +++
+> >  fs/ext4/Makefile     |   1 +
+> >  fs/ext4/inode-test.c | 221
+> > +++++++++++++++++++++++++++++++++++++++++++
+> >  3 files changed, 234 insertions(+)
+> >  create mode 100644 fs/ext4/inode-test.c
+> >
+> > diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+> > index cbb5ca830e57..cb0b52753674 100644
+> > --- a/fs/ext4/Kconfig
+> > +++ b/fs/ext4/Kconfig
+> > @@ -106,3 +106,15 @@ config EXT4_DEBUG
+> >         If you select Y here, then you will be able to turn on debugging
+> >         with a command such as:
+> >               echo 1 > /sys/module/ext4/parameters/mballoc_debug
+> > +
+> > +config EXT4_KUNIT_TESTS
+> > +     bool "KUnit test for ext4 inode"
+> > +     depends on EXT4_FS
+> > +     depends on KUNIT
+> > +     help
+> > +       This builds the ext4 inode sysctl unit test, which runs on boot.
+> > +       Tests the encoding correctness of ext4 inode.
+> > +       For more information on KUnit and unit tests in general please refer
+> > +       to the KUnit documentation in Documentation/dev-tools/kunit/.
+> > +
+> > +       If unsure, say N.
+> > diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+> > index b17ddc229ac5..a0588fd2eea6 100644
+> > --- a/fs/ext4/Makefile
+> > +++ b/fs/ext4/Makefile
+> > @@ -13,4 +13,5 @@ ext4-y      := balloc.o bitmap.o block_validity.o dir.o
+> > ext4_jbd2.o extents.o \
+> >
+> >  ext4-$(CONFIG_EXT4_FS_POSIX_ACL)     += acl.o
+> >  ext4-$(CONFIG_EXT4_FS_SECURITY)              += xattr_security.o
+> > +ext4-$(CONFIG_EXT4_KUNIT_TESTS)      += inode-test.o
+> >  ext4-$(CONFIG_FS_VERITY)             += verity.o
+> > diff --git a/fs/ext4/inode-test.c b/fs/ext4/inode-test.c
+> > new file mode 100644
+> > index 000000000000..43bc6cb547cd
+> > --- /dev/null
+> > +++ b/fs/ext4/inode-test.c
+> > @@ -0,0 +1,221 @@
+> > +// SPDX-License-Identifier: GPL-2.0
+> > +/*
+> > + * KUnit test of ext4 inode that verify the seconds part of [a/c/m]
+> > + * timestamps in ext4 inode structs are decoded correctly.
+> > + * These tests are derived from the table under
+> > + * Documentation/filesystems/ext4/inodes.rst Inode Timestamps
+> > + */
+> > +
+> > +#include <kunit/test.h>
+> > +#include <linux/kernel.h>
+> > +#include <linux/time64.h>
+> > +
+> > +#include "ext4.h"
+> > +
+> > +/* binary: 00000000 00000000 00000000 00000000 */
+> > +#define LOWER_MSB_0 0L
+> > +/* binary: 01111111 11111111 11111111 11111111 */
+> > +#define UPPER_MSB_0 0x7fffffffL
+> > +/* binary: 10000000 00000000 00000000 00000000 */
+> > +#define LOWER_MSB_1 (-0x80000000L)
+> > +/* binary: 11111111 11111111 11111111 11111111 */
+> > +#define UPPER_MSB_1 (-1L)
+> > +/* binary: 00111111   11111111 11111111 11111111 */
+> > +#define MAX_NANOSECONDS ((1L << 30) - 1)
+> > +
+> > +#define CASE_NAME_FORMAT "%s: msb:%x lower_bound:%x extra_bits:
+> > %x"
+> > +
+> > +struct timestamp_expectation {
+> > +     const char *test_case_name;
+> > +     struct timespec64 expected;
+> > +     u32 extra_bits;
+> > +     bool msb_set;
+> > +     bool lower_bound;
+> > +};
+> > +
+> > +static time64_t get_32bit_time(const struct timestamp_expectation * const
+> > test)
+> > +{
+> > +     if (test->msb_set) {
+> > +             if (test->lower_bound)
+> > +                     return LOWER_MSB_1;
+> > +
+> > +             return UPPER_MSB_1;
+> > +     }
+> > +
+> > +     if (test->lower_bound)
+> > +             return LOWER_MSB_0;
+> > +     return UPPER_MSB_0;
+> > +}
+> > +
+> > +
+> > +static void inode_test_xtimestamp_decoding(struct kunit *test)
+> > +{
+> > +     const struct timestamp_expectation test_data[] = {
+> > +             {
+> > +                     .test_case_name = "1901-12-13",
+> > +                     .msb_set = true,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 0,
+> > +                     .expected = {.tv_sec = -0x80000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "1969-12-31",
+> > +                     .msb_set = true,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 0,
+> > +                     .expected = {.tv_sec = -1LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "1970-01-01",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 0,
+> > +                     .expected = {0LL, 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2038-01-19",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 0,
+> > +                     .expected = {.tv_sec = 0x7fffffffLL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2038-01-19",
+> It's quite handy if testcase names can be unique, and describe what it is they are testing.
+>
+> If someone unfamiliar with this test looks at the results, it's nice if they can
+> intuit what it was that went wrong, based on the test case name.
+>
+> IMHO these names are too short and not descriptive enough.
+The test cases are pretty much 1:1 to the examples table referenced at
+the top comment of the file. Would it help if I move the reference
+comment closer to the test case definition or would you like the test
+name to have a reference to a table entry encoded into it?
+>  -- Tim
+>
+>
+> > +                     .msb_set = true,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 1,
+> > +                     .expected = {.tv_sec = 0x80000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2106-02-07",
+> > +                     .msb_set = true,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 1,
+> > +                     .expected = {.tv_sec = 0xffffffffLL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2106-02-07",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 1,
+> > +                     .expected = {.tv_sec = 0x100000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2174-02-25",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 1,
+> > +                     .expected = {.tv_sec = 0x17fffffffLL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2174-02-25",
+> > +                     .msb_set = true,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits =  2,
+> > +                     .expected = {.tv_sec = 0x180000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2242-03-16",
+> > +                     .msb_set = true,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 2,
+> > +                     .expected = {.tv_sec = 0x1ffffffffLL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2242-03-16",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 2,
+> > +                     .expected = {.tv_sec = 0x200000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = " 2310-04-04",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 2,
+> > +                     .expected = {.tv_sec = 0x27fffffffLL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = " 2310-04-04 00:00:00.1",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 6,
+> > +                     .expected = {.tv_sec = 0x27fffffffLL, .tv_nsec = 1L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2378-04-22
+> > 00:00:00.MAX_NSEC",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 0xFFFFFFFF,
+> > +                     .expected = {.tv_sec = 0x300000000LL,
+> > +                                  .tv_nsec = MAX_NANOSECONDS},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2378-04-22",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = true,
+> > +                     .extra_bits = 3,
+> > +                     .expected = {.tv_sec = 0x300000000LL, .tv_nsec = 0L},
+> > +             },
+> > +
+> > +             {
+> > +                     .test_case_name = "2446-05-10",
+> > +                     .msb_set = false,
+> > +                     .lower_bound = false,
+> > +                     .extra_bits = 3,
+> > +                     .expected = {.tv_sec = 0x37fffffffLL, .tv_nsec = 0L},
+> > +             }
+> > +     };
+> > +
+> > +     struct timespec64 timestamp;
+> > +     int i;
+> > +
+> > +     for (i = 0; i < ARRAY_SIZE(test_data); ++i) {
+> > +             timestamp.tv_sec = get_32bit_time(&test_data[i]);
+> > +             ext4_decode_extra_time(&timestamp,
+> > +                                    cpu_to_le32(test_data[i].extra_bits));
+> > +
+> > +             KUNIT_EXPECT_EQ_MSG(test,
+> > +                                 test_data[i].expected.tv_sec,
+> > +                                 timestamp.tv_sec,
+> > +                                 CASE_NAME_FORMAT,
+> > +                                 test_data[i].test_case_name,
+> > +                                 test_data[i].msb_set,
+> > +                                 test_data[i].lower_bound,
+> > +                                 test_data[i].extra_bits);
+> > +             KUNIT_EXPECT_EQ_MSG(test,
+> > +                                 test_data[i].expected.tv_nsec,
+> > +                                 timestamp.tv_nsec,
+> > +                                 CASE_NAME_FORMAT,
+> > +                                 test_data[i].test_case_name,
+> > +                                 test_data[i].msb_set,
+> > +                                 test_data[i].lower_bound,
+> > +                                 test_data[i].extra_bits);
+> > +     }
+> > +}
+> > +
+> > +static struct kunit_case ext4_inode_test_cases[] = {
+> > +     KUNIT_CASE(inode_test_xtimestamp_decoding),
+> > +     {}
+> > +};
+> > +
+> > +static struct kunit_suite ext4_inode_test_suite = {
+> > +     .name = "ext4_inode_test",
+> > +     .test_cases = ext4_inode_test_cases,
+> > +};
+> > +
+> > +kunit_test_suite(ext4_inode_test_suite);
+> > --
+> > 2.23.0.700.g56cf767bdb-goog
