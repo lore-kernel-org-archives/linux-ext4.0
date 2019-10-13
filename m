@@ -1,51 +1,81 @@
-Return-Path: <SRS0=fqm0=YF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=yGPF=YG=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D4A3C10F14
-	for <linux-ext4@archiver.kernel.org>; Sat, 12 Oct 2019 20:51:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3126FECE587
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Oct 2019 16:41:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2059F21655
-	for <linux-ext4@archiver.kernel.org>; Sat, 12 Oct 2019 20:51:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 096D620867
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Oct 2019 16:41:34 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Gl3zj2ku"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729445AbfJLUvk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 12 Oct 2019 16:51:40 -0400
-Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:60883 "EHLO
-        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728579AbfJLUvk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 12 Oct 2019 16:51:40 -0400
-Received: from dread.disaster.area (pa49-181-198-88.pa.nsw.optusnet.com.au [49.181.198.88])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id D0669362E26;
-        Sun, 13 Oct 2019 07:51:36 +1100 (AEDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.2)
-        (envelope-from <david@fromorbit.com>)
-        id 1iJOMR-0007JM-WE; Sun, 13 Oct 2019 07:51:36 +1100
-Date:   Sun, 13 Oct 2019 07:51:35 +1100
-From:   Dave Chinner <david@fromorbit.com>
+        id S1729295AbfJMQlc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 13 Oct 2019 12:41:32 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:37364 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727386AbfJMQlc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Oct 2019 12:41:32 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x9DGdYc6031586;
+        Sun, 13 Oct 2019 16:41:28 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2019-08-05;
+ bh=OPvDoFNhpdDqTJICy1n9atZ2eTMPxQs1GILfHJKGOjY=;
+ b=Gl3zj2kuuy5Snan7UUvoOusIEPlbZbnHN4J6nIoCQH9wLyTr5BfPOnYimAW0koKa54CU
+ QwgV+4FlYu+YyNcNOatAt9LAS13hZGgqJB+9an4P9FFVNVkMPmQkZLlfofnjMuNP5vfV
+ kFnLtf4IYg3i28FBmJqAfVEfjmjU9y5CmY8vX2+ex8qxwtDLbdvbSaQbtxOsaWwPNadX
+ cIUWdWrWUEo8kBY7303fOV8dN26UNLb1wGssbWQjfSviYdrxZqJ8wVCRF7cWbAi+D7DQ
+ OOhzP4kuEjMiq813yD7j7oxltkErHDRu1Krsu/uhKpRM4p2WDOBGFuumXPl7GrL2dEca iw== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2120.oracle.com with ESMTP id 2vk6sq4gcu-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 13 Oct 2019 16:41:28 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x9DGcMdO072186;
+        Sun, 13 Oct 2019 16:41:27 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userp3030.oracle.com with ESMTP id 2vkr9ut2nj-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 13 Oct 2019 16:41:27 +0000
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x9DGfP4d012181;
+        Sun, 13 Oct 2019 16:41:26 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 13 Oct 2019 09:41:25 -0700
+Date:   Sun, 13 Oct 2019 09:41:24 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     Wang Shilong <wangshilong1991@gmail.com>
 Cc:     linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         Andreas Dilger <adilger@dilger.ca>, Li Xi <lixi@ddn.com>,
         Wang Shilong <wshilong@ddn.com>
 Subject: Re: [Project Quota]file owner could change its project ID?
-Message-ID: <20191012205135.GS16973@dread.disaster.area>
+Message-ID: <20191013164124.GR13108@magnolia>
 References: <CAP9B-QmQ-mbWgJwEWrVOMabsgnPwyJsxSQbMkWuFk81-M4dRPQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <CAP9B-QmQ-mbWgJwEWrVOMabsgnPwyJsxSQbMkWuFk81-M4dRPQ@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=D+Q3ErZj c=1 sm=1 tr=0
-        a=ocld+OpnWJCUTqzFQA3oTA==:117 a=ocld+OpnWJCUTqzFQA3oTA==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=XobE76Q3jBoA:10
-        a=7-415B0cAAAA:8 a=XQ-RyMWtx_6voXMgLtIA:9 a=CjuIK1q_8ugA:10
-        a=biEYGPWJfzWAr4FL6Ov7:22
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9409 signatures=668684
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1908290000 definitions=main-1910130167
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9409 signatures=668684
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1908290000
+ definitions=main-1910130167
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
@@ -69,49 +99,75 @@ On Sat, Oct 12, 2019 at 02:33:36PM +0800, Wang Shilong wrote:
 > 5.4.0-rc2+
 > 
 > As above you could see file owner could change project ID of file its self.
-
-Perfectly legal to do this. Working as designed, and intended.
-Project quotas have allowed this since they were introduced in the
-late 1980s on Irix...
-
 > As my understanding, we could set project ID and inherit attribute to account
 > Directory usage, and implement a similar 'Directory Quota' based on this.
 
-Yes, that is a -use- of project quotas, but not the -only- use.
-Users have always been allowed to select what project their files
-belong to - it's a method of accounting space even when users cannot
-access all of the project information.
+So the problem here is that the admin sets up a project quota on a
+directory, then non-container users change the project id and thereby
+break quota enforcement?  Dave didn't sound at all enthusiastic, but I'm
+still wondering what exactly you're trying to prevent.
+
+(Which is to say, maybe we introduce a mount option to prevent changing
+projid if project quota *enforcement* is enabled?)
+
+--D
 
 > But Directories could easily break this limit by change its file to
 > other project ID.
-
-Yes. But then users are using the project quotas as traditional
-project quotas, which is just fine. There are users out there that
-use this mix of behaviours - users have a default directory quota to
-limit unbound space usage of home directories, but for files that
-belong to a specific project they simply change the project ID and
-now the space in their home directory those project files take up is
-accounted to the project rather than the user.
-
+> 
 > And we used vfs_ioc_fssetxattr_check() to only allow init userspace to
 > change project quota:
-
-Right, that's so directory quotas can be enforced for container
-use cases, preventing the users inside a container from modifying
-the project quota and escaping the space usage limit set for the
-container. This means project quotas are unavailable for use
-inside user namespaces as they are used for container resource usage
-limiting.
-
+> 
+>         /*
+> 
+>          * Project Quota ID state is only allowed to change from within the init
+> 
+>          * namespace. Enforce that restriction only if we are trying to change
+> 
+>          * the quota ID state. Everything else is allowed in user namespaces.
+> 
+>          */
+> 
+>         if (current_user_ns() != &init_user_ns) {
+> 
+>                 if (old_fa->fsx_projid != fa->fsx_projid)
+> 
+>                         return -EINVAL;
+> 
+>                 if ((old_fa->fsx_xflags ^ fa->fsx_xflags) &
+> 
+>                                 FS_XFLAG_PROJINHERIT)
+> 
+>                         return -EINVAL;
+> 
+>         }
+> 
 > Shall we have something like following to limit admin change for
 > Project state too?
-
-As per above, that will break many existing use cases for project
-quotas, so I don't think we will be doing that.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> 
+> diff --git a/fs/inode.c b/fs/inode.c
+> 
+> index fef457a42882..3e324931ee84 100644
+> 
+> --- a/fs/inode.c
+> 
+> +++ b/fs/inode.c
+> 
+> @@ -2273,7 +2273,7 @@ int vfs_ioc_fssetxattr_check(struct inode
+> *inode, const struct fsxattr *old_fa,
+> 
+>          * namespace. Enforce that restriction only if we are trying to change
+> 
+>          * the quota ID state. Everything else is allowed in user namespaces.
+> 
+>          */
+> 
+> -       if (current_user_ns() != &init_user_ns) {
+> 
+> +       if (current_user_ns() != &init_user_ns || !capable(CAP_SYS_ADMIN)){
+> 
+>                 if (old_fa->fsx_projid != fa->fsx_projid)
+> 
+>                         return -EINVAL;
+> 
+>                 if ((old_fa->fsx_xflags ^ fa->fsx_xflags) &
