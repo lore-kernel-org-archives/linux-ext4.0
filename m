@@ -1,90 +1,63 @@
-Return-Path: <SRS0=Fb71=YI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=ZSF4=YJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 708D6C10F14
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Oct 2019 13:53:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FE08ECE58F
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 02:14:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4167A21848
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Oct 2019 13:53:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DD21820872
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 02:14:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732183AbfJONxJ convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Oct 2019 09:53:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36490 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728880AbfJONxJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 15 Oct 2019 09:53:09 -0400
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 205197] kernel BUG at fs/ext4/extents_status.c:884
-Date:   Tue, 15 Oct 2019 13:53:08 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-205197-13602-htPXuojSgi@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-205197-13602@https.bugzilla.kernel.org/>
-References: <bug-205197-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1730440AbfJPCOf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Oct 2019 22:14:35 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:55086 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1729448AbfJPCOf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Oct 2019 22:14:35 -0400
+Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x9G2ESlC012546
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 15 Oct 2019 22:14:30 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id E7DCA420458; Tue, 15 Oct 2019 22:14:27 -0400 (EDT)
+Date:   Tue, 15 Oct 2019 22:14:27 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v3 01/13] ext4: add handling for extended mount options
+Message-ID: <20191016021427.GA31394@mit.edu>
+References: <20191001074101.256523-1-harshadshirwadkar@gmail.com>
+ <20191001074101.256523-2-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191001074101.256523-2-harshadshirwadkar@gmail.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=205197
+On Tue, Oct 01, 2019 at 12:40:50AM -0700, Harshad Shirwadkar wrote:
+> @@ -1858,8 +1863,9 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  			set_opt2(sb, EXPLICIT_DELALLOC);
+>  		} else if (m->mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) {
+>  			set_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM);
+> -		} else
+> +		} else if (m->mount_opt) {
+>  			return -1;
+> +		}
+>  	}
+>  	if (m->flags & MOPT_CLEAR_ERR)
+>  		clear_opt(sb, ERRORS_MASK);
 
-Theodore Tso (tytso@mit.edu) changed:
+Why is this change needed?  This is in the handling of options that
+have MOPT_EXPLICIT, and it doesn't seem relevant to this commit?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
---- Comment #1 from Theodore Tso (tytso@mit.edu) ---
-It looks like the journal inode is corrupted but it shouldn't have BUG'ed on
-you.
-
-Can you reproduce this crash?  If so, does this fairly simple patch cause it
-not to BUG?  (It will still fail to mount, but it shouldn't crash.)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f203bf989a4c..d83b325fb54b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -375,7 +375,7 @@ static int ext4_valid_extent(struct inode *inode, struct
-ext4_extent *ext)
-         *  - zero length
-         *  - overflow/wrap-around
-         */
--       if (lblock + len <= lblock)
-+       if (lblock + (ext4_lblk_t) len <= lblock)
-                return 0;
-        return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
- }
-
-Apologies if this is whitespace damaged, but t's a fairly simple edit to apply,
-and I'm currently on a chromebook so I can't easily get a patch uploaded into
-bugzilla.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+     		    	   	   		 - Ted
