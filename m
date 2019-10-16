@@ -2,126 +2,197 @@ Return-Path: <SRS0=ZSF4=YJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BD03ECE59E
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 07:37:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6108BECE59F
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 07:37:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7600B20873
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 07:37:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3BA1120854
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Oct 2019 07:37:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732521AbfJPHh0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Oct 2019 03:37:26 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:2578 "EHLO
+        id S1732786AbfJPHh1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Oct 2019 03:37:27 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:13728 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730523AbfJPHhZ (ORCPT
+        by vger.kernel.org with ESMTP id S1730414AbfJPHh1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Oct 2019 03:37:25 -0400
-Received: from pps.filterd (m0187473.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x9G7b0ei013800
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Oct 2019 03:37:24 -0400
-Received: from e06smtp03.uk.ibm.com (e06smtp03.uk.ibm.com [195.75.94.99])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2vng3u1a8j-1
+        Wed, 16 Oct 2019 03:37:27 -0400
+Received: from pps.filterd (m0098404.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x9G7b8t8082192
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Oct 2019 03:37:26 -0400
+Received: from e06smtp02.uk.ibm.com (e06smtp02.uk.ibm.com [195.75.94.98])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2vnuq1x6n4-1
         (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Oct 2019 03:37:23 -0400
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Oct 2019 03:37:26 -0400
 Received: from localhost
-        by e06smtp03.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        by e06smtp02.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
         for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
-        Wed, 16 Oct 2019 08:37:20 +0100
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (9.149.109.198)
-        by e06smtp03.uk.ibm.com (192.168.101.133) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        Wed, 16 Oct 2019 08:37:24 +0100
+Received: from b06cxnps3075.portsmouth.uk.ibm.com (9.149.109.195)
+        by e06smtp02.uk.ibm.com (192.168.101.132) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
         (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Wed, 16 Oct 2019 08:37:17 +0100
+        Wed, 16 Oct 2019 08:37:21 +0100
 Received: from d06av26.portsmouth.uk.ibm.com (d06av26.portsmouth.uk.ibm.com [9.149.105.62])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x9G7bGjx42926300
+        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x9G7bK1e53084230
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 16 Oct 2019 07:37:16 GMT
+        Wed, 16 Oct 2019 07:37:21 GMT
 Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 12729AE04D;
-        Wed, 16 Oct 2019 07:37:16 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id C8863AE04D;
+        Wed, 16 Oct 2019 07:37:20 +0000 (GMT)
 Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 80811AE05D;
-        Wed, 16 Oct 2019 07:37:14 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 75EAEAE053;
+        Wed, 16 Oct 2019 07:37:19 +0000 (GMT)
 Received: from dhcp-9-199-158-105.in.ibm.com (unknown [9.199.158.105])
         by d06av26.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Wed, 16 Oct 2019 07:37:14 +0000 (GMT)
+        Wed, 16 Oct 2019 07:37:18 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, mbobrowski@mbobrowski.org,
         riteshh@linux.ibm.com
-Subject: [RFC 0/5] Ext4: Add support for blocksize < pagesize for dioread_nolock
-Date:   Wed, 16 Oct 2019 13:07:06 +0530
+Subject: [RFC 2/5] ext4: Add API to bring in support for unwritten io_end_vec conversion
+Date:   Wed, 16 Oct 2019 13:07:08 +0530
 X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20191016073711.4141-1-riteshh@linux.ibm.com>
+References: <20191016073711.4141-1-riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-x-cbid: 19101607-0012-0000-0000-000003587C9A
+x-cbid: 19101607-0008-0000-0000-000003227AA4
 X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19101607-0013-0000-0000-0000219394D2
-Message-Id: <20191016073711.4141-1-riteshh@linux.ibm.com>
+x-cbparentid: 19101607-0009-0000-0000-00004A4192F1
+Message-Id: <20191016073711.4141-3-riteshh@linux.ibm.com>
 X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-10-16_03:,,
  signatures=0
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=3 phishscore=0 bulkscore=0 spamscore=0
+ malwarescore=0 suspectscore=4 phishscore=0 bulkscore=0 spamscore=0
  clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
- mlxlogscore=549 adultscore=0 classifier=spam adjust=0 reason=mlx
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
  scancount=1 engine=8.0.1-1908290000 definitions=main-1910160071
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch series adds the support for blocksize < pagesize for
-dioread_nolock feature.
+This patch just brings in the API for conversion of unwritten io_end_vec
+extents which will be required for blocksize < pagesize support
+for dioread_nolock feature.
 
-Since in case of blocksize < pagesize, we can have multiple
-small buffers of page as unwritten extents, we need to
-maintain a vector of these unwritten extents which needs
-the conversion after the IO is complete. Thus, we maintain
-a list of tuple <offset, size> pair (io_end_vec) for this &
-traverse this list to do the unwritten to written conversion.
+No functional changes in this patch.
 
-Appreciate any reviews/comments on this patches.
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ fs/ext4/ext4.h    |  2 ++
+ fs/ext4/extents.c | 42 +++++++++++++++++++++++++++---------------
+ fs/ext4/page-io.c |  7 +++----
+ 3 files changed, 32 insertions(+), 19 deletions(-)
 
-Tests completed
-===============
-
-All (which also passes in default config) "quick" group xfstests
-are passing. Tested xfstests with below configurations.
-	dioread_nolock with blocksize < pagesize
-	dioread_nolock with blocksize == pagesize
-	without dioread_nolock with blocksize < pagesize
-	without dioread_nolock with blocksize == pagesize
-ltp/fsx test with multiple iterations of 1 million ops
-did not show any error.
-
-
-About patches
-=============
-
-Patch 1 - 3: These are some cleanup and refactoring patches.
-Patch 4: This patch adds the required support.
-Patch 5: This patch removes the checks which was not allowing to mount
-with dioread_nolock when blocksize != pagesize was true.
-
-_Patches can be cleanly applied on today's linus tree master branch_
-
-Ritesh Harjani (5):
-  ext4: keep uniform naming convention for io & io_end variables
-  ext4: Add API to bring in support for unwritten io_end_vec conversion
-  ext4: Refactor mpage_map_and_submit_buffers function
-  ext4: Add support for blocksize < pagesize in dioread_nolock
-  ext4: Enable blocksize < pagesize for dioread_nolock
-
- fs/ext4/ext4.h    |  13 ++++-
- fs/ext4/extents.c |  49 ++++++++++++-----
- fs/ext4/inode.c   | 136 ++++++++++++++++++++++++++++++----------------
- fs/ext4/page-io.c | 110 ++++++++++++++++++++++++-------------
- fs/ext4/super.c   |  10 ----
- 5 files changed, 208 insertions(+), 110 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03db3e71676c..8d924bd19ca7 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3264,6 +3264,8 @@ extern long ext4_fallocate(struct file *file, int mode, loff_t offset,
+ 			  loff_t len);
+ extern int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 					  loff_t offset, ssize_t len);
++extern int ext4_convert_unwritten_io_end_vec(handle_t *handle,
++					     ext4_io_end_t *io_end);
+ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			   struct ext4_map_blocks *map, int flags);
+ extern int ext4_ext_calc_metadata_amount(struct inode *inode,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index fb0f99dc8c22..731e67ccab22 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4962,23 +4962,13 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 	int ret = 0;
+ 	int ret2 = 0;
+ 	struct ext4_map_blocks map;
+-	unsigned int credits, blkbits = inode->i_blkbits;
++	unsigned int blkbits = inode->i_blkbits;
++	unsigned int credits = 0;
+ 
+ 	map.m_lblk = offset >> blkbits;
+ 	max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
+ 
+-	/*
+-	 * This is somewhat ugly but the idea is clear: When transaction is
+-	 * reserved, everything goes into it. Otherwise we rather start several
+-	 * smaller transactions for conversion of each extent separately.
+-	 */
+-	if (handle) {
+-		handle = ext4_journal_start_reserved(handle,
+-						     EXT4_HT_EXT_CONVERT);
+-		if (IS_ERR(handle))
+-			return PTR_ERR(handle);
+-		credits = 0;
+-	} else {
++	if (!handle) {
+ 		/*
+ 		 * credits to insert 1 extent into extent tree
+ 		 */
+@@ -5009,11 +4999,33 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 		if (ret <= 0 || ret2)
+ 			break;
+ 	}
+-	if (!credits)
+-		ret2 = ext4_journal_stop(handle);
+ 	return ret > 0 ? ret2 : ret;
+ }
+ 
++int ext4_convert_unwritten_io_end_vec(handle_t *handle, ext4_io_end_t *io_end)
++{
++	int ret, err = 0;
++
++	/*
++	 * This is somewhat ugly but the idea is clear: When transaction is
++	 * reserved, everything goes into it. Otherwise we rather start several
++	 * smaller transactions for conversion of each extent separately.
++	 */
++	if (handle) {
++		handle = ext4_journal_start_reserved(handle,
++						     EXT4_HT_EXT_CONVERT);
++		if (IS_ERR(handle))
++			return PTR_ERR(handle);
++	}
++
++	ret = ext4_convert_unwritten_extents(handle, io_end->inode,
++					     io_end->offset, io_end->size);
++	if (handle)
++		err = ext4_journal_stop(handle);
++
++	return ret < 0 ? ret : err;
++}
++
+ /*
+  * If newes is not existing extent (newes->ec_pblk equals zero) find
+  * delayed extent at start of newes and update newes accordingly and
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index d9b96fc976a3..3ccf54a380b2 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -149,7 +149,7 @@ static int ext4_end_io_end(ext4_io_end_t *io_end)
+ 		   io_end, inode->i_ino, io_end->list.next, io_end->list.prev);
+ 
+ 	io_end->handle = NULL;	/* Following call will use up the handle */
+-	ret = ext4_convert_unwritten_extents(handle, inode, offset, size);
++	ret = ext4_convert_unwritten_io_end_vec(handle, io_end);
+ 	if (ret < 0 && !ext4_forced_shutdown(EXT4_SB(inode->i_sb))) {
+ 		ext4_msg(inode->i_sb, KERN_EMERG,
+ 			 "failed to convert unwritten extents to written "
+@@ -269,9 +269,8 @@ int ext4_put_io_end(ext4_io_end_t *io_end)
+ 
+ 	if (atomic_dec_and_test(&io_end->count)) {
+ 		if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
+-			err = ext4_convert_unwritten_extents(io_end->handle,
+-						io_end->inode, io_end->offset,
+-						io_end->size);
++			err = ext4_convert_unwritten_io_end_vec(io_end->handle,
++								io_end);
+ 			io_end->handle = NULL;
+ 			ext4_clear_io_unwritten_flag(io_end);
+ 		}
 -- 
 2.21.0
 
