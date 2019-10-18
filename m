@@ -2,40 +2,68 @@ Return-Path: <SRS0=5bfQ=YL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D8A97CA9EA0
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 15:28:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D6DECA9EA9
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 20:25:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BAF23222BD
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 15:28:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5E2062082C
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 20:25:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1571430330;
+	bh=sc8kqjfJQFPdY+4arbdLLZFmyrQ/Oj7qWt6wvFniOLM=;
+	h=Subject:To:Cc:References:From:Date:In-Reply-To:List-ID:From;
+	b=asV/5nDCKrzwoomWHjZO15BineZo5Q5rSpTxaPgTD18x8TvTFe2vcoRE82wujvzzX
+	 7sBaHNuhSlSnh3HWCGMk0+/erPJ6nNvPR+JofNCLcYZCubYDBsk1NHnmfIswrbV5mS
+	 19hZU9Z46YRidEQW4676MLq8GCF70tLgGPIrRx7U=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2410507AbfJRP2B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 18 Oct 2019 11:28:01 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37286 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2394233AbfJRP2A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Oct 2019 11:28:00 -0400
-Received: from callcc.thunk.org (guestnat-104-133-0-98.corp.google.com [104.133.0.98] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x9IFRk2g032466
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 18 Oct 2019 11:27:47 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id A1830420458; Fri, 18 Oct 2019 11:27:46 -0400 (EDT)
-Date:   Fri, 18 Oct 2019 11:27:46 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Tim.Bird@sony.com
-Cc:     skhan@linuxfoundation.org, brendanhiggins@google.com,
-        yzaikin@google.com, linux-kselftest@vger.kernel.org,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        kunit-dev@googlegroups.com
-Subject: Re: [PATCH linux-kselftest/test v2] ext4: add kunit test for
- decoding extended timestamps
-Message-ID: <20191018152746.GF21137@mit.edu>
+        id S2443429AbfJRUY6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Oct 2019 16:24:58 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:43765 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2443423AbfJRUYq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Oct 2019 16:24:46 -0400
+Received: by mail-io1-f67.google.com with SMTP id v2so8916029iob.10
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Oct 2019 13:24:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linuxfoundation.org; s=google;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=NuSCTuHLyeIME2hbrerbprSKbzeZs/hKIavOLJRoGRQ=;
+        b=HtCk0A8CHBSeN/vkbSv/7Y2ykRo+7yexMnvlVxS0NDBJHW3+GiIXbExrf6RB731B6o
+         a4ARGEbe+sW4LYEuHqWT5/bhoeDx+edmwvMwzONWe+5H5uxyGZOUEsi34JWviWu56Fe6
+         /JclB31wrotM6MfNpR/Wqa8lSJOJV7CUEFiJw=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=NuSCTuHLyeIME2hbrerbprSKbzeZs/hKIavOLJRoGRQ=;
+        b=YcTJR08VjdF70CHJEuTu/KW6f5VIW5Cgnl0/NAfVxtwusP6KR4YfS0AOjgM/aHGUAZ
+         rzVPImpWkXP2sYowLbN80npN0LJ1BMk6JFyK0ozd3+ymcTi1lHsVWfg1H8ugwd+fvAx/
+         yfhAm8qn9MTvTWOARutUoWsrlunC8E/E5JTQcaQuVByGf4GfXp3TRPbFEa3tPAx2iAFg
+         dJaOZV0wXvKOmrvjX16Mg4e91GksdkVK1YiS1G+yvudtU000CtQjnFbufhVX2NNSctiU
+         G59Ors0M6e4RCKlTb2bM/SQZqn2fF6nqYQNxPQvxhQsz4P9eczglfYnV9DggpU00cKPb
+         075A==
+X-Gm-Message-State: APjAAAUXvOPM73ttBpeSbDZcz43D4dlnQMonnAjXV02gJLf/toZO6m/u
+        AQTCK+Ct/MxBnKPImgGEpc/PSQ==
+X-Google-Smtp-Source: APXvYqw0zqeIpXublcbBrspxIImYvwsqyX3848ANoqBLSESQe4clT0dZGWwSknNUeo8XUDx1yoEmMg==
+X-Received: by 2002:a5d:8185:: with SMTP id u5mr4375511ion.147.1571430285037;
+        Fri, 18 Oct 2019 13:24:45 -0700 (PDT)
+Received: from [192.168.1.112] (c-24-9-64-241.hsd1.co.comcast.net. [24.9.64.241])
+        by smtp.gmail.com with ESMTPSA id s24sm2019056iog.26.2019.10.18.13.24.43
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 18 Oct 2019 13:24:44 -0700 (PDT)
+Subject: Re: [PATCH linux-kselftest/test v2] ext4: add kunit test for decoding
+ extended timestamps
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>, Tim.Bird@sony.com
+Cc:     brendanhiggins@google.com, yzaikin@google.com,
+        linux-kselftest@vger.kernel.org, linux-ext4@vger.kernel.org,
+        adilger.kernel@dilger.ca, kunit-dev@googlegroups.com,
+        Shuah Khan <skhan@linuxfoundation.org>
 References: <CAFd5g46RcFV0FACuoF=jCSLzf7UFmEYn4gddaijUZ+zR_CFZBQ@mail.gmail.com>
  <20191011131902.GC16225@mit.edu>
  <CAFd5g45s1-=Z4JwJn4A1VDGu4oEGBisQ_0RFp4otUU3rKf1XpQ@mail.gmail.com>
@@ -46,68 +74,95 @@ References: <CAFd5g46RcFV0FACuoF=jCSLzf7UFmEYn4gddaijUZ+zR_CFZBQ@mail.gmail.com>
  <ECADFF3FD767C149AD96A924E7EA6EAF977D00A4@USCULXMSG01.am.sony.com>
  <20191018014027.GA21137@mit.edu>
  <ECADFF3FD767C149AD96A924E7EA6EAF977D01DC@USCULXMSG01.am.sony.com>
+ <20191018152746.GF21137@mit.edu>
+From:   Shuah Khan <skhan@linuxfoundation.org>
+Message-ID: <b433854d-3140-95cd-6847-003dcf3851bc@linuxfoundation.org>
+Date:   Fri, 18 Oct 2019 14:24:43 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.9.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ECADFF3FD767C149AD96A924E7EA6EAF977D01DC@USCULXMSG01.am.sony.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20191018152746.GF21137@mit.edu>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 18, 2019 at 02:40:50AM +0000, Tim.Bird@sony.com wrote:
-> We're just talking past each other.  My original e-mail was a rebuttal
-> to your assertion that any test that was data-driven or non-deterministic
-> was a fuzzer.  I still believe that's just not the case.  This is independent
-> of the mechanics or speed of how the data is input.
+On 10/18/19 9:27 AM, Theodore Y. Ts'o wrote:
+> On Fri, Oct 18, 2019 at 02:40:50AM +0000, Tim.Bird@sony.com wrote:
+>> We're just talking past each other.  My original e-mail was a rebuttal
+>> to your assertion that any test that was data-driven or non-deterministic
+>> was a fuzzer.  I still believe that's just not the case.  This is independent
+>> of the mechanics or speed of how the data is input.
+> 
+> Apologies, I was still focused on the original context of this thread,
+> which was about suggested improvements to Iurii's ext4 kunit test, or
+> perhaps adding new features to Kunit.
+> 
+>> I also conceded (multiple times) that externally data-driven
+>> techniques are probably more aptly applied to non-unit tests. I've
+>> heard your pitch about speed, and I'm sympathetic.  My point is that
+>> I believe there is a place for data-driven tests.
+> 
 
-Apologies, I was still focused on the original context of this thread,
-which was about suggested improvements to Iurii's ext4 kunit test, or
-perhaps adding new features to Kunit.
+As such what this current test does is data driven right. What we are
+discussing is how the data is supplied? In this case it is embedded.
 
-> I also conceded (multiple times) that externally data-driven
-> techniques are probably more aptly applied to non-unit tests. I've
-> heard your pitch about speed, and I'm sympathetic.  My point is that
-> I believe there is a place for data-driven tests.
+> I guess I would put it differently.  The key goal is it should be
+> really easy for developers to run, create, and extend tests.
+> Data-driven tests is certainly one technique to make it easier to
+> extend tests, and indeed fs/ext4/inode-test.c is data-driven with the
+> goal to make it easier to add additional tests.
+> 
 
-I guess I would put it differently.  The key goal is it should be
-really easy for developers to run, create, and extend tests.
-Data-driven tests is certainly one technique to make it easier to
-extend tests, and indeed fs/ext4/inode-test.c is data-driven with the
-goal to make it easier to add additional tests.
+Again I would make the distinction that "how the data supplied".
+Embedded in the test vs. having the flexibility to accept external
+test data. From what I can tell,  I didn't see anybody say that the
+embedded data is it and nothing more needed.
 
-Having the data for the test be external is certainly one option, and
-there will be cases where it will make sense.  However, the overhead
-in creating the parser for the data, and additional complexity
-required to get the test data to be fed to the test program means that
-that benefits need to be pretty large in order to balance the
-additional costs of having an external data file, especially for
-Kunit.
+Instead of adding the ability to read, the suggestion is for modifying
+the data. This gets real tedious and don't think anybody will take the
+time to do it. On the other hand, is there a few test data files to run
+with, it makes it easier to exercise different cases.
 
-In terms of the abstract question, is there a place for data-driven
-tests, I'm in complete agreement with you.  I've used this many times
-personally, especially when writing tests which are implemented in
-terms of shell scripts.  Examples of this include e2fsprogs's
-regression test suite and xfstests.  I don't consider that a terribly
-interesting question though; I view that as on the same order as "is
-the sky blue?" or "are apple pies yummy?"
+> Having the data for the test be external is certainly one option, and
+> there will be cases where it will make sense.  However, the overhead
+> in creating the parser for the data, and additional complexity
+> required to get the test data to be fed to the test program means that
+> that benefits need to be pretty large in order to balance the
+> additional costs of having an external data file, especially for
+> Kunit.
+> 
 
-The more interesting, and more concrete question is whether there is a
-place for external data-driven tests in Kunit, and there I am *much*
-more skeptical.  Sure, I could imagine adding some infrastructure
-where user-mode linux could read files from its "host" system.  But
-there are those people who want to run KUnit tests by cross-compiling
-an ARM kernel and then shipping the resulting kernel to an test board,
-and then reading the output from the ARM board's serial console.  In
-that case, we can't make the assumption that Kunit tests will be
-running under user-mode linux, so the complexity of how we get the
-external data file into the KUnit test just went up by another order
-of magnitude.  It's going to be ***so*** much simpler if the test data
-is embedded in the kernel built by KUnit.  That way, it works both in
-the ARCH=um case, and in the "build an ARM kernel and push it to a
-test board" case.
+Let's explore it further before deciding whether is useful or not.
 
-Cheers,
+> In terms of the abstract question, is there a place for data-driven
+> tests, I'm in complete agreement with you.  I've used this many times
+> personally, especially when writing tests which are implemented in
+> terms of shell scripts.  Examples of this include e2fsprogs's
+> regression test suite and xfstests.  I don't consider that a terribly
+> interesting question though; I view that as on the same order as "is
+> the sky blue?" or "are apple pies yummy?"
+> 
+> The more interesting, and more concrete question is whether there is a
+> place for external data-driven tests in Kunit, and there I am *much*
+> more skeptical. 
 
-					- Ted
+This is what I am interested in exploring. I do think it will add value.
+I can see some use-cases that could benefit from this.
+
+I am not suggesting that this should happen soon. This is something that
+can be looked into for the future. I have a few use-cases in mind that
+could benefit.
+
+btw. I am by no means suggesting to that this test going in is dependent
+on the external data. I already sent my Reviewed-by for the v6 and
+planning to pull it into linux-kselftest test for 5.5-rc1.
+
+thanks,
+-- Shuah
+
+
+
