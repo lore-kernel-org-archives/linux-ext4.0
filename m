@@ -2,106 +2,75 @@ Return-Path: <SRS0=5bfQ=YL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 986C8CA9ED0
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 05:00:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC34ECA9EA0
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 12:51:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6CFA3222CC
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 05:00:22 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="qC84lI1R"
+	by mail.kernel.org (Postfix) with ESMTP id ABF7E20854
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 12:51:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2441965AbfJRFAV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 18 Oct 2019 01:00:21 -0400
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:35957 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726315AbfJRFAV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Oct 2019 01:00:21 -0400
-Received: by mail-pg1-f196.google.com with SMTP id 23so2663658pgk.3
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Oct 2019 22:00:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=Le1dfLgcN2fCoctkTgaPwRHnB7+gEY7elpUpKk1Qxm4=;
-        b=qC84lI1R8NJLi3mNjyTq7m3HEqFaleMF0nhsRNKYHfAUFomRwPR5Ab4TCSuOLAMJmv
-         C3gWEbSpiyoD1uURzOXYhddLA0u+30eR/c0HO4bV+jrAik5OPbKe7CCpX1d3A7C98/8f
-         HDis0dDs7F+UBsdzUbg+BFd96BBbOrsuW73WC2RjdhO0W5tPZkCdSbppO5cOvCCostfM
-         HPZxu6INOzYNDnmNTBtHv6uFBM5IBFV/vVx48EBYT0KdtHbvINGBn7zZ86Pn6GrVx9tZ
-         pic/9IeFVLHVW43Zw0xl8eTvaaPbfKPGimr3jYRZ6lTdi/0k2ceH2P/J9GfCtNlkmMZL
-         eBNA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=Le1dfLgcN2fCoctkTgaPwRHnB7+gEY7elpUpKk1Qxm4=;
-        b=QI+nQ4p40gOXFkVBrw0AxfAJMSm/lxLOzZnqrjPh3u4CgUfrS3smRCdX+eN78rFuG0
-         h6mBcovLkjLYr6w25Vqlfp1juInLZrPDrg/kjANrKM1Tt3Xzmkzp29VTAounPhh7YBjB
-         t8hzaQvFL6/MrpyszVWMTiOKQUPp5P/mNqIoEz42d1P8CP7YoDL472HtP660AlzfO7ai
-         y6xtHhu35hbJAM+TwD80ILmRzfNy7+HQ194AecrjcbCfXN8kFOV9s7LQm5xj1WA3OtAI
-         czfze36R/bQiwg0zRenhstLZ1EmC0TqWi2vrSxaPk1JcFiwZn/cEZb5wcTD/zl9H0KJO
-         zn+w==
-X-Gm-Message-State: APjAAAWEKT1MW9bPTXJPIOyzq8lzSpT/X21FESYsEVq1mXsHQ/tq1BEZ
-        GmW0Qu74Bdr9Makp/pUXX1esFiydWRDYGQ==
-X-Google-Smtp-Source: APXvYqwNxeKmI0ojwcSsj8jkPRqwT7AzBHlDv4+kaht5Ou4NkRX8r37tXu/0ZI6bdE5JobLbemeTmg==
-X-Received: by 2002:a65:62d2:: with SMTP id m18mr7894087pgv.117.1571374319689;
-        Thu, 17 Oct 2019 21:51:59 -0700 (PDT)
-Received: from [10.34.123.118] ([103.5.140.168])
-        by smtp.gmail.com with ESMTPSA id 127sm6555897pfw.6.2019.10.17.21.51.58
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 17 Oct 2019 21:51:58 -0700 (PDT)
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH v3 12/13] docs: Add fast commit documentation
-From:   Andreas Dilger <adilger@dilger.ca>
-X-Mailer: iPhone Mail (16G102)
-In-Reply-To: <20191018015655.GB21137@mit.edu>
-Date:   Fri, 18 Oct 2019 13:51:56 +0900
-Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        linux-ext4@vger.kernel.org
-Content-Transfer-Encoding: 7bit
-Message-Id: <C41A9852-DFA0-4F1A-A984-29A71D23CEFB@dilger.ca>
-References: <20191001074101.256523-1-harshadshirwadkar@gmail.com> <20191001074101.256523-13-harshadshirwadkar@gmail.com> <20191018015655.GB21137@mit.edu>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+        id S1727993AbfJRMvF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Oct 2019 08:51:05 -0400
+Received: from mx2.suse.de ([195.135.220.15]:40366 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726875AbfJRMvE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Oct 2019 08:51:04 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 5AE07B3B6;
+        Fri, 18 Oct 2019 12:51:03 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id ED5CA1E4851; Fri, 18 Oct 2019 14:51:02 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH] resize2fs: Make minimum size estimates more reliable for mounted fs
+Date:   Fri, 18 Oct 2019 14:50:59 +0200
+Message-Id: <20191018125059.2446-1-jack@suse.cz>
+X-Mailer: git-send-email 2.16.4
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-What about rename or hard link?
+Currently, the estimate of minimum filesystem size is using free blocks
+counter in the superblock. The counter generally doesn't get updated
+while the filesystem is mounted and thus the estimate is very unreliable
+for a mounted filesystem. For some usecases such as automated
+partitioning proposal to the user it is desirable that the estimate of
+minimum filesystem size is reasonably accurate even for a mounted
+filesystem. So use group descriptor counters of free blocks for the
+estimate of minimum filesystem size. These get updated together with
+block being allocated and so the resulting estimate is more accurate.
 
-Cheers, Andreas
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ resize/resize2fs.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-> On Oct 18, 2019, at 10:56, Theodore Y. Ts'o <tytso@mit.edu> wrote:
-> 
->> On Tue, Oct 01, 2019 at 12:41:01AM -0700, Harshad Shirwadkar wrote:
->> +
->> +Multiple fast commit blocks are a part of one sub-transaction. To
->> +indicate the last block in a fast commit transaction, fc_flags field
->> +in the last block in every subtransaction is marked with "LAST" (0x1)
->> +flag. A subtransaction is valid only if all the following conditions
->> +are met:
->> +
->> +1) SUBTID of all blocks is either equal to or greater than SUBTID of
->> +   the previous fast commit block.
->> +2) For every sub-transaction, last block is marked with LAST flag.
->> +3) There are no invalid blocks in between.
-> 
-> I'm wondering why we need to support multiple inodes being modified in
-> a single transaction.  As we currently have defined what can be done,
-> all updates to an inode should be free standing and not dependent on a
-> change to another inode, right?  And today, one block only modifies
-> one inode.
-> 
-> The only reason why we might want to define a sub-transaction as being
-> composed of multiple inodes, which must all be updated in an
-> all-or-nothing fashion, is the swap boot inode ioctl, and if that's
-> the only one, I wonder if it's worth the extra complexity.
-> 
-> Am I missing anything?
-> 
->                    - Ted
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index c2e10471bfd1..8a3d08db19f3 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -2926,11 +2926,11 @@ blk64_t calculate_minimum_resize_size(ext2_filsys fs, int flags)
+ 			fs->super->s_reserved_gdt_blocks;
+ 
+ 	/* calculate how many blocks are needed for data */
+-	data_needed = ext2fs_blocks_count(fs->super) -
+-		ext2fs_free_blocks_count(fs->super);
+-
+-	for (grp = 0; grp < fs->group_desc_count; grp++)
++	data_needed = ext2fs_blocks_count(fs->super);
++	for (grp = 0; grp < fs->group_desc_count; grp++) {
+ 		data_needed -= calc_group_overhead(fs, grp, old_desc_blocks);
++		data_needed -= ext2fs_bg_free_blocks_count(fs, grp);
++	}
+ #ifdef RESIZE2FS_DEBUG
+ 	if (flags & RESIZE_DEBUG_MIN_CALC)
+ 		printf("fs requires %llu data blocks.\n", data_needed);
+-- 
+2.16.4
+
