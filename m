@@ -1,88 +1,77 @@
-Return-Path: <SRS0=5bfQ=YL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=5IJJ=YM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C034ECA9EA0
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 22:06:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE0F1CA9EAC
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Oct 2019 03:16:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8C09220679
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Oct 2019 22:06:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B521222C6
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Oct 2019 03:16:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1571436395;
-	bh=uub7qoWJO07kCGY9mnSTpLi4SKi0+yvY+LER2AED5r4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=BJ2WtyihHVSBEIRt76DPZTry4PNbR1B1PGdhor7jaYhKukBuWWlQqKxif/PFaTBR8
-	 0CobuA8B+lQslDje/ZEli8QNRivP6yTVJruPNOHIe33hgCWkAvgkT89plxdMrNLVhP
-	 EKyXDzuRzHsNE60BU7doPCfTyE/BQ6/dFitJMDF4=
+	s=default; t=1571454997;
+	bh=zYnXUkPGRdV0F5xVTBfK5dqMZk6w0uvJov5eBWJea+s=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=vcvBg73yaPrXjDejbX6AaIHe7jziToKXmcEoMRGtPnWx5Rpz/URFyUx1kxOCtFrSX
+	 xCMLSQsYbx6+PVrvv65OSBz14lWnYr1gpHxGcVw+i2swoW+/QOaQXfPQhmexVQ4DaN
+	 bAoTSKzlsTodr4xYSJdF3v8G/bfLikEkCpAWqvfw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731689AbfJRWGe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 18 Oct 2019 18:06:34 -0400
-Received: from mail.kernel.org ([198.145.29.99]:38506 "EHLO mail.kernel.org"
+        id S1727195AbfJSDQg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Oct 2019 23:16:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60366 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731660AbfJRWGd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 18 Oct 2019 18:06:33 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1727152AbfJSDQg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Oct 2019 23:16:36 -0400
+Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 13A43222D1;
-        Fri, 18 Oct 2019 22:06:31 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9ADA9222C2;
+        Sat, 19 Oct 2019 03:16:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1571436392;
-        bh=uub7qoWJO07kCGY9mnSTpLi4SKi0+yvY+LER2AED5r4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=fDru+jKmDHlhxvHqibX3EYEpp/csaQO3PhjuBD0TqZuTGSAImXFM5QjX4HaOsAqtz
-         h9GgFSFTR3G+2+wMiWrNLLiohdMLYEUbSQbNnUnPk+aJUV0iR0i+/52564Wj7iQdaX
-         Jxi5PMt6XpVeQdtxkOCc4OzSoKF5V0s5EukfgSi0=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 044/100] ext4: disallow files with EXT4_JOURNAL_DATA_FL from EXT4_IOC_SWAP_BOOT
-Date:   Fri, 18 Oct 2019 18:04:29 -0400
-Message-Id: <20191018220525.9042-44-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191018220525.9042-1-sashal@kernel.org>
-References: <20191018220525.9042-1-sashal@kernel.org>
+        s=default; t=1571454995;
+        bh=zYnXUkPGRdV0F5xVTBfK5dqMZk6w0uvJov5eBWJea+s=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=G1cAwSSENm0BzvrTIy9555f/1ct1aBbCWZsgM6p1t+dnyArgrvs6BFKu5ULbjXhq9
+         lNUK6AaG3nkwdtuFcuKcbdfhfJxFKC6izOFtfspFbJEgSc4MG3URmtzWcc3ZN0sgN+
+         2lPPk34ZzBmtCZuAxziKRNIWt2VRFI3TZHIShEL8=
+Date:   Fri, 18 Oct 2019 20:16:34 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org
+Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Chandan Rajendra <chandan@linux.ibm.com>
+Subject: Re: [PATCH 1/2] fs/buffer.c: support fscrypt in
+ block_read_full_page()
+Message-ID: <20191019031634.GA76786@sol.localdomain>
+Mail-Followup-To: linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Chandan Rajendra <chandan@linux.ibm.com>
+References: <20191016221142.298754-1-ebiggers@kernel.org>
+ <20191016221142.298754-2-ebiggers@kernel.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191016221142.298754-2-ebiggers@kernel.org>
+User-Agent: Mutt/1.12.2 (2019-09-21)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+On Wed, Oct 16, 2019 at 03:11:41PM -0700, Eric Biggers wrote:
+> +static void end_buffer_async_read_io(struct buffer_head *bh, int uptodate)
+> +{
+> +	/* Decrypt if needed */
+> +	if (uptodate && IS_ENABLED(CONFIG_FS_ENCRYPTION) &&
+> +	    IS_ENCRYPTED(bh->b_page->mapping->host)) {
+> +		struct decrypt_bh_ctx *ctx = kmalloc(sizeof(*ctx), GFP_ATOMIC);
 
-[ Upstream commit 6e589291f4b1b700ca12baec5930592a0d51e63c ]
+Technically this should check S_ISREG() too (though it happens not to make a
+difference currently).   I'll fix it in the next version of this patchset.
 
-A malicious/clueless root user can use EXT4_IOC_SWAP_BOOT to force a
-corner casew which can lead to the file system getting corrupted.
-There's no usefulness to allowing this, so just prohibit this case.
+We probably should add a helper function fscrypt_needs_contents_encryption()
+that returns IS_ENABLED(CONFIG_FS_ENCRYPTION) && IS_ENCRYPTED() && S_ISREG().
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/ioctl.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index abb6fcff0a1d3..783c54bb2ce75 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -132,6 +132,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode) ||
- 	    IS_SWAPFILE(inode) || IS_ENCRYPTED(inode) ||
-+	    (EXT4_I(inode)->i_flags & EXT4_JOURNAL_DATA_FL) ||
- 	    ext4_has_inline_data(inode)) {
- 		err = -EINVAL;
- 		goto journal_err_out;
--- 
-2.20.1
-
+- Eric
