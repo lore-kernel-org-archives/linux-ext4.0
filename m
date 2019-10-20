@@ -2,104 +2,167 @@ Return-Path: <SRS0=8lYc=YN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE990CA9EAE
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Oct 2019 16:00:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DDBACA9EAE
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Oct 2019 20:18:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B35C02190F
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Oct 2019 16:00:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7406021929
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Oct 2019 20:18:38 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="1GkG/i/n"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726525AbfJTP7y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 20 Oct 2019 11:59:54 -0400
-Received: from mga02.intel.com ([134.134.136.20]:54570 "EHLO mga02.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726383AbfJTP7y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 20 Oct 2019 11:59:54 -0400
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga006.fm.intel.com ([10.253.24.20])
-  by orsmga101.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 20 Oct 2019 08:59:53 -0700
-X-IronPort-AV: E=Sophos;i="5.67,320,1566889200"; 
-   d="scan'208";a="398438094"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga006-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 20 Oct 2019 08:59:53 -0700
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/5] Enable per-file/directory DAX operations
-Date:   Sun, 20 Oct 2019 08:59:30 -0700
-Message-Id: <20191020155935.12297-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.20.1
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1725941AbfJTUSh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 20 Oct 2019 16:18:37 -0400
+Received: from mail-pg1-f173.google.com ([209.85.215.173]:36322 "EHLO
+        mail-pg1-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726005AbfJTUSh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Oct 2019 16:18:37 -0400
+Received: by mail-pg1-f173.google.com with SMTP id 23so6376027pgk.3
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Oct 2019 13:18:36 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=ES+o7Frwb3t7bEmHSxzK0qthknjQUAiT2r+1h83CRD4=;
+        b=1GkG/i/nFwbnM0cCUa4n5bnPKtl8/xwCezkZKl6Y4y4JH6BQLTYxnFh9uaOs3yay5i
+         6lM0lerQ/elslMrv0z8hzhZxxQRMYQ3Dj0uBrIyR0Iyxm18FQDfyC3c78RF4ILDOEh5w
+         F6P1zalRmQbU7yvgVhdx5J3FlS5D2r/IxLQGI1Hj7gXi1fyoOQDfC4Viy/P1OM5qk4CE
+         0Axui66pu0WWfFkXtTxalSNSo8doXB4yMSrtbVOKoad83Xdn4IYJqL9rQigq2SjrRXv8
+         Dz21KqdrcT7Bb58klZqVtq8GE9LRpS3AyoWmSgiaUFLG2O2vTTZXbT5QrPXlUMSFFFxe
+         s4pA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=ES+o7Frwb3t7bEmHSxzK0qthknjQUAiT2r+1h83CRD4=;
+        b=K+mRFyHkU2aiRyGEDcnAF1ilQ46F2l0XehK6jX2i43bIWsfq+iK6j3WhJrGhzrR0oX
+         u1WaUQPgQH1U+FGA3qX7ftbfrg6eZAXfsQTFlLDi6eVSbPzZc/Fy/6y6muURBFfpSx2V
+         6hNj/AEvFCxefzWNMjMG4OwpFDvxVlmHuZgT5KHg0g7qYdM6agbmF9N2pvxtSxBVLTr6
+         IUMQANV7+qM+WPbuivJ93MdfV+OW3bzhWgcufYjjYMlil7tL+qfUePOa07Ce4Qzx27eZ
+         aeb5fBDTgBpg6ruDt9Q1ud0QhhKM1xCTUEOqyel47/cTLJAe8gdBAo0qFeOjQMrUdNKh
+         0SmQ==
+X-Gm-Message-State: APjAAAVxX9guq+5VqBhlxqbnx2aM3T+il0JOOG/COWB5CVq8JUrVtH0T
+        fpqsloqEWT8ib/xhYpL9LSoVcw==
+X-Google-Smtp-Source: APXvYqy9Mfxb1YDX7yeZuitaE39oU36R5WMgC3QPuXD4227KuiKiwzrMMabh528+vT0q4c/XPkXp5A==
+X-Received: by 2002:a62:3203:: with SMTP id y3mr18672359pfy.91.1571602715890;
+        Sun, 20 Oct 2019 13:18:35 -0700 (PDT)
+Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
+        by smtp.gmail.com with ESMTPSA id 199sm15407791pfv.152.2019.10.20.13.18.34
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 20 Oct 2019 13:18:35 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <6F46FB6C-D1E3-4BB8-B150-B229801EE13B@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_35E7AAEA-558E-4C69-AED7-98BFD0780248";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [Project Quota]file owner could change its project ID?
+Date:   Sun, 20 Oct 2019 14:19:19 -0600
+In-Reply-To: <20191017121251.GB25548@mit.edu>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Wang Shilong <wangshilong1991@gmail.com>,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Li Xi <lixi@ddn.com>, Wang Shilong <wshilong@ddn.com>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+References: <CAP9B-QmQ-mbWgJwEWrVOMabsgnPwyJsxSQbMkWuFk81-M4dRPQ@mail.gmail.com>
+ <20191013164124.GR13108@magnolia>
+ <CAP9B-Q=SfhnA6iO7h1TWAoSOfZ+BvT7d8=OE4176FZ3GXiU-xw@mail.gmail.com>
+ <20191016213700.GH13108@magnolia>
+ <648712FB-0ECE-41F4-B6B8-98BD3168B2A4@dilger.ca>
+ <20191017121251.GB25548@mit.edu>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
 
-At LSF/MM'19 [1] [2] we discussed applications that overestimate memory
-consumption due to their inability to detect whether the kernel will
-instantiate page cache for a file, and cases where a global dax enable via a
-mount option is too coarse.
+--Apple-Mail=_35E7AAEA-558E-4C69-AED7-98BFD0780248
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-The following patch series enables selecting the use of DAX on individual files
-and/or directories on xfs, and lays some groundwork to do so in ext4.  In this
-scheme the dax mount option can be omitted to allow the per-file property to
-take effect.
+On Oct 17, 2019, at 6:12 AM, Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> 
+> On Wed, Oct 16, 2019 at 06:28:08PM -0600, Andreas Dilger wrote:
+>> I don't think that this is really "directory quotas" in the end, since it
+>> isn't changing the semantics that the same projid could exist in multiple
+>> directory trees.  The real difference is the ability to enforce existing
+>> project quota limits for regular users outside of a container.  Basically,
+>> it is the same as regular users not being able to change the UID of their
+>> files to dump quota to some other user.
+>> 
+>> So rather than rename this "dirquota", it would be better to have a
+>> an option like "projid_enforce" or "projid_restrict", or maybe some
+>> more flexibility to allow only users in specific groups to change the
+>> projid like "projid_admin=<gid>" so that e.g. "staff" or "admin" groups
+>> can still change it (in addition to root) but not regular users.  To
+>> restrict it to root only, leave "projid_admin=0" and the default (to
+>> keep the same "everyone can change projid" behavior) would be -1?
+> 
+> I'm not sure how common the need for restsrictive quota enforcement is
+> really going to be.  Can someone convince me this is actually going to
+> be a common use case?
 
-The insight at LSF/MM was to separate the per-mount or per-file "physical"
-capability switch from an "effective" attribute for the file.
+Project quota (i.e. quota tracking that doesn't automatically also convey
+permission to access a file or directory) is one of the most requested
+features from our users.  This is useful for e.g. university or industry
+research groups with multiple grad students/researchers under a single
+principal professor/project that controls the funding.
 
-At LSF/MM we discussed the difficulties of switching the mode of a file with
-active mappings / page cache. Rather than solve those races the decision was to
-just limit mode flips to 0-length files.
+> We could also solve the problem by adding an LSM hook called when
+> there is an attempt to set the project ID, and for people who really
+> want this, they can create a stackable LSM which enforces whatever
+> behavior they want.
 
-Finally, the physical DAX flag inheritance is maintained from previous work on 
-XFS but should be added for other file systems for consistence.
+So, rather than add a few-line change that decides whether the user
+is allowed to change the projid for a file, we would instead add *more*
+lines to add a hook, then have to write and load an LSM that is called
+each time?  That seems backward to me.
+
+> If we think this going to be an speciality request, this might be the
+> better way to go.
+
+I don't see how this is more "speciality" than regular quota enforcement?
+Just like we impose limits on users and groups, it makes sense to impose
+a limit on a project, instead of just tracking it and then having to add
+extra machinery to impose the limit externally.
+
+Cheers, Andreas
 
 
-[1] https://lwn.net/Articles/787973/
-[2] https://lwn.net/Articles/787233/
 
-To: linux-kernel@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
 
-Ira Weiny (5):
-  fs/stat: Define DAX statx attribute
-  fs/xfs: Isolate the physical DAX flag from effective
-  fs/xfs: Separate functionality of xfs_inode_supports_dax()
-  fs/xfs: Clean up DAX support check
-  fs/xfs: Allow toggle of physical DAX flag
 
- fs/stat.c                 |  3 +++
- fs/xfs/xfs_ioctl.c        | 32 ++++++++++++++------------------
- fs/xfs/xfs_iops.c         | 36 ++++++++++++++++++++++++++++++------
- fs/xfs/xfs_iops.h         |  2 ++
- include/uapi/linux/stat.h |  1 +
- 5 files changed, 50 insertions(+), 24 deletions(-)
 
--- 
-2.20.1
+--Apple-Mail=_35E7AAEA-558E-4C69-AED7-98BFD0780248
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl2swUcACgkQcqXauRfM
+H+C6bg/+IVKN6zxruxANDmRxjkhbz1DsHpy8bRcW2p+EfZXh4Q/VjLaqoak01fgP
+xIlYX2phbBiJP1peTeMcw2N6CEWPJzVMJEM8ncW+NN7c2aFj+IJOU5HWgzw3E/TO
+8Iku9a2iYb8P1SQ91sY+7uFknr7N0pLoMgPqlwBKF5SrPUMClIbuIW2UlVNFdBIp
+ktRATf95Ieo2K9NpESNNtQWY0yBIuoKU/Vdd6PTq9Pra7gm/xwPBdmaOs/FQQ4dr
+WhEGfEtKV6hFCy04zt1YkrHuTQe2ykV2/XKIGseVPkuNpKyzg3lS1OWhZZE8ek1V
+iR/LvqbehVp+8RjLrka+YYxGCsKdi6uWJQNsaT/nbJFwroKmEuNu23WWguzXKDIf
+eUq1lDn2VoFl2S8Kts4WXpSyxg7aSg8eVFZKq1sZaANo6Zzk+QgE82IJft0/mc+o
+3g3DqeDMYmObhiL0JNR8FIfX6JNKJOolmT3AK4O4tZi4abOGaa0TjNqLWwfh7ted
+az6VX3/I0it/P+t63i1wNN7sFVKvKFRfsF0VVcvvm52uYNag22yub0Ub3E2HAAi1
+1r2YAPYwhV5xYF7t7Gaj4vzFWJCcFMKABHfR2t4mAJQ4gN2X9jvxvBMO1eopQiGe
+9Z1FXKPTFb33RpbWftbv6wxn6fHMMGbKulV9qjOpxHoFhZXSgXE=
+=Xz2h
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_35E7AAEA-558E-4C69-AED7-98BFD0780248--
