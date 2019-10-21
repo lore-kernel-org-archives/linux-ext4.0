@@ -2,42 +2,42 @@ Return-Path: <SRS0=b1z3=YO=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05B79CA9EB0
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Oct 2019 23:07:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8434CA9EB0
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Oct 2019 23:07:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CF7852173B
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Oct 2019 23:07:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7EC162166E
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Oct 2019 23:07:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1571699243;
-	bh=Pe7Lis/ulx8/IwkmeLuv53LKYhthEU3xhU7qcvrWXZ8=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=t1ePadhm8ONPHvf7SB3vlFTTGVZ0fY+KUTd7M2w4mUigOqftfC5NDADrIGojySr1n
-	 JV8NIf/6UQ9eHJSh+wUFDfoUxUX17/hDi8HVzKsTRLNDQR2hEOFWkRUlvbeyqSUbTa
-	 cmfYlOXjzQyHL/ip71IKErlJJy4WCGX95O06P40M=
+	s=default; t=1571699246;
+	bh=cfR9eqGHizd+IHEPkNhVGw12eG6CrP2cnVFftii1848=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=go1p2laO0Nzn2fOMLMwZgKq36TqMlPwyZ5oZfA8zi/njXaqREP9chHCOPJurpmLbR
+	 dMsI7UtfCTTOciwN1e9SGPPIwrIL5zIem2kMiPDer27YS7XEX96Nj3rDt6vjxU/Mc0
+	 9iLJdYs2wzTxuXQQ+gZPXcGuz4ihGliIXXBmQEKE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730444AbfJUXHX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Oct 2019 19:07:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36736 "EHLO mail.kernel.org"
+        id S1730500AbfJUXHZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Oct 2019 19:07:25 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36758 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730069AbfJUXHX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1730446AbfJUXHX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Mon, 21 Oct 2019 19:07:23 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C812F2086D;
-        Mon, 21 Oct 2019 23:07:21 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id AC5B4214AE;
+        Mon, 21 Oct 2019 23:07:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1571699242;
-        bh=Pe7Lis/ulx8/IwkmeLuv53LKYhthEU3xhU7qcvrWXZ8=;
-        h=From:To:Cc:Subject:Date:From;
-        b=KFqCookuLvhUWmmwBtVb2etKPO0Oto0GcX9cwodQRQNs2/xlaPbje2qinGny1YdhG
-         34Z6+AuL/AuHZ/lDvAKibQh0ft7asFQOQiIoMfRwwMVndg90X1oJg9z7TTsgGx/cQ9
-         3FPe8cmn2ZRnZyEzQrXJ9OGqx45lrhuB5zRNyYLI=
+        s=default; t=1571699243;
+        bh=cfR9eqGHizd+IHEPkNhVGw12eG6CrP2cnVFftii1848=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=eS55tBi5xrlI4+oly2is5DTYZyWnWpyvABp9tC35TvrhqaeeewfG5UiWXOUFX4Svx
+         4RjDnHxYZZ3d7f2XHKVrOCJJ/43MiNYdG8gQcJWcx1DdDvld6unFffX5FnxG5BLCm8
+         vtFOMv+NIvWxGkfkCUwtWPt+sD5kWF9kWNRUPzqI=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -46,10 +46,12 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Paul Lawrence <paullawrence@google.com>,
         "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [PATCH 0/3] fscrypt: support for inline-encryption-optimized policies
-Date:   Mon, 21 Oct 2019 16:03:52 -0700
-Message-Id: <20191021230355.23136-1-ebiggers@kernel.org>
+Subject: [PATCH 2/3] ext4: add support for INLINE_CRYPT_OPTIMIZED encryption policies
+Date:   Mon, 21 Oct 2019 16:03:54 -0700
+Message-Id: <20191021230355.23136-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.23.0.866.gb869b98d4c-goog
+In-Reply-To: <20191021230355.23136-1-ebiggers@kernel.org>
+References: <20191021230355.23136-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -57,55 +59,85 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+From: Eric Biggers <ebiggers@google.com>
 
-In preparation for adding inline encryption support to fscrypt, this
-patchset adds a new fscrypt policy flag which modifies the encryption to
-be optimized for inline encryption hardware compliant with the UFS
-standard --- specifically, to use a smaller number of keys while still
-using at most 64 IV bits.  This required adding the inode number to the
-IVs.  For ext4, this precludes filesystem shrinking, so I've also added
-a compat feature which will prevent the filesystem from being shrunk.
+INLINE_CRYPT_OPTIMIZED encryption policies have special requirements
+from the filesystem:
 
-I've separated this from the full "Inline Encryption Support" patchset
-(https://lkml.kernel.org/linux-fsdevel/20190821075714.65140-1-satyat@google.com/)
-to avoid conflating an implementation (inline encryption) with a new
-on-disk format (INLINE_CRYPT_OPTIMIZED).  This patchset purely adds
-support for INLINE_CRYPT_OPTIMIZED policies to fscrypt, but implements
-them using the existing filesystem layer crypto.
+- Inode numbers must never change, even if the filesystem is resized
+- Inode numbers must be <= 32 bits
+- File logical block numbers must be <= 32 bits
 
-We're planning to make the *implementation* (filesystem layer or inline
-crypto) be controlled by a mount option '-o inlinecrypt'.
+ext4 has 32-bit inode and file logical block numbers.  However,
+resize2fs can re-number inodes when shrinking an ext4 filesystem.
 
-This patchset applies to fscrypt.git#master and can also be retrieved from
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=inline-crypt-optimized-v1
+However, many people who want to use inline encryption don't care about
+filesystem shrinking.  They'd be fine with a solution that just prevents
+the filesystem from being shrunk.
 
-A ciphertext verification test for INLINE_CRYPT_OPTIMIZED policies can
-be found at
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git/log/?h=inline-encryption
+Therefore, add a new feature flag EXT4_FEATURE_COMPAT_STABLE_INODES that
+will do exactly that.  Then wire up the fscrypt_operations to expose
+this flag to fs/crypto/, so that it allows INLINE_CRYPT_OPTIMIZED
+policies when this flag is set.
 
-Work-in-progress patches for the inline encryption implementation of
-both INLINE_CRYPT_OPTIMIZED and regular policies can be found at
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=inline-encryption-wip
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/super.c | 14 ++++++++++++++
+ 2 files changed, 16 insertions(+)
 
-Eric Biggers (3):
-  fscrypt: add support for inline-encryption-optimized policies
-  ext4: add support for INLINE_CRYPT_OPTIMIZED encryption policies
-  f2fs: add support for INLINE_CRYPT_OPTIMIZED encryption policies
-
- Documentation/filesystems/fscrypt.rst | 53 +++++++++++++++++++--------
- fs/crypto/crypto.c                    | 11 +++++-
- fs/crypto/fscrypt_private.h           | 20 +++++++---
- fs/crypto/keyring.c                   |  6 ++-
- fs/crypto/keysetup.c                  | 47 +++++++++++++++++++-----
- fs/crypto/policy.c                    | 42 ++++++++++++++++++++-
- fs/ext4/ext4.h                        |  2 +
- fs/ext4/super.c                       | 14 +++++++
- fs/f2fs/super.c                       | 26 ++++++++++---
- include/linux/fscrypt.h               |  3 ++
- include/uapi/linux/fscrypt.h          | 15 ++++----
- 11 files changed, 191 insertions(+), 48 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03db3e71676ce..b3a2cc7c0252f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1678,6 +1678,7 @@ static inline bool ext4_verity_in_progress(struct inode *inode)
+ #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
+ #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
+ #define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
++#define EXT4_FEATURE_COMPAT_STABLE_INODES	0x0800
+ 
+ #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+@@ -1779,6 +1780,7 @@ EXT4_FEATURE_COMPAT_FUNCS(xattr,		EXT_ATTR)
+ EXT4_FEATURE_COMPAT_FUNCS(resize_inode,		RESIZE_INODE)
+ EXT4_FEATURE_COMPAT_FUNCS(dir_index,		DIR_INDEX)
+ EXT4_FEATURE_COMPAT_FUNCS(sparse_super2,	SPARSE_SUPER2)
++EXT4_FEATURE_COMPAT_FUNCS(stable_inodes,	STABLE_INODES)
+ 
+ EXT4_FEATURE_RO_COMPAT_FUNCS(sparse_super,	SPARSE_SUPER)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(large_file,	LARGE_FILE)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index dd654e53ba3d9..b3cbf8622eab6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1345,6 +1345,18 @@ static bool ext4_dummy_context(struct inode *inode)
+ 	return DUMMY_ENCRYPTION_ENABLED(EXT4_SB(inode->i_sb));
+ }
+ 
++static bool ext4_has_stable_inodes(struct super_block *sb)
++{
++	return ext4_has_feature_stable_inodes(sb);
++}
++
++static void ext4_get_ino_and_lblk_bits(struct super_block *sb,
++				       int *ino_bits_ret, int *lblk_bits_ret)
++{
++	*ino_bits_ret = 8 * sizeof(EXT4_SB(sb)->s_es->s_inodes_count);
++	*lblk_bits_ret = 8 * sizeof(ext4_lblk_t);
++}
++
+ static const struct fscrypt_operations ext4_cryptops = {
+ 	.key_prefix		= "ext4:",
+ 	.get_context		= ext4_get_context,
+@@ -1352,6 +1364,8 @@ static const struct fscrypt_operations ext4_cryptops = {
+ 	.dummy_context		= ext4_dummy_context,
+ 	.empty_dir		= ext4_empty_dir,
+ 	.max_namelen		= EXT4_NAME_LEN,
++	.has_stable_inodes	= ext4_has_stable_inodes,
++	.get_ino_and_lblk_bits	= ext4_get_ino_and_lblk_bits,
+ };
+ #endif
+ 
 -- 
 2.23.0.866.gb869b98d4c-goog
 
