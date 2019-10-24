@@ -2,120 +2,215 @@ Return-Path: <SRS0=Lfng=YR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 625E7CA9EAF
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:57:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33353CA9EAF
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 23:29:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2B5A120663
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:57:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1571954234;
-	bh=HDbyy92ncxjP1dI6FxrpY5/nE4vCNb78sIDmKUaw/oA=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=xHjQhwc47w+4w7EbVOysBp4w7LSLVUrtiamU/3V6Q0fZjEmpyKTVXbyOoy2JFQtKt
-	 ysdeJVeT6sNyuxnUz3mRe05c9j2LzKQjB2bBhNhmh0haewBdVpT/52Do+/bkaclHCC
-	 mb5BibmP3v5W22PkXFpYt21W9RPjhdTSABJMoJug=
+	by mail.kernel.org (Postfix) with ESMTP id F008E205F4
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 23:29:18 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=plexistor-com.20150623.gappssmtp.com header.i=@plexistor-com.20150623.gappssmtp.com header.b="fq94FQCV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729771AbfJXV5J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Oct 2019 17:57:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57122 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726279AbfJXV5J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Oct 2019 17:57:09 -0400
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4995620578;
-        Thu, 24 Oct 2019 21:57:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1571954227;
-        bh=HDbyy92ncxjP1dI6FxrpY5/nE4vCNb78sIDmKUaw/oA=;
-        h=From:To:Cc:Subject:Date:From;
-        b=tYsduxACwWAZcKMN50EsIXij5SWgunEH/IZT5C2so19z1/o5XTkDSDkgsUcfYdjGT
-         cYMAHDf8Q8CG1ftEildMrnVdoOBdnctFicyjkPr72LbPTbeOJgZh0wEtry6JZY/j+I
-         kCMv9S3xpWh1jvarxrgWjGDKupV8ex7ClSaq4Hg0=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, Satya Tangirala <satyat@google.com>,
-        Paul Crowley <paulcrowley@google.com>,
-        Paul Lawrence <paullawrence@google.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [PATCH v2 0/3] fscrypt: support for IV_INO_LBLK_64 policies
-Date:   Thu, 24 Oct 2019 14:54:35 -0700
-Message-Id: <20191024215438.138489-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.24.0.rc0.303.g954a862665-goog
+        id S1731633AbfJXX3K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Oct 2019 19:29:10 -0400
+Received: from mail-ed1-f67.google.com ([209.85.208.67]:35650 "EHLO
+        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730474AbfJXX3K (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Oct 2019 19:29:10 -0400
+Received: by mail-ed1-f67.google.com with SMTP id k2so384194edx.2
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Oct 2019 16:29:08 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=plexistor-com.20150623.gappssmtp.com; s=20150623;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=imd8LYeUoBm8DTeA8qPBj6oTMtTRlNJlWrB8UNsRURg=;
+        b=fq94FQCVljJL8n1QnCTPl/iL6H5w3bnf/+l73zNSFs6OakFnAWfM/UwnbraJrYTHkU
+         RQJxiVE6Pg1pfH3tAT2Ec+5vYbBGRvUfyMvoNi/mVJKbXl7dfS6Y+SPfbGz6XPTzfl+f
+         HIvKAuJaS0SEbGEg2Pd+yy8ModIRF7utPp6COh9wiLgA6uP/xMfcf4vh7SZ5Nki0Jg5j
+         ZPJiJKF7easac64tVp6DJrdgf6iAfGXoOYXUJEqwWtWbXTU3ZA0JqTTTNefzB4PTQkCh
+         Dinc4V36iNos5fK3zMAAqGXi2E+yX/ukF13w5iCb5GbleOn3I/vQddbJaieLDpV5EXwr
+         lxkA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=imd8LYeUoBm8DTeA8qPBj6oTMtTRlNJlWrB8UNsRURg=;
+        b=nbWEkAMiL4USET69sYp9phqNsV/aUzHKNp4pHzM58vSYYfWhy/NyUhl2v5YLU1O9Vb
+         wTpnBE9pzSvZa789u3PIeLaFwa72lNnWz1OTXGeETuKLun9JkCaBh42oDdoo3Tq1PQE7
+         BG7TU5SkLRWY9JDgfCcogYw4lIxToEVlJK1UeW/G7MgXWeDW5nDaKPipxFT2d9t8w6yF
+         ClfnmPdCVfZG7sB6RfvsXBWCn0Nx6P0TyJSYNsv/QBoYAFSpUKvQB9elA+WVthvK9Br7
+         z+SU+phiDPDwbOHqe5iYUBx/N0JKf9XeGdYuXqWEhVuJULUv/Gh6148if3Bc+1XE9Jt7
+         QxcA==
+X-Gm-Message-State: APjAAAXfHi+7CZHID51e1H52vMPjlI6Dbs4lOPbs22j4qNC3XRAUFIPr
+        +ytC/1XxGvHpjGttzTPiB8oxFg==
+X-Google-Smtp-Source: APXvYqw3KtG7+DSk8VtpXuw54AjSUY96h6dk6WFFfObVLeErXJlPS27jxyXyV6GZmNS8RM7R6Qen9g==
+X-Received: by 2002:a50:da0f:: with SMTP id z15mr769859edj.137.1571959747939;
+        Thu, 24 Oct 2019 16:29:07 -0700 (PDT)
+Received: from [10.68.217.182] ([217.70.210.43])
+        by smtp.googlemail.com with ESMTPSA id oq18sm1653ejb.22.2019.10.24.16.29.05
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 24 Oct 2019 16:29:07 -0700 (PDT)
+Subject: Re: [PATCH 0/5] Enable per-file/directory DAX operations
+To:     Dave Chinner <david@fromorbit.com>,
+        Boaz Harrosh <boaz@plexistor.com>
+Cc:     ira.weiny@intel.com, linux-kernel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+References: <20191020155935.12297-1-ira.weiny@intel.com>
+ <b7849297-e4a4-aaec-9a64-2b481663588b@plexistor.com>
+ <b883142c-ecfe-3c5b-bcd9-ebe4ff28d852@plexistor.com>
+ <20191023221332.GE2044@dread.disaster.area>
+ <efffc9e7-8948-a117-dc7f-e394e50606ab@plexistor.com>
+ <20191024073446.GA4614@dread.disaster.area>
+ <fb4f8be7-bca6-733a-7f16-ced6557f7108@plexistor.com>
+ <20191024213508.GB4614@dread.disaster.area>
+From:   Boaz Harrosh <boaz@plexistor.com>
+Message-ID: <ab101f90-6ec1-7527-1859-5f6309640cfa@plexistor.com>
+Date:   Fri, 25 Oct 2019 02:29:04 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.1.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20191024213508.GB4614@dread.disaster.area>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+On 25/10/2019 00:35, Dave Chinner wrote:
+> On Thu, Oct 24, 2019 at 05:05:45PM +0300, Boaz Harrosh wrote:
+<>
+>> Yes I said that as well.
+> 
+> You said "it must be set between creation and first write",
+> stating the requirement for an on-disk flag to work.
 
-In preparation for adding inline encryption support to fscrypt, this
-patchset adds a new fscrypt policy flag which modifies the encryption to
-be optimized for inline encryption hardware compliant with the UFS v2.1
-standard or the upcoming version of the eMMC standard.
+Sorry for not being clear. Its not new, I do not explain myself
+very well.
 
-This means using per-mode keys instead of per-file keys, and in
-compensation including the inode number in the IVs.  For ext4, this
-precludes filesystem shrinking, so I've also added a compat feature
-which will prevent the filesystem from being shrunk.
+The above quote is if you set/clear the flag directly.
 
-I've separated this from the full "Inline Encryption Support" patchset
-(https://lkml.kernel.org/linux-fsdevel/20190821075714.65140-1-satyat@google.com/)
-to avoid conflating an implementation (inline encryption) with a new
-on-disk format (IV_INO_LBLK_64).  This patchset purely adds support for
-IV_INO_LBLK_64 policies to fscrypt, but implements them using the
-existing filesystem layer crypto.
+> I'm describing how that requirement is actually implemented. i.e. what
+> you are stating is something we actually implemented years ago...
+> 
 
-We're planning to make the *implementation* (filesystem layer or inline
-crypto) be controlled by a mount option '-o inlinecrypt'.
+What you are talking about is when the flag is inherited from parent.
+And I did mention that option as well.
 
-This patchset applies to fscrypt.git#master and can also be retrieved from
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=inline-crypt-optimized-v2
+[Which is my concern because my main point is that I want creation+write
+ to be none-DAX. Then after writer is done. Switch to DAX-on so READs can
+ be fast and not take any memory.
+ And you talked about another case when I start DAX-on and then for
+ say, use for RDMA turn it off later.
+]
 
-I've written a ciphertext verification test for this new type of policy:
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git/log/?h=inline-encryption
+This flag is Unique because current RFC has an i_size == 0 check
+that other flags do not have
 
-Work-in-progress patches for the inline encryption implementation of
-both IV_INO_LBLK_64 and regular policies can be found at
-https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=inline-encryption-wip
+>>> I also seem
+>>> to recall that there was a need to take some vm level lock to really
+>>> prevent page fault races, and that we can't safely take that in a
+>>> safe combination with all the filesystem locks we need.
+>>>
+>>
+>> We do not really care with page fault races in the Kernel as long
+> 
+> Oh yes we do. A write fault is a 2-part operation - a read fault to
+> populate the pte and mapping, then a write fault (->page_mkwrite) to 
+> do all the filesystem work needed to dirty the page and pte.
+> 
+> The read fault sets up the state for the write fault, and if we
+> change the aops between these two operations, then the
+> ->page_mkwrite implementation goes kaboom.
+> 
+> This isn't a theoretical problem - this is exactly the race
+> condition that lead us to disabling the flag in the first place.
+> There is no serialisation between the read and write parts of the
+> page fault iand the filesystem changing the DAX flag and ops vector,
+> and so fixing this problem requires hold yet more locks in the
+> filesystem path to completely lock out page fault processing on the
+> inode's mapping.
+> 
 
-Changes v1 => v2:
+Again sorry that I do not explain very good.
 
-- Rename the flag from INLINE_CRYPT_OPTIMIZED to IV_INO_LBLK_64.
+Already on the read fault we populate the xarray,
+My point was that if I want to set the DAX mode I must enforce that
+there are no other parallel users on my inode. The check that the
+xarray is empty is my convoluted way to check that there are no other
+users except me. If xarray is not empty I bail out with EBUISY
 
-- Use the same key derivation and IV generation scheme for filenames
-  encryption too.
+I agree this is stupid.
 
-- Improve the documentation and commit messages.
+Which is the same stupid as i_size==0 check. Both have the same
+intention, to make sure that nothing is going on in parallel to
+me.
 
-Eric Biggers (3):
-  fscrypt: add support for IV_INO_LBLK_64 policies
-  ext4: add support for IV_INO_LBLK_64 encryption policies
-  f2fs: add support for IV_INO_LBLK_64 encryption policies
+>> as I protect the xarray access and these are protected well if we
+>> take truncate locking. But we have a bigger problem that you pointed
+>> out with the change of the operations vector pointer.
+>>
+>> I was thinking about this last night. One way to do this is with
+>> file-exclusive-lock. Correct me if I'm wrong:
+>> file-exclusive-readwrite-lock means any other openers will fail and
+>> if there are openers already the lock will fail. Which is what we want
+>> no?
+> 
+> The filesystem ioctls and page faults have no visibility of file
+> locks.  They don't know and can't find out in a sane manner that an
+> inode has a single -user- reference.
+> 
 
- Documentation/filesystems/fscrypt.rst | 63 +++++++++++++++++----------
- fs/crypto/crypto.c                    | 10 ++++-
- fs/crypto/fscrypt_private.h           | 16 +++++--
- fs/crypto/keyring.c                   |  6 ++-
- fs/crypto/keysetup.c                  | 45 ++++++++++++++-----
- fs/crypto/policy.c                    | 41 ++++++++++++++++-
- fs/ext4/ext4.h                        |  2 +
- fs/ext4/super.c                       | 14 ++++++
- fs/f2fs/super.c                       | 26 ++++++++---
- include/linux/fscrypt.h               |  3 ++
- include/uapi/linux/fscrypt.h          |  3 +-
- 11 files changed, 182 insertions(+), 47 deletions(-)
+This is not true. The FS has full control. It is not too hard a work
+to take a file-excl-lock from within the IOCTL implementation. then
+unlock. that is option 1. Option 2 of the App taking the lock then
+for the check we might need a new export from the lock-subsystem.
 
--- 
-2.24.0.rc0.303.g954a862665-goog
+> And it introduces a new problem for any application using the
+> fssetxattr() ioctl - accidentally not setting the S_DAX flag to be
+> unmodified will now fail, and that means such a change breaks
+> existing applications. Sure, you can say they are "buggy
+> applications", but the fact is this user API change breaks them.
+> 
 
+I am not sure I completely understood. let me try ...
+
+The app wants to set some foo flag. It can set the ignore mask to all
+1(s) except the flag it wants to set/clear.
+And/or get_current_flags(); modify foo_flag; set_flags().
+
+Off course in both the ignore case or when the DAX bit does not change
+we do not go on a locking rampage.
+
+So I'm not sure I see the problem
+
+> Hence I don't think we can change the user API for setting/clearing
+> this flag like this.
+> 
+
+Yes we must not modify behavior of Apps that are modifing other flags.
+
+> Cheers,
+> Dave.
+> 
+
+Perhaps we always go by the directory. And then do an mv dir_DAX/foo dir_NODAX/foo
+to have an effective change. In hard links the first one at iget time before populating
+the inode cache takes affect. (And never change the flag on the fly)
+(Just brain storming here)
+
+Or perhaps another API?
+
+Thanks Dave
+Boaz
