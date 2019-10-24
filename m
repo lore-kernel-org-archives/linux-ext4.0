@@ -2,84 +2,69 @@ Return-Path: <SRS0=Lfng=YR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E0ACCA9EBD
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 10:19:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17153CA9EBC
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 10:30:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7D6D121A4A
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 10:19:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E9A492166E
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 10:30:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2407529AbfJXKTI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Oct 2019 06:19:08 -0400
-Received: from mx2.suse.de ([195.135.220.15]:34332 "EHLO mx1.suse.de"
+        id S2405551AbfJXKak (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Oct 2019 06:30:40 -0400
+Received: from mx2.suse.de ([195.135.220.15]:41766 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2407344AbfJXKTI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Oct 2019 06:19:08 -0400
+        id S2404801AbfJXKak (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Oct 2019 06:30:40 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id E22A5B507;
-        Thu, 24 Oct 2019 10:19:06 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id AB1CBBF14;
+        Thu, 24 Oct 2019 10:30:38 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 768411E4AA6; Thu, 24 Oct 2019 12:19:06 +0200 (CEST)
-Date:   Thu, 24 Oct 2019 12:19:06 +0200
+        id 492A61E4AA6; Thu, 24 Oct 2019 12:30:38 +0200 (CEST)
+Date:   Thu, 24 Oct 2019 12:30:38 +0200
 From:   Jan Kara <jack@suse.cz>
 To:     "Theodore Y. Ts'o" <tytso@mit.edu>
 Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
         stable@vger.kernel.org
-Subject: Re: [PATCH 03/22] ext4: Do not iput inode under running transaction
- in ext4_mkdir()
-Message-ID: <20191024101906.GM31271@quack2.suse.cz>
+Subject: Re: [PATCH 04/22] ext4: Fix credit estimate for final inode freeing
+Message-ID: <20191024103038.GN31271@quack2.suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
- <20191003220613.10791-3-jack@suse.cz>
- <20191021012105.GE6799@mit.edu>
+ <20191003220613.10791-4-jack@suse.cz>
+ <20191021010723.GB6799@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20191021012105.GE6799@mit.edu>
+In-Reply-To: <20191021010723.GB6799@mit.edu>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun 20-10-19 21:21:05, Theodore Y. Ts'o wrote:
-> On Fri, Oct 04, 2019 at 12:05:49AM +0200, Jan Kara wrote:
-> > When ext4_mkdir() fails to add entry into directory, it ends up dropping
-> > freshly created inode under the running transaction and thus inode
-> > truncation happens under that transaction. That breaks assumptions that
-> > ext4_evict_inode() does not get called from a transaction context
-> > (although I'm not aware of any real issue) and is completely
-> > unnecessary. Just stop the transaction before dropping inode reference.
-> > 
-> > CC: stable@vger.kernel.org
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+On Sun 20-10-19 21:07:23, Theodore Y. Ts'o wrote:
+> On Fri, Oct 04, 2019 at 12:05:50AM +0200, Jan Kara wrote:
+> > Estimate for the number of credits needed for final freeing of inode in
+> > ext4_evict_inode() was to small. We may modify 4 blocks (inode & sb for
+> > orphan deletion, bitmap & group descriptor for inode freeing) and not
+> > just 3.
 > 
-> If we call ext4_journal_stop(handle) before calling iput(inode),
-> there's a chance that we could crash with the inode with i_link_counts
-> == 0, but we won't have yet call ext4_evict_inode() to mark the inode
-> as free in the inode bitmap.  This would result in a inode leak.
-> 
-> Also, this isn't the only place where we can enter ext4_evict_inode()
-> with an active handle; the same situation arise in ext4_add_nondir(),
-> and for the same reason.
-> 
-> So I think the code is right as is.  Do you agree?
+> The modification for the inode should already be included in the
+> calculation for ext4_blocks_for_truncate(), no?  So we only need 3
+> extra blocks (sb, inode bitmap, and bg descriptor for the inode).
 
-Correct on both points. Thanks for spotting this! Now I still don't think
-that calling iput() with running transaction is good. It complicates
-matters with revoke record reservation but it is also fragile for other
-reasons - e.g. flush worker could find the allocated inode just before we
-will call iput() on it, try to write it out, block on starting transaction
-and we get a deadlock with inode_wait_for_writeback() inside evict(). Now
-inode *probably* won't be dirty yet by the time we get to ext4_add_nondir()
-or similar, that's why I say above it's just fragile, not an outright bug.
+Yes, but 'extra_credits' is also passed to ext4_xattr_delete_inode() and if
+that needs to restart a transaction, it needs to reserve enough for inode
+modification in that new transaction. This patch is actually a result of
+assertion checks I was getting with more accurate transaction restart
+handling implemented later in this series...
 
-So I'd still prefer to do the iput() outside of transaction and we can
-protect from leaking the inode in case of crash by adding it to orphan
-list. I'll update the patch. Thanks for review!
+I agree we can actually subtract 3 from
+ext4_blocks_for_truncate(inode)+extra_credits when starting the initial
+transaction as inode changes get double-accounted there. I can do that
+and I'll also update the changelog to explain this better.
 
 								Honza
 -- 
