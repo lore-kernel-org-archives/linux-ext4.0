@@ -2,134 +2,113 @@ Return-Path: <SRS0=Lfng=YR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D200BCA9EAF
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:35:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63E64CA9EBC
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:57:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A7AC621929
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:35:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F5F921D7B
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Oct 2019 21:57:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1571954231;
+	bh=Iflj5s90gCCWa+Mfxg9ykmv/6MqmPaOcygtr7/UlNBA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=rEaGgFbKaC4Yj40Dly28xEZNU6Q2zPgEl1aJv03hiFn9UXn+G2u1Gj+6enGlmDBLd
+	 R4mzZ0mqbMcjWKj7X2YgjfI696GlkYXpWgV9CAT9r8mbfJ23T2/1CGcucpHHJwgz/r
+	 jXeFjcGT/kXgMT6VeHPbf43CjTIxYuuKYv/JI6HU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729508AbfJXVfQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Oct 2019 17:35:16 -0400
-Received: from mail104.syd.optusnet.com.au ([211.29.132.246]:45749 "EHLO
-        mail104.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726386AbfJXVfQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Oct 2019 17:35:16 -0400
-Received: from dread.disaster.area (pa49-181-161-154.pa.nsw.optusnet.com.au [49.181.161.154])
-        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 7386F43F07B;
-        Fri, 25 Oct 2019 08:35:09 +1100 (AEDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1iNklA-0006Nu-K4; Fri, 25 Oct 2019 08:35:08 +1100
-Date:   Fri, 25 Oct 2019 08:35:08 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Boaz Harrosh <boaz@plexistor.com>
-Cc:     ira.weiny@intel.com, linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 0/5] Enable per-file/directory DAX operations
-Message-ID: <20191024213508.GB4614@dread.disaster.area>
-References: <20191020155935.12297-1-ira.weiny@intel.com>
- <b7849297-e4a4-aaec-9a64-2b481663588b@plexistor.com>
- <b883142c-ecfe-3c5b-bcd9-ebe4ff28d852@plexistor.com>
- <20191023221332.GE2044@dread.disaster.area>
- <efffc9e7-8948-a117-dc7f-e394e50606ab@plexistor.com>
- <20191024073446.GA4614@dread.disaster.area>
- <fb4f8be7-bca6-733a-7f16-ced6557f7108@plexistor.com>
+        id S1729804AbfJXV5K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Oct 2019 17:57:10 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57150 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729763AbfJXV5J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Oct 2019 17:57:09 -0400
+Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 93FF421D71;
+        Thu, 24 Oct 2019 21:57:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1571954228;
+        bh=Iflj5s90gCCWa+Mfxg9ykmv/6MqmPaOcygtr7/UlNBA=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=oB1L+riMoL5N7sC4SZNAem0Wu0oZ0ChBwrvhO/JgjhncHZvOmASCxFqtgWo8fGRux
+         iay4z5tusW3UjYF9XXR2K/PR6sW/mqz5f58HnhVQvcc2Lzm13cIQmwsXq6YrDOyX2t
+         yxDS8oybc72F9Yt5eb8ST+azvTaHkk4M/wbn3BfA=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, Satya Tangirala <satyat@google.com>,
+        Paul Crowley <paulcrowley@google.com>,
+        Paul Lawrence <paullawrence@google.com>,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: [PATCH v2 3/3] f2fs: add support for IV_INO_LBLK_64 encryption policies
+Date:   Thu, 24 Oct 2019 14:54:38 -0700
+Message-Id: <20191024215438.138489-4-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.24.0.rc0.303.g954a862665-goog
+In-Reply-To: <20191024215438.138489-1-ebiggers@kernel.org>
+References: <20191024215438.138489-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <fb4f8be7-bca6-733a-7f16-ced6557f7108@plexistor.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=G6BsK5s5 c=1 sm=1 tr=0
-        a=l3vQdJ1SkhDHY1nke8Lmag==:117 a=l3vQdJ1SkhDHY1nke8Lmag==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=XobE76Q3jBoA:10
-        a=7-415B0cAAAA:8 a=Qt9MKOuts2txuSNu_AQA:9 a=CjuIK1q_8ugA:10
-        a=biEYGPWJfzWAr4FL6Ov7:22
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Oct 24, 2019 at 05:05:45PM +0300, Boaz Harrosh wrote:
-> On 24/10/2019 10:34, Dave Chinner wrote:
-> > On Thu, Oct 24, 2019 at 05:31:13AM +0300, Boaz Harrosh wrote:
-> <>
-> > 
-> > The on disk DAX flag is inherited from the parent directory at
-> > create time. Hence an admin only need to set it on the data
-> > directory of the application when first configuring it, and
-> > everything the app creates will be configured for DAX access
-> > automatically.
-> > 
-> 
-> Yes I said that as well.
+From: Eric Biggers <ebiggers@google.com>
 
-You said "it must be set between creation and first write",
-stating the requirement for an on-disk flag to work. I'm
-decribing how that requirement is actually implemented. i.e. what
-you are stating is something we actually implemented years ago...
+f2fs inode numbers are stable across filesystem resizing, and f2fs inode
+and file logical block numbers are always 32-bit.  So f2fs can always
+support IV_INO_LBLK_64 encryption policies.  Wire up the needed
+fscrypt_operations to declare support.
 
-> > I also seem
-> > to recall that there was a need to take some vm level lock to really
-> > prevent page fault races, and that we can't safely take that in a
-> > safe combination with all the filesystem locks we need.
-> > 
-> 
-> We do not really care with page fault races in the Kernel as long
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/f2fs/super.c | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
 
-Oh yes we do. A write fault is a 2-part operation - a read fault to
-populate the pte and mapping, then a write fault (->page_mkwrite) to 
-do all the filesystem work needed to dirty the page and pte.
-
-The read fault sets up the state for the write fault, and if we
-change the aops between these two operations, then the
-->page_mkwrite implementation goes kaboom.
-
-This isn't a theoretical problem - this is exactly the race
-condition that lead us to disabling the flag in the first place.
-There is no serialisation between the read and write parts of the
-page fault iand the filesystem changing the DAX flag and ops vector,
-and so fixing this problem requires hold yet more locks in the
-filesystem path to completely lock out page fault processing on the
-inode's mapping.
-
-> as I protect the xarray access and these are protected well if we
-> take truncate locking. But we have a bigger problem that you pointed
-> out with the change of the operations vector pointer.
-> 
-> I was thinking about this last night. One way to do this is with
-> file-exclusive-lock. Correct me if I'm wrong:
-> file-exclusive-readwrite-lock means any other openers will fail and
-> if there are openers already the lock will fail. Which is what we want
-> no?
-
-The filesystem ioctls and page faults have no visibility of file
-locks.  They don't know and can't find out in a sane manner that an
-inode has a single -user- reference.
-
-And it introduces a new problem for any application using the
-fssetxattr() ioctl - accidentally not setting the S_DAX flag to be
-unmodified will now fail, and that means such a change breaks
-existing applications. Sure, you can say they are "buggy
-applications", but the fact is this user API change breaks them.
-
-Hence I don't think we can change the user API for setting/clearing
-this flag like this.
-
-Cheers,
-
-Dave.
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 1443cee158633..851ac95229263 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2308,13 +2308,27 @@ static bool f2fs_dummy_context(struct inode *inode)
+ 	return DUMMY_ENCRYPTION_ENABLED(F2FS_I_SB(inode));
+ }
+ 
++static bool f2fs_has_stable_inodes(struct super_block *sb)
++{
++	return true;
++}
++
++static void f2fs_get_ino_and_lblk_bits(struct super_block *sb,
++				       int *ino_bits_ret, int *lblk_bits_ret)
++{
++	*ino_bits_ret = 8 * sizeof(nid_t);
++	*lblk_bits_ret = 8 * sizeof(block_t);
++}
++
+ static const struct fscrypt_operations f2fs_cryptops = {
+-	.key_prefix	= "f2fs:",
+-	.get_context	= f2fs_get_context,
+-	.set_context	= f2fs_set_context,
+-	.dummy_context	= f2fs_dummy_context,
+-	.empty_dir	= f2fs_empty_dir,
+-	.max_namelen	= F2FS_NAME_LEN,
++	.key_prefix		= "f2fs:",
++	.get_context		= f2fs_get_context,
++	.set_context		= f2fs_set_context,
++	.dummy_context		= f2fs_dummy_context,
++	.empty_dir		= f2fs_empty_dir,
++	.max_namelen		= F2FS_NAME_LEN,
++	.has_stable_inodes	= f2fs_has_stable_inodes,
++	.get_ino_and_lblk_bits	= f2fs_get_ino_and_lblk_bits,
+ };
+ #endif
+ 
 -- 
-Dave Chinner
-david@fromorbit.com
+2.24.0.rc0.303.g954a862665-goog
+
