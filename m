@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D55B6CA9EBE
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Oct 2019 13:59:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4870BCA9EA0
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Oct 2019 14:01:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AC3FE222D3
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Oct 2019 13:59:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 20297222CB
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Oct 2019 14:01:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1572011948;
-	bh=DIjrOnr7kfdm4xYsvwdGU6zs/QWN6SAvm9PrhWuoFBM=;
+	s=default; t=1572012067;
+	bh=+F0pkVj7I5n+RegaCo0C9K6X3YZYlP9VUdh+KIbm/AQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=J2NvmUuOw3WjAUt2kD94gyZ53fH6cuqmi6AWMydD7yakvFE3fTbKaGiDHFCyEZzfx
-	 ITAc3lSySsm2ndfVPjs2jo2lmkBcIUAFthZ3rrL9LMJF1yaEz+HFtY8/+q11OoZAv6
-	 JdSHKcam9J21Dzu9mTNs9odmtNVTCuTJCXRkYbM0=
+	b=pKhO9UvPA3R8SKJyhNJv/oSKTDnbrUiSQImWaTwPULZV60qsLmsd38GZIToDxxqiz
+	 c1YZqtzgCCLIjRWdzk/X3Lq4IpV/e+Zno3o+SXAkJlXDYh09RYN++8GcrG+Y5E/Q+l
+	 XRnvg7Jp3t88yxubxuYZt+MA8QIRC/nIROvhIDbk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2632911AbfJYN7H (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Oct 2019 09:59:07 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54816 "EHLO mail.kernel.org"
+        id S2394915AbfJYOBC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Oct 2019 10:01:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:53892 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2632900AbfJYN7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 25 Oct 2019 09:59:06 -0400
+        id S2505586AbfJYN6a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 25 Oct 2019 09:58:30 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2B377222C9;
-        Fri, 25 Oct 2019 13:59:05 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6D88121E6F;
+        Fri, 25 Oct 2019 13:58:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1572011946;
-        bh=DIjrOnr7kfdm4xYsvwdGU6zs/QWN6SAvm9PrhWuoFBM=;
+        s=default; t=1572011910;
+        bh=+F0pkVj7I5n+RegaCo0C9K6X3YZYlP9VUdh+KIbm/AQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=V2JGhiQlwdDT6H2g0kk5UMlk+KAVvPTHNWaw+iKQFIXUwglgzGIY+FlR3/7tlb9jL
-         IqlaVQfFyPHm2T+H75YWI7r0bdKst6txAfDNTvynL2ikCc5PsXPzgp0oYC5YMUzQxw
-         PehtwyurH0VYeb/sE1TzorY4+FhGHiXxMNc9TJIY=
+        b=lmyIfyo9Kwo6QCcMXgvxYwfvwpR2D+eZYzt5NT6/gIZzGiBPlOdPZjHcRtmtJCxc5
+         X3I50nFe3qmkW3e7XSJGyCSYh9C1POftIG3YJc6jznM+UlJ0UMCevLImp96SedytmI
+         CqY9nHZBJ43EAFnhjNOWYBnpCGUBLL9RtSVe+/Zc=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chandan Rajendra <chandan@linux.ibm.com>,
         Harish Sriram <harish@linux.ibm.com>, Jan Kara <jack@suse.cz>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 11/16] jbd2: flush_descriptor(): Do not decrease buffer head's ref count
-Date:   Fri, 25 Oct 2019 09:58:35 -0400
-Message-Id: <20191025135842.25977-11-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 14/20] jbd2: flush_descriptor(): Do not decrease buffer head's ref count
+Date:   Fri, 25 Oct 2019 09:57:54 -0400
+Message-Id: <20191025135801.25739-14-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191025135842.25977-1-sashal@kernel.org>
-References: <20191025135842.25977-1-sashal@kernel.org>
+In-Reply-To: <20191025135801.25739-1-sashal@kernel.org>
+References: <20191025135801.25739-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -101,10 +101,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 705ae577882b1..8ad752c4bee31 100644
+index 3cd73059da9a4..bf2e164d341aa 100644
 --- a/fs/jbd2/revoke.c
 +++ b/fs/jbd2/revoke.c
-@@ -658,10 +658,8 @@ static void flush_descriptor(journal_t *journal,
+@@ -637,10 +637,8 @@ static void flush_descriptor(journal_t *journal,
  {
  	jbd2_journal_revoke_header_t *header;
  
