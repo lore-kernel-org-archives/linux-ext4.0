@@ -2,41 +2,42 @@ Return-Path: <SRS0=J9+t=YW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F020C47E49
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55C92CA9EC6
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 56D112173E
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1EDF3208E3
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1572381836;
-	bh=PO9FWnMviEuNb31RBWbFM6qoAGbqLACtBOE0D5G9jSY=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=wxbfTT2a/EWpRIElr1RFkPqcc8jYfYxEo/a3PtW0ccxQu5h9DYQ8GZ06s2hbuvbhS
-	 JFHM1Npy7qVFh9OV0IATxWXfYNBuOijq70GTzbuRSJwO1PZHA3zZY3fYX9Gh2gGJ0B
-	 aMORrWu+tLk9vISyKOS+3WNsIR/sRhKoAASlQ+yI=
+	s=default; t=1572381838;
+	bh=p5iqeRBG0wAn8vG31RO8K0J2sdKd+zlwDuiiVCe/arU=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=fvLVyEmUjAWBu7Wfj8bAXQk3DHoI6j2YdDGU/CPUrib1dsuiNSZIlchNlMgAh2v0Q
+	 uRvm96y0vidxuzrwCHLafMCa2rFkl/slWGhKWelHMINqGffI+ByeW3Wshf7wtCmfA5
+	 Qxy9UTclmKQb98Oni3Mjs6HcmK97Fi/28dgeoVWk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727408AbfJ2Unz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Oct 2019 16:43:55 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34732 "EHLO mail.kernel.org"
+        id S1728237AbfJ2Un5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Oct 2019 16:43:57 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34752 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725840AbfJ2Unz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Oct 2019 16:43:55 -0400
+        id S1728156AbfJ2Un5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Oct 2019 16:43:57 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B1E132087F;
-        Tue, 29 Oct 2019 20:43:54 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6F32721835;
+        Tue, 29 Oct 2019 20:43:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1572381835;
-        bh=PO9FWnMviEuNb31RBWbFM6qoAGbqLACtBOE0D5G9jSY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=tXVpNGPBJfZ2HxnE4AwO/rpSHRictz/rj27j8Txw6/U7VlJMoTBH9fL5Cn/eP4RI8
-         vfqiLz4derg9gYJzw1E4PMXNQf9Tp3CgrcCbyjjmlqTxM9+zOp6SUzKO+QPaJYrhTd
-         32TVj4HxDWc0jneJIVgxG8SvQxHdfjPbW9H5Eg34=
+        s=default; t=1572381836;
+        bh=p5iqeRBG0wAn8vG31RO8K0J2sdKd+zlwDuiiVCe/arU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=fqLabC+4M1549VLoHu+fT+YMZrTGGCI6h26q23IVXUV+l623EaOFPGHWTbPJw6rZQ
+         z6+Hb6lOhwnAuiq9iVMCCKczLZk3npUaZaH86ZnpoxrQvfeVOOuYLC9FnrJvJznCMQ
+         fH9S1BHEqrrcJqKGPANaSpjGiCl63Sl7zkWvb3wE=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -45,10 +46,12 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Theodore Ts'o <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [PATCH 0/4] statx: expose the fs-verity bit
-Date:   Tue, 29 Oct 2019 13:41:37 -0700
-Message-Id: <20191029204141.145309-1-ebiggers@kernel.org>
+Subject: [PATCH 4/4] docs: fs-verity: mention statx() support
+Date:   Tue, 29 Oct 2019 13:41:41 -0700
+Message-Id: <20191029204141.145309-5-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.0.rc1.363.gb1bccd3e3d-goog
+In-Reply-To: <20191029204141.145309-1-ebiggers@kernel.org>
+References: <20191029204141.145309-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -56,31 +59,35 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patchset exposes the verity bit (a.k.a. FS_VERITY_FL) via statx().
+From: Eric Biggers <ebiggers@google.com>
 
-This is useful because it allows applications to check whether a file is
-a verity file without opening it.  Opening a verity file can be
-expensive because the fsverity_info is set up on open, which involves
-parsing metadata and optionally verifying a cryptographic signature.
+Document that the statx() system call can now be used to check whether a
+file is a verity file.
 
-This is analogous to how various other bits are exposed through both
-FS_IOC_GETFLAGS and statx(), e.g. the encrypt bit.
-
-This patchset applies to v5.4-rc5.
-
-Eric Biggers (4):
-  statx: define STATX_ATTR_VERITY
-  ext4: support STATX_ATTR_VERITY
-  f2fs: support STATX_ATTR_VERITY
-  docs: fs-verity: mention statx() support
-
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
  Documentation/filesystems/fsverity.rst | 8 ++++++++
- fs/ext4/inode.c                        | 5 ++++-
- fs/f2fs/file.c                         | 5 ++++-
- include/linux/stat.h                   | 3 ++-
- include/uapi/linux/stat.h              | 2 +-
- 5 files changed, 19 insertions(+), 4 deletions(-)
+ 1 file changed, 8 insertions(+)
 
+diff --git a/Documentation/filesystems/fsverity.rst b/Documentation/filesystems/fsverity.rst
+index 42a0b6dd9e0b68..3355377a24398d 100644
+--- a/Documentation/filesystems/fsverity.rst
++++ b/Documentation/filesystems/fsverity.rst
+@@ -226,6 +226,14 @@ To do so, check for FS_VERITY_FL (0x00100000) in the returned flags.
+ The verity flag is not settable via FS_IOC_SETFLAGS.  You must use
+ FS_IOC_ENABLE_VERITY instead, since parameters must be provided.
+ 
++statx
++-----
++
++Since Linux v5.5, the statx() system call sets STATX_ATTR_VERITY if
++the file has fs-verity enabled.  This can perform better than
++FS_IOC_GETFLAGS and FS_IOC_MEASURE_VERITY because it doesn't require
++opening the file, and opening verity files can be expensive.
++
+ Accessing verity files
+ ======================
+ 
 -- 
 2.24.0.rc1.363.gb1bccd3e3d-goog
 
