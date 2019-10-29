@@ -2,111 +2,108 @@ Return-Path: <SRS0=J9+t=YW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9EA65CA9EAE
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:44:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CABC4CA9EC4
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 21:36:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6D6B8208E3
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:44:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1572381841;
-	bh=bA1Nt9TWZvija+pWQm/jvZD5pLPHccs35Yz1RfF2GZA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=EYP7j4NJg98U3YcE/m/arBTJRdCaU42NPknEkM+as1aSK9gvjrnU+rxNLixRg0J+w
-	 oHOHrmfrJV9J57SAFUm8RMmXJH74+9CqzlEhWpT7lkg4ZNFZGQXL3sf7shJ+EXsNox
-	 wpgRV1du4LNQhqOyGBhZ/jRSRi5+csDQ/Mdcohpc=
+	by mail.kernel.org (Postfix) with ESMTP id A5A9320659
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 21:36:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727783AbfJ2Un4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Oct 2019 16:43:56 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34740 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726636AbfJ2Un4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Oct 2019 16:43:56 -0400
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 27ABC21721;
-        Tue, 29 Oct 2019 20:43:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1572381835;
-        bh=bA1Nt9TWZvija+pWQm/jvZD5pLPHccs35Yz1RfF2GZA=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rd7PXg6zwRW6AzBcDukG70kVXPnDFY/Yp1M1Yi465IxdRteBn/mWEGk2RcSAX0bx9
-         zel1es+30DpGpOmI1ko07QXwQLI0WJLYWrVJ486au+twTpg7V/PgIwyKBDURx3jDP4
-         2oMAidPnxs9Tw9ec8wOtrlajmDWE6C9PK+eKYyUs=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-api@vger.kernel.org,
-        David Howells <dhowells@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>
-Subject: [PATCH 1/4] statx: define STATX_ATTR_VERITY
-Date:   Tue, 29 Oct 2019 13:41:38 -0700
-Message-Id: <20191029204141.145309-2-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.24.0.rc1.363.gb1bccd3e3d-goog
-In-Reply-To: <20191029204141.145309-1-ebiggers@kernel.org>
-References: <20191029204141.145309-1-ebiggers@kernel.org>
+        id S1728995AbfJ2VgA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Oct 2019 17:36:00 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48998 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728437AbfJ2VgA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Oct 2019 17:36:00 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-98.corp.google.com [104.133.0.98] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x9TLZrLY012252
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 29 Oct 2019 17:35:54 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 6A96E420456; Tue, 29 Oct 2019 17:35:53 -0400 (EDT)
+Date:   Tue, 29 Oct 2019 17:35:53 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Xiaohui1 Li =?utf-8?B?5p2O5pmT6L6J?= <lixiaohui1@xiaomi.com>
+Cc:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "harshadshirwadkar@gmail.com" <harshadshirwadkar@gmail.com>
+Subject: Re: [PATCH v3 09/13] ext4: fast-commit commit path changes
+Message-ID: <20191029213553.GD4404@mit.edu>
+References: <1571900042725.99617@xiaomi.com>
+ <20191024201800.GE1124@mit.edu>
+ <1572349386604.43878@xiaomi.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <1572349386604.43878@xiaomi.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Tue, Oct 29, 2019 at 11:43:54AM +0000, Xiaohui1 Li 李晓辉 wrote:
+> > We don't actually have to do this.  Strictly speaking, we only have to
+> > write out the specific inode being fsync'ed, or the specific inode for
+> > which ext4_nfs_commit_metdata() has been called.  For an fsync()
+> > workload, especially one where for example, we might have hundreds of
+> > modified inodes, all of which are fc-eligible --- for example, because
+> > a kernel build is happening in the background, and a single file which
+> > is being fsync'ed --- for example because the programmer has just
+> > saved a source file in emacs ---- we only need to include that single
+> > inode in the fast commit.  Including *all* of the inodes in the
+> > i_fc_list in the fast commit, is wasted effort, especially since the
+> > inodes in question will be committed within the next 5 seconds.
+> 
+> you said only need to include that single inode in the fast commit.
+> do you mean that create a fast-commit transaction which only need to
+> commit data and metadata of the specific inode ?  but in your last
+> email, you says "we can't just separate out some of the handles from
+> others in one transation".
+> 
+> so if we just only include that single inode(ie: being fsync'ed) in
+> the fast commit, is it means that in the ext4 traditional way，
+> metadata of this single inode being fsync'ed need to be mixed with
+> other inodes not being fsync'ed (may doing buffer write) together in
+> one transaction to be flushed to disk both together because of
+> entagled dependencies you says in your last reply email.
+> 
+> but when fast-commit patches applied, how the metadata and data of
+> this single inode being fsync'ed can be extracted from all files
+> metadata changes during one time range ？
 
-Add a statx attribute bit STATX_ATTR_VERITY which will be set if the
-file has fs-verity enabled.  This is the statx() equivalent of
-FS_VERITY_FL which is returned by FS_IOC_GETFLAGS.
+Did you read the iJournaling Usenix paper[1] which I referenced
+earlier?  It's described in there.
 
-This is useful because it allows applications to check whether a file is
-a verity file without opening it.  Opening a verity file can be
-expensive because the fsverity_info is set up on open, which involves
-parsing metadata and optionally verifying a cryptographic signature.
+[1] https://www.usenix.org/conference/atc17/technical-sessions/presentation/park
 
-This is analogous to how various other bits are exposed through both
-FS_IOC_GETFLAGS and statx(), e.g. the encrypt bit.
+The trick is that we track whether the inode has changes which we
+can't represent in the fast commit "logical journal".  In the logical
+journal, we record changes since the last full commit, not as the full
+physical metadata block, but just bits of the logical metadata that
+have changed.  If that inode has changed in ways that we can't
+represent in the fast commit journal, then we do a normal full commit.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- include/linux/stat.h      | 3 ++-
- include/uapi/linux/stat.h | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+So we avoid entangled dependencies in two ways .  First of all, we
+only journal the logical change.  Hence, if there is a change in
+another part of the metadata block (say, another inode in the inode
+table) there won't be an issue, since we only update that one inode.
+Secondly, if the inode has some entangelements either with other
+inodes, or (b) changes in the inode which we can't reflect in the fast
+commit log, then fall back to doing a full commit.
 
-diff --git a/include/linux/stat.h b/include/linux/stat.h
-index 765573dc17d659..528c4baad09146 100644
---- a/include/linux/stat.h
-+++ b/include/linux/stat.h
-@@ -33,7 +33,8 @@ struct kstat {
- 	 STATX_ATTR_IMMUTABLE |				\
- 	 STATX_ATTR_APPEND |				\
- 	 STATX_ATTR_NODUMP |				\
--	 STATX_ATTR_ENCRYPTED				\
-+	 STATX_ATTR_ENCRYPTED |				\
-+	 STATX_ATTR_VERITY				\
- 	 )/* Attrs corresponding to FS_*_FL flags */
- 	u64		ino;
- 	dev_t		dev;
-diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-index 7b35e98d3c58b1..ad80a5c885d598 100644
---- a/include/uapi/linux/stat.h
-+++ b/include/uapi/linux/stat.h
-@@ -167,8 +167,8 @@ struct statx {
- #define STATX_ATTR_APPEND		0x00000020 /* [I] File is append-only */
- #define STATX_ATTR_NODUMP		0x00000040 /* [I] File is not to be dumped */
- #define STATX_ATTR_ENCRYPTED		0x00000800 /* [I] File requires key to decrypt in fs */
--
- #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
-+#define STATX_ATTR_VERITY		0x00100000 /* [I] Verity protected file */
- 
- 
- #endif /* _UAPI_LINUX_STAT_H */
--- 
-2.24.0.rc1.363.gb1bccd3e3d-goog
+So basically, we only deal with the simple, common cases, where it's
+easy to log changes to the fast commit log.  Now, those changes are
+also logged in the normal physical commit, so once we do a full
+commit, all of the entries in the fast commit log are no longer needed
+--- the fast commit just contains the small, simple changes since the
+last full commit.
 
+Cheers,
+
+						- Ted
