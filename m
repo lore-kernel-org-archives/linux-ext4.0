@@ -4,40 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 55C92CA9EC6
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AAA1CCA9EC9
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1EDF3208E3
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 716A021882
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Oct 2019 20:43:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1572381838;
-	bh=p5iqeRBG0wAn8vG31RO8K0J2sdKd+zlwDuiiVCe/arU=;
+	s=default; t=1572381839;
+	bh=6uKinpfPcLRaz3evDg6XWZp9GRM69VU/7RKl098ZYrc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=fvLVyEmUjAWBu7Wfj8bAXQk3DHoI6j2YdDGU/CPUrib1dsuiNSZIlchNlMgAh2v0Q
-	 uRvm96y0vidxuzrwCHLafMCa2rFkl/slWGhKWelHMINqGffI+ByeW3Wshf7wtCmfA5
-	 Qxy9UTclmKQb98Oni3Mjs6HcmK97Fi/28dgeoVWk=
+	b=t4qUif605R7VueSH0X0JDP5gyGp9vqKTfZ65McDfaKu5CLtQPFYSmoWmHsllWp3O+
+	 wjFE/HXGiI9giv2aeh5eSLcGHK5eZIAm+TqX/5yv9IP3XS+7xqR5fcixAtpKF1fV4E
+	 9Hd622Q3sgF2nXcMKQKVVlrGOQMm/lrrkxt0umiA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728237AbfJ2Un5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1728191AbfJ2Un5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 29 Oct 2019 16:43:57 -0400
 Received: from mail.kernel.org ([198.145.29.99]:34752 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728156AbfJ2Un5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Oct 2019 16:43:57 -0400
+        id S1725840AbfJ2Un4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Oct 2019 16:43:56 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6F32721835;
-        Tue, 29 Oct 2019 20:43:56 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 928D521479;
+        Tue, 29 Oct 2019 20:43:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1572381836;
-        bh=p5iqeRBG0wAn8vG31RO8K0J2sdKd+zlwDuiiVCe/arU=;
+        s=default; t=1572381835;
+        bh=6uKinpfPcLRaz3evDg6XWZp9GRM69VU/7RKl098ZYrc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=fqLabC+4M1549VLoHu+fT+YMZrTGGCI6h26q23IVXUV+l623EaOFPGHWTbPJw6rZQ
-         z6+Hb6lOhwnAuiq9iVMCCKczLZk3npUaZaH86ZnpoxrQvfeVOOuYLC9FnrJvJznCMQ
-         fH9S1BHEqrrcJqKGPANaSpjGiCl63Sl7zkWvb3wE=
+        b=F1vqZRv2eFon0GtBrubS3F8e3n4v3lX+Jc7jDQg+EZxKCGfEixUVBHBkysbExqltN
+         roBhndZO2TwSgAGdgGQDvkeehTBKaAmzZ3De6S2jApC8pcFCkEdmVptT1PczW0qk0K
+         jbi9gPsqlqJrizoOxtRc9vp5wHXzAHRlP9oxJ79A=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -46,9 +46,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Theodore Ts'o <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         Victor Hsieh <victorhsieh@google.com>
-Subject: [PATCH 4/4] docs: fs-verity: mention statx() support
-Date:   Tue, 29 Oct 2019 13:41:41 -0700
-Message-Id: <20191029204141.145309-5-ebiggers@kernel.org>
+Subject: [PATCH 2/4] ext4: support STATX_ATTR_VERITY
+Date:   Tue, 29 Oct 2019 13:41:39 -0700
+Message-Id: <20191029204141.145309-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.0.rc1.363.gb1bccd3e3d-goog
 In-Reply-To: <20191029204141.145309-1-ebiggers@kernel.org>
 References: <20191029204141.145309-1-ebiggers@kernel.org>
@@ -61,33 +61,35 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Document that the statx() system call can now be used to check whether a
-file is a verity file.
+Set the STATX_ATTR_VERITY bit when the statx() system call is used on a
+verity file on ext4.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- Documentation/filesystems/fsverity.rst | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/ext4/inode.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/filesystems/fsverity.rst b/Documentation/filesystems/fsverity.rst
-index 42a0b6dd9e0b68..3355377a24398d 100644
---- a/Documentation/filesystems/fsverity.rst
-+++ b/Documentation/filesystems/fsverity.rst
-@@ -226,6 +226,14 @@ To do so, check for FS_VERITY_FL (0x00100000) in the returned flags.
- The verity flag is not settable via FS_IOC_SETFLAGS.  You must use
- FS_IOC_ENABLE_VERITY instead, since parameters must be provided.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 516faa280ceda8..a7ca6517798008 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5717,12 +5717,15 @@ int ext4_getattr(const struct path *path, struct kstat *stat,
+ 		stat->attributes |= STATX_ATTR_IMMUTABLE;
+ 	if (flags & EXT4_NODUMP_FL)
+ 		stat->attributes |= STATX_ATTR_NODUMP;
++	if (flags & EXT4_VERITY_FL)
++		stat->attributes |= STATX_ATTR_VERITY;
  
-+statx
-+-----
-+
-+Since Linux v5.5, the statx() system call sets STATX_ATTR_VERITY if
-+the file has fs-verity enabled.  This can perform better than
-+FS_IOC_GETFLAGS and FS_IOC_MEASURE_VERITY because it doesn't require
-+opening the file, and opening verity files can be expensive.
-+
- Accessing verity files
- ======================
+ 	stat->attributes_mask |= (STATX_ATTR_APPEND |
+ 				  STATX_ATTR_COMPRESSED |
+ 				  STATX_ATTR_ENCRYPTED |
+ 				  STATX_ATTR_IMMUTABLE |
+-				  STATX_ATTR_NODUMP);
++				  STATX_ATTR_NODUMP |
++				  STATX_ATTR_VERITY);
  
+ 	generic_fillattr(inode, stat);
+ 	return 0;
 -- 
 2.24.0.rc1.363.gb1bccd3e3d-goog
 
