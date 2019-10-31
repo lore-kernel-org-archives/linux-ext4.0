@@ -2,66 +2,98 @@ Return-Path: <SRS0=7edt=YY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4543ACA9EC3
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Oct 2019 09:30:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98DFBCA9EC3
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Oct 2019 10:39:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0EFCF2086D
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Oct 2019 09:30:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EBE920862
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Oct 2019 10:39:30 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=yandex-team.ru header.i=@yandex-team.ru header.b="kDteKn5X"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726982AbfJaJaO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 31 Oct 2019 05:30:14 -0400
-Received: from szxga07-in.huawei.com ([45.249.212.35]:51782 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726776AbfJaJaO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 31 Oct 2019 05:30:14 -0400
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id DFFB398FA1190C937041;
-        Thu, 31 Oct 2019 17:30:11 +0800 (CST)
-Received: from [10.134.22.195] (10.134.22.195) by smtp.huawei.com
- (10.3.19.204) with Microsoft SMTP Server (TLS) id 14.3.439.0; Thu, 31 Oct
- 2019 17:30:01 +0800
-Subject: Re: [PATCH v2] ext4: bio_alloc with __GFP_DIRECT_RECLAIM never fails
-To:     Gao Xiang <gaoxiang25@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
-        "Andreas Dilger" <adilger.kernel@dilger.ca>
-CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        "Ritesh Harjani" <riteshh@linux.ibm.com>
-References: <20191030161244.GB3953@hsiangkao-HP-ZHAN-66-Pro-G1>
- <20191031092315.139267-1-gaoxiang25@huawei.com>
-From:   Chao Yu <yuchao0@huawei.com>
-Message-ID: <5f46684a-a435-1e15-0054-b708edfce487@huawei.com>
-Date:   Thu, 31 Oct 2019 17:29:58 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Gecko/20100101
- Thunderbird/52.9.1
-MIME-Version: 1.0
-In-Reply-To: <20191031092315.139267-1-gaoxiang25@huawei.com>
-Content-Type: text/plain; charset="windows-1252"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.134.22.195]
-X-CFilter-Loop: Reflected
+        id S1727230AbfJaKj3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 31 Oct 2019 06:39:29 -0400
+Received: from forwardcorp1j.mail.yandex.net ([5.45.199.163]:39044 "EHLO
+        forwardcorp1j.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726867AbfJaKj3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 31 Oct 2019 06:39:29 -0400
+Received: from mxbackcorp1j.mail.yandex.net (mxbackcorp1j.mail.yandex.net [IPv6:2a02:6b8:0:1619::162])
+        by forwardcorp1j.mail.yandex.net (Yandex) with ESMTP id 767022E0DC6;
+        Thu, 31 Oct 2019 13:39:26 +0300 (MSK)
+Received: from sas2-62907d92d1d8.qloud-c.yandex.net (sas2-62907d92d1d8.qloud-c.yandex.net [2a02:6b8:c08:b895:0:640:6290:7d92])
+        by mxbackcorp1j.mail.yandex.net (nwsmtp/Yandex) with ESMTP id 55UrcCtsWr-dPiqKoIV;
+        Thu, 31 Oct 2019 13:39:26 +0300
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex-team.ru; s=default;
+        t=1572518366; bh=g3jMoOgCIV+oJdbBwMXSmMefvpQfsP/udePjE7IgkA0=;
+        h=Message-Id:Date:Subject:To:From:Cc;
+        b=kDteKn5X2Jv9cxfWOVFnCYgvL8M2nBvClu1WnYrbyCxh7exoJKQla+hEdUVbPGJ5M
+         b8rJ57LHsL4v18r0+kw7G2gWo4setPYN36f9YGWFrE5QyDQYXMg/gSUbihFLkVLtWx
+         FT4A9SZxBKBE0NaSQvbmi5C9WEgF0kYhuKsbIGjM=
+Authentication-Results: mxbackcorp1j.mail.yandex.net; dkim=pass header.i=@yandex-team.ru
+Received: from 95.108.174.193-red.dhcp.yndx.net (95.108.174.193-red.dhcp.yndx.net [95.108.174.193])
+        by sas2-62907d92d1d8.qloud-c.yandex.net (nwsmtp/Yandex) with ESMTPSA id ab6iIZdbUM-dPVKTtPu;
+        Thu, 31 Oct 2019 13:39:25 +0300
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (Client certificate not present)
+From:   Dmitry Monakhov <dmonakhov@openvz.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, jack@suse.cz,
+        Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>,
+        Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Subject: [PATCH 1/2] fs/quota: fix livelock in dquot_writeback_dquots
+Date:   Thu, 31 Oct 2019 10:39:19 +0000
+Message-Id: <20191031103920.3919-1-dmonakhov@openvz.org>
+X-Mailer: git-send-email 2.18.0
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2019/10/31 17:23, Gao Xiang wrote:
-> Similar to [1] [2], bio_alloc with __GFP_DIRECT_RECLAIM flags
-> guarantees bio allocation under some given restrictions, as
-> stated in block/bio.c and fs/direct-io.c So here it's ok to
-> not check for NULL value from bio_alloc().
-> 
-> [1] https://lore.kernel.org/r/20191030035518.65477-1-gaoxiang25@huawei.com
-> [2] https://lore.kernel.org/r/20190830162812.GA10694@infradead.org
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: Ritesh Harjani <riteshh@linux.ibm.com>
-> Cc: Chao Yu <yuchao0@huawei.com>
-> Signed-off-by: Gao Xiang <gaoxiang25@huawei.com>
+From: Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>
 
-Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Write only quotas which are dirty at entry.
 
-Thanks,
+
+XFSTEST: https://github.com/dmonakhov/xfstests/commit/b10ad23566a5bf75832a6f500e1236084083cddc
+
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Signed-off-by: Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>
+---
+ fs/quota/dquot.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 26812a6..b492b9e 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -622,7 +622,7 @@ EXPORT_SYMBOL(dquot_scan_active);
+ /* Write all dquot structures to quota files */
+ int dquot_writeback_dquots(struct super_block *sb, int type)
+ {
+-	struct list_head *dirty;
++	struct list_head dirty;
+ 	struct dquot *dquot;
+ 	struct quota_info *dqopt = sb_dqopt(sb);
+ 	int cnt;
+@@ -636,9 +636,10 @@ int dquot_writeback_dquots(struct super_block *sb, int type)
+ 		if (!sb_has_quota_active(sb, cnt))
+ 			continue;
+ 		spin_lock(&dq_list_lock);
+-		dirty = &dqopt->info[cnt].dqi_dirty_list;
+-		while (!list_empty(dirty)) {
+-			dquot = list_first_entry(dirty, struct dquot,
++		/* Move list away to avoid livelock. */
++		list_replace_init(&dqopt->info[cnt].dqi_dirty_list, &dirty);
++		while (!list_empty(&dirty)) {
++			dquot = list_first_entry(&dirty, struct dquot,
+ 						 dq_dirty);
+ 
+ 			WARN_ON(!test_bit(DQ_ACTIVE_B, &dquot->dq_flags));
+-- 
+2.7.4
+
