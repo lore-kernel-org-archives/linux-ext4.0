@@ -2,66 +2,93 @@ Return-Path: <SRS0=Qk7k=Y4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9236CA9EA0
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:22:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63060CA9ECF
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B71F5217F4
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:22:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D951C21D81
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:12 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="YdZHKJSJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727838AbfKDLWe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Nov 2019 06:22:34 -0500
-Received: from mx2.suse.de ([195.135.220.15]:56716 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726364AbfKDLWe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 4 Nov 2019 06:22:34 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id D572BB301;
-        Mon,  4 Nov 2019 11:22:32 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 5E9451E43DA; Mon,  4 Nov 2019 12:22:32 +0100 (CET)
-Date:   Mon, 4 Nov 2019 12:22:32 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 0/19 v3] ext4: Fix transaction overflow due to revoke
- descriptors
-Message-ID: <20191104112232.GD22379@quack2.suse.cz>
-References: <20191003215523.7313-1-jack@suse.cz>
- <20191104033252.GC12046@mit.edu>
+        id S1728844AbfKDL4M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Nov 2019 06:56:12 -0500
+Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21984 "EHLO
+        sender2.zoho.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728827AbfKDL4M (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2019 06:56:12 -0500
+ARC-Seal: i=1; a=rsa-sha256; t=1572867662; cv=none; 
+        d=zoho.com.cn; s=zohoarc; 
+        b=G8ajjM/9vPkVyno6masR4w8XKJNd0qlXdvNBd1P4UWsyM5poeGOQeYko5u+ooNDGiH+G7ziT0UbjeipFVSOuYJrQkXqYOLCe6/UfgH9VLG8ZnnwsxvhwKvyWlBaakKpH45rlD04iRfq5jX3tmkZu+xl7ybGwOgICfuzvtNlWg4k=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
+        t=1572867662; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
+        bh=LcQzffD0A2m7LCciRN8lyQm615vt2s14ntIlVKAf5zA=; 
+        b=PiuPqrqqGeyuOv5I2t1MQAITGwLk3b55LFeEqSzIZEJ21dOadhxMlg1biEFr7SMsjxleys2gPwOgMz6wLN6crjGlWcmjRRukRxpdppBvnGXV04/DfOMecIjtJzei0cfuNSh3jHcjXHIUKccrjwNkzaWVHkXBwuztM8HgHSEtYLA=
+ARC-Authentication-Results: i=1; mx.zoho.com.cn;
+        dkim=pass  header.i=mykernel.net;
+        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
+        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1572867662;
+        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
+        h=From:To:Cc:Message-ID:Subject:Date:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Content-Type;
+        l=913; bh=LcQzffD0A2m7LCciRN8lyQm615vt2s14ntIlVKAf5zA=;
+        b=YdZHKJSJJVhhqwiumc+1t9v0leVkEx8k9yacdyCClBH8OS0K5FYie1pEtZpDd9XS
+        Lpt5SNTmBLcSWcw+pOUxuZPA+z1e0GB/w1Q1130ENj+Q5/kkgLsdt1qhgtsnVC7LiiI
+        tjI9ANefV9O5Uz+np2+vr+BL39RAjS7QIrRXbbWc=
+Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
+        with SMTPS id 1572867661068351.7134233309414; Mon, 4 Nov 2019 19:41:01 +0800 (CST)
+From:   Chengguang Xu <cgxu519@mykernel.net>
+To:     jack@suse.com
+Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
+Message-ID: <20191104114036.9893-3-cgxu519@mykernel.net>
+Subject: [PATCH 3/5] ext2: skip unnecessary operations in ext2_try_to_allocate()
+Date:   Mon,  4 Nov 2019 19:40:34 +0800
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20191104114036.9893-1-cgxu519@mykernel.net>
+References: <20191104114036.9893-1-cgxu519@mykernel.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191104033252.GC12046@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: quoted-printable
+X-ZohoCNMailClient: External
+Content-Type: text/plain; charset=utf8
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ted!
+Move 'repeat' tag to proper place so that we can
+skip unnecessary operations in ext2_try_to_allocate().
 
-On Sun 03-11-19 22:32:52, Theodore Y. Ts'o wrote:
-> I believe that I'm waiting for the v4 version of this series with some
-> pending fixes that you are planning on making.  Is that correct?
+Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
+---
+ fs/ext2/balloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Ah, good that you pinged me because I have the series ready but I was
-waiting for your answers to some explanations... In particular discussion
-around patch 3 (move iput() outside of transaction), patch 15 (dropping of
-j_state_lock around t_tid load), patch 18 (possible large overreservation
-of descriptor blocks due to rounding), and 21 (change of on-disk format for
-revoke descriptors).
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 994a1fd18e93..a0c22e166682 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -696,7 +696,6 @@ ext2_try_to_allocate(struct super_block *sb, int group,
+=20
+ =09BUG_ON(start > EXT2_BLOCKS_PER_GROUP(sb));
+=20
+-repeat:
+ =09if (grp_goal < 0) {
+ =09=09grp_goal =3D find_next_usable_block(start, bitmap_bh, end);
+ =09=09if (grp_goal < 0)
+@@ -713,6 +712,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
+ =09}
+ =09start =3D grp_goal;
+=20
++repeat:
+ =09if (ext2_set_bit_atomic(sb_bgl_lock(EXT2_SB(sb), group), grp_goal,
+ =09=09=09       =09=09=09=09bitmap_bh->b_data)) {
+ =09=09/*
+--=20
+2.20.1
 
-Out of these I probably find the overreservation due to rounding the most
-serious and easy enough to handle so I'll fix that and then resend the
-series unless you raise your objection also in some other case.
 
-								Honza
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
