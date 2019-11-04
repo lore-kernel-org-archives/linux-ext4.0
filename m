@@ -7,49 +7,48 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63060CA9ECF
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79AEECA9EA0
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D951C21D81
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1957F21D7F
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="YdZHKJSJ"
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="gxwq13VV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728844AbfKDL4M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Nov 2019 06:56:12 -0500
-Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21984 "EHLO
+        id S1728848AbfKDL4N (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Nov 2019 06:56:13 -0500
+Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21922 "EHLO
         sender2.zoho.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728827AbfKDL4M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2019 06:56:12 -0500
-ARC-Seal: i=1; a=rsa-sha256; t=1572867662; cv=none; 
+        with ESMTP id S1727663AbfKDL4N (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2019 06:56:13 -0500
+X-Greylist: delayed 906 seconds by postgrey-1.27 at vger.kernel.org; Mon, 04 Nov 2019 06:56:09 EST
+ARC-Seal: i=1; a=rsa-sha256; t=1572867659; cv=none; 
         d=zoho.com.cn; s=zohoarc; 
-        b=G8ajjM/9vPkVyno6masR4w8XKJNd0qlXdvNBd1P4UWsyM5poeGOQeYko5u+ooNDGiH+G7ziT0UbjeipFVSOuYJrQkXqYOLCe6/UfgH9VLG8ZnnwsxvhwKvyWlBaakKpH45rlD04iRfq5jX3tmkZu+xl7ybGwOgICfuzvtNlWg4k=
+        b=rY0x6zTB1/c6EuqPvJdRCRxK2Zmh5ahjD6H0UhscfMqrQgG/JnFwr/GD1YbAEUEYWSTYscE/j4tV/afSiL3HGYLWZVU4EtP9oPH4FfoWge1R2VCn/+hxyAhVUVCOTVgp/07DZP8VYCNdcfTwYIC45tcfApYyfN+ExR38mnvPzG8=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1572867662; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
-        bh=LcQzffD0A2m7LCciRN8lyQm615vt2s14ntIlVKAf5zA=; 
-        b=PiuPqrqqGeyuOv5I2t1MQAITGwLk3b55LFeEqSzIZEJ21dOadhxMlg1biEFr7SMsjxleys2gPwOgMz6wLN6crjGlWcmjRRukRxpdppBvnGXV04/DfOMecIjtJzei0cfuNSh3jHcjXHIUKccrjwNkzaWVHkXBwuztM8HgHSEtYLA=
+        t=1572867659; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:MIME-Version:Message-ID:Subject:To; 
+        bh=m6R7At4+C/REK1yLQtQ2YRUko1s/FbpG1OERsvSbHl0=; 
+        b=JszRGn+O6CaXfIjFC1tCBx04qZqb7g1MSdQVik8EunfaP5Uti7c9V2jNAasnbsxxUjecoGNe+yg9cltkb8ckhCWpxMLrM1TypURh5ZUZVydQxGM7hwSzSqVKzyvq4Z9wBqKMZ9vYsAEbdBrtvRQKN5/BZ2fpi+ctcbJpuTB431s=
 ARC-Authentication-Results: i=1; mx.zoho.com.cn;
         dkim=pass  header.i=mykernel.net;
         spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
         dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1572867662;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1572867659;
         s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
-        h=From:To:Cc:Message-ID:Subject:Date:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Content-Type;
-        l=913; bh=LcQzffD0A2m7LCciRN8lyQm615vt2s14ntIlVKAf5zA=;
-        b=YdZHKJSJJVhhqwiumc+1t9v0leVkEx8k9yacdyCClBH8OS0K5FYie1pEtZpDd9XS
-        Lpt5SNTmBLcSWcw+pOUxuZPA+z1e0GB/w1Q1130ENj+Q5/kkgLsdt1qhgtsnVC7LiiI
-        tjI9ANefV9O5Uz+np2+vr+BL39RAjS7QIrRXbbWc=
+        h=From:To:Cc:Message-ID:Subject:Date:MIME-Version:Content-Transfer-Encoding:Content-Type;
+        l=1133; bh=m6R7At4+C/REK1yLQtQ2YRUko1s/FbpG1OERsvSbHl0=;
+        b=gxwq13VVxOr6+wye9SLbLj4GowWQl4UTkyAF74g2WI6Fqr53C0ZWAnl/G4Fpkxbz
+        seGIOXtzs5516O3kbs9YGYU5EaFazN6p37JToyk+7I+vKNyj6pntrWFuhQ/3rvy6BOH
+        r9scbX+HDuw/FxaWNJctJL+L0E3Dz7ekv/Y5ljUA=
 Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
-        with SMTPS id 1572867661068351.7134233309414; Mon, 4 Nov 2019 19:41:01 +0800 (CST)
+        with SMTPS id 15728676574231004.4041585412566; Mon, 4 Nov 2019 19:40:57 +0800 (CST)
 From:   Chengguang Xu <cgxu519@mykernel.net>
 To:     jack@suse.com
 Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
-Message-ID: <20191104114036.9893-3-cgxu519@mykernel.net>
-Subject: [PATCH 3/5] ext2: skip unnecessary operations in ext2_try_to_allocate()
-Date:   Mon,  4 Nov 2019 19:40:34 +0800
+Message-ID: <20191104114036.9893-1-cgxu519@mykernel.net>
+Subject: [PATCH 1/5] ext2: introduce new helper ext2_group_last_block_no()
+Date:   Mon,  4 Nov 2019 19:40:32 +0800
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191104114036.9893-1-cgxu519@mykernel.net>
-References: <20191104114036.9893-1-cgxu519@mykernel.net>
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 X-ZohoCNMailClient: External
@@ -59,34 +58,39 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move 'repeat' tag to proper place so that we can
-skip unnecessary operations in ext2_try_to_allocate().
+Introduce new helper ext2_group_last_block_no() to calculate
+last block num for specific block group, we can replace open
+coded logic by calling this common helper.
 
 Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
 ---
- fs/ext2/balloc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext2/ext2.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 994a1fd18e93..a0c22e166682 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -696,7 +696,6 @@ ext2_try_to_allocate(struct super_block *sb, int group,
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 10ab238de9a6..8178bd38a9d6 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -813,6 +813,18 @@ ext2_group_first_block_no(struct super_block *sb, unsi=
+gned long group_no)
+ =09=09le32_to_cpu(EXT2_SB(sb)->s_es->s_first_data_block);
+ }
 =20
- =09BUG_ON(start > EXT2_BLOCKS_PER_GROUP(sb));
-=20
--repeat:
- =09if (grp_goal < 0) {
- =09=09grp_goal =3D find_next_usable_block(start, bitmap_bh, end);
- =09=09if (grp_goal < 0)
-@@ -713,6 +712,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
- =09}
- =09start =3D grp_goal;
-=20
-+repeat:
- =09if (ext2_set_bit_atomic(sb_bgl_lock(EXT2_SB(sb), group), grp_goal,
- =09=09=09       =09=09=09=09bitmap_bh->b_data)) {
- =09=09/*
++static inline ext2_fsblk_t
++ext2_group_last_block_no(struct super_block *sb, unsigned long group_no)
++{
++=09struct ext2_sb_info *sbi =3D EXT2_SB(sb);
++
++=09if (group_no =3D=3D sbi->s_groups_count - 1)
++=09=09return le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
++=09else
++=09=09return ext2_group_first_block_no(sb, group_no) +
++=09=09=09EXT2_BLOCKS_PER_GROUP(sb) - 1;
++}
++
+ #define ext2_set_bit=09__test_and_set_bit_le
+ #define ext2_clear_bit=09__test_and_clear_bit_le
+ #define ext2_test_bit=09test_bit_le
 --=20
 2.20.1
 
