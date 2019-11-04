@@ -5,24 +5,24 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76959CA9EB5
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 14:32:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20C2CCA9EB5
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 14:52:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3C00C21D7D
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 14:32:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7CF6218BA
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 14:52:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728683AbfKDOci convert rfc822-to-8bit (ORCPT
+        id S1728502AbfKDOwB convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Nov 2019 09:32:38 -0500
-Received: from mail.kernel.org ([198.145.29.99]:46114 "EHLO mail.kernel.org"
+        Mon, 4 Nov 2019 09:52:01 -0500
+Received: from mail.kernel.org ([198.145.29.99]:52226 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728012AbfKDOch (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 4 Nov 2019 09:32:37 -0500
+        id S1728474AbfKDOwB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Nov 2019 09:52:01 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 205417] Files corruption ( fs/ext4/inode.c:3941
  ext4_set_page_dirty+0x3e/0x50 [ext4] )
-Date:   Mon, 04 Nov 2019 14:32:37 +0000
+Date:   Mon, 04 Nov 2019 14:52:00 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -31,14 +31,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Who: the.dmol@gmail.com
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-205417-13602-PbXsrOMOmp@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-205417-13602-daRWSCvJuS@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-205417-13602@https.bugzilla.kernel.org/>
 References: <bug-205417-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -53,25 +53,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=205417
 
-Theodore Tso (tytso@mit.edu) changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
-
---- Comment #1 from Theodore Tso (tytso@mit.edu) ---
-Can you send the complete /var/log/messages and/or /var/log/kern.log from say,
-a day before the hang up to the hang?
-
-These sorts of issues can be caused by I/O errors and/or other problems in the
-device driver and/or device mapper storage stack.   So please also describe
-your hardware and storage configuration, and what distribution are you using.
-
-Also, is this a 5.3.8 upstream kernel which you compiled yourself or a
-distro-supplied kernel?   If you compiled it yourself, please also send the
-kernel config
-
-Thanks!
+--- Comment #2 from Ivan Baidakou (the.dmol@gmail.com) ---
+Created attachment 285781
+  --> https://bugzilla.kernel.org/attachment.cgi?id=285781&action=edit
+/var/log/messages before I powered it off
 
 -- 
 You are receiving this mail because:
