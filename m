@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9705DCA9EA0
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FEF2CA9EA0
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6125221D7F
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 67AA621D7F
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Nov 2019 11:56:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="e+DcnTCM"
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="TfTM1pRL"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728879AbfKDL4T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Nov 2019 06:56:19 -0500
-Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21931 "EHLO
+        id S1728619AbfKDL4X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Nov 2019 06:56:23 -0500
+Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21932 "EHLO
         sender2.zoho.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728346AbfKDL4S (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2019 06:56:18 -0500
-ARC-Seal: i=1; a=rsa-sha256; t=1572867660; cv=none; 
+        with ESMTP id S1728871AbfKDL4X (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Nov 2019 06:56:23 -0500
+ARC-Seal: i=1; a=rsa-sha256; t=1572867664; cv=none; 
         d=zoho.com.cn; s=zohoarc; 
-        b=q9LnFowmEN9JUzdmDLuiwIKCyMLD9ZOsmu9uoms84WLi7MhgLYhCAMuSIgiLvIQyXUtS/rBmH0wL3u36EK6XM/4CdwWgz+GJU+y3EQXmJjWeOl/jSXGA7CFrcxuPh5f4ppOvbAZRAkJnN62NqxBtC1wjJcpmnhw8Ct1U7zue24w=
+        b=F7putwOGu/cvO5j65ILWAUK1N7Ka672NOZ3+qRvuOKcwzz/EDdI2BfYBH0h6n0cm17ijCTVK1gOLL+3NidMvM1O2sn1jchTolrwQPoZnqQwCJ5XuCbFChxz9mRTqZAS+sB6f8M6eHxGqQzWEwBb4wGeIklAljBtZdXzdjsOnYo8=
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1572867660; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
-        bh=CMQuzlno95XbIzQ1wuAOAASx9zQo5tfKqr71pMmWDvU=; 
-        b=L6aZvMXH75RhqFFBQ/Bi0oPbKgy3vqszOd6J9n7bImXlySQ0uYYGrZVJp+dnaTUAy8Pk3Wn26v4eseKVG8D2BGnwxhun6SAwhIn2vO+z4u1HzBZwqZzkq9qsWAjF+2WgzZUbDGSDbWUxHf/trXMEOFP2TTKeROIPWsd6YZRst3A=
+        t=1572867664; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
+        bh=MScuvJamY4B9PODRGlsGY+0SFH7BZjXZFmDqK8i2d/8=; 
+        b=f1PMr3m1bzReeK54z84ca3mzvQkLrv0oMuE+pOLUHq3d2V32Cl5eVJ94ey4VyDrIRrTCXkBh91mMvkRBwNoxyvNTT6xVyeC3FRuAYVRBeb/79VfQTzTg28AJ+eIOH+I12pkeBbJsN/0FWgvrl9Zsklm8t/oIrWk2fG5Esz94/kE=
 ARC-Authentication-Results: i=1; mx.zoho.com.cn;
         dkim=pass  header.i=mykernel.net;
         spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
         dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1572867660;
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1572867664;
         s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
         h=From:To:Cc:Message-ID:Subject:Date:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Content-Type;
-        l=4212; bh=CMQuzlno95XbIzQ1wuAOAASx9zQo5tfKqr71pMmWDvU=;
-        b=e+DcnTCMLMiccl3Vf9f5FH/oc7FibsSfSt0WehQzSya6nA8xiyVLr7uoTjTkqa4r
-        KNuwMtzVbNpPZIZ6wMHcS/GnmY6e8t23b2hHb9d+H/JOxSqByvT5nxiLP6PXTCeJN77
-        n1+V7MA43OMPJ1dDV5gORl0YR6eMYgHN30WHxxrM=
+        l=725; bh=MScuvJamY4B9PODRGlsGY+0SFH7BZjXZFmDqK8i2d/8=;
+        b=TfTM1pRLbSwJ/p8s/3HiTo/5uZPweTrZwVALkf60QrGeGIgCW0JK/6RIt/4Gt8V9
+        HK2GstLcHmHEfYghZxhon2H5sMHaipdpAbnWrhba/TqftMeReo5ZpsXMs+WIOxJ+MSb
+        7z+0SljjdcAJbu/dESDmmFGv+HdKSk7oywA0Y1Vc=
 Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
-        with SMTPS id 15728676596340.035362748932016075; Mon, 4 Nov 2019 19:40:59 +0800 (CST)
+        with SMTPS id 1572867663706905.0393051105115; Mon, 4 Nov 2019 19:41:03 +0800 (CST)
 From:   Chengguang Xu <cgxu519@mykernel.net>
 To:     jack@suse.com
 Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
-Message-ID: <20191104114036.9893-2-cgxu519@mykernel.net>
-Subject: [PATCH 2/5] ext2: code cleanup by calling ext2_group_last_block_no()
-Date:   Mon,  4 Nov 2019 19:40:33 +0800
+Message-ID: <20191104114036.9893-5-cgxu519@mykernel.net>
+Subject: [PATCH 5/5] ext2: fix improper function comment
+Date:   Mon,  4 Nov 2019 19:40:36 +0800
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20191104114036.9893-1-cgxu519@mykernel.net>
 References: <20191104114036.9893-1-cgxu519@mykernel.net>
@@ -59,110 +59,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Call common helper ext2_group_last_block_no() to
-calculate group last block number.
+Just fix a improper function comment.
 
 Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
 ---
- fs/ext2/balloc.c | 16 ++++++++--------
- fs/ext2/super.c  |  8 +-------
- 2 files changed, 9 insertions(+), 15 deletions(-)
+ fs/ext2/balloc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 19bce75d207b..994a1fd18e93 100644
+index 9a9bd566243d..4180467122d0 100644
 --- a/fs/ext2/balloc.c
 +++ b/fs/ext2/balloc.c
-@@ -269,7 +269,7 @@ goal_in_my_reservation(struct ext2_reserve_window *rsv,=
- ext2_grpblk_t grp_goal,
- =09ext2_fsblk_t group_first_block, group_last_block;
-=20
- =09group_first_block =3D ext2_group_first_block_no(sb, group);
--=09group_last_block =3D group_first_block + EXT2_BLOCKS_PER_GROUP(sb) - 1;
-+=09group_last_block =3D ext2_group_last_block_no(sb, group);
-=20
- =09if ((rsv->_rsv_start > group_last_block) ||
- =09    (rsv->_rsv_end < group_first_block))
-@@ -666,22 +666,22 @@ ext2_try_to_allocate(struct super_block *sb, int grou=
-p,
- =09=09=09unsigned long *count,
- =09=09=09struct ext2_reserve_window *my_rsv)
- {
--=09ext2_fsblk_t group_first_block;
-+=09ext2_fsblk_t group_first_block =3D ext2_group_first_block_no(sb, group)=
-;
-+=09ext2_fsblk_t group_last_block =3D ext2_group_last_block_no(sb, group);
-        =09ext2_grpblk_t start, end;
- =09unsigned long num =3D 0;
-=20
- =09/* we do allocation within the reservation window if we have a window *=
-/
- =09if (my_rsv) {
--=09=09group_first_block =3D ext2_group_first_block_no(sb, group);
- =09=09if (my_rsv->_rsv_start >=3D group_first_block)
- =09=09=09start =3D my_rsv->_rsv_start - group_first_block;
- =09=09else
- =09=09=09/* reservation window cross group boundary */
- =09=09=09start =3D 0;
- =09=09end =3D my_rsv->_rsv_end - group_first_block + 1;
--=09=09if (end > EXT2_BLOCKS_PER_GROUP(sb))
-+=09=09if (end > group_last_block - group_first_block + 1)
- =09=09=09/* reservation window crosses group boundary */
--=09=09=09end =3D EXT2_BLOCKS_PER_GROUP(sb);
-+=09=09=09end =3D group_last_block - group_first_block + 1;
- =09=09if ((start <=3D grp_goal) && (grp_goal < end))
- =09=09=09start =3D grp_goal;
- =09=09else
-@@ -691,7 +691,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
- =09=09=09start =3D grp_goal;
- =09=09else
- =09=09=09start =3D 0;
--=09=09end =3D EXT2_BLOCKS_PER_GROUP(sb);
-+=09=09end =3D group_last_block - group_first_block + 1;
- =09}
-=20
- =09BUG_ON(start > EXT2_BLOCKS_PER_GROUP(sb));
-@@ -907,7 +907,7 @@ static int alloc_new_reservation(struct ext2_reserve_wi=
-ndow_node *my_rsv,
- =09spinlock_t *rsv_lock =3D &EXT2_SB(sb)->s_rsv_window_lock;
-=20
- =09group_first_block =3D ext2_group_first_block_no(sb, group);
--=09group_end_block =3D group_first_block + (EXT2_BLOCKS_PER_GROUP(sb) - 1)=
-;
-+=09group_end_block =3D ext2_group_last_block_no(sb, group);
-=20
- =09if (grp_goal < 0)
- =09=09start_block =3D group_first_block;
-@@ -1114,7 +1114,7 @@ ext2_try_to_allocate_with_rsv(struct super_block *sb,=
- unsigned int group,
- =09 * first block is the block number of the first block in this group
- =09 */
- =09group_first_block =3D ext2_group_first_block_no(sb, group);
--=09group_last_block =3D group_first_block + (EXT2_BLOCKS_PER_GROUP(sb) - 1=
-);
-+=09group_last_block =3D ext2_group_last_block_no(sb, group);
-=20
- =09/*
- =09 * Basically we will allocate a new block from inode's reservation
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 30c630d73f0f..4cd401a2f207 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -702,13 +702,7 @@ static int ext2_check_descriptors(struct super_block *=
-sb)
- =09for (i =3D 0; i < sbi->s_groups_count; i++) {
- =09=09struct ext2_group_desc *gdp =3D ext2_get_group_desc(sb, i, NULL);
- =09=09ext2_fsblk_t first_block =3D ext2_group_first_block_no(sb, i);
--=09=09ext2_fsblk_t last_block;
--
--=09=09if (i =3D=3D sbi->s_groups_count - 1)
--=09=09=09last_block =3D le32_to_cpu(sbi->s_es->s_blocks_count) - 1;
--=09=09else
--=09=09=09last_block =3D first_block +
--=09=09=09=09(EXT2_BLOCKS_PER_GROUP(sb) - 1);
-+=09=09ext2_fsblk_t last_block =3D ext2_group_last_block_no(sb, i);
-=20
- =09=09if (le32_to_cpu(gdp->bg_block_bitmap) < first_block ||
- =09=09    le32_to_cpu(gdp->bg_block_bitmap) > last_block)
+@@ -749,7 +749,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
+  *=09=09but we will shift to the place where start_block is,
+  *=09=09then start from there, when looking for a reservable space.
+  *
+- * =09@size: the target new reservation window size
++ *=09@sb: the super block.
+  *
+  * =09@group_first_block: the first block we consider to start
+  *=09=09=09the real search from
 --=20
 2.20.1
 
