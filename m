@@ -4,32 +4,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6091C5DF65
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 346F7C5DF60
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B609B2190F
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0644C2190F
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390416AbfKEQoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2390419AbfKEQoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 5 Nov 2019 11:44:44 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41618 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41612 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390360AbfKEQok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2390352AbfKEQok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 5 Nov 2019 11:44:40 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id DDBE8B2CE;
+        by mx1.suse.de (Postfix) with ESMTP id C629AB1B8;
         Tue,  5 Nov 2019 16:44:37 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 471721E4AB8; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 3B8651E4AB5; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/25] ext4: Avoid unnecessary revokes in ext4_alloc_branch()
-Date:   Tue,  5 Nov 2019 17:44:15 +0100
-Message-Id: <20191105164437.32602-9-jack@suse.cz>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+Subject: [PATCH 06/25] ext4: Fix credit estimate for final inode freeing
+Date:   Tue,  5 Nov 2019 17:44:12 +0100
+Message-Id: <20191105164437.32602-6-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,76 +40,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Error cleanup path in ext4_alloc_branch() calls ext4_forget() on freshly
-allocated indirect blocks with 'metadata' set to 1. This results in
-generating revoke records for these blocks. However this is unnecessary
-as the freed blocks are only allocated in the current transaction and
-thus they will never be journalled. Make this cleanup path similar to
-e.g. cleanup in ext4_splice_branch() and use ext4_free_blocks() to
-handle block forgetting by passing EXT4_FREE_BLOCKS_FORGET and not
-EXT4_FREE_BLOCKS_METADATA to ext4_free_blocks(). This also allows
-allocating transaction not to reserve any credits for revoke records.
+Estimate for the number of credits needed for final freeing of inode in
+ext4_evict_inode() was to small. We may modify 4 blocks (inode & sb for
+orphan deletion, bitmap & group descriptor for inode freeing) and not
+just 3.
 
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+Fixes: e50e5129f384 ("ext4: xattr-in-inode support")
+CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/indirect.c | 28 +++++++++++++++++++---------
- 1 file changed, 19 insertions(+), 9 deletions(-)
+ fs/ext4/inode.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 36699a131168..602abae08387 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -331,11 +331,14 @@ static int ext4_alloc_branch(handle_t *handle,
- 	for (i = 0; i <= indirect_blks; i++) {
- 		if (i == indirect_blks) {
- 			new_blocks[i] = ext4_mb_new_blocks(handle, ar, &err);
--		} else
-+		} else {
- 			ar->goal = new_blocks[i] = ext4_new_meta_blocks(handle,
- 					ar->inode, ar->goal,
- 					ar->flags & EXT4_MB_DELALLOC_RESERVED,
- 					NULL, &err);
-+			/* Simplify error cleanup... */
-+			branch[i+1].bh = NULL;
-+		}
- 		if (err) {
- 			i--;
- 			goto failed;
-@@ -377,18 +380,25 @@ static int ext4_alloc_branch(handle_t *handle,
- 	}
- 	return 0;
- failed:
-+	if (i == indirect_blks) {
-+		/* Free data blocks */
-+		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
-+				 ar->len, 0);
-+		i--;
-+	}
- 	for (; i >= 0; i--) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 516faa280ced..81bc2fb23c40 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -196,7 +196,12 @@ void ext4_evict_inode(struct inode *inode)
+ {
+ 	handle_t *handle;
+ 	int err;
+-	int extra_credits = 3;
++	/*
++	 * Credits for final inode cleanup and freeing:
++	 * sb + inode (ext4_orphan_del()), block bitmap, group descriptor
++	 * (xattr block freeing), bitmap, group descriptor (inode freeing)
++	 */
++	int extra_credits = 6;
+ 	struct ext4_xattr_inode_array *ea_inode_array = NULL;
+ 
+ 	trace_ext4_evict_inode(inode);
+@@ -252,8 +257,12 @@ void ext4_evict_inode(struct inode *inode)
+ 	if (!IS_NOQUOTA(inode))
+ 		extra_credits += EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb);
+ 
++	/*
++	 * Block bitmap, group descriptor, and inode are accounted in both
++ 	 * ext4_blocks_for_truncate() and extra_credits. So subtract 3.
++	 */
+ 	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE,
+-				 ext4_blocks_for_truncate(inode)+extra_credits);
++			 ext4_blocks_for_truncate(inode) + extra_credits - 3);
+ 	if (IS_ERR(handle)) {
+ 		ext4_std_error(inode->i_sb, PTR_ERR(handle));
  		/*
- 		 * We want to ext4_forget() only freshly allocated indirect
--		 * blocks.  Buffer for new_blocks[i-1] is at branch[i].bh and
--		 * buffer at branch[0].bh is indirect block / inode already
--		 * existing before ext4_alloc_branch() was called.
-+		 * blocks. Buffer for new_blocks[i] is at branch[i+1].bh
-+		 * (buffer at branch[0].bh is indirect block / inode already
-+		 * existing before ext4_alloc_branch() was called). Also
-+		 * because blocks are freshly allocated, we don't need to
-+		 * revoke them which is why we don't set
-+		 * EXT4_FREE_BLOCKS_METADATA.
- 		 */
--		if (i > 0 && i != indirect_blks && branch[i].bh)
--			ext4_forget(handle, 1, ar->inode, branch[i].bh,
--				    branch[i].bh->b_blocknr);
--		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
--				 (i == indirect_blks) ? ar->len : 1, 0);
-+		ext4_free_blocks(handle, ar->inode, branch[i+1].bh,
-+				 new_blocks[i], 1,
-+				 branch[i+1].bh ? EXT4_FREE_BLOCKS_FORGET : 0);
- 	}
- 	return err;
- }
 -- 
 2.16.4
 
