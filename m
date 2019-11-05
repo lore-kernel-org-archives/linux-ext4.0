@@ -4,32 +4,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0778C5DF60
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B908C5DF61
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C05062190F
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6C2122190F
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390413AbfKEQoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Nov 2019 11:44:44 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41614 "EHLO mx1.suse.de"
+        id S2390412AbfKEQon (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Nov 2019 11:44:43 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41610 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390347AbfKEQol (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2390346AbfKEQol (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 5 Nov 2019 11:44:41 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id F2858B391;
+        by mx1.suse.de (Postfix) with ESMTP id D55CDB23A;
         Tue,  5 Nov 2019 16:44:37 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 4D6411E4ABA; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 3885E1E4AAB; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/25] ext4, jbd2: Provide accessor function for handle credits
-Date:   Tue,  5 Nov 2019 17:44:17 +0100
-Message-Id: <20191105164437.32602-11-jack@suse.cz>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        stable@vger.kernel.org
+Subject: [PATCH 05/25] ext4: Do not iput inode under running transaction
+Date:   Tue,  5 Nov 2019 17:44:11 +0100
+Message-Id: <20191105164437.32602-5-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,114 +40,124 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Provide accessor function to get number of credits available in a handle
-and use it from ext4. Later, computation of available credits won't be
-so straightforward.
+When ext4_mkdir(), ext4_symlink(), ext4_create(), or ext4_mknod() fail
+to add entry into directory, it ends up dropping freshly created inode
+under the running transaction and thus inode truncation happens under
+that transaction. That breaks assumptions that evict() does not get
+called from a transaction context and at least in ext4_symlink() case it
+can result in inode eviction deadlocking in inode_wait_for_writeback()
+when flush worker finds symlink inode, starts to write it back and
+blocks on starting a transaction. So change the code in ext4_mkdir() and
+ext4_add_nondir() to drop inode reference only after the transaction is
+stopped. We also have to add inode to the orphan list in that case as
+otherwise the inode would get leaked in case we crash before inode
+deletion is committed.
 
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+CC: stable@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4_jbd2.c  | 13 +++++++------
- fs/ext4/ext4_jbd2.h  |  7 -------
- fs/ext4/xattr.c      |  2 +-
- include/linux/jbd2.h |  6 ++++++
- 4 files changed, 14 insertions(+), 14 deletions(-)
+ fs/ext4/namei.c | 29 +++++++++++++++++++++++------
+ 1 file changed, 23 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 2b98d893cda9..731bbfdbce5b 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -119,8 +119,8 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
- 		return ext4_get_nojournal();
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 97cf1c8b56b2..a67cae3c8ff5 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2547,21 +2547,29 @@ static void ext4_dec_count(handle_t *handle, struct inode *inode)
+ }
  
- 	sb = handle->h_journal->j_private;
--	trace_ext4_journal_start_reserved(sb, handle->h_buffer_credits,
--					  _RET_IP_);
-+	trace_ext4_journal_start_reserved(sb,
-+				jbd2_handle_buffer_credits(handle), _RET_IP_);
- 	err = ext4_journal_check_start(sb);
- 	if (err < 0) {
- 		jbd2_journal_free_reserved(handle);
-@@ -138,10 +138,10 @@ int __ext4_journal_ensure_credits(handle_t *handle, int check_cred,
+ 
++/*
++ * Add non-directory inode to a directory. On success, the inode reference is
++ * consumed by dentry is instantiation. This is also indicated by clearing of
++ * *inodep pointer. On failure, the caller is responsible for dropping the
++ * inode reference in the safe context.
++ */
+ static int ext4_add_nondir(handle_t *handle,
+-		struct dentry *dentry, struct inode *inode)
++		struct dentry *dentry, struct inode **inodep)
  {
- 	if (!ext4_handle_valid(handle))
+ 	struct inode *dir = d_inode(dentry->d_parent);
++	struct inode *inode = *inodep;
+ 	int err = ext4_add_entry(handle, dentry, inode);
+ 	if (!err) {
+ 		ext4_mark_inode_dirty(handle, inode);
+ 		if (IS_DIRSYNC(dir))
+ 			ext4_handle_sync(handle);
+ 		d_instantiate_new(dentry, inode);
++		*inodep = NULL;
  		return 0;
--	if (handle->h_buffer_credits >= check_cred)
-+	if (jbd2_handle_buffer_credits(handle) >= check_cred)
- 		return 0;
- 	return ext4_journal_extend(handle,
--				   extend_cred - handle->h_buffer_credits);
-+			   extend_cred - jbd2_handle_buffer_credits(handle));
+ 	}
+ 	drop_nlink(inode);
++	ext4_orphan_add(handle, inode);
+ 	unlock_new_inode(inode);
+-	iput(inode);
+ 	return err;
  }
  
- static void ext4_journal_abort_handle(const char *caller, unsigned int line,
-@@ -289,7 +289,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 				       handle->h_type,
- 				       handle->h_line_no,
- 				       handle->h_requested_credits,
--				       handle->h_buffer_credits, err);
-+				       jbd2_handle_buffer_credits(handle), err);
- 				return err;
- 			}
- 			ext4_error_inode(inode, where, line,
-@@ -300,7 +300,8 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 					 handle->h_type,
- 					 handle->h_line_no,
- 					 handle->h_requested_credits,
--					 handle->h_buffer_credits, err);
-+					 jbd2_handle_buffer_credits(handle),
-+					 err);
- 		}
- 	} else {
- 		if (inode)
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 1920b976eef1..36aa72599646 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -288,13 +288,6 @@ static inline int ext4_handle_is_aborted(handle_t *handle)
- 	return 0;
- }
+@@ -2595,10 +2603,12 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(inode);
+-		err = ext4_add_nondir(handle, dentry, inode);
++		err = ext4_add_nondir(handle, dentry, &inode);
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
++	if (!IS_ERR_OR_NULL(inode))
++		iput(inode);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -2625,10 +2635,12 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ 	if (!IS_ERR(inode)) {
+ 		init_special_inode(inode, inode->i_mode, rdev);
+ 		inode->i_op = &ext4_special_inode_operations;
+-		err = ext4_add_nondir(handle, dentry, inode);
++		err = ext4_add_nondir(handle, dentry, &inode);
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
++	if (!IS_ERR_OR_NULL(inode))
++		iput(inode);
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -2778,10 +2790,12 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	if (err) {
+ out_clear_inode:
+ 		clear_nlink(inode);
++		ext4_orphan_add(handle, inode);
+ 		unlock_new_inode(inode);
+ 		ext4_mark_inode_dirty(handle, inode);
++		ext4_journal_stop(handle);
+ 		iput(inode);
+-		goto out_stop;
++		goto out_retry;
+ 	}
+ 	ext4_inc_count(handle, dir);
+ 	ext4_update_dx_flag(dir);
+@@ -2795,6 +2809,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ out_stop:
+ 	if (handle)
+ 		ext4_journal_stop(handle);
++out_retry:
+ 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
+ 		goto retry;
+ 	return err;
+@@ -3327,9 +3342,11 @@ static int ext4_symlink(struct inode *dir,
+ 		inode->i_size = disk_link.len - 1;
+ 	}
+ 	EXT4_I(inode)->i_disksize = inode->i_size;
+-	err = ext4_add_nondir(handle, dentry, inode);
++	err = ext4_add_nondir(handle, dentry, &inode);
+ 	if (handle)
+ 		ext4_journal_stop(handle);
++	if (inode)
++		iput(inode);
+ 	goto out_free_encrypted_link;
  
--static inline int ext4_handle_has_enough_credits(handle_t *handle, int needed)
--{
--	if (ext4_handle_valid(handle) && handle->h_buffer_credits < needed)
--		return 0;
--	return 1;
--}
--
- #define ext4_journal_start_sb(sb, type, nblocks)			\
- 	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks), 0)
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index b79d8ffd3e9b..48a9dbd27f43 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2314,7 +2314,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 						   flags & XATTR_CREATE);
- 		brelse(bh);
- 
--		if (!ext4_handle_has_enough_credits(handle, credits)) {
-+		if (jbd2_handle_buffer_credits(handle) < credits) {
- 			error = -ENOSPC;
- 			goto cleanup;
- 		}
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 10e6049c0ba9..727ff91d7f3e 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1645,6 +1645,12 @@ static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
- 	return tid;
- }
- 
-+
-+static inline int jbd2_handle_buffer_credits(handle_t *handle)
-+{
-+	return handle->h_buffer_credits;
-+}
-+
- #ifdef __KERNEL__
- 
- #define buffer_trace_init(bh)	do {} while (0)
+ err_drop_inode:
 -- 
 2.16.4
 
