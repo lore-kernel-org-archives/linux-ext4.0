@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 175A1C5DF62
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADEBCC5DF60
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E99292190F
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 84ECB2190F
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390455AbfKEQow (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Nov 2019 11:44:52 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41618 "EHLO mx1.suse.de"
+        id S2390370AbfKEQon (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Nov 2019 11:44:43 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41620 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390392AbfKEQoo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 5 Nov 2019 11:44:44 -0500
+        id S2390366AbfKEQok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 5 Nov 2019 11:44:40 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 3A7BFB463;
+        by mx1.suse.de (Postfix) with ESMTP id 0824EB3A6;
         Tue,  5 Nov 2019 16:44:38 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 740651E4AC5; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 69F851E4AC2; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 22/25] jbd2: Make credit checking more strict
-Date:   Tue,  5 Nov 2019 17:44:28 +0100
-Message-Id: <20191105164437.32602-22-jack@suse.cz>
+Subject: [PATCH 19/25] jbd2: Drop jbd2_space_needed()
+Date:   Tue,  5 Nov 2019 17:44:25 +0100
+Message-Id: <20191105164437.32602-19-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,30 +38,70 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Make checking of available credits in jbd2_journal_dirty_metadata() more
-strict. There should be always enough credits in the handle to write all
-potential revoke descriptors. Also we warn in case there are not enough
-credits since this is a bug in the filesystem.
+The function is now just a trivial wrapper returning
+journal->j_max_transaction_buffers. Drop it.
 
 Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/jbd2/checkpoint.c  | 2 +-
+ fs/jbd2/transaction.c | 5 +++--
+ include/linux/jbd2.h  | 9 ---------
+ 3 files changed, 4 insertions(+), 12 deletions(-)
 
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index a1909066bde6..8fff6677a5da 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -110,7 +110,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 	int nblocks, space_left;
+ 	/* assert_spin_locked(&journal->j_state_lock); */
+ 
+-	nblocks = jbd2_space_needed(journal);
++	nblocks = journal->j_max_transaction_buffers;
+ 	while (jbd2_log_space_left(journal) < nblocks) {
+ 		write_unlock(&journal->j_state_lock);
+ 		mutex_lock_io(&journal->j_checkpoint_mutex);
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 10fd802fd222..8f11b2d48ca0 100644
+index ed7cf9e62584..ba388da7e02b 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -1477,7 +1477,7 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- 		 * of the transaction. This needs to be done
- 		 * once a transaction -bzzz
- 		 */
--		if (handle->h_total_credits <= 0) {
-+		if (WARN_ON_ONCE(jbd2_handle_buffer_credits(handle) <= 0)) {
- 			ret = -ENOSPC;
- 			goto out_unlock_bh;
- 		}
+@@ -270,12 +270,13 @@ static int add_transaction_credits(journal_t *journal, int blocks,
+ 	 * *before* starting to dirty potentially checkpointed buffers
+ 	 * in the new transaction.
+ 	 */
+-	if (jbd2_log_space_left(journal) < jbd2_space_needed(journal)) {
++	if (jbd2_log_space_left(journal) < journal->j_max_transaction_buffers) {
+ 		atomic_sub(total, &t->t_outstanding_credits);
+ 		read_unlock(&journal->j_state_lock);
+ 		jbd2_might_wait_for_commit(journal);
+ 		write_lock(&journal->j_state_lock);
+-		if (jbd2_log_space_left(journal) < jbd2_space_needed(journal))
++		if (jbd2_log_space_left(journal) <
++					journal->j_max_transaction_buffers)
+ 			__jbd2_log_wait_for_space(journal);
+ 		write_unlock(&journal->j_state_lock);
+ 		return 1;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index bef4f74b1ea0..1dd2703a8e26 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1562,15 +1562,6 @@ static inline int jbd2_journal_has_csum_v2or3(journal_t *journal)
+ 	return journal->j_chksum_driver != NULL;
+ }
+ 
+-/*
+- * Return the minimum number of blocks which must be free in the journal
+- * before a new transaction may be started.  Must be called under j_state_lock.
+- */
+-static inline int jbd2_space_needed(journal_t *journal)
+-{
+-	return journal->j_max_transaction_buffers;
+-}
+-
+ /*
+  * Return number of free blocks in the log. Must be called under j_state_lock.
+  */
 -- 
 2.16.4
 
