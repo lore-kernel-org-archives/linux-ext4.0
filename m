@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76AEAC5DF65
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A365C5DF60
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 557972190F
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5753C2190F
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390440AbfKEQos (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2390207AbfKEQos (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 5 Nov 2019 11:44:48 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41614 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41684 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390395AbfKEQoq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2390402AbfKEQoq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 5 Nov 2019 11:44:46 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 43BA7B466;
+        by mx1.suse.de (Postfix) with ESMTP id 622DEB46A;
         Tue,  5 Nov 2019 16:44:38 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 780BA1E4AC6; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 6EFDA1E4AC3; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 23/25] ext4: Reserve revoke credits for freed blocks
-Date:   Tue,  5 Nov 2019 17:44:29 +0100
-Message-Id: <20191105164437.32602-23-jack@suse.cz>
+Subject: [PATCH 20/25] jbd2: Reserve space for revoke descriptor blocks
+Date:   Tue,  5 Nov 2019 17:44:26 +0100
+Message-Id: <20191105164437.32602-20-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -38,627 +38,439 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-So far we have reserved only relatively high fixed amount of revoke
-credits for each transaction. We over-reserved by large amount for most
-cases but when freeing large directories or files with data journalling,
-the fixed amount is not enough. In fact the worst case estimate is
-inconveniently large (maximum extent size) for freeing of one extent.
+Extend functions for starting, extending, and restarting transaction
+handles to take number of revoke records handle must be able to
+accommodate. These functions then make sure transaction has enough
+credits to be able to store resulting revoke descriptor blocks. Also
+revoke code tracks number of revoke records created by a handle to catch
+situation where some place didn't reserve enough space for revoke
+records. Similarly to standard transaction credits, space for unused
+reserved revoke records is released when the handle is stopped.
 
-We fix this by doing proper estimate of the amount of blocks that need
-to be revoked when removing blocks from the inode due to truncate or
-hole punching and otherwise reserve just a small amount of revoke
-credits for each transaction to accommodate freeing of xattrs block or
-so.
+On the ext4 side we currently take a simplistic approach of reserving
+space for 1024 revoke records for any transaction. This grows amount of
+credits reserved for each handle only by a few and is enough for any
+normal workload so that we don't hit warnings in jbd2. We will refine
+the logic in following commits.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h              |  3 +-
- fs/ext4/ext4_jbd2.c         | 20 ++++++-----
- fs/ext4/ext4_jbd2.h         | 84 +++++++++++++++++++++++++++++++--------------
- fs/ext4/extents.c           | 27 +++++++++++----
- fs/ext4/ialloc.c            |  2 +-
- fs/ext4/indirect.c          | 12 ++++---
- fs/ext4/inode.c             |  2 +-
- fs/ext4/migrate.c           | 24 ++++++++-----
- fs/ext4/resize.c            | 16 ++++++---
- fs/ext4/xattr.c             |  4 ++-
- include/trace/events/ext4.h | 13 ++++---
- 11 files changed, 140 insertions(+), 67 deletions(-)
+ fs/ext4/ext4_jbd2.c   |  2 +-
+ fs/ext4/ext4_jbd2.h   |  4 ++--
+ fs/jbd2/journal.c     | 21 ++++++++++++++++++++
+ fs/jbd2/revoke.c      |  6 ++++++
+ fs/jbd2/transaction.c | 54 ++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/ocfs2/journal.c    |  4 ++--
+ include/linux/jbd2.h  | 43 ++++++++++++++++++++++++++++++----------
+ 7 files changed, 112 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 67a6fcc11182..a606d17a80b0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3296,7 +3296,8 @@ extern int ext4_swap_extents(handle_t *handle, struct inode *inode1,
- 			     int mark_unwritten,int *err);
- extern int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu);
- extern int ext4_datasem_ensure_credits(handle_t *handle, struct inode *inode,
--				       int check_cred, int restart_cred);
-+				       int check_cred, int restart_cred,
-+				       int revoke_cred);
- 
- 
- /* move_extent.c */
 diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index b81190bee32d..d3b8cdea5df7 100644
+index 731bbfdbce5b..b81190bee32d 100644
 --- a/fs/ext4/ext4_jbd2.c
 +++ b/fs/ext4/ext4_jbd2.c
-@@ -65,12 +65,14 @@ static int ext4_journal_check_start(struct super_block *sb)
- }
- 
- handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
--				  int type, int blocks, int rsv_blocks)
-+				  int type, int blocks, int rsv_blocks,
-+				  int revoke_creds)
- {
- 	journal_t *journal;
- 	int err;
- 
--	trace_ext4_journal_start(sb, blocks, rsv_blocks, _RET_IP_);
-+	trace_ext4_journal_start(sb, blocks, rsv_blocks, revoke_creds,
-+				 _RET_IP_);
- 	err = ext4_journal_check_start(sb);
- 	if (err < 0)
- 		return ERR_PTR(err);
-@@ -78,8 +80,8 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
+@@ -78,7 +78,7 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
  	journal = EXT4_SB(sb)->s_journal;
  	if (!journal)
  		return ext4_get_nojournal();
--	return jbd2__journal_start(journal, blocks, rsv_blocks, 1024, GFP_NOFS,
--				   type, line);
-+	return jbd2__journal_start(journal, blocks, rsv_blocks, revoke_creds,
-+				   GFP_NOFS, type, line);
+-	return jbd2__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
++	return jbd2__journal_start(journal, blocks, rsv_blocks, 1024, GFP_NOFS,
+ 				   type, line);
  }
  
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
-@@ -134,14 +136,16 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
- }
- 
- int __ext4_journal_ensure_credits(handle_t *handle, int check_cred,
--				  int extend_cred)
-+				  int extend_cred, int revoke_cred)
- {
- 	if (!ext4_handle_valid(handle))
- 		return 0;
--	if (jbd2_handle_buffer_credits(handle) >= check_cred)
-+	if (jbd2_handle_buffer_credits(handle) >= check_cred &&
-+	    handle->h_revoke_credits >= revoke_cred)
- 		return 0;
--	return ext4_journal_extend(handle,
--			   extend_cred - jbd2_handle_buffer_credits(handle));
-+	extend_cred = max(0, extend_cred - jbd2_handle_buffer_credits(handle));
-+	revoke_cred = max(0, revoke_cred - handle->h_revoke_credits);
-+	return ext4_journal_extend(handle, extend_cred, revoke_cred);
- }
- 
- static void ext4_journal_abort_handle(const char *caller, unsigned int line,
 diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index aca05e52e317..a6b9b66dbfad 100644
+index 36aa72599646..aca05e52e317 100644
 --- a/fs/ext4/ext4_jbd2.h
 +++ b/fs/ext4/ext4_jbd2.h
-@@ -261,7 +261,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 	__ext4_handle_dirty_super(__func__, __LINE__, (handle), (sb))
- 
- handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
--				  int type, int blocks, int rsv_blocks);
-+				  int type, int blocks, int rsv_blocks,
-+				  int revoke_creds);
- int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle);
- 
- #define EXT4_NOJOURNAL_MAX_REF_COUNT ((unsigned long) 4096)
-@@ -288,21 +289,41 @@ static inline int ext4_handle_is_aborted(handle_t *handle)
- 	return 0;
- }
- 
-+static inline int ext4_free_metadata_revoke_credits(struct super_block *sb,
-+						    int blocks)
-+{
-+	/* Freeing each metadata block can result in freeing one cluster */
-+	return blocks * EXT4_SB(sb)->s_cluster_ratio;
-+}
-+
-+static inline int ext4_trans_default_revoke_credits(struct super_block *sb)
-+{
-+	return ext4_free_metadata_revoke_credits(sb, 8);
-+}
-+
- #define ext4_journal_start_sb(sb, type, nblocks)			\
--	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks), 0)
-+	__ext4_journal_start_sb((sb), __LINE__, (type), (nblocks), 0,	\
-+				ext4_trans_default_revoke_credits(sb))
- 
- #define ext4_journal_start(inode, type, nblocks)			\
--	__ext4_journal_start((inode), __LINE__, (type), (nblocks), 0)
-+	__ext4_journal_start((inode), __LINE__, (type), (nblocks), 0,	\
-+			     ext4_trans_default_revoke_credits((inode)->i_sb))
- 
--#define ext4_journal_start_with_reserve(inode, type, blocks, rsv_blocks) \
--	__ext4_journal_start((inode), __LINE__, (type), (blocks), (rsv_blocks))
-+#define ext4_journal_start_with_reserve(inode, type, blocks, rsv_blocks)\
-+	__ext4_journal_start((inode), __LINE__, (type), (blocks), (rsv_blocks),\
-+			     ext4_trans_default_revoke_credits((inode)->i_sb))
-+
-+#define ext4_journal_start_with_revoke(inode, type, blocks, revoke_creds) \
-+	__ext4_journal_start((inode), __LINE__, (type), (blocks), 0,	\
-+			     (revoke_creds))
- 
- static inline handle_t *__ext4_journal_start(struct inode *inode,
- 					     unsigned int line, int type,
--					     int blocks, int rsv_blocks)
-+					     int blocks, int rsv_blocks,
-+					     int revoke_creds)
- {
- 	return __ext4_journal_start_sb(inode->i_sb, line, type, blocks,
--				       rsv_blocks);
-+				       rsv_blocks, revoke_creds);
- }
- 
- #define ext4_journal_stop(handle) \
-@@ -325,22 +346,23 @@ static inline handle_t *ext4_journal_current_handle(void)
- 	return journal_current_handle();
- }
- 
--static inline int ext4_journal_extend(handle_t *handle, int nblocks)
-+static inline int ext4_journal_extend(handle_t *handle, int nblocks, int revoke)
+@@ -328,14 +328,14 @@ static inline handle_t *ext4_journal_current_handle(void)
+ static inline int ext4_journal_extend(handle_t *handle, int nblocks)
  {
  	if (ext4_handle_valid(handle))
--		return jbd2_journal_extend(handle, nblocks, 1024);
-+		return jbd2_journal_extend(handle, nblocks, revoke);
+-		return jbd2_journal_extend(handle, nblocks);
++		return jbd2_journal_extend(handle, nblocks, 1024);
  	return 0;
  }
  
--static inline int ext4_journal_restart(handle_t *handle, int nblocks)
-+static inline int ext4_journal_restart(handle_t *handle, int nblocks,
-+				       int revoke)
+ static inline int ext4_journal_restart(handle_t *handle, int nblocks)
  {
  	if (ext4_handle_valid(handle))
--		return jbd2__journal_restart(handle, nblocks, 1024, GFP_NOFS);
-+		return jbd2__journal_restart(handle, nblocks, revoke, GFP_NOFS);
+-		return jbd2_journal_restart(handle, nblocks);
++		return jbd2__journal_restart(handle, nblocks, 1024, GFP_NOFS);
  	return 0;
  }
  
- int __ext4_journal_ensure_credits(handle_t *handle, int check_cred,
--				  int extend_cred);
-+				  int extend_cred, int revoke_cred);
- 
- 
- /*
-@@ -353,18 +375,19 @@ int __ext4_journal_ensure_credits(handle_t *handle, int check_cred,
-  * credits or transaction extension succeeded, 1 in case transaction had to be
-  * restarted.
-  */
--#define ext4_journal_ensure_credits_fn(handle, check_cred, extend_cred, fn) \
-+#define ext4_journal_ensure_credits_fn(handle, check_cred, extend_cred,	\
-+				       revoke_cred, fn) \
- ({									\
- 	__label__ __ensure_end;						\
- 	int err = __ext4_journal_ensure_credits((handle), (check_cred),	\
--						(extend_cred));		\
-+					(extend_cred), (revoke_cred));	\
- 									\
- 	if (err <= 0)							\
- 		goto __ensure_end;					\
- 	err = (fn);							\
- 	if (err < 0)							\
- 		goto __ensure_end;					\
--	err = ext4_journal_restart((handle), (extend_cred));		\
-+	err = ext4_journal_restart((handle), (extend_cred), (revoke_cred)); \
- 	if (err == 0)							\
- 		err = 1;						\
- __ensure_end:								\
-@@ -373,18 +396,16 @@ __ensure_end:								\
- 
- /*
-  * Ensure given handle has at least requested amount of credits available,
-- * possibly restarting transaction if needed.
-+ * possibly restarting transaction if needed. We also make sure the transaction
-+ * has space for at least ext4_trans_default_revoke_credits(sb) revoke records
-+ * as freeing one or two blocks is very common pattern and requesting this is
-+ * very cheap.
-  */
--static inline int ext4_journal_ensure_credits(handle_t *handle, int credits)
-+static inline int ext4_journal_ensure_credits(handle_t *handle, int credits,
-+					      int revoke_creds)
- {
--	return ext4_journal_ensure_credits_fn(handle, credits, credits, 0);
--}
--
--static inline int ext4_journal_ensure_credits_batch(handle_t *handle,
--						    int credits)
--{
--	return ext4_journal_ensure_credits_fn(handle, credits,
--					      EXT4_MAX_TRANS_DATA, 0);
-+	return ext4_journal_ensure_credits_fn(handle, credits, credits,
-+				revoke_creds, 0);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 22b14b3ca197..eef809f61722 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1500,6 +1500,21 @@ void jbd2_journal_update_sb_errno(journal_t *journal)
  }
+ EXPORT_SYMBOL(jbd2_journal_update_sb_errno);
  
- static inline int ext4_journal_blocks_per_page(struct inode *inode)
-@@ -479,6 +500,19 @@ static inline int ext4_should_writeback_data(struct inode *inode)
- 	return ext4_inode_journal_mode(inode) & EXT4_INODE_WRITEBACK_DATA_MODE;
- }
- 
-+static inline int ext4_free_data_revoke_credits(struct inode *inode, int blocks)
++static int journal_revoke_records_per_block(journal_t *journal)
 +{
-+	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
-+		return 0;
-+	if (!ext4_should_journal_data(inode))
-+		return 0;
-+	/*
-+	 * Data blocks in one extent are contiguous, just account for partial
-+	 * clusters at extent boundaries
-+	 */
-+	return blocks + 2*(EXT4_SB(inode->i_sb)->s_cluster_ratio - 1);
++	int record_size;
++	int space = journal->j_blocksize - sizeof(jbd2_journal_revoke_header_t);
++
++	if (jbd2_has_feature_64bit(journal))
++		record_size = 8;
++	else
++		record_size = 4;
++
++	if (jbd2_journal_has_csum_v2or3(journal))
++		space -= sizeof(struct jbd2_journal_block_tail);
++	return space / record_size;
 +}
 +
  /*
-  * This function controls whether or not we should try to go down the
-  * dioread_nolock code paths, which makes it safe to avoid taking
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 32f2c22c7ef2..ed28b21b826d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -124,13 +124,14 @@ static int ext4_ext_trunc_restart_fn(struct inode *inode, int *dropped)
-  * and < 0 in case of fatal error.
-  */
- int ext4_datasem_ensure_credits(handle_t *handle, struct inode *inode,
--				int check_cred, int restart_cred)
-+				int check_cred, int restart_cred,
-+				int revoke_cred)
- {
- 	int ret;
- 	int dropped = 0;
- 
- 	ret = ext4_journal_ensure_credits_fn(handle, check_cred, restart_cred,
--			ext4_ext_trunc_restart_fn(inode, &dropped));
-+		revoke_cred, ext4_ext_trunc_restart_fn(inode, &dropped));
- 	if (dropped)
- 		down_write(&EXT4_I(inode)->i_data_sem);
- 	return ret;
-@@ -1851,7 +1852,8 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
- 	 * group descriptor to release the extent tree block.  If we
- 	 * can't get the journal credits, give up.
- 	 */
--	if (ext4_journal_extend(handle, 2))
-+	if (ext4_journal_extend(handle, 2,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, 1)))
- 		return;
- 
- 	/*
-@@ -2738,7 +2740,7 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	int err = 0, correct_index = 0;
--	int depth = ext_depth(inode), credits;
-+	int depth = ext_depth(inode), credits, revoke_credits;
- 	struct ext4_extent_header *eh;
- 	ext4_lblk_t a, b;
- 	unsigned num;
-@@ -2830,9 +2832,18 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			credits += (ext_depth(inode)) + 1;
- 		}
- 		credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
-+		/*
-+		 * We may end up freeing some index blocks and data from the
-+		 * punched range. Note that partial clusters are accounted for
-+		 * by ext4_free_data_revoke_credits().
-+		 */
-+		revoke_credits =
-+			ext4_free_metadata_revoke_credits(inode->i_sb,
-+							  ext_depth(inode)) +
-+			ext4_free_data_revoke_credits(inode, b - a + 1);
- 
- 		err = ext4_datasem_ensure_credits(handle, inode, credits,
--						  credits);
-+						  credits, revoke_credits);
- 		if (err) {
- 			if (err > 0)
- 				err = -EAGAIN;
-@@ -2963,7 +2974,9 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 	ext_debug("truncate since %u to %u\n", start, end);
- 
- 	/* probably first extent we're gonna free will be last in block */
--	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, depth + 1);
-+	handle = ext4_journal_start_with_revoke(inode, EXT4_HT_TRUNCATE,
-+			depth + 1,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, depth));
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-@@ -5222,7 +5235,7 @@ ext4_access_path(handle_t *handle, struct inode *inode,
- 	 * groups
- 	 */
- 	credits = ext4_writepage_trans_blocks(inode);
--	err = ext4_datasem_ensure_credits(handle, inode, 7, credits);
-+	err = ext4_datasem_ensure_credits(handle, inode, 7, credits, 0);
- 	if (err < 0)
- 		return err;
- 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 764ff4c56233..fa8c3c485e4b 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -927,7 +927,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
- 							 handle_type, nblocks,
--							 0);
-+							 0, 0);
- 			if (IS_ERR(handle)) {
- 				err = PTR_ERR(handle);
- 				ext4_std_error(sb, err);
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 63e1d5846442..3a4ab70fe9e0 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -736,13 +736,14 @@ static int ext4_ind_trunc_restart_fn(handle_t *handle, struct inode *inode,
-  */
- static int ext4_ind_truncate_ensure_credits(handle_t *handle,
- 					    struct inode *inode,
--					    struct buffer_head *bh)
-+					    struct buffer_head *bh,
-+					    int revoke_creds)
- {
- 	int ret;
- 	int dropped = 0;
- 
- 	ret = ext4_journal_ensure_credits_fn(handle, EXT4_RESERVE_TRANS_BLOCKS,
--			ext4_blocks_for_truncate(inode),
-+			ext4_blocks_for_truncate(inode), revoke_creds,
- 			ext4_ind_trunc_restart_fn(handle, inode, bh, &dropped));
- 	if (dropped)
- 		down_write(&EXT4_I(inode)->i_data_sem);
-@@ -889,7 +890,8 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 		return 1;
+  * Read the superblock for a given journal, performing initial
+  * validation of the format.
+@@ -1608,6 +1623,8 @@ static int journal_get_superblock(journal_t *journal)
+ 						   sizeof(sb->s_uuid));
  	}
  
--	err = ext4_ind_truncate_ensure_credits(handle, inode, bh);
-+	err = ext4_ind_truncate_ensure_credits(handle, inode, bh,
-+				ext4_free_data_revoke_credits(inode, count));
- 	if (err < 0)
- 		goto out_err;
++	journal->j_revoke_records_per_block =
++				journal_revoke_records_per_block(journal);
+ 	set_buffer_verified(bh);
  
-@@ -1075,7 +1077,9 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			if (ext4_handle_is_aborted(handle))
- 				return;
- 			if (ext4_ind_truncate_ensure_credits(handle, inode,
--							     NULL) < 0)
-+					NULL,
-+					ext4_free_metadata_revoke_credits(
-+							inode->i_sb, 1)) < 0)
- 				return;
+ 	return 0;
+@@ -1928,6 +1945,8 @@ int jbd2_journal_set_features (journal_t *journal, unsigned long compat,
+ 	sb->s_feature_ro_compat |= cpu_to_be32(ro);
+ 	sb->s_feature_incompat  |= cpu_to_be32(incompat);
+ 	unlock_buffer(journal->j_sb_buffer);
++	journal->j_revoke_records_per_block =
++				journal_revoke_records_per_block(journal);
  
- 			/*
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e346b5171f5a..f927cb5b002b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5949,7 +5949,7 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
- 	 * force a large enough s_min_extra_isize.
- 	 */
- 	if (ext4_journal_extend(handle,
--				EXT4_DATA_TRANS_BLOCKS(inode->i_sb)) != 0)
-+				EXT4_DATA_TRANS_BLOCKS(inode->i_sb), 0) != 0)
- 		return -ENOSPC;
+ 	return 1;
+ #undef COMPAT_FEATURE_ON
+@@ -1958,6 +1977,8 @@ void jbd2_journal_clear_features(journal_t *journal, unsigned long compat,
+ 	sb->s_feature_compat    &= ~cpu_to_be32(compat);
+ 	sb->s_feature_ro_compat &= ~cpu_to_be32(ro);
+ 	sb->s_feature_incompat  &= ~cpu_to_be32(incompat);
++	journal->j_revoke_records_per_block =
++				journal_revoke_records_per_block(journal);
+ }
+ EXPORT_SYMBOL(jbd2_journal_clear_features);
  
- 	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 65f09dc9d941..89725fa42573 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -50,7 +50,7 @@ static int finish_range(handle_t *handle, struct inode *inode,
- 	needed = ext4_ext_calc_credits_for_single_extent(inode,
- 		    lb->last_block - lb->first_block + 1, path);
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index f08073d7bbf5..fa608788b93d 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -371,6 +371,11 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 	}
+ #endif
  
--	retval = ext4_datasem_ensure_credits(handle, inode, needed, needed);
-+	retval = ext4_datasem_ensure_credits(handle, inode, needed, needed, 0);
- 	if (retval < 0)
- 		goto err_out;
- 	retval = ext4_ext_insert_extent(handle, inode, &path, &newext, 0);
-@@ -182,10 +182,11 @@ static int free_dind_blocks(handle_t *handle,
- 	int i;
- 	__le32 *tmp_idata;
- 	struct buffer_head *bh;
-+	struct super_block *sb = inode->i_sb;
- 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
++	if (WARN_ON_ONCE(handle->h_revoke_credits <= 0)) {
++		if (!bh_in)
++			brelse(bh);
++		return -EIO;
++	}
+ 	/* We really ought not ever to revoke twice in a row without
+            first having the revoke cancelled: it's illegal to free a
+            block twice without allocating it in between! */
+@@ -391,6 +396,7 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+ 			__brelse(bh);
+ 		}
+ 	}
++	handle->h_revoke_credits--;
+ 
+ 	jbd_debug(2, "insert revoke for block %llu, bh_in=%p\n",blocknr, bh_in);
+ 	err = insert_revoke_hash(journal, blocknr,
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index ba388da7e02b..1c121afbcf8f 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -101,6 +101,7 @@ static void jbd2_get_transaction(journal_t *journal,
+ 	atomic_set(&transaction->t_outstanding_credits,
+ 		   jbd2_descriptor_blocks_per_trans(journal) +
+ 		   atomic_read(&journal->j_reserved_credits));
++	atomic_set(&transaction->t_outstanding_revokes, 0);
+ 	atomic_set(&transaction->t_handle_count, 0);
+ 	INIT_LIST_HEAD(&transaction->t_inode_list);
+ 	INIT_LIST_HEAD(&transaction->t_private_list);
+@@ -418,6 +419,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 	update_t_max_wait(transaction, ts);
+ 	handle->h_transaction = transaction;
+ 	handle->h_requested_credits = blocks;
++	handle->h_revoke_credits_requested = handle->h_revoke_credits;
+ 	handle->h_start_jiffies = jiffies;
+ 	atomic_inc(&transaction->t_updates);
+ 	atomic_inc(&transaction->t_handle_count);
+@@ -451,8 +453,8 @@ static handle_t *new_handle(int nblocks)
+ }
+ 
+ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+-			      gfp_t gfp_mask, unsigned int type,
+-			      unsigned int line_no)
++			      int revoke_records, gfp_t gfp_mask,
++			      unsigned int type, unsigned int line_no)
+ {
+ 	handle_t *handle = journal_current_handle();
  	int err;
- 
--	bh = ext4_sb_bread(inode->i_sb, le32_to_cpu(i_data), 0);
-+	bh = ext4_sb_bread(sb, le32_to_cpu(i_data), 0);
- 	if (IS_ERR(bh))
- 		return PTR_ERR(bh);
- 
-@@ -193,7 +194,8 @@ static int free_dind_blocks(handle_t *handle,
- 	for (i = 0; i < max_entries; i++) {
- 		if (tmp_idata[i]) {
- 			err = ext4_journal_ensure_credits(handle,
--						EXT4_RESERVE_TRANS_BLOCKS);
-+				EXT4_RESERVE_TRANS_BLOCKS,
-+				ext4_free_metadata_revoke_credits(sb, 1));
- 			if (err < 0) {
- 				put_bh(bh);
- 				return err;
-@@ -205,7 +207,8 @@ static int free_dind_blocks(handle_t *handle,
- 		}
+@@ -466,6 +468,8 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+ 		return handle;
  	}
- 	put_bh(bh);
--	err = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS);
-+	err = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS,
-+				ext4_free_metadata_revoke_credits(sb, 1));
- 	if (err < 0)
- 		return err;
- 	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(i_data), 1,
-@@ -238,7 +241,8 @@ static int free_tind_blocks(handle_t *handle,
- 		}
+ 
++	nblocks += DIV_ROUND_UP(revoke_records,
++				journal->j_revoke_records_per_block);
+ 	handle = new_handle(nblocks);
+ 	if (!handle)
+ 		return ERR_PTR(-ENOMEM);
+@@ -481,6 +485,7 @@ handle_t *jbd2__journal_start(journal_t *journal, int nblocks, int rsv_blocks,
+ 		rsv_handle->h_journal = journal;
+ 		handle->h_rsv_handle = rsv_handle;
  	}
- 	put_bh(bh);
--	retval = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS);
-+	retval = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, 1));
- 	if (retval < 0)
- 		return retval;
- 	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(i_data), 1,
-@@ -254,7 +258,8 @@ static int free_ind_block(handle_t *handle, struct inode *inode, __le32 *i_data)
- 	/* ei->i_data[EXT4_IND_BLOCK] */
- 	if (i_data[0]) {
- 		retval = ext4_journal_ensure_credits(handle,
--						     EXT4_RESERVE_TRANS_BLOCKS);
-+			EXT4_RESERVE_TRANS_BLOCKS,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, 1));
- 		if (retval < 0)
- 			return retval;
- 		ext4_free_blocks(handle, inode, NULL,
-@@ -291,7 +296,7 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
- 	 * One credit accounted for writing the
- 	 * i_data field of the original inode
++	handle->h_revoke_credits = revoke_records;
+ 
+ 	err = start_this_handle(journal, handle, gfp_mask);
+ 	if (err < 0) {
+@@ -521,7 +526,7 @@ EXPORT_SYMBOL(jbd2__journal_start);
+  */
+ handle_t *jbd2_journal_start(journal_t *journal, int nblocks)
+ {
+-	return jbd2__journal_start(journal, nblocks, 0, GFP_NOFS, 0, 0);
++	return jbd2__journal_start(journal, nblocks, 0, 0, GFP_NOFS, 0, 0);
+ }
+ EXPORT_SYMBOL(jbd2_journal_start);
+ 
+@@ -598,6 +603,7 @@ EXPORT_SYMBOL(jbd2_journal_start_reserved);
+  * int jbd2_journal_extend() - extend buffer credits.
+  * @handle:  handle to 'extend'
+  * @nblocks: nr blocks to try to extend by.
++ * @revoke_records: number of revoke records to try to extend by.
+  *
+  * Some transactions, such as large extends and truncates, can be done
+  * atomically all at once or in several stages.  The operation requests
+@@ -614,7 +620,7 @@ EXPORT_SYMBOL(jbd2_journal_start_reserved);
+  * return code < 0 implies an error
+  * return code > 0 implies normal transaction-full status.
+  */
+-int jbd2_journal_extend(handle_t *handle, int nblocks)
++int jbd2_journal_extend(handle_t *handle, int nblocks, int revoke_records)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal;
+@@ -636,6 +642,12 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 		goto error_out;
+ 	}
+ 
++	nblocks += DIV_ROUND_UP(
++			handle->h_revoke_credits_requested + revoke_records,
++			journal->j_revoke_records_per_block) -
++		DIV_ROUND_UP(
++			handle->h_revoke_credits_requested,
++			journal->j_revoke_records_per_block);
+ 	spin_lock(&transaction->t_handle_lock);
+ 	wanted = atomic_add_return(nblocks,
+ 				   &transaction->t_outstanding_credits);
+@@ -655,6 +667,8 @@ int jbd2_journal_extend(handle_t *handle, int nblocks)
+ 
+ 	handle->h_buffer_credits += nblocks;
+ 	handle->h_requested_credits += nblocks;
++	handle->h_revoke_credits += revoke_records;
++	handle->h_revoke_credits_requested += revoke_records;
+ 	result = 0;
+ 
+ 	jbd_debug(3, "extended handle %p by %d\n", handle, nblocks);
+@@ -669,10 +683,31 @@ static void stop_this_handle(handle_t *handle)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
++	int revokes;
+ 
+ 	J_ASSERT(journal_current_handle() == handle);
+ 	J_ASSERT(atomic_read(&transaction->t_updates) > 0);
+ 	current->journal_info = NULL;
++	/*
++	 * Subtract necessary revoke descriptor blocks from handle credits. We
++	 * take care to account only for revoke descriptor blocks the
++	 * transaction will really need as large sequences of transactions with
++	 * small numbers of revokes are relatively common.
++	 */
++	revokes = handle->h_revoke_credits_requested - handle->h_revoke_credits;
++	if (revokes) {
++		int t_revokes, revoke_descriptors;
++		int rr_per_blk = journal->j_revoke_records_per_block;
++
++		WARN_ON_ONCE(DIV_ROUND_UP(revokes, rr_per_blk)
++				> handle->h_buffer_credits);
++		t_revokes = atomic_add_return(revokes,
++				&transaction->t_outstanding_revokes);
++		revoke_descriptors =
++			DIV_ROUND_UP(t_revokes, rr_per_blk) -
++			DIV_ROUND_UP(t_revokes - revokes, rr_per_blk);
++		handle->h_buffer_credits -= revoke_descriptors;
++	}
+ 	atomic_sub(handle->h_buffer_credits,
+ 		   &transaction->t_outstanding_credits);
+ 	if (handle->h_rsv_handle)
+@@ -692,6 +727,7 @@ static void stop_this_handle(handle_t *handle)
+  * int jbd2_journal_restart() - restart a handle .
+  * @handle:  handle to restart
+  * @nblocks: nr credits requested
++ * @revoke_records: number of revoke record credits requested
+  * @gfp_mask: memory allocation flags (for start_this_handle)
+  *
+  * Restart a handle for a multi-transaction filesystem
+@@ -704,7 +740,8 @@ static void stop_this_handle(handle_t *handle)
+  * credits. We preserve reserved handle if there's any attached to the
+  * passed in handle.
+  */
+-int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
++int jbd2__journal_restart(handle_t *handle, int nblocks, int revoke_records,
++			  gfp_t gfp_mask)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal;
+@@ -735,7 +772,10 @@ int jbd2__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
+ 	read_unlock(&journal->j_state_lock);
+ 	if (need_to_start)
+ 		jbd2_log_start_commit(journal, tid);
+-	handle->h_buffer_credits = nblocks;
++	handle->h_buffer_credits = nblocks +
++		DIV_ROUND_UP(revoke_records,
++			     journal->j_revoke_records_per_block);
++	handle->h_revoke_credits = revoke_records;
+ 	return start_this_handle(journal, handle, gfp_mask);
+ }
+ EXPORT_SYMBOL(jbd2__journal_restart);
+@@ -743,7 +783,7 @@ EXPORT_SYMBOL(jbd2__journal_restart);
+ 
+ int jbd2_journal_restart(handle_t *handle, int nblocks)
+ {
+-	return jbd2__journal_restart(handle, nblocks, GFP_NOFS);
++	return jbd2__journal_restart(handle, nblocks, 0, GFP_NOFS);
+ }
+ EXPORT_SYMBOL(jbd2_journal_restart);
+ 
+diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+index 019aaf2a3f8a..a032f0297dad 100644
+--- a/fs/ocfs2/journal.c
++++ b/fs/ocfs2/journal.c
+@@ -426,7 +426,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
+ #ifdef CONFIG_OCFS2_DEBUG_FS
+ 	status = 1;
+ #else
+-	status = jbd2_journal_extend(handle, nblocks);
++	status = jbd2_journal_extend(handle, nblocks, 0);
+ 	if (status < 0) {
+ 		mlog_errno(status);
+ 		goto bail;
+@@ -466,7 +466,7 @@ int ocfs2_allocate_extend_trans(handle_t *handle, int thresh)
+ 	if (old_nblks < thresh)
+ 		return 0;
+ 
+-	status = jbd2_journal_extend(handle, OCFS2_MAX_TRANS_DATA);
++	status = jbd2_journal_extend(handle, OCFS2_MAX_TRANS_DATA, 0);
+ 	if (status < 0) {
+ 		mlog_errno(status);
+ 		goto bail;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 1dd2703a8e26..2a3d5f50e7a1 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -478,6 +478,7 @@ struct jbd2_revoke_table_s;
+  * @h_journal: Which journal handle belongs to - used iff h_reserved set.
+  * @h_rsv_handle: Handle reserved for finishing the logical operation.
+  * @h_buffer_credits: Number of remaining buffers we are allowed to dirty.
++ * @h_revoke_credits: Number of remaining revoke records available for handle
+  * @h_ref: Reference count on this handle.
+  * @h_err: Field for caller's use to track errors through large fs operations.
+  * @h_sync: Flag for sync-on-close.
+@@ -488,6 +489,7 @@ struct jbd2_revoke_table_s;
+  * @h_line_no: For handle statistics.
+  * @h_start_jiffies: Handle Start time.
+  * @h_requested_credits: Holds @h_buffer_credits after handle is started.
++ * @h_revoke_credits_requested: Holds @h_revoke_credits after handle is started.
+  * @saved_alloc_context: Saved context while transaction is open.
+  **/
+ 
+@@ -505,6 +507,8 @@ struct jbd2_journal_handle
+ 
+ 	handle_t		*h_rsv_handle;
+ 	int			h_buffer_credits;
++	int			h_revoke_credits;
++	int			h_revoke_credits_requested;
+ 	int			h_ref;
+ 	int			h_err;
+ 
+@@ -688,6 +692,17 @@ struct transaction_s
  	 */
--	retval = ext4_journal_ensure_credits(handle, 1);
-+	retval = ext4_journal_ensure_credits(handle, 1, 0);
- 	if (retval < 0)
- 		goto err_out;
+ 	atomic_t		t_outstanding_credits;
  
-@@ -368,7 +373,8 @@ static int free_ext_idx(handle_t *handle, struct inode *inode,
- 		}
- 	}
- 	put_bh(bh);
--	retval = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS);
-+	retval = ext4_journal_ensure_credits(handle, EXT4_RESERVE_TRANS_BLOCKS,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, 1));
- 	if (retval < 0)
- 		return retval;
- 	ext4_free_blocks(handle, inode, NULL, block, 1,
-@@ -548,7 +554,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	}
- 
- 	/* We mark the tmp_inode dirty via ext4_ext_tree_init. */
--	retval = ext4_journal_ensure_credits(handle, 1);
-+	retval = ext4_journal_ensure_credits(handle, 1, 0);
- 	if (retval < 0)
- 		goto out_stop;
++	/*
++	 * Number of revoke records for this transaction added by already
++	 * stopped handles. [none]
++	 */
++	atomic_t		t_outstanding_revokes;
++
++	/*
++	 * How many handles used this transaction? [none]
++	 */
++	atomic_t		t_handle_count;
++
  	/*
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 3e4286b3901f..a8c0f2b5b6e1 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -388,6 +388,12 @@ static struct buffer_head *bclean(handle_t *handle, struct super_block *sb,
- 	return bh;
+ 	 * Forward and backward links for the circular list of all transactions
+ 	 * awaiting checkpoint. [j_list_lock]
+@@ -705,11 +720,6 @@ struct transaction_s
+ 	 */
+ 	ktime_t			t_start_time;
+ 
+-	/*
+-	 * How many handles used this transaction? [none]
+-	 */
+-	atomic_t		t_handle_count;
+-
+ 	/*
+ 	 * This transaction is being forced and some process is
+ 	 * waiting for it to finish.
+@@ -1026,6 +1036,13 @@ struct journal_s
+ 	 */
+ 	int			j_max_transaction_buffers;
+ 
++	/**
++	 * @j_revoke_records_per_block:
++	 *
++	 * Number of revoke records that fit in one descriptor block.
++	 */
++	int			j_revoke_records_per_block;
++
+ 	/**
+ 	 * @j_commit_interval:
+ 	 *
+@@ -1360,14 +1377,16 @@ static inline handle_t *journal_current_handle(void)
+ 
+ extern handle_t *jbd2_journal_start(journal_t *, int nblocks);
+ extern handle_t *jbd2__journal_start(journal_t *, int blocks, int rsv_blocks,
+-				     gfp_t gfp_mask, unsigned int type,
+-				     unsigned int line_no);
++				     int revoke_records, gfp_t gfp_mask,
++				     unsigned int type, unsigned int line_no);
+ extern int	 jbd2_journal_restart(handle_t *, int nblocks);
+-extern int	 jbd2__journal_restart(handle_t *, int nblocks, gfp_t gfp_mask);
++extern int	 jbd2__journal_restart(handle_t *, int nblocks,
++				       int revoke_records, gfp_t gfp_mask);
+ extern int	 jbd2_journal_start_reserved(handle_t *handle,
+ 				unsigned int type, unsigned int line_no);
+ extern void	 jbd2_journal_free_reserved(handle_t *handle);
+-extern int	 jbd2_journal_extend (handle_t *, int nblocks);
++extern int	 jbd2_journal_extend(handle_t *handle, int nblocks,
++				     int revoke_records);
+ extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_get_undo_access(handle_t *, struct buffer_head *);
+@@ -1631,7 +1650,11 @@ static inline tid_t  jbd2_get_latest_transaction(journal_t *journal)
+ 
+ static inline int jbd2_handle_buffer_credits(handle_t *handle)
+ {
+-	return handle->h_buffer_credits;
++	journal_t *journal = handle->h_transaction->t_journal;
++
++	return handle->h_buffer_credits -
++		DIV_ROUND_UP(handle->h_revoke_credits_requested,
++			     journal->j_revoke_records_per_block);
  }
  
-+static int ext4_resize_ensure_credits_batch(handle_t *handle, int credits)
-+{
-+	return ext4_journal_ensure_credits_fn(handle, credits,
-+		EXT4_MAX_TRANS_DATA, 0, 0);
-+}
-+
- /*
-  * set_flexbg_block_bitmap() mark clusters [@first_cluster, @last_cluster] used.
-  *
-@@ -427,7 +433,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
- 			continue;
- 		}
- 
--		err = ext4_journal_ensure_credits_batch(handle, 1);
-+		err = ext4_resize_ensure_credits_batch(handle, 1);
- 		if (err < 0)
- 			return err;
- 
-@@ -520,7 +526,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 			struct buffer_head *gdb;
- 
- 			ext4_debug("update backup group %#04llx\n", block);
--			err = ext4_journal_ensure_credits_batch(handle, 1);
-+			err = ext4_resize_ensure_credits_batch(handle, 1);
- 			if (err < 0)
- 				goto out;
- 
-@@ -578,7 +584,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 
- 		/* Initialize block bitmap of the @group */
- 		block = group_data[i].block_bitmap;
--		err = ext4_journal_ensure_credits_batch(handle, 1);
-+		err = ext4_resize_ensure_credits_batch(handle, 1);
- 		if (err < 0)
- 			goto out;
- 
-@@ -607,7 +613,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 
- 		/* Initialize inode bitmap of the @group */
- 		block = group_data[i].inode_bitmap;
--		err = ext4_journal_ensure_credits_batch(handle, 1);
-+		err = ext4_resize_ensure_credits_batch(handle, 1);
- 		if (err < 0)
- 			goto out;
- 		/* Mark unused entries in inode bitmap used */
-@@ -1085,7 +1091,7 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
- 		ext4_fsblk_t backup_block;
- 
- 		/* Out of journal space, and can't get more - abort - so sad */
--		err = ext4_journal_ensure_credits_batch(handle, 1);
-+		err = ext4_resize_ensure_credits_batch(handle, 1);
- 		if (err < 0)
- 			break;
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 48a9dbd27f43..8966a5439a22 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1155,6 +1155,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		}
- 
- 		err = ext4_journal_ensure_credits_fn(handle, credits, credits,
-+			ext4_free_metadata_revoke_credits(parent->i_sb, 1),
- 			ext4_xattr_restart_fn(handle, parent, bh, block_csum,
- 					      dirty));
- 		if (err < 0) {
-@@ -2841,7 +2842,8 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	struct inode *ea_inode;
- 	int error;
- 
--	error = ext4_journal_ensure_credits(handle, extra_credits);
-+	error = ext4_journal_ensure_credits(handle, extra_credits,
-+			ext4_free_metadata_revoke_credits(inode->i_sb, 1));
- 	if (error < 0) {
- 		EXT4_ERROR_INODE(inode, "ensure credits (error %d)", error);
- 		goto cleanup;
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index d68e9e536814..182c9fe9c0e9 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -1746,15 +1746,16 @@ TRACE_EVENT(ext4_load_inode,
- 
- TRACE_EVENT(ext4_journal_start,
- 	TP_PROTO(struct super_block *sb, int blocks, int rsv_blocks,
--		 unsigned long IP),
-+		 int revoke_creds, unsigned long IP),
- 
--	TP_ARGS(sb, blocks, rsv_blocks, IP),
-+	TP_ARGS(sb, blocks, rsv_blocks, revoke_creds, IP),
- 
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
- 		__field(unsigned long,	ip			)
- 		__field(	  int,	blocks			)
- 		__field(	  int,	rsv_blocks		)
-+		__field(	  int,	revoke_creds		)
- 	),
- 
- 	TP_fast_assign(
-@@ -1762,11 +1763,13 @@ TRACE_EVENT(ext4_journal_start,
- 		__entry->ip		 = IP;
- 		__entry->blocks		 = blocks;
- 		__entry->rsv_blocks	 = rsv_blocks;
-+		__entry->revoke_creds	 = revoke_creds;
- 	),
- 
--	TP_printk("dev %d,%d blocks, %d rsv_blocks, %d caller %pS",
--		  MAJOR(__entry->dev), MINOR(__entry->dev),
--		  __entry->blocks, __entry->rsv_blocks, (void *)__entry->ip)
-+	TP_printk("dev %d,%d blocks %d, rsv_blocks %d, revoke_creds %d, "
-+		  "caller %pS", MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  __entry->blocks, __entry->rsv_blocks, __entry->revoke_creds,
-+		  (void *)__entry->ip)
- );
- 
- TRACE_EVENT(ext4_journal_start_reserved,
+ #ifdef __KERNEL__
 -- 
 2.16.4
 
