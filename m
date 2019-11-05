@@ -4,34 +4,32 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3070C5DF61
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A444C5DF64
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A86DA2190F
+	by mail.kernel.org (Postfix) with ESMTP id D431921928
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390369AbfKEQok (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Nov 2019 11:44:40 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41514 "EHLO mx1.suse.de"
+        id S2390344AbfKEQoj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Nov 2019 11:44:39 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41518 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390335AbfKEQoj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2390334AbfKEQoj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 5 Nov 2019 11:44:39 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 9C278AF3F;
+        by mx1.suse.de (Postfix) with ESMTP id 93D26AE61;
         Tue,  5 Nov 2019 16:44:37 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 26B691E420F; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 33A041E4AA9; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        stable@vger.kernel.org
-Subject: [PATCH 01/25] jbd2: Fix possible overflow in jbd2_log_space_left()
-Date:   Tue,  5 Nov 2019 17:44:07 +0100
-Message-Id: <20191105164437.32602-1-jack@suse.cz>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/25] ext4: Move marking of handle as sync to ext4_add_nondir()
+Date:   Tue,  5 Nov 2019 17:44:10 +0100
+Message-Id: <20191105164437.32602-4-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
 References: <20191003215523.7313-1-jack@suse.cz>
@@ -40,44 +38,60 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When number of free space in the journal is very low, the arithmetic in
-jbd2_log_space_left() could underflow resulting in very high number of
-free blocks and thus triggering assertion failure in transaction commit
-code complaining there's not enough space in the journal:
+Every caller of ext4_add_nondir() marks handle as sync if directory has
+DIRSYNC set. Move this marking to ext4_add_nondir() so reduce some
+duplication.
 
-J_ASSERT(journal->j_free > 1);
-
-Properly check for the low number of free blocks.
-
-CC: stable@vger.kernel.org
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/jbd2.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 603fbc4e2f70..10e6049c0ba9 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1582,7 +1582,7 @@ static inline int jbd2_space_needed(journal_t *journal)
- static inline unsigned long jbd2_log_space_left(journal_t *journal)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index a427d2031a8d..97cf1c8b56b2 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2550,9 +2550,12 @@ static void ext4_dec_count(handle_t *handle, struct inode *inode)
+ static int ext4_add_nondir(handle_t *handle,
+ 		struct dentry *dentry, struct inode *inode)
  {
- 	/* Allow for rounding errors */
--	unsigned long free = journal->j_free - 32;
-+	long free = journal->j_free - 32;
- 
- 	if (journal->j_committing_transaction) {
- 		unsigned long committing = atomic_read(&journal->
-@@ -1591,7 +1591,7 @@ static inline unsigned long jbd2_log_space_left(journal_t *journal)
- 		/* Transaction + control blocks */
- 		free -= committing + (committing >> JBD2_CONTROL_BLOCKS_SHIFT);
++	struct inode *dir = d_inode(dentry->d_parent);
+ 	int err = ext4_add_entry(handle, dentry, inode);
+ 	if (!err) {
+ 		ext4_mark_inode_dirty(handle, inode);
++		if (IS_DIRSYNC(dir))
++			ext4_handle_sync(handle);
+ 		d_instantiate_new(dentry, inode);
+ 		return 0;
  	}
--	return free;
-+	return max_t(long, free, 0);
- }
- 
- /*
+@@ -2593,8 +2596,6 @@ static int ext4_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 		inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(inode);
+ 		err = ext4_add_nondir(handle, dentry, inode);
+-		if (!err && IS_DIRSYNC(dir))
+-			ext4_handle_sync(handle);
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+@@ -2625,8 +2626,6 @@ static int ext4_mknod(struct inode *dir, struct dentry *dentry,
+ 		init_special_inode(inode, inode->i_mode, rdev);
+ 		inode->i_op = &ext4_special_inode_operations;
+ 		err = ext4_add_nondir(handle, dentry, inode);
+-		if (!err && IS_DIRSYNC(dir))
+-			ext4_handle_sync(handle);
+ 	}
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+@@ -3329,9 +3328,6 @@ static int ext4_symlink(struct inode *dir,
+ 	}
+ 	EXT4_I(inode)->i_disksize = inode->i_size;
+ 	err = ext4_add_nondir(handle, dentry, inode);
+-	if (!err && IS_DIRSYNC(dir))
+-		ext4_handle_sync(handle);
+-
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+ 	goto out_free_encrypted_link;
 -- 
 2.16.4
 
