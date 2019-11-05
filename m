@@ -2,125 +2,112 @@ Return-Path: <SRS0=XaFB=Y5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,TVD_PH_BODY_ACCOUNTS_PRE,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A18B2C5DF63
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6091C5DF65
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 81F252190F
+	by mail.kernel.org (Postfix) with ESMTP id B609B2190F
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 16:44:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390415AbfKEQoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2390416AbfKEQoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 5 Nov 2019 11:44:44 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41538 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41618 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2390340AbfKEQok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2390360AbfKEQok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 5 Nov 2019 11:44:40 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id B18CEB052;
+        by mx1.suse.de (Postfix) with ESMTP id DDBE8B2CE;
         Tue,  5 Nov 2019 16:44:37 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 245E21E47E5; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
+        id 471721E4AB8; Tue,  5 Nov 2019 17:44:37 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/25 v3] ext4: Fix transaction overflow due to revoke descriptors
-Date:   Tue,  5 Nov 2019 17:44:06 +0100
-Message-Id: <20191003215523.7313-1-jack@suse.cz>
+Subject: [PATCH 09/25] ext4: Avoid unnecessary revokes in ext4_alloc_branch()
+Date:   Tue,  5 Nov 2019 17:44:15 +0100
+Message-Id: <20191105164437.32602-9-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20191003215523.7313-1-jack@suse.cz>
+References: <20191003215523.7313-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <20191105164406.eLBpC9DJG-1AAoIhXpHzOpmOgZ3LGdu_J-Or4O79Hvo@z>
 
-Hello,
+Error cleanup path in ext4_alloc_branch() calls ext4_forget() on freshly
+allocated indirect blocks with 'metadata' set to 1. This results in
+generating revoke records for these blocks. However this is unnecessary
+as the freed blocks are only allocated in the current transaction and
+thus they will never be journalled. Make this cleanup path similar to
+e.g. cleanup in ext4_splice_branch() and use ext4_free_blocks() to
+handle block forgetting by passing EXT4_FREE_BLOCKS_FORGET and not
+EXT4_FREE_BLOCKS_METADATA to ext4_free_blocks(). This also allows
+allocating transaction not to reserve any credits for revoke records.
 
-Here is v3 of this series with couple more bugs fixed. Now all failed tests Ted
-higlighted pass for me.
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/indirect.c | 28 +++++++++++++++++++---------
+ 1 file changed, 19 insertions(+), 9 deletions(-)
 
-Changes since v3:
-* Added reviewed-by tags
-* Added update of precomputed number of revoke records per descriptor block
-  when journal features change
-* Fix possible inode leak in ext4_add_mkdir() in case of crash
-* Fix other cases where last inode reference gets dropped while the transaction
-  is running
-* Improve comment about the new meaning of t_outstanding_credits
-* Added patch to reduce estimate on the base number of reserved descriptor
-  blocks
-* jbd2_journal_revoke() now returns error in case there are not enough revoke
-  credits so that ext4 can abort handle etc.
-* Improve estimate on the number of necessary revoke records for truncate
-* Add fix for too small array of journal buffers
-* Account number of revoke records in the transaction to avoid overestimation
-  of necessary revoke descriptor blocks
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index 36699a131168..602abae08387 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -331,11 +331,14 @@ static int ext4_alloc_branch(handle_t *handle,
+ 	for (i = 0; i <= indirect_blks; i++) {
+ 		if (i == indirect_blks) {
+ 			new_blocks[i] = ext4_mb_new_blocks(handle, ar, &err);
+-		} else
++		} else {
+ 			ar->goal = new_blocks[i] = ext4_new_meta_blocks(handle,
+ 					ar->inode, ar->goal,
+ 					ar->flags & EXT4_MB_DELALLOC_RESERVED,
+ 					NULL, &err);
++			/* Simplify error cleanup... */
++			branch[i+1].bh = NULL;
++		}
+ 		if (err) {
+ 			i--;
+ 			goto failed;
+@@ -377,18 +380,25 @@ static int ext4_alloc_branch(handle_t *handle,
+ 	}
+ 	return 0;
+ failed:
++	if (i == indirect_blks) {
++		/* Free data blocks */
++		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
++				 ar->len, 0);
++		i--;
++	}
+ 	for (; i >= 0; i--) {
+ 		/*
+ 		 * We want to ext4_forget() only freshly allocated indirect
+-		 * blocks.  Buffer for new_blocks[i-1] is at branch[i].bh and
+-		 * buffer at branch[0].bh is indirect block / inode already
+-		 * existing before ext4_alloc_branch() was called.
++		 * blocks. Buffer for new_blocks[i] is at branch[i+1].bh
++		 * (buffer at branch[0].bh is indirect block / inode already
++		 * existing before ext4_alloc_branch() was called). Also
++		 * because blocks are freshly allocated, we don't need to
++		 * revoke them which is why we don't set
++		 * EXT4_FREE_BLOCKS_METADATA.
+ 		 */
+-		if (i > 0 && i != indirect_blks && branch[i].bh)
+-			ext4_forget(handle, 1, ar->inode, branch[i].bh,
+-				    branch[i].bh->b_blocknr);
+-		ext4_free_blocks(handle, ar->inode, NULL, new_blocks[i],
+-				 (i == indirect_blks) ? ar->len : 1, 0);
++		ext4_free_blocks(handle, ar->inode, branch[i+1].bh,
++				 new_blocks[i], 1,
++				 branch[i+1].bh ? EXT4_FREE_BLOCKS_FORGET : 0);
+ 	}
+ 	return err;
+ }
+-- 
+2.16.4
 
-Changes since v2:
-* Fixed bug in revoke credit estimates for extent freeing in bigalloc
-  filesystems
-* Fixed bug in xattr code treating positive return of
-  ext4_journal_ensure_credits() as error
-* Fixed preexisting bug in ext4_evict_inode() where we reserved too few credits
-* Added trace point to jbd2_journal_restart()
-* Fix some kernel doc bugs
-* Rebased on top of 5.4-rc1
-
-Changes since v1:
-* Reordered some patches to reduce code churn
-* Computation in jbd2_revoke_descriptors_per_block() was too early - moved it
-  to later when journal superblock is loaded and so the feature checking
-  actually works.
-* Made sure nobody outside JBD2 uses handle->h_buffer_credits since now it
-  contains also credits for revoke descriptors and it was confusing come users.
-* Updated cover letter with more details about reproducer
-
-Original cover letter:
-
-I've recently got a bug report where JBD2 assertion failed due to
-transaction commit running out of journal space. After closer inspection of
-the crash dump it seems that the problem is that there were too many
-journal descriptor blocks (more that max_transaction_size >> 5 + 32 we
-estimate in jbd2_log_space_left()) due to descriptor blocks with revoke
-records. In fact the estimate on the number of descriptor blocks looks
-pretty arbitrary and there can be much more descriptor blocks needed for
-revoke records. We need one revoke record for every metadata block freed.
-So in the worst case (1k blocksize, 64-bit journal feature enabled,
-checksumming enabled) we fit 125 revoke record in one descriptor block.  In
-common cases its about 500 revoke records per descriptor block. Now when
-we free large directories or large file with data journalling enabled, we can
-have *lots* of blocks to revoke - with extent mapped files easily millions
-in a single transaction which can mean 10k descriptor blocks - clearly more
-than the estimate of 128 descriptor blocks per transaction ;)
-
-This patch series aims at fixing the problem by accounting descriptor blocks
-into transaction credits and reserving appropriate amount of credits for revoke
-descriptors on transaction handle start. Similar to normal transaction credits,
-the filesystem has to provide estimate for the number of blocks it is going
-to revoke using the transaction handle so that credits for revoke descriptors
-can be reserved.
-
-The series has survived fstests in couple configurations and also the stress
-test like:
-  Create filesystem with 1KB blocksize and journal size 32MB
-  Mount the filesystem with -o nodelalloc
-  for (( i = 0; i < 4; i++ )); do
-    dd if=/dev/zero of=file$i bs=1M count=2048 conv=fsync
-    chattr +j file$i
-  done
-  for (( i = 0; i < 4; i++ )); do
-    rm file$i&
-  done
-
-which reliably triggers the assertion failure in JBD2 on unpatched kernel.
-
-Review and comments are welcome :).
-
-								Honza
-Previous versions:
-Link: http://lore.kernel.org/r/20190927111536.16455-1-jack@suse.cz
-Link: http://lore.kernel.org/r/20190930103544.11479-1-jack@suse.cz
