@@ -1,71 +1,81 @@
-Return-Path: <SRS0=XaFB=Y5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=U68d=Y6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 887EBC5DF60
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 21:14:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EFDDC5DF60
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Nov 2019 00:59:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 45FF92087E
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Nov 2019 21:14:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F128321929
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Nov 2019 00:59:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729911AbfKEVON convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Nov 2019 16:14:13 -0500
-Received: from mail.kernel.org ([198.145.29.99]:59734 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729829AbfKEVOM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 5 Nov 2019 16:14:12 -0500
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 205417] Files corruption ( fs/ext4/inode.c:3941
- ext4_set_page_dirty+0x3e/0x50 [ext4] )
-Date:   Tue, 05 Nov 2019 21:12:40 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: davidmnoriega@gmail.com
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-205417-13602-IeQk92Uf4e@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-205417-13602@https.bugzilla.kernel.org/>
-References: <bug-205417-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1730606AbfKFA7c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Nov 2019 19:59:32 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56570 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728810AbfKFA7c (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Nov 2019 19:59:32 -0500
+Received: from callcc.thunk.org (ip-12-2-52-196.nyc.us.northamericancoax.com [196.52.2.12])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xA60xLbU019786
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 5 Nov 2019 19:59:23 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 31551420311; Tue,  5 Nov 2019 19:59:19 -0500 (EST)
+Date:   Tue, 5 Nov 2019 19:59:19 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Matthew Bobrowski <mbobrowski@mbobrowski.org>
+Cc:     Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        riteshh@linux.ibm.com
+Subject: Re: [PATCH v7 11/11] ext4: introduce direct I/O write using iomap
+ infrastructure
+Message-ID: <20191106005919.GE26959@mit.edu>
+References: <cover.1572949325.git.mbobrowski@mbobrowski.org>
+ <e55db6f12ae6ff017f36774135e79f3e7b0333da.1572949325.git.mbobrowski@mbobrowski.org>
+ <20191105135932.GN22379@quack2.suse.cz>
+ <20191105203158.GA1739@bobrowski>
+ <20191105205303.GA26959@mit.edu>
+ <20191105210043.GC1739@bobrowski>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191105210043.GC1739@bobrowski>
+User-Agent: Mutt/1.12.2 (2019-09-21)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=205417
+On Wed, Nov 06, 2019 at 08:00:44AM +1100, Matthew Bobrowski wrote:
+> On Tue, Nov 05, 2019 at 03:53:03PM -0500, Theodore Y. Ts'o wrote:
+> > On Wed, Nov 06, 2019 at 07:32:00AM +1100, Matthew Bobrowski wrote:
+> > > > Otherwise you would write out and invalidate too much AFAICT - the 'offset'
+> > > > is position just before we fall back to buffered IO. Otherwise this hunk
+> > > > looks good to me.
+> > > 
+> > > Er, yes. That's right, it should rather be 'err' instead or else we
+> > > would write/invalidate too much. I actually had this originally, but I
+> > > must've muddled it up while rewriting this patch on my other computer.
+> > > 
+> > > Thanks for picking that up!
+> > 
+> > I can fix that up in my tree, unless there are any other changes that
+> > we need to make.
+> 
+> If you could, that would be super awesome as I don't really see
+> anything else changing in this series. I'll probably send through some
+> minor optimisations/refactoring cleanups after this series lands, but
+> that can come at a later point.
 
-David Noriega (davidmnoriega@gmail.com) changed:
+Done.  I've just pushed out the ext4.git tree, with both the master
+branch (which should never rewind) and the dev branch (which can
+rewind) advanced to include this patch series.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |davidmnoriega@gmail.com
+Many thanks for your work on this patch series!
 
---- Comment #7 from David Noriega (davidmnoriega@gmail.com) ---
-I'm also seeing this message on Fedora 30, 5.3.8-200.fc30.x86_64
-
-Could be the same as:
-https://bugs.freedesktop.org/show_bug.cgi?id=112012
-https://bugzilla.redhat.com/show_bug.cgi?id=1758948
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+     	    	     	     	  	- Ted
