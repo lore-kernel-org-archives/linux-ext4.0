@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE264C17441
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:15:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F99AC43331
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:25:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B849021D7F
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:15:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 695DE222C9
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:25:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1573611322;
-	bh=65esZw1aId9cAb4fmPQLAQBAEwuFCvYbnG/uf8OmSco=;
+	s=default; t=1573611946;
+	bh=/fJ3JwL9yOylSX2pobd1DuKQQvxvmJdnycp9EphWstk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=F91DGRoHr4Y7tqoRL6186pHOxxx3bVFdFqoyOrW6ftQJ57NOiN31nxwI02jXDsw/H
-	 KHgQ38Vuy69BfupBWBUCQL4xYBHMGtIT1njzms0X8Uq0gJR8p6LcEDs2MZ8VBJ9X6/
-	 xH6SqPcj8aCQlFiXL7gmLJor3/3dYVMywjtLXxwo=
+	b=yYiPOv1OKj/JZFPwgoa2SMVDFXzipVw0ZBvJxRQFJyiBUBH0mvR0ZIKvuZyCpso2E
+	 XOx5iJsUHPhJq0FWaRqUA53EgzejernH7xwIfFO6d7ygaz3MQXIyD6fbO4lpXbzFJ1
+	 72fv+WgbZMO2BWQn1N6ML0poBxGqUDiXcPXILGRA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728750AbfKMCPM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Nov 2019 21:15:12 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49814 "EHLO mail.kernel.org"
+        id S1727795AbfKMCZj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Nov 2019 21:25:39 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39352 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728043AbfKMB47 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Nov 2019 20:56:59 -0500
+        id S1727869AbfKMBvb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Nov 2019 20:51:31 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C8EAC22470;
-        Wed, 13 Nov 2019 01:56:57 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 044AD22466;
+        Wed, 13 Nov 2019 01:51:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1573610218;
-        bh=65esZw1aId9cAb4fmPQLAQBAEwuFCvYbnG/uf8OmSco=;
+        s=default; t=1573609890;
+        bh=/fJ3JwL9yOylSX2pobd1DuKQQvxvmJdnycp9EphWstk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=nYIRSaKaeVXCYTmMwl1gQg+c2z8vv6sJHDFv5DOBVS/9y8mL11ccSeDToJn5R1aYj
-         XwPveki0BP2Nl6+qq/XrUjR5WMDTO/LL8Re18d1vuF7Un/8LbJ8yqBXDKiJdKFJGt8
-         5TKx/E1wm6kjXZXfpgMoU+0+z/ciKlW0EP4R1mMg=
+        b=pb4NJVJLblcJ1901nUDn6Ba7DRCliTTmiS9PaQ8QrU5d2RD0ISjJee8c1UH+Lrj8H
+         cynJ1IoW4Pew81JHaNrMSyD/BsV1fzkcJ3gHbpB56iW9+zHF2HEFbiqSL2dPaFnVbE
+         LR/SWzvHpzN8zhYsqyWKXMvE0X6aIqpCAZ2IuWfo=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
         Theodore Ts'o <tytso@mit.edu>,
         Lukas Czerner <lczerner@redhat.com>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 025/115] ext4: fix build error when DX_DEBUG is defined
-Date:   Tue, 12 Nov 2019 20:54:52 -0500
-Message-Id: <20191113015622.11592-25-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 048/209] ext4: fix build error when DX_DEBUG is defined
+Date:   Tue, 12 Nov 2019 20:47:44 -0500
+Message-Id: <20191113015025.9685-48-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191113015622.11592-1-sashal@kernel.org>
-References: <20191113015622.11592-1-sashal@kernel.org>
+In-Reply-To: <20191113015025.9685-1-sashal@kernel.org>
+References: <20191113015025.9685-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 X-stable: review
@@ -81,10 +81,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 162e853dc5d65..212b01861d941 100644
+index 61dc1b0e4465d..badbb8b4f0f17 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -2293,7 +2293,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+@@ -2284,7 +2284,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
  			dxroot->info.indirect_levels += 1;
  			dxtrace(printk(KERN_DEBUG
  				       "Creating %d level index...\n",
