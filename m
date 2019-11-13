@@ -2,97 +2,108 @@ Return-Path: <SRS0=VruF=ZF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F99AC43331
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:25:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 850D2C43141
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 18:00:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 695DE222C9
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 02:25:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1573611946;
-	bh=/fJ3JwL9yOylSX2pobd1DuKQQvxvmJdnycp9EphWstk=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=yYiPOv1OKj/JZFPwgoa2SMVDFXzipVw0ZBvJxRQFJyiBUBH0mvR0ZIKvuZyCpso2E
-	 XOx5iJsUHPhJq0FWaRqUA53EgzejernH7xwIfFO6d7ygaz3MQXIyD6fbO4lpXbzFJ1
-	 72fv+WgbZMO2BWQn1N6ML0poBxGqUDiXcPXILGRA=
+	by mail.kernel.org (Postfix) with ESMTP id 769D1206EE
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 Nov 2019 18:00:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727795AbfKMCZj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Nov 2019 21:25:39 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39352 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727869AbfKMBvb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Nov 2019 20:51:31 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 044AD22466;
-        Wed, 13 Nov 2019 01:51:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1573609890;
-        bh=/fJ3JwL9yOylSX2pobd1DuKQQvxvmJdnycp9EphWstk=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=pb4NJVJLblcJ1901nUDn6Ba7DRCliTTmiS9PaQ8QrU5d2RD0ISjJee8c1UH+Lrj8H
-         cynJ1IoW4Pew81JHaNrMSyD/BsV1fzkcJ3gHbpB56iW9+zHF2HEFbiqSL2dPaFnVbE
-         LR/SWzvHpzN8zhYsqyWKXMvE0X6aIqpCAZ2IuWfo=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Lukas Czerner <lczerner@redhat.com>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 048/209] ext4: fix build error when DX_DEBUG is defined
-Date:   Tue, 12 Nov 2019 20:47:44 -0500
-Message-Id: <20191113015025.9685-48-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191113015025.9685-1-sashal@kernel.org>
-References: <20191113015025.9685-1-sashal@kernel.org>
+        id S1727700AbfKMSAf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 13 Nov 2019 13:00:35 -0500
+Received: from mx2.suse.de ([195.135.220.15]:43264 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726120AbfKMSAf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 13 Nov 2019 13:00:35 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 0135DADE4;
+        Wed, 13 Nov 2019 18:00:32 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 731841E1498; Wed, 13 Nov 2019 19:00:32 +0100 (CET)
+Date:   Wed, 13 Nov 2019 19:00:32 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Matthew Bobrowski <mbobrowski@mbobrowski.org>,
+        linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
+Subject: Splice & iomap dio problems
+Message-ID: <20191113180032.GB12013@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Hello,
 
-[ Upstream commit 799578ab16e86b074c184ec5abbda0bc698c7b0b ]
+I've spent today tracking down the syzkaller report of a WARN_ON hit in
+iov_iter_pipe() [1]. The immediate problem is that syzkaller reproducer
+(calling sendfile(2) from different threads at the same time a file to the
+same file in rather evil way) results in splice code leaking pipe pages
+(nrbufs doesn't return to 0 after read+write in the splice) and eventually
+we run out of pipe pages and hit the warning in iov_iter_pipe(). The
+problem is not specific to ext4, I can see in my tracing that when the
+underlying filesystem is XFS, we can leak the pipe pages in the same way
+(but for XFS somehow the problem doesn't happen as often).  Rather the
+problem seems to be in how iomap direct IO code, pipe iter code, and splice
+code interact.
 
-Enabling DX_DEBUG triggers the build error below.  info is an attribute
-of  the dxroot structure.
+So the problematic situation is when we do direct IO read into pipe pages
+and the read hits EOF which is not on page boundary. Say the file has 4608
+(4096+512) bytes, block size == page size == 4096. What happens is that iomap
+code maps the extent, gets that the extent size is 8192 (mapping ignores
+i_size). Then we call iomap_dio_bio_actor(), which creates its private
+iter, truncates it to 8192, and calls bio_iov_iter_get_pages(). That
+eventually results in preparing two pipe buffers with length 4096 to accept
+the read. Then read completes, in iomap_dio_complete() we truncate the return
+value from 8192 (which was the real amount of IO we performed) to 4608. Now
+this amount (4608) gets passed through splice code to
+iter_file_splice_write(), we write out that amount, but then when cleaning
+up pipe buffers, the last pipe buffer has still 3584 unused so we leave
+the pipe buffer allocated and effectively leak it.
 
-linux/fs/ext4/namei.c:2264:12: error: ‘info’
-undeclared (first use in this function); did you mean ‘insl’?
-	   	  info->indirect_levels));
+Now I was also investigating why the old direct IO code doesn't leak pipe
+buffers like this and the trick is done by the iov_iter_revert() call
+generic_file_read_iter(). This results in setting iter position right to
+the position where direct IO read reported it ended (4608) and truncating
+pipe buffers after this point. So splice code then sees the second pipe
+buffer has length only 512 which matches the amount it was asked to write
+and so the pipe buffer gets freed after the write in
+iter_file_splice_write().
 
-Fixes: e08ac99fa2a2 ("ext4: add largedir feature")
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/namei.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The question is how to best fix this. The quick fix is to add
+iov_iter_revert() call to iomap_dio_rw() so that in case of sync IO (we
+always do only sync IO to pipes), we properly set iter position in case of
+short read / write. But it looks somewhat hacky to me and this whole
+interaction of iter and pipes looks fragile to me.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 61dc1b0e4465d..badbb8b4f0f17 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2284,7 +2284,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
- 			dxroot->info.indirect_levels += 1;
- 			dxtrace(printk(KERN_DEBUG
- 				       "Creating %d level index...\n",
--				       info->indirect_levels));
-+				       dxroot->info.indirect_levels));
- 			err = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
- 			if (err)
- 				goto journal_error;
+Another option I can see is to truncate the iter to min(i_size-pos, length) in
+iomap_dio_bio_actor() which *should* do the trick AFAICT. But I'm not sure
+if it won't break something else.
+
+Any other ideas?
+
+As a side note the logic copying iter in iomap_dio_bio_actor() looks
+suspicious. We copy 'dio->submit.iter' to 'iter' but then in the loop we call
+iov_iter_advance() on dio->submit.iter. So if bio_iov_iter_get_pages()
+didn't return enough pages and we loop again, 'iter' will have stale
+contents and things go sideways from there? What am I missing? And why do
+we do that strange copying of iter instead of using iov_iter_truncate() and
+iov_iter_reexpand() on the 'dio->submit.iter' directly?
+
+								Honza
+
+[1] https://lore.kernel.org/lkml/000000000000d60aa50596c63063@google.com
+
 -- 
-2.20.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
