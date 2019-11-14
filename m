@@ -2,123 +2,153 @@ Return-Path: <SRS0=dM+b=ZG=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
-	DKIM_SIGNED,DKIM_VALID,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86C01C43215
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Nov 2019 07:03:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB6B7C432C3
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Nov 2019 08:50:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 681E22071F
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Nov 2019 07:03:43 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=yandex-team.ru header.i=@yandex-team.ru header.b="zTb1FsIS"
+	by mail.kernel.org (Postfix) with ESMTP id ACC4F2070E
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Nov 2019 08:50:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726766AbfKNHDm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 Nov 2019 02:03:42 -0500
-Received: from forwardcorp1j.mail.yandex.net ([5.45.199.163]:34404 "EHLO
-        forwardcorp1j.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726473AbfKNHDm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Nov 2019 02:03:42 -0500
-Received: from mxbackcorp1o.mail.yandex.net (mxbackcorp1o.mail.yandex.net [IPv6:2a02:6b8:0:1a2d::301])
-        by forwardcorp1j.mail.yandex.net (Yandex) with ESMTP id C2C702E0D62;
-        Thu, 14 Nov 2019 10:03:38 +0300 (MSK)
-Received: from myt4-4db2488e778a.qloud-c.yandex.net (myt4-4db2488e778a.qloud-c.yandex.net [2a02:6b8:c00:884:0:640:4db2:488e])
-        by mxbackcorp1o.mail.yandex.net (mxbackcorp/Yandex) with ESMTP id LWxSFmZsF8-3c48bh4j;
-        Thu, 14 Nov 2019 10:03:38 +0300
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex-team.ru; s=default;
-        t=1573715018; bh=k4z9VHt5dBV8QCXhkxzOvom+pDZ+LyhbIhx5jyxThHk=;
-        h=In-Reply-To:Message-Id:References:Date:Subject:To:From:Cc;
-        b=zTb1FsIS73eXHNi7XxeEDE4N7I//ge9xSYnxcWzEIo9Jj11CgqKiySMd/3tnxGQ72
-         Rg3MLh9NsVWfGXfEk0kkj+DPTkCj6gM7ok97WEY2Q7PFWbCncjj3Y/NsSMOtw+m3i4
-         1soQKcbb+QpGzxwhs5XOv1WuxTdR601W1VGXiWh0=
-Authentication-Results: mxbackcorp1o.mail.yandex.net; dkim=pass header.i=@yandex-team.ru
-Received: from 95.108.174.193-red.dhcp.yndx.net (95.108.174.193-red.dhcp.yndx.net [95.108.174.193])
-        by myt4-4db2488e778a.qloud-c.yandex.net (smtpcorp/Yandex) with ESMTPSA id RDpTFQknMP-3cVOPCni;
-        Thu, 14 Nov 2019 10:03:38 +0300
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (Client certificate not present)
-From:   Dmitry Monakhov <dmonakhov@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Dmitry Monakhov <dmonakhov@gmail.com>
-Subject: [PATCH 1/2] ext4: Use raw numbers for EXT4_MAP_XXX flags
-Date:   Thu, 14 Nov 2019 07:03:29 +0000
-Message-Id: <20191114070330.14115-2-dmonakhov@gmail.com>
-X-Mailer: git-send-email 2.18.0
-In-Reply-To: <20191114070330.14115-1-dmonakhov@gmail.com>
-References: <20191114070330.14115-1-dmonakhov@gmail.com>
+        id S1726024AbfKNIuA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 Nov 2019 03:50:00 -0500
+Received: from mx2.suse.de ([195.135.220.15]:33160 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725976AbfKNIuA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 Nov 2019 03:50:00 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 0602BADCB;
+        Thu, 14 Nov 2019 08:49:57 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 9EA121E4AD2; Thu, 14 Nov 2019 09:49:57 +0100 (CET)
+Date:   Thu, 14 Nov 2019 09:49:57 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 0/19 v3] ext4: Fix transaction overflow due to revoke
+ descriptors
+Message-ID: <20191114084957.GA28486@quack2.suse.cz>
+References: <20191003215523.7313-1-jack@suse.cz>
+ <20191112220614.GA11089@mit.edu>
+ <20191113094545.GC6367@quack2.suse.cz>
+ <20191114052652.GB11994@mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191114052652.GB11994@mit.edu>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Trace's macro __print_flags() produce raw event's decraration w/o knowing actual flags value
+On Thu 14-11-19 00:26:52, Theodore Y. Ts'o wrote:
+> On Wed, Nov 13, 2019 at 10:45:45AM +0100, Jan Kara wrote:
+> > Thanks for the heads up! I didn't do any performance testing with the jbd2
+> > changes specifically and our internal performance testing grid only checks
+> > Linus' kernel so it didn't yet even try to run that code. I'll queue some
+> > sqlite insert tests internally with my changes to see whether I'm able to
+> > reproduce. I don't have NVME disks available quickly but I guess SATA SSD
+> > could do the job as well...
+> 
+> Sorry, false alarm.  What Phoronix was testing was 5.3 versus 5.4-rcX,
+> using Ubuntu's bleeding-edge kernels.  It wouldn't have any of the
+> ext4 patches we have queued for the *next* merge window.
 
-cat /sys/kernel/debug/tracing/events/ext4/ext4_ext_map_blocks_exit/format
-..
-__print_flags(REC->mflags, "", { (1 << BH_New),
-..
-This means that  perf-script can not decode bintrace file because BH_XXX is just a text and it is
-unknown for perf's userspace. As result perf will dump this field as raw hex number
-This patch use explicit numbers to describe EXT4_MAP_XXX flags so __print_flags will works as expected.
+OK, thanks for looking! I've run some tests on my test setup anyway...
 
-#Before patch
-ext4:ext4_ext_map_blocks_exit: dev 253,0 ino 2 flags  lblk 0 pblk 4177 len 1 mflags 0x20 ret 1
-ext4:ext4_ext_map_blocks_exit: dev 253,0 ino 12 flags CREATE lblk 0 pblk 34304 len 1 mflags 0x60 ret 1
+> That being said, I wasn't able to reproduce performance delta using
+> upstream kernels, running on a Google Compute Engine VM, machtype
+> n1-highcpu-8, using a GCE Local SSD (SCSI-attached) for the first
+> benchmark, which I believe was the pts/sqlite benchmark using a thread
+> count of 1:
+> 
+>      Phoronix Test Suite 9.0.1
+>      SQLite 3.30.1
+>      Threads / Copies: 1
+>      Seconds < Lower Is Better
+>      5.3.0 ..................... 225 |===========================================
+>      5.4.0-rc3 ................. 224 |==========================================
+>      5.4-rc3-80-gafb2442fa429 .. 227 |===========================================
+>      5.4.0-rc7 ................. 223 |==========================================
+> 
+>      Processor: Intel Xeon (4 Cores / 8 Threads), Chipset: Intel 440FX
+>      82441FX PMC, Memory: 1 x 7373 MB RAM, Disk: 11GB PersistentDisk +
+>      403GB EphemeralDisk, Network: Red Hat Virtio device
+> 
+>      OS: Debian 10, Kernel: 5.4.0-rc3-xfstests (x86_64) 20191113, Compiler:
+>      GCC 8.3.0, File-System: ext4, System Layer: KVM
+> 
+> This was done using an extension to a gce-xfstests test appliance, to
+> which I hope to be adding an automation engine where it will kexec
+> into a series of kernels, run the benchmarks and then spit out the
+> report somewhere.  For now, the benchmarks are run manually.
+> 
+> (Adding commentary and click-baity titles is left as an exercise to
+> the reader.  :-)
+> 
+> 						- Ted
+> 						
+> P.S.  For all that I like to make snarky comments about Phoronix.com,
+> I have to admit Michael Larabel has done a pretty good job with his
+> performance test engine.  I probably would have choosen a different
+> implementation than PHP, and I'd have added an explicit way to specify
+> the file system to be tested other than mounting it on top of
+> /var/lib/phoronix-test-suite, and at least have the option of placing
+> the benchmarks' build trees and binaries in a different location than
+> the file system under test.
+> 
+> But that being said, he's collecting a decent set of benchmark tools,
+> and it is pretty cool that it has an automated way of collecting the
+> benchmark results, including the pretty graphs suitable for web
+> articles and conference slide decks ("and now, we turn to the rigged
+> benchmarks section of the presentation designed to show my new feature
+> in the best possible light...").
 
-#With patch
-ext4:ext4_ext_map_blocks_exit: dev 253,0 ino 2 flags  lblk 0 pblk 4177 len 1 mflags M ret 1
-ext4:ext4_ext_map_blocks_exit: dev 253,0 ino 12 flags CREATE lblk 0 pblk 34816 len 1 mflags NM ret 1
+Let me make a small marketing pitch mmtest [1] :) For me running the test is
+just:
+  * Boot the right kernel on the machine
+  * Run:
+   ./run-mmtests.sh -c configs/config-db-sqlite-insert-medium-ext4 \
+      --no-monitor Whatever_run_name_1
 
-Signed-off-by: Dmitry Monakhov <dmonakhov@gmail.com>
----
- fs/ext4/ext4.h | 26 ++++++++++++++++++++++----
- 1 file changed, 22 insertions(+), 4 deletions(-)
+Now the config file already has proper partition, fstype, mkfs opts etc.
+configured so it's a bit of cheating but still :). And when I have data for
+both kernels, I do:
+  cd work/log
+  ../../compare_kernels.sh
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index bf660aa..9ccf736 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -169,14 +169,32 @@ struct ext4_allocation_request {
-  * This structure is used to pass requests into ext4_map_blocks() as
-  * well as to store the information returned by ext4_map_blocks().  It
-  * takes less room on the stack than a struct buffer_head.
-+ *
-+ * Use explicit mapping of EXT4_MAP_XXX flags to corresponding BH_XXX bits
-  */
--#define EXT4_MAP_NEW		(1 << BH_New)
--#define EXT4_MAP_MAPPED		(1 << BH_Mapped)
--#define EXT4_MAP_UNWRITTEN	(1 << BH_Unwritten)
--#define EXT4_MAP_BOUNDARY	(1 << BH_Boundary)
-+#define EXT4_MAP_NEW		0x40
-+#define EXT4_MAP_MAPPED		0x20
-+#define EXT4_MAP_UNWRITTEN	0x1000
-+#define EXT4_MAP_BOUNDARY	0x400
- #define EXT4_MAP_FLAGS		(EXT4_MAP_NEW | EXT4_MAP_MAPPED |\
- 				 EXT4_MAP_UNWRITTEN | EXT4_MAP_BOUNDARY)
- 
-+/*
-+ * Assert that EXT4_MAP_XX is consistent with respect to BH_XXX. If all is well,
-+ * the macros will be dropped, so, it won't cost any extra space in the compiled
-+ * kernel image, otherwise, the build will fail.
-+ */
-+#define TEST_MAP_VALUE(FLAG, BIT) (EXT4_MAP_##FLAG == (1 << BH_##BIT))
-+#define CHECK_MAP_VALUE(FLAG, BIT) BUILD_BUG_ON(!TEST_MAP_VALUE(FLAG, BIT))
-+
-+static inline void ext4_check_map_values(void)
-+{
-+	CHECK_MAP_VALUE(NEW, New);
-+	CHECK_MAP_VALUE(MAPPED, Mapped);
-+	CHECK_MAP_VALUE(UNWRITTEN, Unwritten);
-+	CHECK_MAP_VALUE(BOUNDARY, Boundary);
-+}
-+
- struct ext4_map_blocks {
- 	ext4_fsblk_t m_pblk;
- 	ext4_lblk_t m_lblk;
+and get a table with the comparison of the two benchmarking runs with
+averages, standard deviations, percentiles, and other more advanced
+statistical stuff to distinguish signal from noise. We also have support
+for gathering various monitoring while the test is running (turbostat,
+iostat, vmstat, ...) and graphing all the results (although the graphs are
+more aimed at quick analysis of what's going on rather than at presenting
+results to a public).
+
+So for this campaign I've compared "5.3+some SUSE patches" to "5.4-rc7+your
+'dev' branch". And the results look like:
+
+sqlite
+                              5.3-SUSE                5.4-rc7
+                                                     ext4-dev
+Min       Trans     2181.67 (   0.00%)     2412.72 (  10.59%)
+Hmean     Trans     2399.39 (   0.00%)     2602.73 *   8.47%*
+Stddev    Trans      172.15 (   0.00%)      141.61 (  17.74%)
+CoeffVar  Trans        7.14 (   0.00%)        5.43 (  24.00%)
+Max       Trans     2671.84 (   0.00%)     3027.81 (  13.32%)
+...
+
+These are Trans/Sec values so there's actually a small improvement on this
+machine. But it's somwhat difficult to tell because the benchmark variation
+is rather high (likely due to powersafe cpufreq governor if I should guess).
+
+								Honza
+
+[1] git://github.com/gormanm/mmtests
 -- 
-2.7.4
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
