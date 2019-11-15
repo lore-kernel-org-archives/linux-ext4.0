@@ -2,99 +2,100 @@ Return-Path: <SRS0=LoK8=ZH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F14DBC43215
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 14:56:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BE0AC432C3
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 17:10:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D569A2053B
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 14:56:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EC422072A
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 17:10:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1573837832;
+	bh=AYpJCtRDeIr/6khByOnwja84+YsEz0CugiiJsz7p4aw=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=Z4x/ofRAjx+9hRXAG08TgLSk+LBqQAK1Ms4BnOVZ8DryaHbNThDwcr7zUolpUon5y
+	 WwKhP9AX763w7dER0yjtuahcUVjWfTOyFjypJZseay0g0vR5m6CvKYJKG2APlsFxS6
+	 JDde1NVYAZliae0My1U3a45xH9KbBz2RjpUD9k4s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727743AbfKOO4l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Nov 2019 09:56:41 -0500
-Received: from mx2.suse.de ([195.135.220.15]:40462 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727526AbfKOO4l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 Nov 2019 09:56:41 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 3CBA7B15E;
-        Fri, 15 Nov 2019 14:56:39 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 3ABBE1E4407; Fri, 15 Nov 2019 15:56:38 +0100 (CET)
-Date:   Fri, 15 Nov 2019 15:56:38 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Sebastian Siewior <bigeasy@linutronix.de>
-Cc:     Thomas Gleixner <tglx@linutronix.de>,
-        Matthew Wilcox <willy@infradead.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@kernel.org>,
-        Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Julia Cartwright <julia@ni.com>, Jan Kara <jack@suse.cz>,
-        Theodore Tso <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Joel Becker <jlbec@evilplan.org>
-Subject: Re: [PATCH] fs/buffer: Make BH_Uptodate_Lock bit_spin_lock a regular
- spinlock_t
-Message-ID: <20191115145638.GA5461@quack2.suse.cz>
-References: <20190820170818.oldsdoumzashhcgh@linutronix.de>
- <20190820171721.GA4949@bombadil.infradead.org>
- <alpine.DEB.2.21.1908201959240.2223@nanos.tec.linutronix.de>
- <20191011112525.7dksg6ixb5c3hxn5@linutronix.de>
+        id S1727585AbfKORKc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Nov 2019 12:10:32 -0500
+Received: from mail.kernel.org ([198.145.29.99]:36712 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727528AbfKORKb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 Nov 2019 12:10:31 -0500
+Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id EA76A20728;
+        Fri, 15 Nov 2019 17:10:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1573837831;
+        bh=AYpJCtRDeIr/6khByOnwja84+YsEz0CugiiJsz7p4aw=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=qRFFuxEiTGZWaUfCNAIN7/4jpzJtUkhN+xSjdB3uWkTp4qTSHyNq8o0DS6jPNSdSX
+         qMV1uElx+5HKVwgH90rHBkVeOLaNx+lBc7op7P+ug035yvEq+MefRDXnuNdrOCsIrZ
+         4XFydWryF6EFYyj8eaoGQAERl/WFxVDadEU08zEM=
+Date:   Fri, 15 Nov 2019 09:10:29 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 20/25] jbd2: Reserve space for revoke descriptor blocks
+Message-ID: <20191115171029.GA701@sol.localdomain>
+References: <20191003215523.7313-1-jack@suse.cz>
+ <20191105164437.32602-20-jack@suse.cz>
+ <20191115075223.GA152352@sol.localdomain>
+ <20191115100222.GC9043@quack2.suse.cz>
+ <20191115142033.GA23689@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20191011112525.7dksg6ixb5c3hxn5@linutronix.de>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20191115142033.GA23689@mit.edu>
+User-Agent: Mutt/1.12.2 (2019-09-21)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 11-10-19 13:25:25, Sebastian Siewior wrote:
-> On 2019-08-20 20:01:14 [+0200], Thomas Gleixner wrote:
-> > On Tue, 20 Aug 2019, Matthew Wilcox wrote:
-> > > On Tue, Aug 20, 2019 at 07:08:18PM +0200, Sebastian Siewior wrote:
-> > > > Bit spinlocks are problematic if PREEMPT_RT is enabled, because they
-> > > > disable preemption, which is undesired for latency reasons and breaks when
-> > > > regular spinlocks are taken within the bit_spinlock locked region because
-> > > > regular spinlocks are converted to 'sleeping spinlocks' on RT. So RT
-> > > > replaces the bit spinlocks with regular spinlocks to avoid this problem.
-> > > > Bit spinlocks are also not covered by lock debugging, e.g. lockdep.
-> > > > 
-> > > > Substitute the BH_Uptodate_Lock bit spinlock with a regular spinlock.
-> > > > 
-> > > > Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
-> > > > [bigeasy: remove the wrapper and use always spinlock_t]
+On Fri, Nov 15, 2019 at 09:20:33AM -0500, Theodore Y. Ts'o wrote:
+> On Fri, Nov 15, 2019 at 11:02:22AM +0100, Jan Kara wrote:
+> > On Thu 14-11-19 23:52:23, Eric Biggers wrote:
+> > > On Tue, Nov 05, 2019 at 05:44:26PM +0100, Jan Kara wrote:
+> > > >  static inline int jbd2_handle_buffer_credits(handle_t *handle)
+> > > >  {
+> > > > -	return handle->h_buffer_credits;
+> > > > +	journal_t *journal = handle->h_transaction->t_journal;
+> > > > +
+> > > > +	return handle->h_buffer_credits -
+> > > > +		DIV_ROUND_UP(handle->h_revoke_credits_requested,
+> > > > +			     journal->j_revoke_records_per_block);
+> > > >  }
 > > > 
-> > > Uhh ... always grow the buffer_head, even for non-PREEMPT_RT?  Why?
+> > > This patch is causing a crash with 'kvm-xfstests -c dioread_nolock ext4/024'.
+> > > Looks like this code incorrectly assumes that h_transaction is always valid
+> > > rather than the other member of the union, h_journal.
 > > 
-> > Christoph requested that:
-> > 
-> >   https://lkml.kernel.org/r/20190802075612.GA20962@infradead.org
+> > Right, thanks for the report! Just out of curiosity: You have to have that
+> > tracepoint enabled for the crash to trigger, don't you? Because I'm pretty
+> > sure I did dioread_nolock runs...
 > 
-> What do we do about this one?
+> I've been *definitely* been doing dioread_nolock runs (including two
+> last night), with no failures.
+> 
+> ext4/dioread_nolock: 485 tests, 40 skipped, 5142 seconds
+> 
 
-I was thinking about this for quite some time. In the end I think the patch
-is almost fine but I'd name the lock b_update_lock and put it just after
-b_size element in struct buffer_head to use the hole there. That way we
-don't grow struct buffer_head.
+No I didn't enable the tracepoint.  I think the difference is that I had
+CONFIG_UBSAN enabled.  I get the crash if I use the following kconfig:
 
-With some effort, we could even shrink struct buffer_head from 104 bytes
-(on x86_64) to 96 bytes but I don't think that effort is worth it (I'd find
-it better use of time to actually work on getting rid of buffer heads
-completely).
+	curl -o .config 'https://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git/plain/kernel-configs/x86_64-config-5.4'
+	echo CONFIG_UBSAN=y >> .config
+	make olddefconfig
 
-								Honza
+... but not if I don't enable UBSAN.
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+No idea why UBSAN makes a difference here, though.  I'm using gcc 9.2.0.
+
+- Eric
