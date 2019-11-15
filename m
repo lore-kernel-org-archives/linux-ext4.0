@@ -2,54 +2,54 @@ Return-Path: <SRS0=LoK8=ZH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
-	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96AFDC33C99
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 10:18:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3A3AC432C3
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 10:18:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6F9362077B
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 10:18:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AE8B4207FC
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Nov 2019 10:18:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="JCacvAHo"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="iDXjXEt1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727563AbfKOKR6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Nov 2019 05:17:58 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:54784 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727202AbfKOKR5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Nov 2019 05:17:57 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xAFAEP70021065;
-        Fri, 15 Nov 2019 10:16:35 GMT
+        id S1727597AbfKOKSG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Nov 2019 05:18:06 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:47718 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727134AbfKOKSE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Nov 2019 05:18:04 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xAFAEITt047434;
+        Fri, 15 Nov 2019 10:16:42 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2019-08-05;
- bh=da7iXdjbFIbuGZbasA5yd1nTh/1IQS1oVdExPz6PWJs=;
- b=JCacvAHonTpbbcZe/ABZkI5jbfAti28DtxC00XA9S78xKbuXokx8WDyZKAttGVll9cCl
- 5u7C7DPandnmTOlkABKNKNGcgnPI8cgcJN+XZC01ly2pvmkQCKEEvdkLKkicqqeYzGq6
- wYapmLtn7kKNZ42QdrqCDv1xyuTx5prjSBA/kKXhogY39IG7s8dOdIIa3uXGgTuRcqJp
- r2TJ+V+k5ncO6EVv72wyOmn5q+JxYrq8T9mQ9/LTn9o5oFqAfObUzWk4mhm2V3x6bA3A
- cIanDRI56pY5fPYxnfLs8KnWrSer+HMTiWdSzhwaCyvmXvZOaPQCgmjM8dkkrC/OLYHW 9w== 
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by userp2120.oracle.com with ESMTP id 2w9gxpje1u-1
+ bh=P+HiVSl1jyeAKRlbuhH0mupiRsIP0/UxZq92oAfDDa0=;
+ b=iDXjXEt1yuowJ4YIPk8xoU6oq4qYiEeje0rFnIEyBHg+KTaZb66llIpBGdJy7pc2MgHK
+ r5OZp2TUZ2yi0cKrAtEYbBaSA8jcEtR/Opcfgla9om84hvTZG0jagJoEJEqWE3o+Zbjj
+ tS7VoTgh5xdaAuDH/ubM78mlyt90N+1tcHMKim9WmsMbIKNKENXUKfIb48++SWIo2uJ/
+ w4zLXpJgqcFa3B8Ui5rOR8UEwg+SiitObUXpwJb8Ws1fDzpzAbRui7pm5d0BQmFDXrcT
+ 1ggG8Cc9OK53K3/dwEDjYd1GuZ+X7HXCtyDiyXctKtiGWevZhicEJfxvfb1MTPhMOboZ Jg== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2130.oracle.com with ESMTP id 2w9gxpje6a-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 15 Nov 2019 10:16:34 +0000
-Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
-        by aserp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xAFADEKU169388;
-        Fri, 15 Nov 2019 10:16:34 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserp3020.oracle.com with ESMTP id 2w9h0k4d40-1
+        Fri, 15 Nov 2019 10:16:42 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xAFADDL3007920;
+        Fri, 15 Nov 2019 10:16:42 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3030.oracle.com with ESMTP id 2w9h148ff4-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 15 Nov 2019 10:16:33 +0000
+        Fri, 15 Nov 2019 10:16:42 +0000
 Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id xAFAGThO001589;
-        Fri, 15 Nov 2019 10:16:29 GMT
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id xAFAGe8p016353;
+        Fri, 15 Nov 2019 10:16:40 GMT
 Received: from dhcp-10-175-208-51.vpn.oracle.com (/10.175.208.51)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 15 Nov 2019 02:16:28 -0800
+        with ESMTP ; Fri, 15 Nov 2019 02:16:40 -0800
 From:   Alan Maguire <alan.maguire@oracle.com>
 To:     brendanhiggins@google.com, skhan@linuxfoundation.org,
         linux-kselftest@vger.kernel.org
@@ -64,20 +64,20 @@ Cc:     linux-kernel@vger.kernel.org, kunit-dev@googlegroups.com,
         linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
         sboyd@kernel.org, Alan Maguire <alan.maguire@oracle.com>,
         Knut Omang <knut.omang@oracle.com>
-Subject: [PATCH v4 linux-kselftest-test 1/6] kunit: move string-stream.h to lib/kunit
-Date:   Fri, 15 Nov 2019 10:16:07 +0000
-Message-Id: <1573812972-10529-2-git-send-email-alan.maguire@oracle.com>
+Subject: [PATCH v4 linux-kselftest-test 4/6] kunit: remove timeout dependence on sysctl_hung_task_timeout_seconds
+Date:   Fri, 15 Nov 2019 10:16:10 +0000
+Message-Id: <1573812972-10529-5-git-send-email-alan.maguire@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1573812972-10529-1-git-send-email-alan.maguire@oracle.com>
 References: <1573812972-10529-1-git-send-email-alan.maguire@oracle.com>
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9441 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=3 malwarescore=0
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
  phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.0.1-1911140001 definitions=main-1911150096
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9441 signatures=668685
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=3 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
  lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1911140001
  definitions=main-1911150096
@@ -86,215 +86,69 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-string-stream interfaces are not intended for external use;
-move them from include/kunit to lib/kunit accordingly.
+In discussion of how to handle timeouts, it was noted that if
+sysctl_hung_task_timeout_seconds is exceeded for a kunit test,
+the test task will be killed and an oops generated.  This should
+suffice as a means of debugging such timeout issues for now.
+
+Hence remove use of sysctl_hung_task_timeout_secs, which has the
+added benefit of avoiding the need to export that symbol from
+the core kernel.
 
 Signed-off-by: Alan Maguire <alan.maguire@oracle.com>
 Signed-off-by: Knut Omang <knut.omang@oracle.com>
 ---
- include/kunit/assert.h         |  3 ++-
- include/kunit/string-stream.h  | 51 ------------------------------------------
- lib/kunit/assert.c             |  2 ++
- lib/kunit/string-stream-test.c |  3 ++-
- lib/kunit/string-stream.c      |  3 ++-
- lib/kunit/string-stream.h      | 51 ++++++++++++++++++++++++++++++++++++++++++
- lib/kunit/test.c               |  2 ++
- 7 files changed, 61 insertions(+), 54 deletions(-)
- delete mode 100644 include/kunit/string-stream.h
- create mode 100644 lib/kunit/string-stream.h
+ lib/kunit/try-catch.c | 22 ++++------------------
+ 1 file changed, 4 insertions(+), 18 deletions(-)
 
-diff --git a/include/kunit/assert.h b/include/kunit/assert.h
-index db6a0fc..ad889b5 100644
---- a/include/kunit/assert.h
-+++ b/include/kunit/assert.h
-@@ -9,10 +9,11 @@
- #ifndef _KUNIT_ASSERT_H
- #define _KUNIT_ASSERT_H
- 
--#include <kunit/string-stream.h>
- #include <linux/err.h>
-+#include <linux/kernel.h>
- 
- struct kunit;
-+struct string_stream;
- 
- /**
-  * enum kunit_assert_type - Type of expectation/assertion.
-diff --git a/include/kunit/string-stream.h b/include/kunit/string-stream.h
-deleted file mode 100644
-index fe98a00..0000000
---- a/include/kunit/string-stream.h
-+++ /dev/null
-@@ -1,51 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--/*
-- * C++ stream style string builder used in KUnit for building messages.
-- *
-- * Copyright (C) 2019, Google LLC.
-- * Author: Brendan Higgins <brendanhiggins@google.com>
-- */
--
--#ifndef _KUNIT_STRING_STREAM_H
--#define _KUNIT_STRING_STREAM_H
--
--#include <linux/spinlock.h>
--#include <linux/types.h>
--#include <stdarg.h>
--
--struct string_stream_fragment {
--	struct kunit *test;
--	struct list_head node;
--	char *fragment;
--};
--
--struct string_stream {
--	size_t length;
--	struct list_head fragments;
--	/* length and fragments are protected by this lock */
--	spinlock_t lock;
--	struct kunit *test;
--	gfp_t gfp;
--};
--
--struct kunit;
--
--struct string_stream *alloc_string_stream(struct kunit *test, gfp_t gfp);
--
--int __printf(2, 3) string_stream_add(struct string_stream *stream,
--				     const char *fmt, ...);
--
--int string_stream_vadd(struct string_stream *stream,
--		       const char *fmt,
--		       va_list args);
--
--char *string_stream_get_string(struct string_stream *stream);
--
--int string_stream_append(struct string_stream *stream,
--			 struct string_stream *other);
--
--bool string_stream_is_empty(struct string_stream *stream);
--
--int string_stream_destroy(struct string_stream *stream);
--
--#endif /* _KUNIT_STRING_STREAM_H */
-diff --git a/lib/kunit/assert.c b/lib/kunit/assert.c
-index 86013d4..9aca71c 100644
---- a/lib/kunit/assert.c
-+++ b/lib/kunit/assert.c
-@@ -7,6 +7,8 @@
-  */
- #include <kunit/assert.h>
- 
-+#include "string-stream.h"
-+
- void kunit_base_assert_format(const struct kunit_assert *assert,
- 			      struct string_stream *stream)
- {
-diff --git a/lib/kunit/string-stream-test.c b/lib/kunit/string-stream-test.c
-index 76cc05e..6c70dc8 100644
---- a/lib/kunit/string-stream-test.c
-+++ b/lib/kunit/string-stream-test.c
-@@ -6,10 +6,11 @@
-  * Author: Brendan Higgins <brendanhiggins@google.com>
-  */
- 
--#include <kunit/string-stream.h>
- #include <kunit/test.h>
- #include <linux/slab.h>
- 
-+#include "string-stream.h"
-+
- static void string_stream_test_empty_on_creation(struct kunit *test)
- {
- 	struct string_stream *stream = alloc_string_stream(test, GFP_KERNEL);
-diff --git a/lib/kunit/string-stream.c b/lib/kunit/string-stream.c
-index e6d17aa..3503920 100644
---- a/lib/kunit/string-stream.c
-+++ b/lib/kunit/string-stream.c
-@@ -6,11 +6,12 @@
-  * Author: Brendan Higgins <brendanhiggins@google.com>
-  */
- 
--#include <kunit/string-stream.h>
- #include <kunit/test.h>
- #include <linux/list.h>
- #include <linux/slab.h>
- 
-+#include "string-stream.h"
-+
- struct string_stream_fragment_alloc_context {
- 	struct kunit *test;
- 	int len;
-diff --git a/lib/kunit/string-stream.h b/lib/kunit/string-stream.h
-new file mode 100644
-index 0000000..fe98a00
---- /dev/null
-+++ b/lib/kunit/string-stream.h
-@@ -0,0 +1,51 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * C++ stream style string builder used in KUnit for building messages.
-+ *
-+ * Copyright (C) 2019, Google LLC.
-+ * Author: Brendan Higgins <brendanhiggins@google.com>
-+ */
-+
-+#ifndef _KUNIT_STRING_STREAM_H
-+#define _KUNIT_STRING_STREAM_H
-+
-+#include <linux/spinlock.h>
-+#include <linux/types.h>
-+#include <stdarg.h>
-+
-+struct string_stream_fragment {
-+	struct kunit *test;
-+	struct list_head node;
-+	char *fragment;
-+};
-+
-+struct string_stream {
-+	size_t length;
-+	struct list_head fragments;
-+	/* length and fragments are protected by this lock */
-+	spinlock_t lock;
-+	struct kunit *test;
-+	gfp_t gfp;
-+};
-+
-+struct kunit;
-+
-+struct string_stream *alloc_string_stream(struct kunit *test, gfp_t gfp);
-+
-+int __printf(2, 3) string_stream_add(struct string_stream *stream,
-+				     const char *fmt, ...);
-+
-+int string_stream_vadd(struct string_stream *stream,
-+		       const char *fmt,
-+		       va_list args);
-+
-+char *string_stream_get_string(struct string_stream *stream);
-+
-+int string_stream_append(struct string_stream *stream,
-+			 struct string_stream *other);
-+
-+bool string_stream_is_empty(struct string_stream *stream);
-+
-+int string_stream_destroy(struct string_stream *stream);
-+
-+#endif /* _KUNIT_STRING_STREAM_H */
-diff --git a/lib/kunit/test.c b/lib/kunit/test.c
-index c83c0fa..36ebf47 100644
---- a/lib/kunit/test.c
-+++ b/lib/kunit/test.c
-@@ -11,6 +11,8 @@
+diff --git a/lib/kunit/try-catch.c b/lib/kunit/try-catch.c
+index 0247a28..0dd434e 100644
+--- a/lib/kunit/try-catch.c
++++ b/lib/kunit/try-catch.c
+@@ -11,7 +11,6 @@
+ #include <linux/completion.h>
  #include <linux/kernel.h>
- #include <linux/sched/debug.h>
+ #include <linux/kthread.h>
+-#include <linux/sched/sysctl.h>
  
-+#include "string-stream.h"
-+
- static void kunit_set_failure(struct kunit *test)
+ #include "try-catch-impl.h"
+ 
+@@ -33,8 +32,6 @@ static int kunit_generic_run_threadfn_adapter(void *data)
+ 
+ static unsigned long kunit_test_timeout(void)
  {
- 	WRITE_ONCE(test->success, false);
+-	unsigned long timeout_msecs;
+-
+ 	/*
+ 	 * TODO(brendanhiggins@google.com): We should probably have some type of
+ 	 * variable timeout here. The only question is what that timeout value
+@@ -51,22 +48,11 @@ static unsigned long kunit_test_timeout(void)
+ 	 *
+ 	 * For more background on this topic, see:
+ 	 * https://mike-bland.com/2011/11/01/small-medium-large.html
++	 *
++	 * If tests timeout due to exceeding sysctl_hung_task_timeout_secs,
++	 * the task will be killed and an oops generated.
+ 	 */
+-	if (sysctl_hung_task_timeout_secs) {
+-		/*
+-		 * If sysctl_hung_task is active, just set the timeout to some
+-		 * value less than that.
+-		 *
+-		 * In regards to the above TODO, if we decide on variable
+-		 * timeouts, this logic will likely need to change.
+-		 */
+-		timeout_msecs = (sysctl_hung_task_timeout_secs - 1) *
+-				MSEC_PER_SEC;
+-	} else {
+-		timeout_msecs = 300 * MSEC_PER_SEC; /* 5 min */
+-	}
+-
+-	return timeout_msecs;
++	return 300 * MSEC_PER_SEC; /* 5 min */
+ }
+ 
+ void kunit_try_catch_run(struct kunit_try_catch *try_catch, void *context)
 -- 
 1.8.3.1
 
