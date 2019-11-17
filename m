@@ -2,98 +2,49 @@ Return-Path: <SRS0=rNMj=ZJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43D36C432C0
-	for <linux-ext4@archiver.kernel.org>; Sun, 17 Nov 2019 01:36:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3811C432C0
+	for <linux-ext4@archiver.kernel.org>; Sun, 17 Nov 2019 14:59:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D601207DD
-	for <linux-ext4@archiver.kernel.org>; Sun, 17 Nov 2019 01:36:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1573954571;
-	bh=W8mGhvDjRgS+WJe/Ku3r460x2dTk88Tb5g6TQFG8s74=;
-	h=In-Reply-To:References:Cc:To:Subject:From:Date:List-ID:From;
-	b=scw5dTtu/B6gY+chKP48UdNnjm1V2ZKESMDi5aC9KRmPu5/TJBc+krbkoAeHhK44v
-	 4RMa3DuuKpkjadG2LNGyqWmZfi1lkYq9biJCqnH9hi9eNtDkrxYKgX+Oei6fp9Lqov
-	 jgzeN+c/1sGIDtg2WPfSs3vTWo844ZN7eyru91Yg=
+	by mail.kernel.org (Postfix) with ESMTP id A6966206CC
+	for <linux-ext4@archiver.kernel.org>; Sun, 17 Nov 2019 14:59:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725962AbfKQBgH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 16 Nov 2019 20:36:07 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48986 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725308AbfKQBgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 16 Nov 2019 20:36:07 -0500
-Received: from kernel.org (unknown [104.132.0.74])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4541D207DD;
-        Sun, 17 Nov 2019 01:36:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1573954566;
-        bh=W8mGhvDjRgS+WJe/Ku3r460x2dTk88Tb5g6TQFG8s74=;
-        h=In-Reply-To:References:Cc:To:Subject:From:Date:From;
-        b=yK9kC5oOARUkH1CY2jV6E0hpn1OGwz8ovxrgHnQ9ZN4dJB54+QN2SOq26+swO+4iq
-         iV1t/HKlJgNjpOo2pr5OghsvZvKh8Z/2Ap5sJQjNVBhcLbG6wNfZprfPHfuENIEBbh
-         gwk/H1UkG+Awr2SceZFumoxqntfofy/80M1ETcPc=
-Content-Type: text/plain; charset="utf-8"
+        id S1726157AbfKQO7w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 17 Nov 2019 09:59:52 -0500
+Received: from [211.53.128.215] ([211.53.128.215]:42893 "EHLO MAIL.isd.co.kr"
+        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726124AbfKQO7w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 17 Nov 2019 09:59:52 -0500
+Received: from 192.168.1.163 (217.217.179.17) by MAIL.isd.co.kr (10.10.10.22)
+ with Microsoft SMTP Server id 14.3.123.3; Sun, 17 Nov 2019 23:57:26 +0900
+Date:   Sun, 17 Nov 2019 15:57:53 +0100
+From:   Peter Wong <choimj@isd.co.kr>
+Reply-To: Peter Wong <peterwongpwhk@gmail.com>
+To:     <linux-ext4@vger.kernel.org>
+Message-ID: <1536813.1119.1574002676222.JavaMail.cash@211.53.128.215>
+Subject: Investment opportunity
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-In-Reply-To: <1573812972-10529-3-git-send-email-alan.maguire@oracle.com>
-References: <1573812972-10529-1-git-send-email-alan.maguire@oracle.com> <1573812972-10529-3-git-send-email-alan.maguire@oracle.com>
-Cc:     linux-kernel@vger.kernel.org, kunit-dev@googlegroups.com,
-        keescook@chromium.org, yzaikin@google.com,
-        akpm@linux-foundation.org, yamada.masahiro@socionext.com,
-        catalin.marinas@arm.com, joe.lawrence@redhat.com,
-        penguin-kernel@i-love.sakura.ne.jp, schowdary@nvidia.com,
-        urezki@gmail.com, andriy.shevchenko@linux.intel.com,
-        corbet@lwn.net, tytso@mit.edu, adilger.kernel@dilger.ca,
-        mcgrof@kernel.org, changbin.du@intel.com,
-        linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
-        Alan Maguire <alan.maguire@oracle.com>
-To:     Alan Maguire <alan.maguire@oracle.com>, brendanhiggins@google.com,
-        linux-kselftest@vger.kernel.org, skhan@linuxfoundation.org
-Subject: Re: [PATCH v4 linux-kselftest-test 2/6] kunit: hide unexported try-catch interface in try-catch-impl.h
-From:   Stephen Boyd <sboyd@kernel.org>
-User-Agent: alot/0.8.1
-Date:   Sat, 16 Nov 2019 17:36:05 -0800
-Message-Id: <20191117013606.4541D207DD@mail.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [217.217.179.17]
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Quoting Alan Maguire (2019-11-15 02:16:08)
-> diff --git a/lib/kunit/try-catch-impl.h b/lib/kunit/try-catch-impl.h
-> new file mode 100644
-> index 0000000..e308d5c
-> --- /dev/null
-> +++ b/lib/kunit/try-catch-impl.h
-> @@ -0,0 +1,28 @@
-> +/* SPDX-License-Identifier: GPL-2.0 */
-> +/*
-> + * An API to allow a function, that may fail, to be executed, and recove=
-r in a
+Greetings,
 
-This file is not an API. Maybe just say "Internal kunit try catch
-implementation details to be shared with tests".
+Find attached email very confidential. reply for more details
 
-> + * controlled manner.
-> + *
-> + * Copyright (C) 2019, Google LLC.
-> + * Author: Brendan Higgins <brendanhiggins@google.com>
-> + */
-> +
-> +#ifndef _KUNIT_TRY_CATCH_IMPL_H
-> +#define _KUNIT_TRY_CATCH_IMPL_H
-> +
-> +#include <kunit/try-catch.h>
-> +#include <linux/types.h>
-> +
-> +struct kunit;
-> +
-> +static inline void kunit_try_catch_init(struct kunit_try_catch *try_catc=
-h,
-> +                                       struct kunit *test,
-> +                                       kunit_try_catch_func_t try,
+Thanks.
+Peter Wong
+
+
+
+
+----------------------------------------------------
+This email was sent by the shareware version of Postman Professional.
+
