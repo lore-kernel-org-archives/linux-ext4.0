@@ -2,108 +2,118 @@ Return-Path: <SRS0=fzoK=ZK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02EBFC432C0
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D084DC432C3
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 05:11:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C50A2206D6
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1574041820;
-	bh=LZlDGm5uvJGSNyiT4adb691+9iEkzuYU+UsDDFCXi8U=;
-	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=pBav03nD+G+hzzGrNeqiL9CBQof9jwGmOahkL1J8X+bf5MNEIr8PHQyyegd+JSf0L
-	 ROULCFmwUJf3PvHD7yOYA1g1IKNwCYWvlP7ssPYgt2kgDlpGe0z6oPi6phdgCtd+Gq
-	 NNonJqjrLSp+RLAt9cCEH1w5JPYpSXs3byfrSwG8=
+	by mail.kernel.org (Postfix) with ESMTP id AA0842073A
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 05:11:13 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="Jz7cAV9v"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726597AbfKRBuU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Nov 2019 20:50:20 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40462 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726063AbfKRBuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 17 Nov 2019 20:50:17 -0500
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 49593206DB
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Nov 2019 01:50:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1574041817;
-        bh=LZlDGm5uvJGSNyiT4adb691+9iEkzuYU+UsDDFCXi8U=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=e8PCtwsY68F4qr3WmDyYmzNwSFQoa3nFH233emmZtebX+8Lx7uU+W2OkKnaqtLG1S
-         aXCtqvxSeIGQCkvk9Qw72bdX9gqP1nxpL9jpbFTI9PihmVR/VImUKYdyk+qzV4lVgR
-         PKb5I+rX7moAi75ciiU9S2nCdoq/6bf2LHsp62eY=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 6/6] chattr.1: say "cleared" instead of "reset"
-Date:   Sun, 17 Nov 2019 17:48:52 -0800
-Message-Id: <20191118014852.390686-7-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.24.0
-In-Reply-To: <20191118014852.390686-1-ebiggers@kernel.org>
-References: <20191118014852.390686-1-ebiggers@kernel.org>
+        id S1726169AbfKRFLK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Nov 2019 00:11:10 -0500
+Received: from sender3-of-o52.zoho.com.cn ([124.251.121.247]:21960 "EHLO
+        sender2.zoho.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725208AbfKRFLK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Nov 2019 00:11:10 -0500
+ARC-Seal: i=1; a=rsa-sha256; t=1574053818; cv=none; 
+        d=zoho.com.cn; s=zohoarc; 
+        b=CFiTydxXmqD9bMG7v780o3N8ddqWN6K3FCgyTdlTsez+ICLl9SEtemLlO1rFmwdlnFVn0KaMzc1ve2S2pA//ZQDSMywCMchSASZ55qhlGgITwNozY47/lo2c/INkLP4RSjDGEAEdUnzyuSWpR2MhhKkB3r8PeWHkAF6uLKrdeQw=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
+        t=1574053818; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
+        bh=W+4d37NiUZrTVp/T//URhJAtULIpMWsOCTG3JUgcQbA=; 
+        b=SfZrHruFtbvLbpQPjNc72IC+JSlnZfJ+XGA4IFDCxatxJXqhBCbg8JNLUagIec/KDcUIuQTVBtngdQoSW3hkUMbcgLGEpH8Fm+eXwz7ARt58nKunz86ZgaxuRX//6Mv41ix92didw44LkKsvKlQgBBZdKpmg9s6dWyjCHjCQdl8=
+ARC-Authentication-Results: i=1; mx.zoho.com.cn;
+        dkim=pass  header.i=mykernel.net;
+        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
+        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1574053818;
+        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
+        h=From:To:Cc:Message-ID:Subject:Date:In-Reply-To:References:MIME-Version:Content-Type:Content-Transfer-Encoding;
+        l=1801; bh=W+4d37NiUZrTVp/T//URhJAtULIpMWsOCTG3JUgcQbA=;
+        b=Jz7cAV9vUe3W4KyujDLRcYQXLcQV6tl7gVqHx1v+Ljon9oHqojtRod0Rc50n5YC5
+        ZkEOZtA8Vu7ezLL5/F5sGKbob4KLpIxLDCTIwMJBQFp3pj5hakvhUeJmc/iSvEmO7Gl
+        mbdedSI3usWavsqw8+/jaZGYDbtDrn2dLYPcKTdA=
+Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
+        with SMTPS id 157405381681740.021350625482796; Mon, 18 Nov 2019 13:10:16 +0800 (CST)
+From:   Chengguang Xu <cgxu519@mykernel.net>
+To:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org
+Cc:     darrick.wong@oracle.com, jaegeuk@kernel.org, chao@kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca,
+        Chengguang Xu <cgxu519@mykernel.net>
+Message-ID: <20191118050949.15629-2-cgxu519@mykernel.net>
+Subject: [RFC PATCH 2/3] f2fs: show prjquota info on statfs for a file
+Date:   Mon, 18 Nov 2019 13:09:48 +0800
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20191118050949.15629-1-cgxu519@mykernel.net>
+References: <20191118050949.15629-1-cgxu519@mykernel.net>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+X-ZohoCNMailClient: External
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Currently we replace filesystem statistics using prjquota info
+on statfs when specified directory has project id inherit flag.
+However, statfs on a file(accurately non-dir) which is under the
+project quota dir(with inherit flag) still shows whole filesystem
+statistics. In container use case, it will give container user
+inconsistent experience and cause confusion about available free
+space.
 
-Setting a bit to 0 is normally called "clearing", not "resetting"; and
-chattr.1 already says "clear" in some places.  Use "clear" consistently.
+Detail info like below:
+We use project quota to limit disk space usage for a container
+and run df command inside container.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Run df on a directory:
+
+[root /]# df -h /etc/
+Filesystem=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 Size=C2=A0 Used Avail Use% Mounted=
+ on
+kataShared=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 1.0G=C2=A0=C2=A0 13M 1012M=C2=A0=
+=C2=A0 2% /
+
+Run df on a file:
+
+[root /]# df -h /etc/exports
+Filesystem=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 Size=C2=A0 Used Avail Use% Mounted=
+ on
+kataShared=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 1.5T=C2=A0 778M=C2=A0 1.5T=C2=A0=
+=C2=A0 1% /
+
+Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
 ---
- misc/chattr.1.in | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/f2fs/super.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 870397ae..66e791db 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -115,7 +115,7 @@ the blocks on disk.  It may not be removed using
- .BR chattr (1).
- .PP
- A file, directory, or symlink with the 'E' attribute set is encrypted by the
--filesystem.  This attribute may not be set or reset using
-+filesystem.  This attribute may not be set or cleared using
- .BR chattr (1),
- although it can be displayed by
- .BR lsattr (1).
-@@ -132,7 +132,7 @@ Only the superuser or a process possessing the CAP_LINUX_IMMUTABLE
- capability can set or clear this attribute.
- .PP
- The 'I' attribute is used by the htree code to indicate that a directory
--is being indexed using hashed trees.  It may not be set or reset using
-+is being indexed using hashed trees.  It may not be set or cleared using
- .BR chattr (1),
- although it can be displayed by
- .BR lsattr (1).
-@@ -146,7 +146,8 @@ attribute has no effect.  Only the superuser or a process possessing the
- CAP_SYS_RESOURCE capability can set or clear this attribute.
- .PP
- A file with the 'N' attribute set indicates that the file has data
--stored inline, within the inode itself. It may not be set or reset using
-+stored inline, within the inode itself. It may not be set or cleared
-+using
- .BR chattr (1),
- although it can be displayed by
- .BR lsattr (1).
-@@ -193,7 +194,7 @@ A file with the 'V' attribute set has fs-verity enabled.  It cannot be
- written to, and the filesystem will automatically verify all data read
- from it against a cryptographic hash that covers the entire file's
- contents, e.g. via a Merkle tree.  This makes it possible to efficiently
--authenticate the file.  This attribute may not be set or reset using
-+authenticate the file.  This attribute may not be set or cleared using
- .BR chattr (1),
- although it can be displayed by
- .BR lsattr (1).
--- 
-2.24.0
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 1443cee15863..c5b9a92d606b 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1287,8 +1287,9 @@ static int f2fs_statfs(struct dentry *dentry, struct =
+kstatfs *buf)
+ =09buf->f_fsid.val[1] =3D (u32)(id >> 32);
+=20
+ #ifdef CONFIG_QUOTA
+-=09if (is_inode_flag_set(dentry->d_inode, FI_PROJ_INHERIT) &&
+-=09=09=09sb_has_quota_limits_enabled(sb, PRJQUOTA)) {
++=09if ((is_inode_flag_set(dentry->d_inode, FI_PROJ_INHERIT) ||
++=09     !S_ISDIR(dentry->d_inode->i_mode)) &&
++=09    sb_has_quota_limits_enabled(sb, PRJQUOTA)) {
+ =09=09f2fs_statfs_project(sb, F2FS_I(dentry->d_inode)->i_projid, buf);
+ =09}
+ #endif
+--=20
+2.20.1
+
+
 
