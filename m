@@ -4,45 +4,45 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 832E4C432C0
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02EBFC432C0
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 52039206D6
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C50A2206D6
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1574041819;
-	bh=l+xL4RuRZUr/qi6KpRTmvEftCVSHa1g/fAE74XJ5VwI=;
+	s=default; t=1574041820;
+	bh=LZlDGm5uvJGSNyiT4adb691+9iEkzuYU+UsDDFCXi8U=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=s5O1eHgRjJ3FDozBYn9IAG4mOP7TKisNyVAVh+oae7yaR0VB0MXYs2xIO68PXHsjn
-	 2ghkF0ZS2NZeTwIU3J9uq/S5LYa5V+z7oh+cn2JglmfZPv3JnLg9umSqb1fq2TkTK6
-	 g8kYu3HdVFGTeBhBrCyJ9AGVEd+0cpZahGw8E3U4=
+	b=pBav03nD+G+hzzGrNeqiL9CBQof9jwGmOahkL1J8X+bf5MNEIr8PHQyyegd+JSf0L
+	 ROULCFmwUJf3PvHD7yOYA1g1IKNwCYWvlP7ssPYgt2kgDlpGe0z6oPi6phdgCtd+Gq
+	 NNonJqjrLSp+RLAt9cCEH1w5JPYpSXs3byfrSwG8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726483AbfKRBuS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Nov 2019 20:50:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40470 "EHLO mail.kernel.org"
+        id S1726597AbfKRBuU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 17 Nov 2019 20:50:20 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40462 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726316AbfKRBuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726063AbfKRBuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Sun, 17 Nov 2019 20:50:17 -0500
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 18980206D9
+        by mail.kernel.org (Postfix) with ESMTPSA id 49593206DB
         for <linux-ext4@vger.kernel.org>; Mon, 18 Nov 2019 01:50:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1574041817;
-        bh=l+xL4RuRZUr/qi6KpRTmvEftCVSHa1g/fAE74XJ5VwI=;
+        bh=LZlDGm5uvJGSNyiT4adb691+9iEkzuYU+UsDDFCXi8U=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=zrykNCDHBSnW62g4EeCHR6vNnFzK6salSEEezEvFZuJpU4Rk+MrGKUTUmCVIbjIfm
-         h3aAq4gBn5pj22IXJn7g0DLbG1DrbFLm9HRE0k2k+3a/+fFTqAYwdQw1CqBGjiXqlo
-         zOAbMBre86ZCC7NOfKNaUc23ARi8/oppxeyiskg8=
+        b=e8PCtwsY68F4qr3WmDyYmzNwSFQoa3nFH233emmZtebX+8Lx7uU+W2OkKnaqtLG1S
+         aXCtqvxSeIGQCkvk9Qw72bdX9gqP1nxpL9jpbFTI9PihmVR/VImUKYdyk+qzV4lVgR
+         PKb5I+rX7moAi75ciiU9S2nCdoq/6bf2LHsp62eY=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 5/6] chattr.1: clarify that ext4 doesn't support tail-merging either
-Date:   Sun, 17 Nov 2019 17:48:51 -0800
-Message-Id: <20191118014852.390686-6-ebiggers@kernel.org>
+Subject: [PATCH 6/6] chattr.1: say "cleared" instead of "reset"
+Date:   Sun, 17 Nov 2019 17:48:52 -0800
+Message-Id: <20191118014852.390686-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.0
 In-Reply-To: <20191118014852.390686-1-ebiggers@kernel.org>
 References: <20191118014852.390686-1-ebiggers@kernel.org>
@@ -55,29 +55,55 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This old text was never updated to mention ext4 in addition to ext2 and
-ext3.  Do so now.  Also don't bother to mention old unmerged patches.
+Setting a bit to 0 is normally called "clearing", not "resetting"; and
+chattr.1 already says "clear" in some places.  Use "clear" consistently.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/chattr.1.in | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ misc/chattr.1.in | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
 diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index cc751fe8..870397ae 100644
+index 870397ae..66e791db 100644
 --- a/misc/chattr.1.in
 +++ b/misc/chattr.1.in
-@@ -171,8 +171,8 @@ A file with the 't' attribute will not have a partial block fragment at
- the end of the file merged with other files (for those filesystems which
- support tail-merging).  This is necessary for applications such as LILO
- which read the filesystem directly, and which don't understand tail-merged
--files.  Note: As of this writing, the ext2 or ext3 filesystems do not
--(yet, except in very experimental patches) support tail-merging.
-+files.  Note: As of this writing, the ext2, ext3, and ext4 filesystems do
-+not support tail-merging.
+@@ -115,7 +115,7 @@ the blocks on disk.  It may not be removed using
+ .BR chattr (1).
  .PP
- A directory with the 'T' attribute will be deemed to be the top of
- directory hierarchies for the purposes of the Orlov block allocator.
+ A file, directory, or symlink with the 'E' attribute set is encrypted by the
+-filesystem.  This attribute may not be set or reset using
++filesystem.  This attribute may not be set or cleared using
+ .BR chattr (1),
+ although it can be displayed by
+ .BR lsattr (1).
+@@ -132,7 +132,7 @@ Only the superuser or a process possessing the CAP_LINUX_IMMUTABLE
+ capability can set or clear this attribute.
+ .PP
+ The 'I' attribute is used by the htree code to indicate that a directory
+-is being indexed using hashed trees.  It may not be set or reset using
++is being indexed using hashed trees.  It may not be set or cleared using
+ .BR chattr (1),
+ although it can be displayed by
+ .BR lsattr (1).
+@@ -146,7 +146,8 @@ attribute has no effect.  Only the superuser or a process possessing the
+ CAP_SYS_RESOURCE capability can set or clear this attribute.
+ .PP
+ A file with the 'N' attribute set indicates that the file has data
+-stored inline, within the inode itself. It may not be set or reset using
++stored inline, within the inode itself. It may not be set or cleared
++using
+ .BR chattr (1),
+ although it can be displayed by
+ .BR lsattr (1).
+@@ -193,7 +194,7 @@ A file with the 'V' attribute set has fs-verity enabled.  It cannot be
+ written to, and the filesystem will automatically verify all data read
+ from it against a cryptographic hash that covers the entire file's
+ contents, e.g. via a Merkle tree.  This makes it possible to efficiently
+-authenticate the file.  This attribute may not be set or reset using
++authenticate the file.  This attribute may not be set or cleared using
+ .BR chattr (1),
+ although it can be displayed by
+ .BR lsattr (1).
 -- 
 2.24.0
 
