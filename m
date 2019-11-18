@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D64CC43215
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BECD3C33C9A
 	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 67B23206D6
+	by mail.kernel.org (Postfix) with ESMTP id 8F78A206D9
 	for <linux-ext4@archiver.kernel.org>; Mon, 18 Nov 2019 01:50:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1574041818;
-	bh=MrfqTzgBX+zlHzSzpgFhCiQAWcsWqcGoM8SF53EPfgw=;
+	bh=h48JF6zC+RuEcmC4Ygb5lgOa96+itviuBLBIaj8mdmI=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=E57XzowCC9ObBAZb8M6AuIg3hIWLOf6jCHb+pS/kF8ws3t5EW2ViZwrC8jEQWHpZA
-	 5BUVI7wKRDWLBoDi3dY8Um1Kkt0jiMbEQQXmU3Nn1oT/+MGpummkrEl/y01wWqjKkR
-	 WXNDvpm5wCV3ItuKYqdJKHucmQ15tjP13f6nvcp0=
+	b=K1N4sny7xEJzEejqbsS7TCwoCh18TedTHNq7lqpYdV3qChjM7ygvxykdwsetZ3/0Q
+	 EjQj3Kc0eD1M2Wl7ozb9iyhjTSTkc7ZF25MUWtk0hcb7DzeDBB6zVxQxXMdBSklzJx
+	 ZrfDqtMVE4Tj52bDfkYjWW01s6fXqCuk/JJv0shc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726442AbfKRBuS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Nov 2019 20:50:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40468 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726266AbfKRBuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726397AbfKRBuR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sun, 17 Nov 2019 20:50:17 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40458 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726073AbfKRBuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 17 Nov 2019 20:50:16 -0500
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DD4FB206D6
+        by mail.kernel.org (Postfix) with ESMTPSA id 4DB9F206D9
         for <linux-ext4@vger.kernel.org>; Mon, 18 Nov 2019 01:50:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1574041816;
-        bh=MrfqTzgBX+zlHzSzpgFhCiQAWcsWqcGoM8SF53EPfgw=;
+        bh=h48JF6zC+RuEcmC4Ygb5lgOa96+itviuBLBIaj8mdmI=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=c4fv5KmJ0RTbkhag4jY+W5CJxgX68nyqDKHkV9XhmP9YIixXQozI3ZAxgXuboVJMi
-         2Hiot6UN5R7WQfGhlYDLsy9vP+erQqG4foQUt9Q5u4C6C+tvH7+sA4XlCBTp+IEWvo
-         3IuQ/Guhsokd+S0DOfUnVRTkLlRu3vNhJUY0iNhc=
+        b=P7bcsPObAnwYlInXSmYj41wZkAiE87TxucEPskNdPyNZs8afAHJlRPPKTyD7uzcGa
+         EmE1spAt47b5VQi+tSL04BqlDSt3Ffepn79SUNycBNohd5BNmYvooY2RyjHip2EuKa
+         h99957yk9TdMWP9kdizhefWAbNBD8yac9vxsvZZk=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 4/6] chattr.1: fix some grammatical errors
-Date:   Sun, 17 Nov 2019 17:48:50 -0800
-Message-Id: <20191118014852.390686-5-ebiggers@kernel.org>
+Subject: [PATCH 1/6] chattr.1: document the verity attribute
+Date:   Sun, 17 Nov 2019 17:48:47 -0800
+Message-Id: <20191118014852.390686-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.0
 In-Reply-To: <20191118014852.390686-1-ebiggers@kernel.org>
 References: <20191118014852.390686-1-ebiggers@kernel.org>
@@ -55,56 +55,43 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-- "can only be open" => "can only be opened"
-- "is not candidate" => "is not a candidate"
-- "written ... on the disk" => "written ... to the disk"
+Document the verity file attribute ('V').
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/chattr.1.in | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ misc/chattr.1.in | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 1baacf17..cc751fe8 100644
+index 1c9e8964..2122a13e 100644
 --- a/misc/chattr.1.in
 +++ b/misc/chattr.1.in
-@@ -79,9 +79,9 @@ Set the file's version/generation number.
- .BI \-p " project"
- Set the file's project number.
- .SH ATTRIBUTES
--A file with the 'a' attribute set can only be open in append mode for writing.
--Only the superuser or a process possessing the CAP_LINUX_IMMUTABLE
--capability can set or clear this attribute.
-+A file with the 'a' attribute set can only be opened in append mode for
-+writing.  Only the superuser or a process possessing the
-+CAP_LINUX_IMMUTABLE capability can set or clear this attribute.
+@@ -52,7 +52,8 @@ The following attributes are read-only, and may be listed by
+ but not modified by chattr:
+ encrypted (E),
+ indexed directory (I),
+-and inline data (N).
++inline data (N),
++and verity (V).
  .PP
- When a file with the 'A' attribute set is accessed, its atime record is
- not modified.  This avoids a certain amount of disk I/O for laptop
-@@ -102,12 +102,12 @@ be fully stable.  If the 'C' flag is set on a directory, it will have no
- effect on the directory, but new files created in that directory will
- have the No_COW attribute set.)
+ Not all flags are supported or utilized by all filesystems; refer to
+ filesystem-specific man pages such as
+@@ -189,6 +190,15 @@ saved.  This allows the user to ask for its undeletion.  Note: please
+ make sure to read the bugs and limitations section at the end of this
+ document.
  .PP
--A file with the 'd' attribute set is not candidate for backup when the
-+A file with the 'd' attribute set is not a candidate for backup when the
- .BR dump (8)
- program is run.
- .PP
- When a directory with the 'D' attribute set is modified,
--the changes are written synchronously on the disk; this is equivalent to
-+the changes are written synchronously to the disk; this is equivalent to
- the 'dirsync' mount option applied to a subset of the files.
- .PP
- The 'e' attribute indicates that the file is using extents for mapping
-@@ -164,7 +164,7 @@ and written back to the disk.  Note: please make sure to read the bugs
- and limitations section at the end of this document.
- .PP
- When a file with the 'S' attribute set is modified,
--the changes are written synchronously on the disk; this is equivalent to
-+the changes are written synchronously to the disk; this is equivalent to
- the 'sync' mount option applied to a subset of the files.
- .PP
- A file with the 't' attribute will not have a partial block fragment at
++A file with the 'V' attribute set has fs-verity enabled.  It cannot be
++written to, and the filesystem will automatically verify all data read
++from it against a cryptographic hash that covers the entire file's
++contents, e.g. via a Merkle tree.  This makes it possible to efficiently
++authenticate the file.  This attribute may not be set or reset using
++.BR chattr (1),
++although it can be displayed by
++.BR lsattr (1).
++.PP
+ .SH AUTHOR
+ .B chattr
+ was written by Remy Card <Remy.Card@linux.org>.  It is currently being
 -- 
 2.24.0
 
