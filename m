@@ -2,300 +2,120 @@ Return-Path: <SRS0=pkRq=ZM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F4F1C432C0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 04:36:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47896C43215
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 05:00:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D2ED2240D
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 04:36:10 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=ddn.com header.i=@ddn.com header.b="J0DQW70q"
+	by mail.kernel.org (Postfix) with ESMTP id 298732245F
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 05:00:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727363AbfKTEgK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Nov 2019 23:36:10 -0500
-Received: from mail-eopbgr740088.outbound.protection.outlook.com ([40.107.74.88]:49538
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727264AbfKTEgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 19 Nov 2019 23:36:09 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=YEJFWJAQbwVXDjDbiwySAx0qbeFPj5bWl6WDAufEAp3i+BzIFTUHV7tIidUJP6fDNFze/adBauMQQ1XXw3nFHlBxJqtXuP6V5IiKMnjCcWE71MhnGPWRbaM3H3F4yMw5OL77HyGmXrzlGIr7DC8QCByqvD2lnAQ3QKiPtWgy4aXebQAdOsgtuP2XIFzzucv9FA8ie1U9FwBnf8wsmm1ZR4pAIl84sO2PP3OSDA/BFBqKNerRpUGJZMGJfhUslj+i23MepW+HXHTgZTdievazljrVNu3BqRfEQ1FN6bAwwFzpwRkbI3Eamq1pAXatZgdt1WqnjaljnWe0K5WpdAOhDg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=oVLkiMXYD7q5U/7cxTAunPjufK+4PcnJYED1BrrdyJY=;
- b=KRvlXud1fXObF1LsZysD10X+yDt0EpB3xYndw2faEKWSdOTgqpn3yocOBQmxGa3WvZ1bS8LE/MmLz5KdCkFqOvxvZS35XasJpoinU+N43mTb1PIX/qcOJXV3qaBi0mgt7pp8RadD27MSK/mwUjoN+d2pzj73CKmmTUm/+yqBIsxJrq187HGu24qmA37Xsi8WEwUDDWUhlqBrqrfYqRN9PyPgFwNiaSNFDMgtpl3kUGjEj0dQna6bp80HL2A4K+aTWzl9qu0wFtszm5qkcTsUPKUSbaQMT8fCy2qLSqRtbpoKX+ULXPZRq/zftSUCdVzieEk/n0twmz/f0d8vPGOMGQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=ddn.com; dmarc=pass action=none header.from=ddn.com; dkim=pass
- header.d=ddn.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ddn.com; s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=oVLkiMXYD7q5U/7cxTAunPjufK+4PcnJYED1BrrdyJY=;
- b=J0DQW70qHDZ1CjJt8HYchwrkEZKm16WZ9RayYj1SA+3Vv9zu+2zvKqYJfuC0Gj2egrl6ndum6GADDmsInCjvPcz/S2fs7jlLBwQf5g7Ovk+mGthGonrGIK0aBkOlrReTJKpiEc3oC8dr4m2CPszKx+jkjvWGY6j6P9DKngg6UhA=
-Received: from BL0PR1901MB2004.namprd19.prod.outlook.com (52.132.24.157) by
- BL0PR1901MB2002.namprd19.prod.outlook.com (52.132.17.154) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2451.26; Wed, 20 Nov 2019 04:35:28 +0000
-Received: from BL0PR1901MB2004.namprd19.prod.outlook.com
- ([fe80::8587:2f91:6a7b:8655]) by BL0PR1901MB2004.namprd19.prod.outlook.com
- ([fe80::8587:2f91:6a7b:8655%4]) with mapi id 15.20.2451.031; Wed, 20 Nov 2019
- 04:35:28 +0000
-From:   Li Dongyang <dongyangli@ddn.com>
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-CC:     "adilger@dilger.ca" <adilger@dilger.ca>
-Subject: [PATCH v3 4/5] mke2fs: set overhead in super block
-Thread-Topic: [PATCH v3 4/5] mke2fs: set overhead in super block
-Thread-Index: AQHVn1vv8aUzx6r/80yoWojoOcTFqw==
-Date:   Wed, 20 Nov 2019 04:35:27 +0000
-Message-ID: <20191120043448.249988-4-dongyangli@ddn.com>
-References: <20191120043448.249988-1-dongyangli@ddn.com>
-In-Reply-To: <20191120043448.249988-1-dongyangli@ddn.com>
-Accept-Language: en-GB, en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-clientproxiedby: SY3PR01CA0134.ausprd01.prod.outlook.com
- (2603:10c6:0:1b::19) To BL0PR1901MB2004.namprd19.prod.outlook.com
- (2603:10b6:207:38::29)
-authentication-results: spf=none (sender IP is ) smtp.mailfrom=dli@ddn.com; 
-x-ms-exchange-messagesentrepresentingtype: 1
-x-mailer: git-send-email 2.24.0
-x-originating-ip: [150.203.248.39]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 5b9a08a2-6b6b-4644-ea9d-08d76d73115f
-x-ms-traffictypediagnostic: BL0PR1901MB2002:
-x-microsoft-antispam-prvs: <BL0PR1901MB200278CDEFA520F87A29C6B7BA4F0@BL0PR1901MB2002.namprd19.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:3968;
-x-forefront-prvs: 02272225C5
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(4636009)(396003)(39850400004)(376002)(346002)(136003)(366004)(189003)(199004)(66446008)(64756008)(66556008)(66946007)(26005)(66476007)(6116002)(3846002)(66066001)(76176011)(102836004)(5660300002)(1076003)(6916009)(52116002)(305945005)(6512007)(7736002)(36756003)(4326008)(446003)(11346002)(6486002)(8936002)(186003)(2616005)(81166006)(5640700003)(81156014)(50226002)(25786009)(8676002)(256004)(14444005)(6506007)(386003)(2906002)(478600001)(99286004)(2501003)(14454004)(2351001)(71200400001)(71190400001)(316002)(486006)(6436002)(476003);DIR:OUT;SFP:1101;SCL:1;SRVR:BL0PR1901MB2002;H:BL0PR1901MB2004.namprd19.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: ddn.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: ux35iRTHr/slwiM0QLegnXbrt9+bbAd9xuCADwq9H7LgEpfbV69DA87m686AjFAU6/Tul5nw6aIa23b7v5uOujNAe0zAc6Clc81QDgcl+xfbD5KUZZerPtl0mANGTcLm4RpB5CsUqvJ1qQK8SpMvwmrIZbIbnj4RSrdjr6Ss2KNDuQlAJ7tJp1BOhoxWGajhdgJfj0iIOxPfUQvC8+IVABthYZlkIA9xcA8tOz16bL98bBTJYiaP0FtFL1kD3JDmwQZc7t+MmrYY3FtpiV3qHBQNFPf7ygjKsRXOa2GBXCFvDiE4o7ElwJofWnyir+FWWzo0N7aL1NbyxrrwJeVYOyBIYdCBHKmbGJGGg98D1aHvkf6q+GUgLARkqGSTbNvrOelTSAno9kEGqpmVtqM34l2sTmqpoQpC51tSA+yboECPifD31O30o2ztFEDJsclT
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+        id S1725854AbfKTFAi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Nov 2019 00:00:38 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:6168 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725554AbfKTFAi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Nov 2019 00:00:38 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id xAK4vVZ7050041
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Nov 2019 00:00:37 -0500
+Received: from e06smtp03.uk.ibm.com (e06smtp03.uk.ibm.com [195.75.94.99])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2wcf56yj4f-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Nov 2019 00:00:36 -0500
+Received: from localhost
+        by e06smtp03.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
+        Wed, 20 Nov 2019 05:00:34 -0000
+Received: from b06avi18878370.portsmouth.uk.ibm.com (9.149.26.194)
+        by e06smtp03.uk.ibm.com (192.168.101.133) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Wed, 20 Nov 2019 05:00:32 -0000
+Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
+        by b06avi18878370.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id xAK50VcQ42009006
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 20 Nov 2019 05:00:31 GMT
+Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 1258CA405D;
+        Wed, 20 Nov 2019 05:00:31 +0000 (GMT)
+Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id AB35FA405F;
+        Wed, 20 Nov 2019 05:00:29 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.199.63.56])
+        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Wed, 20 Nov 2019 05:00:29 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, mbobrowski@mbobrowski.org,
+        riteshh@linux.ibm.com
+Subject: [RFCv3 1/4] ext4: fix ext4_dax_read/write inode locking sequence for IOCB_NOWAIT
+Date:   Wed, 20 Nov 2019 10:30:21 +0530
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20191120050024.11161-1-riteshh@linux.ibm.com>
+References: <20191120050024.11161-1-riteshh@linux.ibm.com>
 MIME-Version: 1.0
-X-OriginatorOrg: ddn.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 5b9a08a2-6b6b-4644-ea9d-08d76d73115f
-X-MS-Exchange-CrossTenant-originalarrivaltime: 20 Nov 2019 04:35:27.9587
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: DBb+2RXKNYiJugMHoNT/K4tsl0qRkYwGtVbhc/X6xZu4emcF4iRxvM5I+OamvQJ8
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR1901MB2002
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 19112005-0012-0000-0000-0000036956A2
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19112005-0013-0000-0000-000021A4E34A
+Message-Id: <20191120050024.11161-2-riteshh@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.95,18.0.572
+ definitions=2019-11-19_08:2019-11-15,2019-11-19 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0 mlxscore=0
+ phishscore=0 adultscore=0 lowpriorityscore=0 mlxlogscore=999
+ priorityscore=1501 suspectscore=0 spamscore=0 impostorscore=0
+ clxscore=1015 bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-1910280000 definitions=main-1911200045
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If overhead is not recorded in the super block, it is caculated
-during mount in kernel, for bigalloc file systems the it takes
-O(groups**2) in time.
-For a 1PB deivce with 32K cluste size it takes ~12 mins to
-mount, with most of the time spent on figuring out overhead.
+Apparently our current rwsem code doesn't like doing the trylock, then
+lock for real scheme.  So change our dax read/write methods to just do the
+trylock for the RWF_NOWAIT case.
+This seems to fix AIM7 regression in some scalable filesystems upto ~25%
+in some cases. Claimed in commit 942491c9e6d6 ("xfs: fix AIM7 regression")
 
-While we can not improve the overhead algorithm in kernel
-due to the nature of bigalloc, we can work out the overhead
-during mke2fs and set it in the super block, avoiding calculating
-it every time when it mounts.
-
-Overhead is s_first_data_block plus internal journal blocks plus
-the block and inode bitmaps, inode table, super block backups and
-group descriptor blocks for every group. This patch introduces
-ext2fs_count_used_clusters(), which calculates the clusters used
-in the block bitmap for the given range.
-
-When bad blocks are involved, it gets tricky because the blocks
-counted as overhead and the bad blocks can end up in the same
-allocation cluster. In this case we will unmark the bad blocks from
-the block bitmap, convert to cluster bitmap and get the overhead,
-then mark the bad blocks back in the cluster bitmap.
-
-Reset the overhead to zero when resizing, we can not simplly count
-the used blocks as overhead like we do when mke2fs. The overhead
-can be calculated by kernel side during mount.
-
-Signed-off-by: Li Dongyang <dongyangli@ddn.com>
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 ---
- lib/ext2fs/ext2fs.h       |  2 ++
- lib/ext2fs/gen_bitmap64.c | 35 +++++++++++++++++++++++++++++
- misc/mke2fs.c             | 47 +++++++++++++++++++++++++++++++++++++++
- resize/resize2fs.c        |  1 +
- 4 files changed, 85 insertions(+)
+ fs/ext4/file.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index da309947..78f84632 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1442,6 +1442,8 @@ errcode_t ext2fs_set_generic_bmap_range(ext2fs_generi=
-c_bitmap bmap,
- 					void *in);
- errcode_t ext2fs_convert_subcluster_bitmap(ext2_filsys fs,
- 					   ext2fs_block_bitmap *bitmap);
-+errcode_t ext2fs_count_used_clusters(ext2_filsys fs, blk64_t start,
-+				     blk64_t end, blk64_t *out);
-=20
- /* get_num_dirs.c */
- extern errcode_t ext2fs_get_num_dirs(ext2_filsys fs, ext2_ino_t *ret_num_d=
-irs);
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index f1dd1891..b2370667 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -940,3 +940,38 @@ errcode_t ext2fs_find_first_set_generic_bmap(ext2fs_ge=
-neric_bitmap bitmap,
-=20
- 	return ENOENT;
- }
-+
-+errcode_t ext2fs_count_used_clusters(ext2_filsys fs, blk64_t start,
-+				     blk64_t end, blk64_t *out)
-+{
-+	blk64_t		next;
-+	blk64_t		tot_set =3D 0;
-+	errcode_t	retval;
-+
-+	while (start < end) {
-+		retval =3D ext2fs_find_first_set_block_bitmap2(fs->block_map,
-+							start, end, &next);
-+		if (retval) {
-+			if (retval =3D=3D ENOENT)
-+				retval =3D 0;
-+			break;
-+		}
-+		start =3D next;
-+
-+		retval =3D ext2fs_find_first_zero_block_bitmap2(fs->block_map,
-+							start, end, &next);
-+		if (retval =3D=3D 0) {
-+			tot_set +=3D next - start;
-+			start  =3D next + 1;
-+		} else if (retval =3D=3D ENOENT) {
-+			retval =3D 0;
-+			tot_set +=3D end - start + 1;
-+			break;
-+		} else
-+			break;
-+	}
-+
-+	if (!retval)
-+		*out =3D EXT2FS_NUM_B2C(fs, tot_set);
-+	return retval;
-+}
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index be38d2c4..542a3030 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2914,6 +2914,8 @@ int main (int argc, char *argv[])
- 	errcode_t	retval =3D 0;
- 	ext2_filsys	fs;
- 	badblocks_list	bb_list =3D 0;
-+	badblocks_iterate	bb_iter;
-+	blk_t		blk;
- 	unsigned int	journal_blocks =3D 0;
- 	unsigned int	i, checkinterval;
- 	int		max_mnt_count;
-@@ -2924,6 +2926,7 @@ int main (int argc, char *argv[])
- 	char		opt_string[40];
- 	char		*hash_alg_str;
- 	int		itable_zeroed =3D 0;
-+	blk64_t		overhead;
-=20
- #ifdef ENABLE_NLS
- 	setlocale(LC_MESSAGES, "");
-@@ -3215,6 +3218,23 @@ int main (int argc, char *argv[])
- 	if (!quiet)
- 		printf("%s", _("done                            \n"));
-=20
-+	/*
-+	 * Unmark bad blocks to calculate overhead, because metadata
-+	 * blocks and bad blocks can land on the same allocation cluster.
-+	 */
-+	if (bb_list) {
-+		retval =3D ext2fs_badblocks_list_iterate_begin(bb_list,
-+							     &bb_iter);
-+		if (retval) {
-+			com_err("ext2fs_badblocks_list_iterate_begin", retval,
-+				"%s", _("while unmarking bad blocks"));
-+			exit(1);
-+		}
-+		while (ext2fs_badblocks_list_iterate(bb_iter, &blk))
-+			ext2fs_unmark_block_bitmap2(fs->block_map, blk);
-+		ext2fs_badblocks_list_iterate_end(bb_iter);
-+	}
-+
- 	retval =3D ext2fs_convert_subcluster_bitmap(fs, &fs->block_map);
- 	if (retval) {
- 		com_err(program_name, retval, "%s",
-@@ -3222,6 +3242,28 @@ int main (int argc, char *argv[])
- 		exit(1);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 6a7293a5cda2..977ac58dc718 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -88,9 +88,10 @@ static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	ssize_t ret;
+ 
+-	if (!inode_trylock_shared(inode)) {
+-		if (iocb->ki_flags & IOCB_NOWAIT)
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		if (!inode_trylock_shared(inode))
+ 			return -EAGAIN;
++	} else {
+ 		inode_lock_shared(inode);
  	}
-=20
-+	retval =3D ext2fs_count_used_clusters(fs, fs->super->s_first_data_block,
-+					ext2fs_blocks_count(fs->super) - 1,
-+					&overhead);
-+	if (retval) {
-+		com_err(program_name, retval, "%s",
-+			_("while calculating overhead"));
-+		exit(1);
-+	}
-+
-+	if (bb_list) {
-+		retval =3D ext2fs_badblocks_list_iterate_begin(bb_list,
-+							     &bb_iter);
-+		if (retval) {
-+			com_err("ext2fs_badblocks_list_iterate_begin", retval,
-+				"%s", _("while marking bad blocks as used"));
-+			exit(1);
-+		}
-+		while (ext2fs_badblocks_list_iterate(bb_iter, &blk))
-+			ext2fs_mark_block_bitmap2(fs->block_map, blk);
-+		ext2fs_badblocks_list_iterate_end(bb_iter);
-+	}
-+
- 	if (super_only) {
- 		check_plausibility(device_name, CHECK_FS_EXIST, NULL);
- 		printf(_("%s may be further corrupted by superblock rewrite\n"),
-@@ -3319,6 +3361,7 @@ int main (int argc, char *argv[])
- 		free(journal_device);
- 	} else if ((journal_size) ||
- 		   ext2fs_has_feature_journal(&fs_param)) {
-+		overhead +=3D EXT2FS_NUM_B2C(fs, journal_blocks);
- 		if (super_only) {
- 			printf("%s", _("Skipping journal creation in super-only mode\n"));
- 			fs->super->s_journal_inum =3D EXT2_JOURNAL_INO;
-@@ -3361,6 +3404,10 @@ no_journal:
- 			       fs->super->s_mmp_update_interval);
+ 	/*
+@@ -487,9 +488,10 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	bool extend = false;
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 
+-	if (!inode_trylock(inode)) {
+-		if (iocb->ki_flags & IOCB_NOWAIT)
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		if (!inode_trylock(inode))
+ 			return -EAGAIN;
++	} else {
+ 		inode_lock(inode);
  	}
-=20
-+	overhead +=3D fs->super->s_first_data_block;
-+	if (!super_only)
-+		fs->super->s_overhead_clusters =3D overhead;
-+
- 	if (ext2fs_has_feature_bigalloc(&fs_param))
- 		fix_cluster_bg_counts(fs);
- 	if (ext2fs_has_feature_quota(&fs_param))
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 8a3d08db..2443ff67 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -703,6 +703,7 @@ errcode_t adjust_fs_info(ext2_filsys fs, ext2_filsys ol=
-d_fs,
- 	double		percent;
-=20
- 	ext2fs_blocks_count_set(fs->super, new_size);
-+	fs->super->s_overhead_clusters =3D 0;
-=20
- retry:
- 	fs->group_desc_count =3D ext2fs_div64_ceil(ext2fs_blocks_count(fs->super)=
- -
---=20
-2.24.0
+ 
+-- 
+2.21.0
 
