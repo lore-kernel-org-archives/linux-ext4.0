@@ -5,24 +5,24 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DFBACC432C0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 17:33:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 172CAC432C0
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 17:36:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B14A120730
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 17:33:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E0B4A206CB
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Nov 2019 17:36:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728554AbfKTRdh convert rfc822-to-8bit (ORCPT
+        id S1728859AbfKTRg5 convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Nov 2019 12:33:37 -0500
-Received: from mail.kernel.org ([198.145.29.99]:54810 "EHLO mail.kernel.org"
+        Wed, 20 Nov 2019 12:36:57 -0500
+Received: from mail.kernel.org ([198.145.29.99]:55876 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728072AbfKTRdh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Nov 2019 12:33:37 -0500
+        id S1728728AbfKTRg5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Nov 2019 12:36:57 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 205609] Multiple bugs in __ext4_expand_extra_isize (OOB write
  and UAF write)
-Date:   Wed, 20 Nov 2019 17:33:36 +0000
+Date:   Wed, 20 Nov 2019 17:36:56 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -37,8 +37,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cf_kernel_version
-Message-ID: <bug-205609-13602-1r9YO3iVDr@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-205609-13602-mKtmQctgr5@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-205609-13602@https.bugzilla.kernel.org/>
 References: <bug-205609-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -53,11 +53,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=205609
 
-Tristan (tristmd@gmail.com) changed:
+--- Comment #4 from Tristan (tristmd@gmail.com) ---
+Could someone merge "Comment 1" and "Description" please?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|5.x                         |4x / 5.x
+Thanks
 
 -- 
 You are receiving this mail because:
