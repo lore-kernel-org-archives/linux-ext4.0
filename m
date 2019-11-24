@@ -1,381 +1,142 @@
-Return-Path: <SRS0=xL3U=ZP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=sw5L=ZQ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48A77C432C0
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Nov 2019 13:17:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7189BC43215
+	for <linux-ext4@archiver.kernel.org>; Sun, 24 Nov 2019 12:04:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0838920658
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Nov 2019 13:17:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3AB1F20748
+	for <linux-ext4@archiver.kernel.org>; Sun, 24 Nov 2019 12:04:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726620AbfKWNRn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 23 Nov 2019 08:17:43 -0500
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:31630 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726518AbfKWNRn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 23 Nov 2019 08:17:43 -0500
-Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id xAND2EIR114239
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Nov 2019 08:17:42 -0500
-Received: from e06smtp02.uk.ibm.com (e06smtp02.uk.ibm.com [195.75.94.98])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2wf0xup8kj-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Nov 2019 08:17:41 -0500
-Received: from localhost
-        by e06smtp02.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
-        Sat, 23 Nov 2019 13:17:39 -0000
-Received: from b06cxnps4075.portsmouth.uk.ibm.com (9.149.109.197)
-        by e06smtp02.uk.ibm.com (192.168.101.132) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Sat, 23 Nov 2019 13:17:37 -0000
-Received: from d06av25.portsmouth.uk.ibm.com (d06av25.portsmouth.uk.ibm.com [9.149.105.61])
-        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id xANDHajR56819778
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 23 Nov 2019 13:17:36 GMT
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 63D8A11C04C;
-        Sat, 23 Nov 2019 13:17:36 +0000 (GMT)
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id D566711C050;
-        Sat, 23 Nov 2019 13:17:34 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.85.87.96])
-        by d06av25.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Sat, 23 Nov 2019 13:17:34 +0000 (GMT)
-Subject: Re: [RFCv3 3/4] ext4: start with shared iolock in case of DIO instead
- of excl. iolock
-To:     Jan Kara <jack@suse.cz>
-Cc:     tytso@mit.edu, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, mbobrowski@mbobrowski.org,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-References: <20191120050024.11161-1-riteshh@linux.ibm.com>
- <20191120050024.11161-4-riteshh@linux.ibm.com>
- <20191120135514.GD9509@quack2.suse.cz>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Sat, 23 Nov 2019 18:47:33 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        id S1726705AbfKXMEA convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 24 Nov 2019 07:04:00 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49468 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725980AbfKXMEA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 24 Nov 2019 07:04:00 -0500
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 205641] New: kernel BUG at fs/buffer.c:3382!
+Date:   Sun, 24 Nov 2019 12:03:59 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: new
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: udovdh@xs4all.nl
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_id short_desc product version
+ cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
+ priority component assigned_to reporter cf_regression
+Message-ID: <bug-205641-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-In-Reply-To: <20191120135514.GD9509@quack2.suse.cz>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-TM-AS-GCONF: 00
-x-cbid: 19112313-0008-0000-0000-000003368743
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19112313-0009-0000-0000-00004A55B795
-Message-Id: <20191123131734.D566711C050@d06av25.portsmouth.uk.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.95,18.0.572
- definitions=2019-11-23_02:2019-11-21,2019-11-23 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 clxscore=1015 suspectscore=0
- mlxlogscore=978 mlxscore=0 adultscore=0 bulkscore=0 lowpriorityscore=0
- priorityscore=1501 impostorscore=0 spamscore=0 phishscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-1910280000
- definitions=main-1911230108
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello Jan,
+https://bugzilla.kernel.org/show_bug.cgi?id=205641
 
-Thanks for a thorough review.
+            Bug ID: 205641
+           Summary: kernel BUG at fs/buffer.c:3382!
+           Product: File System
+           Version: 2.5
+    Kernel Version: 5.3.12
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: udovdh@xs4all.nl
+        Regression: No
 
-On 11/20/19 7:25 PM, Jan Kara wrote:
-> On Wed 20-11-19 10:30:23, Ritesh Harjani wrote:
->> Earlier there was no shared lock in DIO read path.
->> But this patch (16c54688592ce: ext4: Allow parallel DIO reads)
->> simplified some of the locking mechanism while still allowing
->> for parallel DIO reads by adding shared lock in inode DIO
->> read path.
->>
->> But this created problem with mixed read/write workload.
->> It is due to the fact that in DIO path, we first start with
->> exclusive lock and only when we determine that it is a ovewrite
->> IO, we downgrade the lock. This causes the problem, since
->> with above patch we have shared locking in DIO reads.
->>
->> So, this patch tries to fix this issue by starting with
->> shared lock and then switching to exclusive lock only
->> when required based on ext4_dio_write_checks().
->>
->> Other than that, it also simplifies below cases:-
->>
->> 1. Simplified ext4_unaligned_aio API to ext4_unaligned_io.
->> Previous API was abused in the sense that it was not really checking
->> for AIO anywhere also it used to check for extending writes.
->> So this API was renamed and simplified to ext4_unaligned_io()
->> which actully only checks if the IO is really unaligned.
->>
->> Now, in case of unaligned direct IO, iomap_dio_rw needs to do
->> zeroing of partial block and that will require serialization
->> against other direct IOs in the same block. So we take a excl iolock
->> for any unaligned DIO.
->> In case of AIO we also need to wait for any outstanding IOs to
->> complete so that conversion from unwritten to written is completed
->> before anyone try to map the overlapping block. Hence we take
->> excl iolock and also wait for inode_dio_wait() for unaligned DIO case.
->> Please note since we are anyway taking an exclusive lock in unaligned IO,
->> inode_dio_wait() becomes a no-op in case of non-AIO DIO.
->>
->> 2. Added ext4_extending_io(). This checks if the IO is extending the file.
->>
->> 3. Added ext4_dio_write_checks().
->> In this we start with shared iolock and only switch to exclusive iolock
->> if required. So in most cases with aligned, non-extening, dioread_nolock
->> overwrites tries to write with a shared locking.
->> If not, then we restart the operation in ext4_dio_write_checks(),
->> after acquiring excl iolock.
->>
->> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
->> ---
->>   fs/ext4/file.c | 191 ++++++++++++++++++++++++++++++++++++-------------
->>   1 file changed, 142 insertions(+), 49 deletions(-)
-> 
-> Thanks for the patch! Some comments below...
-> 
->> @@ -365,15 +383,110 @@ static const struct iomap_dio_ops ext4_dio_write_ops = {
->>   	.end_io = ext4_dio_write_end_io,
->>   };
->>   
->> +/*
->> + * The intention here is to start with shared lock acquired then see if any
->> + * condition requires an exclusive inode lock. If yes, then we restart the
->> + * whole operation by releasing the shared lock and acquiring exclusive lock.
->> + *
->> + * - For unaligned_io we never take shared lock as it may cause data corruption
->> + *   when two unaligned IO tries to modify the same block e.g. while zeroing.
->> + *
->> + * - For extending writes case we don't take the shared lock, since it requires
->> + *   updating inode i_disksize and/or orphan handling with exclusive lock.
->> + *
->> + * - shared locking will only be true mostly in case of overwrites with
->> + *   dioread_nolock mode. Otherwise we will switch to excl. iolock mode.
->> + */
->> +static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->> +				 unsigned int *iolock, bool *unaligned_io,
->> +				 bool *extend)
->> +{
->> +	struct file *file = iocb->ki_filp;
->> +	struct inode *inode = file_inode(file);
->> +	loff_t offset = iocb->ki_pos;
->> +	loff_t final_size;
->> +	size_t count;
->> +	ssize_t ret;
->> +
->> +restart:
->> +	/* Fallback to buffered I/O if the inode does not support direct I/O. */
->> +	if (!ext4_dio_supported(inode)) {
->> +		ext4_iunlock(inode, *iolock);
->> +		return ext4_buffered_write_iter(iocb, from);
->> +	}
-> 
-> I don't think it is good to hide things like this fallback to buffered IO
-> in ext4_dio_write_checks(). Similarly with 'unaligned_io' and 'extend'
-
-Yes, make sense. Yup will move above block of code in
-ext4_dio_write_iter() before calling for ext4_dio_write_checks().
+Any advise on this one?
 
 
-> variables below. So I'd rather leave this in ext4_dio_write_iter() and just
-> move file_modified() from ext4_write_checks() since that seems to be the
+Nov 24 11:24:10 box3 kernel: [146269.049106] ------------[ cut here
+]------------
+Nov 24 11:24:10 box3 kernel: [146269.049110] kernel BUG at fs/buffer.c:3382!
+Nov 24 11:24:10 box3 kernel: [146269.049118] invalid opcode: 0000 [#1]
+PREEMPT SMP NOPTI
+Nov 24 11:24:10 box3 kernel: [146269.049122] CPU: 6 PID: 231 Comm:
+kswapd0 Tainted: G        W         5.3.11 #18
+Nov 24 11:24:10 box3 kernel: [146269.049125] Hardware name: Gigabyte
+Technology Co., Ltd. X570 AORUS PRO/X570 AORUS PRO, BIOS F10c 11/08/2019
+Nov 24 11:24:10 box3 kernel: [146269.049131] RIP:
+0010:free_buffer_head+0x5a/0x60
+Nov 24 11:24:10 box3 kernel: [146269.049134] Code: 11 00 65 ff 0d b7 5a
+e6 5b e8 c2 fe ff ff bf 01 00 00 00 e8 f8 cd ed ff 65 8b 05 09 ee e5 5b
+85 c0 74 01 c3 e8 57 a6 e4 ff c3 <0f> 0b 0f 1f 40 00 0f b6 d2 41 57 41
+56 66 83 fa 01 41 55 41 bd 00
+Nov 24 11:24:10 box3 kernel: [146269.049136] RSP: 0018:ffffbca300343ab8
+EFLAGS: 00010202
+Nov 24 11:24:10 box3 kernel: [146269.049139] RAX: ffff9c097d4ebd90 RBX:
+ffff9c097d4ebd68 RCX: 0000000000000000
+Nov 24 11:24:10 box3 kernel: [146269.049141] RDX: ffff9c097d4ebdb0 RSI:
+ffff9c097d4ebd68 RDI: ffff9c097d4ebd68
+Nov 24 11:24:10 box3 kernel: [146269.049142] RBP: ffffe770070c8fd8 R08:
+ffff9c0a4603c000 R09: 0000000000000002
+Nov 24 11:24:10 box3 kernel: [146269.049143] R10: ffff9c0a48f656a0 R11:
+ffff9c08646153a8 R12: ffff9c0a48f65724
+Nov 24 11:24:10 box3 kernel: [146269.049144] R13: 0000000000000001 R14:
+ffffe770070c8fd8 R15: ffffe770070c8fe0
+Nov 24 11:24:10 box3 kernel: [146269.049145] FS:  0000000000000000(0000)
+GS:ffff9c0a5f180000(0000) knlGS:0000000000000000
+Nov 24 11:24:10 box3 kernel: [146269.049146] CS:  0010 DS: 0000 ES: 0000
+CR0: 0000000080050033
+Nov 24 11:24:10 box3 kernel: [146269.049147] CR2: 0000096d455fe000 CR3:
+0000000167346000 CR4: 00000000003406e0
+Nov 24 11:24:10 box3 kernel: [146269.049148] Call Trace:
+Nov 24 11:24:10 box3 kernel: [146269.049150]  try_to_free_buffers+0xb6/0x100
+Nov 24 11:24:10 box3 kernel: [146269.049153]  shrink_page_list+0xbec/0xe60
+Nov 24 11:24:10 box3 kernel: [146269.049155]
+shrink_inactive_list+0x1ad/0x350
+Nov 24 11:24:10 box3 kernel: [146269.049157]
+shrink_node_memcg.isra.0+0x46e/0x7b0
+Nov 24 11:24:10 box3 kernel: [146269.049159]  ? 0xffffffffa4000000
+Nov 24 11:24:10 box3 kernel: [146269.049161]  ? __switch_to_asm+0x34/0x70
+Nov 24 11:24:10 box3 kernel: [146269.049163]  shrink_node+0x80/0x2e0
+Nov 24 11:24:10 box3 kernel: [146269.049164]  balance_pgdat+0x239/0x4a0
+Nov 24 11:24:10 box3 kernel: [146269.049166]  kswapd+0x165/0x2f0
+Nov 24 11:24:10 box3 kernel: [146269.049168]  ? wait_woken+0x70/0x70
+Nov 24 11:24:10 box3 kernel: [146269.049170]  kthread+0xfb/0x130
+Nov 24 11:24:10 box3 kernel: [146269.049171]  ? balance_pgdat+0x4a0/0x4a0
+Nov 24 11:24:10 box3 kernel: [146269.049173]  ? kthread_park+0x70/0x70
+Nov 24 11:24:10 box3 kernel: [146269.049174]  ret_from_fork+0x22/0x40
+Nov 24 11:24:10 box3 kernel: [146269.049176] Modules linked in:
+usb_storage fuse mq_deadline ip6t_REJECT nf_reject_ipv6 xt_state
+ip6table_filter ip6_tables nf_conntrack_netbios_ns
+nf_conntrack_broadcast xt_MASQUERADE iptable_nat nf_nat ipt_REJECT
+nf_reject_ipv4 xt_u32 xt_multiport xt_tcpudp xt_conntrack it87 hwmon_vid
+nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_filter msr uvcvideo
+videobuf2_vmalloc videobuf2_memops videobuf2_v4l2 videodev snd_usb_audio
+videobuf2_common snd_hwdep snd_usbmidi_lib snd_rawmidi cdc_acm
+snd_hda_codec_realtek snd_hda_codec_generic snd_hda_intel snd_hda_codec
+snd_hda_core snd_seq snd_seq_device snd_pcm k10temp i2c_piix4 snd_timer
+snd bfq evdev acpi_cpufreq binfmt_misc ip_tables x_tables hid_generic
+aesni_intel amdgpu backlight gpu_sched ttm sr_mod cdrom usbhid i2c_dev
+autofs4
+Nov 24 11:24:10 box3 kernel: [146269.049199] ---[ end trace
+927d9ba4cbacd793 ]---
 
-Yes, in this patch itself that has been done. We removed file_modified()
-from ext4_write_checks() & renamed it to ext4_generic_write_checks().
-
-> only thing that cannot be always done with shared i_rwsem, can it?
-
-AFAIU, that's right. Exclusive lock must be needed to change the
-security info for inode.
-
-> 
->> +
->> +	ret = ext4_generic_write_checks(iocb, from);
->> +	if (ret <= 0) {
->> +		ext4_iunlock(inode, *iolock);
->> +		return ret;
->> +	}
->> +
->> +	/* Recalculate since offset & count may change above. */
->> +	offset = iocb->ki_pos;
->> +	count = iov_iter_count(from);
->> +	final_size = offset + count;
->> +
->> +	if (ext4_unaligned_io(inode, from, offset))
->> +		*unaligned_io = true;
-> 
-> No need to recheck alignment here. That cannot change over time regardless
-> of locks we hold...
-
-hmm. I think I got confused by function iov_iter_truncate() called
-in ext4_generic_write_checks().
-But looking at it again, I agree that alignment won't change here.
-will remove the alignment check from here.
-
-> 
->> +
->> +	if (ext4_extending_io(inode, offset, count))
->> +		*extend = true;
->> +	/*
->> +	 * Determine whether the IO operation will overwrite allocated
->> +	 * and initialized blocks. If so, check to see whether it is
->> +	 * possible to take the dioread_nolock path.
->> +	 *
->> +	 * We need exclusive i_rwsem for changing security info
->> +	 * in file_modified().
->> +	 */
->> +	if (*iolock == EXT4_IOLOCK_SHARED &&
->> +	    (!IS_NOSEC(inode) || *unaligned_io || *extend ||
->> +	     !ext4_should_dioread_nolock(inode) ||
->> +	     !ext4_overwrite_io(inode, offset, count))) {
->> +		ext4_iunlock(inode, *iolock);
->> +		*iolock = EXT4_IOLOCK_EXCL;
->> +		ext4_ilock(inode, *iolock);
->> +		goto restart;
->> +	}
->> +
->> +	ret = file_modified(file);
->> +	if (ret < 0) {
->> +		ext4_iunlock(inode, *iolock);
->> +		return ret;
->> +	}
->> +
->> +	return count;
->> +}
->> +
->>   static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
->>   {
->>   	ssize_t ret;
->> -	size_t count;
->> -	loff_t offset;
->>   	handle_t *handle;
->>   	struct inode *inode = file_inode(iocb->ki_filp);
->> -	bool extend = false, overwrite = false, unaligned_aio = false;
->> -	unsigned int iolock = EXT4_IOLOCK_EXCL;
->> +	loff_t offset = iocb->ki_pos;
->> +	size_t count = iov_iter_count(from);
->> +	bool extend = false, unaligned_io = false;
->> +	unsigned int iolock = EXT4_IOLOCK_SHARED;
->> +
->> +	/*
->> +	 * We initially start with shared inode lock
->> +	 * unless it is unaligned IO which needs
->> +	 * exclusive lock anyways.
->> +	 */
->> +	if (ext4_unaligned_io(inode, from, offset)) {
->> +		unaligned_io = true;
->> +		iolock = EXT4_IOLOCK_EXCL;
->> +	}
->> +	/*
->> +	 * Extending writes need exclusive lock.
->> +	 */
->> +	if (ext4_extending_io(inode, offset, count)) {
->> +		extend = true;
->> +		iolock = EXT4_IOLOCK_EXCL;
->> +	}
-> 
-> You cannot read EXT4_I(inode)->i_disksize without some lock (either
-> inode->i_rwsem or EXT4_I(inode)->i_data_sem). So I'd just do here a quick
-> check with i_size here (probably don't set extend, but just make note to
-> start with exclusive i_rwsem) and later when we hold i_rwsem, we can do a
-> reliable check.
-
-hmm. my bad. I think I later moved this block of code from 
-ext4_dio_write_checks() down here.
-Thanks for correcting it.
-Will only check against 'i_size' here then along with a
-comment that a more reliable check with
-shared lock has been done in ext4_dio_write_checks()
-via ext4_extending_io().
-
-> 
->> +	if (iolock == EXT4_IOLOCK_SHARED && !ext4_should_dioread_nolock(inode))
->> +		iolock = EXT4_IOLOCK_EXCL;
->>   
->>   	if (iocb->ki_flags & IOCB_NOWAIT) {
->>   		if (!ext4_ilock_nowait(inode, iolock))
->> @@ -382,47 +495,28 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
->>   		ext4_ilock(inode, iolock);
->>   	}
->>   
->> -	if (!ext4_dio_supported(inode)) {
->> -		ext4_iunlock(inode, iolock);
->> -		/*
->> -		 * Fallback to buffered I/O if the inode does not support
->> -		 * direct I/O.
->> -		 */
->> -		return ext4_buffered_write_iter(iocb, from);
->> -	}
->> -
->> -	ret = ext4_write_checks(iocb, from);
->> -	if (ret <= 0) {
->> -		ext4_iunlock(inode, iolock);
->> +	ret = ext4_dio_write_checks(iocb, from, &iolock, &unaligned_io,
->> +				    &extend);
->> +	if (ret <= 0)
->>   		return ret;
->> -	}
->>   
->> -	/*
->> -	 * Unaligned asynchronous direct I/O must be serialized among each
->> -	 * other as the zeroing of partial blocks of two competing unaligned
->> -	 * asynchronous direct I/O writes can result in data corruption.
->> -	 */
->>   	offset = iocb->ki_pos;
->>   	count = iov_iter_count(from);
->> -	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS) &&
->> -	    !is_sync_kiocb(iocb) && ext4_unaligned_aio(inode, from, offset)) {
->> -		unaligned_aio = true;
->> -		inode_dio_wait(inode);
->> -	}
->>   
->>   	/*
->> -	 * Determine whether the I/O will overwrite allocated and initialized
->> -	 * blocks. If so, check to see whether it is possible to take the
->> -	 * dioread_nolock path.
->> +	 * Unaligned direct IO must be serialized among each other as zeroing
->> +	 * of partial blocks of two competing unaligned IOs can result in data
->> +	 * corruption.
->> +	 *
->> +	 * So we make sure we don't allow any unaligned IO in flight.
->> +	 * For IOs where we need not wait (like unaligned non-AIO DIO),
->> +	 * below inode_dio_wait() may anyway become a no-op, since we start
->> +	 * with exclusive lock.
->>   	 */
->> -	if (!unaligned_aio && ext4_overwrite_io(inode, offset, count) &&
->> -	    ext4_should_dioread_nolock(inode)) {
->> -		overwrite = true;
->> -		ext4_ilock_demote(inode, iolock);
->> -		iolock = EXT4_IOLOCK_SHARED;
->> -	}
->> +	if (unaligned_io)
->> +		inode_dio_wait(inode);
->>   
->> -	if (offset + count > EXT4_I(inode)->i_disksize) {
->> +	if (extend) {
->>   		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
->>   		if (IS_ERR(handle)) {
->>   			ret = PTR_ERR(handle);
->> @@ -435,12 +529,11 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
->>   			goto out;
->>   		}
->>   
->> -		extend = true;
->>   		ext4_journal_stop(handle);
->>   	}
->>   
->>   	ret = iomap_dio_rw(iocb, from, &ext4_iomap_ops, &ext4_dio_write_ops,
->> -			   is_sync_kiocb(iocb) || unaligned_aio || extend);
->> +			   is_sync_kiocb(iocb) || unaligned_io || extend);
->>   
->>   	if (extend)
->>   		ret = ext4_handle_inode_extension(inode, offset, ret, count);
-> 
-> 								Honza
-> 
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
