@@ -1,142 +1,117 @@
-Return-Path: <SRS0=sw5L=ZQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=iiOq=ZR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7189BC43215
-	for <linux-ext4@archiver.kernel.org>; Sun, 24 Nov 2019 12:04:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8A5DC432C0
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Nov 2019 00:19:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3AB1F20748
-	for <linux-ext4@archiver.kernel.org>; Sun, 24 Nov 2019 12:04:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A4C932071A
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Nov 2019 00:19:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1574641182;
+	bh=Sn6E3HQt7dtgUXeZNLw2UpMMqiAyeOmOQDD4OYDOwC0=;
+	h=From:Date:Subject:To:Cc:List-ID:From;
+	b=13wX3HTZ1yebLs2RiTgQpYxNgp1f+sDR1j1KLEG6IdH76Z48OkBpobkzx6tOlUYy0
+	 MsGZOPwvsijJ31hdOAmv1aKfjpXTdzgHa2Nq+hDxnxmjSCiSQpomlIiJB2AICLrCuH
+	 rHeA3AminbQlAlKW7Upx0Gma0hCfjJnsRRimmFuI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726705AbfKXMEA convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 24 Nov 2019 07:04:00 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49468 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725980AbfKXMEA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 24 Nov 2019 07:04:00 -0500
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 205641] New: kernel BUG at fs/buffer.c:3382!
-Date:   Sun, 24 Nov 2019 12:03:59 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: udovdh@xs4all.nl
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression
-Message-ID: <bug-205641-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1726895AbfKYATh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 24 Nov 2019 19:19:37 -0500
+Received: from mail-lf1-f43.google.com ([209.85.167.43]:37575 "EHLO
+        mail-lf1-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726865AbfKYATh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Nov 2019 19:19:37 -0500
+Received: by mail-lf1-f43.google.com with SMTP id b20so9550750lfp.4
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Nov 2019 16:19:34 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:from:date:message-id:subject:to:cc;
+        bh=7zSdIdMDyeT1DLu7ulKiBBaqqsr0ryXFbn4o+HABesI=;
+        b=Aj87rI15MWnTTa+b8MVog3WlP8sZYxGWzhZqoLfLTnhMjwEz7K6Lt1sj9v96Usy47F
+         NjJLvQq46jlCYaQuIrwNNM/ZR9V4y8BLorb8ro2BViRt9Qdso3K1YRIaR668mh6HO2vL
+         iNxCRiw6isozv6L+1TWhSrdiNTk4pBtacOgxk=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to:cc;
+        bh=7zSdIdMDyeT1DLu7ulKiBBaqqsr0ryXFbn4o+HABesI=;
+        b=gQr5ODVeAShJ4tVVybit8+bmrheLnIbRPwbXoDLrlpLL1qmXDs4zz+JWByC+GVB3TG
+         Y4DB+vspVFP/izpVkH+Uk+LbXynrxzNW2pIqCwISw8vLMQVPLn0ZfyFlSCwF3eXsNut8
+         uO6xgso4WFS8N1W+uuMP8XrXqfpGGFeWrTqoU0/uUb92QvWHJPmQKh4BgCHGM6j29JTa
+         ucW8nVsZ5Toh7l/4crZ0Nc6VaKOtwD2zFmw1P25dY2miJtqGGV30xqzE/qPNNjc1Skj9
+         eJVB/JkZq0iJc6oWIXXOmtTtFi/40oXc0WsYE0S8n64aud+c18iBLpToFLP/0FpWYSdS
+         0Bcg==
+X-Gm-Message-State: APjAAAV7XWH9gILCp5VKg1yVApjOPtqWo7H9lt7V6Nb+rZl1bKgbx4Hn
+        U1m9M+rQFSsLpjcGoM+uZH0zYhHZllM=
+X-Google-Smtp-Source: APXvYqzJFOj3PC0g874UsitvnXuVw8JL1l9AFX5cm4ncTIgwsmXQ8bQSswvEFFBRSG9gIHvlcUmyVg==
+X-Received: by 2002:a19:7b18:: with SMTP id w24mr18989566lfc.48.1574641173642;
+        Sun, 24 Nov 2019 16:19:33 -0800 (PST)
+Received: from mail-lf1-f44.google.com (mail-lf1-f44.google.com. [209.85.167.44])
+        by smtp.gmail.com with ESMTPSA id n23sm2290589lfa.41.2019.11.24.16.19.32
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 24 Nov 2019 16:19:32 -0800 (PST)
+Received: by mail-lf1-f44.google.com with SMTP id q28so9548490lfa.5
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Nov 2019 16:19:32 -0800 (PST)
+X-Received: by 2002:a19:4949:: with SMTP id l9mr18141890lfj.52.1574641172100;
+ Sun, 24 Nov 2019 16:19:32 -0800 (PST)
 MIME-Version: 1.0
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Sun, 24 Nov 2019 16:19:16 -0800
+X-Gmail-Original-Message-ID: <CAHk-=wivmk_j6KbTX+Er64mLrG8abXZo0M10PNdAnHc8fWXfsQ@mail.gmail.com>
+Message-ID: <CAHk-=wivmk_j6KbTX+Er64mLrG8abXZo0M10PNdAnHc8fWXfsQ@mail.gmail.com>
+Subject: Unnecessarily bad cache behavior for ext4_getattr()
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="000000000000b6673f059820b78e"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=205641
+--000000000000b6673f059820b78e
+Content-Type: text/plain; charset="UTF-8"
 
-            Bug ID: 205641
-           Summary: kernel BUG at fs/buffer.c:3382!
-           Product: File System
-           Version: 2.5
-    Kernel Version: 5.3.12
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: udovdh@xs4all.nl
-        Regression: No
+It looks from profiles like ext4_getattr() is fairly expensive,
+because it unnecessarily accesses the extended inode information and
+causes extra cache misses.
 
-Any advise on this one?
+On an empty kernel allmodconfig build (which is a lot of "stat()"
+calls by Make, and a lot of silly string stuff in user space due to
+all the make variable games we play), ext4_getattr() was something
+like 1% of the time according to the profile I gathered. It might be
+bogus - maybe the cacheline ends up being accessed later anyway, but
+it _looked_ like it was the whole "i_extra_isize" access that missed
+in the cache.
 
+That's all for gathering the STATX_BTIME information, that the caller
+doesn't even *want*.
 
-Nov 24 11:24:10 box3 kernel: [146269.049106] ------------[ cut here
-]------------
-Nov 24 11:24:10 box3 kernel: [146269.049110] kernel BUG at fs/buffer.c:3382!
-Nov 24 11:24:10 box3 kernel: [146269.049118] invalid opcode: 0000 [#1]
-PREEMPT SMP NOPTI
-Nov 24 11:24:10 box3 kernel: [146269.049122] CPU: 6 PID: 231 Comm:
-kswapd0 Tainted: G        W         5.3.11 #18
-Nov 24 11:24:10 box3 kernel: [146269.049125] Hardware name: Gigabyte
-Technology Co., Ltd. X570 AORUS PRO/X570 AORUS PRO, BIOS F10c 11/08/2019
-Nov 24 11:24:10 box3 kernel: [146269.049131] RIP:
-0010:free_buffer_head+0x5a/0x60
-Nov 24 11:24:10 box3 kernel: [146269.049134] Code: 11 00 65 ff 0d b7 5a
-e6 5b e8 c2 fe ff ff bf 01 00 00 00 e8 f8 cd ed ff 65 8b 05 09 ee e5 5b
-85 c0 74 01 c3 e8 57 a6 e4 ff c3 <0f> 0b 0f 1f 40 00 0f b6 d2 41 57 41
-56 66 83 fa 01 41 55 41 bd 00
-Nov 24 11:24:10 box3 kernel: [146269.049136] RSP: 0018:ffffbca300343ab8
-EFLAGS: 00010202
-Nov 24 11:24:10 box3 kernel: [146269.049139] RAX: ffff9c097d4ebd90 RBX:
-ffff9c097d4ebd68 RCX: 0000000000000000
-Nov 24 11:24:10 box3 kernel: [146269.049141] RDX: ffff9c097d4ebdb0 RSI:
-ffff9c097d4ebd68 RDI: ffff9c097d4ebd68
-Nov 24 11:24:10 box3 kernel: [146269.049142] RBP: ffffe770070c8fd8 R08:
-ffff9c0a4603c000 R09: 0000000000000002
-Nov 24 11:24:10 box3 kernel: [146269.049143] R10: ffff9c0a48f656a0 R11:
-ffff9c08646153a8 R12: ffff9c0a48f65724
-Nov 24 11:24:10 box3 kernel: [146269.049144] R13: 0000000000000001 R14:
-ffffe770070c8fd8 R15: ffffe770070c8fe0
-Nov 24 11:24:10 box3 kernel: [146269.049145] FS:  0000000000000000(0000)
-GS:ffff9c0a5f180000(0000) knlGS:0000000000000000
-Nov 24 11:24:10 box3 kernel: [146269.049146] CS:  0010 DS: 0000 ES: 0000
-CR0: 0000000080050033
-Nov 24 11:24:10 box3 kernel: [146269.049147] CR2: 0000096d455fe000 CR3:
-0000000167346000 CR4: 00000000003406e0
-Nov 24 11:24:10 box3 kernel: [146269.049148] Call Trace:
-Nov 24 11:24:10 box3 kernel: [146269.049150]  try_to_free_buffers+0xb6/0x100
-Nov 24 11:24:10 box3 kernel: [146269.049153]  shrink_page_list+0xbec/0xe60
-Nov 24 11:24:10 box3 kernel: [146269.049155]
-shrink_inactive_list+0x1ad/0x350
-Nov 24 11:24:10 box3 kernel: [146269.049157]
-shrink_node_memcg.isra.0+0x46e/0x7b0
-Nov 24 11:24:10 box3 kernel: [146269.049159]  ? 0xffffffffa4000000
-Nov 24 11:24:10 box3 kernel: [146269.049161]  ? __switch_to_asm+0x34/0x70
-Nov 24 11:24:10 box3 kernel: [146269.049163]  shrink_node+0x80/0x2e0
-Nov 24 11:24:10 box3 kernel: [146269.049164]  balance_pgdat+0x239/0x4a0
-Nov 24 11:24:10 box3 kernel: [146269.049166]  kswapd+0x165/0x2f0
-Nov 24 11:24:10 box3 kernel: [146269.049168]  ? wait_woken+0x70/0x70
-Nov 24 11:24:10 box3 kernel: [146269.049170]  kthread+0xfb/0x130
-Nov 24 11:24:10 box3 kernel: [146269.049171]  ? balance_pgdat+0x4a0/0x4a0
-Nov 24 11:24:10 box3 kernel: [146269.049173]  ? kthread_park+0x70/0x70
-Nov 24 11:24:10 box3 kernel: [146269.049174]  ret_from_fork+0x22/0x40
-Nov 24 11:24:10 box3 kernel: [146269.049176] Modules linked in:
-usb_storage fuse mq_deadline ip6t_REJECT nf_reject_ipv6 xt_state
-ip6table_filter ip6_tables nf_conntrack_netbios_ns
-nf_conntrack_broadcast xt_MASQUERADE iptable_nat nf_nat ipt_REJECT
-nf_reject_ipv4 xt_u32 xt_multiport xt_tcpudp xt_conntrack it87 hwmon_vid
-nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 iptable_filter msr uvcvideo
-videobuf2_vmalloc videobuf2_memops videobuf2_v4l2 videodev snd_usb_audio
-videobuf2_common snd_hwdep snd_usbmidi_lib snd_rawmidi cdc_acm
-snd_hda_codec_realtek snd_hda_codec_generic snd_hda_intel snd_hda_codec
-snd_hda_core snd_seq snd_seq_device snd_pcm k10temp i2c_piix4 snd_timer
-snd bfq evdev acpi_cpufreq binfmt_misc ip_tables x_tables hid_generic
-aesni_intel amdgpu backlight gpu_sched ttm sr_mod cdrom usbhid i2c_dev
-autofs4
-Nov 24 11:24:10 box3 kernel: [146269.049199] ---[ end trace
-927d9ba4cbacd793 ]---
+How about a patch like the attached?
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+                 Linus
+
+--000000000000b6673f059820b78e
+Content-Type: text/x-patch; charset="US-ASCII"; name="patch.diff"
+Content-Disposition: attachment; filename="patch.diff"
+Content-Transfer-Encoding: base64
+Content-ID: <f_k3doopcr0>
+X-Attachment-Id: f_k3doopcr0
+
+IGZzL2V4dDQvaW5vZGUuYyB8IDIgKy0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwg
+MSBkZWxldGlvbigtKQoKZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW5vZGUuYyBiL2ZzL2V4dDQvaW5v
+ZGUuYwppbmRleCA1MTZmYWEyODBjZWQuLjYxN2RjODgzNWY1ZiAxMDA2NDQKLS0tIGEvZnMvZXh0
+NC9pbm9kZS5jCisrKyBiL2ZzL2V4dDQvaW5vZGUuYwpAQCAtNTcwMCw3ICs1NzAwLDcgQEAgaW50
+IGV4dDRfZ2V0YXR0cihjb25zdCBzdHJ1Y3QgcGF0aCAqcGF0aCwgc3RydWN0IGtzdGF0ICpzdGF0
+LAogCXN0cnVjdCBleHQ0X2lub2RlX2luZm8gKmVpID0gRVhUNF9JKGlub2RlKTsKIAl1bnNpZ25l
+ZCBpbnQgZmxhZ3M7CiAKLQlpZiAoRVhUNF9GSVRTX0lOX0lOT0RFKHJhd19pbm9kZSwgZWksIGlf
+Y3J0aW1lKSkgeworCWlmICgocXVlcnlfZmxhZ3MgJiBTVEFUWF9CVElNRSkgJiYgRVhUNF9GSVRT
+X0lOX0lOT0RFKHJhd19pbm9kZSwgZWksIGlfY3J0aW1lKSkgewogCQlzdGF0LT5yZXN1bHRfbWFz
+ayB8PSBTVEFUWF9CVElNRTsKIAkJc3RhdC0+YnRpbWUudHZfc2VjID0gZWktPmlfY3J0aW1lLnR2
+X3NlYzsKIAkJc3RhdC0+YnRpbWUudHZfbnNlYyA9IGVpLT5pX2NydGltZS50dl9uc2VjOwo=
+--000000000000b6673f059820b78e--
