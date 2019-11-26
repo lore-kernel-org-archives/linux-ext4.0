@@ -2,172 +2,79 @@ Return-Path: <SRS0=cxm8=ZS=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F305C432C0
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Nov 2019 14:24:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11310C432C0
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 Nov 2019 23:34:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0F25F20722
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Nov 2019 14:24:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D84AC2068E
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 Nov 2019 23:34:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727821AbfKZOYd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 26 Nov 2019 09:24:33 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:43906 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727016AbfKZOYd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 26 Nov 2019 09:24:33 -0500
-Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 1C113291CC001E39E26E;
-        Tue, 26 Nov 2019 22:24:31 +0800 (CST)
-Received: from huawei.com (10.175.124.28) by DGGEMS401-HUB.china.huawei.com
- (10.3.19.201) with Microsoft SMTP Server id 14.3.439.0; Tue, 26 Nov 2019
- 22:24:21 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <yi.zhang@huawei.com>, <liangyun2@huawei.com>
-Subject: [PATCH] ext4, jbd2: ensure panic when there is no need to record errno in the jbd2 sb
-Date:   Tue, 26 Nov 2019 22:45:37 +0800
-Message-ID: <20191126144537.30020-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.17.2
+        id S1727050AbfKZXev convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 26 Nov 2019 18:34:51 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40966 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726504AbfKZXev (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 26 Nov 2019 18:34:51 -0500
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 205667] New: Inserted MicroSD cards are always read-only in
+ Lenovo Miix 2 10
+Date:   Tue, 26 Nov 2019 23:34:50 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: new
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: 5152@aldrov.eu
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_id short_desc product version
+ cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
+ priority component assigned_to reporter cf_regression
+Message-ID: <bug-205667-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.175.124.28]
-X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-JBD2_REC_ERR flag used to indicate the errno has been updated when jbd2
-aborted, and then __ext4_abort() and ext4_handle_error() can invoke
-panic if ERRORS_PANIC is specified. But there is one exception, if jbd2
-thread failed to submit commit record, it abort journal through
-invoking __jbd2_journal_abort_hard() without set this flag, so we can
-no longer panic. Fix this by set such flag even if there is no need to
-record errno in the jbd2 super block.
+https://bugzilla.kernel.org/show_bug.cgi?id=205667
 
-Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Cc: <stable@vger.kernel.org>
----
- fs/ext4/super.c      |  4 ++--
- fs/jbd2/journal.c    | 46 +++++++++++++++++++++++++++++---------------
- include/linux/jbd2.h |  4 +++-
- 3 files changed, 36 insertions(+), 18 deletions(-)
+            Bug ID: 205667
+           Summary: Inserted MicroSD cards are always read-only in Lenovo
+                    Miix 2 10
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.15
+          Hardware: Intel
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: 5152@aldrov.eu
+        Regression: No
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dd654e53ba3d..76cde5fb8207 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -482,7 +482,7 @@ static void ext4_handle_error(struct super_block *sb)
- 		sb->s_flags |= SB_RDONLY;
- 	} else if (test_opt(sb, ERRORS_PANIC)) {
- 		if (EXT4_SB(sb)->s_journal &&
--		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-+		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_ABORT_FINISHED))
- 			return;
- 		panic("EXT4-fs (device %s): panic forced after error\n",
- 			sb->s_id);
-@@ -701,7 +701,7 @@ void __ext4_abort(struct super_block *sb, const char *function,
- 	}
- 	if (test_opt(sb, ERRORS_PANIC) && !system_going_down()) {
- 		if (EXT4_SB(sb)->s_journal &&
--		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-+		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_ABORT_FINISHED))
- 			return;
- 		panic("EXT4-fs panic from previous error\n");
- 	}
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 1c58859aa592..eb5e60df0da4 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2072,13 +2072,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
-  * Two internal functions, which provide abort to the jbd layer
-  * itself are here.
-  */
--
--/*
-- * Quick version for internal journal use (doesn't lock the journal).
-- * Aborts hard --- we mark the abort as occurred, but do _nothing_ else,
-- * and don't attempt to make any other journal updates.
-- */
--void __jbd2_journal_abort_hard(journal_t *journal)
-+static void __jbd2_journal_abort(journal_t *journal)
- {
- 	transaction_t *transaction;
- 
-@@ -2096,8 +2090,33 @@ void __jbd2_journal_abort_hard(journal_t *journal)
- 	write_unlock(&journal->j_state_lock);
- }
- 
--/* Soft abort: record the abort error status in the journal superblock,
-- * but don't do any other IO. */
-+/*
-+ * Mark journal abort finished when the errno in the sb has been recorded
-+ * or no need to record.
-+ */
-+static void __jbd2_journal_finish_abort(journal_t *journal)
-+{
-+	write_lock(&journal->j_state_lock);
-+	journal->j_flags |= JBD2_ABORT_FINISHED;
-+	write_unlock(&journal->j_state_lock);
-+}
-+
-+/*
-+ * Quick version for internal journal use (doesn't lock the journal).
-+ * Aborts hard --- we mark the abort as occurred, but do _nothing_ else,
-+ * and don't attempt to make any other journal updates.
-+ */
-+void __jbd2_journal_abort_hard(journal_t *journal)
-+{
-+	/* Nothing need to be recorded, mark it as finished directly */
-+	__jbd2_journal_abort(journal);
-+	__jbd2_journal_finish_abort(journal);
-+}
-+
-+/*
-+ * Soft abort: record the abort error status in the journal superblock,
-+ * but don't do any other IO.
-+ */
- static void __journal_abort_soft (journal_t *journal, int errno)
- {
- 	int old_errno;
-@@ -2116,14 +2135,11 @@ static void __journal_abort_soft (journal_t *journal, int errno)
- 	}
- 	write_unlock(&journal->j_state_lock);
- 
--	__jbd2_journal_abort_hard(journal);
-+	__jbd2_journal_abort(journal);
- 
--	if (errno) {
-+	if (errno)
- 		jbd2_journal_update_sb_errno(journal);
--		write_lock(&journal->j_state_lock);
--		journal->j_flags |= JBD2_REC_ERR;
--		write_unlock(&journal->j_state_lock);
--	}
-+	__jbd2_journal_finish_abort(journal);
- }
- 
- /**
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 603fbc4e2f70..870f7f2f912c 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1248,7 +1248,9 @@ JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
- #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
- 						 * data write error in ordered
- 						 * mode */
--#define JBD2_REC_ERR	0x080	/* The errno in the sb has been recorded */
-+#define JBD2_ABORT_FINISHED		0x080	/* Abort finished, the errno
-+						 * in the sb has been recorded
-+						 * if necessary */
- 
- /*
-  * Function declarations for the journaling transaction and buffer
+If I insert the microSD card into tablet, I can not format it because it is
+read-only. If I use external USB slot, everything is working fine on Lenovo
+Miix 2 10. Is there any patch?
+
 -- 
-2.17.2
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
