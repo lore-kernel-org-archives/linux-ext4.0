@@ -6,32 +6,32 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 55E9CC432C3
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33C4FC43215
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2E5032068E
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 14B002068E
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726115AbfLCJGy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Dec 2019 04:06:54 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:32974 "EHLO huawei.com"
+        id S1726144AbfLCJGz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Dec 2019 04:06:55 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:32976 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726105AbfLCJGy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1725954AbfLCJGy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 3 Dec 2019 04:06:54 -0500
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id AC705875D4D5FB044756;
+        by Forcepoint Email with ESMTP id A7D0FD1BEC34D5C3C84C;
         Tue,  3 Dec 2019 17:06:52 +0800 (CST)
 Received: from huawei.com (10.175.124.28) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.439.0; Tue, 3 Dec 2019
- 17:06:44 +0800
+ 17:06:46 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
         <yi.zhang@huawei.com>, <liangyun2@huawei.com>,
         <luoshijie1@huawei.com>
-Subject: [PATCH v2 1/4] jbd2: switch to use jbd2_journal_abort() when failed to submit the commit record
-Date:   Tue, 3 Dec 2019 17:27:53 +0800
-Message-ID: <20191203092756.26129-2-yi.zhang@huawei.com>
+Subject: [PATCH v2 3/4] Partially revert "ext4: pass -ESHUTDOWN code to jbd2 layer"
+Date:   Tue, 3 Dec 2019 17:27:55 +0800
+Message-ID: <20191203092756.26129-4-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.17.2
 In-Reply-To: <20191203092756.26129-1-yi.zhang@huawei.com>
 References: <20191203092756.26129-1-yi.zhang@huawei.com>
@@ -44,40 +44,88 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We invloke jbd2_journal_abort() to abort the journal and record errno
-in the jbd2 superblock when committing journal transaction besides the
-failure on submitting the commit record. But there is no need for the
-case and we can also invloke jbd2_journal_abort() instead of
-__jbd2_journal_abort_hard().
+This partially reverts commit fb7c02445c497943e7296cd3deee04422b63acb8.
 
-Fixes: 818d276ceb83a ("ext4: Add the journal checksum feature")
+Commit fb7c02445c49 ("ext4: pass -ESHUTDOWN code to jbd2 layer") want to
+allow jbd2 layer to distinguish shutdown journal abort from other error
+cases, but this patch seems unnecessary because we distinguished those
+cases well through a zero errno parameter when shutting down, thus the
+jbd2 aborting peocess will not record the errno. So partially reverts
+this commit and keep the proper locking.
+
 Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 ---
- fs/jbd2/commit.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ioctl.c   |  4 ++--
+ fs/jbd2/journal.c | 22 +++++++---------------
+ 2 files changed, 9 insertions(+), 17 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 132fb92098c7..87b88d910306 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -785,7 +785,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		err = journal_submit_commit_record(journal, commit_transaction,
- 						 &cbh, crc32_sum);
- 		if (err)
--			__jbd2_journal_abort_hard(journal);
-+			jbd2_journal_abort(journal, err);
- 	}
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0b7f316fd30f..f99eeba5767d 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -597,13 +597,13 @@ static int ext4_shutdown(struct super_block *sb, unsigned long arg)
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+ 			(void) ext4_force_commit(sb);
+-			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
++			jbd2_journal_abort(sbi->s_journal, 0);
+ 		}
+ 		break;
+ 	case EXT4_GOING_FLAGS_NOLOGFLUSH:
+ 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+ 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+-			jbd2_journal_abort(sbi->s_journal, -ESHUTDOWN);
++			jbd2_journal_abort(sbi->s_journal, 0);
+ 		break;
+ 	default:
+ 		return -EINVAL;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index a78b07841080..f3f9e0b994ef 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1475,14 +1475,11 @@ static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
+ void jbd2_journal_update_sb_errno(journal_t *journal)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+-	int errcode;
  
- 	blk_finish_plug(&plug);
-@@ -876,7 +876,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		err = journal_submit_commit_record(journal, commit_transaction,
- 						&cbh, crc32_sum);
- 		if (err)
--			__jbd2_journal_abort_hard(journal);
-+			jbd2_journal_abort(journal, err);
+ 	lock_buffer(journal->j_sb_buffer);
+-	errcode = journal->j_errno;
+-	if (errcode == -ESHUTDOWN)
+-		errcode = 0;
+-	jbd_debug(1, "JBD2: updating superblock error (errno %d)\n", errcode);
+-	sb->s_errno    = cpu_to_be32(errcode);
++	jbd_debug(1, "JBD2: updating superblock error (errno %d)\n",
++		  journal->j_errno);
++	sb->s_errno = cpu_to_be32(journal->j_errno);
+ 
+ 	jbd2_write_superblock(journal, REQ_SYNC | REQ_FUA);
+ }
+@@ -2100,20 +2097,15 @@ void __jbd2_journal_abort_hard(journal_t *journal)
+  * but don't do any other IO. */
+ static void __journal_abort_soft (journal_t *journal, int errno)
+ {
+-	int old_errno;
+-
+ 	write_lock(&journal->j_state_lock);
+-	old_errno = journal->j_errno;
+-	if (!journal->j_errno || errno == -ESHUTDOWN)
+-		journal->j_errno = errno;
+-
+ 	if (journal->j_flags & JBD2_ABORT) {
+ 		write_unlock(&journal->j_state_lock);
+-		if (!old_errno && old_errno != -ESHUTDOWN &&
+-		    errno == -ESHUTDOWN)
+-			jbd2_journal_update_sb_errno(journal);
+ 		return;
  	}
- 	if (cbh)
- 		err = journal_wait_on_commit_record(journal, cbh);
++
++	if (!journal->j_errno)
++		journal->j_errno = errno;
++
+ 	write_unlock(&journal->j_state_lock);
+ 
+ 	__jbd2_journal_abort_hard(journal);
 -- 
 2.17.2
 
