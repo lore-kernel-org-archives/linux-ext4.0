@@ -2,88 +2,82 @@ Return-Path: <SRS0=K1lC=ZZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF14DC43215
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 07:36:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55E9CC432C3
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9230820637
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 07:36:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2E5032068E
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 09:06:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727590AbfLCHgk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Dec 2019 02:36:40 -0500
-Received: from szxga02-in.huawei.com ([45.249.212.188]:2525 "EHLO huawei.com"
+        id S1726115AbfLCJGy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Dec 2019 04:06:54 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:32974 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727444AbfLCHgj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 3 Dec 2019 02:36:39 -0500
-Received: from DGGEMM406-HUB.china.huawei.com (unknown [172.30.72.56])
-        by Forcepoint Email with ESMTP id 7819FD447DA005F45EFD;
-        Tue,  3 Dec 2019 15:36:36 +0800 (CST)
-Received: from dggeme762-chm.china.huawei.com (10.3.19.108) by
- DGGEMM406-HUB.china.huawei.com (10.3.20.214) with Microsoft SMTP Server (TLS)
- id 14.3.439.0; Tue, 3 Dec 2019 15:36:36 +0800
-Received: from architecture4 (10.160.196.180) by
- dggeme762-chm.china.huawei.com (10.3.19.108) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
- 15.1.1713.5; Tue, 3 Dec 2019 15:36:35 +0800
-Date:   Tue, 3 Dec 2019 15:41:54 +0800
-From:   Gao Xiang <gaoxiang25@huawei.com>
-To:     Daniel Rosenberg <drosen@google.com>
-CC:     Theodore Ts'o <tytso@mit.edu>, <linux-ext4@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        Eric Biggers <ebiggers@kernel.org>,
-        <linux-fscrypt@vger.kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>, <linux-doc@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        <kernel-team@android.com>
-Subject: Re: [PATCH 4/8] vfs: Fold casefolding into vfs
-Message-ID: <20191203074154.GA216261@architecture4>
-References: <20191203051049.44573-1-drosen@google.com>
- <20191203051049.44573-5-drosen@google.com>
+        id S1726105AbfLCJGy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 3 Dec 2019 04:06:54 -0500
+Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id AC705875D4D5FB044756;
+        Tue,  3 Dec 2019 17:06:52 +0800 (CST)
+Received: from huawei.com (10.175.124.28) by DGGEMS411-HUB.china.huawei.com
+ (10.3.19.211) with Microsoft SMTP Server id 14.3.439.0; Tue, 3 Dec 2019
+ 17:06:44 +0800
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <yi.zhang@huawei.com>, <liangyun2@huawei.com>,
+        <luoshijie1@huawei.com>
+Subject: [PATCH v2 1/4] jbd2: switch to use jbd2_journal_abort() when failed to submit the commit record
+Date:   Tue, 3 Dec 2019 17:27:53 +0800
+Message-ID: <20191203092756.26129-2-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20191203092756.26129-1-yi.zhang@huawei.com>
+References: <20191203092756.26129-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <20191203051049.44573-5-drosen@google.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Originating-IP: [10.160.196.180]
-X-ClientProxiedBy: dggeme719-chm.china.huawei.com (10.1.199.115) To
- dggeme762-chm.china.huawei.com (10.3.19.108)
+Content-Type: text/plain
+X-Originating-IP: [10.175.124.28]
 X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Dec 02, 2019 at 09:10:45PM -0800, Daniel Rosenberg wrote:
-> Ext4 and F2fs are both using casefolding, and they, along with any other
-> filesystem that adds the feature, will be using identical dentry_ops.
-> Additionally, those dentry ops interfere with the dentry_ops required
-> for fscrypt once we add support for casefolding and encryption.
-> Moving this into the vfs removes code duplication as well as the
-> complication with encryption.
-> 
-> Currently this is pretty close to just moving the existing f2fs/ext4
-> code up a level into the vfs, although there is a lot of room for
-> improvement now.
-> 
-> Signed-off-by: Daniel Rosenberg <drosen@google.com>
+We invloke jbd2_journal_abort() to abort the journal and record errno
+in the jbd2 superblock when committing journal transaction besides the
+failure on submitting the commit record. But there is no need for the
+case and we can also invloke jbd2_journal_abort() instead of
+__jbd2_journal_abort_hard().
 
-I'm afraid that such vfs modification is unneeded.
+Fixes: 818d276ceb83a ("ext4: Add the journal checksum feature")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/jbd2/commit.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Just a quick glance it seems just can be replaced by introducing some
-.d_cmp, .d_hash helpers (or with little modification) and most non-Android
-emulated storage files are not casefolded (even in Android).
-
-"those dentry ops interfere with the dentry_ops required for fscrypt",
-I don't think it's a real diffculty and it could be done with some
-better approach instead.
-
-Thanks,
-Gao Xiang
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 132fb92098c7..87b88d910306 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -785,7 +785,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						 &cbh, crc32_sum);
+ 		if (err)
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
+ 	}
+ 
+ 	blk_finish_plug(&plug);
+@@ -876,7 +876,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						&cbh, crc32_sum);
+ 		if (err)
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
+ 	}
+ 	if (cbh)
+ 		err = journal_wait_on_commit_record(journal, cbh);
+-- 
+2.17.2
 
