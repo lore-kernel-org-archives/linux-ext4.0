@@ -2,98 +2,73 @@ Return-Path: <SRS0=K1lC=ZZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7ED01C432C0
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 21:21:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C726FC432C0
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 22:15:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4EBD32073F
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 21:21:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 974032073C
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Dec 2019 22:15:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1575408082;
-	bh=Y/DPWh1Y+1hT3scg5yeiXtEhxvwqjipTM3/frNsQlS4=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=Unstl7BrjlLgqwZWupvJZu+6l68g5xs+e5c5GDPehzdvMD4eplC8cRcGQxqkuP/Rl
-	 tYpyxkynqb29MOjPShvGzFqi2P+yYLQUIgWelNvlkrP/33n0Llg/sw8FFdPYF8ZnDs
-	 kKbiNEqyz1UwKwKKR4+3YlDueovfwswpbUbVS99I=
+	s=default; t=1575411310;
+	bh=uxAYgjvrlHNlmiCCJJqc9Q/JExua1lXYWmd3ARgKnts=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=JWpXduSGXHzarIyBePb73qPnfwdMesFvMJKvfeYzME82jtt78JVvujR/4yGEG7lqW
+	 oI3PLxgFBgeSoaS3sMQhXa8BIRHVcyLgsHzf2W406tP8hYQi7wDAv3xB7WIp+5L03a
+	 sJJxUYWfgy2nrPbUjn+7/8V08O4iMuAxRQ2JIoEc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727536AbfLCVVV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Dec 2019 16:21:21 -0500
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:43208 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727528AbfLCVVV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2019 16:21:21 -0500
-Received: by mail-lj1-f193.google.com with SMTP id a13so5469987ljm.10
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2019 13:21:20 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=/2Pn+nUwTPiWQNmD6ZcUyBL9YYHx/8hYVUPPzlyrC1w=;
-        b=YWt7tCChJawBH2mlGjm75VvKQF1n9lq0PB4WHZENSOIYbPbM+TMiv+A4sz31FIrIF+
-         qv6rVeradhmwJ1y3LywV1hVUnY+3sdobJHBMSiCoBi14y0F23F0EVwMMAXxXELbrEtOr
-         HkKcuRhQ3sww6TYp8jETEWeDjYOJ+2N3IyHRA=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=/2Pn+nUwTPiWQNmD6ZcUyBL9YYHx/8hYVUPPzlyrC1w=;
-        b=Yjue2SvdR6HZ3oZxQGylv7RRxcnTU7uZta0BHnayCn7qf4Ih7pgoi+b10j8UrKVmcZ
-         Y5BAjzMpwsryfklJLMqr8wH2GM2WVxBiREYzn+vzLw2s6OiD5ODenXnIyftuhI3wE34Y
-         C1jMptT2CZXk8SZJEHm4zgoelmiKLXITuNRFzIW+EvheHb1E5vEvITYIXnZmMqL9Ko2k
-         gfFQrrfkpzHFjM9bTaUzKgUKS3klg7qTQ2f2RrR0BPZJi3AoPgV8+wyaSCSkt+pv3wf/
-         JyocdQ4UTTF5WW5OhyQ3G8bFg/aKE6Lmyfqfjoj54JtALch9fKVu/TFjviKjMIAf9iUI
-         CLDg==
-X-Gm-Message-State: APjAAAWEaPGZ7C9CfDy6otC6rTQzMJ4kl3bzfBpm/W8EDUKkbmW0+m4H
-        KiTMczsGys832LFXwkdiGIOETa1g01M=
-X-Google-Smtp-Source: APXvYqw3bNxod+vdKSYcLyb3cPKuRSSwSMTT7F9rg0DT5NW+cLslimZW0B75YxJvbBI9l0qhjP1N0Q==
-X-Received: by 2002:a2e:8745:: with SMTP id q5mr3841140ljj.208.1575408079049;
-        Tue, 03 Dec 2019 13:21:19 -0800 (PST)
-Received: from mail-lj1-f173.google.com (mail-lj1-f173.google.com. [209.85.208.173])
-        by smtp.gmail.com with ESMTPSA id w71sm2357455lff.0.2019.12.03.13.21.17
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 03 Dec 2019 13:21:18 -0800 (PST)
-Received: by mail-lj1-f173.google.com with SMTP id j6so5539318lja.2
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2019 13:21:17 -0800 (PST)
-X-Received: by 2002:a2e:63dd:: with SMTP id s90mr3908645lje.48.1575408077519;
- Tue, 03 Dec 2019 13:21:17 -0800 (PST)
-MIME-Version: 1.0
-References: <20191203160856.GC7323@magnolia>
-In-Reply-To: <20191203160856.GC7323@magnolia>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue, 3 Dec 2019 13:21:01 -0800
-X-Gmail-Original-Message-ID: <CAHk-=wh3vin7WyMpBGWxZovGp51wa=U0T=TXqnQPVMBiEpdvsQ@mail.gmail.com>
-Message-ID: <CAHk-=wh3vin7WyMpBGWxZovGp51wa=U0T=TXqnQPVMBiEpdvsQ@mail.gmail.com>
+        id S1727846AbfLCWPH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Dec 2019 17:15:07 -0500
+Received: from mail.kernel.org ([198.145.29.99]:60678 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727836AbfLCWPF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 3 Dec 2019 17:15:05 -0500
 Subject: Re: [GIT PULL] iomap: small cleanups for 5.5
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1575411305;
+        bh=uxAYgjvrlHNlmiCCJJqc9Q/JExua1lXYWmd3ARgKnts=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=kRoYWwWl0CPBdqprVYYTyLwIi8ius2GbIqlj69oudyF3ehvVhfIlHd0eDNdCNsok4
+         GzHPk8SsiAeGOW7ONJH3IWp1P0UfPV47gMy+Z0pjaXEE8Uig+7B3zyjlOu+jO0Qhvp
+         04OfXS/BGnJJndqMZNaV+4gHYtwiapbON1EnSD9g=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20191203160856.GC7323@magnolia>
+References: <20191203160856.GC7323@magnolia>
+X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20191203160856.GC7323@magnolia>
+X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+ tags/iomap-5.5-merge-13
+X-PR-Tracked-Commit-Id: 88cfd30e188fcf6fd8304586c936a6f22fb665e5
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 2a31aca5006749f7d4655836c61d4a53bfae8e53
+Message-Id: <157541130508.3528.9113610201591318656.pr-tracker-bot@kernel.org>
+Date:   Tue, 03 Dec 2019 22:15:05 +0000
 To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Eric Sandeen <sandeen@sandeen.net>,
-        Christoph Hellwig <hch@lst.de>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>,
-        cluster-devel <cluster-devel@redhat.com>,
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        david@fromorbit.com, linux-kernel@vger.kernel.org,
+        sandeen@sandeen.net, hch@lst.de, agruenba@redhat.com,
+        rpeterso@redhat.com, cluster-devel@redhat.com,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>
-Content-Type: text/plain; charset="UTF-8"
+        Theodore Ts'o <tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Dec 3, 2019 at 8:09 AM Darrick J. Wong <djwong@kernel.org> wrote:
-> Please pull this series containing some more new iomap code for 5.5.
-> There's not much this time -- just removing some local variables that
-> don't need to exist in the iomap directio code.
+The pull request you sent on Tue, 3 Dec 2019 08:08:56 -0800:
 
-Hmm. The tag message (which was also in the email thanks to git
-request-pull) is very misleading.
+> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.5-merge-13
 
-Pulled, but please check these things.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/2a31aca5006749f7d4655836c61d4a53bfae8e53
 
-           Linus
+Thank you!
+
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
