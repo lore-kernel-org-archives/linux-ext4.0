@@ -2,130 +2,303 @@ Return-Path: <SRS0=1XWU=Z2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B63C0C432C0
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 00:32:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22316C432C0
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 03:23:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 894CA207DD
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 00:32:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1575419538;
-	bh=8ZaeCwEq+6xIABYU+SGqp6hX6Y6XpUzqAIOiEL+4ptk=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=pLb1nIjf6AIdzN6KfzRzwRqrVlPgeCyqX8AIP61nPJb3VaBiKsN5w+HpELyXG7Vqt
-	 TLBxcY4Y5MNa52T7k3X3k/Kd9TFSfUQ+dksBoPrnCtBErqhFhzYsaDoS7hokZpwq1/
-	 DcgQyZIiFNe5rRxAZrW62AdgHMymA6v9WyOM/3cw=
+	by mail.kernel.org (Postfix) with ESMTP id C8D5F206DF
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 03:23:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726179AbfLDAcO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Dec 2019 19:32:14 -0500
-Received: from mail.kernel.org ([198.145.29.99]:37848 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726008AbfLDAcO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 3 Dec 2019 19:32:14 -0500
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9F59820674;
-        Wed,  4 Dec 2019 00:32:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1575419533;
-        bh=8ZaeCwEq+6xIABYU+SGqp6hX6Y6XpUzqAIOiEL+4ptk=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=H+JHr/MY13+OR7Xg3FnTUgq77Cu2JRb/F5u+aykghFc6qGYlML4b6ddbV54qHYV0C
-         HkJpYWB7n8o3CzDTRpPQ6YK/SIfmqLJ7ehkznxzeKGCk0Je1hCzegtpse65co4wjGM
-         dAdXmhvWd1VFRWMfustTw3Kz4aCxFW4LVjSG3khk=
-Date:   Tue, 3 Dec 2019 16:32:11 -0800
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     Gao Xiang <gaoxiang25@huawei.com>,
-        Daniel Rosenberg <drosen@google.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        kernel-team@android.com
-Subject: Re: [PATCH 4/8] vfs: Fold casefolding into vfs
-Message-ID: <20191204003211.GE727@sol.localdomain>
-References: <20191203051049.44573-1-drosen@google.com>
- <20191203051049.44573-5-drosen@google.com>
- <20191203074154.GA216261@architecture4>
- <85wobdb3hp.fsf@collabora.com>
- <20191203203414.GA727@sol.localdomain>
- <85zhg96r7l.fsf@collabora.com>
+        id S1726834AbfLDDXq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Dec 2019 22:23:46 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40519 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726763AbfLDDXp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2019 22:23:45 -0500
+Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xB43Ne3w017898
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 3 Dec 2019 22:23:41 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 50473421A49; Tue,  3 Dec 2019 22:23:40 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH -v2 2/2] ext4: simulate various I/O and checksum errors when reading metadata
+Date:   Tue,  3 Dec 2019 22:23:35 -0500
+Message-Id: <20191204032335.7683-2-tytso@mit.edu>
+X-Mailer: git-send-email 2.23.0
+In-Reply-To: <20191204032335.7683-1-tytso@mit.edu>
+References: <20191204032335.7683-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <85zhg96r7l.fsf@collabora.com>
-User-Agent: Mutt/1.12.2 (2019-09-21)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Dec 03, 2019 at 04:21:02PM -0500, Gabriel Krisman Bertazi wrote:
-> Eric Biggers <ebiggers@kernel.org> writes:
-> 
-> > On Tue, Dec 03, 2019 at 02:42:10PM -0500, Gabriel Krisman Bertazi wrote:
-> >> Gao Xiang <gaoxiang25@huawei.com> writes:
-> 
-> >> I think Daniel's approach of moving this into VFS is the simplest way to
-> >> actually solve the issue, instead of extending and duplicating a lot of
-> >> functionality into filesystem hooks to support the possible mixes of
-> >> case-insensitive, overlayfs and fscrypt.
-> >> 
-> >
-> > I think we can actually get everything we want using dentry_operations only,
-> > since the filesystem can set ->d_op during ->lookup() (like what is done for
-> > encrypted filenames now) rather than at dentry allocation time.  And fs/crypto/
-> > can export fscrypt_d_revalidate() rather than setting ->d_op itself.
-> 
-> Problem is, differently from fscrypt, case-insensitive uses the d_hash()
-> hook and for a lookup, we actually use
-> dentry->d_parent->d_ops->d_hash().  Which works well, until you are flipping the
-> casefold flag.  Then the dentry already exists and you need to modify
-> the d_ops on the fly, which I couldn't find precedent anywhere.  I tried
-> invalidating the dentry whenever we flip the flag, but then if it has
-> negative dentries as children,I wasn't able to reliably invalidate it,
-> and that's when I reached the limit of my knowledge in VFS.  In
-> particular, in every attempt I made to implement it like this, I was
-> able to race and do a case-insensitive lookup on a directory that was
-> just made case sensitive.
-> 
-> I'm not saying there isn't a way.  But it is a bit harder than this
-> proposal. I tried it already and still didn't manage to make it work.
-> Maybe someone who better understands vfs.
+This allows us to test various error handling code paths
 
-Yes you're right, I forgot that for ->d_hash() and ->d_compare() it's actually
-the parent's directory dentry_operations that are used.
+Previous-Version-Link: https://lore.kernel.org/r/20191121183036.29385-2-tytso@mit.edu
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
 
-> 
-> > It's definitely ugly to have to handle the 3 cases of encrypt, casefold, and
-> > encrypt+casefold separately -- and this will need to be duplicated for each
-> > filesystem.  But we do have to weigh that against adding additional complexity
-> > and overhead to the VFS for everyone.  If we do go with the VFS changes, please
-> > try to make them as simple and unobtrusive as possible.
-> 
-> Well, it is just not case-insensitive+fscrypt. Also overlayfs
-> there. Probably more.  So we have much more cases.  I understand the VFS
-> changes need to be very well thought, but when I worked on this it
-> started to look a more correct solution than using the hooks.
+Notes:
+    v2: change ext4_simulate_fail() to return a bool instead of an int
 
-Well the point of my proof-of-concept patch having separate ext4_ci_dentry_ops,
-ext4_encrypted_dentry_ops, and ext4_encrypted_ci_dentry_ops is supposed to be
-for overlayfs support -- since overlayfs requires that some operations are not
-present.  If we didn't need overlayfs support, we could just use a single
-ext4_dentry_ops for all dentries instead.
+ fs/ext4/balloc.c |  4 +++-
+ fs/ext4/ext4.h   | 42 ++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ialloc.c |  4 +++-
+ fs/ext4/inode.c  |  6 +++++-
+ fs/ext4/namei.c  | 11 ++++++++---
+ fs/ext4/sysfs.c  | 23 +++++++++++++++++++++++
+ 6 files changed, 84 insertions(+), 6 deletions(-)
 
-I think we could still support fscrypt, casefold, fscrypt+casefold, and
-fscrypt+overlayfs with dentry_operations only.  It's casefold+overlayfs that's
-the biggest problem, due to the possibility of the casefold flag being set on a
-directory later as you pointed out.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 102c38527a10..5f993a411251 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -371,7 +371,8 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+ 	if (buffer_verified(bh))
+ 		goto verified;
+ 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+-			desc, bh))) {
++						    desc, bh) ||
++		     ext4_simulate_fail(sb, EXT4_SIM_BBITMAP_CRC))) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
+ 		ext4_mark_group_bitmap_corrupted(sb, block_group,
+@@ -505,6 +506,7 @@ int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
+ 	if (!desc)
+ 		return -EFSCORRUPTED;
+ 	wait_on_buffer(bh);
++	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_BBITMAP_EIO);
+ 	if (!buffer_uptodate(bh)) {
+ 		ext4_set_errno(sb, EIO);
+ 		ext4_error(sb, "Cannot read block bitmap - "
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 1c9ac0fc8715..7cbd7575f114 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1557,6 +1557,9 @@ struct ext4_sb_info {
+ 	/* Barrier between changing inodes' journal flags and writepages ops. */
+ 	struct percpu_rw_semaphore s_journal_flag_rwsem;
+ 	struct dax_device *s_daxdev;
++#ifdef CONFIG_EXT4_DEBUG
++	unsigned long s_simulate_fail;
++#endif
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+@@ -1575,6 +1578,45 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+ }
+ 
++static inline bool ext4_simulate_fail(struct super_block *sb,
++				     unsigned long flag)
++{
++#ifdef CONFIG_EXT4_DEBUG
++	unsigned long old, new;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	do {
++		old = READ_ONCE(sbi->s_simulate_fail);
++		if (likely((old & flag) == 0))
++			return false;
++		new = old & ~flag;
++	} while (unlikely(cmpxchg(&sbi->s_simulate_fail, old, new) != old));
++	return true;
++#else
++	return false;
++#endif
++}
++
++static inline void ext4_simulate_fail_bh(struct super_block *sb,
++					 struct buffer_head *bh,
++					 unsigned long flag)
++{
++	if (!IS_ERR(bh) && ext4_simulate_fail(sb, flag))
++		clear_buffer_uptodate(bh);
++}
++
++/*
++ * Simulate_fail flags
++ */
++#define EXT4_SIM_BBITMAP_EIO	0x00000001
++#define EXT4_SIM_BBITMAP_CRC	0x00000002
++#define EXT4_SIM_IBITMAP_EIO	0x00000004
++#define EXT4_SIM_IBITMAP_CRC	0x00000008
++#define EXT4_SIM_INODE_EIO	0x00000010
++#define EXT4_SIM_INODE_CRC	0x00000020
++#define EXT4_SIM_DIRBLOCK_EIO	0x00000040
++#define EXT4_SIM_DIRBLOCK_CRC	0x00000080
++
+ /*
+  * Error number codes for s_{first,last}_error_errno
+  *
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 9979e1a55be5..8e5bb8a3f151 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -94,7 +94,8 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+ 		goto verified;
+ 	blk = ext4_inode_bitmap(sb, desc);
+ 	if (!ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
+-					   EXT4_INODES_PER_GROUP(sb) / 8)) {
++					   EXT4_INODES_PER_GROUP(sb) / 8) ||
++	    ext4_simulate_fail(sb, EXT4_SIM_IBITMAP_CRC)) {
+ 		ext4_unlock_group(sb, block_group);
+ 		ext4_error(sb, "Corrupt inode bitmap - block_group = %u, "
+ 			   "inode_bitmap = %llu", block_group, blk);
+@@ -192,6 +193,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	get_bh(bh);
+ 	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO, bh);
+ 	wait_on_buffer(bh);
++	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_IBITMAP_EIO);
+ 	if (!buffer_uptodate(bh)) {
+ 		put_bh(bh);
+ 		ext4_set_errno(sb, EIO);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1aed7c653b42..128e51c37b93 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4243,6 +4243,8 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	bh = sb_getblk(sb, block);
+ 	if (unlikely(!bh))
+ 		return -ENOMEM;
++	if (ext4_simulate_fail(sb, EXT4_SIM_INODE_EIO))
++		goto simulate_eio;
+ 	if (!buffer_uptodate(bh)) {
+ 		lock_buffer(bh);
+ 
+@@ -4341,6 +4343,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 		blk_finish_plug(&plug);
+ 		wait_on_buffer(bh);
+ 		if (!buffer_uptodate(bh)) {
++		simulate_eio:
+ 			ext4_set_errno(inode->i_sb, EIO);
+ 			EXT4_ERROR_INODE_BLOCK(inode, block,
+ 					       "unable to read itable block");
+@@ -4555,7 +4558,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 					      sizeof(gen));
+ 	}
+ 
+-	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
++	if (!ext4_inode_csum_verify(inode, raw_inode, ei) ||
++	    ext4_simulate_fail(sb, EXT4_SIM_INODE_CRC)) {
+ 		ext4_set_errno(inode->i_sb, EFSBADCRC);
+ 		ext4_error_inode(inode, function, line, 0,
+ 				 "iget: checksum invalid");
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index c74ed04d6781..3a0f65e21e8f 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -109,7 +109,10 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 	struct ext4_dir_entry *dirent;
+ 	int is_dx_block = 0;
+ 
+-	bh = ext4_bread(NULL, inode, block, 0);
++	if (ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_EIO))
++		bh = ERR_PTR(-EIO);
++	else
++		bh = ext4_bread(NULL, inode, block, 0);
+ 	if (IS_ERR(bh)) {
+ 		__ext4_warning(inode->i_sb, func, line,
+ 			       "inode #%lu: lblock %lu: comm %s: "
+@@ -153,7 +156,8 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 	 * caller is sure it should be an index block.
+ 	 */
+ 	if (is_dx_block && type == INDEX) {
+-		if (ext4_dx_csum_verify(inode, dirent))
++		if (ext4_dx_csum_verify(inode, dirent) &&
++		    !ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_CRC))
+ 			set_buffer_verified(bh);
+ 		else {
+ 			ext4_set_errno(inode->i_sb, EFSBADCRC);
+@@ -164,7 +168,8 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 		}
+ 	}
+ 	if (!is_dx_block) {
+-		if (ext4_dirblock_csum_verify(inode, bh))
++		if (ext4_dirblock_csum_verify(inode, bh) &&
++		    !ext4_simulate_fail(inode->i_sb, EXT4_SIM_DIRBLOCK_CRC))
+ 			set_buffer_verified(bh);
+ 		else {
+ 			ext4_set_errno(inode->i_sb, EFSBADCRC);
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index eb1efad0e20a..a990d28d191b 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -29,6 +29,7 @@ typedef enum {
+ 	attr_last_error_time,
+ 	attr_feature,
+ 	attr_pointer_ui,
++	attr_pointer_ul,
+ 	attr_pointer_atomic,
+ 	attr_journal_task,
+ } attr_id_t;
+@@ -160,6 +161,9 @@ static struct ext4_attr ext4_attr_##_name = {			\
+ #define EXT4_RW_ATTR_SBI_UI(_name,_elname)	\
+ 	EXT4_ATTR_OFFSET(_name, 0644, pointer_ui, ext4_sb_info, _elname)
+ 
++#define EXT4_RW_ATTR_SBI_UL(_name,_elname)	\
++	EXT4_ATTR_OFFSET(_name, 0644, pointer_ul, ext4_sb_info, _elname)
++
+ #define EXT4_ATTR_PTR(_name,_mode,_id,_ptr) \
+ static struct ext4_attr ext4_attr_##_name = {			\
+ 	.attr = {.name = __stringify(_name), .mode = _mode },	\
+@@ -194,6 +198,9 @@ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.int
+ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
++#ifdef CONFIG_EXT4_DEBUG
++EXT4_RW_ATTR_SBI_UL(simulate_fail, s_simulate_fail);
++#endif
+ EXT4_RO_ATTR_ES_UI(errors_count, s_error_count);
+ EXT4_ATTR(first_error_time, 0444, first_error_time);
+ EXT4_ATTR(last_error_time, 0444, last_error_time);
+@@ -228,6 +235,9 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(first_error_time),
+ 	ATTR_LIST(last_error_time),
+ 	ATTR_LIST(journal_task),
++#ifdef CONFIG_EXT4_DEBUG
++	ATTR_LIST(simulate_fail),
++#endif
+ 	NULL,
+ };
+ ATTRIBUTE_GROUPS(ext4);
+@@ -318,6 +328,11 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 		else
+ 			return snprintf(buf, PAGE_SIZE, "%u\n",
+ 					*((unsigned int *) ptr));
++	case attr_pointer_ul:
++		if (!ptr)
++			return 0;
++		return snprintf(buf, PAGE_SIZE, "%lu\n",
++				*((unsigned long *) ptr));
+ 	case attr_pointer_atomic:
+ 		if (!ptr)
+ 			return 0;
+@@ -361,6 +376,14 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
+ 		else
+ 			*((unsigned int *) ptr) = t;
+ 		return len;
++	case attr_pointer_ul:
++		if (!ptr)
++			return 0;
++		ret = kstrtoul(skip_spaces(buf), 0, &t);
++		if (ret)
++			return ret;
++		*((unsigned long *) ptr) = t;
++		return len;
+ 	case attr_inode_readahead:
+ 		return inode_readahead_blks_store(sbi, buf, len);
+ 	case attr_trigger_test_error:
+-- 
+2.23.0
 
-- Eric
