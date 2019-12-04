@@ -2,166 +2,108 @@ Return-Path: <SRS0=1XWU=Z2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_2 autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A7E9C0044D
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 07:53:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2E5DC43603
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 12:25:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2DC672073B
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 07:53:56 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dubeyko-com.20150623.gappssmtp.com header.i=@dubeyko-com.20150623.gappssmtp.com header.b="R15GZEj9"
+	by mail.kernel.org (Postfix) with ESMTP id 90047207DD
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 12:25:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727101AbfLDHxz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Dec 2019 02:53:55 -0500
-Received: from mail-lj1-f194.google.com ([209.85.208.194]:37347 "EHLO
-        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726166AbfLDHxy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2019 02:53:54 -0500
-Received: by mail-lj1-f194.google.com with SMTP id u17so6949109lja.4
-        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2019 23:53:52 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dubeyko-com.20150623.gappssmtp.com; s=20150623;
-        h=message-id:subject:from:to:cc:date:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=o7BdwW/nndIBcsxZWW8vbo3uXBPbU7tTjh33V04X4ek=;
-        b=R15GZEj9KTLTNO0VqqzBo4GIYJtcpTb2kJpdaZtblji+D+RrmcI9rTjDxe+QmhairT
-         Dbdver0Sq7o39O5yoG4UDoGmJmo9vH5HMuLXGO7h9I6dmFkSgcGzoSd18zm/LtsqK2mF
-         lUVjO8y7iCVF2gvIFJREkER6zjHAaENjaCcLtLpziuR4Pq2w3Z8Wlhe3XDpq/lUxhE9O
-         T4/3msAlwIt0YUvQb44lViYxzbj8rFEkqw+r1HWH3ILYKZPpWy2mnzcedUuXScZGEePd
-         QqT5lFUQEHQIvzSg5F3M5PVgRTSf84jSg366orX8ATHSyfkMZ7VBL4bHLLLgCBkyqZGQ
-         zDxQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=o7BdwW/nndIBcsxZWW8vbo3uXBPbU7tTjh33V04X4ek=;
-        b=Rn9xCCv/+r7LzotzlhqdIRJxuXzjmmq5ZGt80ueZsSllht3UeNTcFvIGD1NS/6kXZN
-         neUwvSyoICiE9jp0xJaWs6cX2S9GWQKqzXQbM9uZyIyX8klr00nd7IWxp52gwo2dwO5k
-         3BWDHC4UBs1p0Y6l2bG4dIyAFbINQ7XRkPNiqU73lIoKlvprRbLvDI8zA0uYfmlP6yVb
-         9DC0sphdeF/K0NCGNV7v+RIvKc6g0Mb3DcNINwGcS4Kt5ZOZ4k46mcDKpJaduCfyB2bo
-         UzXl7mmo6hXqvhMHQiS40L3pz1zQflX8dAYm/2iVDjOsjr6uKjO3hdGDaN7HoKvqRgLO
-         Bi6A==
-X-Gm-Message-State: APjAAAXle9EaptTiaISxEAEFHUAimMS484UUi4jp+fbV6Vd1Y8AlVICA
-        MfCxc0Ojw0h/se0C9HpypwtH/Q==
-X-Google-Smtp-Source: APXvYqw9cr0AJeOMuYf9c3iwqsmg8RWLKAie3QTXWVS6sDwM7krFflTW5KVptECDL2Qepv39q9RcUg==
-X-Received: by 2002:a2e:9e97:: with SMTP id f23mr1068434ljk.89.1575446031396;
-        Tue, 03 Dec 2019 23:53:51 -0800 (PST)
-Received: from msk1wst115n.omp.ru (mail.omprussia.ru. [5.134.221.218])
-        by smtp.gmail.com with ESMTPSA id x23sm2807809lff.24.2019.12.03.23.53.50
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 03 Dec 2019 23:53:50 -0800 (PST)
-Message-ID: <96a288281d9d84f11dcc06e62a1ff20e2bb2f776.camel@dubeyko.com>
-Subject: Re: [PATCH] fs-verity: implement readahead for FS_IOC_ENABLE_VERITY
-From:   Vyacheslav Dubeyko <slava@dubeyko.com>
-To:     Eric Biggers <ebiggers@kernel.org>, linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org,
-        Victor Hsieh <victorhsieh@google.com>
-Date:   Wed, 04 Dec 2019 10:53:50 +0300
-In-Reply-To: <20191203193001.66906-1-ebiggers@kernel.org>
-References: <20191203193001.66906-1-ebiggers@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.28.5-0ubuntu0.18.04.1 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+        id S1727846AbfLDMZ2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Dec 2019 07:25:28 -0500
+Received: from szxga05-in.huawei.com ([45.249.212.191]:6751 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727469AbfLDMZ1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 4 Dec 2019 07:25:27 -0500
+Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 40F477272BC2EE119733;
+        Wed,  4 Dec 2019 20:25:26 +0800 (CST)
+Received: from huawei.com (10.175.124.28) by DGGEMS401-HUB.china.huawei.com
+ (10.3.19.201) with Microsoft SMTP Server id 14.3.439.0; Wed, 4 Dec 2019
+ 20:25:18 +0800
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <yi.zhang@huawei.com>, <liangyun2@huawei.com>,
+        <luoshijie1@huawei.com>
+Subject: [PATCH v3 2/4] ext4, jbd2: ensure panic when aborting with zero errno
+Date:   Wed, 4 Dec 2019 20:46:12 +0800
+Message-ID: <20191204124614.45424-3-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20191204124614.45424-1-yi.zhang@huawei.com>
+References: <20191204124614.45424-1-yi.zhang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+X-Originating-IP: [10.175.124.28]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 2019-12-03 at 11:30 -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> When it builds the first level of the Merkle tree,
-> FS_IOC_ENABLE_VERITY
-> sequentially reads each page of the file using read_mapping_page().
-> This works fine if the file's data is already in pagecache, which
-> should
-> normally be the case, since this ioctl is normally used immediately
-> after writing out the file.
-> 
-> But in any other case this implementation performs very poorly, since
-> only one page is read at a time.
-> 
-> Fix this by implementing readahead using the functions from
-> mm/readahead.c.
-> 
-> This improves performance in the uncached case by about 20x, as seen
-> in
-> the following benchmarks done on a 250MB file (on x86_64 with SHA-
-> NI):
-> 
->     FS_IOC_ENABLE_VERITY uncached (before) 3.299s
->     FS_IOC_ENABLE_VERITY uncached (after)  0.160s
->     FS_IOC_ENABLE_VERITY cached            0.147s
->     sha256sum uncached                     0.191s
->     sha256sum cached                       0.145s
-> 
-> Note: we could instead switch to kernel_read().  But that would mean
-> we'd no longer be hashing the data directly from the pagecache, which
-> is
-> a nice optimization of its own.  And using kernel_read() would
-> require
-> allocating another temporary buffer, hashing the data and tree pages
-> separately, and explicitly zero-padding the last page -- so it
-> wouldn't
-> really be any simpler than direct pagecache access, at least for now.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
->  fs/verity/enable.c | 46 ++++++++++++++++++++++++++++++++++++++++--
-> ----
->  1 file changed, 40 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/verity/enable.c b/fs/verity/enable.c
-> index eabc6ac19906..f7eaffa60196 100644
-> --- a/fs/verity/enable.c
-> +++ b/fs/verity/enable.c
-> @@ -13,14 +13,44 @@
->  #include <linux/sched/signal.h>
->  #include <linux/uaccess.h>
->  
-> -static int build_merkle_tree_level(struct inode *inode, unsigned int
-> level,
-> +/*
-> + * Read a file data page for Merkle tree construction.  Do
-> aggressive readahead,
-> + * since we're sequentially reading the entire file.
-> + */
-> +static struct page *read_file_data_page(struct inode *inode,
-> +					struct file_ra_state *ra,
-> +					struct file *filp,
-> +					pgoff_t index,
-> +					pgoff_t num_pages_in_file)
-> +{
-> +	struct page *page;
-> +
-> +	page = find_get_page(inode->i_mapping, index);
-> +	if (!page || !PageUptodate(page)) {
-> +		if (page)
-> +			put_page(page);
+JBD2_REC_ERR flag used to indicate the errno has been updated when jbd2
+aborted, and then __ext4_abort() and ext4_handle_error() can invoke
+panic if ERRORS_PANIC is specified. But if the journal has been aborted
+with zero errno, jbd2_journal_abort() didn't set this flag so we can
+no longer panic. Fix this by always record the proper errno in the
+journal superblock.
 
+Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/jbd2/checkpoint.c |  2 +-
+ fs/jbd2/journal.c    | 15 ++++-----------
+ 2 files changed, 5 insertions(+), 12 deletions(-)
 
-It looks like that there is not necessary check here. If we have NULL
-pointer on page then we will not enter inside. But if we have valid
-pointer on page then we have double check inside. Am I correct? 
-
-
-> +		page_cache_sync_readahead(inode->i_mapping, ra, filp,
-> +					  index, num_pages_in_file -
-> index);
-> +		page = read_mapping_page(inode->i_mapping, index,
-> NULL);
-> +		if (IS_ERR(page))
-> +			return page;
-
-Could we recieve the NULL pointer here? Is callee ready to process theNULL return value? 
-
-Thanks,
-Viacheslav Dubeyko.
-
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index a1909066bde6..62cf497f18eb 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -164,7 +164,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 				       "journal space in %s\n", __func__,
+ 				       journal->j_devname);
+ 				WARN_ON(1);
+-				jbd2_journal_abort(journal, 0);
++				jbd2_journal_abort(journal, -EIO);
+ 			}
+ 			write_lock(&journal->j_state_lock);
+ 		} else {
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 1c58859aa592..b2d6e7666d0f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2118,12 +2118,10 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+ 
+ 	__jbd2_journal_abort_hard(journal);
+ 
+-	if (errno) {
+-		jbd2_journal_update_sb_errno(journal);
+-		write_lock(&journal->j_state_lock);
+-		journal->j_flags |= JBD2_REC_ERR;
+-		write_unlock(&journal->j_state_lock);
+-	}
++	jbd2_journal_update_sb_errno(journal);
++	write_lock(&journal->j_state_lock);
++	journal->j_flags |= JBD2_REC_ERR;
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ /**
+@@ -2165,11 +2163,6 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+  * failure to disk.  ext3_error, for example, now uses this
+  * functionality.
+  *
+- * Errors which originate from within the journaling layer will NOT
+- * supply an errno; a null errno implies that absolutely no further
+- * writes are done to the journal (unless there are any already in
+- * progress).
+- *
+  */
+ 
+ void jbd2_journal_abort(journal_t *journal, int errno)
+-- 
+2.17.2
 
