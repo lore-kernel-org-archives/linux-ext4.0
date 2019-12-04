@@ -2,217 +2,118 @@ Return-Path: <SRS0=1XWU=Z2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46368C43603
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 17:05:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79452C43603
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 18:18:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2152B205ED
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 17:05:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4F95220675
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 18:18:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1575483507;
+	bh=yG8GPbqviAwiLRynbSvmgC1rPCu+1+hYU0TZYOzcVRc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=1shgS/aU4DJOPDkUh2lPF/WXEqyYTRZPZiDK25A+/mj56t12ndLvgXA+szh2srBz9
+	 BrBOtnbGbRls2p5LLTYHIGjmP3MfAnzcaMGTcu3KdBMzQPDiKS0r6W5ZVWbiU+OriC
+	 rshsOEtsdaBAy+mhrV4ODo/rUw93tFvz+xmpAFCE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728968AbfLDRF5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 Dec 2019 12:05:57 -0500
-Received: from mx2.suse.de ([195.135.220.15]:37764 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728784AbfLDRF5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 4 Dec 2019 12:05:57 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 8D588B1CF;
-        Wed,  4 Dec 2019 17:05:55 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 1F3651E0B99; Wed,  4 Dec 2019 18:05:55 +0100 (CET)
-Date:   Wed, 4 Dec 2019 18:05:55 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     "zhangyi (F)" <yi.zhang@huawei.com>
-Cc:     linux-ext4@vger.kernel.org, jack@suse.com, tytso@mit.edu,
-        adilger.kernel@dilger.ca, liangyun2@huawei.com,
-        luoshijie1@huawei.com
-Subject: Re: [PATCH v3 4/4] jbd2: clean __jbd2_journal_abort_hard() and
- __journal_abort_soft()
-Message-ID: <20191204170555.GI8206@quack2.suse.cz>
-References: <20191204124614.45424-1-yi.zhang@huawei.com>
- <20191204124614.45424-5-yi.zhang@huawei.com>
+        id S1731359AbfLDSK7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Dec 2019 13:10:59 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38848 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731352AbfLDSK7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 4 Dec 2019 13:10:59 -0500
+Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6928D20863;
+        Wed,  4 Dec 2019 18:10:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1575483058;
+        bh=yG8GPbqviAwiLRynbSvmgC1rPCu+1+hYU0TZYOzcVRc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=uo+6n7dswijeSvj+tjH/6tbQi5dTDjCVPCl/8FSzUf/8AFpcqT55fi0Cx9jp8St2u
+         awX/6Ak65XXMqko9j7JyxF7fL8xOrZuq+hTtjoh5pT1o+RxRfENRBBK2voxf1kYK7G
+         QhlpzYDGretUM3JHsS0ze0SDnzWZmbqvlw93JBJI=
+Date:   Wed, 4 Dec 2019 10:10:56 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Vyacheslav Dubeyko <slava@dubeyko.com>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org,
+        Victor Hsieh <victorhsieh@google.com>
+Subject: Re: [PATCH] fs-verity: implement readahead for FS_IOC_ENABLE_VERITY
+Message-ID: <20191204181056.GA4576@sol.localdomain>
+References: <20191203193001.66906-1-ebiggers@kernel.org>
+ <96a288281d9d84f11dcc06e62a1ff20e2bb2f776.camel@dubeyko.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20191204124614.45424-5-yi.zhang@huawei.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <96a288281d9d84f11dcc06e62a1ff20e2bb2f776.camel@dubeyko.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 04-12-19 20:46:14, zhangyi (F) wrote:
-> __jbd2_journal_abort_hard() has never been used, now we can merge
-> __jbd2_journal_abort_hard() and __journal_abort_soft() these two
-> functions into jbd2_journal_abort() and remove them.
+On Wed, Dec 04, 2019 at 10:53:50AM +0300, Vyacheslav Dubeyko wrote:
+> > diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+> > index eabc6ac19906..f7eaffa60196 100644
+> > --- a/fs/verity/enable.c
+> > +++ b/fs/verity/enable.c
+> > @@ -13,14 +13,44 @@
+> >  #include <linux/sched/signal.h>
+> >  #include <linux/uaccess.h>
+> >  
+> > -static int build_merkle_tree_level(struct inode *inode, unsigned int
+> > level,
+> > +/*
+> > + * Read a file data page for Merkle tree construction.  Do
+> > aggressive readahead,
+> > + * since we're sequentially reading the entire file.
+> > + */
+> > +static struct page *read_file_data_page(struct inode *inode,
+> > +					struct file_ra_state *ra,
+> > +					struct file *filp,
+> > +					pgoff_t index,
+> > +					pgoff_t num_pages_in_file)
+> > +{
+> > +	struct page *page;
+> > +
+> > +	page = find_get_page(inode->i_mapping, index);
+> > +	if (!page || !PageUptodate(page)) {
+> > +		if (page)
+> > +			put_page(page);
 > 
-> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-
-Looks good to me. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/jbd2/journal.c    | 103 ++++++++++++++++++-------------------------
->  include/linux/jbd2.h |   1 -
->  2 files changed, 42 insertions(+), 62 deletions(-)
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 93be6e0311da..e59d9b6e4596 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -96,7 +96,6 @@ EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
->  EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
->  EXPORT_SYMBOL(jbd2_inode_cache);
->  
-> -static void __journal_abort_soft (journal_t *journal, int errno);
->  static int jbd2_journal_create_slab(size_t slab_size);
->  
->  #ifdef CONFIG_JBD2_DEBUG
-> @@ -805,7 +804,7 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
->  					"at offset %lu on %s\n",
->  			       __func__, blocknr, journal->j_devname);
->  			err = -EIO;
-> -			__journal_abort_soft(journal, err);
-> +			jbd2_journal_abort(journal, err);
->  		}
->  	} else {
->  		*retp = blocknr; /* +journal->j_blk_offset */
-> @@ -2065,64 +2064,6 @@ int jbd2_journal_wipe(journal_t *journal, int write)
->  	return err;
->  }
->  
-> -/*
-> - * Journal abort has very specific semantics, which we describe
-> - * for journal abort.
-> - *
-> - * Two internal functions, which provide abort to the jbd layer
-> - * itself are here.
-> - */
-> -
-> -/*
-> - * Quick version for internal journal use (doesn't lock the journal).
-> - * Aborts hard --- we mark the abort as occurred, but do _nothing_ else,
-> - * and don't attempt to make any other journal updates.
-> - */
-> -void __jbd2_journal_abort_hard(journal_t *journal)
-> -{
-> -	transaction_t *transaction;
-> -
-> -	if (journal->j_flags & JBD2_ABORT)
-> -		return;
-> -
-> -	printk(KERN_ERR "Aborting journal on device %s.\n",
-> -	       journal->j_devname);
-> -
-> -	write_lock(&journal->j_state_lock);
-> -	journal->j_flags |= JBD2_ABORT;
-> -	transaction = journal->j_running_transaction;
-> -	if (transaction)
-> -		__jbd2_log_start_commit(journal, transaction->t_tid);
-> -	write_unlock(&journal->j_state_lock);
-> -}
-> -
-> -/* Soft abort: record the abort error status in the journal superblock,
-> - * but don't do any other IO. */
-> -static void __journal_abort_soft (journal_t *journal, int errno)
-> -{
-> -	int old_errno;
-> -
-> -	write_lock(&journal->j_state_lock);
-> -	old_errno = journal->j_errno;
-> -	if (!journal->j_errno || errno == -ESHUTDOWN)
-> -		journal->j_errno = errno;
-> -
-> -	if (journal->j_flags & JBD2_ABORT) {
-> -		write_unlock(&journal->j_state_lock);
-> -		if (old_errno != -ESHUTDOWN && errno == -ESHUTDOWN)
-> -			jbd2_journal_update_sb_errno(journal);
-> -		return;
-> -	}
-> -	write_unlock(&journal->j_state_lock);
-> -
-> -	__jbd2_journal_abort_hard(journal);
-> -
-> -	jbd2_journal_update_sb_errno(journal);
-> -	write_lock(&journal->j_state_lock);
-> -	journal->j_flags |= JBD2_REC_ERR;
-> -	write_unlock(&journal->j_state_lock);
-> -}
-> -
->  /**
->   * void jbd2_journal_abort () - Shutdown the journal immediately.
->   * @journal: the journal to shutdown.
-> @@ -2166,7 +2107,47 @@ static void __journal_abort_soft (journal_t *journal, int errno)
->  
->  void jbd2_journal_abort(journal_t *journal, int errno)
->  {
-> -	__journal_abort_soft(journal, errno);
-> +	transaction_t *transaction;
-> +
-> +	/*
-> +	 * ESHUTDOWN always takes precedence because a file system check
-> +	 * caused by any other journal abort error is not required after
-> +	 * a shutdown triggered.
-> +	 */
-> +	write_lock(&journal->j_state_lock);
-> +	if (journal->j_flags & JBD2_ABORT) {
-> +		int old_errno = journal->j_errno;
-> +
-> +		write_unlock(&journal->j_state_lock);
-> +		if (old_errno != -ESHUTDOWN && errno == -ESHUTDOWN) {
-> +			journal->j_errno = errno;
-> +			jbd2_journal_update_sb_errno(journal);
-> +		}
-> +		return;
-> +	}
-> +
-> +	/*
-> +	 * Mark the abort as occurred and start current running transaction
-> +	 * to release all journaled buffer.
-> +	 */
-> +	pr_err("Aborting journal on device %s.\n", journal->j_devname);
-> +
-> +	journal->j_flags |= JBD2_ABORT;
-> +	journal->j_errno = errno;
-> +	transaction = journal->j_running_transaction;
-> +	if (transaction)
-> +		__jbd2_log_start_commit(journal, transaction->t_tid);
-> +	write_unlock(&journal->j_state_lock);
-> +
-> +	/*
-> +	 * Record errno to the journal super block, so that fsck and jbd2
-> +	 * layer could realise that a filesystem check is needed.
-> +	 */
-> +	jbd2_journal_update_sb_errno(journal);
-> +
-> +	write_lock(&journal->j_state_lock);
-> +	journal->j_flags |= JBD2_REC_ERR;
-> +	write_unlock(&journal->j_state_lock);
->  }
->  
->  /**
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 603fbc4e2f70..e3e271bfb0e7 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1402,7 +1402,6 @@ extern int	   jbd2_journal_skip_recovery	(journal_t *);
->  extern void	   jbd2_journal_update_sb_errno(journal_t *);
->  extern int	   jbd2_journal_update_sb_log_tail	(journal_t *, tid_t,
->  				unsigned long, int);
-> -extern void	   __jbd2_journal_abort_hard	(journal_t *);
->  extern void	   jbd2_journal_abort      (journal_t *, int);
->  extern int	   jbd2_journal_errno      (journal_t *);
->  extern void	   jbd2_journal_ack_err    (journal_t *);
-> -- 
-> 2.17.2
+> It looks like that there is not necessary check here. If we have NULL
+> pointer on page then we will not enter inside. But if we have valid
+> pointer on page then we have double check inside. Am I correct? 
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+I'm not sure what you mean.  This code does the page_cache_sync_readahead() and
+read_mapping_page() if either the page is not in the pagecache at all *or* is
+not up to date.  I know this is slightly different logic than
+generic_file_buffered_read() uses, and is suboptimal since the use of
+read_mapping_page() causes a redundant pagecache lookup.  But we don't need to
+squeeze out every possible bit of performance here.
+
+Hmm, maybe it should only call page_cache_sync_readahead() when page == NULL
+though.  I'll check the readahead code again.
+
+> 
+> > +		page_cache_sync_readahead(inode->i_mapping, ra, filp,
+> > +					  index, num_pages_in_file -
+> > index);
+> > +		page = read_mapping_page(inode->i_mapping, index,
+> > NULL);
+> > +		if (IS_ERR(page))
+> > +			return page;
+> 
+> Could we recieve the NULL pointer here? Is callee ready to process theNULL return value? 
+> 
+
+No, read_mapping_page() returns either a valid page or an ERR_PTR().
+
+- Eric
