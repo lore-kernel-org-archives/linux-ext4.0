@@ -2,497 +2,166 @@ Return-Path: <SRS0=1XWU=Z2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_2 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3A1DC432C3
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 03:23:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A7E9C0044D
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 07:53:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 999F0206DF
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 03:23:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2DC672073B
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 Dec 2019 07:53:56 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=dubeyko-com.20150623.gappssmtp.com header.i=@dubeyko-com.20150623.gappssmtp.com header.b="R15GZEj9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726856AbfLDDXz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Dec 2019 22:23:55 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40543 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726763AbfLDDXy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Dec 2019 22:23:54 -0500
-Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xB43NdAq017896
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 3 Dec 2019 22:23:40 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id A1F38421A48; Tue,  3 Dec 2019 22:23:39 -0500 (EST)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH -v2 1/2] ext4: save the error code which triggered an ext4_error() in the superblock
-Date:   Tue,  3 Dec 2019 22:23:34 -0500
-Message-Id: <20191204032335.7683-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.23.0
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1727101AbfLDHxz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 Dec 2019 02:53:55 -0500
+Received: from mail-lj1-f194.google.com ([209.85.208.194]:37347 "EHLO
+        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726166AbfLDHxy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Dec 2019 02:53:54 -0500
+Received: by mail-lj1-f194.google.com with SMTP id u17so6949109lja.4
+        for <linux-ext4@vger.kernel.org>; Tue, 03 Dec 2019 23:53:52 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dubeyko-com.20150623.gappssmtp.com; s=20150623;
+        h=message-id:subject:from:to:cc:date:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=o7BdwW/nndIBcsxZWW8vbo3uXBPbU7tTjh33V04X4ek=;
+        b=R15GZEj9KTLTNO0VqqzBo4GIYJtcpTb2kJpdaZtblji+D+RrmcI9rTjDxe+QmhairT
+         Dbdver0Sq7o39O5yoG4UDoGmJmo9vH5HMuLXGO7h9I6dmFkSgcGzoSd18zm/LtsqK2mF
+         lUVjO8y7iCVF2gvIFJREkER6zjHAaENjaCcLtLpziuR4Pq2w3Z8Wlhe3XDpq/lUxhE9O
+         T4/3msAlwIt0YUvQb44lViYxzbj8rFEkqw+r1HWH3ILYKZPpWy2mnzcedUuXScZGEePd
+         QqT5lFUQEHQIvzSg5F3M5PVgRTSf84jSg366orX8ATHSyfkMZ7VBL4bHLLLgCBkyqZGQ
+         zDxQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=o7BdwW/nndIBcsxZWW8vbo3uXBPbU7tTjh33V04X4ek=;
+        b=Rn9xCCv/+r7LzotzlhqdIRJxuXzjmmq5ZGt80ueZsSllht3UeNTcFvIGD1NS/6kXZN
+         neUwvSyoICiE9jp0xJaWs6cX2S9GWQKqzXQbM9uZyIyX8klr00nd7IWxp52gwo2dwO5k
+         3BWDHC4UBs1p0Y6l2bG4dIyAFbINQ7XRkPNiqU73lIoKlvprRbLvDI8zA0uYfmlP6yVb
+         9DC0sphdeF/K0NCGNV7v+RIvKc6g0Mb3DcNINwGcS4Kt5ZOZ4k46mcDKpJaduCfyB2bo
+         UzXl7mmo6hXqvhMHQiS40L3pz1zQflX8dAYm/2iVDjOsjr6uKjO3hdGDaN7HoKvqRgLO
+         Bi6A==
+X-Gm-Message-State: APjAAAXle9EaptTiaISxEAEFHUAimMS484UUi4jp+fbV6Vd1Y8AlVICA
+        MfCxc0Ojw0h/se0C9HpypwtH/Q==
+X-Google-Smtp-Source: APXvYqw9cr0AJeOMuYf9c3iwqsmg8RWLKAie3QTXWVS6sDwM7krFflTW5KVptECDL2Qepv39q9RcUg==
+X-Received: by 2002:a2e:9e97:: with SMTP id f23mr1068434ljk.89.1575446031396;
+        Tue, 03 Dec 2019 23:53:51 -0800 (PST)
+Received: from msk1wst115n.omp.ru (mail.omprussia.ru. [5.134.221.218])
+        by smtp.gmail.com with ESMTPSA id x23sm2807809lff.24.2019.12.03.23.53.50
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 03 Dec 2019 23:53:50 -0800 (PST)
+Message-ID: <96a288281d9d84f11dcc06e62a1ff20e2bb2f776.camel@dubeyko.com>
+Subject: Re: [PATCH] fs-verity: implement readahead for FS_IOC_ENABLE_VERITY
+From:   Vyacheslav Dubeyko <slava@dubeyko.com>
+To:     Eric Biggers <ebiggers@kernel.org>, linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org,
+        Victor Hsieh <victorhsieh@google.com>
+Date:   Wed, 04 Dec 2019 10:53:50 +0300
+In-Reply-To: <20191203193001.66906-1-ebiggers@kernel.org>
+References: <20191203193001.66906-1-ebiggers@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Evolution 3.28.5-0ubuntu0.18.04.1 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This allows the cause of an ext4_error() report to be categorized
-based on whether it was triggered due to an I/O error, or an memory
-allocation error, or other possible causes.  Most errors are caused by
-a detected file system inconsistency, so the default code stored in
-the superblock will be EXT4_ERR_EFSCORRUPTED.
+On Tue, 2019-12-03 at 11:30 -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> When it builds the first level of the Merkle tree,
+> FS_IOC_ENABLE_VERITY
+> sequentially reads each page of the file using read_mapping_page().
+> This works fine if the file's data is already in pagecache, which
+> should
+> normally be the case, since this ioctl is normally used immediately
+> after writing out the file.
+> 
+> But in any other case this implementation performs very poorly, since
+> only one page is read at a time.
+> 
+> Fix this by implementing readahead using the functions from
+> mm/readahead.c.
+> 
+> This improves performance in the uncached case by about 20x, as seen
+> in
+> the following benchmarks done on a 250MB file (on x86_64 with SHA-
+> NI):
+> 
+>     FS_IOC_ENABLE_VERITY uncached (before) 3.299s
+>     FS_IOC_ENABLE_VERITY uncached (after)  0.160s
+>     FS_IOC_ENABLE_VERITY cached            0.147s
+>     sha256sum uncached                     0.191s
+>     sha256sum cached                       0.145s
+> 
+> Note: we could instead switch to kernel_read().  But that would mean
+> we'd no longer be hashing the data directly from the pagecache, which
+> is
+> a nice optimization of its own.  And using kernel_read() would
+> require
+> allocating another temporary buffer, hashing the data and tree pages
+> separately, and explicitly zero-padding the last page -- so it
+> wouldn't
+> really be any simpler than direct pagecache access, at least for now.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/verity/enable.c | 46 ++++++++++++++++++++++++++++++++++++++++--
+> ----
+>  1 file changed, 40 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/verity/enable.c b/fs/verity/enable.c
+> index eabc6ac19906..f7eaffa60196 100644
+> --- a/fs/verity/enable.c
+> +++ b/fs/verity/enable.c
+> @@ -13,14 +13,44 @@
+>  #include <linux/sched/signal.h>
+>  #include <linux/uaccess.h>
+>  
+> -static int build_merkle_tree_level(struct inode *inode, unsigned int
+> level,
+> +/*
+> + * Read a file data page for Merkle tree construction.  Do
+> aggressive readahead,
+> + * since we're sequentially reading the entire file.
+> + */
+> +static struct page *read_file_data_page(struct inode *inode,
+> +					struct file_ra_state *ra,
+> +					struct file *filp,
+> +					pgoff_t index,
+> +					pgoff_t num_pages_in_file)
+> +{
+> +	struct page *page;
+> +
+> +	page = find_get_page(inode->i_mapping, index);
+> +	if (!page || !PageUptodate(page)) {
+> +		if (page)
+> +			put_page(page);
 
-Previous-Version-Link: https://lore.kernel.org/r/20191121183036.29385-1-tytso@mit.edu
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
 
-Notes:
-    v2: no changes from previous version
+It looks like that there is not necessary check here. If we have NULL
+pointer on page then we will not enter inside. But if we have valid
+pointer on page then we have double check inside. Am I correct? 
 
- fs/ext4/balloc.c    |  1 +
- fs/ext4/ext4.h      | 30 +++++++++++++++++++-
- fs/ext4/ext4_jbd2.c |  3 ++
- fs/ext4/extents.c   |  1 +
- fs/ext4/ialloc.c    |  2 ++
- fs/ext4/inline.c    |  2 ++
- fs/ext4/inode.c     |  8 +++++-
- fs/ext4/mballoc.c   |  4 +++
- fs/ext4/mmp.c       |  6 +++-
- fs/ext4/namei.c     |  4 +++
- fs/ext4/super.c     | 68 ++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/xattr.c     |  4 ++-
- 12 files changed, 128 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 0b202e00d93f..102c38527a10 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -506,6 +506,7 @@ int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
- 		return -EFSCORRUPTED;
- 	wait_on_buffer(bh);
- 	if (!buffer_uptodate(bh)) {
-+		ext4_set_errno(sb, EIO);
- 		ext4_error(sb, "Cannot read block bitmap - "
- 			   "block_group = %u, block_bitmap = %llu",
- 			   block_group, (unsigned long long) bh->b_blocknr);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 61987c106511..1c9ac0fc8715 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1343,7 +1343,8 @@ struct ext4_super_block {
- 	__u8	s_lastcheck_hi;
- 	__u8	s_first_error_time_hi;
- 	__u8	s_last_error_time_hi;
--	__u8	s_pad[2];
-+	__u8	s_first_error_errcode;
-+	__u8    s_last_error_errcode;
- 	__le16  s_encoding;		/* Filename charset encoding */
- 	__le16  s_encoding_flags;	/* Filename charset encoding flags */
- 	__le32	s_reserved[95];		/* Padding to the end of the block */
-@@ -1574,6 +1575,32 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
- 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
- }
- 
-+/*
-+ * Error number codes for s_{first,last}_error_errno
-+ *
-+ * Linux errno numbers are architecture specific, so we need to translate
-+ * them into something which is architecture independent.   We don't define
-+ * codes for all errno's; just the ones which are most likely to be the cause
-+ * of an ext4_error() call.
-+ */
-+#define EXT4_ERR_UNKNOWN	 1
-+#define EXT4_ERR_EIO		 2
-+#define EXT4_ERR_ENOMEM		 3
-+#define EXT4_ERR_EFSBADCRC	 4
-+#define EXT4_ERR_EFSCORRUPTED	 5
-+#define EXT4_ERR_ENOSPC		 6
-+#define EXT4_ERR_ENOKEY		 7
-+#define EXT4_ERR_EROFS		 8
-+#define EXT4_ERR_EFBIG		 9
-+#define EXT4_ERR_EEXIST		10
-+#define EXT4_ERR_ERANGE		11
-+#define EXT4_ERR_EOVERFLOW	12
-+#define EXT4_ERR_EBUSY		13
-+#define EXT4_ERR_ENOTDIR	14
-+#define EXT4_ERR_ENOTEMPTY	15
-+#define EXT4_ERR_ESHUTDOWN	16
-+#define EXT4_ERR_EFAULT		17
-+
- /*
-  * Inode dynamic state flags
-  */
-@@ -2686,6 +2713,7 @@ extern const char *ext4_decode_error(struct super_block *sb, int errno,
- extern void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
- 					     ext4_group_t block_group,
- 					     unsigned int flags);
-+extern void ext4_set_errno(struct super_block *sb, int err);
- 
- extern __printf(4, 5)
- void __ext4_error(struct super_block *, const char *, unsigned int,
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index d3b8cdea5df7..19217a3f1ae4 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -58,6 +58,7 @@ static int ext4_journal_check_start(struct super_block *sb)
- 	 * take the FS itself readonly cleanly.
- 	 */
- 	if (journal && is_journal_aborted(journal)) {
-+		ext4_set_errno(sb, -journal->j_errno);
- 		ext4_abort(sb, "Detected aborted journal");
- 		return -EROFS;
- 	}
-@@ -249,6 +250,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
- 	if (err) {
- 		ext4_journal_abort_handle(where, line, __func__,
- 					  bh, handle, err);
-+		ext4_set_errno(inode->i_sb, -err);
- 		__ext4_abort(inode->i_sb, where, line,
- 			   "error %d when attempting revoke", err);
- 	}
-@@ -320,6 +322,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 				es = EXT4_SB(inode->i_sb)->s_es;
- 				es->s_last_error_block =
- 					cpu_to_le64(bh->b_blocknr);
-+				ext4_set_errno(inode->i_sb, EIO);
- 				ext4_error_inode(inode, where, line,
- 						 bh->b_blocknr,
- 					"IO error syncing itable block");
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0e8708b77da6..ee83fe7c98aa 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -492,6 +492,7 @@ static int __ext4_ext_check(const char *function, unsigned int line,
- 	return 0;
- 
- corrupted:
-+	ext4_set_errno(inode->i_sb, -err);
- 	ext4_error_inode(inode, function, line, 0,
- 			 "pblk %llu bad header/extent: %s - magic %x, "
- 			 "entries %u, max %u(%u), depth %u(%u)",
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index dc333e8e51e8..9979e1a55be5 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -194,6 +194,7 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	wait_on_buffer(bh);
- 	if (!buffer_uptodate(bh)) {
- 		put_bh(bh);
-+		ext4_set_errno(sb, EIO);
- 		ext4_error(sb, "Cannot read inode bitmap - "
- 			   "block_group = %u, inode_bitmap = %llu",
- 			   block_group, bitmap_blk);
-@@ -1223,6 +1224,7 @@ struct inode *ext4_orphan_get(struct super_block *sb, unsigned long ino)
- 	inode = ext4_iget(sb, ino, EXT4_IGET_NORMAL);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
-+		ext4_set_errno(sb, -err);
- 		ext4_error(sb, "couldn't read orphan inode %lu (err %d)",
- 			   ino, err);
- 		return inode;
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 2fec62d764fa..e61603f47035 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -98,6 +98,7 @@ int ext4_get_max_inline_size(struct inode *inode)
- 
- 	error = ext4_get_inode_loc(inode, &iloc);
- 	if (error) {
-+		ext4_set_errno(inode->i_sb, -error);
- 		ext4_error_inode(inode, __func__, __LINE__, 0,
- 				 "can't get inode location %lu",
- 				 inode->i_ino);
-@@ -1761,6 +1762,7 @@ bool empty_inline_dir(struct inode *dir, int *has_inline_data)
- 
- 	err = ext4_get_inode_loc(dir, &iloc);
- 	if (err) {
-+		ext4_set_errno(dir->i_sb, -err);
- 		EXT4_ERROR_INODE(dir, "error %d getting inode %lu block",
- 				 err, dir->i_ino);
- 		return true;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 310e4abd9aca..1aed7c653b42 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -271,6 +271,7 @@ void ext4_evict_inode(struct inode *inode)
- 	if (inode->i_blocks) {
- 		err = ext4_truncate(inode);
- 		if (err) {
-+			ext4_set_errno(inode->i_sb, -err);
- 			ext4_error(inode->i_sb,
- 				   "couldn't truncate inode %lu (err %d)",
- 				   inode->i_ino, err);
-@@ -2478,10 +2479,12 @@ static int mpage_map_and_submit_extent(handle_t *handle,
- 			EXT4_I(inode)->i_disksize = disksize;
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 		err2 = ext4_mark_inode_dirty(handle, inode);
--		if (err2)
-+		if (err2) {
-+			ext4_set_errno(inode->i_sb, -err2);
- 			ext4_error(inode->i_sb,
- 				   "Failed to mark inode %lu dirty",
- 				   inode->i_ino);
-+		}
- 		if (!err)
- 			err = err2;
- 	}
-@@ -4338,6 +4341,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
- 		blk_finish_plug(&plug);
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
-+			ext4_set_errno(inode->i_sb, EIO);
- 			EXT4_ERROR_INODE_BLOCK(inode, block,
- 					       "unable to read itable block");
- 			brelse(bh);
-@@ -4552,6 +4556,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	}
- 
- 	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
-+		ext4_set_errno(inode->i_sb, EFSBADCRC);
- 		ext4_error_inode(inode, function, line, 0,
- 				 "iget: checksum invalid");
- 		ret = -EFSBADCRC;
-@@ -5090,6 +5095,7 @@ int ext4_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		if (wbc->sync_mode == WB_SYNC_ALL && !wbc->for_sync)
- 			sync_dirty_buffer(iloc.bh);
- 		if (buffer_req(iloc.bh) && !buffer_uptodate(iloc.bh)) {
-+			ext4_set_errno(inode->i_sb, EIO);
- 			EXT4_ERROR_INODE_BLOCK(inode, iloc.bh->b_blocknr,
- 					 "IO error syncing inode");
- 			err = -EIO;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a3e2767bdf2f..f64838187559 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3895,6 +3895,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 	bitmap_bh = ext4_read_block_bitmap(sb, group);
- 	if (IS_ERR(bitmap_bh)) {
- 		err = PTR_ERR(bitmap_bh);
-+		ext4_set_errno(sb, -err);
- 		ext4_error(sb, "Error %d reading block bitmap for %u",
- 			   err, group);
- 		return 0;
-@@ -4063,6 +4064,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
- 					     GFP_NOFS|__GFP_NOFAIL);
- 		if (err) {
-+			ext4_set_errno(sb, -err);
- 			ext4_error(sb, "Error %d loading buddy information for %u",
- 				   err, group);
- 			continue;
-@@ -4071,6 +4073,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 		bitmap_bh = ext4_read_block_bitmap(sb, group);
- 		if (IS_ERR(bitmap_bh)) {
- 			err = PTR_ERR(bitmap_bh);
-+			ext4_set_errno(sb, -err);
- 			ext4_error(sb, "Error %d reading block bitmap for %u",
- 					err, group);
- 			ext4_mb_unload_buddy(&e4b);
-@@ -4325,6 +4328,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
- 					     GFP_NOFS|__GFP_NOFAIL);
- 		if (err) {
-+			ext4_set_errno(sb, -err);
- 			ext4_error(sb, "Error %d loading buddy information for %u",
- 				   err, group);
- 			continue;
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 2305b4374fd3..1c44b1a32001 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -173,8 +173,10 @@ static int kmmpd(void *data)
- 		 * (s_mmp_update_interval * 60) seconds.
- 		 */
- 		if (retval) {
--			if ((failed_writes % 60) == 0)
-+			if ((failed_writes % 60) == 0) {
-+				ext4_set_errno(sb, -retval);
- 				ext4_error(sb, "Error writing to MMP block");
-+			}
- 			failed_writes++;
- 		}
- 
-@@ -205,6 +207,7 @@ static int kmmpd(void *data)
- 
- 			retval = read_mmp_block(sb, &bh_check, mmp_block);
- 			if (retval) {
-+				ext4_set_errno(sb, -retval);
- 				ext4_error(sb, "error reading MMP data: %d",
- 					   retval);
- 				goto exit_thread;
-@@ -218,6 +221,7 @@ static int kmmpd(void *data)
- 					     "Error while updating MMP info. "
- 					     "The filesystem seems to have been"
- 					     " multiply mounted.");
-+				ext4_set_errno(sb, EBUSY);
- 				ext4_error(sb, "abort");
- 				put_bh(bh_check);
- 				retval = -EBUSY;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a856997d87b5..c74ed04d6781 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -156,6 +156,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 		if (ext4_dx_csum_verify(inode, dirent))
- 			set_buffer_verified(bh);
- 		else {
-+			ext4_set_errno(inode->i_sb, EFSBADCRC);
- 			ext4_error_inode(inode, func, line, block,
- 					 "Directory index failed checksum");
- 			brelse(bh);
-@@ -166,6 +167,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 		if (ext4_dirblock_csum_verify(inode, bh))
- 			set_buffer_verified(bh);
- 		else {
-+			ext4_set_errno(inode->i_sb, EFSBADCRC);
- 			ext4_error_inode(inode, func, line, block,
- 					 "Directory block failed checksum");
- 			brelse(bh);
-@@ -1527,6 +1529,7 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
- 			goto next;
- 		wait_on_buffer(bh);
- 		if (!buffer_uptodate(bh)) {
-+			ext4_set_errno(sb, EIO);
- 			EXT4_ERROR_INODE(dir, "reading directory lblock %lu",
- 					 (unsigned long) block);
- 			brelse(bh);
-@@ -1537,6 +1540,7 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
- 		    !is_dx_internal_node(dir, block,
- 					 (struct ext4_dir_entry *)bh->b_data) &&
- 		    !ext4_dirblock_csum_verify(dir, bh)) {
-+			ext4_set_errno(sb, EFSBADCRC);
- 			EXT4_ERROR_INODE(dir, "checksumming directory "
- 					 "block %lu", (unsigned long)block);
- 			brelse(bh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b205112ca051..c1b143cc1ab1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -367,6 +367,8 @@ static void __save_error_info(struct super_block *sb, const char *func,
- 	ext4_update_tstamp(es, s_last_error_time);
- 	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
- 	es->s_last_error_line = cpu_to_le32(line);
-+	if (es->s_last_error_errcode == 0)
-+		es->s_last_error_errcode = EXT4_ERR_EFSCORRUPTED;
- 	if (!es->s_first_error_time) {
- 		es->s_first_error_time = es->s_last_error_time;
- 		es->s_first_error_time_hi = es->s_last_error_time_hi;
-@@ -375,6 +377,7 @@ static void __save_error_info(struct super_block *sb, const char *func,
- 		es->s_first_error_line = cpu_to_le32(line);
- 		es->s_first_error_ino = es->s_last_error_ino;
- 		es->s_first_error_block = es->s_last_error_block;
-+		es->s_first_error_errcode = es->s_last_error_errcode;
- 	}
- 	/*
- 	 * Start the daily error reporting function if it hasn't been
-@@ -631,6 +634,66 @@ const char *ext4_decode_error(struct super_block *sb, int errno,
- 	return errstr;
- }
- 
-+void ext4_set_errno(struct super_block *sb, int err)
-+{
-+	if (err < 0)
-+		err = -err;
-+
-+	switch (err) {
-+	case EIO:
-+		err = EXT4_ERR_EIO;
-+		break;
-+	case ENOMEM:
-+		err = EXT4_ERR_ENOMEM;
-+		break;
-+	case EFSBADCRC:
-+		err = EXT4_ERR_EFSBADCRC;
-+		break;
-+	case EFSCORRUPTED:
-+		err = EXT4_ERR_EFSCORRUPTED;
-+		break;
-+	case ENOSPC:
-+		err = EXT4_ERR_ENOSPC;
-+		break;
-+	case ENOKEY:
-+		err = EXT4_ERR_ENOKEY;
-+		break;
-+	case EROFS:
-+		err = EXT4_ERR_EROFS;
-+		break;
-+	case EFBIG:
-+		err = EXT4_ERR_EFBIG;
-+		break;
-+	case EEXIST:
-+		err = EXT4_ERR_EEXIST;
-+		break;
-+	case ERANGE:
-+		err = EXT4_ERR_ERANGE;
-+		break;
-+	case EOVERFLOW:
-+		err = EXT4_ERR_EOVERFLOW;
-+		break;
-+	case EBUSY:
-+		err = EXT4_ERR_EBUSY;
-+		break;
-+	case ENOTDIR:
-+		err = EXT4_ERR_ENOTDIR;
-+		break;
-+	case ENOTEMPTY:
-+		err = EXT4_ERR_ENOTEMPTY;
-+		break;
-+	case ESHUTDOWN:
-+		err = EXT4_ERR_ESHUTDOWN;
-+		break;
-+	case EFAULT:
-+		err = EXT4_ERR_EFAULT;
-+		break;
-+	default:
-+		err = EXT4_ERR_UNKNOWN;
-+	}
-+	EXT4_SB(sb)->s_es->s_last_error_errcode = err;
-+}
-+
- /* __ext4_std_error decodes expected errors from journaling functions
-  * automatically and invokes the appropriate error response.  */
- 
-@@ -655,6 +718,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
- 		       sb->s_id, function, line, errstr);
- 	}
- 
-+	ext4_set_errno(sb, -errno);
- 	save_error_info(sb, function, line);
- 	ext4_handle_error(sb);
- }
-@@ -982,8 +1046,10 @@ static void ext4_put_super(struct super_block *sb)
- 		aborted = is_journal_aborted(sbi->s_journal);
- 		err = jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
--		if ((err < 0) && !aborted)
-+		if ((err < 0) && !aborted) {
-+			ext4_set_errno(sb, -err);
- 			ext4_abort(sb, "Couldn't clean up the journal");
-+		}
- 	}
- 
- 	ext4_unregister_sysfs(sb);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 8966a5439a22..246fbeeb6366 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2879,9 +2879,11 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);
- 		if (IS_ERR(bh)) {
- 			error = PTR_ERR(bh);
--			if (error == -EIO)
-+			if (error == -EIO) {
-+				ext4_set_errno(inode->i_sb, EIO);
- 				EXT4_ERROR_INODE(inode, "block %llu read error",
- 						 EXT4_I(inode)->i_file_acl);
-+			}
- 			bh = NULL;
- 			goto cleanup;
- 		}
--- 
-2.23.0
+> +		page_cache_sync_readahead(inode->i_mapping, ra, filp,
+> +					  index, num_pages_in_file -
+> index);
+> +		page = read_mapping_page(inode->i_mapping, index,
+> NULL);
+> +		if (IS_ERR(page))
+> +			return page;
+
+Could we recieve the NULL pointer here? Is callee ready to process theNULL return value? 
+
+Thanks,
+Viacheslav Dubeyko.
+
 
