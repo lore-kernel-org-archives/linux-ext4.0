@@ -2,73 +2,70 @@ Return-Path: <SRS0=nglS=Z6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB0E6C2D0BE
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Dec 2019 01:10:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35D8FC2D0BE
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Dec 2019 10:25:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A1CE420663
-	for <linux-ext4@archiver.kernel.org>; Sun,  8 Dec 2019 01:10:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1575767423;
-	bh=yBoMYWkT55z3FCeHCu2jsXnsX/BLrVBO1+E3nyHFUik=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=hQ1m6Wb6JlqP1fUJ1t4V7AbKSOM674w1k327VVKNU6mRKvpge+YTWMT0E/L3vPbui
-	 +u8y8FJXVqFFeww2lyj2L6EGY6y0dn/8xr3OoVVaXeV2n9iZUuokeTcTKeTOdHioGN
-	 nfSjLy4CxPti3MuWEWSW9WnriAeJllYHw4LGHPYQ=
+	by mail.kernel.org (Postfix) with ESMTP id 15F8920663
+	for <linux-ext4@archiver.kernel.org>; Sun,  8 Dec 2019 10:25:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726828AbfLHBKJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Dec 2019 20:10:09 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47484 "EHLO mail.kernel.org"
+        id S1726406AbfLHKZ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Dec 2019 05:25:26 -0500
+Received: from mail.phunq.net ([66.183.183.73]:53070 "EHLO phunq.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725834AbfLHBKI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 7 Dec 2019 20:10:08 -0500
-Subject: Re: [GIT PULL] iomap: fixes for 5.5
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1575767408;
-        bh=yBoMYWkT55z3FCeHCu2jsXnsX/BLrVBO1+E3nyHFUik=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=HreMkKBLF6Wz9vUdmySD9kA5Ai42j+jIu7SRqRa5cpl3jqK/8pVJEu3vxk5+tKVGU
-         2O15g7rK8BTX6zp8w45c/P8xPsFPJnA+MWEF6/vUT89+RWk1CqPxnhYpDQNtQMYZr4
-         QZX2lyuprPRTeEzRQ/BZ2Yr6tSGYlsFro8th6vIA=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20191206195456.GB9464@magnolia>
-References: <20191206195456.GB9464@magnolia>
-X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20191206195456.GB9464@magnolia>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
- tags/iomap-5.5-merge-14
-X-PR-Tracked-Commit-Id: c275779ff2dd51c96eaae04fac5d766421d6c596
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 95207d554b968a552cc93a834af6c1ec295ebaba
-Message-Id: <157576740828.7292.11243463351730365173.pr-tracker-bot@kernel.org>
-Date:   Sun, 08 Dec 2019 01:10:08 +0000
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-kernel@vger.kernel.org,
-        sandeen@sandeen.net, hch@lst.de, agruenba@redhat.com,
-        rpeterso@redhat.com, cluster-devel@redhat.com,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>
+        id S1726202AbfLHKZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 8 Dec 2019 05:25:25 -0500
+Received: from [172.16.1.14]
+        by phunq.net with esmtpsa (TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_128_GCM:128)
+        (Exim 4.92.3)
+        (envelope-from <daniel@phunq.net>)
+        id 1idtkg-000500-DD; Sun, 08 Dec 2019 02:25:22 -0800
+Subject: Re: [RFC] Thing 1: Shardmap fox Ext4
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+References: <176a1773-f5ea-e686-ec7b-5f0a46c6f731@phunq.net>
+ <20191127142508.GB5143@mit.edu>
+ <c3636a43-6ae9-25d4-9483-34770b6929d0@phunq.net>
+ <20191128022817.GE22921@mit.edu>
+From:   Daniel Phillips <daniel@phunq.net>
+Message-ID: <3b4d380f-cb33-b0fb-2426-67109875ce77@phunq.net>
+Date:   Sun, 8 Dec 2019 02:25:22 -0800
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.9.0
+MIME-Version: 1.0
+In-Reply-To: <20191128022817.GE22921@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Fri, 6 Dec 2019 11:54:56 -0800:
+On 2019-11-27 6:28 p.m., Theodore Y. Ts'o wrote:
+> The use of C++ with templates is presumably one of the "less so"
+> parts, and it was that which I had in mind when I said,
+> "reimplementing from scratch".
 
-> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.5-merge-14
+The templates were removed without reimplementing from scratch:
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/95207d554b968a552cc93a834af6c1ec295ebaba
+   https://github.com/danielbot/Shardmap/blob/master/shardmap.h#L88
+   https://github.com/danielbot/Shardmap/blob/master/shardmap.cc#L82
 
-Thank you!
+The duopack/tripack facility, central to Shardmap efficient scalability, are
+now just ordinary C code that happens to be compiled by a C++ compiler. I
+think the machine code should be identical to what the templates produced,
+though I did not verify.
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+This was a strictly mechanical conversion, less error prone than
+reimplementing from scratch I would think. I expect the rest of the
+back conversions to be similarly mechanical.
+
+Regards,
+
+Daniel
