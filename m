@@ -4,46 +4,45 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8AE1C04E30
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 21:33:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A1678C43603
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 23:36:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 73B9E20721
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 21:33:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 70BD0206D3
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 23:36:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1575927188;
-	bh=sazSRY1r8F1TEbx3JI+yAVvJF6WPJx2Um+B19LoeA8U=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=Rv5wjrxM2z64K5sbsag8pkURFcjn/bRuHHoViRAjOliEea2q8qKYcvbr5GUSx80sF
-	 Lx8F404fCIHINb4FiDoSzhmhPXhgfYPRLpQySmNZyOArqUKXZiXyBC56tJIy2E7qXZ
-	 8/4LHUA61F6KoYC9WX7j4voCSOAtcDy4Hj07mu70=
+	s=default; t=1575934590;
+	bh=7X5izyTa35DtFX/RC5B2vM3OWWRfmj3AGQK8mKHiAEQ=;
+	h=From:To:Subject:Date:List-ID:From;
+	b=CWS6w3OxxzrGz8E6DaCFJCshgTiZgE5RBXZaxyvkJMH5ITujuPy4V56XUamQNd71A
+	 8G70NvW5NIfCdph7dBvcPlGzHtzkl4Z9jd9FtA1j1byTkfPCngw61RXdf+dpOl4QWk
+	 7WqTuJSzPb5entpA4CY9EvWoIk5ammEX8K7SeQ2Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726614AbfLIVdI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 Dec 2019 16:33:08 -0500
-Received: from mail.kernel.org ([198.145.29.99]:56682 "EHLO mail.kernel.org"
+        id S1727091AbfLIXg2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 Dec 2019 18:36:28 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47954 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726354AbfLIVdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 9 Dec 2019 16:33:07 -0500
+        id S1726592AbfLIXg1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 9 Dec 2019 18:36:27 -0500
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 383E72071E;
-        Mon,  9 Dec 2019 21:33:07 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 991B7206D3
+        for <linux-ext4@vger.kernel.org>; Mon,  9 Dec 2019 23:36:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1575927187;
-        bh=sazSRY1r8F1TEbx3JI+yAVvJF6WPJx2Um+B19LoeA8U=;
-        h=From:To:Cc:Subject:Date:From;
-        b=vcVaWl8f8m2EK6Cgx6TiwQXaQRhxW+3n9hd/RGrkcVfKZJYCeqRmzhnfaCFsd88i5
-         O8LAY0icOUsEiNzTmeEBB5m057COzfsRdyQffIg7+VXKkVK1zr+uVpVf/V9WE3LxDI
-         8J59PQQcZ22uLpMYocJXFITnd6Czk/sXDBcQWFIU=
+        s=default; t=1575934586;
+        bh=7X5izyTa35DtFX/RC5B2vM3OWWRfmj3AGQK8mKHiAEQ=;
+        h=From:To:Subject:Date:From;
+        b=Ow54M07oXk9HOLvcW59QfUoyCQabGlomKmOYa1N2TAE2vDq/CA87GXYVF1KBmUflF
+         d1R3ZaVP0VmnXrgmlsO2vyoudGEszS93fGoroGhc8oC7vbe/S6l47MM+iKZ+tX5gUg
+         0cCEY3wYSMwepaPLSyCKWB3EzwEPZrAmZRv+T0CI=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Cc:     linux-fscrypt@vger.kernel.org
-Subject: [PATCH] ext4: remove unnecessary ifdefs in htree_dirblock_to_tree()
-Date:   Mon,  9 Dec 2019 13:32:25 -0800
-Message-Id: <20191209213225.18477-1-ebiggers@kernel.org>
+Subject: [PATCH] ext4: uninline ext4_inode_journal_mode()
+Date:   Mon,  9 Dec 2019 15:36:02 -0800
+Message-Id: <20191209233602.117778-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.0.393.g34dc348eaf-goog
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -54,46 +53,82 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-The ifdefs for CONFIG_FS_ENCRYPTION in htree_dirblock_to_tree() are
-unnecessary, as the called functions are already stubbed out when
-!CONFIG_FS_ENCRYPTION.  Remove them.
+Determining an inode's journaling mode has gotten more complicated over
+time.  Move ext4_inode_journal_mode() from an inline function into
+ext4_jbd2.c to reduce the compiled code size.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/namei.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+ fs/ext4/ext4_jbd2.c | 22 ++++++++++++++++++++++
+ fs/ext4/ext4_jbd2.h | 22 +---------------------
+ 2 files changed, 23 insertions(+), 21 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a856997d87b54..d4c2cc73fe71d 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1002,7 +1002,6 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	top = (struct ext4_dir_entry_2 *) ((char *) de +
- 					   dir->i_sb->s_blocksize -
- 					   EXT4_DIR_REC_LEN(0));
--#ifdef CONFIG_FS_ENCRYPTION
- 	/* Check if the directory is encrypted */
- 	if (IS_ENCRYPTED(dir)) {
- 		err = fscrypt_get_encryption_info(dir);
-@@ -1017,7 +1016,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 			return err;
- 		}
- 	}
--#endif
-+
- 	for (; de < top; de = ext4_next_entry(de, dir->i_sb->s_blocksize)) {
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 				bh->b_data, bh->b_size,
-@@ -1065,9 +1064,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 	}
- errout:
- 	brelse(bh);
--#ifdef CONFIG_FS_ENCRYPTION
- 	fscrypt_fname_free_buffer(&fname_crypto_str);
--#endif
- 	return count;
- }
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index d3b8cdea5df75..621c9e19d081f 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -7,6 +7,28 @@
  
+ #include <trace/events/ext4.h>
+ 
++int ext4_inode_journal_mode(struct inode *inode)
++{
++	if (EXT4_JOURNAL(inode) == NULL)
++		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
++	/* We do not support data journalling with delayed allocation */
++	if (!S_ISREG(inode->i_mode) ||
++	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE) ||
++	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
++	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
++	    !test_opt(inode->i_sb, DELALLOC))) {
++		/* We do not support data journalling for encrypted data */
++		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
++			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
++		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
++	}
++	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
++		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
++	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
++		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
++	BUG();
++}
++
+ /* Just increment the non-pointer handle value */
+ static handle_t *ext4_get_nojournal(void)
+ {
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index a6b9b66dbfade..7ea4f6fa173b4 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -463,27 +463,7 @@ int ext4_force_commit(struct super_block *sb);
+ #define EXT4_INODE_ORDERED_DATA_MODE	0x02 /* ordered data mode */
+ #define EXT4_INODE_WRITEBACK_DATA_MODE	0x04 /* writeback data mode */
+ 
+-static inline int ext4_inode_journal_mode(struct inode *inode)
+-{
+-	if (EXT4_JOURNAL(inode) == NULL)
+-		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+-	/* We do not support data journalling with delayed allocation */
+-	if (!S_ISREG(inode->i_mode) ||
+-	    ext4_test_inode_flag(inode, EXT4_INODE_EA_INODE) ||
+-	    test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
+-	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+-	    !test_opt(inode->i_sb, DELALLOC))) {
+-		/* We do not support data journalling for encrypted data */
+-		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
+-			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
+-		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+-	}
+-	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA)
+-		return EXT4_INODE_ORDERED_DATA_MODE;	/* ordered */
+-	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
+-		return EXT4_INODE_WRITEBACK_DATA_MODE;	/* writeback */
+-	BUG();
+-}
++int ext4_inode_journal_mode(struct inode *inode);
+ 
+ static inline int ext4_should_journal_data(struct inode *inode)
+ {
 -- 
 2.24.0.393.g34dc348eaf-goog
 
