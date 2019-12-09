@@ -2,59 +2,86 @@ Return-Path: <SRS0=EsIP=Z7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25908C3F68F
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 00:43:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC568C43603
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 00:43:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 03AF7206F4
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 00:43:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A878F206D5
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Dec 2019 00:43:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726748AbfLIAnD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 Dec 2019 19:43:03 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37026 "EHLO
+        id S1726653AbfLIAn6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 Dec 2019 19:43:58 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37117 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726653AbfLIAnD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Dec 2019 19:43:03 -0500
+        with ESMTP id S1726422AbfLIAn6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Dec 2019 19:43:58 -0500
 Received: from callcc.thunk.org (ec2-52-55-121-20.compute-1.amazonaws.com [52.55.121.20])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xB90gJMj007912
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xB90hnDT008236
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 8 Dec 2019 19:42:57 -0500
+        Sun, 8 Dec 2019 19:43:53 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 35BCD421A48; Sun,  8 Dec 2019 19:42:09 -0500 (EST)
-Date:   Sun, 8 Dec 2019 19:42:09 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH 2/2] ext4: Check for directory entries too close to block
- end
-Message-ID: <20191209004209.GB9343@mit.edu>
-References: <20191202170213.4761-1-jack@suse.cz>
- <20191202170213.4761-3-jack@suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+        id AD32B421A48; Sun,  8 Dec 2019 19:43:47 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: optimize __ext4_check_dir_entry()
+Date:   Sun,  8 Dec 2019 19:43:46 -0500
+Message-Id: <20191209004346.38526-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.23.0
 In-Reply-To: <20191202170213.4761-3-jack@suse.cz>
-User-Agent: Mutt/1.12.2 (2019-09-21)
+References: <20191202170213.4761-3-jack@suse.cz>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Dec 02, 2019 at 06:02:13PM +0100, Jan Kara wrote:
-> ext4_check_dir_entry() currently does not catch a case when a directory
-> entry ends so close to the block end that the header of the next
-> directory entry would not fit in the remaining space. This can lead to
-> directory iteration code trying to access address beyond end of current
-> buffer head leading to oops.
-> 
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Make __ext4_check_dir_entry() a bit easier to understand, and reduce
+the object size of the function by over 11%.
 
-Thanks, applied.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
 
-						- Ted
+As a follow-up to "ext4: check for directory entries too close to block end"
+
+ fs/ext4/dir.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index 6305d5ec25af..9f00fc0bf21d 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -72,6 +72,7 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 	const char *error_msg = NULL;
+ 	const int rlen = ext4_rec_len_from_disk(de->rec_len,
+ 						dir->i_sb->s_blocksize);
++	const int next_offset = ((char *) de - buf) + rlen;
+ 
+ 	if (unlikely(rlen < EXT4_DIR_REC_LEN(1)))
+ 		error_msg = "rec_len is smaller than minimal";
+@@ -79,13 +80,11 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 		error_msg = "rec_len % 4 != 0";
+ 	else if (unlikely(rlen < EXT4_DIR_REC_LEN(de->name_len)))
+ 		error_msg = "rec_len is too small for name_len";
+-	else if (unlikely(((char *) de - buf) + rlen > size))
++	else if (unlikely(next_offset > size))
+ 		error_msg = "directory entry overrun";
+-	else if (unlikely(((char *) de - buf) + rlen >
+-			  size - EXT4_DIR_REC_LEN(1) &&
+-			  ((char *) de - buf) + rlen != size)) {
++	else if (unlikely(next_offset > size - EXT4_DIR_REC_LEN(1) &&
++			  next_offset != size))
+ 		error_msg = "directory entry too close to block end";
+-	}
+ 	else if (unlikely(le32_to_cpu(de->inode) >
+ 			le32_to_cpu(EXT4_SB(dir->i_sb)->s_es->s_inodes_count)))
+ 		error_msg = "inode out of bounds";
+-- 
+2.23.0
+
