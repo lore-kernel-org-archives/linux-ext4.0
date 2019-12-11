@@ -4,53 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BE98C00454
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:45:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F33F4C00454
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:01:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2DA792073B
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:45:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C929622B48
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:01:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1576079122;
-	bh=9MJpB7t1Y1QQG2Yy3v7yUvWRZdfdBtNnwQoHMf2LRAA=;
+	s=default; t=1576080093;
+	bh=cajIAbVO8xLcLRcikzUKLaEY47JDaaCbQWfWuAF5+ZU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=PpaQrbYhN2dsUnZXaVIKo23leS8wTziSDUmQpaGAq7YjA/aFyt92rNIljl/Wn/A75
-	 csoYbmLf+hUSe0nfCRv0QIoUNxiIOs+tJqoJGJYhNbMvcYhPDTYDXbVjeKrKkOSzdN
-	 dY3NHOyaumJMgHmAFRIGVl1Cdlo4UJr9ZK718f3U=
+	b=AA30m8GJZKm5bP6Dmmk16RKS+SwXWHAde1nqu3FKK6eljXpR38Grp97IGM1Kj0r11
+	 CniHIn9WRINzlBDxb/QmVZNnWX7lRSMdu2NvjUOB0AhJ0/xZsOF2D6qehNiEpO7+AL
+	 7cmBzFcw6okf0XZsSF9I1SvU6hTZ3Lf5QTMQ2VIo=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387410AbfLKPpV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Dec 2019 10:45:21 -0500
-Received: from mail.kernel.org ([198.145.29.99]:60898 "EHLO mail.kernel.org"
+        id S1730569AbfLKPN2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Dec 2019 10:13:28 -0500
+Received: from mail.kernel.org ([198.145.29.99]:36964 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733211AbfLKP1K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Dec 2019 10:27:10 -0500
+        id S1731415AbfLKPN1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Dec 2019 10:13:27 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 12D6F208C3;
-        Wed, 11 Dec 2019 15:27:08 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6A9F024680;
+        Wed, 11 Dec 2019 15:13:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1576078029;
-        bh=9MJpB7t1Y1QQG2Yy3v7yUvWRZdfdBtNnwQoHMf2LRAA=;
+        s=default; t=1576077207;
+        bh=cajIAbVO8xLcLRcikzUKLaEY47JDaaCbQWfWuAF5+ZU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=V/VbddDjMx25+v/KCcJU6Us1Ifb4+/bkR7AT/bxIhYVuvkx1RDIqvD8oyuM1jgiBj
-         dssWKaQjcw3RZkswzRWEI7Ot5x9oqvwGLnPhc5qaR2MpgoNBtt7Eai417r/VebDw0N
-         hjHzyY2nNmtFst7j5U7R59Nfuhelv93ZJ0a1v8wY=
+        b=AjWr20ehvSISZAlf19UNvA4XkZOKlvKEQ0pfASK2AGnHcOXoCb5tvjdOnJ5JhZ74A
+         7GQaSkTe7NUURJHVjst2ls1cVgQp9+2+w9fA6i1jelK8nXOpYVjJqItrwSXpWisjVn
+         uduad5o7N3zkU7ckfGJpFNulWzV2Yrj9u/jBhp6I=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Matthew Bobrowski <mbobrowski@mbobrowski.org>,
-        Jan Kara <jack@suse.cz>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 24/79] ext4: iomap that extends beyond EOF should be marked dirty
-Date:   Wed, 11 Dec 2019 10:25:48 -0500
-Message-Id: <20191211152643.23056-24-sashal@kernel.org>
+Cc:     Theodore Ts'o <tytso@mit.edu>, stable@kernel.org,
+        Andreas Dilger <adilger@dilger.ca>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 089/134] ext4: work around deleting a file with i_nlink == 0 safely
+Date:   Wed, 11 Dec 2019 10:11:05 -0500
+Message-Id: <20191211151150.19073-89-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191211152643.23056-1-sashal@kernel.org>
-References: <20191211152643.23056-1-sashal@kernel.org>
+In-Reply-To: <20191211151150.19073-1-sashal@kernel.org>
+References: <20191211151150.19073-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -60,59 +58,63 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Matthew Bobrowski <mbobrowski@mbobrowski.org>
+From: Theodore Ts'o <tytso@mit.edu>
 
-[ Upstream commit 2e9b51d78229d5145725a481bb5464ebc0a3f9b2 ]
+[ Upstream commit c7df4a1ecb8579838ec8c56b2bb6a6716e974f37 ]
 
-This patch addresses what Dave Chinner had discovered and fixed within
-commit: 7684e2c4384d. This changes does not have any user visible
-impact for ext4 as none of the current users of ext4_iomap_begin()
-that extend files depend on IOMAP_F_DIRTY.
+If the file system is corrupted such that a file's i_links_count is
+too small, then it's possible that when unlinking that file, i_nlink
+will already be zero.  Previously we were working around this kind of
+corruption by forcing i_nlink to one; but we were doing this before
+trying to delete the directory entry --- and if the file system is
+corrupted enough that ext4_delete_entry() fails, then we exit with
+i_nlink elevated, and this causes the orphan inode list handling to be
+FUBAR'ed, such that when we unmount the file system, the orphan inode
+list can get corrupted.
 
-When doing a direct IO that spans the current EOF, and there are
-written blocks beyond EOF that extend beyond the current write, the
-only metadata update that needs to be done is a file size extension.
+A better way to fix this is to simply skip trying to call drop_nlink()
+if i_nlink is already zero, thus moving the check to the place where
+it makes the most sense.
 
-However, we don't mark such iomaps as IOMAP_F_DIRTY to indicate that
-there is IO completion metadata updates required, and hence we may
-fail to correctly sync file size extensions made in IO completion when
-O_DSYNC writes are being used and the hardware supports FUA.
+https://bugzilla.kernel.org/show_bug.cgi?id=205433
 
-Hence when setting IOMAP_F_DIRTY, we need to also take into account
-whether the iomap spans the current EOF. If it does, then we need to
-mark it dirty so that IO completion will call generic_write_sync() to
-flush the inode size update to stable storage correctly.
-
-Signed-off-by: Matthew Bobrowski <mbobrowski@mbobrowski.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Link: https://lore.kernel.org/r/8b43ee9ee94bee5328da56ba0909b7d2229ef150.1572949325.git.mbobrowski@mbobrowski.org
+Link: https://lore.kernel.org/r/20191112032903.8828-1-tytso@mit.edu
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/inode.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ fs/ext4/namei.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 00d25a0643913..8eaf7a581be65 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3535,8 +3535,14 @@ retry:
- 			return ret;
- 	}
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index a427d2031a8da..923476e3aefbc 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3182,18 +3182,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
  
-+	/*
-+	 * Writes that span EOF might trigger an I/O size update on completion,
-+	 * so consider them to be dirty for the purposes of O_DSYNC, even if
-+	 * there is no other metadata changes being made or are pending here.
-+	 */
- 	iomap->flags = 0;
--	if (ext4_inode_datasync_dirty(inode))
-+	if (ext4_inode_datasync_dirty(inode) ||
-+	    offset + length > i_size_read(inode))
- 		iomap->flags |= IOMAP_F_DIRTY;
- 	iomap->bdev = inode->i_sb->s_bdev;
- 	iomap->dax_dev = sbi->s_daxdev;
+-	if (inode->i_nlink == 0) {
+-		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
+-				   dentry->d_name.len, dentry->d_name.name);
+-		set_nlink(inode, 1);
+-	}
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_unlink;
+ 	dir->i_ctime = dir->i_mtime = current_time(dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+-	drop_nlink(inode);
++	if (inode->i_nlink == 0)
++		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
++				   dentry->d_name.len, dentry->d_name.name);
++	else
++		drop_nlink(inode);
+ 	if (!inode->i_nlink)
+ 		ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = current_time(inode);
 -- 
 2.20.1
 
