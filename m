@@ -2,103 +2,98 @@ Return-Path: <SRS0=599J=2B=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A659C43603
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:06:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04D4AC43603
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:08:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 44F23222C4
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:06:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1576080407;
-	bh=5285zd1TdAELL/o5urgylZ0a6GzUCTYHsFOCVhRotCg=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=EuFueRRHF7V7/WB21pqL8lphJVBzo2xq58oyATeWLkRGp0163yfpvSKvWvLas9Ucf
-	 CyGhfjljG9MJY/yGs3qnQLVsPcMvrb0zXlkgakMjsjcWDyylBxVtHvAt6tfkxuT/iB
-	 I1AficHMTyoRJTdyGqZxUfyTNEdiNXynBlJBTByU=
+	by mail.kernel.org (Postfix) with ESMTP id D5E4D20836
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 16:08:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731496AbfLKQGq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Dec 2019 11:06:46 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34462 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731088AbfLKPMf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Dec 2019 10:12:35 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 20CCB2467D;
-        Wed, 11 Dec 2019 15:12:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1576077154;
-        bh=5285zd1TdAELL/o5urgylZ0a6GzUCTYHsFOCVhRotCg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=duX7v/W0XkWPYpI3GXx5evwCX2nIzuP4xGQtd8DzVF52H2Nl4njzHG2CbRPPVqggy
-         2jc36Mo/wytmrCwudDcEPOiHRShBy2ApFkbxM0WVum6lEXsbqOrro2ecLvQWpfcVNg
-         FGAxIfW1WK+H9mB2OmbFPKFZ3A44AvWTWb2AE7hQ=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Matthew Bobrowski <mbobrowski@mbobrowski.org>,
-        Jan Kara <jack@suse.cz>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 041/134] ext4: update direct I/O read lock pattern for IOCB_NOWAIT
-Date:   Wed, 11 Dec 2019 10:10:17 -0500
-Message-Id: <20191211151150.19073-41-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191211151150.19073-1-sashal@kernel.org>
-References: <20191211151150.19073-1-sashal@kernel.org>
+        id S2388885AbfLKQIO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Dec 2019 11:08:14 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54485 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1731122AbfLKQIN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Dec 2019 11:08:13 -0500
+Received: from callcc.thunk.org (guestnat-104-132-34-105.corp.google.com [104.132.34.105] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBBG7jbj026860
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 11 Dec 2019 11:07:46 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id A4C13421A48; Wed, 11 Dec 2019 11:07:45 -0500 (EST)
+Date:   Wed, 11 Dec 2019 11:07:45 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Ming Lei <ming.lei@redhat.com>
+Cc:     Andrea Vai <andrea.vai@unipv.it>,
+        "Schmid, Carsten" <Carsten_Schmid@mentor.com>,
+        Finn Thain <fthain@telegraphics.com.au>,
+        Damien Le Moal <Damien.LeMoal@wdc.com>,
+        Alan Stern <stern@rowland.harvard.edu>,
+        Jens Axboe <axboe@kernel.dk>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        USB list <linux-usb@vger.kernel.org>,
+        SCSI development list <linux-scsi@vger.kernel.org>,
+        Himanshu Madhani <himanshu.madhani@cavium.com>,
+        Hannes Reinecke <hare@suse.com>,
+        Omar Sandoval <osandov@fb.com>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Hans Holmberg <Hans.Holmberg@wdc.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: AW: Slow I/O on USB media after commit
+ f664a3cc17b7d0a2bc3b3ab96181e1029b0ec0e6
+Message-ID: <20191211160745.GA129186@mit.edu>
+References: <20191128091712.GD15549@ming.t460p>
+ <f82fd5129e3dcacae703a689be60b20a7fedadf6.camel@unipv.it>
+ <20191129005734.GB1829@ming.t460p>
+ <20191129023555.GA8620@ming.t460p>
+ <320b315b9c87543d4fb919ecbdf841596c8fbcea.camel@unipv.it>
+ <20191203022337.GE25002@ming.t460p>
+ <8196b014b1a4d91169bf3b0d68905109aeaf2191.camel@unipv.it>
+ <20191210080550.GA5699@ming.t460p>
+ <20191211024137.GB61323@mit.edu>
+ <20191211040058.GC6864@ming.t460p>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191211040058.GC6864@ming.t460p>
+User-Agent: Mutt/1.12.2 (2019-09-21)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Matthew Bobrowski <mbobrowski@mbobrowski.org>
+On Wed, Dec 11, 2019 at 12:00:58PM +0800, Ming Lei wrote:
+> I didn't reproduce the issue in my test environment, and follows
+> Andrea's test commands[1]:
+> 
+>   mount UUID=$uuid /mnt/pendrive 2>&1 |tee -a $logfile
+>   SECONDS=0
+>   cp $testfile /mnt/pendrive 2>&1 |tee -a $logfile
+>   umount /mnt/pendrive 2>&1 |tee -a $logfile
+> 
+> The 'cp' command supposes to open/close the file just once, however
+> ext4_release_file() & write pages is observed to run for 4358 times
+> when executing the above 'cp' test.
 
-[ Upstream commit 548feebec7e93e58b647dba70b3303dcb569c914 ]
+Why are we sure the ext4_release_file() / _fput() is coming from the
+cp command, as opposed to something else that might be running on the
+system under test?  _fput() is called by the kernel when the last
+reference to a struct file is released.  (Specifically, if you have a
+fd which is dup'ed, it's only when the last fd corresponding to the
+struct file is closed, and the struct file is about to be released,
+does the file system's f_ops->release function get called.)
 
-This patch updates the lock pattern in ext4_direct_IO_read() to not
-block on inode lock in cases of IOCB_NOWAIT direct I/O reads. The
-locking condition implemented here is similar to that of 942491c9e6d6
-("xfs: fix AIM7 regression").
+So the first question I'd ask is whether there is anything else going
+on the system, and whether the writes are happening to the USB thumb
+drive, or to some other storage device.  And if there is something
+else which is writing to the pendrive, maybe that's why no one else
+has been able to reproduce the OP's complaint....
 
-Fixes: 16c54688592c ("ext4: Allow parallel DIO reads")
-Signed-off-by: Matthew Bobrowski <mbobrowski@mbobrowski.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Link: https://lore.kernel.org/r/c5d5e759f91747359fbd2c6f9a36240cf75ad79f.1572949325.git.mbobrowski@mbobrowski.org
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/inode.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d691d1783ed62..207b8c23e53d9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3827,7 +3827,13 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
- 	 * writes & truncates and since we take care of writing back page cache,
- 	 * we are protected against page writeback as well.
- 	 */
--	inode_lock_shared(inode);
-+	if (iocb->ki_flags & IOCB_NOWAIT) {
-+		if (!inode_trylock_shared(inode))
-+			return -EAGAIN;
-+	} else {
-+		inode_lock_shared(inode);
-+	}
-+
- 	ret = filemap_write_and_wait_range(mapping, iocb->ki_pos,
- 					   iocb->ki_pos + count - 1);
- 	if (ret)
--- 
-2.20.1
-
+    	      	 	    	     - Ted
