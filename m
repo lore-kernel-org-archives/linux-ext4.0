@@ -2,112 +2,119 @@ Return-Path: <SRS0=599J=2B=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04532C00454
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 12:56:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9093CC3F68F
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:31:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D3FAC214AF
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 12:56:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 67C8C24658
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:31:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1576078301;
+	bh=Gw3aPmVo7kQqnAd0FPuSS70TemhBhRtB1LbpplNqzUY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=TqwGL705oMNRcOuQuwq1CA/e1TzV22sIt/d2zLjimEINxMW4jVvgbFxjp3X0Ap/sd
+	 21cjrpQ8kU0xNdC5oj4U7UkNwQoI6JXb96/eK9FasALx/RH8dXyLERuHl0hXJqd3vF
+	 Fk55BqdUowH6DktZVZ8VQKTUlktjehUtF1hIudmk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727457AbfLKM4m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Dec 2019 07:56:42 -0500
-Received: from relay.sw.ru ([185.231.240.75]:46022 "EHLO relay.sw.ru"
+        id S2387823AbfLKP3N (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Dec 2019 10:29:13 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35786 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727402AbfLKM4m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Dec 2019 07:56:42 -0500
-Received: from dhcp-172-16-24-104.sw.ru ([172.16.24.104])
-        by relay.sw.ru with esmtp (Exim 4.92.3)
-        (envelope-from <ktkhai@virtuozzo.com>)
-        id 1if1Wl-00067R-Gc; Wed, 11 Dec 2019 15:55:40 +0300
-Subject: [PATCH RFC v2 3/3] ext4: Notify block device about
- fallocate(0)-assigned blocks
-To:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Cc:     axboe@kernel.dk, tytso@mit.edu, adilger.kernel@dilger.ca,
-        ming.lei@redhat.com, osandov@fb.com, jthumshirn@suse.de,
-        minwoo.im.dev@gmail.com, damien.lemoal@wdc.com,
-        andrea.parri@amarulasolutions.com, hare@suse.com, tj@kernel.org,
-        ajay.joshi@wdc.com, sagi@grimberg.me, dsterba@suse.com,
-        chaitanya.kulkarni@wdc.com, bvanassche@acm.org,
-        dhowells@redhat.com, asml.silence@gmail.com
-References: <157599668662.12112.10184894900037871860.stgit@localhost.localdomain>
- <157599697948.12112.3846364542350011691.stgit@localhost.localdomain>
-From:   Kirill Tkhai <ktkhai@virtuozzo.com>
-Message-ID: <766824cc-8b40-aa8d-4f94-e015bc8122d4@virtuozzo.com>
-Date:   Wed, 11 Dec 2019 15:55:38 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.9.0
+        id S2387816AbfLKP3N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Dec 2019 10:29:13 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 896CC208C3;
+        Wed, 11 Dec 2019 15:29:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1576078152;
+        bh=Gw3aPmVo7kQqnAd0FPuSS70TemhBhRtB1LbpplNqzUY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=rePmam2TmOyTspo+0lTs2y3bTityFKn1D21upyfhOrLOGwgBDjliDyQxwpUs4/ThQ
+         GUxYgwyPhQcdGVaPoMgMh3V3EiTxbdk0Nn6b+xCD+B4ub8VGm3hTYj6l3c/MLYuIFr
+         Kl9KkjduvJs/psRbVvqmWSY9ah0Y5fBp77mMTq6s=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Theodore Ts'o <tytso@mit.edu>, stable@kernel.org,
+        Andreas Dilger <adilger@dilger.ca>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.14 38/58] ext4: work around deleting a file with i_nlink == 0 safely
+Date:   Wed, 11 Dec 2019 10:28:11 -0500
+Message-Id: <20191211152831.23507-38-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20191211152831.23507-1-sashal@kernel.org>
+References: <20191211152831.23507-1-sashal@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <157599697948.12112.3846364542350011691.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-[I missed debug hunk appeared in v1. Please, see correct patch below]
+From: Theodore Ts'o <tytso@mit.edu>
 
-Call sb_issue_assign_range() after extent range was allocated
-on user request. Hopeful, this helps block device to maintain
-its internals in the best way, if this is appliable.
+[ Upstream commit c7df4a1ecb8579838ec8c56b2bb6a6716e974f37 ]
 
-Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+If the file system is corrupted such that a file's i_links_count is
+too small, then it's possible that when unlinking that file, i_nlink
+will already be zero.  Previously we were working around this kind of
+corruption by forcing i_nlink to one; but we were doing this before
+trying to delete the directory entry --- and if the file system is
+corrupted enough that ext4_delete_entry() fails, then we exit with
+i_nlink elevated, and this causes the orphan inode list handling to be
+FUBAR'ed, such that when we unmount the file system, the orphan inode
+list can get corrupted.
+
+A better way to fix this is to simply skip trying to call drop_nlink()
+if i_nlink is already zero, thus moving the check to the place where
+it makes the most sense.
+
+https://bugzilla.kernel.org/show_bug.cgi?id=205433
+
+Link: https://lore.kernel.org/r/20191112032903.8828-1-tytso@mit.edu
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |   11 +++++++++--
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f8578caba40d..fe2263c00c0e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -622,6 +622,7 @@ enum {
- 	 * allows jbd2 to avoid submitting data before commit. */
- #define EXT4_GET_BLOCKS_IO_SUBMIT		0x0400
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 212b01861d941..b4e0c270def4a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3065,18 +3065,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
  
-+#define EXT4_GET_BLOCKS_SUBMIT_ALLOC		0x0800
- /*
-  * The bit position of these flags must not overlap with any of the
-  * EXT4_GET_BLOCKS_*.  They are used by ext4_find_extent(),
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0e8708b77da6..68335e1d6893 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4490,6 +4490,13 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		ar.len = allocated;
- 
- got_allocated_blocks:
-+	if ((flags & EXT4_GET_BLOCKS_SUBMIT_ALLOC)) {
-+		err = sb_issue_assign_range(inode->i_sb, newblock,
-+			EXT4_C2B(sbi, allocated_clusters), GFP_NOFS);
-+		if (err)
-+			goto free_on_err;
-+	}
-+
- 	/* try to insert new extent into found leaf and return */
- 	ext4_ext_store_pblock(&newex, newblock + offset);
- 	newex.ee_len = cpu_to_le16(ar.len);
-@@ -4506,7 +4513,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (!err)
- 		err = ext4_ext_insert_extent(handle, inode, &path,
- 					     &newex, flags);
--
-+free_on_err:
- 	if (err && free_on_err) {
- 		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
- 			EXT4_FREE_BLOCKS_NO_QUOT_UPDATE : 0;
-@@ -4926,7 +4933,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	lblk = offset >> blkbits;
- 
- 	max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
--	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
-+	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT | EXT4_GET_BLOCKS_SUBMIT_ALLOC;
- 	if (mode & FALLOC_FL_KEEP_SIZE)
- 		flags |= EXT4_GET_BLOCKS_KEEP_SIZE;
- 
+-	if (inode->i_nlink == 0) {
+-		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
+-				   dentry->d_name.len, dentry->d_name.name);
+-		set_nlink(inode, 1);
+-	}
+ 	retval = ext4_delete_entry(handle, dir, de, bh);
+ 	if (retval)
+ 		goto end_unlink;
+ 	dir->i_ctime = dir->i_mtime = current_time(dir);
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+-	drop_nlink(inode);
++	if (inode->i_nlink == 0)
++		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
++				   dentry->d_name.len, dentry->d_name.name);
++	else
++		drop_nlink(inode);
+ 	if (!inode->i_nlink)
+ 		ext4_orphan_add(handle, inode);
+ 	inode->i_ctime = current_time(inode);
+-- 
+2.20.1
 
