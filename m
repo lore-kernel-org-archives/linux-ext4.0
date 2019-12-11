@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC73BC43603
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:35:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F10BC2D0C6
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:36:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C0B422173E
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:35:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 54E3A24671
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Dec 2019 15:36:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1576078545;
-	bh=Tx3kSEwE6ylePXAPDzE2LCN8rgqLVHwCTmUZNQTDgN0=;
+	s=default; t=1576078619;
+	bh=iUfm+CSvQYSiyuvXbNRnzDR1JuvLmY2gOKE/PwlqV18=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=V3uG71Y+B+cO5lQm5K9DnvHmSmvbt6OYTilkroBgO2ZK4t4Eu1imDeRuYaVjK0cUy
-	 nHCoerWpddkMvzf7dRhmWEgAhHJSYjDubdn7gVw804FQh6Or/RyIbDDLopRCajJU4W
-	 se4V3gecRavMqaVIiaUPdlffnc8Br8K7alcGGE8E=
+	b=B+6B78PSnO2wKVAi/G7Z+KWT1jT0Ysz1FS4/pXtFm9AFKAqTqDARYVdSCN7O1NOI5
+	 GsQwtPlaBnixAXwy0BBA8ExtHIttl/lL8oW5KwW9pzGI89SAUywa5po36F0JjwfDq2
+	 pjZB9V/hj+CocYB1rRj9rQYaXGHxjtV4YDmnfx80=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388211AbfLKPfp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Dec 2019 10:35:45 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44912 "EHLO mail.kernel.org"
+        id S2387573AbfLKPgu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Dec 2019 10:36:50 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44828 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733249AbfLKPfo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Dec 2019 10:35:44 -0500
+        id S2388195AbfLKPfm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Dec 2019 10:35:42 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B80B12465B;
-        Wed, 11 Dec 2019 15:35:42 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9885D24679;
+        Wed, 11 Dec 2019 15:35:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1576078543;
-        bh=Tx3kSEwE6ylePXAPDzE2LCN8rgqLVHwCTmUZNQTDgN0=;
+        s=default; t=1576078541;
+        bh=iUfm+CSvQYSiyuvXbNRnzDR1JuvLmY2gOKE/PwlqV18=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=SjedRVlzeQDjOFEM0yBng+kUQiUVswDv6uZ13I1xH6vv9h495R3584wq6ugPx5X+0
-         jqvehDbwwGcMtyoTmrJA9dP5AbYirftfhOqA1iWzAkOrSgY0ZyF6OUvZ3q5s5HXjv0
-         EfBN4EErz3PUw7aV2WMD2V40vqpKtBoV9gEYleWQ=
+        b=Pve4vK+kWzC28pZFeO9CXNcfdgJgFbOPPlNkxi1dRWtNMJhv1b7XW8OfDz9NvgX/O
+         K/9OZWAdRZsr2ojFhvylsA/+edccVZLt3I752VKmUagO9ProHjuEeyjTMPIrlHBgY/
+         RYXwWa29hotXic4vqia3d9SatJDM3pzJnAWLwPvg=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, stable@kernel.org,
-        Andreas Dilger <adilger@dilger.ca>,
+Cc:     yangerkun <yangerkun@huawei.com>, Hulk Robot <hulkci@huawei.com>,
+        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 31/42] ext4: work around deleting a file with i_nlink == 0 safely
-Date:   Wed, 11 Dec 2019 10:34:59 -0500
-Message-Id: <20191211153510.23861-31-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 29/42] ext4: fix a bug in ext4_wait_for_tail_page_commit
+Date:   Wed, 11 Dec 2019 10:34:57 -0500
+Message-Id: <20191211153510.23861-29-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20191211153510.23861-1-sashal@kernel.org>
 References: <20191211153510.23861-1-sashal@kernel.org>
@@ -58,63 +58,122 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+From: yangerkun <yangerkun@huawei.com>
 
-[ Upstream commit c7df4a1ecb8579838ec8c56b2bb6a6716e974f37 ]
+[ Upstream commit 565333a1554d704789e74205989305c811fd9c7a ]
 
-If the file system is corrupted such that a file's i_links_count is
-too small, then it's possible that when unlinking that file, i_nlink
-will already be zero.  Previously we were working around this kind of
-corruption by forcing i_nlink to one; but we were doing this before
-trying to delete the directory entry --- and if the file system is
-corrupted enough that ext4_delete_entry() fails, then we exit with
-i_nlink elevated, and this causes the orphan inode list handling to be
-FUBAR'ed, such that when we unmount the file system, the orphan inode
-list can get corrupted.
+No need to wait for any commit once the page is fully truncated.
+Besides, it may confuse e.g. concurrent ext4_writepage() with the page
+still be dirty (will be cleared by truncate_pagecache() in
+ext4_setattr()) but buffers has been freed; and then trigger a bug
+show as below:
 
-A better way to fix this is to simply skip trying to call drop_nlink()
-if i_nlink is already zero, thus moving the check to the place where
-it makes the most sense.
+[   26.057508] ------------[ cut here ]------------
+[   26.058531] kernel BUG at fs/ext4/inode.c:2134!
+...
+[   26.088130] Call trace:
+[   26.088695]  ext4_writepage+0x914/0xb28
+[   26.089541]  writeout.isra.4+0x1b4/0x2b8
+[   26.090409]  move_to_new_page+0x3b0/0x568
+[   26.091338]  __unmap_and_move+0x648/0x988
+[   26.092241]  unmap_and_move+0x48c/0xbb8
+[   26.093096]  migrate_pages+0x220/0xb28
+[   26.093945]  kernel_mbind+0x828/0xa18
+[   26.094791]  __arm64_sys_mbind+0xc8/0x138
+[   26.095716]  el0_svc_common+0x190/0x490
+[   26.096571]  el0_svc_handler+0x60/0xd0
+[   26.097423]  el0_svc+0x8/0xc
 
-https://bugzilla.kernel.org/show_bug.cgi?id=205433
+Run the procedure (generate by syzkaller) parallel with ext3.
 
-Link: https://lore.kernel.org/r/20191112032903.8828-1-tytso@mit.edu
+void main()
+{
+	int fd, fd1, ret;
+	void *addr;
+	size_t length = 4096;
+	int flags;
+	off_t offset = 0;
+	char *str = "12345";
+
+	fd = open("a", O_RDWR | O_CREAT);
+	assert(fd >= 0);
+
+	/* Truncate to 4k */
+	ret = ftruncate(fd, length);
+	assert(ret == 0);
+
+	/* Journal data mode */
+	flags = 0xc00f;
+	ret = ioctl(fd, _IOW('f', 2, long), &flags);
+	assert(ret == 0);
+
+	/* Truncate to 0 */
+	fd1 = open("a", O_TRUNC | O_NOATIME);
+	assert(fd1 >= 0);
+
+	addr = mmap(NULL, length, PROT_WRITE | PROT_READ,
+					MAP_SHARED, fd, offset);
+	assert(addr != (void *)-1);
+
+	memcpy(addr, str, 5);
+	mbind(addr, length, 0, 0, 0, MPOL_MF_MOVE);
+}
+
+And the bug will be triggered once we seen the below order.
+
+reproduce1                         reproduce2
+
+...                            |   ...
+truncate to 4k                 |
+change to journal data mode    |
+                               |   memcpy(set page dirty)
+truncate to 0:                 |
+ext4_setattr:                  |
+...                            |
+ext4_wait_for_tail_page_commit |
+                               |   mbind(trigger bug)
+truncate_pagecache(clean dirty)|   ...
+...                            |
+
+mbind will call ext4_writepage() since the page still be dirty, and then
+report the bug since the buffers has been free. Fix it by return
+directly once offset equals to 0 which means the page has been fully
+truncated.
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: yangerkun <yangerkun@huawei.com>
+Link: https://lore.kernel.org/r/20190919063508.1045-1-yangerkun@huawei.com
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/namei.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ fs/ext4/inode.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 29dc02758a52b..b8082ca9e3bac 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3078,18 +3078,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a73056e06bdef..00c320e2ba1ee 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5080,11 +5080,15 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
  
--	if (inode->i_nlink == 0) {
--		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
--				   dentry->d_name.len, dentry->d_name.name);
--		set_nlink(inode, 1);
--	}
- 	retval = ext4_delete_entry(handle, dir, de, bh);
- 	if (retval)
- 		goto end_unlink;
- 	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
--	drop_nlink(inode);
-+	if (inode->i_nlink == 0)
-+		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
-+				   dentry->d_name.len, dentry->d_name.name);
-+	else
-+		drop_nlink(inode);
- 	if (!inode->i_nlink)
- 		ext4_orphan_add(handle, inode);
- 	inode->i_ctime = ext4_current_time(inode);
+ 	offset = inode->i_size & (PAGE_SIZE - 1);
+ 	/*
+-	 * All buffers in the last page remain valid? Then there's nothing to
+-	 * do. We do the check mainly to optimize the common PAGE_SIZE ==
+-	 * blocksize case
++	 * If the page is fully truncated, we don't need to wait for any commit
++	 * (and we even should not as __ext4_journalled_invalidatepage() may
++	 * strip all buffers from the page but keep the page dirty which can then
++	 * confuse e.g. concurrent ext4_writepage() seeing dirty page without
++	 * buffers). Also we don't need to wait for any commit if all buffers in
++	 * the page remain valid. This is most beneficial for the common case of
++	 * blocksize == PAGESIZE.
+ 	 */
+-	if (offset > PAGE_SIZE - i_blocksize(inode))
++	if (!offset || offset > (PAGE_SIZE - i_blocksize(inode)))
+ 		return;
+ 	while (1) {
+ 		page = find_lock_page(inode->i_mapping,
 -- 
 2.20.1
 
