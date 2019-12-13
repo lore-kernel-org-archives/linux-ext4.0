@@ -1,69 +1,88 @@
-Return-Path: <SRS0=rXHS=2C=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=cA8i=2D=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C0B1C2D0C9
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Dec 2019 15:17:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A275C43603
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Dec 2019 00:54:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 531BF2467B
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Dec 2019 15:17:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 30AEA206A5
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Dec 2019 00:54:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1576198495;
+	bh=j8D+jY9fdqeL/Py33OYokgdHf7s0IVkY5v+nvBAEJos=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=fZr3GyqnPIPZQI1wjWxqSEmGBBTef6t7rp5Nluqu2OUS3A3NhjJDAkwjHpOLfUqWT
+	 vDn5dVdmmz8JPXXhyEtYP+ZcNcP3nzSqCIM9Mt0qHAUZ4747e4HxKzlnA+hA+V1XN3
+	 U+T7sMeg3qGupShVvgv49+sGvS0YswWNaz4v9wDM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729326AbfLLPRP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 Dec 2019 10:17:15 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52930 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729307AbfLLPRO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Dec 2019 10:17:14 -0500
-Received: from callcc.thunk.org (guestnat-104-132-34-105.corp.google.com [104.132.34.105] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBCFH7aW020326
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 12 Dec 2019 10:17:07 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id F10FC421A4A; Thu, 12 Dec 2019 10:17:06 -0500 (EST)
-Date:   Thu, 12 Dec 2019 10:17:06 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Sasha Levin <sashal@kernel.org>
+        id S1727561AbfLMAyv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 Dec 2019 19:54:51 -0500
+Received: from mail.kernel.org ([198.145.29.99]:34108 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727491AbfLMAyv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 12 Dec 2019 19:54:51 -0500
+Received: from localhost (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5B835205C9;
+        Fri, 13 Dec 2019 00:54:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1576198490;
+        bh=j8D+jY9fdqeL/Py33OYokgdHf7s0IVkY5v+nvBAEJos=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=pufP1U08vwhmlXcMMrITJdIdTAfP7bWtp8132PxG22nlfgLomU0yp8xOL8VGGAD/7
+         SuUmv/98B4MEfBWnSkYUCOBvJRzTocYhdIaAdzVpyxi0wlHbHj4XxhGRcwKDP9FPvK
+         EoEZHwqWh6VnL0J7D8lDo+J6GIdmB/VDUr/66CKg=
+Date:   Thu, 12 Dec 2019 19:54:49 -0500
+From:   Sasha Levin <sashal@kernel.org>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
 Cc:     linux-kernel@vger.kernel.org, stable@vger.kernel.org,
         stable@kernel.org, Andreas Dilger <adilger@dilger.ca>,
         linux-ext4@vger.kernel.org
 Subject: Re: [PATCH AUTOSEL 4.4 27/37] ext4: work around deleting a file with
  i_nlink == 0 safely
-Message-ID: <20191212151706.GA204354@mit.edu>
+Message-ID: <20191213005449.GG12996@sasha-vm>
 References: <20191211153813.24126-1-sashal@kernel.org>
  <20191211153813.24126-27-sashal@kernel.org>
  <20191211161959.GB129186@mit.edu>
  <20191211200454.GF12996@sasha-vm>
+ <20191212151706.GA204354@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Disposition: inline
-In-Reply-To: <20191211200454.GF12996@sasha-vm>
-User-Agent: Mutt/1.12.2 (2019-09-21)
+In-Reply-To: <20191212151706.GA204354@mit.edu>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Dec 11, 2019 at 03:04:54PM -0500, Sasha Levin wrote:
-> > I'm confused; this was explicitly cc'ed to stable@kernel.org, so why
-> > is your AUTOSEL picking this up?  I would have thought this would get
-> > picked up via the normal stable kernel processes.
-> 
-> My mistake, appologies.
+On Thu, Dec 12, 2019 at 10:17:06AM -0500, Theodore Y. Ts'o wrote:
+>On Wed, Dec 11, 2019 at 03:04:54PM -0500, Sasha Levin wrote:
+>> > I'm confused; this was explicitly cc'ed to stable@kernel.org, so why
+>> > is your AUTOSEL picking this up?  I would have thought this would get
+>> > picked up via the normal stable kernel processes.
+>>
+>> My mistake, appologies.
+>
+>No worries; the intent was that it be backported to stable, and I
+>don't really care with path it takes.
+>
+>I just wanted to make sure there wouldn't be confusion if you
+>backported it to stable, and then Greg tried and then got a merge
+>conflict.  (Or worse, if the patch was one of the ones where it can be
+>successfully applied *twice* w/o a patch conflict; I'm not sure if git
+>cherry-pick is smarter than patch in this regard, but I don't think it
+>is?)
 
-No worries; the intent was that it be backported to stable, and I
-don't really care with path it takes.
+This one was just due to me running a bit faster then usual. I generally
+don't filter out stable tagged commits and Greg just gets to them faster
+than me (the delay on AUTOSEL is bigger than stable tagged commits).
 
-I just wanted to make sure there wouldn't be confusion if you
-backported it to stable, and then Greg tried and then got a merge
-conflict.  (Or worse, if the patch was one of the ones where it can be
-successfully applied *twice* w/o a patch conflict; I'm not sure if git
-cherry-pick is smarter than patch in this regard, but I don't think it
-is?)
-
-   	   	      	      	      	    	  - Ted
+-- 
+Thanks,
+Sasha
