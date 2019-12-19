@@ -1,74 +1,151 @@
-Return-Path: <SRS0=yKvS=2U=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=vXfq=2J=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA1E6C2D0C2
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Dec 2019 15:19:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 941C1C43603
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Dec 2019 12:31:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 70540206DB
-	for <linux-ext4@archiver.kernel.org>; Mon, 30 Dec 2019 15:19:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5905F218AC
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Dec 2019 12:31:28 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OAS9I7sT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727540AbfL3PTc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 30 Dec 2019 10:19:32 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48601 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727531AbfL3PTc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Dec 2019 10:19:32 -0500
-Received: from callcc.thunk.org ([173.239.199.158])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBUFJNjL026470
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 30 Dec 2019 10:19:25 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 0A78D420485; Mon, 30 Dec 2019 10:19:22 -0500 (EST)
-Date:   Mon, 30 Dec 2019 10:19:21 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Wang Shilong <wangshilong1991@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, lixi@ddn.com, adilger@dilger.ca,
-        dongyangli@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: Re: [PATCH] e2fsprogs: fix to use inode i_blocks correctly
-Message-ID: <20191230151921.GA125106@mit.edu>
-References: <1577705766-20736-1-git-send-email-wangshilong1991@gmail.com>
+        id S1726696AbfLSMb2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Dec 2019 07:31:28 -0500
+Received: from mail-vk1-f171.google.com ([209.85.221.171]:33509 "EHLO
+        mail-vk1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726668AbfLSMb1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Dec 2019 07:31:27 -0500
+Received: by mail-vk1-f171.google.com with SMTP id i78so1582534vke.0
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Dec 2019 04:31:27 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=kKUQOO8GAOxSyLrOrJIhghBIrcK2BmQyDPGG7pLmQHs=;
+        b=OAS9I7sTnwBYXbjfWHTFStE8NXCpQHW9SDDrf0fRPIIesRzWe+McqoaYSmWDknVmSg
+         v9rVVEn06iZ+2phZXOkdtby9zKoIVMzinMtjVbp5+IdPksZSGVTQtl+41PCPRFCD1Q/e
+         Ew5vrQZCWeCpzbeaxhVo0Bguphn+TFiWjZRxybuMb4iVUBgrcvY0Xvw485ZtEwW44z+V
+         LS44CZEHyv/+TMwga10FhNuurWhIAI6tnXL1wP1NDvigipG9vKatRkztz4Nu21yN4kRt
+         bTaiRVhJVyXzOnWTPzng3IBL7dRBHGhorwyKhEn2l89ayWVD4VgAIU65kgthYJ9si3I0
+         3rPg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=kKUQOO8GAOxSyLrOrJIhghBIrcK2BmQyDPGG7pLmQHs=;
+        b=bG1ZkE6xL/bi/jCcWBDGsRTMDwSycN6GdyO6dSmtQ/fjfw1vhhSJFL3cqX9EVrxgpV
+         6Ji+VIKiPdpCnJUQRa+XUvo8kAiwyhEKE3H8Wxhh2qqYYppBAn+lvdyT/WG5EE1fIevh
+         ZNtfMiU6PH3+GP7TTVfm6GngpODYoas1fzTytKotsBOgUUtqi33vK/B0mJ6W19eOsjOJ
+         VwwShYLKqA5jpnN7eMdDL8UNCtpJeYs7StW2b7nOIfkmSOXVQ4c/9Yj0JEyqZv/YDkkG
+         BzVXChR0ge6YI9qGG95W/Qkw1BxL2njNiSYoHYTM5mxhBaOjMcSdF34QPwcV4CMiwKU3
+         dHuQ==
+X-Gm-Message-State: APjAAAVPiIpiYIuEP70vEfCl8WJkayMkIZceLaNXXcDLKdf+Zh3H6t+u
+        W6SiZr3MMcl8QWc4G8E42gQVebf0bb+nVLo9DYj+OWKDl8s=
+X-Google-Smtp-Source: APXvYqwE3J+VIlQiUo+S68INeDwzs/vo9Zasnn0rCyxg3CpgSOpwbXdqwebiqwdpfLZEsFGtVMQlJxCsZrW0KOu2o0I=
+X-Received: by 2002:a1f:4354:: with SMTP id q81mr5617470vka.31.1576758686211;
+ Thu, 19 Dec 2019 04:31:26 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1577705766-20736-1-git-send-email-wangshilong1991@gmail.com>
+From:   liming wu <wu860403@gmail.com>
+Date:   Thu, 19 Dec 2019 20:31:14 +0800
+Message-ID: <CAPnMXWX7LvMXWTTWf6WHSuOaU7EVVPRz88i-T0h9NBRy6imeKQ@mail.gmail.com>
+Subject: 
+To:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Dec 30, 2019 at 08:36:06PM +0900, Wang Shilong wrote:
-> blocks_from_inode() did not return wrong inode blocks, and
-> ext2fs_inode_i_blocks() is not taking EXT4_HUGE_FILE_FL into account
-> at all, while the some callers deal it correctly, some not. This patch
-> try to unify to handle it in ext2fs_inode_i_blocks() to return.
-> blocks(based on 512 bytes)
+Hi
 
-I don't really want to change the functionality of
-ext2fs_inode_i_blocks().  First of all, it's in a shared library, so
-if there are any binaries which were expecting the old behavior, that
-could get surprising.  Secondly, its name is confusing and so we're
-better off creating a new function ext2fs_get_stat_i_blocks() which
-makes it clear that we function is using units of 512 byte sectors,
-instead of either the file system block size, or the raw i_blocks
-value from the inode.
 
-Two other things about your patch.  First of all, the filefrag command
-in debugfs was intended to print the number of file system blocks, so
-it was correct as written.  Secondly, please note the blkcnt_t is a
-signed type (because the block iterator functions use negative values
-to indicate various kinds of metadata blocks), while blk64_t is an
-unsigned type.  So using blkcnt_t as a temporary value and returning
-it in a function which has a return type of blk64_t will (righly)
-trigger compiler warnings.
+Who can help analyze the following message . Or give me some advice, I
+will appreciate it very much.
 
-Here's the patch I've checked into the maint branch of e2fsprogs to
-address the issue you've identified.
+Dec 17 22:14:42 bdsitdb222 kernel: Buffer I/O error on device dm-7,
+logical block 810449
+Dec 17 22:14:42 bdsitdb222 kernel: lost page write due to I/O error on dm-7
+Dec 17 22:14:48 bdsitdb222 kernel: Buffer I/O error on device dm-7,
+logical block 283536
+Dec 17 22:14:48 bdsitdb222 kernel: lost page write due to I/O error on dm-7
+Dec 17 22:14:48 bdsitdb222 kernel: Buffer I/O error on device dm-7,
+logical block 283537
+Dec 17 22:14:48 bdsitdb222 kernel: lost page write due to I/O error on dm-7
+Dec 17 22:14:48 bdsitdb222 kernel: JBD: Detected IO errors while
+flushing file data on dm-7
+Dec 17 22:15:42 bdsitdb222 kernel: Buffer I/O error on device dm-8,
+logical block 127859
+Dec 17 22:15:42 bdsitdb222 kernel: lost page write due to I/O error on dm-8
+Dec 17 22:15:42 bdsitdb222 kernel: JBD: Detected IO errors while
+flushing file data on dm-8
+Dec 17 22:15:48 bdsitdb222 kernel: Aborting journal on device dm-7.
+Dec 17 22:15:48 bdsitdb222 kernel: EXT3-fs (dm-7): error in
+ext3_new_blocks: Journal has aborted
+Dec 17 22:15:48 bdsitdb222 kernel: EXT3-fs (dm-7): error in
+ext3_reserve_inode_write: Journal has aborted
+Dec 17 22:16:42 bdsitdb222 kernel: Aborting journal on device dm-8.
+Dec 17 22:16:42 bdsitdb222 kernel: EXT3-fs (dm-7): error:
+ext3_journal_start_sb: Detected aborted journal
+Dec 17 22:16:42 bdsitdb222 kernel: EXT3-fs (dm-7): error: remounting
+filesystem read-only
+Dec 17 22:16:48 bdsitdb222 kernel: Buffer I/O error on device dm-7,
+logical block 23527938
+Dec 17 22:16:48 bdsitdb222 kernel: lost page write due to I/O error on dm-7
+Dec 17 22:16:48 bdsitdb222 kernel: Buffer I/O error on device dm-7,
+logical block 0
+Dec 17 22:16:48 bdsitdb222 kernel: lost page write due to I/O error on dm-7
+Dec 17 22:16:48 bdsitdb222 kernel: JBD: I/O error detected when
+updating journal superblock for dm-7.
+Dec 17 22:17:05 bdsitdb222 kernel: EXT3-fs (dm-7): error in
+ext3_orphan_add: Journal has aborted
+Dec 17 22:17:05 bdsitdb222 kernel: __journal_remove_journal_head:
+freeing b_committed_data
 
-					- Ted
+plus info:
+it's KVM
+# uname -a
+Linux bdsitdb222 2.6.32-279.19.1.el6.62.x86_64 #6 SMP Mon Dec 3
+22:54:25 CST 2018 x86_64 x86_64 x86_64 GNU/Linux1
+
+# cat /proc/mounts
+rootfs / rootfs rw 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+devtmpfs /dev devtmpfs
+rw,nosuid,relatime,size=8157352k,nr_inodes=2039338,mode=755 0 0
+devpts /dev/pts devpts rw,relatime,gid=5,mode=620,ptmxmode=000 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev,relatime 0 0
+/dev/mapper/systemvg-rootlv / ext4 rw,relatime,barrier=1,data=ordered 0 0
+/proc/bus/usb /proc/bus/usb usbfs rw,relatime 0 0
+/dev/vda1 /boot ext4 rw,relatime,barrier=1,data=ordered 0 0
+/dev/mapper/systemvg-homelv /home ext4 rw,relatime,barrier=1,data=ordered 0 0
+/dev/mapper/systemvg-optlv /opt ext3
+rw,relatime,errors=continue,barrier=1,data=ordered 0 0
+/dev/mapper/systemvg-tmplv /tmp ext3
+rw,relatime,errors=continue,barrier=1,data=ordered 0 0
+/dev/mapper/systemvg-usrlv /usr ext4 rw,relatime,barrier=1,data=ordered 0 0
+/dev/mapper/systemvg-varlv /var ext4 rw,relatime,barrier=1,data=ordered 0 0
+/dev/mapper/datavg-datalv /mysql/data ext3
+rw,relatime,errors=continue,barrier=1,data=ordered 0 0
+/dev/mapper/datavg-binloglv /mysql/binlog ext3
+rw,relatime,errors=continue,barrier=1,data=ordered 0 0
+none /proc/sys/fs/binfmt_misc binfmt_misc rw,relatime 0 0
+sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
+none /sys/kernel/debug debugfs rw,relatime 0 0
+
+# ll /dev/mapper/
+total 0
+crw-rw---- 1 root root 10, 58 Dec 19 19:21 control
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 datavg-binloglv -> ../dm-3
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 datavg-datalv -> ../dm-2
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-homelv -> ../dm-4
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-optlv -> ../dm-7
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-rootlv -> ../dm-1
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-swaplv -> ../dm-0
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-tmplv -> ../dm-6
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-usrlv -> ../dm-8
+lrwxrwxrwx 1 root root      7 Dec 19 19:21 systemvg-varlv -> ../dm-5
