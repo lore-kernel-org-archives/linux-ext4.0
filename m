@@ -2,78 +2,66 @@ Return-Path: <SRS0=pocG=2M=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BD72C2D0C3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46B8BC2D0D2
 	for <linux-ext4@archiver.kernel.org>; Sun, 22 Dec 2019 02:01:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D94E5206C3
-	for <linux-ext4@archiver.kernel.org>; Sun, 22 Dec 2019 02:01:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 26B39206C3
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 Dec 2019 02:01:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726186AbfLVCBF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Dec 2019 21:01:05 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48635 "EHLO
+        id S1726716AbfLVCBe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Dec 2019 21:01:34 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48698 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726086AbfLVCBF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Dec 2019 21:01:05 -0500
+        with ESMTP id S1726086AbfLVCBe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Dec 2019 21:01:34 -0500
 Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBM1xvSc030406
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBM21Mil030670
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 21 Dec 2019 20:59:57 -0500
+        Sat, 21 Dec 2019 21:01:22 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id DA5AB420822; Sat, 21 Dec 2019 20:59:56 -0500 (EST)
-Date:   Sat, 21 Dec 2019 20:59:56 -0500
+        id 2E027420822; Sat, 21 Dec 2019 21:01:22 -0500 (EST)
+Date:   Sat, 21 Dec 2019 21:01:22 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@kernel.org>, Sage Weil <sage@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-xfs@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Ceph Development <ceph-devel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Chris Mason <clm@fb.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3] fs: Fix page_mkwrite off-by-one errors
-Message-ID: <20191222015956.GA63378@mit.edu>
-References: <20191218130935.32402-1-agruenba@redhat.com>
- <20191218185216.GA7497@magnolia>
- <CAHc6FU7vuiN4iCB3TthLaow+7c41UUS0MYEeiJ5b1iPStT=+sA@mail.gmail.com>
- <20191218192331.GA7473@magnolia>
+To:     Yunfeng Ye <yeyunfeng@huawei.com>
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        "hushiyuan@huawei.com" <hushiyuan@huawei.com>,
+        "linfeilong@huawei.com" <linfeilong@huawei.com>
+Subject: Re: [PATCH v2] ext4: fix Wunused-but-set-variable warning in
+ ext4_add_entry()
+Message-ID: <20191222020122.GB63378@mit.edu>
+References: <cb5eb904-224a-9701-c38f-cb23514b1fff@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20191218192331.GA7473@magnolia>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <cb5eb904-224a-9701-c38f-cb23514b1fff@huawei.com>
 User-Agent: Mutt/1.12.2 (2019-09-21)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Dec 18, 2019 at 11:23:31AM -0800, Darrick J. Wong wrote:
-> *OH*, because we're stuffing the value in ret2, not ret.  Ok, that makes
-> more sense.  Er, I guess I don't mind pushing via iomap tree, but could
-> we get some acks from Ted and any of the ceph maintainers?
+On Tue, Dec 17, 2019 at 10:46:49PM +0800, Yunfeng Ye wrote:
+> Warning is found when compile with "-Wunused-but-set-variable":
+> 
+> fs/ext4/namei.c: In function ‘ext4_add_entry’:
+> fs/ext4/namei.c:2167:23: warning: variable ‘sbi’ set but not used
+> [-Wunused-but-set-variable]
+>   struct ext4_sb_info *sbi;
+>                        ^~~
+> Fix this by moving the variable @sbi under CONFIG_UNICODE.
+> 
+> Signed-off-by: Yunfeng Ye <yeyunfeng@huawei.com>
+> Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+Thanks, applied.
 
-My only nit is the same one Jan raised, which is should
-page_mkwrite_check_truncate() be an inline function?
-
-			      	    - Ted
+					- Ted
