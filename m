@@ -2,111 +2,196 @@ Return-Path: <SRS0=enLx=2N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ECC1BC2D0D3
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Dec 2019 08:21:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 07D17C2D0D4
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Dec 2019 08:52:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B617B206CB
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Dec 2019 08:21:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1577089300;
-	bh=ikpSlqoCM76TUjA3pD9Z0hpXBk9zItSJFElxa1lvb98=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=zECO31Af1MP42/ZJaLB30hgIABQALLrmb7CMsjKzH2k8JxXQcAq1+8didSGKp7gAZ
-	 c4Ij9qg8bGoWpf0Q6krgr0zJT7i8BDrQF2bNDxNW1WoTXHL9iR8QF6ZomPQ7mmiuUp
-	 HcF02+TbjIjFtFKgEt0as8w2SJ3U7B05E88eDUyo=
+	by mail.kernel.org (Postfix) with ESMTP id DDC1B206D3
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Dec 2019 08:52:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726795AbfLWIVN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 23 Dec 2019 03:21:13 -0500
-Received: from mail.kernel.org ([198.145.29.99]:38878 "EHLO mail.kernel.org"
+        id S1725953AbfLWIwq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 Dec 2019 03:52:46 -0500
+Received: from relay.sw.ru ([185.231.240.75]:58934 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726764AbfLWIVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 23 Dec 2019 03:21:12 -0500
-Received: from localhost (36-236-5-169.dynamic-ip.hinet.net [36.236.5.169])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9BD60207FF;
-        Mon, 23 Dec 2019 08:21:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1577089272;
-        bh=ikpSlqoCM76TUjA3pD9Z0hpXBk9zItSJFElxa1lvb98=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oZkepFCOD4sOJfU2XzVn5e0qLiEhofXGJpToN9JRaWa6gztJRCCIzoLSP7JZTcwjG
-         1/2zVUO+rXgNYD9D1cOLB10URUxkuls7yOHA8RVkZDJKtm67hqF2bF5uChx+keeBvG
-         iyEwICwjZLDqvk/wQSwKqyu+NA4yxRiRjyyhW6D4=
-From:   Andy Lutomirski <luto@kernel.org>
-To:     Ted Ts'o <tytso@mit.edu>
-Cc:     LKML <linux-kernel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Kees Cook <keescook@chromium.org>,
-        "Jason A. Donenfeld" <Jason@zx2c4.com>,
-        "Ahmed S. Darwish" <darwish.07@gmail.com>,
-        Lennart Poettering <mzxreary@0pointer.de>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        "Alexander E. Patrakov" <patrakov@gmail.com>,
-        Michael Kerrisk <mtk.manpages@gmail.com>,
-        Willy Tarreau <w@1wt.eu>,
-        Matthew Garrett <mjg59@srcf.ucam.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-man <linux-man@vger.kernel.org>,
-        Stephan Mueller <smueller@chronox.de>,
-        Andy Lutomirski <luto@kernel.org>
-Subject: [PATCH v3 4/8] random: Ignore GRND_RANDOM in getentropy(2)
-Date:   Mon, 23 Dec 2019 00:20:47 -0800
-Message-Id: <705c5a091b63cc5da70c99304bb97e0109be0a26.1577088521.git.luto@kernel.org>
-X-Mailer: git-send-email 2.23.0
-In-Reply-To: <cover.1577088521.git.luto@kernel.org>
-References: <cover.1577088521.git.luto@kernel.org>
+        id S1725901AbfLWIwq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 23 Dec 2019 03:52:46 -0500
+Received: from dhcp-172-16-24-104.sw.ru ([172.16.24.104])
+        by relay.sw.ru with esmtp (Exim 4.92.3)
+        (envelope-from <ktkhai@virtuozzo.com>)
+        id 1ijJR8-00019p-L7; Mon, 23 Dec 2019 11:51:34 +0300
+Subject: Re: [PATCH RFC 1/3] block: Add support for REQ_OP_ASSIGN_RANGE
+ operation
+To:     "Martin K. Petersen" <martin.petersen@oracle.com>
+Cc:     axboe@kernel.dk, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca, ming.lei@redhat.com,
+        osandov@fb.com, jthumshirn@suse.de, minwoo.im.dev@gmail.com,
+        damien.lemoal@wdc.com, andrea.parri@amarulasolutions.com,
+        hare@suse.com, tj@kernel.org, ajay.joshi@wdc.com, sagi@grimberg.me,
+        dsterba@suse.com, chaitanya.kulkarni@wdc.com, bvanassche@acm.org,
+        dhowells@redhat.com, asml.silence@gmail.com
+References: <157599668662.12112.10184894900037871860.stgit@localhost.localdomain>
+ <157599696813.12112.14140818972910110796.stgit@localhost.localdomain>
+ <yq1woatc8zd.fsf@oracle.com>
+ <3f2e341b-dea4-c5d0-8eb0-568b6ad2f17b@virtuozzo.com>
+ <yq1a77oc56s.fsf@oracle.com>
+ <625c9ee4-bedb-ff60-845e-2d440c4f58aa@virtuozzo.com>
+ <yq1pngh7blx.fsf@oracle.com>
+From:   Kirill Tkhai <ktkhai@virtuozzo.com>
+Message-ID: <405b9106-0a97-0821-c41d-58ab8d0e2d09@virtuozzo.com>
+Date:   Mon, 23 Dec 2019 11:51:34 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.9.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <yq1pngh7blx.fsf@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The separate blocking pool is going away.  Start by ignoring
-GRND_RANDOM in getentropy(2).
+On 21.12.2019 21:54, Martin K. Petersen wrote:
+> 
+> Kirill,
+> 
+>> One more thing to discuss. The new REQ_NOZERO flag won't be supported
+>> by many block devices (their number will be even less, than number of
+>> REQ_OP_WRITE_ZEROES supporters). Will this be a good thing, in case of
+>> we will be completing BLKDEV_ZERO_ALLOCATE bios in
+>> __blkdev_issue_write_zeroes() before splitting? I mean introduction of
+>> some flag in struct request_queue::limits.  Completion of them with
+>> -EOPNOTSUPP in block devices drivers looks suboptimal for me.
+> 
+> We already have the NOFALLBACK flag to let the user make that decision.
+> 
+> If that flag is not specified, and I receive an allocate request for a
+> SCSI device that does not support ANCHOR, my expectation would be that I
+> would do a regular write same.
+>
+> If it's a filesystem that is the recipient of the operation and not a
+> SCSI device, how to react would depend on how the filesystem handles
+> unwritten extents, etc.
 
-This should not materially break any API.  Any code that worked
-without this change should work at least as well with this change.
+Ok, this case is clear for me, thanks.
 
-Signed-off-by: Andy Lutomirski <luto@kernel.org>
+But I also worry about NOFALLBACK case. There are possible block devices,
+which support write zeroes, but they can't allocate blocks (block allocation
+are just not appliable for them, say, these are all ordinary hdd).
+
+Let's say, a user called fallocate(), and filesystem allocated range of blocks.
+Then filesystem propagates the range to block device, and calls zeroout:
+
+blkdev_issue_zeroout(bdev, start >> 9, len >> 9,
+		     GFP_NOIO, BLKDEV_ZERO_ALLOCATE|BLKDEV_ZERO_NOFALLBACK);
+
+This case filesystem does not want zeroing blocks, it just wants to send a hint
+to block device. So, in case of block device supports allocation, everything is OK.
+
+But won't it be a good thing to return EOPNOTSUPP right from __blkdev_issue_write_zeroes()
+in case of block device can't allocate blocks (q->limits.write_zeroes_can_allocate
+in the patch below)? Here is just a way to underline block devices, which support
+write zeroes, but allocation of blocks is meant nothing for them (wasting of time).
+
+What do you think about the below?
+
+Thanks
 ---
- drivers/char/random.c       | 3 ---
- include/uapi/linux/random.h | 2 +-
- 2 files changed, 1 insertion(+), 4 deletions(-)
-
-diff --git a/drivers/char/random.c b/drivers/char/random.c
-index 675b8a48e18a..c0a3032b30ca 100644
---- a/drivers/char/random.c
-+++ b/drivers/char/random.c
-@@ -2206,9 +2206,6 @@ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
- 	if (count > INT_MAX)
- 		count = INT_MAX;
+diff --git a/block/blk-lib.c b/block/blk-lib.c
+index 5f2c429d4378..524b47905fd5 100644
+--- a/block/blk-lib.c
++++ b/block/blk-lib.c
+@@ -214,7 +214,7 @@ static int __blkdev_issue_write_zeroes(struct block_device *bdev,
+ 		struct bio **biop, unsigned flags)
+ {
+ 	struct bio *bio = *biop;
+-	unsigned int max_write_zeroes_sectors;
++	unsigned int max_write_zeroes_sectors, req_flags = 0;
+ 	struct request_queue *q = bdev_get_queue(bdev);
  
--	if (flags & GRND_RANDOM)
--		return _random_read(flags & GRND_NONBLOCK, buf, count);
+ 	if (!q)
+@@ -229,13 +229,19 @@ static int __blkdev_issue_write_zeroes(struct block_device *bdev,
+ 	if (max_write_zeroes_sectors == 0)
+ 		return -EOPNOTSUPP;
+ 
++	if (flags & BLKDEV_ZERO_NOUNMAP)
++		req_flags |= REQ_NOUNMAP;
++	if (flags & BLKDEV_ZERO_ALLOCATE) {
++		if (!q->limits.write_zeroes_can_allocate)
++			return -EOPNOTSUPP;
++		req_flags |= REQ_NOZERO|REQ_NOUNMAP;
++	}
++
+ 	while (nr_sects) {
+ 		bio = blk_next_bio(bio, 0, gfp_mask);
+ 		bio->bi_iter.bi_sector = sector;
+ 		bio_set_dev(bio, bdev);
+-		bio->bi_opf = REQ_OP_WRITE_ZEROES;
+-		if (flags & BLKDEV_ZERO_NOUNMAP)
+-			bio->bi_opf |= REQ_NOUNMAP;
++		bio->bi_opf = REQ_OP_WRITE_ZEROES | req_flags;
+ 
+ 		if (nr_sects > max_write_zeroes_sectors) {
+ 			bio->bi_iter.bi_size = max_write_zeroes_sectors << 9;
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 69bf2fb6f7cd..1ffef894b3bd 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -2122,6 +2122,10 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 		error = blkdev_issue_zeroout(bdev, start >> 9, len >> 9,
+ 					     GFP_KERNEL, BLKDEV_ZERO_NOFALLBACK);
+ 		break;
++	case FALLOC_FL_KEEP_SIZE:
++		error = blkdev_issue_zeroout(bdev, start >> 9, len >> 9,
++			GFP_KERNEL, BLKDEV_ZERO_ALLOCATE | BLKDEV_ZERO_NOFALLBACK);
++		break;
+ 	case FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE | FALLOC_FL_NO_HIDE_STALE:
+ 		error = blkdev_issue_discard(bdev, start >> 9, len >> 9,
+ 					     GFP_KERNEL, 0);
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index 70254ae11769..9ed166860099 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -335,7 +335,9 @@ enum req_flag_bits {
+ 
+ 	/* command specific flags for REQ_OP_WRITE_ZEROES: */
+ 	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
 -
- 	if (!(flags & GRND_INSECURE) && !crng_ready()) {
- 		if (flags & GRND_NONBLOCK)
- 			return -EAGAIN;
-diff --git a/include/uapi/linux/random.h b/include/uapi/linux/random.h
-index c092d20088d3..dcc1b3e6106f 100644
---- a/include/uapi/linux/random.h
-+++ b/include/uapi/linux/random.h
-@@ -48,7 +48,7 @@ struct rand_pool_info {
-  * Flags for getrandom(2)
-  *
-  * GRND_NONBLOCK	Don't block and return EAGAIN instead
-- * GRND_RANDOM		Use the /dev/random pool instead of /dev/urandom
-+ * GRND_RANDOM		No effect
-  * GRND_INSECURE	Return non-cryptographic random bytes
-  */
- #define GRND_NONBLOCK	0x0001
--- 
-2.23.0
-
++	__REQ_NOZERO,		/* only notify about allocated blocks,
++				 * and do not actual zero them
++				 */
+ 	__REQ_HIPRI,
+ 
+ 	/* for driver use */
+@@ -362,6 +364,7 @@ enum req_flag_bits {
+ #define REQ_CGROUP_PUNT		(1ULL << __REQ_CGROUP_PUNT)
+ 
+ #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
++#define REQ_NOZERO		(1ULL << __REQ_NOZERO)
+ #define REQ_HIPRI		(1ULL << __REQ_HIPRI)
+ 
+ #define REQ_DRV			(1ULL << __REQ_DRV)
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index c45779f00cbd..9e3cd3394dd6 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -347,6 +347,7 @@ struct queue_limits {
+ 	unsigned char		misaligned;
+ 	unsigned char		discard_misaligned;
+ 	unsigned char		raid_partial_stripes_expensive;
++	bool			write_zeroes_can_allocate;
+ 	enum blk_zoned_model	zoned;
+ };
+ 
+@@ -1219,6 +1220,7 @@ extern int __blkdev_issue_discard(struct block_device *bdev, sector_t sector,
+ 
+ #define BLKDEV_ZERO_NOUNMAP	(1 << 0)  /* do not free blocks */
+ #define BLKDEV_ZERO_NOFALLBACK	(1 << 1)  /* don't write explicit zeroes */
++#define BLKDEV_ZERO_ALLOCATE	(1 << 2)  /* allocate range of blocks */
+ 
+ extern int __blkdev_issue_zeroout(struct block_device *bdev, sector_t sector,
+ 		sector_t nr_sects, gfp_t gfp_mask, struct bio **biop,
