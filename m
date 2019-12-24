@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1FAEC2D0D0
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C51DC2D0D2
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C9BD820643
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D854B20643
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EtqCN9FW"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JdR2YH8C"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726214AbfLXIOx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Dec 2019 03:14:53 -0500
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:36266 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726102AbfLXIOx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:14:53 -0500
-Received: by mail-pf1-f193.google.com with SMTP id x184so10426094pfb.3
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2019 00:14:52 -0800 (PST)
+        id S1726225AbfLXIOy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Dec 2019 03:14:54 -0500
+Received: from mail-pj1-f65.google.com ([209.85.216.65]:38578 "EHLO
+        mail-pj1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726102AbfLXIOy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:14:54 -0500
+Received: by mail-pj1-f65.google.com with SMTP id l35so906821pje.3
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2019 00:14:53 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=mDN+O68OdAR7Z2ZIT49tFx0BJkPb3zPXIY6VJ9uOlmQ=;
-        b=EtqCN9FW7wQL5IXFx4aJnhaZ0pT4a6MRrMp0aGwF3w7L+Rh/0qAbQozBFGZvdtrbX2
-         7EjK5AqlTMjbLo/Blh70FS07a+Yd6HL1E6FTrXznGbQdeAvvN/QpKLD80uJMcMy0qZbc
-         Z1IjET8Q+wDDZnYbcRkU1dxzWHSz9x6C5+blwGwT/A6vIUeOzYH14S09c3EMYqOL82xv
-         0MX1tzmynMUg3gYtnHZeafg6EF8eVPeTN6QuJ87jx7av6/hhTifsrZUtGdvzeM87lnCt
-         0h83J+SzMVu9eO7fgmdiBHyTn6jp8rAjGpeu6RVYD5ocYiY4ZuQRyo1vp8cFbPUMwCCI
-         m58A==
+        bh=X9csGTNAHv6x1ujpkNH8MiOLun9GEqbAzUqp0S6Fnps=;
+        b=JdR2YH8CaNA2jqUJwbAISr3zzsOS/ayYD07RAv6P/xLtnNl2CiPC4o2Bvoqli4YI9S
+         8dYHkX6SLRu0qhlMIEHzH8ib/cjdxorD3qB+fjfd4QiA1oIKxr/OIUbrIZFklysfM+Wa
+         t53ApnCfzFplzv7QqpLfqIYi5hKwHs67wdBxRHDWsnrvXsFHFBqVuRsiSHxVJULYRmBL
+         d3hZCdOs9787w2AYWrJalJGiOAGSAt7Ec2nrlh5TE9wC7rDEjzJWV9jGoEnfN54eG8SA
+         H1WND9vbnrDEarKgd3ux76YxtFj8vZKwqxnPWLmpY15UF1ZUwXy3/gnzVMwVuFuQFi3O
+         n9Ig==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=mDN+O68OdAR7Z2ZIT49tFx0BJkPb3zPXIY6VJ9uOlmQ=;
-        b=oUumOmV98aV6T16Bh2k/JdVEFOEobXOzvOcUpI7YDf9fehYTr4OBulWCDaY3NvI6g3
-         LTWVD0dZtH5+zJt0w7Y+//613qBmLm149HOiDtkgLGTSnj/D0dpYR6MitzvsjJbYrCFt
-         ll7E6PV0kmLfROWueB3971eAJFdInTXtSefwzziiCWkG0ZQ/rmXn7ucn5BkiXE5J1qkH
-         k0HASZEUAiVKH/2td52VYag8p8Uk1qLVl9ylPrN+v7WktP8/gFX+ZiKoXXTkaRdTVmwF
-         DX/4Dr8NgsNOBMjfVq7BSL2yczh/veFeFGNmwvKUzeiNZ4+V6mky2rkZcMXGUJewRuSR
-         f98Q==
-X-Gm-Message-State: APjAAAUQC0KLlvL56jbj71rsFACYaFIlo3Gl1y/t0q80zI2DGN2qX5CI
-        WZ1Qxehrs+BgI+a8GOpVuS2ulia2
-X-Google-Smtp-Source: APXvYqwzy5yHQpTQP+mMRixr+EdE40LW05rpDwEVDrTyPPNCmCi5EuYh3m2JSq6LT3bCV3sB92a5Dg==
-X-Received: by 2002:a62:14c4:: with SMTP id 187mr35051787pfu.96.1577175291670;
-        Tue, 24 Dec 2019 00:14:51 -0800 (PST)
+        bh=X9csGTNAHv6x1ujpkNH8MiOLun9GEqbAzUqp0S6Fnps=;
+        b=eHTl9s5NpHuEdV3OxK5CYk/RCeivzuy6GH0MqLJB8HhBISh6GtvYJ95pHMn6WKu8zZ
+         LljXnyZ0DSudZ6N7cYl/FCVETCvHObvRpWP8IDc7wSygxvGz7QNujf6RXLVL26DOVLYu
+         Dnuybs3FXzRHm66CazVz80Jbo2yVaHj3beiEV2s27KFE2bpcBFiQgrL3J39+aaCgq67j
+         JNntS9IvL4J1Wu0lJgwPyAkf9xMQinZbX2w40B3lLKhBHVkMoSuVy36AxGH+P/4NFibU
+         cT6osK7VYMrUatZmwisZkoalK9ay9YLMuOf4llBsYQxI/sWuQi3W0X+WTsJRhcdU7HTt
+         mjJw==
+X-Gm-Message-State: APjAAAVLxeFqWR8rZs9wCB/80kXBekqsWzAVtYkiHj2jbQwvbZMQ9YJc
+        d2Ng2VvaQNcRsCyb6fR+zpA4PkE+
+X-Google-Smtp-Source: APXvYqxELk/DTYXsEdON6pAaAAMOKT3r0acIGucuOwBqKE0MQDv7jb+KDE1LPK+/tbHxiFBKuqvhgA==
+X-Received: by 2002:a17:90a:a4c4:: with SMTP id l4mr4398084pjw.48.1577175292969;
+        Tue, 24 Dec 2019 00:14:52 -0800 (PST)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id f8sm27370781pfn.2.2019.12.24.00.14.51
+        by smtp.googlemail.com with ESMTPSA id f8sm27370781pfn.2.2019.12.24.00.14.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Dec 2019 00:14:51 -0800 (PST)
+        Tue, 24 Dec 2019 00:14:52 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v4 02/20] ext4: add handling for extended mount options
-Date:   Tue, 24 Dec 2019 00:13:06 -0800
-Message-Id: <20191224081324.95807-2-harshadshirwadkar@gmail.com>
+Subject: [PATCH v4 04/20] jbd2: add fast commit block tracker variables
+Date:   Tue, 24 Dec 2019 00:13:08 -0800
+Message-Id: <20191224081324.95807-4-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.24.1.735.g03f4e72817-goog
 In-Reply-To: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
 References: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
@@ -71,96 +71,112 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We are running out of mount option bits. Add handling for using
-s_mount_opt2. Add ability to turn on / off the fast commit
-feature and to turn on / off fast commit soft consistency option.
+Add j_first_fc, j_last_fc and j_fc_offset variables to track fast commit
+area. j_first_fc and j_last_fc mark the start and the end of the area,
+while j_fc_offset points to the last used block in the region.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/ext4.h  |  7 +++++++
- fs/ext4/super.c | 23 +++++++++++++++++++----
- 2 files changed, 26 insertions(+), 4 deletions(-)
+ fs/jbd2/journal.c    | 33 ++++++++++++++++++++++++++++-----
+ include/linux/jbd2.h | 24 ++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 03db3e71676c..9339eb6bf9b0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1170,6 +1170,13 @@ struct ext4_inode_info {
- #define EXT4_MOUNT2_EXPLICIT_JOURNAL_CHECKSUM	0x00000008 /* User explicitly
- 						specified journal checksum */
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index fa22bdb7d952..32f14be5065a 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1163,6 +1163,11 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	if (!journal->j_wbuf)
+ 		goto err_cleanup;
  
-+#define EXT4_MOUNT2_JOURNAL_FAST_COMMIT	0x00000010 /* Journal fast commit */
++	if (journal->j_fc_wbufsize > 0) {
++		journal->j_wbufsize = n - journal->j_fc_wbufsize;
++		journal->j_fc_wbuf = &journal->j_wbuf[journal->j_wbufsize];
++	}
 +
-+#define EXT4_MOUNT2_JOURNAL_FC_SOFT_CONSISTENCY	0x00000020 /* Soft consistency
-+							    * mode for fast
-+							    * commits
-+							    */
-+
- #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
- 						~EXT4_MOUNT_##opt
- #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dd654e53ba3d..d635040f21b9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1459,6 +1459,7 @@ enum {
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
- 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
-+	Opt_no_fc, Opt_fc_soft_consistency
- };
- 
- static const match_table_t tokens = {
-@@ -1541,6 +1542,8 @@ static const match_table_t tokens = {
- 	{Opt_init_itable, "init_itable=%u"},
- 	{Opt_init_itable, "init_itable"},
- 	{Opt_noinit_itable, "noinit_itable"},
-+	{Opt_no_fc, "no_fc"},
-+	{Opt_fc_soft_consistency, "fc_soft_consistency"},
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
- 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
- 	{Opt_nombcache, "nombcache"},
-@@ -1663,6 +1666,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
- #define MOPT_NO_EXT3	0x0200
- #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
- #define MOPT_STRING	0x0400
-+#define MOPT_2		0x0800
- 
- static const struct mount_opts {
- 	int	token;
-@@ -1755,6 +1759,10 @@ static const struct mount_opts {
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
- 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
- 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
-+	{Opt_no_fc, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
-+	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
-+	{Opt_fc_soft_consistency, EXT4_MOUNT2_JOURNAL_FC_SOFT_CONSISTENCY,
-+	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -2038,10 +2046,17 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			WARN_ON(1);
- 			return -1;
- 		}
--		if (arg != 0)
--			sbi->s_mount_opt |= m->mount_opt;
--		else
--			sbi->s_mount_opt &= ~m->mount_opt;
-+		if (m->flags & MOPT_2) {
-+			if (arg != 0)
-+				sbi->s_mount_opt2 |= m->mount_opt;
-+			else
-+				sbi->s_mount_opt2 &= ~m->mount_opt;
-+		} else {
-+			if (arg != 0)
-+				sbi->s_mount_opt |= m->mount_opt;
-+			else
-+				sbi->s_mount_opt &= ~m->mount_opt;
-+		}
+ 	bh = getblk_unmovable(journal->j_dev, start, journal->j_blocksize);
+ 	if (!bh) {
+ 		pr_err("%s: Cannot get buffer for journal superblock\n",
+@@ -1303,11 +1308,20 @@ static int journal_reset(journal_t *journal)
  	}
- 	return 1;
+ 
+ 	journal->j_first = first;
+-	journal->j_last = last;
+ 
+-	journal->j_head = first;
+-	journal->j_tail = first;
+-	journal->j_free = last - first;
++	if (jbd2_has_feature_fast_commit(journal) &&
++	    journal->j_fc_wbufsize > 0) {
++		journal->j_last_fc = last;
++		journal->j_last = last - journal->j_fc_wbufsize;
++		journal->j_first_fc = journal->j_last + 1;
++		journal->j_fc_off = 0;
++	} else {
++		journal->j_last = last;
++	}
++
++	journal->j_head = journal->j_first;
++	journal->j_tail = journal->j_first;
++	journal->j_free = journal->j_last - journal->j_first;
+ 
+ 	journal->j_tail_sequence = journal->j_transaction_sequence;
+ 	journal->j_commit_sequence = journal->j_transaction_sequence - 1;
+@@ -1632,9 +1646,18 @@ static int load_superblock(journal_t *journal)
+ 	journal->j_tail_sequence = be32_to_cpu(sb->s_sequence);
+ 	journal->j_tail = be32_to_cpu(sb->s_start);
+ 	journal->j_first = be32_to_cpu(sb->s_first);
+-	journal->j_last = be32_to_cpu(sb->s_maxlen);
+ 	journal->j_errno = be32_to_cpu(sb->s_errno);
+ 
++	if (jbd2_has_feature_fast_commit(journal) &&
++	    journal->j_fc_wbufsize > 0) {
++		journal->j_last_fc = be32_to_cpu(sb->s_maxlen);
++		journal->j_last = journal->j_last_fc - journal->j_fc_wbufsize;
++		journal->j_first_fc = journal->j_last + 1;
++		journal->j_fc_off = 0;
++	} else {
++		journal->j_last = be32_to_cpu(sb->s_maxlen);
++	}
++
+ 	return 0;
  }
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 3495fe1e2c36..7139626992f3 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -918,6 +918,30 @@ struct journal_s
+ 	 */
+ 	unsigned long		j_last;
+ 
++	/**
++	 * @j_first_fc:
++	 *
++	 * The block number of the first fast commit block in the journal
++	 * [j_state_lock].
++	 */
++	unsigned long		j_first_fc;
++
++	/**
++	 * @j_fc_off:
++	 *
++	 * Number of fast commit blocks currently allocated.
++	 * [j_state_lock].
++	 */
++	unsigned long		j_fc_off;
++
++	/**
++	 * @j_last_fc:
++	 *
++	 * The block number one beyond the last fast commit block in the journal
++	 * [j_state_lock].
++	 */
++	unsigned long		j_last_fc;
++
+ 	/**
+ 	 * @j_dev: Device where we store the journal.
+ 	 */
 -- 
 2.24.1.735.g03f4e72817-goog
 
