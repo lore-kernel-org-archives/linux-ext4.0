@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A3DD7C2D0CF
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 370A4C2D0D0
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:15:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6C66B20643
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0039120643
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:14:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dyi476oN"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WBAKoyBl"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726256AbfLXIO6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Dec 2019 03:14:58 -0500
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:34905 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726246AbfLXIO5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:14:57 -0500
-Received: by mail-pl1-f195.google.com with SMTP id g6so8204318plt.2
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2019 00:14:57 -0800 (PST)
+        id S1726261AbfLXIO7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Dec 2019 03:14:59 -0500
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:43767 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726043AbfLXIO4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:14:56 -0500
+Received: by mail-pf1-f194.google.com with SMTP id x6so9328426pfo.10
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2019 00:14:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=/PsSttgmW58rnVxkCA05Y27TJ9yPqaOCT9anx0+KH6E=;
-        b=dyi476oNCYEI1u76ZF+oagbfWPIWlAlxwhQM06w0YPyvcR875D+Kkyw2F2tYzcB9q4
-         /bG470QVm9yl2VflvPik+8j44BdBTOCwlBvyFE9/8n3XgCA+a41uKoynsvg44v8g0BFJ
-         Kqie3xqBgCuLZU/oT6gKq55qrx4lxRSpYpvP8L9V3Cvn37VwG2rT20ITLpKWJoGwdvS6
-         uEas8vv1hqLjSZO/yr4IrOcHJnYP/l4tT30yIMkhSy83YfkSaAUdRdfY1XzqgG+hY2VN
-         LTqVJViy2yuGiCIV0pFryhxQOoTCpxZlDiQ5OJOv3HLMXj92RAH3jSc0ZpncNgj+bdMY
-         c+qg==
+        bh=Yf9LFCAT24bPO568JcviO/5A6ILpwNe6xdRQ8Y15agI=;
+        b=WBAKoyBl4c0NS5KXPHGDwfsUgXGpVL4BrOraDxgED6KcE1aaW31lyAK7S4xsAAQJPO
+         6d2qPY6VolK6EgPdh7YLOoa0InBA6VEr3tZdCI6Ro0Xcp013K7baPRcKJEeQVJUA3bJP
+         MDCuwaOi+ahHIG6s9dztr4puT1SpGNyJomcjl+s9DAYrVpUv1kneMviPMPLEpIHl+pfh
+         Dt3dCSEujV7y0ro5vHT4isRKEovlJoCCgdi36cRZE6nQC8O3jCbG8K2iPjmgdBV+QQCG
+         cbkNMz/qLiYy9VIKyKBri7C5oLgTDbSN/Pl/4BmReY7P5kzcy9orE8bB6Hiugkvlz8fC
+         1ohQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=/PsSttgmW58rnVxkCA05Y27TJ9yPqaOCT9anx0+KH6E=;
-        b=QKH4ByoYEYxBHQ3aCFeDilR7yHROYpLUGvM/7N3OS15wTZE+gU3orPlaqPttlBmXk/
-         hw4C3unHBTonyc5EVIOEaDkt+YFU+GTzGllr95c02KdljMOm/JujJN/HgQ8A1AU9Uaob
-         AwatLB4Kj1xtKhpmH+pVYjhbZc6X0C918Gd6CRB7Fe7lHPlDhck5m0bAxaZ9xkdAy8Pi
-         qxAG/wThlHVNVi8LnwuRSNIKLPS76ok7scJ8AWbMO6Ggih30T3Fj1gjQASZcqnyWa03S
-         09aFTSbhnM4yDihTnszZG1rTWjUWki3NfaSyEqXa4DujMUYnRhxcbusK0wyjT1krIR1q
-         V9CQ==
-X-Gm-Message-State: APjAAAWK90MDMDRJRmfq3D5s4gQfS4DTEWYMjwc1LIcnqd++Lb8wPRQV
-        x0XVD6L3f7iA0t76H5j7eTxjzCHc
-X-Google-Smtp-Source: APXvYqwexemOmRwefR/GJi/3AE8nV+nKIsD0x1YgPXJa0J1QunnZ8HtO802y0xNJi24E5XUHIcDtUg==
-X-Received: by 2002:a17:90a:d0c1:: with SMTP id y1mr4266701pjw.126.1577175296435;
-        Tue, 24 Dec 2019 00:14:56 -0800 (PST)
+        bh=Yf9LFCAT24bPO568JcviO/5A6ILpwNe6xdRQ8Y15agI=;
+        b=RBIwU5I4cX/pttLXPNfeDu387uKZsW9ozWkuGZImfWwTuxfNPChBhXfPlJNlyVzYqU
+         dTX03UhcGysULntOeuBGj2O/REYt6UCdxaJ2q9iLjGSdz3c0Rs4mZaVk+l9pq1C5ILrP
+         3PYupWe7lGDna0NKg5QVuCRCpkc+9o+XhfoYm63NhncrxsM9L5Im8XdEMOZkmuFtKKf1
+         iUBY6qBFoaPRQwO7VMa68h+XQw4RKMUSmEIy2EIdmIM2qoNtczkfWQw/quSYhO01Im4K
+         9CiUjJfNsy8fmnjKiln4IEmzWOhtT04fUUFfn5h4lajxiR1KcPJ2LUhHjweHxOBLKV33
+         kSRg==
+X-Gm-Message-State: APjAAAWvydzRm05ML/ekEFfXKmGAzibT9Yy4oB+ioph22GvMED3UMJdL
+        5pF0yhMFHBFJg77md2GRFXLjK3bM
+X-Google-Smtp-Source: APXvYqwIFWRzJf9Lc0FUjVWlYvYPSfsdOfnW8Gg2RdvoLN8WVnZmmb9K7oiab55H3mOKfsEMzENPmg==
+X-Received: by 2002:a62:cdcb:: with SMTP id o194mr36020861pfg.117.1577175294685;
+        Tue, 24 Dec 2019 00:14:54 -0800 (PST)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id f8sm27370781pfn.2.2019.12.24.00.14.55
+        by smtp.googlemail.com with ESMTPSA id f8sm27370781pfn.2.2019.12.24.00.14.54
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Dec 2019 00:14:56 -0800 (PST)
+        Tue, 24 Dec 2019 00:14:54 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v4 10/20] ext4: break ext4_unlink() and ext4_link()
-Date:   Tue, 24 Dec 2019 00:13:14 -0800
-Message-Id: <20191224081324.95807-10-harshadshirwadkar@gmail.com>
+Subject: [PATCH v4 07/20] ext4: add generic diff tracking routines and range tracking
+Date:   Tue, 24 Dec 2019 00:13:11 -0800
+Message-Id: <20191224081324.95807-7-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.24.1.735.g03f4e72817-goog
 In-Reply-To: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
 References: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
@@ -71,228 +71,342 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Break ext4_link() and ext4_unlink() each into 2 parts in order to make
-them usable in recovery path as well.
+In fast commits, we need to track changes that have been made to the
+file system since last full commit. Add generic diff tracking
+infrastructure. We use those helpers to track logical block ranges
+that have been affected for inodes. The diff tracking helpers are used
+in following patches to track directory entry updates as well.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/ext4.h  |   4 ++
- fs/ext4/namei.c | 138 +++++++++++++++++++++++++++++-------------------
- 2 files changed, 87 insertions(+), 55 deletions(-)
+ fs/ext4/ext4.h              |  33 ++++++++++
+ fs/ext4/ext4_jbd2.c         | 121 ++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4_jbd2.h         |   3 +
+ fs/ext4/inode.c             |  18 ++++++
+ fs/ext4/super.c             |   5 ++
+ include/trace/events/ext4.h |  27 ++++++++
+ 6 files changed, 207 insertions(+)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b4c32f02071f..cc3a1489eae4 100644
+index 16ffe6ed9e74..5c40fa4b593c 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -3262,6 +3262,10 @@ extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
- extern int ext4_ci_compare(const struct inode *parent,
- 			   const struct qstr *fname,
- 			   const struct qstr *entry, bool quick);
-+extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
-+			 struct inode *inode);
-+extern int __ext4_link(struct inode *dir, struct inode *inode,
-+		       struct dentry *dentry);
+@@ -979,6 +979,32 @@ struct ext4_inode_info {
  
- #define S_SHIFT 12
- static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a427d2031a8d..a405564ae02f 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3137,39 +3137,36 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	return retval;
- }
+ 	struct list_head i_orphan;	/* unlinked but open inodes */
  
--static int ext4_unlink(struct inode *dir, struct dentry *dentry)
-+int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
-+		  struct inode *inode)
- {
--	int retval;
--	struct inode *inode;
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
- 	handle_t *handle = NULL;
-+	int retval = -ENOENT;
-+	int skip_remove_dentry = 0;
- 
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
--		return -EIO;
--
--	trace_ext4_unlink_enter(dir, dentry);
--	/* Initialize quotas before so that eventual writes go
--	 * in separate transaction */
--	retval = dquot_initialize(dir);
--	if (retval)
--		return retval;
--	retval = dquot_initialize(d_inode(dentry));
--	if (retval)
--		return retval;
--
--	retval = -ENOENT;
--	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
-+	bh = ext4_find_entry(dir, d_name, &de, NULL);
- 	if (IS_ERR(bh))
- 		return PTR_ERR(bh);
--	if (!bh)
--		goto end_unlink;
- 
--	inode = d_inode(dentry);
-+	if (!bh) {
-+		retval = -ENOENT;
-+		goto end_unlink;
-+	}
- 
- 	retval = -EFSCORRUPTED;
--	if (le32_to_cpu(de->inode) != inode->i_ino)
--		goto end_unlink;
-+	if (le32_to_cpu(de->inode) != inode->i_ino) {
-+		/*
-+		 * It's okay if we find dont find dentry which matches
-+		 * the inode. That's because it might have gotten
-+		 * renamed to a different inode number
-+		 */
-+		if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+			skip_remove_dentry = 1;
-+		else
-+			goto end_unlink;
-+	}
- 
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
- 				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
-@@ -3184,21 +3181,52 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 
- 	if (inode->i_nlink == 0) {
- 		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
--				   dentry->d_name.len, dentry->d_name.name);
-+				   d_name->len, d_name->name);
- 		set_nlink(inode, 1);
- 	}
--	retval = ext4_delete_entry(handle, dir, de, bh);
--	if (retval)
--		goto end_unlink;
--	dir->i_ctime = dir->i_mtime = current_time(dir);
--	ext4_update_dx_flag(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	if (!skip_remove_dentry) {
-+		retval = ext4_delete_entry(handle, dir, de, bh);
-+		if (retval)
-+			goto end_unlink;
-+		dir->i_ctime = dir->i_mtime = current_time(dir);
-+		ext4_update_dx_flag(dir);
-+		ext4_mark_inode_dirty(handle, dir);
-+	} else {
-+		retval = 0;
-+	}
- 	drop_nlink(inode);
- 	if (!inode->i_nlink)
- 		ext4_orphan_add(handle, inode);
- 	inode->i_ctime = current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
-+end_unlink:
-+	brelse(bh);
-+	if (handle)
-+		ext4_journal_stop(handle);
-+	return retval;
-+}
-+
-+static int ext4_unlink(struct inode *dir, struct dentry *dentry)
-+{
-+	int retval;
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
-+		return -EIO;
-+
-+	trace_ext4_unlink_enter(dir, dentry);
++	struct list_head i_fc_list;	/*
++					 * inodes that need fast commit
++					 * protected by sbi->s_fc_lock.
++					 */
 +	/*
-+	 * Initialize quotas before so that eventual writes go
-+	 * in separate transaction
++	 * TID of when this struct was last updated. If fc_tid !=
++	 * running transaction tid, then none of the other fields in this
++	 * struct are valid. Don't directly modify fields in this struct.
++	 * Use wrappers provided in ext4_jbd2.c.
 +	 */
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
-+	retval = dquot_initialize(d_inode(dentry));
-+	if (retval)
-+		return retval;
++	tid_t i_fc_tid;
 +
-+	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry));
- #ifdef CONFIG_UNICODE
- 	/* VFS negative dentries are incompatible with Encoding and
- 	 * Case-insensitiveness. Eventually we'll want avoid
-@@ -3209,11 +3237,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (IS_CASEFOLDED(dir))
- 		d_invalidate(dentry);
- #endif
--
--end_unlink:
--	brelse(bh);
--	if (handle)
--		ext4_journal_stop(handle);
- 	trace_ext4_unlink_exit(dentry, retval);
- 	return retval;
- }
-@@ -3348,29 +3371,10 @@ static int ext4_symlink(struct inode *dir,
- 	return err;
- }
- 
--static int ext4_link(struct dentry *old_dentry,
--		     struct inode *dir, struct dentry *dentry)
-+int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
- {
- 	handle_t *handle;
--	struct inode *inode = d_inode(old_dentry);
- 	int err, retries = 0;
--
--	if (inode->i_nlink >= EXT4_LINK_MAX)
--		return -EMLINK;
--
--	err = fscrypt_prepare_link(old_dentry, dir, dentry);
--	if (err)
--		return err;
--
--	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
--	    (!projid_eq(EXT4_I(dir)->i_projid,
--			EXT4_I(old_dentry->d_inode)->i_projid)))
--		return -EXDEV;
--
--	err = dquot_initialize(dir);
--	if (err)
--		return err;
--
- retry:
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
- 		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-@@ -3404,6 +3408,30 @@ static int ext4_link(struct dentry *old_dentry,
- 	return err;
- }
- 
-+static int ext4_link(struct dentry *old_dentry,
-+		     struct inode *dir, struct dentry *dentry)
-+{
-+	struct inode *inode = d_inode(old_dentry);
-+	int err;
++	/*
++	 * Start of logical block range that needs to be committed in
++	 * this fast commit.
++	 */
++	ext4_lblk_t i_fc_lblk_start;
 +
-+	if (inode->i_nlink >= EXT4_LINK_MAX)
-+		return -EMLINK;
++	/*
++	 * End of logical block range that needs to be committed in this fast
++	 * commit
++	 */
++	ext4_lblk_t i_fc_lblk_end;
 +
-+	err = fscrypt_prepare_link(old_dentry, dir, dentry);
-+	if (err)
-+		return err;
++	rwlock_t i_fc_lock;
 +
-+	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
-+	    (!projid_eq(EXT4_I(dir)->i_projid,
-+			EXT4_I(old_dentry->d_inode)->i_projid)))
-+		return -EXDEV;
-+
-+	err = dquot_initialize(dir);
-+	if (err)
-+		return err;
-+	return __ext4_link(dir, inode, dentry);
-+}
-+
+ 	/*
+ 	 * i_disksize keeps track of what the inode size is ON DISK, not
+ 	 * in memory.  During truncate, i_size is set to the new size by
+@@ -1100,6 +1126,7 @@ struct ext4_inode_info {
+ #define	EXT4_VALID_FS			0x0001	/* Unmounted cleanly */
+ #define	EXT4_ERROR_FS			0x0002	/* Errors detected */
+ #define	EXT4_ORPHAN_FS			0x0004	/* Orphans being recovered */
++#define EXT4_FC_REPLAY			0x0008	/* Fast commit replay ongoing */
  
  /*
-  * Try to find buffer head where contains the parent block.
+  * Misc. filesystem flags
+@@ -1558,6 +1585,12 @@ struct ext4_sb_info {
+ 	/* Barrier between changing inodes' journal flags and writepages ops. */
+ 	struct percpu_rw_semaphore s_journal_flag_rwsem;
+ 	struct dax_device *s_daxdev;
++
++	/* Ext4 fast commit stuff */
++	struct list_head s_fc_q;	/* Inodes staged for fast commit
++					 * that have data changes in them.
++					 */
++	spinlock_t s_fc_lock;
+ };
+ 
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index c2ae21f5049b..0907b1b91301 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -330,6 +330,127 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
+ 		mark_buffer_dirty(bh);
+ 	return err;
+ }
++
++static inline
++void ext4_reset_inode_fc_info(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++
++	ei->i_fc_tid = 0;
++	ei->i_fc_lblk_start = 0;
++	ei->i_fc_lblk_end = 0;
++}
++
++void ext4_init_inode_fc_info(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++
++	ext4_reset_inode_fc_info(inode);
++	INIT_LIST_HEAD(&ei->i_fc_list);
++}
++
++static void ext4_fc_enqueue_inode(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++
++	if (!ext4_should_fast_commit(inode->i_sb) ||
++	    (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY))
++		return;
++
++	spin_lock(&sbi->s_fc_lock);
++	if (list_empty(&EXT4_I(inode)->i_fc_list))
++		list_add_tail(&EXT4_I(inode)->i_fc_list, &sbi->s_fc_q);
++	spin_unlock(&sbi->s_fc_lock);
++}
++
++static inline tid_t get_running_txn_tid(struct super_block *sb)
++{
++	if (EXT4_SB(sb)->s_journal)
++		return EXT4_SB(sb)->s_journal->j_commit_sequence + 1;
++	return 0;
++}
++
++/*
++ * Generic fast commit tracking function. If this is the first
++ * time this we are called after a full commit, we initialize
++ * fast commit fields and then call __fc_track_fn() with
++ * update = 0. If we have already been called after a full commit,
++ * we pass update = 1. Based on that, the track function can
++ * determine if it needs to track a field for the first time
++ * or if it needs to just update the previously tracked value.
++ */
++static int __ext4_fc_track_template(
++	struct inode *inode,
++	int (*__fc_track_fn)(struct inode *, void *, bool),
++	void *args)
++{
++	tid_t running_txn_tid = get_running_txn_tid(inode->i_sb);
++	bool update = false;
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	int ret;
++
++	if (!ext4_should_fast_commit(inode->i_sb) ||
++	    (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY))
++		return -EOPNOTSUPP;
++
++	write_lock(&ei->i_fc_lock);
++	if (running_txn_tid == ei->i_fc_tid) {
++		update = true;
++	} else {
++		ext4_reset_inode_fc_info(inode);
++		ei->i_fc_tid = running_txn_tid;
++	}
++	ret = __fc_track_fn(inode, args, update);
++	write_unlock(&ei->i_fc_lock);
++
++	ext4_fc_enqueue_inode(inode);
++
++	return ret;
++}
++struct __ext4_fc_track_range_args {
++	ext4_lblk_t start, end;
++};
++
++#define MIN(__a, __b)  ((__a) < (__b) ? (__a) : (__b))
++#define MAX(__a, __b)  ((__a) > (__b) ? (__a) : (__b))
++
++int __ext4_fc_track_range(struct inode *inode, void *arg, bool update)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct __ext4_fc_track_range_args *__arg =
++		(struct __ext4_fc_track_range_args *)arg;
++
++	if (inode->i_ino < EXT4_FIRST_INO(inode->i_sb)) {
++		ext4_debug("Special inode %ld being modified\n", inode->i_ino);
++		return -ECANCELED;
++	}
++
++	if (update) {
++		ei->i_fc_lblk_start = MIN(ei->i_fc_lblk_start, __arg->start);
++		ei->i_fc_lblk_end = MAX(ei->i_fc_lblk_end, __arg->end);
++	} else {
++		ei->i_fc_lblk_start = __arg->start;
++		ei->i_fc_lblk_end = __arg->end;
++	}
++
++	return 0;
++}
++
++void ext4_fc_track_range(struct inode *inode, ext4_lblk_t start,
++			 ext4_lblk_t end)
++{
++	struct __ext4_fc_track_range_args args;
++	int ret;
++
++	args.start = start;
++	args.end = end;
++
++	ret = __ext4_fc_track_template(inode,
++					__ext4_fc_track_range, &args);
++
++	trace_ext4_fc_track_range(inode, start, end, ret);
++}
++
+ void ext4_init_fast_commit(struct super_block *sb, journal_t *journal)
+ {
+ 	if (!ext4_should_fast_commit(sb))
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index e5bd95a088e8..d7eca4b9a935 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -472,4 +472,7 @@ static inline int ext4_should_dioread_nolock(struct inode *inode)
+ 
+ #define EXT4_NUM_FC_BLKS		128
+ void ext4_init_fast_commit(struct super_block *sb, journal_t *journal);
++void ext4_init_inode_fc_info(struct inode *inode);
++void ext4_fc_track_range(struct inode *inode, ext4_lblk_t start,
++			 ext4_lblk_t end);
+ #endif	/* _EXT4_JBD2_H */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 516faa280ced..07c8da778368 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -744,6 +744,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			if (ret)
+ 				return ret;
+ 		}
++		ext4_fc_track_range(inode, map->m_lblk,
++			    map->m_lblk + map->m_len - 1);
+ 	}
+ 	return retval;
+ }
+@@ -4368,6 +4370,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 	}
++	ext4_fc_track_range(inode, first_block, stop_block);
+ 	if (IS_SYNC(inode))
+ 		ext4_handle_sync(handle);
+ 
+@@ -4965,6 +4968,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	for (block = 0; block < EXT4_N_BLOCKS; block++)
+ 		ei->i_data[block] = raw_inode->i_block[block];
+ 	INIT_LIST_HEAD(&ei->i_orphan);
++	ext4_init_inode_fc_info(&ei->vfs_inode);
+ 
+ 	/*
+ 	 * Set transaction id's of transactions that have to be committed
+@@ -5628,6 +5632,20 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 				inode->i_mtime = current_time(inode);
+ 				inode->i_ctime = inode->i_mtime;
+ 			}
++
++			if (shrink)
++				ext4_fc_track_range(
++					inode, attr->ia_size >>
++					inode->i_sb->s_blocksize_bits,
++					oldsize >>
++					inode->i_sb->s_blocksize_bits);
++			else
++				ext4_fc_track_range(
++					inode, oldsize >>
++					inode->i_sb->s_blocksize_bits,
++					attr->ia_size >>
++					inode->i_sb->s_blocksize_bits);
++
+ 			down_write(&EXT4_I(inode)->i_data_sem);
+ 			EXT4_I(inode)->i_disksize = attr->ia_size;
+ 			rc = ext4_mark_inode_dirty(handle, inode);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 28675cd78813..2f922ef522a3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1100,6 +1100,8 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_datasync_tid = 0;
+ 	atomic_set(&ei->i_unwritten, 0);
+ 	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
++	ext4_init_inode_fc_info(&ei->vfs_inode);
++	rwlock_init(&ei->i_fc_lock);
+ 	return &ei->vfs_inode;
+ }
+ 
+@@ -1142,6 +1144,7 @@ static void init_once(void *foo)
+ 	init_rwsem(&ei->i_data_sem);
+ 	init_rwsem(&ei->i_mmap_sem);
+ 	inode_init_once(&ei->vfs_inode);
++	ext4_init_inode_fc_info(&ei->vfs_inode);
+ }
+ 
+ static int __init init_inodecache(void)
+@@ -4330,6 +4333,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
+ 	mutex_init(&sbi->s_orphan_lock);
+ 
++	INIT_LIST_HEAD(&sbi->s_fc_q);
++	spin_lock_init(&sbi->s_fc_lock);
+ 	sb->s_root = NULL;
+ 
+ 	needs_recovery = (es->s_last_orphan != 0 ||
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index d68e9e536814..0f6d43dfd4b2 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2703,6 +2703,33 @@ TRACE_EVENT(ext4_error,
+ 		  __entry->function, __entry->line)
+ );
+ 
++TRACE_EVENT(ext4_fc_track_range,
++	    TP_PROTO(struct inode *inode, long start, long end, int ret),
++
++	    TP_ARGS(inode, start, end, ret),
++
++	    TP_STRUCT__entry(
++		    __field(dev_t, dev)
++		    __field(int, ino)
++		    __field(long, start)
++		    __field(long, end)
++		    __field(int, error)
++		    ),
++
++	    TP_fast_assign(
++		    __entry->dev = inode->i_sb->s_dev;
++		    __entry->ino = inode->i_ino;
++		    __entry->start = start;
++		    __entry->end = end;
++		    __entry->error = ret;
++		    ),
++
++	    TP_printk("dev %d:%d, inode %d, error %d, start %ld, end %ld",
++		      MAJOR(__entry->dev), MINOR(__entry->dev),
++		      __entry->ino, __entry->error, __entry->start,
++		      __entry->end)
++	);
++
+ #endif /* _TRACE_EXT4_H */
+ 
+ /* This part must be outside protection */
 -- 
 2.24.1.735.g03f4e72817-goog
 
