@@ -2,416 +2,412 @@ Return-Path: <SRS0=0Tuz=2O=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DCF4EC2D0D0
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:15:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 726D1C2D0CF
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:47:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA68E20643
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:15:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3FE05206CB
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Dec 2019 08:47:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p9T4t+FC"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="DeqtcONB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726316AbfLXIPG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Dec 2019 03:15:06 -0500
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:37881 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726250AbfLXIPD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:15:03 -0500
-Received: by mail-pg1-f193.google.com with SMTP id q127so10072355pga.4
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Dec 2019 00:15:03 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=lpd1rPArrPeJjFaR96JDERSrJC9w4eH0xTCNUoNrxqU=;
-        b=p9T4t+FCpTN5RpFL/dvzVWENDeoXp+kr32bhHfExuqKVgovvHAmAYNuvpefGA3j4pp
-         xG+Kp5P6JFEo62dyKOYjIxZF6tCPMvtrKVqf3lm3zX7yfeH9rScnhRIG1MrJicvvwLxq
-         dA3FUmov+cGRF7UJ6jUM8mSev5vyPCFoXNBHLzcbwTnYX7Xoiz0jIjCAk8Vd/4Y8+D4a
-         YIOB2IjyWU+5EYSt0T0UmZUwWZtbRIja0qtrp0+59VSFys1s1FZvjV8TyCU3mOOlf9Wz
-         /tz1epA0sbZKkLUij75KMoQV7YbnXxsGROvSlv/d5PqriDs79LY8Y9JvhA612EPtaETJ
-         qquA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=lpd1rPArrPeJjFaR96JDERSrJC9w4eH0xTCNUoNrxqU=;
-        b=jbqBPjfWa+0a67my0pRbZ3ur0sjgeBTWBWjB19UocrUUL0evXCHBGo8UYtrFhUkNiG
-         BHctoHtS+TDPkP/73/+INrhiSU3GPMB4F+DS3eQA2V5ifUitmkh7a2O2nVQlJUiFh9S3
-         TGFt4exKguMHGaYnJyC524v4+CtJjgBNXmYRP90NsLmLt8815nLjk19RgvuII3husBVj
-         fM9ghfYStI79j8irUELTe6YIgRmVinmECpyJGyVEQ4d7lqC2/HP+OtAHXtBSa5/xmF+U
-         GpJxi3opOjkrPIL/EQF35YbLVSZoWjJBH79oXBb96giqjkdI2bRqbqbm2RmTb+sHxJCG
-         n/sQ==
-X-Gm-Message-State: APjAAAWob/W+VATMOXL/LzGJN6n1kFbO+6pZQsclTHFA67UhhSSnTRWj
-        Jh43IMaLOjyTSgeO6BkQkahFEDBp
-X-Google-Smtp-Source: APXvYqyflGgJ7oEJrA/5xJc8Syow7zzPSxHnmVZOzIlmhy2tS9/LTXL1FzUyNfENsgRUNerubiLdkw==
-X-Received: by 2002:a65:49ca:: with SMTP id t10mr36841866pgs.37.1577175302262;
-        Tue, 24 Dec 2019 00:15:02 -0800 (PST)
-Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id f8sm27370781pfn.2.2019.12.24.00.15.01
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Dec 2019 00:15:01 -0800 (PST)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v4 18/20] ext4: disable certain features in replay path
-Date:   Tue, 24 Dec 2019 00:13:22 -0800
-Message-Id: <20191224081324.95807-18-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.24.1.735.g03f4e72817-goog
-In-Reply-To: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
-References: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
+        id S1726269AbfLXIrq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Dec 2019 03:47:46 -0500
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:29012 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726116AbfLXIrq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Dec 2019 03:47:46 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1577177264;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=iflnEm7Yp/P8yB12ttAXL4P04Hlt53ZkR2k/OPYPFag=;
+        b=DeqtcONBcqYhXb+IuD/CehJiz/xj0M4A0rJpWCeLjNF2HzRRhVI3A/oSmxk2Tv3f1hI8Cb
+        QZ928bkYXhYStJWSI5/NmQJlp6N0ynE3XcVuL6653rLsl0ibUK4u6bG1BW3tkpJWRxiWMf
+        vfulBwRjRENIPlFaMsfjcXKLEWcPShE=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-320-qGLdTM8XO3eOclpoJ8X7Lg-1; Tue, 24 Dec 2019 03:47:41 -0500
+X-MC-Unique: qGLdTM8XO3eOclpoJ8X7Lg-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B05A4911E8;
+        Tue, 24 Dec 2019 08:47:38 +0000 (UTC)
+Received: from ming.t460p (ovpn-8-31.pek2.redhat.com [10.72.8.31])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 40E2E1036D00;
+        Tue, 24 Dec 2019 08:47:26 +0000 (UTC)
+Date:   Tue, 24 Dec 2019 16:47:21 +0800
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Andrea Vai <andrea.vai@unipv.it>
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "Schmid, Carsten" <Carsten_Schmid@mentor.com>,
+        Finn Thain <fthain@telegraphics.com.au>,
+        Damien Le Moal <Damien.LeMoal@wdc.com>,
+        Alan Stern <stern@rowland.harvard.edu>,
+        Jens Axboe <axboe@kernel.dk>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        USB list <linux-usb@vger.kernel.org>,
+        SCSI development list <linux-scsi@vger.kernel.org>,
+        Himanshu Madhani <himanshu.madhani@cavium.com>,
+        Hannes Reinecke <hare@suse.com>,
+        Omar Sandoval <osandov@fb.com>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Hans Holmberg <Hans.Holmberg@wdc.com>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: AW: Slow I/O on USB media after commit
+ f664a3cc17b7d0a2bc3b3ab96181e1029b0ec0e6
+Message-ID: <20191224084721.GA27248@ming.t460p>
+References: <20191211040058.GC6864@ming.t460p>
+ <20191211160745.GA129186@mit.edu>
+ <20191211213316.GA14983@ming.t460p>
+ <f38db337cf26390f7c7488a0bc2076633737775b.camel@unipv.it>
+ <20191218094830.GB30602@ming.t460p>
+ <b1b6a0e9d690ecd9432025acd2db4ac09f834040.camel@unipv.it>
+ <20191223130828.GA25948@ming.t460p>
+ <fc6f73fc5f57ade8890b472d63c7f0bd559de538.camel@unipv.it>
+ <20191224013237.GB13083@ming.t460p>
+ <28e0ca9257a834c04221d083e7024a0155744835.camel@unipv.it>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <28e0ca9257a834c04221d083e7024a0155744835.camel@unipv.it>
+User-Agent: Mutt/1.12.1 (2019-06-15)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Replay path uses similar code paths for replaying committed changes.
-But since it runs before full initialization of the file system and
-also since we don't have to be super careful about performance, we
-can and need to disable certain file system features during the replay
-path. More specifically, we disable most of the extent status tree
-stuff, mballoc and some places where we mark file system with errors.
+On Tue, Dec 24, 2019 at 09:04:10AM +0100, Andrea Vai wrote:
+> Il giorno mar, 24/12/2019 alle 09.32 +0800, Ming Lei ha scritto:
+> > On Mon, Dec 23, 2019 at 03:02:35PM +0100, Andrea Vai wrote:
+> > > Il giorno lun, 23/12/2019 alle 21.08 +0800, Ming Lei ha scritto:
+> > > > On Mon, Dec 23, 2019 at 12:22:45PM +0100, Andrea Vai wrote:
+> > > > > Il giorno mer, 18/12/2019 alle 17.48 +0800, Ming Lei ha
+> > scritto:
+> > > > > > On Wed, Dec 18, 2019 at 09:25:02AM +0100, Andrea Vai wrote:
+> > > > > > > Il giorno gio, 12/12/2019 alle 05.33 +0800, Ming Lei ha
+> > > > scritto:
+> > > > > > > > On Wed, Dec 11, 2019 at 11:07:45AM -0500, Theodore Y.
+> > Ts'o
+> > > > > > wrote:
+> > > > > > > > > On Wed, Dec 11, 2019 at 12:00:58PM +0800, Ming Lei
+> > wrote:
+> > > > > > > > > > I didn't reproduce the issue in my test environment,
+> > and
+> > > > > > follows
+> > > > > > > > > > Andrea's test commands[1]:
+> > > > > > > > > > 
+> > > > > > > > > >   mount UUID=$uuid /mnt/pendrive 2>&1 |tee -a
+> > $logfile
+> > > > > > > > > >   SECONDS=0
+> > > > > > > > > >   cp $testfile /mnt/pendrive 2>&1 |tee -a $logfile
+> > > > > > > > > >   umount /mnt/pendrive 2>&1 |tee -a $logfile
+> > > > > > > > > > 
+> > > > > > > > > > The 'cp' command supposes to open/close the file
+> > just
+> > > > once,
+> > > > > > > > however
+> > > > > > > > > > ext4_release_file() & write pages is observed to run
+> > for
+> > > > > > 4358
+> > > > > > > > times
+> > > > > > > > > > when executing the above 'cp' test.
+> > > > > > > > > 
+> > > > > > > > > Why are we sure the ext4_release_file() / _fput() is
+> > > > coming
+> > > > > > from
+> > > > > > > > the
+> > > > > > > > > cp command, as opposed to something else that might be
+> > > > running
+> > > > > > on
+> > > > > > > > the
+> > > > > > > > > system under test?  _fput() is called by the kernel
+> > when
+> > > > the
+> > > > > > last
+> > > > > > > > 
+> > > > > > > > Please see the log:
+> > > > > > > > 
+> > > > > > > > 
+> > > > > > 
+> > > > 
+> > https://lore.kernel.org/linux-scsi/3af3666920e7d46f8f0c6d88612f143ffabc743c.camel@unipv.it/2-log_ming.zip
+> > > > > > > > 
+> > > > > > > > Which is collected by:
+> > > > > > > > 
+> > > > > > > > #!/bin/sh
+> > > > > > > > MAJ=$1
+> > > > > > > > MIN=$2
+> > > > > > > > MAJ=$(( $MAJ << 20 ))
+> > > > > > > > DEV=$(( $MAJ | $MIN ))
+> > > > > > > > 
+> > > > > > > > /usr/share/bcc/tools/trace -t -C \
+> > > > > > > >     't:block:block_rq_issue (args->dev == '$DEV') "%s %d
+> > > > %d",
+> > > > > > args-
+> > > > > > > > >rwbs, args->sector, args->nr_sector' \
+> > > > > > > >     't:block:block_rq_insert (args->dev == '$DEV') "%s
+> > %d
+> > > > %d",
+> > > > > > args-
+> > > > > > > > >rwbs, args->sector, args->nr_sector'
+> > > > > > > > 
+> > > > > > > > $MAJ:$MIN points to the USB storage disk.
+> > > > > > > > 
+> > > > > > > > From the above IO trace, there are two write paths, one
+> > is
+> > > > from
+> > > > > > cp,
+> > > > > > > > another is from writeback wq.
+> > > > > > > > 
+> > > > > > > > The stackcount trace[1] is consistent with the IO trace
+> > log
+> > > > > > since it
+> > > > > > > > only shows two IO paths, that is why I concluded that
+> > the
+> > > > write
+> > > > > > done
+> > > > > > > > via
+> > > > > > > > ext4_release_file() is from 'cp'.
+> > > > > > > > 
+> > > > > > > > [1] 
+> > > > > > > > 
+> > > > > > 
+> > > > 
+> > https://lore.kernel.org/linux-scsi/320b315b9c87543d4fb919ecbdf841596c8fbcea.camel@unipv.it/2-log_ming_20191129_150609.zip
+> > > > > > > > 
+> > > > > > > > > reference to a struct file is
+> > released.  (Specifically, if
+> > > > you
+> > > > > > > > have a
+> > > > > > > > > fd which is dup'ed, it's only when the last fd
+> > > > corresponding
+> > > > > > to
+> > > > > > > > the
+> > > > > > > > > struct file is closed, and the struct file is about to
+> > be
+> > > > > > > > released,
+> > > > > > > > > does the file system's f_ops->release function get
+> > > > called.)
+> > > > > > > > > 
+> > > > > > > > > So the first question I'd ask is whether there is
+> > anything
+> > > > > > else
+> > > > > > > > going
+> > > > > > > > > on the system, and whether the writes are happening to
+> > the
+> > > > USB
+> > > > > > > > thumb
+> > > > > > > > > drive, or to some other storage device.  And if there
+> > is
+> > > > > > something
+> > > > > > > > > else which is writing to the pendrive, maybe that's
+> > why no
+> > > > one
+> > > > > > > > else
+> > > > > > > > > has been able to reproduce the OP's complaint....
+> > > > > > > > 
+> > > > > > > > OK, we can ask Andrea to confirm that via the following
+> > > > trace,
+> > > > > > which
+> > > > > > > > will add pid/comm info in the stack trace:
+> > > > > > > > 
+> > > > > > > > /usr/share/bcc/tools/stackcount
+> > > > blk_mq_sched_request_inserted
+> > > > > > > > 
+> > > > > > > > Andrew, could you collect the above log again when
+> > running
+> > > > > > new/bad
+> > > > > > > > kernel for confirming if the write done by
+> > > > ext4_release_file()
+> > > > > > is
+> > > > > > > > from
+> > > > > > > > the 'cp' process?
+> > > > > > > 
+> > > > > > > You can find the stackcount log attached. It has been
+> > produced
+> > > > by:
+> > > > > > > 
+> > > > > > > - /usr/share/bcc/tools/stackcount
+> > > > blk_mq_sched_request_inserted >
+> > > > > > trace.log
+> > > > > > > - wait some seconds
+> > > > > > > - run the test (1 copy trial), wait for the test to
+> > finish,
+> > > > wait
+> > > > > > some seconds
+> > > > > > > - stop the trace (ctrl+C)
+> > > > > > 
+> > > > > > Thanks for collecting the log, looks your 'stackcount'
+> > doesn't
+> > > > > > include
+> > > > > > comm/pid info, seems there is difference between your bcc
+> > and
+> > > > > > my bcc in fedora 30.
+> > > > > > 
+> > > > > > Could you collect above log again via the following command?
+> > > > > > 
+> > > > > > /usr/share/bcc/tools/stackcount -P -K
+> > t:block:block_rq_insert
+> > > > > > 
+> > > > > > which will show the comm/pid info.
+> > > > > 
+> > > > > ok, attached (trace_20191219.txt), the test (1 trial) took
+> > 3684
+> > > > > seconds.
+> > > > 
+> > > > From the above trace:
+> > > > 
+> > > >   b'blk_mq_sched_request_inserted'
+> > > >   b'blk_mq_sched_request_inserted'
+> > > >   b'dd_insert_requests'
+> > > >   b'blk_mq_sched_insert_requests'
+> > > >   b'blk_mq_flush_plug_list'
+> > > >   b'blk_flush_plug_list'
+> > > >   b'io_schedule_prepare'
+> > > >   b'io_schedule'
+> > > >   b'rq_qos_wait'
+> > > >   b'wbt_wait'
+> > > >   b'__rq_qos_throttle'
+> > > >   b'blk_mq_make_request'
+> > > >   b'generic_make_request'
+> > > >   b'submit_bio'
+> > > >   b'ext4_io_submit'
+> > > >   b'ext4_writepages'
+> > > >   b'do_writepages'
+> > > >   b'__filemap_fdatawrite_range'
+> > > >   b'ext4_release_file'
+> > > >   b'__fput'
+> > > >   b'task_work_run'
+> > > >   b'exit_to_usermode_loop'
+> > > >   b'do_syscall_64'
+> > > >   b'entry_SYSCALL_64_after_hwframe'
+> > > >     b'cp' [19863]
+> > > >     4400
+> > > > 
+> > > > So this write is clearly from 'cp' process, and it should be one
+> > > > ext4 fs issue.
+> > > > 
+> > > > Ted, can you take a look at this issue?
+> > > > 
+> > > > > 
+> > > > > > > I also tried the usual test with btrfs and xfs. Btrfs
+> > behavior
+> > > > > > looks
+> > > > > > > "good". xfs seems sometimes better, sometimes worse, I
+> > would
+> > > > say.
+> > > > > > I
+> > > > > > > don't know if it matters, anyway you can also find the
+> > results
+> > > > of
+> > > > > > the
+> > > > > > > two tests (100 trials each). Basically, btrfs is always
+> > > > between 68
+> > > > > > and
+> > > > > > > 89 seconds, with a cyclicity (?) with "period=2 trials".
+> > xfs
+> > > > looks
+> > > > > > > almost always very good (63-65s), but sometimes "bad"
+> > (>300s).
+> > > > > > 
+> > > > > > If you are interested in digging into this one, the
+> > following
+> > > > trace
+> > > > > > should be helpful:
+> > > > > > 
+> > > > > > 
+> > > > 
+> > https://lore.kernel.org/linux-scsi/f38db337cf26390f7c7488a0bc2076633737775b.camel@unipv.it/T/#m5aa008626e07913172ad40e1eb8e5f2ffd560fc6
+> > > > > > 
+> > > > > 
+> > > > > Attached:
+> > > > > - trace_xfs_20191223.txt (7 trials, then aborted while doing
+> > the
+> > > > 8th),
+> > > > > times to complete:
+> > > > > 64s
+> > > > > 63s
+> > > > > 64s
+> > > > > 833s
+> > > > > 1105s
+> > > > > 63s
+> > > > > 64s
+> > > > 
+> > > > oops, looks we have to collect io insert trace with the
+> > following
+> > > > bcc script
+> > > > on xfs for confirming if there is similar issue with ext4, could
+> > you
+> > > > run
+> > > > it again on xfs? And only post the trace done in case of slow
+> > 'cp'.
+> > > > 
+> > > > 
+> > > > #!/bin/sh
+> > > > 
+> > > > MAJ=$1
+> > > > MIN=$2
+> > > > MAJ=$(( $MAJ << 20 ))
+> > > > DEV=$(( $MAJ | $MIN ))
+> > > > 
+> > > > /usr/share/bcc/tools/trace -t -C \
+> > > >     't:block:block_rq_issue (args->dev == '$DEV') "%s %d %d",
+> > args-
+> > > > >rwbs, args->sector, args->nr_sector' \
+> > > >     't:block:block_rq_insert (args->dev == '$DEV') "%s %d %d",
+> > args-
+> > > > >rwbs, args->sector, args->nr_sector'
+> > > > 
+> > > > 
+> > > here it is (1 trial, 313 seconds to finish)
+> > 
+> > The above log shows similar issue with ext4 since there is another
+> > writeback IO path from 'cp' process. And the following trace can
+> > show if
+> > it is same with ext4's issue:
+> > 
+> > /usr/share/bcc/tools/stackcount -P -K t:block:block_rq_insert
+> 
+> sorry, also here please tell me which conditions should I use to run
+> the test (ext4 or xfs? slow run or not important?)
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- fs/ext4/balloc.c         |  7 +++++-
- fs/ext4/ext4_jbd2.c      |  2 +-
- fs/ext4/extents_status.c | 24 +++++++++++++++++++
- fs/ext4/ialloc.c         | 52 +++++++++++++++++++++++++++-------------
- fs/ext4/inode.c          | 15 ++++++++----
- fs/ext4/mballoc.c        | 22 +++++++++++------
- 6 files changed, 92 insertions(+), 30 deletions(-)
+Maybe not needed.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 14787065d030..2cf39a6b9f7a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -360,7 +360,12 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
- 				      struct buffer_head *bh)
- {
- 	ext4_fsblk_t	blk;
--	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
-+	struct ext4_group_info *grp;
-+
-+	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
-+	grp = ext4_get_group_info(sb, block_group);
- 
- 	if (buffer_verified(bh))
- 		return 0;
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index f371f1f0f914..7c6cdbc63aa6 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -77,7 +77,7 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
- 		return ERR_PTR(err);
- 
- 	journal = EXT4_SB(sb)->s_journal;
--	if (!journal)
-+	if (!journal || (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))
- 		return ext4_get_nojournal();
- 	return jbd2__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
- 				   type, line);
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index d996b44d2265..69c16ac7416e 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -311,6 +311,9 @@ void ext4_es_find_extent_range(struct inode *inode,
- 			       ext4_lblk_t lblk, ext4_lblk_t end,
- 			       struct extent_status *es)
- {
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return;
-+
- 	trace_ext4_es_find_extent_range_enter(inode, lblk);
- 
- 	read_lock(&EXT4_I(inode)->i_es_lock);
-@@ -361,6 +364,9 @@ bool ext4_es_scan_range(struct inode *inode,
- {
- 	bool ret;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return false;
-+
- 	read_lock(&EXT4_I(inode)->i_es_lock);
- 	ret = __es_scan_range(inode, matching_fn, lblk, end);
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
-@@ -404,6 +410,9 @@ bool ext4_es_scan_clu(struct inode *inode,
- {
- 	bool ret;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return false;
-+
- 	read_lock(&EXT4_I(inode)->i_es_lock);
- 	ret = __es_scan_clu(inode, matching_fn, lblk);
- 	read_unlock(&EXT4_I(inode)->i_es_lock);
-@@ -812,6 +821,9 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
- 	int err = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
- 	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
- 		 lblk, len, pblk, status, inode->i_ino);
- 
-@@ -873,6 +885,9 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
- 	struct extent_status newes;
- 	ext4_lblk_t end = lblk + len - 1;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return;
-+
- 	newes.es_lblk = lblk;
- 	newes.es_len = len;
- 	ext4_es_store_pblock_status(&newes, pblk, status);
-@@ -908,6 +923,9 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
- 	struct rb_node *node;
- 	int found = 0;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
- 	trace_ext4_es_lookup_extent_enter(inode, lblk);
- 	es_debug("lookup extent in block %u\n", lblk);
- 
-@@ -1419,6 +1437,9 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
- 	int err = 0;
- 	int reserved = 0;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
- 	trace_ext4_es_remove_extent(inode, lblk, len);
- 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
- 		 lblk, len, inode->i_ino);
-@@ -1969,6 +1990,9 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
- 	struct extent_status newes;
- 	int err = 0;
- 
-+	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
- 	es_debug("add [%u/1) delayed to extent status tree of inode %lu\n",
- 		 lblk, inode->i_ino);
- 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f1a1432f9ffa..24a2d7171cd4 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -82,7 +82,12 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
- 				      struct buffer_head *bh)
- {
- 	ext4_fsblk_t	blk;
--	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
-+	struct ext4_group_info *grp;
-+
-+	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return 0;
-+
-+	grp = ext4_get_group_info(sb, block_group);
- 
- 	if (buffer_verified(bh))
- 		return 0;
-@@ -287,15 +292,17 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
- 	bitmap_bh = ext4_read_inode_bitmap(sb, block_group);
- 	/* Don't bother if the inode bitmap is corrupt. */
--	grp = ext4_get_group_info(sb, block_group);
- 	if (IS_ERR(bitmap_bh)) {
- 		fatal = PTR_ERR(bitmap_bh);
- 		bitmap_bh = NULL;
- 		goto error_return;
- 	}
--	if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp))) {
--		fatal = -EFSCORRUPTED;
--		goto error_return;
-+	if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
-+		grp = ext4_get_group_info(sb, block_group);
-+		if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp))) {
-+			fatal = -EFSCORRUPTED;
-+			goto error_return;
-+		}
- 	}
- 
- 	BUFFER_TRACE(bitmap_bh, "get_write_access");
-@@ -871,7 +878,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	struct inode *ret;
- 	ext4_group_t i;
- 	ext4_group_t flex_group;
--	struct ext4_group_info *grp;
-+	struct ext4_group_info *grp = NULL;
- 	int encrypt = 0;
- 
- 	/* Cannot create files in a deleted directory */
-@@ -1009,15 +1016,21 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		if (ext4_free_inodes_count(sb, gdp) == 0)
- 			goto next_group;
- 
--		grp = ext4_get_group_info(sb, group);
--		/* Skip groups with already-known suspicious inode tables */
--		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
--			goto next_group;
-+		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
-+			grp = ext4_get_group_info(sb, group);
-+			/*
-+			 * Skip groups with already-known suspicious inode
-+			 * tables
-+			 */
-+			if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
-+				goto next_group;
-+		}
- 
- 		brelse(inode_bitmap_bh);
- 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
- 		/* Skip groups with suspicious inode tables */
--		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) ||
-+		if (((!(sbi->s_mount_state & EXT4_FC_REPLAY))
-+		     && EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) ||
- 		    IS_ERR(inode_bitmap_bh)) {
- 			inode_bitmap_bh = NULL;
- 			goto next_group;
-@@ -1036,7 +1049,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			goto next_group;
- 		}
- 
--		if (!handle) {
-+		if ((!(sbi->s_mount_state & EXT4_FC_REPLAY)) && !handle) {
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
- 							 handle_type, nblocks,
-@@ -1140,9 +1153,15 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	/* Update the relevant bg descriptor fields */
- 	if (ext4_has_group_desc_csum(sb)) {
- 		int free;
--		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
--
--		down_read(&grp->alloc_sem); /* protect vs itable lazyinit */
-+		struct ext4_group_info *grp = NULL;
-+
-+		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
-+			grp = ext4_get_group_info(sb, group);
-+			down_read(&grp->alloc_sem); /*
-+						     * protect vs itable
-+						     * lazyinit
-+						     */
-+		}
- 		ext4_lock_group(sb, group); /* while we modify the bg desc */
- 		free = EXT4_INODES_PER_GROUP(sb) -
- 			ext4_itable_unused_count(sb, gdp);
-@@ -1158,7 +1177,8 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		if (ino > free)
- 			ext4_itable_unused_set(sb, gdp,
- 					(EXT4_INODES_PER_GROUP(sb) - ino));
--		up_read(&grp->alloc_sem);
-+		if (!(sbi->s_mount_state & EXT4_FC_REPLAY))
-+			up_read(&grp->alloc_sem);
- 	} else {
- 		ext4_lock_group(sb, group);
- 	}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e902000dac51..f8090f5ce5e4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -527,7 +527,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 		return -EFSCORRUPTED;
- 
- 	/* Lookup extent status tree firstly */
--	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
-+	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY) &&
-+	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
- 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
- 			map->m_pblk = ext4_es_pblock(&es) +
- 					map->m_lblk - es.es_lblk;
-@@ -969,7 +970,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	int create = map_flags & EXT4_GET_BLOCKS_CREATE;
- 	int err;
- 
--	J_ASSERT(handle != NULL || create == 0);
-+	J_ASSERT((EXT4_SB(inode->i_sb)->s_mount_state | EXT4_FC_REPLAY)
-+		 || handle != NULL || create == 0);
- 
- 	map.m_lblk = block;
- 	map.m_len = 1;
-@@ -985,7 +987,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 		return ERR_PTR(-ENOMEM);
- 	if (map.m_flags & EXT4_MAP_NEW) {
- 		J_ASSERT(create != 0);
--		J_ASSERT(handle != NULL);
-+		J_ASSERT((EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+			 || (handle != NULL));
- 
- 		/*
- 		 * Now that we do not always journal data, we should
-@@ -4896,8 +4899,10 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	}
- 
- 	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
--		ext4_error_inode(inode, function, line, 0,
--				 "iget: checksum invalid");
-+
-+		if (!(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))
-+			ext4_error_inode(inode, function, line, 0,
-+					 "iget: checksum invalid");
- 		ret = -EFSBADCRC;
- 		goto bad_inode;
- 	}
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 05ca9001f8fa..4f2d611e5a75 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1449,14 +1449,17 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 
- 		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
- 		blocknr += EXT4_C2B(sbi, block);
--		ext4_grp_locked_error(sb, e4b->bd_group,
--				      inode ? inode->i_ino : 0,
--				      blocknr,
--				      "freeing already freed block "
--				      "(bit %u); block bitmap corrupt.",
--				      block);
--		ext4_mark_group_bitmap_corrupted(sb, e4b->bd_group,
-+		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
-+			ext4_grp_locked_error(sb, e4b->bd_group,
-+					      inode ? inode->i_ino : 0,
-+					      blocknr,
-+					      "freeing already freed block "
-+					      "(bit %u); block bitmap corrupt.",
-+					      block);
-+			ext4_mark_group_bitmap_corrupted(
-+				sb, e4b->bd_group,
- 				EXT4_GROUP_INFO_BBITMAP_CORRUPT);
-+		}
- 		mb_regenerate_buddy(e4b);
- 		goto done;
- 	}
-@@ -4088,6 +4091,9 @@ void ext4_discard_preallocations(struct inode *inode)
- 		return;
- 	}
- 
-+	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
-+		return;
-+
- 	mb_debug(1, "discard preallocation for inode %lu\n", inode->i_ino);
- 	trace_ext4_discard_preallocations(inode);
- 
-@@ -4561,6 +4567,8 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 	sb = ar->inode->i_sb;
- 	sbi = EXT4_SB(sb);
- 
-+	WARN_ON(sbi->s_mount_state & EXT4_FC_REPLAY);
-+
- 	trace_ext4_request_blocks(ar);
- 
- 	/* Allow to use superuser reservation for quota file */
--- 
-2.24.1.735.g03f4e72817-goog
+After thinking the issue further, looks it is highly related with
+removing ioc_batching and BDI congestion by blk-mq.
+
+When there are two writeback paths, the original block layer(legacy)
+can set 'cp' process which writes pages during close() as 'batching',
+then write pages from writeback wq context is blocked. That said there
+is actually single writeback IO path even though two are writing pages,
+so write order can be maintained, see the following comment in original
+__get_request():
+
+	/*
+	 * The queue will fill after this allocation, so set
+	 * it as full, and mark this process as "batching".
+	 * This process will be allowed to complete a batch of
+	 * requests, others will be blocked.
+	 */
+
+This behavior can be shown in the IO trace done in old kernel with
+legacy block IO path:
+
+https://lore.kernel.org/linux-scsi/f82fd5129e3dcacae703a689be60b20a7fedadf6.camel@unipv.it/2-log_ming_20191128_182751.zip
+
+IMO, we need to figure out one solution in blk-mq to fix this issue
+since HDD. performance might be hurt under this situation.
+
+Thanks,
+Ming
 
