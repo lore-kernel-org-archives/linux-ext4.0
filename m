@@ -5,23 +5,23 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A767FC2D0C8
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Dec 2019 22:50:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7856AC2D0C8
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Dec 2019 22:51:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6F1012073B
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Dec 2019 22:50:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4A8F52073B
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Dec 2019 22:51:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726516AbfLYWuk convert rfc822-to-8bit (ORCPT
+        id S1726878AbfLYWvF convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 25 Dec 2019 17:50:40 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49386 "EHLO mail.kernel.org"
+        Wed, 25 Dec 2019 17:51:05 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49486 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726469AbfLYWuj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 25 Dec 2019 17:50:39 -0500
+        id S1726469AbfLYWvF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 25 Dec 2019 17:51:05 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 205957] Ext4 64 bit hash breaks 32 bit glibc 2.28+
-Date:   Wed, 25 Dec 2019 22:50:38 +0000
+Date:   Wed, 25 Dec 2019 22:51:04 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -37,7 +37,7 @@ X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-205957-13602-Nqm9qWeo72@https.bugzilla.kernel.org/>
+Message-ID: <bug-205957-13602-HhXrT5anm5@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-205957-13602@https.bugzilla.kernel.org/>
 References: <bug-205957-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -52,10 +52,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=205957
 
---- Comment #3 from aladjev.andrew@gmail.com (aladjev.andrew@gmail.com) ---
-Created attachment 286447
-  --> https://bugzilla.kernel.org/attachment.cgi?id=286447&action=edit
-getdents64_x32 kernel patch
+--- Comment #4 from aladjev.andrew@gmail.com (aladjev.andrew@gmail.com) ---
+Created attachment 286449
+  --> https://bugzilla.kernel.org/attachment.cgi?id=286449&action=edit
+getdents64_x32 glibc patch
 
 -- 
 You are receiving this mail because:
