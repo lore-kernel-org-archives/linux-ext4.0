@@ -4,45 +4,46 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D27B7C2D0DA
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:40:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C224C2D0DC
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:41:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A3E1B206A4
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:40:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4849E206CB
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:41:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1577374823;
-	bh=U52JRgNxFt6kzbBceCrmFR55pAOS2KvvO+IkEw+2shY=;
-	h=From:To:Subject:Date:List-ID:From;
-	b=V/hxo5z2ctwmCyedeXTL8Z8bVxP60Pt0nhJFAHJqrYjmhLoQk9vXd/l0gbp+uGtAy
-	 gl2rsHCKn+pcCdICfAiNJyqNt/Qx+/1agkgKR3ZZCkvjk19qX0Id1WERF6IwRP7KWg
-	 LrpQKI5WJ/nwESrQgS5VDaAT23Txcp8/QtMv2nSk=
+	s=default; t=1577374880;
+	bh=k34ID4CM5KwTXBHzWGuBSNb3G/RtrYHSsw5Hl0omWtc=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=rmTlpI09EgAejnMj8Fsz8esnsmSfavf3nvDmxMkSJWv61tve5bTts6vky/9UUsDug
+	 sXCprkb38d6EE6jB1ce8NWaXj3Pubtc52ficfQTsmvf7MYCdj/TREt4j1svZu5cRMS
+	 PWuPPjYV963qzs19WMGlWztyu78YTCOlTibHlSC8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726534AbfLZPkX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Dec 2019 10:40:23 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47830 "EHLO mail.kernel.org"
+        id S1726513AbfLZPlT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Dec 2019 10:41:19 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49012 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726513AbfLZPkX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 26 Dec 2019 10:40:23 -0500
+        id S1726336AbfLZPlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 26 Dec 2019 10:41:19 -0500
 Received: from zzz.tds (h75-100-12-111.burkwi.broadband.dynamic.tds.net [75.100.12.111])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 985F8206A4
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Dec 2019 15:40:22 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id EA472206A4;
+        Thu, 26 Dec 2019 15:41:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1577374822;
-        bh=U52JRgNxFt6kzbBceCrmFR55pAOS2KvvO+IkEw+2shY=;
-        h=From:To:Subject:Date:From;
-        b=JBY2Y1KiPR7Y6mn1cILHY34OqK/gEIyjxPoBz5yCTYYi+xhGjn6KFDNDtwHcGWUzM
-         eOlfjpCZKXk0+I/iybyX40iCbFGPxPgcGuMTVzunCnj7ESOG1KDuU8fXtU+pszKqiV
-         tON0Smg/wwC6Fq2FQ5zkjjtAeqwYtCgkdW67/YNg=
+        s=default; t=1577374879;
+        bh=k34ID4CM5KwTXBHzWGuBSNb3G/RtrYHSsw5Hl0omWtc=;
+        h=From:To:Cc:Subject:Date:From;
+        b=hQSp1mAthg18MOIB9fsbveiTu7kFinMYQ/5WkO0Zv8v5n5unklmOruQFmbXyOTqUx
+         kyjxfGNT8lUHEk7F+FpfgUtiIFJMz6ahcq5HbC8PCmCjqBYI8wLLWgWbxhVGvCPnK4
+         NBbVPjO28prDfdaIdr9pe49NFRkFVNyWtq8+dkEc=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH] docs: ext4.rst: add encryption and verity to features list
-Date:   Thu, 26 Dec 2019 09:40:07 -0600
-Message-Id: <20191226154007.4569-1-ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org
+Subject: [PATCH] ext4: handle decryption error in __ext4_block_zero_page_range()
+Date:   Thu, 26 Dec 2019 09:41:05 -0600
+Message-Id: <20191226154105.4704-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -53,26 +54,40 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Mention encryption and verity in the ext4 features list.
+fscrypt_decrypt_pagecache_blocks() can fail, because it uses
+skcipher_request_alloc(), which uses kmalloc(), which can fail; and also
+because it calls crypto_skcipher_decrypt(), which can fail depending on
+the driver that actually implements the crypto.
+
+Therefore it's not appropriate to WARN on decryption error in
+__ext4_block_zero_page_range().
+
+Remove the WARN and just handle the error instead.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- Documentation/admin-guide/ext4.rst | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
-index 9bc93f0ce0c9..9443fcef1876 100644
---- a/Documentation/admin-guide/ext4.rst
-+++ b/Documentation/admin-guide/ext4.rst
-@@ -92,6 +92,8 @@ Currently Available
- * efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
-   the ordering)
- * Case-insensitive file name lookups
-+* file-based encryption support (fscrypt)
-+* file-based verity support (fsverity)
- 
- [1] Filesystems with a block size of 1k may see a limit imposed by the
- directory hash tree having a maximum depth of two.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 629a25d999f0..b8f8afd2e8b2 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3701,8 +3701,12 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode)) {
+ 			/* We expect the key to be set. */
+ 			BUG_ON(!fscrypt_has_encryption_key(inode));
+-			WARN_ON_ONCE(fscrypt_decrypt_pagecache_blocks(
+-					page, blocksize, bh_offset(bh)));
++			err = fscrypt_decrypt_pagecache_blocks(page, blocksize,
++							       bh_offset(bh));
++			if (err) {
++				clear_buffer_uptodate(bh);
++				goto unlock;
++			}
+ 		}
+ 	}
+ 	if (ext4_should_journal_data(inode)) {
 -- 
 2.24.1
 
