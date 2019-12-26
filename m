@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00700C2D0DA
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:39:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D27B7C2D0DA
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:40:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C759C206A4
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:39:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A3E1B206A4
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Dec 2019 15:40:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1577374782;
-	bh=p9zKn/41L5nDfI/gqqK4Ty/IGWKYg6d9TuZ8CBGTEQg=;
+	s=default; t=1577374823;
+	bh=U52JRgNxFt6kzbBceCrmFR55pAOS2KvvO+IkEw+2shY=;
 	h=From:To:Subject:Date:List-ID:From;
-	b=1z/tv+NbAwjiYhPnqXkvx4NaYabL7wCVhkfXMJXjJy5Kzk7A+iDqr9bffG1s2eRAU
-	 PAX/6t93LcyOZCCEDO2jjCAr//Dl9sMzAGVlE0G5k8L30R3p/Op2e4QZc/ku23hTqX
-	 zbl50dCAm+fOvIHgAn7VViFmwe+glByKi3KkDHcw=
+	b=V/hxo5z2ctwmCyedeXTL8Z8bVxP60Pt0nhJFAHJqrYjmhLoQk9vXd/l0gbp+uGtAy
+	 gl2rsHCKn+pcCdICfAiNJyqNt/Qx+/1agkgKR3ZZCkvjk19qX0Id1WERF6IwRP7KWg
+	 LrpQKI5WJ/nwESrQgS5VDaAT23Txcp8/QtMv2nSk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726513AbfLZPjm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Dec 2019 10:39:42 -0500
-Received: from mail.kernel.org ([198.145.29.99]:46948 "EHLO mail.kernel.org"
+        id S1726534AbfLZPkX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Dec 2019 10:40:23 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47830 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726236AbfLZPjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 26 Dec 2019 10:39:42 -0500
+        id S1726513AbfLZPkX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 26 Dec 2019 10:40:23 -0500
 Received: from zzz.tds (h75-100-12-111.burkwi.broadband.dynamic.tds.net [75.100.12.111])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9597C206A4
-        for <linux-ext4@vger.kernel.org>; Thu, 26 Dec 2019 15:39:41 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 985F8206A4
+        for <linux-ext4@vger.kernel.org>; Thu, 26 Dec 2019 15:40:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1577374781;
-        bh=p9zKn/41L5nDfI/gqqK4Ty/IGWKYg6d9TuZ8CBGTEQg=;
+        s=default; t=1577374822;
+        bh=U52JRgNxFt6kzbBceCrmFR55pAOS2KvvO+IkEw+2shY=;
         h=From:To:Subject:Date:From;
-        b=ZKrbkPWSXvn87XKUftDn1Oa6k1i1wd6wak6EOyLsLwHg0/ROqcRdHYZP1gDheGr7O
-         Qt9pp17cIDnIC8xEkoUUt8f91iIpKjt51xlq3pFt7Gai5xdOMzQuMAHvvQFND46WxQ
-         7JVV1eD+c5aL1K8br5625qKqkxLhPbE7qu5ROZdo=
+        b=JBY2Y1KiPR7Y6mn1cILHY34OqK/gEIyjxPoBz5yCTYYi+xhGjn6KFDNDtwHcGWUzM
+         eOlfjpCZKXk0+I/iybyX40iCbFGPxPgcGuMTVzunCnj7ESOG1KDuU8fXtU+pszKqiV
+         tON0Smg/wwC6Fq2FQ5zkjjtAeqwYtCgkdW67/YNg=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH] ext4: remove unnecessary selections from EXT3_FS
-Date:   Thu, 26 Dec 2019 09:39:20 -0600
-Message-Id: <20191226153920.4466-1-ebiggers@kernel.org>
+Subject: [PATCH] docs: ext4.rst: add encryption and verity to features list
+Date:   Thu, 26 Dec 2019 09:40:07 -0600
+Message-Id: <20191226154007.4569-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -53,42 +53,26 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since EXT3_FS already selects EXT4_FS, there's no reason for it to
-redundantly select all the selections of EXT4_FS -- notwithstanding the
-comments that claim otherwise.
-
-Remove these redundant selections to avoid confusion.
+Mention encryption and verity in the ext4 features list.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/Kconfig | 6 ------
- 1 file changed, 6 deletions(-)
+ Documentation/admin-guide/ext4.rst | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index ef42ab040905..5841fd8aa706 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -4,12 +4,7 @@
- # kernels after the removal of ext3 driver.
- config EXT3_FS
- 	tristate "The Extended 3 (ext3) filesystem"
--	# These must match EXT4_FS selects...
- 	select EXT4_FS
--	select JBD2
--	select CRC16
--	select CRYPTO
--	select CRYPTO_CRC32C
- 	help
- 	  This config option is here only for backward compatibility. ext3
- 	  filesystem is now handled by the ext4 driver.
-@@ -33,7 +28,6 @@ config EXT3_FS_SECURITY
+diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
+index 9bc93f0ce0c9..9443fcef1876 100644
+--- a/Documentation/admin-guide/ext4.rst
++++ b/Documentation/admin-guide/ext4.rst
+@@ -92,6 +92,8 @@ Currently Available
+ * efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
+   the ordering)
+ * Case-insensitive file name lookups
++* file-based encryption support (fscrypt)
++* file-based verity support (fsverity)
  
- config EXT4_FS
- 	tristate "The Extended 4 (ext4) filesystem"
--	# Please update EXT3_FS selects when changing these
- 	select JBD2
- 	select CRC16
- 	select CRYPTO
+ [1] Filesystems with a block size of 1k may see a limit imposed by the
+ directory hash tree having a maximum depth of two.
 -- 
 2.24.1
 
