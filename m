@@ -2,82 +2,118 @@ Return-Path: <SRS0=vdH8=2R=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B622EC2D0DA
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Dec 2019 11:16:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B890BC2D0DA
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Dec 2019 13:05:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 95BD3208C4
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Dec 2019 11:16:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 90D7420882
+	for <linux-ext4@archiver.kernel.org>; Fri, 27 Dec 2019 13:05:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726579AbfL0LQw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 27 Dec 2019 06:16:52 -0500
-Received: from mga05.intel.com ([192.55.52.43]:29076 "EHLO mga05.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726502AbfL0LQv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 27 Dec 2019 06:16:51 -0500
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by fmsmga105.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 27 Dec 2019 03:16:51 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.69,362,1571727600"; 
-   d="scan'208";a="215169594"
-Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
-  by fmsmga008.fm.intel.com with ESMTP; 27 Dec 2019 03:16:50 -0800
-Received: from kbuild by lkp-server01 with local (Exim 4.89)
-        (envelope-from <lkp@intel.com>)
-        id 1iknbu-0004Aq-Ep; Fri, 27 Dec 2019 19:16:50 +0800
-Date:   Fri, 27 Dec 2019 19:15:22 +0800
-From:   kbuild test robot <lkp@intel.com>
-To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Cc:     kbuild-all@lists.01.org, linux-ext4@vger.kernel.org,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: Re: [PATCH v4 07/20] ext4: add generic diff tracking routines and
- range tracking
-Message-ID: <201912271803.9D3k70fT%lkp@intel.com>
-References: <20191224081324.95807-7-harshadshirwadkar@gmail.com>
+        id S1727250AbfL0NFw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 27 Dec 2019 08:05:52 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:50541 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726605AbfL0NFw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Dec 2019 08:05:52 -0500
+Received: from callcc.thunk.org (96-72-102-169-static.hfc.comcastbusiness.net [96.72.102.169] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id xBRD4baO001674
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 27 Dec 2019 08:04:38 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id ACFE1420485; Fri, 27 Dec 2019 08:04:36 -0500 (EST)
+Date:   Fri, 27 Dec 2019 08:04:36 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Stephan Mueller <smueller@chronox.de>
+Cc:     Andy Lutomirski <luto@amacapital.net>,
+        Andy Lutomirski <luto@kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Kees Cook <keescook@chromium.org>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>,
+        "Ahmed S. Darwish" <darwish.07@gmail.com>,
+        Lennart Poettering <mzxreary@0pointer.de>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        "Alexander E. Patrakov" <patrakov@gmail.com>,
+        Michael Kerrisk <mtk.manpages@gmail.com>,
+        Willy Tarreau <w@1wt.eu>,
+        Matthew Garrett <mjg59@srcf.ucam.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-man <linux-man@vger.kernel.org>
+Subject: Re: [PATCH v3 0/8] Rework random blocking
+Message-ID: <20191227130436.GC70060@mit.edu>
+References: <20191226140423.GB3158@mit.edu>
+ <26B7EEAE-1166-4B45-9534-E00C5B2767C1@amacapital.net>
+ <4048434.Q8HajmOrkZ@tauon.chronox.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20191224081324.95807-7-harshadshirwadkar@gmail.com>
-User-Agent: NeoMutt/20170113 (1.7.2)
+In-Reply-To: <4048434.Q8HajmOrkZ@tauon.chronox.de>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Harshad,
+On Fri, Dec 27, 2019 at 11:29:22AM +0100, Stephan Mueller wrote:
+> 
+> My definition of TRNG is identical to the German AIS 31 and I guess identical 
+> to your definition of a TRNG.
+> 
+> A TRNG will produce an amount of random data that is equal to the amount of 
+> "fresh" entropy that was provided by the noise source. I.e. it should be 
+> identical to the blocking_pool behavior.
 
-Thank you for the patch! Perhaps something to improve:
+This begs the question of determining: (a) how much "fresh entropy"
+you can actually get from a noise source, (b) at what rate the "fresh
+entropy" is arriving, and (c) what assurance(s) you have that the
+noise source is actually working correctly.
 
-[auto build test WARNING on tip/perf/core]
-[cannot apply to ext4/dev linus/master v5.5-rc3 next-20191220]
-[if your patch is applied to the wrong git tree, please drop us a note to help
-improve the system. BTW, we also suggest to use '--base' option to specify the
-base tree in git format-patch, please see https://stackoverflow.com/a/37406982]
+You can't make those assurances from software alone; it needs to be an
+aspect of holistic design of the hardware's design; the supply chain,
+and the software.  So if we are going to claime that we have something
+like GRND_TRUERANDOM or /dev/trandom, or whatever, it needs to work on
+IOT devices running ARM, RISC-V, MIPS, PowerPC, x86.  Some of these
+architectures have no instruction reordering and are stupid simple;
+some of these hardware platforms may have no high-resolution clock or
+cryptographic instructions.
 
-url:    https://github.com/0day-ci/linux/commits/Harshad-Shirwadkar/ext4-update-docs-for-fast-commit-feature/20191225-200339
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git ceb9e77324fa661b1001a0ae66f061b5fcb4e4e6
-reproduce:
-        # apt-get install sparse
-        # sparse version: v0.6.1-129-g341daf20-dirty
-        make ARCH=x86_64 allmodconfig
-        make C=1 CF='-fdiagnostic-prefix -D__CHECK_ENDIAN__'
+In addition, if you use a hardware device which is USB attached, how
+does the kernel know that it really is the device that you think it
+is?  The only way you know that a ChaosKey is a ChaosKey is by its USB
+vendor and product id --- which can be easily forged by an attacker,
+either in the supply chain or delivery path, or who walks up to the
+laptop, yanks out the ChaosKey and replaces it with a "PutinKey" or a
+"NSAKey".
 
-If you fix the issue, kindly add following tag
-Reported-by: kbuild test robot <lkp@intel.com>
+So creating somethinig which shows up as "true random number
+generator" as a generic Linux concept seems to me to be fraught
+endeavor, and I'm not at all convince people need it.
 
+> - add a new GRND_TRUERANDOM flag to getrandom(2) which allows access to the 
+> TRNG. Andy did not like it because he mentioned that it may be misused since 
+> the syscall is unprivileged.
 
-sparse warnings: (new ones prefixed by >>)
+Even if we could solve the "how the hell can the kernel guarantee that
+the noise source is legitimate" problem in a general way that works
+across all of the architectures, we still have the problem that
+everyone thinks they need "the good stuff".
 
->> fs/ext4/ext4_jbd2.c:417:5: sparse: sparse: symbol '__ext4_fc_track_range' was not declared. Should it be static?
+Suppose the system call was privileged and "true randomness" could
+only be accessed as root.  What would happen?  Application programmers
+would give instructions requiring that their application be installed
+as root to be more secure, "because that way you can get access the
+_really_ good random numbers".
 
-Please review and possibly fold the followup patch.
+So let's take a step back and ask the question: "Exactly what _value_
+do you want to provide by creating some kind of true random
+interface?"  What does this enable?  What applications does this
+really help?
 
----
-0-DAY kernel test infrastructure                 Open Source Technology Center
-https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org Intel Corporation
+As I thought while watching the latest Star Wars movie: Why?  Why?
+Whywhywhy?
+
+					- Ted
