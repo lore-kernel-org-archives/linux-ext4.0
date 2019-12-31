@@ -7,42 +7,42 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70BD1C2D0DD
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Dec 2019 18:06:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03650C2D0C2
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Dec 2019 18:06:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5334A206E6
-	for <linux-ext4@archiver.kernel.org>; Tue, 31 Dec 2019 18:06:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D3C6B206D9
+	for <linux-ext4@archiver.kernel.org>; Tue, 31 Dec 2019 18:06:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1577815565;
-	bh=0b2oVjlv3RIR0oH1Iiuuu8Xlx1/6SIou/Ey+t7pzKmQ=;
+	s=default; t=1577815566;
+	bh=speQblKC3NTnG1uYbbN+xwl/PY8Y1uayarxxdq3Qk04=;
 	h=From:To:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=CwAAg5Zlq99c1WaXHvIrCxdusV2j9II9RflTcgS1k1OdNxjbSMxZLVNpyXLOm1FP1
-	 9CDVYxbzRpbqgKVNbcr9LLuBfmDsIhuQCSQGirva8nerRXlQJVo7UWDFmcrd8Brqz/
-	 SpNpKYNQplnTEDviNSqjWywlmfUdz4fOm9IvY0LE=
+	b=DKf3neSBjeKqdiJHOz2R/2zUhBe2UQ6V28Nl2Qy6cjcE8BaxCy+icviXGm+/HbwBh
+	 3/jh2QIWvqyrk1wLRPiW7l79SBGxuHJIG9PiLinCeYLLJiAW7Vu8AZ//8G38FrkxbX
+	 DfssHLBC2QcbJDdH/8CcHksF/FZ0Z3plg4YBopMU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727133AbfLaSGE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 31 Dec 2019 13:06:04 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44462 "EHLO mail.kernel.org"
+        id S1727070AbfLaSGG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 31 Dec 2019 13:06:06 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44552 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727116AbfLaSGC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 31 Dec 2019 13:06:02 -0500
+        id S1727122AbfLaSGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 31 Dec 2019 13:06:04 -0500
 Received: from zzz.tds (h75-100-12-111.burkwi.broadband.dynamic.tds.net [75.100.12.111])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1A5AE20718
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Dec 2019 18:06:02 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 58D30206D9
+        for <linux-ext4@vger.kernel.org>; Tue, 31 Dec 2019 18:06:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1577815562;
-        bh=0b2oVjlv3RIR0oH1Iiuuu8Xlx1/6SIou/Ey+t7pzKmQ=;
+        s=default; t=1577815563;
+        bh=speQblKC3NTnG1uYbbN+xwl/PY8Y1uayarxxdq3Qk04=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=1feSUfBi0nzZKWM5WLUP6vaBpzOGKwFXfnj4xBWt9Wx3US+SRUhgNXNmErbSwhCbp
-         YFFiWXAsquzi+8OdIq1SeHa2jF1zgzp4owCZT5+9BqQ4/WJdYIxKUYk6FLief4F9vP
-         ROnhobRgVPI4bjZtKFMFfH31eG4jW6cecCmk94HM=
+        b=g3B83W9HjPhhczVXc2mHbUpmLqX5nLltBeteFJ7X1jUTo66ANJ6T6nJV3Sifl3UmO
+         YYo39h3eoqrCVHv+W06Lg3I3+pOQsHWvgnjgopeItyUxLjeWwmEWsPbZI/OZ4JStaI
+         b4JrrcWCtSrJy6Uq7xy1njlIH0b23uqzI+lNMWZw=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 4/8] ext4: make some functions static in extents.c
-Date:   Tue, 31 Dec 2019 12:04:40 -0600
-Message-Id: <20191231180444.46586-5-ebiggers@kernel.org>
+Subject: [PATCH 7/8] ext4: fix some nonstandard indentation in extents.c
+Date:   Tue, 31 Dec 2019 12:04:43 -0600
+Message-Id: <20191231180444.46586-8-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.24.1
 In-Reply-To: <20191231180444.46586-1-ebiggers@kernel.org>
 References: <20191231180444.46586-1-ebiggers@kernel.org>
@@ -55,138 +55,64 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Make the following functions static since they're only used in
-extents.c:
-
-	__ext4_ext_dirty()
-	ext4_can_extents_be_merged()
-	ext4_collapse_range()
-	ext4_insert_range()
-
-Also remove the prototype for ext4_ext_writepage_trans_blocks(), as this
-function is not defined anywhere.
+Clean up some code that was using 2-character indents.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/ext4.h         |  6 ------
- fs/ext4/ext4_extents.h |  5 -----
- fs/ext4/extents.c      | 22 +++++++++++++++-------
- 3 files changed, 15 insertions(+), 18 deletions(-)
+ fs/ext4/extents.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0fdc913b0d6c..9b395a2e1cd9 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3251,7 +3251,6 @@ struct ext4_extent;
- #define EXT_MAX_BLOCKS	0xffffffff
- 
- extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
--extern int ext4_ext_writepage_trans_blocks(struct inode *, int);
- extern int ext4_ext_index_trans_blocks(struct inode *inode, int extents);
- extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			       struct ext4_map_blocks *map, int flags);
-@@ -3271,9 +3270,6 @@ extern int ext4_map_blocks(handle_t *handle, struct inode *inode,
- extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
- 						   int num,
- 						   struct ext4_ext_path *path);
--extern int ext4_can_extents_be_merged(struct inode *inode,
--				      struct ext4_extent *ex1,
--				      struct ext4_extent *ex2);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *,
- 				  struct ext4_ext_path **,
- 				  struct ext4_extent *, int);
-@@ -3289,8 +3285,6 @@ extern int ext4_get_es_cache(struct inode *inode,
- 			     struct fiemap_extent_info *fieinfo,
- 			     __u64 start, __u64 len);
- extern int ext4_ext_precache(struct inode *inode);
--extern int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len);
--extern int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len);
- extern int ext4_swap_extents(handle_t *handle, struct inode *inode1,
- 				struct inode *inode2, ext4_lblk_t lblk1,
- 			     ext4_lblk_t lblk2,  ext4_lblk_t count,
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 98bd0e9ee7df..1c216fcc202a 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -267,10 +267,5 @@ static inline void ext4_idx_store_pblock(struct ext4_extent_idx *ix,
- 				     0xffff);
- }
- 
--#define ext4_ext_dirty(handle, inode, path) \
--		__ext4_ext_dirty(__func__, __LINE__, (handle), (inode), (path))
--int __ext4_ext_dirty(const char *where, unsigned int line, handle_t *handle,
--		     struct inode *inode, struct ext4_ext_path *path);
--
- #endif /* _EXT4_EXTENTS */
- 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 296ad7fcc302..6c3f8c0ca83b 100644
+index 25e6e83cdeca..1cdcd9b0934d 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -161,8 +161,9 @@ static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
-  *  - ENOMEM
-  *  - EIO
-  */
--int __ext4_ext_dirty(const char *where, unsigned int line, handle_t *handle,
--		     struct inode *inode, struct ext4_ext_path *path)
-+static int __ext4_ext_dirty(const char *where, unsigned int line,
-+			    handle_t *handle, struct inode *inode,
-+			    struct ext4_ext_path *path)
- {
- 	int err;
+@@ -606,8 +606,9 @@ static void ext4_ext_show_path(struct inode *inode, struct ext4_ext_path *path)
+ 	ext_debug("path:");
+ 	for (k = 0; k <= l; k++, path++) {
+ 		if (path->p_idx) {
+-		  ext_debug("  %d->%llu", le32_to_cpu(path->p_idx->ei_block),
+-			    ext4_idx_pblock(path->p_idx));
++			ext_debug("  %d->%llu",
++				  le32_to_cpu(path->p_idx->ei_block),
++				  ext4_idx_pblock(path->p_idx));
+ 		} else if (path->p_ext) {
+ 			ext_debug("  %d:[%d]%d:%llu ",
+ 				  le32_to_cpu(path->p_ext->ee_block),
+@@ -734,8 +735,8 @@ ext4_ext_binsearch_idx(struct inode *inode,
  
-@@ -179,6 +180,9 @@ int __ext4_ext_dirty(const char *where, unsigned int line, handle_t *handle,
- 	return err;
- }
+ 		chix = ix = EXT_FIRST_INDEX(eh);
+ 		for (k = 0; k < le16_to_cpu(eh->eh_entries); k++, ix++) {
+-		  if (k != 0 &&
+-		      le32_to_cpu(ix->ei_block) <= le32_to_cpu(ix[-1].ei_block)) {
++			if (k != 0 && le32_to_cpu(ix->ei_block) <=
++			    le32_to_cpu(ix[-1].ei_block)) {
+ 				printk(KERN_DEBUG "k=%d, ix=0x%p, "
+ 				       "first=0x%p\n", k,
+ 				       ix, EXT_FIRST_INDEX(eh));
+@@ -1589,17 +1590,16 @@ ext4_ext_next_allocated_block(struct ext4_ext_path *path)
+ 		return EXT_MAX_BLOCKS;
  
-+#define ext4_ext_dirty(handle, inode, path) \
-+		__ext4_ext_dirty(__func__, __LINE__, (handle), (inode), (path))
+ 	while (depth >= 0) {
++		struct ext4_ext_path *p = &path[depth];
 +
- static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
- 			      struct ext4_ext_path *path,
- 			      ext4_lblk_t block)
-@@ -1695,9 +1699,9 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
- 	return err;
- }
- 
--int
--ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
--				struct ext4_extent *ex2)
-+static int ext4_can_extents_be_merged(struct inode *inode,
-+				      struct ext4_extent *ex1,
-+				      struct ext4_extent *ex2)
- {
- 	unsigned short ext1_ee_len, ext2_ee_len;
- 
-@@ -4656,6 +4660,10 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	return ret > 0 ? ret2 : ret;
- }
- 
-+static int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len);
-+
-+static int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len);
-+
- static long ext4_zero_range(struct file *file, loff_t offset,
- 			    loff_t len, int mode)
- {
-@@ -5414,7 +5422,7 @@ ext4_ext_shift_extents(struct inode *inode, handle_t *handle,
-  * This implements the fallocate's collapse range functionality for ext4
-  * Returns: 0 and non-zero on error.
-  */
--int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
-+static int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- {
- 	struct super_block *sb = inode->i_sb;
- 	ext4_lblk_t punch_start, punch_stop;
-@@ -5558,7 +5566,7 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
-  * by len bytes.
-  * Returns 0 on success, error otherwise.
-  */
--int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
-+static int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
- {
- 	struct super_block *sb = inode->i_sb;
- 	handle_t *handle;
+ 		if (depth == path->p_depth) {
+ 			/* leaf */
+-			if (path[depth].p_ext &&
+-				path[depth].p_ext !=
+-					EXT_LAST_EXTENT(path[depth].p_hdr))
+-			  return le32_to_cpu(path[depth].p_ext[1].ee_block);
++			if (p->p_ext && p->p_ext != EXT_LAST_EXTENT(p->p_hdr))
++				return le32_to_cpu(p->p_ext[1].ee_block);
+ 		} else {
+ 			/* index */
+-			if (path[depth].p_idx !=
+-					EXT_LAST_INDEX(path[depth].p_hdr))
+-			  return le32_to_cpu(path[depth].p_idx[1].ei_block);
++			if (p->p_idx != EXT_LAST_INDEX(p->p_hdr))
++				return le32_to_cpu(p->p_idx[1].ei_block);
+ 		}
+ 		depth--;
+ 	}
 -- 
 2.24.1
 
