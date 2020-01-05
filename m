@@ -5,23 +5,23 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 786FAC3F68F
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jan 2020 21:47:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1463C33C8C
+	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jan 2020 22:08:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 44BA521734
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jan 2020 21:47:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 967C421582
+	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jan 2020 22:08:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726939AbgAEVrs convert rfc822-to-8bit (ORCPT
+        id S1727196AbgAEWIy convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 5 Jan 2020 16:47:48 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55268 "EHLO mail.kernel.org"
+        Sun, 5 Jan 2020 17:08:54 -0500
+Received: from mail.kernel.org ([198.145.29.99]:42366 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726851AbgAEVrs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 5 Jan 2020 16:47:48 -0500
+        id S1726851AbgAEWIy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 5 Jan 2020 17:08:54 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 205957] Ext4 64 bit hash breaks 32 bit glibc 2.28+
-Date:   Sun, 05 Jan 2020 21:47:47 +0000
+Date:   Sun, 05 Jan 2020 22:08:52 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -30,14 +30,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
-X-Bugzilla-Who: aladjev.andrew@gmail.com
+X-Bugzilla-Who: glaubitz@physik.fu-berlin.de
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-205957-13602-SbJHSpwJjm@https.bugzilla.kernel.org/>
+Message-ID: <bug-205957-13602-QsY9QIlVr0@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-205957-13602@https.bugzilla.kernel.org/>
 References: <bug-205957-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -52,11 +52,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=205957
 
---- Comment #13 from aladjev.andrew@gmail.com (aladjev.andrew@gmail.com) ---
-I am trying to work around mips issues and find this one
-https://www.linux-mips.org/archives/linux-mips/2012-11/msg00031.html. This
-issue from 2012 is the complete copy of our current issue. I can say that old
-issue with mips is still alive: readdir is still broken on mips n32.
+--- Comment #14 from John Paul Adrian Glaubitz (glaubitz@physik.fu-berlin.de) ---
+Thanks for working on this! I think the suffix _x32 might be misleading as this
+is the name of the 32-bit ABI on x86_64, see:
+https://en.wikipedia.org/wiki/X32_ABI.
 
 -- 
 You are receiving this mail because:
