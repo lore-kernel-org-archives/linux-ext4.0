@@ -6,27 +6,27 @@ X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0682C282DD
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 20:45:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9810BC33C9B
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 21:05:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8FD532072A
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 20:45:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 77772208C4
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 21:05:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727027AbgAGUpb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Jan 2020 15:45:31 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:33017 "EHLO
+        id S1729265AbgAGVFg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Jan 2020 16:05:36 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36630 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726757AbgAGUpb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2020 15:45:31 -0500
+        with ESMTP id S1729256AbgAGVFg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2020 16:05:36 -0500
 Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 007KiRpX017593
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 007L4V00024994
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Jan 2020 15:44:28 -0500
+        Tue, 7 Jan 2020 16:04:32 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 276244207DF; Tue,  7 Jan 2020 15:44:27 -0500 (EST)
-Date:   Tue, 7 Jan 2020 15:44:27 -0500
+        id 2BA3E4207DF; Tue,  7 Jan 2020 16:04:31 -0500 (EST)
+Date:   Tue, 7 Jan 2020 16:04:31 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
 To:     Andy Lutomirski <luto@kernel.org>
 Cc:     LKML <linux-kernel@vger.kernel.org>,
@@ -43,25 +43,22 @@ Cc:     LKML <linux-kernel@vger.kernel.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         linux-man <linux-man@vger.kernel.org>,
         Stephan Mueller <smueller@chronox.de>
-Subject: Re: [PATCH v3 4/8] random: Ignore GRND_RANDOM in getentropy(2)
-Message-ID: <20200107204427.GI3619@mit.edu>
+Subject: Re: [PATCH v3 8/8] random: Remove kernel.random.read_wakeup_threshold
+Message-ID: <20200107210431.GM3619@mit.edu>
 References: <cover.1577088521.git.luto@kernel.org>
- <705c5a091b63cc5da70c99304bb97e0109be0a26.1577088521.git.luto@kernel.org>
+ <a74ed2cf0b5a5451428a246a9239f5bc4e29358f.1577088521.git.luto@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <705c5a091b63cc5da70c99304bb97e0109be0a26.1577088521.git.luto@kernel.org>
+In-Reply-To: <a74ed2cf0b5a5451428a246a9239f5bc4e29358f.1577088521.git.luto@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Dec 23, 2019 at 12:20:47AM -0800, Andy Lutomirski wrote:
-> The separate blocking pool is going away.  Start by ignoring
-> GRND_RANDOM in getentropy(2).
-> 
-> This should not materially break any API.  Any code that worked
-> without this change should work at least as well with this change.
+On Mon, Dec 23, 2019 at 12:20:51AM -0800, Andy Lutomirski wrote:
+> It has no effect any more, so remove it.  We can revert this if
+> there is some user code that expects to be able to set this sysctl.
 > 
 > Signed-off-by: Andy Lutomirski <luto@kernel.org>
 
