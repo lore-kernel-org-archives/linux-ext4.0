@@ -2,141 +2,72 @@ Return-Path: <SRS0=zmh8=24=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5BE0C33C9E
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 05:17:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C99F0C33C9E
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 06:24:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B7D4F207FD
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 05:17:24 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="Q40BGR+M"
+	by mail.kernel.org (Postfix) with ESMTP id A9D32207E0
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 06:24:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725987AbgAGFQr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Jan 2020 00:16:47 -0500
-Received: from mail-ua1-f73.google.com ([209.85.222.73]:54435 "EHLO
-        mail-ua1-f73.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725267AbgAGFQr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2020 00:16:47 -0500
-Received: by mail-ua1-f73.google.com with SMTP id i12so10744803uak.21
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Jan 2020 21:16:46 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:message-id:mime-version:subject:from:to:cc;
-        bh=cfX1tvKpjBFaGwVknnvW2VBwxewGwbcoGgPS02CBSEM=;
-        b=Q40BGR+McgMbCgqtKK+XRsRmJJBj/BH4LjOY1inQamlLz1Onc25gJfKSbGCbLp3BV6
-         kKbmIcg1Qs8OlNWNQNQVhlpP5eQeWpb8bdcg/T1uA1M21Nwy3AmiDfyWJt0tvnczfV4l
-         F5+GHxcTVIFp5EjxqoKHbB5BR5AscstZMpWufBT8/BJSWPsoka2tUFUerrjyIkmcUjjK
-         wZ3VxyoNX/QvFD5IuLtoVSHr99qrCNN1Y+s01aUz0lsnsY4sqo6j8cw1VnQNt7bNfDGH
-         /9+qGi2HEFX3SqvMkNy9rSPpAhx5BvUPP3MMTK/c1L92gGjvYGn+U5QaEIouLcVwROXe
-         FVsQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:message-id:mime-version:subject:from:to:cc;
-        bh=cfX1tvKpjBFaGwVknnvW2VBwxewGwbcoGgPS02CBSEM=;
-        b=ooUPoJNj6Pd+Y/1AQiiiwFrE9qOG7kTBU7HaEVVFCoXbFJL2gFIJ8UyWkzUeb/XKUA
-         JqDcB9ysIh9uI65XK/Lb623/PBW+ITgi9mjiRdQYP0JS5kg+wfMJ+3ToM+EERDhyrSgF
-         Psm1YQe9a+/ywq5eff3XgCHj60yljDTEtqxsK5MP4qr6tHGBVidbGORp5xwvV84/OSiL
-         riJLVBDgGqvZJXKarTI09R3AtLMDF97dneumgaFJMMD+335tYqPmMtowcJnP2MnClMpd
-         yy16NyDRLVAsDPDRI2QI3j7U/NtmqDSEygAvICGFN+6d9lYKmMY0kW2QwSoLgMFAKb1n
-         VYrA==
-X-Gm-Message-State: APjAAAU85kMRgVmPAh+wdPbiufHDPxQhfQLHCb4JLYDrGYKmC6L4njM5
-        eXrcY/9MxY+gjK1mmghrFz2Y9eIuKz4=
-X-Google-Smtp-Source: APXvYqzc67czlLj1xc/BSkQkduLdtiKKbLVUdrPq7hUPjUVp5UmYvrkDtchUfmBzIECNLQOquU+7Qzeor7M=
-X-Received: by 2002:a1f:8d57:: with SMTP id p84mr56402733vkd.65.1578374205529;
- Mon, 06 Jan 2020 21:16:45 -0800 (PST)
-Date:   Mon,  6 Jan 2020 21:16:32 -0800
-Message-Id: <20200107051638.40893-1-drosen@google.com>
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.24.1.735.g03f4e72817-goog
-Subject: [PATCH v2 0/6] Support for Casefolding and Encryption
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726470AbgAGGYQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Jan 2020 01:24:16 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:45888 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725267AbgAGGYQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 7 Jan 2020 01:24:16 -0500
+Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 3215F9CF0DF543897293;
+        Tue,  7 Jan 2020 14:24:12 +0800 (CST)
+Received: from localhost (10.133.213.239) by DGGEMS401-HUB.china.huawei.com
+ (10.3.19.201) with Microsoft SMTP Server id 14.3.439.0; Tue, 7 Jan 2020
+ 14:24:03 +0800
+From:   YueHaibing <yuehaibing@huawei.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <agruenba@redhat.com>,
+        <darrick.wong@oracle.com>
+CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        YueHaibing <yuehaibing@huawei.com>
+Subject: [PATCH -next] ext4: remove unused variable 'mapping'
+Date:   Tue, 7 Jan 2020 14:23:55 +0800
+Message-ID: <20200107062355.40624-1-yuehaibing@huawei.com>
+X-Mailer: git-send-email 2.10.2.windows.1
+MIME-Version: 1.0
+Content-Type: text/plain
+X-Originating-IP: [10.133.213.239]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Ext4 and F2FS currently both support casefolding and encryption, but not at
-the same time. These patches aim to rectify that.
+fs/ext4/inode.c: In function 'ext4_page_mkwrite':
+fs/ext4/inode.c:5910:24: warning: unused variable 'mapping' [-Wunused-variable]
 
-Since directory names are stored case preserved, we cannot just take the hash
-of the ciphertext. Instead we use the siphash of the casefolded name. With this
-we no longer have a direct path from an encrypted name to the hash without the
-key. To deal with this, fscrypt now always includes the hash in the name it
-presents when the key is not present. There is a pre-existing bug where you can
-change parts of the hash and still match the name so long as the disruption to
-the hash does not happen to affect lookup on that filesystem. I'm not sure how
-to fix that without making ext4 lookups slower in the more common case.
+commit 4a58d8158f6d ("fs: Fix page_mkwrite off-by-one errors")
+left behind this unused variable.
 
-I moved the identical dcache operations for ext4 and f2fs into the VFS, as any
-filesystem that uses casefolding will need the same code. This will also allow
-further optimizations to that path, although my current changes don't take
-advantage of that yet.
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: YueHaibing <yuehaibing@huawei.com>
+---
+ fs/ext4/inode.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-For Ext4, this also means that we need to store the hash on disk. We only do so
-for encrypted and casefolded directories to avoid on disk format changes.
-Previously encryption and casefolding could not live on the same filesystem,
-and we're relaxing that requirement. F2fs is a bit more straightforward since
-it already stores hashes on disk.
-
-I've updated the related tools with just enough to enable the feature. I still
-need to adjust their respective fsck's, although without access to the keys,
-they won't be able to verify the hashes of casefolded and encrypted names.
-
-changes:
-fscrypt moved to separate thread to rebase on fscrypt dev branch
-addressed feedback, plus some minor fixes
-
-Daniel Rosenberg (6):
-  TMP: fscrypt: Add support for casefolding with encryption
-  vfs: Fold casefolding into vfs
-  f2fs: Handle casefolding with Encryption
-  ext4: Use struct super_blocks' casefold data
-  ext4: Hande casefolding with encryption
-  ext4: Optimize match for casefolded encrypted dirs
-
- Documentation/filesystems/ext4/directory.rst |  27 ++
- fs/crypto/Kconfig                            |   1 +
- fs/crypto/fname.c                            | 234 ++++++++++---
- fs/crypto/fscrypt_private.h                  |   9 +
- fs/crypto/keysetup.c                         |  32 +-
- fs/crypto/policy.c                           |  45 ++-
- fs/dcache.c                                  |  28 ++
- fs/ext4/dir.c                                |  75 +----
- fs/ext4/ext4.h                               |  87 +++--
- fs/ext4/hash.c                               |  26 +-
- fs/ext4/ialloc.c                             |   5 +-
- fs/ext4/inline.c                             |  41 ++-
- fs/ext4/namei.c                              | 326 ++++++++++++-------
- fs/ext4/super.c                              |  21 +-
- fs/f2fs/dir.c                                | 114 +++----
- fs/f2fs/f2fs.h                               |  14 +-
- fs/f2fs/hash.c                               |  25 +-
- fs/f2fs/inline.c                             |   9 +-
- fs/f2fs/super.c                              |  17 +-
- fs/f2fs/sysfs.c                              |   8 +-
- fs/inode.c                                   |   7 +
- fs/namei.c                                   |  41 ++-
- include/linux/fs.h                           |  10 +
- include/linux/fscrypt.h                      |  96 ++----
- include/linux/unicode.h                      |  14 +
- 25 files changed, 835 insertions(+), 477 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9a3e8d0..d0049fd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5907,7 +5907,6 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	vm_fault_t ret;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file_inode(file);
+-	struct address_space *mapping = inode->i_mapping;
+ 	handle_t *handle;
+ 	get_block_t *get_block;
+ 	int retries = 0;
 -- 
-2.24.1.735.g03f4e72817-goog
+2.7.4
+
 
