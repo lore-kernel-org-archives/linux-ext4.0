@@ -2,152 +2,93 @@ Return-Path: <SRS0=zmh8=24=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F36CC282DD
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 18:19:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 12BEBC33C9B
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 20:03:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4DFCC20848
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 18:19:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E25602080A
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 20:03:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728391AbgAGSTd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Jan 2020 13:19:33 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37281 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727925AbgAGSTc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2020 13:19:32 -0500
-Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 007IJREj031741
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 7 Jan 2020 13:19:28 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 704074207DF; Tue,  7 Jan 2020 13:19:27 -0500 (EST)
-Date:   Tue, 7 Jan 2020 13:19:27 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org
-Subject: [ANNOUNCE] e2fsprogs v1.45.5
-Message-ID: <20200107181927.GD3619@mit.edu>
+        id S1728634AbgAGUDL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Jan 2020 15:03:11 -0500
+Received: from mout.kundenserver.de ([212.227.126.134]:35737 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728358AbgAGUDL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jan 2020 15:03:11 -0500
+Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
+ (mreue009 [212.227.15.129]) with ESMTPA (Nemesis) id
+ 1M2wCi-1iq23L2cxw-003JkJ; Tue, 07 Jan 2020 21:02:35 +0100
+From:   Arnd Bergmann <arnd@arndb.de>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Arnd Bergmann <arnd@arndb.de>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        David Sterba <dsterba@suse.com>,
+        Richard Weinberger <richard@nod.at>, Jan Kara <jack@suse.cz>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        Eric Biggers <ebiggers@google.com>,
+        Matthew Bobrowski <mbobrowski@mbobrowski.org>,
+        Chandan Rajendra <chandan@linux.ibm.com>,
+        Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] fs: fix ext4 unused-variable warning
+Date:   Tue,  7 Jan 2020 21:02:12 +0100
+Message-Id: <20200107200233.3244877-1-arnd@arndb.de>
+X-Mailer: git-send-email 2.20.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+X-Provags-ID: V03:K1:nfqDsO3LApBgvoCI17Vt2kujvHVXqGUNcSRj3x/2fTZrCNeqX1M
+ F9zM+mnkHdTWrc8g19vcpdlPTdaeQMGctnjAd/ioxofcHU1qTbwnfFeP/MrcEfKmHgnbhlA
+ LITm7qBEBt3FmbD1j5qsxPgLTKoMbehLkBXEuegwnGIdKpbvcBlEk71cfB/ZsbNaguQPf2y
+ au9r1NadicA1lx67tXQvw==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:HP6fxNg0DoQ=:mI6FjMO2CLchjmhCaimz1O
+ RvTpLvCYslXOk8SOGfIozC7UAaSd/0Fn3FwOPA6hXFie7ds6cDrUOQc4AxWD6tW2DGhcgBDK0
+ Prf7AER5VGkDDU5zBCr4ybsNdi3+p4EbqmauBQCozrgYoEO9sOO5zr4nSqREqC2HE5wB8lXla
+ Vwkx1JnVXOf83lqGdxhidkj5eQH1a3mMGpLa2hoI/R+Lr/rXtHGK9ZM6sPKQ/wunLQrIRetC1
+ uEOjyC4UP8aBwuUTTtYpRWkorXX4dwUztGThaOaOje7OuQFa9sBldp2FiuY0KFlf35EwOQnZx
+ utCFCNe8GAvk0iZA8xQRswEHHmldFrUb/valpP15os0S1ZA4bcLiL5nLhdU4QpAse4elN6Kfj
+ jLxdPq199nk/KlA5EvUumBn4WC8qXlGL9843ZFKSdJd5+WIXXn1AaDrCGZK2lkVZgsflxVT0Y
+ zn0kQueq3XYE1+QMbaWJ9FR2WoQKHc7lTQBpZq1RcppU4AYZfmY9JMcUQX4w0Hio8K/AEzr7F
+ Rls7K+DW9Avm7lvoaMFI9zDfApDHV6iJPs+DFMlPilKg+O/EfM8xzF/icbp1fHsZYJC/M0HcE
+ fBXJnBgZqBYJKpVhy7g/bU7ySnFEzh78m9gA7HxEoSqSxRW9vfYTCRBHknVvdbIrPzVF/FRf6
+ UOrnPBaZiMCzeDclWVndxSTByA1n3S6X2W+ibi6T60PTjejvbpP4e0ZCs6CPd32Jefl5wakFd
+ OB3+Ov2Ky45B709gjWM4HZ/3wO7i7/reyh/1JWo/HpvOjS1B/ur/6srUfXsDcq1/PTDcc3LwX
+ wpvFjxaxwZi5cvYONTKaACbl+37cfjD6txwLtxjUHx1patvnun/UxaKmAogwFOtK4hYLC5VHC
+ xB286Hgxy1QD2NDpi7ow==
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I've released e2fsprogs 1.45.5 in all of the usual places; it's tagged
-in the git trees on git.kernel.org, github, and sourceforge, and
-available for download at:
- 
-http://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.45.5
- 
-and
- 
-http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.45.5.tar.gz
+A bugfix introduce a harmless warning:
 
-The release notes for 1.45.5 can be found below.  Note that if your
-system/distribution allows malicious users to trick the system into
-running e2fsck on an untrustworthy source as root, you are strongly
-recommended to take this release, or else cherry-pick the following
-commits:
+fs/ext4/inode.c: In function 'ext4_page_mkwrite':
+fs/ext4/inode.c:5910:24: error: unused variable 'mapping' [-Werror=unused-variable]
 
-8dd73c14 - e2fsck: abort if there is a corrupted directory block when rehashing
-71ba1375 - e2fsck: don't try to rehash a deleted directory
-101e73e9 - e2fsck: fix use after free in calculate_tree()
+Remove the now-unused variable.
 
-Cheers,
+Fixes: 4a58d8158f6d ("fs: Fix page_mkwrite off-by-one errors")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/inode.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-					- Ted
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9a3e8d075cd0..d0049fd0bfd4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5907,7 +5907,6 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	vm_fault_t ret;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file_inode(file);
+-	struct address_space *mapping = inode->i_mapping;
+ 	handle_t *handle;
+ 	get_block_t *get_block;
+ 	int retries = 0;
+-- 
+2.20.0
 
-E2fsprogs 1.45.5 (January 7, 2020)
-==================================
-
-Updates/Fixes since v1.45.4:
-
-Fixes
------
-
-E2fsck will no longer force a full file system check if time-based
-forced checks are disabled and the last mount time or last write time in
-the superblock are in the future.
-
-Fix a potential out of bounds write when checking a maliciously
-corrupted file system.  This is probably not exploitable on 64-bit
-platforms, but may be exploitable on 32-bit binaries depending on how
-the compiler lays out the stack variables.  (Addresses CVE-2019-5188)
-
-Fixed spurious weekly e-mails when e2scrub_all is run via a cron job
-on non-systemd systems.  (Addresses Debian Bug: #944033)
-
-Remove an unnecessary sleep in e2scrub which could add up to an
-additional two second delay during the boot up.  Also, avoid trying
-to reap aborted snapshots if it has been disabled via e2scrub.conf.
-(Addresses Debian Bug: #948193)
-
-If a mischievous system administrator mounts a pseudo-file system such
-as tmpfs with a device name that duplicates another mounted file system,
-this could potentially confuse resize2fs when it needs to find the mount
-point of a mounted file system.  (Who would have guessed?)  Add some
-sanity checking so that we can make libext2fs more robust against such
-insanity, at least on Linux.  (GNU HURD doesn't support st_rdev.)
-
-Tune2fs now prohibits enabling or disabling uninit_bg if the file system
-is mounted, since this could result in the file system getting
-corrupted, and there is an unfortunate AskUbuntu article suggesting this
-as a way to modify a file system's UUID on a live file system.  (Ext4
-now has a way to do this safely, using the metadata_csum_seed feature,
-which was added in the 4.4 Linux kernel.)
-
-Fix potential crash in e2fsck when rebuilding very large directories on
-file systems which have the new large_dir feature enable.
-
-Fix support of 32-bit uid's and gid's in fuse2fs and in mke2fs -d.
-
-Fix mke2fs's setting bad blocks to bigalloc file systems.
-
-Fix a bug where fuse2fs would incorrectly report the i_blocks fields for
-bigalloc file systems.
-
-Resize2fs's minimum size estimates (via resize2fs -M) estimates are now
-more accurate when run on mounted file systems.
-
-Fixed potential memory leak in read_bitmap() in libext2fs.
-
-Fixed various UBsan failures found when fuzzing file system images.
-(Addresses Google Bug: #128130353)
-
-Updated and clarified various man pages.
-
-
-Performance, Internal Implementation, Development Support etc.
---------------------------------------------------------------
-
-Speed up e2fsck on file systems with a very large number of inodes
-caused by repeated calls to gettext().
-
-The inode_io io_manager can now support files which are greater than
-2GB.
-
-The ext2_off_t and ext2_off64_t are now signed types so that
-ext2fs_file_lseek() and ext2fs_file_llseek() can work correctly.
-
-Reserve codepoint for the fast_commit feature.
-
-Fixed various Debian packaging issues.
-
-Fix portability problems for Illumous and on hurd/i386 (Addresses Debian
-Bug: #944649)
-
-Always compile the ext2fs_swap_* functions even on little-endian
-architectures, so that debian/libext2fs.symbols can be consistent across
-architectures.
-
-Synchronized changes from Android's AOSP e2fsprogs tree.
-
-Updated config.guess and config.sub with newer versions from the FSF.
-
-Update the Chinese and Malay translations from the translation project.
