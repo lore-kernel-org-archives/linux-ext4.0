@@ -1,210 +1,107 @@
-Return-Path: <SRS0=eVWE=23=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=zmh8=24=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1C0BC33CA2
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jan 2020 21:00:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D7EF2C32771
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 00:43:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6EBAB20707
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jan 2020 21:00:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1578344449;
-	bh=kW5r3TTOvw2fhWdsBHqTPBz9cXiYc6F6OHacBGg7mmM=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=h2l5NwnONsdc5C6S8UV3Aq9n/DOel9IC0Gv+FCG9Ye93ilAma9iVOstCfRVNBJHQH
-	 z3uM0mQkPJRo1Ajxb6EYf38VL1q22sqfBddIhIgzGyWNi3Ysc2puctYHzNRVhKJ/wT
-	 wyK7O7I3QjCaCnQq2krMvjTFVogw4krquUJOATgs=
+	by mail.kernel.org (Postfix) with ESMTP id AF5C92073D
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Jan 2020 00:43:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726825AbgAFVAr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jan 2020 16:00:47 -0500
-Received: from mail.kernel.org ([198.145.29.99]:52432 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726731AbgAFVAr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 6 Jan 2020 16:00:47 -0500
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7CCB421744;
-        Mon,  6 Jan 2020 20:55:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1578344129;
-        bh=kW5r3TTOvw2fhWdsBHqTPBz9cXiYc6F6OHacBGg7mmM=;
-        h=From:To:Cc:Subject:Date:From;
-        b=OVwrc5dWmSj7Mr17WNkl9wL+hRN8cOYwf/PnWMvL0SfeRQSbTusLIY8yoQTp12sbu
-         AbHU8bKDAfxy4/x2ywx8HKgXlvg9EbblKs3iFC18hihXbYzxOGSvojHevxzbrkmMAh
-         rLzzV5sagTQImuaiJ1wAGhabgsPW56Y/9xK7QiLA=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Victor Hsieh <victorhsieh@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH v3] fs-verity: implement readahead for FS_IOC_ENABLE_VERITY
-Date:   Mon,  6 Jan 2020 12:54:10 -0800
-Message-Id: <20200106205410.136707-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.24.1.735.g03f4e72817-goog
+        id S1727322AbgAGAnu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jan 2020 19:43:50 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58593 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727233AbgAGAnu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jan 2020 19:43:50 -0500
+Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0070hccC028499
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 6 Jan 2020 19:43:39 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 8D7434200AF; Mon,  6 Jan 2020 19:43:38 -0500 (EST)
+Date:   Mon, 6 Jan 2020 19:43:38 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>, joseph.qi@linux.alibaba.com,
+        Liu Bo <bo.liu@linux.alibaba.com>
+Subject: Re: Discussion: is it time to remove dioread_nolock?
+Message-ID: <20200107004338.GB125832@mit.edu>
+References: <20191226153118.GA17237@mit.edu>
+ <9042a8f4-985a-fc83-c059-241c9440200c@linux.alibaba.com>
+ <20200106122457.A10F7AE053@d06av26.portsmouth.uk.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200106122457.A10F7AE053@d06av26.portsmouth.uk.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Mon, Jan 06, 2020 at 05:54:56PM +0530, Ritesh Harjani wrote:
+> > The initial reason we use dioread_nolock is that it'll also allocate
+> > unwritten extents for buffered write, and normally the corresponding
+> > inode won't be added to jbd2 transaction's t_inode_list, so while
+> > commiting transaction, it won't flush inodes' dirty pages, then
+> > transaction will commit quickly, otherwise in extream case, the time
+> 
+> I do notice this in ext4_map_blocks(). We add inode to t_inode_list only
+> in case if we allocate written blocks. I guess this was done to avoid
+> stale data exposure problem. So now due to ordered mode, we may end up
+> flushing all dirty data pages in committing transaction before the
+> metadata is flushed.
+> 
+> Do you have any benchmarks or workload where we could see this problem?
+> And could this actually be a problem with any real world workload too?
 
-When it builds the first level of the Merkle tree, FS_IOC_ENABLE_VERITY
-sequentially reads each page of the file using read_mapping_page().
-This works fine if the file's data is already in pagecache, which should
-normally be the case, since this ioctl is normally used immediately
-after writing out the file.
+After thinking about this some more, I've changed my mind.
 
-But in any other case this implementation performs very poorly, since
-only one page is read at a time.
+I think this is something which *can* be very noticeable in some real
+world workloads.  If the workload is doing a lot of allocating,
+buffered writes to an inode, and the writeback thread starts doing the
+writeback for that inode right before a commit starts, then the commit
+can take a long time.  The problem is that if the storage device is
+particularly slow --- for example, a slow USB drive, or a 32 GiB
+Standard Persistent Disk in a Google Compute Environment (which has a
+max sustained throughput of 3 MiB/s), it doesn't take a lot of queued
+writeback I/O to trigger a hung task warning.  Even if hung task panic
+isn't enabled, if the commit thread is busied out for a minute or two,
+anything that is blocked on a commit completing --- such a fsync(2)
+system call, could end up getting blocked for a long time, and that
+could easily make a userspace application sad.
 
-Fix this by implementing readahead using the functions from
-mm/readahead.c.
+> Jan/Ted, your opinion on this pls?
+> 
+> I do see that there was a proposal by Ted @ [1] which should
+> also solve this problem. I do have plans to work on Ted's proposal, but
+> meanwhile, should we preserve this mount option for above mentioned use
+> case? Or should we make it a no-op now?
 
-This improves performance in the uncached case by about 20x, as seen in
-the following benchmarks done on a 250MB file (on x86_64 with SHA-NI):
+> [1] - https://marc.info/?l=linux-ext4&m=157244559501734&w=2
 
-    FS_IOC_ENABLE_VERITY uncached (before) 3.299s
-    FS_IOC_ENABLE_VERITY uncached (after)  0.160s
-    FS_IOC_ENABLE_VERITY cached            0.147s
-    sha256sum uncached                     0.191s
-    sha256sum cached                       0.145s
+I agree that this was not the original intent of dioread_nolock, but I
+until we can implement [1], dioread_nolock is the only workaround real
+workaround we have today.  (Well, data=writeback also works, but that
+has other problems.)
 
-Note: we could instead switch to kernel_read().  But that would mean
-we'd no longer be hashing the data directly from the pagecache, which is
-a nice optimization of its own.  And using kernel_read() would require
-allocating another temporary buffer, hashing the data and tree pages
-separately, and explicitly zero-padding the last page -- so it wouldn't
-really be any simpler than direct pagecache access, at least for now.
+If dropping dioread_nolock makes it easier to implement [1], we can
+certainly make that one of the first patches in a patch series which
+changes how we ext4_writepages() works so it writes the data blocks
+before it updates the metadata blocks.  But unless there are some real
+downsides to keeping the code around in the kernel until then, I'm not
+sure it's worth it to take away the diorad_nolock functionality until
+we have a good replacement --- even if that wasn't the original
+purpose of the code.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
+What do other folks think?
 
-Changed v2 => v3:
-  - Ensure that the pages continue being marked accessed when they're
-    already cached and Uptodate.
-
-Changed v1 => v2:
-  - Only do sync readahead when the page wasn't found in the pagecache
-    at all.
-  - Use ->f_mapping so that the inode doesn't have to be passed.
-
- fs/verity/enable.c | 45 +++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 39 insertions(+), 6 deletions(-)
-
-diff --git a/fs/verity/enable.c b/fs/verity/enable.c
-index b79e3fd19d115..9c93c17f1c1cd 100644
---- a/fs/verity/enable.c
-+++ b/fs/verity/enable.c
-@@ -13,13 +13,42 @@
- #include <linux/sched/signal.h>
- #include <linux/uaccess.h>
- 
--static int build_merkle_tree_level(struct inode *inode, unsigned int level,
-+/*
-+ * Read a file data page for Merkle tree construction.  Do aggressive readahead,
-+ * since we're sequentially reading the entire file.
-+ */
-+static struct page *read_file_data_page(struct file *filp, pgoff_t index,
-+					struct file_ra_state *ra,
-+					unsigned long remaining_pages)
-+{
-+	struct page *page;
-+
-+	page = find_get_page_flags(filp->f_mapping, index, FGP_ACCESSED);
-+	if (!page || !PageUptodate(page)) {
-+		if (page)
-+			put_page(page);
-+		else
-+			page_cache_sync_readahead(filp->f_mapping, ra, filp,
-+						  index, remaining_pages);
-+		page = read_mapping_page(filp->f_mapping, index, NULL);
-+		if (IS_ERR(page))
-+			return page;
-+	}
-+	if (PageReadahead(page))
-+		page_cache_async_readahead(filp->f_mapping, ra, filp, page,
-+					   index, remaining_pages);
-+	return page;
-+}
-+
-+static int build_merkle_tree_level(struct file *filp, unsigned int level,
- 				   u64 num_blocks_to_hash,
- 				   const struct merkle_tree_params *params,
- 				   u8 *pending_hashes,
- 				   struct ahash_request *req)
- {
-+	struct inode *inode = file_inode(filp);
- 	const struct fsverity_operations *vops = inode->i_sb->s_vop;
-+	struct file_ra_state ra = { 0 };
- 	unsigned int pending_size = 0;
- 	u64 dst_block_num;
- 	u64 i;
-@@ -36,6 +65,8 @@ static int build_merkle_tree_level(struct inode *inode, unsigned int level,
- 		dst_block_num = 0; /* unused */
- 	}
- 
-+	file_ra_state_init(&ra, filp->f_mapping);
-+
- 	for (i = 0; i < num_blocks_to_hash; i++) {
- 		struct page *src_page;
- 
-@@ -45,7 +76,8 @@ static int build_merkle_tree_level(struct inode *inode, unsigned int level,
- 
- 		if (level == 0) {
- 			/* Leaf: hashing a data block */
--			src_page = read_mapping_page(inode->i_mapping, i, NULL);
-+			src_page = read_file_data_page(filp, i, &ra,
-+						       num_blocks_to_hash - i);
- 			if (IS_ERR(src_page)) {
- 				err = PTR_ERR(src_page);
- 				fsverity_err(inode,
-@@ -103,17 +135,18 @@ static int build_merkle_tree_level(struct inode *inode, unsigned int level,
- }
- 
- /*
-- * Build the Merkle tree for the given inode using the given parameters, and
-+ * Build the Merkle tree for the given file using the given parameters, and
-  * return the root hash in @root_hash.
-  *
-  * The tree is written to a filesystem-specific location as determined by the
-  * ->write_merkle_tree_block() method.  However, the blocks that comprise the
-  * tree are the same for all filesystems.
-  */
--static int build_merkle_tree(struct inode *inode,
-+static int build_merkle_tree(struct file *filp,
- 			     const struct merkle_tree_params *params,
- 			     u8 *root_hash)
- {
-+	struct inode *inode = file_inode(filp);
- 	u8 *pending_hashes;
- 	struct ahash_request *req;
- 	u64 blocks;
-@@ -139,7 +172,7 @@ static int build_merkle_tree(struct inode *inode,
- 	blocks = (inode->i_size + params->block_size - 1) >>
- 		 params->log_blocksize;
- 	for (level = 0; level <= params->num_levels; level++) {
--		err = build_merkle_tree_level(inode, level, blocks, params,
-+		err = build_merkle_tree_level(filp, level, blocks, params,
- 					      pending_hashes, req);
- 		if (err)
- 			goto out;
-@@ -227,7 +260,7 @@ static int enable_verity(struct file *filp,
- 	 */
- 	pr_debug("Building Merkle tree...\n");
- 	BUILD_BUG_ON(sizeof(desc->root_hash) < FS_VERITY_MAX_DIGEST_SIZE);
--	err = build_merkle_tree(inode, &params, desc->root_hash);
-+	err = build_merkle_tree(filp, &params, desc->root_hash);
- 	if (err) {
- 		fsverity_err(inode, "Error %d building Merkle tree", err);
- 		goto rollback;
--- 
-2.24.1.735.g03f4e72817-goog
-
+					- Ted
