@@ -2,85 +2,88 @@ Return-Path: <SRS0=HDdd=27=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C4F7C282DD
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 17:34:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDE3CC33CA3
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5048620838
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 17:34:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F89C2082E
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726767AbgAJReh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 10 Jan 2020 12:34:37 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:33268 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726700AbgAJReg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jan 2020 12:34:36 -0500
-Received: from callcc.thunk.org (guestnat-104-133-0-111.corp.google.com [104.133.0.111] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 00AHYW3U009159
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 10 Jan 2020 12:34:33 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id BF7F14207DF; Fri, 10 Jan 2020 12:34:32 -0500 (EST)
-Date:   Fri, 10 Jan 2020 12:34:32 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Anatoly Pugachev <matorola@gmail.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] libext2fs: Extends commit c9a8c53b, with the same fix
- for ext2fs_flush2() and ext2fs_image_super_write() on a Big Endian systems.
-Message-ID: <20200110173432.GB304349@mit.edu>
-References: <20200110085217.GA7307@yogzotot>
+        id S1728646AbgAJT37 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 10 Jan 2020 14:29:59 -0500
+Received: from mga05.intel.com ([192.55.52.43]:59396 "EHLO mga05.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727709AbgAJT36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 10 Jan 2020 14:29:58 -0500
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:29:58 -0800
+X-IronPort-AV: E=Sophos;i="5.69,418,1571727600"; 
+   d="scan'208";a="255125193"
+Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
+  by fmsmga002-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:29:58 -0800
+From:   ira.weiny@intel.com
+To:     linux-kernel@vger.kernel.org
+Cc:     Ira Weiny <ira.weiny@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [RFC PATCH V2 02/12] fs/xfs: Isolate the physical DAX flag from effective
+Date:   Fri, 10 Jan 2020 11:29:32 -0800
+Message-Id: <20200110192942.25021-3-ira.weiny@intel.com>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20200110192942.25021-1-ira.weiny@intel.com>
+References: <20200110192942.25021-1-ira.weiny@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200110085217.GA7307@yogzotot>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 10, 2020 at 11:52:17AM +0300, Anatoly Pugachev wrote:
-> 
-> libext2fs: extends commit c9a8c53b, with the same fix for ext2fs_flush2() and
-> ext2fs_image_super_write() on a Big Endian systems.
-> 
-> As follow-up to previous discussion 'dumpe2fs / mke2fs sigserv on sparc64'
-> 
-> Used find for files which refer to:
-> 
-> e2fsprogs.git$ find . -name \*.c | xargs grep -cl 'gdp = ext2fs_group_desc'
-> ./lib/ext2fs/closefs.c
-> ./lib/ext2fs/openfs.c
-> ./lib/ext2fs/imager.c
-> 
-> And applied the same check for a null pointer.
-> 
-> Tested on a debian linux with sparc64 LDOM and ppc64 LPAR.
-> 
-> Fixes sigserv with test suite in "i_bitmaps" test.
+From: Ira Weiny <ira.weiny@intel.com>
 
-As far as I know, the i_bitmaps test is passing on on sparc64 and
-ppc64.  Search for i_bitmaps in:
+xfs_ioctl_setattr_dax_invalidate() currently checks if the DAX flag is
+changing as a quick check.
 
-https://buildd.debian.org/status/fetch.php?pkg=e2fsprogs&arch=sparc64&ver=1.45.5-2&stamp=1578527938&raw=0
-   and
-https://buildd.debian.org/status/fetch.php?pkg=e2fsprogs&arch=ppc64&ver=1.45.5-2&stamp=1578526270&raw=0
+But the implementation mixes the physical (XFS_DIFLAG2_DAX) and
+effective (S_DAX) DAX flags.
 
-The bug in c9a8c53b was caused by SPARSE_SUPER being passed to
-ext2fs_open().  But that doesn't happen in misc/e2image.
+Remove the use of the effective flag when determining if a change of the
+physical flag is required.
 
-I can see optimizing ext2fs_flush() to skip byte-swapping the group
-descriptors if the SUPER_ONLY flag is enabled.  And I can see
-ext2fs_image_super_write() checking to see if the SUPER_ONLY flag is
-set, and returning an error in that case.
+Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+---
+ fs/xfs/xfs_ioctl.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-But I don't think any of the current e2fsprogs are crashing at the
-moment.  Am I missing something?
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index 7b35d62ede9f..fe37708cea8f 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -1195,9 +1195,11 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	}
+ 
+ 	/* If the DAX state is not changing, we have nothing to do here. */
+-	if ((fa->fsx_xflags & FS_XFLAG_DAX) && IS_DAX(inode))
++	if ((fa->fsx_xflags & FS_XFLAG_DAX) &&
++	    (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
+ 		return 0;
+-	if (!(fa->fsx_xflags & FS_XFLAG_DAX) && !IS_DAX(inode))
++	if (!(fa->fsx_xflags & FS_XFLAG_DAX) &&
++	    !(ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
+ 		return 0;
+ 
+ 	if (S_ISDIR(inode->i_mode))
+-- 
+2.21.0
 
-Regards,
-
-					- Ted
