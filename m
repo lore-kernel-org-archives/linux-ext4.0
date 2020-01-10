@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EED9BC282DD
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C058AC282DD
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:31:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CAF6820661
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9D00A2082E
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:31:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728943AbgAJTaH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 10 Jan 2020 14:30:07 -0500
-Received: from mga18.intel.com ([134.134.136.126]:33892 "EHLO mga18.intel.com"
+        id S1729146AbgAJTbD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 10 Jan 2020 14:31:03 -0500
+Received: from mga01.intel.com ([192.55.52.88]:21831 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728924AbgAJTaG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 10 Jan 2020 14:30:06 -0500
+        id S1728860AbgAJTaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 10 Jan 2020 14:30:00 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by orsmga106.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:05 -0800
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:00 -0800
 X-IronPort-AV: E=Sophos;i="5.69,418,1571727600"; 
-   d="scan'208";a="396531775"
+   d="scan'208";a="216772415"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by orsmga005-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:04 -0800
+  by orsmga008-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:29:59 -0800
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org
 Cc:     Ira Weiny <ira.weiny@intel.com>,
@@ -37,9 +37,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [RFC PATCH V2 06/12] fs/xfs: Check if the inode supports DAX under lock
-Date:   Fri, 10 Jan 2020 11:29:36 -0800
-Message-Id: <20200110192942.25021-7-ira.weiny@intel.com>
+Subject: [RFC PATCH V2 03/12] fs/xfs: Separate functionality of xfs_inode_supports_dax()
+Date:   Fri, 10 Jan 2020 11:29:33 -0800
+Message-Id: <20200110192942.25021-4-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20200110192942.25021-1-ira.weiny@intel.com>
 References: <20200110192942.25021-1-ira.weiny@intel.com>
@@ -52,47 +52,85 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-One of the checks for an inode supporting DAX is if the inode is
-reflinked.  During a non-DAX to DAX mode change we could race with
-the file being reflinked and end up with a reflinked file being in DAX
-mode.
+xfs_inode_supports_dax() should reflect if the inode can support DAX not
+that it is enabled for DAX.  Leave that to other helper functions.
 
-Prevent this race by checking for DAX support under the MMAP_LOCK.
+Change the caller of xfs_inode_supports_dax() to call
+xfs_inode_use_dax() which reflects new logic to override the effective
+DAX flag with either the mount option or the physical DAX flag.
+
+To make the logic clear create 2 helper functions for the mount and
+physical flag.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- fs/xfs/xfs_ioctl.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ fs/xfs/xfs_iops.c | 32 ++++++++++++++++++++++++++------
+ 1 file changed, 26 insertions(+), 6 deletions(-)
 
-diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index b5e00b67c297..bc3654fe3b5d 100644
---- a/fs/xfs/xfs_ioctl.c
-+++ b/fs/xfs/xfs_ioctl.c
-@@ -1180,10 +1180,6 @@ xfs_ioctl_setattr_dax_invalidate(
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 8afe69ca188b..0a0ea90259e9 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -1234,6 +1234,15 @@ static const struct inode_operations xfs_inline_symlink_inode_operations = {
+ 	.update_time		= xfs_vn_update_time,
+ };
  
- 	*join_flags = 0;
++static bool
++xfs_inode_mount_is_dax(
++	struct xfs_inode *ip)
++{
++	struct xfs_mount	*mp = ip->i_mount;
++
++	return (mp->m_flags & XFS_MOUNT_DAX) == XFS_MOUNT_DAX;
++}
++
+ /* Figure out if this file actually supports DAX. */
+ static bool
+ xfs_inode_supports_dax(
+@@ -1245,11 +1254,6 @@ xfs_inode_supports_dax(
+ 	if (!S_ISREG(VFS_I(ip)->i_mode) || xfs_is_reflink_inode(ip))
+ 		return false;
  
--	if ((fa->fsx_xflags & FS_XFLAG_DAX) == FS_XFLAG_DAX &&
--	    !xfs_inode_supports_dax(ip))
--		return -EINVAL;
+-	/* DAX mount option or DAX iflag must be set. */
+-	if (!(mp->m_flags & XFS_MOUNT_DAX) &&
+-	    !(ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
+-		return false;
 -
- 	/* If the DAX state is not changing, we have nothing to do here. */
- 	if ((fa->fsx_xflags & FS_XFLAG_DAX) &&
- 	    (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
-@@ -1197,6 +1193,13 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	/* Block size must match page size */
+ 	if (mp->m_sb.sb_blocksize != PAGE_SIZE)
+ 		return false;
+@@ -1258,6 +1262,22 @@ xfs_inode_supports_dax(
+ 	return xfs_inode_buftarg(ip)->bt_daxdev != NULL;
+ }
  
- 	/* lock, flush and invalidate mapping in preparation for flag change */
- 	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
++static bool
++xfs_inode_is_dax(
++	struct xfs_inode *ip)
++{
++	return (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX) == XFS_DIFLAG2_DAX;
++}
 +
-+	if ((fa->fsx_xflags & FS_XFLAG_DAX) == FS_XFLAG_DAX &&
-+	    !xfs_inode_supports_dax(ip)) {
-+		error = -EINVAL;
-+		goto out_unlock;
-+	}
++static bool
++xfs_inode_use_dax(
++	struct xfs_inode *ip)
++{
++	return xfs_inode_supports_dax(ip) &&
++		(xfs_inode_mount_is_dax(ip) ||
++		 xfs_inode_is_dax(ip));
++}
 +
- 	error = filemap_write_and_wait(inode->i_mapping);
- 	if (error)
- 		goto out_unlock;
+ STATIC void
+ xfs_diflags_to_iflags(
+ 	struct inode		*inode,
+@@ -1276,7 +1296,7 @@ xfs_diflags_to_iflags(
+ 		inode->i_flags |= S_SYNC;
+ 	if (flags & XFS_DIFLAG_NOATIME)
+ 		inode->i_flags |= S_NOATIME;
+-	if (xfs_inode_supports_dax(ip))
++	if (xfs_inode_use_dax(ip))
+ 		inode->i_flags |= S_DAX;
+ }
+ 
 -- 
 2.21.0
 
