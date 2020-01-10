@@ -4,28 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DE25C3F68F
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 34945C33CA5
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D33142084D
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0AEB72084D
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:30:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728933AbgAJTaF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 10 Jan 2020 14:30:05 -0500
-Received: from mga06.intel.com ([134.134.136.31]:52408 "EHLO mga06.intel.com"
+        id S1729020AbgAJTaQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 10 Jan 2020 14:30:16 -0500
+Received: from mga07.intel.com ([134.134.136.100]:43951 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728881AbgAJTaE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 10 Jan 2020 14:30:04 -0500
+        id S1729004AbgAJTaO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 10 Jan 2020 14:30:14 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by orsmga104.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:03 -0800
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by orsmga105.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:14 -0800
 X-IronPort-AV: E=Sophos;i="5.69,418,1571727600"; 
-   d="scan'208";a="223886934"
+   d="scan'208";a="218748606"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by orsmga006-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:02 -0800
+  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:30:13 -0800
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org
 Cc:     Ira Weiny <ira.weiny@intel.com>,
@@ -37,9 +37,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [RFC PATCH V2 05/12] fs: remove unneeded IS_DAX() check
-Date:   Fri, 10 Jan 2020 11:29:35 -0800
-Message-Id: <20200110192942.25021-6-ira.weiny@intel.com>
+Subject: [RFC PATCH V2 11/12] fs/xfs: Clean up locking in dax invalidate
+Date:   Fri, 10 Jan 2020 11:29:41 -0800
+Message-Id: <20200110192942.25021-12-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20200110192942.25021-1-ira.weiny@intel.com>
 References: <20200110192942.25021-1-ira.weiny@intel.com>
@@ -52,31 +52,53 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-The IS_DAX() check in io_is_direct() causes a race between changing the
-DAX mode and creating the iocb flags.
-
-Remove the check because DAX now emulates the page cache API and
-therefore it does not matter if the file mode is DAX or not when the
-iocb flags are created.
+Define a variable to hold the lock flags to ensure that the correct
+locks are returned or released on error.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- include/linux/fs.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/xfs/xfs_ioctl.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d7584bcef5d3..e11989502eac 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3365,7 +3365,7 @@ extern int file_update_time(struct file *file);
- 
- static inline bool io_is_direct(struct file *filp)
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index 1ab0906c6c7f..9a35bf83eaa1 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -1176,7 +1176,7 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	int			*join_flags)
  {
--	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
-+	return (filp->f_flags & O_DIRECT);
- }
+ 	struct inode		*inode = VFS_I(ip);
+-	int			error;
++	int			error, flags;
  
- static inline bool vma_is_dax(struct vm_area_struct *vma)
+ 	*join_flags = 0;
+ 
+@@ -1191,8 +1191,10 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	if (S_ISDIR(inode->i_mode))
+ 		return 0;
+ 
++	flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
++
+ 	/* lock, flush and invalidate mapping in preparation for flag change */
+-	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
++	xfs_ilock(ip, flags);
+ 
+ 	if ((fa->fsx_xflags & FS_XFLAG_DAX) == FS_XFLAG_DAX &&
+ 	    !xfs_inode_supports_dax(ip)) {
+@@ -1215,11 +1217,11 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	if (error)
+ 		goto out_unlock;
+ 
+-	*join_flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
++	*join_flags = flags;
+ 	return 0;
+ 
+ out_unlock:
+-	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
++	xfs_iunlock(ip, flags);
+ 	return error;
+ 
+ }
 -- 
 2.21.0
 
