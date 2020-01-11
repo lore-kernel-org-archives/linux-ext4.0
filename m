@@ -1,139 +1,128 @@
-Return-Path: <SRS0=HDdd=27=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=u5Lv=3A=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D95ABC282DD
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:31:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D342C282DD
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Jan 2020 00:13:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B044620848
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Jan 2020 19:31:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 173B12064C
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Jan 2020 00:13:53 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KrLbtkAb"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728676AbgAJT34 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 10 Jan 2020 14:29:56 -0500
-Received: from mga03.intel.com ([134.134.136.65]:21738 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727709AbgAJT34 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 10 Jan 2020 14:29:56 -0500
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga004.fm.intel.com ([10.253.24.48])
-  by orsmga103.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:29:55 -0800
-X-IronPort-AV: E=Sophos;i="5.69,418,1571727600"; 
-   d="scan'208";a="247130740"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 10 Jan 2020 11:29:55 -0800
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [RFC PATCH V2 00/12] Enable per-file/directory DAX operations V2
-Date:   Fri, 10 Jan 2020 11:29:30 -0800
-Message-Id: <20200110192942.25021-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.21.0
+        id S1727466AbgAKANw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 10 Jan 2020 19:13:52 -0500
+Received: from mail-ed1-f68.google.com ([209.85.208.68]:39910 "EHLO
+        mail-ed1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727444AbgAKANw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jan 2020 19:13:52 -0500
+Received: by mail-ed1-f68.google.com with SMTP id t17so3193936eds.6
+        for <linux-ext4@vger.kernel.org>; Fri, 10 Jan 2020 16:13:51 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=exvRwaf6Fcg2yDAKT17GRq1b5OtwusPzanX62x0yWMQ=;
+        b=KrLbtkAbt3SJh2NH6mDA7Hakx9dIjEXBA0iUniIvRullT3NTaT4WHsDo+rci7xyB0T
+         SaQnHop7nHJK7HHaiPLvGgyNC5o79XP8D2DAMaYrJqVycK+uaOnT5IEiCwIDJppJ2Bm7
+         LJ/W6jR5TI66l5gDJvFsjqaqyGulrhaiDFLIDi45JviwLJDYgXLoDo8IFr3zU5n4ywZ2
+         dbo78VAPFRGedyaGVsn7npUYKDB49K2cVg+jcUjTAduyqi3VvxnOKiJ9XikPdQ7f0ej8
+         BXR3DntRPoRLSehvyObosTDH8Lhgyrz7ahzTpMmvoUB1lxTavJSy5F2oxOjkWPNcG8/m
+         JJgQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=exvRwaf6Fcg2yDAKT17GRq1b5OtwusPzanX62x0yWMQ=;
+        b=Rlq0fiZwUvrE3LPMlRYApne4NA+iDcbMF2R+En8J069XL0p5+a1kGORL37/cj3TP79
+         edTUM8hLt5upcF42MQcCz44cIObnRp9M+xqhaq0jGMen69Yyw3P39UyoJX8LX80cSTcN
+         O7DhKhtuWHm3kLoPkfHPPgkJ2cuVl4i7iQl3cXFp0ug3EJkGwtvsfxnEUw9wXuzBWFmh
+         +NM0qMrNFRUfhgBR9E8fBuQ/8Q2NdG2g3WqwgBJ7wpPpk6y6B+3zEvi/zA1eWOTzKS51
+         sjhKzvdQxoGsoRD0pEUD2wTbEWFNzJtxBG2cHioSSVep4eTVSLrhvKBhquVh0LuLwJmY
+         7kRg==
+X-Gm-Message-State: APjAAAXpo+CADYSlI6eIO42HUGXOGJzhxCPkUO1N/NUX+YQVKinpUEN3
+        A1duDdjJuILqCnLh/hE+hINLS108imJDEgw87AFHdtEG
+X-Google-Smtp-Source: APXvYqwFiJ+dWB3dtupWsmKTzoRLPgecZxNBPAQiWWbzKm+mTDoLrEppB5llONbTpVspNqO4BJTJbk6Cj1Su2J4/H2c=
+X-Received: by 2002:a17:906:1b07:: with SMTP id o7mr5746376ejg.131.1578701630618;
+ Fri, 10 Jan 2020 16:13:50 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20200110085217.GA7307@yogzotot> <20200110173432.GB304349@mit.edu>
+In-Reply-To: <20200110173432.GB304349@mit.edu>
+From:   Anatoly Pugachev <matorola@gmail.com>
+Date:   Sat, 11 Jan 2020 03:13:43 +0300
+Message-ID: <CADxRZqxLWfkKB6dOp5D0C5QETF0vjF_CG1rRLEO0n1p98U+PFQ@mail.gmail.com>
+Subject: Re: [PATCH] libext2fs: Extends commit c9a8c53b, with the same fix for
+ ext2fs_flush2() and ext2fs_image_super_write() on a Big Endian systems.
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+On Fri, Jan 10, 2020 at 8:34 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> On Fri, Jan 10, 2020 at 11:52:17AM +0300, Anatoly Pugachev wrote:
+> >
+> > libext2fs: extends commit c9a8c53b, with the same fix for ext2fs_flush2() and
+> > ext2fs_image_super_write() on a Big Endian systems.
+> >
+> > As follow-up to previous discussion 'dumpe2fs / mke2fs sigserv on sparc64'
+> >
+> > Used find for files which refer to:
+> >
+> > e2fsprogs.git$ find . -name \*.c | xargs grep -cl 'gdp = ext2fs_group_desc'
+> > ./lib/ext2fs/closefs.c
+> > ./lib/ext2fs/openfs.c
+> > ./lib/ext2fs/imager.c
+> >
+> > And applied the same check for a null pointer.
+> >
+> > Tested on a debian linux with sparc64 LDOM and ppc64 LPAR.
+> >
+> > Fixes sigserv with test suite in "i_bitmaps" test.
+>
+> As far as I know, the i_bitmaps test is passing on on sparc64 and
+> ppc64.  Search for i_bitmaps in:
+>
+> https://buildd.debian.org/status/fetch.php?pkg=e2fsprogs&arch=sparc64&ver=1.45.5-2&stamp=1578527938&raw=0
+>    and
+> https://buildd.debian.org/status/fetch.php?pkg=e2fsprogs&arch=ppc64&ver=1.45.5-2&stamp=1578526270&raw=0
+>
+> The bug in c9a8c53b was caused by SPARSE_SUPER being passed to
+> ext2fs_open().  But that doesn't happen in misc/e2image.
+>
+> I can see optimizing ext2fs_flush() to skip byte-swapping the group
+> descriptors if the SUPER_ONLY flag is enabled.  And I can see
+> ext2fs_image_super_write() checking to see if the SUPER_ONLY flag is
+> set, and returning an error in that case.
+>
+> But I don't think any of the current e2fsprogs are crashing at the
+> moment.  Am I missing something?
 
-At LSF/MM'19 [1] [2] we discussed applications that overestimate memory
-consumption due to their inability to detect whether the kernel will
-instantiate page cache for a file, and cases where a global dax enable via a
-mount option is too coarse.
+Ted,
 
-The following patch series enables selecting the use of DAX on individual files
-and/or directories on xfs, and lays some groundwork to do so in ext4.  In this
-scheme the dax mount option can be omitted to allow the per-file property to
-take effect.
+I'm using "master" branch for my tests, and debian probably using
+"debian/master" .
+Even test count is differ. In master branch 366 tests and in
+"debian/master" 356 tests.
 
-The insight at LSF/MM was to separate the per-mount or per-file "physical"
-capability switch from an "effective" attribute for the file.
+$ git br -vvv
+  debian/master 0ba96395 [origin/debian/master] debian/patches: update
+for 1.45.5-2 release
+* master        32d33132 [origin/master] Merge branch 'maint' into next
 
-At LSF/MM we discussed the difficulties of switching the mode of a file with
-active mappings / page cache.  It was thought the races could be avoided by
-limiting mode flips to 0-length files.
+Can you please try master branch on any (sparc64 or ppc64) debian
+porter boxes? (There's new ppc64 porter box coming soon)
+Or on ppc64/sparc64 "gcc compile test" farm machines?
 
-However, this turns out to not be true.[3] This is because address space
-operations (a_ops) may be in use at any time the inode is referenced and users
-have expressed a desire to be able to change the mode on a file with data in
-it.  For those reasons this patch set allows changing the mode flag on a file
-as long as it is not current mapped.
+And it's actually up to you, maybe my patch is irrelevant (and sorry
+for the noise then), since i don't know internals for e2fsprogs.
 
-Furthermore, DAX is a property of the inode and as such, many operations other
-than address space operations need to be protected during a mode change.
-
-Therefore callbacks are placed within the inode operations and used to lock the
-inode as appropriate.
-
-As in V1, Users are able to query the effective and physical flags separately
-at any time.  Specifically the addition of the statx attribute bit allows them
-to ensure the file is operating in the mode they intend.  This 'effective flag'
-and physical flags could differ when the filesystem is mounted with the dax
-flag for example.
-
-It should be noted that the physical DAX flag inheritance is not shown in this
-patch set as it was maintained from previous work on XFS.  The physical DAX flag
-and it's inheritance will need to be added to other file systems for user
-control. 
-
-Finally, extensive testing was performed which resulted in a couple of bug fix
-and clean up patches.  Specifically:
-
-	fs: remove unneeded IS_DAX() check
-	fs/xfs: Fix truncate up
-
-'Fix truncate up' deserves specific attention because I'm not 100% sure it is
-the correct fix.  Without that patch fsx testing failed within a few minutes
-with this error.
-
-	Mapped Write: non-zero data past EOF (0x3b0da) page offset 0xdb is 0x3711
-
-With 'Fix truncate up' running fsx while changing modes can run for hours but I
-have seen 2 other errors in the same genre after many hours of continuous
-testing.
-
-They are:
-
-	READ BAD DATA: offset = 0x22dc, size = 0xcc7e, fname = /mnt/pmem/dax-file
-
-	Mapped Read: non-zero data past EOF (0x3309e) page offset 0x9f is 0x6ab4
-
-After seeing the patches to fix stale data exposure problems[4] I'm more
-confident now that all 3 of these errors are a latent bug rather than a bug in
-this series itself.
-
-However, because of these failures I'm only submitting this set RFC.
-
-
-[1] https://lwn.net/Articles/787973/
-[2] https://lwn.net/Articles/787233/
-[3] https://lkml.org/lkml/2019/10/20/96
-[4] https://patchwork.kernel.org/patch/11310511/
-
-
-To: linux-kernel@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-
+Thanks.
