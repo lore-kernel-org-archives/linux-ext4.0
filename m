@@ -1,86 +1,134 @@
-Return-Path: <SRS0=zQ2B=3B=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Aflh=3C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A15DEC32771
-	for <linux-ext4@archiver.kernel.org>; Sun, 12 Jan 2020 03:45:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DAAEC33CAD
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jan 2020 11:04:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6DFC02082E
-	for <linux-ext4@archiver.kernel.org>; Sun, 12 Jan 2020 03:45:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7B34E2072B
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jan 2020 11:04:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732098AbgALDpb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 Jan 2020 22:45:31 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:38864 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1732096AbgALDpb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jan 2020 22:45:31 -0500
-Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 00C3jQaI020231
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 11 Jan 2020 22:45:27 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id CEB634207DF; Sat, 11 Jan 2020 22:45:26 -0500 (EST)
-Date:   Sat, 11 Jan 2020 22:45:26 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     xiaohui li <lixiaohui1@xiaomi.corp-partner.google.com>
-Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH v4 01/20] ext4: update docs for fast commit feature
-Message-ID: <20200112034526.GB359630@mit.edu>
-References: <20191224081324.95807-1-harshadshirwadkar@gmail.com>
- <CAAJeciV7bVN9HKz=FTQ1eSLXX_7E2ccuH9Za3vzBWHsgHuZEiw@mail.gmail.com>
+        id S1726163AbgAMLEc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Jan 2020 06:04:32 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:46514 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725992AbgAMLEc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Jan 2020 06:04:32 -0500
+Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 00DAvkSD121645
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jan 2020 06:04:30 -0500
+Received: from e06smtp05.uk.ibm.com (e06smtp05.uk.ibm.com [195.75.94.101])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2xfbs7n5d6-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Jan 2020 06:04:30 -0500
+Received: from localhost
+        by e06smtp05.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
+        Mon, 13 Jan 2020 11:04:28 -0000
+Received: from b06avi18626390.portsmouth.uk.ibm.com (9.149.26.192)
+        by e06smtp05.uk.ibm.com (192.168.101.135) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Mon, 13 Jan 2020 11:04:26 -0000
+Received: from d06av24.portsmouth.uk.ibm.com (d06av24.portsmouth.uk.ibm.com [9.149.105.60])
+        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 00DB3a2B35127708
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 13 Jan 2020 11:03:37 GMT
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 535874204C;
+        Mon, 13 Jan 2020 11:04:25 +0000 (GMT)
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 5B27F42045;
+        Mon, 13 Jan 2020 11:04:24 +0000 (GMT)
+Received: from dhcp-9-199-159-93.in.ibm.com (unknown [9.199.159.93])
+        by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Mon, 13 Jan 2020 11:04:24 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, jack@suse.cz, Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [RFC 0/2] ext4: Fix stale data read exposure problem with DIO read/page_mkwrite
+Date:   Mon, 13 Jan 2020 16:34:20 +0530
+X-Mailer: git-send-email 2.21.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAAJeciV7bVN9HKz=FTQ1eSLXX_7E2ccuH9Za3vzBWHsgHuZEiw@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 20011311-0020-0000-0000-000003A034CA
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 20011311-0021-0000-0000-000021F7A37B
+Message-Id: <cover.1578907890.git.riteshh@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.572
+ definitions=2020-01-13_03:2020-01-13,2020-01-13 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0 phishscore=0
+ priorityscore=1501 mlxlogscore=969 suspectscore=0 adultscore=0
+ clxscore=1011 bulkscore=0 malwarescore=0 impostorscore=0 mlxscore=0
+ lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-1910280000 definitions=main-2001130094
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jan 09, 2020 at 12:29:01PM +0800, xiaohui li wrote:
-> maybe i have not understand the difficulty of the fast commit coding work.
-> so I appreciate it very much if you give some more detailed
-> descriptions about the patches correlationship of v4 fast commit,
-> especially the reason why need have so many patches.
-> 
-> from my viewpoint, the purpose of doing this fast commit function is
-> to resolve the ext4 fsync time-cost-so-much problem.
-> firstly we need to resolve some actual customer problems which exist
-> in ext4 filesystems when doing this fast commit function.
-> 
-> so the first release version of fast commit is just only to accomplish
-> the goal of reducing the time cost of fsync because of jbd2 order
-> shortcoming described in ijournal paper from my opinion.
-> it need not do so many other unnecessary things.
+Hello All, 
 
-As Harshad has mentioned, one of the reasons why an incremental
-approach does not make sense is that once we release a version of fast
-commit into a mainline kernel, we have to worry about what happens if
-users start trying to use it, and we have to provide backwards
-compatibility for it.  So if we were to break up fast commit into 5
-parts, then we would have to allocate 5 feature bits, and we would
-have to support each version of fast commit --- essentially forever.
+Sorry for the delay on this patchset. I guess it's because there were
+lot of other context switches while working at it.
 
-As far as why are we doing this, we absolutely have a specific use
-case in mind, and that's to improve ext4's performance when used on a
-NFS server.  The NFS protocol requires that any file system operation
-requested by a client is persisted before the server sends an
-acknowledgement back to the client.  For the workloads that are heavy
-with metadata updates, avoiding the need to do a full jbd2 commit for
-every NFS RPC request which modifies metadata will a big difference to
-the NFS server's performance.
+Please note that this is a RFC patch and also a WIP (due to a open problem
+listed below).
+There is also another thread going on where making dioread_nolock as default
+mount opt [1] is being discussed. That approach should also solve the given
+race at hand. But since nothing is finalized yet, so I wanted to get this patch
+out for early review/discussion.
 
-This is why we are interested in making things like renames to be fast
-commit eligible, and not just the smaller set of system calls needed
-by (for example) SQLite.
+About patch
+===========
 
-Regards,
+Currently there is a small race window as pointed out by Jan [2] where, when
+ext4 tries to allocate a written block for mapped files and if DIO read is in
+progress, then this may result into stale data read exposure problem.
 
-						- Ted
+This patch tries to fix the mentioned issue by:
+1. For non-delalloc path, page_mkwrite will use unwritten blocks by
+   default for extent based files.
+
+2. For delalloc path, we check if DIO is in progress during writeback.
+   If yes, then we use unwritten blocks method to avoid this race.
+
+Patch-1: This moves the inode_dio_begin() call before calling for
+filemap_write_and_wait_range.
+
+Patch-2: This implementes the points (1) & (2) mentioned above.
+
+Testing:
+========
+xfstests "-g auto" ran fine except one warn_on issue.
+
+Below tests are giving kernel WARN_ON from "ext4_journalled_invalidatepage()",
+with 1024 blocksize, 4K pagesize & with "nodelalloc,data=journal" mount opt.
+- generic/013, generic/269, generic/270
+
+In case if someone has any pointers around this, I could dig more deeper into
+this. 
+
+References
+==========
+[1] https://www.spinics.net/lists/linux-ext4/msg69224.html
+[2] https://lore.kernel.org/linux-ext4/20190926134726.GA28555@quack2.suse.cz/ 
+
+
+Ritesh Harjani (2):
+  iomap: direct-io: Move inode_dio_begin before
+    filemap_write_and_wait_range
+  ext4: Fix stale data read issue with DIO read & ext4_page_mkwrite path
+
+ fs/ext4/inode.c      | 45 +++++++++++++++++++++++++++++++-------------
+ fs/iomap/direct-io.c | 17 +++++++++++++----
+ 2 files changed, 45 insertions(+), 17 deletions(-)
+
+-- 
+2.21.0
+
