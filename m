@@ -7,35 +7,35 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 30157C33CB8
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jan 2020 16:13:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 882BDC33CB2
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jan 2020 16:13:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 05AA224676
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jan 2020 16:13:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 550A624655
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jan 2020 16:13:30 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="sCB1kcD9"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="LRd1rAVd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729531AbgANQNU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Jan 2020 11:13:20 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:43562 "EHLO
+        id S1728921AbgANQMe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Jan 2020 11:12:34 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:43372 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729296AbgANQMr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jan 2020 11:12:47 -0500
+        with ESMTP id S1728850AbgANQMd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jan 2020 11:12:33 -0500
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description:Resent-Date:Resent-From
         :Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
         List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-        bh=kuBKhMklw+YxwJKcgxxO2S9Flu8Wk6bhNkWsODoSOE0=; b=sCB1kcD90uIUWLGF48wprnsXiX
-        3TB+jsOI4Y2LkRdrKtxH7i+aXulnTirR1Cm/o8Nz6e4INd8u4uc0mJ3rPB5SzAwsKj5VfFRQAJBVr
-        3fUFDOuZm+DBrQQWkhuoNqedHFyFeIuI8r927b3PwWgcpgLD/Am4ErzsYUPEBFxz7sZuTCsVinp4t
-        b/PWVC2rKPI1UPEI1qNqzum+uHVMcQA2gZRteVU9VeEFHkzOfP20VFKZOc1tfVxyDUniazlYLshgf
-        FZcWjN50VlbXvGJKA5TxSQ7uDk2TOGwTCR8IhGlGSp9FaxaAyGjBKQ3+KxCIelMg+ZEfos510Jftn
-        QT84XA8Q==;
+        bh=kUvZdbrxgXYM+XtmN49YBQ9SrUjZBQUmtmFMa7zViEA=; b=LRd1rAVdu7xTOpYjtX3JQ4QZqG
+        OqE7DLd8J2fmEAv0BXF5eYeuB+Q4dCGgSpqnyXC/I+SAPH2yKKm2W8AGVklxNeHrCc1aMXKfFPqh3
+        FftbCFmQR9IbEawSShE+O3RO0vdHjoG5zBSXk6SDvo6YgfFtI01W1ebtS0qaocS8cQyK9O7GSYqZx
+        5UM81HbcAvgOK6roMBpJ7uqBXhC5VacnY/zdsuGhGItpqfMqGz3rcy0umTAJQXsjxlnxGk4qs8+UO
+        mklssD83lByYvKT7G3flWLK7WiKJVLPSMW6Cg4vdkf0oaB2HzWfW+ruX2oiypP9+wwGm7uH9HiCzy
+        9qiyXnxw==;
 Received: from [2001:4bb8:18c:4f54:fcbb:a92b:61e1:719] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1irOoA-0000CC-CW; Tue, 14 Jan 2020 16:12:46 +0000
+        id 1irOnw-00007u-QN; Tue, 14 Jan 2020 16:12:33 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Waiman Long <longman@redhat.com>,
@@ -45,9 +45,9 @@ To:     linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Andrew Morton <akpm@linux-foundation.org>,
         linux-ext4@vger.kernel.org, cluster-devel@redhat.com
 Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org
-Subject: [PATCH 07/12] iomap: allow holding i_rwsem until aio completion
-Date:   Tue, 14 Jan 2020 17:12:20 +0100
-Message-Id: <20200114161225.309792-8-hch@lst.de>
+Subject: [PATCH 02/12] locking/rwsem: Exit early when held by an anonymous owner
+Date:   Tue, 14 Jan 2020 17:12:15 +0100
+Message-Id: <20200114161225.309792-3-hch@lst.de>
 X-Mailer: git-send-email 2.24.1
 In-Reply-To: <20200114161225.309792-1-hch@lst.de>
 References: <20200114161225.309792-1-hch@lst.de>
@@ -59,132 +59,33 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The direct I/O code currently uses a hand crafted i_dio_count that needs
-to be incremented under i_rwsem and then is decremented when I/O
-completes.  That scheme means file system code needs to be very careful
-to wait for i_dio_count to reach zero under i_rwsem in various places
-that are very cumbersome to get rid.  It also means we can't get the
-effect of an exclusive i_rwsem for actually asynchronous I/O, forcing
-pointless synchronous execution of sub-blocksize writes.
+The rwsem code overloads the owner field with either a task struct or
+negative magic numbers.  Add a quick hack to catch these negative
+values early on.  Without this spinning on a writer that replaced the
+owner with RWSEM_OWNER_UNKNOWN, rwsem_spin_on_owner can crash while
+deferencing the task_struct ->on_cpu field of a -8 value.
 
-Replace the i_dio_count scheme with holding i_rwsem over the duration
-of the whole I/O.  While this introduces a non-owner unlock that isn't
-nice to RT workload, the open coded locking primitive using i_dio_count
-isn't any better.
+XXX: This might be a bit of a hack as the code otherwise doesn't use
+the ERR_PTR family macros, better suggestions welcome.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/iomap/direct-io.c  | 44 +++++++++++++++++++++++++++++++++++++------
- include/linux/iomap.h |  2 ++
- 2 files changed, 40 insertions(+), 6 deletions(-)
+ kernel/locking/rwsem.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index e706329d71a0..0113ac33b0a0 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -70,7 +70,7 @@ static void iomap_dio_submit_bio(struct iomap_dio *dio, struct iomap *iomap,
- 	dio->submit.cookie = submit_bio(bio);
- }
+diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
+index 44e68761f432..6adc719a30a1 100644
+--- a/kernel/locking/rwsem.c
++++ b/kernel/locking/rwsem.c
+@@ -725,6 +725,8 @@ rwsem_spin_on_owner(struct rw_semaphore *sem, unsigned long nonspinnable)
+ 	state = rwsem_owner_state(owner, flags, nonspinnable);
+ 	if (state != OWNER_WRITER)
+ 		return state;
++	if (IS_ERR(owner))
++		return state;
  
--static ssize_t iomap_dio_complete(struct iomap_dio *dio)
-+static ssize_t iomap_dio_complete(struct iomap_dio *dio, bool unlock)
- {
- 	const struct iomap_dio_ops *dops = dio->dops;
- 	struct kiocb *iocb = dio->iocb;
-@@ -112,6 +112,13 @@ static ssize_t iomap_dio_complete(struct iomap_dio *dio)
- 			dio_warn_stale_pagecache(iocb->ki_filp);
- 	}
- 
-+	if (unlock) {
-+		if (dio->flags & IOMAP_DIO_RWSEM_EXCL)
-+			up_write(&inode->i_rwsem);
-+		else if (dio->flags & IOMAP_DIO_RWSEM_SHARED)
-+			up_read(&inode->i_rwsem);
-+	}
-+
- 	/*
- 	 * If this is a DSYNC write, make sure we push it to stable storage now
- 	 * that we've written data.
-@@ -129,8 +136,22 @@ static void iomap_dio_complete_work(struct work_struct *work)
- {
- 	struct iomap_dio *dio = container_of(work, struct iomap_dio, aio.work);
- 	struct kiocb *iocb = dio->iocb;
-+	struct inode *inode = file_inode(iocb->ki_filp);
- 
--	iocb->ki_complete(iocb, iomap_dio_complete(dio), 0);
-+	/*
-+	 * XXX: For reads this code is directly called from bio ->end_io, which
-+	 * often is hard or softirq context.  In that case lockdep records the
-+	 * below as lock acquisitions from irq context and causes warnings.
-+	 */
-+	if (dio->flags & IOMAP_DIO_RWSEM_EXCL) {
-+		rwsem_acquire(&inode->i_rwsem.dep_map, 0, 0, _THIS_IP_);
-+		if (IS_ENABLED(CONFIG_RWSEM_SPIN_ON_OWNER))
-+			atomic_long_set(&inode->i_rwsem.owner, (long)current);
-+	} else if (dio->flags & IOMAP_DIO_RWSEM_SHARED) {
-+		rwsem_acquire_read(&inode->i_rwsem.dep_map, 0, 0, _THIS_IP_);
-+	}
-+
-+	iocb->ki_complete(iocb, iomap_dio_complete(dio, true), 0);
- }
- 
- /*
-@@ -430,7 +451,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	dio->i_size = i_size_read(inode);
- 	dio->dops = dops;
- 	dio->error = 0;
--	dio->flags = 0;
-+	dio->flags = dio_flags;
- 
- 	dio->submit.iter = iter;
- 	dio->submit.waiter = current;
-@@ -551,8 +572,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	dio->wait_for_completion = wait_for_completion;
- 	if (!atomic_dec_and_test(&dio->ref)) {
- 		if (!wait_for_completion)
--			return -EIOCBQUEUED;
--
-+			goto async_completion;
- 		for (;;) {
- 			set_current_state(TASK_UNINTERRUPTIBLE);
- 			if (!READ_ONCE(dio->submit.waiter))
-@@ -567,10 +587,22 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		__set_current_state(TASK_RUNNING);
- 	}
- 
--	return iomap_dio_complete(dio);
-+	return iomap_dio_complete(dio, false);
- 
- out_free_dio:
- 	kfree(dio);
- 	return ret;
-+
-+async_completion:
-+	/*
-+	 * We are returning to userspace now, but i_rwsem is still held until
-+	 * the I/O completion comes back.
-+	 */
-+	if (dio_flags & (IOMAP_DIO_RWSEM_EXCL | IOMAP_DIO_RWSEM_SHARED))
-+		rwsem_release(&inode->i_rwsem.dep_map, _THIS_IP_);
-+	if ((dio_flags & IOMAP_DIO_RWSEM_EXCL) &&
-+	    IS_ENABLED(CONFIG_RWSEM_SPIN_ON_OWNER))
-+		atomic_long_set(&inode->i_rwsem.owner, RWSEM_OWNER_UNKNOWN);
-+	return -EIOCBQUEUED;
- }
- EXPORT_SYMBOL_GPL(iomap_dio_rw);
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 3faeb8fd0961..f259bb979d7f 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -249,6 +249,8 @@ int iomap_writepages(struct address_space *mapping,
- #define IOMAP_DIO_UNWRITTEN	(1 << 0)	/* covers unwritten extent(s) */
- #define IOMAP_DIO_COW		(1 << 1)	/* covers COW extent(s) */
- #define IOMAP_DIO_SYNCHRONOUS	(1 << 2)	/* no async completion */
-+#define IOMAP_DIO_RWSEM_EXCL	(1 << 3)	/* holds shared i_rwsem */
-+#define IOMAP_DIO_RWSEM_SHARED	(1 << 4)	/* holds exclusive i_rwsem */
- 
- struct iomap_dio_ops {
- 	int (*end_io)(struct kiocb *iocb, ssize_t size, int error,
+ 	rcu_read_lock();
+ 	for (;;) {
 -- 
 2.24.1
 
