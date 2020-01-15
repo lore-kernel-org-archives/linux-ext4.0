@@ -2,71 +2,68 @@ Return-Path: <SRS0=L4/Z=3E=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EEED9C33CB1
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jan 2020 09:19:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2CC7C33CB1
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jan 2020 09:52:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CA3842081E
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jan 2020 09:19:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A2B6F207FF
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jan 2020 09:52:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729281AbgAOJTd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Jan 2020 04:19:33 -0500
-Received: from mx2.suse.de ([195.135.220.15]:42446 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729270AbgAOJTd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Jan 2020 04:19:33 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 5EE8FAEFF;
-        Wed, 15 Jan 2020 09:19:31 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id EA9E31E0CBC; Wed, 15 Jan 2020 10:19:25 +0100 (CET)
-Date:   Wed, 15 Jan 2020 10:19:25 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Jan Kara <jack@suse.cz>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-ext4@vger.kernel.org, tytso@mit.edu
-Subject: Re: [RFC 1/2] iomap: direct-io: Move inode_dio_begin before
- filemap_write_and_wait_range
-Message-ID: <20200115091925.GC31450@quack2.suse.cz>
-References: <cover.1578907890.git.riteshh@linux.ibm.com>
- <27607a16327fe9664f32d09abe565af0d1ae56c9.1578907891.git.riteshh@linux.ibm.com>
- <20200113215159.GA8235@magnolia>
- <20200114090507.GA6466@quack2.suse.cz>
- <20200114163818.GB7127@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200114163818.GB7127@infradead.org>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+        id S1729530AbgAOJwC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Jan 2020 04:52:02 -0500
+Received: from out30-54.freemail.mail.aliyun.com ([115.124.30.54]:46471 "EHLO
+        out30-54.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729504AbgAOJwB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Jan 2020 04:52:01 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R931e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04455;MF=alex.shi@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0TnnrDC4_1579081908;
+Received: from localhost(mailfrom:alex.shi@linux.alibaba.com fp:SMTPD_---0TnnrDC4_1579081908)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Wed, 15 Jan 2020 17:51:48 +0800
+From:   Alex Shi <alex.shi@linux.alibaba.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] fs/ext4: remove MPAGE_DA_EXTENT_TAIL
+Date:   Wed, 15 Jan 2020 17:51:28 +0800
+Message-Id: <1579081888-6244-1-git-send-email-alex.shi@linux.alibaba.com>
+X-Mailer: git-send-email 1.8.3.1
+To:     unlisted-recipients:; (no To-header on input)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 14-01-20 08:38:18, Christoph Hellwig wrote:
-> On Tue, Jan 14, 2020 at 10:05:07AM +0100, Jan Kara wrote:
-> > 
-> > Well, XFS always performs buffered writeback using unwritten extents so at
-> > least the immediate problem of stale data exposure ext4 has does not happen
-> > there AFAICT. 
-> 
-> Currently XFS never uses unwritten extents when converting delalloc
-> extents.
+After commit 4e7ea81db534 ("ext4: restructure writeback path"), this
+macro isn't used anymore. so better to remove it.
 
-I see, it is a long time since I last looked at that part of XFS code. So
-then I think XFS might be prone to the same kind of race and data exposure
-as I outlined in [1]...
+Signed-off-by: Alex Shi <alex.shi@linux.alibaba.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu> 
+Cc: Jan Kara <jack@suse.cz>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca> 
+Cc: linux-ext4@vger.kernel.org 
+Cc: linux-kernel@vger.kernel.org 
+---
+ fs/ext4/inode.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-								Honza
-
-[1] https://lore.kernel.org/linux-ext4/20200114094741.GC6466@quack2.suse.cz
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 629a25d999f0..bb2d8c9205b7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -48,8 +48,6 @@
+ 
+ #include <trace/events/ext4.h>
+ 
+-#define MPAGE_DA_EXTENT_TAIL 0x01
+-
+ static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
+ 			      struct ext4_inode_info *ei)
+ {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+1.8.3.1
+
