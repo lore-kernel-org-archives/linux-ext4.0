@@ -2,93 +2,101 @@ Return-Path: <SRS0=++eR=3F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE6EFC33CB6
-	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jan 2020 18:18:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87F5AC33CB6
+	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jan 2020 18:47:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C25AF208C3
-	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jan 2020 18:18:48 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579198728;
-	bh=Upsc8dUypMFUiVc2zLPLgZ8S5/S1QGnMtIRlKiGu8eQ=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Cu6O9c8yh74YTJx3WpQVktALBZm+YczFkCQQpBNyqY2FJaqK6xklo2p3hlJ2NGE8/
-	 jVeZRHC97L5amal1jcUZuYVSiRLOAwNMcGMYyIpWEvGTNO/EznoM5cY5j5BP5W0SHq
-	 1VsvVSU3WMw+xznPP4HoDfFSoFBEjDBcTEjVIJnE=
+	by mail.kernel.org (Postfix) with ESMTP id 6D1162064C
+	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jan 2020 18:47:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392639AbgAPR2n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Jan 2020 12:28:43 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40002 "EHLO mail.kernel.org"
+        id S2392065AbgAPSri (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Jan 2020 13:47:38 -0500
+Received: from mga07.intel.com ([134.134.136.100]:63927 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2392630AbgAPR2m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 16 Jan 2020 12:28:42 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5422324701;
-        Thu, 16 Jan 2020 17:28:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579195722;
-        bh=Upsc8dUypMFUiVc2zLPLgZ8S5/S1QGnMtIRlKiGu8eQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jzcYygeydtBBdaNvgnOaN7BcpUf0yJXxbyvYJO6ewccwrd+viV+somMa40q8AkQij
-         shBshPQqU7s6RDLH/dmJeW6asGpegO+RinnmViqg+C2LC4r0hxCiSQW5AcE+RL6aP+
-         zoS7RTYNX1kHQkn4Ovlmt8qIEGpAm72V0I1BazEE=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Colin Ian King <colin.king@canonical.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 264/371] ext4: set error return correctly when ext4_htree_store_dirent fails
-Date:   Thu, 16 Jan 2020 12:22:16 -0500
-Message-Id: <20200116172403.18149-207-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200116172403.18149-1-sashal@kernel.org>
-References: <20200116172403.18149-1-sashal@kernel.org>
+        id S2391802AbgAPSrh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 16 Jan 2020 13:47:37 -0500
+X-Amp-Result: UNKNOWN
+X-Amp-Original-Verdict: FILE UNKNOWN
+X-Amp-File-Uploaded: False
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by orsmga105.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 16 Jan 2020 10:47:34 -0800
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.70,327,1574150400"; 
+   d="scan'208";a="218640226"
+Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
+  by orsmga008.jf.intel.com with ESMTP; 16 Jan 2020 10:47:34 -0800
+Date:   Thu, 16 Jan 2020 10:47:34 -0800
+From:   Ira Weiny <ira.weiny@intel.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-kernel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH V2 05/12] fs: remove unneeded IS_DAX() check
+Message-ID: <20200116184733.GD24522@iweiny-DESK2.sc.intel.com>
+References: <20200110192942.25021-1-ira.weiny@intel.com>
+ <20200110192942.25021-6-ira.weiny@intel.com>
+ <20200116093807.GB8446@quack2.suse.cz>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200116093807.GB8446@quack2.suse.cz>
+User-Agent: Mutt/1.11.1 (2018-12-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Colin Ian King <colin.king@canonical.com>
+On Thu, Jan 16, 2020 at 10:38:07AM +0100, Jan Kara wrote:
+> On Fri 10-01-20 11:29:35, ira.weiny@intel.com wrote:
+> > From: Ira Weiny <ira.weiny@intel.com>
+> > 
+> > The IS_DAX() check in io_is_direct() causes a race between changing the
+> > DAX mode and creating the iocb flags.
+> > 
+> > Remove the check because DAX now emulates the page cache API and
+> > therefore it does not matter if the file mode is DAX or not when the
+> > iocb flags are created.
+> > 
+> > Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+> 
+> The patch looks good to me. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-[ Upstream commit 7a14826ede1d714f0bb56de8167c0e519041eeda ]
+Thanks,
+Ira
 
-Currently when the call to ext4_htree_store_dirent fails the error return
-variable 'ret' is is not being set to the error code and variable count is
-instead, hence the error code is not being returned.  Fix this by assigning
-ret to the error return code.
-
-Addresses-Coverity: ("Unused value")
-Fixes: 8af0f0822797 ("ext4: fix readdir error in the case of inline_data+dir_index")
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/inline.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 137c752ab985..6064bcb8572b 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1425,7 +1425,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
- 		err = ext4_htree_store_dirent(dir_file, hinfo->hash,
- 					      hinfo->minor_hash, de, &tmp_str);
- 		if (err) {
--			count = err;
-+			ret = err;
- 			goto out;
- 		}
- 		count++;
--- 
-2.20.1
-
+> 
+> 								Honza
+> 
+> > ---
+> >  include/linux/fs.h | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index d7584bcef5d3..e11989502eac 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -3365,7 +3365,7 @@ extern int file_update_time(struct file *file);
+> >  
+> >  static inline bool io_is_direct(struct file *filp)
+> >  {
+> > -	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
+> > +	return (filp->f_flags & O_DIRECT);
+> >  }
+> >  
+> >  static inline bool vma_is_dax(struct vm_area_struct *vma)
+> > -- 
+> > 2.21.0
+> > 
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
