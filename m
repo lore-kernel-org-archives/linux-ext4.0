@@ -7,56 +7,56 @@ X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
 	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B1E3C3F68F
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9FE5C33CB3
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 416EF2082F
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 877652072B
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="a1g1iEYX"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="re88JEJx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729970AbgAQVn3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Jan 2020 16:43:29 -0500
-Received: from mail-pg1-f202.google.com ([209.85.215.202]:47088 "EHLO
-        mail-pg1-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729913AbgAQVnN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jan 2020 16:43:13 -0500
-Received: by mail-pg1-f202.google.com with SMTP id t12so15170946pgs.13
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jan 2020 13:43:13 -0800 (PST)
+        id S1729875AbgAQVnK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Jan 2020 16:43:10 -0500
+Received: from mail-pj1-f73.google.com ([209.85.216.73]:39063 "EHLO
+        mail-pj1-f73.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729836AbgAQVnI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jan 2020 16:43:08 -0500
+Received: by mail-pj1-f73.google.com with SMTP id c67so5282358pje.4
+        for <linux-ext4@vger.kernel.org>; Fri, 17 Jan 2020 13:43:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=LFpKp6VUuFo6ppMUzAkcXjx34TBvN7NAK5WKB8aYuXQ=;
-        b=a1g1iEYXJcbKToa1F5RzrCvDKCrpUy+o+QXdgYh6konUltzlkD+N7ueks7+m8vjfcx
-         PUw2scPZaaIbda6rDzjYHAZueYmtBsf4g6Du0LZIMinaURO4sNRplrTmVpTC+8/5op8F
-         x3FM0jxRhb8yV4bnczX3hU3Y03oucpDTFR4usNpIrWV7LAjLnQXnasxHeWu7fqHDpbGk
-         zH2Ic7nBFe1KMj7Aup6N3XctmItcRyzjpZq5IhOtonXnRGGEyORmfaDnxN4DfhiYC3H4
-         3hsdYadTplppKmivx2jiI4sSva1CHImF7zPDD2vrQ80+K+WVT9NhAMQjYZkroGcQpdHB
-         EuNQ==
+        bh=kB+NQKJiUAIRFl4aTji9u2bg8hO9+Q8WB3NnVD/VOa0=;
+        b=re88JEJxDhwb7zLLnErnvZM02G0Gj4vQuRSRgAHJ0gPpq11nzY7dKVshwiMI8iTL7T
+         3hafAtjrYmHUaz5W2zGiRx84jD5Ff8W/hqL22aIB2sf5WjtIavPyHTZYDuGbhFal1VWr
+         W2GR9e4ggOxjGg6Rdd6Ljz2n00RFUUNLwkGxlDSy5A9n8Itru3wF8riUuhmcbmhEwjSJ
+         Ov7T0tQyORgBVk/nOhN75kRaxfBqppX/4cDjvHcSsHBnp2AyrFW5xMrWMzGKwHsRtu2X
+         v9RZ5r6aQF9u7NS41DNZsV/IW1wwkGCvWcAtObe3V0kRAVe9Dk3HqdhGNGXjmYqPtfR9
+         BthA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=LFpKp6VUuFo6ppMUzAkcXjx34TBvN7NAK5WKB8aYuXQ=;
-        b=D9L3MruTBluO+ii7jVcTz2bIN3MR9XXultQ8rzO0lm0cB6lKthkWRC8f7BAEP1KPrj
-         xqikPPYzwHYLsRAQEkTYHpOS8L0mS5wBXJt1P49XxNWb+xKBo6kJdEB3spBlplrj7ipV
-         uwbuFez9v6cFutA1LXKXygyqU8qe8DrXKl+cVT90p27iFx0yL3kGfEwTbuOnTpBs0/Ms
-         8x3LNjRxR/Od2FBRftF2oBf/WhUUt3SEN0HIAad3tlIuFus7nrr5vov+6BbhLn/mH7xS
-         8Mh+lCwMotSjNr7sSYxy9HFf+1jwAkQmCqnzaqRrMK8qi+XUAk6ClRiA6/F7WLPj8Bk6
-         wwdg==
-X-Gm-Message-State: APjAAAUcG9hYI+93f5q+BHSjEyU4qgRw0eKZqa046wkhFiRHYlJ7BzRz
-        pYdDXLpfORwJJu65HjUUIQ+/56wG6Lg=
-X-Google-Smtp-Source: APXvYqxNlvdZpVuO6zVMH6+PmfhbGY/it+hzlfv/eX2SXFGnBzPHNaxaje5j1U0PfA+mQzmzcN96tzsChKs=
-X-Received: by 2002:a65:6706:: with SMTP id u6mr45728791pgf.38.1579297392919;
- Fri, 17 Jan 2020 13:43:12 -0800 (PST)
-Date:   Fri, 17 Jan 2020 13:42:44 -0800
+        bh=kB+NQKJiUAIRFl4aTji9u2bg8hO9+Q8WB3NnVD/VOa0=;
+        b=MXpCqAIChORBpjWJtIJyxhaLynVbuCdPAa0Z7Fo4XiDuWo9RwEe4vJJi6he3iKBcy4
+         M+/OpGAmWwUoXVhcFzm9rDsNeWhtSF/+6jnVeaDa5H+T0WvKR2YQhnLilrrHYKykhDbq
+         Kw0+6MujpNLWK/JI+Bfox/rH8Rx6VvlHC4DdUKYg1StdfbfZqnbXEBsVEIs0mB3YtNUZ
+         ikUw4mnKWNuwSkDMWLjx1P0imxJRdlglqo5rthNU5/bLsIRJ+FfoAFhV/LTTi+7McbTA
+         I2Q5ok3WvsJCd0JlwL6ckzmmsBgcw/fEaqr/y1sglmQd2I+NRqyRA70EIoOPqG/iTavv
+         5Utg==
+X-Gm-Message-State: APjAAAWoQbEXy8QVKKOQ3sTxh7OoZI3TGRC2iqVmQod+jKV/YDhYvzMq
+        8W/20CtuLnanZJrwBb0Tw5T+WzXF/fw=
+X-Google-Smtp-Source: APXvYqw6Ct56QGUI/qT+gtMlJeOAmF7SuNqwoG6m8v2zpcXR33XO9wzdYHdjMiRNIInMZ2yefbbvYg8zvuM=
+X-Received: by 2002:a65:46c6:: with SMTP id n6mr47933917pgr.15.1579297387762;
+ Fri, 17 Jan 2020 13:43:07 -0800 (PST)
+Date:   Fri, 17 Jan 2020 13:42:42 -0800
 In-Reply-To: <20200117214246.235591-1-drosen@google.com>
-Message-Id: <20200117214246.235591-8-drosen@google.com>
+Message-Id: <20200117214246.235591-6-drosen@google.com>
 Mime-Version: 1.0
 References: <20200117214246.235591-1-drosen@google.com>
 X-Mailer: git-send-email 2.25.0.341.g760bfbb309-goog
-Subject: [PATCH v3 7/9] ext4: Use struct super_blocks' casefold data
+Subject: [PATCH v3 5/9] vfs: Fold casefolding into vfs
 From:   Daniel Rosenberg <drosen@google.com>
 To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
@@ -75,227 +75,214 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Switch over to using the struct entries added to the VFS
+Ext4 and F2fs are both using casefolding, and they, along with any other
+filesystem that adds the feature, will be using identical dentry_ops.
+Additionally, those dentry ops interfere with the dentry_ops required
+for fscrypt once we add support for casefolding and encryption.
+Moving this into the vfs removes code duplication as well as the
+complication with encryption.
+
+Currently this is pretty close to just moving the existing f2fs/ext4
+code up a level into the vfs, although there is a lot of room for
+improvement now.
 
 Signed-off-by: Daniel Rosenberg <drosen@google.com>
 ---
- fs/ext4/dir.c   | 47 -----------------------------------------------
- fs/ext4/ext4.h  |  4 ----
- fs/ext4/hash.c  |  2 +-
- fs/ext4/namei.c | 20 ++++++++------------
- fs/ext4/super.c | 15 +++++----------
- 5 files changed, 14 insertions(+), 74 deletions(-)
+ fs/dcache.c             | 28 ++++++++++++++++++++++++++++
+ fs/namei.c              | 41 ++++++++++++++++++++++++++++++++++++++---
+ include/linux/fs.h      | 10 ++++++++++
+ include/linux/unicode.h | 14 ++++++++++++++
+ 4 files changed, 90 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 4e093277c8bfb..e0a9b3f0682dd 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -667,50 +667,3 @@ const struct file_operations ext4_dir_operations = {
- 	.release	= ext4_release_dir,
- };
+diff --git a/fs/dcache.c b/fs/dcache.c
+index b280e07e162b1..a8bbb7f4fad30 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -32,6 +32,7 @@
+ #include <linux/bit_spinlock.h>
+ #include <linux/rculist_bl.h>
+ #include <linux/list_lru.h>
++#include <linux/unicode.h>
+ #include "internal.h"
+ #include "mount.h"
  
--#ifdef CONFIG_UNICODE
--static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
--			  const char *str, const struct qstr *name)
--{
--	struct qstr qstr = {.name = str, .len = len };
--	struct inode *inode = dentry->d_parent->d_inode;
--
--	if (!IS_CASEFOLDED(inode) || !EXT4_SB(inode->i_sb)->s_encoding) {
--		if (len != name->len)
--			return -1;
--		return memcmp(str, name->name, len);
--	}
--
--	return ext4_ci_compare(inode, name, &qstr, false);
--}
--
--static int ext4_d_hash(const struct dentry *dentry, struct qstr *str)
--{
--	const struct ext4_sb_info *sbi = EXT4_SB(dentry->d_sb);
--	const struct unicode_map *um = sbi->s_encoding;
--	unsigned char *norm;
--	int len, ret = 0;
--
--	if (!IS_CASEFOLDED(dentry->d_inode) || !um)
--		return 0;
--
--	norm = kmalloc(PATH_MAX, GFP_ATOMIC);
--	if (!norm)
--		return -ENOMEM;
--
--	len = utf8_casefold(um, str, norm, PATH_MAX);
--	if (len < 0) {
--		if (ext4_has_strict_mode(sbi))
--			ret = -EINVAL;
--		goto out;
--	}
--	str->hash = full_name_hash(dentry, norm, len);
--out:
--	kfree(norm);
--	return ret;
--}
--
--const struct dentry_operations ext4_dentry_ops = {
--	.d_hash = ext4_d_hash,
--	.d_compare = ext4_d_compare,
--};
--#endif
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f8578caba40d5..3162ef2e53d46 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1430,10 +1430,6 @@ struct ext4_sb_info {
- 	struct kobject s_kobj;
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
--#ifdef CONFIG_UNICODE
--	struct unicode_map *s_encoding;
--	__u16 s_encoding_flags;
--#endif
+@@ -247,7 +248,19 @@ static inline int dentry_cmp(const struct dentry *dentry, const unsigned char *c
+ 	 * be no NUL in the ct/tcount data)
+ 	 */
+ 	const unsigned char *cs = READ_ONCE(dentry->d_name.name);
++#ifdef CONFIG_UNICODE
++	struct inode *parent = dentry->d_parent->d_inode;
  
- 	/* Journaling */
- 	struct journal_s *s_journal;
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 3e133793a5a34..143b0073b3f46 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -275,7 +275,7 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		   struct dx_hash_info *hinfo)
- {
- #ifdef CONFIG_UNICODE
--	const struct unicode_map *um = EXT4_SB(dir->i_sb)->s_encoding;
-+	const struct unicode_map *um = dir->i_sb->s_encoding;
- 	int r, dlen;
- 	unsigned char *buff;
- 	struct qstr qstr = {.name = name, .len = len };
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 1cb42d9407847..7f4e625ab2f9b 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1282,8 +1282,8 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
- 		    const struct qstr *entry, bool quick)
- {
--	const struct ext4_sb_info *sbi = EXT4_SB(parent->i_sb);
--	const struct unicode_map *um = sbi->s_encoding;
-+	const struct super_block *sb = parent->i_sb;
-+	const struct unicode_map *um = sb->s_encoding;
- 	int ret;
- 
- 	if (quick)
-@@ -1295,7 +1295,7 @@ int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
- 		/* Handle invalid character sequence as either an error
- 		 * or as an opaque byte sequence.
- 		 */
--		if (ext4_has_strict_mode(sbi))
-+		if (sb_has_enc_strict_mode(sb))
- 			return -EINVAL;
- 
- 		if (name->len != entry->len)
-@@ -1312,7 +1312,7 @@ void ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
- {
- 	int len;
- 
--	if (!IS_CASEFOLDED(dir) || !EXT4_SB(dir->i_sb)->s_encoding) {
-+	if (!needs_casefold(dir)) {
- 		cf_name->name = NULL;
- 		return;
- 	}
-@@ -1321,7 +1321,7 @@ void ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
- 	if (!cf_name->name)
- 		return;
- 
--	len = utf8_casefold(EXT4_SB(dir->i_sb)->s_encoding,
-+	len = utf8_casefold(dir->i_sb->s_encoding,
- 			    iname, cf_name->name,
- 			    EXT4_NAME_LEN);
- 	if (len <= 0) {
-@@ -1358,7 +1358,7 @@ static inline bool ext4_match(const struct inode *parent,
- #endif
- 
- #ifdef CONFIG_UNICODE
--	if (EXT4_SB(parent->i_sb)->s_encoding && IS_CASEFOLDED(parent)) {
-+	if (needs_casefold(parent)) {
- 		if (fname->cf_name.name) {
- 			struct qstr cf = {.name = fname->cf_name.name,
- 					  .len = fname->cf_name.len};
-@@ -2164,9 +2164,6 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	struct buffer_head *bh = NULL;
- 	struct ext4_dir_entry_2 *de;
- 	struct super_block *sb;
--#ifdef CONFIG_UNICODE
--	struct ext4_sb_info *sbi;
--#endif
- 	struct ext4_filename fname;
- 	int	retval;
- 	int	dx_fallback=0;
-@@ -2183,9 +2180,8 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		return -EINVAL;
- 
- #ifdef CONFIG_UNICODE
--	sbi = EXT4_SB(sb);
--	if (ext4_has_strict_mode(sbi) && IS_CASEFOLDED(dir) &&
--	    sbi->s_encoding && utf8_validate(sbi->s_encoding, &dentry->d_name))
-+	if (sb_has_enc_strict_mode(sb) && IS_CASEFOLDED(dir) &&
-+	    sb->s_encoding && utf8_validate(sb->s_encoding, &dentry->d_name))
- 		return -EINVAL;
- #endif
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2937a8873fe13..11584bdc3e237 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1056,7 +1056,7 @@ static void ext4_put_super(struct super_block *sb)
- 	kfree(sbi->s_blockgroup_lock);
- 	fs_put_dax(sbi->s_daxdev);
- #ifdef CONFIG_UNICODE
--	utf8_unload(sbi->s_encoding);
-+	utf8_unload(sb->s_encoding);
- #endif
- 	kfree(sbi);
++	if (unlikely(needs_casefold(parent))) {
++		const struct qstr n1 = QSTR_INIT(cs, tcount);
++		const struct qstr n2 = QSTR_INIT(ct, tcount);
++		int result = utf8_strncasecmp(dentry->d_sb->s_encoding,
++						&n1, &n2);
++
++		if (result >= 0 || sb_has_enc_strict_mode(dentry->d_sb))
++			return result;
++	}
++#endif
+ 	return dentry_string_cmp(cs, ct, tcount);
  }
-@@ -3850,7 +3850,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
  
- #ifdef CONFIG_UNICODE
--	if (ext4_has_feature_casefold(sb) && !sbi->s_encoding) {
-+	if (ext4_has_feature_casefold(sb) && !sb->s_encoding) {
- 		const struct ext4_sb_encodings *encoding_info;
- 		struct unicode_map *encoding;
- 		__u16 encoding_flags;
-@@ -3881,8 +3881,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			 "%s-%s with flags 0x%hx", encoding_info->name,
- 			 encoding_info->version?:"\b", encoding_flags);
+@@ -2406,7 +2419,22 @@ struct dentry *d_hash_and_lookup(struct dentry *dir, struct qstr *name)
+ 	 * calculate the standard hash first, as the d_op->d_hash()
+ 	 * routine may choose to leave the hash value unchanged.
+ 	 */
++#ifdef CONFIG_UNICODE
++	unsigned char *hname = NULL;
++	int hlen = name->len;
++
++	if (IS_CASEFOLDED(dir->d_inode)) {
++		hname = kmalloc(PATH_MAX, GFP_ATOMIC);
++		if (!hname)
++			return ERR_PTR(-ENOMEM);
++		hlen = utf8_casefold(dir->d_sb->s_encoding,
++					name, hname, PATH_MAX);
++	}
++	name->hash = full_name_hash(dir, hname ?: name->name, hlen);
++	kfree(hname);
++#else
+ 	name->hash = full_name_hash(dir, name->name, name->len);
++#endif
+ 	if (dir->d_flags & DCACHE_OP_HASH) {
+ 		int err = dir->d_op->d_hash(dir, name);
+ 		if (unlikely(err < 0))
+diff --git a/fs/namei.c b/fs/namei.c
+index d6c91d1e88cb3..f8e65c9f31444 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -39,6 +39,7 @@
+ #include <linux/bitops.h>
+ #include <linux/init_task.h>
+ #include <linux/uaccess.h>
++#include <linux/unicode.h>
  
--		sbi->s_encoding = encoding;
--		sbi->s_encoding_flags = encoding_flags;
-+		sb->s_encoding = encoding;
-+		sb->s_encoding_flags = encoding_flags;
- 	}
- #endif
+ #include "internal.h"
+ #include "mount.h"
+@@ -2055,6 +2056,10 @@ static inline u64 hash_name(const void *salt, const char *name)
+ static int link_path_walk(const char *name, struct nameidata *nd)
+ {
+ 	int err;
++#ifdef CONFIG_UNICODE
++	char *hname = NULL;
++	int hlen = 0;
++#endif
  
-@@ -4497,11 +4497,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount4;
- 	}
- 
--#ifdef CONFIG_UNICODE
--	if (sbi->s_encoding)
--		sb->s_d_op = &ext4_dentry_ops;
--#endif
+ 	if (IS_ERR(name))
+ 		return PTR_ERR(name);
+@@ -2071,9 +2076,22 @@ static int link_path_walk(const char *name, struct nameidata *nd)
+ 		err = may_lookup(nd);
+ 		if (err)
+ 			return err;
 -
- 	sb->s_root = d_make_root(root);
- 	if (!sb->s_root) {
- 		ext4_msg(sb, KERN_ERR, "get root dentry failed");
-@@ -4684,7 +4679,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		crypto_free_shash(sbi->s_chksum_driver);
++#ifdef CONFIG_UNICODE
++		if (needs_casefold(nd->path.dentry->d_inode)) {
++			struct qstr str = QSTR_INIT(name, PATH_MAX);
++
++			hname = kmalloc(PATH_MAX, GFP_ATOMIC);
++			if (!hname)
++				return -ENOMEM;
++			hlen = utf8_casefold(nd->path.dentry->d_sb->s_encoding,
++						&str, hname, PATH_MAX);
++		}
++		hash_len = hash_name(nd->path.dentry, hname ?: name);
++		kfree(hname);
++		hname = NULL;
++#else
+ 		hash_len = hash_name(nd->path.dentry, name);
+-
++#endif
+ 		type = LAST_NORM;
+ 		if (name[0] == '.') switch (hashlen_len(hash_len)) {
+ 			case 2:
+@@ -2445,9 +2463,26 @@ EXPORT_SYMBOL(vfs_path_lookup);
+ static int lookup_one_len_common(const char *name, struct dentry *base,
+ 				 int len, struct qstr *this)
+ {
++#ifdef CONFIG_UNICODE
++	char *hname = NULL;
++	int hlen = len;
++
++	if (needs_casefold(base->d_inode)) {
++		struct qstr str = QSTR_INIT(name, len);
++
++		hname = kmalloc(PATH_MAX, GFP_ATOMIC);
++		if (!hname)
++			return -ENOMEM;
++		hlen = utf8_casefold(base->d_sb->s_encoding,
++					&str, hname, PATH_MAX);
++	}
++	this->hash = full_name_hash(base, hname ?: name, hlen);
++	kfree(hname);
++#else
++	this->hash = full_name_hash(base, name, len);
++#endif
+ 	this->name = name;
+ 	this->len = len;
+-	this->hash = full_name_hash(base, name, len);
+ 	if (!len)
+ 		return -EACCES;
  
- #ifdef CONFIG_UNICODE
--	utf8_unload(sbi->s_encoding);
-+	utf8_unload(sb->s_encoding);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 98e0349adb526..9a7092449e94f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1382,6 +1382,12 @@ extern int send_sigurg(struct fown_struct *fown);
+ #define SB_ACTIVE	(1<<30)
+ #define SB_NOUSER	(1<<31)
+ 
++/* These flags relate to encoding and casefolding */
++#define SB_ENC_STRICT_MODE_FL	(1 << 0)
++
++#define sb_has_enc_strict_mode(sb) \
++	(sb->s_encoding_flags & SB_ENC_STRICT_MODE_FL)
++
+ /*
+  *	Umount options
+  */
+@@ -1449,6 +1455,10 @@ struct super_block {
  #endif
+ #ifdef CONFIG_FS_VERITY
+ 	const struct fsverity_operations *s_vop;
++#endif
++#ifdef CONFIG_UNICODE
++	struct unicode_map *s_encoding;
++	__u16 s_encoding_flags;
+ #endif
+ 	struct hlist_bl_head	s_roots;	/* alternate root dentries for NFS */
+ 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
+diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+index 990aa97d80496..182352f3cc30f 100644
+--- a/include/linux/unicode.h
++++ b/include/linux/unicode.h
+@@ -4,6 +4,8 @@
  
- #ifdef CONFIG_QUOTA
+ #include <linux/init.h>
+ #include <linux/dcache.h>
++#include <linux/fscrypt.h>
++#include <linux/fs.h>
+ 
+ struct unicode_map {
+ 	const char *charset;
+@@ -30,4 +32,16 @@ int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
+ struct unicode_map *utf8_load(const char *version);
+ void utf8_unload(struct unicode_map *um);
+ 
++#ifdef CONFIG_UNICODE
++static inline bool needs_casefold(const struct inode *dir)
++{
++	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding &&
++			(!IS_ENCRYPTED(dir) || fscrypt_has_encryption_key(dir));
++}
++#else
++static inline bool needs_casefold(const struct inode *dir)
++{
++	return 0;
++}
++#endif
+ #endif /* _LINUX_UNICODE_H */
 -- 
 2.25.0.341.g760bfbb309-goog
 
