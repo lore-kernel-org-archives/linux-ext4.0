@@ -1,183 +1,214 @@
-Return-Path: <SRS0=s9Oo=3G=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=CsMT=3H=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15FDAC33CB6
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C634C33CB1
+	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jan 2020 06:46:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D49E52082F
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jan 2020 21:43:45 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="WHQxC8Nh"
+	by mail.kernel.org (Postfix) with ESMTP id 0EE8224683
+	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jan 2020 06:46:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730028AbgAQVnm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Jan 2020 16:43:42 -0500
-Received: from mail-pf1-f202.google.com ([209.85.210.202]:45004 "EHLO
-        mail-pf1-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727033AbgAQVnA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jan 2020 16:43:00 -0500
-Received: by mail-pf1-f202.google.com with SMTP id r127so15840160pfc.11
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jan 2020 13:43:00 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
-         :cc;
-        bh=ijaPqYX9QMZlgJNEqLIabbahqNoro6V7G/0uSLsc++o=;
-        b=WHQxC8Nh4cFd+mKz0Z5y8hCNfaRWaIIItg6rAD4vRRKh08n1rF1ROJp9bdNhKHjJEe
-         dB+QzSzQk+37KIA3xLEYSV5jYc4LXnUAkScu6uDLEfQxiLJhWSUqLkSk9o/lj3OGUOFv
-         x7d1El6VyYGxobDvLS1U1KrD73lJ1hHS4/+7B8qljX4+5zRjTKVAcKRaD+DQJ+DOSszS
-         Quz0IYsmfSMa9Ytm8SlgE4uCUjy38oOsimu9gdN9/5CWb0bp8uDvRUzsZv7KYdIVZQFk
-         3LnqAgjGyE/d2ro52ABbHg/HE7dIctRYBIsBeLkMsAqgNdPO0t9LQXQxfHUAMHwqtmvi
-         0wNw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=ijaPqYX9QMZlgJNEqLIabbahqNoro6V7G/0uSLsc++o=;
-        b=nOeN5ZRmLd+AoQI3K9XEDkPVa2vq6vidwJTtPIcWkMFA9MnECqr9zu44OpV1UvMWS+
-         +TwGl2fVrNL9wq4YYm+MVUsXib5+EwOoGQypkcqDPsfJ3UIzp5WxbM0L/oV/16xEOEJ6
-         K+hnfgFJYYtzVds78YuottkW66idsINKSCb+xvBozYDfjO4ngFR9BDUmohqV+kj4QEuo
-         k5VBzdPutb/AbDgvDr2dfPvmzph0U9mxJhCUGjXeeWv3Ek/dgCWpJgSjXZNYsy3eneGp
-         ITIrooGyV355DXI34mMU7wE1QUwLmeIOGHXzHaDNeYDsnpOv7v4ae0KQm3pXfc7qF00u
-         YJiA==
-X-Gm-Message-State: APjAAAXJKwQeP2XN+qb2q4iF9bs4XCuQtmbfQJqCKKtkmUMLT8V/qMA/
-        X+d8RCgcIgQA66YOT9MSCCaUQ7tiZEQ=
-X-Google-Smtp-Source: APXvYqzKuQnOCxtPcdxY/PuMxbANDvGzPhycQ/4MRG+yecKcHD6KYxDk5xX57ii8X1oM1NolqUYQnxR+7ug=
-X-Received: by 2002:a63:3756:: with SMTP id g22mr47225338pgn.375.1579297379818;
- Fri, 17 Jan 2020 13:42:59 -0800 (PST)
-Date:   Fri, 17 Jan 2020 13:42:39 -0800
-In-Reply-To: <20200117214246.235591-1-drosen@google.com>
-Message-Id: <20200117214246.235591-3-drosen@google.com>
-Mime-Version: 1.0
-References: <20200117214246.235591-1-drosen@google.com>
-X-Mailer: git-send-email 2.25.0.341.g760bfbb309-goog
-Subject: [PATCH v3 2/9] fscrypt: Don't allow v1 policies with casefolding
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726417AbgARGqR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 18 Jan 2020 01:46:17 -0500
+Received: from mga06.intel.com ([134.134.136.31]:63204 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725913AbgARGqR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 18 Jan 2020 01:46:17 -0500
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by orsmga104.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 17 Jan 2020 22:46:16 -0800
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.70,333,1574150400"; 
+   d="scan'208";a="220943349"
+Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
+  by fmsmga008.fm.intel.com with ESMTP; 17 Jan 2020 22:46:15 -0800
+Received: from kbuild by lkp-server01 with local (Exim 4.89)
+        (envelope-from <lkp@intel.com>)
+        id 1ishs6-0003Uo-Vo; Sat, 18 Jan 2020 14:46:14 +0800
+Date:   Sat, 18 Jan 2020 14:45:13 +0800
+From:   kbuild test robot <lkp@intel.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Subject: [ext4:dev] BUILD SUCCESS 7976dd39e377166f85d4cb39aa1a793e01a2adaf
+Message-ID: <5e22a979.k8GRTSnbUpGF65f3%lkp@intel.com>
+User-Agent: Heirloom mailx 12.5 6/20/10
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Casefolding currently requires a derived key for computing the siphash.
-This is available for v2 policies, but not v1, so we disallow it for v1.
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git  dev
+branch HEAD: 7976dd39e377166f85d4cb39aa1a793e01a2adaf  ext4: drop ext4_kvmalloc()
 
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
+elapsed time: 711m
+
+configs tested: 152
+configs skipped: 1
+
+The following configs have been built successfully.
+More configs may be tested in the coming days.
+
+csky                 randconfig-a001-20200118
+openrisc             randconfig-a001-20200118
+s390                 randconfig-a001-20200118
+sh                   randconfig-a001-20200118
+xtensa               randconfig-a001-20200118
+alpha                               defconfig
+csky                                defconfig
+nds32                             allnoconfig
+nds32                               defconfig
+sh                               allmodconfig
+sh                                allnoconfig
+sh                          rsk7269_defconfig
+sh                  sh7785lcr_32bit_defconfig
+sh                            titan_defconfig
+arc                              allyesconfig
+arc                                 defconfig
+microblaze                      mmu_defconfig
+microblaze                    nommu_defconfig
+powerpc                           allnoconfig
+powerpc                             defconfig
+powerpc                       ppc64_defconfig
+powerpc                          rhel-kconfig
+arc                  randconfig-a001-20200118
+arm                  randconfig-a001-20200118
+arm64                randconfig-a001-20200118
+ia64                 randconfig-a001-20200118
+powerpc              randconfig-a001-20200118
+sparc                randconfig-a001-20200118
+i386                             allyesconfig
+sparc                            allyesconfig
+sparc                               defconfig
+sparc64                          allmodconfig
+sparc64                           allnoconfig
+sparc64                          allyesconfig
+sparc64                             defconfig
+x86_64               randconfig-e001-20200118
+x86_64               randconfig-e002-20200118
+x86_64               randconfig-e003-20200118
+i386                 randconfig-e001-20200118
+i386                 randconfig-e002-20200118
+i386                 randconfig-e003-20200118
+x86_64                                    lkp
+x86_64                                   rhel
+x86_64                               rhel-7.6
+x86_64                              fedora-25
+x86_64                                  kexec
+c6x                              allyesconfig
+c6x                        evmc6678_defconfig
+nios2                         10m50_defconfig
+nios2                         3c120_defconfig
+openrisc                    or1ksim_defconfig
+openrisc                 simple_smp_defconfig
+xtensa                       common_defconfig
+xtensa                          iss_defconfig
+x86_64               randconfig-f001-20200118
+x86_64               randconfig-f002-20200118
+x86_64               randconfig-f003-20200118
+i386                 randconfig-f001-20200118
+i386                 randconfig-f002-20200118
+i386                 randconfig-f003-20200118
+c6x                  randconfig-a001-20200118
+h8300                randconfig-a001-20200118
+microblaze           randconfig-a001-20200118
+nios2                randconfig-a001-20200118
+sparc64              randconfig-a001-20200118
+parisc                            allnoconfig
+parisc                            allyesonfig
+parisc                         b180_defconfig
+parisc                        c3000_defconfig
+parisc                              defconfig
+alpha                randconfig-a001-20200118
+m68k                 randconfig-a001-20200118
+mips                 randconfig-a001-20200118
+nds32                randconfig-a001-20200118
+parisc               randconfig-a001-20200118
+riscv                randconfig-a001-20200118
+um                                  defconfig
+um                             i386_defconfig
+um                           x86_64_defconfig
+riscv                            allmodconfig
+riscv                             allnoconfig
+riscv                            allyesconfig
+riscv                               defconfig
+riscv                    nommu_virt_defconfig
+riscv                          rv32_defconfig
+x86_64               randconfig-b001-20200118
+x86_64               randconfig-b002-20200118
+x86_64               randconfig-b003-20200118
+i386                 randconfig-b001-20200118
+i386                 randconfig-b002-20200118
+i386                 randconfig-b003-20200118
+h8300                     edosk2674_defconfig
+h8300                    h8300h-sim_defconfig
+h8300                       h8s-sim_defconfig
+m68k                             allmodconfig
+m68k                       m5475evb_defconfig
+m68k                          multi_defconfig
+m68k                           sun3_defconfig
+i386                             alldefconfig
+i386                              allnoconfig
+i386                                defconfig
+x86_64               randconfig-g001-20200118
+x86_64               randconfig-g002-20200118
+x86_64               randconfig-g003-20200118
+i386                 randconfig-g001-20200118
+i386                 randconfig-g002-20200118
+i386                 randconfig-g003-20200118
+x86_64               randconfig-c001-20200118
+x86_64               randconfig-c002-20200118
+x86_64               randconfig-c003-20200118
+i386                 randconfig-c001-20200118
+i386                 randconfig-c002-20200118
+i386                 randconfig-c003-20200118
+x86_64               randconfig-h001-20200118
+x86_64               randconfig-h002-20200118
+x86_64               randconfig-h003-20200118
+i386                 randconfig-h001-20200118
+i386                 randconfig-h002-20200118
+i386                 randconfig-h003-20200118
+s390                             alldefconfig
+s390                             allmodconfig
+s390                              allnoconfig
+s390                             allyesconfig
+s390                          debug_defconfig
+s390                                defconfig
+s390                       zfcpdump_defconfig
+ia64                             alldefconfig
+ia64                             allmodconfig
+ia64                              allnoconfig
+ia64                             allyesconfig
+ia64                                defconfig
+arm                              allmodconfig
+arm                         at91_dt_defconfig
+arm64                               defconfig
+arm                        multi_v5_defconfig
+arm                              allyesconfig
+arm64                            allyesconfig
+arm                               allnoconfig
+arm                           efm32_defconfig
+arm                           sunxi_defconfig
+arm64                             allnoconfig
+arm64                            allmodconfig
+arm                          exynos_defconfig
+arm                        shmobile_defconfig
+arm                        multi_v7_defconfig
+mips                           32r2_defconfig
+mips                         64r6el_defconfig
+mips                             allmodconfig
+mips                              allnoconfig
+mips                             allyesconfig
+mips                      fuloong2e_defconfig
+mips                      malta_kvm_defconfig
+
 ---
- fs/crypto/policy.c      | 28 ++++++++++++++++++++++++++++
- fs/inode.c              |  3 ++-
- include/linux/fscrypt.h | 11 +++++++++++
- 3 files changed, 41 insertions(+), 1 deletion(-)
-
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index f1cff83c151ac..2cd9a940d8f46 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -124,6 +124,12 @@ static bool fscrypt_supported_v1_policy(const struct fscrypt_policy_v1 *policy,
- 					policy->filenames_encryption_mode))
- 		return false;
- 
-+	if (IS_CASEFOLDED(inode)) {
-+		fscrypt_warn(inode,
-+			     "v1 policy does not support casefolded directories");
-+		return false;
-+	}
-+
- 	return true;
- }
- 
-@@ -579,3 +585,25 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
- 	return preload ? fscrypt_get_encryption_info(child): 0;
- }
- EXPORT_SYMBOL(fscrypt_inherit_context);
-+
-+int fscrypt_ioc_setflags_prepare(struct inode *inode,
-+				 unsigned int oldflags,
-+				 unsigned int flags)
-+{
-+	union fscrypt_policy policy;
-+	int err;
-+
-+	/*
-+	 * When a directory is encrypted, the CASEFOLD flag can only be turned
-+	 * on if the fscrypt policy supports it.
-+	 */
-+	if (IS_ENCRYPTED(inode) && (flags & ~oldflags & FS_CASEFOLD_FL)) {
-+		err = fscrypt_get_policy(inode, &policy);
-+		if (err)
-+			return err;
-+		if (policy.version != FSCRYPT_POLICY_V2)
-+			return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-diff --git a/fs/inode.c b/fs/inode.c
-index 96d62d97694ef..8f6267858d0c1 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -20,6 +20,7 @@
- #include <linux/ratelimit.h>
- #include <linux/list_lru.h>
- #include <linux/iversion.h>
-+#include <linux/fscrypt.h>
- #include <trace/events/writeback.h>
- #include "internal.h"
- 
-@@ -2252,7 +2253,7 @@ int vfs_ioc_setflags_prepare(struct inode *inode, unsigned int oldflags,
- 	    !capable(CAP_LINUX_IMMUTABLE))
- 		return -EPERM;
- 
--	return 0;
-+	return fscrypt_ioc_setflags_prepare(inode, oldflags, flags);
- }
- EXPORT_SYMBOL(vfs_ioc_setflags_prepare);
- 
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 1dfbed855beeb..2c292f19c6b94 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -142,6 +142,10 @@ extern int fscrypt_ioctl_get_policy_ex(struct file *, void __user *);
- extern int fscrypt_has_permitted_context(struct inode *, struct inode *);
- extern int fscrypt_inherit_context(struct inode *, struct inode *,
- 					void *, bool);
-+extern int fscrypt_ioc_setflags_prepare(struct inode *inode,
-+					unsigned int oldflags,
-+					unsigned int flags);
-+
- /* keyring.c */
- extern void fscrypt_sb_free(struct super_block *sb);
- extern int fscrypt_ioctl_add_key(struct file *filp, void __user *arg);
-@@ -383,6 +387,13 @@ static inline int fscrypt_inherit_context(struct inode *parent,
- 	return -EOPNOTSUPP;
- }
- 
-+static inline int fscrypt_ioc_setflags_prepare(struct inode *inode,
-+					       unsigned int oldflags,
-+					       unsigned int flags)
-+{
-+	return 0;
-+}
-+
- /* keyring.c */
- static inline void fscrypt_sb_free(struct super_block *sb)
- {
--- 
-2.25.0.341.g760bfbb309-goog
-
+0-DAY kernel test infrastructure                 Open Source Technology Center
+https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org Intel Corporation
