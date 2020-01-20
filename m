@@ -1,87 +1,117 @@
-Return-Path: <SRS0=CsMT=3H=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=BEoO=3J=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 607B5C32771
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jan 2020 22:41:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE023C33CAF
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 Jan 2020 01:35:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 352C12469D
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jan 2020 22:41:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="i3JtNAjS"
+	by mail.kernel.org (Postfix) with ESMTP id 9F78F20684
+	for <linux-ext4@archiver.kernel.org>; Mon, 20 Jan 2020 01:35:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727060AbgARWlQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 18 Jan 2020 17:41:16 -0500
-Received: from [198.137.202.133] ([198.137.202.133]:36394 "EHLO
-        bombadil.infradead.org" rhost-flags-FAIL-FAIL-OK-OK)
-        by vger.kernel.org with ESMTP id S1727008AbgARWlP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 18 Jan 2020 17:41:15 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=vyYDHKvf8gCiisBHbQ1RzC91plzB3US9sNYD80kKiaU=; b=i3JtNAjSE6Cmh9ec2614Kqpaz
-        pDvpbDSOyBvB5PYbf5RdTTHw3IkY3UyZpv7p/iS4hp7Y9znPQfJD+m39U6zVkL2DauuWgBMqi5L6k
-        jvo3y72b8rppMJdJ9NaEy2r18bFFClCbtPYjg0xMA5nzaIgtIVvgdNLXmKIc1jPPF82YEO5Ii+1fL
-        FhaMWUP32RjrC/UzIS+KZorvqO8WST7q8Kq+EYPnVo+qmSfEk4WccgUg1LwSLoXPiz5WFq72ByCpC
-        lGnF3ASEkbw8TAr/Ofw/A25tEeIt+ePR+ef3xIYFoGgSnA9SMJOOGREbOVuP2NsjmBYp+dgSBicrR
-        dCE+PeD2g==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1iswlg-0001Y2-1d; Sat, 18 Jan 2020 22:40:36 +0000
-Date:   Sat, 18 Jan 2020 14:40:35 -0800
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Peter Zijlstra <peterz@infradead.org>
-Cc:     Jason Gunthorpe <jgg@ziepe.ca>, Christoph Hellwig <hch@lst.de>,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Waiman Long <longman@redhat.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@redhat.com>, Will Deacon <will@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-ext4@vger.kernel.org, cluster-devel@redhat.com,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: RFC: hold i_rwsem until aio completes
-Message-ID: <20200118224035.GA26801@bombadil.infradead.org>
-References: <20200114161225.309792-1-hch@lst.de>
- <20200114192700.GC22037@ziepe.ca>
- <20200115065614.GC21219@lst.de>
- <20200115132428.GA25201@ziepe.ca>
- <20200115143347.GL2827@hirez.programming.kicks-ass.net>
+        id S1729049AbgATBff (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 19 Jan 2020 20:35:35 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:41284 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728931AbgATBff (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jan 2020 20:35:35 -0500
+Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1itLyS-00Bl2j-If; Mon, 20 Jan 2020 01:35:28 +0000
+Date:   Mon, 20 Jan 2020 01:35:28 +0000
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Daniel Rosenberg <drosen@google.com>
+Cc:     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel-team@android.com
+Subject: Re: [PATCH v3 5/9] vfs: Fold casefolding into vfs
+Message-ID: <20200120013528.GY8904@ZenIV.linux.org.uk>
+References: <20200117214246.235591-1-drosen@google.com>
+ <20200117214246.235591-6-drosen@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200115143347.GL2827@hirez.programming.kicks-ass.net>
+In-Reply-To: <20200117214246.235591-6-drosen@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 15, 2020 at 03:33:47PM +0100, Peter Zijlstra wrote:
-> On Wed, Jan 15, 2020 at 09:24:28AM -0400, Jason Gunthorpe wrote:
+On Fri, Jan 17, 2020 at 01:42:42PM -0800, Daniel Rosenberg wrote:
+> Ext4 and F2fs are both using casefolding, and they, along with any other
+> filesystem that adds the feature, will be using identical dentry_ops.
+> Additionally, those dentry ops interfere with the dentry_ops required
+> for fscrypt once we add support for casefolding and encryption.
+> Moving this into the vfs removes code duplication as well as the
+> complication with encryption.
 > 
-> > I was interested because you are talking about allowing the read/write side
-> > of a rw sem to be held across a return to user space/etc, which is the
-> > same basic problem.
-> 
-> No it is not; allowing the lock to be held across userspace doesn't
-> change the owner. This is a crucial difference, PI depends on there
-> being a distinct owner. That said, allowing the lock to be held across
-> userspace still breaks PI in that it completely wrecks the ability to
-> analyze the critical section.
+> Currently this is pretty close to just moving the existing f2fs/ext4
+> code up a level into the vfs,
 
-Thinking about this from a PI point of view, the problem is not that we
-returned to userspace still holding the lock, it's that boosting this
-process's priority will not help release the lock faster because this
-process no longer owns the lock.
+... buggering the filesystems (and boxen) that never planned to use
+that garbage.
 
-If we had a lock owner handoff API (ie I can donate my lock to another
-owner), that would solve this problem.  We'd want to have special owners
-to denote "RCU" "bottom halves" or "irq" so we know what we can do about
-PI.  I don't think we need a "I have stolen this lock from somebody else"
-API, but maybe I'm wrong there.
+> @@ -247,7 +248,19 @@ static inline int dentry_cmp(const struct dentry *dentry, const unsigned char *c
+>  	 * be no NUL in the ct/tcount data)
+>  	 */
+>  	const unsigned char *cs = READ_ONCE(dentry->d_name.name);
+> +#ifdef CONFIG_UNICODE
+> +	struct inode *parent = dentry->d_parent->d_inode;
+
+What happens if dentry gets moved under you?  And that's not mentioning the joy
+of extra cachelines to shit the cache with.  For every sodding dentry in the
+hashchain you are walking.
+
+> +	if (unlikely(needs_casefold(parent))) {
+> +		const struct qstr n1 = QSTR_INIT(cs, tcount);
+> +		const struct qstr n2 = QSTR_INIT(ct, tcount);
+> +		int result = utf8_strncasecmp(dentry->d_sb->s_encoding,
+> +						&n1, &n2);
+
+Is that safe in face of renames?  We are *NOT* guaranteed ->d_lock here;
+->d_name can change under you just fine.  False negatives are OK, but
+there's a lot more ways for the things to go wrong.
+
+>  static int link_path_walk(const char *name, struct nameidata *nd)
+>  {
+
+> +#ifdef CONFIG_UNICODE
+> +		if (needs_casefold(nd->path.dentry->d_inode)) {
+> +			struct qstr str = QSTR_INIT(name, PATH_MAX);
+> +
+> +			hname = kmalloc(PATH_MAX, GFP_ATOMIC);
+> +			if (!hname)
+> +				return -ENOMEM;
+> +			hlen = utf8_casefold(nd->path.dentry->d_sb->s_encoding,
+> +						&str, hname, PATH_MAX);
+> +		}
+> +		hash_len = hash_name(nd->path.dentry, hname ?: name);
+> +		kfree(hname);
+> +		hname = NULL;
+> +#else
+>  		hash_len = hash_name(nd->path.dentry, name);
+> -
+> +#endif
+
+Are you serious?
+	1) who said that ->d_inode is stable here?  If we are in RCU mode,
+it won't be.
+	2) page-sized kmalloc/kfree *ON* *COMPONENT* *AFTER* *COMPONENT*?
+
+> +static inline bool needs_casefold(const struct inode *dir)
+> +{
+> +	return IS_CASEFOLDED(dir) && dir->i_sb->s_encoding &&
+> +			(!IS_ENCRYPTED(dir) || fscrypt_has_encryption_key(dir));
+
+... and again, you are pulling in a lot of cachelines.
+
+<understatement> IMO the whole thing is not a good idea. </understatement>
