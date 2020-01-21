@@ -1,116 +1,143 @@
-Return-Path: <SRS0=BEoO=3J=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=MVq+=3K=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EC23C32771
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 Jan 2020 22:34:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10B33C33CB8
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jan 2020 00:56:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2AF7B22522
-	for <linux-ext4@archiver.kernel.org>; Mon, 20 Jan 2020 22:34:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579559691;
-	bh=xm885UhKFUwKfgBkYWfnG/AC3Rw6vyxcGdpz/w5UOxs=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=w/2JK6oaG9easM4QFeaWNQKYfVFzMpn+l5U5jpejbjOgnMmGZ8G0gpQ+svqbafX9j
-	 rvbVTr5XNPITKVqvzy6LdVWAJ9gVLECEzsTwNRil+cI4bezb5RVzqAe+Jn522AhaaB
-	 In7NUT/ydjy0l3CCcvfsmGltOqvJp1RJNGiOaDJ0=
+	by mail.kernel.org (Postfix) with ESMTP id D652A24650
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jan 2020 00:56:39 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lq3pSIbP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728709AbgATWeR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 20 Jan 2020 17:34:17 -0500
-Received: from mail.kernel.org ([198.145.29.99]:37892 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726607AbgATWeR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 20 Jan 2020 17:34:17 -0500
-Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A5FBF217F4;
-        Mon, 20 Jan 2020 22:34:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579559657;
-        bh=xm885UhKFUwKfgBkYWfnG/AC3Rw6vyxcGdpz/w5UOxs=;
-        h=From:To:Cc:Subject:Date:From;
-        b=n9BG408GF/aokCw8EG9MBQ9hJw9mAgpR6LRC5KJXhFvrUD8dUEMcz1fPCmgxfOxnK
-         FYltkiqo8UTJrZL597rrakuG7LCaY6g0rVjw3rHQFWyQaaJluloPm74WLLPuT+6kjF
-         HwzLBOeRmONd/Z5cEVB5lRpaCnrKE0dDiJHJ32rU=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     Daniel Rosenberg <drosen@google.com>, kernel-team@android.com,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        linux-mtd@lists.infradead.org, Richard Weinberger <richard@nod.at>
-Subject: [PATCH v5 0/6] fscrypt preparations for encryption+casefolding
-Date:   Mon, 20 Jan 2020 14:31:55 -0800
-Message-Id: <20200120223201.241390-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.25.0
+        id S1728816AbgAUA4f (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 20 Jan 2020 19:56:35 -0500
+Received: from mail-il1-f196.google.com ([209.85.166.196]:38220 "EHLO
+        mail-il1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727829AbgAUA4f (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jan 2020 19:56:35 -0500
+Received: by mail-il1-f196.google.com with SMTP id f5so996284ilq.5;
+        Mon, 20 Jan 2020 16:56:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=DSU92DS/yk36ylsfrVTivyXxIB5DGgZzKoQw5FMazZY=;
+        b=lq3pSIbPrnnnlke+/4iOv3idDrtKaxngImB5W4zXOYg1EKO6Pp/w7whzo54rLNLeXD
+         +upd7lCyLeHSvzSyTGOEZ71HRLKodR6Vq6Y+YZDRrqxQY6FpB2JSqglWu3jYaue8ENEF
+         KVlRJxNOLvZvEVdMFQyQsqQsNkHhSowq+YUp9GmtW99GGM6pTonzZVhMoIzr0+I9PgT1
+         LHLkw3uXhT5pCCltzzyFk9YEGZuHNt0PgobNHpEXDqdkB9j9GIx1MFBmPfzi7lEZusgc
+         trp5oxFAdOiZz4/VNfWdeu6+/xXPge3HxZ120zDU1x/Tc0n5mhiGTxLpvL7KElejcARN
+         q7Eg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=DSU92DS/yk36ylsfrVTivyXxIB5DGgZzKoQw5FMazZY=;
+        b=K/+h40DHTBmtVNg5FwebVBscKsXm8M3odUGi2HZUge8mxVsP6UmMaYiqC6Y9xVARgB
+         uoHpmO4FV2GjYGlZTgT+LUmEHWxYT9nlIjTDrv24MFOB7sMwzjCXLLHLLeFWRVjuRy5Q
+         NSJi6L/i9ljgF9D3epIScf8BZIe5s/dzKMeueLK4PlXO+8BH+i+ylkgqq2hJfaJ3F4yb
+         2JrNIqvzBFYKW8UeHj7btk3HWTx1mgVTXDqEkE29kZLBinY8waNc2Cqi7REgD4fZ+m8M
+         PjrLMAqMRmyTbULOHi6u8CLOEAHIm3UmuJk0Kqo6S1M6z1YYiGzyrN38QtxoP4FR5X0M
+         9wGw==
+X-Gm-Message-State: APjAAAXoen+CAgju1+EWWCUjRxJXEJllfVj3oBumGzTNoxRFtRmHq0xA
+        C0mY9fSE7tUor13fS9OP5Zk7wKedRyK93wbcn1A=
+X-Google-Smtp-Source: APXvYqw9x3JAIzpZdG5I877D51seRujGg/PdSB1zVxtbiLT765Kfy8muncBvKsCU7feAIIHxlvYj1DUTZ+EL8c5IAF4=
+X-Received: by 2002:a92:d642:: with SMTP id x2mr1533285ilp.169.1579568194666;
+ Mon, 20 Jan 2020 16:56:34 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20190923190853.GA3781@iweiny-DESK2.sc.intel.com>
+ <5d5a93637934867e1b3352763da8e3d9f9e6d683.camel@kernel.org>
+ <20191001181659.GA5500@iweiny-DESK2.sc.intel.com> <2b42cf4ae669cedd061c937103674babad758712.camel@kernel.org>
+ <20191002192711.GA21386@fieldses.org> <df9022f0f5d18d71f37ed494a05eaa4509cf0a68.camel@kernel.org>
+ <20191003153743.GA24657@fieldses.org>
+In-Reply-To: <20191003153743.GA24657@fieldses.org>
+From:   Steve French <smfrench@gmail.com>
+Date:   Mon, 20 Jan 2020 18:56:24 -0600
+Message-ID: <CAH2r5msqzPnL=-Vm5F_MCc64pfCdMg0UXw8qkmp6zK1cph-_ZQ@mail.gmail.com>
+Subject: Re: Lease semantic proposal
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Jeff Layton <jlayton@kernel.org>, Ira Weiny <ira.weiny@intel.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-rdma@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>, linux-nvdimm@lists.01.org,
+        linux-mm <linux-mm@kvack.org>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        John Hubbard <jhubbard@nvidia.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Jason Gunthorpe <jgg@ziepe.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This is a cleaned up and fixed version of the fscrypt patches to prepare
-for directories that are both encrypted and casefolded.
+Two common complaints about the current lease API is that for some of the
+common protocols like SMB3 there is the need to be able to pass in
+the lease request on open itself, and also to
+upgrade and downgrade leases (in SMB3 lease keys can be
+passed over the wire) and of course it would be helpful if
+information about whether a lease was aquired were returned on open
+(and create) to minimize syscalls.
 
-Patches 1-3 start deriving a SipHash key for the new dirhash method that
-will be used by encrypted+casefolded directories.  To avoid unnecessary
-overhead, we only do this if the directory is actually casefolded.
+On Thu, Oct 3, 2019 at 11:00 AM J. Bruce Fields <bfields@fieldses.org> wrot=
+e:
+>
+> On Wed, Oct 02, 2019 at 04:35:55PM -0400, Jeff Layton wrote:
+> > On Wed, 2019-10-02 at 15:27 -0400, J. Bruce Fields wrote:
+> > > On Wed, Oct 02, 2019 at 08:28:40AM -0400, Jeff Layton wrote:
+> > > > For the byte ranges, the catch there is that extending the userland
+> > > > interface for that later will be difficult.
+> > >
+> > > Why would it be difficult?
+> >
+> > Legacy userland code that wanted to use byte range enabled layouts woul=
+d
+> > have to be rebuilt to take advantage of them. If we require a range fro=
+m
+> > the get-go, then they will get the benefit of them once they're
+> > available.
+>
+> I can't see writing byte-range code for a kernel that doesn't support
+> that yet.  How would I test it?
+>
+> > > > What I'd probably suggest
+> > > > (and what would jive with the way pNFS works) would be to go ahead =
+and
+> > > > add an offset and length to the arguments and result (maybe also
+> > > > whence?).
+> > >
+> > > Why not add new commands with range arguments later if it turns out t=
+o
+> > > be necessary?
+> >
+> > We could do that. It'd be a little ugly, IMO, simply because then we'd
+> > end up with two interfaces that do almost the exact same thing.
+> >
+> > Should byte-range layouts at that point conflict with non-byte range
+> > layouts, or should they be in different "spaces" (a'la POSIX and flock
+> > locks)? When it's all one interface, those sorts of questions sort of
+> > answer themselves. When they aren't we'll have to document them clearly
+> > and I think the result will be more confusing for userland programmers.
+> I was hoping they'd be in the same space, with the old interface just
+> defined to deal in locks with range [0,=E2=88=9E).
+>
+> I'm just worried about getting the interface wrong if it's specified
+> without being implemented.  Maybe this is straightforward enough that
+> there's not a risk, I don't know.
 
-Patch 4 fixes a bug in UBIFS where it didn't gracefully handle invalid
-hash values in fscrypt no-key names.  This is an existing bug, but the
-new fscrypt no-key name format (patch 6) made it much easier to trigger;
-it started being hit by 'kvm-xfstests -c ubifs -g encrypt'.
+Yes
 
-Patch 5 updates UBIFS to make it ready for the new fscrypt no-key name
-format that always includes the dirhash.
 
-Patch 6 modifies the fscrypt no-key names to always include the dirhash,
-since with the new dirhash method the dirhash will no longer be
-computable from the ciphertext filename without the key.  It also fixes
-a longstanding issue where there could be collisions in the no-key
-names, due to not using a proper cryptographic hash to abbreviate names.
+--=20
+Thanks,
 
-For more information see the main patch series, which includes the
-filesystem-specific changes:
-https://lkml.kernel.org/linux-fscrypt/20200117214246.235591-1-drosen@google.com/T/#u
-
-This applies to fscrypt.git#master.
-
-Changed v4 => v5:
-  - Fixed UBIFS encryption to work with the new no-key name format.
-
-Daniel Rosenberg (3):
-  fscrypt: don't allow v1 policies with casefolding
-  fscrypt: derive dirhash key for casefolded directories
-  fscrypt: improve format of no-key names
-
-Eric Biggers (3):
-  fscrypt: clarify what is meant by a per-file key
-  ubifs: don't trigger assertion on invalid no-key filename
-  ubifs: allow both hash and disk name to be provided in no-key names
-
- Documentation/filesystems/fscrypt.rst |  40 +++--
- fs/crypto/Kconfig                     |   1 +
- fs/crypto/fname.c                     | 239 ++++++++++++++++++++------
- fs/crypto/fscrypt_private.h           |  19 +-
- fs/crypto/hooks.c                     |  44 +++++
- fs/crypto/keysetup.c                  |  81 ++++++---
- fs/crypto/keysetup_v1.c               |   4 +-
- fs/crypto/policy.c                    |   7 +
- fs/inode.c                            |   3 +-
- fs/ubifs/dir.c                        |   6 +-
- fs/ubifs/journal.c                    |   4 +-
- fs/ubifs/key.h                        |   1 -
- include/linux/fscrypt.h               |  94 +++-------
- 13 files changed, 365 insertions(+), 178 deletions(-)
-
--- 
-2.25.0
-
+Steve
