@@ -2,66 +2,87 @@ Return-Path: <SRS0=GoW3=3L=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 572C7C2D0DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 09:55:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45CDEC3F68F
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 22:59:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3816320704
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 09:55:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0470024676
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 22:59:21 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1579733961;
+	bh=PEgc7glKU+eTUcoJvJSY2cFK4bxB8lTHfVQY/rxd9nQ=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=N8piMXgbAGYdDDtkQMx6e9LkC0PdBvfwYZmrXSHdeYx8htKFb7vjbBOllRAK6ybw8
+	 MNTOxZvSikH6xAOUKxj25n6KgooUGgpD/fVuQhtQPche4AqkQ8E00Eol+pY3KzWRlw
+	 qhEHMqWTwt72yS2HBjs4IUqqaBJyxEYV91nZCpI4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729934AbgAVJzS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Jan 2020 04:55:18 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:46786 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730377AbgAVJdO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Jan 2020 04:33:14 -0500
-Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id E3C529708B054E010687;
-        Wed, 22 Jan 2020 17:33:11 +0800 (CST)
-Received: from [127.0.0.1] (10.133.208.128) by DGGEMS412-HUB.china.huawei.com
- (10.3.19.212) with Microsoft SMTP Server id 14.3.439.0; Wed, 22 Jan 2020
- 17:33:10 +0800
-To:     <tytso@mit.edu>, <jack@suse.com>, <linux-ext4@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-From:   wangyan <wangyan122@huawei.com>
-Subject: [PATCH] jbd2: delete the duplicated words in the comments
-Message-ID: <12087f77-ab4d-c7ba-53b4-893dbf0026f0@huawei.com>
-Date:   Wed, 22 Jan 2020 17:33:10 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:45.0) Gecko/20100101
- Thunderbird/45.7.1
+        id S1726061AbgAVW7U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Jan 2020 17:59:20 -0500
+Received: from mail.kernel.org ([198.145.29.99]:36556 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725933AbgAVW7U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Jan 2020 17:59:20 -0500
+Received: from gmail.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6D5E221835;
+        Wed, 22 Jan 2020 22:59:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1579733959;
+        bh=PEgc7glKU+eTUcoJvJSY2cFK4bxB8lTHfVQY/rxd9nQ=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=1/1qVGJ7dgvX7BRXVza1/cj12O3YybXAukgv+DgcaApLwrlHilg0Po8C+0NaZuKjh
+         R1bg0kmBt9xA2/0vvYiPXtzqPC8DeYarFzR6h5qgSEH9/4aWbqvufBlWv9/+ty1LwW
+         7pz4DFyw1ZzxD4MZh5XqQMX62UN3Nhccj2yWOsuE=
+Date:   Wed, 22 Jan 2020 14:59:18 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH] fscrypt: don't print name of busy file when removing key
+Message-ID: <20200122225917.GA182745@gmail.com>
+References: <20200120060732.390362-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.133.208.128]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200120060732.390362-1-ebiggers@kernel.org>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Delete the duplicated words "is" in the comments
+On Sun, Jan 19, 2020 at 10:07:32PM -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> When an encryption key can't be fully removed due to file(s) protected
+> by it still being in-use, we shouldn't really print the path to one of
+> these files to the kernel log, since parts of this path are likely to be
+> encrypted on-disk, and (depending on how the system is set up) the
+> confidentiality of this path might be lost by printing it to the log.
+> 
+> This is a trade-off: a single file path often doesn't matter at all,
+> especially if it's a directory; the kernel log might still be protected
+> in some way; and I had originally hoped that any "inode(s) still busy"
+> bugs (which are security weaknesses in their own right) would be quickly
+> fixed and that to do so it would be super helpful to always know the
+> file path and not have to run 'find dir -inum $inum' after the fact.
+> 
+> But in practice, these bugs can be hard to fix (e.g. due to asynchronous
+> process killing that is difficult to eliminate, for performance
+> reasons), and also not tied to specific files, so knowing a file path
+> doesn't necessarily help.
+> 
+> So to be safe, for now let's just show the inode number, not the path.
+> If someone really wants to know a path they can use 'find -inum'.
+> 
+> Fixes: b1c0ec3599f4 ("fscrypt: add FS_IOC_REMOVE_ENCRYPTION_KEY ioctl")
+> Cc: <stable@vger.kernel.org> # v5.4+
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Signed-off-by: Yan Wang <wangyan122@huawei.com>
----
- fs/jbd2/transaction.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Applied to fscrypt.git#master for 5.6.
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 27b9f9dee434..5c3abbaccb57 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -525,7 +525,7 @@ EXPORT_SYMBOL(jbd2__journal_start);
-  * modified buffers in the log.  We block until the log can guarantee
-  * that much space. Additionally, if rsv_blocks > 0, we also create another
-  * handle with rsv_blocks reserved blocks in the journal. This handle is
-- * is stored in h_rsv_handle. It is not attached to any particular transaction
-+ * stored in h_rsv_handle. It is not attached to any particular transaction
-  * and thus doesn't block transaction commit. If the caller uses this reserved
-  * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
-  * on the parent handle will dispose the reserved one. Reserved handle has to
--- 
-2.19.1
-
+- Eric
