@@ -6,73 +6,70 @@ X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5838C33CB8
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 08:50:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C04CAC33CB8
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 09:48:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7B92824672
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 08:50:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 984692467B
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jan 2020 09:48:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729147AbgAVIub (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Jan 2020 03:50:31 -0500
-Received: from mx2.suse.de ([195.135.220.15]:40786 "EHLO mx2.suse.de"
+        id S1731616AbgAVJs3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Jan 2020 04:48:29 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41674 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729113AbgAVIua (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Jan 2020 03:50:30 -0500
+        id S1729143AbgAVJs2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Jan 2020 04:48:28 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 970CAAC23;
-        Wed, 22 Jan 2020 08:50:28 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 7E979AAFD;
+        Wed, 22 Jan 2020 09:48:27 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 7009E1E0A4F; Wed, 22 Jan 2020 09:50:24 +0100 (CET)
-Date:   Wed, 22 Jan 2020 09:50:24 +0100
+        id 6F8531E0A4F; Wed, 22 Jan 2020 10:48:26 +0100 (CET)
+Date:   Wed, 22 Jan 2020 10:48:26 +0100
 From:   Jan Kara <jack@suse.cz>
-To:     Shijie Luo <luoshijie1@huawei.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz
-Subject: Re: [PATCH] jbd2: modify assert condition in
- __journal_remove_journal_head
-Message-ID: <20200122085024.GB12845@quack2.suse.cz>
-References: <20200122070548.64664-1-luoshijie1@huawei.com>
+To:     wangyan <wangyan122@huawei.com>
+Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] jbd2: delete the duplicated words in the comments
+Message-ID: <20200122094826.GD12845@quack2.suse.cz>
+References: <12087f77-ab4d-c7ba-53b4-893dbf0026f0@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200122070548.64664-1-luoshijie1@huawei.com>
+In-Reply-To: <12087f77-ab4d-c7ba-53b4-893dbf0026f0@huawei.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 22-01-20 02:05:48, Shijie Luo wrote:
-> Only when jh->b_jcount = 0 in jbd2_journal_put_journal_head, we are allowed
-> to call __journal_remove_journal_head.
+On Wed 22-01-20 17:33:10, wangyan wrote:
+> Delete the duplicated words "is" in the comments
 > 
-> Signed-off-by: Shijie Luo <luoshijie1@huawei.com>
+> Signed-off-by: Yan Wang <wangyan122@huawei.com>
 
-Thanks for the patch. You're right but given that
-__journal_remove_journal_head() has exactly one caller and that checks for
-jh->b_jcount == 0 just before calling __journal_remove_journal_head(), I
-think the assertion is pretty pointless. So I'd rather just remove it
-completely.
+Looks good. Thanks. You can add:
 
+Reviewed-by: Jan Kara <jack@suse.cz>
+	
 								Honza
 
 > ---
->  fs/jbd2/journal.c | 2 +-
+>  fs/jbd2/transaction.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 5e408ee24a1a..4f417a7f1ae0 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2556,7 +2556,7 @@ static void __journal_remove_journal_head(struct buffer_head *bh)
->  {
->  	struct journal_head *jh = bh2jh(bh);
->  
-> -	J_ASSERT_JH(jh, jh->b_jcount >= 0);
-> +	J_ASSERT_JH(jh, jh->b_jcount == 0);
->  	J_ASSERT_JH(jh, jh->b_transaction == NULL);
->  	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
->  	J_ASSERT_JH(jh, jh->b_cp_transaction == NULL);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 27b9f9dee434..5c3abbaccb57 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -525,7 +525,7 @@ EXPORT_SYMBOL(jbd2__journal_start);
+>   * modified buffers in the log.  We block until the log can guarantee
+>   * that much space. Additionally, if rsv_blocks > 0, we also create another
+>   * handle with rsv_blocks reserved blocks in the journal. This handle is
+> - * is stored in h_rsv_handle. It is not attached to any particular transaction
+> + * stored in h_rsv_handle. It is not attached to any particular transaction
+>   * and thus doesn't block transaction commit. If the caller uses this reserved
+>   * handle, it has to set h_rsv_handle to NULL as otherwise jbd2_journal_stop()
+>   * on the parent handle will dispose the reserved one. Reserved handle has to
 > -- 
 > 2.19.1
 > 
