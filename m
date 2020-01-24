@@ -2,69 +2,99 @@ Return-Path: <SRS0=rAxa=3N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E13CEC2D0DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 18:31:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 066D7C2D0DB
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 20:14:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B3FB820709
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 18:31:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D2CD92077C
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 20:14:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1579896848;
+	bh=BXwKT7PuUAxXdQBtcYCaPasA/6uX1OMir4E6yh0LA3k=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=BHR/S0wJ9sSJXWvGKVpjmAgTO7xTUwqF6WsdUK5U2gM3lnfS5b0iPdUqvVJHLgopq
+	 Hyv/KLAiM9dhiF6OKcicx5XiHiada8vhaXgNIGPbIbAHzC74m1W/vMxSrbkANsCRqm
+	 gUNw6XzpVnwXe7ACQcWTddosHuX19HW5eH4IBOXw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391372AbgAXSbI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Jan 2020 13:31:08 -0500
-Received: from zeniv.linux.org.uk ([195.92.253.2]:47020 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389707AbgAXSbH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jan 2020 13:31:07 -0500
-Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1iv3jT-00237c-6W; Fri, 24 Jan 2020 18:31:03 +0000
-Date:   Fri, 24 Jan 2020 18:31:03 +0000
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Gao Xiang <hsiangkao@aol.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
+        id S2404262AbgAXUOF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Jan 2020 15:14:05 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49004 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2387535AbgAXUOF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Jan 2020 15:14:05 -0500
+Received: from gmail.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1F8CF2071E;
+        Fri, 24 Jan 2020 20:14:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1579896844;
+        bh=BXwKT7PuUAxXdQBtcYCaPasA/6uX1OMir4E6yh0LA3k=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=1ag7/2DSoxG5KYU0EMVWB64o75K0btoF+qRMCO5k9cTMqUywqJBdCg/sUprpKIHv/
+         9MepeQSjc6pe8xJdw8+LoNAgcQY5x8NUgXg6RHWOLoXD7dmmnthVG6ewye8WF1rbAv
+         53XYtcyTT0ewAW3ULL2QSG0sBV/ytCRp6aZzLJeA=
+Date:   Fri, 24 Jan 2020 12:14:02 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Richard Weinberger <richard@nod.at>, linux-mtd@lists.infradead.org
+Cc:     Daniel Rosenberg <drosen@google.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        linux-kernel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        Daniel Rosenberg <drosen@google.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: Re: [PATCH] ext4: fix race conditions in ->d_compare() and ->d_hash()
-Message-ID: <20200124183103.GJ23230@ZenIV.linux.org.uk>
-References: <20200124041234.159740-1-ebiggers@kernel.org>
- <20200124050423.GA31271@hsiangkao-HP-ZHAN-66-Pro-G1>
- <20200124051601.GB832@sol.localdomain>
- <20200124053415.GC31271@hsiangkao-HP-ZHAN-66-Pro-G1>
- <20200124054256.GC832@sol.localdomain>
- <20200124061525.GA2407@hsiangkao-HP-ZHAN-66-Pro-G1>
- <20200124181253.GA41762@gmail.com>
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, kernel-team@android.com
+Subject: Re: [PATCH v5 4/6] ubifs: don't trigger assertion on invalid no-key
+ filename
+Message-ID: <20200124201317.GC41762@gmail.com>
+References: <20200120223201.241390-1-ebiggers@kernel.org>
+ <20200120223201.241390-5-ebiggers@kernel.org>
+ <20200122003014.GA180824@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200124181253.GA41762@gmail.com>
+In-Reply-To: <20200122003014.GA180824@gmail.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 24, 2020 at 10:12:54AM -0800, Eric Biggers wrote:
-
-> > Thanks for your web reference, I will look into it. I think there
-> > is no worry about dentry->d_parent here because of this only one
-> > dereference on dentry->d_parent.
+On Tue, Jan 21, 2020 at 04:30:15PM -0800, Eric Biggers wrote:
+> On Mon, Jan 20, 2020 at 02:31:59PM -0800, Eric Biggers wrote:
+> > From: Eric Biggers <ebiggers@google.com>
 > > 
-> > You could ignore my words anyway, just my little thought though.
-> > Other part of the patch is ok.
+> > If userspace provides an invalid fscrypt no-key filename which encodes a
+> > hash value with any of the UBIFS node type bits set (i.e. the high 3
+> > bits), gracefully report ENOENT rather than triggering ubifs_assert().
 > > 
+> > Test case with kvm-xfstests shell:
+> > 
+> >     . fs/ubifs/config
+> >     . ~/xfstests/common/encrypt
+> >     dev=$(__blkdev_to_ubi_volume /dev/vdc)
+> >     ubiupdatevol $dev -t
+> >     mount $dev /mnt -t ubifs
+> >     mkdir /mnt/edir
+> >     xfs_io -c set_encpolicy /mnt/edir
+> >     rm /mnt/edir/_,,,,,DAAAAAAAAAAAAAAAAAAAAAAAAAA
+> > 
+> > With the bug, the following assertion fails on the 'rm' command:
+> > 
+> >     [   19.066048] UBIFS error (ubi0:0 pid 379): ubifs_assert_failed: UBIFS assert failed: !(hash & ~UBIFS_S_KEY_HASH_MASK), in fs/ubifs/key.h:170
+> > 
+> > Fixes: f4f61d2cc6d8 ("ubifs: Implement encrypted filenames")
+> > Cc: <stable@vger.kernel.org> # v4.10+
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
 > 
-> While that does make it really unlikely to cause a real-world problem, it's
-> still undefined behavior to not properly annotate a data race, it would make the
-> code harder to understand as there would be no indication that there's a data
-> race, and it would confuse tools that try to automatically detect data races.
-> So let's keep the READ_ONCE() on d_parent.
+> Richard, can you review the two UBIFS patches in this series, and if you're okay
+> with them, provide Acked-by's so that we can take them through the fscrypt tree?
+> They don't conflict with anything currently in the UBIFS tree.
+> 
 
-*nod*
+Richard, any objection to us taking these patches through the fscrypt tree?
 
-Note that on everything except alpha it'll generate the same code, unless
-the compiler screws up an generates multiple loads.  On alpha it adds
-a barrier and I really don't want to sit down and check if its absense
-could lead to anything unpleasant.
+- Eric
