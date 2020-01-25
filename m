@@ -1,140 +1,193 @@
-Return-Path: <SRS0=rAxa=3N=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=qwWH=3O=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF474C2D0DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 20:37:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A354BC2D0CE
+	for <linux-ext4@archiver.kernel.org>; Sat, 25 Jan 2020 01:35:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 995E520702
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jan 2020 20:37:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7552220718
+	for <linux-ext4@archiver.kernel.org>; Sat, 25 Jan 2020 01:35:57 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="utKw29HA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387476AbgAXUhi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Jan 2020 15:37:38 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58454 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2387393AbgAXUhh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jan 2020 15:37:37 -0500
-Received: from callcc.thunk.org (rrcs-67-53-201-206.west.biz.rr.com [67.53.201.206])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 00OKbPBc002715
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 24 Jan 2020 15:37:29 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 1664942014A; Fri, 24 Jan 2020 15:37:25 -0500 (EST)
-Date:   Fri, 24 Jan 2020 15:37:25 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Jean-Louis Dupond <jean-louis@dupond.be>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: Filesystem corruption after unreachable storage
-Message-ID: <20200124203725.GH147870@mit.edu>
-References: <c829a701-3e22-8931-e5ca-2508f87f4d78@dupond.be>
+        id S2387628AbgAYBf4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Jan 2020 20:35:56 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:36740 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729777AbgAYBf4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jan 2020 20:35:56 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description:Resent-Date:Resent-From
+        :Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=/8dcFnQFGE3IGPKCsk+f0BAzJDgkJ+tbH/WSGS2pcSY=; b=utKw29HAXHnBCHchRw6wZcfisK
+        /spb03Vapsj2UW+uFncoP6Nk0w864DJ/O7PLXMSDHfjJvhLZ3qR7aPKwpX0TIgwjnBsjJb2NCib31
+        Ek11LxW7hto+Ptvodb7KnB7WWq6/MxBqu5q94qO5SFBLGvD4UOXs3vlEegm7Ft6kVM/MXd/XsshNX
+        dLwXQlNU/Qx317ORMnlA9sTzxIcFG+d2P9YOgon/CTWtZ7fWf/pBjYKeaQzca4HToQsPm4jNk9RqR
+        nGmSXUF/rGc4r+v7afSGE3kzDQl42f6jo0Yjx34jJQ5IczGluq6GZXcPLd+1C8sENn8nDL/Tqegij
+        cIswaYJA==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1ivAMd-0006VM-91; Sat, 25 Jan 2020 01:35:55 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com
+Subject: [PATCH 03/12] readahead: Put pages in cache earlier
+Date:   Fri, 24 Jan 2020 17:35:44 -0800
+Message-Id: <20200125013553.24899-4-willy@infradead.org>
+X-Mailer: git-send-email 2.21.1
+In-Reply-To: <20200125013553.24899-1-willy@infradead.org>
+References: <20200125013553.24899-1-willy@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <c829a701-3e22-8931-e5ca-2508f87f4d78@dupond.be>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 24, 2020 at 11:57:10AM +0100, Jean-Louis Dupond wrote:
-> 
-> There was a short disruption of the SAN, which caused it to be unavailable
-> for 20-25 minutes for the ESXi.
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
-20-25 minutes is "short"?  I guess it depends on your definition / POV.  :-)
+At allocation time, put the pages in the cache unless we're using
+->readpages.
 
-> What was observed in the VM was the following:
-> <hung task warning>
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Cc: linux-btrfs@vger.kernel.org
+Cc: linux-erofs@lists.ozlabs.org
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-f2fs-devel@lists.sourceforge.net
+Cc: linux-xfs@vger.kernel.org
+Cc: cluster-devel@redhat.com
+Cc: ocfs2-devel@oss.oracle.com
+---
+ mm/readahead.c | 51 +++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 32 insertions(+), 19 deletions(-)
 
-OK, to be expected.
+diff --git a/mm/readahead.c b/mm/readahead.c
+index fc77d13af556..5a6676640f20 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -114,10 +114,10 @@ int read_cache_pages(struct address_space *mapping, struct list_head *pages,
+ EXPORT_SYMBOL(read_cache_pages);
+ 
+ static void read_pages(struct address_space *mapping, struct file *filp,
+-		struct list_head *pages, unsigned int nr_pages, gfp_t gfp)
++		struct list_head *pages, pgoff_t start,
++		unsigned int nr_pages)
+ {
+ 	struct blk_plug plug;
+-	unsigned page_idx;
+ 
+ 	blk_start_plug(&plug);
+ 
+@@ -125,18 +125,17 @@ static void read_pages(struct address_space *mapping, struct file *filp,
+ 		mapping->a_ops->readpages(filp, mapping, pages, nr_pages);
+ 		/* Clean up the remaining pages */
+ 		put_pages_list(pages);
+-		goto out;
+-	}
++	} else {
++		struct page *page;
++		unsigned long index;
+ 
+-	for (page_idx = 0; page_idx < nr_pages; page_idx++) {
+-		struct page *page = lru_to_page(pages);
+-		list_del(&page->lru);
+-		if (!add_to_page_cache_lru(page, mapping, page->index, gfp))
++		xa_for_each_range(&mapping->i_pages, index, page, start,
++				start + nr_pages - 1) {
+ 			mapping->a_ops->readpage(filp, page);
+-		put_page(page);
++			put_page(page);
++		}
+ 	}
+ 
+-out:
+ 	blk_finish_plug(&plug);
+ }
+ 
+@@ -157,9 +156,11 @@ unsigned long __do_page_cache_readahead(struct address_space *mapping,
+ 	unsigned long end_index;	/* The last page we want to read */
+ 	LIST_HEAD(page_pool);
+ 	int page_idx;
++	pgoff_t page_offset;
+ 	unsigned long nr_pages = 0;
+ 	loff_t isize = i_size_read(inode);
+ 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
++	bool use_list = mapping->a_ops->readpages;
+ 
+ 	if (isize == 0)
+ 		goto out;
+@@ -170,7 +171,7 @@ unsigned long __do_page_cache_readahead(struct address_space *mapping,
+ 	 * Preallocate as many pages as we will need.
+ 	 */
+ 	for (page_idx = 0; page_idx < nr_to_read; page_idx++) {
+-		pgoff_t page_offset = offset + page_idx;
++		page_offset = offset + page_idx;
+ 
+ 		if (page_offset > end_index)
+ 			break;
+@@ -178,13 +179,14 @@ unsigned long __do_page_cache_readahead(struct address_space *mapping,
+ 		page = xa_load(&mapping->i_pages, page_offset);
+ 		if (page && !xa_is_value(page)) {
+ 			/*
+-			 * Page already present?  Kick off the current batch of
+-			 * contiguous pages before continuing with the next
+-			 * batch.
++			 * Page already present?  Kick off the current batch
++			 * of contiguous pages before continuing with the
++			 * next batch.
+ 			 */
+ 			if (nr_pages)
+-				read_pages(mapping, filp, &page_pool, nr_pages,
+-						gfp_mask);
++				read_pages(mapping, filp, &page_pool,
++						page_offset - nr_pages,
++						nr_pages);
+ 			nr_pages = 0;
+ 			continue;
+ 		}
+@@ -192,8 +194,18 @@ unsigned long __do_page_cache_readahead(struct address_space *mapping,
+ 		page = __page_cache_alloc(gfp_mask);
+ 		if (!page)
+ 			break;
+-		page->index = page_offset;
+-		list_add(&page->lru, &page_pool);
++		if (use_list) {
++			page->index = page_offset;
++			list_add(&page->lru, &page_pool);
++		} else if (!add_to_page_cache_lru(page, mapping, page_offset,
++					gfp_mask)) {
++			if (nr_pages)
++				read_pages(mapping, filp, &page_pool,
++						page_offset - nr_pages,
++						nr_pages);
++			nr_pages = 0;
++			continue;
++		}
+ 		if (page_idx == nr_to_read - lookahead_size)
+ 			SetPageReadahead(page);
+ 		nr_pages++;
+@@ -205,7 +217,8 @@ unsigned long __do_page_cache_readahead(struct address_space *mapping,
+ 	 * will then handle the error.
+ 	 */
+ 	if (nr_pages)
+-		read_pages(mapping, filp, &page_pool, nr_pages, gfp_mask);
++		read_pages(mapping, filp, &page_pool, page_offset - nr_pages,
++				nr_pages);
+ 	BUG_ON(!list_empty(&page_pool));
+ out:
+ 	return nr_pages;
+-- 
+2.24.1
 
-> 
-> - After 1080 seconds (SCSi Timeout of 180 * 5 Retries + 1):
-> [5878128.028672] sd 0:0:1:0: timing out command, waited 1080s
-> [5878128.028701] sd 0:0:1:0: [sdb] tag#592 FAILED Result: hostbyte=DID_OK
-> driverbyte=DRIVER_OK
-> [5878128.028703] sd 0:0:1:0: [sdb] tag#592 CDB: Write(10) 2a 00 06 0c b4 c8
-> 00 00 08 00
-> [5878128.028704] print_req_error: I/O error, dev sdb, sector 101496008
-> [5878128.028736] EXT4-fs warning (device dm-2): ext4_end_bio:323: I/O error
-> 10 writing to inode 3145791 (offset 0 size 0 starting block 12686745)
-> 
-> So you see the I/O is getting aborted.
-
-Also expected.
-
-
-> - When the SAN came back, then the filesystem went Read-Only:
-> [5878601.212415] EXT4-fs error (device dm-2): ext4_journal_check_start:61:
-> Detected aborted journal
-
-Yep....
-
-> Now I did a hard reset of the machine, and a manual fsck was needed to get
-> it booting again.
-> Fsck was showing the following:
-> "Inodes that were part of a corrupted orphan linked list found."
-> 
-> Manual fsck started with the following:
-> Inodes that were part of a corrupted orphan linked list found. Fix<y>?
-> Inode 165708 was part of the orphaned inode list. FIXED
-> 
-> Block bitmap differences: -(863328--863355)
-> Fix<y>?
-> 
-> What worries me is that almost all of the VM's (out of 500) were showing the
-> same error.
-
-So that's a bit surprising...
-
-> And even some (+-10) were completely corrupt.
-
-What do you mean by "completely corrupt"?  Can you send an e2fsck
-transcript of file systems that were "completely corrupt"?
-
-> Is there for example a chance that the filesystem gets corrupted the moment
-> the SAN storage was back accessible?
-
-Hmm...  the one possibility I can think of off the top of my head is
-that in order to mark the file system as containing an error, we need
-to write to the superblock.  The head of the linked list of orphan
-inodes is also in the superblock.  If that had gotten modified in the
-intervening 20-25 minutes, it's possible that this would result in
-orphaned inodes not on the linked list, causing that error.
-
-It doesn't explain the more severe cases of corruption, though.
-
-> I also have some snapshot available of a corrupted disk if some additional
-> debugging info is required.
-
-Before e2fsck was run?  Can you send me a copy of the output of
-dumpe2fs run on that disk, and then transcript of e2fsck -fy run on a
-copy of that snapshot?
-
-> It would be great to gather some feedback on how to improve the situation
-> (next to of course have no SAN outage :)).
-
-Something that you could consider is setting up your system to trigger
-a panic/reboot on a hung task timeout, or when ext4 detects an error
-(see the man page of tune2fs and mke2fs and the -e option for those
-programs).
-
-There are tradeoffs with this, but if you've lost the SAN for 15-30
-minutes, the file systems are going to need to be checked anyway, and
-the machine will certainly not be serving.  So forcing a reboot might
-be the best thing to do.
-
-> On KVM for example there is a unlimited timeout (afaik) until the storage is
-> back, and the VM just continues running after storage recovery.
-
-Well, you can adjust the SCSI timeout, if you want to give that a try....
-
-Cheers,
-
-					- Ted
