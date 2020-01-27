@@ -1,93 +1,75 @@
-Return-Path: <SRS0=g6iR=3P=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=QXcu=3Q=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B61AC2D0DB
-	for <linux-ext4@archiver.kernel.org>; Sun, 26 Jan 2020 22:11:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0465FC32771
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Jan 2020 03:55:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 41DC620716
-	for <linux-ext4@archiver.kernel.org>; Sun, 26 Jan 2020 22:11:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CDFFD2067C
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Jan 2020 03:55:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729334AbgAZWLs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 26 Jan 2020 17:11:48 -0500
-Received: from smtp-out-so.shaw.ca ([64.59.136.139]:53246 "EHLO
-        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727528AbgAZWLp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Jan 2020 17:11:45 -0500
-X-Greylist: delayed 487 seconds by postgrey-1.27 at vger.kernel.org; Sun, 26 Jan 2020 17:11:44 EST
-Received: from cabot.adilger.int ([70.77.216.213])
-        by shaw.ca with ESMTP
-        id vq0Ei1dErRnrKvq0Gibz51; Sun, 26 Jan 2020 15:03:36 -0700
-X-Authority-Analysis: v=2.3 cv=L7FjvNb8 c=1 sm=1 tr=0
- a=BQvS1EmAg2ttxjPVUuc1UQ==:117 a=BQvS1EmAg2ttxjPVUuc1UQ==:17
- a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=RPJ6JBhKAAAA:8 a=qvgq-4WEZONlWX85OdcA:9
- a=fa_un-3J20JGBB2Tu-mn:22
-From:   Andreas Dilger <adilger@dilger.ca>
-To:     tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] ext4: don't assume that mmp_nodename/bdevname have NUL
-Date:   Sun, 26 Jan 2020 15:03:34 -0700
-Message-Id: <1580076215-1048-1-git-send-email-adilger@dilger.ca>
-X-Mailer: git-send-email 1.8.0
-In-Reply-To: <1579983942-11927-1-git-send-email-adilger@dilger.ca>
-References: <1579983942-11927-1-git-send-email-adilger@dilger.ca>
-X-CMAE-Envelope: MS4wfHK4orTQoqpBv8hdwMUMayl+Wwg4xqVhIRJXniO/z5BqdTmrie3chfgQ1PEI0XQK7DOwn6w9eQoBGmlwQCWVAC7RmF7gvXQvAmLr6CZCoX1tMuHaqRQD
- JvlnGo5pzllyOSpKtYKwxmEd1jH+JTnjftqYy+2fSUxH8bOunNnKINqjJa5laECq5/h4GHKnafhcgrrJUBwcguqVcwAz6jwO3RrShkbl2bjF8Henu/+umuXI
+        id S1727177AbgA0Dzp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 26 Jan 2020 22:55:45 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:51888 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726545AbgA0Dzp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Jan 2020 22:55:45 -0500
+Received: from callcc.thunk.org ([67.142.235.252])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 00R3tRJT005833
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sun, 26 Jan 2020 22:55:37 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 9F4D7420324; Sun, 26 Jan 2020 21:56:01 -0500 (EST)
+Date:   Sun, 26 Jan 2020 21:56:01 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Li Dongyang <dongyangli@ddn.com>
+Cc:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "adilger@dilger.ca" <adilger@dilger.ca>
+Subject: Re: [PATCH v3 1/5] libext2fs: optimize
+ ext2fs_convert_subcluster_bitmap()
+Message-ID: <20200127025601.GA115399@mit.edu>
+References: <20191120043448.249988-1-dongyangli@ddn.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191120043448.249988-1-dongyangli@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Don't assume that the mmp_nodename and mmp_bdevname strings are NUL
-terminated, since they are filled in by snprintf(), which is not
-guaranteed to do so.
+On Wed, Nov 20, 2019 at 04:35:21AM +0000, Li Dongyang wrote:
+> For a bigalloc filesystem, converting the block bitmap from blocks
+> to chunks in ext2fs_convert_subcluster_bitmap() can take a long time
+> when the device is huge, because we test the bitmap
+> bit-by-bit using ext2fs_test_block_bitmap2().
+> Use ext2fs_find_first_set_block_bitmap2() which is more efficient
+> for mke2fs when the fs is mostly empty.
+> 
+> e2fsck can also benefit from this during pass1 block scanning.
+> 
+> Time taken for "mke2fs -O bigalloc,extent -C 131072 -b 4096" on a 1PB
+> device:
+> 
+> without patch:
+> real    27m49.457s
+> user    21m36.474s
+> sys     6m9.514s
+> 
+> with patch:
+> real    6m31.908s
+> user    0m1.806s
+> sys    6m29.697s
+> 
+> Signed-off-by: Li Dongyang <dongyangli@ddn.com>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/mmp.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+Applied, thanks.
 
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 2305b43..9d00e0d 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -120,10 +120,10 @@ void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
- {
- 	__ext4_warning(sb, function, line, "%s", msg);
- 	__ext4_warning(sb, function, line,
--		       "MMP failure info: last update time: %llu, last update "
--		       "node: %s, last update device: %s",
--		       (long long unsigned int) le64_to_cpu(mmp->mmp_time),
--		       mmp->mmp_nodename, mmp->mmp_bdevname);
-+		       "MMP failure info: last update time: %llu, last update node: %.*s, last update device: %.*s",
-+		       (unsigned long long)le64_to_cpu(mmp->mmp_time),
-+		       (int)sizeof(mmp->mmp_nodename), mmp->mmp_nodename,
-+		       (int)sizeof(mmp->mmp_bdevname), mmp->mmp_bdevname);
- }
- 
- /*
-@@ -154,6 +154,7 @@ static int kmmpd(void *data)
- 	mmp_check_interval = max(EXT4_MMP_CHECK_MULT * mmp_update_interval,
- 				 EXT4_MMP_MIN_CHECK_INTERVAL);
- 	mmp->mmp_check_interval = cpu_to_le16(mmp_check_interval);
-+	BUILD_BUG_ON(sizeof(mmp->mmp_bdevname) < BDEVNAME_SIZE);
- 	bdevname(bh->b_bdev, mmp->mmp_bdevname);
- 
- 	memcpy(mmp->mmp_nodename, init_utsname()->nodename,
-@@ -375,7 +376,8 @@ int ext4_multi_mount_protect(struct super_block *sb,
- 	/*
- 	 * Start a kernel thread to update the MMP block periodically.
- 	 */
--	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, mmpd_data, "kmmpd-%s",
-+	EXT4_SB(sb)->s_mmp_tsk = kthread_run(kmmpd, mmpd_data, "kmmpd-%.*s",
-+					     (int)sizeof(mmp->mmp_bdevname),
- 					     bdevname(bh->b_bdev,
- 						      mmp->mmp_bdevname));
- 	if (IS_ERR(EXT4_SB(sb)->s_mmp_tsk)) {
--- 
-1.8.0
-
+					- Ted
