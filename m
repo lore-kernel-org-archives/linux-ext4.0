@@ -2,124 +2,67 @@ Return-Path: <SRS0=gIIK=3T=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B4347C35240
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jan 2020 17:47:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DFCC6C2D0DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jan 2020 23:50:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D09F20CC7
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jan 2020 17:47:39 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=yandex-team.ru header.i=@yandex-team.ru header.b="K/JD9rxd"
+	by mail.kernel.org (Postfix) with ESMTP id B4F7321734
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Jan 2020 23:50:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1580428233;
+	bh=q9mn1FfMiKVKZPXSs9GnfDX4utx5V83YBgWvfVNNg9Y=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=XohBXIeJyhwtNswzQfBuazQ4vZug4xV4TlKY8BzeYRXisOkAR9nvfy5TuVgx8a8US
+	 ddzcokC7rSmLA92PHPkG1O8TVmui/o0PICzcEx1JALTlp2/n1zXrl+d9u9t87x21PI
+	 YVBKgdtYNFhB1c6ePVY4pNpAE4bvlPpnZkkeGRGQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727497AbgA3Rri (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 Jan 2020 12:47:38 -0500
-Received: from forwardcorp1p.mail.yandex.net ([77.88.29.217]:56142 "EHLO
-        forwardcorp1p.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727263AbgA3Rri (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 30 Jan 2020 12:47:38 -0500
-X-Greylist: delayed 419 seconds by postgrey-1.27 at vger.kernel.org; Thu, 30 Jan 2020 12:47:36 EST
-Received: from mxbackcorp1g.mail.yandex.net (mxbackcorp1g.mail.yandex.net [IPv6:2a02:6b8:0:1402::301])
-        by forwardcorp1p.mail.yandex.net (Yandex) with ESMTP id B44FA2E129E;
-        Thu, 30 Jan 2020 20:40:35 +0300 (MSK)
-Received: from vla1-5a8b76e65344.qloud-c.yandex.net (vla1-5a8b76e65344.qloud-c.yandex.net [2a02:6b8:c0d:3183:0:640:5a8b:76e6])
-        by mxbackcorp1g.mail.yandex.net (mxbackcorp/Yandex) with ESMTP id IhTHqh0e8z-eY3CLLiY;
-        Thu, 30 Jan 2020 20:40:35 +0300
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex-team.ru; s=default;
-        t=1580406035; bh=FvG9RYl7FyNS5K/tl+yfSrh8hxf4XZKmAfbcfhj89qE=;
-        h=In-Reply-To:Message-ID:References:Date:To:From:Subject:Cc;
-        b=K/JD9rxdqxGu5KPaQNkzDVylKM9+v1Rore08QtOhY9BikHqPIq10i1VrJjAKuoEyk
-         P+d6kMVHkJEdPCb1mBEf6fiodMWR9eAKsOx+2gtyI+p9RVZKmK/D1fq2GhyvNvDqDK
-         REW7n5Pztz29BDuTUNLjHT7goCrw929uZ/JzPVDM=
-Authentication-Results: mxbackcorp1g.mail.yandex.net; dkim=pass header.i=@yandex-team.ru
-Received: from dynamic-red.dhcp.yndx.net (dynamic-red.dhcp.yndx.net [2a02:6b8:0:40c:8448:fbcc:1dac:c863])
-        by vla1-5a8b76e65344.qloud-c.yandex.net (smtpcorp/Yandex) with ESMTPSA id sG6tGHo0RP-eYVa8kTC;
-        Thu, 30 Jan 2020 20:40:34 +0300
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (Client certificate not present)
-Subject: [PATCH v2 2/2] ext4: avoid spinlock congestion in lazytime
- optimization
-From:   Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     David Howells <dhowells@redhat.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>
-Date:   Thu, 30 Jan 2020 20:40:34 +0300
-Message-ID: <158040603451.1879.7954684107752709143.stgit@buzz>
-In-Reply-To: <158040603214.1879.6549790415691475804.stgit@buzz>
-References: <158040603214.1879.6549790415691475804.stgit@buzz>
-User-Agent: StGit/0.17.1-dirty
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        id S1727837AbgA3XuR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 Jan 2020 18:50:17 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35858 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727830AbgA3XuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 30 Jan 2020 18:50:17 -0500
+Subject: Re: [GIT PULL] ext4 changes for 5.6
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1580428216;
+        bh=q9mn1FfMiKVKZPXSs9GnfDX4utx5V83YBgWvfVNNg9Y=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=ABXFMiwwgpBEjY8xx5OM4hzzbs4qbXIUzu+7FNz0l+4LJ7rzRkt6l7rZNtikxvHH/
+         EWLbUjDXe9xbDiQZG16GBEuhTSbUSrYOT7K+NSE9wY2ieejnQKmKVeOrODLTCtDRAj
+         P7RWl15bJGqvJr9bFz74+z+iQpbErvU8YslAVLA8=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20200130005817.GA331314@mit.edu>
+References: <20200130005817.GA331314@mit.edu>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20200130005817.GA331314@mit.edu>
+X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+ tags/ext4_for_linus
+X-PR-Tracked-Commit-Id: 7f6225e446cc8dfa4c3c7959a4de3dd03ec277bf
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: e5da4c933c50d98d7990a7c1ca0bbf8946e80c4a
+Message-Id: <158042821678.30792.14650350060155285879.pr-tracker-bot@kernel.org>
+Date:   Thu, 30 Jan 2020 23:50:16 +0000
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Function ext4_update_other_inodes_time() implements optimization which
-opportunistically updates times for inodes within same inode table block.
+The pull request you sent on Wed, 29 Jan 2020 19:58:17 -0500:
 
-For now concurrent inode lookup by number does not scale well because
-inode hash table is protected with single spinlock. It could become very
-hot at concurrent writes to fast nvme when inode cache has enough inodes.
+> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-Let's use here non-blocking variant of function find_inode_nowait() and
-skip opportunistic inode updates if spinlock is congested.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/e5da4c933c50d98d7990a7c1ca0bbf8946e80c4a
 
+Thank you!
 
-Synthetic testcase by Dmitry Monakhov:
-
-modprobe brd rd_size=10240000 rd_nr=1
-mkfs.ext4 -F -I 256 -b 4096 -q /dev/ram0
-mkdir -p m
-mount /dev/ram0 m -o lazytime,noload,barrier=0
-mkdir m/{0..31}
-fio --ioengine=ftruncate --direct=1 --bs=4k --filesize=16m --time_based=1 \
---runtime=10 --numjobs=32 --group_reporting --norandommap --name=write-32 \
---rw=randwrite --directory=m --filename_format='$jobnum/t'
-umount m
-rmdir m
-rmmod brd
-
-Before patch:	50k op/s
-After patch:	3000k op/s
-
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
-Cc: Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>
-Link: https://lore.kernel.org/lkml/158031264567.6836.126132376018905207.stgit@buzz/T/#u (v1)
----
- fs/ext4/inode.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9512eb771820..3dea7327e7ab 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4853,6 +4853,7 @@ static void ext4_update_other_inodes_time(struct super_block *sb,
- 	unsigned long ino;
- 	int i, inodes_per_block = EXT4_SB(sb)->s_inodes_per_block;
- 	int inode_size = EXT4_INODE_SIZE(sb);
-+	struct inode *res;
- 
- 	oi.orig_ino = orig_ino;
- 	/*
-@@ -4865,7 +4866,10 @@ static void ext4_update_other_inodes_time(struct super_block *sb,
- 		if (ino == orig_ino)
- 			continue;
- 		oi.raw_inode = (struct ext4_inode *) buf;
--		(void)find_inode_nowait(sb, ino, other_inode_match, &oi, false);
-+		/* Try to find inode, stop if inode_hash_lock is congested. */
-+		res = find_inode_nowait(sb, ino, other_inode_match, &oi, true);
-+		if (res == ERR_PTR(-EAGAIN))
-+			break;
- 	}
- }
- 
-
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
