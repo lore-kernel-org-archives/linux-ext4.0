@@ -2,102 +2,73 @@ Return-Path: <SRS0=10uF=3U=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.8 required=3.0 tests=DATE_IN_PAST_24_48,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86557C2D0DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jan 2020 17:14:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C360C2D0DB
+	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jan 2020 21:10:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 63BCB206D5
-	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jan 2020 17:14:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FF87214D8
+	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jan 2020 21:10:08 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1580505008;
+	bh=MCkR/ng7bUbpozJhY4zARLxv1MqEKe/eRZIzdiuzBpY=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=cyruIIxuNtXpvZsjoI/RrW3p8IIlkmSHUps/2IRZBhbpU0bZfpZEH8GS1JJaLygt0
+	 MolSqNO1flqP1uhKIVR8WknprYJ4gXxCEyMuxtSLBqrjyFTAGxE3Sd01db8kB72s5L
+	 Dm6lu59VlJjvVAQd8r2VKqeLbHq8qPNPUymtFp1g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726772AbgAaROG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 31 Jan 2020 12:14:06 -0500
-Received: from mx2.suse.de ([195.135.220.15]:34488 "EHLO mx2.suse.de"
+        id S1726202AbgAaVKE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 31 Jan 2020 16:10:04 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44994 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726668AbgAaROG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 31 Jan 2020 12:14:06 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 11B70AFB8;
-        Fri, 31 Jan 2020 17:14:04 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 34FEC1E0D5D; Thu, 30 Jan 2020 17:25:30 +0100 (CET)
-Date:   Thu, 30 Jan 2020 17:25:30 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: ext2fs_link() corrupting a directory
-Message-ID: <20200130162530.GB15601@quack2.suse.cz>
-References: <20200117122420.GJ17141@quack2.suse.cz>
- <20200117162927.GB448999@mit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200117162927.GB448999@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+        id S1726109AbgAaVKE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 31 Jan 2020 16:10:04 -0500
+Subject: Re: [GIT PULL] iomap: new code for 5.6
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1580505004;
+        bh=MCkR/ng7bUbpozJhY4zARLxv1MqEKe/eRZIzdiuzBpY=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=HZsATbrqIem72P9LB8QleE0QUROvKJ5Gl4owE8YRYhBDDRbjHL1kNlGHbXfEtiqJ8
+         J08VkzmdwLvrygp/eV4g/5kz5mhFLq6cxrXaAmFLjnM803Q5XrvLKtIMuMdxby1vUz
+         ZICGVt9Uaa1mHfs6XT9FXJROYwNXDcaPiPLmXp5U=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20200131040753.GB6869@magnolia>
+References: <20200131040753.GB6869@magnolia>
+X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20200131040753.GB6869@magnolia>
+X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+ tags/iomap-5.6-merge-3
+X-PR-Tracked-Commit-Id: 243145bc4336684c69f95de0a303b31f2e5bf264
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 677b60dcb68a0c43822b5a8ad97733b4193386b9
+Message-Id: <158050500400.4115.17533922606838474963.pr-tracker-bot@kernel.org>
+Date:   Fri, 31 Jan 2020 21:10:04 +0000
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        david@fromorbit.com, linux-kernel@vger.kernel.org,
+        sandeen@sandeen.net, hch@lst.de, agruenba@redhat.com,
+        rpeterso@redhat.com, cluster-devel@redhat.com,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 17-01-20 11:29:27, Theodore Y. Ts'o wrote:
-> On Fri, Jan 17, 2020 at 01:24:20PM +0100, Jan Kara wrote:
-> > 
-> > I was tracking down a filesystem corruption issue with one proposed
-> > xfstests testcase. After some debugging I've found out that the problem
-> > actually is not in the kernel but rather in e2fsck (libext2fs
-> > respectively). The testcase deletes lost+found, e2fsck recreates it. But
-> > after the testcase / is h-tree directory. So ext2fs_link() creates
-> > lost+found in / and clears EXT4_INODE_INDEX flag. Now because the
-> > filesystem has metadata checksums, clearing the index flag needs to also
-> > rewrite all directory blocks with h-tree index blocks because the layout
-> > now needs to be different.  ext2fs_link() actually tries to do this in its
-> > link_proc() but if the space for new directory entry is found before we
-> > walk all the h-tree index blocks, we terminate the iteration and some index
-> > blocks remain unconverted resulting in checksum errors and other weirdness
-> > later on.
-> 
-> Ouch.  Nice catch.
-> 
-> I suspect we have a similar problem when the kernel discovers that the
-> htree is corrupted; it will clear EXT4_INODE_INDEX flag, since before
-> how we added metadata checksum, it was safe to do that.  Given our
-> choice of where the stash the checksum, in order to not decrease the
-> fanout of htree directories, this is no no longer safe to do.
-> 
-> I think what we will need to do is to set an in-memory "fallback"
-> flag, which simply ignores the index blocks, but doesn't actually clear
-> the EXT4_INODE_INDEX flag in the case where metadata_csum is enabled.
+The pull request you sent on Thu, 30 Jan 2020 20:07:53 -0800:
 
-Yeah, that might be a good fix for the kernel.
+> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.6-merge-3
 
-> > The question is how to best fix this. The easiest fix is to just make
-> > link_proc() iterate through all directory blocks when it needs to do the
-> > index blocks conversion. But this seems somewhat stupid. Also there's
-> > another problem with clearing EXT4_INODE_INDEX in ext2fs_link() - if the
-> > directory has more than 65000 subdirectories, clearing EXT4_INODE_INDEX is
-> > not allowed because large directory link count handling is supported only
-> > for EXT4_INODE_INDEX directories.
-> > 
-> > So what do we do with this? For e2fsck, we could just link the new entry
-> > into the directory and force rehashing later. But ext2fs_link() can be
-> > called also from other tools and it should be a self-contained API... Any
-> > ideas? Should we just bite the bullet and implement ext2fs_link() for
-> > h-tree dirs properly?
-> 
-> Yes, I think that's what we are going to need to do; we had cheated
-> and not bothered to implement htree support in ext2fs library, but if
-> we're going to implement it for link_proc, we might as well also
-> implement it for lookups as well.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/677b60dcb68a0c43822b5a8ad97733b4193386b9
 
-JFYI (since I won't make today's ext4 call) I have full-featured insertion
-into indexed dirs implemented, just need to write some decent testing
-because it's quite a bit of new code and not exactly trivial...
+Thank you!
 
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
