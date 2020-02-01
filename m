@@ -2,249 +2,208 @@ Return-Path: <SRS0=i15u=3V=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,URIBL_DBL_ABUSE_MALW,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AE51C33C9E
-	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 04:07:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C99CCC35249
+	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 15:12:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2F3D4206D5
-	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 04:07:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95CBF2073B
+	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 15:12:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="G0QSevO/"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="bY3NBrXn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727035AbgBAEHr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 31 Jan 2020 23:07:47 -0500
-Received: from mail-pl1-f179.google.com ([209.85.214.179]:44732 "EHLO
-        mail-pl1-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726567AbgBAEHr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Jan 2020 23:07:47 -0500
-Received: by mail-pl1-f179.google.com with SMTP id d9so3587917plo.11
-        for <linux-ext4@vger.kernel.org>; Fri, 31 Jan 2020 20:07:47 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:mime-version:subject:message-id:date:cc:to;
-        bh=zAbmiwgPDgJ20WL5HTVlc7uPMUxuJ7MTjvjYNkKdbVc=;
-        b=G0QSevO/OtXIyMF69BeVZ3np71qjUoQcuL0utY5ajrExmmOCgwZnTfoqbsbzFkKGMm
-         35iOaifSzjrSuNDQJdpCdKnSv9j1WVTZFF3mJvdYKN74X5kiKOgzWoknt/ERnSvETes9
-         bmqE3AUgZv2DixQkf8CMHq+K8k1rbsQlNkiz1+l/26orznxqyPQsR+dlqhsVklx0uSlP
-         RAfBaBK/G7pwlcq3EaZckeqk0rgA77JomEgPeLoXbv+OZy8FNmlv6Bia1dcCkkXLWlRD
-         ZjxlhXjRWaQ6GjCdg615JZo2g0jlS2i2yLjDxg08SJWuGZEhDobQpbRnioJZUY5SdoUW
-         EmQw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:mime-version:subject:message-id:date:cc:to;
-        bh=zAbmiwgPDgJ20WL5HTVlc7uPMUxuJ7MTjvjYNkKdbVc=;
-        b=pqPBJbhMROUp1cqqQCRdO/U1nVU3Keqxt8+0BVs28f272xBZoHwCz5Vsg9oRmNUpY2
-         IJDKSAyAek86V76Ca9KgH800/UK55A2yPS0y2xhjrFivDo5rZOqytW0fZn/OKL+Cm/Ru
-         uvYmI1IdHcwuSLocFr4fixFhtdNSFayvmno4iiYAsZGBAkjQCUu5V5wdmzPgimS59XEl
-         2yWFxiKAK1YSZ36qGXEzuPvQYZx2svLjx61Oyp4E1a+Gg2lpOrYws9X75CVE6OVS29n3
-         piUduiQHfPY9KC/i4dFayfZDnsjq5OarKLrRLx+ikCVCkpHtSBw4AV3D2r/0tfPqVcNl
-         Xaew==
-X-Gm-Message-State: APjAAAVKPIFv+0kZyFjX6g+n+I08rKkmtGQQnZdmyEsefQGd0TRs8xrR
-        wFTJxsj8OAq/ofE9T2RVDM5BR9dLIYXHuQ==
-X-Google-Smtp-Source: APXvYqxa9ysychrJuZUEoIqO7NhgciY1rrgtvF5GuiLSbEcujxugFo51/klOgNG1vENDmHlRK7IqSA==
-X-Received: by 2002:a17:90a:5d85:: with SMTP id t5mr16344475pji.126.1580530066077;
-        Fri, 31 Jan 2020 20:07:46 -0800 (PST)
-Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id 6sm11885328pgh.0.2020.01.31.20.07.44
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 31 Jan 2020 20:07:45 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_265A083A-375E-42B9-A5C0-B43CA36AE901";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: e2fsck dir_info corruption
-Message-Id: <00CED351-2128-4DF8-B286-7774CCC1FC0A@dilger.ca>
-Date:   Fri, 31 Jan 2020 21:07:42 -0700
-Cc:     linux-ext4 <linux-ext4@vger.kernel.org>
-To:     Theodore Ts'o <tytso@mit.edu>
-X-Mailer: Apple Mail (2.3273)
+        id S1727258AbgBAPMu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 1 Feb 2020 10:12:50 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:51880 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727225AbgBAPMs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2020 10:12:48 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description:Resent-Date:Resent-From
+        :Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=Ml5Puu4JmLRdzMhiiCOiBo4ACbPsQdjTb+QSPxS+DKY=; b=bY3NBrXng43eEHaP4qFkNBHkjA
+        /0ai0QxQPvj+vzTnehD7kfdwvHZ8vzjptHG3nMCtmSDzhJPLlrrRvHwMG04vHV9fd/CCJRTd7hZ9S
+        kCY6iKxXzzldIpqfDcbhn1eEv9lpm3OwGdFjku0KJeD/QhITkP89Q8r/3MLB+25BxQPdL5yjJPCI/
+        zaoC9Cl+tOymw4aTP+dhrGrhEN9KAUrBXzsBIHlqEM/UfvzLlZxLPkERj8Ov2t+ljIWtVaj85jqMP
+        h352PTKYgXTRiVZYfWwYCWlL9sM65Px7gR4w2uvH7jwuclAa5kmfsGcMYSDK+NcJWFvdA8OCVg7ot
+        FV+G0YLQ==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1ixuRu-0006HT-5R; Sat, 01 Feb 2020 15:12:42 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com
+Subject: [PATCH v4 04/12] mm: Add readahead address space operation
+Date:   Sat,  1 Feb 2020 07:12:32 -0800
+Message-Id: <20200201151240.24082-5-willy@infradead.org>
+X-Mailer: git-send-email 2.21.1
+In-Reply-To: <20200201151240.24082-1-willy@infradead.org>
+References: <20200201151240.24082-1-willy@infradead.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
---Apple-Mail=_265A083A-375E-42B9-A5C0-B43CA36AE901
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+This replaces ->readpages with a saner interface:
+ - Return the number of pages not read instead of an ignored error code.
+ - Pages are already in the page cache when ->readahead is called.
+ - Implementation looks up the pages in the page cache instead of
+   having them passed in a linked list.
 
-I've been trying to track down a failure with e2fsck on a large =
-filesystem.  Running e2fsck-1.45.2 repeatedly and consistently reports =
-an error in pass2:
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Cc: linux-btrfs@vger.kernel.org
+Cc: linux-erofs@lists.ozlabs.org
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-f2fs-devel@lists.sourceforge.net
+Cc: linux-xfs@vger.kernel.org
+Cc: cluster-devel@redhat.com
+Cc: ocfs2-devel@oss.oracle.com
+---
+ Documentation/filesystems/locking.rst |  7 ++++++-
+ Documentation/filesystems/vfs.rst     | 14 ++++++++++++++
+ include/linux/fs.h                    |  2 ++
+ include/linux/pagemap.h               | 12 ++++++++++++
+ mm/readahead.c                        | 13 ++++++++++++-
+ 5 files changed, 46 insertions(+), 2 deletions(-)
 
-Internal error: couldn't find dir_info for <ino>
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 5057e4d9dcd1..3d10729caf44 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -239,6 +239,8 @@ prototypes::
+ 	int (*readpage)(struct file *, struct page *);
+ 	int (*writepages)(struct address_space *, struct writeback_control *);
+ 	int (*set_page_dirty)(struct page *page);
++	unsigned (*readahead)(struct file *, struct address_space *,
++				 pgoff_t start, unsigned nr_pages);
+ 	int (*readpages)(struct file *filp, struct address_space *mapping,
+ 			struct list_head *pages, unsigned nr_pages);
+ 	int (*write_begin)(struct file *, struct address_space *mapping,
+@@ -271,7 +273,8 @@ writepage:		yes, unlocks (see below)
+ readpage:		yes, unlocks
+ writepages:
+ set_page_dirty		no
+-readpages:
++readahead:		yes, unlocks
++readpages:		no
+ write_begin:		locks the page		 exclusive
+ write_end:		yes, unlocks		 exclusive
+ bmap:
+@@ -295,6 +298,8 @@ the request handler (/dev/loop).
+ ->readpage() unlocks the page, either synchronously or via I/O
+ completion.
+ 
++->readahead() unlocks the pages like ->readpage().
++
+ ->readpages() populates the pagecache with the passed pages and starts
+ I/O against them.  They come unlocked upon I/O completion.
+ 
+diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
+index 7d4d09dd5e6d..c2bc345f2169 100644
+--- a/Documentation/filesystems/vfs.rst
++++ b/Documentation/filesystems/vfs.rst
+@@ -706,6 +706,8 @@ cache in your filesystem.  The following members are defined:
+ 		int (*readpage)(struct file *, struct page *);
+ 		int (*writepages)(struct address_space *, struct writeback_control *);
+ 		int (*set_page_dirty)(struct page *page);
++		unsigned (*readahead)(struct file *filp, struct address_space *mapping,
++				 pgoff_t start, unsigned nr_pages);
+ 		int (*readpages)(struct file *filp, struct address_space *mapping,
+ 				 struct list_head *pages, unsigned nr_pages);
+ 		int (*write_begin)(struct file *, struct address_space *mapping,
+@@ -781,6 +783,18 @@ cache in your filesystem.  The following members are defined:
+ 	If defined, it should set the PageDirty flag, and the
+ 	PAGECACHE_TAG_DIRTY tag in the radix tree.
+ 
++``readahead``
++	Called by the VM to read pages associated with the address_space
++	object.  The pages are consecutive in the page cache and
++	are locked.  The implementation should decrement the page
++	refcount after attempting I/O on each page.  Usually the
++	page will be unlocked by the I/O completion handler.  If the
++	function does not attempt I/O on some pages, return the number
++	of pages which were not read so the caller can unlock the pages
++	for you.  Set PageUptodate if the I/O completes successfully.
++	Setting PageError on any page will be ignored; simply unlock
++	the page if an I/O error occurs.
++
+ ``readpages``
+ 	called by the VM to read pages associated with the address_space
+ 	object.  This is essentially just a vector version of readpage.
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 41584f50af0d..3bfc142e7d10 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -375,6 +375,8 @@ struct address_space_operations {
+ 	 */
+ 	int (*readpages)(struct file *filp, struct address_space *mapping,
+ 			struct list_head *pages, unsigned nr_pages);
++	unsigned (*readahead)(struct file *, struct address_space *,
++			pgoff_t start, unsigned nr_pages);
+ 
+ 	int (*write_begin)(struct file *, struct address_space *mapping,
+ 				loff_t pos, unsigned len, unsigned flags,
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index ccb14b6a16b5..a2cf007826f2 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -630,6 +630,18 @@ static inline int add_to_page_cache(struct page *page,
+ 	return error;
+ }
+ 
++/*
++ * Only call this from a ->readahead implementation.
++ */
++static inline
++struct page *readahead_page(struct address_space *mapping, pgoff_t index)
++{
++	struct page *page = xa_load(&mapping->i_pages, index);
++	VM_BUG_ON_PAGE(!PageLocked(page), page);
++
++	return page;
++}
++
+ static inline unsigned long dir_pages(struct inode *inode)
+ {
+ 	return (unsigned long)(inode->i_size + PAGE_SIZE - 1) >>
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 7daef0038b14..b2ed0baf3a5d 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -121,7 +121,18 @@ static void read_pages(struct address_space *mapping, struct file *filp,
+ 
+ 	blk_start_plug(&plug);
+ 
+-	if (mapping->a_ops->readpages) {
++	if (mapping->a_ops->readahead) {
++		unsigned left = mapping->a_ops->readahead(filp, mapping,
++				start, nr_pages);
++
++		while (left) {
++			struct page *page = readahead_page(mapping,
++					start + nr_pages - left);
++			unlock_page(page);
++			put_page(page);
++			left--;
++		}
++	} else if (mapping->a_ops->readpages) {
+ 		mapping->a_ops->readpages(filp, mapping, pages, nr_pages);
+ 		/* Clean up the remaining pages */
+ 		put_pages_list(pages);
+-- 
+2.24.1
 
-The inode number is consistent across multiple runs, but examining it =
-with
-debugfs shows that it is a normal directory with no problems.  In order =
-to
-complete the e2fsck, we tried using "debugfs -w -R 'clri <ino>'" to =
-erase
-the inode, but this just shifted the error onto a slightly later =
-directory
-(which would itself now be reported consistently).
-
-The filesystem is 6TB with 2.3B inodes, about 1.8B of which are in use.  =
-The
-inode numbers reporting problems are in the range of 1.2B.  e2fsck is =
-using
-about 45GB of RAM (with some swap on an NVMe SSD, so much faster than =
-the
-HDD the filesystem image is on).  It takes about 3-4h to hit this =
-problem.
-
-I was able to run e2fsck under gdb, though this slows it down =
-significantly
-(10-100x slower), if there are conditional breakpoints since they need =
-to
-be evaluated for each inode, which makes it impossible to use this way.
-
-What I've discovered is quite interesting.  The ctx->dir_info->array is
-filled in properly for the bad inode, and the array is OK at the start =
-of
-pass2 (2 is the root inode, and $66 holds the bad inode number):
-
-    (gdb) p e2fsck_get_dir_info(ctx, 2)
-    $171 =3D (struct dir_info *) 0x7ffabf2bd010
-    (gdb) p *$171
-    $172 =3D {ino =3D 2, dotdot =3D 0, parent =3D 2}
-    (gdb) p $66
-    $173 =3D 1222630490
-    (gdb) p e2fsck_get_dir_info(ctx, $66)
-    $174 =3D (struct dir_info *) 0x7ffb3d327f54
-    (gdb) p *$174
-    $175 =3D {ino =3D 1222630490, dotdot =3D 0, parent =3D 0}
-
-The dir_info array itself is over 4GB in size (not sure if this is =
-relevant
-or not), with 380M directories, but the bad inode is only about half way
-through the array ($140 is the index of the problematic entry):
-
-    (gdb) p $140
-    $176 =3D 176197275
-    (gdb) p p ctx->dir_info->array[$140]
-    $177 =3D {ino =3D 1222630490, dotdot =3D 0, parent =3D 0}
-    (gdb) p *ctx->dir_info
-    $178 =3D {count =3D 381539950, size =3D 381539965,
-      array =3D 0x7ffabf2bd010, last_lookup =3D 0x0,
-      tdb_fn =3D 0x0, tdb =3D 0x0}
-    (gdb) p $178.count * sizeof(ctx->dir_info->array[0])
-    $179 =3D 4578479400
-
-I put a hardware watchpoint on the ".parent" and ".dotdot" fields of =
-this
-entry so that I could watch as e2fsck_dir_info_set_dotdot() updated it,
-but I didn't think to put one on the ".ino" field, since I thought it =
-would
-be static.
-
-    (gdb) info break
-    Num     Type           Disp Enb Address    What
-    15      hw watchpoint  keep y              -location $177->parent
-    16      hw watchpoint  keep y              -location $177->dotdot
-
-The watchpoint triggered, and saw that the entry was changed by =
-qsort_r(),
-which at first I thought "OK, the dir_info array needs to be sorted, =
-because
-a binary search is used on it", but in fact the array is *created* in =
-order
-during the inode table scan and does not need to be sorted.  As can be =
-seen
-from the stack, it is *another* array that is being sorted that =
-overwrites
-the dir_info entry:
-
-    Hardware watchpoint 16: -location $177->dotdot
-
-    Old value =3D 0
-    New value =3D 1581603653
-    0x0000003b2ea381f7 in _quicksort ()
-       from /lib64/libc.so.6
-    (gdb) p $141
-    $179 =3D {ino =3D 1222630490, dotdot =3D 0, parent =3D 0}
-    (gdb) bt
-    #0  0x0000003b2ea381e1 in _quicksort ()
-      from /lib64/libc.so.6
-    #1  0x0000003b2ea38f82 in qsort_r ()
-      from /lib64/libc.so.6
-    #2  0x000000000045447b in ext2fs_dblist_sort2 (
-        dblist=3D0x6c9a90,
-        sortfunc=3D0x428c3d <special_dir_block_cmp>)
-        at dblist.c:189
-    #3  0x00000000004285bc in e2fsck_pass2 (
-        ctx=3D0x6c4000) at pass2.c:180
-    #4  0x000000000041646b in e2fsck_run (ctx=3D0x6c4000)
-        at e2fsck.c:253
-    #5  0x0000000000415210 in main (argc=3D4,
-        argv=3D0x7fffffffe088) at unix.c:2047
-    (gdb) p ctx->dir_info->array[$140]
-    $207 =3D {ino =3D 0, dotdot =3D 1581603653, parent =3D 0}
-    (gdb) f 3
-    #3  0x00000000004285bc in e2fsck_pass2 (
-        ctx=3D0x6c4000) at pass2.c:180
-    180       ext2fs_dblist_sort2(fs->dblist, special_dir_block_cmp);
-
-AFAIK, the ext2fs_dblist_sort2() is for the directory *blocks*, and =
-should
-not be changing the dir_info at all.  Is this a bug in qsort or glibc?
-
-What I just noticed writing this email is that the fs->dblist.list =
-address
-is right in the middle of the dir_info array address range:
-
-    (gdb) p *fs->dblist
-    $210 =3D {magic =3D 2133571340, fs =3D 0x6c4460,
-      size =3D 763079922, count =3D 388821313, sorted =3D 0,
-      list =3D 0x7ffad011e010}
-    (gdb) p &ctx->dir_info->array[0]
-    $211 =3D (struct dir_info *) 0x7ffabf2bd010
-    (gdb) p &ctx->dir_info->array[$140]
-    $212 =3D (struct dir_info *) 0x7ffb3d327f54
-
-which might explain why sorting dblist is messing with dir_info?  I =
-don't
-_think_ it is a problem with my build or swap, which is different from
-the system that this was originally reproduced on.
-
-Any thoughts on how to continue debugging this?
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_265A083A-375E-42B9-A5C0-B43CA36AE901
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl40+Y8ACgkQcqXauRfM
-H+DZhBAAmaTVseNMFhTtm7oFfggyFRvSCy5t3zxzIwxSQ323FHhyxu4fsvA8UbFm
-0fKZowPmAu/lGBbnuOeR6VLuw2mu5P+vFgGDMj0zjnHP3BfGPzKuImVMzyyCN/VI
-TZjNecRvnbrOciQB/ZTPztwa3TevJtIPwG5q30gQmPbmJN779YOBe2VqHCIkNDXq
-RMONTtlchfYiD4cF6MpE49mHJ7dIMX7cIImGyoZpB2NvXKTfKdu0j8gAsejLm1vc
-czxIPMusitklU0vxQsiMGSE7mv8Aki/6BvJJN3cNFeizydp6HRLUXJtt3dPa7hRu
-rvAlGvAVIekMm/LolOv87mu5j6syDFcGwfZwsMi5ZMDL6+w/7YdkVi0i6edpJuQz
-/lZnNVkxpjsbQFAallhTS86aQSGX+N+cgShjil/Vaf4jIlF5Nya09m2lOL4A8ymB
-eVvqhFRWctJu4aVayG3scLmQrX06PV6nVn93fptil74xiKDz4cAaTG032p0L/wCK
-cT/ik9yBa/olVFcP5iH47RTETNVY03PttGIOwV7TzAx75+rvgdo7grVe166loWvD
-pH31CWNC447jlLYArgLPMrABlR/s8KoccJO/tUsF8g3v6bvGa4LS39wUHxIbfgGA
-yKyxsH7c4BmpNWdg1L3uHBg0Qk8zsTNhSj83vKeUrbaXVpbIaSA=
-=Wir1
------END PGP SIGNATURE-----
-
---Apple-Mail=_265A083A-375E-42B9-A5C0-B43CA36AE901--
