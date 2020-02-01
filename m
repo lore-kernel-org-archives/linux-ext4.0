@@ -2,153 +2,204 @@ Return-Path: <SRS0=i15u=3V=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-0.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,URIBL_DBL_ABUSE_MALW,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D716EC3524A
-	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 15:13:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B21C2C33CB3
+	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 17:02:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE6F720661
-	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 15:13:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 724B7206E3
+	for <linux-ext4@archiver.kernel.org>; Sat,  1 Feb 2020 17:02:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="RnoVi6fU"
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="1lz1pOJj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726804AbgBAPMn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 1 Feb 2020 10:12:43 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:51822 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726669AbgBAPMm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2020 10:12:42 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
-        Resent-To:Resent-Cc:Resent-Message-ID:In-Reply-To:References:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=dB7ywmsatelLVL7Psw2UVkpn4TS1ismlyPRVqvsNN4I=; b=RnoVi6fUM/M58i6TYhoTLY0TL
-        V7I9zpJWwCzNP2scBs5DKrt7H9v8YkzB+zy/W4DudHEy5O3nZ2nS+CmMmx7gYjNpb//bY/tIKKSyZ
-        BoIYl7MaogIfsM0Y9tjCirctp4DMLxm6KpweOFcDQtxE+etr4078ycEjYIbRbs9F7wyfbU5GGbVy3
-        fnFz1u13IqALNOQOFhi0zXFNp8K2To+TxPFBQ7dryOGOMrqog5fJewQfdZiz2SpgzlRxhq5dAlgjj
-        JO1o3SZNAvTMRVCpWVcSJwTwalk4DOgKQ0oSw60THP3NVyDBfjsNRTxzLp1iNTUgC+HvKJkv6LBzz
-        TzfPOsY9g==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1ixuRu-0006HE-1K; Sat, 01 Feb 2020 15:12:42 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com
-Subject: [PATCH v4 00/12] Change readahead API
-Date:   Sat,  1 Feb 2020 07:12:28 -0800
-Message-Id: <20200201151240.24082-1-willy@infradead.org>
-X-Mailer: git-send-email 2.21.1
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1726677AbgBARCG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 1 Feb 2020 12:02:06 -0500
+Received: from mail-pl1-f171.google.com ([209.85.214.171]:47075 "EHLO
+        mail-pl1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726643AbgBARCF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Feb 2020 12:02:05 -0500
+Received: by mail-pl1-f171.google.com with SMTP id y8so4057885pll.13
+        for <linux-ext4@vger.kernel.org>; Sat, 01 Feb 2020 09:02:03 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=oGZ8iGZvUdG+gfjP/X6tRcOmFIkQUB/THfGIQyUtX24=;
+        b=1lz1pOJj8XWoyUFgmBvitJ0zBTqzYgYbQ9Urg7joEIwQpnRiw04lMz7pGb/eLS6TMb
+         rkMwSoJ4FQVmdlIAfYDflSLiy7kfC5rXUzBF3B7Vo1cAMq09aWB+74btxTH3/QsmGgVV
+         yDveVWgC+XEGVwBss9xIu/JYJjtQqZP3rUQmZscnc+dAmZRpdJfmYB7rUBjVgu3dUoTj
+         qL7fFR1bYEimFKyM63rF/96fNQE8e+le1FwbOJESwJ+T7sJOsiVDeNv2rJsbIycGpsv/
+         A3TXW/yKI1JqdrbMrV6KvvPtP7I96Q3jf1JN14uzTZ7TFh5c2i5xMdVKupYxTik+JPRE
+         G9gg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=oGZ8iGZvUdG+gfjP/X6tRcOmFIkQUB/THfGIQyUtX24=;
+        b=kvDABG7jfh2FjiJmizgCki7ifxKeuT3/umB5niFbUXLa2OCtA2Hihu0SgswiDdxTZk
+         Y8VFkWeVTIxIkbd1qpmPfa2gxkZggqARsQ9IEUxMqnR7nlwakn4I/cD8GMn0t/+M0N/s
+         2ydMNEJilDXXK/IOi7InmlRouq845nH8AriBsE1QCMtlD5zPctpOREwXAMmMaY3evG5K
+         2Z4JPxywetMUEE/5Im6rCcQbqKPSMeEd2ITqXEZTY2s18MAXp4ggwaMCcNOcP4zvxxaC
+         a0nzvCny9nLsiorNSMjXw6fKbaK34NAy4rSGfJwPnig1cUCw6HPCwnrku8o1Na1FbQgu
+         au5A==
+X-Gm-Message-State: APjAAAXBItX1Lr85VrnfU0eqyfgs3OfsB9JPLSVp/dccDrEkLkhM8gjB
+        2qtQpLxlJyw8ICmI3jNzZy314XJ8rPwS2Q==
+X-Google-Smtp-Source: APXvYqx7WgZ9OR45IzkyCjxBfPbQVqc2r4Qv+geG9wnBNAy/M9XTrVwtY6aMcIWN8kvZMZvpuZ5J9Q==
+X-Received: by 2002:a17:902:9a09:: with SMTP id v9mr15264535plp.341.1580576523235;
+        Sat, 01 Feb 2020 09:02:03 -0800 (PST)
+Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
+        by smtp.gmail.com with ESMTPSA id z30sm15550722pfq.154.2020.02.01.09.02.02
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sat, 01 Feb 2020 09:02:02 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <3BF3EA7F-196D-49DF-9C78-85F2BB1C1B49@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_D165AFBB-E82E-469C-9915-76618D67FA68";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: e2fsck dir_info corruption
+Date:   Sat, 1 Feb 2020 10:02:00 -0700
+In-Reply-To: <00CED351-2128-4DF8-B286-7774CCC1FC0A@dilger.ca>
+Cc:     linux-ext4 <linux-ext4@vger.kernel.org>
+To:     Theodore Ts'o <tytso@mit.edu>
+References: <00CED351-2128-4DF8-B286-7774CCC1FC0A@dilger.ca>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
-I would particularly value feedback on this from the gfs2 and ocfs2
-maintainers.  They have non-trivial changes, and a review on patch 5
-would be greatly appreciated.
+--Apple-Mail=_D165AFBB-E82E-469C-9915-76618D67FA68
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This series adds a readahead address_space operation to eventually
-replace the readpages operation.  The key difference is that
-pages are added to the page cache as they are allocated (and
-then looked up by the filesystem) instead of passing them on a
-list to the readpages operation and having the filesystem add
-them to the page cache.  It's a net reduction in code for each
-implementation, more efficient than walking a list, and solves
-the direct-write vs buffered-read problem reported by yu kuai at
-https://lore.kernel.org/linux-fsdevel/20200116063601.39201-1-yukuai3@huawei.com/
+On Jan 31, 2020, at 9:07 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>=20
+> I've been trying to track down a failure with e2fsck on a large =
+filesystem.  Running e2fsck-1.45.2 repeatedly and consistently reports =
+an error in pass2:
+>=20
+> Internal error: couldn't find dir_info for <ino>
 
-v4:
- - Rebase on current Linus (a62aa6f7f50a ("Merge tag 'gfs2-for-5.6'"))
- - Add comment to __do_page_cache_readahead() acknowledging we don't
-   care _that_ much about setting PageReadahead.
- - Fix the return value check of add_to_page_cache_lru().
- - Add a missing call to put_page() in __do_page_cache_readahead() if
-   we fail to insert the page.
- - Improve the documentation of ->readahead (including indentation
-   problem identified by Randy).
- - Fix off by one error in read_pages() (Dave Chinner).
- - Fix nr_pages manipulation in btrfs (Dave Chinner).
- - Remove bogus refcount fix in erofs (Gao Xiang, Dave Chinner).
- - Update ext4 patch for Merkle tree readahead.
- - Update f2fs patch for Merkle tree readahead.
- - Reinstate next_page label in f2fs_readpages() now it's used by the
-   compression code.
- - Reinstate call to fuse_wait_on_page_writeback (Miklos Szeredi).
- - Remove a double-unlock in the error path in fuse.
- - Remove an odd fly-speck in fuse_readpages().
- - Make nr_pages loop in fuse_readpages less convoluted (Dave Chinner).
+[snip]
 
-Matthew Wilcox (Oracle) (12):
-  mm: Fix the return type of __do_page_cache_readahead
-  readahead: Ignore return value of ->readpages
-  readahead: Put pages in cache earlier
-  mm: Add readahead address space operation
-  fs: Convert mpage_readpages to mpage_readahead
-  btrfs: Convert from readpages to readahead
-  erofs: Convert uncompressed files from readpages to readahead
-  erofs: Convert compressed files from readpages to readahead
-  ext4: Convert from readpages to readahead
-  f2fs: Convert from readpages to readahead
-  fuse: Convert from readpages to readahead
-  iomap: Convert from readpages to readahead
+> The dir_info array itself is over 4GB in size (not sure if this is =
+relevant
+> or not), with 380M directories, but the bad inode is only about half =
+way
+> through the array ($140 is the index of the problematic entry):
 
- Documentation/filesystems/locking.rst |  7 ++-
- Documentation/filesystems/vfs.rst     | 14 +++++
- drivers/staging/exfat/exfat_super.c   |  9 +--
- fs/block_dev.c                        |  9 +--
- fs/btrfs/extent_io.c                  | 19 +++---
- fs/btrfs/extent_io.h                  |  2 +-
- fs/btrfs/inode.c                      | 18 +++---
- fs/erofs/data.c                       | 33 ++++------
- fs/erofs/zdata.c                      | 21 +++----
- fs/ext2/inode.c                       | 12 ++--
- fs/ext4/ext4.h                        |  5 +-
- fs/ext4/inode.c                       | 24 ++++----
- fs/ext4/readpage.c                    | 20 +++---
- fs/ext4/verity.c                      | 16 +++--
- fs/f2fs/data.c                        | 35 +++++------
- fs/f2fs/f2fs.h                        |  5 +-
- fs/f2fs/verity.c                      | 16 +++--
- fs/fat/inode.c                        |  8 +--
- fs/fuse/file.c                        | 37 +++++------
- fs/gfs2/aops.c                        | 20 +++---
- fs/hpfs/file.c                        |  8 +--
- fs/iomap/buffered-io.c                | 74 +++++-----------------
- fs/iomap/trace.h                      |  2 +-
- fs/isofs/inode.c                      |  9 +--
- fs/jfs/inode.c                        |  8 +--
- fs/mpage.c                            | 38 ++++--------
- fs/nilfs2/inode.c                     | 13 ++--
- fs/ocfs2/aops.c                       | 32 +++++-----
- fs/omfs/file.c                        |  8 +--
- fs/qnx6/inode.c                       |  8 +--
- fs/reiserfs/inode.c                   | 10 +--
- fs/udf/inode.c                        |  8 +--
- fs/xfs/xfs_aops.c                     | 10 +--
- include/linux/fs.h                    |  2 +
- include/linux/iomap.h                 |  2 +-
- include/linux/mpage.h                 |  2 +-
- include/linux/pagemap.h               | 12 ++++
- include/trace/events/erofs.h          |  6 +-
- include/trace/events/f2fs.h           |  6 +-
- mm/internal.h                         |  2 +-
- mm/migrate.c                          |  2 +-
- mm/readahead.c                        | 89 ++++++++++++++++++---------
- 42 files changed, 332 insertions(+), 349 deletions(-)
+[snip]
 
--- 
-2.24.1
+> The watchpoint triggered, and saw that the entry was changed by =
+qsort_r(),
+> which at first I thought "OK, the dir_info array needs to be sorted, =
+because
+> a binary search is used on it", but in fact the array is *created* in =
+order
+> during the inode table scan and does not need to be sorted.  As can be =
+seen
+> from the stack, it is *another* array that is being sorted that =
+overwrites
+> the dir_info entry:
 
+[snip]
+
+> AFAIK, the ext2fs_dblist_sort2() is for the directory *blocks*, and =
+should
+> not be changing the dir_info at all.  Is this a bug in qsort or glibc?
+>=20
+> What I just noticed writing this email is that the fs->dblist.list =
+address
+> is right in the middle of the dir_info array address range:
+>=20
+>    (gdb) p *fs->dblist
+>    $210 =3D {magic =3D 2133571340, fs =3D 0x6c4460,
+>      size =3D 763079922, count =3D 388821313, sorted =3D 0,
+>      list =3D 0x7ffad011e010}
+>    (gdb) p &ctx->dir_info->array[0]
+>    $211 =3D (struct dir_info *) 0x7ffabf2bd010
+>    (gdb) p &ctx->dir_info->array[$140]
+>    $212 =3D (struct dir_info *) 0x7ffb3d327f54
+>=20
+> which might explain why sorting dblist is messing with dir_info?  I =
+don't
+> _think_ it is a problem with my build or swap, which is different from
+> the system that this was originally reproduced on.
+
+Just like any good mystery, the information I needed was there all =
+along.
+
+After abandoning the previous e2fsck-under-gdb run (which took me a =
+couple
+of days to get into the right state, so wasn't done lightly), I =
+restarted
+and was tracking the dblist and dir_info allocations, thinking that I =
+might
+catch when they became "bad" to due realloc() or similar.  In fact, =
+these
+allocations were bad from the beginning (similar to what was shown =
+above,
+with dblist in the middle of what should be the dir_info array).  This =
+is
+due to calls to e2fsck_allocate_memory() overflowing 4GB from the use of
+"unsigned int size" as the argument.  That dooms the allocations from =
+the
+beginning, though it is very surprising that there wasn't massive =
+corruption
+visible earlier in the test run...
+
+I think there are two options to fix this:
+- change the e2fsck_allocate_memory() argument to "unsigned long size", =
+and
+  fix all of the callers to typecast to unsigned long before calling, =
+but
+  this is error prone if something is missed or a new allocation is =
+added
+- add a new e2fsck_allocate_array() function that takes size an count as
+  arguments and does the calculation internally, which I think is more =
+robust
+
+Patches forthcoming, after I have verified that they are working (this =
+may
+take a few days due to the lengthy runtime for this filesystem).
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_D165AFBB-E82E-469C-9915-76618D67FA68
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl41rwgACgkQcqXauRfM
+H+BaoQ//fw9s7Sc5pUw8R1HlbI4JvFamwiyev84CFHOyWW7+sDUMnHKutLy0tB+T
+rOvz6u7mMf5Okt9uMsdIZzvC2qwx1aOd76y/x6yFDli1Nx7upQzdxIVo2udS4jMa
+Z7mJhdtq+MnQC1MPQDFY4W66D1eMudTrPuagwnlGeExV0SQtmQSmGXXBAjSaK+7b
+VvjO9r+QpxbyAUL7fnVhMWxOz/kuXD8FIN1Ywp367W6kZNrHE1UGZB22X5tIvc63
+dtnH2v64A3nlRfKI1V1HQn4nrhSC44+vNRkqBQA2vRuG0vcVJSdMzHGlDjpM06hr
+xY5rK6PX142Jwpuqlt16xpTVoXyVtaJg6Oi+9jud06IvkKLuos9IvPIpQr1BOKcn
+BJ3ku36sQDk4d76YcngSrlAyACbbEh7bI2ZpJZ6ECUcyz+sEX3gek72VW5aSsKaN
+FjfbZnvLPBlf5Ej/rlAqVh0dLwVA0p5ayDqZzHlRVRaD5ix0qC0dYC4abn9C+GQr
+uS8+9Kk0ilbHzONbKPR2kJLuwEB96777oTcudiDepBIGxrUJz9wosuaTWTZEndOo
+mu3/LwXNiy+MHieHaCjEh93/U7DDJb29Pg/l8K6LpYGtHIuzVzSgswDLsqjWh7Lk
+qZG2o/5GJAJk20n4DWS4g6HjnwaDkKpel26xGHE1sxzDX1vOsGg=
+=KYlk
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_D165AFBB-E82E-469C-9915-76618D67FA68--
