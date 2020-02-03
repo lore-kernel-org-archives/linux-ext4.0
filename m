@@ -2,116 +2,142 @@ Return-Path: <SRS0=4bn4=3X=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F5EAC3524D
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Feb 2020 09:38:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7545CC33CAC
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Feb 2020 14:06:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4B91120661
-	for <linux-ext4@archiver.kernel.org>; Mon,  3 Feb 2020 09:38:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 56CB220CC7
+	for <linux-ext4@archiver.kernel.org>; Mon,  3 Feb 2020 14:06:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727903AbgBCJi1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 3 Feb 2020 04:38:27 -0500
-Received: from mx2.suse.de ([195.135.220.15]:54802 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727328AbgBCJi1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Feb 2020 04:38:27 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id F29E6AC37;
-        Mon,  3 Feb 2020 09:38:24 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 941D61E0D5D; Mon,  3 Feb 2020 10:38:23 +0100 (CET)
-Date:   Mon, 3 Feb 2020 10:38:23 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Liu Song <fishland@aliyun.com>
-Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, liu.song11@zte.com.cn
-Subject: Re: [RFC PATCH] jbd2: remove unused return value of
- jbd2_journal_cancel_revoke
-Message-ID: <20200203093823.GC12938@quack2.suse.cz>
-References: <20200130133603.7103-1-fishland@aliyun.com>
+        id S1727955AbgBCOGP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 3 Feb 2020 09:06:15 -0500
+Received: from szxga06-in.huawei.com ([45.249.212.32]:55176 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727704AbgBCOGO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Feb 2020 09:06:14 -0500
+Received: from DGGEMS407-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 0C5F56262F3DF42470F2;
+        Mon,  3 Feb 2020 22:06:12 +0800 (CST)
+Received: from huawei.com (10.175.124.28) by DGGEMS407-HUB.china.huawei.com
+ (10.3.19.207) with Microsoft SMTP Server id 14.3.439.0; Mon, 3 Feb 2020
+ 22:06:02 +0800
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+To:     <jack@suse.cz>, <tytso@mit.edu>
+CC:     <linux-ext4@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <luoshijie1@huawei.com>, <zhangxiaoxu5@huawei.com>
+Subject: [PATCH 2/2] jbd2: do not clear the BH_Mapped flag when forgetting a metadata buffer
+Date:   Mon, 3 Feb 2020 22:04:58 +0800
+Message-ID: <20200203140458.37397-3-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20200203140458.37397-1-yi.zhang@huawei.com>
+References: <20200203140458.37397-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200130133603.7103-1-fishland@aliyun.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain
+X-Originating-IP: [10.175.124.28]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 30-01-20 21:36:03, Liu Song wrote:
-> From: Liu Song <liu.song11@zte.com.cn>
-> 
-> There is no place to use the return value of "jbd2_journal_cancel_revoke",
-> so remove it.
-> 
-> Signed-off-by: Liu Song <liu.song11@zte.com.cn>
+Commit 904cdbd41d74 ("jbd2: clear dirty flag when revoking a buffer from
+an older transaction") set the BH_Freed flag when forgetting a metadata
+buffer which belongs to the committing transaction, it indicate the
+committing process clear dirty bits when it is done with the buffer. But
+it also clear the BH_Mapped flag at the same time, which may trigger
+below NULL pointer oops when block_size < PAGE_SIZE.
 
-OK, makes sense. Thanks for the cleanup. You can add:
+rmdir 1             kjournald2                 mkdir 2
+                    jbd2_journal_commit_transaction
+		    commit transaction N
+jbd2_journal_forget
+set_buffer_freed(bh1)
+                    jbd2_journal_commit_transaction
+                     commit transaction N+1
+                     ...
+                     clear_buffer_mapped(bh1)
+                                               ext4_getblk(bh2 ummapped)
+                                               ...
+                                               grow_dev_page
+                                                init_page_buffers
+                                                 bh1->b_private=NULL
+                                                 bh2->b_private=NULL
+                     jbd2_journal_put_journal_head(jh1)
+                      __journal_remove_journal_head(hb1)
+		       jh1 is NULL and trigger oops
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+*) Dir entry block bh1 and bh2 belongs to one page, and the bh2 has
+   already been unmapped.
 
-								Honza
+For the metadata buffer we forgetting, clear the dirty flags is enough,
+so this patch add BH_Unmap flag for the journal_unmap_buffer() case and
+keep the mapped flag for the metadata buffer.
 
-> ---
->  fs/jbd2/revoke.c     | 5 +----
->  include/linux/jbd2.h | 2 +-
->  2 files changed, 2 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> index fa608788b93d..f4fe7a171691 100644
-> --- a/fs/jbd2/revoke.c
-> +++ b/fs/jbd2/revoke.c
-> @@ -420,12 +420,11 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
->   * do not trust the Revoked bit on buffers unless RevokeValid is also
->   * set.
->   */
-> -int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
-> +void jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
->  {
->  	struct jbd2_revoke_record_s *record;
->  	journal_t *journal = handle->h_transaction->t_journal;
->  	int need_cancel;
-> -	int did_revoke = 0;	/* akpm: debug */
->  	struct buffer_head *bh = jh2bh(jh);
->  
->  	jbd_debug(4, "journal_head %p, cancelling revoke\n", jh);
-> @@ -450,7 +449,6 @@ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
->  			list_del(&record->hash);
->  			spin_unlock(&journal->j_revoke_lock);
->  			kmem_cache_free(jbd2_revoke_record_cache, record);
-> -			did_revoke = 1;
->  		}
->  	}
->  
-> @@ -473,7 +471,6 @@ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
->  			__brelse(bh2);
->  		}
->  	}
-> -	return did_revoke;
->  }
->  
->  /*
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index ce44b687d02b..c27716740917 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1470,7 +1470,7 @@ extern int __init jbd2_journal_init_revoke_table_cache(void);
->  
->  extern void	   jbd2_journal_destroy_revoke(journal_t *);
->  extern int	   jbd2_journal_revoke (handle_t *, unsigned long long, struct buffer_head *);
-> -extern int	   jbd2_journal_cancel_revoke(handle_t *, struct journal_head *);
-> +extern void	   jbd2_journal_cancel_revoke(handle_t *, struct journal_head *);
->  extern void	   jbd2_journal_write_revoke_records(transaction_t *transaction,
->  						     struct list_head *log_bufs);
->  
-> -- 
-> 2.20.1
-> 
+Fixes: 904cdbd41d74 ("jbd2: clear dirty flag when revoking a buffer from an older transaction")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/jbd2/commit.c      | 11 +++++++----
+ fs/jbd2/transaction.c |  1 +
+ include/linux/jbd2.h  |  2 ++
+ 3 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 6396fe70085b..a649cdd1c5e5 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -987,10 +987,13 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		if (buffer_freed(bh) && !jh->b_next_transaction) {
+ 			clear_buffer_freed(bh);
+ 			clear_buffer_jbddirty(bh);
+-			clear_buffer_mapped(bh);
+-			clear_buffer_new(bh);
+-			clear_buffer_req(bh);
+-			bh->b_bdev = NULL;
++			if (buffer_unmap(bh)) {
++				clear_buffer_unmap(bh);
++				clear_buffer_mapped(bh);
++				clear_buffer_new(bh);
++				clear_buffer_req(bh);
++				bh->b_bdev = NULL;
++			}
+ 		}
+ 
+ 		if (buffer_jbddirty(bh)) {
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index a479cbf8ae54..717964eec9d3 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2335,6 +2335,7 @@ static int journal_unmap_buffer(journal_t *journal, struct buffer_head *bh,
+ 		 * should clear dirty bits when it is done with the buffer.
+ 		 */
+ 		set_buffer_freed(bh);
++		set_buffer_unmap(bh);
+ 		if (journal->j_running_transaction && buffer_jbddirty(bh))
+ 			jh->b_next_transaction = journal->j_running_transaction;
+ 		may_free = 0;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f613d8529863..f74906ebc73a 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -310,6 +310,7 @@ enum jbd_state_bits {
+ 	  = BH_PrivateStart,
+ 	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
+ 	BH_Freed,		/* Has been freed (truncated) */
++	BH_Unmap,		/* Has been freed and need to unmap */
+ 	BH_Revoked,		/* Has been revoked from the log */
+ 	BH_RevokeValid,		/* Revoked flag is valid */
+ 	BH_JBDDirty,		/* Is dirty but journaled */
+@@ -328,6 +329,7 @@ TAS_BUFFER_FNS(Revoked, revoked)
+ BUFFER_FNS(RevokeValid, revokevalid)
+ TAS_BUFFER_FNS(RevokeValid, revokevalid)
+ BUFFER_FNS(Freed, freed)
++BUFFER_FNS(Unmap, unmap)
+ BUFFER_FNS(Shadow, shadow)
+ BUFFER_FNS(Verified, verified)
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.2
+
