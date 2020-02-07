@@ -2,315 +2,179 @@ Return-Path: <SRS0=sRFN=33=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DA5AC352A3
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 01:18:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25590C35247
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 03:13:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 56E3220715
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 01:18:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 008C421D7D
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 03:13:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727390AbgBGBSA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Feb 2020 20:18:00 -0500
-Received: from smtp-out-so.shaw.ca ([64.59.136.139]:60368 "EHLO
-        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727129AbgBGBR5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Feb 2020 20:17:57 -0500
-Received: from cabot.adilger.int ([70.77.216.213])
-        by shaw.ca with ESMTP
-        id zs9SiRcpt17ZDzs9WiUgmi; Thu, 06 Feb 2020 18:09:50 -0700
-X-Authority-Analysis: v=2.3 cv=ZsqT1OzG c=1 sm=1 tr=0
- a=BQvS1EmAg2ttxjPVUuc1UQ==:117 a=BQvS1EmAg2ttxjPVUuc1UQ==:17
- a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=ySfo2T4IAAAA:8 a=ntvsM6-r5us1AxQOYP8A:9
- a=9yuAiqEzGmFQkQtd:21 a=znKOtqdyLwAs2zxQ:21 a=ZUkhVnNHqyo2at-WnAgH:22
-From:   Andreas Dilger <adilger@whamcloud.com>
-To:     tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@whamcloud.com>
-Subject: [PATCH 8/9] e2fsck: consistently use ext2fs_get_mem()
-Date:   Thu,  6 Feb 2020 18:09:45 -0700
-Message-Id: <1581037786-62789-8-git-send-email-adilger@whamcloud.com>
-X-Mailer: git-send-email 1.8.0
-In-Reply-To: <1581037786-62789-1-git-send-email-adilger@whamcloud.com>
-References: <1581037786-62789-1-git-send-email-adilger@whamcloud.com>
-X-CMAE-Envelope: MS4wfCHFKYyVwTbMSdzILXV/ZzhITSbAJ1orY4M4amqh9Q6vQun2CxmuFZyZXL97gNl2y2ZZiJKkbNJ0ZfSuXxHFdVuxkHQCHGLfB86PTPP1JDBUexb7fH6+
- /OdoHj9ml1MEWa/aRhwYtJkkHTUOGqg1f2HD8sUN3BEXBqDauIpCNqN8dLNAioBp01URn+9SyMlgtp7lAhBQ7bhuX5jxt7w3S3brQovrKaDqV2Riw3YWMwta
- cXPILDXEqGXBAodnSeiHVw==
+        id S1726755AbgBGDNb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Feb 2020 22:13:31 -0500
+Received: from MAIL.13thfloor.at ([213.145.232.33]:58376 "EHLO
+        MAIL.13thfloor.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726597AbgBGDNb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Feb 2020 22:13:31 -0500
+Received: by mail.13thfloor.at (Postfix, from userid 1001)
+        id 0B9D416309; Fri,  7 Feb 2020 04:13:26 +0100 (CET)
+Date:   Fri, 7 Feb 2020 04:13:25 +0100
+From:   Herbert Poetzl <herbert@13thfloor.at>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: EXT4: unsupported inode size: 4096
+Message-ID: <20200207031325.GA27737@MAIL.13thfloor.at>
+References: <B9D2B0DE-EAD0-461B-9BA3-E55ADDE38F72@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <B9D2B0DE-EAD0-461B-9BA3-E55ADDE38F72@dilger.ca>
+User-Agent: Mutt/1.5.11
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Consistently use ext2fs_get_mem() and ext2fs_free_mem() instead of
-calling malloc() and free() directly in e2fsck.  In several places
-it is possible to use ext2fs_get_memzero() instead of explicitly
-calling memset() on the memory afterward.
+On Thu, Feb 06, 2020 at 10:55:04PM +0000, Andreas Dilger wrote:
 
-This is just a code cleanup, and does not fix any specific bugs.
+> --Apple-Mail=_7CDF64A9-C7FD-4E08-9AB4-1843C57439EC
+> Content-Transfer-Encoding: 7bit
+> Content-Type: text/plain;
+> 	charset=us-ascii
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
-Lustre-bug-id: https://jira.whamcloud.com/browse/LU-13197
----
- e2fsck/ea_refcount.c |  6 ++----
- e2fsck/emptydir.c    | 14 +++++++-------
- e2fsck/extend.c      |  9 +++++----
- e2fsck/extents.c     | 16 ++++++++--------
- e2fsck/pass1b.c      | 12 ++++++------
- e2fsck/region.c      | 18 ++++++++++--------
- 6 files changed, 38 insertions(+), 37 deletions(-)
+> On Feb 6, 2020, at 8:35 AM, Herbert Poetzl <herbert@13thfloor.at> wrote:
 
-diff --git a/e2fsck/ea_refcount.c b/e2fsck/ea_refcount.c
-index ecb1986..aa5d7d7 100644
---- a/e2fsck/ea_refcount.c
-+++ b/e2fsck/ea_refcount.c
-@@ -53,10 +53,9 @@ errcode_t ea_refcount_create(size_t size, ext2_refcount_t *ret)
- 	errcode_t	retval;
- 	size_t		bytes;
- 
--	retval = ext2fs_get_mem(sizeof(struct ea_refcount), &refcount);
-+	retval = ext2fs_get_memzero(sizeof(struct ea_refcount), &refcount);
- 	if (retval)
- 		return retval;
--	memset(refcount, 0, sizeof(struct ea_refcount));
- 
- 	if (!size)
- 		size = 500;
-@@ -66,10 +65,9 @@ errcode_t ea_refcount_create(size_t size, ext2_refcount_t *ret)
- 	printf("Refcount allocated %zu entries, %zu bytes.\n",
- 	       refcount->size, bytes);
- #endif
--	retval = ext2fs_get_mem(bytes, &refcount->list);
-+	retval = ext2fs_get_memzero(bytes, &refcount->list);
- 	if (retval)
- 		goto errout;
--	memset(refcount->list, 0, bytes);
- 
- 	refcount->count = 0;
- 	refcount->cursor = 0;
-diff --git a/e2fsck/emptydir.c b/e2fsck/emptydir.c
-index a3bfd46..7aea7b6 100644
---- a/e2fsck/emptydir.c
-+++ b/e2fsck/emptydir.c
-@@ -44,12 +44,11 @@ empty_dir_info init_empty_dir(e2fsck_t ctx)
- 	empty_dir_info	edi;
- 	errcode_t	retval;
- 
--	edi = malloc(sizeof(struct empty_dir_info_struct));
--	if (!edi)
-+	edi = e2fsck_allocate_memzero(ctx, sizeof(struct empty_dir_info_struct),
-+				      "empty dir info");
-+	if (retval)
- 		return NULL;
- 
--	memset(edi, 0, sizeof(struct empty_dir_info_struct));
--
- 	retval = ext2fs_init_dblist(ctx->fs, &edi->empty_dblist);
- 	if (retval)
- 		goto errout;
-@@ -83,7 +82,7 @@ void free_empty_dirblock(empty_dir_info edi)
- 		ext2fs_free_inode_bitmap(edi->dir_map);
- 
- 	memset(edi, 0, sizeof(struct empty_dir_info_struct));
--	free(edi);
-+	ext2fs_free_mem(&edi);
- }
- 
- void add_empty_dirblock(empty_dir_info edi,
-@@ -182,13 +181,14 @@ void process_empty_dirblock(e2fsck_t ctx, empty_dir_info edi)
- 	if (!edi)
- 		return;
- 
--	edi->block_buf = malloc(ctx->fs->blocksize * 3);
-+	retval = ext2f_get_mem(ctx, ctx->fs->blocksize * 3,
-+			       &edi->block_buf);
- 
- 	if (edi->block_buf) {
- 		(void) ext2fs_dblist_iterate2(edi->empty_dblist,
- 					      fix_directory, &edi);
- 	}
--	free(edi->block_buf);
-+	ext2fs_free_mem(&edi->block_buf);
- 	free_empty_dirblock(edi);
- }
- 
-diff --git a/e2fsck/extend.c b/e2fsck/extend.c
-index bdb62c3..9d17e44 100644
---- a/e2fsck/extend.c
-+++ b/e2fsck/extend.c
-@@ -31,6 +31,7 @@ int main(int argc, char **argv)
- 	int	nblocks, blocksize;
- 	int	fd;
- 	char	*block;
-+	errcode_t retval;
- 	int	ret;
- 
- 	if (argc != 4)
-@@ -45,13 +46,12 @@ int main(int argc, char **argv)
- 		exit(1);
- 	}
- 
--	block = malloc(blocksize);
--	if (block == 0) {
-+	retval = ext2fs_get_memzero(blocksize, &block);
-+	if (retval) {
- 		fprintf(stderr, _("Couldn't allocate block buffer (size=%d)\n"),
- 			blocksize);
- 		exit(1);
- 	}
--	memset(block, 0, blocksize);
- 
- 	fd = open(filename, O_RDWR);
- 	if (fd < 0) {
-@@ -78,5 +78,6 @@ int main(int argc, char **argv)
- 		perror("read");
- 		exit(1);
- 	}
--	exit(0);
-+	ext2fs_free_mem(&block);
-+	return(0);
- }
-diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-index 3073725..2c91c8c 100644
---- a/e2fsck/extents.c
-+++ b/e2fsck/extents.c
-@@ -327,7 +327,7 @@ err:
- /* Rebuild the extents immediately */
- static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino)
- {
--	struct extent_list	list;
-+	struct extent_list list = { 0 };
- 	errcode_t err;
- 
- 	if (!ext2fs_has_feature_extents(ctx->fs->super) ||
-@@ -336,9 +336,8 @@ static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino)
- 		return 0;
- 
- 	e2fsck_read_bitmaps(ctx);
--	memset(&list, 0, sizeof(list));
--	err = ext2fs_get_mem(sizeof(struct ext2fs_extent) * NUM_EXTENTS,
--				&list.extents);
-+	err = ext2fs_get_array(NUM_EXTENTS, sizeof(struct ext2fs_extent),
-+			       &list.extents);
- 	if (err)
- 		return err;
- 	list.size = NUM_EXTENTS;
-@@ -354,7 +353,7 @@ static void rebuild_extents(e2fsck_t ctx, const char *pass_name, int pr_header)
- #ifdef RESOURCE_TRACK
- 	struct resource_track	rtrack;
- #endif
--	struct extent_list	list;
-+	struct extent_list	list = { 0 };
- 	int			first = 1;
- 	ext2_ino_t		ino = 0;
- 	errcode_t		retval;
-@@ -374,10 +373,11 @@ static void rebuild_extents(e2fsck_t ctx, const char *pass_name, int pr_header)
- 	clear_problem_context(&pctx);
- 	e2fsck_read_bitmaps(ctx);
- 
--	memset(&list, 0, sizeof(list));
--	retval = ext2fs_get_mem(sizeof(struct ext2fs_extent) * NUM_EXTENTS,
--				&list.extents);
- 	list.size = NUM_EXTENTS;
-+	retval = ext2fs_get_array(sizeof(struct ext2fs_extent),
-+				  list.size, &list.extents);
-+	if (retval)
-+		return;
- 	while (1) {
- 		retval = ext2fs_find_first_set_inode_bitmap2(
- 				ctx->inodes_to_rebuild, ino + 1,
-diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-index 5693b9c..5a6007d 100644
---- a/e2fsck/pass1b.c
-+++ b/e2fsck/pass1b.c
-@@ -180,10 +180,10 @@ static void inode_dnode_free(dnode_t *node,
- 	di = (struct dup_inode *) dnode_get(node);
- 	for (p = di->cluster_list; p; p = next) {
- 		next = p->next;
--		free(p);
-+		ext2fs_free_mem(&p);
- 	}
--	free(di);
--	free(node);
-+	ext2fs_free_mem(&di);
-+	ext2fs_free_mem(&node);
- }
- 
- /*
-@@ -198,10 +198,10 @@ static void cluster_dnode_free(dnode_t *node,
- 	dc = (struct dup_cluster *) dnode_get(node);
- 	for (p = dc->inode_list; p; p = next) {
- 		next = p->next;
--		free(p);
-+		ext2fs_free_mem(&p);
- 	}
--	free(dc);
--	free(node);
-+	ext2fs_free_mem(&dc);
-+	ext2fs_free_mem(&node);
- }
- 
- 
-diff --git a/e2fsck/region.c b/e2fsck/region.c
-index d5b37df..788e0d0 100644
---- a/e2fsck/region.c
-+++ b/e2fsck/region.c
-@@ -36,11 +36,12 @@ struct region_struct {
- region_t region_create(region_addr_t min, region_addr_t max)
- {
- 	region_t	region;
-+	errcode_t	retval;
- 
--	region = malloc(sizeof(struct region_struct));
--	if (!region)
-+	retval = ext2fs_get_memzero(sizeof(struct region_struct), &region);
-+	if (retval)
- 		return NULL;
--	memset(region, 0, sizeof(struct region_struct));
-+
- 	region->min = min;
- 	region->max = max;
- 	region->last = NULL;
-@@ -53,16 +54,17 @@ void region_free(region_t region)
- 
- 	for (r = region->allocated; r; r = next) {
- 		next = r->next;
--		free(r);
-+		ext2fs_free_mem(&r);
- 	}
- 	memset(region, 0, sizeof(struct region_struct));
--	free(region);
-+	ext2fs_free_mem(&region);
- }
- 
- int region_allocate(region_t region, region_addr_t start, int n)
- {
- 	struct region_el	*r, *new_region, *prev, *next;
- 	region_addr_t end;
-+	errcode_t retval;
- 
- 	end = start+n;
- 	if ((start < region->min) || (end > region->max))
-@@ -105,7 +107,7 @@ int region_allocate(region_t region, region_addr_t start, int n)
- 				if (end == next->start) {
- 					r->end = next->end;
- 					r->next = next->next;
--					free(next);
-+					ext2fs_free_mem(&next);
- 					if (!r->next)
- 						region->last = r;
- 					return 0;
-@@ -121,8 +123,8 @@ int region_allocate(region_t region, region_addr_t start, int n)
- 	 * Insert a new region element structure into the linked list
- 	 */
- append_to_list:
--	new_region = malloc(sizeof(struct region_el));
--	if (!new_region)
-+	retval = ext2fs_get_mem(sizeof(struct region_el), &new_region);
-+	if (retval)
- 		return -1;
- 	new_region->start = start;
- 	new_region->end = start + n;
--- 
-1.8.0
+>> I recently updated one of my servers from an older 4.19
+>> Linux kernel to the latest 5.5 kernel mainly because of
+>> the many filesystem improvements, just to find that some
+>> of my filesystems simply cannot be mounted anymore.
 
+>> The kernel reports: EXT4-fs: unsupported inode size: 4096
+
+>> Here is a simple test to reproduce the issue:
+
+>>  truncate --size 16G data
+>>  losetup /dev/loop0 data
+>>  mkfs.ext4 -I 4096 /dev/loop0
+>>  mount /dev/loop0 /media
+
+> Does this still fail if you also specify "-b 4096"?
+
+mkfs.ext4 -b 4096 -I 4096 /dev/loop0
+mount /dev/loop0 /media
+
+[66723.456449] EXT4-fs (loop0): unsupported inode size: 4096
+
+>> [33700.299204] EXT4-fs (loop0): unsupported inode size: 4096
+
+> It looks like this is a bug in the code?  This check is using
+
+> 3641:	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
+
+> 3782:		if ((sbi->s_inode_size < EXT4_GOOD_OLD_INODE_SIZE) ||
+> 3783:		    (!is_power_of_2(sbi->s_inode_size)) ||
+> 3784:		    (sbi->s_inode_size > blocksize)) {
+> 3785:			ext4_msg(sb, KERN_ERR,
+> 3786:			       "unsupported inode size: %d",
+> 3787:			       sbi->s_inode_size);
+> 3788:			goto failed_mount;
+> 3789:		}
+
+> which is set from the hardware sector size of the device, while
+> the ext4 filesystem blocksize is not set until later during
+> mount:
+
+> 3991:	blocksize = BLOCK_SIZE << le32_to_cpu(es->s_log_block_size);
+
+> It looks like this was just introduced in commitv5.4-rc3-96-g9803387 
+> "ext4: validate the debug_want_extra_isize mount option at 
+> parse time" so it is a relatively recent change, and looks 
+> to be unintentional. 
+
+> This check was previously on line 4033, after "blocksize" was
+> updated from the superblock, but it wasn't noticed because it
+> works for all "normal" filesystems.
+
+> I suspect nobody has noticed because having an inode *size* of
+> 4KB is very unusual, while having an inode *ratio* of 4KB is
+> more normal (one 256-byte inode for each 4096-byte block in the
+> filesystem). Was the use of "-I 4096" intentional, or did you
+> mean to use "-i 4096"?
+
+> The only reason to have a 4096-byte inode *size* is if you have a
+> ton of xattrs for every file and/or you have tiny files (< 3.5KB)
+> and you are using inline data.
+
+Indeed the filesystems in question have a huge number of small
+files with lots and lots of xattrs for each file.
+
+IIRC, back when I created them, I ran some tests iterating 
+over various block and group sizes and simply chose the one
+with the best performance over a given testset.
+
+>> Note: this works perfectly fine under 4.19.84 and 4.14.145.
+
+>> My guess so far is that somehow the ext4 filesystem now
+>> checks that the inode size is not larger than the logical
+>> block size of the underlying block device.
+
+>>  # cat /sys/block/loop0/queue/logical_block_size
+>>  512
+
+> Yes, this appears to be the case.  We have LOT of filesystems that
+> are using 1024-byte inodes, but I suspect that most of them are on
+> devices that report 4096-byte sector size and/or are running older
+> kernels that have not included this bug.
+
+>> Any ideas how to address this problem and get the file-
+>> systems to mount under Linux 5.5?
+
+> Probably the easiest, and likely correct, fix is to move the update
+> of "blocksize" from line 3991: up to before this check.  
+
+> There are a bunch of sanity checks that should also be moved
+> for a proper patch, but the one-line fix is enough to get your
+> filesystems mounting again.
+
+Yes, I can confirm that moving line 3991 before the check
+fixes the issue and the test as well as the filesystem
+mount passes without problems.
+
+Thanks a bunch for the quick and accurate information!
+Appreciated!
+
+> Cheers, Andreas
+
+All the best,
+Herbert
+
+
+> --Apple-Mail=_7CDF64A9-C7FD-4E08-9AB4-1843C57439EC
+> Content-Transfer-Encoding: 7bit
+> Content-Disposition: attachment;
+> 	filename=signature.asc
+> Content-Type: application/pgp-signature;
+> 	name=signature.asc
+> Content-Description: Message signed with OpenPGP
+
+> -----BEGIN PGP SIGNATURE-----
+> Comment: GPGTools - http://gpgtools.org
+
+> iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl48mUgACgkQcqXauRfM
+> H+ASGg/8DycAju0NbXzVaKiOvovbvjZRyJq7nF6M+KBJevm0928uLjg8qkWvIdXp
+> Jj1AM93mikp4A/BULggBBpa8wOCIG9Z7bx1tATaQrvQh/3cI5KuWd7ssfTR9INWJ
+> yzgZ1Y/1vjwiU/YD1i922CK4M3sEwmB5fzrNC/H9HruwHpuMe0ek44lNmsuNPjGh
+> c+hBkTFlmOPF9n9bW4mr2Da/v1BA+ffSI2NJW3TejR7k6UvvNKWpLrbzheMSMVCf
+> y5xuD9mWuh/1FL77tdDfDVbPo6VRS6I1JBoz14EUl9mz6IrCWulVgIIi/7NzRviF
+> onDLo/t3pA/2Yx5G+AAVsIM9tClXXGbNT4WquU2vrO9CdnuRT6rr1pc8vKCz7lch
+> 2US+UhmorTVVd/NeXQMxT2i6NPNbRsoaBqxP5TcLAtp8b5aDAUCUSAHyIEWtoydm
+> GRPRfXZJauqBYDffGdBWsvsMmepceMC4CMiezfoIWBbfnMfH8wVI+D3qEO6gLDkr
+> sNm1/dl/7BfIFjF3ndItsgKTVCGIiFgQ86juEDwDwO/+UB9O9K7nngoEe0ZLt/sy
+> Kn7RLdkOGR689vc/1WArbM31HntWbp88xTe3s2tPlWv4r9hVZebZXFIAYrwvqviS
+> NrZwqOyjeAmlHWJcqaXQS7kV6tYDpT6Je7weNgZmQA1Xc7Ig12o=
+> =rKs+
+> -----END PGP SIGNATURE-----
+
+> --Apple-Mail=_7CDF64A9-C7FD-4E08-9AB4-1843C57439EC-
