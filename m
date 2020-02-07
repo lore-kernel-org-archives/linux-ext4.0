@@ -5,24 +5,24 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69008C2BA83
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 23:22:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F214BC2BA83
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 23:22:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3381C21775
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 23:22:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C6BDD21775
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Feb 2020 23:22:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727154AbgBGXWX convert rfc822-to-8bit (ORCPT
+        id S1727075AbgBGXWx convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 Feb 2020 18:22:23 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44000 "EHLO mail.kernel.org"
+        Fri, 7 Feb 2020 18:22:53 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44058 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727130AbgBGXWX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 7 Feb 2020 18:22:23 -0500
+        id S1727048AbgBGXWx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 7 Feb 2020 18:22:53 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 206443] general protection fault in ext4 during simultaneous
  online resize and write operations
-Date:   Fri, 07 Feb 2020 23:22:22 +0000
+Date:   Fri, 07 Feb 2020 23:22:52 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -37,8 +37,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-206443-13602-tMACB8csdS@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-206443-13602-ijiWQF0POM@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-206443-13602@https.bugzilla.kernel.org/>
 References: <bug-206443-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -53,10 +53,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=206443
 
---- Comment #8 from Suraj (surajjs@amazon.com) ---
-I've attached 2 additional patches which seem to resolve the s_group_info and
-s_flex_group issues in the same way as the s_group_desc reallocation was
-resolved. That is to used rcu to protect access to the pointer.
+--- Comment #9 from Suraj (surajjs@amazon.com) ---
+Created attachment 287249
+  --> https://bugzilla.kernel.org/attachment.cgi?id=287249&action=edit
+s_group_info.patch
 
 -- 
 You are receiving this mail because:
