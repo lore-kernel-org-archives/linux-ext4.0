@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B55EAC352A4
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E406C35242
+	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 999652253D
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 47A612253D
+	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727818AbgBHTff (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 8 Feb 2020 14:35:35 -0500
+        id S1727835AbgBHTfl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 8 Feb 2020 14:35:41 -0500
 Received: from mga01.intel.com ([192.55.52.88]:59763 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727587AbgBHTev (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 8 Feb 2020 14:34:51 -0500
+        id S1727560AbgBHTeu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 8 Feb 2020 14:34:50 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga003.fm.intel.com ([10.253.24.29])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:51 -0800
+Received: from orsmga001.jf.intel.com ([10.7.209.18])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:49 -0800
 X-IronPort-AV: E=Sophos;i="5.70,418,1574150400"; 
-   d="scan'208";a="280279360"
+   d="scan'208";a="312366777"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga003-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:51 -0800
+  by orsmga001-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:49 -0800
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org
 Cc:     Ira Weiny <ira.weiny@intel.com>,
@@ -38,9 +38,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 08/12] fs/xfs: Clarify lockdep dependency for xfs_isilocked()
-Date:   Sat,  8 Feb 2020 11:34:41 -0800
-Message-Id: <20200208193445.27421-9-ira.weiny@intel.com>
+Subject: [PATCH v3 02/12] fs/xfs: Isolate the physical DAX flag from effective
+Date:   Sat,  8 Feb 2020 11:34:35 -0800
+Message-Id: <20200208193445.27421-3-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20200208193445.27421-1-ira.weiny@intel.com>
 References: <20200208193445.27421-1-ira.weiny@intel.com>
@@ -53,37 +53,38 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-xfs_isilocked() can't work fully without CONFIG_LOCKDEP.  However,
-making xfs_isilocked() dependant on CONFIG_LOCKDEP is not feasible
-because it is used for more than the i_rwsem.  Therefore a short-circuit
-was provided via debug_locks.  However, this caused confusion while
-working through the xfs locking.
+xfs_ioctl_setattr_dax_invalidate() currently checks if the DAX flag is
+changing as a quick check.
 
-Rather than use debug_locks as a flag specify this clearly using
-IS_ENABLED(CONFIG_LOCKDEP).
+But the implementation mixes the physical (XFS_DIFLAG2_DAX) and
+effective (S_DAX) DAX flags.
+
+Remove the use of the effective flag when determining if a change of the
+physical flag is required.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-
 ---
-Changes from V2:
-	This patch is new for V3
+ fs/xfs/xfs_ioctl.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
- fs/xfs/xfs_inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-index c5077e6326c7..35df324875db 100644
---- a/fs/xfs/xfs_inode.c
-+++ b/fs/xfs/xfs_inode.c
-@@ -364,7 +364,7 @@ xfs_isilocked(
- 
- 	if (lock_flags & (XFS_IOLOCK_EXCL|XFS_IOLOCK_SHARED)) {
- 		if (!(lock_flags & XFS_IOLOCK_SHARED))
--			return !debug_locks ||
-+			return !IS_ENABLED(CONFIG_LOCKDEP) ||
- 				lockdep_is_held_type(&VFS_I(ip)->i_rwsem, 0);
- 		return rwsem_is_locked(&VFS_I(ip)->i_rwsem);
+diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+index d42de92cb283..1a57be696810 100644
+--- a/fs/xfs/xfs_ioctl.c
++++ b/fs/xfs/xfs_ioctl.c
+@@ -1209,9 +1209,11 @@ xfs_ioctl_setattr_dax_invalidate(
  	}
+ 
+ 	/* If the DAX state is not changing, we have nothing to do here. */
+-	if ((fa->fsx_xflags & FS_XFLAG_DAX) && IS_DAX(inode))
++	if ((fa->fsx_xflags & FS_XFLAG_DAX) &&
++	    (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
+ 		return 0;
+-	if (!(fa->fsx_xflags & FS_XFLAG_DAX) && !IS_DAX(inode))
++	if (!(fa->fsx_xflags & FS_XFLAG_DAX) &&
++	    !(ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
+ 		return 0;
+ 
+ 	if (S_ISDIR(inode->i_mode))
 -- 
 2.21.0
 
