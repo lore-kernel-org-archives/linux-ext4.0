@@ -7,26 +7,26 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5328AC352A4
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39E66C35242
+	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 29EC321741
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 130B32464B
+	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727691AbgBHTe7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 8 Feb 2020 14:34:59 -0500
-Received: from mga03.intel.com ([134.134.136.65]:60930 "EHLO mga03.intel.com"
+        id S1727599AbgBHTex (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 8 Feb 2020 14:34:53 -0500
+Received: from mga05.intel.com ([192.55.52.43]:32901 "EHLO mga05.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727597AbgBHTez (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 8 Feb 2020 14:34:55 -0500
+        id S1727563AbgBHTeu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 8 Feb 2020 14:34:50 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga007.jf.intel.com ([10.7.209.58])
-  by orsmga103.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:54 -0800
+Received: from fmsmga007.fm.intel.com ([10.253.24.52])
+  by fmsmga105.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:50 -0800
 X-IronPort-AV: E=Sophos;i="5.70,418,1574150400"; 
-   d="scan'208";a="221147459"
+   d="scan'208";a="225859201"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by orsmga007-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:53 -0800
+  by fmsmga007-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:50 -0800
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org
 Cc:     Ira Weiny <ira.weiny@intel.com>,
@@ -38,9 +38,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 12/12] fs/xfs: Allow toggle of effective DAX flag
-Date:   Sat,  8 Feb 2020 11:34:45 -0800
-Message-Id: <20200208193445.27421-13-ira.weiny@intel.com>
+Subject: [PATCH v3 04/12] fs/xfs: Clean up DAX support check
+Date:   Sat,  8 Feb 2020 11:34:37 -0800
+Message-Id: <20200208193445.27421-5-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20200208193445.27421-1-ira.weiny@intel.com>
 References: <20200208193445.27421-1-ira.weiny@intel.com>
@@ -53,162 +53,87 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Now that locking of the inode is in place we can allow a DAX state
-change while under the new lock.
+Rather than open coding xfs_inode_supports_dax() in
+xfs_ioctl_setattr_dax_invalidate() export xfs_inode_supports_dax() and
+call it in preparation for swapping dax flags.
+
+This also means updating xfs_inode_supports_dax() to return true for a
+directory.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-
 ---
-Changes from V2:
-	Add in lock_dax_state_static_key static branch enabling.
+ fs/xfs/xfs_ioctl.c | 16 +++-------------
+ fs/xfs/xfs_iops.c  |  8 ++++++--
+ fs/xfs/xfs_iops.h  |  2 ++
+ 3 files changed, 11 insertions(+), 15 deletions(-)
 
- fs/xfs/xfs_inode.h |  1 +
- fs/xfs/xfs_ioctl.c | 15 ++++++++++++---
- fs/xfs/xfs_iops.c  | 15 +++++++++++----
- fs/xfs/xfs_super.c | 16 +++++++++-------
- 4 files changed, 33 insertions(+), 14 deletions(-)
-
-diff --git a/fs/xfs/xfs_inode.h b/fs/xfs/xfs_inode.h
-index 25fe20740bf7..0064f8eef41d 100644
---- a/fs/xfs/xfs_inode.h
-+++ b/fs/xfs/xfs_inode.h
-@@ -469,6 +469,7 @@ int	xfs_break_layouts(struct inode *inode, uint *iolock,
- /* from xfs_iops.c */
- extern void xfs_setup_inode(struct xfs_inode *ip);
- extern void xfs_setup_iops(struct xfs_inode *ip);
-+extern void xfs_setup_a_ops(struct xfs_inode *ip);
- 
- /*
-  * When setting up a newly allocated inode, we need to call
 diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index 0134c9e65efb..0736cf45223d 100644
+index 1a57be696810..da1eb2bdb386 100644
 --- a/fs/xfs/xfs_ioctl.c
 +++ b/fs/xfs/xfs_ioctl.c
-@@ -1123,12 +1123,11 @@ xfs_diflags_to_linux(
- 		inode->i_flags |= S_NOATIME;
- 	else
- 		inode->i_flags &= ~S_NOATIME;
--#if 0	/* disabled until the flag switching races are sorted out */
- 	if (xflags & FS_XFLAG_DAX)
- 		inode->i_flags |= S_DAX;
- 	else
- 		inode->i_flags &= ~S_DAX;
--#endif
-+
- }
- 
- static int
-@@ -1194,6 +1193,10 @@ xfs_ioctl_setattr_dax_invalidate(
+@@ -1190,23 +1190,13 @@ xfs_ioctl_setattr_dax_invalidate(
+ 	int			*join_flags)
+ {
+ 	struct inode		*inode = VFS_I(ip);
+-	struct super_block	*sb = inode->i_sb;
+ 	int			error;
  
  	*join_flags = 0;
  
-+#if !defined(CONFIG_FS_DAX)
-+	return -EINVAL;
-+#endif
-+
+-	/*
+-	 * It is only valid to set the DAX flag on regular files and
+-	 * directories on filesystems where the block size is equal to the page
+-	 * size. On directories it serves as an inherited hint so we don't
+-	 * have to check the device for dax support or flush pagecache.
+-	 */
+-	if (fa->fsx_xflags & FS_XFLAG_DAX) {
+-		struct xfs_buftarg	*target = xfs_inode_buftarg(ip);
+-
+-		if (!bdev_dax_supported(target->bt_bdev, sb->s_blocksize))
+-			return -EINVAL;
+-	}
++	if ((fa->fsx_xflags & FS_XFLAG_DAX) == FS_XFLAG_DAX &&
++	    !xfs_inode_supports_dax(ip))
++		return -EINVAL;
+ 
  	/* If the DAX state is not changing, we have nothing to do here. */
  	if ((fa->fsx_xflags & FS_XFLAG_DAX) &&
- 	    (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
-@@ -1205,7 +1208,7 @@ xfs_ioctl_setattr_dax_invalidate(
- 	if (S_ISDIR(inode->i_mode))
- 		return 0;
- 
--	flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
-+	flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL | XFS_DAX_EXCL;
- 
- 	/* lock, flush and invalidate mapping in preparation for flag change */
- 	xfs_ilock(ip, flags);
-@@ -1526,6 +1529,9 @@ xfs_ioctl_setattr(
- 	else
- 		ip->i_d.di_cowextsize = 0;
- 
-+	if (join_flags & XFS_DAX_EXCL)
-+		xfs_setup_a_ops(ip);
-+
- 	code = xfs_trans_commit(tp);
- 
- 	/*
-@@ -1635,6 +1641,9 @@ xfs_ioc_setxflags(
- 		goto out_drop_write;
- 	}
- 
-+	if (join_flags & XFS_DAX_EXCL)
-+		xfs_setup_a_ops(ip);
-+
- 	error = xfs_trans_commit(tp);
- out_drop_write:
- 	mnt_drop_write_file(filp);
 diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index eebec159d873..15ef51c7f0b3 100644
+index a7db50d923d4..eebec159d873 100644
 --- a/fs/xfs/xfs_iops.c
 +++ b/fs/xfs/xfs_iops.c
-@@ -1366,6 +1366,16 @@ xfs_setup_inode(
- 	}
+@@ -1246,14 +1246,18 @@ xfs_inode_mount_is_dax(
  }
  
-+void xfs_setup_a_ops(struct xfs_inode *ip)
-+{
-+	struct inode		*inode = &ip->i_vnode;
-+
-+	if (IS_DAX(inode))
-+		inode->i_mapping->a_ops = &xfs_dax_aops;
-+	else
-+		inode->i_mapping->a_ops = &xfs_address_space_operations;
-+}
-+
- void
- xfs_setup_iops(
+ /* Figure out if this file actually supports DAX. */
+-static bool
++bool
+ xfs_inode_supports_dax(
  	struct xfs_inode	*ip)
-@@ -1376,10 +1386,7 @@ xfs_setup_iops(
- 	case S_IFREG:
- 		inode->i_op = &xfs_inode_operations;
- 		inode->i_fop = &xfs_file_operations;
--		if (IS_DAX(inode))
--			inode->i_mapping->a_ops = &xfs_dax_aops;
--		else
--			inode->i_mapping->a_ops = &xfs_address_space_operations;
-+		xfs_setup_a_ops(ip);
- 		break;
- 	case S_IFDIR:
- 		if (xfs_sb_version_hasasciici(&XFS_M(inode->i_sb)->m_sb))
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 2094386af8ac..af57fe07b56d 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -1332,6 +1332,7 @@ xfs_fc_fill_super(
- 	struct xfs_mount	*mp = sb->s_fs_info;
- 	struct inode		*root;
- 	int			flags = 0, error;
-+	bool                    rtdev_is_dax = false, datadev_is_dax;
+ {
+ 	struct xfs_mount	*mp = ip->i_mount;
  
- 	mp->m_super = sb;
+ 	/* Only supported on non-reflinked files. */
+-	if (!S_ISREG(VFS_I(ip)->i_mode) || xfs_is_reflink_inode(ip))
++	if (xfs_is_reflink_inode(ip))
++		return false;
++
++	/* Only supported on regular files and directories. */
++	if (!(S_ISREG(VFS_I(ip)->i_mode) || S_ISDIR(VFS_I(ip)->i_mode)))
+ 		return false;
  
-@@ -1437,17 +1438,18 @@ xfs_fc_fill_super(
- 	if (XFS_SB_VERSION_NUM(&mp->m_sb) == XFS_SB_VERSION_5)
- 		sb->s_flags |= SB_I_VERSION;
+ 	/* Block size must match page size */
+diff --git a/fs/xfs/xfs_iops.h b/fs/xfs/xfs_iops.h
+index 4d24ff309f59..f24fec8de1d6 100644
+--- a/fs/xfs/xfs_iops.h
++++ b/fs/xfs/xfs_iops.h
+@@ -24,4 +24,6 @@ extern int xfs_setattr_nonsize(struct xfs_inode *ip, struct iattr *vap,
+ extern int xfs_vn_setattr_nonsize(struct dentry *dentry, struct iattr *vap);
+ extern int xfs_vn_setattr_size(struct dentry *dentry, struct iattr *vap);
  
--	if (mp->m_flags & XFS_MOUNT_DAX) {
--		bool rtdev_is_dax = false, datadev_is_dax;
-+	datadev_is_dax = bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
-+					    sb->s_blocksize);
-+	if (mp->m_rtdev_targp)
-+		rtdev_is_dax = bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
-+						  sb->s_blocksize);
-+	if (rtdev_is_dax || datadev_is_dax)
-+		enable_dax_state_static_branch();
- 
-+	if (mp->m_flags & XFS_MOUNT_DAX) {
- 		xfs_warn(mp,
- 		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
- 
--		datadev_is_dax = bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
--			sb->s_blocksize);
--		if (mp->m_rtdev_targp)
--			rtdev_is_dax = bdev_dax_supported(
--				mp->m_rtdev_targp->bt_bdev, sb->s_blocksize);
- 		if (!rtdev_is_dax && !datadev_is_dax) {
- 			xfs_alert(mp,
- 			"DAX unsupported by block device. Turning off DAX.");
++extern bool xfs_inode_supports_dax(struct xfs_inode *ip);
++
+ #endif /* __XFS_IOPS_H__ */
 -- 
 2.21.0
 
