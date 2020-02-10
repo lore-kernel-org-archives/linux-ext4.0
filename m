@@ -1,193 +1,102 @@
-Return-Path: <SRS0=MsX1=34=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=1MY3=36=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE10FC35242
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3892EC352A4
+	for <linux-ext4@archiver.kernel.org>; Mon, 10 Feb 2020 08:40:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C0B892253D
-	for <linux-ext4@archiver.kernel.org>; Sat,  8 Feb 2020 19:35:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BB6C120733
+	for <linux-ext4@archiver.kernel.org>; Mon, 10 Feb 2020 08:40:20 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="gYDNzy/O"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727499AbgBHTet (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 8 Feb 2020 14:34:49 -0500
-Received: from mga02.intel.com ([134.134.136.20]:29572 "EHLO mga02.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727471AbgBHTet (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 8 Feb 2020 14:34:49 -0500
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by orsmga101.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:48 -0800
-X-IronPort-AV: E=Sophos;i="5.70,418,1574150400"; 
-   d="scan'208";a="226810218"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 08 Feb 2020 11:34:47 -0800
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 00/12] Enable per-file/directory DAX operations V3
-Date:   Sat,  8 Feb 2020 11:34:33 -0800
-Message-Id: <20200208193445.27421-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.21.0
+        id S1726968AbgBJIkU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 10 Feb 2020 03:40:20 -0500
+Received: from sender2-of-o52.zoho.com.cn ([163.53.93.247]:21146 "EHLO
+        sender2-of-o52.zoho.com.cn" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726061AbgBJIkU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Feb 2020 03:40:20 -0500
+X-Greylist: delayed 908 seconds by postgrey-1.27 at vger.kernel.org; Mon, 10 Feb 2020 03:40:19 EST
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1581323102;
+        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
+        h=From:To:Cc:Message-ID:Subject:Date:MIME-Version:Content-Transfer-Encoding:Content-Type;
+        bh=3A7kgd9EwxxMVaCsrHVPwN4E1w1q0zJ27JUMCn1+j8I=;
+        b=gYDNzy/O4jxLfCBiZ8K3/QwpPIF1VpHqO3T0Vu8/4n3gQhZKFzF2+Q0141VSoCA1
+        VG7Ljt525yGdq940vhNk/GjSGDeBo2QY/DPn+S6B5gfVKnfWV5RTHYLmn/f6SuoOmL6
+        X52DMQ+eydX3jo7x0LoAFMA1ohoMXzSkSkX+nsX8=
+Received: from localhost.localdomain.localdomain (113.88.132.74 [113.88.132.74]) by mx.zoho.com.cn
+        with SMTPS id 1581323097919611.4267119995156; Mon, 10 Feb 2020 16:24:57 +0800 (CST)
+From:   Chengguang Xu <cgxu519@mykernel.net>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
+Message-ID: <20200210082445.2379-1-cgxu519@mykernel.net>
+Subject: [PATCH] ext4: code cleanup for ext4_statfs_project()
+Date:   Mon, 10 Feb 2020 16:24:45 +0800
+X-Mailer: git-send-email 2.21.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: quoted-printable
+X-ZohoCNMailClient: External
+Content-Type: text/plain; charset=utf8
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+Calling min_not_zero() to simplify complicated prjquota
+limit comparison in ext4_statfs_project().
 
-Changes from V2:
+Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
+---
+ fs/ext4/super.c | 19 ++++---------------
+ 1 file changed, 4 insertions(+), 15 deletions(-)
 
-	* Move i_dax_sem to be a global percpu_rw_sem rather than per inode
-		Internal discussions with Dan determined this would be easier,
-		just as performant, and slightly less overhead that having it
-		in the SB as suggested by Jan
-	* Fix locking order in comments and throughout code
-	* Change "mode" to "state" throughout commits
-	* Add CONFIG_FS_DAX wrapper to disable inode_[un]lock_state() when not
-		configured
-	* Add static branch for which is activated by a device which supports
-		DAX in XFS
-	* Change "lock/unlock" to up/down read/write as appropriate
-		Previous names were over simplified
-	* Update comments/documentation
-
-	* Remove the xfs specific lock to the vfs (global) layer.
-	* Fix i_dax_sem locking order and comments
-
-	* Move 'i_mapped' count from struct inode to struct address_space and
-		rename it to mmap_count
-	* Add inode_has_mappings() call
-
-	* Fix build issues
-	* Clean up syntax spacing and minor issues
-	* Update man page text for STATX_ATTR_DAX
-	* Add reviewed-by's
-	* Rebase to latest linux-next
-
-	Rename patch:
-		from: fs/xfs: Add lock/unlock state to xfs
-		to: fs/xfs: Add write DAX lock to xfs layer
-	Add patch:
-		fs/xfs: Clarify lockdep dependency for xfs_isilocked()
-	Drop patch:
-		fs/xfs: Fix truncate up
-
-	https://github.com/weiny2/linux-kernel/tree/dax-file-state-change-v3
-
-At LSF/MM'19 [1] [2] we discussed applications that overestimate memory
-consumption due to their inability to detect whether the kernel will
-instantiate page cache for a file, and cases where a global dax enable via a
-mount option is too coarse.
-
-The following patch series enables selecting the use of DAX on individual files
-and/or directories on xfs, and lays some groundwork to do so in ext4.  In this
-scheme the dax mount option can be omitted to allow the per-file property to
-take effect.
-
-The insight at LSF/MM was to separate the per-mount or per-file "physical"
-capability switch from an "effective" attribute for the file.
-
-At LSF/MM we discussed the difficulties of switching the DAX state of a file
-with active mappings / page cache.  It was thought the races could be avoided
-by limiting DAX state flips to 0-length files.
-
-However, this turns out to not be true.[3] This is because address space
-operations (a_ops) may be in use at any time the inode is referenced and users
-have expressed a desire to be able to change the DAX state on a file with data
-in it.  For those reasons this patch set allows changing the DAX state flag on
-a file as long as it is not current mapped.
-
-Furthermore, DAX is a property of the inode and as such, many operations other
-than address space operations need to be protected during a DAX state change.
-
-Therefore callbacks are placed within the inode operations and used to lock the
-inode as appropriate.
-
-As in V1, Users are able to query the effective and physical flags separately
-at any time.  Specifically the addition of the statx attribute bit allows them
-to ensure the file is operating in the DAX state they intend.  This 'effective
-flag' and physical flags could differ when the filesystem is mounted with the
-dax flag for example.
-
-It should be noted that the physical DAX flag inheritance is not shown in this
-patch set as it was maintained from previous work on XFS.  The physical DAX
-flag and it's inheritance will need to be added to other file systems for user
-control. 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8434217549b3..5fc1f47f4c6f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5585,13 +5585,8 @@ static int ext4_statfs_project(struct super_block *s=
+b,
+ =09=09return PTR_ERR(dquot);
+ =09spin_lock(&dquot->dq_dqb_lock);
+=20
+-=09limit =3D 0;
+-=09if (dquot->dq_dqb.dqb_bsoftlimit &&
+-=09    (!limit || dquot->dq_dqb.dqb_bsoftlimit < limit))
+-=09=09limit =3D dquot->dq_dqb.dqb_bsoftlimit;
+-=09if (dquot->dq_dqb.dqb_bhardlimit &&
+-=09    (!limit || dquot->dq_dqb.dqb_bhardlimit < limit))
+-=09=09limit =3D dquot->dq_dqb.dqb_bhardlimit;
++=09limit =3D min_not_zero(dquot->dq_dqb.dqb_bsoftlimit,
++=09=09=09=09dquot->dq_dqb.dqb_bhardlimit);
+ =09limit >>=3D sb->s_blocksize_bits;
+=20
+ =09if (limit && buf->f_blocks > limit) {
+@@ -5603,14 +5598,8 @@ static int ext4_statfs_project(struct super_block *s=
+b,
+ =09=09=09 (buf->f_blocks - curblock) : 0;
+ =09}
+=20
+-=09limit =3D 0;
+-=09if (dquot->dq_dqb.dqb_isoftlimit &&
+-=09    (!limit || dquot->dq_dqb.dqb_isoftlimit < limit))
+-=09=09limit =3D dquot->dq_dqb.dqb_isoftlimit;
+-=09if (dquot->dq_dqb.dqb_ihardlimit &&
+-=09    (!limit || dquot->dq_dqb.dqb_ihardlimit < limit))
+-=09=09limit =3D dquot->dq_dqb.dqb_ihardlimit;
+-
++=09limit =3D min_not_zero(dquot->dq_dqb.dqb_isoftlimit,
++=09=09=09=09dquot->dq_dqb.dqb_ihardlimit);
+ =09if (limit && buf->f_files > limit) {
+ =09=09buf->f_files =3D limit;
+ =09=09buf->f_ffree =3D
+--=20
+2.21.1
 
 
-[1] https://lwn.net/Articles/787973/
-[2] https://lwn.net/Articles/787233/
-[3] https://lkml.org/lkml/2019/10/20/96
-[4] https://patchwork.kernel.org/patch/11310511/
-
-
-To: linux-kernel@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-
-
-Ira Weiny (12):
-  fs/stat: Define DAX statx attribute
-  fs/xfs: Isolate the physical DAX flag from effective
-  fs/xfs: Separate functionality of xfs_inode_supports_dax()
-  fs/xfs: Clean up DAX support check
-  fs: remove unneeded IS_DAX() check
-  fs/xfs: Check if the inode supports DAX under lock
-  fs: Add locking for a dynamic DAX state
-  fs/xfs: Clarify lockdep dependency for xfs_isilocked()
-  fs/xfs: Add write DAX lock to xfs layer
-  fs: Prevent DAX state change if file is mmap'ed
-  fs/xfs: Clean up locking in dax invalidate
-  fs/xfs: Allow toggle of effective DAX flag
-
- Documentation/filesystems/vfs.rst | 17 ++++++
- fs/attr.c                         |  1 +
- fs/dax.c                          |  3 ++
- fs/inode.c                        | 15 ++++--
- fs/iomap/buffered-io.c            |  1 +
- fs/open.c                         |  4 ++
- fs/stat.c                         |  5 ++
- fs/super.c                        |  3 ++
- fs/xfs/xfs_inode.c                | 24 +++++++--
- fs/xfs/xfs_inode.h                |  8 ++-
- fs/xfs/xfs_ioctl.c                | 56 ++++++++++++--------
- fs/xfs/xfs_iops.c                 | 51 ++++++++++++++----
- fs/xfs/xfs_iops.h                 |  2 +
- fs/xfs/xfs_super.c                | 16 +++---
- include/linux/fs.h                | 86 +++++++++++++++++++++++++++++--
- include/uapi/linux/stat.h         |  1 +
- mm/fadvise.c                      | 10 +++-
- mm/filemap.c                      |  4 ++
- mm/huge_memory.c                  |  1 +
- mm/khugepaged.c                   |  2 +
- mm/madvise.c                      |  3 ++
- mm/mmap.c                         | 19 ++++++-
- mm/util.c                         |  9 +++-
- 23 files changed, 287 insertions(+), 54 deletions(-)
-
--- 
-2.21.0
 
