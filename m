@@ -2,86 +2,107 @@ Return-Path: <SRS0=bpHE=4B=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0144DC3B189
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 15:40:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42C37C2BA83
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 15:50:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CA18D217F4
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 15:40:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1735420675
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 15:50:30 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CdYnWy14"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387786AbgBMPk0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Feb 2020 10:40:26 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54668 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2387776AbgBMPkZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2020 10:40:25 -0500
-Received: from callcc.thunk.org (guestnat-104-133-0-101.corp.google.com [104.133.0.101] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 01DFe3sU018178
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Feb 2020 10:40:04 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 7204642032C; Thu, 13 Feb 2020 10:40:03 -0500 (EST)
-Date:   Thu, 13 Feb 2020 10:40:03 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Shijie Luo <luoshijie1@huawei.com>
-Cc:     linux-ext4@vger.kernel.org, jack@suse.cz, yi.zhang@huawei.com,
-        lutianxiong@huawei.com
-Subject: Re: [PATCH v2] ext4: add cond_resched() to
- ext4_protect_reserved_inode
-Message-ID: <20200213154003.GE239974@mit.edu>
-References: <20200211011752.29242-1-luoshijie1@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200211011752.29242-1-luoshijie1@huawei.com>
+        id S1728165AbgBMPu3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 13 Feb 2020 10:50:29 -0500
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:41772 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387560AbgBMP02 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Feb 2020 10:26:28 -0500
+Received: by mail-pf1-f194.google.com with SMTP id j9so3231088pfa.8;
+        Thu, 13 Feb 2020 07:26:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=3YsWsylZ4489Gb3tnUr9kkkeFg/lh1zGRWfBEejFiwA=;
+        b=CdYnWy14vgKMDE8saobSvrpuwdjIw7BGvH3RroVir3x/MBhrWIMYWQXHeaV5pbj1a+
+         bLeq+kKlKdPsWosW3KD3WQrSBY2/ToqH8gIsQMljOcMAj4NIMIEMYVyki1iYe38Lm9zn
+         jEb9voFR6JAun43lFlu0Sn2B/uEnHoMryDTh/BWQdOirvc6eez1/JumX8NtoxfdZen+r
+         6wcKFEooJ47FjLHBDddTPHoXeun6W1qEMYCpPHFKiglaClnP6iBBwg5BBSO0wG/TzsgL
+         3MFtjslnEKVUBdcAhUb0yw34mCgVSg/S1/E7RIlCciQRkNczx1/+V7HglHxTi70Ehwjm
+         s+5Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=3YsWsylZ4489Gb3tnUr9kkkeFg/lh1zGRWfBEejFiwA=;
+        b=PkTOaVxRg69dHD+e3WcyRT0YEsQnmU5fZ3burjFRYhgR2ulOmEUabaGh4p0TG+6gsS
+         LTeu3aaA6lLsfNp+V9Fvxb8eVpQEdWJNzAw2rkemXZxj1i0R1pM6VrV1FnnyfI+cRDXZ
+         mx5CD9otTryQ3Fp39OtsJVedkxjClq9lH+rPtf+KeF+IEQ4VnOGVZ0LdHHHr4kiBCg45
+         QHXmpnH7jnQKs4FGd7h641yj1+I6OI6JOAusHVbzit99v8gPeKw1g97K9Tiv8bUg8uWP
+         oC95LyvpNEbXcmF+8sg+HuUlTy7naMK2OeeeMuCTyWhg/tJmPD7hYvKfHDQvjh0xJRNf
+         822A==
+X-Gm-Message-State: APjAAAUQVupEqTPmDOg0bi5dGYW4xZGwFA/p7tIvd+FMSZneOjh7zVw3
+        LBLDY+EqqaK88eKAYLMJRw==
+X-Google-Smtp-Source: APXvYqxb1gt5GdQ7FxVEv5Kv5nacrmWzCQlAA3YUYdxzXLhKbg4wJSto+u81h9uRby9JM7fcpafvlA==
+X-Received: by 2002:a62:e91a:: with SMTP id j26mr14805034pfh.189.1581607587813;
+        Thu, 13 Feb 2020 07:26:27 -0800 (PST)
+Received: from madhuparna-HP-Notebook.nitk.ac.in ([2402:3a80:1ee8:f65a:fc5b:5bfd:1ab4:4848])
+        by smtp.gmail.com with ESMTPSA id z3sm3609082pfz.155.2020.02.13.07.26.22
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 13 Feb 2020 07:26:27 -0800 (PST)
+From:   madhuparnabhowmik10@gmail.com
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        joel@joelfernandes.org, frextrite@gmail.com,
+        linux-kernel-mentees@lists.linuxfoundation.org, paulmck@kernel.org,
+        Madhuparna Bhowmik <madhuparnabhowmik10@gmail.com>
+Subject: [PATCH] fs: ext4: mballoc.c: Use built-in RCU list checking
+Date:   Thu, 13 Feb 2020 20:55:58 +0530
+Message-Id: <20200213152558.7070-1-madhuparnabhowmik10@gmail.com>
+X-Mailer: git-send-email 2.17.1
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Feb 10, 2020 at 08:17:52PM -0500, Shijie Luo wrote:
-> When journal size is set too big by "mkfs.ext4 -J size=", or when
-> we mount a crafted image to make journal inode->i_size too big,
-> the loop, "while (i < num)", holds cpu too long. This could cause
-> soft lockup.
-> 
-> [  529.357541] Call trace:
-> [  529.357551]  dump_backtrace+0x0/0x198
-> [  529.357555]  show_stack+0x24/0x30
-> [  529.357562]  dump_stack+0xa4/0xcc
-> [  529.357568]  watchdog_timer_fn+0x300/0x3e8
-> [  529.357574]  __hrtimer_run_queues+0x114/0x358
-> [  529.357576]  hrtimer_interrupt+0x104/0x2d8
-> [  529.357580]  arch_timer_handler_virt+0x38/0x58
-> [  529.357584]  handle_percpu_devid_irq+0x90/0x248
-> [  529.357588]  generic_handle_irq+0x34/0x50
-> [  529.357590]  __handle_domain_irq+0x68/0xc0
-> [  529.357593]  gic_handle_irq+0x6c/0x150
-> [  529.357595]  el1_irq+0xb8/0x140
-> [  529.357599]  __ll_sc_atomic_add_return_acquire+0x14/0x20
-> [  529.357668]  ext4_map_blocks+0x64/0x5c0 [ext4]
-> [  529.357693]  ext4_setup_system_zone+0x330/0x458 [ext4]
-> [  529.357717]  ext4_fill_super+0x2170/0x2ba8 [ext4]
-> [  529.357722]  mount_bdev+0x1a8/0x1e8
-> [  529.357746]  ext4_mount+0x44/0x58 [ext4]
-> [  529.357748]  mount_fs+0x50/0x170
-> [  529.357752]  vfs_kern_mount.part.9+0x54/0x188
-> [  529.357755]  do_mount+0x5ac/0xd78
-> [  529.357758]  ksys_mount+0x9c/0x118
-> [  529.357760]  __arm64_sys_mount+0x28/0x38
-> [  529.357764]  el0_svc_common+0x78/0x130
-> [  529.357766]  el0_svc_handler+0x38/0x78
-> [  529.357769]  el0_svc+0x8/0xc
-> [  541.356516] watchdog: BUG: soft lockup - CPU#0 stuck for 23s! [mount:18674]
-> 
-> Signed-off-by: Shijie Luo <luoshijie1@huawei.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+From: Madhuparna Bhowmik <madhuparnabhowmik10@gmail.com>
 
-Applied, thanks.
+list_for_each_entry_rcu() has built-in RCU and lock checking.
 
-					- Ted
+Pass cond argument to list_for_each_entry_rcu() to silence
+false lockdep warning when CONFIG_PROVE_RCU_LIST is enabled
+by default.
+
+Signed-off-by: Madhuparna Bhowmik <madhuparnabhowmik10@gmail.com>
+---
+ fs/ext4/mballoc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index a3e2767bdf2f..70418e13e9e8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4280,7 +4280,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 
+ 	spin_lock(&lg->lg_prealloc_lock);
+ 	list_for_each_entry_rcu(pa, &lg->lg_prealloc_list[order],
+-						pa_inode_list) {
++						pa_inode_list, lockdep_is_held(&lg->lg_prealloc_lock)) {
+ 		spin_lock(&pa->pa_lock);
+ 		if (atomic_read(&pa->pa_count)) {
+ 			/*
+@@ -4363,7 +4363,7 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
+ 	/* Add the prealloc space to lg */
+ 	spin_lock(&lg->lg_prealloc_lock);
+ 	list_for_each_entry_rcu(tmp_pa, &lg->lg_prealloc_list[order],
+-						pa_inode_list) {
++						pa_inode_list, lockdep_is_held(&lg->lg_prealloc_lock)) {
+ 		spin_lock(&tmp_pa->pa_lock);
+ 		if (tmp_pa->pa_deleted) {
+ 			spin_unlock(&tmp_pa->pa_lock);
+-- 
+2.17.1
+
