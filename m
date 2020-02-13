@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D37CC3B189
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF116C2BA83
 	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5423B2051A
+	by mail.kernel.org (Postfix) with ESMTP id 9D88B20659
 	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729754AbgBMKQJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1729759AbgBMKQJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 13 Feb 2020 05:16:09 -0500
-Received: from mx2.suse.de ([195.135.220.15]:51230 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51248 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729600AbgBMKQH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Feb 2020 05:16:07 -0500
+        id S1729732AbgBMKQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Feb 2020 05:16:08 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id ACF6DAF6E;
+        by mx2.suse.de (Postfix) with ESMTP id C16B8AC52;
         Thu, 13 Feb 2020 10:16:05 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 311FA1E0E3B; Thu, 13 Feb 2020 11:16:05 +0100 (CET)
+        id 3869D1E0E53; Thu, 13 Feb 2020 11:16:05 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/7] ext2fs: Update allocation info earlier in ext2fs_mkdir() and ext2fs_symlink()
-Date:   Thu, 13 Feb 2020 11:15:58 +0100
-Message-Id: <20200213101602.29096-4-jack@suse.cz>
+Subject: [PATCH 5/7] tests: Modify f_large_dir test to excercise indexed dir handling
+Date:   Thu, 13 Feb 2020 11:16:00 +0100
+Message-Id: <20200213101602.29096-6-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20200213101602.29096-1-jack@suse.cz>
 References: <20200213101602.29096-1-jack@suse.cz>
@@ -38,84 +38,89 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently, ext2fs_mkdir() and ext2fs_symlink() update allocation bitmaps
-and other information only close to the end of the function, in
-particular after calling to ext2fs_link(). When ext2fs_link() will
-support indexed directories, it will also need to allocate blocks and
-that would cause filesystem corruption in case allocation info isn't
-properly updated. So make sure ext2fs_mkdir() and ext2fs_symlink()
-update allocation info before calling into ext2fs_link().
+Modify f_large_dir test to create indexed directory and create entries
+in it. That way the new code in ext2fs_link() for addition of entries
+into indexed directories gets executed including various special cases
+when growing htree.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- lib/ext2fs/mkdir.c   | 14 +++++++-------
- lib/ext2fs/symlink.c | 14 +++++++-------
- 2 files changed, 14 insertions(+), 14 deletions(-)
+ tests/f_large_dir/expect | 10 ++++++++++
+ tests/f_large_dir/script | 27 ++++++++++++++++++++++-----
+ 2 files changed, 32 insertions(+), 5 deletions(-)
 
-diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
-index 2a63aad16715..947003ebf309 100644
---- a/lib/ext2fs/mkdir.c
-+++ b/lib/ext2fs/mkdir.c
-@@ -143,6 +143,13 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 		}
- 	}
+diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
+index 8f7d99dc1ee7..028234cc6bb5 100644
+--- a/tests/f_large_dir/expect
++++ b/tests/f_large_dir/expect
+@@ -6,6 +6,16 @@ Allocating group tables:      done
+ Writing inode tables:      done                            
+ Writing superblocks and filesystem accounting information:      done
  
-+	/*
-+	 * Update accounting....
-+	 */
-+	if (!inline_data)
-+		ext2fs_block_alloc_stats2(fs, blk, +1);
-+	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 3A: Optimizing directories
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
 +
- 	/*
- 	 * Link the directory into the filesystem hierarchy
- 	 */
-@@ -175,13 +182,6 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
- 			goto cleanup;
- 	}
- 
--	/*
--	 * Update accounting....
--	 */
--	if (!inline_data)
--		ext2fs_block_alloc_stats2(fs, blk, +1);
--	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
--
- cleanup:
- 	if (block)
- 		ext2fs_free_mem(&block);
-diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
-index 7f78c5f75549..3e07a539daf3 100644
---- a/lib/ext2fs/symlink.c
-+++ b/lib/ext2fs/symlink.c
-@@ -162,6 +162,13 @@ need_block:
- 			goto cleanup;
- 	}
- 
-+	/*
-+	 * Update accounting....
-+	 */
-+	if (!fastlink && !inlinelink)
-+		ext2fs_block_alloc_stats2(fs, blk, +1);
-+	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
++test.img: ***** FILE SYSTEM WAS MODIFIED *****
++test.img: 17/65072 files (5.9% non-contiguous), 9732/108341 blocks
++Exit status is 0
+ Pass 1: Checking inodes, blocks, and sizes
+ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
+index 9af042ca6ca8..e3235836f997 100644
+--- a/tests/f_large_dir/script
++++ b/tests/f_large_dir/script
+@@ -26,17 +26,33 @@ $MKE2FS -b 1024 -O large_dir,uninit_bg -N $((ENTRIES + 50)) \
+ RC=$?
+ if [ $RC -eq 0 ]; then
+ {
+-	START=$SECONDS
++	# First some initial fs setup to create indexed dir
+ 	echo "mkdir /foo"
+ 	echo "cd /foo"
+ 	touch $TMPFILE.tmp
+ 	echo "write $TMPFILE.tmp foofile"
+ 	i=0
+-	last=0
++	while test $i -lt $DIRENT_PER_LEAF ; do
++		printf "mkdir d%0254u\n" $i
++		i=$((i + 1));
++	done
++	echo "expand ./"
++	printf "mkdir d%0254u\n" $i
++} | $DEBUGFS -w $TMPFILE > /dev/null 2>> $OUT.new
++	RC=$?
++	# e2fsck should optimize the dir to become indexed
++	$E2FSCK -yfD $TMPFILE >> $OUT.new 2>&1
++	status=$?
++	echo Exit status is $status >> $OUT.new
++fi
 +
- 	/*
- 	 * Link the symlink into the filesystem hierarchy
- 	 */
-@@ -179,13 +186,6 @@ need_block:
- 			goto cleanup;
- 	}
- 
--	/*
--	 * Update accounting....
--	 */
--	if (!fastlink && !inlinelink)
--		ext2fs_block_alloc_stats2(fs, blk, +1);
--	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
--
- cleanup:
- 	if (block_buf)
- 		ext2fs_free_mem(&block_buf);
++if [ $RC -eq 0 ]; then
++{
++	START=$SECONDS
++	i=$(($DIRENT_PER_LEAF+1))
++	last=$i
++	echo "cd /foo"
+ 	while test $i -lt $ENTRIES ; do
+-	    if test $((i % DIRENT_PER_LEAF)) -eq 0; then
+-	    	echo "expand ./"
+-	    fi
+ 	    ELAPSED=$((SECONDS - START))
+ 	    if test $((i % 5000)) -eq 0 -a $ELAPSED -gt 10; then
+ 		RATE=$(((i - last) / ELAPSED))
+@@ -54,6 +70,7 @@ if [ $RC -eq 0 ]; then
+ } | $DEBUGFS -w $TMPFILE > /dev/null 2>> $OUT.new
+ 	RC=$?
+ fi
++
+ if [ $RC -eq 0 ]; then
+ 	$E2FSCK -yfD $TMPFILE >> $OUT.new 2>&1
+ 	status=$?
 -- 
 2.16.4
 
