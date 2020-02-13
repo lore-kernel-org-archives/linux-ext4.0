@@ -6,30 +6,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF116C2BA83
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60202C3B188
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9D88B20659
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 42CE620659
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Feb 2020 10:16:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729759AbgBMKQJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 13 Feb 2020 05:16:09 -0500
-Received: from mx2.suse.de ([195.135.220.15]:51248 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729732AbgBMKQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1729745AbgBMKQI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 13 Feb 2020 05:16:08 -0500
+Received: from mx2.suse.de ([195.135.220.15]:51208 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729494AbgBMKQH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Feb 2020 05:16:07 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id C16B8AC52;
+        by mx2.suse.de (Postfix) with ESMTP id 86415ACD0;
         Thu, 13 Feb 2020 10:16:05 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 3869D1E0E53; Thu, 13 Feb 2020 11:16:05 +0100 (CET)
+        id 27EEB1E0A51; Thu, 13 Feb 2020 11:16:05 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/7] tests: Modify f_large_dir test to excercise indexed dir handling
-Date:   Thu, 13 Feb 2020 11:16:00 +0100
-Message-Id: <20200213101602.29096-6-jack@suse.cz>
+Subject: [PATCH 1/7] e2fsck: Clarify overflow link count error message
+Date:   Thu, 13 Feb 2020 11:15:56 +0100
+Message-Id: <20200213101602.29096-2-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20200213101602.29096-1-jack@suse.cz>
 References: <20200213101602.29096-1-jack@suse.cz>
@@ -38,89 +38,92 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Modify f_large_dir test to create indexed directory and create entries
-in it. That way the new code in ext2fs_link() for addition of entries
-into indexed directories gets executed including various special cases
-when growing htree.
+When directory link count is set to overflow value (1) but during pass 4
+we find out the exact link count would fit, we either silently fix this
+(which is not great because e2fsck then reports the fs was modified but
+output doesn't indicate why in any way), or we report that link count is
+wrong and ask whether we should fix it (in case -n option was
+specified). The second case is even more misleading because it suggests
+non-trivial fs corruption which then gets silently fixed on the next
+run. Similarly to how we fix up other non-problems, just create a new
+error message for the case directory link count is not overflown anymore
+and always report it to clarify what is going on.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- tests/f_large_dir/expect | 10 ++++++++++
- tests/f_large_dir/script | 27 ++++++++++++++++++++++-----
- 2 files changed, 32 insertions(+), 5 deletions(-)
+ e2fsck/pass4.c   | 20 ++++++++++++++++----
+ e2fsck/problem.c |  5 +++++
+ e2fsck/problem.h |  3 +++
+ 3 files changed, 24 insertions(+), 4 deletions(-)
 
-diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
-index 8f7d99dc1ee7..028234cc6bb5 100644
---- a/tests/f_large_dir/expect
-+++ b/tests/f_large_dir/expect
-@@ -6,6 +6,16 @@ Allocating group tables:      done
- Writing inode tables:      done                            
- Writing superblocks and filesystem accounting information:      done
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 10be7f87180d..8c2d2f1fca12 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -237,6 +237,8 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 			link_counted = 1;
+ 		}
+ 		if (link_counted != link_count) {
++			int fix_nlink = 0;
++
+ 			e2fsck_read_inode_full(ctx, i, EXT2_INODE(inode),
+ 					       inode_size, "pass4");
+ 			pctx.ino = i;
+@@ -250,10 +252,20 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 			pctx.num = link_counted;
+ 			/* i_link_count was previously exceeded, but no longer
+ 			 * is, fix this but don't consider it an error */
+-			if ((isdir && link_counted > 1 &&
+-			     (inode->i_flags & EXT2_INDEX_FL) &&
+-			     link_count == 1 && !(ctx->options & E2F_OPT_NO)) ||
+-			    fix_problem(ctx, PR_4_BAD_REF_COUNT, &pctx)) {
++			if (isdir && link_counted > 1 &&
++			    (inode->i_flags & EXT2_INDEX_FL) &&
++			    link_count == 1) {
++				if ((ctx->options & E2F_OPT_READONLY) == 0) {
++					fix_nlink =
++						fix_problem(ctx,
++							PR_4_DIR_OVERFLOW_REF_COUNT,
++							&pctx);
++				}
++			} else {
++				fix_nlink = fix_problem(ctx, PR_4_BAD_REF_COUNT,
++						&pctx);
++			}
++			if (fix_nlink) {
+ 				inode->i_links_count = link_counted;
+ 				e2fsck_write_inode_full(ctx, i,
+ 							EXT2_INODE(inode),
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index c7c0ba986006..e79c853b2096 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -2035,6 +2035,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@d exceeds max links, but no DIR_NLINK feature in @S.\n"),
+ 	  PROMPT_FIX, 0, 0, 0, 0 },
  
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 3A: Optimizing directories
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
++	/* Directory inode ref count set to overflow but could be exact value */
++	{ PR_4_DIR_OVERFLOW_REF_COUNT,
++	  N_("@d @i %i ref count set to overflow but could be exact value %N.  "),
++	  PROMPT_FIX, PR_PREEN_OK, 0, 0, 0 },
 +
-+test.img: ***** FILE SYSTEM WAS MODIFIED *****
-+test.img: 17/65072 files (5.9% non-contiguous), 9732/108341 blocks
-+Exit status is 0
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
-index 9af042ca6ca8..e3235836f997 100644
---- a/tests/f_large_dir/script
-+++ b/tests/f_large_dir/script
-@@ -26,17 +26,33 @@ $MKE2FS -b 1024 -O large_dir,uninit_bg -N $((ENTRIES + 50)) \
- RC=$?
- if [ $RC -eq 0 ]; then
- {
--	START=$SECONDS
-+	# First some initial fs setup to create indexed dir
- 	echo "mkdir /foo"
- 	echo "cd /foo"
- 	touch $TMPFILE.tmp
- 	echo "write $TMPFILE.tmp foofile"
- 	i=0
--	last=0
-+	while test $i -lt $DIRENT_PER_LEAF ; do
-+		printf "mkdir d%0254u\n" $i
-+		i=$((i + 1));
-+	done
-+	echo "expand ./"
-+	printf "mkdir d%0254u\n" $i
-+} | $DEBUGFS -w $TMPFILE > /dev/null 2>> $OUT.new
-+	RC=$?
-+	# e2fsck should optimize the dir to become indexed
-+	$E2FSCK -yfD $TMPFILE >> $OUT.new 2>&1
-+	status=$?
-+	echo Exit status is $status >> $OUT.new
-+fi
+ 	/* Pass 5 errors */
+ 
+ 	/* Pass 5: Checking group summary information */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index c7f65f6dee0f..4185e5175cab 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1164,6 +1164,9 @@ struct problem_context {
+ /* directory exceeds max links, but no DIR_NLINK feature in superblock */
+ #define PR_4_DIR_NLINK_FEATURE		0x040006
+ 
++/* Directory ref count set to overflow but it doesn't have to be */
++#define PR_4_DIR_OVERFLOW_REF_COUNT	0x040007
 +
-+if [ $RC -eq 0 ]; then
-+{
-+	START=$SECONDS
-+	i=$(($DIRENT_PER_LEAF+1))
-+	last=$i
-+	echo "cd /foo"
- 	while test $i -lt $ENTRIES ; do
--	    if test $((i % DIRENT_PER_LEAF)) -eq 0; then
--	    	echo "expand ./"
--	    fi
- 	    ELAPSED=$((SECONDS - START))
- 	    if test $((i % 5000)) -eq 0 -a $ELAPSED -gt 10; then
- 		RATE=$(((i - last) / ELAPSED))
-@@ -54,6 +70,7 @@ if [ $RC -eq 0 ]; then
- } | $DEBUGFS -w $TMPFILE > /dev/null 2>> $OUT.new
- 	RC=$?
- fi
-+
- if [ $RC -eq 0 ]; then
- 	$E2FSCK -yfD $TMPFILE >> $OUT.new 2>&1
- 	status=$?
+ /*
+  * Pass 5 errors
+  */
 -- 
 2.16.4
 
