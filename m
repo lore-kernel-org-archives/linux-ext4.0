@@ -2,51 +2,97 @@ Return-Path: <SRS0=E9RY=4C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1D73C47409
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:48:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 07A6DC2BA83
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:48:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CF44024684
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:48:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C818E2082F
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:48:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1581698936;
+	bh=gGJgeLGo/7dGKH7duOXpS+rM5Wp5ogJCqc6NKtV9rwU=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=w10gEyEAev98hjV90KvODUdb4eyTZZuc1frtjvhrccEQQEgoekMlukldzquh2jGhK
+	 7P7By2ayLqoZCFJahwOuOv0mro3n61tPUnh7YxNUNLZ+kK3U3Otj02/lpGCC8Io8Cq
+	 RmIiJB2IFc6ykIciw30toek9w6qmwUgXuTLn70Nc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392112AbgBNQsS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:48:18 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:35701 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2388648AbgBNQsA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Feb 2020 11:48:00 -0500
-Received: from callcc.thunk.org (guestnat-104-133-0-101.corp.google.com [104.133.0.101] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 01EGlu0i032096
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 14 Feb 2020 11:47:57 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 0880942032C; Fri, 14 Feb 2020 11:47:56 -0500 (EST)
-Date:   Fri, 14 Feb 2020 11:47:55 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Eric Whitney <enwlinux@gmail.com>
-Cc:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4/002: remove EXT4_EOFBLOCKS_FL test
-Message-ID: <20200214164755.GB439135@mit.edu>
-References: <20200214164249.21868-1-enwlinux@gmail.com>
+        id S1729547AbgBNQsz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:48:55 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54518 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2404604AbgBNQUi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:20:38 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id D6B2A24727;
+        Fri, 14 Feb 2020 16:20:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1581697237;
+        bh=gGJgeLGo/7dGKH7duOXpS+rM5Wp5ogJCqc6NKtV9rwU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=s2s0M+80tHE9YLrk9PdNrwN34P/iKXAXLOE3yqW+8pAYWMquk+e6LbhVx8x4h8pL2
+         fw/qXrWOsGkzjUQLah2d0T5WjOO5qGSCUBXtL8xrC9X2UHGgogKnSg/8d3mejT8/3J
+         0jVA6xWHC0V7kMbGCnyNra9U+Ff83Cd+gPHGOFoI=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Jan Kara <jack@suse.cz>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.14 158/186] jbd2: make sure ESHUTDOWN to be recorded in the journal superblock
+Date:   Fri, 14 Feb 2020 11:16:47 -0500
+Message-Id: <20200214161715.18113-158-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200214161715.18113-1-sashal@kernel.org>
+References: <20200214161715.18113-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200214164249.21868-1-enwlinux@gmail.com>
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Feb 14, 2020 at 11:42:49AM -0500, Eric Whitney wrote:
-> This test exercises obsolete ext4-specific functionality that will be
-> removed in the kernel's 5.7 release.  Once that happens, ext4/002 will
-> always fail, so remove the test to avoid the noise.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
 
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+[ Upstream commit 0e98c084a21177ef136149c6a293b3d1eb33ff92 ]
+
+Commit fb7c02445c49 ("ext4: pass -ESHUTDOWN code to jbd2 layer") want
+to allow jbd2 layer to distinguish shutdown journal abort from other
+error cases. So the ESHUTDOWN should be taken precedence over any other
+errno which has already been recoded after EXT4_FLAGS_SHUTDOWN is set,
+but it only update errno in the journal suoerblock now if the old errno
+is 0.
+
+Fixes: fb7c02445c49 ("ext4: pass -ESHUTDOWN code to jbd2 layer")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20191204124614.45424-4-yi.zhang@huawei.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/jbd2/journal.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index eae9ced846d51..6e054b368b5fe 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2119,8 +2119,7 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+ 
+ 	if (journal->j_flags & JBD2_ABORT) {
+ 		write_unlock(&journal->j_state_lock);
+-		if (!old_errno && old_errno != -ESHUTDOWN &&
+-		    errno == -ESHUTDOWN)
++		if (old_errno != -ESHUTDOWN && errno == -ESHUTDOWN)
+ 			jbd2_journal_update_sb_errno(journal);
+ 		return;
+ 	}
+-- 
+2.20.1
+
