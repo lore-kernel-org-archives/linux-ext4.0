@@ -7,50 +7,48 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCCFCC3B1A1
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:58:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AE23C2BA83
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 17:01:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 942272067D
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:58:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 25D0D206CC
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 17:01:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581699487;
-	bh=eD/DJ1LstZ9eNOd8Ti1BbuQe6wDVPeHT7k72/pE1F6o=;
+	s=default; t=1581699700;
+	bh=SiFgmLsWC+GVvtrufp79tdOr8W/hicsAcz6/OWW1t/M=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=TyIAtPSmMxbLUItKAGx3geA0Vabpa20vkturESxbqPR7uHk9/4+81pcssSfX4h/40
-	 vqv4348Y3dJINLOLw060RZL/pYqPWcashTI5PYmVeBW/+rqX63YzlHxqTxvuSXQ1lo
-	 zGVNnGrqMBwbFnLh5IqOrt5++7FfKXvEqAyIx9m4=
+	b=Mq1CE/qe3KhsCO99kwF4Tjk6gLT+U9r5EgKRn3Zl09hSVzbrWknJkuajUMiGKkj/h
+	 GKapHVHVfzFFitcHnyJvkaOlScNWk4Njqg4zGKab3PVkOcTCEya5lgk68/MYNIhzSw
+	 tS1KlgviAtktPEGZ8w+Mx9RqLXZjIG896TyDYA3U=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404487AbgBNQRb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:17:31 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48798 "EHLO mail.kernel.org"
+        id S2392568AbgBNQQW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:16:22 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47092 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2404480AbgBNQRa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:17:30 -0500
+        id S2388586AbgBNQQU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:16:20 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B1749246ED;
-        Fri, 14 Feb 2020 16:17:28 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CB44724681;
+        Fri, 14 Feb 2020 16:16:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581697049;
-        bh=eD/DJ1LstZ9eNOd8Ti1BbuQe6wDVPeHT7k72/pE1F6o=;
+        s=default; t=1581696979;
+        bh=SiFgmLsWC+GVvtrufp79tdOr8W/hicsAcz6/OWW1t/M=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NNXtlQMyhJauqjBME8wsHKKtAQE5z1Fww5Kv+oTpfHr/NyTwB2Ocj4JGUjS8LkZNm
-         i6a9UFDRrsFe729Sj/FNVPyenzFE5eWftP5m9D90TR7TUGASYQNU2/oWSFmrPGCM72
-         1vxLO9H9ylySxSEtku3+sIYM909GnQgnTc/DnHcU=
+        b=Dd9GJveG1ECYjJHludCWhtKSBuNLmT51QXjenu3SIDpJqoYh1Cq0fhfuExgbjXP4P
+         LEdvlLDKvn8OSo+aXpFVUVHIC733YNhmRi1iX12HJt0Gh3GFWHDiLBcdrWCdXdX5U8
+         pCOzxawxj0OZ4IlvOdNZop9Lcb2hyBjx8HT/RdUE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Ritesh Harjani <riteshh@linux.ibm.com>, Jan Kara <jack@suse.cz>,
-        Matthew Bobrowski <mbobrowski@mbobrowski.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
+Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Jan Kara <jack@suse.cz>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 010/186] ext4: fix ext4_dax_read/write inode locking sequence for IOCB_NOWAIT
-Date:   Fri, 14 Feb 2020 11:14:19 -0500
-Message-Id: <20200214161715.18113-10-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 216/252] jbd2: switch to use jbd2_journal_abort() when failed to submit the commit record
+Date:   Fri, 14 Feb 2020 11:11:11 -0500
+Message-Id: <20200214161147.15842-216-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200214161715.18113-1-sashal@kernel.org>
-References: <20200214161715.18113-1-sashal@kernel.org>
+In-Reply-To: <20200214161147.15842-1-sashal@kernel.org>
+References: <20200214161147.15842-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -60,57 +58,48 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ritesh Harjani <riteshh@linux.ibm.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
 
-[ Upstream commit f629afe3369e9885fd6e9cc7a4f514b6a65cf9e9 ]
+[ Upstream commit d0a186e0d3e7ac05cc77da7c157dae5aa59f95d9 ]
 
-Apparently our current rwsem code doesn't like doing the trylock, then
-lock for real scheme.  So change our dax read/write methods to just do the
-trylock for the RWF_NOWAIT case.
-This seems to fix AIM7 regression in some scalable filesystems upto ~25%
-in some cases. Claimed in commit 942491c9e6d6 ("xfs: fix AIM7 regression")
+We invoke jbd2_journal_abort() to abort the journal and record errno
+in the jbd2 superblock when committing journal transaction besides the
+failure on submitting the commit record. But there is no need for the
+case and we can also invoke jbd2_journal_abort() instead of
+__jbd2_journal_abort_hard().
 
+Fixes: 818d276ceb83a ("ext4: Add the journal checksum feature")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Matthew Bobrowski <mbobrowski@mbobrowski.org>
-Tested-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Link: https://lore.kernel.org/r/20191212055557.11151-2-riteshh@linux.ibm.com
+Link: https://lore.kernel.org/r/20191204124614.45424-2-yi.zhang@huawei.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/file.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/jbd2/commit.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 4ede0af9d6fe3..acec134da57df 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -38,9 +38,10 @@ static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	ssize_t ret;
- 
--	if (!inode_trylock_shared(inode)) {
--		if (iocb->ki_flags & IOCB_NOWAIT)
-+	if (iocb->ki_flags & IOCB_NOWAIT) {
-+		if (!inode_trylock_shared(inode))
- 			return -EAGAIN;
-+	} else {
- 		inode_lock_shared(inode);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 020bd7a0d8e03..d4e6288b4bb46 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -781,7 +781,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						 &cbh, crc32_sum);
+ 		if (err)
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
  	}
- 	/*
-@@ -188,9 +189,10 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	ssize_t ret;
  
--	if (!inode_trylock(inode)) {
--		if (iocb->ki_flags & IOCB_NOWAIT)
-+	if (iocb->ki_flags & IOCB_NOWAIT) {
-+		if (!inode_trylock(inode))
- 			return -EAGAIN;
-+	} else {
- 		inode_lock(inode);
+ 	blk_finish_plug(&plug);
+@@ -874,7 +874,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		err = journal_submit_commit_record(journal, commit_transaction,
+ 						&cbh, crc32_sum);
+ 		if (err)
+-			__jbd2_journal_abort_hard(journal);
++			jbd2_journal_abort(journal, err);
  	}
- 	ret = ext4_write_checks(iocb, from);
+ 	if (cbh)
+ 		err = journal_wait_on_commit_record(journal, cbh);
 -- 
 2.20.1
 
