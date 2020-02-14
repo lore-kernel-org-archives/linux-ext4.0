@@ -7,45 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD92BC3B1B5
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 18:17:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73CD7C2BA83
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 18:18:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 774E22168B
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 18:17:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 490442168B
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 18:18:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581704261;
-	bh=Amu1KTqCN4P6t1vXY0a3P/q88+UfLBw0ouCocJKKAAs=;
+	s=default; t=1581704329;
+	bh=5pz5VyVlGIkxJd83Kh8BCjSgf0Ktw6Y4y60XftuSGmE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=R6ExXWjNQkzEnEanlmI5LHJjgdRs3PY8wQLOoXN2c11gJFflrGp4j+RiZP+I0KdzC
-	 ZFFIy+DIhvOKtY+bP5Vb3xPuYG/3d31AF9Oq0xtmIeP4AClGFnp+psG0UNX9Pv3tjF
-	 GxXGc7Vrogjuj9fcyO/6ccPrSMDECO9Z3uto1bqg=
+	b=OijCwXoSki1zkGgxYH6+LCT4rbobNFG/b/AgzvLSwHeGPDWz639e5zQRwDU934Dbg
+	 isG0sar6vcgXdFK9sMrTslFgZD2nprtMc1PtT+adbGgN3277j5UgLFRD/7JO8p4n4L
+	 CSG6D1l8FOPmHZY41AJ1Ry6PQKGSxVlUumIec1Zc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730702AbgBNPvN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Feb 2020 10:51:13 -0500
-Received: from mail.kernel.org ([198.145.29.99]:56026 "EHLO mail.kernel.org"
+        id S2405196AbgBNSSo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Feb 2020 13:18:44 -0500
+Received: from mail.kernel.org ([198.145.29.99]:55104 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730693AbgBNPvM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Feb 2020 10:51:12 -0500
+        id S1730569AbgBNPuo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Feb 2020 10:50:44 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 31A2A24670;
-        Fri, 14 Feb 2020 15:51:11 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C716E217F4;
+        Fri, 14 Feb 2020 15:50:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581695472;
-        bh=Amu1KTqCN4P6t1vXY0a3P/q88+UfLBw0ouCocJKKAAs=;
+        s=default; t=1581695443;
+        bh=5pz5VyVlGIkxJd83Kh8BCjSgf0Ktw6Y4y60XftuSGmE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rdO7hB93XzhelOkpmGp92M3jJAgvUvOC+7SH8MIp4l5tiiALf9Zp/J67ZRhV9+OEK
-         PYPb0E4vEl0S/J7G0EXckk3XtzTbsQGOMhpwiZ+6YDE/k6YFfRKtfHGxXQ3nPXFIps
-         KIQvU0RW7Uc71BTqnlHnuLp9RgVUEFI1+T+PJHOw=
+        b=JmJqmWEqrwe53VW848JPQxjvTEnVH1IH3fOcgXO9H5Wj6T1DH7YVodCGn1m5LMhE3
+         vPG62u4PTN8hpM4bkDHul9yRUae8tI9b46iqTbQl79IRiGyIToCTilGQ3DoJ7kqUXY
+         qand6xTSaaIPEaGkOcSBcx/NLcqXswmcNOBn5/Bo=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 106/542] ext4, jbd2: ensure panic when aborting with zero errno
-Date:   Fri, 14 Feb 2020 10:41:38 -0500
-Message-Id: <20200214154854.6746-106-sashal@kernel.org>
+Cc:     Eric Biggers <ebiggers@google.com>, Theodore Ts'o <tytso@mit.edu>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.5 084/542] ext4: fix deadlock allocating bio_post_read_ctx from mempool
+Date:   Fri, 14 Feb 2020 10:41:16 -0500
+Message-Id: <20200214154854.6746-84-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214154854.6746-1-sashal@kernel.org>
 References: <20200214154854.6746-1-sashal@kernel.org>
@@ -58,74 +57,79 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "zhangyi (F)" <yi.zhang@huawei.com>
+From: Eric Biggers <ebiggers@google.com>
 
-[ Upstream commit 51f57b01e4a3c7d7bdceffd84de35144e8c538e7 ]
+[ Upstream commit 68e45330e341dad2d3a0a3f8ef2ec46a2a0a3bbc ]
 
-JBD2_REC_ERR flag used to indicate the errno has been updated when jbd2
-aborted, and then __ext4_abort() and ext4_handle_error() can invoke
-panic if ERRORS_PANIC is specified. But if the journal has been aborted
-with zero errno, jbd2_journal_abort() didn't set this flag so we can
-no longer panic. Fix this by always record the proper errno in the
-journal superblock.
+Without any form of coordination, any case where multiple allocations
+from the same mempool are needed at a time to make forward progress can
+deadlock under memory pressure.
 
-Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20191204124614.45424-3-yi.zhang@huawei.com
+This is the case for struct bio_post_read_ctx, as one can be allocated
+to decrypt a Merkle tree page during fsverity_verify_bio(), which itself
+is running from a post-read callback for a data bio which has its own
+struct bio_post_read_ctx.
+
+Fix this by freeing the first bio_post_read_ctx before calling
+fsverity_verify_bio().  This works because verity (if enabled) is always
+the last post-read step.
+
+This deadlock can be reproduced by trying to read from an encrypted
+verity file after reducing NUM_PREALLOC_POST_READ_CTXS to 1 and patching
+mempool_alloc() to pretend that pool->alloc() always fails.
+
+Note that since NUM_PREALLOC_POST_READ_CTXS is actually 128, to actually
+hit this bug in practice would require reading from lots of encrypted
+verity files at the same time.  But it's theoretically possible, as N
+available objects isn't enough to guarantee forward progress when > N/2
+threads each need 2 objects at a time.
+
+Fixes: 22cfe4b48ccb ("ext4: add fs-verity read support")
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Link: https://lore.kernel.org/r/20191231181222.47684-1-ebiggers@kernel.org
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/jbd2/checkpoint.c |  2 +-
- fs/jbd2/journal.c    | 15 ++++-----------
- 2 files changed, 5 insertions(+), 12 deletions(-)
+ fs/ext4/readpage.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 8fff6677a5da4..96bf33986d030 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -164,7 +164,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 				       "journal space in %s\n", __func__,
- 				       journal->j_devname);
- 				WARN_ON(1);
--				jbd2_journal_abort(journal, 0);
-+				jbd2_journal_abort(journal, -EIO);
- 			}
- 			write_lock(&journal->j_state_lock);
- 		} else {
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 6847b18455068..8479e84159675 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2156,12 +2156,10 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index fef7755300c35..410c904cf59b9 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -57,6 +57,7 @@ enum bio_post_read_step {
+ 	STEP_INITIAL = 0,
+ 	STEP_DECRYPT,
+ 	STEP_VERITY,
++	STEP_MAX,
+ };
  
- 	__jbd2_journal_abort_hard(journal);
+ struct bio_post_read_ctx {
+@@ -106,10 +107,22 @@ static void verity_work(struct work_struct *work)
+ {
+ 	struct bio_post_read_ctx *ctx =
+ 		container_of(work, struct bio_post_read_ctx, work);
++	struct bio *bio = ctx->bio;
  
--	if (errno) {
--		jbd2_journal_update_sb_errno(journal);
--		write_lock(&journal->j_state_lock);
--		journal->j_flags |= JBD2_REC_ERR;
--		write_unlock(&journal->j_state_lock);
--	}
-+	jbd2_journal_update_sb_errno(journal);
-+	write_lock(&journal->j_state_lock);
-+	journal->j_flags |= JBD2_REC_ERR;
-+	write_unlock(&journal->j_state_lock);
+-	fsverity_verify_bio(ctx->bio);
++	/*
++	 * fsverity_verify_bio() may call readpages() again, and although verity
++	 * will be disabled for that, decryption may still be needed, causing
++	 * another bio_post_read_ctx to be allocated.  So to guarantee that
++	 * mempool_alloc() never deadlocks we must free the current ctx first.
++	 * This is safe because verity is the last post-read step.
++	 */
++	BUILD_BUG_ON(STEP_VERITY + 1 != STEP_MAX);
++	mempool_free(ctx, bio_post_read_ctx_pool);
++	bio->bi_private = NULL;
+ 
+-	bio_post_read_processing(ctx);
++	fsverity_verify_bio(bio);
++
++	__read_end_io(bio);
  }
  
- /**
-@@ -2203,11 +2201,6 @@ static void __journal_abort_soft (journal_t *journal, int errno)
-  * failure to disk.  ext3_error, for example, now uses this
-  * functionality.
-  *
-- * Errors which originate from within the journaling layer will NOT
-- * supply an errno; a null errno implies that absolutely no further
-- * writes are done to the journal (unless there are any already in
-- * progress).
-- *
-  */
- 
- void jbd2_journal_abort(journal_t *journal, int errno)
+ static void bio_post_read_processing(struct bio_post_read_ctx *ctx)
 -- 
 2.20.1
 
