@@ -2,282 +2,130 @@ Return-Path: <SRS0=E9RY=4C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDF87C2BA83
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:43:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E3E0C3B1A1
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:43:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A026F24684
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:43:06 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JRyTpzke"
+	by mail.kernel.org (Postfix) with ESMTP id 280D42187F
+	for <linux-ext4@archiver.kernel.org>; Fri, 14 Feb 2020 16:43:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1581698627;
+	bh=dsc5/lIAV0ue5hoxHQRCljp+C+yDfjgL8AGGJpqwUHU=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=ssi5CIuFAaQaOfrDLlAffEJLxB3Pjw/eWFmBHDtTuePTgFOtcg3H5H5PBZJgHcxcI
+	 Vu/JgpkxR2J29SNsyo1RcJ7pKnB6MKSA8GsT9mpyWrAJbVeu8ID+4AgP00AaWUJkGv
+	 6hxiGuXLxVIzRbfkwDfXeN3+AWJEYYiSPzlIBnHg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393943AbgBNQnC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:43:02 -0500
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:34025 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390639AbgBNQm5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Feb 2020 11:42:57 -0500
-Received: by mail-qk1-f196.google.com with SMTP id c20so9813167qkm.1;
-        Fri, 14 Feb 2020 08:42:56 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=YP3vB4FLSiYMsD12Fzk8Kpsrn3n01N+ovOb8Y+f5N7k=;
-        b=JRyTpzkeVJSFy4ZhayN6IxOVMP6ORQNxLhPqdik/ir2YP2NK8PFd/HfkDgiASvLkCR
-         BmIkHpioToy6VkO2gqyfOg7IB/2syJXHlpMvLKHz3KOzDLJ7ciajBUgswF44TQjLPOme
-         +Lp9lQ48zAotu7ebx/NVnS2d9KaSqvt7oQkSAk6OXrSIA1dSz08eRjLg0Q3S918pZX7H
-         9sQCjR9nY93bh2mDm6Zoj6F2FrD/zKz4VDuRMsUTJb1jC4BtiTDOA/jf2i/bChguS5uB
-         SArJf7SW1zwscmpb2fN9ewUNi5yolmGJUi3QE8e8NpWJTbX3ufGuJTA0OpAPOAuqR8rV
-         c2fg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=YP3vB4FLSiYMsD12Fzk8Kpsrn3n01N+ovOb8Y+f5N7k=;
-        b=bWgBFymLaYtabhsWLmt+ndtrrAcwrZOxN8WIjilSgHAW2JuX+wr1KDYVt1n/4DR1Ih
-         T6FsSsXKDk6XaadYH5ejnsoYf/sPvV+AO2Kxq0KGESQv3zrip+GAZiOMwW8FI2AmqPw+
-         TnzRK6rHLs+dqXBbaTupVpMlzN0ydt7+ULiJ1zl9Ec+Qxq6JUI2LLd1RNF20KYYKgFL9
-         yHO6n1MBZaWOUGy/pWjOeZz6zsThxHc8MDbxHD7aODfc2d78YVRJUOGz1LwK8E3XnVBV
-         a+l0/HXFI5E5D31qtooHbdVeHWxJnk54k+ukllUyHefZNjkGDr+Q2iGGJT+U4QTUlz8F
-         pXIg==
-X-Gm-Message-State: APjAAAVNdXh9CnmNKPVn4YLBgZQESEJaj+pHCbcZSL75wrX/NRtzXwTr
-        +xvJ1Ex1qN+Bhdr02sr0cJYK6Xo0
-X-Google-Smtp-Source: APXvYqzON6xyXBDb16rz+jonD/UZ+Y3iAYAaPLL4yhRhF5HseqoPh4wwhw+QzaHnaBpHXq/hxSprtg==
-X-Received: by 2002:a37:887:: with SMTP id 129mr3534994qki.250.1581698575727;
-        Fri, 14 Feb 2020 08:42:55 -0800 (PST)
-Received: from localhost.localdomain (c-73-60-226-25.hsd1.nh.comcast.net. [73.60.226.25])
-        by smtp.gmail.com with ESMTPSA id h8sm3453936qtm.51.2020.02.14.08.42.54
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 14 Feb 2020 08:42:54 -0800 (PST)
-From:   Eric Whitney <enwlinux@gmail.com>
-To:     fstests@vger.kernel.org
-Cc:     tytso@mit.edu, linux-ext4@vger.kernel.org,
-        Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4/002: remove EXT4_EOFBLOCKS_FL test
-Date:   Fri, 14 Feb 2020 11:42:49 -0500
-Message-Id: <20200214164249.21868-1-enwlinux@gmail.com>
-X-Mailer: git-send-email 2.11.0
+        id S2393153AbgBNQnq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:43:46 -0500
+Received: from mail.kernel.org ([198.145.29.99]:56960 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2393141AbgBNQV5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:21:57 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id EAB2B246CE;
+        Fri, 14 Feb 2020 16:21:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1581697316;
+        bh=dsc5/lIAV0ue5hoxHQRCljp+C+yDfjgL8AGGJpqwUHU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=XQvx5UZ8+oCkHnwabE0NcAm6b4A1SQWJYjt2FB6UmZOk7bCvjEzHzrRe+gBayQ65F
+         SypLS60uMDkWTvmv5T4JeAQVhdioFhoCNEEl+kdicUd0zAH++CfNGvG9MYk7RoglSr
+         lkYrm3T7T1btvG/jvY/NMsMFeFAC80WsRC2ehp9E=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Jan Kara <jack@suse.cz>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.9 027/141] ext4, jbd2: ensure panic when aborting with zero errno
+Date:   Fri, 14 Feb 2020 11:19:27 -0500
+Message-Id: <20200214162122.19794-27-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200214162122.19794-1-sashal@kernel.org>
+References: <20200214162122.19794-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This test exercises obsolete ext4-specific functionality that will be
-removed in the kernel's 5.7 release.  Once that happens, ext4/002 will
-always fail, so remove the test to avoid the noise.
+From: "zhangyi (F)" <yi.zhang@huawei.com>
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+[ Upstream commit 51f57b01e4a3c7d7bdceffd84de35144e8c538e7 ]
+
+JBD2_REC_ERR flag used to indicate the errno has been updated when jbd2
+aborted, and then __ext4_abort() and ext4_handle_error() can invoke
+panic if ERRORS_PANIC is specified. But if the journal has been aborted
+with zero errno, jbd2_journal_abort() didn't set this flag so we can
+no longer panic. Fix this by always record the proper errno in the
+journal superblock.
+
+Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20191204124614.45424-3-yi.zhang@huawei.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- tests/ext4/002     | 168 -----------------------------------------------------
- tests/ext4/002.out |   7 ---
- tests/ext4/group   |   1 -
- 3 files changed, 176 deletions(-)
- delete mode 100755 tests/ext4/002
- delete mode 100644 tests/ext4/002.out
+ fs/jbd2/checkpoint.c |  2 +-
+ fs/jbd2/journal.c    | 15 ++++-----------
+ 2 files changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/tests/ext4/002 b/tests/ext4/002
-deleted file mode 100755
-index 986834bb..00000000
---- a/tests/ext4/002
-+++ /dev/null
-@@ -1,168 +0,0 @@
--#! /bin/bash
--# SPDX-License-Identifier: GPL-2.0
--# Copyright (c) 2010 Google, Inc.  All Rights Reserved.
--#
--# FS QA Test No. ext4/002
--#
--# Test to ensure that the EOFBLOCK_FL gets set/unset correctly.
--#
--# As found by Theodore Ts'o:
--# If a 128K file is falloc'ed using the KEEP_SIZE flag, and then
--# write exactly 128K, the EOFBLOCK_FL doesn't get cleared correctly.
--# This is bad since it forces e2fsck to complain about that inode.
--# If you have a large number of inodes that are written with fallocate
--# using KEEP_SIZE, and then fill them up to their expected size,
--# e2fsck will potentially complain about a _huge_ number of inodes.
--# This would also cause a huge increase in the time taken by e2fsck
--# to complete its check.
--#
--# Test scenarios covered:
--# 1. Fallocating X bytes and writing Y (Y<X) (buffered and direct io)
--# 2. Fallocating X bytes and writing Y (Y=X) (buffered and direct io)
--# 3. Fallocating X bytes and writing Y (Y>X) (buffered and direct io)
--#
--# These test cases exercise the normal and edge case conditions using
--# falloc (and KEEP_SIZE).
--#
--# Ref: http://thread.gmane.org/gmane.comp.file-systems.ext4/20682
--#
--seq=`basename $0`
--seqres=$RESULT_DIR/$seq
--echo "QA output created by $seq"
--
--here=`pwd`
--tmp=/tmp/$$
--status=1        # failure is the default!
--trap "_cleanup; exit \$status" 0 1 2 3 15
--
--# Test specific macros.
--BIT_NOT_SET=0   # inode flag - 0x400000 bit is not set.
--BIT_SET=1       # inode flag - 0x400000 bit is set.
--
--# Generic test cleanup function.
--_cleanup()
--{
--  cd /
--  rm -f $tmp.*
--}
--
--# Ext4 uses the EOFBLOCKS_FL bit when fallocating blocks with KEEP_SIZE
--# enabled. The only time this bit should be set is when extending the allocated
--# blocks further than what the i_size represents. In the situations wherein the
--# i_size covers all allocated blocks, this bit should be cleared.
--
--# Checks the state of the sample file in the filesystem and returns whether
--# the inode flag 0x400000 is set or not.
--_check_ext4_eof_flag()
--{
--  # Check whether EOFBLOCK_FL is set.
--  # For ext4 filesystems: use debugfs to check if EOFBLOCKS_FL is set.
--  # Other filesystems: do nothing. The default fsck at the end of the test
--  # should catch any potential errors.
--  if [ "${FSTYP}" == "ext4" ]; then
--    bit_set=1
--
--    # Unmount the ${SCRATCH_DEV}
--    _scratch_unmount
--
--    # Run debugfs to gather file_parameters - specifically iflags.
--    file_params=`debugfs ${SCRATCH_DEV} -R "stat ${1}" 2>&1 | grep -e Flags:`
--    iflags=${file_params#*Flags: }
--
--    # Ensure that the iflags value was parsed correctly.
--    if [ -z ${iflags} ]; then
--      echo "iFlags value was not parsed successfully." >> $seqres.full
--      status=1
--      exit ${status}
--    fi
--
--    # Check if EOFBLOCKS_FL is set.
--    if ((${iflags} & 0x400000)); then
--      echo "EOFBLOCK_FL bit is set." >> $seqres.full
--      bit_set=1
--    else
--      echo "EOFBLOCK_FL bit is not set." >> $seqres.full
--      bit_set=0
--    fi
--
--    # Check current bit state to expected value.
--    if [ ${bit_set} -ne ${2} ]; then
--      echo "Error: Current bit state incorrect." >> $seqres.full
--      status=1
--      exit ${status}
--    fi
--
--    # Mount the ${SCRATCH_DEV}
--    _scratch_mount
--  fi
--}
--
--# Get standard environment, filters and checks.
--. ./common/rc
--. ./common/filter
--
--# Prerequisites for the test run.
--_supported_fs ext4
--_supported_os Linux
--_require_xfs_io_command "falloc"
--_require_scratch
--
--# Real QA test starts here.
--rm -f $seqres.full
--
--_scratch_mkfs >> $seqres.full 2>&1
--_scratch_mount
--
--BLOCK_SIZE=$(_get_block_size $SCRATCH_MNT)
--
--# Begin test cases.
--echo "Test 1: Fallocate 10 blocks and write 1 block (buffered io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f				\
--    -c "falloc -k 0 $((10 * $BLOCK_SIZE))"	\
--    -c "pwrite 0 $BLOCK_SIZE"			\
--    ${SCRATCH_MNT}/test_1 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_1 ${BIT_SET}
--
--echo "Test 2: Fallocate 10 blocks and write 1 block (direct io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f -d				\
--    -c "falloc -k 0 $((10 * $BLOCK_SIZE))"	\
--    -c "pwrite 0 $BLOCK_SIZE"			\
--    ${SCRATCH_MNT}/test_2 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_2 ${BIT_SET}
--
--echo "Test 3: Fallocate 10 blocks and write 10 blocks (buffered io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f				\
--    -c "falloc -k 0 $((10 * $BLOCK_SIZE))"	\
--    -c "pwrite 0 $((10 * $BLOCK_SIZE))"		\
--    ${SCRATCH_MNT}/test_3 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_3 ${BIT_NOT_SET}
--
--echo "Test 4: Fallocate 10 blocks and write 10 blocks (direct io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f -d				\
--    -c "falloc -k 0 $((10 * $BLOCK_SIZE))"	\
--    -c "pwrite 0 $((10 * $BLOCK_SIZE))"		\
--    ${SCRATCH_MNT}/test_4 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_4 ${BIT_NOT_SET}
--
--echo "Test 5: Fallocate 32 blocks, seek 64 blocks and write 1 block (buffered io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f					\
--    -c "falloc -k 0 $((32 * $BLOCK_SIZE))"		\
--    -c "pwrite $((64 * $BLOCK_SIZE)) $BLOCK_SIZE"	\
--    ${SCRATCH_MNT}/test_5 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_5 ${BIT_NOT_SET}
--
--echo "Test 6: Fallocate 32 blocks, seek to 64 blocks and write 1 block (direct io)." \
--    >> $seqres.full
--${XFS_IO_PROG} -f -d					\
--    -c "falloc -k 0 $((32 * $BLOCK_SIZE))"		\
--    -c "pwrite $((64 * $BLOCK_SIZE)) $BLOCK_SIZE"	\
--    ${SCRATCH_MNT}/test_6 | _filter_xfs_io_blocks_modified
--_check_ext4_eof_flag test_6 ${BIT_NOT_SET}
--
--status=0
--exit ${status}
-diff --git a/tests/ext4/002.out b/tests/ext4/002.out
-deleted file mode 100644
-index 1605a115..00000000
---- a/tests/ext4/002.out
-+++ /dev/null
-@@ -1,7 +0,0 @@
--QA output created by 002
--Blocks modified: [0 - 0]
--Blocks modified: [0 - 0]
--Blocks modified: [0 - 9]
--Blocks modified: [0 - 9]
--Blocks modified: [64 - 64]
--Blocks modified: [64 - 64]
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 9dfc0d35..62483c3f 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -4,7 +4,6 @@
- # - comment line before each group is "new" description
- #
- 001 auto prealloc quick zero
--002 auto quick prealloc
- 003 auto quick
- 004 auto dump
- 005 auto quick metadata ioctl rw
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 4d5a5a4cc017c..addb0784dd1c4 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -168,7 +168,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 				       "journal space in %s\n", __func__,
+ 				       journal->j_devname);
+ 				WARN_ON(1);
+-				jbd2_journal_abort(journal, 0);
++				jbd2_journal_abort(journal, -EIO);
+ 			}
+ 			write_lock(&journal->j_state_lock);
+ 		} else {
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 40c754854b29e..efc8cfd060730 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2100,12 +2100,10 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+ 
+ 	__jbd2_journal_abort_hard(journal);
+ 
+-	if (errno) {
+-		jbd2_journal_update_sb_errno(journal);
+-		write_lock(&journal->j_state_lock);
+-		journal->j_flags |= JBD2_REC_ERR;
+-		write_unlock(&journal->j_state_lock);
+-	}
++	jbd2_journal_update_sb_errno(journal);
++	write_lock(&journal->j_state_lock);
++	journal->j_flags |= JBD2_REC_ERR;
++	write_unlock(&journal->j_state_lock);
+ }
+ 
+ /**
+@@ -2147,11 +2145,6 @@ static void __journal_abort_soft (journal_t *journal, int errno)
+  * failure to disk.  ext3_error, for example, now uses this
+  * functionality.
+  *
+- * Errors which originate from within the journaling layer will NOT
+- * supply an errno; a null errno implies that absolutely no further
+- * writes are done to the journal (unless there are any already in
+- * progress).
+- *
+  */
+ 
+ void jbd2_journal_abort(journal_t *journal, int errno)
 -- 
-2.11.0
+2.20.1
 
