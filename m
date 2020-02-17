@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 151D3C34022
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Feb 2020 18:49:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7C93C34022
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Feb 2020 18:49:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DB2E922525
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Feb 2020 18:49:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8610A222D9
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Feb 2020 18:49:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="by4S+Hud"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="GGafPZiC"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729980AbgBQSta (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 17 Feb 2020 13:49:30 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:48022 "EHLO
+        id S1730002AbgBQSti (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 17 Feb 2020 13:49:38 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:48020 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729541AbgBQSqR (ORCPT
+        with ESMTP id S1729555AbgBQSqR (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Feb 2020 13:46:17 -0500
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=cAMSPd0G1UKWpX2DYFJf6s7OiGA49hD2HbMDxjJorXI=; b=by4S+HudkubDhJMCqtucpyVJYH
-        +51vmgnEamWn4YLYYEZStDwKyEo7sFXwK4JJdAikHQvi4wLGlUSzXVwrHvqZl/MySIOs8F5a2WJwg
-        XIC4jIfdvSmaswvzMJCrYgtlaHeyHkoWBbkfLI+cq0LKAfekELxKJuW2r5kH6lfA10y22KNnM6zfi
-        ABc5R3/1PqE7XKHVvbCJfr+uDNcwVzXB+QbTzZRmD5Pdi0pTvxwkJ4tKsgOwVwk2HcCTpoV35pv9s
-        djzxIqYl6imCZ8V2jkfCkF3tDtbbHHT1Z6U79+n9yzetFHJprdKqv8EXklKtWyOuHiXMo2ovVvM2n
-        1x9ivLVQ==;
+        bh=WrDwJ8nFqwwFHCEUmvBtLvKI87rds+XByqpS5q3jL/I=; b=GGafPZiC2dFK8pvgk9y9yCNXsD
+        t0X14/DAGwm8tumWtSBNeHlGs6pU6ofKY5h5T2Gumm8ttaGKXoy4XyguucHMdoPNkkbycBh7NXd+Q
+        tqEGpO/clXINLbrqJrecx7BvcHhl1z5OI2SfDpbdKSLkhB+6NyJygLwzCV2MflDQLRjN9Cug6Ki/a
+        w508YQJA+HlKekwrg2z2Xuj4HYd6w5RYDGoHeesibMKIZ1lka97LNuQSSPOtxcRcKgwFS9TVKYEja
+        pJ50VSMbDhI8IbTMc9WqgWS3nLFTd8kdS6nl6gPlOEP/mMDkWBvrKPNCJARs3eGxQJ1ypqfnEkcwi
+        F37yA4Tg==;
 Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1j3lPM-0005EA-Is; Mon, 17 Feb 2020 18:46:16 +0000
+        id 1j3lPM-0005DS-Ee; Mon, 17 Feb 2020 18:46:16 +0000
 From:   Matthew Wilcox <willy@infradead.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -42,9 +42,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
         linux-xfs@vger.kernel.org, Cong Wang <xiyou.wangcong@gmail.com>,
         Michal Hocko <mhocko@suse.com>
-Subject: [PATCH v6 19/19] mm: Use memalloc_nofs_save in readahead path
-Date:   Mon, 17 Feb 2020 10:46:13 -0800
-Message-Id: <20200217184613.19668-33-willy@infradead.org>
+Subject: [PATCH v6 16/16] mm: Use memalloc_nofs_save in readahead path
+Date:   Mon, 17 Feb 2020 10:46:10 -0800
+Message-Id: <20200217184613.19668-30-willy@infradead.org>
 X-Mailer: git-send-email 2.21.1
 In-Reply-To: <20200217184613.19668-1-willy@infradead.org>
 References: <20200217184613.19668-1-willy@infradead.org>
@@ -70,7 +70,7 @@ Suggested-by: Michal Hocko <mhocko@suse.com>
  1 file changed, 14 insertions(+)
 
 diff --git a/mm/readahead.c b/mm/readahead.c
-index 94d499cfb657..8f9c0dba24e7 100644
+index 566693f4e539..ae8abab939a3 100644
 --- a/mm/readahead.c
 +++ b/mm/readahead.c
 @@ -22,6 +22,7 @@
@@ -81,7 +81,7 @@ index 94d499cfb657..8f9c0dba24e7 100644
  
  #include "internal.h"
  
-@@ -174,6 +175,18 @@ void page_cache_readahead_limit(struct address_space *mapping,
+@@ -157,6 +158,18 @@ void page_cache_readahead_limit(struct address_space *mapping,
  		._nr_pages = 0,
  	};
  
@@ -100,7 +100,7 @@ index 94d499cfb657..8f9c0dba24e7 100644
  	/*
  	 * Preallocate as many pages as we will need.
  	 */
-@@ -227,6 +240,7 @@ void page_cache_readahead_limit(struct address_space *mapping,
+@@ -210,6 +223,7 @@ void page_cache_readahead_limit(struct address_space *mapping,
  	if (readahead_count(&rac))
  		read_pages(&rac, &page_pool);
  	BUG_ON(!list_empty(&page_pool));
