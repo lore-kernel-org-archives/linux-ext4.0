@@ -2,199 +2,137 @@ Return-Path: <SRS0=KVWg=4H=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 792D4C3402F
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 03:09:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B828EC3402F
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 03:10:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3D48D2176D
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 03:09:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 923F224656
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 03:10:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="D0yStTld"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="p4EHHQoz"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728211AbgBSDJ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 18 Feb 2020 22:09:26 -0500
-Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:58779 "EHLO
-        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728181AbgBSDJZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Feb 2020 22:09:25 -0500
+        id S1728219AbgBSDK3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 18 Feb 2020 22:10:29 -0500
+Received: from smtp-fw-9101.amazon.com ([207.171.184.25]:23187 "EHLO
+        smtp-fw-9101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728203AbgBSDK2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Feb 2020 22:10:28 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1582081764; x=1613617764;
-  h=from:to:cc:subject:date:message-id:references:
-   in-reply-to:content-id:content-transfer-encoding:
-   mime-version;
-  bh=X5hXuHIMbAQmJh21unxcm83E2ZrBM/oHeTF1UpeWjks=;
-  b=D0yStTldgYmVptqTHo5fPGbZDbXwBb0adMbDAsD7KlgIXQmlwpTXv2TU
-   20iTfS+TqicXaPq/5hR7ZvbPZYRI8nYEdLJhjB4Sad29i09LX/ZhEfEiH
-   y9FrTkZHiggoR8Z2TpYtztGfrhMXZLzRuCK6a8DSp+Xb2T8UYaIHHINYK
-   w=;
-IronPort-SDR: jL3IZ1CtYuC+WKEqwAkj9vPVP0F+RZI5iOBE6ajuaUJHiCj4O9cQPIxmViyQYDZ6ZIXUc9Tyln
- vsh/IzQJbDLQ==
-X-IronPort-AV: E=Sophos;i="5.70,459,1574121600"; 
-   d="scan'208";a="18432272"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1e-62350142.us-east-1.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 19 Feb 2020 03:09:09 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1e-62350142.us-east-1.amazon.com (Postfix) with ESMTPS id 4027BA2D24;
-        Wed, 19 Feb 2020 03:09:07 +0000 (UTC)
-Received: from EX13D30UWC003.ant.amazon.com (10.43.162.122) by
- EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 19 Feb 2020 03:09:07 +0000
+  t=1582081828; x=1613617828;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version;
+  bh=DhMXLWHV7d0ROSCfd/lCm0V7ffWZv48HScuqDT9+n30=;
+  b=p4EHHQoztmHOVq17tJdK3NUqmzuzr56Q1P0QSXTrWRBbaCjGghyoa5vp
+   b8dPuzZw6PKmyjpSvkEe03FYpqERdMmdAURGx8jtmHa8RrfyGs2FePR0e
+   iWl8Cl9Kb1mHrNJtY3FGKzrvUVqb3unkO1kE8cXtTNd43Rt7BBIKfgzoJ
+   E=;
+IronPort-SDR: 5+qfslswfqxx2QKJijJrc0FF/YD8iucDC3YBnqtR0poUqW5sBF5qtHaHn8MC3jPlLsFgmBMDs2
+ Y/3K5vltLOzQ==
+X-IronPort-AV: E=Sophos;i="5.70,458,1574121600"; 
+   d="scan'208";a="17534441"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-9101.sea19.amazon.com with ESMTP; 19 Feb 2020 03:10:25 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com (Postfix) with ESMTPS id BA401A2B89;
+        Wed, 19 Feb 2020 03:10:23 +0000 (UTC)
 Received: from EX13D30UWC001.ant.amazon.com (10.43.162.128) by
- EX13D30UWC003.ant.amazon.com (10.43.162.122) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 19 Feb 2020 03:09:07 +0000
-Received: from EX13D30UWC001.ant.amazon.com ([10.43.162.128]) by
- EX13D30UWC001.ant.amazon.com ([10.43.162.128]) with mapi id 15.00.1367.000;
- Wed, 19 Feb 2020 03:09:07 +0000
-From:   "Jitindar SIngh, Suraj" <surajjs@amazon.com>
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>
-CC:     "paulmck@kernel.org" <paulmck@kernel.org>
-Subject: Re: [PATCH RFC] ext4: fix potential race between online resizing and
- write operations
-Thread-Topic: [PATCH RFC] ext4: fix potential race between online resizing and
- write operations
-Thread-Index: AQHV5FkiWoN8OVT14Ee5FP+nhugPe6gh2zEA
-Date:   Wed, 19 Feb 2020 03:09:07 +0000
-Message-ID: <6ad43fbad38c8f986f35995ed61f9077abd3b0cc.camel@amazon.com>
-References: <20200215233817.GA670792@mit.edu>
-In-Reply-To: <20200215233817.GA670792@mit.edu>
-Accept-Language: en-AU, en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-messagesentrepresentingtype: 1
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.43.162.83]
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <FF114DF100FAC4449BD673208D76CA68@amazon.com>
-Content-Transfer-Encoding: base64
+ EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 19 Feb 2020 03:10:22 +0000
+Received: from u3c3f5cfe23135f.ant.amazon.com (10.43.161.235) by
+ EX13D30UWC001.ant.amazon.com (10.43.162.128) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 19 Feb 2020 03:10:22 +0000
+From:   Suraj Jitindar Singh <surajjs@amazon.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <sblbir@amazon.com>, <sjitindarsingh@gmail.com>,
+        "Suraj Jitindar Singh" <surajjs@amazon.com>,
+        <stable@vger.kernel.org>
+Subject: [PATCH 2/3] ext4: fix potential race between s_group_info online resizing and access
+Date:   Tue, 18 Feb 2020 19:08:50 -0800
+Message-ID: <20200219030851.2678-3-surajjs@amazon.com>
+X-Mailer: git-send-email 2.17.1
+In-Reply-To: <20200219030851.2678-1-surajjs@amazon.com>
+References: <20200219030851.2678-1-surajjs@amazon.com>
 MIME-Version: 1.0
+Content-Type: text/plain
+X-Originating-IP: [10.43.161.235]
+X-ClientProxiedBy: EX13D33UWB004.ant.amazon.com (10.43.161.225) To
+ EX13D30UWC001.ant.amazon.com (10.43.162.128)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-T24gU2F0LCAyMDIwLTAyLTE1IGF0IDE4OjM4IC0wNTAwLCBUaGVvZG9yZSBZLiBUcydvIHdyb3Rl
-Og0KPiBUaGlzIGlzIGEgcmV2aXNpb24gb2YgYSBwcm9wb3NlZCBwYXRjaFsxXSB0byBmaXggYSBi
-dWdbMl0gdG8gZml4IGENCj4gcmVwb3J0ZWQgY3Jhc2ggY2F1c2VkIGJ5IHRoZSBmYWN0IHRoYXQg
-d2UgYXJlIGdyb3dpbmcgYW4gYXJyYXksIGl0J3MNCj4gcG9zc2libGUgZm9yIGFub3RoZXIgcHJv
-Y2VzcyB0byB0cnkgdG8gZGVyZWZlcmVuY2UgdGhhdCBhcnJheSwgZ2V0DQo+IHRoZQ0KPiBvbGQg
-Y29weSBvZiB0aGUgYXJyYXksIGFuZCB0aGVuIGJlZm9yZSBpdCBmZXRjaCBhbiBlbGVtZW50IG9m
-IHRoZQ0KPiBhcnJheSBhbmQgdXNlIGl0LCBpdCBjb3VsZCBnZXQgcmV1c2VkIGZvciBzb21ldGhp
-bmcgZWxzZS4NCj4gDQo+IFsxXSBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvYXR0YWNobWVu
-dC5jZ2k/aWQ9Mjg3MTg5DQo+IFsyXSBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19i
-dWcuY2dpP2lkPTIwNjQ0Mw0KPiANCj4gU28gdGhpcyBpcyBhIHByZXR0eSBjbGFzc2ljYWwgY2Fz
-ZSBvZiBSQ1UsIGFuZCBpbiB0aGUgb3JpZ2luYWwNCj4gdmVyc2lvbg0KPiBvZiB0aGUgcGF0Y2hb
-MV0sIGl0IHVzZWQgc3luY2hyb25pemVfcmN1X2V4cGVkaXRlZCgpIGZvbGxvd2VkIGJ5IGENCj4g
-Y2FsbCBrdmZyZWUoKS4gIElmIHlvdSByZWFkIHRoZSBSQ1UgZG9jdW1lbnRhdGlvbiBpdCBzdGF0
-ZXMgdGhhdCB5b3UNCj4gcmVhbGx5IHNob3VsZG4ndCBjYWxsIHN5bmNocm9uaXplX3JjdSgpIGFu
-ZCBrZnJlZSgpIGluIGEgbG9vcCwgYW5kDQo+IHdoaWxlIHN5bmNocm9uaXplX3JjdV9leHBlZGl0
-ZWQoKSBkb2VzIHNwZWVkIHRoaW5ncyB1cCwgaXQgZG9lcyBzbyBieQ0KPiBpbXBhY3RpbmcgdGhl
-IHBlcmZvcm1hbmNlIG9mIGFsbCB0aGUgb3RoZXIgQ1BVJ3MuDQo+IA0KPiBBbmQgdW5mb3J0dW5h
-dGVseSBhZGRfbmV3X2dkYigpIGdldCdzIGNhbGxlZCBpbiBhIGxvb3AuICBJZiB5b3UNCj4gZXhw
-YW5kDQo+IGEgZmlsZSBzeXN0ZW0gYnkgc2F5LCAxVEIsIGFkZF9uZXdfZ2RiKCkgYW5kL29yIGFk
-ZF9uZXdfZ2RiX21ldGFfZ2IoKQ0KPiB3aWxsIGdldCBjYWxsZWQgOCwxOTIgdGltZXMuDQo+IA0K
-PiBUbyBmaXggdGhpcywgSSBhZGRlZCBleHQ0X2t2ZnJlZV9hcnJheV9yY3UoKSB3aGljaCBhbGxv
-Y2F0ZXMgYW4NCj4gb2JqZWN0DQo+IGNvbnRhaW5pbmcgYSB2b2lkICpwdHIgYW5kIHRoZSByY3Vf
-aGVhZCwgYW5kIHRoZW4gdXNlcyBjYWxsX3JjdSgpIHRvDQo+IGZyZWUgdGhlIHBvaW50ZXIgYW5k
-IHRoZSBzdHViIG9iamVjdC4gIEknbSBjYydpbmcgUGF1bCBiZWNhdXNlIEknbSBhDQo+IGJpdCBz
-dXJwcmlzZWQgbm8gb25lIGVsc2UgaGFzIG5lZWRlZCBzb21ldGhpbmcgbGlrZSB0aGlzIGJlZm9y
-ZTsgc28NCj4gSSdtIHdvbmRlcmluZyBpZiBJJ20gbWlzc2luZyBzb21ldGhpbmcuICBJZiBub3Qs
-IHdvdWxkIGl0IG1ha2Ugc2Vuc2UNCj4gdG8gbWFrZSBzb21ldGhpbmcgbGlrZSBrdmZyZWVfYXJy
-YXlfcmN1IGFzIGEgbW9yZSBnZW5lcmFsIGZhY2lsaXR5Pw0KPiANCj4gICAgCQkgICAgICAgCQkJ
-ICAgLSBUZWQNCj4gDQo+IEZyb20gNWFiN2U0ZDM4MzE4YzEyNTI0NmE0YWE4OTlkZDYxNGEzN2M4
-MDNlZiBNb24gU2VwIDE3IDAwOjAwOjAwDQo+IDIwMDENCj4gRnJvbTogVGhlb2RvcmUgVHMnbyA8
-dHl0c29AbWl0LmVkdT4NCj4gRGF0ZTogU2F0LCAxNSBGZWIgMjAyMCAxNjo0MDozNyAtMDUwMA0K
-PiBTdWJqZWN0OiBbUEFUQ0hdIGV4dDQ6IGZpeCBwb3RlbnRpYWwgcmFjZSBiZXR3ZWVuIG9ubGlu
-ZSByZXNpemluZyBhbmQNCj4gd3JpdGUgb3BlcmF0aW9ucw0KPiANCj4gRHVyaW5nIGFuIG9ubGlu
-ZSByZXNpemUgYW4gYXJyYXkgb2YgcG9pbnRlcnMgdG8gYnVmZmVyIGhlYWRzIGdldHMNCj4gcmVw
-bGFjZWQgc28gaXQgY2FuIGdldCBlbmxhcmdlZC4gIElmIHRoZXJlIGlzIGEgcmFjaW5nIGJsb2Nr
-DQo+IGFsbG9jYXRpb24gb3IgZGVhbGxvY2F0aW9uIHdoaWNoIHVzZXMgdGhlIG9sZCBhcnJheSwg
-YW5kIHRoZSBvbGQNCj4gYXJyYXkNCj4gaGFzIGdvdHRlbiByZXVzZWQgdGhpcyBjYW4gbGVhZCB0
-byBhIEdQRiBvciBzb21lIG90aGVyIHJhbmRvbSBrZXJuZWwNCj4gbWVtb3J5IGdldHRpbmcgbW9k
-aWZpZWQuDQo+IA0KPiBMaW5rOiBodHRwczovL2J1Z3ppbGxhLmtlcm5lbC5vcmcvc2hvd19idWcu
-Y2dpP2lkPTIwNjQ0Mw0KPiBSZXBvcnRlZC1ieTogU3VyYWogSml0aW5kYXIgU2luZ2ggPHN1cmFq
-anNAYW1hem9uLmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogVGhlb2RvcmUgVHMnbyA8dHl0c29AbWl0
-LmVkdT4NCg0KT25lIGNvbW1lbnQgYmVsb3cgd2hlcmUgSSB0aGluayB5b3UgZnJlZSB0aGUgd3Jv
-bmcgb2JqZWN0Lg0KDQpXaXRoIHRoYXQgZml4ZWQgdXA6DQpUZXN0ZWQtYnk6IFN1cmFqIEppdGlu
-ZGFyIFNpbmdoIDxzdXJhampzQGFtYXpvbi5jb20+DQoNCj4gQ2M6IHN0YWJsZUBrZXJuZWwub3Jn
-DQo+IC0tLQ0KPiAgZnMvZXh0NC9yZXNpemUuYyB8IDM1ICsrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKystLS0tDQo+ICBmcy9leHQ0L2JhbGxvYy5jIHwgMTUgKysrKysrKysrKysrLS0tDQo+
-ICBmcy9leHQ0L2V4dDQuaCAgIHwgIDEgKw0KPiAgMyBmaWxlcyBjaGFuZ2VkLCA0NCBpbnNlcnRp
-b25zKCspLCA3IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL2V4dDQvcmVzaXpl
-LmMgYi9mcy9leHQ0L3Jlc2l6ZS5jDQo+IGluZGV4IDg2YTI1MDBlZDI5Mi4uOThkM2I0ZWMzNDIy
-IDEwMDY0NA0KPiAtLS0gYS9mcy9leHQ0L3Jlc2l6ZS5jDQo+ICsrKyBiL2ZzL2V4dDQvcmVzaXpl
-LmMNCj4gQEAgLTE3LDYgKzE3LDMzIEBADQo+ICANCj4gICNpbmNsdWRlICJleHQ0X2piZDIuaCIN
-Cj4gIA0KPiArc3RydWN0IGV4dDRfcmN1X3B0ciB7DQo+ICsJc3RydWN0IHJjdV9oZWFkIHJjdTsN
-Cj4gKwl2b2lkICpwdHI7DQo+ICt9Ow0KPiArDQo+ICtzdGF0aWMgdm9pZCBleHQ0X3JjdV9wdHJf
-Y2FsbGJhY2soc3RydWN0IHJjdV9oZWFkICpoZWFkKQ0KPiArew0KPiArCXN0cnVjdCBleHQ0X3Jj
-dV9wdHIgKnB0cjsNCj4gKw0KPiArCXB0ciA9IGNvbnRhaW5lcl9vZihoZWFkLCBzdHJ1Y3QgZXh0
-NF9yY3VfcHRyLCByY3UpOw0KPiArCWt2ZnJlZShwdHItPnB0cik7DQo+ICsJa2ZyZWUocHRyKTsN
-Cj4gK30NCj4gKw0KPiArdm9pZCBleHQ0X2t2ZnJlZV9hcnJheV9yY3Uodm9pZCAqdG9fZnJlZSkN
-Cj4gK3sNCj4gKwlzdHJ1Y3QgZXh0NF9yY3VfcHRyICpwdHIgPSBremFsbG9jKHNpemVvZigqcHRy
-KSwgR0ZQX0tFUk5FTCk7DQo+ICsNCj4gKwlpZiAocHRyKSB7DQo+ICsJCXB0ci0+cHRyID0gdG9f
-ZnJlZTsNCj4gKwkJY2FsbF9yY3UoJnB0ci0+cmN1LCBleHQ0X3JjdV9wdHJfY2FsbGJhY2spOw0K
-PiArCQlyZXR1cm47DQo+ICsJfQ0KPiArCXN5bmNocm9uaXplX3JjdSgpOw0KDQpUaGUgYmVsb3cg
-bmVlZHMgdG8gYmU6DQprdmZyZWUodG9fZnJlZSk7DQoNCj4gKwlrdmZyZWUocHRyKTsNCj4gK30N
-Cj4gKw0KPiAgaW50IGV4dDRfcmVzaXplX2JlZ2luKHN0cnVjdCBzdXBlcl9ibG9jayAqc2IpDQo+
-ICB7DQo+ICAJc3RydWN0IGV4dDRfc2JfaW5mbyAqc2JpID0gRVhUNF9TQihzYik7DQo+IEBAIC04
-NjQsOSArODkxLDkgQEAgc3RhdGljIGludCBhZGRfbmV3X2dkYihoYW5kbGVfdCAqaGFuZGxlLCBz
-dHJ1Y3QNCj4gaW5vZGUgKmlub2RlLA0KPiAgCW1lbWNweShuX2dyb3VwX2Rlc2MsIG9fZ3JvdXBf
-ZGVzYywNCj4gIAkgICAgICAgRVhUNF9TQihzYiktPnNfZ2RiX2NvdW50ICogc2l6ZW9mKHN0cnVj
-dCBidWZmZXJfaGVhZA0KPiAqKSk7DQo+ICAJbl9ncm91cF9kZXNjW2dkYl9udW1dID0gZ2RiX2Jo
-Ow0KPiAtCUVYVDRfU0Ioc2IpLT5zX2dyb3VwX2Rlc2MgPSBuX2dyb3VwX2Rlc2M7DQo+ICsJcmN1
-X2Fzc2lnbl9wb2ludGVyKEVYVDRfU0Ioc2IpLT5zX2dyb3VwX2Rlc2MsIG5fZ3JvdXBfZGVzYyk7
-DQo+ICAJRVhUNF9TQihzYiktPnNfZ2RiX2NvdW50Kys7DQo+IC0Ja3ZmcmVlKG9fZ3JvdXBfZGVz
-Yyk7DQo+ICsJZXh0NF9rdmZyZWVfYXJyYXlfcmN1KG9fZ3JvdXBfZGVzYyk7DQo+ICANCj4gIAls
-ZTE2X2FkZF9jcHUoJmVzLT5zX3Jlc2VydmVkX2dkdF9ibG9ja3MsIC0xKTsNCj4gIAllcnIgPSBl
-eHQ0X2hhbmRsZV9kaXJ0eV9zdXBlcihoYW5kbGUsIHNiKTsNCj4gQEAgLTkyMiw5ICs5NDksOSBA
-QCBzdGF0aWMgaW50IGFkZF9uZXdfZ2RiX21ldGFfYmcoc3RydWN0IHN1cGVyX2Jsb2NrDQo+ICpz
-YiwNCj4gIAkJcmV0dXJuIGVycjsNCj4gIAl9DQo+ICANCj4gLQlFWFQ0X1NCKHNiKS0+c19ncm91
-cF9kZXNjID0gbl9ncm91cF9kZXNjOw0KPiArCXJjdV9hc3NpZ25fcG9pbnRlcihFWFQ0X1NCKHNi
-KS0+c19ncm91cF9kZXNjLCBuX2dyb3VwX2Rlc2MpOw0KPiAgCUVYVDRfU0Ioc2IpLT5zX2dkYl9j
-b3VudCsrOw0KPiAtCWt2ZnJlZShvX2dyb3VwX2Rlc2MpOw0KPiArCWV4dDRfa3ZmcmVlX2FycmF5
-X3JjdShvX2dyb3VwX2Rlc2MpOw0KPiAgCXJldHVybiBlcnI7DQo+ICB9DQo+ICANCj4gZGlmZiAt
-LWdpdCBhL2ZzL2V4dDQvYmFsbG9jLmMgYi9mcy9leHQ0L2JhbGxvYy5jDQo+IGluZGV4IDVmOTkz
-YTQxMTI1MS4uNTM2OGJmNjczMDBiIDEwMDY0NA0KPiAtLS0gYS9mcy9leHQ0L2JhbGxvYy5jDQo+
-ICsrKyBiL2ZzL2V4dDQvYmFsbG9jLmMNCj4gQEAgLTI3MCw2ICsyNzAsNyBAQCBzdHJ1Y3QgZXh0
-NF9ncm91cF9kZXNjICoNCj4gZXh0NF9nZXRfZ3JvdXBfZGVzYyhzdHJ1Y3Qgc3VwZXJfYmxvY2sg
-KnNiLA0KPiAgCWV4dDRfZ3JvdXBfdCBuZ3JvdXBzID0gZXh0NF9nZXRfZ3JvdXBzX2NvdW50KHNi
-KTsNCj4gIAlzdHJ1Y3QgZXh0NF9ncm91cF9kZXNjICpkZXNjOw0KPiAgCXN0cnVjdCBleHQ0X3Ni
-X2luZm8gKnNiaSA9IEVYVDRfU0Ioc2IpOw0KPiArCXN0cnVjdCBidWZmZXJfaGVhZCAqYmhfcDsN
-Cj4gIA0KPiAgCWlmIChibG9ja19ncm91cCA+PSBuZ3JvdXBzKSB7DQo+ICAJCWV4dDRfZXJyb3Io
-c2IsICJibG9ja19ncm91cCA+PSBncm91cHNfY291bnQgLQ0KPiBibG9ja19ncm91cCA9ICV1LCIN
-Cj4gQEAgLTI4MCw3ICsyODEsMTUgQEAgc3RydWN0IGV4dDRfZ3JvdXBfZGVzYyAqDQo+IGV4dDRf
-Z2V0X2dyb3VwX2Rlc2Moc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gIA0KPiAgCWdyb3VwX2Rl
-c2MgPSBibG9ja19ncm91cCA+PiBFWFQ0X0RFU0NfUEVSX0JMT0NLX0JJVFMoc2IpOw0KPiAgCW9m
-ZnNldCA9IGJsb2NrX2dyb3VwICYgKEVYVDRfREVTQ19QRVJfQkxPQ0soc2IpIC0gMSk7DQo+IC0J
-aWYgKCFzYmktPnNfZ3JvdXBfZGVzY1tncm91cF9kZXNjXSkgew0KPiArCXJjdV9yZWFkX2xvY2so
-KTsNCj4gKwliaF9wID0gcmN1X2RlcmVmZXJlbmNlKHNiaS0+c19ncm91cF9kZXNjKVtncm91cF9k
-ZXNjXTsNCj4gKwkvKg0KPiArCSAqIFdlIGNhbiB1bmxvY2sgaGVyZSBzaW5jZSB0aGUgcG9pbnRl
-ciBiZWluZyBkZXJlZmVyZW5jZWQNCj4gd29uJ3QgYmUNCj4gKwkgKiBkZXJlZmVyZW5jZWQgYWdh
-aW4uIEJ5IGxvb2tpbmcgYXQgdGhlIHVzYWdlIGluIGFkZF9uZXdfZ2RiKCkNCj4gdGhlDQo+ICsJ
-ICogdmFsdWUgaXNuJ3QgbW9kaWZpZWQsIGp1c3QgdGhlIHBvaW50ZXIsIGFuZCBzbyBpdCByZW1h
-aW5zDQo+IHZhbGlkLg0KPiArCSAqLw0KPiArCXJjdV9yZWFkX3VubG9jaygpOw0KPiArCWlmICgh
-YmhfcCkgew0KPiAgCQlleHQ0X2Vycm9yKHNiLCAiR3JvdXAgZGVzY3JpcHRvciBub3QgbG9hZGVk
-IC0gIg0KPiAgCQkJICAgImJsb2NrX2dyb3VwID0gJXUsIGdyb3VwX2Rlc2MgPSAldSwgZGVzYyA9
-DQo+ICV1IiwNCj4gIAkJCSAgIGJsb2NrX2dyb3VwLCBncm91cF9kZXNjLCBvZmZzZXQpOw0KPiBA
-QCAtMjg4LDEwICsyOTcsMTAgQEAgc3RydWN0IGV4dDRfZ3JvdXBfZGVzYyAqDQo+IGV4dDRfZ2V0
-X2dyb3VwX2Rlc2Moc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gIAl9DQo+ICANCj4gIAlkZXNj
-ID0gKHN0cnVjdCBleHQ0X2dyb3VwX2Rlc2MgKikoDQo+IC0JCShfX3U4ICopc2JpLT5zX2dyb3Vw
-X2Rlc2NbZ3JvdXBfZGVzY10tPmJfZGF0YSArDQo+ICsJCShfX3U4ICopYmhfcC0+Yl9kYXRhICsN
-Cj4gIAkJb2Zmc2V0ICogRVhUNF9ERVNDX1NJWkUoc2IpKTsNCj4gIAlpZiAoYmgpDQo+IC0JCSpi
-aCA9IHNiaS0+c19ncm91cF9kZXNjW2dyb3VwX2Rlc2NdOw0KPiArCQkqYmggPSBiaF9wOw0KPiAg
-CXJldHVybiBkZXNjOw0KPiAgfQ0KPiAgDQo+IGRpZmYgLS1naXQgYS9mcy9leHQ0L2V4dDQuaCBi
-L2ZzL2V4dDQvZXh0NC5oDQo+IGluZGV4IDQ0NDEzMzFkMDZjYy4uYjc4MjRkNTZiOTY4IDEwMDY0
-NA0KPiAtLS0gYS9mcy9leHQ0L2V4dDQuaA0KPiArKysgYi9mcy9leHQ0L2V4dDQuaA0KPiBAQCAt
-MjczMCw4ICsyNzMwLDggQEAgZXh0ZXJuIGludCBleHQ0X2dlbmVyaWNfZGVsZXRlX2VudHJ5KGhh
-bmRsZV90DQo+ICpoYW5kbGUsDQo+ICBleHRlcm4gYm9vbCBleHQ0X2VtcHR5X2RpcihzdHJ1Y3Qg
-aW5vZGUgKmlub2RlKTsNCj4gIA0KPiAgLyogcmVzaXplLmMgKi8NCj4gK2V4dGVybiB2b2lkIGV4
-dDRfa3ZmcmVlX2FycmF5X3JjdSh2b2lkICp0b19mcmVlKTsNCj4gIGV4dGVybiBpbnQgZXh0NF9n
-cm91cF9hZGQoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwNCj4gIAkJCQlzdHJ1Y3QgZXh0NF9uZXdf
-Z3JvdXBfZGF0YSAqaW5wdXQpOw0KPiAgZXh0ZXJuIGludCBleHQ0X2dyb3VwX2V4dGVuZChzdHJ1
-Y3Qgc3VwZXJfYmxvY2sgKnNiLA0KPiANCg==
+During an online resize an array of pointers to s_group_info gets replaced
+so it can get enlarged. If there is a concurrent access to the array in
+ext4_get_group_info() and this memory has been reused then this can lead to
+an invalid memory access.
+
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=206443
+Signed-off-by: Suraj Jitindar Singh <surajjs@amazon.com>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/ext4.h    |  6 +++---
+ fs/ext4/mballoc.c | 10 ++++++----
+ 2 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 236fc6500340..3f4aaaae7da6 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2994,13 +2994,13 @@ static inline
+ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
+ 					    ext4_group_t group)
+ {
+-	 struct ext4_group_info ***grp_info;
++	 struct ext4_group_info **grp_info;
+ 	 long indexv, indexh;
+ 	 BUG_ON(group >= EXT4_SB(sb)->s_groups_count);
+-	 grp_info = EXT4_SB(sb)->s_group_info;
+ 	 indexv = group >> (EXT4_DESC_PER_BLOCK_BITS(sb));
+ 	 indexh = group & ((EXT4_DESC_PER_BLOCK(sb)) - 1);
+-	 return grp_info[indexv][indexh];
++	 grp_info = sbi_array_rcu_deref(EXT4_SB(sb), s_group_info, indexv);
++	 return grp_info[indexh];
+ }
+ 
+ /*
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index f64838187559..0d9b17afc85f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2356,7 +2356,7 @@ int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	unsigned size;
+-	struct ext4_group_info ***new_groupinfo;
++	struct ext4_group_info ***old_groupinfo, ***new_groupinfo;
+ 
+ 	size = (ngroups + EXT4_DESC_PER_BLOCK(sb) - 1) >>
+ 		EXT4_DESC_PER_BLOCK_BITS(sb);
+@@ -2369,13 +2369,15 @@ int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
+ 		ext4_msg(sb, KERN_ERR, "can't allocate buddy meta group");
+ 		return -ENOMEM;
+ 	}
+-	if (sbi->s_group_info) {
++	old_groupinfo = sbi->s_group_info;
++	if (sbi->s_group_info)
+ 		memcpy(new_groupinfo, sbi->s_group_info,
+ 		       sbi->s_group_info_size * sizeof(*sbi->s_group_info));
+-		kvfree(sbi->s_group_info);
+-	}
+ 	sbi->s_group_info = new_groupinfo;
++	rcu_assign_pointer(sbi->s_group_info, new_groupinfo);
+ 	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
++	if (old_groupinfo)
++		ext4_kvfree_array_rcu(old_groupinfo);
+ 	ext4_debug("allocated s_groupinfo array for %d meta_bg's\n", 
+ 		   sbi->s_group_info_size);
+ 	return 0;
+-- 
+2.17.1
+
