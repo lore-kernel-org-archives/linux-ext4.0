@@ -1,216 +1,128 @@
-Return-Path: <SRS0=KVWg=4H=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=nvKl=4I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C703CC761A0
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 21:03:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01CE4C7619D
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 02:27:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C03124654
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Feb 2020 21:03:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CC5FE24656
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 02:27:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="GfmzNvrx"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="HuesXzqr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728021AbgBSVD3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 19 Feb 2020 16:03:29 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:35892 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727470AbgBSVBF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Feb 2020 16:01:05 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Cq11a3Et0pjl7ytuFO9ggJAHwiQeJdhfAdDYVeF6iqQ=; b=GfmzNvrxH/CGQZVX177lgl6pDy
-        RGo9ku/1oWsQwgOAz6gYCCxZbqzTWoWUrrscFylthMghhX8XTkFhuBUc3VDPtLiNqLMMoFWTrGwqj
-        gHFqKLLhrIrMIClKPwa34n6Djc6kZj9oMX0S2Kwb03Y1PbdvzTxGj7J7oVa/Z/6aQNSftCx+xbCsR
-        6gEmmDRNQGkc6+fZQBEmJxN4t2BEKNqEMlmczd/Ilt+uuuaZdWHT05nJaAmI2HG2OpBOzW9PF6kix
-        aEsTF0CdFLJHqYTOamC/kZ4RlwZmEWFYuZaQSt6VeusAR8rs+IsdFXb4GzFbT7c7vmDR4CAjlrcCg
-        LIys7jEg==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1j4WSv-0008Uk-Bk; Wed, 19 Feb 2020 21:01:05 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
-        linux-xfs@vger.kernel.org
-Subject: [PATCH v7 17/24] ext4: Convert from readpages to readahead
-Date:   Wed, 19 Feb 2020 13:00:56 -0800
-Message-Id: <20200219210103.32400-18-willy@infradead.org>
-X-Mailer: git-send-email 2.21.1
-In-Reply-To: <20200219210103.32400-1-willy@infradead.org>
-References: <20200219210103.32400-1-willy@infradead.org>
+        id S1727506AbgBTC1b (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 19 Feb 2020 21:27:31 -0500
+Received: from mail-lf1-f67.google.com ([209.85.167.67]:38846 "EHLO
+        mail-lf1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727291AbgBTC1a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Feb 2020 21:27:30 -0500
+Received: by mail-lf1-f67.google.com with SMTP id r14so1772718lfm.5
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Feb 2020 18:27:29 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=6R9oDs43e49OHId2T3Say1GnAm1Sa9Cij9vjtGqns0w=;
+        b=HuesXzqrMwl5FNOeLlSDpflwNsgmCskzweQrWPKSAAxSCw7lHW66AFscJTMdsIwTfM
+         jGiq6RpnOPaB5Oyh2lOyEHyuTv6NINI8z9tC0O74kkXNN/1S0DYEYEQUa8h2V/dm0VDo
+         keHC2RRk+b6r2swD/RwtYXIMxjyjo6GlOu9gB+dUg2p6qefC+T1P4UZIm91Uo85LA+Rv
+         8G03jtGxUTJfvgq8RG9MYFoubld2O9BsSsn+sfVhyCNC5XE59suWdHa3oI9hlsR9Dp3B
+         GPuDBZymMhE77jVkDqjzwPoCAdP4mi7yBzI9bHOB2pq77Qnr4eN2rvsvew1j0jZvfkPA
+         bB7A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=6R9oDs43e49OHId2T3Say1GnAm1Sa9Cij9vjtGqns0w=;
+        b=cLR85JAMilCUbDsLQh1qgQFHgsy5aCHn4zuy68q43Tz3mXcgdBISuG8/4gswupOkg6
+         gYumPpVl61zICiK2POmly6/5mexEYu9s7HpyPQgolOmJ+wXVVVQsuRZSaAmsOFWQzAH/
+         tZ3oxgbc0u6XtgiJnTAz77RayIu/lOmYrw7a8akNirq8l3TORHg7Pkk2zx2SK8gHI9b9
+         HMSUgg7N7jB4C+5ygsd9iTm1kA1p+EspqRTFUoCo8IDiZ5MgDlYzoMm5DPgmo2A9lObr
+         uYZO3D7/1uMZng8BS1saq3KlYaqlAAeLzBpcLuilLLQz28gsZcMtgr65/PvnaJwMAX1I
+         5w7w==
+X-Gm-Message-State: APjAAAV/8KbxJFIDtSg3jNcmeamMK7+nC11VOSkTVWsFvkxPL7Mo7K79
+        f5lsA8zjZYnhPm+dYQP9331OytV8wNtMND5EvMfMgQ==
+X-Google-Smtp-Source: APXvYqxXpLX+dEvOT5j7tpgmTqUeHQ8fFVlo3960ntu34jaP3dDFM5jPLMUuGTmSmVlcfqf9AGyYlOtPMi7izdaPUmg=
+X-Received: by 2002:ac2:5979:: with SMTP id h25mr15671398lfp.203.1582165648799;
+ Wed, 19 Feb 2020 18:27:28 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20200208013552.241832-1-drosen@google.com> <20200208013552.241832-3-drosen@google.com>
+ <20200208021216.GE23230@ZenIV.linux.org.uk> <CA+PiJmTYbEA-hgrKwtp0jZXqsfYrzgogOZ0Pt=gTCtqhBfnqFA@mail.gmail.com>
+ <20200210234207.GJ23230@ZenIV.linux.org.uk> <20200212063440.GL870@sol.localdomain>
+ <20200212065734.GA157327@sol.localdomain>
+In-Reply-To: <20200212065734.GA157327@sol.localdomain>
+From:   Daniel Rosenberg <drosen@google.com>
+Date:   Wed, 19 Feb 2020 18:27:17 -0800
+Message-ID: <CA+PiJmRX1tBVqdAgHwk62rGqEQg28B3j5mEsaDBm3UV9_fzDEQ@mail.gmail.com>
+Subject: Re: [PATCH v7 2/8] fs: Add standard casefolding support
+To:     Eric Biggers <ebiggers@kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org, Richard Weinberger <richard@nod.at>,
+        linux-mtd@lists.infradead.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        kernel-team@android.com
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+On Tue, Feb 11, 2020 at 10:57 PM Eric Biggers <ebiggers@kernel.org> wrote:
+>
+> Or (just throwing another idea out there) the dentry's name could be copied to a
+> temporary buffer in ->d_compare().  The simplest version would be:
+>
+>         u8 _name[NAME_MAX];
+>
+>         memcpy(_name, name, len);
+>         name = _name;
+>
+> Though, 255 bytes is a bit large for a stack buffer (so for long names it may
+> need kmalloc with GFP_ATOMIC), and technically it would need a special version
+> of memcpy() to be guaranteed safe from compiler optimizations (though I expect
+> this would work in practice).
+>
+> Alternatively, take_dentry_name_snapshot() kind of does this already, except
+> that it takes a dentry and not a (name, len) pair.
+>
+> - Eric
 
-Use the new readahead operation in ext4
+If we want to use take_dentry_name_snapshot, we'd need to do it before
+calling the dentry op, since we get the dentry as a const. It would do
+exactly what we want, in that it either takes a reference on the long
+name, or copies the short name, although it does so under a spinlock.
+I'm guessing we don't want to add that overhead for all
+d_compare/d_hash's. I suppose it could just take a snapshot if it
+falls under needs_casefold, but that feels a bit silly to me.
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/ext4/ext4.h     |  3 +--
- fs/ext4/inode.c    | 21 +++++++++------------
- fs/ext4/readpage.c | 22 ++++++++--------------
- 3 files changed, 18 insertions(+), 28 deletions(-)
+i don't think utf8cursor/utf8byte could be modified to be RCU safe
+apart from a copy. As part of normalization there's some sorting that
+goes on to ensure that different encodings of the same characters can
+be matched, and I think those can technically be arbitrarily long, so
+we'd possibly end up needing the copy anyways.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4441331d06cc..1570a0b51b73 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3279,8 +3279,7 @@ static inline void ext4_set_de_type(struct super_block *sb,
- 
- /* readpages.c */
- extern int ext4_mpage_readpages(struct address_space *mapping,
--				struct list_head *pages, struct page *page,
--				unsigned nr_pages, bool is_readahead);
-+		struct readahead_control *rac, struct page *page);
- extern int __init ext4_init_post_read_processing(void);
- extern void ext4_exit_post_read_processing(void);
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index e60aca791d3f..d674c5f9066c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3226,23 +3226,20 @@ static int ext4_readpage(struct file *file, struct page *page)
- 		ret = ext4_readpage_inline(inode, page);
- 
- 	if (ret == -EAGAIN)
--		return ext4_mpage_readpages(page->mapping, NULL, page, 1,
--						false);
-+		return ext4_mpage_readpages(page->mapping, NULL, page);
- 
- 	return ret;
- }
- 
--static int
--ext4_readpages(struct file *file, struct address_space *mapping,
--		struct list_head *pages, unsigned nr_pages)
-+static void ext4_readahead(struct readahead_control *rac)
- {
--	struct inode *inode = mapping->host;
-+	struct inode *inode = rac->mapping->host;
- 
--	/* If the file has inline data, no need to do readpages. */
-+	/* If the file has inline data, no need to do readahead. */
- 	if (ext4_has_inline_data(inode))
--		return 0;
-+		return;
- 
--	return ext4_mpage_readpages(mapping, pages, NULL, nr_pages, true);
-+	ext4_mpage_readpages(rac->mapping, rac, NULL);
- }
- 
- static void ext4_invalidatepage(struct page *page, unsigned int offset,
-@@ -3587,7 +3584,7 @@ static int ext4_set_page_dirty(struct page *page)
- 
- static const struct address_space_operations ext4_aops = {
- 	.readpage		= ext4_readpage,
--	.readpages		= ext4_readpages,
-+	.readahead		= ext4_readahead,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
-@@ -3604,7 +3601,7 @@ static const struct address_space_operations ext4_aops = {
- 
- static const struct address_space_operations ext4_journalled_aops = {
- 	.readpage		= ext4_readpage,
--	.readpages		= ext4_readpages,
-+	.readahead		= ext4_readahead,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
-@@ -3620,7 +3617,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 
- static const struct address_space_operations ext4_da_aops = {
- 	.readpage		= ext4_readpage,
--	.readpages		= ext4_readpages,
-+	.readahead		= ext4_readahead,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_da_write_begin,
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index c1769afbf799..66275f25235d 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -7,8 +7,8 @@
-  *
-  * This was originally taken from fs/mpage.c
-  *
-- * The intent is the ext4_mpage_readpages() function here is intended
-- * to replace mpage_readpages() in the general case, not just for
-+ * The ext4_mpage_readpages() function here is intended to
-+ * replace mpage_readahead() in the general case, not just for
-  * encrypted files.  It has some limitations (see below), where it
-  * will fall back to read_block_full_page(), but these limitations
-  * should only be hit when page_size != block_size.
-@@ -222,8 +222,7 @@ static inline loff_t ext4_readpage_limit(struct inode *inode)
- }
- 
- int ext4_mpage_readpages(struct address_space *mapping,
--			 struct list_head *pages, struct page *page,
--			 unsigned nr_pages, bool is_readahead)
-+		struct readahead_control *rac, struct page *page)
- {
- 	struct bio *bio = NULL;
- 	sector_t last_block_in_bio = 0;
-@@ -241,6 +240,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 	int length;
- 	unsigned relative_block = 0;
- 	struct ext4_map_blocks map;
-+	unsigned int nr_pages = rac ? readahead_count(rac) : 1;
- 
- 	map.m_pblk = 0;
- 	map.m_lblk = 0;
-@@ -251,14 +251,9 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 		int fully_mapped = 1;
- 		unsigned first_hole = blocks_per_page;
- 
--		if (pages) {
--			page = lru_to_page(pages);
--
-+		if (rac) {
-+			page = readahead_page(rac);
- 			prefetchw(&page->flags);
--			list_del(&page->lru);
--			if (add_to_page_cache_lru(page, mapping, page->index,
--				  readahead_gfp_mask(mapping)))
--				goto next_page;
- 		}
- 
- 		if (page_has_buffers(page))
-@@ -381,7 +376,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
- 			bio->bi_end_io = mpage_end_io;
- 			bio_set_op_attrs(bio, REQ_OP_READ,
--						is_readahead ? REQ_RAHEAD : 0);
-+						rac ? REQ_RAHEAD : 0);
- 		}
- 
- 		length = first_hole << blkbits;
-@@ -406,10 +401,9 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 		else
- 			unlock_page(page);
- 	next_page:
--		if (pages)
-+		if (rac)
- 			put_page(page);
- 	}
--	BUG_ON(pages && !list_empty(pages));
- 	if (bio)
- 		submit_bio(bio);
- 	return 0;
--- 
-2.25.0
+So, I see two possible fixes.
+1. Use take_dentry_name_snapshot along the RCU paths to calling d_hash
+and d_compare, at least when needs_casefold is true.
+2. Within d_hash/d_compare, create a copy of the name if it is a short name.
 
+For 1, it adds some overhead in general, which I'm sure we'd want to avoid.
+For 2, I don't think we know we're in RCU mode, so we'd need to always
+copy short filenames. I'm also unsure if it's valid to assume that
+name given is stable if it is not the same as dentry->d_iname. If it
+is, we only need to worry about copying DNAME_INLINE_LEN bytes at max
+there. For memcpy, is there a different version that we'd want to use
+for option 2?
+
+-Daniel
