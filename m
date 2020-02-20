@@ -2,142 +2,215 @@ Return-Path: <SRS0=nvKl=4I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34B40C11D05
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 09:42:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7D90C11D09
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 13:46:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0431824656
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 09:42:28 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=wdc.com header.i=@wdc.com header.b="MxA8YZ6n";
-	dkim=pass (1024-bit key) header.d=sharedspace.onmicrosoft.com header.i=@sharedspace.onmicrosoft.com header.b="LmPep1/S"
+	by mail.kernel.org (Postfix) with ESMTP id 8ABAE222C4
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 13:46:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726829AbgBTJmY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Feb 2020 04:42:24 -0500
-Received: from esa4.hgst.iphmx.com ([216.71.154.42]:10305 "EHLO
-        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726501AbgBTJmX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Feb 2020 04:42:23 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-  d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1582191743; x=1613727743;
-  h=from:to:cc:subject:date:message-id:references:
-   content-transfer-encoding:mime-version;
-  bh=M+nyCipJmvciHSc+ZIPSuyMPQeAWQ1q0jyK4A6QbyLM=;
-  b=MxA8YZ6n5WJZNnpXuaFRkbklr7qBXwrG9uYdCZTVfcsUe8u6y0eVeNu4
-   Oz27YpSy3dSogiOOArdVrkuSYVtLopDlJbUGSXJ6vU4tVVrAiYYiRBPQo
-   a/7zmFBuBnJXuIXfGRFWkxI24k5imt1xMSh2VHYdOpBNQaFmHvpiEBayT
-   6WrUDFh9Dj0C1QZPoZtGjY5DVnqPOpQFHbr7YZ4No2Sf+CA+Cl6sWzqhO
-   XxpqShJw+bJgOE4ecg/IYt4jJnM9QP/cYi93fVbd70EErLCbIENyUPKCJ
-   hLe9t2SJlnN/yXfTGYVuevjv8jryhIOAnLvg+3WbHkqHMtPSLHAq/7nE1
-   Q==;
-IronPort-SDR: rf4RZS02dfBh5eg/Ser8Jycy8iQvg+TkSSxAtv5u02Qd6aGnPcTczKHkApuFeUjmaa5Q0D4v/G
- gX0lLZZLqzaJ2N11xxrUjesOhwiN8ouTd7EFeqblUXEPle5mjwlk7fG4A/QEIkZ73HcNmKtn/Z
- gnntC3MWr6gkE+g7ayEIr8rHGlToGcK/GSOVSyztHtVHW73tASiB/Y7qk9ILAfg4C8S9iOwFb6
- aLC/LSjsd8LXVHUAaV+FI9R6RzXyPa4+NTU6ldgPGl5OqVPAubABx9lnaLhotPdOwVx1PiEt6u
- 1Z8=
-X-IronPort-AV: E=Sophos;i="5.70,463,1574092800"; 
-   d="scan'208";a="130254905"
-Received: from mail-mw2nam10lp2104.outbound.protection.outlook.com (HELO NAM10-MW2-obe.outbound.protection.outlook.com) ([104.47.55.104])
-  by ob1.hgst.iphmx.com with ESMTP; 20 Feb 2020 17:42:21 +0800
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=jgSc1LVfCQE13N/I9GVLU5//QU9A9SBcOAG/111XTiYLiA0gBNQ+rJUj7oZyiIjWT0dBwnVbwwibtKbyuVGkyg7KsFeoMgKLXpC2t5BKsBO9D4EXhbhtH2yFdBCgujFBrhKc/3GA8S+fvjsA1dXuKH1jRhsIHP2EdObhEKJd6C6Z1snOL2Y8xMxjFZJmCKB9Y0nQsiMOabrt1cJYDmfCIbh8aOhN24Ce1QgjIU4S/G4zYotpMyZOOq0qrWh3V5yrxg5jNFS+8PJwZjgjqppH8TpzDpYz9fO1Sm6COxTilJGYOQUu4LLcR/XA948TT+D5SCMee+Soi2dorkiqQvEyNg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ChgseISPiUi/nxzwkkFQ1T9mWCaGRstOibBBGyDIMoA=;
- b=iRU3W/MSmFD7bMtT+yBF3gwh8btxRMCFDcDaids8hbwnbBlGeXPTJgvM/AsSPkoAo6VuZpzpoUoA8LCiBSkcWNWaZlTjnjNil0kHAz9O3zfv2mlk5YpcIVAZC8wXnBAAN0zhvSkv1i5iWxhlKNT48zmyRqWzWZxu3vS52mxuIx9DZaRrJHv7bXn/o/ZY2oxeoS4ScX/H01nD06AV0/6nWdD+55KipWWKuOGz6jyt9c0Keu1tsKJkawlyiiJGRe6SOYv70EGLwGiLGLLMO4lZKMgpQvypOKZF2jGKYDCFg1TiVEC52w1dtODhhTKfNyG/OOrDiWifJqf24hUPm9zAmg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=wdc.com; dmarc=pass action=none header.from=wdc.com; dkim=pass
- header.d=wdc.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=sharedspace.onmicrosoft.com; s=selector2-sharedspace-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ChgseISPiUi/nxzwkkFQ1T9mWCaGRstOibBBGyDIMoA=;
- b=LmPep1/SEnW8o3O23FL4cRjLFHAH3r4N0C/0nJT1EUMsvJ4UnUMx5yvajyJ096aOPjpPb99qoiaNKEpMJLyPr4f+JkSGPO/u9P3mMYTsunSVzBtnP6efqUGGAKGgoojhiwxqq5nMWjMUX+4fIZ7i5ndfD3HHtGD4JykF0OAmBeQ=
-Received: from SN4PR0401MB3598.namprd04.prod.outlook.com (10.167.139.149) by
- SN4PR0401MB3712.namprd04.prod.outlook.com (10.167.140.147) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2729.34; Thu, 20 Feb 2020 09:42:19 +0000
-Received: from SN4PR0401MB3598.namprd04.prod.outlook.com
- ([fe80::e5f5:84d2:cabc:da32]) by SN4PR0401MB3598.namprd04.prod.outlook.com
- ([fe80::e5f5:84d2:cabc:da32%5]) with mapi id 15.20.2729.032; Thu, 20 Feb 2020
- 09:42:19 +0000
-From:   Johannes Thumshirn <Johannes.Thumshirn@wdc.com>
-To:     Matthew Wilcox <willy@infradead.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-CC:     "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-erofs@lists.ozlabs.org" <linux-erofs@lists.ozlabs.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-f2fs-devel@lists.sourceforge.net" 
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        id S1728132AbgBTNqb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Feb 2020 08:46:31 -0500
+Received: from szxga04-in.huawei.com ([45.249.212.190]:10660 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726959AbgBTNqa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Feb 2020 08:46:30 -0500
+Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id DCB6B71525AF58A8C48E;
+        Thu, 20 Feb 2020 21:46:23 +0800 (CST)
+Received: from [127.0.0.1] (10.133.208.128) by DGGEMS406-HUB.china.huawei.com
+ (10.3.19.206) with Microsoft SMTP Server id 14.3.439.0; Thu, 20 Feb 2020
+ 21:46:15 +0800
+To:     <jack@suse.com>, <tytso@mit.edu>
+CC:     <linux-ext4@vger.kernel.org>,
         "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>
-Subject: Re: [PATCH v7 14/24] btrfs: Convert from readpages to readahead
-Thread-Topic: [PATCH v7 14/24] btrfs: Convert from readpages to readahead
-Thread-Index: AQHV52gHXOnz3eutsEej0YiVm6PhQQ==
-Date:   Thu, 20 Feb 2020 09:42:19 +0000
-Message-ID: <SN4PR0401MB35987D7B76007B93B1C5CE5E9B130@SN4PR0401MB3598.namprd04.prod.outlook.com>
-References: <20200219210103.32400-1-willy@infradead.org>
- <20200219210103.32400-15-willy@infradead.org>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=Johannes.Thumshirn@wdc.com; 
-x-originating-ip: [129.253.240.72]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-ht: Tenant
-x-ms-office365-filtering-correlation-id: 1f9f36ad-9c2b-4615-8f76-08d7b5e92dbc
-x-ms-traffictypediagnostic: SN4PR0401MB3712:
-x-microsoft-antispam-prvs: <SN4PR0401MB371296C64FC8338D311C5EC19B130@SN4PR0401MB3712.namprd04.prod.outlook.com>
-wdcipoutbound: EOP-TRUE
-x-ms-oob-tlc-oobclassifiers: OLM:7691;
-x-forefront-prvs: 031996B7EF
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(4636009)(366004)(39860400002)(376002)(136003)(346002)(396003)(189003)(199004)(110136005)(316002)(54906003)(7696005)(71200400001)(81166006)(86362001)(81156014)(9686003)(8936002)(8676002)(55016002)(7416002)(478600001)(6506007)(5660300002)(91956017)(76116006)(52536014)(66556008)(64756008)(66446008)(66946007)(26005)(66476007)(2906002)(186003)(4744005)(53546011)(33656002)(4326008);DIR:OUT;SFP:1102;SCL:1;SRVR:SN4PR0401MB3712;H:SN4PR0401MB3598.namprd04.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: jUs4EXsOJ1h6Mc+meDzlGUyOWASlmGwVcRYbusjWjnYc2N384jN2exjY0BSvFVN0FbrY2HTenQi6UygtEostQlmrd0SQAAIc+uInuE+BWUKNacWm/BEB+H6kMR8IRlR0YJLAKFjSPP0MBUtybF9JS9TKOrSEona/RB9DL3WntLiiqekNqk6BLRFRpG5vk7nKbUDtj9umYVstira3cCP8LCyzU0Huu8qbMYhjogdOcam/WXhBUNpm8gZsCkTtd1+vBlY5iNQ9lJTde0UYlnkuzIch3fxsi/cwtdUY+xKnDy3qiyoUrTq29Pt4gY70yPdOKHv5H1aYjOe/ZaXIqLRGQ/ZdEV1eDkLOgN2VdthJ8MZEMkOt8uPyS0M7mG9uJC0+wHaffPZcYnLWM8FDhnYOwBP7RLfmNgPAtoxsxLIiKlfCzyOjJUevNmnvJudHquy8
-x-ms-exchange-antispam-messagedata: vbv93IQYZbgJP1Z/hVNS1KpHjde+X2GbFSSagnVuEXilWwOZBJ/D3AfJnfwu/zHRERd0cukJswJ4JEgDtj3c7EzoUWFBzGEdzjVjFLKlPOOWx0C4WiG6CDu/hfH6ZouoA7OKc2KGtXg8hiDrQHZ73w==
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+        <stable@vger.kernel.org>, piaojun <piaojun@huawei.com>
+From:   wangyan <wangyan122@huawei.com>
+Subject: [PATCH] jbd2: fix ocfs2 corrupt when clearing block group bits
+Message-ID: <f72a623f-b3f1-381a-d91d-d22a1c83a336@huawei.com>
+Date:   Thu, 20 Feb 2020 21:46:14 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:45.0) Gecko/20100101
+ Thunderbird/45.7.1
 MIME-Version: 1.0
-X-OriginatorOrg: wdc.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 1f9f36ad-9c2b-4615-8f76-08d7b5e92dbc
-X-MS-Exchange-CrossTenant-originalarrivaltime: 20 Feb 2020 09:42:19.3955
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: b61c8803-16f3-4c35-9b17-6f65f441df86
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: j4ODXpF6prvGYEa2v+nxNMmTpJxN8bgfI7Uj2C391EZvB7+MVwN/HINz4ExXRz1C9miRXVR5mYpe3HK7nZvA0+DRHnOHhAuot8u9Iw21FCQ=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN4PR0401MB3712
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.133.208.128]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 19/02/2020 22:03, Matthew Wilcox wrote:=0A=
-> From: "Matthew Wilcox (Oracle)" <willy@infradead.org>=0A=
-> =0A=
-> Use the new readahead operation in btrfs.  Add a=0A=
-> readahead_for_each_batch() iterator to optimise the loop in the XArray.=
-=0A=
-=0A=
-=0A=
-OK I must admit I haven't followed this series closely, but what =0A=
-happened to said readahead_for_each_batch()?=0A=
-=0A=
-As far as I can see it's now:=0A=
-=0A=
-[...]=0A=
-> +	while ((nr =3D readahead_page_batch(rac, pagepool))) {=0A=
-=0A=
-=0A=
+I found a NULL pointer dereference in ocfs2_block_group_clear_bits().
+The running environment:
+	kernel version: 4.19
+	A cluster with two nodes, 5 luns mounted on two nodes, and do some
+	file operations like dd/fallocate/truncate/rm on every lun with storage
+	network disconnection.
+
+The fallocate operation on dm-23-45 caused an null pointer dereference.
+
+The information of NULL pointer dereference as follows:
+	[577992.878282] JBD2: Error -5 detected when updating journal superblock for dm-23-45.
+	[577992.878290] Aborting journal on device dm-23-45.
+	...
+	[577992.890778] JBD2: Error -5 detected when updating journal superblock for dm-24-46.
+	[577992.890908] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890916] (fallocate,88392,52):ocfs2_extend_trans:474 ERROR: status = -30
+	[577992.890918] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890920] (fallocate,88392,52):ocfs2_rotate_tree_right:2500 ERROR: status = -30
+	[577992.890922] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890924] (fallocate,88392,52):ocfs2_do_insert_extent:4382 ERROR: status = -30
+	[577992.890928] (fallocate,88392,52):ocfs2_insert_extent:4842 ERROR: status = -30
+	[577992.890928] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890930] (fallocate,88392,52):ocfs2_add_clusters_in_btree:4947 ERROR: status = -30
+	[577992.890933] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890939] __journal_remove_journal_head: freeing b_committed_data
+	[577992.890949] Unable to handle kernel NULL pointer dereference at virtual address 0000000000000020
+	[577992.890950] Mem abort info:
+	[577992.890951]   ESR = 0x96000004
+	[577992.890952]   Exception class = DABT (current EL), IL = 32 bits
+	[577992.890952]   SET = 0, FnV = 0
+	[577992.890953]   EA = 0, S1PTW = 0
+	[577992.890954] Data abort info:
+	[577992.890955]   ISV = 0, ISS = 0x00000004
+	[577992.890956]   CM = 0, WnR = 0
+	[577992.890958] user pgtable: 4k pages, 48-bit VAs, pgdp = 00000000f8da07a9
+	[577992.890960] [0000000000000020] pgd=0000000000000000
+	[577992.890964] Internal error: Oops: 96000004 [#1] SMP
+	[577992.890965] Process fallocate (pid: 88392, stack limit = 0x00000000013db2fd)
+	[577992.890968] CPU: 52 PID: 88392 Comm: fallocate Kdump: loaded Tainted: G        W  OE     4.19.36 #1
+	[577992.890969] Hardware name: Huawei TaiShan 2280 V2/BC82AMDD, BIOS 0.98 08/25/2019
+	[577992.890971] pstate: 60400009 (nZCv daif +PAN -UAO)
+	[577992.891054] pc : _ocfs2_free_suballoc_bits+0x63c/0x968 [ocfs2]
+	[577992.891082] lr : _ocfs2_free_suballoc_bits+0x618/0x968 [ocfs2]
+	[577992.891084] sp : ffff0000c8e2b810
+	[577992.891085] x29: ffff0000c8e2b820 x28: 0000000000000000
+	[577992.891087] x27: 00000000000006f3 x26: ffffa07957b02e70
+	[577992.891089] x25: ffff807c59d50000 x24: 00000000000006f2
+	[577992.891091] x23: 0000000000000001 x22: ffff807bd39abc30
+	[577992.891093] x21: ffff0000811d9000 x20: ffffa07535d6a000
+	[577992.891097] x19: ffff000001681638 x18: ffffffffffffffff
+	[577992.891098] x17: 0000000000000000 x16: ffff000080a03df0
+	[577992.891100] x15: ffff0000811d9708 x14: 203d207375746174
+	[577992.891101] x13: 73203a524f525245 x12: 20373439343a6565
+	[577992.891103] x11: 0000000000000038 x10: 0101010101010101
+	[577992.891106] x9 : ffffa07c68a85d70 x8 : 7f7f7f7f7f7f7f7f
+	[577992.891109] x7 : 0000000000000000 x6 : 0000000000000080
+	[577992.891110] x5 : 0000000000000000 x4 : 0000000000000002
+	[577992.891112] x3 : ffff000001713390 x2 : 2ff90f88b1c22f00
+	[577992.891114] x1 : ffff807bd39abc30 x0 : 0000000000000000
+	[577992.891116] Call trace:
+	[577992.891139]  _ocfs2_free_suballoc_bits+0x63c/0x968 [ocfs2]
+	[577992.891162]  _ocfs2_free_clusters+0x100/0x290 [ocfs2]
+	[577992.891185]  ocfs2_free_clusters+0x50/0x68 [ocfs2]
+	[577992.891206]  ocfs2_add_clusters_in_btree+0x198/0x5e0 [ocfs2]
+	[577992.891227]  ocfs2_add_inode_data+0x94/0xc8 [ocfs2]
+	[577992.891248]  ocfs2_extend_allocation+0x1bc/0x7a8 [ocfs2]
+	[577992.891269]  ocfs2_allocate_extents+0x14c/0x338 [ocfs2]
+	[577992.891290]  __ocfs2_change_file_space+0x3f8/0x610 [ocfs2]
+	[577992.891309]  ocfs2_fallocate+0xe4/0x128 [ocfs2]
+	[577992.891316]  vfs_fallocate+0x11c/0x250
+	[577992.891317]  ksys_fallocate+0x54/0x88
+	[577992.891319]  __arm64_sys_fallocate+0x28/0x38
+	[577992.891323]  el0_svc_common+0x78/0x130
+	[577992.891325]  el0_svc_handler+0x38/0x78
+	[577992.891327]  el0_svc+0x8/0xc
+
+My analysis process as follows:
+ocfs2_fallocate
+  __ocfs2_change_file_space
+    ocfs2_allocate_extents
+      ocfs2_extend_allocation
+        ocfs2_add_inode_data
+          ocfs2_add_clusters_in_btree
+            ocfs2_insert_extent
+              ocfs2_do_insert_extent
+                ocfs2_rotate_tree_right
+                  ocfs2_extend_rotate_transaction
+                    ocfs2_extend_trans
+                      jbd2_journal_restart
+                        jbd2__journal_restart
+                          /* handle->h_transaction is NULL,
+                           * is_handle_aborted(handle) is true
+                           */
+                          handle->h_transaction = NULL;
+                          start_this_handle
+                            return -EROFS;
+            ocfs2_free_clusters
+              _ocfs2_free_clusters
+                _ocfs2_free_suballoc_bits
+                  ocfs2_block_group_clear_bits
+                    ocfs2_journal_access_gd
+                      __ocfs2_journal_access
+                        jbd2_journal_get_undo_access
+                          /* I think jbd2_write_access_granted() will
+                           * return true, because do_get_write_access()
+                           * will return -EROFS.
+                           */
+                          if (jbd2_write_access_granted(...)) return 0;
+                          do_get_write_access
+                            /* handle->h_transaction is NULL, it will
+                             * return -EROFS here, so do_get_write_access()
+                             * was not called.
+                             */
+                            if (is_handle_aborted(handle)) return -EROFS;
+                    /* bh2jh(group_bh) is NULL, caused NULL
+                       pointer dereference */
+                    undo_bg = (struct ocfs2_group_desc *)
+                                bh2jh(group_bh)->b_committed_data;
+
+If handle->h_transaction == NULL, then jbd2_write_access_granted()
+does not really guarantee that journal_head will stay around,
+not even speaking of its b_committed_data. The bh2jh(group_bh)
+can be removed after ocfs2_journal_access_gd() and before call
+"bh2jh(group_bh)->b_committed_data". So, we should move
+is_handle_aborted() check from do_get_write_access() into
+jbd2_journal_get_undo_access() and jbd2_journal_get_write_access()
+before the call to jbd2_write_access_granted().
+
+Signed-off-by: Yan Wang <wangyan122@huawei.com>
+Reviewed-by: Jun Piao <piaojun@huawei.com>
+---
+ fs/jbd2/transaction.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 2dd848a743ed..d181948c0390 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -936,8 +936,6 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 	char *frozen_buffer = NULL;
+ 	unsigned long start_lock, time_lock;
+
+-	if (is_handle_aborted(handle))
+-		return -EROFS;
+ 	journal = transaction->t_journal;
+
+ 	jbd_debug(5, "journal_head %p, force_copy %d\n", jh, force_copy);
+@@ -1189,6 +1187,9 @@ int jbd2_journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+ 	struct journal_head *jh;
+ 	int rc;
+
++	if (is_handle_aborted(handle))
++		return -EROFS;
++
+ 	if (jbd2_write_access_granted(handle, bh, false))
+ 		return 0;
+
+@@ -1326,6 +1327,9 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+ 	struct journal_head *jh;
+ 	char *committed_data = NULL;
+
++	if (is_handle_aborted(handle))
++		return -EROFS;
++
+ 	if (jbd2_write_access_granted(handle, bh, true))
+ 		return 0;
+
+-- 
+2.19.1
+
