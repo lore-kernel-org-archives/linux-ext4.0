@@ -5,27 +5,26 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F28AAC11D0C
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 17:15:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 21804C11D0C
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 17:18:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C50BC20801
-	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 17:15:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E9CAD208E4
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Feb 2020 17:18:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728173AbgBTRPz convert rfc822-to-8bit (ORCPT
+        id S1728217AbgBTRSj convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 20 Feb 2020 12:15:55 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55978 "EHLO mail.kernel.org"
+        Thu, 20 Feb 2020 12:18:39 -0500
+Received: from mail.kernel.org ([198.145.29.99]:56504 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728528AbgBTRPz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Feb 2020 12:15:55 -0500
+        id S1728173AbgBTRSj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Feb 2020 12:18:39 -0500
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 206613] New: On hitting tab key from terminal against a
- directory name ending with ':\' doesnot shows files/dir inside it rather
- shows dir name itself
-Date:   Thu, 20 Feb 2020 17:15:53 +0000
+Subject: [Bug 206613] On hitting tab key from terminal against a directory
+ name ending with ':\' doesnot shows files/dir inside it
+Date:   Thu, 20 Feb 2020 17:18:38 +0000
 X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
+X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Product: File System
 X-Bugzilla-Component: ext4
@@ -38,10 +37,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression
-Message-ID: <bug-206613-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: short_desc
+Message-ID: <bug-206613-13602-sx9cZnTNuJ@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-206613-13602@https.bugzilla.kernel.org/>
+References: <bug-206613-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -54,67 +53,16 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=206613
 
-            Bug ID: 206613
-           Summary: On hitting tab key from terminal against a directory
-                    name ending with ':\' doesnot shows files/dir inside
-                    it rather shows dir name itself
-           Product: File System
-           Version: 2.5
-    Kernel Version: 5.5.0-050500-generic
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: low
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: cubonix@gmail.com
-        Regression: No
+Abhishek Srivastava (cubonix@gmail.com) changed:
 
-Hi All.
-Recently I bought a new laptop for usability purpose of my wife I created some
-folders by Name C:\ D:\ E:\ and mounted  3 partitions (as she is a win user),
-lately I have observed if hit tab againt these 3 dir , it does not exposes
-files/dir which is contained. Which generally doesnot happens.
-
-Log Snippet
-===========
-root@jarvis:~# uname -a
-Linux jarvis 5.5.0-050500-generic #202001262030 SMP Mon Jan 27 01:33:36 UTC
-2020 x86_64 x86_64 x86_64 GNU/Linux
-root@jarvis:~# 
-root@jarvis:~# cat /etc/os-release 
-NAME="Ubuntu"
-VERSION="19.10 (Eoan Ermine)"
-ID=ubuntu
-ID_LIKE=debian
-PRETTY_NAME="Ubuntu 19.10"
-VERSION_ID="19.10"
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-VERSION_CODENAME=eoan
-UBUNTU_CODENAME=eoan
-
-When I normally hit tab against any dir it exposes files/dir 
-=============================================================
-root@jarvis:~# cd /
-bin/        cdrom/      etc/        lib/        lib64/      lost+found/ mnt/   
-    proc/       run/        srv/        tmp/        var/
-boot/       dev/        home/       lib32/      libx32/     media/      opt/   
-    root/       sbin/       sys/        usr/        
-root@jarvis:~# 
-
-But when I try to hit tab against any dir ending with :\
-==============================================================
-
-root@jarvis:/home/abhishek/Desktop# ls
-'C:\'  'D:\'  'E:\'
-
-abhishek@jarvis:~/Desktop$ cd 'C:\'^C =========>does not recommends any thing
-abhishek@jarvis:~/Desktop$ cd C:\\ =========>does not recommends any thing
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+            Summary|On hitting tab key from     |On hitting tab key from
+                   |terminal against a          |terminal against a
+                   |directory name ending with  |directory name ending with
+                   |':\' doesnot shows          |':\' doesnot shows
+                   |files/dir inside it rather  |files/dir inside it
+                   |shows dir name itself       |
 
 -- 
 You are receiving this mail because:
