@@ -2,78 +2,76 @@ Return-Path: <SRS0=aMgV=4K=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07856C35666
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 10:46:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14AE0C35671
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 18:49:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C5781206EF
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 10:46:00 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=acc.umu.se header.i=@acc.umu.se header.b="QZYz074H"
+	by mail.kernel.org (Postfix) with ESMTP id EDAC2206ED
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 18:49:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726883AbgBVKqA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 Feb 2020 05:46:00 -0500
-Received: from mail.acc.umu.se ([130.239.18.156]:40306 "EHLO mail.acc.umu.se"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726839AbgBVKqA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 22 Feb 2020 05:46:00 -0500
-X-Greylist: delayed 554 seconds by postgrey-1.27 at vger.kernel.org; Sat, 22 Feb 2020 05:45:59 EST
-Received: from localhost (localhost.localdomain [127.0.0.1])
-        by amavisd-new (Postfix) with ESMTP id 5474144B93
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Feb 2020 11:36:44 +0100 (CET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=acc.umu.se; s=mail1;
-        t=1582367804; bh=ldernLYjuXwpECkDEd1R3DvHTk64KLGprWnrkHgEUhU=;
-        h=Date:From:To:Subject:From;
-        b=QZYz074H0V9TrS/5ItMdPT7YOYPDGgsy5Kng8Twrrqv4m+rr3Kkeb2POnJXo7T4Xj
-         Eeq9ln+eW6l4OzKUV9omBtg1fwpBGLcsWhsTrlsL98NnPBitaIS3MhJzDcwklIiSX9
-         hRyFiME3NkSrHyQd2oHibWvEKpV0wG2dqcjtOp4IO1qFnTICYKTS0UcSBxSzOcaklh
-         5RuRY/AsXrad65VGlGWyvjsdv4XIvNkee0YskjsN9gS5n+GEr9k442Z+PaAIXirUKf
-         0hLB+GWxTQc6F693tjPyp0whWvL+OVa851ULQDBb9Z8mLxEQLWpmpbpJ4cmuWMD7ZB
-         /zkeI9HX0VtAQ==
-Received: from stalin.acc.umu.se (stalin.acc.umu.se [130.239.18.135])
-        by mail.acc.umu.se (Postfix) with ESMTP id AA35D44B90
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Feb 2020 11:36:43 +0100 (CET)
-Received: by stalin.acc.umu.se (Postfix, from userid 10005)
-        id 9D4BB21B1B; Sat, 22 Feb 2020 11:36:43 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-        by stalin.acc.umu.se (Postfix) with ESMTP id 9968121B1A
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Feb 2020 11:36:43 +0100 (CET)
-Date:   Sat, 22 Feb 2020 11:36:43 +0100 (CET)
-From:   Bo Branten <bosse@acc.umu.se>
-To:     linux-ext4@vger.kernel.org
-Subject: A question on directory checksums
-Message-ID: <alpine.DEB.2.21.2002221122100.23269@stalin.acc.umu.se>
-User-Agent: Alpine 2.21 (DEB 202 2017-01-01)
+        id S1726758AbgBVStV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 22 Feb 2020 13:49:21 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56765 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726550AbgBVStV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Feb 2020 13:49:21 -0500
+Received: from callcc.thunk.org (guestnat-104-133-8-109.corp.google.com [104.133.8.109] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 01MInCDs021638
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 22 Feb 2020 13:49:15 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 53C8B4211EF; Sat, 22 Feb 2020 13:49:12 -0500 (EST)
+Date:   Sat, 22 Feb 2020 13:49:12 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Bo Branten <bosse@acc.umu.se>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: A question on directory checksums
+Message-ID: <20200222184912.GD873427@mit.edu>
+References: <alpine.DEB.2.21.2002221122100.23269@stalin.acc.umu.se>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.2.21.2002221122100.23269@stalin.acc.umu.se>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Sat, Feb 22, 2020 at 11:36:43AM +0100, Bo Branten wrote:
+> 
+> Hello,
+> 
+> I am implementing support for metadata checksums on an ext4 driver for
+> another os and test this by writing something and then run e2fsck from Linux
+> to see what it says. When I create a new empty directory that only contains
+> . and .. I got this error message from e2fsck that I want to ask you to
+> clearify:
+> 
+> bo@bo-desktop:~$ sudo e2fsck -pvf /dev/sdb2
+> /dev/sdb2: Directory inode 64, block #0, offset 0: directory has no checksum.
+> FIXED.
+> 
+> Am I right that it is not the checksum on the inode that represents the
+> directory but the checksum in the directory entry tail in the first and only
+> block?
 
-Hello,
+Yes.  It means the dirent tail is missing.
 
-I am implementing support for metadata checksums on an ext4 driver for 
-another os and test this by writing something and then run e2fsck from 
-Linux to see what it says. When I create a new empty directory that only 
-contains . and .. I got this error message from e2fsck that I want to ask 
-you to clearify:
+> Also do "no checksum" means something different than wrong checksum, like I
+> have not initialized it correctly? (if I dont call initialize_dirent_tail I
+> will get another error message from e2fsck that speficially says there is no
+> room for the checksum so it can not be that)
 
-bo@bo-desktop:~$ sudo e2fsck -pvf /dev/sdb2
-/dev/sdb2: Directory inode 64, block #0, offset 0: directory has no checksum.
-FIXED.
+I'm not sure what you message you are referring to in your
+parenthetical comment.
 
-Am I right that it is not the checksum on the inode that represents the 
-directory but the checksum in the directory entry tail in the first and 
-only block?
+I'm guessing you don't want to look at the e2fsck source code?  What
+about using debugfs so you can see what the directory looks like
+before and after running e2fsck.
 
-Also do "no checksum" means something different than wrong checksum, like 
-I have not initialized it correctly? (if I dont call 
-initialize_dirent_tail I will get another error message from e2fsck that 
-speficially says there is no room for the checksum so it can not be that)
-
-Bo Branten
+						- Ted
