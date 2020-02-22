@@ -6,37 +6,36 @@ X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57636C35669
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 23:19:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B6C1C35671
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 23:21:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1A0B7205C9
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 23:19:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 114632064C
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Feb 2020 23:21:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726884AbgBVXTw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 Feb 2020 18:19:52 -0500
-Received: from mga01.intel.com ([192.55.52.88]:16573 "EHLO mga01.intel.com"
+        id S1727039AbgBVXU5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 22 Feb 2020 18:20:57 -0500
+Received: from mga17.intel.com ([192.55.52.151]:28256 "EHLO mga17.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726865AbgBVXTw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 22 Feb 2020 18:19:52 -0500
+        id S1726984AbgBVXU5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 22 Feb 2020 18:20:57 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 22 Feb 2020 15:19:51 -0800
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by fmsmga107.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 22 Feb 2020 15:20:56 -0800
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.70,473,1574150400"; 
-   d="scan'208";a="409495930"
+   d="scan'208";a="230237548"
 Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
-  by orsmga005.jf.intel.com with ESMTP; 22 Feb 2020 15:19:49 -0800
+  by orsmga008.jf.intel.com with ESMTP; 22 Feb 2020 15:20:54 -0800
 Received: from kbuild by lkp-server01 with local (Exim 4.89)
         (envelope-from <lkp@intel.com>)
-        id 1j5e3p-000IX5-4g; Sun, 23 Feb 2020 07:19:49 +0800
-Date:   Sun, 23 Feb 2020 07:19:42 +0800
+        id 1j5e4s-00050P-3P; Sun, 23 Feb 2020 07:20:54 +0800
+Date:   Sun, 23 Feb 2020 07:19:51 +0800
 From:   kbuild test robot <lkp@intel.com>
 To:     "Theodore Ts'o" <tytso@mit.edu>
 Cc:     linux-ext4@vger.kernel.org
-Subject: [ext4:fix-bz-206443] BUILD SUCCESS
- 7c990728b99ed6fbe9c75fc202fce1172d9916da
-Message-ID: <5e51b70e.0na78Y0CwDU5QvzS%lkp@intel.com>
+Subject: [ext4:dev] BUILD SUCCESS 9db176bceb5c5df4990486709da386edadc6bd1d
+Message-ID: <5e51b717.ZIOLNbEczjp2sKLw%lkp@intel.com>
 User-Agent: Heirloom mailx 12.5 6/20/10
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -46,12 +45,12 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git  fix-bz-206443
-branch HEAD: 7c990728b99ed6fbe9c75fc202fce1172d9916da  ext4: fix potential race between s_flex_groups online resizing and access
+tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git  dev
+branch HEAD: 9db176bceb5c5df4990486709da386edadc6bd1d  ext4: fix mount failure with quota configured as module
 
 elapsed time: 1065m
 
-configs tested: 197
+configs tested: 203
 configs skipped: 0
 
 The following configs have been built successfully.
@@ -98,9 +97,9 @@ nios2                         3c120_defconfig
 openrisc                    or1ksim_defconfig
 xtensa                       common_defconfig
 xtensa                          iss_defconfig
-alpha                               defconfig
-csky                                defconfig
 nds32                             allnoconfig
+csky                                defconfig
+alpha                               defconfig
 h8300                     edosk2674_defconfig
 h8300                       h8s-sim_defconfig
 m68k                             allmodconfig
@@ -127,17 +126,17 @@ x86_64               randconfig-a003-20200223
 i386                 randconfig-a001-20200223
 i386                 randconfig-a002-20200223
 i386                 randconfig-a003-20200223
-alpha                randconfig-a001-20200223
-m68k                 randconfig-a001-20200223
-mips                 randconfig-a001-20200223
-nds32                randconfig-a001-20200223
-parisc               randconfig-a001-20200223
 nds32                randconfig-a001-20200222
 riscv                randconfig-a001-20200222
 parisc               randconfig-a001-20200222
 mips                 randconfig-a001-20200222
 alpha                randconfig-a001-20200222
 m68k                 randconfig-a001-20200222
+alpha                randconfig-a001-20200223
+m68k                 randconfig-a001-20200223
+mips                 randconfig-a001-20200223
+nds32                randconfig-a001-20200223
+parisc               randconfig-a001-20200223
 c6x                  randconfig-a001-20200223
 h8300                randconfig-a001-20200223
 microblaze           randconfig-a001-20200223
@@ -146,18 +145,24 @@ sparc64              randconfig-a001-20200223
 nios2                randconfig-a001-20200222
 c6x                  randconfig-a001-20200222
 h8300                randconfig-a001-20200222
-microblaze           randconfig-a001-20200222
 sparc64              randconfig-a001-20200222
+microblaze           randconfig-a001-20200222
 csky                 randconfig-a001-20200223
 openrisc             randconfig-a001-20200223
 s390                 randconfig-a001-20200223
 sh                   randconfig-a001-20200223
 xtensa               randconfig-a001-20200223
-openrisc             randconfig-a001-20200222
-sh                   randconfig-a001-20200222
-s390                 randconfig-a001-20200222
-xtensa               randconfig-a001-20200222
 csky                 randconfig-a001-20200222
+openrisc             randconfig-a001-20200222
+s390                 randconfig-a001-20200222
+sh                   randconfig-a001-20200222
+xtensa               randconfig-a001-20200222
+x86_64               randconfig-b001-20200222
+x86_64               randconfig-b002-20200222
+x86_64               randconfig-b003-20200222
+i386                 randconfig-b001-20200222
+i386                 randconfig-b002-20200222
+i386                 randconfig-b003-20200222
 x86_64               randconfig-b001-20200223
 x86_64               randconfig-b002-20200223
 x86_64               randconfig-b003-20200223
@@ -182,9 +187,9 @@ x86_64               randconfig-e003-20200223
 i386                 randconfig-e001-20200223
 i386                 randconfig-e002-20200223
 i386                 randconfig-e003-20200223
-x86_64               randconfig-f003-20200222
-x86_64               randconfig-f002-20200222
 x86_64               randconfig-f001-20200222
+x86_64               randconfig-f002-20200222
+x86_64               randconfig-f003-20200222
 i386                 randconfig-f001-20200222
 i386                 randconfig-f002-20200222
 i386                 randconfig-f003-20200222
@@ -206,6 +211,12 @@ x86_64               randconfig-g003-20200223
 i386                 randconfig-g001-20200223
 i386                 randconfig-g002-20200223
 i386                 randconfig-g003-20200223
+x86_64               randconfig-h001-20200222
+x86_64               randconfig-h002-20200222
+x86_64               randconfig-h003-20200222
+i386                 randconfig-h001-20200222
+i386                 randconfig-h002-20200222
+i386                 randconfig-h003-20200222
 x86_64               randconfig-h001-20200223
 x86_64               randconfig-h002-20200223
 x86_64               randconfig-h003-20200223
@@ -218,12 +229,6 @@ arm64                randconfig-a001-20200223
 ia64                 randconfig-a001-20200223
 powerpc              randconfig-a001-20200223
 sparc                randconfig-a001-20200223
-arm64                randconfig-a001-20200222
-ia64                 randconfig-a001-20200222
-powerpc              randconfig-a001-20200222
-arm                  randconfig-a001-20200222
-arc                  randconfig-a001-20200222
-sparc                randconfig-a001-20200222
 riscv                            allmodconfig
 riscv                               defconfig
 riscv                    nommu_virt_defconfig
@@ -248,10 +253,10 @@ sparc64                             defconfig
 um                           x86_64_defconfig
 um                             i386_defconfig
 um                                  defconfig
-x86_64                                   rhel
 x86_64                              fedora-25
 x86_64                                  kexec
 x86_64                                    lkp
+x86_64                                   rhel
 x86_64                         rhel-7.2-clear
 x86_64                               rhel-7.6
 
