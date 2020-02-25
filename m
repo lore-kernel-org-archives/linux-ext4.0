@@ -2,145 +2,164 @@ Return-Path: <SRS0=U5g5=4N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62878C35E17
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:12:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02824C4BA00
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:49:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3DA0E22464
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:12:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C348E21927
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:49:06 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="BZjHVrty"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726953AbgBYVMb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Feb 2020 16:12:31 -0500
-Received: from mga11.intel.com ([192.55.52.93]:11503 "EHLO mga11.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726130AbgBYVMb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Feb 2020 16:12:31 -0500
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 25 Feb 2020 13:12:30 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.70,485,1574150400"; 
-   d="scan'208";a="410370648"
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by orsmga005.jf.intel.com with ESMTP; 25 Feb 2020 13:12:29 -0800
-Date:   Tue, 25 Feb 2020 13:12:28 -0800
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH V4 09/13] fs/xfs: Add write aops lock to xfs layer
-Message-ID: <20200225211228.GB15810@iweiny-DESK2.sc.intel.com>
-References: <20200221004134.30599-1-ira.weiny@intel.com>
- <20200221004134.30599-10-ira.weiny@intel.com>
- <20200224003455.GY10776@dread.disaster.area>
- <20200224195735.GA11565@iweiny-DESK2.sc.intel.com>
- <20200224223245.GZ10776@dread.disaster.area>
+        id S1729640AbgBYVs5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Feb 2020 16:48:57 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:43670 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729543AbgBYVsr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Feb 2020 16:48:47 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=Y+DMKEcjJ0PUqBzLJKWtCNhcm7v9FUVVuODqcjMIb+g=; b=BZjHVrtyapAW9nHzSJHblAd4t/
+        xUJNrmLG2TNmO7evD2q+2vZmy7zGYx6LGzBpBb2n7of903wqbB1Hs2HLZWoVjDD8HKnY80sEtSMUX
+        0gf2/0Nyh2X8fCYNCb32ow+1J37VYQtCN+zxSDpZUwtSh8HU27O0EchtXIEBGxHf2aMkR+DASOYrg
+        +YCUuZ7iE+3ud0Vixg+pGI7/2z933+k0NXGV5bej6VfCiAYOgteMZvhiofaLA6Xp+6fVmz5wLkkzT
+        ihdZUhzWMwyexX7dASf5FvoWB4q3m8xvEx5ax+rSD12KBcTk8liqYBeBzjTmAKDZ/2LZtqGs7FQsV
+        8MWSMm0g==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1j6i4G-0007pH-UW; Tue, 25 Feb 2020 21:48:40 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
+        linux-xfs@vger.kernel.org, John Hubbard <jhubbard@nvidia.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v8 01/25] mm: Move readahead prototypes from mm.h
+Date:   Tue, 25 Feb 2020 13:48:14 -0800
+Message-Id: <20200225214838.30017-2-willy@infradead.org>
+X-Mailer: git-send-email 2.21.1
+In-Reply-To: <20200225214838.30017-1-willy@infradead.org>
+References: <20200225214838.30017-1-willy@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200224223245.GZ10776@dread.disaster.area>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Feb 25, 2020 at 09:32:45AM +1100, Dave Chinner wrote:
-> On Mon, Feb 24, 2020 at 11:57:36AM -0800, Ira Weiny wrote:
-> > On Mon, Feb 24, 2020 at 11:34:55AM +1100, Dave Chinner wrote:
-> > > On Thu, Feb 20, 2020 at 04:41:30PM -0800, ira.weiny@intel.com wrote:
-> > > > From: Ira Weiny <ira.weiny@intel.com>
-> > > > 
-> > 
-> > [snip]
-> > 
-> > > > 
-> > > > diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-> > > > index 35df324875db..5b014c428f0f 100644
-> > > > --- a/fs/xfs/xfs_inode.c
-> > > > +++ b/fs/xfs/xfs_inode.c
-> > > > @@ -142,12 +142,12 @@ xfs_ilock_attr_map_shared(
-> > > >   *
-> > > >   * Basic locking order:
-> > > >   *
-> > > > - * i_rwsem -> i_mmap_lock -> page_lock -> i_ilock
-> > > > + * s_dax_sem -> i_rwsem -> i_mmap_lock -> page_lock -> i_ilock
-> > > >   *
-> > > >   * mmap_sem locking order:
-> > > >   *
-> > > >   * i_rwsem -> page lock -> mmap_sem
-> > > > - * mmap_sem -> i_mmap_lock -> page_lock
-> > > > + * s_dax_sem -> mmap_sem -> i_mmap_lock -> page_lock
-> > > >   *
-> > > >   * The difference in mmap_sem locking order mean that we cannot hold the
-> > > >   * i_mmap_lock over syscall based read(2)/write(2) based IO. These IO paths can
-> > > > @@ -182,6 +182,9 @@ xfs_ilock(
-> > > >  	       (XFS_ILOCK_SHARED | XFS_ILOCK_EXCL));
-> > > >  	ASSERT((lock_flags & ~(XFS_LOCK_MASK | XFS_LOCK_SUBCLASS_MASK)) == 0);
-> > > >  
-> > > > +	if (lock_flags & XFS_DAX_EXCL)
-> > > > +		inode_aops_down_write(VFS_I(ip));
-> > > 
-> > > I largely don't see the point of adding this to xfs_ilock/iunlock.
-> > > 
-> > > It's only got one caller, so I don't see much point in adding it to
-> > > an interface that has over a hundred other call sites that don't
-> > > need or use this lock. just open code it where it is needed in the
-> > > ioctl code.
-> > 
-> > I know it seems overkill but if we don't do this we need to code a flag to be
-> > returned from xfs_ioctl_setattr_dax_invalidate().  This flag is then used in
-> > xfs_ioctl_setattr_get_trans() to create the transaction log item which can then
-> > be properly used to unlock the lock in xfs_inode_item_release()
-> > 
-> > I don't know of a cleaner way to communicate to xfs_inode_item_release() to
-> > unlock i_aops_sem after the transaction is complete.
-> 
-> We manually unlock inodes after transactions in many cases -
-> anywhere we do a rolling transaction, the inode locks do not get
-> released by the transaction. Hence for a one-off case like this it
-> doesn't really make sense to push all this infrastructure into the
-> transaction subsystem. Especially as we can manually lock before and
-> unlock after the transaction context without any real complexity.
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
-So does xfs_trans_commit() operate synchronously?
+The readahead code is part of the page cache so should be found in the
+pagemap.h file.  force_page_cache_readahead is only used within mm,
+so move it to mm/internal.h instead.  Remove the parameter names where
+they add no value, and rename the ones which were actively misleading.
 
-I want to understand this better because I have fought with a lot of ABBA
-issues with these locks.  So...  can I hold the lock until after
-xfs_trans_commit() and safely unlock it there... because the XFS_MMAPLOCK_EXCL,
-XFS_IOLOCK_EXCL, and XFS_ILOCK_EXCL will be released at that point?  Thus
-preserving the following lock order.
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: John Hubbard <jhubbard@nvidia.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ block/blk-core.c        |  1 +
+ include/linux/mm.h      | 19 -------------------
+ include/linux/pagemap.h |  8 ++++++++
+ mm/fadvise.c            |  2 ++
+ mm/internal.h           |  2 ++
+ 5 files changed, 13 insertions(+), 19 deletions(-)
 
-...
- * Basic locking order:
- *
- * i_aops_sem -> i_rwsem -> i_mmap_lock -> page_lock -> i_ilock
- *
-...
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 089e890ab208..41417bb93634 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -20,6 +20,7 @@
+ #include <linux/blk-mq.h>
+ #include <linux/highmem.h>
+ #include <linux/mm.h>
++#include <linux/pagemap.h>
+ #include <linux/kernel_stat.h>
+ #include <linux/string.h>
+ #include <linux/init.h>
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 52269e56c514..68dcda9a2112 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2401,25 +2401,6 @@ extern vm_fault_t filemap_page_mkwrite(struct vm_fault *vmf);
+ int __must_check write_one_page(struct page *page);
+ void task_dirty_inc(struct task_struct *tsk);
+ 
+-/* readahead.c */
+-#define VM_READAHEAD_PAGES	(SZ_128K / PAGE_SIZE)
+-
+-int force_page_cache_readahead(struct address_space *mapping, struct file *filp,
+-			pgoff_t offset, unsigned long nr_to_read);
+-
+-void page_cache_sync_readahead(struct address_space *mapping,
+-			       struct file_ra_state *ra,
+-			       struct file *filp,
+-			       pgoff_t offset,
+-			       unsigned long size);
+-
+-void page_cache_async_readahead(struct address_space *mapping,
+-				struct file_ra_state *ra,
+-				struct file *filp,
+-				struct page *pg,
+-				pgoff_t offset,
+-				unsigned long size);
+-
+ extern unsigned long stack_guard_gap;
+ /* Generic expand stack which grows the stack according to GROWS{UP,DOWN} */
+ extern int expand_stack(struct vm_area_struct *vma, unsigned long address);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index ccb14b6a16b5..24894b9b90c9 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -614,6 +614,14 @@ int replace_page_cache_page(struct page *old, struct page *new, gfp_t gfp_mask);
+ void delete_from_page_cache_batch(struct address_space *mapping,
+ 				  struct pagevec *pvec);
+ 
++#define VM_READAHEAD_PAGES	(SZ_128K / PAGE_SIZE)
++
++void page_cache_sync_readahead(struct address_space *, struct file_ra_state *,
++		struct file *, pgoff_t index, unsigned long req_count);
++void page_cache_async_readahead(struct address_space *, struct file_ra_state *,
++		struct file *, struct page *, pgoff_t index,
++		unsigned long req_count);
++
+ /*
+  * Like add_to_page_cache_locked, but used to add newly allocated pages:
+  * the page is new, so we can just run __SetPageLocked() against it.
+diff --git a/mm/fadvise.c b/mm/fadvise.c
+index 4f17c83db575..3efebfb9952c 100644
+--- a/mm/fadvise.c
++++ b/mm/fadvise.c
+@@ -22,6 +22,8 @@
+ 
+ #include <asm/unistd.h>
+ 
++#include "internal.h"
++
+ /*
+  * POSIX_FADV_WILLNEED could set PG_Referenced, and POSIX_FADV_NOREUSE could
+  * deactivate the pages and clear PG_Referenced.
+diff --git a/mm/internal.h b/mm/internal.h
+index 3cf20ab3ca01..83f353e74654 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -49,6 +49,8 @@ void unmap_page_range(struct mmu_gather *tlb,
+ 			     unsigned long addr, unsigned long end,
+ 			     struct zap_details *details);
+ 
++int force_page_cache_readahead(struct address_space *, struct file *,
++		pgoff_t index, unsigned long nr_to_read);
+ extern unsigned int __do_page_cache_readahead(struct address_space *mapping,
+ 		struct file *filp, pgoff_t offset, unsigned long nr_to_read,
+ 		unsigned long lookahead_size);
+-- 
+2.25.0
 
-Thanks for the review!
-Ira
-
-> 
-> This also means that we can, if necessary, do aops manipulation work
-> /after/ the transaction that changes on-disk state completes and we
-> still hold the aops reference exclusively. While we don't do that
-> now, I think it is worthwhile keeping our options open here....
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
