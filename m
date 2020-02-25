@@ -2,115 +2,179 @@ Return-Path: <SRS0=U5g5=4N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00CAEC4BA03
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:51:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F35CC4BA04
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 22:47:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CAE6521927
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 21:51:35 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="D9msPfR5"
+	by mail.kernel.org (Postfix) with ESMTP id 5435721927
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Feb 2020 22:47:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1582670871;
+	bh=j/zsh2xhsRGa0zSWKaKjIpm75QoCCLplBUQwSlomtug=;
+	h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:List-ID:
+	 From;
+	b=whz2SmWu96EO3a1fDlQumrdecynaCiX8eom4ZvS5y6kWee2mVGu89NeFFD+swkxRH
+	 uVASuYPesTz768J1xXfe+1568OpWvhnQnOe/4wbOg9Ftsqz72gLs4Ex/vVMFywsPtH
+	 hCTo2HZMGOPxb8BvHcEOIN+C5u+wuhW6ZXGGu4lo=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729874AbgBYVvI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Feb 2020 16:51:08 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:43490 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728756AbgBYVsl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Feb 2020 16:48:41 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=w0+748cvV8fqYYK5S7voSb7ryQvDDane/jjiQr++miE=; b=D9msPfR51FpFSkZ4yp+PvhVq9v
-        /8p2vUtvBmnkH+0U7AiCEitHwnmrbb0Cj2wMmeOctMytUSo4X8ujdyuUBoovpMt7WuBwa4WMXaCT8
-        lJYnZPkuWdxmkK/iIMi7H5gcLcYFemoFXyY3kyyRIM1Dn5pufEjmUJ9gQzULSpxpUh9x+yBzTL4Jf
-        yV+nMQ8Kaq8SvlJoXbw4pKqlkmvjaLOIai5s31f+Zaep5jzhTbikbpl+vVWFQfvcBOyaX7nFC6OKq
-        LIYbX1na3KxvUbHt1FIQ8CiO9Y5QC71++xY8kJhJLpHWtXqhLwOs7fPhZiAAHIz25pHh4LMEgvCfS
-        jmQam+xg==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1j6i4H-0007pz-AT; Tue, 25 Feb 2020 21:48:41 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com,
-        linux-xfs@vger.kernel.org, John Hubbard <jhubbard@nvidia.com>
-Subject: [PATCH v8 12/25] mm: Move end_index check out of readahead loop
-Date:   Tue, 25 Feb 2020 13:48:25 -0800
-Message-Id: <20200225214838.30017-13-willy@infradead.org>
-X-Mailer: git-send-email 2.21.1
-In-Reply-To: <20200225214838.30017-1-willy@infradead.org>
-References: <20200225214838.30017-1-willy@infradead.org>
+        id S1729042AbgBYWrr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Feb 2020 17:47:47 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54588 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728770AbgBYWrr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Feb 2020 17:47:47 -0500
+Received: from paulmck-ThinkPad-P72.home (unknown [163.114.132.128])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1A3AE20732;
+        Tue, 25 Feb 2020 22:47:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1582670866;
+        bh=j/zsh2xhsRGa0zSWKaKjIpm75QoCCLplBUQwSlomtug=;
+        h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:From;
+        b=tGx0KQTZH7UfFQLGgJZhost0CK2B6Uo5wKuYcryvp33WJjMiK9DYzP8MkzNDdYL2H
+         /YX7O0PF0rTqcHx4A1BFgB8Yps4acsL0hDhbPT4H1VEYxoqzP7VuAt81B3rjONOmP2
+         RGRpFeRw5IFbhsR5sqJGons1B60ROHmZToV9H5Ts=
+Received: by paulmck-ThinkPad-P72.home (Postfix, from userid 1000)
+        id 292EF3521A51; Tue, 25 Feb 2020 14:47:45 -0800 (PST)
+Date:   Tue, 25 Feb 2020 14:47:45 -0800
+From:   "Paul E. McKenney" <paulmck@kernel.org>
+To:     Uladzislau Rezki <urezki@gmail.com>
+Cc:     Joel Fernandes <joel@joelfernandes.org>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Suraj Jitindar Singh <surajjs@amazon.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH RFC] ext4: fix potential race between online resizing and
+ write operations
+Message-ID: <20200225224745.GX2935@paulmck-ThinkPad-P72>
+Reply-To: paulmck@kernel.org
+References: <20200218170857.GA28774@pc636>
+ <20200220045233.GC476845@mit.edu>
+ <20200221003035.GC2935@paulmck-ThinkPad-P72>
+ <20200221131455.GA4904@pc636>
+ <20200221202250.GK2935@paulmck-ThinkPad-P72>
+ <20200222222415.GC191380@google.com>
+ <20200223011018.GB2935@paulmck-ThinkPad-P72>
+ <20200224174030.GA22138@pc636>
+ <20200225020705.GA253171@google.com>
+ <20200225185400.GA27919@pc636>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200225185400.GA27919@pc636>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+On Tue, Feb 25, 2020 at 07:54:00PM +0100, Uladzislau Rezki wrote:
+> > > > > I was thinking a 2 fold approach (just thinking out loud..):
+> > > > > 
+> > > > > If kfree_call_rcu() is called in atomic context or in any rcu reader, then
+> > > > > use GFP_ATOMIC to grow an rcu_head wrapper on the atomic memory pool and
+> > > > > queue that.
+> > > > > 
+> > > I am not sure if that is acceptable, i mean what to do when GFP_ATOMIC
+> > > gets failed in atomic context? Or we can just consider it as out of
+> > > memory and another variant is to say that headless object can be called
+> > > from preemptible context only.
+> > 
+> > Yes that makes sense, and we can always put disclaimer in the API's comments
+> > saying if this object is expected to be freed a lot, then don't use the
+> > headless-API to be extra safe.
+> > 
+> Agree.
+> 
+> > BTW, GFP_ATOMIC the documentation says if GFP_ATOMIC reserves are depleted,
+> > the kernel can even panic some times, so if GFP_ATOMIC allocation fails, then
+> > there seems to be bigger problems in the system any way. I would say let us
+> > write a patch to allocate there and see what the -mm guys think.
+> > 
+> OK. It might be that they can offer something if they do not like our
+> approach. I will try to compose something and send the patch to see.
+> The tree.c implementation is almost done, whereas tiny one is on hold.
+> 
+> I think we should support batching as well as bulk interface there.
+> Another way is to workaround head-less object, just to attach the head
+> dynamically using kmalloc() and then call_rcu() but then it will not be
+> a fair headless support :)
+> 
+> What is your view?
+> 
+> > > > > Otherwise, grow an rcu_head on the stack of kfree_call_rcu() and call
+> > > > > synchronize_rcu() inline with it.
+> > > > > 
+> > > > >
+> > > What do you mean here, Joel? "grow an rcu_head on the stack"?
+> > 
+> > By "grow on the stack", use the compiler-allocated rcu_head on the
+> > kfree_rcu() caller's stack.
+> > 
+> > I meant here to say, if we are not in atomic context, then we use regular
+> > GFP_KERNEL allocation, and if that fails, then we just use the stack's
+> > rcu_head and call synchronize_rcu() or even synchronize_rcu_expedited since
+> > the allocation failure would mean the need for RCU to free some memory is
+> > probably great.
+> > 
+> Ah, i got it. I thought you meant something like recursion and then
+> unwinding the stack back somehow :)
+> 
+> > > > > Use preemptible() andr task_struct's rcu_read_lock_nesting to differentiate
+> > > > > between the 2 cases.
+> > > > > 
+> > > If the current context is preemptable then we can inline synchronize_rcu()
+> > > together with freeing to handle such corner case, i mean when we are run
+> > > out of memory.
+> > 
+> > Ah yes, exactly what I mean.
+> > 
+> OK.
+> 
+> > > As for "task_struct's rcu_read_lock_nesting". Will it be enough just
+> > > have a look at preempt_count of current process? If we have for example
+> > > nested rcu_read_locks:
+> > > 
+> > > <snip>
+> > > rcu_read_lock()
+> > >     rcu_read_lock()
+> > >         rcu_read_lock()
+> > > <snip>
+> > > 
+> > > the counter would be 3.
+> > 
+> > No, because preempt_count is not incremented during rcu_read_lock(). RCU
+> > reader sections can be preempted, they just cannot goto sleep in a reader
+> > section (unless the kernel is RT).
+> > 
+> So in CONFIG_PREEMPT kernel we can identify if we are in atomic or not by
+> using rcu_preempt_depth() and in_atomic(). When it comes to !CONFIG_PREEMPT
+> then we skip it and consider as atomic. Something like:
+> 
+> <snip>
+> static bool is_current_in_atomic()
+> {
+> #ifdef CONFIG_PREEMPT_RCU
 
-By reducing nr_to_read, we can eliminate this check from inside the loop.
+If possible: if (IS_ENABLED(CONFIG_PREEMPT_RCU))
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: John Hubbard <jhubbard@nvidia.com>
----
- mm/readahead.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+Much nicer than #ifdef, and I -think- it should work in this case.
 
-diff --git a/mm/readahead.c b/mm/readahead.c
-index d01531ef9f3c..a37b68f66233 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -167,8 +167,6 @@ void __do_page_cache_readahead(struct address_space *mapping,
- 		unsigned long lookahead_size)
- {
- 	struct inode *inode = mapping->host;
--	struct page *page;
--	unsigned long end_index;	/* The last page we want to read */
- 	LIST_HEAD(page_pool);
- 	loff_t isize = i_size_read(inode);
- 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
-@@ -178,22 +176,29 @@ void __do_page_cache_readahead(struct address_space *mapping,
- 		._index = index,
- 	};
- 	unsigned long i;
-+	pgoff_t end_index;	/* The last page we want to read */
- 
- 	if (isize == 0)
- 		return;
- 
--	end_index = ((isize - 1) >> PAGE_SHIFT);
-+	end_index = (isize - 1) >> PAGE_SHIFT;
-+	if (index > end_index)
-+		return;
-+	/* Avoid wrapping to the beginning of the file */
-+	if (index + nr_to_read < index)
-+		nr_to_read = ULONG_MAX - index + 1;
-+	/* Don't read past the page containing the last byte of the file */
-+	if (index + nr_to_read >= end_index)
-+		nr_to_read = end_index - index + 1;
- 
- 	/*
- 	 * Preallocate as many pages as we will need.
- 	 */
- 	for (i = 0; i < nr_to_read; i++) {
--		if (index + i > end_index)
--			break;
-+		struct page *page = xa_load(&mapping->i_pages, index + i);
- 
- 		BUG_ON(index + i != rac._index + rac._nr_pages);
- 
--		page = xa_load(&mapping->i_pages, index + i);
- 		if (page && !xa_is_value(page)) {
- 			/*
- 			 * Page already present?  Kick off the current batch of
--- 
-2.25.0
+							Thanx, Paul
 
+>     if (!rcu_preempt_depth() && !in_atomic())
+>         return false;
+> #endif
+> 
+>     return true;
+> }
+> <snip>
+> 
+> Thanks!
+> 
+> --
+> Vlad Rezki
