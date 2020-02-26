@@ -2,29 +2,28 @@ Return-Path: <SRS0=Edys=4O=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D684BC4BA14
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DB75C4BA13
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B99802467B
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7EE5E2467B
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727341AbgBZNlY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Feb 2020 08:41:24 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44734 "EHLO relay.sw.ru"
+        id S1727497AbgBZNln (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Feb 2020 08:41:43 -0500
+Received: from relay.sw.ru ([185.231.240.75]:44736 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726992AbgBZNlY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726926AbgBZNlY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 26 Feb 2020 08:41:24 -0500
 Received: from dhcp-172-16-24-104.sw.ru ([172.16.24.104] helo=localhost.localdomain)
         by relay.sw.ru with esmtp (Exim 4.92.3)
         (envelope-from <ktkhai@virtuozzo.com>)
-        id 1j6wvh-0006r8-Hg; Wed, 26 Feb 2020 16:40:49 +0300
-Subject: [PATCH RFC 0/5] fs,
- ext4: Physical blocks placement hint for fallocate(0): fallocate2(). TP
- defrag.
+        id 1j6ww2-0006rb-RR; Wed, 26 Feb 2020 16:41:11 +0300
+Subject: [PATCH RFC 4/5] ext4: Prepare ext4_mb_discard_preallocations() for
+ handling EXT4_MB_HINT_GOAL_ONLY
 From:   Kirill Tkhai <ktkhai@virtuozzo.com>
 To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
         snitzer@redhat.com, jack@suse.cz, ebiggers@google.com,
@@ -33,8 +32,10 @@ To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
         mbobrowski@mbobrowski.org, enwlinux@gmail.com, sblbir@amazon.com,
         khazhy@google.com, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date:   Wed, 26 Feb 2020 16:40:49 +0300
-Message-ID: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
+Date:   Wed, 26 Feb 2020 16:41:10 +0300
+Message-ID: <158272447070.281342.755800197684231698.stgit@localhost.localdomain>
+In-Reply-To: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
+References: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
 User-Agent: StGit/0.19
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -44,110 +45,80 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When discard granuality of a block device is bigger than filesystem block size,
-fstrim does not effectively release device blocks. During the filesystem life,
-some files become deleted, some remain alive, and this results in that many
-device blocks are used incomletely (of course, the reason is not only in this,
-but since this is not a problem of a filesystem, this is not a subject
-of the patchset). This results in space lose for thin provisioning devices.
+EXT4_MB_HINT_GOAL_ONLY is currently unused. This patch teaches
+ext4_mb_discard_preallocations() to discard only that preallocated
+range, which contains a specified block, in case of the flag is set.
+Otherwise, a preallocated range is not discarded.
 
-Say, a filesystem on a block device, which is provided by another filesystem
-(say, distributed network filesystem). Semi-used blocks of the block device
-result in bad performance and worse space usage of underlining filesystem.
-Another example is ext4 with 4k block on loop on ext4 with 1m block. This
-case also results in bad disk space usage.
-
-Choosing a bigger block size is not a solution here, since small files become
-taking much more disk space, than they used before, and the result excess
-disk usage is the same.
-
-The proposed solution is defragmentation of files based on block device
-discard granuality knowledge. Files, which were not modified for a long time,
-and read-only files, small files, etc, may be placed in the same block device
-block together. I.e., compaction of some device blocks, which results
-in releasing another device blocks.
-
-The problem is current fallocate() does not allow to implement effective
-way for such the defragmentation. The below describes the situation for ext4,
-but this should touch all filesystems.
-
-fallocate() goes thru standard blocks allocator, which try to behave very
-good for life allocation cases: block placement and future file size
-prediction, delayed blocks allocation, etc. But it almost impossible
-to allocate blocks from specified place for our specific case. The only
-ext4 block allocator option possible to use is that the allocator firstly
-tries to allocate blocks from the same block group, that inode is related to.
-But this is not enough for effective files compaction.
-
-This patchset implements an extension of fallocate():
-
-	fallocate2(int fd, int mode, loff_t offset, loff_t len,
-		   unsigned long long physical)
-
-The new argument is @physical offset from start of device, which is must
-for block allocation. In case of [@physical, @physical + len] block range
-is available for allocation, the syscall assigns the corresponding extent/
-extents to inode. In case of the range or its part is occupied, the syscall
-returns with error (maybe, smaller range will be allocated. The behavior
-is the same as when fallocate() meets no space in the middle).
-
-This interface allows to solve the formulated problem. Also, note, this
-interface may allow to improve existing e4defrag algorithm: decrease
-number of file extents more effective.
-
-[1-2/5] are refactoring.
-[3/5] adds fallocate2() body.
-[4/5] prepares ext4_mb_discard_preallocations() for handling EXT4_MB_HINT_GOAL_ONLY
-[5/5] adds fallocate2() support for ext4
-
-Any comments are welcomed!
-
----
-
-Kirill Tkhai (5):
-      fs: Add new argument to file_operations::fallocate()
-      fs: Add new argument to vfs_fallocate()
-      fs: Add fallocate2() syscall
-      ext4: Prepare ext4_mb_discard_preallocations() for handling EXT4_MB_HINT_GOAL_ONLY
-      ext4: Add fallocate2() support
-
-
- arch/x86/entry/syscalls/syscall_32.tbl |    1 +
- arch/x86/entry/syscalls/syscall_64.tbl |    1 +
- arch/x86/ia32/sys_ia32.c               |   10 +++++++
- drivers/block/loop.c                   |    2 +
- drivers/nvme/target/io-cmd-file.c      |    4 +--
- drivers/staging/android/ashmem.c       |    2 +
- drivers/target/target_core_file.c      |    2 +
- fs/block_dev.c                         |    4 +--
- fs/btrfs/file.c                        |    4 ++-
- fs/ceph/file.c                         |    5 +++-
- fs/cifs/cifsfs.c                       |    7 +++--
- fs/cifs/smb2ops.c                      |    5 +++-
- fs/ext4/ext4.h                         |    5 +++-
- fs/ext4/extents.c                      |   35 ++++++++++++++++++++-----
- fs/ext4/inode.c                        |   14 ++++++++++
- fs/ext4/mballoc.c                      |   45 +++++++++++++++++++++++++-------
- fs/f2fs/file.c                         |    4 ++-
- fs/fat/file.c                          |    7 ++++-
- fs/fuse/file.c                         |    5 +++-
- fs/gfs2/file.c                         |    5 +++-
- fs/hugetlbfs/inode.c                   |    5 +++-
- fs/io_uring.c                          |    2 +
- fs/ioctl.c                             |    5 ++--
- fs/nfs/nfs4file.c                      |    6 ++++
- fs/nfsd/vfs.c                          |    2 +
- fs/ocfs2/file.c                        |    4 ++-
- fs/open.c                              |   21 +++++++++++----
- fs/overlayfs/file.c                    |    8 ++++--
- fs/xfs/xfs_file.c                      |    5 +++-
- include/linux/fs.h                     |    4 +--
- include/linux/syscalls.h               |    8 +++++-
- ipc/shm.c                              |    6 ++--
- mm/madvise.c                           |    2 +
- mm/shmem.c                             |    4 ++-
- 34 files changed, 190 insertions(+), 59 deletions(-)
-
---
 Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+---
+ fs/ext4/mballoc.c |   28 +++++++++++++++++++++-------
+ 1 file changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 51a78eb65f3c..b1b3c5526d1a 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3894,8 +3894,8 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+  *   1) how many requested
+  */
+ static noinline_for_stack int
+-ext4_mb_discard_group_preallocations(struct super_block *sb,
+-					ext4_group_t group, int needed)
++ext4_mb_discard_group_preallocations(struct super_block *sb, ext4_group_t group,
++				     int needed, ext4_fsblk_t goal)
+ {
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -3947,6 +3947,12 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 			continue;
+ 		}
+ 
++		if (goal != (ext4_fsblk_t)-1 &&
++		    (goal < pa->pa_pstart || goal >= pa->pa_pstart + pa->pa_len)) {
++			spin_unlock(&pa->pa_lock);
++			continue;
++		}
++
+ 		/* seems this one can be freed ... */
+ 		pa->pa_deleted = 1;
+ 
+@@ -4462,15 +4468,23 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+ 	return 0;
+ }
+ 
+-static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
++static int ext4_mb_discard_preallocations(struct super_block *sb,
++					  struct ext4_allocation_context *ac)
+ {
+-	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
++	ext4_group_t i = 0, ngroups = ext4_get_groups_count(sb);
++	int needed = ac->ac_o_ex.fe_len;
++	ext4_fsblk_t goal = (ext4_fsblk_t)-1;
+ 	int ret;
+ 	int freed = 0;
+ 
++	if (ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY) {
++		i = ac->ac_o_ex.fe_group;
++		ngroups = i + 1;
++		goal = ext4_grp_offs_to_block(ac->ac_sb, &ac->ac_g_ex);
++	}
+ 	trace_ext4_mb_discard_preallocations(sb, needed);
+-	for (i = 0; i < ngroups && needed > 0; i++) {
+-		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
++	for (; i < ngroups && needed > 0; i++) {
++		ret = ext4_mb_discard_group_preallocations(sb, i, needed, goal);
+ 		freed += ret;
+ 		needed -= ret;
+ 	}
+@@ -4585,7 +4599,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			ar->len = ac->ac_b_ex.fe_len;
+ 		}
+ 	} else {
+-		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
++		freed  = ext4_mb_discard_preallocations(sb, ac);
+ 		if (freed)
+ 			goto repeat;
+ 		*errp = -ENOSPC;
+
 
