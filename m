@@ -2,173 +2,185 @@ Return-Path: <SRS0=Edys=4O=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09D9DC4BA14
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2D52C4BA12
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 15:07:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E19222467B
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B6F1F24688
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 15:07:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1582729622;
+	bh=QT6GUyLzIUdRMVSaNAxDiNdKzTo0kQ+EQU+2BK797Sw=;
+	h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:List-ID:
+	 From;
+	b=BwMJcnC1rDE68pxW7Vaf7NjGtNirhTSq4JyQFGwg6N//HOMxtU1EmohhX+BMAXuLC
+	 H/xhPWUU14I9BX090FXsvydOgBS6LuWftRQ7wo3TT2Ayg8oGLG2E5/z+7EBiTm1EHd
+	 r9DUbpnAx2ebjCmzfgKjAhj3wvSJTshI6BXu5Z5Q=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727237AbgBZNlX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Feb 2020 08:41:23 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44730 "EHLO relay.sw.ru"
+        id S1727877AbgBZPG6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Feb 2020 10:06:58 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49932 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726277AbgBZNlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 26 Feb 2020 08:41:23 -0500
-Received: from dhcp-172-16-24-104.sw.ru ([172.16.24.104] helo=localhost.localdomain)
-        by relay.sw.ru with esmtp (Exim 4.92.3)
-        (envelope-from <ktkhai@virtuozzo.com>)
-        id 1j6wvx-0006rW-Gc; Wed, 26 Feb 2020 16:41:05 +0300
-Subject: [PATCH RFC 3/5] fs: Add fallocate2() syscall
-From:   Kirill Tkhai <ktkhai@virtuozzo.com>
-To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
-        snitzer@redhat.com, jack@suse.cz, ebiggers@google.com,
-        riteshh@linux.ibm.com, krisman@collabora.com, surajjs@amazon.com,
-        ktkhai@virtuozzo.com, dmonakhov@gmail.com,
-        mbobrowski@mbobrowski.org, enwlinux@gmail.com, sblbir@amazon.com,
-        khazhy@google.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date:   Wed, 26 Feb 2020 16:41:05 +0300
-Message-ID: <158272446537.281342.16679772209236495407.stgit@localhost.localdomain>
-In-Reply-To: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
-References: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
-User-Agent: StGit/0.19
+        id S1726990AbgBZPG6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 26 Feb 2020 10:06:58 -0500
+Received: from paulmck-ThinkPad-P72.home (199-192-87-166.static.wiline.com [199.192.87.166])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 41E122467D;
+        Wed, 26 Feb 2020 15:06:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1582729617;
+        bh=QT6GUyLzIUdRMVSaNAxDiNdKzTo0kQ+EQU+2BK797Sw=;
+        h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:From;
+        b=FFkA0N8gusvWYmfVUiPUaZKzj8nUanEMpm09zuCMQphmDbzFDySX7V8AW8zC4dMbj
+         L1pOu3+jZuFEldIfaMbsKANrPIeQxVLBfl9Ecsgqxre6DfLfwizpPveoN5KwIKCRWZ
+         Sxr/hu+ZExeF+XTdQnCSJ2tk2GbIKQ4RDLecOr1w=
+Received: by paulmck-ThinkPad-P72.home (Postfix, from userid 1000)
+        id D1D253521EAF; Wed, 26 Feb 2020 07:06:56 -0800 (PST)
+Date:   Wed, 26 Feb 2020 07:06:56 -0800
+From:   "Paul E. McKenney" <paulmck@kernel.org>
+To:     Uladzislau Rezki <urezki@gmail.com>
+Cc:     Joel Fernandes <joel@joelfernandes.org>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Suraj Jitindar Singh <surajjs@amazon.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH RFC] ext4: fix potential race between online resizing and
+ write operations
+Message-ID: <20200226150656.GB2935@paulmck-ThinkPad-P72>
+Reply-To: paulmck@kernel.org
+References: <20200221003035.GC2935@paulmck-ThinkPad-P72>
+ <20200221131455.GA4904@pc636>
+ <20200221202250.GK2935@paulmck-ThinkPad-P72>
+ <20200222222415.GC191380@google.com>
+ <20200223011018.GB2935@paulmck-ThinkPad-P72>
+ <20200224174030.GA22138@pc636>
+ <20200225020705.GA253171@google.com>
+ <20200225185400.GA27919@pc636>
+ <20200225224745.GX2935@paulmck-ThinkPad-P72>
+ <20200226130440.GA30008@pc636>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200226130440.GA30008@pc636>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This introduces a new syscall and propagates @physical there.
-Also, architecture-dependent definitions for x86 are added.
+On Wed, Feb 26, 2020 at 02:04:40PM +0100, Uladzislau Rezki wrote:
+> On Tue, Feb 25, 2020 at 02:47:45PM -0800, Paul E. McKenney wrote:
+> > On Tue, Feb 25, 2020 at 07:54:00PM +0100, Uladzislau Rezki wrote:
+> > > > > > > I was thinking a 2 fold approach (just thinking out loud..):
+> > > > > > > 
+> > > > > > > If kfree_call_rcu() is called in atomic context or in any rcu reader, then
+> > > > > > > use GFP_ATOMIC to grow an rcu_head wrapper on the atomic memory pool and
+> > > > > > > queue that.
+> > > > > > > 
+> > > > > I am not sure if that is acceptable, i mean what to do when GFP_ATOMIC
+> > > > > gets failed in atomic context? Or we can just consider it as out of
+> > > > > memory and another variant is to say that headless object can be called
+> > > > > from preemptible context only.
+> > > > 
+> > > > Yes that makes sense, and we can always put disclaimer in the API's comments
+> > > > saying if this object is expected to be freed a lot, then don't use the
+> > > > headless-API to be extra safe.
+> > > > 
+> > > Agree.
+> > > 
+> > > > BTW, GFP_ATOMIC the documentation says if GFP_ATOMIC reserves are depleted,
+> > > > the kernel can even panic some times, so if GFP_ATOMIC allocation fails, then
+> > > > there seems to be bigger problems in the system any way. I would say let us
+> > > > write a patch to allocate there and see what the -mm guys think.
+> > > > 
+> > > OK. It might be that they can offer something if they do not like our
+> > > approach. I will try to compose something and send the patch to see.
+> > > The tree.c implementation is almost done, whereas tiny one is on hold.
+> > > 
+> > > I think we should support batching as well as bulk interface there.
+> > > Another way is to workaround head-less object, just to attach the head
+> > > dynamically using kmalloc() and then call_rcu() but then it will not be
+> > > a fair headless support :)
+> > > 
+> > > What is your view?
+> > > 
+> > > > > > > Otherwise, grow an rcu_head on the stack of kfree_call_rcu() and call
+> > > > > > > synchronize_rcu() inline with it.
+> > > > > > > 
+> > > > > > >
+> > > > > What do you mean here, Joel? "grow an rcu_head on the stack"?
+> > > > 
+> > > > By "grow on the stack", use the compiler-allocated rcu_head on the
+> > > > kfree_rcu() caller's stack.
+> > > > 
+> > > > I meant here to say, if we are not in atomic context, then we use regular
+> > > > GFP_KERNEL allocation, and if that fails, then we just use the stack's
+> > > > rcu_head and call synchronize_rcu() or even synchronize_rcu_expedited since
+> > > > the allocation failure would mean the need for RCU to free some memory is
+> > > > probably great.
+> > > > 
+> > > Ah, i got it. I thought you meant something like recursion and then
+> > > unwinding the stack back somehow :)
+> > > 
+> > > > > > > Use preemptible() andr task_struct's rcu_read_lock_nesting to differentiate
+> > > > > > > between the 2 cases.
+> > > > > > > 
+> > > > > If the current context is preemptable then we can inline synchronize_rcu()
+> > > > > together with freeing to handle such corner case, i mean when we are run
+> > > > > out of memory.
+> > > > 
+> > > > Ah yes, exactly what I mean.
+> > > > 
+> > > OK.
+> > > 
+> > > > > As for "task_struct's rcu_read_lock_nesting". Will it be enough just
+> > > > > have a look at preempt_count of current process? If we have for example
+> > > > > nested rcu_read_locks:
+> > > > > 
+> > > > > <snip>
+> > > > > rcu_read_lock()
+> > > > >     rcu_read_lock()
+> > > > >         rcu_read_lock()
+> > > > > <snip>
+> > > > > 
+> > > > > the counter would be 3.
+> > > > 
+> > > > No, because preempt_count is not incremented during rcu_read_lock(). RCU
+> > > > reader sections can be preempted, they just cannot goto sleep in a reader
+> > > > section (unless the kernel is RT).
+> > > > 
+> > > So in CONFIG_PREEMPT kernel we can identify if we are in atomic or not by
+> > > using rcu_preempt_depth() and in_atomic(). When it comes to !CONFIG_PREEMPT
+> > > then we skip it and consider as atomic. Something like:
+> > > 
+> > > <snip>
+> > > static bool is_current_in_atomic()
+> > > {
+> > > #ifdef CONFIG_PREEMPT_RCU
+> > 
+> > If possible: if (IS_ENABLED(CONFIG_PREEMPT_RCU))
+> > 
+> > Much nicer than #ifdef, and I -think- it should work in this case.
+> > 
+> OK. Thank you, Paul!
+> 
+> There is one point i would like to highlight it is about making caller
+> instead to be responsible for atomic or not decision. Like how kmalloc()
+> works, it does not really know the context it runs on, so it is up to
+> caller to inform.
+> 
+> The same way:
+> 
+> kvfree_rcu(p, atomic = true/false);
+> 
+> in this case we could cover !CONFIG_PREEMPT case also.
 
-Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
----
- arch/x86/entry/syscalls/syscall_32.tbl |    1 +
- arch/x86/entry/syscalls/syscall_64.tbl |    1 +
- arch/x86/ia32/sys_ia32.c               |   10 ++++++++++
- fs/open.c                              |   16 +++++++++++++---
- include/linux/syscalls.h               |    8 +++++++-
- 5 files changed, 32 insertions(+), 4 deletions(-)
+Understood, but couldn't we instead use IS_ENABLED() to work out the
+actual situation at runtime and relieve the caller of this burden?
+Or am I missing a corner case?
 
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index c17cb77eb150..62b3692df584 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -442,3 +442,4 @@
- 435	i386	clone3			sys_clone3			__ia32_sys_clone3
- 437	i386	openat2			sys_openat2			__ia32_sys_openat2
- 438	i386	pidfd_getfd		sys_pidfd_getfd			__ia32_sys_pidfd_getfd
-+486	i386	fallocate2		sys_fallocate2			__ia32_compat_sys_x86_fallocate2
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 44d510bc9b78..b106a39509ee 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -359,6 +359,7 @@
- 435	common	clone3			__x64_sys_clone3/ptregs
- 437	common	openat2			__x64_sys_openat2
- 438	common	pidfd_getfd		__x64_sys_pidfd_getfd
-+486	common	fallocate2		__x64_sys_fallocate2
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/arch/x86/ia32/sys_ia32.c b/arch/x86/ia32/sys_ia32.c
-index 21790307121e..1757bfe1a19c 100644
---- a/arch/x86/ia32/sys_ia32.c
-+++ b/arch/x86/ia32/sys_ia32.c
-@@ -230,6 +230,16 @@ COMPAT_SYSCALL_DEFINE6(x86_fallocate, int, fd, int, mode,
- 			      ((u64)len_hi << 32) | len_lo);
- }
- 
-+COMPAT_SYSCALL_DEFINE6(x86_fallocate2, int, fd, int, mode,
-+		       unsigned int, offset_lo, unsigned int, offset_hi,
-+		       unsigned int, len_lo, unsigned int, len_hi,
-+		       unsigned int physical_lo, unsigned int physical_hi)
-+{
-+	return ksys_fallocate2(fd, mode, ((u64)offset_hi << 32) | offset_lo,
-+			      ((u64)len_hi << 32) | len_lo,
-+			      ((u64)physical_hi << 32) | physical_lo);
-+}
-+
- /*
-  * The 32-bit clone ABI is CONFIG_CLONE_BACKWARDS
-  */
-diff --git a/fs/open.c b/fs/open.c
-index 596fd3dc3988..1b964a37ecc2 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -290,6 +290,10 @@ int vfs_fallocate(struct file *file, int mode,
- 	if (ret)
- 		return ret;
- 
-+	if (physical != (u64)-1 &&
-+	    !ns_capable(inode->i_sb->s_user_ns, CAP_FOWNER))
-+		return -EPERM;
-+
- 	if (S_ISFIFO(inode->i_mode))
- 		return -ESPIPE;
- 
-@@ -324,13 +328,13 @@ int vfs_fallocate(struct file *file, int mode,
- }
- EXPORT_SYMBOL_GPL(vfs_fallocate);
- 
--int ksys_fallocate(int fd, int mode, loff_t offset, loff_t len)
-+int ksys_fallocate2(int fd, int mode, loff_t offset, loff_t len, u64 physical)
- {
- 	struct fd f = fdget(fd);
- 	int error = -EBADF;
- 
- 	if (f.file) {
--		error = vfs_fallocate(f.file, mode, offset, len, (u64)-1);
-+		error = vfs_fallocate(f.file, mode, offset, len, physical);
- 		fdput(f);
- 	}
- 	return error;
-@@ -338,7 +342,13 @@ int ksys_fallocate(int fd, int mode, loff_t offset, loff_t len)
- 
- SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
- {
--	return ksys_fallocate(fd, mode, offset, len);
-+	return ksys_fallocate2(fd, mode, offset, len, (u64)-1);
-+}
-+
-+SYSCALL_DEFINE5(fallocate2, int, fd, int, mode, loff_t, offset, loff_t, len,
-+		unsigned long long, physical)
-+{
-+	return ksys_fallocate2(fd, mode, offset, len, physical);
- }
- 
- /*
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 1815065d52f3..1999493b03e9 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -427,6 +427,8 @@ asmlinkage long sys_truncate64(const char __user *path, loff_t length);
- asmlinkage long sys_ftruncate64(unsigned int fd, loff_t length);
- #endif
- asmlinkage long sys_fallocate(int fd, int mode, loff_t offset, loff_t len);
-+asmlinkage long sys_fallocate2(int fd, int mode, loff_t offset, loff_t len,
-+			       unsigned long long physical);
- asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode);
- asmlinkage long sys_chdir(const char __user *filename);
- asmlinkage long sys_fchdir(unsigned int fd);
-@@ -1255,7 +1257,11 @@ ssize_t ksys_pread64(unsigned int fd, char __user *buf, size_t count,
- 		     loff_t pos);
- ssize_t ksys_pwrite64(unsigned int fd, const char __user *buf,
- 		      size_t count, loff_t pos);
--int ksys_fallocate(int fd, int mode, loff_t offset, loff_t len);
-+int ksys_fallocate2(int fd, int mode, loff_t offset, loff_t len, u64 physical);
-+static inline int ksys_fallocate(int fd, int mode, loff_t offset, loff_t len)
-+{
-+	return ksys_fallocate2(fd, mode, offset, len, (u64)-1);
-+}
- #ifdef CONFIG_ADVISE_SYSCALLS
- int ksys_fadvise64_64(int fd, loff_t offset, loff_t len, int advice);
- #else
-
-
+							Thanx, Paul
