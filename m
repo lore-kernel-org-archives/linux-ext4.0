@@ -4,25 +4,25 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A0A4C4BA12
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F0F4C4BA12
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6D4332467B
-	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E71F24683
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Feb 2020 13:41:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727305AbgBZNlY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Feb 2020 08:41:24 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44744 "EHLO relay.sw.ru"
+        id S1727423AbgBZNlZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Feb 2020 08:41:25 -0500
+Received: from relay.sw.ru ([185.231.240.75]:44738 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726974AbgBZNlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 26 Feb 2020 08:41:23 -0500
+        id S1726673AbgBZNlY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 26 Feb 2020 08:41:24 -0500
 Received: from dhcp-172-16-24-104.sw.ru ([172.16.24.104] helo=localhost.localdomain)
         by relay.sw.ru with esmtp (Exim 4.92.3)
         (envelope-from <ktkhai@virtuozzo.com>)
-        id 1j6ww8-0006rf-CG; Wed, 26 Feb 2020 16:41:16 +0300
-Subject: [PATCH RFC 5/5] ext4: Add fallocate2() support
+        id 1j6wvm-0006rH-Qw; Wed, 26 Feb 2020 16:40:54 +0300
+Subject: [PATCH RFC 1/5] fs: Add new argument to file_operations::fallocate()
 From:   Kirill Tkhai <ktkhai@virtuozzo.com>
 To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
         snitzer@redhat.com, jack@suse.cz, ebiggers@google.com,
@@ -31,8 +31,8 @@ To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
         mbobrowski@mbobrowski.org, enwlinux@gmail.com, sblbir@amazon.com,
         khazhy@google.com, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date:   Wed, 26 Feb 2020 16:41:16 +0300
-Message-ID: <158272447616.281342.14858371265376818660.stgit@localhost.localdomain>
+Date:   Wed, 26 Feb 2020 16:40:54 +0300
+Message-ID: <158272445470.281342.8801644318823700525.stgit@localhost.localdomain>
 In-Reply-To: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
 References: <158272427715.281342.10873281294835953645.stgit@localhost.localdomain>
 User-Agent: StGit/0.19
@@ -44,263 +44,507 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a support of physical hint for fallocate2() syscall.
-In case of @physical argument is set for ext4_fallocate(),
-we try to allocate blocks only from [@phisical, @physical + len]
-range, while other blocks are not used.
+After the patch the prototype will look in the following way:
 
-ext4_fallocate(struct file *file, int mode,
-                    loff_t offset, loff_t len, u64 physical)
+long (*fallocate)(struct file *file, int mode, loff_t offset,
+		  loff_t len, u64 physical);
 
-In case of some of blocks from the range are occupied, the syscall
-returns with error. This is the only difference from fallocate().
-The same as fallocate(), less then @len blocks may be allocated
-with error as a return value.
-
-We try to find hint blocks both in preallocated and ordinary blocks.
-Note, that ext4_mb_use_preallocated() looks for the hint only in
-inode's preallocations. In case of there are no desired block,
-further ext4_mb_discard_preallocations() tries to release group
-preallocations.
-
-Note, that this patch makes EXT4_MB_HINT_GOAL_ONLY flag be used,
-it used to be unused before for years.
-New EXT4_GET_BLOCKS_FROM_GOAL flag of ext4_map_blocks() is added.
-It indicates, that struct ext4_map_blocks::m_goal_pblk is valid.
+@physical is the new argument. This patch does not contain
+functional changes, and it will be used in further patches.
 
 Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
 ---
- fs/ext4/ext4.h    |    3 +++
- fs/ext4/extents.c |   31 ++++++++++++++++++++++++-------
- fs/ext4/inode.c   |   14 ++++++++++++++
- fs/ext4/mballoc.c |   17 ++++++++++++++---
- 4 files changed, 55 insertions(+), 10 deletions(-)
+ drivers/block/loop.c              |    2 +-
+ drivers/staging/android/ashmem.c  |    2 +-
+ drivers/target/target_core_file.c |    2 +-
+ fs/block_dev.c                    |    4 ++--
+ fs/btrfs/file.c                   |    4 +++-
+ fs/ceph/file.c                    |    5 ++++-
+ fs/cifs/cifsfs.c                  |    7 ++++---
+ fs/cifs/smb2ops.c                 |    5 ++++-
+ fs/ext4/ext4.h                    |    2 +-
+ fs/ext4/extents.c                 |    6 +++++-
+ fs/f2fs/file.c                    |    4 +++-
+ fs/fat/file.c                     |    7 +++++--
+ fs/fuse/file.c                    |    5 ++++-
+ fs/gfs2/file.c                    |    5 ++++-
+ fs/hugetlbfs/inode.c              |    5 ++++-
+ fs/nfs/nfs4file.c                 |    6 +++++-
+ fs/ocfs2/file.c                   |    4 +++-
+ fs/open.c                         |    2 +-
+ fs/overlayfs/file.c               |    6 +++++-
+ fs/xfs/xfs_file.c                 |    5 ++++-
+ include/linux/fs.h                |    2 +-
+ ipc/shm.c                         |    6 +++---
+ mm/shmem.c                        |    4 +++-
+ 23 files changed, 71 insertions(+), 29 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5a98081c5369..299fbb8350ac 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -181,6 +181,7 @@ struct ext4_allocation_request {
- struct ext4_map_blocks {
- 	ext4_fsblk_t m_pblk;
- 	ext4_lblk_t m_lblk;
-+	ext4_fsblk_t m_goal_pblk;
- 	unsigned int m_len;
- 	unsigned int m_flags;
- };
-@@ -621,6 +622,8 @@ enum {
- 	/* Caller will submit data before dropping transaction handle. This
- 	 * allows jbd2 to avoid submitting data before commit. */
- #define EXT4_GET_BLOCKS_IO_SUBMIT		0x0400
-+	/* Caller wants blocks from provided physical offset */
-+#define EXT4_GET_BLOCKS_FROM_GOAL		0x0800
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index da8ec0b9d909..6416111a2ae1 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -438,7 +438,7 @@ static int lo_fallocate(struct loop_device *lo, struct request *rq, loff_t pos,
+ 		goto out;
+ 	}
  
- /*
-  * The bit position of these flags must not overlap with any of the
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 10d0188a712d..5f2790c1c4fb 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4412,7 +4412,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
+-	ret = file->f_op->fallocate(file, mode, pos, blk_rq_bytes(rq));
++	ret = file->f_op->fallocate(file, mode, pos, blk_rq_bytes(rq), (u64)-1);
+ 	if (unlikely(ret && ret != -EINVAL && ret != -EOPNOTSUPP))
+ 		ret = -EIO;
+  out:
+diff --git a/drivers/staging/android/ashmem.c b/drivers/staging/android/ashmem.c
+index 8044510d8ec6..ea05ff484ebe 100644
+--- a/drivers/staging/android/ashmem.c
++++ b/drivers/staging/android/ashmem.c
+@@ -489,7 +489,7 @@ ashmem_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 		mutex_unlock(&ashmem_mutex);
+ 		f->f_op->fallocate(f,
+ 				   FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+-				   start, end - start);
++				   start, end - start, (u64)-1);
+ 		fput(f);
+ 		if (atomic_dec_and_test(&ashmem_shrink_inflight))
+ 			wake_up_all(&ashmem_shrink_wait);
+diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
+index 7143d03f0e02..feafb731bbd9 100644
+--- a/drivers/target/target_core_file.c
++++ b/drivers/target/target_core_file.c
+@@ -581,7 +581,7 @@ fd_execute_unmap(struct se_cmd *cmd, sector_t lba, sector_t nolb)
+ 		if (!file->f_op->fallocate)
+ 			return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
  
- 	/* allocate new block */
- 	ar.inode = inode;
--	ar.goal = ext4_ext_find_goal(inode, path, map->m_lblk);
- 	ar.logical = map->m_lblk;
- 	/*
- 	 * We calculate the offset from the beginning of the cluster
-@@ -4437,6 +4436,13 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 		ar.flags |= EXT4_MB_DELALLOC_RESERVED;
- 	if (flags & EXT4_GET_BLOCKS_METADATA_NOFAIL)
- 		ar.flags |= EXT4_MB_USE_RESERVED;
-+	if (flags & EXT4_GET_BLOCKS_FROM_GOAL) {
-+		ar.flags |= EXT4_MB_HINT_TRY_GOAL|EXT4_MB_HINT_GOAL_ONLY;
-+		ar.goal = map->m_goal_pblk;
-+	} else {
-+		ar.goal = ext4_ext_find_goal(inode, path, map->m_lblk);
-+	}
-+
- 	newblock = ext4_mb_new_blocks(handle, &ar, &err);
- 	if (!newblock)
- 		goto out2;
-@@ -4580,8 +4586,8 @@ int ext4_ext_truncate(handle_t *handle, struct inode *inode)
+-		ret = file->f_op->fallocate(file, mode, pos, len);
++		ret = file->f_op->fallocate(file, mode, pos, len, (u64)-1);
+ 		if (ret < 0) {
+ 			pr_warn("FILEIO: fallocate() failed: %d\n", ret);
+ 			return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 69bf2fb6f7cd..d356f7d7f666 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -2078,7 +2078,7 @@ static const struct address_space_operations def_blk_aops = {
+ 		 FALLOC_FL_ZERO_RANGE | FALLOC_FL_NO_HIDE_STALE)
+ 
+ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+-			     loff_t len)
++			     loff_t len, u64 physical)
+ {
+ 	struct block_device *bdev = I_BDEV(bdev_file_inode(file));
+ 	struct address_space *mapping;
+@@ -2087,7 +2087,7 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 	int error;
+ 
+ 	/* Fail if we don't recognize the flags. */
+-	if (mode & ~BLKDEV_FALLOC_FL_SUPPORTED)
++	if ((mode & ~BLKDEV_FALLOC_FL_SUPPORTED) || physical != (u64)-1)
+ 		return -EOPNOTSUPP;
+ 
+ 	/* Don't go off the end of the device. */
+diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+index 6f6f1805e6fd..5d80da6d14eb 100644
+--- a/fs/btrfs/file.c
++++ b/fs/btrfs/file.c
+@@ -3174,7 +3174,7 @@ static int btrfs_zero_range(struct inode *inode,
  }
  
- static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
--				  ext4_lblk_t len, loff_t new_size,
--				  int flags)
-+				  ext4_lblk_t len, ext4_fsblk_t goal_pblk,
-+				  loff_t new_size, int flags)
+ static long btrfs_fallocate(struct file *file, int mode,
+-			    loff_t offset, loff_t len)
++			    loff_t offset, loff_t len, u64 physical)
  {
  	struct inode *inode = file_inode(file);
- 	handle_t *handle;
-@@ -4603,6 +4609,10 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	 */
- 	if (len <= EXT_UNWRITTEN_MAX_LEN)
- 		flags |= EXT4_GET_BLOCKS_NO_NORMALIZE;
-+	if (goal_pblk != (ext4_fsblk_t)-1) {
-+		map.m_goal_pblk = goal_pblk;
-+		flags |= EXT4_GET_BLOCKS_FROM_GOAL;
-+	}
+ 	struct extent_state *cached_state = NULL;
+@@ -3201,6 +3201,8 @@ static long btrfs_fallocate(struct file *file, int mode,
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE |
+ 		     FALLOC_FL_ZERO_RANGE))
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
  
- 	/*
- 	 * credits to insert 1 extent into extent tree
-@@ -4637,6 +4647,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 			break;
- 		}
- 		map.m_lblk += ret;
-+		map.m_goal_pblk += ret;
- 		map.m_len = len = len - ret;
- 		epos = (loff_t)map.m_lblk << inode->i_blkbits;
- 		inode->i_ctime = current_time(inode);
-@@ -4746,6 +4757,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 				round_down(offset, 1 << blkbits) >> blkbits,
- 				(round_up((offset + len), 1 << blkbits) -
- 				 round_down(offset, 1 << blkbits)) >> blkbits,
-+				(ext4_fsblk_t)-1,
- 				new_size, flags);
- 		if (ret)
- 			goto out_mutex;
-@@ -4778,8 +4790,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		truncate_pagecache_range(inode, start, end - 1);
- 		inode->i_mtime = inode->i_ctime = current_time(inode);
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return btrfs_punch_hole(inode, offset, len);
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 7e0190b1f821..948694b478a4 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1775,7 +1775,7 @@ static int ceph_zero_objects(struct inode *inode, loff_t offset, loff_t length)
+ }
  
--		ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size,
--					     flags);
-+		ret = ext4_alloc_file_blocks(file, lblk, max_blocks,
-+					     (ext4_fsblk_t)-1, new_size, flags);
- 		up_write(&EXT4_I(inode)->i_mmap_sem);
- 		if (ret)
- 			goto out_mutex;
-@@ -4839,10 +4851,12 @@ long ext4_fallocate(struct file *file, int mode,
- 		    loff_t offset, loff_t len, u64 physical)
+ static long ceph_fallocate(struct file *file, int mode,
+-				loff_t offset, loff_t length)
++				loff_t offset, loff_t length, u64 physical)
+ {
+ 	struct ceph_file_info *fi = file->private_data;
+ 	struct inode *inode = file_inode(file);
+@@ -1790,6 +1790,9 @@ static long ceph_fallocate(struct file *file, int mode,
+ 	if (mode != (FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
+ 
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	if (!S_ISREG(inode->i_mode))
+ 		return -EOPNOTSUPP;
+ 
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index fa77fe5258b0..ddf7888798af 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -281,14 +281,15 @@ cifs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	return 0;
+ }
+ 
+-static long cifs_fallocate(struct file *file, int mode, loff_t off, loff_t len)
++static long cifs_fallocate(struct file *file, int mode,
++			   loff_t off, loff_t len, u64 physical)
+ {
+ 	struct cifs_sb_info *cifs_sb = CIFS_FILE_SB(file);
+ 	struct cifs_tcon *tcon = cifs_sb_master_tcon(cifs_sb);
+ 	struct TCP_Server_Info *server = tcon->ses->server;
+ 
+-	if (server->ops->fallocate)
+-		return server->ops->fallocate(file, tcon, mode, off, len);
++	if (server->ops->fallocate && physical != (u64)-1)
++		return server->ops->fallocate(file, tcon, mode, off, len, (u64)-1);
+ 
+ 	return -EOPNOTSUPP;
+ }
+diff --git a/fs/cifs/smb2ops.c b/fs/cifs/smb2ops.c
+index 5fa34225a99b..30cb1b911ebf 100644
+--- a/fs/cifs/smb2ops.c
++++ b/fs/cifs/smb2ops.c
+@@ -3460,8 +3460,11 @@ static int smb3_fiemap(struct cifs_tcon *tcon,
+ }
+ 
+ static long smb3_fallocate(struct file *file, struct cifs_tcon *tcon, int mode,
+-			   loff_t off, loff_t len)
++			   loff_t off, loff_t len, u64 physical)
+ {
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	/* KEEP_SIZE already checked for by do_fallocate */
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return smb3_punch_hole(file, tcon, off, len);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 61b37a052052..5a98081c5369 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3347,7 +3347,7 @@ extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ extern void ext4_ext_init(struct super_block *);
+ extern void ext4_ext_release(struct super_block *);
+ extern long ext4_fallocate(struct file *file, int mode, loff_t offset,
+-			  loff_t len);
++			  loff_t len, u64 physical);
+ extern int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
+ 					  loff_t offset, ssize_t len);
+ extern int ext4_convert_unwritten_io_end_vec(handle_t *handle,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 954013d6076b..10d0188a712d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -4835,7 +4835,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+  * of writing zeroes to the required new blocks (the same behavior which is
+  * expected for file systems which do not support fallocate() system call).
+  */
+-long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
++long ext4_fallocate(struct file *file, int mode,
++		    loff_t offset, loff_t len, u64 physical)
  {
  	struct inode *inode = file_inode(file);
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
  	loff_t new_size = 0;
- 	unsigned int max_blocks;
- 	int ret = 0;
- 	int flags;
-+	ext4_fsblk_t pblk;
- 	ext4_lblk_t lblk;
- 	unsigned int blkbits = inode->i_blkbits;
- 
-@@ -4862,7 +4876,8 @@ long ext4_fallocate(struct file *file, int mode,
+@@ -4861,6 +4862,9 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
  		     FALLOC_FL_INSERT_RANGE))
  		return -EOPNOTSUPP;
  
--	if (physical != (u64)-1)
-+	if (((mode & ~FALLOC_FL_KEEP_SIZE) || sbi->s_cluster_ratio > 1) &&
-+	    physical != (u64)-1)
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		return ext4_punch_hole(inode, offset, len);
+ 
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 0d4da644df3b..2dfd886a2e75 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1685,7 +1685,7 @@ static int expand_inode_data(struct inode *inode, loff_t offset,
+ }
+ 
+ static long f2fs_fallocate(struct file *file, int mode,
+-				loff_t offset, loff_t len)
++			   loff_t offset, loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	long ret = 0;
+@@ -1696,6 +1696,8 @@ static long f2fs_fallocate(struct file *file, int mode,
+ 		return -ENOSPC;
+ 	if (!f2fs_is_compress_backend_ready(inode))
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
+ 
+ 	/* f2fs only support ->fallocate for regular file */
+ 	if (!S_ISREG(inode->i_mode))
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index bdc4503c00a3..4febd1e4f5af 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -19,7 +19,7 @@
+ #include "fat.h"
+ 
+ static long fat_fallocate(struct file *file, int mode,
+-			  loff_t offset, loff_t len);
++			  loff_t offset, loff_t len, u64 physical);
+ 
+ static int fat_ioctl_get_attributes(struct inode *inode, u32 __user *user_attr)
+ {
+@@ -257,7 +257,7 @@ static int fat_cont_expand(struct inode *inode, loff_t size)
+  * allocate and zero out clusters via an expanding truncate.
+  */
+ static long fat_fallocate(struct file *file, int mode,
+-			  loff_t offset, loff_t len)
++			  loff_t offset, loff_t len, u64 physical)
+ {
+ 	int nr_cluster; /* Number of clusters to be allocated */
+ 	loff_t mm_bytes; /* Number of bytes to be allocated for file */
+@@ -271,6 +271,9 @@ static long fat_fallocate(struct file *file, int mode,
+ 	if (mode & ~FALLOC_FL_KEEP_SIZE)
  		return -EOPNOTSUPP;
  
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	/* No support for dir */
+ 	if (!S_ISREG(inode->i_mode))
+ 		return -EOPNOTSUPP;
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 9d67b830fb7a..5981ad057b7c 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -3166,7 +3166,7 @@ static int fuse_writeback_range(struct inode *inode, loff_t start, loff_t end)
+ }
+ 
+ static long fuse_file_fallocate(struct file *file, int mode, loff_t offset,
+-				loff_t length)
++				loff_t length, u64 physical)
+ {
+ 	struct fuse_file *ff = file->private_data;
+ 	struct inode *inode = file_inode(file);
+@@ -3186,6 +3186,9 @@ static long fuse_file_fallocate(struct file *file, int mode, loff_t offset,
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
+ 
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	if (fc->no_fallocate)
+ 		return -EOPNOTSUPP;
+ 
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index cb26be6f4351..40f958ea0fde 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -1114,7 +1114,8 @@ static long __gfs2_fallocate(struct file *file, int mode, loff_t offset, loff_t
+ 	return error;
+ }
+ 
+-static long gfs2_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
++static long gfs2_fallocate(struct file *file, int mode,
++			   loff_t offset, loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct gfs2_sbd *sdp = GFS2_SB(inode);
+@@ -1127,6 +1128,8 @@ static long gfs2_fallocate(struct file *file, int mode, loff_t offset, loff_t le
+ 	/* fallocate is needed by gfs2_grow to reserve space in the rindex */
+ 	if (gfs2_is_jdata(ip) && inode != sdp->sd_rindex)
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
+ 
+ 	inode_lock(inode);
+ 
+diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
+index aff8642f0c2e..98d9af6529fa 100644
+--- a/fs/hugetlbfs/inode.c
++++ b/fs/hugetlbfs/inode.c
+@@ -563,7 +563,7 @@ static long hugetlbfs_punch_hole(struct inode *inode, loff_t offset, loff_t len)
+ }
+ 
+ static long hugetlbfs_fallocate(struct file *file, int mode, loff_t offset,
+-				loff_t len)
++				loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct hugetlbfs_inode_info *info = HUGETLBFS_I(inode);
+@@ -580,6 +580,9 @@ static long hugetlbfs_fallocate(struct file *file, int mode, loff_t offset,
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
+ 
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
  	if (mode & FALLOC_FL_PUNCH_HOLE)
-@@ -4883,6 +4898,7 @@ long ext4_fallocate(struct file *file, int mode,
+ 		return hugetlbfs_punch_hole(inode, offset, len);
  
- 	trace_ext4_fallocate_enter(inode, offset, len, mode);
- 	lblk = offset >> blkbits;
-+	pblk = physical == (u64)-1 ? (ext4_fsblk_t)-1 : physical >> blkbits;
- 
- 	max_blocks = EXT4_MAX_BLOCKS(len, offset, blkbits);
- 	flags = EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT;
-@@ -4911,7 +4927,8 @@ long ext4_fallocate(struct file *file, int mode,
- 	/* Wait all existing dio workers, newcomers will block on i_mutex */
- 	inode_dio_wait(inode);
- 
--	ret = ext4_alloc_file_blocks(file, lblk, max_blocks, new_size, flags);
-+	ret = ext4_alloc_file_blocks(file, lblk, max_blocks, pblk,
-+				     new_size, flags);
- 	if (ret)
- 		goto out;
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fa0ff78dc033..1054ba65cc1b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -580,6 +580,10 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			return ret;
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 1297919e0fce..51061872e9fc 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -214,7 +214,8 @@ static loff_t nfs4_file_llseek(struct file *filep, loff_t offset, int whence)
  	}
+ }
  
-+	if (retval > 0 && flags & EXT4_GET_BLOCKS_FROM_GOAL &&
-+	    map->m_pblk != map->m_goal_pblk)
-+		return -EEXIST;
+-static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t len)
++static long nfs42_fallocate(struct file *filep, int mode,
++			    loff_t offset, loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(filep);
+ 	long ret;
+@@ -225,6 +226,9 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+ 	if ((mode != 0) && (mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE)))
+ 		return -EOPNOTSUPP;
+ 
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
 +
- 	/* If it is only a block(s) look up */
- 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0)
- 		return retval;
-@@ -672,6 +676,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
- 			}
- 		}
+ 	ret = inode_newsize_ok(inode, offset + len);
+ 	if (ret < 0)
+ 		return ret;
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index 6cd5e4924e4d..a749ff71b8e4 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -2022,7 +2022,7 @@ int ocfs2_change_file_space(struct file *file, unsigned int cmd,
+ }
  
-+		/*
-+		 * Concurrent thread could allocate extent with other m_pblk,
-+		 * and we got it during second call of ext4_ext_map_blocks().
-+		 */
-+		if (retval > 0 && flags & EXT4_GET_BLOCKS_FROM_GOAL &&
-+		    map->m_pblk != map->m_goal_pblk) {
-+			retval = -EEXIST;
-+			goto out_sem;
-+		}
-+
- 		/*
- 		 * If the extent has been zeroed out, we don't need to update
- 		 * extent status tree.
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b1b3c5526d1a..ed25f47748a0 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3426,6 +3426,8 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 	struct ext4_prealloc_space *pa, *cpa = NULL;
- 	ext4_fsblk_t goal_block;
+ static long ocfs2_fallocate(struct file *file, int mode, loff_t offset,
+-			    loff_t len)
++			    loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct ocfs2_super *osb = OCFS2_SB(inode->i_sb);
+@@ -2032,6 +2032,8 @@ static long ocfs2_fallocate(struct file *file, int mode, loff_t offset,
  
-+	goal_block = ext4_grp_offs_to_block(ac->ac_sb, &ac->ac_g_ex);
-+
- 	/* only data can be preallocated */
- 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
- 		return 0;
-@@ -3436,7 +3438,11 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
+ 	if (!ocfs2_writes_unwritten_extents(osb))
+ 		return -EOPNOTSUPP;
  
- 		/* all fields in this condition don't change,
- 		 * so we can skip locking for them */
--		if (ac->ac_o_ex.fe_logical < pa->pa_lstart ||
-+		if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY) &&
-+		    (goal_block < pa->pa_pstart ||
-+		     goal_block >= pa->pa_pstart + pa->pa_len))
-+			continue;
-+		else if (ac->ac_o_ex.fe_logical < pa->pa_lstart ||
- 		    ac->ac_o_ex.fe_logical >= (pa->pa_lstart +
- 					       EXT4_C2B(sbi, pa->pa_len)))
- 			continue;
-@@ -3465,6 +3471,9 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 	if (!(ac->ac_flags & EXT4_MB_HINT_GROUP_ALLOC))
- 		return 0;
+diff --git a/fs/open.c b/fs/open.c
+index 0788b3715731..73f27c9b518c 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -306,7 +306,7 @@ int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 		return -EOPNOTSUPP;
  
-+	if (unlikely(ac->ac_flags & EXT4_MB_HINT_GOAL_ONLY))
-+		return 0;
-+
- 	/* inode may have no locality group for some reason */
- 	lg = ac->ac_lg;
- 	if (lg == NULL)
-@@ -3474,7 +3483,6 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
- 		/* The max size of hash table is PREALLOC_TB_SIZE */
- 		order = PREALLOC_TB_SIZE - 1;
+ 	file_start_write(file);
+-	ret = file->f_op->fallocate(file, mode, offset, len);
++	ret = file->f_op->fallocate(file, mode, offset, len, (u64)-1);
  
--	goal_block = ext4_grp_offs_to_block(ac->ac_sb, &ac->ac_g_ex);
  	/*
- 	 * search for the prealloc space that is having
- 	 * minimal distance from the goal block.
-@@ -4261,8 +4269,11 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	/* start searching from the goal */
- 	goal = ar->goal;
- 	if (goal < le32_to_cpu(es->s_first_data_block) ||
--			goal >= ext4_blocks_count(es))
-+			goal >= ext4_blocks_count(es)) {
-+		if (ar->flags & EXT4_MB_HINT_GOAL_ONLY)
-+			return -EINVAL;
- 		goal = le32_to_cpu(es->s_first_data_block);
-+	}
- 	ext4_get_group_no_and_offset(sb, goal, &group, &block);
+ 	 * Create inotify and fanotify events.
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index a5317216de73..abe34162d9d4 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -460,13 +460,17 @@ static int ovl_mmap(struct file *file, struct vm_area_struct *vma)
+ 	return ret;
+ }
  
- 	/* set up allocation goals */
+-static long ovl_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
++static long ovl_fallocate(struct file *file, int mode,
++			  loff_t offset, loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct fd real;
+ 	const struct cred *old_cred;
+ 	int ret;
+ 
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
++
+ 	ret = ovl_real_fdget(file, &real);
+ 	if (ret)
+ 		return ret;
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index b8a4a3f29b36..61ca96469fa0 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -802,7 +802,8 @@ xfs_file_fallocate(
+ 	struct file		*file,
+ 	int			mode,
+ 	loff_t			offset,
+-	loff_t			len)
++	loff_t			len,
++	u64			physical)
+ {
+ 	struct inode		*inode = file_inode(file);
+ 	struct xfs_inode	*ip = XFS_I(inode);
+@@ -816,6 +817,8 @@ xfs_file_fallocate(
+ 		return -EINVAL;
+ 	if (mode & ~XFS_FALLOC_FL_SUPPORTED)
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
+ 
+ 	xfs_ilock(ip, iolock);
+ 	error = xfs_break_layouts(inode, &iolock, BREAK_UNMAP);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f814ccd8d929..17c111e164d2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1846,7 +1846,7 @@ struct file_operations {
+ 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
+ 	int (*setlease)(struct file *, long, struct file_lock **, void **);
+ 	long (*fallocate)(struct file *file, int mode, loff_t offset,
+-			  loff_t len);
++			  loff_t len, u64 physical);
+ 	void (*show_fdinfo)(struct seq_file *m, struct file *f);
+ #ifndef CONFIG_MMU
+ 	unsigned (*mmap_capabilities)(struct file *);
+diff --git a/ipc/shm.c b/ipc/shm.c
+index ce1ca9f7c6e9..3ab15a1c2d91 100644
+--- a/ipc/shm.c
++++ b/ipc/shm.c
+@@ -532,13 +532,13 @@ static int shm_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ }
+ 
+ static long shm_fallocate(struct file *file, int mode, loff_t offset,
+-			  loff_t len)
++			  loff_t len, u64 physical)
+ {
+ 	struct shm_file_data *sfd = shm_file_data(file);
+ 
+-	if (!sfd->file->f_op->fallocate)
++	if (!sfd->file->f_op->fallocate || physical != (u64)-1)
+ 		return -EOPNOTSUPP;
+-	return sfd->file->f_op->fallocate(file, mode, offset, len);
++	return sfd->file->f_op->fallocate(file, mode, offset, len, (u64)-1);
+ }
+ 
+ static unsigned long shm_get_unmapped_area(struct file *file,
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 31b4bcc95f17..a07afc5b06d0 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2724,7 +2724,7 @@ static loff_t shmem_file_llseek(struct file *file, loff_t offset, int whence)
+ }
+ 
+ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
+-							 loff_t len)
++			    loff_t len, u64 physical)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	struct shmem_sb_info *sbinfo = SHMEM_SB(inode->i_sb);
+@@ -2735,6 +2735,8 @@ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
+ 
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
++	if (physical != (u64)-1)
++		return -EOPNOTSUPP;
+ 
+ 	inode_lock(inode);
+ 
 
 
