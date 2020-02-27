@@ -2,195 +2,152 @@ Return-Path: <SRS0=Js0b=4P=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.7 required=3.0 tests=FORGED_MUA_MOZILLA,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 98726C4BA06
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B597AC4BA24
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:38:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 749212467B
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8402B2084E
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:38:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725877AbgB0Fci (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Feb 2020 00:32:38 -0500
-Received: from mga07.intel.com ([134.134.136.100]:22354 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725769AbgB0Fci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 27 Feb 2020 00:32:38 -0500
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by orsmga105.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:37 -0800
-X-IronPort-AV: E=Sophos;i="5.70,490,1574150400"; 
-   d="scan'208";a="231696544"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by orsmga008-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:36 -0800
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH V5 00/12] Enable per-file/per-directory DAX operations V5
-Date:   Wed, 26 Feb 2020 21:24:30 -0800
-Message-Id: <20200227052442.22524-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.21.0
+        id S1725870AbgB0Fid (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 Feb 2020 00:38:33 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:9612 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725790AbgB0Fid (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Feb 2020 00:38:33 -0500
+Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 01R5Z6MO095305
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Feb 2020 00:38:32 -0500
+Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2ydcnu9n2b-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Feb 2020 00:38:31 -0500
+Received: from localhost
+        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
+        Thu, 27 Feb 2020 05:38:29 -0000
+Received: from b06cxnps3075.portsmouth.uk.ibm.com (9.149.109.195)
+        by e06smtp01.uk.ibm.com (192.168.101.131) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Thu, 27 Feb 2020 05:38:26 -0000
+Received: from d06av24.portsmouth.uk.ibm.com (d06av24.portsmouth.uk.ibm.com [9.149.105.60])
+        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 01R5cPQo61276334
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 27 Feb 2020 05:38:25 GMT
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id B2F8242047;
+        Thu, 27 Feb 2020 05:38:25 +0000 (GMT)
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 3F4B34203F;
+        Thu, 27 Feb 2020 05:38:23 +0000 (GMT)
+Received: from [9.199.158.169] (unknown [9.199.158.169])
+        by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Thu, 27 Feb 2020 05:38:23 +0000 (GMT)
+Subject: Re: [PATCHv3 5/6] ext4: Move ext4_fiemap to use iomap framework.
+To:     Jan Kara <jack@suse.cz>
+Cc:     tytso@mit.edu, linux-ext4@vger.kernel.org,
+        adilger.kernel@dilger.ca, linux-fsdevel@vger.kernel.org,
+        darrick.wong@oracle.com, hch@infradead.org, cmaiolino@redhat.com
+References: <cover.1582702693.git.riteshh@linux.ibm.com>
+ <31caeb6a880e3070ace5dfcb0623fc06f751b443.1582702694.git.riteshh@linux.ibm.com>
+ <20200226132720.GQ10728@quack2.suse.cz>
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+Date:   Thu, 27 Feb 2020 11:08:22 +0530
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.7.2
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20200226132720.GQ10728@quack2.suse.cz>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+x-cbid: 20022705-4275-0000-0000-000003A5DC7B
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 20022705-4276-0000-0000-000038BA115F
+Message-Id: <20200227053823.3F4B34203F@d06av24.portsmouth.uk.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.572
+ definitions=2020-02-27_01:2020-02-26,2020-02-27 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ adultscore=0 lowpriorityscore=0 impostorscore=0 clxscore=1015
+ malwarescore=0 spamscore=0 suspectscore=0 mlxscore=0 bulkscore=0
+ phishscore=0 mlxlogscore=704 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.12.0-2001150001 definitions=main-2002270041
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
-
-Changes from V4:
-	* Open code the aops lock rather than add it to the xfs_ilock()
-	  subsystem (Darrick's comments were obsoleted by this change)
-	* Fix lkp build suggestions and bugs
-
-Changes from V3:
-	* Remove global locking...  :-D
-	* put back per inode locking and remove pre-mature optimizations
-	* Fix issues with Directories having IS_DAX() set
-	* Fix kernel crash issues reported by Jeff
-	* Add some clean up patches
-	* Consolidate diflags to iflags functions
-	* Update/add documentation
-	* Reorder/rename patches quite a bit
-
-Changes from V2:
-
-	* Move i_dax_sem to be a global percpu_rw_sem rather than per inode
-		Internal discussions with Dan determined this would be easier,
-		just as performant, and slightly less overhead that having it
-		in the SB as suggested by Jan
-	* Fix locking order in comments and throughout code
-	* Change "mode" to "state" throughout commits
-	* Add CONFIG_FS_DAX wrapper to disable inode_[un]lock_state() when not
-		configured
-	* Add static branch for which is activated by a device which supports
-		DAX in XFS
-	* Change "lock/unlock" to up/down read/write as appropriate
-		Previous names were over simplified
-	* Update comments/documentation
-
-	* Remove the xfs specific lock to the vfs (global) layer.
-	* Fix i_dax_sem locking order and comments
-
-	* Move 'i_mapped' count from struct inode to struct address_space and
-		rename it to mmap_count
-	* Add inode_has_mappings() call
-
-	* Fix build issues
-	* Clean up syntax spacing and minor issues
-	* Update man page text for STATX_ATTR_DAX
-	* Add reviewed-by's
-	* Rebase to 5.6
-
-	Rename patch:
-		from: fs/xfs: Add lock/unlock state to xfs
-		to: fs/xfs: Add write DAX lock to xfs layer
-	Add patch:
-		fs/xfs: Clarify lockdep dependency for xfs_isilocked()
-	Drop patch:
-		fs/xfs: Fix truncate up
 
 
-At LSF/MM'19 [1] [2] we discussed applications that overestimate memory
-consumption due to their inability to detect whether the kernel will
-instantiate page cache for a file, and cases where a global dax enable via a
-mount option is too coarse.
+On 2/26/20 6:57 PM, Jan Kara wrote:
+> On Wed 26-02-20 15:27:07, Ritesh Harjani wrote:
+>> This patch moves ext4_fiemap to use iomap framework.
+>> For xattr a new 'ext4_iomap_xattr_ops' is added.
+>>
+>> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+> 
+> ...
+> 
+>> -static int ext4_xattr_fiemap(struct inode *inode,
+>> -				struct fiemap_extent_info *fieinfo)
+>> +static int ext4_iomap_xattr_fiemap(struct inode *inode, struct iomap *iomap)
+>>   {
+>>   	__u64 physical = 0;
+>>   	__u64 length;
+>> -	__u32 flags = FIEMAP_EXTENT_LAST;
+>>   	int blockbits = inode->i_sb->s_blocksize_bits;
+>>   	int error = 0;
+>> +	u16 iomap_type;
+>>   
+>>   	/* in-inode? */
+>>   	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
+>> @@ -5130,40 +4928,44 @@ static int ext4_xattr_fiemap(struct inode *inode,
+>>   				EXT4_I(inode)->i_extra_isize;
+>>   		physical += offset;
+>>   		length = EXT4_SB(inode->i_sb)->s_inode_size - offset;
+>> -		flags |= FIEMAP_EXTENT_DATA_INLINE;
+>>   		brelse(iloc.bh);
+>> +		iomap_type = IOMAP_INLINE;
+>>   	} else { /* external block */
+>>   		physical = (__u64)EXT4_I(inode)->i_file_acl << blockbits;
+>>   		length = inode->i_sb->s_blocksize;
+>> +		iomap_type = IOMAP_MAPPED;
+>>   	}
+> 
+> If i_file_acl is 0 (i.e., no external xattr block), then I think returned
+> iomap should be different...
 
-The following patch series enables selecting the use of DAX on individual files
-and/or directories on xfs, and lays some groundwork to do so in ext4.  In this
-scheme the dax mount option can be omitted to allow the per-file property to
-take effect.
-
-The insight at LSF/MM was to separate the per-mount or per-file "physical"
-capability switch from an "effective" attribute for the file.
-
-At LSF/MM we discussed the difficulties of switching the DAX state of a file
-with active mappings / page cache.  It was thought the races could be avoided
-by limiting DAX state flips to 0-length files.
-
-However, this turns out to not be true.[3] This is because address space
-operations (a_ops) may be in use at any time the inode is referenced and users
-have expressed a desire to be able to change the DAX state on a file with data
-in it.  For those reasons this patch set allows changing the DAX state flag on
-a file as long as it is not current mapped.
-
-Details of when and how DAX state can be changed on a file is included in a
-documentation patch.
-
-It should be noted that the physical DAX flag inheritance is not shown in this
-patch set as it was maintained from previous work on XFS.  The physical DAX
-flag and it's inheritance will need to be added to other file systems for user
-control. 
-
-As submitted this works on real hardware testing.
-
-
-[1] https://lwn.net/Articles/787973/
-[2] https://lwn.net/Articles/787233/
-[3] https://lkml.org/lkml/2019/10/20/96
-[4] https://patchwork.kernel.org/patch/11310511/
-
-
-To: linux-kernel@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
+Yes, my bad. Let me fix this please.
 
 
-Ira Weiny (12):
-  fs/xfs: Remove unnecessary initialization of i_rwsem
-  fs: Remove unneeded IS_DAX() check
-  fs/stat: Define DAX statx attribute
-  fs/xfs: Isolate the physical DAX flag from enabled
-  fs/xfs: Create function xfs_inode_enable_dax()
-  fs: Add locking for a dynamic address space operations state
-  fs: Prevent DAX state change if file is mmap'ed
-  fs/xfs: Hold off aops users while changing DAX state
-  fs/xfs: Clean up locking in dax invalidate
-  fs/xfs: Allow toggle of effective DAX flag
-  fs/xfs: Remove xfs_diflags_to_linux()
-  Documentation/dax: Update Usage section
+> 
+>> +static int ext4_iomap_xattr_begin(struct inode *inode, loff_t offset,
+>> +				  loff_t length, unsigned flags,
+>> +				  struct iomap *iomap, struct iomap *srcmap)
+>>   {
+>> -	ext4_lblk_t start_blk;
+>> -	u32 ext4_fiemap_flags = FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR;
+>> +	int error;
+>>   
+>> -	int error = 0;
+>> -
+>> -	if (ext4_has_inline_data(inode)) {
+>> -		int has_inline = 1;
+>> +	error = ext4_iomap_xattr_fiemap(inode, iomap);
+>> +	if (error == 0 && (offset >= iomap->length))
+>> +		error = -ENOENT;
+> 
+> Is ENOENT really correct here? It seems strange to me...
+> 
 
- Documentation/filesystems/dax.txt | 84 +++++++++++++++++++++++++-
- Documentation/filesystems/vfs.rst | 16 +++++
- fs/attr.c                         |  1 +
- fs/inode.c                        | 16 ++++-
- fs/iomap/buffered-io.c            |  1 +
- fs/open.c                         |  4 ++
- fs/stat.c                         |  5 ++
- fs/xfs/xfs_icache.c               |  5 +-
- fs/xfs/xfs_inode.h                |  2 +
- fs/xfs/xfs_ioctl.c                | 98 +++++++++++++++----------------
- fs/xfs/xfs_iops.c                 | 69 +++++++++++++++-------
- include/linux/fs.h                | 73 ++++++++++++++++++++++-
- include/uapi/linux/stat.h         |  1 +
- mm/fadvise.c                      |  7 ++-
- mm/filemap.c                      |  4 ++
- mm/huge_memory.c                  |  1 +
- mm/khugepaged.c                   |  2 +
- mm/mmap.c                         | 19 +++++-
- mm/util.c                         |  9 ++-
- 19 files changed, 328 insertions(+), 89 deletions(-)
+Yes, -ENOENT means that there is no mapping beyond this and so iomap
+core will stop querying further in iomap_fiemap.
+I see that we do the same in case of inline mapping too in
+ext4_iomap_begin_report().
 
--- 
-2.21.0
+-ritesh
 
