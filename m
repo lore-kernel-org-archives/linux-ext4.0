@@ -6,39 +6,40 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA2BEC4BA06
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F066C4BA06
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B7BF124656
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 240D724656
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Feb 2020 05:33:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727360AbgB0Fcl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Feb 2020 00:32:41 -0500
-Received: from mga02.intel.com ([134.134.136.20]:16215 "EHLO mga02.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725769AbgB0Fck (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726910AbgB0Fck (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 27 Feb 2020 00:32:40 -0500
+Received: from mga12.intel.com ([192.55.52.136]:15192 "EHLO mga12.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725769AbgB0Fcj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Feb 2020 00:32:39 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga005.jf.intel.com ([10.7.209.41])
-  by orsmga101.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:40 -0800
+Received: from orsmga007.jf.intel.com ([10.7.209.58])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:38 -0800
 X-IronPort-AV: E=Sophos;i="5.70,490,1574150400"; 
-   d="scan'208";a="410887742"
+   d="scan'208";a="226996288"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by orsmga005-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:39 -0800
+  by orsmga007-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 26 Feb 2020 21:32:37 -0800
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org
-Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
+Cc:     Ira Weiny <ira.weiny@intel.com>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Dave Chinner <david@fromorbit.com>,
         Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH V5 03/12] fs/stat: Define DAX statx attribute
-Date:   Wed, 26 Feb 2020 21:24:33 -0800
-Message-Id: <20200227052442.22524-4-ira.weiny@intel.com>
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH V5 01/12] fs/xfs: Remove unnecessary initialization of i_rwsem
+Date:   Wed, 26 Feb 2020 21:24:31 -0800
+Message-Id: <20200227052442.22524-2-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20200227052442.22524-1-ira.weiny@intel.com>
 References: <20200227052442.22524-1-ira.weiny@intel.com>
@@ -51,76 +52,43 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-In order for users to determine if a file is currently operating in DAX
-state (effective DAX).  Define a statx attribute value and set that
-attribute if the effective DAX flag is set.
+xfs_reinit_inode() -> inode_init_always() already handles calling
+init_rwsem(i_rwsem).  Doing so again is unneeded.
 
-To go along with this we propose the following addition to the statx man
-page:
-
-STATX_ATTR_DAX
-
-	The file is in the DAX (cpu direct access) state.  DAX state
-	attempts to minimize software cache effects for both I/O and
-	memory mappings of this file.  It requires a file system which
-	has been configured to support DAX.
-
-	DAX generally assumes all accesses are via cpu load / store
-	instructions which can minimize overhead for small accesses, but
-	may adversely affect cpu utilization for large transfers.
-
-	File I/O is done directly to/from user-space buffers and memory
-	mapped I/O may be performed with direct memory mappings that
-	bypass kernel page cache.
-
-	While the DAX property tends to result in data being transferred
-	synchronously, it does not give the same guarantees of O_SYNC
-	where data and the necessary metadata are transferred together.
-
-	A DAX file may support being mapped with the MAP_SYNC flag,
-	which enables a program to use CPU cache flush instructions to
-	persist CPU store operations without an explicit fsync(2).  See
-	mmap(2) for more information.
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V2:
-	Update man page text with comments from Darrick, Jan, Dan, and
-	Dave.
----
- fs/stat.c                 | 3 +++
- include/uapi/linux/stat.h | 1 +
- 2 files changed, 4 insertions(+)
+New for V4:
 
-diff --git a/fs/stat.c b/fs/stat.c
-index 030008796479..894699c74dde 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -79,6 +79,9 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
- 	if (IS_AUTOMOUNT(inode))
- 		stat->attributes |= STATX_ATTR_AUTOMOUNT;
+NOTE: This was found while ensuring the new i_aops_sem was properly
+handled.  It seems like this is a layering violation so I think it is
+worth cleaning up so as to not confuse others.
+---
+ fs/xfs/xfs_icache.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/fs/xfs/xfs_icache.c b/fs/xfs/xfs_icache.c
+index 8dc2e5414276..836a1f09be03 100644
+--- a/fs/xfs/xfs_icache.c
++++ b/fs/xfs/xfs_icache.c
+@@ -419,6 +419,7 @@ xfs_iget_cache_hit(
+ 		spin_unlock(&ip->i_flags_lock);
+ 		rcu_read_unlock();
  
-+	if (IS_DAX(inode))
-+		stat->attributes |= STATX_ATTR_DAX;
-+
- 	if (inode->i_op->getattr)
- 		return inode->i_op->getattr(path, stat, request_mask,
- 					    query_flags);
-diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
-index ad80a5c885d5..e5f9d5517f6b 100644
---- a/include/uapi/linux/stat.h
-+++ b/include/uapi/linux/stat.h
-@@ -169,6 +169,7 @@ struct statx {
- #define STATX_ATTR_ENCRYPTED		0x00000800 /* [I] File requires key to decrypt in fs */
- #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
- #define STATX_ATTR_VERITY		0x00100000 /* [I] Verity protected file */
-+#define STATX_ATTR_DAX			0x00002000 /* [I] File is DAX */
++		ASSERT(!rwsem_is_locked(&inode->i_rwsem));
+ 		error = xfs_reinit_inode(mp, inode);
+ 		if (error) {
+ 			bool wake;
+@@ -452,9 +453,6 @@ xfs_iget_cache_hit(
+ 		ip->i_sick = 0;
+ 		ip->i_checked = 0;
  
- 
- #endif /* _UAPI_LINUX_STAT_H */
+-		ASSERT(!rwsem_is_locked(&inode->i_rwsem));
+-		init_rwsem(&inode->i_rwsem);
+-
+ 		spin_unlock(&ip->i_flags_lock);
+ 		spin_unlock(&pag->pag_ici_lock);
+ 	} else {
 -- 
 2.21.0
 
