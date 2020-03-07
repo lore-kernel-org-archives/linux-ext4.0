@@ -2,184 +2,184 @@ Return-Path: <SRS0=aJ6y=4Y=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC671C10DCE
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77E66C10F26
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 03:14:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B729920709
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4981220714
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 03:14:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="fH4KDebp"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JWZbawBN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726498AbgCGCgf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Mar 2020 21:36:35 -0500
-Received: from mail-pg1-f202.google.com ([209.85.215.202]:33406 "EHLO
-        mail-pg1-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726485AbgCGCge (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 21:36:34 -0500
-Received: by mail-pg1-f202.google.com with SMTP id i29so1768847pgi.0
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Mar 2020 18:36:33 -0800 (PST)
+        id S1726824AbgCGDOt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Mar 2020 22:14:49 -0500
+Received: from mail-yw1-f48.google.com ([209.85.161.48]:37876 "EHLO
+        mail-yw1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726245AbgCGDOs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 22:14:48 -0500
+Received: by mail-yw1-f48.google.com with SMTP id i1so39350ywf.4;
+        Fri, 06 Mar 2020 19:14:47 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:message-id:mime-version:subject:from:to:cc;
-        bh=hL4QYmipQbbtBF3hqX0FdDc0KzQVh/PklVg+OKiKB0c=;
-        b=fH4KDebpx8sfR/ExNItOLzsNNZbzuWPMaFA6X0gtKuiYWaa3VS/gCqm9U3BgcKI1kG
-         e7/FD5PABlXZvNRNPlaiyvNYxjH7MJXMmOpwXyefWgZjzeJtvh26HfJuAjFe7Yy9lOA1
-         t2TLyoLjiSbm5QKizkXqoTTxJuK4yPWtNqNJRJK26GNzaWFtpT4tlAJTLhqIhRhPxHpU
-         4WYWqBTcoH+Bl6qgJCQ7uHhzGnrfa3KaK30WACW8WGDTDkP8dSqvFw1QpLKEpoGjkE21
-         A1Z2i6nYM+2DB8zOPZiduwEW9dh0TwsUMvd2rF/qkovCw+rOowod48n/BhxsW34sUgWH
-         3qgA==
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=aZEHHT6lAR6svoMasB13SgNuVP0MyXR1N2GanpY6GnE=;
+        b=JWZbawBN+AvkFClWdbF9gaYKLkGD+MiEj3bA/grN4IT7mezq5F8r8qyrWuvH6DJyAd
+         k1NpQCsqIzkRn9yPsH7Yt8jY6O+71AS5vYRqRTcjD9ZuSjjUa0Dq6pQ2H8laXyATOUn4
+         HDg3yOA6C1H/+qoRlczbbGnt8ThWPfmV7uou6jiw5aHaPE6PoI/3We+RpiizN1/ESjcL
+         r7hk4JX7OuGRu/yyiT8TsP3RACXbcBqTVhtszcj3LwEqlv5s0eyvNg9YlT8/gwkCK+g6
+         UX4A8E+EWrVbzDefMxHkx4JoOPQgmLWDNTMe/zVW6gO+T7/z4pQ43Od8UewolW59znzh
+         8SjQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:message-id:mime-version:subject:from:to:cc;
-        bh=hL4QYmipQbbtBF3hqX0FdDc0KzQVh/PklVg+OKiKB0c=;
-        b=am0140R4W6xxBTRIYP12M9GoH+7UJ1qZCv4Gmsxn11SsXlUFG+SSf3pLwR/MnXo7Xo
-         sjjwfJC3qM+ThbsvIeB/c0qIGGXlIF3REDLG1RWuDgJyeNswgmqhGBw18XsQ1BcSAkV6
-         iBatdOr8vPbrwtE+vDUmFTewZWY3+BaOWGrTF9ktqv8EO31O5IYaybNulw4oB1cSnSV4
-         RvwCahGj2cnx+dtbwDYOQ/KaMYBwtyGMjItZXkgO9JUjzfTXDlOt4Yc53nSg0p8gv1ja
-         sZSaZckVHU1GmC1fNQJKQyVqwXuZ7Az/m45ytqkhpm2iLw7rsAF0TGBy6j7xE/3X6aR6
-         iKiA==
-X-Gm-Message-State: ANhLgQ1SPGtwv8srBsrQrrCeGmZ8O5lV52UhSFN0J+r56vBSfRT5B1GD
-        KJY8MhJmhPFUtV1ZqSw7SIDsCMBZpxI=
-X-Google-Smtp-Source: ADFU+vvinrVh+l8QTv3HIUiABuCgsyoBanuoKAxU/xc+BcTv2eFzH5SpHBDbPai696SnQnmC+kbjhJ4IF6o=
-X-Received: by 2002:a17:90b:3717:: with SMTP id mg23mr6425637pjb.89.1583548593063;
- Fri, 06 Mar 2020 18:36:33 -0800 (PST)
-Date:   Fri,  6 Mar 2020 18:36:03 -0800
-Message-Id: <20200307023611.204708-1-drosen@google.com>
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.25.1.481.gfbce0eb801-goog
-Subject: [PATCH v8 0/8] Support for Casefolding and Encryption
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>
-Cc:     linux-mtd@lists.infradead.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=aZEHHT6lAR6svoMasB13SgNuVP0MyXR1N2GanpY6GnE=;
+        b=BNi/rN9ER2qDm+OaS7WiJgvRklTBDya5H/vIsEXFuDkDricUby8+Xfr57pjdYwggoV
+         Y3Pjvi4ov41834qmZ0HMx/YTvWT/DA0gimA+YM89tIluDsB8SPOuGb3Gq/RsvYBndcXQ
+         OM8BlMHtmI9itzZArvBCzyKgSoVPqH/iKU14IOfw20/DaAPMnPUKyapqtxIrNnUA52aR
+         s0p0ZvMzN3TyflEA3NqjOzWLwPIiZEpHmfa2RaDtkpARGddBY81goHze1RCzdsiJ1pIU
+         ROj9n1r5/B8dZ/9aGLhwHCFmLm1UJeG5p9nhtYwFfF34Zxtl7OG3+kRkqGXnCgQbrb/F
+         vrDw==
+X-Gm-Message-State: ANhLgQ146Nf20Tlal6AhQrE1UCmKOWfRKppLRA11HyGnpDdmupYmgP2m
+        p25oRVgVBXZ+He7fde1SnB5EHJbREEsMppgzDIgrnYNh
+X-Google-Smtp-Source: ADFU+vv1lbhShZquHVK69ApmFg8EyJmgI9xs6Kpib/27Oz8EplISUurSto5A/rirLzgeUMlkWQzIJWqDS4ECqgOsgQA=
+X-Received: by 2002:a25:e805:: with SMTP id k5mr7218096ybd.14.1583550886710;
+ Fri, 06 Mar 2020 19:14:46 -0800 (PST)
+MIME-Version: 1.0
+References: <b506a373-c127-b92e-9824-16e8267fc910@toxicpanda.com>
+In-Reply-To: <b506a373-c127-b92e-9824-16e8267fc910@toxicpanda.com>
+From:   Steve French <smfrench@gmail.com>
+Date:   Fri, 6 Mar 2020 21:14:35 -0600
+Message-ID: <CAH2r5ms6epOL0sXRfNNTM_J=K-dnGYNS_wK1rgw1VBqipM6kxQ@mail.gmail.com>
+Subject: Re: [LSFMMBPF TOPIC] Killing LSFMMBPF
+To:     Josef Bacik <josef@toxicpanda.com>
+Cc:     lsf-pc <lsf-pc@lists.linuxfoundation.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Btrfs BTRFS <linux-btrfs@vger.kernel.org>, bpf@vger.kernel.org,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-block@vger.kernel.org, CIFS <linux-cifs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-These patches are all on top of torvalds/master
+Don't forget about Vault - there were some very useful hallway
+discussions at Vault this year as well ... even if a bit smaller than
+it should be ...
 
-Ext4 and F2FS currently both support casefolding and encryption, but not at
-the same time. These patches aim to rectify that.
+On Fri, Mar 6, 2020 at 8:36 AM Josef Bacik <josef@toxicpanda.com> wrote:
+>
+> Hello,
+>
+> This has been a topic that I've been thinking about a lot recently, mostly
+> because of the giant amount of work that has been organizing LSFMMBPF.  I was
+> going to wait until afterwards to bring it up, hoping that maybe it was just me
+> being done with the whole process and that time would give me a different
+> perspective, but recent discussions has made it clear I'm not the only one.
+>
+> LSFMMBPF is not useful to me personally, and not an optimal use of the
+> communities time.  The things that we want to get out of LSFMMBPF are (generally)
+>
+> 1) Reach consensus on any multi-subsystem contentious changes that have come up
+> over the past year.
+>
+> 2) Inform our fellow developers of new things that we are working on that we
+> would like help with, or need to think about for the upcoming year.
+>
+> 3) "Hallway track".  We are after all a community, and I for one like spending
+> time with developers that I don't get to interact with on a daily basis.
+>
+> 4) Provide a way to help integrate new developers into the community with face
+> time.  It is far easier to work with people once you can put a face to a name,
+> and this is especially valuable for new developers.
+>
+> These are all really good goals, and why we love the idea of LSFMMBPF.  But
+> having attended these things every year for the last 13 years, it has become
+> less and less of these things, at least from my perspective.  A few problems (as
+> I see them) are
+>
+> 1) The invitation process.  We've tried many different things, and I think we
+> generally do a good job here, but the fact is if I don't know somebody I'm not
+> going to give them a very high rating, making it difficult to actually bring in
+> new people.
+>
+> 2) There are so many of us.  Especially with the addition of the BPF crowd we
+> are now larger than ever.  This makes problem #1 even more apparent, even if I
+> weighted some of the new people higher who's slot should they take instead?  I
+> have 0 problems finding 20 people in the FS community who should absolutely be
+> in the room.  But now I'm trying to squeeze in 1-5 extra people.  Propagate that
+> across all the tracks and now we're at an extra 20ish people.
+>
+> 3) Half the people I want to talk to aren't even in the room.  This may be a
+> uniquely file system track problem, but most of my work is in btrfs, and I want
+> to talk to my fellow btrfs developers.  But again, we're trying to invite an
+> entire community, so many of them simply don't request invitations, or just
+> don't get invited.
+>
+> 3) Sponsorships.  This is still the best way to get to all of the core
+> developers, so we're getting more and more sponsors in order to buy their slots
+> to get access to people.  This is working as intended, and I'm not putting down
+> our awesome sponsors, but this again adds to the amount of people that are
+> showing up at what is supposed to be a working conference.
+>
+> 4) Presentations.  90% of the conference is 1-2 people standing at the front of
+> the room, talking to a room of 20-100 people, with only a few people in the
+> audience who cares.  We do our best to curate the presentations so we're not
+> wasting peoples time, but in the end I don't care what David Howells is doing
+> with mount, I trust him to do the right thing and he really just needs to trap
+> Viro in a room to work it out, he doesn't need all of us.
+>
+> 5) Actually planning this thing.  I have been on the PC for at least the last 5
+> years, and this year I'm running the whole thing.  We specifically laid out
+> plans to rotate in new blood so this sort of thing stopped happening, and this
+> year we've done a good job of that.  However it is a giant amount of work for
+> anybody involved, especially for the whole conference chair.  Add in something
+> like COVID-19 to the mix and now I just want to burn the whole thing to the
+> ground.  Planning this thing is not free, it does require work and effort.
+>
+> So what do I propose?  I propose we kill LSFMMBPF.
+>
+> Many people have suggested this elsewhere, but I think we really need to
+> seriously consider it.  Most of us all go to the Linux Plumbers conference.  We
+> could accomplish our main goals with Plumbers without having to deal with all of
+> the above problems.
+>
+> 1) The invitation process.  This goes away.  The people/companies that want to
+> discuss things with the rest of us can all get to plumbers the normal way.  We
+> get new blood that we may miss through the invitation process because they can
+> simply register for Plumbers on their own.
+>
+> 2) Presentations.  We can have track miniconfs where we still curate talks, but
+> there could be much less of them and we could just use the time to do what
+> LSFMMBPF was meant to do, put us all in a room so we can hack on things together.
+>
+> 3) BOFs.  Now all of the xfs/btrfs/ext4 guys can show up, because again they
+> don't have to worry about some invitation process, and now real meetings can
+> happen between people that really want to talk to each other face to face.
+>
+> 4) Planning becomes much simpler.  I've organized miniconf's at plumbers before,
+> it is far simpler than LSFMMBPF.  You only have to worry about one thing, is
+> this presentation useful.  I no longer have to worry about am I inviting the
+> right people, do we have enough money to cover the space.  Is there enough space
+> for everybody?  Etc.
+>
+> I think this is worth a discussion at the very least.  Maybe killing LSFMMBPF is
+> too drastic, maybe there are some other ideas that would address the same
+> problems.  I'd love to hear the whole communities thoughts on this, because
+> after all this is supposed to be a community event, and we should all be heard.
+> Thanks,
+>
 
-I've left off the Ext4 patches that enable casefolding and ecryption from
-this revision since they still need some fixups, and I haven't gotten around
-to the fsck changes yet.
-
-I moved the identical casefolding dcache operations for ext4 and f2fs into
-fs/libfs.c, as all filesystems using casefolded names will want them.
-
-I've also adjust fscrypt to not set it's d_revalidate operation during it's
-prepare lookup, instead having the calling filesystem set it up. This is
-done to that the filesystem may have it's own dentry_operations. Also added
-a helper function in libfs.c that will work for filesystems supporting both
-casefolding and fscrypt.
-
-For Ext4, since the hash for encrypted casefolded directory names cannot be
-computed without the key, we need to store the hash on disk. We only do so
-for encrypted and casefolded directories to avoid on disk format changes.
-Previously encryption and casefolding could not be on the same filesystem,
-and we're relaxing that requirement. F2fs is a bit more straightforward
-since it already stores hashes on disk.
-
-I've updated the related tools with just enough to enable the feature. I
-still need to adjust ext4's fsck's, although without access to the keys,
-neither fsck will be able to verify the hashes of casefolded and encrypted
-names.
-
-v8 changes:
-Fixed issue with non-strict_mode fallback for hashing dentry op
-Fixed potential RCU/unicode issue in casefolding dentry_ops.
-Split "fscrypt: Have filesystems handle their d_ops" into a few smaller patches
-Switched ubifs change to also use the dentry op function added in libfs.c
-Added hash function in fs/unicode
-changed super_block s_encoding_flags to u16. Didn't make unsigned int since
-both filesystems using them use them as 16 bits, and want to avoid possible
-confusion. Wouldn't really be opposed to that change though
-Added kernel doc comments
-misc other small adjustments
-TODO:
- Investigate moving to a dentry flag to check for casefolding, or otherwise
- conditionally setting the casefolding dentry ops as needed, like fscrypt.
- Currently not done due to some issues with cached negative dentries and
- toggling casefolding on an empty directory.
-
- Ext4 fsck changes/debugging ext4 patches
-
-
-v7 changes:
-Moved dentry operations from unicode to libfs, added new iterator function
-to unicode to allow this.
-Added libfs function for setting dentries to remove code duplication between
-ext4 and f2fs.
-
-v6 changes:
-Went back to using dentry_operations for casefolding. Provided standard
-implementations in fs/unicode, avoiding extra allocation in d_hash op.
-Moved fscrypt d_ops setting to be filesystem's responsibility to maintain
-compatibility with casefolding and overlayfs if casefolding is not used
-fixes some f2fs error handling
-
-v4-5: patches submitted on fscrypt
-
-v3 changes:
-fscrypt patch only creates hash key if it will be needed.
-Rebased on top of fscrypt branch, reconstified match functions in ext4/f2fs
-
-v2 changes:
-fscrypt moved to separate thread to rebase on fscrypt dev branch
-addressed feedback, plus some minor fixes
-
-Daniel Rosenberg (8):
-  unicode: Add utf8_casefold_hash
-  fs: Add standard casefolding support
-  f2fs: Use generic casefolding support
-  ext4: Use generic casefolding support
-  fscrypt: Export fscrypt_d_revalidate
-  libfs: Add generic function for setting dentry_ops
-  fscrypt: Have filesystems handle their d_ops
-  f2fs: Handle casefolding with Encryption
-
- fs/crypto/fname.c           |   7 +-
- fs/crypto/fscrypt_private.h |   1 -
- fs/crypto/hooks.c           |   1 -
- fs/ext4/dir.c               |  51 -----------
- fs/ext4/ext4.h              |  16 ----
- fs/ext4/hash.c              |   2 +-
- fs/ext4/namei.c             |  21 ++---
- fs/ext4/super.c             |  15 ++--
- fs/f2fs/dir.c               | 127 +++++++++++-----------------
- fs/f2fs/f2fs.h              |  18 +---
- fs/f2fs/hash.c              |  27 ++++--
- fs/f2fs/inline.c            |   9 +-
- fs/f2fs/namei.c             |   1 +
- fs/f2fs/super.c             |  17 ++--
- fs/f2fs/sysfs.c             |  10 ++-
- fs/libfs.c                  | 164 ++++++++++++++++++++++++++++++++++++
- fs/ubifs/dir.c              |   1 +
- fs/unicode/utf8-core.c      |  23 ++++-
- include/linux/f2fs_fs.h     |   3 -
- include/linux/fs.h          |  24 ++++++
- include/linux/fscrypt.h     |   6 +-
- include/linux/unicode.h     |   3 +
- 22 files changed, 321 insertions(+), 226 deletions(-)
 
 -- 
-2.25.1.481.gfbce0eb801-goog
+Thanks,
 
+Steve
