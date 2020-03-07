@@ -2,97 +2,147 @@ Return-Path: <SRS0=aJ6y=4Y=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
+	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31B0CC10DCE
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:32:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E770C10F27
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:36:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 11B2D206D7
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:32:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4DC91206CC
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:36:38 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="fyzf/Jub"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726485AbgCGCch (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Mar 2020 21:32:37 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:34521 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726237AbgCGCch (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 21:32:37 -0500
-Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0272WCYq023096
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 6 Mar 2020 21:32:12 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 3485142045B; Fri,  6 Mar 2020 21:32:12 -0500 (EST)
-Date:   Fri, 6 Mar 2020 21:32:12 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Jan Kara <jack@suse.cz>, Ritesh Harjani <riteshh@linux.ibm.com>,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-fsdevel@vger.kernel.org, hch@infradead.org,
-        cmaiolino@redhat.com, david@fromorbit.com
-Subject: Re: [PATCHv5 3/6] ext4: Move ext4 bmap to use iomap infrastructure.
-Message-ID: <20200307023212.GA7845@mit.edu>
-References: <cover.1582880246.git.riteshh@linux.ibm.com>
- <8bbd53bd719d5ccfecafcce93f2bf1d7955a44af.1582880246.git.riteshh@linux.ibm.com>
- <20200228152524.GE8036@magnolia>
- <20200302085840.A41E3A4053@d06av23.portsmouth.uk.ibm.com>
- <20200303154709.GB8037@magnolia>
- <20200304124211.GC21048@quack2.suse.cz>
- <20200304153745.GG8036@magnolia>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200304153745.GG8036@magnolia>
+        id S1726860AbgCGCgh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Mar 2020 21:36:37 -0500
+Received: from mail-pg1-f201.google.com ([209.85.215.201]:38266 "EHLO
+        mail-pg1-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726833AbgCGCgg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 21:36:36 -0500
+Received: by mail-pg1-f201.google.com with SMTP id x16so2523448pgg.5
+        for <linux-ext4@vger.kernel.org>; Fri, 06 Mar 2020 18:36:36 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
+         :cc;
+        bh=upHdbTD180chm+zVZgEnvZGj206fX6ERxiKApi6jZ8Y=;
+        b=fyzf/Jubz9HkaxalGwR7GV/FnVvkkR3z+BL3xHAPV78dlk0xTqKWjGufJKSNBjySMS
+         lJ6l9J8ZWaIMU4nYnJuLS0JP2KVJdtg58knvL2LZxAJig1d4nz0Pc8hN4CdjtrkPUh/L
+         yGigvrVnnRAK1tYt/TyWTJZE14KygnZc+/ePsCWL7e5XM7ELayZaGTwE/bQ7cBu7vtFD
+         6vSaxno8O+IO2yfKMw1SR77PmzhVPfUzkkgLsP7YIsL4mg+FKh+FCg7gM4axMP3W3rB0
+         QJnTC98cimALDDZc7nEEDInaKRP29kqGalZn+2xetw6c5m0DBWt7tUDiZlaNbgCzCprP
+         TPUA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
+         :references:subject:from:to:cc;
+        bh=upHdbTD180chm+zVZgEnvZGj206fX6ERxiKApi6jZ8Y=;
+        b=t2kgdR/42Bnbdmxm5CJcd/7vpNprAEycp/tp3Phcyh03CKozGjE5lUUSo3hhPDDUd2
+         H9NfCEzOxxrm+sr0tFG9ITI78Im7TFdL1glx1EH+37g1f2BZdjgrDDr8lBM+34Rjpe8Q
+         slQ/Vs+S7K6MZMgvYR7yBnR7tY4ahZLOfuEeh05trMM12e2BDoRmdO+G/XIHK94cOVct
+         feshWe/QjGGZoKSuODWfnKExdKrazlQ8CU++63mCHa08ka4cpT2DhwtyiTV9hn2gq21Y
+         yPwASxhMwsBaLuf/VNB5I8Q9v3aD5kx2Z0ExgyYvXSmD/RW16B7jB80QF+aRd8rpptcn
+         P6Xg==
+X-Gm-Message-State: ANhLgQ1e2OzEfccXANfeWgcq1GBUPUAh7nXUN4R3JJuNAdn5sedxJzQV
+        w0gXJxRik2sBnsrhmDaRVHGY8f04WNY=
+X-Google-Smtp-Source: ADFU+vuXQ5IvQYoUUL0swPdg+x5Y+MMF/JrTRrg98tDU5t1A35z2Nv6UucYAIwBa/D0lgjJ2OblQhk4x968=
+X-Received: by 2002:a63:f447:: with SMTP id p7mr6066483pgk.326.1583548595595;
+ Fri, 06 Mar 2020 18:36:35 -0800 (PST)
+Date:   Fri,  6 Mar 2020 18:36:04 -0800
+In-Reply-To: <20200307023611.204708-1-drosen@google.com>
+Message-Id: <20200307023611.204708-2-drosen@google.com>
+Mime-Version: 1.0
+References: <20200307023611.204708-1-drosen@google.com>
+X-Mailer: git-send-email 2.25.1.481.gfbce0eb801-goog
+Subject: [PATCH v8 1/8] unicode: Add utf8_casefold_hash
+From:   Daniel Rosenberg <drosen@google.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Richard Weinberger <richard@nod.at>
+Cc:     linux-mtd@lists.infradead.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Mar 04, 2020 at 07:37:45AM -0800, Darrick J. Wong wrote:
-> > > This makes me wonder if you still need the filemap_write_and_wait in the
-> > > JDATA case because otherwise the journal flush won't have the effect of
-> > > writing all the dirty pagecache back to the filesystem?  OTOH I suppose
-> > > the implicit write-and-wait call after we clear JDATA will not be
-> > > writing to the journal.
-> > > 
-> > > Even more weirdly, the FIEMAP code doesn't drop JDATA at all...?
-> > 
-> > Yeah, it should do that but that's only performance optimization so that we
-> > bother with journal flushing only when someone uses block mapping call on
-> > a file with journalled dirty data. So you can hardly notice the bug by
-> > testing...
-> 
-> If we ever decide to deprecate FIBMAP officially and push bootloaders to
-> use FIEMAP, then we'll have to emulate all the flushing behaviors.  But
-> that's something for a separate patch.
+This adds a case insensitive hash function to allow taking the hash
+without needing to allocate a casefolded copy of the string.
 
-This is really only needed for LILO, since I believe this is the only
-bootloader which uses the output of FIBMAP to determine the block
-number where it will attempt to ***write*** into a data block of a
-mounted file system.
+Signed-off-by: Daniel Rosenberg <drosen@google.com>
+---
+ fs/unicode/utf8-core.c  | 23 ++++++++++++++++++++++-
+ include/linux/unicode.h |  3 +++
+ 2 files changed, 25 insertions(+), 1 deletion(-)
 
-I seem to recall either Dave or Christoph ranting at one point that
-any program which attempted to write into a mounted file system using
-the output of FIEMAP was insane, and we should not be encouraging that
-kind of wacko behavior.  :-)
+diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
+index 2a878b739115d..90656b9980720 100644
+--- a/fs/unicode/utf8-core.c
++++ b/fs/unicode/utf8-core.c
+@@ -6,6 +6,7 @@
+ #include <linux/parser.h>
+ #include <linux/errno.h>
+ #include <linux/unicode.h>
++#include <linux/stringhash.h>
+ 
+ #include "utf8n.h"
+ 
+@@ -122,9 +123,29 @@ int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
+ 	}
+ 	return -EINVAL;
+ }
+-
+ EXPORT_SYMBOL(utf8_casefold);
+ 
++int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
++		       struct qstr *str)
++{
++	const struct utf8data *data = utf8nfdicf(um->version);
++	struct utf8cursor cur;
++	int c;
++	unsigned long hash = init_name_hash(salt);
++
++	if (utf8ncursor(&cur, data, str->name, str->len) < 0)
++		return -EINVAL;
++
++	while ((c = utf8byte(&cur))) {
++		if (c < 0)
++			return c;
++		hash = partial_name_hash((unsigned char)c, hash);
++	}
++	str->hash = end_name_hash(hash);
++	return 0;
++}
++EXPORT_SYMBOL(utf8_casefold_hash);
++
+ int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
+ 		   unsigned char *dest, size_t dlen)
+ {
+diff --git a/include/linux/unicode.h b/include/linux/unicode.h
+index 990aa97d80496..74484d44c7554 100644
+--- a/include/linux/unicode.h
++++ b/include/linux/unicode.h
+@@ -27,6 +27,9 @@ int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
+ int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
+ 		  unsigned char *dest, size_t dlen);
+ 
++int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
++		       struct qstr *str);
++
+ struct unicode_map *utf8_load(const char *version);
+ void utf8_unload(struct unicode_map *um);
+ 
+-- 
+2.25.1.481.gfbce0eb801-goog
 
-What most bootloaders want is simply the accurate list of block
-locations so they can write that into the stage 1 bootloader so it can
-read the stage 2 bootloader from the disk.  The reason why we have the
-JDATA hack in the bmap code is because LILO will get the block
-location, and then try to write config information into that block.
-So we are trying to prevent LILO's write of the boot command line from
-possibly getting rewritten after a journal replay.  (Of course, no
-distribution installer would do something as rude as to just forcibly
-rebooting the system without a clean unmount, so this would *never* be
-a problem, RIGHT?  :-)
-
-In any case, I'd much rather try to get LILO fixed to do something
-sane, rather that move that heavy-ugly JDATA code into FIEMAP, where
-it might get triggered unnecessarily by 99.9% of the users who are
-doing something not-insane.
-
-							- Ted
