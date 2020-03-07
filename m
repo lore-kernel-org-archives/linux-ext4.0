@@ -2,61 +2,57 @@ Return-Path: <SRS0=aJ6y=4Y=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D9B8C3F2C6
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC671C10DCE
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 577F6206E6
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B729920709
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Mar 2020 02:37:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="G0s2YXUs"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="fH4KDebp"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727131AbgCGChI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Mar 2020 21:37:08 -0500
-Received: from mail-pg1-f201.google.com ([209.85.215.201]:35370 "EHLO
-        mail-pg1-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727066AbgCGCgt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 21:36:49 -0500
-Received: by mail-pg1-f201.google.com with SMTP id w8so2520442pgr.2
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Mar 2020 18:36:48 -0800 (PST)
+        id S1726498AbgCGCgf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Mar 2020 21:36:35 -0500
+Received: from mail-pg1-f202.google.com ([209.85.215.202]:33406 "EHLO
+        mail-pg1-f202.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726485AbgCGCge (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2020 21:36:34 -0500
+Received: by mail-pg1-f202.google.com with SMTP id i29so1768847pgi.0
+        for <linux-ext4@vger.kernel.org>; Fri, 06 Mar 2020 18:36:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
-         :cc;
-        bh=W0NRqN4tKUIiubnsRHwnrkHz9xP0jc5bUIehefjfrK0=;
-        b=G0s2YXUs60QGYd1azRm9N+DEtQUa9U2sfAd7n5dRhxO4cGELADBu0RCaWtuzEoewXq
-         1VwOG8xo3CB9fbum61PZal2AG/c+LDNuGpC5Dn34tE/7BTiNV7muT/IgD/5qvclPBYsk
-         NSksw1pSB68xMWgFtawTFTriTdVmMrqzLqA1fu4hLkqzoe2cf9WuUIC4XADWtB98O0ZP
-         Is0GE72LBQG5PVK60mFNlIYkSAAEJG9mDWg9xSGIh35AOUDLTbDtW0UrjNt3C1uYMYei
-         R+Ls5Xyc6wNjOVdx/6KOdhkjZoQQphnTOmOyurHwqzeKiBMk6KoHk01PPlq5KUHg417s
-         P61A==
+        h=date:message-id:mime-version:subject:from:to:cc;
+        bh=hL4QYmipQbbtBF3hqX0FdDc0KzQVh/PklVg+OKiKB0c=;
+        b=fH4KDebpx8sfR/ExNItOLzsNNZbzuWPMaFA6X0gtKuiYWaa3VS/gCqm9U3BgcKI1kG
+         e7/FD5PABlXZvNRNPlaiyvNYxjH7MJXMmOpwXyefWgZjzeJtvh26HfJuAjFe7Yy9lOA1
+         t2TLyoLjiSbm5QKizkXqoTTxJuK4yPWtNqNJRJK26GNzaWFtpT4tlAJTLhqIhRhPxHpU
+         4WYWqBTcoH+Bl6qgJCQ7uHhzGnrfa3KaK30WACW8WGDTDkP8dSqvFw1QpLKEpoGjkE21
+         A1Z2i6nYM+2DB8zOPZiduwEW9dh0TwsUMvd2rF/qkovCw+rOowod48n/BhxsW34sUgWH
+         3qgA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=W0NRqN4tKUIiubnsRHwnrkHz9xP0jc5bUIehefjfrK0=;
-        b=twjj12dkeMIudRTPfxR51J9muJFYb1MA7i44/fj/YdGEO8zkwn2ipmyDLXNW9fNu2c
-         ymZA2kJddfV5gmfLiQGjqnwpYSzAEiv7ZtVXOP3FA7dmXVDTeaPRWV6NAwqGMuP5bewN
-         Uoz5uBf4AJkDIGC+AVabYCdBkEG55njuZPGfThVo4VMo7E6DHlGTJnxX+79P4ps6ainF
-         U+HS4/FE+3DI2j9fkmEDkb3XKsObtwlxmSyW6rex8oWDhEMcfqdR388rQ2VrYppXHaKu
-         m38Hw4yuVjN4jZF7uEecS+TMs0zMKVRivh9QD08uTi4ieGWIvpkqtODdQRvCLZtHHk30
-         iw3A==
-X-Gm-Message-State: ANhLgQ0slKVSJgpvNH5ucP/JdTYiNEtyWRVw+of+jVaRpJdU8a2k1Cw7
-        AOMW+QsMTHr1oBZf3IVpEWfSAMCiF3A=
-X-Google-Smtp-Source: ADFU+vu+t300mRWdVo2OXw72+/s87iy5D1YclwxP2iiwivGLHC6RCrgND3FdQ3hsIGdTsdhsQ7keJGHqVng=
-X-Received: by 2002:a65:6715:: with SMTP id u21mr5823467pgf.17.1583548608053;
- Fri, 06 Mar 2020 18:36:48 -0800 (PST)
-Date:   Fri,  6 Mar 2020 18:36:09 -0800
-In-Reply-To: <20200307023611.204708-1-drosen@google.com>
-Message-Id: <20200307023611.204708-7-drosen@google.com>
+        h=x-gm-message-state:date:message-id:mime-version:subject:from:to:cc;
+        bh=hL4QYmipQbbtBF3hqX0FdDc0KzQVh/PklVg+OKiKB0c=;
+        b=am0140R4W6xxBTRIYP12M9GoH+7UJ1qZCv4Gmsxn11SsXlUFG+SSf3pLwR/MnXo7Xo
+         sjjwfJC3qM+ThbsvIeB/c0qIGGXlIF3REDLG1RWuDgJyeNswgmqhGBw18XsQ1BcSAkV6
+         iBatdOr8vPbrwtE+vDUmFTewZWY3+BaOWGrTF9ktqv8EO31O5IYaybNulw4oB1cSnSV4
+         RvwCahGj2cnx+dtbwDYOQ/KaMYBwtyGMjItZXkgO9JUjzfTXDlOt4Yc53nSg0p8gv1ja
+         sZSaZckVHU1GmC1fNQJKQyVqwXuZ7Az/m45ytqkhpm2iLw7rsAF0TGBy6j7xE/3X6aR6
+         iKiA==
+X-Gm-Message-State: ANhLgQ1SPGtwv8srBsrQrrCeGmZ8O5lV52UhSFN0J+r56vBSfRT5B1GD
+        KJY8MhJmhPFUtV1ZqSw7SIDsCMBZpxI=
+X-Google-Smtp-Source: ADFU+vvinrVh+l8QTv3HIUiABuCgsyoBanuoKAxU/xc+BcTv2eFzH5SpHBDbPai696SnQnmC+kbjhJ4IF6o=
+X-Received: by 2002:a17:90b:3717:: with SMTP id mg23mr6425637pjb.89.1583548593063;
+ Fri, 06 Mar 2020 18:36:33 -0800 (PST)
+Date:   Fri,  6 Mar 2020 18:36:03 -0800
+Message-Id: <20200307023611.204708-1-drosen@google.com>
 Mime-Version: 1.0
-References: <20200307023611.204708-1-drosen@google.com>
 X-Mailer: git-send-email 2.25.1.481.gfbce0eb801-goog
-Subject: [PATCH v8 6/8] libfs: Add generic function for setting dentry_ops
+Subject: [PATCH v8 0/8] Support for Casefolding and Encryption
 From:   Daniel Rosenberg <drosen@google.com>
 To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
@@ -77,91 +73,113 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a function to set dentry operations at lookup time that will
-work for both encrypted files and casefolded filenames.
+These patches are all on top of torvalds/master
 
-A filesystem that supports both features simultaneously can use this
-function during lookup preperations to set up its dentry operations once
-fscrypt no longer does that itself.
+Ext4 and F2FS currently both support casefolding and encryption, but not at
+the same time. These patches aim to rectify that.
 
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
----
- fs/libfs.c         | 50 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  2 ++
- 2 files changed, 52 insertions(+)
+I've left off the Ext4 patches that enable casefolding and ecryption from
+this revision since they still need some fixups, and I haven't gotten around
+to the fsck changes yet.
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 0eaa63a9ae037..bdda03c8ece9e 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1474,4 +1474,54 @@ int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	return ret;
- }
- EXPORT_SYMBOL(generic_ci_d_hash);
-+
-+static const struct dentry_operations generic_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+};
-+#endif
-+
-+#ifdef CONFIG_FS_ENCRYPTION
-+static const struct dentry_operations generic_encrypted_dentry_ops = {
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+#if IS_ENABLED(CONFIG_UNICODE) && IS_ENABLED(CONFIG_FS_ENCRYPTION)
-+static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+/**
-+ * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
-+ * @dir:	parent of dentry whose ops to set
-+ * @dentry:	dentry to set ops on
-+ *
-+ * This function sets the dentry ops for the given dentry to handle both
-+ * casefolding and encryption of the dentry name.
-+ */
-+void generic_set_encrypted_ci_d_ops(struct inode *dir, struct dentry *dentry)
-+{
-+#ifdef CONFIG_FS_ENCRYPTION
-+	if (dentry->d_flags & DCACHE_ENCRYPTED_NAME) {
-+#ifdef CONFIG_UNICODE
-+		if (dir->i_sb->s_encoding) {
-+			d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
-+			return;
-+		}
- #endif
-+		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
-+		return;
-+	}
-+#endif
-+#ifdef CONFIG_UNICODE
-+	if (dir->i_sb->s_encoding) {
-+		d_set_d_op(dentry, &generic_ci_dentry_ops);
-+		return;
-+	}
-+#endif
-+}
-+EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8d20a3daa49a0..dc433bc4f0602 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3389,6 +3389,8 @@ static inline bool needs_casefold(const struct inode *dir)
- 	return false;
- }
- #endif
-+extern void generic_set_encrypted_ci_d_ops(struct inode *dir,
-+					   struct dentry *dentry);
- 
- #ifdef CONFIG_MIGRATION
- extern int buffer_migrate_page(struct address_space *,
+I moved the identical casefolding dcache operations for ext4 and f2fs into
+fs/libfs.c, as all filesystems using casefolded names will want them.
+
+I've also adjust fscrypt to not set it's d_revalidate operation during it's
+prepare lookup, instead having the calling filesystem set it up. This is
+done to that the filesystem may have it's own dentry_operations. Also added
+a helper function in libfs.c that will work for filesystems supporting both
+casefolding and fscrypt.
+
+For Ext4, since the hash for encrypted casefolded directory names cannot be
+computed without the key, we need to store the hash on disk. We only do so
+for encrypted and casefolded directories to avoid on disk format changes.
+Previously encryption and casefolding could not be on the same filesystem,
+and we're relaxing that requirement. F2fs is a bit more straightforward
+since it already stores hashes on disk.
+
+I've updated the related tools with just enough to enable the feature. I
+still need to adjust ext4's fsck's, although without access to the keys,
+neither fsck will be able to verify the hashes of casefolded and encrypted
+names.
+
+v8 changes:
+Fixed issue with non-strict_mode fallback for hashing dentry op
+Fixed potential RCU/unicode issue in casefolding dentry_ops.
+Split "fscrypt: Have filesystems handle their d_ops" into a few smaller patches
+Switched ubifs change to also use the dentry op function added in libfs.c
+Added hash function in fs/unicode
+changed super_block s_encoding_flags to u16. Didn't make unsigned int since
+both filesystems using them use them as 16 bits, and want to avoid possible
+confusion. Wouldn't really be opposed to that change though
+Added kernel doc comments
+misc other small adjustments
+TODO:
+ Investigate moving to a dentry flag to check for casefolding, or otherwise
+ conditionally setting the casefolding dentry ops as needed, like fscrypt.
+ Currently not done due to some issues with cached negative dentries and
+ toggling casefolding on an empty directory.
+
+ Ext4 fsck changes/debugging ext4 patches
+
+
+v7 changes:
+Moved dentry operations from unicode to libfs, added new iterator function
+to unicode to allow this.
+Added libfs function for setting dentries to remove code duplication between
+ext4 and f2fs.
+
+v6 changes:
+Went back to using dentry_operations for casefolding. Provided standard
+implementations in fs/unicode, avoiding extra allocation in d_hash op.
+Moved fscrypt d_ops setting to be filesystem's responsibility to maintain
+compatibility with casefolding and overlayfs if casefolding is not used
+fixes some f2fs error handling
+
+v4-5: patches submitted on fscrypt
+
+v3 changes:
+fscrypt patch only creates hash key if it will be needed.
+Rebased on top of fscrypt branch, reconstified match functions in ext4/f2fs
+
+v2 changes:
+fscrypt moved to separate thread to rebase on fscrypt dev branch
+addressed feedback, plus some minor fixes
+
+Daniel Rosenberg (8):
+  unicode: Add utf8_casefold_hash
+  fs: Add standard casefolding support
+  f2fs: Use generic casefolding support
+  ext4: Use generic casefolding support
+  fscrypt: Export fscrypt_d_revalidate
+  libfs: Add generic function for setting dentry_ops
+  fscrypt: Have filesystems handle their d_ops
+  f2fs: Handle casefolding with Encryption
+
+ fs/crypto/fname.c           |   7 +-
+ fs/crypto/fscrypt_private.h |   1 -
+ fs/crypto/hooks.c           |   1 -
+ fs/ext4/dir.c               |  51 -----------
+ fs/ext4/ext4.h              |  16 ----
+ fs/ext4/hash.c              |   2 +-
+ fs/ext4/namei.c             |  21 ++---
+ fs/ext4/super.c             |  15 ++--
+ fs/f2fs/dir.c               | 127 +++++++++++-----------------
+ fs/f2fs/f2fs.h              |  18 +---
+ fs/f2fs/hash.c              |  27 ++++--
+ fs/f2fs/inline.c            |   9 +-
+ fs/f2fs/namei.c             |   1 +
+ fs/f2fs/super.c             |  17 ++--
+ fs/f2fs/sysfs.c             |  10 ++-
+ fs/libfs.c                  | 164 ++++++++++++++++++++++++++++++++++++
+ fs/ubifs/dir.c              |   1 +
+ fs/unicode/utf8-core.c      |  23 ++++-
+ include/linux/f2fs_fs.h     |   3 -
+ include/linux/fs.h          |  24 ++++++
+ include/linux/fscrypt.h     |   6 +-
+ include/linux/unicode.h     |   3 +
+ 22 files changed, 321 insertions(+), 226 deletions(-)
+
 -- 
 2.25.1.481.gfbce0eb801-goog
 
