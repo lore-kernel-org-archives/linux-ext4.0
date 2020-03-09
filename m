@@ -2,157 +2,124 @@ Return-Path: <SRS0=hMZw=42=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 03456C18E5A
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Mar 2020 10:57:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6714C10F27
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Mar 2020 13:52:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D0AE2208C3
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Mar 2020 10:57:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6652020848
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Mar 2020 13:52:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="d+FhlV7u"
+	dkim=pass (2048-bit key) header.d=dupond.be header.i=@dupond.be header.b="TGXbwMni"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726712AbgCIK5N (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 Mar 2020 06:57:13 -0400
-Received: from us-smtp-2.mimecast.com ([207.211.31.81]:44294 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726389AbgCIK5M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2020 06:57:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1583751431;
+        id S1726621AbgCINwh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 Mar 2020 09:52:37 -0400
+Received: from apollo.dupie.be ([51.15.19.225]:55918 "EHLO apollo.dupie.be"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726528AbgCINwg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 9 Mar 2020 09:52:36 -0400
+Received: from [10.10.1.146] (systeembeheer.combell.com [217.21.177.69])
+        by apollo.dupie.be (Postfix) with ESMTPSA id 239D280AE8D;
+        Mon,  9 Mar 2020 14:52:33 +0100 (CET)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=dupond.be; s=dkim;
+        t=1583761953;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=xOLtbpkEtoBfkKGGOTIvWhE3qqxQoqcopRPrLUYG0b8=;
-        b=d+FhlV7udMPWc7aTqojeTfqSinpZssRZuQ4VVMVd+7q1MRAUGlsA7ONNLEzEPVhsQRxuaI
-        uqyibPotdF1yNRexFlj43Ft/8vNV0E3JWNXJsZUSWVuX5JltJm+LarE6jGOjQcPbrxy9VT
-        8KyoozLRlLZjLVvG9S/5xvjhaOyYsyk=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-327-kesc2179MmiUsjkFlfkzcQ-1; Mon, 09 Mar 2020 06:57:07 -0400
-X-MC-Unique: kesc2179MmiUsjkFlfkzcQ-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 1F64D1007268;
-        Mon,  9 Mar 2020 10:57:06 +0000 (UTC)
-Received: from bfoster (dhcp-41-2.bos.redhat.com [10.18.41.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 74CEB91D95;
-        Mon,  9 Mar 2020 10:57:05 +0000 (UTC)
-Date:   Mon, 9 Mar 2020 06:57:03 -0400
-From:   Brian Foster <bfoster@redhat.com>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] xfs: clear PF_MEMALLOC before exiting xfsaild thread
-Message-ID: <20200309105703.GA36070@bfoster>
-References: <20200309010410.GA371527@sol.localdomain>
- <20200309043430.143206-1-ebiggers@kernel.org>
+        bh=Q4C02pO3iw1abprRzOENVxexf7MZI7a8C+9sk2bSDSU=;
+        b=TGXbwMniNXANGXwFNdDV83Kc3wAC0T2ARsDfAKgRM0KqEJevtjaZZG/usXy6Qy0lM8SF2u
+        VJRdoM0wyVsGhY2Zp7aL2zsSCxseHCaF0RtfgyTJukAZEcSwbW8JNe/XXmQr+iKHH4zb/o
+        Lxq9ejhZu6UDujBWh2bQc9/6McbLjy5yXkBhguwvFZVJJ6QyNwRb83lVm2FgePM5e+r6zp
+        URq95sf483hyifceFMraPyqJ/jWRkrlHUY2vzowUlX0RlBSkNJ5/hoyWx3M88WbWh8VaeG
+        GH00C9dUXwowd5iD8UIDQL5Wujl3iAB5atjvAHLT6EP4k5eGpt/M5srz+N+kLQ==
+Subject: Re: Filesystem corruption after unreachable storage
+From:   Jean-Louis Dupond <jean-louis@dupond.be>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+References: <c829a701-3e22-8931-e5ca-2508f87f4d78@dupond.be>
+ <20200124203725.GH147870@mit.edu>
+ <3a7bc899-31d9-51f2-1ea9-b3bef2a98913@dupond.be>
+ <20200220155022.GA532518@mit.edu>
+ <7376c09c-63e3-488f-fcf8-89c81832ef2d@dupond.be>
+ <adc0517d-b46e-2879-f06c-34c3d7b7c5f6@dupond.be>
+ <20200225172355.GA14617@mit.edu>
+ <d19e44af-585f-e4a2-5546-7a3345a0ee66@dupond.be>
+Message-ID: <50f93ccb-2b2c-15c5-8b08-facc3a25068a@dupond.be>
+Date:   Mon, 9 Mar 2020 14:52:38 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200309043430.143206-1-ebiggers@kernel.org>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+In-Reply-To: <d19e44af-585f-e4a2-5546-7a3345a0ee66@dupond.be>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Mar 08, 2020 at 09:34:30PM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Leaving PF_MEMALLOC set when exiting a kthread causes it to remain set
-> during do_exit().  That can confuse things.  For example, if BSD process
-> accounting is enabled and the accounting file has FS_SYNC_FL set and is
-> located on an ext4 filesystem without a journal, then do_exit() ends up
-> calling ext4_write_inode().  That triggers the
-> WARN_ON_ONCE(current->flags & PF_MEMALLOC) there, as it assumes
-> (appropriately) that inodes aren't written when allocating memory.
-> 
-> Fix this in xfsaild() by using the helper functions to save and restore
-> PF_MEMALLOC.
-> 
-> This can be reproduced as follows in the kvm-xfstests test appliance
-> modified to add the 'acct' Debian package, and with kvm-xfstests's
-> recommended kconfig modified to add CONFIG_BSD_PROCESS_ACCT=y:
-> 
-> 	mkfs.ext2 -F /dev/vdb
-> 	mount /vdb -t ext4
-> 	touch /vdb/file
-> 	chattr +S /vdb/file
-> 	accton /vdb/file
-> 	mkfs.xfs -f /dev/vdc
-> 	mount /vdc
-> 	umount /vdc
-> 
-> It causes:
-> 	WARNING: CPU: 0 PID: 332 at fs/ext4/inode.c:5097 ext4_write_inode+0x140/0x1a0
-> 	CPU: 0 PID: 332 Comm: xfsaild/vdc Not tainted 5.6.0-rc5 #5
-> 	[...]
-> 	RIP: 0010:ext4_write_inode+0x140/0x1a0 fs/ext4/inode.c:5097
-> 	[...]
-> 	Call Trace:
-> 	 write_inode fs/fs-writeback.c:1312 [inline]
-> 	 __writeback_single_inode+0x465/0x5f0 fs/fs-writeback.c:1511
-> 	 writeback_single_inode+0xad/0x120 fs/fs-writeback.c:1565
-> 	 sync_inode fs/fs-writeback.c:2602 [inline]
-> 	 sync_inode_metadata+0x3d/0x57 fs/fs-writeback.c:2622
-> 	 ext4_fsync_nojournal fs/ext4/fsync.c:94 [inline]
-> 	 ext4_sync_file+0x243/0x4b0 fs/ext4/fsync.c:172
-> 	 generic_write_sync include/linux/fs.h:2867 [inline]
-> 	 ext4_buffered_write_iter+0xe1/0x130 fs/ext4/file.c:277
-> 	 call_write_iter include/linux/fs.h:1901 [inline]
-> 	 new_sync_write+0x130/0x1d0 fs/read_write.c:483
-> 	 __kernel_write+0x54/0xe0 fs/read_write.c:515
-> 	 do_acct_process+0x122/0x170 kernel/acct.c:522
-> 	 slow_acct_process kernel/acct.c:581 [inline]
-> 	 acct_process+0x1d4/0x27c kernel/acct.c:607
-> 	 do_exit+0x83d/0xbc0 kernel/exit.c:791
-> 	 kthread+0xf1/0x140 kernel/kthread.c:257
-> 	 ret_from_fork+0x27/0x50 arch/x86/entry/entry_64.S:352
-> 
-> This case was originally reported by syzbot at
-> https://lore.kernel.org/r/0000000000000e7156059f751d7b@google.com.
-> 
-> Reported-by: syzbot+1f9dc49e8de2582d90c2@syzkaller.appspotmail.com
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
+On 28/02/2020 12:06, Jean-Louis Dupond wrote:
+> On 25/02/2020 18:23, Theodore Y. Ts'o wrote:
+>> This is going to be a long shot, but if you could try testing with
+>> 5.6-rc3, or with this commit cherry-picked into a 5.4 or later kernel:
+>>
+>>     commit 8eedabfd66b68a4623beec0789eac54b8c9d0fb6
+>>     Author: wangyan <wangyan122@huawei.com>
+>>     Date:   Thu Feb 20 21:46:14 2020 +0800
+>>
+>>         jbd2: fix ocfs2 corrupt when clearing block group bits
+>>                 I found a NULL pointer dereference in 
+>> ocfs2_block_group_clear_bits().
+>>         The running environment:
+>>                 kernel version: 4.19
+>>                 A cluster with two nodes, 5 luns mounted on two 
+>> nodes, and do some
+>>                 file operations like dd/fallocate/truncate/rm on 
+>> every lun with storage
+>>                 network disconnection.
+>>                 The fallocate operation on dm-23-45 caused an null 
+>> pointer dereference.
+>>         ...
+>>
+>> ... it would be interesting to see if fixes things for you.  I can't
+>> guarantee that it will, but the trigger of the failure which wangyan
+>> found is very similar indeed.
+>>
+>> Thanks,
+>>
+>>                         - Ted
+> Unfortunately it was a too long shot :)
+>
+> Tested with a 5.4 kernel with that patch included, and also with 5.6-rc3.
+> But both had the same issue.
+>
+> - Filesystem goes read-only when the storage comes back
+> - Manual fsck needed on bootup to recover from it.
+>
+> It would be great if we could make it not corrupt the filesystem on 
+> storage recovery.
+> I'm happy to test some patches if they are available :)
+>
+> Thanks
+> Jean-Louis
 
-Reviewed-by: Brian Foster <bfoster@redhat.com>
+Did some more tests today.
 
-> 
-> v2: include more details in the commit message.
-> 
->  fs/xfs/xfs_trans_ail.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/xfs/xfs_trans_ail.c b/fs/xfs/xfs_trans_ail.c
-> index 00cc5b8734be8..3bc570c90ad97 100644
-> --- a/fs/xfs/xfs_trans_ail.c
-> +++ b/fs/xfs/xfs_trans_ail.c
-> @@ -529,8 +529,9 @@ xfsaild(
->  {
->  	struct xfs_ail	*ailp = data;
->  	long		tout = 0;	/* milliseconds */
-> +	unsigned int	noreclaim_flag;
->  
-> -	current->flags |= PF_MEMALLOC;
-> +	noreclaim_flag = memalloc_noreclaim_save();
->  	set_freezable();
->  
->  	while (1) {
-> @@ -601,6 +602,7 @@ xfsaild(
->  		tout = xfsaild_push(ailp);
->  	}
->  
-> +	memalloc_noreclaim_restore(noreclaim_flag);
->  	return 0;
->  }
->  
-> -- 
-> 2.25.1
-> 
+Setting the SCSi timeout higher seems to be the most reliable solution.
+When the storage recovers, the VM just recovers and we can continue :)
+
+Also did test setting the filesystem option 'error=panic'.
+When the storage recovers, the VM freezes. So a hard reset is needed. 
+But on boot a manual fsck is also needed like in the default situation.
+So it seems like it still writes data to the FS before doing the panic?
+You would expect it to not touch the fs anymore.
+
+Would be nice if this situation could be a bit more error-proof :)
+
+Thanks
+Jean-Louis
+
 
