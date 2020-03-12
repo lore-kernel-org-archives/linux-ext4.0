@@ -2,54 +2,54 @@ Return-Path: <SRS0=lOxl=45=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BE001C10DCE
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 15:00:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5702DC1975A
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 15:19:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 95C672067C
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 15:00:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 27A5C206E7
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 15:19:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="R1rpb4mb"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727524AbgCLPA3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 Mar 2020 11:00:29 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:50941 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727489AbgCLPA3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2020 11:00:29 -0400
-Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 02CF0Oll020674
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 12 Mar 2020 11:00:25 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 4EED4420E5E; Thu, 12 Mar 2020 11:00:24 -0400 (EDT)
-Date:   Thu, 12 Mar 2020 11:00:24 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Eric Whitney <enwlinux@gmail.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: remove map_from_cluster from ext4_ext_map_blocks
-Message-ID: <20200312150024.GK7159@mit.edu>
-References: <20200311205125.25061-1-enwlinux@gmail.com>
+        id S1727828AbgCLPTn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 Mar 2020 11:19:43 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:38476 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727455AbgCLPTm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2020 11:19:42 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=b3RXsv2Nj0w6mo5snr4nzMkxAesLBKH5E0NpaP9zKiw=; b=R1rpb4mbwYVS0YcV9SIkvfKlEB
+        /ixd3jBPhHxBkidFliarHs2e+ag+JOZdBakRJ1MnrtGIOO1ih/twSwfNek1+uEy5g49lhNi1l1L3q
+        6KT+Jt7IVTb1IqCHVrYX2Ee5q14/P1opgCesbnkWxyK1hQ9RFgws8cOT5Qsl8t8uK4PtNnr59y/iA
+        rKO/cBNsIlODPpSjvU5A0JB2+QozpJoo0xy62UHTJo6WJsxPSscEJlY8TXzPXHmBH6dvaRJPDuuMe
+        qmEiEKtKJ6LH2b5NJn49+o4VrVU9HyNFhKdk3olY0kvEugeOTqNJEXNho6yxAxPRdavm6rXbpQ4qB
+        Khat2zog==;
+Received: from [2001:4bb8:184:5cad:8026:d98c:a056:3e33] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jCPcb-0006UB-SI; Thu, 12 Mar 2020 15:19:42 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     linux-block@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-ext4@vger.kernel.org,
+        reiserfs-devel@vger.kernel.org
+Subject: cleanup the partitioning code
+Date:   Thu, 12 Mar 2020 16:19:18 +0100
+Message-Id: <20200312151939.645254-1-hch@lst.de>
+X-Mailer: git-send-email 2.24.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200311205125.25061-1-enwlinux@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Mar 11, 2020 at 04:51:25PM -0400, Eric Whitney wrote:
-> We can use the variable allocated_clusters rather than map_from_clusters
-> to control reserved block/cluster accounting in ext4_ext_map_blocks.
-> This eliminates a variable and associated code and improves readability
-> a little.
-> 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+Hi Jens,
 
-Applied, thanks.
-
-							- Ted
+this series cleans up the partitioning code.
