@@ -2,174 +2,90 @@ Return-Path: <SRS0=lOxl=45=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4CC6C10DCE
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 09:47:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 199B9C1975A
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:08:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7374320724
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 09:47:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ED79520724
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:08:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MzglNq44"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726000AbgCLJrx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 Mar 2020 05:47:53 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:50764 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725268AbgCLJrw (ORCPT
+        id S1726567AbgCLKIE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 Mar 2020 06:08:04 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:40586 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726385AbgCLKIE (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 12 Mar 2020 05:47:52 -0400
-Received: from pps.filterd (m0098419.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 02C9kli1106141
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2020 05:47:51 -0400
-Received: from e06smtp05.uk.ibm.com (e06smtp05.uk.ibm.com [195.75.94.101])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2yqjjmgk46-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2020 05:47:50 -0400
-Received: from localhost
-        by e06smtp05.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
-        Thu, 12 Mar 2020 09:46:57 -0000
-Received: from b06avi18878370.portsmouth.uk.ibm.com (9.149.26.194)
-        by e06smtp05.uk.ibm.com (192.168.101.135) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Thu, 12 Mar 2020 09:46:54 -0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06avi18878370.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 02C9krlL36110674
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 12 Mar 2020 09:46:53 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 1D2B7A4054;
-        Thu, 12 Mar 2020 09:46:53 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 51748A405C;
-        Thu, 12 Mar 2020 09:46:52 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.199.51.79])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Thu, 12 Mar 2020 09:46:52 +0000 (GMT)
-Subject: Re: [PATCH] ext4: clean up ext4_ext_insert_extent() call in
- ext4_ext_map_blocks()
-To:     Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu
-References: <20200311205033.25013-1-enwlinux@gmail.com>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Thu, 12 Mar 2020 15:16:51 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        Thu, 12 Mar 2020 06:08:04 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1584007683;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=UREMN3SChoR23ul+gfDOcGQfVoGjOsof5Gn863j6Nd4=;
+        b=MzglNq44XB+zf0N2ytutSrPUdnmFugYfapsjgHVrpIEzAgUZxOJjwLDMUCEbVkwqanL09Y
+        RIZzan8dPHqwMFrHScgLDBqzdtIAcVnzItvqkxjI7vhM0Q37Qrl3XCpeWI7tj9R3bS4FCY
+        cHGQmCJqDq+//hGEDsGZZvsPYGC4Jdo=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-242-HwXjt_E_PU-qSYhRePSKpw-1; Thu, 12 Mar 2020 06:08:01 -0400
+X-MC-Unique: HwXjt_E_PU-qSYhRePSKpw-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id DBA34189D6D3;
+        Thu, 12 Mar 2020 10:07:59 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-120-182.rdu2.redhat.com [10.10.120.182])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E57D3277AD;
+        Thu, 12 Mar 2020 10:07:57 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+In-Reply-To: <969260.1584004779@warthog.procyon.org.uk>
+References: <969260.1584004779@warthog.procyon.org.uk>
+To:     mbobrowski@mbobrowski.org, darrick.wong@oracle.com
+Cc:     dhowells@redhat.com, jack@suse.cz, hch@lst.de,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: Is ext4_dio_read_iter() broken? - and xfs_file_dio_aio_read()
 MIME-Version: 1.0
-In-Reply-To: <20200311205033.25013-1-enwlinux@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-TM-AS-GCONF: 00
-x-cbid: 20031209-0020-0000-0000-000003B32A08
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 20031209-0021-0000-0000-0000220B7D96
-Message-Id: <20200312094652.51748A405C@b06wcsmtp001.portsmouth.uk.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.572
- definitions=2020-03-12_01:2020-03-11,2020-03-12 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0 phishscore=0
- mlxlogscore=999 suspectscore=2 adultscore=0 clxscore=1015
- priorityscore=1501 bulkscore=0 mlxscore=0 spamscore=0 impostorscore=0
- lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2001150001 definitions=main-2003120052
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1015226.1584007677.1@warthog.procyon.org.uk>
+Date:   Thu, 12 Mar 2020 10:07:57 +0000
+Message-ID: <1015227.1584007677@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+David Howells <dhowells@redhat.com> wrote:
 
-
-On 3/12/20 2:20 AM, Eric Whitney wrote:
-> Now that the eofblocks code has been removed, we don't need to assign
-> 0 to err before calling ext4_ext_insert_extent() since it will assign
-> a return value to ret anyway.  The variable free_on_err can be
-> eliminated and replaced by a reference to allocated_clusters which
-> clearly conveys the idea that newly allocated blocks should be freed
-> when recovering from an extent insertion failure.  The error handling
-> code itself should be restructured so that it errors out immediately on
-> an insertion failure in the case where no new blocks have been allocated
-> (bigalloc) rather than proceeding further into the mapping code.  The
-
-Agreed.
-
-> initializer for fb_flags can also be rearranged for improved
-> readability.  Finally, insert a missing space in nearby code.
+> Is ext4_dio_read_iter() broken?  It calls:
 > 
-> No known bugs are addressed by this patch - it's simply a cleanup.
+> 	file_accessed(iocb->ki_filp);
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> at the end of the function - but surely iocb should be expected to have been
+> freed when iocb->ki_complete() was called?
 
+I think it's actually worse than that.  You also can't call
+inode_unlock_shared(inode) because you no longer own a ref on the inode since
+->ki_complete() is expected to call fput() on iocb->ki_filp.
 
-Nice cleanup.
+Yes, you own a shared lock on it, but unless somewhere along the
+fput-dput-iput chain the inode lock is taken exclusively, the inode can be
+freed whilst you're still holding the lock.
 
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Oh - and ext4_dax_read_iter() is also similarly broken.
 
+And xfs_file_dio_aio_read() appears to be broken as it touches the inode after
+calling iomap_dio_rw() to unlock it.
 
-> ---
->   fs/ext4/extents.c | 30 +++++++++++++++++-------------
->   1 file changed, 17 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bc96529d1509..c2743d024c11 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4176,7 +4176,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	struct ext4_extent newex, *ex, *ex2;
->   	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->   	ext4_fsblk_t newblock = 0;
-> -	int free_on_err = 0, err = 0, depth, ret;
-> +	int err = 0, depth, ret;
->   	unsigned int allocated = 0, offset = 0;
->   	unsigned int allocated_clusters = 0;
->   	struct ext4_allocation_request ar;
-> @@ -4374,7 +4374,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   		goto out2;
->   	ext_debug("allocate new block: goal %llu, found %llu/%u\n",
->   		  ar.goal, newblock, allocated);
-> -	free_on_err = 1;
->   	allocated_clusters = ar.len;
->   	ar.len = EXT4_C2B(sbi, ar.len) - offset;
->   	if (ar.len > allocated)
-> @@ -4385,23 +4384,28 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	ext4_ext_store_pblock(&newex, newblock + offset);
->   	newex.ee_len = cpu_to_le16(ar.len);
->   	/* Mark unwritten */
-> -	if (flags & EXT4_GET_BLOCKS_UNWRIT_EXT){
-> +	if (flags & EXT4_GET_BLOCKS_UNWRIT_EXT) {
->   		ext4_ext_mark_unwritten(&newex);
->   		map->m_flags |= EXT4_MAP_UNWRITTEN;
->   	}
-> 
-> -	err = 0;
->   	err = ext4_ext_insert_extent(handle, inode, &path, &newex, flags);
-> +	if (err) {
-> +		if (allocated_clusters) {
-> +			int fb_flags = 0;
-> 
-> -	if (err && free_on_err) {
-> -		int fb_flags = flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE ?
-> -			EXT4_FREE_BLOCKS_NO_QUOT_UPDATE : 0;
-> -		/* free data blocks we just allocated */
-> -		/* not a good idea to call discard here directly,
-> -		 * but otherwise we'd need to call it every free() */
-> -		ext4_discard_preallocations(inode);
-> -		ext4_free_blocks(handle, inode, NULL, newblock,
-> -				 EXT4_C2B(sbi, allocated_clusters), fb_flags);
-> +			/*
-> +			 * free data blocks we just allocated.
-> +			 * not a good idea to call discard here directly,
-> +			 * but otherwise we'd need to call it every free().
-> +			 */
-> +			ext4_discard_preallocations(inode);
-> +			if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
-> +				fb_flags = EXT4_FREE_BLOCKS_NO_QUOT_UPDATE;
-> +			ext4_free_blocks(handle, inode, NULL, newblock,
-> +					 EXT4_C2B(sbi, allocated_clusters),
-> +					 fb_flags);
-> +		}
->   		goto out2;
->   	}
-> 
+David
 
