@@ -2,137 +2,109 @@ Return-Path: <SRS0=lOxl=45=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4758FC10DCE
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:11:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 660ECC10DCE
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:20:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2F0B420716
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:11:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3971820674
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 Mar 2020 10:20:12 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=mbobrowski-org.20150623.gappssmtp.com header.i=@mbobrowski-org.20150623.gappssmtp.com header.b="potDI4g+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726571AbgCLKLT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 Mar 2020 06:11:19 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:34746 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726000AbgCLKLT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 12 Mar 2020 06:11:19 -0400
-Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 02CAAgmT111720
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2020 06:11:18 -0400
-Received: from e06smtp02.uk.ibm.com (e06smtp02.uk.ibm.com [195.75.94.98])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2yqjj99c3k-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2020 06:11:17 -0400
-Received: from localhost
-        by e06smtp02.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <riteshh@linux.ibm.com>;
-        Thu, 12 Mar 2020 09:56:09 -0000
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (9.149.109.198)
-        by e06smtp02.uk.ibm.com (192.168.101.132) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Thu, 12 Mar 2020 09:56:06 -0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 02C9u50452363438
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 12 Mar 2020 09:56:05 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id C8559A405C;
-        Thu, 12 Mar 2020 09:56:05 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 06F79A4060;
-        Thu, 12 Mar 2020 09:56:05 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.199.51.79])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Thu, 12 Mar 2020 09:56:04 +0000 (GMT)
-Subject: Re: [PATCH] ext4: remove map_from_cluster from ext4_ext_map_blocks
-To:     Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu
-References: <20200311205125.25061-1-enwlinux@gmail.com>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Thu, 12 Mar 2020 15:26:03 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        id S1726641AbgCLKUL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 Mar 2020 06:20:11 -0400
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:39168 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726567AbgCLKUL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2020 06:20:11 -0400
+Received: by mail-pg1-f196.google.com with SMTP id s2so2850736pgv.6
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2020 03:20:08 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=mbobrowski-org.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=pjZji4vANWBvK/LYuH8B7sdZ9t4UkGDVwURMSZ9njK8=;
+        b=potDI4g+QjXEc9+afuaYX9soMYgDWWQzZz7gVpTfQplIeba8QefsQ40UC+IJO3iIcZ
+         z+WmIMzG+S1bxjkqGXJeHLDOii5RqFc0ly1/YhVcLGWxt/enxgD9pGI7dl3LyFyfcDGX
+         IDey2/sxN5FsQih8BMd2XjMudopxKgnXjjwz9LmU38rMLKpz0P2pUHevAs8h7wsIaWLC
+         YAs6yJS/YBLU3ONShfWTLQORogCpXiKP5gMn7/6GjGsyl36yuV2iWPDSt7cPXbkrEVqs
+         w32iKu3xwArajG36huZnBsT3BOwpFW3GdzQ6ghCU75G7KziLxb3M079Dr94tpuj9Sdei
+         n58Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=pjZji4vANWBvK/LYuH8B7sdZ9t4UkGDVwURMSZ9njK8=;
+        b=QnpaQFH7MRC6M7gESiK+qlyiGYGU1Z8IAnqJaD985ONHyJch+ldw0V8kEN7iiecxLW
+         Y4FgRQFJWzmtYSGpVj0JOMsY+xrl+Wst+PUm0h2Xo3zF5O9t4UQ6QnSoO8bNrTghriqv
+         PmUCVKwyhZZLMAaoMgjLDQ4X8U6euFwNE2Oh+HCSMSI2+2xQI22Vv45LMpJWTj1fUon7
+         fTnGRGYgpYGDTdv+zaDSiMdfhh81YNXhoSbbKvMLHrETurvsW+jtakMCxD+7KEJs4dLe
+         2AMn2xPSi1535ZDJsqP+fGDMxS+oc1gmC09ALLhbIzBrCzNSJiUwKrFbWIe2yZf8IoB9
+         NmOA==
+X-Gm-Message-State: ANhLgQ2Z+dtEWGFX3w9eVnPezMFgtTHhcKPR5ieuQqOYGVFQbcBS+smf
+        FpY3YcLN/4ti0aWWFw6fazwUVSSqLw==
+X-Google-Smtp-Source: ADFU+vudp1XNo6n7FBeUcZB1ofc0XRuAME3/cOyJSh2mzNC1En9Bsndamnl/jT4bdJLL0ij+ESqIwA==
+X-Received: by 2002:a63:4453:: with SMTP id t19mr6701136pgk.381.1584008408207;
+        Thu, 12 Mar 2020 03:20:08 -0700 (PDT)
+Received: from athena.bobrowski.net (49.37.70.115.static.exetel.com.au. [115.70.37.49])
+        by smtp.gmail.com with ESMTPSA id nh4sm8124459pjb.39.2020.03.12.03.20.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 12 Mar 2020 03:20:07 -0700 (PDT)
+Date:   Thu, 12 Mar 2020 21:20:02 +1100
+From:   Matthew Bobrowski <mbobrowski@mbobrowski.org>
+To:     David Howells <dhowells@redhat.com>
+Cc:     jack@suse.cz, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: Is ext4_dio_read_iter() broken?
+Message-ID: <20200312102002.GA6585@athena.bobrowski.net>
+References: <969260.1584004779@warthog.procyon.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <20200311205125.25061-1-enwlinux@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-TM-AS-GCONF: 00
-x-cbid: 20031209-0008-0000-0000-0000035C0220
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 20031209-0009-0000-0000-00004A7D4B49
-Message-Id: <20200312095605.06F79A4060@b06wcsmtp001.portsmouth.uk.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.572
- definitions=2020-03-12_01:2020-03-11,2020-03-12 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 spamscore=0
- clxscore=1015 mlxscore=0 impostorscore=0 adultscore=0 mlxlogscore=999
- bulkscore=0 priorityscore=1501 suspectscore=0 malwarescore=0
- lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2001150001 definitions=main-2003120054
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <969260.1584004779@warthog.procyon.org.uk>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-
-On 3/12/20 2:21 AM, Eric Whitney wrote:
-> We can use the variable allocated_clusters rather than map_from_clusters
-> to control reserved block/cluster accounting in ext4_ext_map_blocks.
-> This eliminates a variable and associated code and improves readability
-> a little.
+On Thu, Mar 12, 2020 at 09:19:39AM +0000, David Howells wrote:
+> Hi Matthew,
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-
-No objections there.
-
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-
-
-> ---
->   fs/ext4/extents.c | 5 +----
->   1 file changed, 1 insertion(+), 4 deletions(-)
+> Is ext4_dio_read_iter() broken?  It calls:
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bc96529d1509..b12c9e52746c 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4181,7 +4181,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	unsigned int allocated_clusters = 0;
->   	struct ext4_allocation_request ar;
->   	ext4_lblk_t cluster_offset;
-> -	bool map_from_cluster = false;
+> 	file_accessed(iocb->ki_filp);
 > 
->   	ext_debug("blocks %u/%u requested for inode %lu\n",
->   		  map->m_lblk, map->m_len, inode->i_ino);
-> @@ -4296,7 +4295,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	    get_implied_cluster_alloc(inode->i_sb, map, ex, path)) {
->   		ar.len = allocated = map->m_len;
->   		newblock = map->m_pblk;
-> -		map_from_cluster = true;
->   		goto got_allocated_blocks;
->   	}
+> at the end of the function - but surely iocb should be expected to have been
+> freed when iocb->ki_complete() was called?
 > 
-> @@ -4317,7 +4315,6 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	    get_implied_cluster_alloc(inode->i_sb, map, ex2, path)) {
->   		ar.len = allocated = map->m_len;
->   		newblock = map->m_pblk;
-> -		map_from_cluster = true;
->   		goto got_allocated_blocks;
->   	}
+> In my cachefiles rewrite, I'm seeing the attached kasan dump.  The offending
+> RIP, ext4_file_read_iter+0x12b is at the above line, where it is trying to
+> read iocb->ki_filp.
+>
+> Here's an excerpt of the relevant bits from my code:
 > 
-> @@ -4418,7 +4415,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
->   	 * clusters discovered to be delayed allocated.  Once allocated, a
->   	 * cluster is not included in the reserved count.
->   	 */
-> -	if (test_opt(inode->i_sb, DELALLOC) && !map_from_cluster) {
-> +	if (test_opt(inode->i_sb, DELALLOC) && allocated_clusters) {
->   		if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
->   			/*
->   			 * When allocating delayed allocated clusters, simply
-> 
+> 	static void cachefiles_read_complete(struct kiocb *iocb, long ret, long ret2)
+> 	{
+> 		struct cachefiles_kiocb *ki =
+> 			container_of(iocb, struct cachefiles_kiocb, iocb);
+> 		struct fscache_io_request *req = ki->req;
+> 	...
+> 		fput(ki->iocb.ki_filp);
+> 		kfree(ki);
+> 		fscache_end_io_operation(req->cookie);
+> 	...
+> 	}
 
+I'm not exactly sure what you're rewriting, although from this excerpt
+the way that this is implemented would sure cause the UAF in
+ext4_dio_read_iter().
+
+I don't forsee any issues with calling file_accessed(iocb->ki_filp);
+prior to calling into the iomap infrastructure, unless I'm totally
+missing something obvious...
+
+/M
