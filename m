@@ -2,53 +2,50 @@ Return-Path: <SRS0=MTsr=5A=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92CE6C5ACC1
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B61BC5ACC0
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 69E882076F
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 695112071B
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1584236355;
-	bh=ZzuiXJqO7xJuPiMyB/BPCRwhFr979eXQdYA1WeJwYWU=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=qlZUCNJ6W8GIFoWCOJ02/O/0+ZsL2sQs+URaTCmCRbTrfuyzZNsyXelRrOmC3rvur
-	 +rjQEcpqlkdcENQlj70PFFs7KE5Nlv5qyBz3HLMF9oc1mJQ+0YMoywTUjvB5USxES0
-	 zBhpg1GmLM2fEKc5NFLfCLKrFAjtrSDuQjEH7bV4=
+	s=default; t=1584236357;
+	bh=nlaaveyfQbhFKfwiAaphWpQDQEdEAujbuJUQUWFnHF0=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=gNhIPTJ37BWl2UprtQlxS76GTT+PoOCph+3juI6iAm7k0eXkC4qdyCcrdD9PKaSXc
+	 DRTH9kLbXdLfqYKvCOO+08KIE4jbd6X7Kg9ciBKMaotDOvd2RI8xvNyvM3UAUpsVsI
+	 evt6TjLsOPWaPMAaIF/Bbm1af15FlIEfR5NBVLAM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727059AbgCOBjO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 14 Mar 2020 21:39:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55084 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726720AbgCOBjN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726747AbgCOBjN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 14 Mar 2020 21:39:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55082 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726691AbgCOBjM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 14 Mar 2020 21:39:12 -0400
 Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id EADF720791;
-        Sat, 14 Mar 2020 20:53:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id E76F22071B;
+        Sat, 14 Mar 2020 20:53:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1584219194;
-        bh=ZzuiXJqO7xJuPiMyB/BPCRwhFr979eXQdYA1WeJwYWU=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hAaAM7yRrqMusd/sK52UdwQpOzgF3eiT9ddaMqxp+st3LMnrNcXRPOBlYKENxE8q8
-         en7uS4J+vpq0fp2GA3ZxV+CrJYXX6hBYwnhSbT0f+RARhtTLKPM9O3o5/80ffNQxxk
-         nrdzx8iSktHeW2Jeb7tnkEWDGz5XJKI76gJnQZlk=
+        s=default; t=1584219193;
+        bh=nlaaveyfQbhFKfwiAaphWpQDQEdEAujbuJUQUWFnHF0=;
+        h=From:To:Cc:Subject:Date:From;
+        b=0iSH8Q5D+Ml4kWit103vNhqqB1ao1wz8fX85tuNaSR98NmuiY+2hC1jyJD/ruJ/V1
+         199VRhsa+r9bu1MzO7xz9Tr7s0TnpAj5smS4RburSHj7ylnB0x9tbam9/SzEee07yX
+         pQtOWhG8kxmo09f3EZX3BsptKW71I9wsopcIgkek=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         linux-api@vger.kernel.org
-Subject: [PATCH 3/4] f2fs: wire up FS_IOC_GET_ENCRYPTION_NONCE
-Date:   Sat, 14 Mar 2020 13:50:51 -0700
-Message-Id: <20200314205052.93294-4-ebiggers@kernel.org>
+Subject: [PATCH 0/4] fscrypt: add ioctl to get file's encryption nonce
+Date:   Sat, 14 Mar 2020 13:50:48 -0700
+Message-Id: <20200314205052.93294-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200314205052.93294-1-ebiggers@kernel.org>
-References: <20200314205052.93294-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -56,52 +53,32 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+This patchset adds an ioctl FS_IOC_GET_ENCRYPTION_NONCE which retrieves
+the nonce from an encrypted file or directory.
 
-This new ioctl retrieves a file's encryption nonce, which is useful for
-testing.  See the corresponding fs/crypto/ patch for more details.
+This is useful for automated ciphertext verification testing.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/f2fs/file.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+See patch #1 for more details.
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 0d4da644df3bc..351762f778405 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -2423,6 +2423,14 @@ static int f2fs_ioc_get_encryption_key_status(struct file *filp,
- 	return fscrypt_ioctl_get_key_status(filp, (void __user *)arg);
- }
- 
-+static int f2fs_ioc_get_encryption_nonce(struct file *filp, unsigned long arg)
-+{
-+	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
-+		return -EOPNOTSUPP;
-+
-+	return fscrypt_ioctl_get_nonce(filp, (void __user *)arg);
-+}
-+
- static int f2fs_ioc_gc(struct file *filp, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -3437,6 +3445,8 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		return f2fs_ioc_remove_encryption_key_all_users(filp, arg);
- 	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
- 		return f2fs_ioc_get_encryption_key_status(filp, arg);
-+	case FS_IOC_GET_ENCRYPTION_NONCE:
-+		return f2fs_ioc_get_encryption_nonce(filp, arg);
- 	case F2FS_IOC_GARBAGE_COLLECT:
- 		return f2fs_ioc_gc(filp, arg);
- 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
-@@ -3611,6 +3621,7 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case FS_IOC_REMOVE_ENCRYPTION_KEY:
- 	case FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS:
- 	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
-+	case FS_IOC_GET_ENCRYPTION_NONCE:
- 	case F2FS_IOC_GARBAGE_COLLECT:
- 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
- 	case F2FS_IOC_WRITE_CHECKPOINT:
+Eric Biggers (4):
+  fscrypt: add FS_IOC_GET_ENCRYPTION_NONCE ioctl
+  ext4: wire up FS_IOC_GET_ENCRYPTION_NONCE
+  f2fs: wire up FS_IOC_GET_ENCRYPTION_NONCE
+  ubifs: wire up FS_IOC_GET_ENCRYPTION_NONCE
+
+ Documentation/filesystems/fscrypt.rst | 11 +++++++++++
+ fs/crypto/fscrypt_private.h           | 20 ++++++++++++++++++++
+ fs/crypto/keysetup.c                  | 16 ++--------------
+ fs/crypto/policy.c                    | 21 ++++++++++++++++++++-
+ fs/ext4/ioctl.c                       |  6 ++++++
+ fs/f2fs/file.c                        | 11 +++++++++++
+ fs/ubifs/ioctl.c                      |  4 ++++
+ include/linux/fscrypt.h               |  6 ++++++
+ include/uapi/linux/fscrypt.h          |  1 +
+ 9 files changed, 81 insertions(+), 15 deletions(-)
+
+
+base-commit: 98d54f81e36ba3bf92172791eba5ca5bd813989b
 -- 
 2.25.1
 
