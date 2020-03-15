@@ -2,94 +2,130 @@ Return-Path: <SRS0=MTsr=5A=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A4A6C5ACDB
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63B1EC10DCE
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 16:15:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0516D20637
-	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 01:39:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1584236359;
-	bh=CmnZSp1cD9W7GBGuNrZlONVYibn7gCqqoj6gfIP9vA4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=XYo0Z8jG8xPMc5ThMBjnP6mYmuFxXd7cg5KDNz5C0Hy8gbyJvzTOg1jvh91tqcoq3
-	 9FcFDJc79kCuqGtQVkINOSbQ+f1ccwRfhrr0rq2unigjYkTxjiMtYRX+CNH/6XVkgA
-	 FTbSEW80JGhbY7jxIxxpkLQMI+9JyMVYn1VOIdwY=
+	by mail.kernel.org (Postfix) with ESMTP id 3727220637
+	for <linux-ext4@archiver.kernel.org>; Sun, 15 Mar 2020 16:15:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727079AbgCOBjS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 14 Mar 2020 21:39:18 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55076 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726579AbgCOBjN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 14 Mar 2020 21:39:13 -0400
-Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9A95620790;
-        Sat, 14 Mar 2020 20:53:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1584219193;
-        bh=CmnZSp1cD9W7GBGuNrZlONVYibn7gCqqoj6gfIP9vA4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gZfFkIOMgxmssruP+ea9EmjgNTu0xB1lPyOJtKrZoCw0s+W9sImhe8b8XapQ7wupz
-         k50I7OFwE0y6DZSyUAaqAE1YEnztPP4sMCFh4vnyxj01ht3I67/QjbWDkGypsH3cxy
-         winlpMSIqpy6GLkVeR2z71N6lCVDH7b4zg7GOjn8=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: [PATCH 2/4] ext4: wire up FS_IOC_GET_ENCRYPTION_NONCE
-Date:   Sat, 14 Mar 2020 13:50:50 -0700
-Message-Id: <20200314205052.93294-3-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200314205052.93294-1-ebiggers@kernel.org>
-References: <20200314205052.93294-1-ebiggers@kernel.org>
+        id S1728842AbgCOQPS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 15 Mar 2020 12:15:18 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45392 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728695AbgCOQPS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Mar 2020 12:15:18 -0400
+Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 02FGF9OO021672
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sun, 15 Mar 2020 12:15:10 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 61D01420EBA; Sun, 15 Mar 2020 12:15:09 -0400 (EDT)
+Date:   Sun, 15 Mar 2020 12:15:09 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 3/7] ext2fs: Update allocation info earlier in
+ ext2fs_mkdir() and ext2fs_symlink()
+Message-ID: <20200315161509.GQ225435@mit.edu>
+References: <20200213101602.29096-1-jack@suse.cz>
+ <20200213101602.29096-4-jack@suse.cz>
+ <20200308000220.GF99899@mit.edu>
+ <20200308022024.GG99899@mit.edu>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200308022024.GG99899@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Ah, I see now why this patch is needed.  If we don't update the block
+allocation bitmap to indicate block has been taken, and there is a
+need to allocate an htree index block, we will end up allocating the
+same block twice.
 
-This new ioctl retrieves a file's encryption nonce, which is useful for
-testing.  See the corresponding fs/crypto/ patch for more details.
+Thanks, I've applied this patch with the following added.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/ioctl.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+     	     	  	     	 	   - Ted
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a0ec750018dd3..0c1d1720cf1ae 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1210,6 +1210,11 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			return -EOPNOTSUPP;
- 		return fscrypt_ioctl_get_key_status(filp, (void __user *)arg);
+diff --git a/lib/ext2fs/mkdir.c b/lib/ext2fs/mkdir.c
+index 947003eb..437c8ffc 100644
+--- a/lib/ext2fs/mkdir.c
++++ b/lib/ext2fs/mkdir.c
+@@ -43,6 +43,7 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	blk64_t			blk;
+ 	char			*block = 0;
+ 	int			inline_data = 0;
++	int			drop_refcount = 0;
  
-+	case FS_IOC_GET_ENCRYPTION_NONCE:
-+		if (!ext4_has_feature_encrypt(sb))
-+			return -EOPNOTSUPP;
-+		return fscrypt_ioctl_get_nonce(filp, (void __user *)arg);
-+
- 	case EXT4_IOC_CLEAR_ES_CACHE:
- 	{
- 		if (!inode_owner_or_capable(inode))
-@@ -1370,6 +1375,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case FS_IOC_REMOVE_ENCRYPTION_KEY:
- 	case FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS:
- 	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
-+	case FS_IOC_GET_ENCRYPTION_NONCE:
- 	case EXT4_IOC_SHUTDOWN:
- 	case FS_IOC_GETFSMAP:
- 	case FS_IOC_ENABLE_VERITY:
--- 
-2.25.1
-
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
+@@ -149,6 +150,7 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 	if (!inline_data)
+ 		ext2fs_block_alloc_stats2(fs, blk, +1);
+ 	ext2fs_inode_alloc_stats2(fs, ino, +1, 1);
++	drop_refcount = 1;
+ 
+ 	/*
+ 	 * Link the directory into the filesystem hierarchy
+@@ -181,10 +183,16 @@ errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+ 		if (retval)
+ 			goto cleanup;
+ 	}
++	drop_refcount = 0;
+ 
+ cleanup:
+ 	if (block)
+ 		ext2fs_free_mem(&block);
++	if (drop_refcount) {
++		if (!inline_data)
++			ext2fs_block_alloc_stats2(fs, blk, -1);
++		ext2fs_inode_alloc_stats2(fs, ino, -1, 1);
++	}
+ 	return retval;
+ 
+ }
+diff --git a/lib/ext2fs/symlink.c b/lib/ext2fs/symlink.c
+index 3e07a539..a66fb7ec 100644
+--- a/lib/ext2fs/symlink.c
++++ b/lib/ext2fs/symlink.c
+@@ -54,6 +54,7 @@ errcode_t ext2fs_symlink(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t ino,
+ 	int			fastlink, inlinelink;
+ 	unsigned int		target_len;
+ 	char			*block_buf = 0;
++	int			drop_refcount = 0;
+ 
+ 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ 
+@@ -168,6 +169,7 @@ need_block:
+ 	if (!fastlink && !inlinelink)
+ 		ext2fs_block_alloc_stats2(fs, blk, +1);
+ 	ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
++	drop_refcount = 1;
+ 
+ 	/*
+ 	 * Link the symlink into the filesystem hierarchy
+@@ -185,10 +187,16 @@ need_block:
+ 		if (retval)
+ 			goto cleanup;
+ 	}
++	drop_refcount = 0;
+ 
+ cleanup:
+ 	if (block_buf)
+ 		ext2fs_free_mem(&block_buf);
++	if (drop_refcount) {
++		if (!fastlink && !inlinelink)
++			ext2fs_block_alloc_stats2(fs, blk, -1);
++		ext2fs_inode_alloc_stats2(fs, ino, -1, 0);
++	}
+ 	return retval;
+ }
+ 
