@@ -6,75 +6,77 @@ X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1C4FC0044D
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Mar 2020 09:27:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BAE1C0044D
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Mar 2020 09:30:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C247C20674
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Mar 2020 09:27:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5243E20658
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Mar 2020 09:30:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730429AbgCPJ1s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Mar 2020 05:27:48 -0400
-Received: from mx2.suse.de ([195.135.220.15]:33650 "EHLO mx2.suse.de"
+        id S1730287AbgCPJau (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Mar 2020 05:30:50 -0400
+Received: from mx2.suse.de ([195.135.220.15]:35140 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730025AbgCPJ1r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 16 Mar 2020 05:27:47 -0400
+        id S1730025AbgCPJat (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 16 Mar 2020 05:30:49 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id DB992AD2A;
-        Mon, 16 Mar 2020 09:27:46 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id C7462AD2A;
+        Mon, 16 Mar 2020 09:30:48 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 798DC1E10DA; Mon, 16 Mar 2020 10:27:46 +0100 (CET)
-Date:   Mon, 16 Mar 2020 10:27:46 +0100
+        id 8836F1E10DA; Mon, 16 Mar 2020 10:30:48 +0100 (CET)
+Date:   Mon, 16 Mar 2020 10:30:48 +0100
 From:   Jan Kara <jack@suse.cz>
 To:     "Theodore Y. Ts'o" <tytso@mit.edu>
 Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 7/7] tune2fs: Update dir checksums when clearing
- dir_index feature
-Message-ID: <20200316092746.GC12783@quack2.suse.cz>
+Subject: Re: [PATCH 2/7] e2fsck: Fix indexed dir rehash failure with
+ metadata_csum enabled
+Message-ID: <20200316093048.GD12783@quack2.suse.cz>
 References: <20200213101602.29096-1-jack@suse.cz>
- <20200213101602.29096-8-jack@suse.cz>
- <20200315171520.GT225435@mit.edu>
+ <20200213101602.29096-3-jack@suse.cz>
+ <20200307231719.GE99899@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200315171520.GT225435@mit.edu>
+In-Reply-To: <20200307231719.GE99899@mit.edu>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun 15-03-20 13:15:20, Theodore Y. Ts'o wrote:
-> On Thu, Feb 13, 2020 at 11:16:02AM +0100, Jan Kara wrote:
-> > When clearing dir_index feature while metadata_csum is enabled, we have
-> > to rewrite checksums of all indexed directories to update checksums of
-> > internal tree nodes.
+On Sat 07-03-20 18:17:19, Theodore Y. Ts'o wrote:
+> On Thu, Feb 13, 2020 at 11:15:57AM +0100, Jan Kara wrote:
+> > E2fsck directory rehashing code can fail with ENOSPC due to a bug in
+> > ext2fs_htree_intnode_maxrecs() which fails to take metadata checksum
+> > into account and thus e.g. e2fsck can decide to create 1 indirect level
+> > of index tree when two are actually needed. Fix the logic to account for
+> > metadata checksum.
 > > 
 > > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> Thanks, applied.
+> Applied with a minor change; I didn't want to make this change:
 > 
-> With regards to the enum, I agree with Jan that using an enum for
-> bitfields isn't a great fit.  Also, in this case, where it's for a
-> static function and the definitions don't go beyond a single file, the
-> advantages of using an enum so we can have strong typing is much less
-> useful.
+> > -_INLINE_ int ext2fs_htree_intnode_maxrecs(ext2_filsys fs, int blocks)
+> > +static inline int ext2fs_htree_intnode_maxrecs(ext2_filsys fs, int blocks)
 > 
-> One thing which I did notice when trying to test this patch is that
-> 
-> mke2fs -t ext4 -d /usr/projects/e2fsprogs /tmp/foo.img 1G
-> 
-> ...does not create any indexed directories.  That's because the
-> changes to ext2fs_link() only teach e2fsprogs how to add a link to a
-> directory which is already indexing.  We don't have code which takes a
-> directory with a single directory block and which doesn't have
-> directory indexing flag enabled, and converts to a indexed directory.
+> ... because it would make ext2fs_htree_intmode_maxrecs disappear from
+> libext2fs.so.
 
-Yes, I know and it's kind of deliberate because not all users of
-ext2fs_link() want that to happen (e.g. linking into lost+found). So I
-wasn't sure what a proper API for this functionality would be and decided
-to leave that decision for later. Maybe we could export the "optimize dir"
-functionality from e2fsck to be generally available in libext2fs?
+Aha! I was wondering what's going on with those strange inline
+statements...
+
+> So I changed this:
+> 
+> > +	if (ext2fs_has_feature_metadata_csum(fs->super))
+> 
+> to this:
+> 
+> +       if ((EXT2_SB(fs->super)->s_feature_ro_compat &
+> +            EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) != 0)
+> 
+> to fix the inline related compilation errors.
+
+Thanks for fixing this!
 
 								Honza
 -- 
