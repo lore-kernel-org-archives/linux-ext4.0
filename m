@@ -2,89 +2,82 @@ Return-Path: <SRS0=MA+h=5C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BBBC8C3F2CE
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Mar 2020 12:01:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA3C4C10F29
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Mar 2020 12:38:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9547820738
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Mar 2020 12:01:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A430520767
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Mar 2020 12:38:24 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="hnj4sEry"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726564AbgCQMBC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 17 Mar 2020 08:01:02 -0400
-Received: from albireo.enyo.de ([37.24.231.21]:50338 "EHLO albireo.enyo.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725872AbgCQMBB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 17 Mar 2020 08:01:01 -0400
-X-Greylist: delayed 446 seconds by postgrey-1.27 at vger.kernel.org; Tue, 17 Mar 2020 08:01:00 EDT
-Received: from [172.17.203.2] (helo=deneb.enyo.de)
-        by albireo.enyo.de with esmtps (TLS1.2:ECDHE_RSA_AES_256_GCM_SHA384:256)
-        id 1jEAmp-0003yE-1g; Tue, 17 Mar 2020 11:53:31 +0000
-Received: from fw by deneb.enyo.de with local (Exim 4.92)
-        (envelope-from <fw@deneb.enyo.de>)
-        id 1jEAlQ-0004mu-4A; Tue, 17 Mar 2020 12:52:04 +0100
-From:   Florian Weimer <fw@deneb.enyo.de>
-To:     Linus Walleij <linus.walleij@linaro.org>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
+        id S1726250AbgCQMiY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 17 Mar 2020 08:38:24 -0400
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:40999 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726005AbgCQMiY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Mar 2020 08:38:24 -0400
+Received: by mail-lf1-f65.google.com with SMTP id u26so4775187lfu.8
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2020 05:38:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=RxvspXpJnT1wLGWC1yqAwht7wPofjiDL2MZ2V4GJU0s=;
+        b=hnj4sEry8e72e+4XxcViMh2kR/clVi9rs+0bXE1Bk+1jnM9tAaTyTvgL4uYk9HGokQ
+         CS6JmX/z0c6hGZP4+/nsjdwrRToHL2MnmrEP2s5tbTN6meK7gab1DE86o95g8btZIabJ
+         X0Nb39RB/DJ0JWjBmqOkl9uU6GNs9+S6/0dZvKl3+nAxc/hPOac2EFucKTzFdRe8iZbM
+         pd2Cz/K1I/XtSdYirkd2zkc5FVQnbLpfFYWuWeR4JcwrggK69xvkfXK7qVwpyd+zrveT
+         XkUuyowMJlxJdZtfXDBqIGaPNwQ4N/hPoHdbjT/raGV9/FQs/kLHLi9N8GnTZjdSG/jt
+         rWgA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=RxvspXpJnT1wLGWC1yqAwht7wPofjiDL2MZ2V4GJU0s=;
+        b=MvMQrjIJD/6XoutSv/FDDH1mTHw+zEDneVrc8CYZO/JcXN+2Xd/96eDKp4QsWZ4JmD
+         hFSnwCj42qSvUhO/whP2h4k9ga5RfJnP865OSm3Bf6pywH27/rOow6nU2AP6F/AKAoUm
+         OX+MndxqJX3r1VNxX8B2/iT4Jw5o6KYgiDHld+FR5+PvSAAINyK6bsTpx17Pz/lheGsn
+         z54k4ddR4oJaSNlCoe4vvV5tIJy3A53MEr6mlqIY1kXBtAHW295u7YksRJUqun8HhdVC
+         i6VYlHci5nB5A6O6QsOmF/YTp7W+YJHU5hcaM+lWawtnxm4wCs1oR5bw8EY9qX1hIpN0
+         g6pw==
+X-Gm-Message-State: ANhLgQ033pVvRFDEAbkCoFqoV4hB1bijJRxBbXmhd82PmnHhJ6BCJUMo
+        KJTrNHlJ5IGZC0AstciFlrsNodFeSPR6KvfNa/ry5w==
+X-Google-Smtp-Source: ADFU+vtpPO/SB7g4ehk7qTFyPKse2g7Gmfi77CZPwCuVUbJVQI6d70Lf5FyUoeDifSP8iaSTW1v77WW+rDocRRRH0SY=
+X-Received: by 2002:a19:6502:: with SMTP id z2mr2694078lfb.47.1584448702419;
+ Tue, 17 Mar 2020 05:38:22 -0700 (PDT)
+MIME-Version: 1.0
+References: <20200317113153.7945-1-linus.walleij@linaro.org> <87lfnzdwrf.fsf@mid.deneb.enyo.de>
+In-Reply-To: <87lfnzdwrf.fsf@mid.deneb.enyo.de>
+From:   Linus Walleij <linus.walleij@linaro.org>
+Date:   Tue, 17 Mar 2020 13:38:11 +0100
+Message-ID: <CACRpkdY8uLVrT5=NMpNmKhgmqu=yT_Bgc-Q9-BR6NgRFjnzjFQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Give 32bit personalities 32bit hashes
+To:     Florian Weimer <fw@deneb.enyo.de>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-api@vger.kernel.org, qemu-devel@nongnu.org,
+        linux-api@vger.kernel.org, QEMU Developers <qemu-devel@nongnu.org>,
         Peter Maydell <peter.maydell@linaro.org>,
-        Andy Lutomirski <luto@kernel.org>, stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: Give 32bit personalities 32bit hashes
-References: <20200317113153.7945-1-linus.walleij@linaro.org>
-Date:   Tue, 17 Mar 2020 12:52:04 +0100
-In-Reply-To: <20200317113153.7945-1-linus.walleij@linaro.org> (Linus Walleij's
-        message of "Tue, 17 Mar 2020 12:31:53 +0100")
-Message-ID: <87lfnzdwrf.fsf@mid.deneb.enyo.de>
-MIME-Version: 1.0
-Content-Type: text/plain
+        Andy Lutomirski <luto@kernel.org>,
+        stable <stable@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-* Linus Walleij:
+On Tue, Mar 17, 2020 at 12:53 PM Florian Weimer <fw@deneb.enyo.de> wrote:
 
-> It was brought to my attention that this bug from 2018 was
-> still unresolved: 32 bit emulators like QEMU were given
-> 64 bit hashes when running 32 bit emulation on 64 bit systems.
->
-> The personality(2) system call supports to let processes
-> indicate that they are 32 bit Linux to the kernel. This
-> was suggested by Teo in the original thread, so I just wired
-> it up and it solves the problem.
->
-> Programs that need the 32 bit hash only need to issue the
-> personality(PER_LINUX32) call and things start working.
->
-> I made a test program like this:
->
->   #include <dirent.h>
->   #include <errno.h>
->   #include <stdio.h>
->   #include <string.h>
->   #include <sys/types.h>
->   #include <sys/personality.h>
->
->   int main(int argc, char** argv) {
->     DIR* dir;
->     personality(PER_LINUX32);
->     dir = opendir("/boot");
->     printf("dir=%p\n", dir);
->     printf("readdir(dir)=%p\n", readdir(dir));
->     printf("errno=%d: %s\n", errno, strerror(errno));
->     return 0;
->   }
->
-> This was compiled with an ARM32 toolchain from Bootlin using
-> glibc 2.28 and thus suffering from the bug.
+> Just be sure: Is it possible to move the PER_LINUX32 setting into QEMU?
+> (I see why not.)
 
-Just be sure: Is it possible to move the PER_LINUX32 setting into QEMU?
-(I see why not.)
+I set it in the program explicitly, but what actually happens when
+I run it is that the binfmt handler invokes qemu-user so certainly
+that program can set the flag, any process can.
 
-However, this does not solve the issue with network file systems and
-other scenarios.  I still think need to add a workaround to the glibc
-implementation.
+Yours,
+Linus Walleij
