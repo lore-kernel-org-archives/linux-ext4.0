@@ -2,34 +2,30 @@ Return-Path: <SRS0=3IYB=5D=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4096DC10DCE
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Mar 2020 18:27:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AB64C10DCE
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Mar 2020 19:19:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 231822077E
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Mar 2020 18:27:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F034E2072C
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Mar 2020 19:19:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726704AbgCRS1j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Mar 2020 14:27:39 -0400
-Received: from sandeen.net ([63.231.237.45]:43502 "EHLO sandeen.net"
+        id S1726631AbgCRTTk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Mar 2020 15:19:40 -0400
+Received: from sandeen.net ([63.231.237.45]:46182 "EHLO sandeen.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726506AbgCRS1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 18 Mar 2020 14:27:39 -0400
+        id S1726619AbgCRTTk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 18 Mar 2020 15:19:40 -0400
 Received: from [10.0.0.4] (liberator [10.0.0.4])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by sandeen.net (Postfix) with ESMTPSA id DA6EA2A78;
-        Wed, 18 Mar 2020 13:26:41 -0500 (CDT)
-Subject: Re: [PATCH] ext4: Check for non-zero journal inum in
- ext4_calculate_overhead
-To:     Ritesh Harjani <riteshh@linux.ibm.com>, linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, jack@suse.cz, adilger.kernel@dilger.ca,
-        linux-fsdevel@vger.kernel.org, Harish Sriram <harish@linux.ibm.com>
-References: <20200316093038.25485-1-riteshh@linux.ibm.com>
+        by sandeen.net (Postfix) with ESMTPSA id 119982A78;
+        Wed, 18 Mar 2020 14:18:43 -0500 (CDT)
+To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 From:   Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH] ext4: do not commit super on read-only bdev
 Autocrypt: addr=sandeen@sandeen.net; prefer-encrypt=mutual; keydata=
  mQINBE6x99QBEADMR+yNFBc1Y5avoUhzI/sdR9ANwznsNpiCtZlaO4pIWvqQJCjBzp96cpCs
  nQZV32nqJBYnDpBDITBqTa/EF+IrHx8gKq8TaSBLHUq2ju2gJJLfBoL7V3807PQcI18YzkF+
@@ -72,12 +68,12 @@ Autocrypt: addr=sandeen@sandeen.net; prefer-encrypt=mutual; keydata=
  Pk6ah10C4+R1Jc7dyUsKksMfvvhRX1hTIXhth85H16706bneTayZBhlZ/hK18uqTX+s0onG/
  m1F3vYvdlE4p2ts1mmixMF7KajN9/E5RQtiSArvKTbfsB6Two4MthIuLuf+M0mI4gPl9SPlf
  fWCYVPhaU9o83y1KFbD/+lh1pjP7bEu/YudBvz7F2Myjh4/9GUAijrCTNeDTDAgvIJDjXuLX pA==
-Message-ID: <c43090c0-ce45-0737-68a5-ffe3e362012e@sandeen.net>
-Date:   Wed, 18 Mar 2020 13:27:37 -0500
+Cc:     Ritesh Harjani <riteshh@linux.ibm.com>
+Message-ID: <4b6e774d-cc00-3469-7abb-108eb151071a@sandeen.net>
+Date:   Wed, 18 Mar 2020 14:19:38 -0500
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:68.0)
  Gecko/20100101 Thunderbird/68.5.0
 MIME-Version: 1.0
-In-Reply-To: <20200316093038.25485-1-riteshh@linux.ibm.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 8bit
@@ -86,31 +82,40 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 3/16/20 4:30 AM, Ritesh Harjani wrote:
-> While calculating overhead for internal journal, also check
-> that j_inum shouldn't be 0. Otherwise we get below error with
-> xfstests generic/050 with external journal (XXX_LOGDEV config) enabled.
-> 
-> It could be simply reproduced with loop device with an external journal
-> and marking blockdev as RO before mounting.
-> 
-> [ 3337.146838] EXT4-fs error (device pmem1p2): ext4_get_journal_inode:4634: comm mount: inode #0: comm mount: iget: illegal inode #
-> ------------[ cut here ]------------
-> generic_make_request: Trying to write to read-only block-device pmem1p2 (partno 2)
+From: Eric Sandeen <sandeen@redhat.com>
 
-I think this 2nd error comes from:
+Under some circumstances we may encounter a filesystem error on a
+read-only block device, and if we try to save the error info to the
+superblock and commit it, we'll wind up with a noisy error and
+backtrace, i.e.:
 
-static void save_error_info(struct super_block *sb, const char *func,
-                            unsigned int line)
-{
-        __save_error_info(sb, func, line);
-        ext4_commit_super(sb, 1);
-}
+[ 3337.146838] EXT4-fs error (device pmem1p2): ext4_get_journal_inode:4634: comm mount: inode #0: comm mount: iget: illegal inode #
+------------[ cut here ]------------
+generic_make_request: Trying to write to read-only block-device pmem1p2 (partno 2)
+WARNING: CPU: 107 PID: 115347 at block/blk-core.c:788 generic_make_request_checks+0x6b4/0x7d0
+...
 
-__save_error_info() returns if bdev_read_only() but then we try to commit the super
-anyway.  Shouldn't save_error_info() return early if bdev_read_only()?
+To avoid this, commit the error info in the superblock only if the
+block device is writable.
 
-(that'd be a separate patch, I'll send it)
+Reported-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
--Eric
+(compile-tested only FWIW)
+(also, not sure if the bdev test in __save_error_info should be removed?)
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0c7c4adb664e..55392903bda5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -372,7 +372,8 @@ static void save_error_info(struct super_block *sb, const char *func,
+ 			    unsigned int line)
+ {
+ 	__save_error_info(sb, func, line);
+-	ext4_commit_super(sb, 1);
++	if (!bdev_read_only(sb->s_bdev))
++		ext4_commit_super(sb, 1);
+ }
+ 
+ /*
