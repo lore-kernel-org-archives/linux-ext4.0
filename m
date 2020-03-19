@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BBE0C43332
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B0AFBC4332E
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 230872076E
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 86F052076C
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ja3Y9iQ6"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I1+zZDWA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727238AbgCSXez (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 Mar 2020 19:34:55 -0400
-Received: from mail-pj1-f66.google.com ([209.85.216.66]:37872 "EHLO
+        id S1727258AbgCSXe7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Mar 2020 19:34:59 -0400
+Received: from mail-pj1-f66.google.com ([209.85.216.66]:33995 "EHLO
         mail-pj1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726827AbgCSXey (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2020 19:34:54 -0400
-Received: by mail-pj1-f66.google.com with SMTP id ca13so1682760pjb.2
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2020 16:34:53 -0700 (PDT)
+        with ESMTP id S1727217AbgCSXe4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2020 19:34:56 -0400
+Received: by mail-pj1-f66.google.com with SMTP id q16so2769402pje.1
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2020 16:34:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Oen5NA9RLjhbwmLZvofgZ+fwd5jtfW269Vg4wwnl8xE=;
-        b=Ja3Y9iQ6Tn58S4jKkp2LN+WkVmNa91Fen0G/l94S38QtPIHt0qXpV84VQK2vpXCUFl
-         RImGqpDwsU8IdIgv8g8OKb7O2dPH6v5FMkfI/d0O6jR3G7x7TnJTBLkDqnjNSyiPdRdF
-         3KpeM/hPNV9yj0P1HF7e1EWoNxuMd1e9CQhrkFGQPz8BmTvrZtHvWvjxF3Nriww32PHD
-         NI4/jENiPHioy9taOTCk+w9zag+HurJxrl4j2wUDSZV1BwtVKJdOjI4g1fivKbDy1RdQ
-         CtqS8fgG0EAJaOmIqKVDCAZKMYIzguG8GSrxp7RAuTDDB0if6vXndOLcbHylZT9q0BDI
-         MIcA==
+        bh=Mj7OFZwrfhOXF3ByA18DmF1RCmQ9wJF/07djy/h3h1Q=;
+        b=I1+zZDWAqpvc+rkNVeHFN1JBM8+b2YInpL63iJ0+GoTBFOcTddD8Eq944fIUpJAa73
+         IBvi8sRZ9cC4lAaZN+KWPL5X2EY6PWNJ01vdFQ/oCLSWnVMkXKG1JUte9+5GeDVkV4Kj
+         gOzcybZPBC6H0wjghI6ZLv7N3hATXeW6SmJ9T+StlUA4rzKdnYj9GwS9kNkDGPu0egv8
+         uTd5g4a8Jg2jiIc2iTlvdUxZL388HDRRdMT5IvAt6NtyXOFol1UEoNb/besg+hpd6qJW
+         WRpWi5+maOtoG9qiSxdwPjMf6uvVX5fpOipu7dxU/S77tsT/jG+qmbIoPI3i9+x2dmtX
+         5YSA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Oen5NA9RLjhbwmLZvofgZ+fwd5jtfW269Vg4wwnl8xE=;
-        b=O7IPKMF9Y7YG7zqkQkvAETqHsU+zHeHF0jK0VxSacludAO82skgAkrwb6zf5/7IPTp
-         O67k5BH67Pv72C9vOI7v6UsxRnS+px25wqhVlueard6hNKGVtw7DnbBNfN3ulFvm+6Ab
-         Hq3x3RyDP1tWXPFT2k7n3C+QTGhtEIchlypfV3ct0ABrNhEAweJ0YQJgRz+AMq6sIikI
-         QT6/pxH37qd86aTE46CPB3K4ZcOF7O3dXcQZSfq0gDsgqChPBIPVIpa+bSndRYcIPtW4
-         GdOeGTO0XTyshHO3agKdhog13/eKyFtVNv+ds5vHZgU36JjWCYq/gVwfZIXWgMhKuatY
-         zstA==
-X-Gm-Message-State: ANhLgQ2ILNK2/LfpgxG08qy/LF8OP1bJg+Pi1Gcwkz8tHbLMcZHUX7dN
-        19I6AWd2GE9xeygTfrE6WveM08l+
-X-Google-Smtp-Source: ADFU+vuMZduTnAdf0Ml6VDvhLRl4aad5lPL+j5KyAd8P+Tb/vuztb6erwzlUglfzPpR8LGdOmxhFDQ==
-X-Received: by 2002:a17:90a:62cb:: with SMTP id k11mr6528215pjs.20.1584660892382;
-        Thu, 19 Mar 2020 16:34:52 -0700 (PDT)
+        bh=Mj7OFZwrfhOXF3ByA18DmF1RCmQ9wJF/07djy/h3h1Q=;
+        b=dbgSWFGWEvI1FuDH5PlNRtCzOWC8jNp+3/Ika+v78RlyoVKRFomO6VzX6TNjvTy9YA
+         qC/HTfDOeYz4Ztp4h0RI9nmX+MfLBb0aVUrY9eC2JqP7HY+GRyqsURjBFAngu6BRKK1D
+         br4eDanULTsjwbNpiJBGNBMVz46ud1okvmPUgv5PN/+DMVEDQFj7VF3D0Bm5gnmiC7Jp
+         maMSCNnKgDujfwU3nEI3LZTEdgNo7OYW3kIRc6QYSY7GDJwhL4lgrpYyIOcULawd7Ps7
+         WnXTxinJ3p1368z48+n5f1b5yVgoh4BUhlQ6JWHkCsIEw1CAq11Dv1fJ3eo4x3gtRVbL
+         SapQ==
+X-Gm-Message-State: ANhLgQ0fMmRg6MJEi8JY4fhc1iLF+rzl3YEr37wuik2/goC/oVZW6xq4
+        7GwBuYeSNPXda3WMB0HrbLIL1VES
+X-Google-Smtp-Source: ADFU+vszUEItV5DCb/+ry6VN4Tj2mIqSzwGQyzP27HpkF/zCoFX0d+t5WP/GWOLnOneqHRMIyvTPZA==
+X-Received: by 2002:a17:90a:4487:: with SMTP id t7mr6292807pjg.104.1584660894582;
+        Thu, 19 Mar 2020 16:34:54 -0700 (PDT)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id j17sm204353pga.18.2020.03.19.16.34.51
+        by smtp.googlemail.com with ESMTPSA id j17sm204353pga.18.2020.03.19.16.34.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Mar 2020 16:34:51 -0700 (PDT)
+        Thu, 19 Mar 2020 16:34:54 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 2/7] e2fsck: allow rewriting extents of a file
-Date:   Thu, 19 Mar 2020 16:34:28 -0700
-Message-Id: <20200319233433.117144-3-harshadshirwadkar@gmail.com>
+Subject: [PATCH 5/7] e2fsck/jbd2: fast commit recovery changes
+Date:   Thu, 19 Mar 2020 16:34:31 -0700
+Message-Id: <20200319233433.117144-6-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.25.1.696.g5e7596f4ac-goog
 In-Reply-To: <20200319233433.117144-1-harshadshirwadkar@gmail.com>
 References: <20200319233433.117144-1-harshadshirwadkar@gmail.com>
@@ -71,283 +71,179 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a new function e2fsck_rewrite_extent_tree() that replaces extent
-tree for an inode. This allows fast_commit code in subsequent patches
-to recreate a file as expected.
+Backport changes from kernel/fs/jbd2 related to fast commit recovery
+path. This just allows jbd2 machinery to call a file-system specific
+replay handler.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- e2fsck/e2fsck.h  |  17 +++++
- e2fsck/extents.c | 160 +++++++++++++++++++++++++++++------------------
- 2 files changed, 117 insertions(+), 60 deletions(-)
+ e2fsck/recovery.c       | 67 ++++++++++++++++++++++++++++++++++++++---
+ lib/ext2fs/jfs_compat.h |  9 ++++++
+ lib/ext2fs/kernel-jbd.h |  2 ++
+ 3 files changed, 74 insertions(+), 4 deletions(-)
 
-diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 9b2b9ce8..68f7a249 100644
---- a/e2fsck/e2fsck.h
-+++ b/e2fsck/e2fsck.h
-@@ -526,6 +526,19 @@ void destroy_encryption_policy_map(e2fsck_t ctx);
- void destroy_encrypted_file_info(e2fsck_t ctx);
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index 4750f9c1..18ad79d6 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -35,7 +35,6 @@ struct recovery_info
+ 	int		nr_revoke_hits;
+ };
  
- /* extents.c */
-+struct extent_list {
-+	blk64_t blocks_freed;
-+	struct ext2fs_extent *extents;
-+	unsigned int count;
-+	unsigned int size;
-+	unsigned int ext_read;
-+	errcode_t retval;
-+	ext2_ino_t ino;
-+};
+-enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
+ static int do_one_pass(journal_t *journal,
+ 				struct recovery_info *info, enum passtype pass);
+ static int scan_revoke_records(journal_t *, struct buffer_head *,
+@@ -225,10 +224,63 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
+ /* Make sure we wrap around the log correctly! */
+ #define wrap(journal, var)						\
+ do {									\
+-	if (var >= (journal)->j_last)					\
+-		var -= ((journal)->j_last - (journal)->j_first);	\
++	unsigned long _wrap_last =					\
++		jbd2_has_feature_fast_commit(journal) ?			\
++			(journal)->j_last_fc : (journal)->j_last;	\
++									\
++	if (var >= _wrap_last)						\
++		var -= (_wrap_last - (journal)->j_first);		\
+ } while (0)
+ 
++static int fc_do_one_pass(journal_t *journal,
++			  struct recovery_info *info, enum passtype pass)
++{
++	unsigned int expected_commit_id = info->end_transaction;
++	unsigned long next_fc_block;
++	struct buffer_head *bh;
++	unsigned int seq;
++	journal_header_t *jhdr;
++	int err = 0;
 +
-+#define NUM_EXTENTS	341	/* about one ETB' worth of extents */
++	next_fc_block = journal->j_first_fc;
 +
++	while (next_fc_block <= journal->j_last_fc) {
++		jbd_debug(3, "Fast commit replay: next block %ld",
++			  next_fc_block);
++		err = jread(&bh, journal, next_fc_block);
++		if (err) {
++			jbd_debug(3, "Fast commit replay: read error");
++			break;
++		}
 +
- errcode_t e2fsck_rebuild_extents_later(e2fsck_t ctx, ext2_ino_t ino);
- int e2fsck_ino_will_be_rebuilt(e2fsck_t ctx, ext2_ino_t ino);
- void e2fsck_pass1e(e2fsck_t ctx);
-@@ -536,6 +549,10 @@ errcode_t e2fsck_should_rebuild_extents(e2fsck_t ctx,
- 					struct problem_context *pctx,
- 					struct extent_tree_info *eti,
- 					struct ext2_extent_info *info);
-+errcode_t e2fsck_read_extents(e2fsck_t ctx, struct extent_list *extents);
-+errcode_t e2fsck_rewrite_extent_tree(e2fsck_t ctx,
-+				     struct extent_list *extents);
++		jhdr = (journal_header_t *)bh->b_data;
++		seq = be32_to_cpu(jhdr->h_sequence);
++		if (be32_to_cpu(jhdr->h_magic) != JBD2_MAGIC_NUMBER ||
++		    seq != expected_commit_id) {
++			jbd_debug(3, "Fast commit replay: magic / commitid error [%d / %d / %d]\n",
++				  be32_to_cpu(jhdr->h_magic), seq,
++				  expected_commit_id);
++			break;
++		}
++		jbd_debug(3, "Processing fast commit blk with seq %d",
++			  seq);
++		if (journal->j_fc_replay_callback) {
++			err = journal->j_fc_replay_callback(
++						journal, bh, pass,
++						next_fc_block -
++						journal->j_first_fc);
++			if (err)
++				break;
++		}
++		next_fc_block++;
++	}
 +
++	if (err)
++		jbd_debug(3, "Fast commit replay failed, err = %d\n", err);
++
++	return err;
++}
++
+ /**
+  * jbd2_journal_recover - recovers a on-disk journal
+  * @journal: the journal to recover
+@@ -470,7 +522,7 @@ static int do_one_pass(journal_t *journal,
+ 				break;
  
- /* journal.c */
- extern errcode_t e2fsck_check_ext3_journal(e2fsck_t ctx);
-diff --git a/e2fsck/extents.c b/e2fsck/extents.c
-index e9139326..dc10cc8c 100644
---- a/e2fsck/extents.c
-+++ b/e2fsck/extents.c
-@@ -20,7 +20,6 @@
- #undef DEBUG_SUMMARY
- #undef DEBUG_FREE
+ 		jbd_debug(2, "Scanning for sequence ID %u at %lu/%lu\n",
+-			  next_commit_ID, next_log_block, journal->j_last);
++			  next_commit_ID, next_log_block, journal->j_last_fc);
  
--#define NUM_EXTENTS	341	/* about one ETB' worth of extents */
+ 		/* Skip over each chunk of the transaction looking
+ 		 * either the next descriptor block or the final commit
+@@ -765,6 +817,9 @@ static int do_one_pass(journal_t *journal,
+ 			if (err)
+ 				goto failed;
+ 			continue;
++		case JBD2_FC_BLOCK:
++			pr_warn("Unexpectedly found fast commit block.\n");
++			continue;
  
- static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino);
- 
-@@ -58,16 +57,6 @@ int e2fsck_ino_will_be_rebuilt(e2fsck_t ctx, ext2_ino_t ino)
- 	return ext2fs_test_inode_bitmap2(ctx->inodes_to_rebuild, ino);
- }
- 
--struct extent_list {
--	blk64_t blocks_freed;
--	struct ext2fs_extent *extents;
--	unsigned int count;
--	unsigned int size;
--	unsigned int ext_read;
--	errcode_t retval;
--	ext2_ino_t ino;
--};
--
- static errcode_t load_extents(e2fsck_t ctx, struct extent_list *list)
- {
- 	ext2_filsys		fs = ctx->fs;
-@@ -206,65 +195,35 @@ static int find_blocks(ext2_filsys fs, blk64_t *blocknr, e2_blkcnt_t blockcnt,
- 	return 0;
- }
- 
--static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
--				     ext2_ino_t ino)
-+errcode_t __e2fsck_rewrite_extent_tree(e2fsck_t ctx, struct extent_list *list,
-+				       struct ext2_inode_large *inode)
- {
--	struct ext2_inode_large	inode;
- 	errcode_t		retval;
- 	ext2_extent_handle_t	handle;
- 	unsigned int		i, ext_written;
- 	struct ext2fs_extent	*ex, extent;
- 	blk64_t			start_val, delta;
- 
--	list->count = 0;
--	list->blocks_freed = 0;
--	list->ino = ino;
--	list->ext_read = 0;
--	e2fsck_read_inode_full(ctx, ino, EXT2_INODE(&inode), sizeof(inode),
--			       "rebuild_extents");
--
--	/* Skip deleted inodes and inline data files */
--	if (inode.i_links_count == 0 ||
--	    inode.i_flags & EXT4_INLINE_DATA_FL)
--		return 0;
--
--	/* Collect lblk->pblk mappings */
--	if (inode.i_flags & EXT4_EXTENTS_FL) {
--		retval = load_extents(ctx, list);
--		if (retval)
--			goto err;
--		goto extents_loaded;
--	}
--
--	retval = ext2fs_block_iterate3(ctx->fs, ino, BLOCK_FLAG_READ_ONLY, 0,
--				       find_blocks, list);
--	if (retval)
--		goto err;
--	if (list->retval) {
--		retval = list->retval;
--		goto err;
--	}
--
--extents_loaded:
- 	/* Reset extent tree */
--	inode.i_flags &= ~EXT4_EXTENTS_FL;
--	memset(inode.i_block, 0, sizeof(inode.i_block));
-+	inode->i_flags &= ~EXT4_EXTENTS_FL;
-+	memset(inode->i_block, 0, sizeof(inode->i_block));
- 
- 	/* Make a note of freed blocks */
--	quota_data_sub(ctx->qctx, &inode, ino,
-+	quota_data_sub(ctx->qctx, inode, list->ino,
- 		       list->blocks_freed * ctx->fs->blocksize);
--	retval = ext2fs_iblk_sub_blocks(ctx->fs, EXT2_INODE(&inode),
-+	retval = ext2fs_iblk_sub_blocks(ctx->fs, EXT2_INODE(inode),
- 					list->blocks_freed);
- 	if (retval)
--		goto err;
-+		return retval;
- 
- 	/* Now stuff extents into the file */
--	retval = ext2fs_extent_open2(ctx->fs, ino, EXT2_INODE(&inode), &handle);
-+	retval = ext2fs_extent_open2(ctx->fs, list->ino, EXT2_INODE(inode),
-+					&handle);
- 	if (retval)
--		goto err;
-+		return retval;
- 
- 	ext_written = 0;
--	start_val = ext2fs_get_stat_i_blocks(ctx->fs, EXT2_INODE(&inode));
-+	start_val = ext2fs_get_stat_i_blocks(ctx->fs, EXT2_INODE(inode));
- 	for (i = 0, ex = list->extents; i < list->count; i++, ex++) {
- 		memcpy(&extent, ex, sizeof(struct ext2fs_extent));
- 		extent.e_flags &= EXT2_EXTENT_FLAGS_UNINIT;
-@@ -289,36 +248,117 @@ extents_loaded:
+ 		default:
+ 			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
+@@ -796,6 +851,10 @@ static int do_one_pass(journal_t *journal,
+ 				success = -EIO;
  		}
- 
- #ifdef DEBUG
--		printf("W: ino=%d pblk=%llu lblk=%llu len=%u\n", ino,
-+		printf("W: ino=%d pblk=%llu lblk=%llu len=%u\n", list->ino,
- 				extent.e_pblk, extent.e_lblk, extent.e_len);
- #endif
- 		retval = ext2fs_extent_insert(handle, EXT2_EXTENT_INSERT_AFTER,
- 					      &extent);
- 		if (retval)
--			goto err2;
-+			goto err;
- 		retval = ext2fs_extent_fix_parents(handle);
- 		if (retval)
--			goto err2;
-+			goto err;
- 		ext_written++;
  	}
++
++	if (jbd2_has_feature_fast_commit(journal) && pass != PASS_REVOKE)
++		success = fc_do_one_pass(journal, info, pass);
++
+ 	if (block_error && success == 0)
+ 		success = -EIO;
+ 	return success;
+diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+index 2bda521d..20c0785f 100644
+--- a/lib/ext2fs/jfs_compat.h
++++ b/lib/ext2fs/jfs_compat.h
+@@ -64,6 +64,8 @@ static inline __u32 jbd2_chksum(journal_t *j EXT2FS_ATTR((unused)),
+ #define is_power_of_2(x)	((x) != 0 && (((x) & ((x) - 1)) == 0))
+ #define pr_emerg(fmt)
  
--	delta = ext2fs_get_stat_i_blocks(ctx->fs, EXT2_INODE(&inode)) -
-+	delta = ext2fs_get_stat_i_blocks(ctx->fs, EXT2_INODE(inode)) -
- 		start_val;
- 	if (delta)
--		quota_data_add(ctx->qctx, &inode, ino, delta << 9);
-+		quota_data_add(ctx->qctx, inode, list->ino, delta << 9);
- 
- #if defined(DEBUG) || defined(DEBUG_SUMMARY)
- 	printf("rebuild: ino=%d extents=%d->%d\n", ino, list->ext_read,
- 	       ext_written);
- #endif
--	e2fsck_write_inode(ctx, ino, EXT2_INODE(&inode), "rebuild_extents");
-+	e2fsck_write_inode(ctx, list->ino, EXT2_INODE(inode),
-+				"rebuild_extents");
- 
--err2:
--	ext2fs_extent_free(handle);
- err:
-+	ext2fs_extent_free(handle);
- 	return retval;
- }
- 
-+errcode_t e2fsck_rewrite_extent_tree(e2fsck_t ctx, struct extent_list *list)
-+{
-+	struct ext2_inode_large inode;
-+	int i;
++enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
 +
-+	e2fsck_read_inode_full(ctx, list->ino, EXT2_INODE(&inode),
-+				sizeof(inode), "e2fsck_rewrite_extent_tree");
-+
-+	/* Skip deleted inodes and inline data files */
-+	if (inode.i_links_count == 0 ||
-+	    inode.i_flags & EXT4_INLINE_DATA_FL)
-+		return 0;
-+
-+	return __e2fsck_rewrite_extent_tree(ctx, list, &inode);
-+}
-+
-+errcode_t e2fsck_read_extents(e2fsck_t ctx, struct extent_list *extents)
-+{
-+	struct ext2_inode_large	inode;
-+	errcode_t		retval;
-+
-+	extents->extents = NULL;
-+	extents->count = 0;
-+	extents->blocks_freed = 0;
-+	extents->ext_read = 0;
-+	extents->size = NUM_EXTENTS;
-+	retval = ext2fs_get_array(NUM_EXTENTS, sizeof(struct ext2fs_extent),
-+				  &extents->extents);
-+	if (retval)
-+		return -ENOMEM;
-+
-+	e2fsck_read_inode_full(ctx, extents->ino, EXT2_INODE(&inode),
-+				sizeof(inode), "read_extents");
-+
-+	/* Skip deleted inodes and inline data files */
-+	if (inode.i_links_count == 0 || inode.i_flags & EXT4_INLINE_DATA_FL)
-+		return 0;
-+
-+	if (!inode.i_flags & EXT4_EXTENTS_FL)
-+		return 0;
-+	retval = load_extents(ctx, extents);
-+	if (retval) {
-+		ext2fs_free_mem(&extents->extents);
-+		return retval;
-+	}
-+	return 0;
-+}
-+
-+static errcode_t rebuild_extent_tree(e2fsck_t ctx, struct extent_list *list,
-+				     ext2_ino_t ino)
-+{
-+	struct ext2_inode_large	inode;
-+	errcode_t		retval;
-+
-+	list->count = 0;
-+	list->blocks_freed = 0;
-+	list->ino = ino;
-+	list->ext_read = 0;
-+	e2fsck_read_inode_full(ctx, ino, EXT2_INODE(&inode), sizeof(inode),
-+			       "rebuild_extents");
-+
-+	/* Skip deleted inodes and inline data files */
-+	if (inode.i_links_count == 0 ||
-+	    inode.i_flags & EXT4_INLINE_DATA_FL)
-+		return 0;
-+
-+	/* Collect lblk->pblk mappings */
-+	if (inode.i_flags & EXT4_EXTENTS_FL) {
-+		retval = load_extents(ctx, list);
-+		if (retval)
-+			return retval;
-+		return __e2fsck_rewrite_extent_tree(ctx, list, &inode);
-+	}
-+
-+	retval = ext2fs_block_iterate3(ctx->fs, ino, BLOCK_FLAG_READ_ONLY, 0,
-+				       find_blocks, list);
-+
-+	return retval || list->retval ||
-+		__e2fsck_rewrite_extent_tree(ctx, list, &inode);
-+}
-+
- /* Rebuild the extents immediately */
- static errcode_t e2fsck_rebuild_extents(e2fsck_t ctx, ext2_ino_t ino)
+ struct journal_s
  {
+ 	unsigned long		j_flags;
+@@ -73,6 +75,9 @@ struct journal_s
+ 	int			j_format_version;
+ 	unsigned long		j_head;
+ 	unsigned long		j_tail;
++	unsigned long		j_first_fc;
++	unsigned long		j_fc_off;
++	unsigned long		j_last_fc;
+ 	unsigned long		j_free;
+ 	unsigned long		j_first, j_last;
+ 	kdev_t			j_dev;
+@@ -88,6 +93,10 @@ struct journal_s
+ 	struct jbd2_revoke_table_s *j_revoke_table[2];
+ 	tid_t			j_failed_commit;
+ 	__u32			j_csum_seed;
++	int (*j_fc_replay_callback)(struct journal_s *journal,
++				    struct buffer_head *bh,
++				    enum passtype pass, int off);
++
+ };
+ 
+ #define is_journal_abort(x) 0
+diff --git a/lib/ext2fs/kernel-jbd.h b/lib/ext2fs/kernel-jbd.h
+index 1250f5f0..2dcc5bcc 100644
+--- a/lib/ext2fs/kernel-jbd.h
++++ b/lib/ext2fs/kernel-jbd.h
+@@ -74,6 +74,7 @@ extern void * __jbd_kmalloc (char *where, size_t size, int flags, int retry);
+ 	__jbd_kmalloc(__FUNCTION__, (size), (flags), 1)
+ 
+ #define JBD2_MIN_JOURNAL_BLOCKS 1024
++#define JBD2_FAST_COMMIT_BLOCKS 128
+ 
+ /*
+  * Internal structures used by the logging mechanism:
+@@ -94,6 +95,7 @@ extern void * __jbd_kmalloc (char *where, size_t size, int flags, int retry);
+ #define JBD2_SUPERBLOCK_V1	3
+ #define JBD2_SUPERBLOCK_V2	4
+ #define JBD2_REVOKE_BLOCK	5
++#define JBD2_FC_BLOCK		6
+ 
+ /*
+  * Standard header for all descriptor blocks:
 -- 
 2.25.1.696.g5e7596f4ac-goog
 
