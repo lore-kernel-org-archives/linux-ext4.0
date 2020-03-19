@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92C2AC4332D
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22D57C4332B
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 66E7E2076C
+	by mail.kernel.org (Postfix) with ESMTP id E33F42076C
 	for <linux-ext4@archiver.kernel.org>; Thu, 19 Mar 2020 23:34:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lE3OTSFh"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ffk1O/E3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727236AbgCSXez (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1727240AbgCSXez (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 19 Mar 2020 19:34:55 -0400
-Received: from mail-pj1-f67.google.com ([209.85.216.67]:38557 "EHLO
-        mail-pj1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726663AbgCSXey (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2020 19:34:54 -0400
-Received: by mail-pj1-f67.google.com with SMTP id m15so1681364pje.3
-        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2020 16:34:52 -0700 (PDT)
+Received: from mail-pj1-f65.google.com ([209.85.216.65]:53243 "EHLO
+        mail-pj1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727217AbgCSXez (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Mar 2020 19:34:55 -0400
+Received: by mail-pj1-f65.google.com with SMTP id ng8so1688213pjb.2
+        for <linux-ext4@vger.kernel.org>; Thu, 19 Mar 2020 16:34:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=fG/K9Cjw0HryEc/nJ3z/N7pH4b8SVAzXaGVlh9dZlf0=;
-        b=lE3OTSFhCLDAz0UrfwkVuflfqva2ksgAmU+aNUJywlGvCVdA2j31ZMNv7ICj0EV+sX
-         VKynPTKg4dymJceJ2ubbsTuYRHmH2n1zYVNkxmDogpRyZT74YU2T4jVejOcXp4SULDxK
-         1J8IkUXYXqZRye3EzCP2/64XOwwlUDNwY6OpSx3h31JKuXly8KPg/Bq9jjCELNjpUKN4
-         g4bFoOuvVraQksoKnrmIoCZ4i5TLJqSm5eZqSLfm2d2Ah9Iwl6akiIcf1jKxZ09IxTaF
-         joHkeB/XfoQhdBzwA5rXtVc/Znzm5k+uCM8Z3eemSGR7/7Qhwngo/JDDweAyKTHaNTC/
-         mSmg==
+        bh=d9ks04LkC445RWWUGnghtjjhLKnP8EMv3FbeXLn4Igw=;
+        b=ffk1O/E3LPRW/VuGo8/ybGhPipOv0WdGtB8WtNlcSNB9l/2wtwVpeCWnUyoaXA6/Cp
+         iya02diFTi3duEiQNGI0QsovYk5DQ6jMsL1jyHqSM66SyWxmTSKQ0WDS+fRiY+p4mNDI
+         FA3rebaBEmoD2KaomhT5pXyyWtK/hskHv37jKRw2j45WiKn7qnglo3/x0GUYihMZcHu0
+         scPQUnuuSj0zVAoG7A1W6sAJQptEJC0qpjfX1DBa4bOBNe57x+OtR1dGZydFtwlQ8Ns5
+         UjV7aqYQoTE7oQqzIs+66E9xZJFdJfJWMLuXJQIhtCGYNSYvEQ+eRREb28vVCq3dR26u
+         3Cow==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=fG/K9Cjw0HryEc/nJ3z/N7pH4b8SVAzXaGVlh9dZlf0=;
-        b=i4vEe0mBOFle+EAmaffcOFekjH8LTn1bwZKi2zJJCsBVNiC5eWYPfPcMUOOftj4pd/
-         53fYzuqpU8ffblHtE4uPl+BJku3ZE/sJNFzSS8cjjxlgnVpNeijemsMtzbP94YIh7Vrr
-         aiAlhtnXSeTxWbwHpFYdhhMMKOVZCjVmD84Db+oCidOfipW/1KPdJNC5Fd9unL2KnUtA
-         Nnxhkd/tTbx/B99UWk4jd3g3gX5y011HwMT9G+6snYJvDGpl23v/z1b3CQRMEy20d0Hj
-         XCwG7dnLFgvvVXt9G3pLxsRwBiOngCEVBYrGC6auewyFCJV7bcH/S2xqXg35sZ2DgpfX
-         C5kg==
-X-Gm-Message-State: ANhLgQ2hOpc7d4OTZ/n4andUH7741/4fKRIS7D05eK8VMTuRBVK9sHGr
-        VaIoIiv3CmNKuO1VzkLHgsOh1ayh
-X-Google-Smtp-Source: ADFU+vvAHUO8UMiQ10xZMXvg/nrGuh2+tstWUkC4Q0qI0BHRdQxxi4/9rvcTAu3WJ/JA4S+oCutecg==
-X-Received: by 2002:a17:90b:311:: with SMTP id ay17mr6436542pjb.27.1584660891686;
-        Thu, 19 Mar 2020 16:34:51 -0700 (PDT)
+        bh=d9ks04LkC445RWWUGnghtjjhLKnP8EMv3FbeXLn4Igw=;
+        b=fnnJ/97xjd3DQUcuoQR+bfgGiERs2buEaBhtN4JwqW0uG8mFDFccuhBwQfx0f5FGDB
+         9l1k3TTg+W9B88ECNc1F7jhB50lRlhKC27hfPRYSxyTneIqQrBjewVz5uez7xjU3J1XH
+         OdK/ZTXyScDiyCIhnStvK7/6lNkZ9OGUXoAfKsHUl+vlWU3c/UpfZJ/Dk3xTd/SUlmUE
+         fBsI1gvppmc44mdY/2V2WpA7fhbUz9Kk/Qf6UhQQDuhwCABdjneJ8fEzi7SBjhBfB2aW
+         N/dkXPIaW3dL8Bof3QQ4SZ6TaVPmnJP+7Wc/xfXkpwBceFODS4QfmMFQc2VXdILOswlr
+         q9gQ==
+X-Gm-Message-State: ANhLgQ33Os5okzmMW5xKUD4NFCWBS9mXuCp2oSKA9EYnhGRqvZNlSBkO
+        ZrkM+A2L2HUQIMg5ffQ5TkHLu800
+X-Google-Smtp-Source: ADFU+vu2XtHgMwDjXRd53nk/SGz9Z4AbcLSTDPOd8bewDeHs4RKa2fgyFhL0XAoJs4Z3DOIASJj3ag==
+X-Received: by 2002:a17:90a:cc0e:: with SMTP id b14mr6628665pju.75.1584660893071;
+        Thu, 19 Mar 2020 16:34:53 -0700 (PDT)
 Received: from harshads0.svl.corp.google.com ([2620:15c:2cd:202:ec1e:207a:e951:9a5b])
-        by smtp.googlemail.com with ESMTPSA id j17sm204353pga.18.2020.03.19.16.34.51
+        by smtp.googlemail.com with ESMTPSA id j17sm204353pga.18.2020.03.19.16.34.52
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Mar 2020 16:34:51 -0700 (PDT)
+        Thu, 19 Mar 2020 16:34:52 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 1/7] e2fsck: make recovery.c identical with kernel
-Date:   Thu, 19 Mar 2020 16:34:27 -0700
-Message-Id: <20200319233433.117144-2-harshadshirwadkar@gmail.com>
+Subject: [PATCH 3/7] ext2fs: make ext2fs_calculate_summary_stats() visible
+Date:   Thu, 19 Mar 2020 16:34:29 -0700
+Message-Id: <20200319233433.117144-4-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.25.1.696.g5e7596f4ac-goog
 In-Reply-To: <20200319233433.117144-1-harshadshirwadkar@gmail.com>
 References: <20200319233433.117144-1-harshadshirwadkar@gmail.com>
@@ -71,142 +71,194 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add endianness conversion macros identical to Kernel and fix differences
-between Kernel's and e2fsprogs's recovery.c to make them identical.
+This function allows fast_commit code to recalculate summaries. Make
+it visible and move it to lib.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- e2fsck/jfs_user.h |  9 +++++++++
- e2fsck/recovery.c | 46 ++++++++++++----------------------------------
- 2 files changed, 21 insertions(+), 34 deletions(-)
+ lib/ext2fs/ext2fs.h     |  1 +
+ lib/ext2fs/initialize.c | 58 +++++++++++++++++++++++++++++++++++++++++
+ misc/tune2fs.c          | 57 ----------------------------------------
+ resize/resize2fs.c      |  6 ++---
+ 4 files changed, 62 insertions(+), 60 deletions(-)
 
-diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
-index a97fcc18..62a3e8a8 100644
---- a/e2fsck/jfs_user.h
-+++ b/e2fsck/jfs_user.h
-@@ -267,4 +267,13 @@ extern int	jbd2_journal_set_revoke(journal_t *, unsigned long long, tid_t);
- extern int	jbd2_journal_test_revoke(journal_t *, unsigned long long, tid_t);
- extern void	jbd2_journal_clear_revoke(journal_t *);
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index c9499839..833b6ee7 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1484,6 +1484,7 @@ errcode_t ext2fs_write_ind_block(ext2_filsys fs, blk_t blk, void *buf);
+ extern errcode_t ext2fs_initialize(const char *name, int flags,
+ 				   struct ext2_super_block *param,
+ 				   io_manager manager, ext2_filsys *ret_fs);
++extern errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
  
-+/* Macros for kernel compatibility */
-+#define be32_to_cpu(x)		ext2fs_be32_to_cpu(x)
-+#define cpu_to_be32(x)		ext2fs_cpu_to_be32(x)
-+#define cpu_to_be16(x)		ext2fs_cpu_to_be16(x)
-+#define le16_to_cpu(x)		ext2fs_le16_to_cpu(x)
-+#define le32_to_cpu(x)		ext2fs_le32_to_cpu(x)
+ /* icount.c */
+ extern void ext2fs_free_icount(ext2_icount_t icount);
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 96ec1cff..193aef80 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -575,3 +575,61 @@ cleanup:
+ 	ext2fs_free(fs);
+ 	return retval;
+ }
 +
-+#define pr_warn(...)
++errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
++{
++	blk64_t		blk;
++	ext2_ino_t	ino;
++	unsigned int	group = 0;
++	unsigned int	count = 0;
++	int		total_free = 0;
++	int		group_free = 0;
 +
- #endif /* _JFS_USER_H */
-diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
-index 5df690ad..4750f9c1 100644
---- a/e2fsck/recovery.c
-+++ b/e2fsck/recovery.c
-@@ -121,27 +121,6 @@ failed:
++	/*
++	 * First calculate the block statistics
++	 */
++	for (blk = fs->super->s_first_data_block;
++	     blk < ext2fs_blocks_count(fs->super); blk++) {
++		if (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk)) {
++			group_free++;
++			total_free++;
++		}
++		count++;
++		if ((count == fs->super->s_blocks_per_group) ||
++		    (blk == ext2fs_blocks_count(fs->super)-1)) {
++			ext2fs_bg_free_blocks_count_set(fs, group++,
++							group_free);
++			count = 0;
++			group_free = 0;
++		}
++	}
++	total_free = EXT2FS_C2B(fs, total_free);
++	ext2fs_free_blocks_count_set(fs->super, total_free);
++
++	/*
++	 * Next, calculate the inode statistics
++	 */
++	group_free = 0;
++	total_free = 0;
++	count = 0;
++	group = 0;
++
++	/* Protect loop from wrap-around if s_inodes_count maxed */
++	for (ino = 1; ino <= fs->super->s_inodes_count && ino > 0; ino++) {
++		if (!ext2fs_fast_test_inode_bitmap2(fs->inode_map, ino)) {
++			group_free++;
++			total_free++;
++		}
++		count++;
++		if ((count == fs->super->s_inodes_per_group) ||
++		    (ino == fs->super->s_inodes_count)) {
++			ext2fs_bg_free_inodes_count_set(fs, group++,
++							group_free);
++			count = 0;
++			group_free = 0;
++		}
++	}
++	fs->super->s_free_inodes_count = total_free;
++	ext2fs_mark_super_dirty(fs);
++	return 0;
++}
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f7629952..541be2d7 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2552,63 +2552,6 @@ err_out:
+ 	return retval;
+ }
  
- #endif /* __KERNEL__ */
- 
--static inline __u32 get_be32(__be32 *p)
+-static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
 -{
--	unsigned char *cp = (unsigned char *) p;
--	__u32 ret;
+-	blk64_t		blk;
+-	ext2_ino_t	ino;
+-	unsigned int	group = 0;
+-	unsigned int	count = 0;
+-	int		total_free = 0;
+-	int		group_free = 0;
 -
--	ret = *cp++;
--	ret = (ret << 8) + *cp++;
--	ret = (ret << 8) + *cp++;
--	ret = (ret << 8) + *cp++;
--	return ret;
--}
+-	/*
+-	 * First calculate the block statistics
+-	 */
+-	for (blk = fs->super->s_first_data_block;
+-	     blk < ext2fs_blocks_count(fs->super); blk++) {
+-		if (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk)) {
+-			group_free++;
+-			total_free++;
+-		}
+-		count++;
+-		if ((count == fs->super->s_blocks_per_group) ||
+-		    (blk == ext2fs_blocks_count(fs->super)-1)) {
+-			ext2fs_bg_free_blocks_count_set(fs, group++,
+-							group_free);
+-			count = 0;
+-			group_free = 0;
+-		}
+-	}
+-	total_free = EXT2FS_C2B(fs, total_free);
+-	ext2fs_free_blocks_count_set(fs->super, total_free);
 -
--static inline __u16 get_be16(__be16 *p)
--{
--	unsigned char *cp = (unsigned char *) p;
--	__u16 ret;
+-	/*
+-	 * Next, calculate the inode statistics
+-	 */
+-	group_free = 0;
+-	total_free = 0;
+-	count = 0;
+-	group = 0;
 -
--	ret = *cp++;
--	ret = (ret << 8) + *cp++;
--	return ret;
+-	/* Protect loop from wrap-around if s_inodes_count maxed */
+-	for (ino = 1; ino <= fs->super->s_inodes_count && ino > 0; ino++) {
+-		if (!ext2fs_fast_test_inode_bitmap2(fs->inode_map, ino)) {
+-			group_free++;
+-			total_free++;
+-		}
+-		count++;
+-		if ((count == fs->super->s_inodes_per_group) ||
+-		    (ino == fs->super->s_inodes_count)) {
+-			ext2fs_bg_free_inodes_count_set(fs, group++,
+-							group_free);
+-			count = 0;
+-			group_free = 0;
+-		}
+-	}
+-	fs->super->s_free_inodes_count = total_free;
+-	ext2fs_mark_super_dirty(fs);
+-	return 0;
 -}
  
+ #define list_for_each_safe(pos, pnext, head) \
+ 	for (pos = (head)->next, pnext = pos->next; pos != (head); \
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 2443ff67..270e4deb 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -49,7 +49,7 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs);
+ static errcode_t inode_ref_fix(ext2_resize_t rfs);
+ static errcode_t move_itables(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+-static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
++static errcode_t resize2fs_calculate_summary_stats(ext2_filsys fs);
+ static errcode_t fix_sb_journal_backup(ext2_filsys fs);
+ static errcode_t mark_table_blocks(ext2_filsys fs,
+ 				   ext2fs_block_bitmap bmap);
+@@ -211,7 +211,7 @@ errcode_t resize_fs(ext2_filsys fs, blk64_t *new_size, int flags,
+ 		goto errout;
+ 
+ 	init_resource_track(&rtrack, "calculate_summary_stats", fs->io);
+-	retval = ext2fs_calculate_summary_stats(rfs->new_fs);
++	retval = resize2fs_calculate_summary_stats(rfs->new_fs);
+ 	if (retval)
+ 		goto errout;
+ 	print_resource_track(rfs, &rtrack, fs->io);
+@@ -2740,7 +2740,7 @@ errout:
  /*
-  * Read a block from the journal
-@@ -201,7 +180,7 @@ static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
- 	if (!jbd2_journal_has_csum_v2or3(j))
- 		return 1;
- 
--	tail = (struct jbd2_journal_block_tail *)((char *)buf + j->j_blocksize -
-+	tail = (struct jbd2_journal_block_tail *)(buf + j->j_blocksize -
- 			sizeof(struct jbd2_journal_block_tail));
- 	provided = tail->t_checksum;
- 	tail->t_checksum = 0;
-@@ -232,10 +211,10 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- 
- 		nr++;
- 		tagp += tag_bytes;
--		if (!(get_be16(&tag->t_flags) & JBD2_FLAG_SAME_UUID))
-+		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
- 			tagp += 16;
- 
--		if (get_be16(&tag->t_flags) & JBD2_FLAG_LAST_TAG)
-+		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
- 			break;
- 	}
- 
-@@ -358,9 +337,9 @@ int jbd2_journal_skip_recovery(journal_t *journal)
- static inline unsigned long long read_tag_block(journal_t *journal,
- 						journal_block_tag_t *tag)
+  * Finally, recalculate the summary information
+  */
+-static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
++static errcode_t resize2fs_calculate_summary_stats(ext2_filsys fs)
  {
--	unsigned long long block = get_be32(&tag->t_blocknr);
-+	unsigned long long block = be32_to_cpu(tag->t_blocknr);
- 	if (jbd2_has_feature_64bit(journal))
--		block |= (u64)get_be32(&tag->t_blocknr_high) << 32;
-+		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
- 	return block;
- }
- 
-@@ -429,9 +408,9 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
- 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
- 
- 	if (jbd2_has_feature_csum3(j))
--		return get_be32(&tag3->t_checksum) == csum32;
--
--	return get_be16(&tag->t_checksum) == (csum32 & 0xFFFF);
-+		return tag3->t_checksum == cpu_to_be32(csum32);
-+	else
-+		return tag->t_checksum == cpu_to_be16(csum32);
- }
- 
- static int do_one_pass(journal_t *journal,
-@@ -579,7 +558,7 @@ static int do_one_pass(journal_t *journal,
- 				unsigned long io_block;
- 
- 				tag = (journal_block_tag_t *) tagp;
--				flags = get_be16(&tag->t_flags);
-+				flags = be16_to_cpu(tag->t_flags);
- 
- 				io_block = next_log_block++;
- 				wrap(journal, next_log_block);
-@@ -643,9 +622,8 @@ static int do_one_pass(journal_t *journal,
- 					memcpy(nbh->b_data, obh->b_data,
- 							journal->j_blocksize);
- 					if (flags & JBD2_FLAG_ESCAPE) {
--						__be32 magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
--						memcpy(nbh->b_data, &magic,
--						       sizeof(magic));
-+						*((__be32 *)nbh->b_data) =
-+						cpu_to_be32(JBD2_MAGIC_NUMBER);
- 					}
- 
- 					BUFFER_TRACE(nbh, "marking dirty");
-@@ -833,7 +811,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
- {
- 	jbd2_journal_revoke_header_t *header;
- 	int offset, max;
--	unsigned csum_size = 0;
-+	int csum_size = 0;
- 	__u32 rcount;
- 	int record_len = 4;
- 
+ 	blk64_t		blk;
+ 	ext2_ino_t	ino;
 -- 
 2.25.1.696.g5e7596f4ac-goog
 
