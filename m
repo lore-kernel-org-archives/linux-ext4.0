@@ -2,71 +2,113 @@ Return-Path: <SRS0=m8G5=5F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B45CC43332
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 14:05:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8FB2C4332B
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 14:22:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 66ED220754
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 14:05:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ACFE42070A
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 14:22:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="KGA9sdjQ"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="o94Py0hr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726897AbgCTOFk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Mar 2020 10:05:40 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:52268 "EHLO
+        id S1727270AbgCTOWe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Mar 2020 10:22:34 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:59744 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726809AbgCTOFk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Mar 2020 10:05:40 -0400
+        with ESMTP id S1727207AbgCTOWd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Mar 2020 10:22:33 -0400
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=n/bVoNnai1Z8EXWktYzvjCdfjvG9IjTbEvaQWdguc00=; b=KGA9sdjQ6eq6QDNOVK8h4ctiJ1
-        /gV7+CS9MAOMaFFmpVVrRlxA2A1cNVTAH9Sq5UJPx/qrYuBmi1Cn0SvgaJ9d4i3ro7AOicxt8v2t4
-        RFWU+EulSXyA+okLM07zYfw4iM+Y5zW5srrU+S2L6xBeL5TXTsDCeAVmB2Ka1HEqzbb8NhjYostj4
-        +iautOBEwNfRV1kHmqzd5AeLbM0CYkK5fanTBby5q9JQHfRWJVf2vAPyXSQbayIfL6e5U+wLDCp8h
-        XuAiN304YJULVS0U4+uWWstaw97IsQcQ/+N9AJcUOANkwXJYfhC/KB2FU1ES0mz6wp6FFLAe+e6c2
-        Ic9Q557A==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jFIHK-0002Cq-37; Fri, 20 Mar 2020 14:05:38 +0000
-Date:   Fri, 20 Mar 2020 07:05:38 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Goldwyn Rodrigues <rgoldwyn@suse.de>
-Cc:     linux-fsdevel@vger.kernel.org, riteshh@linux.ibm.com,
-        linux-ext4@vger.kernel.org, hch@infradead.org,
-        darrick.wong@oracle.com, willy@infradead.org,
-        linux-btrfs@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>
-Subject: Re: [PATCH v2] iomap: return partial I/O count on error in
- iomap_dio_bio_actor
-Message-ID: <20200320140538.GA27895@infradead.org>
-References: <20200319150805.uaggnfue5xgaougx@fiona>
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=a3v6yDLu6YVVgdwzNLLzwkeJ8vT0YawbuKhMcViKfm0=; b=o94Py0hrY2AL21Hit1xuWJSO58
+        b3uQ1Vvk04RTNAbcWTzolol1KMnng7zWbWv52EwLbpj1XBoup/RzOPmz1V4raWQ3pQCrBs21nHaNv
+        dSNdUhpaDb8IOqTtc4tFiAITtcpZcFzqXjDMxerSgduKkfq7dtKNERhluzZ501Bh1NXH4HGBOL4ef
+        d4Yai/iczKhLrrO/a8Da2lhxeCUpzll/39IQrofVoeps/R8GaqM/3g8EdQ80KvS4tJMiqhp4s1TwF
+        g8FvwkzVXA7iGAStYHVgrJYN2/YmMDewTTgjZakUAsdlUcUqIm2D6OngLFKzrNCvt3WKyGA9zzGwm
+        UoY/5d1g==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jFIXh-0000hn-CY; Fri, 20 Mar 2020 14:22:33 +0000
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com, linux-xfs@vger.kernel.org,
+        John Hubbard <jhubbard@nvidia.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        William Kucharski <william.kucharski@oracle.com>
+Subject: [PATCH v9 08/25] mm: rename readahead loop variable to 'i'
+Date:   Fri, 20 Mar 2020 07:22:14 -0700
+Message-Id: <20200320142231.2402-9-willy@infradead.org>
+X-Mailer: git-send-email 2.21.1
+In-Reply-To: <20200320142231.2402-1-willy@infradead.org>
+References: <20200320142231.2402-1-willy@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200319150805.uaggnfue5xgaougx@fiona>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I spent a fair amount of time looking over this change, and I am
-starting to feel very bad about it.  iomap_apply() has pretty clear
-semantics of either return an error, or return the bytes processed,
-and in general these semantics work just fine.
+From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
-The thing that breaks this concept is the btrfs submit_bio hook,
-which allows the file system to keep state for each bio actually
-submitted.  But I think you can simply keep the length internally
-in btrfs - use the space in iomap->private as a counter of how
-much was allocated, pass the iomap to the submit_io hook, and
-update it there, and then deal with the rest in ->iomap_end.
+Change the type of page_idx to unsigned long, and rename it -- it's
+just a loop counter, not a page index.
 
-That assumes ->iomap_end actually is the right place - can someone
-explain what the expected call site for __endio_write_update_ordered
-is?  It kinda sorta looks to me like something that would want to
-be called after I/O completion, not after I/O submission, but maybe
-I misunderstand the code.
+Suggested-by: John Hubbard <jhubbard@nvidia.com>
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: William Kucharski <william.kucharski@oracle.com>
+---
+ mm/readahead.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 8a65d6bd97e0..7ce320854bad 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -163,13 +163,13 @@ void __do_page_cache_readahead(struct address_space *mapping,
+ 	struct page *page;
+ 	unsigned long end_index;	/* The last page we want to read */
+ 	LIST_HEAD(page_pool);
+-	int page_idx;
+ 	loff_t isize = i_size_read(inode);
+ 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
+ 	struct readahead_control rac = {
+ 		.mapping = mapping,
+ 		.file = filp,
+ 	};
++	unsigned long i;
+ 
+ 	if (isize == 0)
+ 		return;
+@@ -179,8 +179,8 @@ void __do_page_cache_readahead(struct address_space *mapping,
+ 	/*
+ 	 * Preallocate as many pages as we will need.
+ 	 */
+-	for (page_idx = 0; page_idx < nr_to_read; page_idx++) {
+-		pgoff_t page_offset = index + page_idx;
++	for (i = 0; i < nr_to_read; i++) {
++		pgoff_t page_offset = index + i;
+ 
+ 		if (page_offset > end_index)
+ 			break;
+@@ -201,7 +201,7 @@ void __do_page_cache_readahead(struct address_space *mapping,
+ 			break;
+ 		page->index = page_offset;
+ 		list_add(&page->lru, &page_pool);
+-		if (page_idx == nr_to_read - lookahead_size)
++		if (i == nr_to_read - lookahead_size)
+ 			SetPageReadahead(page);
+ 		rac._nr_pages++;
+ 	}
+-- 
+2.25.1
+
