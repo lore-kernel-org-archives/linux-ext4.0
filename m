@@ -2,42 +2,42 @@ Return-Path: <SRS0=m8G5=5F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DD1AC4332B
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 18:51:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF692C4332E
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 18:52:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0F36D20775
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 18:51:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9BDDE20781
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Mar 2020 18:52:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1584730306;
-	bh=wmxvXevR06nb1QmpGEsop/WZiA63VuWIIHhbvnGv3KA=;
+	s=default; t=1584730365;
+	bh=3gbE+VlmfoN5OPIi14o+iI+EIYlVydyt9rn3Y0AvnsY=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=np8HeEJVrSg4gRZN1gDviF54084CIk6+eQC/CnPBRK4ygO2vrzJ+l2D+zOLaPQ3bf
-	 IIztRC6ToxlpIKqqbdDICPL/KmqhbRafQ1vR/bGbb9XT7YpUGnOzoYV+7S4C9CyfsN
-	 E44Z37izhRi/tc/PMKtu2JeoMCGVKyhVCxoyTJPw=
+	b=D9FC+WICOiDoQ0rGAEDuBhoxDr8kRctHYXI/23oeRQV87eFcwe882fnpwajfCZWbw
+	 DOU+3SzeoLSeHv+608ihPRSAJDzAQDHH7unmq+wEV48ssBUVB6nczupCkTeuktZlg6
+	 OzqNaj0f+TwUq0cHYd6fXUDTZb/L1fhcmV7GbNnM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727581AbgCTSvh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Mar 2020 14:51:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45870 "EHLO mail.kernel.org"
+        id S1727383AbgCTSwl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Mar 2020 14:52:41 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46960 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727555AbgCTSvg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 20 Mar 2020 14:51:36 -0400
+        id S1727210AbgCTSwk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Mar 2020 14:52:40 -0400
 Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 73FEA20775;
-        Fri, 20 Mar 2020 18:51:35 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 8A87620775;
+        Fri, 20 Mar 2020 18:52:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1584730295;
-        bh=wmxvXevR06nb1QmpGEsop/WZiA63VuWIIHhbvnGv3KA=;
+        s=default; t=1584730359;
+        bh=3gbE+VlmfoN5OPIi14o+iI+EIYlVydyt9rn3Y0AvnsY=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ATEVLUwSRAGOLrwqGIPQHX0PWH4lr45iE5A/NazJJCfEOZHnreOA2VBhpGjQhk/ki
-         4+ZKkX5+P81ra2F1GVplnKnGZnFW5hCuQZ+bwoyYxCCre1aOpfzyewy++fV9Qt8rae
-         IkgJ+cgr/UTSzDQK5vzJ04cieWphnrdFa7f7cJlw=
-Date:   Fri, 20 Mar 2020 11:51:34 -0700
+        b=DRP5T0p/QJ3Eo+pOi6lUoz/NYAigZgi8TtvZjTzfHQ8g8KelV4xmxmhMYNwPEnhOr
+         jaoWnNJhMTgDQ5E65odJ0yXJp9dcxGm+62eg5najbweP0lRbI54UDJTXPJXqLKn/F1
+         CPgqcXc4KjgX4h9bEPayy9PiHh2SFNg2cqPbd3s0=
+Date:   Fri, 20 Mar 2020 11:52:38 -0700
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Andrew Morton <akpm@linux-foundation.org>,
@@ -48,42 +48,70 @@ Cc:     Andrew Morton <akpm@linux-foundation.org>,
         linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v9 22/25] f2fs: Convert from readpages to readahead
-Message-ID: <20200320185134.GI851@sol.localdomain>
+Subject: Re: [PATCH v9 23/25] f2fs: Pass the inode to f2fs_mpage_readpages
+Message-ID: <20200320185238.GJ851@sol.localdomain>
 References: <20200320142231.2402-1-willy@infradead.org>
- <20200320142231.2402-23-willy@infradead.org>
+ <20200320142231.2402-24-willy@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200320142231.2402-23-willy@infradead.org>
+In-Reply-To: <20200320142231.2402-24-willy@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Mar 20, 2020 at 07:22:28AM -0700, Matthew Wilcox wrote:
+On Fri, Mar 20, 2020 at 07:22:29AM -0700, Matthew Wilcox wrote:
 > From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 > 
-> Use the new readahead operation in f2fs
+> This function now only uses the mapping argument to look up the inode,
+> and both callers already have the inode, so just pass the inode instead
+> of the mapping.
 > 
 > Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 > Reviewed-by: William Kucharski <william.kucharski@oracle.com>
 > ---
->  fs/f2fs/data.c              | 47 +++++++++++++++----------------------
->  include/trace/events/f2fs.h |  6 ++---
->  2 files changed, 22 insertions(+), 31 deletions(-)
+>  fs/f2fs/data.c | 7 +++----
+>  1 file changed, 3 insertions(+), 4 deletions(-)
 > 
+> diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+> index 237dff36fe73..c8b042979fc4 100644
+> --- a/fs/f2fs/data.c
+> +++ b/fs/f2fs/data.c
+> @@ -2159,12 +2159,11 @@ int f2fs_read_multi_pages(struct compress_ctx *cc, struct bio **bio_ret,
+>   * use ->readpage() or do the necessary surgery to decouple ->readpages()
+>   * from read-ahead.
+>   */
+> -static int f2fs_mpage_readpages(struct address_space *mapping,
+> +static int f2fs_mpage_readpages(struct inode *inode,
+>  		struct readahead_control *rac, struct page *page)
+>  {
+>  	struct bio *bio = NULL;
+>  	sector_t last_block_in_bio = 0;
+> -	struct inode *inode = mapping->host;
+>  	struct f2fs_map_blocks map;
+>  #ifdef CONFIG_F2FS_FS_COMPRESSION
+>  	struct compress_ctx cc = {
+> @@ -2276,7 +2275,7 @@ static int f2fs_read_data_page(struct file *file, struct page *page)
+>  	if (f2fs_has_inline_data(inode))
+>  		ret = f2fs_read_inline_data(inode, page);
+>  	if (ret == -EAGAIN)
+> -		ret = f2fs_mpage_readpages(page_file_mapping(page), NULL, page);
+> +		ret = f2fs_mpage_readpages(inode, NULL, page);
+>  	return ret;
+>  }
+>  
+> @@ -2293,7 +2292,7 @@ static void f2fs_readahead(struct readahead_control *rac)
+>  	if (f2fs_has_inline_data(inode))
+>  		return;
+>  
+> -	f2fs_mpage_readpages(rac->mapping, rac, NULL);
+> +	f2fs_mpage_readpages(inode, rac, NULL);
+>  }
+>  
+>  int f2fs_encrypt_one_page(struct f2fs_io_info *fio)
+> -- 
 
 Reviewed-by: Eric Biggers <ebiggers@google.com>
-
-> @@ -2210,7 +2204,7 @@ static int f2fs_mpage_readpages(struct address_space *mapping,
->  				ret = f2fs_read_multi_pages(&cc, &bio,
->  							max_nr_pages,
->  							&last_block_in_bio,
-> -							is_readahead);
-> +							rac);
-
-IMO it would be clearer to write 'rac != NULL' here (and below) since the
-argument is actually a bool, but this works too.
 
 - Eric
