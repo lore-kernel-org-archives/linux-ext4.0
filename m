@@ -1,81 +1,86 @@
-Return-Path: <SRS0=Oggo=5G=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=cEga=5H=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0203DC4332B
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Mar 2020 12:41:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A41A1C43333
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 Mar 2020 03:30:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C31C820757
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Mar 2020 12:41:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 705E020709
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 Mar 2020 03:30:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1584794481;
-	bh=SYButYYnPtTNzTsvJv/ztlsV2rT6hQCbbeI2pzlT52k=;
-	h=Subject:To:References:Cc:From:Date:In-Reply-To:List-ID:From;
-	b=Fe0ECkSh4uZlP6Vd/ziqbRxqU4qNGlM2x1dIxcARYKAP4G40iJRVhsaTxWcyNsRqb
-	 ulrDx9s4mfN/qchWlSxBkGA0q4kI6eRxZKQ3ZotMcc57OgSF9eDi2/88T6+KkuLLUq
-	 l1fwzB0Iwv+7AQQXRTY12EAVx6RfcnS9iMLnXOMw=
+	s=default; t=1584847853;
+	bh=3HjG+LC0YneyZEHxHPIPqf1PbiHJjwqiDhM+dJyev2o=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=YdT9DlhmeJEUfyub5Rl5tm6lPDXhr5DWn/jSRmW8DWXBth1WnEGVbl6I8PTGGVkc8
+	 E0Sc/PZtNxkupI5B+woNocomFsF+XVFFEF+Bt2GHgML5JZQZ57+h/XOryUsLlFiAqp
+	 LpMBasDAtbV18pCeAjYSfidtghiVKON0VaR/L/bc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727110AbgCUMlS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Mar 2020 08:41:18 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60138 "EHLO mail.kernel.org"
+        id S1728035AbgCVDaw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Mar 2020 23:30:52 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46946 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726607AbgCUMlS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 21 Mar 2020 08:41:18 -0400
-Received: from [192.168.0.107] (unknown [49.65.245.234])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1727296AbgCVDaw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 21 Mar 2020 23:30:52 -0400
+Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B163C20754;
-        Sat, 21 Mar 2020 12:41:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C18E420637;
+        Sun, 22 Mar 2020 03:30:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1584794477;
-        bh=SYButYYnPtTNzTsvJv/ztlsV2rT6hQCbbeI2pzlT52k=;
-        h=Subject:To:References:Cc:From:Date:In-Reply-To:From;
-        b=mZAqbYYEyed/TRFC34Za867sHZy20DSHbKWw+pfpCOnVubLSkgdKhC74IfLXb0oQ5
-         irgqnDuLIeHhDqhwmSXSHDKHRIlhYBBteSxo2x9Zg8CrGALnf5+E10sckAtjZq5EYM
-         B0EReMmsHEMDlh4R+X7pNuj+kYgFVEbn3aKM9dbQ=
-Subject: Re: [f2fs-dev] [PATCH v9 19/25] erofs: Convert compressed files from
- readpages to readahead
-To:     Matthew Wilcox <willy@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-References: <20200320142231.2402-1-willy@infradead.org>
- <20200320142231.2402-20-willy@infradead.org>
-Cc:     linux-xfs@vger.kernel.org,
-        William Kucharski <william.kucharski@oracle.com>,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
-        Dave Chinner <dchinner@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org
-From:   Chao Yu <chao@kernel.org>
-Message-ID: <135c3eeb-c809-08dc-8b4b-31ced90c622a@kernel.org>
-Date:   Sat, 21 Mar 2020 20:41:10 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101
- Thunderbird/45.8.0
+        s=default; t=1584847852;
+        bh=3HjG+LC0YneyZEHxHPIPqf1PbiHJjwqiDhM+dJyev2o=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=wKi+3FlFpKcm/XbFj/gDG939p2/gnEFz2hyRdrCyommDW0pcnZHUS3j37eD4jiXzO
+         NziKuDBMgksbob4GMnetkGP68K0vQbn0X8vU6TbZD3axIyVXdRTYD15/GTTSZJhH7V
+         T8+DsXuImYSkuqw3m1AKqdTDACPS6epelrY/Zxdk=
+Date:   Sat, 21 Mar 2020 20:30:50 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH 0/4] fscrypt: add ioctl to get file's encryption nonce
+Message-ID: <20200322033050.GA111151@sol.localdomain>
+References: <20200314205052.93294-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20200320142231.2402-20-willy@infradead.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200314205052.93294-1-ebiggers@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2020-3-20 22:22, Matthew Wilcox wrote:
-> From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
->
-> Use the new readahead operation in erofs.
->
-> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-> Acked-by: Gao Xiang <gaoxiang25@huawei.com>
-> Reviewed-by: Dave Chinner <dchinner@redhat.com>
-> Reviewed-by: William Kucharski <william.kucharski@oracle.com>
+On Sat, Mar 14, 2020 at 01:50:48PM -0700, Eric Biggers wrote:
+> This patchset adds an ioctl FS_IOC_GET_ENCRYPTION_NONCE which retrieves
+> the nonce from an encrypted file or directory.
+> 
+> This is useful for automated ciphertext verification testing.
+> 
+> See patch #1 for more details.
+> 
+> Eric Biggers (4):
+>   fscrypt: add FS_IOC_GET_ENCRYPTION_NONCE ioctl
+>   ext4: wire up FS_IOC_GET_ENCRYPTION_NONCE
+>   f2fs: wire up FS_IOC_GET_ENCRYPTION_NONCE
+>   ubifs: wire up FS_IOC_GET_ENCRYPTION_NONCE
+> 
+>  Documentation/filesystems/fscrypt.rst | 11 +++++++++++
+>  fs/crypto/fscrypt_private.h           | 20 ++++++++++++++++++++
+>  fs/crypto/keysetup.c                  | 16 ++--------------
+>  fs/crypto/policy.c                    | 21 ++++++++++++++++++++-
+>  fs/ext4/ioctl.c                       |  6 ++++++
+>  fs/f2fs/file.c                        | 11 +++++++++++
+>  fs/ubifs/ioctl.c                      |  4 ++++
+>  include/linux/fscrypt.h               |  6 ++++++
+>  include/uapi/linux/fscrypt.h          |  1 +
+>  9 files changed, 81 insertions(+), 15 deletions(-)
+> 
 
-Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Applied to fscrypt.git#master for 5.7.
 
-Thanks,
+- Eric
