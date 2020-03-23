@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C397C54FCE
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 20:25:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B63F4C10DCE
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 20:25:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EBC1920714
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 20:25:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8617020714
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 20:25:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="WtB9jrC9"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="BgSnNmvp"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727124AbgCWUXD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 23 Mar 2020 16:23:03 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:36814 "EHLO
+        id S1727498AbgCWUZZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 Mar 2020 16:25:25 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:36858 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725912AbgCWUXC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Mar 2020 16:23:02 -0400
+        with ESMTP id S1727113AbgCWUXD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Mar 2020 16:23:03 -0400
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=vyElWKU1zfCiLUTPH8gs8z9Mck1LnRKWxy/aI6BlYH8=; b=WtB9jrC97XVcAq9iRil82wdC80
-        pAUvzGDXlj9cNn321EgZ5Iqwk63pO2fYudHXTUbTjYm11cGEK46Ipfi2glogbgHIZOgGxPrfmrYbh
-        d7JAWLSTOa1MlInNXJfLUBoiM33VAM+MGLOi6GaFTNeJlAocsWPh8Jly9Hk33YuiTXSTZ5p0/7Fjg
-        +GqfdaIaLFtB/zvSScPaFJh65GNlLvCeSsZ9RMLCXIWp/rN/ubDGF6Xx+i7BswpBkaANYuQNQSwBi
-        B8V9MZCRpsliLY1hiThvX+kNzOIPmRYbAf39x7hoY6L1TQA/Y/S/DRMX+lLyUbyQMLhVQ99GsM+Bl
-        VH8a+ijg==;
+        bh=M53w66EqyiXkPPKMI4N1q6Sj127fdMb83ElMilULZT8=; b=BgSnNmvpWUIOJKiV3rsGy/+isY
+        bvoJEygYghR11gkGYB8+A7VeRBeZ1754y5LFv33QojXUp4msVoOhypOa3Ao4+SU1O3wSUF7C63mqa
+        EqzUcLwPlqpFsU8q4PLzk9vhIpcYbtZ/rxAwS6dz2EK8D4cAIDVJqIYEOz8fmOArdg9/zmUGHZqsL
+        n3W9cVGI+nxpTUaTKGvnlK9mx8Sao/FzmF6pYOW0rPqSjHWQ/LuG+LfqDeQkRsXgtvDQfzdqBy9St
+        5dc2SdJtqCWU43d+O+Ztf2A0nzXnZY7pVaYgsDrRCSZ3vpqpYSkj8UyiLSuIc1hMav+bhftwd+Cb6
+        bl6bdBDA==;
 Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jGTbB-0003UZ-ED; Mon, 23 Mar 2020 20:23:01 +0000
+        id 1jGTbC-0003W1-5P; Mon, 23 Mar 2020 20:23:02 +0000
 From:   Matthew Wilcox <willy@infradead.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -41,13 +41,12 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         ocfs2-devel@oss.oracle.com, linux-xfs@vger.kernel.org,
-        Dave Chinner <dchinner@redhat.com>,
-        John Hubbard <jhubbard@nvidia.com>,
-        Christoph Hellwig <hch@lst.de>,
-        William Kucharski <william.kucharski@oracle.com>
-Subject: [PATCH v10 02/25] mm: Return void from various readahead functions
-Date:   Mon, 23 Mar 2020 13:22:36 -0700
-Message-Id: <20200323202259.13363-3-willy@infradead.org>
+        William Kucharski <william.kucharski@oracle.com>,
+        Eric Biggers <ebiggers@google.com>,
+        Chao Yu <yuchao0@huawei.com>, Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: [PATCH v10 23/25] f2fs: Pass the inode to f2fs_mpage_readpages
+Date:   Mon, 23 Mar 2020 13:22:57 -0700
+Message-Id: <20200323202259.13363-24-willy@infradead.org>
 X-Mailer: git-send-email 2.21.1
 In-Reply-To: <20200323202259.13363-1-willy@infradead.org>
 References: <20200323202259.13363-1-willy@infradead.org>
@@ -60,174 +59,55 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 
-ondemand_readahead has two callers, neither of which use the return value.
-That means that both ra_submit and __do_page_cache_readahead() can return
-void, and we don't need to worry that a present page in the readahead
-window causes us to return a smaller nr_pages than we ought to have.
-
-Similarly, no caller uses the return value from force_page_cache_readahead().
+This function now only uses the mapping argument to look up the inode,
+and both callers already have the inode, so just pass the inode instead
+of the mapping.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
-Reviewed-by: John Hubbard <jhubbard@nvidia.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: William Kucharski <william.kucharski@oracle.com>
+Reviewed-by: Eric Biggers <ebiggers@google.com>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Acked-by: Jaegeuk Kim <jaegeuk@kernel.org>
 ---
- mm/fadvise.c   |  4 ----
- mm/internal.h  | 12 ++++++------
- mm/readahead.c | 31 +++++++++++++------------------
- 3 files changed, 19 insertions(+), 28 deletions(-)
+ fs/f2fs/data.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/mm/fadvise.c b/mm/fadvise.c
-index 3efebfb9952c..0e66f2aaeea3 100644
---- a/mm/fadvise.c
-+++ b/mm/fadvise.c
-@@ -104,10 +104,6 @@ int generic_fadvise(struct file *file, loff_t offset, loff_t len, int advice)
- 		if (!nrpages)
- 			nrpages = ~0UL;
- 
--		/*
--		 * Ignore return value because fadvise() shall return
--		 * success even if filesystem can't retrieve a hint,
--		 */
- 		force_page_cache_readahead(mapping, file, start_index, nrpages);
- 		break;
- 	case POSIX_FADV_NOREUSE:
-diff --git a/mm/internal.h b/mm/internal.h
-index 25fee17c7334..f762a34b0c57 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -49,20 +49,20 @@ void unmap_page_range(struct mmu_gather *tlb,
- 			     unsigned long addr, unsigned long end,
- 			     struct zap_details *details);
- 
--int force_page_cache_readahead(struct address_space *, struct file *,
-+void force_page_cache_readahead(struct address_space *, struct file *,
- 		pgoff_t index, unsigned long nr_to_read);
--extern unsigned int __do_page_cache_readahead(struct address_space *mapping,
--		struct file *filp, pgoff_t offset, unsigned long nr_to_read,
-+void __do_page_cache_readahead(struct address_space *, struct file *,
-+		pgoff_t index, unsigned long nr_to_read,
- 		unsigned long lookahead_size);
- 
- /*
-  * Submit IO for the read-ahead request in file_ra_state.
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 2109ce23076d..4cd76973e6c8 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -2148,12 +2148,11 @@ int f2fs_read_multi_pages(struct compress_ctx *cc, struct bio **bio_ret,
+  * use ->readpage() or do the necessary surgery to decouple ->readpages()
+  * from read-ahead.
   */
--static inline unsigned long ra_submit(struct file_ra_state *ra,
-+static inline void ra_submit(struct file_ra_state *ra,
- 		struct address_space *mapping, struct file *filp)
+-static int f2fs_mpage_readpages(struct address_space *mapping,
++static int f2fs_mpage_readpages(struct inode *inode,
+ 		struct readahead_control *rac, struct page *page)
  {
--	return __do_page_cache_readahead(mapping, filp,
--					ra->start, ra->size, ra->async_size);
-+	__do_page_cache_readahead(mapping, filp,
-+			ra->start, ra->size, ra->async_size);
+ 	struct bio *bio = NULL;
+ 	sector_t last_block_in_bio = 0;
+-	struct inode *inode = mapping->host;
+ 	struct f2fs_map_blocks map;
+ #ifdef CONFIG_F2FS_FS_COMPRESSION
+ 	struct compress_ctx cc = {
+@@ -2265,7 +2264,7 @@ static int f2fs_read_data_page(struct file *file, struct page *page)
+ 	if (f2fs_has_inline_data(inode))
+ 		ret = f2fs_read_inline_data(inode, page);
+ 	if (ret == -EAGAIN)
+-		ret = f2fs_mpage_readpages(page_file_mapping(page), NULL, page);
++		ret = f2fs_mpage_readpages(inode, NULL, page);
+ 	return ret;
  }
  
- /**
-diff --git a/mm/readahead.c b/mm/readahead.c
-index 2fe72cd29b47..41a592886da7 100644
---- a/mm/readahead.c
-+++ b/mm/readahead.c
-@@ -149,10 +149,8 @@ static int read_pages(struct address_space *mapping, struct file *filp,
-  * the pages first, then submits them for I/O. This avoids the very bad
-  * behaviour which would occur if page allocations are causing VM writeback.
-  * We really don't want to intermingle reads and writes like that.
-- *
-- * Returns the number of pages requested, or the maximum amount of I/O allowed.
-  */
--unsigned int __do_page_cache_readahead(struct address_space *mapping,
-+void __do_page_cache_readahead(struct address_space *mapping,
- 		struct file *filp, pgoff_t offset, unsigned long nr_to_read,
- 		unsigned long lookahead_size)
- {
-@@ -166,7 +164,7 @@ unsigned int __do_page_cache_readahead(struct address_space *mapping,
- 	gfp_t gfp_mask = readahead_gfp_mask(mapping);
+@@ -2282,7 +2281,7 @@ static void f2fs_readahead(struct readahead_control *rac)
+ 	if (f2fs_has_inline_data(inode))
+ 		return;
  
- 	if (isize == 0)
--		goto out;
-+		return;
- 
- 	end_index = ((isize - 1) >> PAGE_SHIFT);
- 
-@@ -211,23 +209,21 @@ unsigned int __do_page_cache_readahead(struct address_space *mapping,
- 	if (nr_pages)
- 		read_pages(mapping, filp, &page_pool, nr_pages, gfp_mask);
- 	BUG_ON(!list_empty(&page_pool));
--out:
--	return nr_pages;
+-	f2fs_mpage_readpages(rac->mapping, rac, NULL);
++	f2fs_mpage_readpages(inode, rac, NULL);
  }
  
- /*
-  * Chunk the readahead into 2 megabyte units, so that we don't pin too much
-  * memory at once.
-  */
--int force_page_cache_readahead(struct address_space *mapping, struct file *filp,
--			       pgoff_t offset, unsigned long nr_to_read)
-+void force_page_cache_readahead(struct address_space *mapping,
-+		struct file *filp, pgoff_t offset, unsigned long nr_to_read)
- {
- 	struct backing_dev_info *bdi = inode_to_bdi(mapping->host);
- 	struct file_ra_state *ra = &filp->f_ra;
- 	unsigned long max_pages;
- 
- 	if (unlikely(!mapping->a_ops->readpage && !mapping->a_ops->readpages))
--		return -EINVAL;
-+		return;
- 
- 	/*
- 	 * If the request exceeds the readahead window, allow the read to
-@@ -245,7 +241,6 @@ int force_page_cache_readahead(struct address_space *mapping, struct file *filp,
- 		offset += this_chunk;
- 		nr_to_read -= this_chunk;
- 	}
--	return 0;
- }
- 
- /*
-@@ -378,11 +373,10 @@ static int try_context_readahead(struct address_space *mapping,
- /*
-  * A minimal readahead algorithm for trivial sequential/random reads.
-  */
--static unsigned long
--ondemand_readahead(struct address_space *mapping,
--		   struct file_ra_state *ra, struct file *filp,
--		   bool hit_readahead_marker, pgoff_t offset,
--		   unsigned long req_size)
-+static void ondemand_readahead(struct address_space *mapping,
-+		struct file_ra_state *ra, struct file *filp,
-+		bool hit_readahead_marker, pgoff_t offset,
-+		unsigned long req_size)
- {
- 	struct backing_dev_info *bdi = inode_to_bdi(mapping->host);
- 	unsigned long max_pages = ra->ra_pages;
-@@ -428,7 +422,7 @@ ondemand_readahead(struct address_space *mapping,
- 		rcu_read_unlock();
- 
- 		if (!start || start - offset > max_pages)
--			return 0;
-+			return;
- 
- 		ra->start = start;
- 		ra->size = start - offset;	/* old async_size */
-@@ -464,7 +458,8 @@ ondemand_readahead(struct address_space *mapping,
- 	 * standalone, small random read
- 	 * Read as is, and do not pollute the readahead state.
- 	 */
--	return __do_page_cache_readahead(mapping, filp, offset, req_size, 0);
-+	__do_page_cache_readahead(mapping, filp, offset, req_size, 0);
-+	return;
- 
- initial_readahead:
- 	ra->start = offset;
-@@ -489,7 +484,7 @@ ondemand_readahead(struct address_space *mapping,
- 		}
- 	}
- 
--	return ra_submit(ra, mapping, filp);
-+	ra_submit(ra, mapping, filp);
- }
- 
- /**
+ int f2fs_encrypt_one_page(struct f2fs_io_info *fio)
 -- 
 2.25.1
 
