@@ -1,128 +1,95 @@
-Return-Path: <SRS0=cEga=5H=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=bC19=5I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C1FFC54FD2
-	for <linux-ext4@archiver.kernel.org>; Sun, 22 Mar 2020 16:28:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61580C1975A
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 02:45:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DE8CF20724
-	for <linux-ext4@archiver.kernel.org>; Sun, 22 Mar 2020 16:28:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B42020722
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Mar 2020 02:45:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="DMIkZSYb"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="hK1p55WF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726538AbgCVQ2U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 22 Mar 2020 12:28:20 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:58018 "EHLO
+        id S1727044AbgCWCpo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 22 Mar 2020 22:45:44 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:48110 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725785AbgCVQ2U (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Mar 2020 12:28:20 -0400
+        with ESMTP id S1727024AbgCWCpo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 22 Mar 2020 22:45:44 -0400
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=+q5SE8PabkJ4E2ARJpyvT2voAuJ2mKWWauYSLk4KvP8=; b=DMIkZSYbAXVYZnU8ct+6eTALIM
-        IIwMq32XvglVnA0tcHkjB7yxlMiata26hBz45kwB5a05tIb02c9RE5ySYhs3Ho1G+lFVSgzlzVVDc
-        DUMiK8p2sT6gtwlUuoh5Nc7LPQ6R2kVmwSly/JqhfRE2B1JKygrsPQSdgxP2bs4+VdMciVAE86kHt
-        faPtljJno8DX46yFjGcZZwU56Jt23D6buy8qiu9daFTCr8dE5hV5cU6dlBPdz0Fx7mooeF/M7/3E9
-        cV1R/zopL7FbuerKPz2Tn81i5E79BF6SUI1praSaJFyVmD8DjvZ9DxsxJvgden2Wq6jHCv3KoNE8F
-        cMFMFWAw==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jG3SU-0000CF-PX; Sun, 22 Mar 2020 16:28:18 +0000
-Date:   Sun, 22 Mar 2020 09:28:18 -0700
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        linux-xfs@vger.kernel.org,
-        William Kucharski <william.kucharski@oracle.com>,
-        John Hubbard <jhubbard@nvidia.com>,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org
-Subject: Re: [PATCH v9 12/25] mm: Move end_index check out of readahead loop
-Message-ID: <20200322162818.GG4971@bombadil.infradead.org>
-References: <20200320142231.2402-1-willy@infradead.org>
- <20200320142231.2402-13-willy@infradead.org>
- <20200320165828.GB851@sol.localdomain>
- <20200320173040.GB4971@bombadil.infradead.org>
- <20200320180017.GE851@sol.localdomain>
- <20200320181132.GD4971@bombadil.infradead.org>
- <20200320182452.GF851@sol.localdomain>
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        Content-Type:MIME-Version:Date:Message-ID:Subject:From:To:Sender:Reply-To:Cc:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=W4bXDYwfS3EN8dSOa7pgo/9N3vt3vB1jLkTpJl8qckM=; b=hK1p55WFdhHlWdxSHa/nwMk5sc
+        MQxfVM/ZOAWIdHd6F2KBDW9IJUXoB54xqrl82x9BUStrqqVx5XLd6egoKVoMfXVhRM1QFEldpFd91
+        2/+P8Uth8iOxwMUKiYS989y1+uCPs+Ifi5hCEfMJTW8NZXHCNl8YWCNy7cjKC60gP8NJaYmN3aBTy
+        iPNmGuJ1sXGGCLL21SwRlnlqs/FZP5G+IAyKD1RJGTid3QSpseR0oUgKNkd4B2mjrhkIMx8JHWpUX
+        c0kSQmHF9omrCPUJm63Gr2rEVsAMBgKSOO81Lruk4Yzrcvces2j8l8Hw/KERw7IZ0IFZr1mUROWpn
+        N7kySDmg==;
+Received: from [2601:1c0:6280:3f0::19c2]
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jGD5z-0001Eu-3O; Mon, 23 Mar 2020 02:45:43 +0000
+To:     Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+From:   Randy Dunlap <rdunlap@infradead.org>
+Subject: [PATCH] ext2: fix empty body warnings when -Wextra is used
+Message-ID: <e18a7395-61fb-2093-18e8-ed4f8cf56248@infradead.org>
+Date:   Sun, 22 Mar 2020 19:45:41 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200320182452.GF851@sol.localdomain>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Mar 20, 2020 at 11:24:52AM -0700, Eric Biggers wrote:
-> On Fri, Mar 20, 2020 at 11:11:32AM -0700, Matthew Wilcox wrote:
-> > On Fri, Mar 20, 2020 at 11:00:17AM -0700, Eric Biggers wrote:
-> > > But then if someone passes index=0 and nr_to_read=0, this underflows and the
-> > > entire file gets read.
-> > 
-> > nr_to_read == 0 doesn't make sense ... I thought we filtered that out
-> > earlier, but I can't find anywhere that does that right now.  I'd
-> > rather return early from __do_page_cache_readahead() to fix that.
-> > 
-> > > The page cache isn't actually supposed to contain a page at index ULONG_MAX,
-> > > since MAX_LFS_FILESIZE is at most ((loff_t)ULONG_MAX << PAGE_SHIFT), right?  So
-> > > I don't think we need to worry about reading the page with index ULONG_MAX.
-> > > I.e. I think it's fine to limit nr_to_read to 'ULONG_MAX - index', if that makes
-> > > it easier to avoid an overflow or underflow in the next check.
-> > 
-> > I think we can get a page at ULONG_MAX on 32-bit systems?  I mean, we can buy
-> > hard drives which are larger than 16TiB these days:
-> > https://www.pcmag.com/news/seagate-will-ship-18tb-and-20tb-hard-drives-in-2020
-> > (even ignoring RAID devices)
-> 
-> The max file size is ((loff_t)ULONG_MAX << PAGE_SHIFT) which means the maximum
-> page *index* is ULONG_MAX - 1, not ULONG_MAX.
+From: Randy Dunlap <rdunlap@infradead.org>
 
-I see where we set that for _files_ ... I can't find anywhere that we prevent
-i_size getting that big for block devices.  Maybe I'm missing something.
+When EXT2_ATTR_DEBUG is not defined, modify the 2 debug macros
+to use the no_printk() macro instead of <nothing>.
+This fixes gcc warnings when -Wextra is used:
 
-> Anyway, I think we may be making this much too complicated.  How about just:
-> 
-> 	pgoff_t i_nrpages = DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE);
-> 
-> 	if (index >= i_nrpages)
-> 		return;
-> 	/* Don't read past the end of the file */
-> 	nr_to_read = min(nr_to_read, i_nrpages - index);
-> 
-> That's 2 branches instead of 4.  (Note that assigning to i_nrpages can't
-> overflow, since the max number of pages is ULONG_MAX not ULONG_MAX + 1.)
+../fs/ext2/xattr.c:252:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:258:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:330:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:872:45: warning: suggest braces around empty body in an ‘else’ statement [-Wempty-body]
 
-I like where you're going with this.  Just to be on the safe side, I'd
-prefer to do this:
+I have verified that the only object code change (with gcc 7.5.0) is
+the reversal of some instructions from 'cmp a,b' to 'cmp b,a'.
 
-@@ -266,11 +266,8 @@ void __do_page_cache_readahead(struct address_space *mapping,
-        end_index = (isize - 1) >> PAGE_SHIFT;
-        if (index > end_index)
-                return;
--       /* Avoid wrapping to the beginning of the file */
--       if (index + nr_to_read < index)
--               nr_to_read = ULONG_MAX - index + 1;
-        /* Don't read past the page containing the last byte of the file */
--       if (index + nr_to_read >= end_index)
-+       if (nr_to_read > end_index - index)
-                nr_to_read = end_index - index + 1;
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Jan Kara <jack@suse.com>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext2/xattr.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+--- linux-next-20200320.orig/fs/ext2/xattr.c
++++ linux-next-20200320/fs/ext2/xattr.c
+@@ -56,6 +56,7 @@
  
-        page_cache_readahead_unbounded(mapping, file, index, nr_to_read,
+ #include <linux/buffer_head.h>
+ #include <linux/init.h>
++#include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/mbcache.h>
+ #include <linux/quotaops.h>
+@@ -84,8 +85,8 @@
+ 		printk("\n"); \
+ 	} while (0)
+ #else
+-# define ea_idebug(f...)
+-# define ea_bdebug(f...)
++# define ea_idebug(inode, f...)	no_printk(f)
++# define ea_bdebug(bh, f...)	no_printk(f)
+ #endif
+ 
+ static int ext2_xattr_set2(struct inode *, struct buffer_head *,
 
-end_index - index + 1 could only overflow if end_index is ULONG_MAX
-and index is 0.  But if end_index is ULONG_MAX and index is 0, then
-nr_to_read is necessarily <= ULONG_MAX, so the condition is false.
-And if nr_to_read is 0, then the condition is also false, so it won't
-increase nr_to_read from 0 to 1.  It might assign x to nr_to_read when
-nr_to_read is already x, but that's harmless.
-
-Thanks!
