@@ -7,28 +7,28 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	UNPARSEABLE_RELAY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB874C2D0E5
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 21:19:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2ACF2C43331
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 21:19:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CD77920719
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 21:19:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A28920719
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 21:19:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727430AbgCYVTA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 25 Mar 2020 17:19:00 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:39610 "EHLO
+        id S1727452AbgCYVTD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 25 Mar 2020 17:19:03 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:39614 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727351AbgCYVTA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Mar 2020 17:19:00 -0400
+        with ESMTP id S1727351AbgCYVTD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Mar 2020 17:19:03 -0400
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id AE03A292B0F
+        with ESMTPSA id 252AA2931B6
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH e2fsprogs 11/11] tests: f_bad_fname: Test fixes of invalid filenames and duplicates
-Date:   Wed, 25 Mar 2020 17:18:11 -0400
-Message-Id: <20200325211812.2971787-12-krisman@collabora.com>
+Subject: [PATCH e2fsprogs 11/11] tests: f_bad_fname: Validate fix of invalid  filenames and duplicates
+Date:   Wed, 25 Mar 2020 17:18:12 -0400
+Message-Id: <20200325211812.2971787-13-krisman@collabora.com>
 X-Mailer: git-send-email 2.25.0
 In-Reply-To: <20200325211812.2971787-1-krisman@collabora.com>
 References: <20200325211812.2971787-1-krisman@collabora.com>
