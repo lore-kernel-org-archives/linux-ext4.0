@@ -2,59 +2,103 @@ Return-Path: <SRS0=zR//=5K=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F765C43331
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 12:29:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59CD5C54FD0
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 14:43:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 70F3F20775
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 12:29:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 315CC2166E
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Mar 2020 14:43:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Vv9eLgcN"
+	dkim=fail reason="key not found in DNS" (0-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="YUccMzib"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727640AbgCYM24 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 25 Mar 2020 08:28:56 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:54074 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727177AbgCYM2b (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Mar 2020 08:28:31 -0400
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=ajDoCWrNrQy4SbrNkUXgQzxrcdJV8ZRIIVmz0mrQdAU=; b=Vv9eLgcN5cr+lGE0M1R4IcEO0i
-        e2CwpydyHZUjmPNIHQZVTBoc0v/3VuTBh9AWQc0Q2jtjmsd7VbLtyR36ojryyfs9M7/xcXXP2xSft
-        j6voVbCt9y/RHP1bIa5091ziwiT2U4pnjIl3oO3htdIDuyL/E9XkEaMAMN4XPjxrkTUk33HIB36YF
-        pesifJYGY8bihV+a1KE/A3keFRk5gVNTZsRa6gTM2staCWt+vjLzCBOZi9xnuQzxa1qlK+nt6FyKg
-        eUrNuFIsbcRN0cnZNKdWBlW0cJjigvHCr6q6iimKKazfjorKvr6FH1YDK+kbF5bXySJloPoW7KdPG
-        cD3XeF6w==;
-Received: from [2001:4bb8:18c:2a9e:999c:283e:b14a:9189] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jH591-0003Fx-4q; Wed, 25 Mar 2020 12:28:27 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Chao Yu <chao@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>, linux-xfs@vger.kernel.org
-Cc:     Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-kernel@vger.kernel.org
-Subject: lazytime fixes
-Date:   Wed, 25 Mar 2020 13:28:21 +0100
-Message-Id: <20200325122825.1086872-1-hch@lst.de>
-X-Mailer: git-send-email 2.25.1
+        id S1727872AbgCYOnO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 25 Mar 2020 10:43:14 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:34504 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727689AbgCYOnO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Mar 2020 10:43:14 -0400
+Received: by mail-io1-f68.google.com with SMTP id h131so2482402iof.1
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Mar 2020 07:43:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=szeredi.hu; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=BYoi0GgKGrZ5Iy05aE5oc1zP5UUaQTjapju/izAR4hI=;
+        b=YUccMzib2IwajwEuyLBHygiEi2x+yWevlxfsequqpaIt/Mza/TxUmFkitS3U4FkfKx
+         P1XwXxBJ8Cx5HEmhYoBLdWFHhmr6xou5YR2utppkELKcqyaDd4EOavtJNBW3boLnPkzx
+         WgZmdQ9YRsyheNZWEZrba/miSYKYdDAaziYyc=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=BYoi0GgKGrZ5Iy05aE5oc1zP5UUaQTjapju/izAR4hI=;
+        b=DnQDogCxDIOmppqLMea5pK+3E0eHVS/f9CTUE8bDVFWh/sdA7Yrvsr5pdEbTA/9fUy
+         ax8NFc5cL530myS5yj24A6FezkLuCstMgCdYZVC+PmGf/hcGFDf5MTTDVfeayrtWTjTw
+         sJpJFc8YC9o2SeRPjCGl/QfLL0MRqRWW/pcmeDjmqWvu4KskQT+EOuo3TXDYAyOLrMnT
+         DWFs4CMeoC44h1Qyq5x9YNWayHObVWWLPQPC7EMEJfAnsGV38rhnAkix/CyUh/mQYSoX
+         Q2iAOZatJV6R9+iSqw11BZcfjRqhYHtDUIJCgVRYcrgqSkdwvmNkk7R8UxQYi9GrWHRc
+         74dg==
+X-Gm-Message-State: ANhLgQ1Rgr+YioigeL1/aL9Z2NVTXEASnNb+1snu/jIMJG5GkXYardnH
+        5wU6imdlo/28cvKsvA3YLjVK6xYtdgBI11CmX52W7g==
+X-Google-Smtp-Source: ADFU+vsgMMqodCZqPGFNfCT+HdNRTtLLlUdy5AMnDcVBoatxWj+vZY48emoAVNd+HvHliFjTkg/kdF6pmkOGcZxuC6s=
+X-Received: by 2002:a6b:3a07:: with SMTP id h7mr3235359ioa.191.1585147393572;
+ Wed, 25 Mar 2020 07:43:13 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <20200323202259.13363-1-willy@infradead.org> <20200323202259.13363-25-willy@infradead.org>
+ <CAJfpegu7EFcWrg3bP+-2BX_kb52RrzBCo_U3QKYzUkZfe4EjDA@mail.gmail.com> <20200325120254.GA22483@bombadil.infradead.org>
+In-Reply-To: <20200325120254.GA22483@bombadil.infradead.org>
+From:   Miklos Szeredi <miklos@szeredi.hu>
+Date:   Wed, 25 Mar 2020 15:43:02 +0100
+Message-ID: <CAJfpegshssCJiA8PBcq2XvBj3mR8dufHb0zWRFvvKKv82VQYsw@mail.gmail.com>
+Subject: Re: [PATCH v10 24/25] fuse: Convert from readpages to readahead
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        ocfs2-devel@oss.oracle.com, linux-xfs <linux-xfs@vger.kernel.org>,
+        Dave Chinner <dchinner@redhat.com>,
+        William Kucharski <william.kucharski@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+On Wed, Mar 25, 2020 at 1:02 PM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> On Wed, Mar 25, 2020 at 10:42:56AM +0100, Miklos Szeredi wrote:
+> > > +       while ((page = readahead_page(rac))) {
+> > > +               if (fuse_readpages_fill(&data, page) != 0)
+> >
+> > Shouldn't this unlock + put page on error?
+>
+> We're certainly inconsistent between the two error exits from
+> fuse_readpages_fill().  But I think we can simplify the whole thing
+> ... how does this look to you?
 
-this is my take on Teds take on Erics bug report about ext4 inodes
-beeing kept dirty after sync.  After looking into the area I found
-a few other loose ends, so the series has grown a bit.
+Nice, overall.
+
+>
+> -       while ((page = readahead_page(rac))) {
+> -               if (fuse_readpages_fill(&data, page) != 0)
+> +               nr_pages = min(readahead_count(rac), fc->max_pages);
+
+Missing fc->max_read clamp.
+
+> +               ia = fuse_io_alloc(NULL, nr_pages);
+> +               if (!ia)
+>                         return;
+> +               ap = &ia->ap;
+> +               __readahead_batch(rac, ap->pages, nr_pages);
+
+nr_pages = __readahead_batch(...)?
+
+This will give consecutive pages, right?
+
+Thanks,
+Miklos
