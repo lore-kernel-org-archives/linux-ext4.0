@@ -2,48 +2,51 @@ Return-Path: <SRS0=kXIf=5R=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BF72C2D0F0
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:34:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 23122C2D0F3
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:35:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 319812082F
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:34:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E22A52082F
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:34:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585773298;
-	bh=Lkegc6/p8gRLQQ0hP6UVszjf/sI5WbF2HCMlwMjtYDA=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=dh9Lcf7XmloYBDg2QR71noEUlcUoEmAe7ZRfWOLlbYcMxqVkAPV2beY8S11/EtUhM
-	 QRkTWN45Bdd7uZyN/l8PLN/PKaOjBUjXUxYlYTHibpSPRAO0Me3yF+PJMyRnJBR0YU
-	 G7YUxdC2I4keafQb0Eo1zZXuWkREstGbMylsp2M8=
+	s=default; t=1585773300;
+	bh=asV0FOHdhlZH5ZrfsvPkfpWgqdAVrxpW3yMEjV5dxJ0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=fgVK9yjIJvR3Psql+tHLYiQhMjYlgeEj2jombZ5ikkH32QY20qQ12MG/9ZWZ4pI/H
+	 7umxyDdKZ3AliSxmqqwCCCjq83gxWz1eYBPmN7Jgt3zAoJNxvnaxHSqswacEvevXi5
+	 +xQeHBSyEFuhkWrQcQzLQoTi+TYPMe6Z43WW/sT4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732735AbgDAUe5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Apr 2020 16:34:57 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54400 "EHLO mail.kernel.org"
+        id S1733059AbgDAUe7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Apr 2020 16:34:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54406 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732821AbgDAUe4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 Apr 2020 16:34:56 -0400
+        id S1733018AbgDAUe5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 1 Apr 2020 16:34:57 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.76])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id ADCFF2082F;
-        Wed,  1 Apr 2020 20:34:55 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5B10A20BED;
+        Wed,  1 Apr 2020 20:34:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1585773295;
-        bh=Lkegc6/p8gRLQQ0hP6UVszjf/sI5WbF2HCMlwMjtYDA=;
-        h=From:To:Cc:Subject:Date:From;
-        b=1SDYC/nWbgmXoEIi916NjDiByqsEStNGZ/nU5PKwRbPJEhWdjVlKHM/2vPlFJeYVb
-         6wNaSAbcoKhw4E5du6kun0K/ROUKttnl1ppjKKmR+04s3XTu4U+EFT/CrZV6ayDSSj
-         ZmSeKsM431UmGqU7yw0YCv+qQNA5yOahyWtP3pWU=
+        s=default; t=1585773296;
+        bh=asV0FOHdhlZH5ZrfsvPkfpWgqdAVrxpW3yMEjV5dxJ0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=IbnBYal/8lTLmc4T5JqZG811IKIJIvFd+mt1bHZJ6avPcHMh1s2+feqKAkpBLah99
+         N1ci+2tv4x3FpvtcrC9MCHI8pUZjgvWxIJceQzpBV+wkvkRIvU4+NnfgVEdmB593eP
+         sHzbtmvCyto5Z1oqswH1R4AQQmzf7SSIK0kdFAx8=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org
-Subject: [PATCH 0/4] e2fsprogs: fix and document the stable_inodes feature
-Date:   Wed,  1 Apr 2020 13:32:35 -0700
-Message-Id: <20200401203239.163679-1-ebiggers@kernel.org>
+Subject: [PATCH 3/4] ext4.5: document the stable_inodes feature
+Date:   Wed,  1 Apr 2020 13:32:38 -0700
+Message-Id: <20200401203239.163679-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.26.0.rc2.310.g2932bb562d-goog
+In-Reply-To: <20200401203239.163679-1-ebiggers@kernel.org>
+References: <20200401203239.163679-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -51,25 +54,47 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fix tune2fs to not allow cases where IV_INO_LBLK_64-encrypted files
-(which can exist if the stable_inodes feature is set) could be broken:
+From: Eric Biggers <ebiggers@google.com>
 
-- Changing the filesystem's UUID
-- Clearing the stable_inodes feature
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ misc/ext4.5.in | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-Also document the stable_inodes feature in the appropriate places.
-
-Eric Biggers (4):
-  tune2fs: prevent changing UUID of fs with stable_inodes feature
-  tune2fs: prevent stable_inodes feature from being cleared
-  ext4.5: document the stable_inodes feature
-  tune2fs.8: document the stable_inodes feature
-
- misc/ext4.5.in    | 16 ++++++++++++++++
- misc/tune2fs.8.in |  7 +++++++
- misc/tune2fs.c    | 10 ++++++++--
- 3 files changed, 31 insertions(+), 2 deletions(-)
-
+diff --git a/misc/ext4.5.in b/misc/ext4.5.in
+index 1db61a5f..90bc4f88 100644
+--- a/misc/ext4.5.in
++++ b/misc/ext4.5.in
+@@ -299,6 +299,20 @@ feature is essentially a more extreme version of sparse_super and is
+ designed to allow a much larger percentage of the disk to have
+ contiguous blocks available for data files.
+ .TP
++.B stable_inodes
++.br
++Marks the filesystem's inode numbers and UUID as stable.
++.BR resize2fs (8)
++will not allow shrinking a filesystem with this feature, nor
++will
++.BR tune2fs (8)
++allow changing its UUID.  This feature allows the use of specialized encryption
++settings that make use of the inode numbers and UUID.  Note that the
++.B encrypt
++feature still needs to be enabled separately.
++.B stable_inodes
++is a "compat" feature, so old kernels will allow it.
++.TP
+ .B uninit_bg
+ .br
+ This ext4 file system feature indicates that the block group descriptors
+@@ -788,6 +802,8 @@ ext4, 4.13
+ ext4, 5.2
+ .IP "\fBverity\fR" 2i
+ ext4, 5.4
++.IP "\fBstable_inodes\fR" 2i
++ext4, 5.5
+ .SH SEE ALSO
+ .BR mke2fs (8),
+ .BR mke2fs.conf (5),
 -- 
 2.26.0.rc2.310.g2932bb562d-goog
 
