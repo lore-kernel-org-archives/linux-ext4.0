@@ -4,46 +4,46 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61D2FC2BA12
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:35:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC272C2D0F0
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:35:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2E1B22082F
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:35:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 858D420784
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Apr 2020 20:35:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1585773300;
-	bh=lULBR8F0SU6L1eL9eCxVWhUwtdadVqkQZEXiE+fSBDg=;
+	s=default; t=1585773312;
+	bh=+1NW6Mkzb7xHuLjpEh9AxTsAlZnBD98KP1zGLJyrNp0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=j01SHWisxcqyuCq0cQzThHx/lHNUr24TiJysMcRAR/yHzL3S7J5YONNAfqTe1Luho
-	 Jj8VJxlrwXDLyu1MGrcIn9FgxM/a3KRJYHdeI19G9q/FThIpgsNmt/IMo9iL8k+lSX
-	 Ws/RsNdx835wbI5GxZSTufhaGJxle33wXIoaZYok=
+	b=B0gHlMTeerwcqky29/qxt7lJescvgrXQUkb/ALs0Ls4tJm2tRJKbI0PBg4SG1UFxW
+	 SeoTVEh1e1No/pZABv+aPRKE1D6XuOQam/PmsE1gJYsYh5WT9lteyxeXXJrN2QwJeY
+	 oK2LA4olZdeoFSYvV0B1HZJFzlGLwyRgLGa7VLi4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733079AbgDAUe7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Apr 2020 16:34:59 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54404 "EHLO mail.kernel.org"
+        id S1733043AbgDAUe6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Apr 2020 16:34:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54408 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732786AbgDAUe4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 Apr 2020 16:34:56 -0400
+        id S1733021AbgDAUe5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 1 Apr 2020 16:34:57 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.76])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2571920B1F;
+        by mail.kernel.org (Postfix) with ESMTPSA id 916E92082F;
         Wed,  1 Apr 2020 20:34:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1585773296;
-        bh=lULBR8F0SU6L1eL9eCxVWhUwtdadVqkQZEXiE+fSBDg=;
+        bh=+1NW6Mkzb7xHuLjpEh9AxTsAlZnBD98KP1zGLJyrNp0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=LG9xQxSpDvgM5C/4tfXsZaQVf7bcZTBuaqmrlaAkHfkkaRxIqcP8UleAOy5gEF0U6
-         8jUqGj7rDE/o2uunhqjLEg0duip2YOZgEziQYH18PlNUgTHXYDadQYvCG+B8LR7fba
-         aI/GRP0n1aZSplg3ulxPWSeULykq6P/bt+65PTTU=
+        b=AqHoq1ighwkpVcshZ5YOjoAvrC09TNdJZ7b2h12P3Ev2MJuQQHm4sZgvnESK/64v/
+         WtuePhrsNA4fAHrtPvCFlLnRoQBOU0ejGI6psT4KFFpfUXBcqEiwbmEv/96fQRruWC
+         awizldlvg7/cIKcu5GJuX5G1tVWQZvXXKiMFvic8=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org
-Subject: [PATCH 2/4] tune2fs: prevent stable_inodes feature from being cleared
-Date:   Wed,  1 Apr 2020 13:32:37 -0700
-Message-Id: <20200401203239.163679-3-ebiggers@kernel.org>
+Subject: [PATCH 4/4] tune2fs.8: document the stable_inodes feature
+Date:   Wed,  1 Apr 2020 13:32:39 -0700
+Message-Id: <20200401203239.163679-5-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.26.0.rc2.310.g2932bb562d-goog
 In-Reply-To: <20200401203239.163679-1-ebiggers@kernel.org>
 References: <20200401203239.163679-1-ebiggers@kernel.org>
@@ -56,31 +56,29 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Similar to encrypt and verity, once the stable_inodes feature has been
-enabled there may be files anywhere on the filesystem that require this
-feature.  Therefore, in general it's unsafe to allow clearing it.  Don't
-allow tune2fs to do so.  Like encrypt and verity, it can still be
-cleared with debugfs if someone really knows what they're doing.
-
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/tune2fs.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ misc/tune2fs.8.in | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index ca06c98b..81f90cbf 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -181,8 +181,7 @@ static __u32 clear_ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX |
--		EXT4_FEATURE_COMPAT_FAST_COMMIT |
--		EXT4_FEATURE_COMPAT_STABLE_INODES,
-+		EXT4_FEATURE_COMPAT_FAST_COMMIT,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
+index 3cf1f5ed..582d1da5 100644
+--- a/misc/tune2fs.8.in
++++ b/misc/tune2fs.8.in
+@@ -630,6 +630,13 @@ Limit the number of backup superblocks to save space on large filesystems.
+ .B Tune2fs
+ currently only supports setting this filesystem feature.
+ .TP
++.B stable_inodes
++Prevent the filesystem from being shrunk or having its UUID changed, in order to
++allow the use of specialized encryption settings that make use of the inode
++numbers and UUID.
++.B Tune2fs
++currently only supports setting this filesystem feature.
++.TP
+ .B uninit_bg
+ Allow the kernel to initialize bitmaps and inode tables lazily, and to
+ keep a high watermark for the unused inodes in a filesystem, to reduce
 -- 
 2.26.0.rc2.310.g2932bb562d-goog
 
