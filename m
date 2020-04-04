@@ -2,60 +2,75 @@ Return-Path: <SRS0=PoyQ=5U=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.4 required=3.0 tests=FROM_LOCAL_HEX,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A52AC2BA1B
-	for <linux-ext4@archiver.kernel.org>; Sat,  4 Apr 2020 18:38:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 463E9C2BA1A
+	for <linux-ext4@archiver.kernel.org>; Sat,  4 Apr 2020 22:13:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7B181206F7
-	for <linux-ext4@archiver.kernel.org>; Sat,  4 Apr 2020 18:38:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D91A206F8
+	for <linux-ext4@archiver.kernel.org>; Sat,  4 Apr 2020 22:13:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726269AbgDDSiJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 4 Apr 2020 14:38:09 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56297 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726187AbgDDSiJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2020 14:38:09 -0400
-Received: from callcc.thunk.org (pool-72-93-95-157.bstnma.fios.verizon.net [72.93.95.157])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 034Ib7GU017545
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 4 Apr 2020 14:37:08 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 80DC1420021; Sat,  4 Apr 2020 14:37:07 -0400 (EDT)
-Date:   Sat, 4 Apr 2020 14:37:07 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     syzbot <syzbot+67e4f16db666b1c8253c@syzkaller.appspotmail.com>
-Cc:     a@unstable.cc, adilger.kernel@dilger.ca,
+        id S1726371AbgDDWNF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 4 Apr 2020 18:13:05 -0400
+Received: from mail-il1-f199.google.com ([209.85.166.199]:46154 "EHLO
+        mail-il1-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726323AbgDDWNE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2020 18:13:04 -0400
+Received: by mail-il1-f199.google.com with SMTP id n18so11060562ilp.13
+        for <linux-ext4@vger.kernel.org>; Sat, 04 Apr 2020 15:13:04 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:date:in-reply-to:message-id:subject
+         :from:to;
+        bh=bt/1x8EyTmuUIcBDvOOh7SgGrhssirnD/BYB/4tXepA=;
+        b=Z43v46tP3i1A4kJbSKAwz8QQI8ofKuegRK210KXCkQJySkh44vma1CwZy35cv/0gzp
+         15gX3Gb8cICijY02lXZoLmPATo2aOXxK6fwlWagvx3WD/b1IaVtsgjm3GsZHYvrEh1P5
+         DjXmUikLzIX4Zzr5iG5tJHGbkbqUAE4c1RsFsVWOaEVX3hUSbW+qxOC7vF2wCOwVYokw
+         OnnQa01LR169wAcAmf+b/PMo/yT4hGaP2xmdp8Ebx98iUatGNLEebTOd2FiiPxS4bCMj
+         hL311yB5RuPQRlj7iRdUY2DqKMy5rprKvCjE/dq5u1Uxwfk6w1EInoZGYnjhWYYgNSAv
+         rttQ==
+X-Gm-Message-State: AGi0PuaeZBhkWBL4/G53TyaKw/u/3NaYdaQ3Ne9rYyNMUh8xCy6OhZLw
+        IJbAC4mL67jZgU5m/kJU2JZokcPNuvH5AVXeu/jqkiMzamQe
+X-Google-Smtp-Source: APiQypKcRyVBeoiDWCvZb7tswqkam9aNeXGh+t+Ou4uEcCLuNQD/97y44iDElTiQg68XVts3nXfySRjVZo8xHnjk4aisV+oXHT50
+MIME-Version: 1.0
+X-Received: by 2002:a92:8183:: with SMTP id q3mr14989618ilk.43.1586038384055;
+ Sat, 04 Apr 2020 15:13:04 -0700 (PDT)
+Date:   Sat, 04 Apr 2020 15:13:04 -0700
+In-Reply-To: <20200404183707.GK45598@mit.edu>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <0000000000007b5aea05a27e5637@google.com>
+Subject: Re: WARNING in ext4_da_update_reserve_space
+From:   syzbot <syzbot+67e4f16db666b1c8253c@syzkaller.appspotmail.com>
+To:     a@unstable.cc, adilger.kernel@dilger.ca,
         b.a.t.m.a.n@diktynna.open-mesh.org, benh@kernel.crashing.org,
         davem@davemloft.net, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
         mareklindner@neomailbox.ch, mpe@ellerman.id.au,
         muriloo@linux.ibm.com, netdev@vger.kernel.org, paulus@samba.org,
-        sw@simonwunderlich.de, syzkaller-bugs@googlegroups.com
-Subject: Re: WARNING in ext4_da_update_reserve_space
-Message-ID: <20200404183707.GK45598@mit.edu>
-References: <0000000000008c5a4605a24cbb16@google.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0000000000008c5a4605a24cbb16@google.com>
+        sw@simonwunderlich.de, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-#syz test https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+Hello,
 
-I'm curious why this is only showing up as failing on next-next.
-Let's see if it fails on the ext4.git tree.
+syzbot has tested the proposed patch and the reproducer did not trigger crash:
 
-From the bisect logs syzbot is able to repro on all of v5.x and
-v4.20.0.  However, I'm not able to repro it using kvm with either
-v5.6-rc4 or the tip of the ext4 git tree.  So let's see what syzbot
-can do with the tip of the dev tree.
+Reported-and-tested-by: syzbot+67e4f16db666b1c8253c@syzkaller.appspotmail.com
 
-						- Ted
+Tested on:
+
+commit:         54d3adbc ext4: save all error info in save_error_info() an..
+git tree:       https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
+kernel config:  https://syzkaller.appspot.com/x/.config?x=4527d1e2fb19fd5c
+dashboard link: https://syzkaller.appspot.com/bug?extid=67e4f16db666b1c8253c
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+
+Note: testing is done by a robot and is best-effort only.
