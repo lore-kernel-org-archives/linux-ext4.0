@@ -5,65 +5,63 @@ X-Spam-Level:
 X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70837C2BABC
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 06:46:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7809C2BA16
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 06:46:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4739420692
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 06:46:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F32720692
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 06:46:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vCg/UzTd"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="R0m30E1N"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727104AbgDGGqe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Apr 2020 02:46:34 -0400
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:40875 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727003AbgDGGqd (ORCPT
+        id S1727089AbgDGGqd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Apr 2020 02:46:33 -0400
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:38241 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726767AbgDGGqd (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Apr 2020 02:46:33 -0400
-Received: by mail-pl1-f195.google.com with SMTP id h11so861150plk.7
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Apr 2020 23:46:33 -0700 (PDT)
+Received: by mail-pg1-f194.google.com with SMTP id m17so1256742pgj.5
+        for <linux-ext4@vger.kernel.org>; Mon, 06 Apr 2020 23:46:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=Ta8VeTPdYNXMmAei3xDhPMTgNBRynkarJJvWk6QAh/c=;
-        b=vCg/UzTdxAVAiW9l/1zUQMXkDwlua4BgxWhrq9eue55vbccNeSRM5dRESHA2R7kPiy
-         YhdG/GEDPWeeBLP9ksDRN1V5J6g0ZM+KpL+BS3XUHk4/68b9b/65B22GIr22sVLSlG49
-         3avIFCRJKDzI1Ey/hEdAkXAYQUzWn/O9znm7thK0fORQ9ts1YA+w8x8FXZIHB2EJ2uUS
-         jqYNaZBCOmx7lPP5mShV+TX/AR0PizxV3sJtBOakbvu8IR05D7EAY/AqJpoJNzFCYvQR
-         F31fXRfesIebfKVWAJC2RKUysh7boguLT/BZlYSdjf2DA1mxA0vkX9bjxNXYkoSIVo7i
-         ZTxg==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=Qo9HJleHnhtQYLxF9u8VYd6Sc7Y0UzG6zt0Ezh2rEgg=;
+        b=R0m30E1NkOUgomwJgxUJpblfKPNEuApovvQFdiccybK4xyeVR4YcLDc5eMUvAxLvhb
+         0UusL+VTPCGCEpJkZEidTZg8mxvo3vgWdfl23FGVRqe59IGbSlYpMgTYX96kSUYFJIUk
+         lDnWvnurZEJM8a5xPD01gOEuHimmozGMR8xT98onX6Vye/MXR1Yv9KEQ912UTjwZBpEG
+         bsbek+3q1Ccg/nZj4WzfsSsa7Wm/vkGTbfVgyAXexyR+k3PhKrjas+faSAbGVw0gubXu
+         DpDA2frwS/zFfSZWearwf+9NeTeu7+4tzF3MmdRJYzDTARE9xxH2ejFJ8+YDCM4uD69w
+         1fRA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=Ta8VeTPdYNXMmAei3xDhPMTgNBRynkarJJvWk6QAh/c=;
-        b=a4lc/E/pfTnQP5wpFDxaCAn6LwGg2xrYZwASjFACciLHyf3NEMFA92VQEYw1uV4mMi
-         6I34BvOVxTf0PgskvQeyWsyxwoy5KxvJFoIwjk8jIUpTpCwGQ+Nz6hUqxrb6WUwT2Q1q
-         fI1XrdGsmrOINcocRN5HYRejXwBPZwTUPK7f6I6aj1wDUayxOtUZQFmqxV4m2riI4tSf
-         Oxf/FqSSsN8KPzixMBPx4nm6pJR4PgSUAtQrqCG/os1SkXUjZfPevbRRCzwRd+9u7V8p
-         YXtIb4OmhE7FB0hmHqEcwYjEq2DiVK8Vb0Xo8q51JwS+xkgWKTgcDSm9y8LpCzFSBO8X
-         kC0A==
-X-Gm-Message-State: AGi0PuY7RLL2PJH6IYCEW6gxPGhkBNoVQFmA70w9fA5Q3v8WH+g9sZtY
-        j4bHAIN/oNl19Sh6T3O19D2KVEbK
-X-Google-Smtp-Source: APiQypIlHKEMULNNUZdic+5rLAREgmeXftD1+Z0C3vKCFy+HpAIeFxHbCOkY6vTFDmUyDKNEjcR0HQ==
-X-Received: by 2002:a17:90a:290a:: with SMTP id g10mr957828pjd.81.1586241992128;
-        Mon, 06 Apr 2020 23:46:32 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=Qo9HJleHnhtQYLxF9u8VYd6Sc7Y0UzG6zt0Ezh2rEgg=;
+        b=iF+ujUlV4TCTC8nFWPO4v3trwCJq9VWUFdYzvrV7BX9Cx+/yTUdczqpBt7D4QPTZfn
+         y7HMa/Bvw0I3fW0YiSHXO5+JNqJJIcS7sFJKcUHBM8i/4ztZdMH3pkrAkSwU5ZOTXPc/
+         9hjdya6kYJ0VL8nkPOlHIzvfFhK4uSOMt73St33wTsTlwB0JcuWCZYpfGVnsU4QQFJD2
+         HRx8MYuEl6zsUdbQmjrmYBjgOIzgGWWQzyyS0Ahc3jkbPkDnpGVb4V2hKbG2DBTHnPa1
+         xfOK9UgbV5mLty1Xu5X3Lzu/1106qP5xMqbcYS2ZwE7C4bBuDfOgRH9EAU84PPYdmxWv
+         ev4Q==
+X-Gm-Message-State: AGi0PubYrtZhHa0ZdBiSTmdbxQ2OZuuLt/SmutYLsW7MJSrgXSv1S4sv
+        A1rznp1yIQDI1BP+6g2AP2QCQxId
+X-Google-Smtp-Source: APiQypLaVfhcL5EkNWXlIb5Ry8mqcWLngRNhabbc6lzVuSnOiXFBwvOWxa7METF0h7da5Es+jdHwQA==
+X-Received: by 2002:aa7:970a:: with SMTP id a10mr1142063pfg.139.1586241990858;
+        Mon, 06 Apr 2020 23:46:30 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
-        by smtp.googlemail.com with ESMTPSA id g25sm5592030pfh.55.2020.04.06.23.46.31
+        by smtp.googlemail.com with ESMTPSA id g25sm5592030pfh.55.2020.04.06.23.46.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 06 Apr 2020 23:46:31 -0700 (PDT)
+        Mon, 06 Apr 2020 23:46:30 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     adilger@dilger.ca, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v2 3/3] ext4: reimplement ext4_empty_dir() using is_dirent_block_empty
-Date:   Mon,  6 Apr 2020 23:46:16 -0700
-Message-Id: <20200407064616.221459-3-harshadshirwadkar@gmail.com>
+Subject: [PATCH v2 1/3] ext4: return lblk from ext4_find_entry
+Date:   Mon,  6 Apr 2020 23:46:14 -0700
+Message-Id: <20200407064616.221459-1-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.26.0.292.g33ef6b2f38-goog
-In-Reply-To: <20200407064616.221459-1-harshadshirwadkar@gmail.com>
-References: <20200407064616.221459-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -71,79 +69,253 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The new function added in this patchset adds an efficient way to
-check if a dirent block is empty. Based on that, reimplement
-ext4_empty_dir().
-
-This is a new patch added in V2.
+This patch makes ext4_find_entry and related routines to return
+logical block address of the dirent block. This logical block address
+is used in the directory shrinking code to perform reverse lookup and
+verify that the lookup was successful.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/namei.c | 39 ++++++++++++++++-----------------------
- 1 file changed, 16 insertions(+), 23 deletions(-)
+ fs/ext4/namei.c | 54 +++++++++++++++++++++++++++++--------------------
+ 1 file changed, 32 insertions(+), 22 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 39360c442dad..dae7d15fba5c 100644
+index b05ea72f38fd..d567b9589875 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -3179,6 +3179,7 @@ bool ext4_empty_dir(struct inode *inode)
+@@ -295,7 +295,7 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
+ 				 __u32 *start_hash);
+ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 		struct ext4_filename *fname,
+-		struct ext4_dir_entry_2 **res_dir);
++		struct ext4_dir_entry_2 **res_dir, ext4_lblk_t *lblk);
+ static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
+ 			     struct inode *dir, struct inode *inode);
+ 
+@@ -1443,7 +1443,7 @@ static int is_dx_internal_node(struct inode *dir, ext4_lblk_t block,
+ static struct buffer_head *__ext4_find_entry(struct inode *dir,
+ 					     struct ext4_filename *fname,
+ 					     struct ext4_dir_entry_2 **res_dir,
+-					     int *inlined)
++					     int *inlined, ext4_lblk_t *lblk)
+ {
+ 	struct super_block *sb;
+ 	struct buffer_head *bh_use[NAMEI_RA_SIZE];
+@@ -1485,7 +1485,7 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
+ 		goto restart;
+ 	}
+ 	if (is_dx(dir)) {
+-		ret = ext4_dx_find_entry(dir, fname, res_dir);
++		ret = ext4_dx_find_entry(dir, fname, res_dir, lblk);
+ 		/*
+ 		 * On success, or if the error was file not found,
+ 		 * return.  Otherwise, fall back to doing a search the
+@@ -1588,7 +1588,8 @@ static struct buffer_head *__ext4_find_entry(struct inode *dir,
+ static struct buffer_head *ext4_find_entry(struct inode *dir,
+ 					   const struct qstr *d_name,
+ 					   struct ext4_dir_entry_2 **res_dir,
+-					   int *inlined)
++					   int *inlined,
++					   ext4_lblk_t *lblk)
+ {
+ 	int err;
+ 	struct ext4_filename fname;
+@@ -1600,7 +1601,7 @@ static struct buffer_head *ext4_find_entry(struct inode *dir,
+ 	if (err)
+ 		return ERR_PTR(err);
+ 
+-	bh = __ext4_find_entry(dir, &fname, res_dir, inlined);
++	bh = __ext4_find_entry(dir, &fname, res_dir, inlined, lblk);
+ 
+ 	ext4_fname_free_filename(&fname);
+ 	return bh;
+@@ -1620,7 +1621,7 @@ static struct buffer_head *ext4_lookup_entry(struct inode *dir,
+ 	if (err)
+ 		return ERR_PTR(err);
+ 
+-	bh = __ext4_find_entry(dir, &fname, res_dir, NULL);
++	bh = __ext4_find_entry(dir, &fname, res_dir, NULL, NULL);
+ 
+ 	ext4_fname_free_filename(&fname);
+ 	return bh;
+@@ -1628,7 +1629,8 @@ static struct buffer_head *ext4_lookup_entry(struct inode *dir,
+ 
+ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ 			struct ext4_filename *fname,
+-			struct ext4_dir_entry_2 **res_dir)
++			struct ext4_dir_entry_2 **res_dir,
++			ext4_lblk_t *lblk)
+ {
+ 	struct super_block * sb = dir->i_sb;
+ 	struct dx_frame frames[EXT4_HTREE_LEVEL], *frame;
+@@ -1675,6 +1677,8 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
+ errout:
+ 	dxtrace(printk(KERN_DEBUG "%s not found\n", fname->usr_fname->name));
+ success:
++	if (lblk)
++		*lblk = block;
+ 	dx_release(frames);
+ 	return bh;
+ }
+@@ -1743,7 +1747,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
+ 	struct ext4_dir_entry_2 * de;
+ 	struct buffer_head *bh;
+ 
+-	bh = ext4_find_entry(d_inode(child), &dotdot, &de, NULL);
++	bh = ext4_find_entry(d_inode(child), &dotdot, &de, NULL, NULL);
+ 	if (IS_ERR(bh))
+ 		return ERR_CAST(bh);
+ 	if (!bh)
+@@ -2495,7 +2499,7 @@ int ext4_generic_delete_entry(handle_t *handle,
+ static int ext4_delete_entry(handle_t *handle,
+ 			     struct inode *dir,
+ 			     struct ext4_dir_entry_2 *de_del,
+-			     struct buffer_head *bh)
++			     struct buffer_head *bh, ext4_lblk_t lblk)
+ {
+ 	int err, csum_size = 0;
+ 
+@@ -3091,6 +3095,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
  	struct buffer_head *bh;
  	struct ext4_dir_entry_2 *de;
- 	struct super_block *sb;
+ 	handle_t *handle = NULL;
 +	ext4_lblk_t lblk;
  
- 	if (ext4_has_inline_data(inode)) {
- 		int has_inline_data = 1;
-@@ -3218,34 +3219,26 @@ bool ext4_empty_dir(struct inode *inode)
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+ 		return -EIO;
+@@ -3105,7 +3110,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 		return retval;
+ 
+ 	retval = -ENOENT;
+-	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
++	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL, &lblk);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
+ 	if (!bh)
+@@ -3132,7 +3137,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	retval = ext4_delete_entry(handle, dir, de, bh);
++	retval = ext4_delete_entry(handle, dir, de, bh, lblk);
+ 	if (retval)
+ 		goto end_rmdir;
+ 	if (!EXT4_DIR_LINK_EMPTY(inode))
+@@ -3178,6 +3183,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
+ 	handle_t *handle = NULL;
++	ext4_lblk_t lblk;
+ 
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+ 		return -EIO;
+@@ -3193,7 +3199,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 		return retval;
+ 
+ 	retval = -ENOENT;
+-	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
++	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL, &lblk);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
+ 	if (!bh)
+@@ -3216,7 +3222,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (IS_DIRSYNC(dir))
+ 		ext4_handle_sync(handle);
+ 
+-	retval = ext4_delete_entry(handle, dir, de, bh);
++	retval = ext4_delete_entry(handle, dir, de, bh, lblk);
+ 	if (retval)
+ 		goto end_unlink;
+ 	dir->i_ctime = dir->i_mtime = current_time(dir);
+@@ -3564,19 +3570,20 @@ static int ext4_find_delete_entry(handle_t *handle, struct inode *dir,
+ 	int retval = -ENOENT;
+ 	struct buffer_head *bh;
+ 	struct ext4_dir_entry_2 *de;
++	ext4_lblk_t lblk;
+ 
+-	bh = ext4_find_entry(dir, d_name, &de, NULL);
++	bh = ext4_find_entry(dir, d_name, &de, NULL, &lblk);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
+ 	if (bh) {
+-		retval = ext4_delete_entry(handle, dir, de, bh);
++		retval = ext4_delete_entry(handle, dir, de, bh, lblk);
  		brelse(bh);
- 		return true;
  	}
--	offset += ext4_rec_len_from_disk(de->rec_len, sb->s_blocksize);
--	while (offset < inode->i_size) {
--		if (!(offset & (sb->s_blocksize - 1))) {
--			unsigned int lblock;
--			brelse(bh);
--			lblock = offset >> EXT4_BLOCK_SIZE_BITS(sb);
--			bh = ext4_read_dirblock(inode, lblock, EITHER);
--			if (bh == NULL) {
--				offset += sb->s_blocksize;
--				continue;
--			}
--			if (IS_ERR(bh))
--				return true;
--		}
--		de = (struct ext4_dir_entry_2 *) (bh->b_data +
--					(offset & (sb->s_blocksize - 1)));
--		if (ext4_check_dir_entry(inode, NULL, de, bh,
--					 bh->b_data, bh->b_size, offset)) {
--			offset = (offset | (sb->s_blocksize - 1)) + 1;
-+	de = ext4_next_entry(de, sb->s_blocksize);
-+	if (!is_empty_dirent_block(inode, bh, de)) {
-+		brelse(bh);
-+		return false;
-+	}
-+	brelse(bh);
-+
-+	for (lblk = 1; lblk < inode->i_size >> EXT4_BLOCK_SIZE_BITS(sb);
-+			lblk++) {
-+		bh = ext4_read_dirblock(inode, lblk, EITHER);
-+		if (bh == NULL)
- 			continue;
--		}
--		if (le32_to_cpu(de->inode)) {
-+		if (IS_ERR(bh))
-+			return true;
-+		if (!is_empty_dirent_block(inode, bh, NULL)) {
- 			brelse(bh);
- 			return false;
- 		}
--		offset += ext4_rec_len_from_disk(de->rec_len, sb->s_blocksize);
-+		brelse(bh);
- 	}
--	brelse(bh);
- 	return true;
+ 	return retval;
  }
  
+ static void ext4_rename_delete(handle_t *handle, struct ext4_renament *ent,
+-			       int force_reread)
++			       int force_reread, ext4_lblk_t lblk)
+ {
+ 	int retval;
+ 	/*
+@@ -3593,7 +3600,8 @@ static void ext4_rename_delete(handle_t *handle, struct ext4_renament *ent,
+ 		retval = ext4_find_delete_entry(handle, ent->dir,
+ 						&ent->dentry->d_name);
+ 	} else {
+-		retval = ext4_delete_entry(handle, ent->dir, ent->de, ent->bh);
++		retval = ext4_delete_entry(handle, ent->dir, ent->de, ent->bh,
++					   lblk);
+ 		if (retval == -ENOENT) {
+ 			retval = ext4_find_delete_entry(handle, ent->dir,
+ 							&ent->dentry->d_name);
+@@ -3679,6 +3687,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *whiteout = NULL;
+ 	int credits;
+ 	u8 old_file_type;
++	ext4_lblk_t lblk;
+ 
+ 	if (new.inode && new.inode->i_nlink == 0) {
+ 		EXT4_ERROR_INODE(new.inode,
+@@ -3706,7 +3715,8 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			return retval;
+ 	}
+ 
+-	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de, NULL);
++	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name, &old.de, NULL,
++				 &lblk);
+ 	if (IS_ERR(old.bh))
+ 		return PTR_ERR(old.bh);
+ 	/*
+@@ -3720,7 +3730,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		goto end_rename;
+ 
+ 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
+-				 &new.de, &new.inlined);
++				 &new.de, &new.inlined, NULL);
+ 	if (IS_ERR(new.bh)) {
+ 		retval = PTR_ERR(new.bh);
+ 		new.bh = NULL;
+@@ -3817,7 +3827,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		/*
+ 		 * ok, that's it
+ 		 */
+-		ext4_rename_delete(handle, &old, force_reread);
++		ext4_rename_delete(handle, &old, force_reread, lblk);
+ 	}
+ 
+ 	if (new.inode) {
+@@ -3900,7 +3910,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		return retval;
+ 
+ 	old.bh = ext4_find_entry(old.dir, &old.dentry->d_name,
+-				 &old.de, &old.inlined);
++				 &old.de, &old.inlined, NULL);
+ 	if (IS_ERR(old.bh))
+ 		return PTR_ERR(old.bh);
+ 	/*
+@@ -3914,7 +3924,7 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		goto end_rename;
+ 
+ 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
+-				 &new.de, &new.inlined);
++				 &new.de, &new.inlined, NULL);
+ 	if (IS_ERR(new.bh)) {
+ 		retval = PTR_ERR(new.bh);
+ 		new.bh = NULL;
 -- 
 2.26.0.292.g33ef6b2f38-goog
 
