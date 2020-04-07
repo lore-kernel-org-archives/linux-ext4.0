@@ -2,76 +2,78 @@ Return-Path: <SRS0=+Zzc=5X=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FAB1C2BABC
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 05:10:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B1F21C2BA16
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 05:22:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5DDD7206F7
-	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 05:10:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586236247;
-	bh=LrP4qK/nKXJou4CrEHzskTPTyVibkrMcNhchAtVAB8s=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=qzAP/vCOOBKUvNC8NJCEXqE5wFT3gfJEf/LwAha9K6yPDM5ZF9UdDpA8ZdZR+rMHO
-	 /s2OlWw1m9iMxDmaYvs+ibLN+iLj2dYBT6dzhwzN7XhaVxB/u616BB+g1JsybzR5GU
-	 QQwIt2v2oGLn9LohBR3ZzFIpSZ4K/gEpJoxLXBIE=
+	by mail.kernel.org (Postfix) with ESMTP id 82756206F7
+	for <linux-ext4@archiver.kernel.org>; Tue,  7 Apr 2020 05:22:20 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vKuQGUlh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726736AbgDGFKq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Apr 2020 01:10:46 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49952 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726399AbgDGFKq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 7 Apr 2020 01:10:46 -0400
-Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id F3F1C206F7;
-        Tue,  7 Apr 2020 05:10:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586236246;
-        bh=LrP4qK/nKXJou4CrEHzskTPTyVibkrMcNhchAtVAB8s=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=T8MCAp4TEd0MlYgVplDrrq+E/pcMFFb8u2O54OnF0gqVxEsIqQ2FdXSX89ipHlGqL
-         RtyvWJVYkaP4vSH44kth8LGTjxwXY1lTANUaNZN0tlX7SpGYGcs0j5czUQZe6nyxUe
-         zuXYuRINreX7ufgKcMYfgkTo+VEtdMAyzIN17Jvc=
-Date:   Mon, 6 Apr 2020 22:10:44 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Andreas Dilger <adilger@dilger.ca>
-Cc:     linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
-Subject: Re: [PATCH 4/4] tune2fs.8: document the stable_inodes feature
-Message-ID: <20200407051044.GB102437@sol.localdomain>
-References: <20200401203239.163679-1-ebiggers@kernel.org>
- <20200401203239.163679-5-ebiggers@kernel.org>
- <0AB7921E-98F6-430C-87BB-63D1330885CE@dilger.ca>
+        id S1726692AbgDGFWU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 7 Apr 2020 01:22:20 -0400
+Received: from mail-pf1-f182.google.com ([209.85.210.182]:37936 "EHLO
+        mail-pf1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725802AbgDGFWT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Apr 2020 01:22:19 -0400
+Received: by mail-pf1-f182.google.com with SMTP id c21so269002pfo.5
+        for <linux-ext4@vger.kernel.org>; Mon, 06 Apr 2020 22:22:18 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:subject:to:in-reply-to:references:mime-version:content-id:date
+         :message-id;
+        bh=2b6/5hDTzERECLz7PqTEgkLnwDsZ+FbAPtHdBq4mVhc=;
+        b=vKuQGUlhoLO4sJSKkdUnwodhK3ooAGMO44BAPKwyLhi/HBVG9xvosRdgP45WqCROXA
+         E0PlpEySC79lEjAci0enuKEpCyxIca2hrPwPgZmBlXHHoEKwYjs8UQZuU+mmCxLdkYhb
+         O5CkCYDrQtQ5DMdSWTQXaEDm78CBFj+2LE83llklUZNNNIwK5fjhEG3kxvG36KT+ul7z
+         1BGGALYovX11DnhL+Y/I0Y2b4ShbnyHJ+cYJhmDLP/3vxTlp1wgrdLxnIruzSwgCkbW4
+         NKSr3HNvsOI+sjHa6NyDkY2hbzftrnMFEUJtVGfuAg1f+pejmVY1ulet7prNtVdO5AyB
+         8sTg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:subject:to:in-reply-to:references
+         :mime-version:content-id:date:message-id;
+        bh=2b6/5hDTzERECLz7PqTEgkLnwDsZ+FbAPtHdBq4mVhc=;
+        b=HQ74F1oqf9PhCGeYZCaHX5w6jb6JIoY8jWxD2v0wUfmwKhtAWw6Iv52nZb1ig/KLH1
+         vdabQ317AJFAEyiLizLp0mV1HGgwfN5VOBYXqEuWBZaoNyYS4RHe6CMPxHWJWaOm68hV
+         n8vUAglguCqxLEL6wuR4/tO5qzQrNDmwNxMN6hNe2el3QoKCzEiFyCHw/WRg6kDq9drq
+         44R1mNDsjGwt0cIrR+LPbLy7rfJxZsf8frnFq+Jt1HwTiskWrdgQy7GsuY/v9W5kgx+t
+         FIBW22/nRGQ27zAHX1lmGDAvrebtU1pd1v1TFI4uQ7ztTAEpEH7tvQC0sce95orTo9aZ
+         2hFw==
+X-Gm-Message-State: AGi0PubkvHPzFAanUdCKfoDoXH4Nlty8c5tMNfAslm3/Fh0hTgJihf6K
+        2Gu1+uuc/CBIqybFo5I+mn6if5Uk
+X-Google-Smtp-Source: APiQypLjK4VXweEbl44binr7XfFwuassbjmuyvHbjNZHDC1A9RwdREjUB+gfewf4ocxIE4EwzhMR2Q==
+X-Received: by 2002:a65:4249:: with SMTP id d9mr354527pgq.198.1586236938284;
+        Mon, 06 Apr 2020 22:22:18 -0700 (PDT)
+Received: from jromail.nowhere (h219-110-108-104.catv02.itscom.jp. [219.110.108.104])
+        by smtp.gmail.com with ESMTPSA id h64sm12718308pfg.191.2020.04.06.22.22.17
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 06 Apr 2020 22:22:17 -0700 (PDT)
+Received: from localhost ([127.0.0.1] helo=jrobl) by jrobl id 1jLggi-0004db-K1 ; Tue, 07 Apr 2020 14:22:16 +0900
+From:   "J. R. Okajima" <hooanon05g@gmail.com>
+Subject: Re: [PATCH v2] ext2: Silence lockdep warning about reclaim under xattr_sem
+To:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+In-Reply-To: <21323.1586173821@jrobl>
+References: <20200225120803.7901-1-jack@suse.cz> <30602.1586151377@jrobl> <20200406102148.GC1143@quack2.suse.cz> <21323.1586173821@jrobl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <0AB7921E-98F6-430C-87BB-63D1330885CE@dilger.ca>
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <17829.1586236936.1@jrobl>
+Date:   Tue, 07 Apr 2020 14:22:16 +0900
+Message-ID: <17830.1586236936@jrobl>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 01, 2020 at 08:12:14PM -0600, Andreas Dilger wrote:
-> On Apr 1, 2020, at 2:32 PM, Eric Biggers <ebiggers@kernel.org> wrote:
-> > 
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
-> 
-> IMHO, it would be better if the updates to the man pages were in the same
-> patch as the patch to misc/tune2fs.c.
-> 
-> That said, it's better than *not* getting an update to the man page, so:
-> 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> 
+> I will post "the fix passed my local stress test" tomorrow.
 
-Well, I should have included a man page update when adding '-O stable_inodes'
-originally several months ago.  But now it's just being updated, and it makes
-more sense to have separate patches for fixes and new documentation.
+I did my long stress test many times.
+And the fix passed my local stress test.
 
-- Eric
+Thank you
+J. R. Okajima
