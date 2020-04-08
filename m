@@ -2,66 +2,66 @@ Return-Path: <SRS0=dDCy=5Y=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68664C2BA2B
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14572C2BB54
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3ED682082D
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D1FB320730
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pGS90TMN"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Cco/J1RA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726740AbgDHVzz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 17:55:55 -0400
-Received: from mail-pj1-f65.google.com ([209.85.216.65]:52782 "EHLO
-        mail-pj1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726708AbgDHVzw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:52 -0400
-Received: by mail-pj1-f65.google.com with SMTP id ng8so402685pjb.2
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:51 -0700 (PDT)
+        id S1726761AbgDHVz5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 17:55:57 -0400
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:33517 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726702AbgDHVzz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:55 -0400
+Received: by mail-pf1-f193.google.com with SMTP id c138so3733871pfc.0
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=dr8n2yn6EsOkSCTVHEoi4j033Jna0CorAOaC29kYXiY=;
-        b=pGS90TMNR8dT7aGyiqnzvPStg7bShXeFnoexEVQlmw44USrlaiCCAFXmYu+ZzJFP+p
-         06gvGp42O5GVmWr5ZV2UBBwh81cp7Ic5WFe2T04aHeQuiZqC2PPuM61V8L4skWH/x+xt
-         XV1jgtlkF0GowJ1F848ZB0z2sIeJLfwq01+xsOIU3LuNN++HkL0l5hM2WvTGNhvXupOl
-         ZQm1DfzXKWs6xDr304t9ORl2ktck0l6GPVtBCFLUBAvayl0HnmRzynog1PRfuQWQiIuE
-         i+8hTNLu1pJDTju2pAhZA896V/Yvtygx8K5o/BMRRCw52g1xW5dvzSeRCS++dGmAkPIQ
-         pdcQ==
+        bh=xpBJs4b8LdhljW/mbELyC+7Lt7EHv44g0hNPCugQeCA=;
+        b=Cco/J1RAjpj/6AjOuwb55YBbAacUCjs9l0lz3mgG3dj4Nw97onQrhKlzu9V32YmaSO
+         AXXBlxa6lrMKy//aiJvr+DmzbQK+RCwkhJa4TwtSayVEXAVDhjtoboGDvcU06FwHRmeg
+         EREiEyvcrNjjqzQvYuKPy+fCWAKNwSWWeSGkNPB3GIMda6tHUAWmNXkD+vV/TDS9dhg9
+         JqlV9ZTLHgdqKKwgR74Vqpd5U6pPOPL3WlByOsyzEfggeOf71OKbUjTDruzLhaInd9BL
+         XR+oIGXQzTUySpI86BOKM1ja6PPGtoT7Fck9GhuV9aru7xTvmcYgQL7/q/HLmv8RV207
+         XN4w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=dr8n2yn6EsOkSCTVHEoi4j033Jna0CorAOaC29kYXiY=;
-        b=Ov9NVLUs8/vkB7Yzz1rdasMxGiPeVGE6PABcVQHa0cPRvTtAoBuK2YuhixYiD62G5f
-         2NjGEPZ5+J+mSk5uJ7rzj0kLUNuDI93jl6/9wHd4GRDs0j4mxHbev6Syy2hz2BZCLhxN
-         gb3lRzDHB+B9dqLM3owukgygVv5vpT6VCBDEx/h8gZi1mYsV0KfBMPpMD4+7bMNIr9w6
-         Ug8ZHzWi/A8vz82S0v0KiOr2yV2S7qYjyz/CcE78H/7n8rAG0G69/AkhiT4dFkdo0tm3
-         NEdpkcjKl6It+wuF+hGiqlT63R9pC3midSRN0W6u/szJ6vXL5QURyzcZIVkVLqblWCHj
-         OJ7Q==
-X-Gm-Message-State: AGi0Pubt1sYNcE5vh9/Zz8s6x8TT5FXVrulQaqqLTuG2UiqaRUDe1xXF
-        HKUh65o7wG2T9ovlDcmyDuaZTj/K
-X-Google-Smtp-Source: APiQypLnCMarMLM7QZmzqykWNAJpkSiMtNmszW8HeYmri7j7Vmoh6G+uhPPBJzZa3psv/b9B4NhQZg==
-X-Received: by 2002:a17:90a:ba09:: with SMTP id s9mr7927495pjr.20.1586382950492;
-        Wed, 08 Apr 2020 14:55:50 -0700 (PDT)
+        bh=xpBJs4b8LdhljW/mbELyC+7Lt7EHv44g0hNPCugQeCA=;
+        b=FB+/4fhulJlTBjd+g20mMM6h4o9a82RS/QVt089efbZ3z9uJ0fP1NenugQM7ccgmi+
+         jPqEzmJ2W/sqJ980mN3aiBOsHJBakhnHBgGNTSW/S/nRd7TyTrIryvlMzHPznpz9Rbw2
+         eQGHl4fl0S8Wo00/ZhtLQgtEU4VKPyaXErQOIINETc3gRY+f7Nsv2qLqQQV5TH6V7782
+         twWOfGR/eGZQQiGwBmAXGatG7RG9mO5do7z5CopVHXQPSypg8nW/3vOafwOLF1R+bJpP
+         CzVN0TOpw/sS3xyzcC0yaC0B5sI9Sy1v7orbLVKUlSJCIPN5CyHYYahm/cVdCA70xmiO
+         EhgQ==
+X-Gm-Message-State: AGi0PuYLL01LT1X3RE80rfTEC9ZhY9nbhVdkPAO40A8y79031Hr39R5X
+        nWZYZcPqZLNSoH1T1bz5v6w/1pJD
+X-Google-Smtp-Source: APiQypLTSWSMQg33yOSOnyHy9AuA8n4wYOGR9TivDenZDOi0i+jqBpxj4Psyt1vYvwRtzRM7NDx0Iw==
+X-Received: by 2002:a63:721a:: with SMTP id n26mr8883861pgc.386.1586382953746;
+        Wed, 08 Apr 2020 14:55:53 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
-        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.49
+        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 08 Apr 2020 14:55:50 -0700 (PDT)
+        Wed, 08 Apr 2020 14:55:53 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 X-Google-Original-From: Harshad Shirwadkar <harshads@google.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v6 08/20] ext4: add directory entry tracking routines
-Date:   Wed,  8 Apr 2020 14:55:18 -0700
-Message-Id: <20200408215530.25649-8-harshads@google.com>
+Subject: [PATCH v6 13/20] jbd2: add new APIs for commit path of fast commits
+Date:   Wed,  8 Apr 2020 14:55:23 -0700
+Message-Id: <20200408215530.25649-13-harshads@google.com>
 X-Mailer: git-send-email 2.26.0.110.g2183baf09c-goog
 In-Reply-To: <20200408215530.25649-1-harshads@google.com>
 References: <20200408215530.25649-1-harshads@google.com>
@@ -74,284 +74,182 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-Adds directory entry change tracking routines for fast commits. Use an
-in-memory list of directory updates to track directory entry updates.
+Add following helpers for commit path:
+- jbd2_map_fc_buf() - allocates fast commit buffers for caller
+- jbd2_wait_on_fc_bufs() - waits on fast commit buffers allocated
+			   using jbd2_map_fc_buf()
+- jbd2_submit_inode_data() - submit data buffers for one inode
+- jbd2_wait_inode_data() - wait for inode data
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/ext4.h              |  26 +++++++++
- fs/ext4/ext4_jbd2.c         | 102 ++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4_jbd2.h         |   4 ++
- fs/ext4/super.c             |   7 +++
- include/trace/events/ext4.h |  28 ++++++++++
- 5 files changed, 167 insertions(+)
+ fs/jbd2/commit.c     | 40 +++++++++++++++++++++++
+ fs/jbd2/journal.c    | 76 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |  6 ++++
+ 3 files changed, 122 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c07ab844c335..669ecf12d392 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -950,6 +950,26 @@ enum {
- };
- 
- 
-+/* Fast commit tags */
-+#define EXT4_FC_TAG_ADD_RANGE		0x1
-+#define EXT4_FC_TAG_DEL_RANGE		0x2
-+#define EXT4_FC_TAG_CREAT_DENTRY	0x3
-+#define EXT4_FC_TAG_ADD_DENTRY		0x4
-+#define EXT4_FC_TAG_DEL_DENTRY		0x5
-+
-+/*
-+ * In memory list of dentry updates that are performed on the file
-+ * system used by fast commit code.
-+ */
-+struct ext4_fc_dentry_update {
-+	int fcd_op;		/* Type of update create / add / del */
-+	int fcd_parent;		/* Parent inode number */
-+	int fcd_ino;		/* Inode number */
-+	struct qstr fcd_name;	/* Dirent name qstr */
-+	unsigned char fcd_iname[DNAME_INLINE_LEN];	/* Dirent name string */
-+	struct list_head fcd_list;
-+};
-+
- /*
-  * fourth extended file system inode data in memory
-  */
-@@ -1009,6 +1029,11 @@ struct ext4_inode_info {
- 
- 	rwlock_t i_fc_lock;
- 
-+	/*
-+	 * Last mdata / dirent update that happened on this inode.
-+	 */
-+	struct ext4_fc_dentry_update *i_fc_mdata_update;
-+
- 	/*
- 	 * i_disksize keeps track of what the inode size is ON DISK, not
- 	 * in memory.  During truncate, i_size is set to the new size by
-@@ -1598,6 +1623,7 @@ struct ext4_sb_info {
- 	struct list_head s_fc_q;	/* Inodes staged for fast commit
- 					 * that have data changes in them.
- 					 */
-+	struct list_head s_fc_dentry_q;
- 	spinlock_t s_fc_lock;
- };
- 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 151a4558c338..ccaaf1c09ba6 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -368,6 +368,8 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
- 	return err;
- }
- 
-+static struct kmem_cache *ext4_fc_dentry_cachep;
-+
- static inline
- void ext4_reset_inode_fc_info(struct inode *inode)
- {
-@@ -376,6 +378,7 @@ void ext4_reset_inode_fc_info(struct inode *inode)
- 	ei->i_fc_tid = 0;
- 	ei->i_fc_lblk_start = 0;
- 	ei->i_fc_lblk_end = 0;
-+	ei->i_fc_mdata_update = NULL;
- }
- 
- void ext4_init_inode_fc_info(struct inode *inode)
-@@ -444,6 +447,94 @@ static int __ext4_fc_track_template(
- 
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 280d11591bcb..2ef2dfb029e4 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -202,6 +202,46 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping,
  	return ret;
  }
-+
-+struct __ext4_dentry_update_args {
-+	struct dentry *dentry;
-+	int op;
-+};
-+
-+static int __ext4_dentry_update(struct inode *inode, void *arg, bool update)
+ 
++/* Send all the data buffers related to an inode */
++int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode)
 +{
-+	struct ext4_fc_dentry_update *node;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct __ext4_dentry_update_args *dentry_update =
-+		(struct __ext4_dentry_update_args *)arg;
-+	struct dentry *dentry = dentry_update->dentry;
-+
-+	write_unlock(&ei->i_fc_lock);
-+	node = kmem_cache_alloc(ext4_fc_dentry_cachep, GFP_NOFS);
-+	if (!node) {
-+		write_lock(&ei->i_fc_lock);
-+		return -ENOMEM;
-+	}
-+
-+	node->fcd_op = dentry_update->op;
-+	node->fcd_parent = dentry->d_parent->d_inode->i_ino;
-+	node->fcd_ino = inode->i_ino;
-+	if (dentry->d_name.len > DNAME_INLINE_LEN) {
-+		node->fcd_name.name = kmalloc(dentry->d_name.len + 1,
-+						GFP_KERNEL);
-+		if (!node->fcd_iname) {
-+			kmem_cache_free(ext4_fc_dentry_cachep, node);
-+			return -ENOMEM;
-+		}
-+		memcpy((u8 *)node->fcd_name.name, dentry->d_name.name,
-+			dentry->d_name.len);
-+	} else {
-+		memcpy(node->fcd_iname, dentry->d_name.name,
-+			dentry->d_name.len);
-+		node->fcd_name.name = node->fcd_iname;
-+	}
-+	node->fcd_name.len = dentry->d_name.len;
-+
-+	spin_lock(&EXT4_SB(inode->i_sb)->s_fc_lock);
-+	list_add_tail(&node->fcd_list, &EXT4_SB(inode->i_sb)->s_fc_dentry_q);
-+	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
-+	write_lock(&ei->i_fc_lock);
-+	EXT4_I(inode)->i_fc_mdata_update = node;
-+
-+	return 0;
-+}
-+
-+void ext4_fc_track_unlink(struct inode *inode, struct dentry *dentry)
-+{
-+	struct __ext4_dentry_update_args args;
++	struct address_space *mapping;
++	loff_t dirty_start;
++	loff_t dirty_end;
 +	int ret;
 +
-+	args.dentry = dentry;
-+	args.op = EXT4_FC_TAG_DEL_DENTRY;
++	if (!jinode)
++		return 0;
 +
-+	ret = __ext4_fc_track_template(inode, __ext4_dentry_update,
-+				       (void *)&args);
-+	trace_ext4_fc_track_unlink(inode, dentry, ret);
++	dirty_start = jinode->i_dirty_start;
++	dirty_end = jinode->i_dirty_end;
++
++	if (!(jinode->i_flags & JI_WRITE_DATA))
++		return 0;
++
++	dirty_start = jinode->i_dirty_start;
++	dirty_end = jinode->i_dirty_end;
++
++	mapping = jinode->i_vfs_inode->i_mapping;
++
++	trace_jbd2_submit_inode_data(jinode->i_vfs_inode);
++	ret = journal_submit_inode_data_buffers(mapping, dirty_start,
++						dirty_end);
++
++	return ret;
 +}
++EXPORT_SYMBOL(jbd2_submit_inode_data);
 +
-+void ext4_fc_track_link(struct inode *inode, struct dentry *dentry)
++int jbd2_wait_inode_data(journal_t *journal, struct jbd2_inode *jinode)
 +{
-+	struct __ext4_dentry_update_args args;
-+	int ret;
-+
-+	args.dentry = dentry;
-+	args.op = EXT4_FC_TAG_ADD_DENTRY;
-+
-+	ret = __ext4_fc_track_template(inode, __ext4_dentry_update,
-+				       (void *)&args);
-+	trace_ext4_fc_track_link(inode, dentry, ret);
++	if (!jinode || !(jinode->i_flags & JI_WAIT_DATA))
++		return 0;
++	return filemap_fdatawait_range_keep_errors(
++		jinode->i_vfs_inode->i_mapping, jinode->i_dirty_start,
++		jinode->i_dirty_end);
 +}
++EXPORT_SYMBOL(jbd2_wait_inode_data);
 +
-+void ext4_fc_track_create(struct inode *inode, struct dentry *dentry)
-+{
-+	struct __ext4_dentry_update_args args;
-+	int ret;
-+
-+	args.dentry = dentry;
-+	args.op = EXT4_FC_TAG_CREAT_DENTRY;
-+
-+	ret = __ext4_fc_track_template(inode, __ext4_dentry_update,
-+				       (void *)&args);
-+	trace_ext4_fc_track_create(inode, dentry, ret);
-+}
-+
- struct __ext4_fc_track_range_args {
- 	ext4_lblk_t start, end;
- };
-@@ -494,3 +585,14 @@ void ext4_init_fast_commit(struct super_block *sb, journal_t *journal)
- 		return;
- 	jbd2_init_fast_commit(journal, EXT4_NUM_FC_BLKS);
+ /*
+  * Submit all the data buffers of inode associated with the transaction to
+  * disk.
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index d3897d155fb9..e4e0b55dd077 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -864,6 +864,82 @@ int jbd2_journal_next_log_block(journal_t *journal, unsigned long long *retp)
+ 	return jbd2_journal_bmap(journal, blocknr, retp);
  }
-+
-+int __init ext4_init_fc_dentry_cache(void)
+ 
++/* Map one fast commit buffer for use by the file system */
++int jbd2_map_fc_buf(journal_t *journal, struct buffer_head **bh_out)
 +{
-+	ext4_fc_dentry_cachep = KMEM_CACHE(ext4_fc_dentry_update,
-+					   SLAB_RECLAIM_ACCOUNT);
++	unsigned long long pblock;
++	unsigned long blocknr;
++	int ret = 0;
++	struct buffer_head *bh;
++	int fc_off;
++	journal_header_t *jhdr;
 +
-+	if (ext4_fc_dentry_cachep == NULL)
++	write_lock(&journal->j_state_lock);
++
++	if (journal->j_fc_off + journal->j_first_fc < journal->j_last_fc) {
++		fc_off = journal->j_fc_off;
++		blocknr = journal->j_first_fc + fc_off;
++		journal->j_fc_off++;
++	} else {
++		ret = -EINVAL;
++	}
++	write_unlock(&journal->j_state_lock);
++
++	if (ret)
++		return ret;
++
++	ret = jbd2_journal_bmap(journal, blocknr, &pblock);
++	if (ret)
++		return ret;
++
++	bh = __getblk(journal->j_dev, pblock, journal->j_blocksize);
++	if (!bh)
 +		return -ENOMEM;
++
++	lock_buffer(bh);
++	jhdr = (journal_header_t *)bh->b_data;
++	jhdr->h_magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
++	jhdr->h_blocktype = cpu_to_be32(JBD2_FC_BLOCK);
++	jhdr->h_sequence = cpu_to_be32(journal->j_running_transaction->t_tid);
++
++	set_buffer_uptodate(bh);
++	unlock_buffer(bh);
++	journal->j_fc_wbuf[fc_off] = bh;
++
++	*bh_out = bh;
 +
 +	return 0;
 +}
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 06d1e4a885b7..8fbd09dbfeca 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -534,4 +534,8 @@ void ext4_init_fast_commit(struct super_block *sb, journal_t *journal);
- void ext4_init_inode_fc_info(struct inode *inode);
- void ext4_fc_track_range(struct inode *inode, ext4_lblk_t start,
- 			 ext4_lblk_t end);
-+void ext4_fc_track_unlink(struct inode *inode, struct dentry *dentry);
-+void ext4_fc_track_link(struct inode *inode, struct dentry *dentry);
-+void ext4_fc_track_create(struct inode *inode, struct dentry *dentry);
-+int __init ext4_init_fc_dentry_cache(void);
- #endif	/* _EXT4_JBD2_H */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 99b24156933a..a93dada07623 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4421,6 +4421,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	mutex_init(&sbi->s_orphan_lock);
- 
- 	INIT_LIST_HEAD(&sbi->s_fc_q);
-+	INIT_LIST_HEAD(&sbi->s_fc_dentry_q);
- 	spin_lock_init(&sbi->s_fc_lock);
- 	sb->s_root = NULL;
- 
-@@ -6249,6 +6250,11 @@ static int __init ext4_init_fs(void)
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
++EXPORT_SYMBOL(jbd2_map_fc_buf);
 +
-+	err = ext4_init_fc_dentry_cache();
-+	if (err)
-+		goto out05;
++/*
++ * Wait on fast commit buffers that were allocated by jbd2_map_fc_buf
++ * for completion.
++ */
++int jbd2_wait_on_fc_bufs(journal_t *journal, int num_blks)
++{
++	struct buffer_head *bh;
++	int i, j_fc_off;
 +
- 	register_as_ext3();
- 	register_as_ext2();
- 	err = register_filesystem(&ext4_fs_type);
-@@ -6259,6 +6265,7 @@ static int __init ext4_init_fs(void)
- out:
- 	unregister_as_ext2();
- 	unregister_as_ext3();
-+out05:
- 	destroy_inodecache();
- out1:
- 	ext4_exit_mballoc();
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 9424ffb2a54b..577c6230b23a 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -2723,6 +2723,34 @@ TRACE_EVENT(ext4_error,
- 		  __entry->function, __entry->line)
- );
++	read_lock(&journal->j_state_lock);
++	j_fc_off = journal->j_fc_off;
++	read_unlock(&journal->j_state_lock);
++
++	/*
++	 * Wait in reverse order to minimize chances of us being woken up before
++	 * all IOs have completed
++	 */
++	for (i = j_fc_off - 1; i >= j_fc_off - num_blks; i--) {
++		bh = journal->j_fc_wbuf[i];
++		wait_on_buffer(bh);
++		if (unlikely(!buffer_uptodate(bh)))
++			return -EIO;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(jbd2_wait_on_fc_bufs);
++
+ /*
+  * Conversion of logical to physical block numbers for the journal
+  *
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 0a4d9d484528..599113bef67f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -123,6 +123,7 @@ typedef struct journal_s	journal_t;	/* Journal control structure */
+ #define JBD2_SUPERBLOCK_V1	3
+ #define JBD2_SUPERBLOCK_V2	4
+ #define JBD2_REVOKE_BLOCK	5
++#define JBD2_FC_BLOCK		6
  
-+#define DEFINE_TRACE_DENTRY_EVENT(__type)				\
-+	TRACE_EVENT(ext4_fc_track_##__type,				\
-+	    TP_PROTO(struct inode *inode, struct dentry *dentry, int ret), \
-+									\
-+	    TP_ARGS(inode, dentry, ret),				\
-+									\
-+	    TP_STRUCT__entry(						\
-+		    __field(dev_t, dev)					\
-+		    __field(int, ino)					\
-+		    __field(int, error)					\
-+		    ),							\
-+									\
-+	    TP_fast_assign(						\
-+		    __entry->dev = inode->i_sb->s_dev;			\
-+		    __entry->ino = inode->i_ino;			\
-+		    __entry->error = ret;				\
-+		    ),							\
-+									\
-+	    TP_printk("dev %d:%d, inode %d, error %d, fc_%s",		\
-+		      MAJOR(__entry->dev), MINOR(__entry->dev),		\
-+		      __entry->ino, __entry->error,			\
-+		      #__type)						\
-+	)
+ /*
+  * Standard header for all descriptor blocks:
+@@ -1562,6 +1563,11 @@ int jbd2_start_async_fc_nowait(journal_t *journal, tid_t tid);
+ int jbd2_start_async_fc_wait(journal_t *journal, tid_t tid);
+ void jbd2_stop_async_fc(journal_t *journal, tid_t tid);
+ void jbd2_init_fast_commit(journal_t *journal, int num_fc_blks);
++int jbd2_map_fc_buf(journal_t *journal, struct buffer_head **bh_out);
++int jbd2_wait_on_fc_bufs(journal_t *journal, int num_blks);
++int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode);
++int jbd2_wait_inode_data(journal_t *journal, struct jbd2_inode *jinode);
 +
-+DEFINE_TRACE_DENTRY_EVENT(create);
-+DEFINE_TRACE_DENTRY_EVENT(link);
-+DEFINE_TRACE_DENTRY_EVENT(unlink);
-+
- TRACE_EVENT(ext4_fc_track_range,
- 	    TP_PROTO(struct inode *inode, long start, long end, int ret),
- 
+ /*
+  * is_journal_abort
+  *
 -- 
 2.26.0.110.g2183baf09c-goog
 
