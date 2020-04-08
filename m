@@ -2,268 +2,168 @@ Return-Path: <SRS0=dDCy=5Y=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2325C2BA2B
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:28:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9169C2D0F4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 74CA920771
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:28:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A7F9C20730
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:55:48 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="pI/Ke2eb"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="d+WilaVc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729731AbgDHV2o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 17:28:44 -0400
-Received: from mail-ed1-f67.google.com ([209.85.208.67]:36732 "EHLO
-        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729615AbgDHV2o (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:28:44 -0400
-Received: by mail-ed1-f67.google.com with SMTP id i7so10650343edq.3
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:28:42 -0700 (PDT)
+        id S1726690AbgDHVzs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 17:55:48 -0400
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:39251 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726684AbgDHVzr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:47 -0400
+Received: by mail-pf1-f195.google.com with SMTP id k15so3074881pfh.6
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=intel-com.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=gsc90LPV5vuebvWSwowSniEuuhSDnHS3fNotzCrMHhI=;
-        b=pI/Ke2eb3jkjDRXlYPpj3VkVyEJR335iPpo7DsBKOj3g+DjMNeZJvrbuvyfq267OUD
-         4I7dyDJsclQ5Slr540XjTRPHixi7zmEpnJbFNdrNPHGDhdR50DfloDptknHgyMIdpzbg
-         +WLguh/vuRJiMIUGJsbXd21ZCz0w3EwbKD2oPW2TCb/WITmelq+YNrw74a1YeDapL9IM
-         0UVEJDV/xqFxic1LVguPMWHIax948Z3G5lH3pCNHB7nyS8N+6MiW7SNMEuDx41bQqr/o
-         XwWla1TJ1Cpdx1w3dRFYLcVNTKUZee16zXqvVoociuElI8kaSzpd8d2REh/aJHXedYW1
-         1U7Q==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=6a9hHcVkp4224GllHFBq6W3vTwEZAExmZ8j+JbKkY7M=;
+        b=d+WilaVcevP6z3hb7n9vci21GmtKIKlXtN1HC8Z0T7ver5Gfu8HhRKDToRaJZUMBqm
+         9DdWBtC0dVeftlkWE59LJC/zVgiRfunGuFbC6js9ohCPb7jeVg3p8OhlVAvE+w0n2pQa
+         3PvXYW/IbhcPJnltd2redMs/5HOUZqv3KzIU0jYY3R+S+bTcAUKo1dQzMTHLpAV18etB
+         PygIneS9+x7fy4yukgMPH2YcQzv0Gvzj+I7RTrPtFaiRfTNU47evYehYctv+ByuaaJVy
+         JeQZXzvWWftt+GX0DIUrGWL05KuMG07L8ZVNWvBWBBeEDExcSrpvTdeyBxHO1JGAWnbW
+         gnsA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=gsc90LPV5vuebvWSwowSniEuuhSDnHS3fNotzCrMHhI=;
-        b=Mq37MGcjT8+zWgKt9NWTbYJZ8shRBqsod8BB5tORyhNvBXjQx10yNTVuKj2MWDjtQ2
-         Ld7K+e0ywowH8WI2C1iDQ2TkItfT6aJ8AytV6lABNLUiCyZ6cfbGbVcIMmgbHmGJF/bp
-         d8yylIFZ0iVlBvnFiAiFaFhh0LoggqkHeh5RORGWgDtOHsKqrr2dhVLkK+AkGzZSv9If
-         bwbahTl7kXkWt/gfFIToXSWkHHwr5sVwGGY7t2AxBtdG13ARIgfNls77brKZGa8klV+N
-         keQ3x7OzIuxDwlLUlZ63bwlYMKwT92wwBv/0K1J5w9+LXz6/PWwmAGHHB4gIjOE2m1XL
-         TE4g==
-X-Gm-Message-State: AGi0PuZYtQBJShho3XH1h8mPymal7TExPnBDkShZu3Ot7+BP+kQ2zamZ
-        1A6QBZU3dJKAwhfAQV5rZWIYd/jxTvUidPcWgVe7bA==
-X-Google-Smtp-Source: APiQypJk5ijyBzx01h6/nF0/FztOREeQcwbT2SBq1CK12n6G3N8IiyFCzIyOVWUiYtoBKEH4Kr8GDj8vGyt7ncuxacA=
-X-Received: by 2002:a17:907:1185:: with SMTP id uz5mr4432200ejb.335.1586381321924;
- Wed, 08 Apr 2020 14:28:41 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=6a9hHcVkp4224GllHFBq6W3vTwEZAExmZ8j+JbKkY7M=;
+        b=rPjsu7qt0RrKWwCV/xHwKTPxSqsgXacoUp2ECv0n3zJ0/ScdI15pJ/0s7oXdHZrYqg
+         7nJ/rW6l9dfIGYiXPihxlYwzdfox9U4CxhtJwZ0Gcmur9w2TFWOQjJTTgOSnGD7A0M4d
+         QM9FD9rcZs2sEeztSXcVecIxBFzzCo6LXI2E3yx+ANyGaUlAyQKgdLzPTXeKfbXKSBFt
+         sZaBLz50Sl1iA0odbnH3Lb1eU9WYpSoC86J4rQb8n1BfIrBqL+9UxPhN88GJp/lJsy2L
+         dFCMEClTr9sXVXjx0L7RCz3LVwe/EOYIs1nw4qbOArd6vgKElyuU1BhZt32kcg1uLZN5
+         XoZQ==
+X-Gm-Message-State: AGi0PubwsbeJh7qyn1Z/D9E8o9gf3Cr24d//L/MsEF2eOvcRjxmCKTm3
+        ++APf6QTGDcYlLH8dEcTYPcmFeqe
+X-Google-Smtp-Source: APiQypIX46WwhczoksCz77lvlBzxZijOhxX/reknlqElCEA0RVL5qPyX0qkPMTcGnf/SbFLgNzNpGg==
+X-Received: by 2002:a63:2158:: with SMTP id s24mr3551071pgm.336.1586382946147;
+        Wed, 08 Apr 2020 14:55:46 -0700 (PDT)
+Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
+        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.45
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 08 Apr 2020 14:55:45 -0700 (PDT)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+X-Google-Original-From: Harshad Shirwadkar <harshads@google.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Subject: [PATCH v6 02/20] ext4: add handling for extended mount options
+Date:   Wed,  8 Apr 2020 14:55:12 -0700
+Message-Id: <20200408215530.25649-2-harshads@google.com>
+X-Mailer: git-send-email 2.26.0.110.g2183baf09c-goog
+In-Reply-To: <20200408215530.25649-1-harshads@google.com>
+References: <20200408215530.25649-1-harshads@google.com>
 MIME-Version: 1.0
-References: <20200407182958.568475-1-ira.weiny@intel.com> <20200407182958.568475-7-ira.weiny@intel.com>
- <20200408020827.GI24067@dread.disaster.area> <20200408170923.GC569068@iweiny-DESK2.sc.intel.com>
- <20200408210236.GK24067@dread.disaster.area>
-In-Reply-To: <20200408210236.GK24067@dread.disaster.area>
-From:   Dan Williams <dan.j.williams@intel.com>
-Date:   Wed, 8 Apr 2020 14:28:30 -0700
-Message-ID: <CAPcyv4gLvMSA9BypvWbYtv3xsK8o4+db3kvxBozUGAjr_sDDFQ@mail.gmail.com>
-Subject: Re: [PATCH V6 6/8] fs/xfs: Combine xfs_diflags_to_linux() and xfs_diflags_to_iflags()
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 8, 2020 at 2:02 PM Dave Chinner <david@fromorbit.com> wrote:
->
-> On Wed, Apr 08, 2020 at 10:09:23AM -0700, Ira Weiny wrote:
-> > On Wed, Apr 08, 2020 at 12:08:27PM +1000, Dave Chinner wrote:
-> > > On Tue, Apr 07, 2020 at 11:29:56AM -0700, ira.weiny@intel.com wrote:
-> > > > From: Ira Weiny <ira.weiny@intel.com>
-> >
-> > [snip]
-> >
-> > > >
-> > > > -STATIC void
-> > > > -xfs_diflags_to_linux(
-> > > > - struct xfs_inode        *ip)
-> > > > -{
-> > > > - struct inode            *inode = VFS_I(ip);
-> > > > - unsigned int            xflags = xfs_ip2xflags(ip);
-> > > > -
-> > > > - if (xflags & FS_XFLAG_IMMUTABLE)
-> > > > -         inode->i_flags |= S_IMMUTABLE;
-> > > > - else
-> > > > -         inode->i_flags &= ~S_IMMUTABLE;
-> > > > - if (xflags & FS_XFLAG_APPEND)
-> > > > -         inode->i_flags |= S_APPEND;
-> > > > - else
-> > > > -         inode->i_flags &= ~S_APPEND;
-> > > > - if (xflags & FS_XFLAG_SYNC)
-> > > > -         inode->i_flags |= S_SYNC;
-> > > > - else
-> > > > -         inode->i_flags &= ~S_SYNC;
-> > > > - if (xflags & FS_XFLAG_NOATIME)
-> > > > -         inode->i_flags |= S_NOATIME;
-> > > > - else
-> > > > -         inode->i_flags &= ~S_NOATIME;
-> > > > -#if 0    /* disabled until the flag switching races are sorted out */
-> > > > - if (xflags & FS_XFLAG_DAX)
-> > > > -         inode->i_flags |= S_DAX;
-> > > > - else
-> > > > -         inode->i_flags &= ~S_DAX;
-> > > > -#endif
-> > >
-> > > So this variant will set the flag in the inode if the disk inode
-> > > flag is set, otherwise it will clear it.  It does it with if/else
-> > > branches.
-> > >
-> > >
-> > > > diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-> > > > index e07f7b641226..a4ac8568c8c7 100644
-> > > > --- a/fs/xfs/xfs_iops.c
-> > > > +++ b/fs/xfs/xfs_iops.c
-> > > > @@ -1259,7 +1259,7 @@ xfs_inode_supports_dax(
-> > > >   return xfs_inode_buftarg(ip)->bt_daxdev != NULL;
-> > > >  }
-> > > >
-> > > > -STATIC bool
-> > > > +static bool
-> > > >  xfs_inode_enable_dax(
-> > > >   struct xfs_inode *ip)
-> > > >  {
-> > >
-> > > This belongs in the previous patch.
-> >
-> > Ah yea...  Sorry.
-> >
-> > Fixed in V7
-> >
-> > >
-> > > > @@ -1272,26 +1272,38 @@ xfs_inode_enable_dax(
-> > > >   return false;
-> > > >  }
-> > > >
-> > > > -STATIC void
-> > > > +void
-> > > >  xfs_diflags_to_iflags(
-> > > > - struct inode            *inode,
-> > > > - struct xfs_inode        *ip)
-> > > > + struct xfs_inode        *ip,
-> > > > + bool init)
-> > > >  {
-> > > > - uint16_t                flags = ip->i_d.di_flags;
-> > > > -
-> > > > - inode->i_flags &= ~(S_IMMUTABLE | S_APPEND | S_SYNC |
-> > > > -                     S_NOATIME | S_DAX);
-> > >
-> > > And this code cleared all the flags in the inode first, then
-> > > set them if the disk inode flag is set. This does not require
-> > > branches, resulting in more readable code and better code
-> > > generation.
-> > >
-> > > > + struct inode            *inode = VFS_I(ip);
-> > > > + uint                    diflags = xfs_ip2xflags(ip);
-> > > >
-> > > > - if (flags & XFS_DIFLAG_IMMUTABLE)
-> > > > + if (diflags & FS_XFLAG_IMMUTABLE)
-> > > >           inode->i_flags |= S_IMMUTABLE;
-> > > > - if (flags & XFS_DIFLAG_APPEND)
-> > > > + else
-> > > > +         inode->i_flags &= ~S_IMMUTABLE;
-> > >
-> > > > + if (diflags & FS_XFLAG_APPEND)
-> > > >           inode->i_flags |= S_APPEND;
-> > > > - if (flags & XFS_DIFLAG_SYNC)
-> > > > + else
-> > > > +         inode->i_flags &= ~S_APPEND;
-> > > > + if (diflags & FS_XFLAG_SYNC)
-> > > >           inode->i_flags |= S_SYNC;
-> > > > - if (flags & XFS_DIFLAG_NOATIME)
-> > > > + else
-> > > > +         inode->i_flags &= ~S_SYNC;
-> > > > + if (diflags & FS_XFLAG_NOATIME)
-> > > >           inode->i_flags |= S_NOATIME;
-> > > > - if (xfs_inode_enable_dax(ip))
-> > > > -         inode->i_flags |= S_DAX;
-> > > > + else
-> > > > +         inode->i_flags &= ~S_NOATIME;
-> > > > +
-> > > > + /* Only toggle the dax flag when initializing */
-> > > > + if (init) {
-> > > > +         if (xfs_inode_enable_dax(ip))
-> > > > +                 inode->i_flags |= S_DAX;
-> > > > +         else
-> > > > +                 inode->i_flags &= ~S_DAX;
-> > > > + }
-> > > >  }
-> > >
-> > > IOWs, this:
-> > >
-> > >         struct inode            *inode = VFS_I(ip);
-> > >         unsigned int            xflags = xfs_ip2xflags(ip);
-> > >         unsigned int            flags = 0;
-> > >
-> > >         if (xflags & FS_XFLAG_IMMUTABLE)
-> > >                 flags |= S_IMMUTABLE;
-> > >         if (xflags & FS_XFLAG_APPEND)
-> > >                 flags |= S_APPEND;
-> > >         if (xflags & FS_XFLAG_SYNC)
-> > >                 flags |= S_SYNC;
-> > >         if (xflags & FS_XFLAG_NOATIME)
-> > >                 flags |= S_NOATIME;
-> > >     if ((xflags & FS_XFLAG_DAX) && init)
-> > >             flags |= S_DAX;
-> > >
-> > >         inode->i_flags &= ~(S_IMMUTABLE | S_APPEND | S_SYNC | S_NOATIME);
-> > >         inode->i_flags |= flags;
-> > >
-> > > ends up being much easier to read and results in better code
-> > > generation. And we don't need to clear the S_DAX flag when "init" is
-> > > set, because we are starting from an inode that has no flags set
-> > > (because init!)...
-> >
-> > This sounds good but I think we need a slight modification to make the function equivalent in functionality.
-> >
-> > void
-> > xfs_diflags_to_iflags(
-> >         struct xfs_inode        *ip,
-> >         bool init)
-> > {
-> >         struct inode            *inode = VFS_I(ip);
-> >         unsigned int            xflags = xfs_ip2xflags(ip);
-> >         unsigned int            flags = 0;
-> >
-> >         inode->i_flags &= ~(S_IMMUTABLE | S_APPEND | S_SYNC | S_NOATIME |
-> >                             S_DAX);
->
-> We don't want to clear the dax flag here, ever, if it is already
-> set. That is an externally visible change and opens us up (again) to
-> races where IS_DAX() changes half way through a fault path. IOWs, avoiding
-> clearing the DAX flag was something I did explicitly in the above
-> code fragment.
->
-> And it makes the logic clearer by pre-calculating the new flags,
-> then clearing and setting the inode flags together, rather than
-> having the spearated at the top and bottom of the function.
->
-> THis leads to an obvious conclusion: if we never clear the in memory
-> S_DAX flag, we can actually clear the on-disk flag safely, so that
-> next time the inode cycles into memory it won't be using DAX. IOWs,
-> admins can stop the applications, clear the DAX flag and drop
-> caches. This should result in the inode being recycled and when the
-> app is restarted it will run without DAX. No ned for deleting files,
-> copying large data sets, etc just to turn off an inode flag.
+From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-Makes sense, but is that sufficient? I recall you saying there might
-be a multitude of other reasons that the inode is not evicted, not the
-least of which is races [1]. Does this need another flag, lets call it
-"dax toggle" to track the "I requested the inode to clear the flag,
-but on cache-flush + restart the inode never got evicted" case. S_DAX
-almost plays this role, but it loses the ability to audit which files
-are pending an inode eviction event. So the dax-toggle flag indicates
-to the kernel to xor the toggle value with the inode flag on inode
-instantiation and the dax inode flag is never directly manipulated by
-the ioctl path.
+We are running out of mount option bits. Add handling for using
+s_mount_opt2. Add ability to turn on / off the fast commit
+feature and to turn on / off fast commit soft consistency option.
 
-[1]: http://lore.kernel.org/r/20191025003603.GE4614@dread.disaster.area
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+---
+ fs/ext4/ext4.h  |  7 +++++++
+ fs/ext4/super.c | 23 +++++++++++++++++++----
+ 2 files changed, 26 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 91eb4381cae5..7c3d89007eca 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1172,6 +1172,13 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT2_EXPLICIT_JOURNAL_CHECKSUM	0x00000008 /* User explicitly
+ 						specified journal checksum */
+ 
++#define EXT4_MOUNT2_JOURNAL_FAST_COMMIT	0x00000010 /* Journal fast commit */
++
++#define EXT4_MOUNT2_JOURNAL_FC_SOFT_CONSISTENCY	0x00000020 /* Soft consistency
++							    * mode for fast
++							    * commits
++							    */
++
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+ #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9728e7b0e84f..70aaea283a63 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1523,6 +1523,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
++	Opt_no_fc, Opt_fc_soft_consistency
+ };
+ 
+ static const match_table_t tokens = {
+@@ -1606,6 +1607,8 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable=%u"},
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
++	{Opt_no_fc, "no_fc"},
++	{Opt_fc_soft_consistency, "fc_soft_consistency"},
+ 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+ 	{Opt_nombcache, "nombcache"},
+@@ -1728,6 +1731,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+ #define MOPT_NO_EXT3	0x0200
+ #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
+ #define MOPT_STRING	0x0400
++#define MOPT_2		0x0800
+ 
+ static const struct mount_opts {
+ 	int	token;
+@@ -1820,6 +1824,10 @@ static const struct mount_opts {
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+ 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
++	{Opt_no_fc, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
++	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
++	{Opt_fc_soft_consistency, EXT4_MOUNT2_JOURNAL_FC_SOFT_CONSISTENCY,
++	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
+ 	{Opt_err, 0, 0}
+ };
+ 
+@@ -2110,10 +2118,17 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			WARN_ON(1);
+ 			return -1;
+ 		}
+-		if (arg != 0)
+-			sbi->s_mount_opt |= m->mount_opt;
+-		else
+-			sbi->s_mount_opt &= ~m->mount_opt;
++		if (m->flags & MOPT_2) {
++			if (arg != 0)
++				sbi->s_mount_opt2 |= m->mount_opt;
++			else
++				sbi->s_mount_opt2 &= ~m->mount_opt;
++		} else {
++			if (arg != 0)
++				sbi->s_mount_opt |= m->mount_opt;
++			else
++				sbi->s_mount_opt &= ~m->mount_opt;
++		}
+ 	}
+ 	return 1;
+ }
+-- 
+2.26.0.110.g2183baf09c-goog
+
