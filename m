@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D86D7C2D0EA
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:45:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E60C0C2D0EA
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:45:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9FD5820747
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:45:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AB25120747
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:45:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lkho6Ftn"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="f4fEqESC"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728100AbgDHKpe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 06:45:34 -0400
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:43049 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726734AbgDHKpe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 06:45:34 -0400
-Received: by mail-pf1-f194.google.com with SMTP id l1so291911pff.10
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 03:45:33 -0700 (PDT)
+        id S1728206AbgDHKpl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 06:45:41 -0400
+Received: from mail-pj1-f68.google.com ([209.85.216.68]:53124 "EHLO
+        mail-pj1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728173AbgDHKpl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 06:45:41 -0400
+Received: by mail-pj1-f68.google.com with SMTP id ng8so1002669pjb.2
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 03:45:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=lc8WOSneON5fyvmGzcBdv7Ou/aKbYA1P3kpRhP1zndU=;
-        b=lkho6Ftn499rOzvVF6zufVTrFaeIW8103fVXIDeQCZGRcmKc8/2LvDTOzGf5uz8+uN
-         H3pDz95z9cVhvVqKeVfLLdl+9/gAPDCZQfx97ihoZVWGnGpKH/Uqiydt1YUsmT0AnD+l
-         LKOWGU4jX2l2b/rTqwVg5wLo3ytaAoJJhZnHyXt9Iw9EGj+OzgWrv2Nf2LS1P9InXoYB
-         j/EzVwEvaZUYZ2hw/1mXVEVZJI1x10QkxAL0lMZBScLw2aTDgm0p/meCeB24fOgbPRtE
-         mHsPUnKkURc20BDX7ICLVRtkn573OS/DcriKmDPsuYQHi6SnJ0RgT5cWuWWqumcJIkfw
-         8LwQ==
+        bh=31GUYr+hjKDs7YNLdUYhGFexT5oZx4Og0VokEOkoOJA=;
+        b=f4fEqESC3OdE+P+AZsObq8SoWBmsgLAoHzTJ3Wb26Rv9Y7w2zfT85P4MygiWxMjqy4
+         G3JEBnTo3m2BEkppn8dIvGkbUfT+nq2etI6ZiJDFPjtO9YRvqjbmRpaZ9NbRaqP9yUTd
+         JkhYAHR72J79C/c+EM8vKdDCdfQ6+/1HXCFzQ/939RqUHnPSFeyyD6Cun1RsA2w5w4Nt
+         T9ySRC/g9SFTt7u731lAcCA8JI3LufYfKHmaQoy8HAdEpia9bDXPRxWbwXfq9kJj7/+0
+         bfAeD7RgN7Q4p0Yq5DhDw2waK7FMEbRtJg/xB1aT3wM7hruTqys2dsqNdEYnNw+ny73S
+         v3ZA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=lc8WOSneON5fyvmGzcBdv7Ou/aKbYA1P3kpRhP1zndU=;
-        b=RbFEcwT+wz6AHZHplMre4G6z7pJ1/7p+2XwFuYXBAuPBz/toFG4H4diebleRGhWXBJ
-         5Td0BuzZMMz2Er6TA9T6Jd0BtI5wRzNmF/1dVLlUtLNCTXKx9AvPAnJkuwazQQ6oFVwr
-         zPNGTrlcUstaXiAg58zy7UXUD5/a1WjI4Bi3hVROS1hhKdYDR0FMLgJZ6/EGcZlg2f8d
-         x8wbORsfnfyozaFtkHcf274kK3a0s0A7bEsnPbHkCjJn83MCzoJVU+nmZDbQTZeMPybv
-         IMUoJSCBWQfAeG9janATZRaDDW+MTCzXLyJao0Av4zze7aZ0RhF4j4Zbx4DO7JPhr8kj
-         5pUg==
-X-Gm-Message-State: AGi0PuYQPVim4xFHA8yUuy+fibwlzfFywWWLWeHtbiGO8iUSUWWa7a/q
-        GAdyyCQQqJDcb6Sul7b1zey+LHSWoSU=
-X-Google-Smtp-Source: APiQypJDSi1BzqFmH5i/Fb79vmc40U97hykhQl3GVM65pZU/SSSZni2Er4R8uk79a2tHm8nYjTzlGg==
-X-Received: by 2002:a63:2842:: with SMTP id o63mr6625114pgo.427.1586342732318;
-        Wed, 08 Apr 2020 03:45:32 -0700 (PDT)
+        bh=31GUYr+hjKDs7YNLdUYhGFexT5oZx4Og0VokEOkoOJA=;
+        b=Jq7kDKpmd7lBSxpv/PdNYA1oSYiyn6vfNvOhFHL0UFG6GBbVD4rSBRodBCCl8gZPxK
+         ElTUTofQs+E5GCykTjM//0HWoO1jOxkIPbvG1Y9LibA3Ccb6CEunGBNaNnkzZN3fj4PD
+         OKb6mXdZQH7BMaAH/8fpjRpn1JRXNZYKxfrZV3sn0GkpCmUCTIChC3ugKVN786Gopwsi
+         ej02dwE43RcCiGpNeg5ljrkFsIkYmL4Y9ACQqQMOoGrN+///FMvFDTUdc2V+KIHV8rV9
+         sBcyogP4u6l8h0CxZUMltdQ9bYPUiJ9zwUdv0Y3uP91Ni8T+ZlE70nGEroOBGSGXycnr
+         cnKw==
+X-Gm-Message-State: AGi0PuYFVon8l0TfSaEAOMKsBG5ZWn8A6z1/ebM0qSUxMrwpxrzqLl7f
+        dWNk5qrluUJg/SH6sF6vd8F2zVWB4ao=
+X-Google-Smtp-Source: APiQypKQKhk9wP83HFTbSxjeG30NXU8/o3en8HmPOCaPRhVgxfJKWLhZa1Y4dPhgBn/gRezHEDezYw==
+X-Received: by 2002:a17:90a:368d:: with SMTP id t13mr1956425pjb.175.1586342739468;
+        Wed, 08 Apr 2020 03:45:39 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y17sm16177024pfl.104.2020.04.08.03.45.30
+        by smtp.gmail.com with ESMTPSA id y17sm16177024pfl.104.2020.04.08.03.45.37
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 08 Apr 2020 03:45:31 -0700 (PDT)
+        Wed, 08 Apr 2020 03:45:38 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, sihara@ddn.com,
         Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH 01/46] e2fsck: cleanup struct e2fsck_struct
-Date:   Wed,  8 Apr 2020 19:44:29 +0900
-Message-Id: <1586342714-12536-2-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH 03/46] e2fsck: copy context when using multi-thread fsck
+Date:   Wed,  8 Apr 2020 19:44:31 +0900
+Message-Id: <1586342714-12536-4-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1586342714-12536-1-git-send-email-wangshilong1991@gmail.com>
 References: <1586342714-12536-1-git-send-email-wangshilong1991@gmail.com>
@@ -69,363 +69,241 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Wang Shilong <wshilong@ddn.com>
+From: Li Xi <lixi@ddn.com>
 
-Fields of "struct e2fsck_struct" are seperated into
-different types according to how these fields will be
-used when parallel fsck is enabled.
+This patch only copy the context to a new one when -m is enabled.
+It doesn't actually start any thread. When pass1 test finishes,
+the new context is copied back to the original context.
 
-remove unused @abort_code
+Since the signal handler only changes the original context, so
+add global_ctx in "struct e2fsck_struct" and use that to check
+whether there is any signal of canceling.
+
+This patch handles the long jump properly so that all the existing
+tests can be passed even the context has been copied. Otherwise,
+test f_expisize_ea_del would fail when aborting.
 
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/e2fsck.h | 279 +++++++++++++++++++++++++-----------------------
- 1 file changed, 143 insertions(+), 136 deletions(-)
+ e2fsck/e2fsck.h |   2 +
+ e2fsck/pass1.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++----
+ e2fsck/unix.c   |   1 +
+ 3 files changed, 110 insertions(+), 9 deletions(-)
 
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 954bc982..24a9d0a8 100644
+index b5b7d88f..c63b1852 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -227,91 +227,155 @@ typedef struct e2fsck_struct *e2fsck_t;
- #define MAX_EXTENT_DEPTH_COUNT 5
+@@ -229,6 +229,8 @@ typedef struct e2fsck_struct *e2fsck_t;
  
  struct e2fsck_struct {
--	ext2_filsys fs;
--	const char *program_name;
--	char *filesystem_name;
--	char *device_name;
--	char *io_options;
--	FILE	*logf;
--	char	*log_fn;
--	FILE	*problem_logf;
--	char	*problem_log_fn;
--	int	flags;		/* E2fsck internal flags */
--	int	options;
--	int	blocksize;	/* blocksize */
--	blk64_t	use_superblock;	/* sb requested by user */
--	blk64_t	superblock;	/* sb used to open fs */
--	blk64_t	num_blocks;	/* Total number of blocks */
--	blk64_t free_blocks;
--	ino_t	free_inodes;
--	int	mount_flags;
--	int	openfs_flags;
--	blkid_cache blkid;	/* blkid cache */
--
-+	/* ---- Following fields are never updated during the pass1 ---- */
-+	const char		*program_name;
-+	char			*filesystem_name;
-+	char			*device_name;
-+	char			*io_options;
-+	int			 options; /* E2F_OPT_* flags */
-+	int			 blocksize; /* blocksize */
-+	blk64_t			 use_superblock; /* sb requested by user */
-+	blk64_t			 superblock; /* sb used to open fs */
-+	blk64_t			 num_blocks; /* Total number of blocks */
-+	blk64_t			 free_blocks;
-+	ino_t			 free_inodes;
-+	int			 mount_flags;
-+	int			 openfs_flags;
-+	blkid_cache		 blkid; /* blkid cache */
- #ifdef HAVE_SETJMP_H
--	jmp_buf	abort_loc;
-+	jmp_buf			abort_loc;
- #endif
--	unsigned long abort_code;
-+#ifdef RESOURCE_TRACK
-+	/*
-+	 * For timing purposes
-+	 */
-+	struct resource_track	global_rtrack;
+ 	/* ---- Following fields are never updated during the pass1 ---- */
++	/* Global context to get the cancel flag */
++	e2fsck_t		global_ctx;
+ 	const char		*program_name;
+ 	char			*filesystem_name;
+ 	char			*device_name;
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index a57c1c06..b093a734 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1154,7 +1154,22 @@ static int quota_inum_is_reserved(ext2_filsys fs, ext2_ino_t ino)
+ 	return 0;
+ }
+ 
+-void e2fsck_pass1(e2fsck_t ctx)
++static int e2fsck_should_abort(e2fsck_t ctx)
++{
++	e2fsck_t global_ctx;
++
++	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		return 1;
++
++	if (ctx->global_ctx) {
++		global_ctx = ctx->global_ctx;
++		if (global_ctx->flags & E2F_FLAG_SIGNAL_MASK)
++			return 1;
++	}
++	return 0;
++}
++
++void e2fsck_pass1_thread(e2fsck_t ctx)
+ {
+ 	int	i;
+ 	__u64	max_sizes;
+@@ -1370,7 +1385,7 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		if (ino > ino_threshold)
+ 			pass1_readahead(ctx, &ra_group, &ino_threshold);
+ 		ehandler_operation(old_op);
+-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		if (e2fsck_should_abort(ctx))
+ 			goto endit;
+ 		if (pctx.errcode == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE) {
+ 			/*
+@@ -1967,13 +1982,13 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 
+ 		FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
+ 
+-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		if (e2fsck_should_abort(ctx))
+ 			goto endit;
+ 
+ 		if (process_inode_count >= ctx->process_inode_size) {
+ 			process_inodes(ctx, block_buf);
+ 
+-			if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++			if (e2fsck_should_abort(ctx))
+ 				goto endit;
+ 		}
+ 	}
+@@ -2086,6 +2101,89 @@ endit:
+ 	else
+ 		ctx->invalid_bitmaps++;
+ }
++
++static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thread_ctx)
++{
++	errcode_t	retval;
++	e2fsck_t	thread_context;
++
++	retval = ext2fs_get_mem(sizeof(struct e2fsck_struct), &thread_context);
++	if (retval) {
++		com_err(global_ctx->program_name, retval, "while allocating memory");
++		return retval;
++	}
++	memcpy(thread_context, global_ctx, sizeof(struct e2fsck_struct));
++	thread_context->fs->priv_data = thread_context;
++	thread_context->global_ctx = global_ctx;
++
++	*thread_ctx = thread_context;
++	return 0;
++}
++
++static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
++{
++	int	flags = global_ctx->flags;
++#ifdef HAVE_SETJMP_H
++	jmp_buf	old_jmp;
++
++	memcpy(old_jmp, global_ctx->abort_loc, sizeof(jmp_buf));
 +#endif
-+	int			bad_lost_and_found;
- 
--	int (*progress)(e2fsck_t ctx, int pass, unsigned long cur,
--			unsigned long max);
-+	/*
-+	 * Tuning parameters
-+	 */
-+	int			process_inode_size;
-+	int			inode_buffer_blocks;
-+	unsigned int		htree_slack_percentage;
++	memcpy(global_ctx, thread_ctx, sizeof(struct e2fsck_struct));
++#ifdef HAVE_SETJMP_H
++	memcpy(global_ctx->abort_loc, old_jmp, sizeof(jmp_buf));
++#endif
++	/* Keep the global singal flags*/
++	global_ctx->flags |= (flags & E2F_FLAG_SIGNAL_MASK) |
++			     (global_ctx->flags & E2F_FLAG_SIGNAL_MASK);
 +
-+	/*
-+	 * ext3 journal support
-+	 */
-+	io_channel		journal_io;
-+	char			*journal_name;
-+	/* misc fields */
-+	time_t			now;
-+	/* For working around buggy init scripts */
-+	time_t			time_fudge;
++	global_ctx->fs->priv_data = global_ctx;
++	ext2fs_free_mem(&thread_ctx);
++	return 0;
++}
 +
-+	int			ext_attr_ver;
-+	int			blocks_per_page;
- 
--	ext2fs_inode_bitmap inode_used_map; /* Inodes which are in use */
--	ext2fs_inode_bitmap inode_bad_map; /* Inodes which are bad somehow */
--	ext2fs_inode_bitmap inode_dir_map; /* Inodes which are directories */
--	ext2fs_inode_bitmap inode_bb_map; /* Inodes which are in bad blocks */
--	ext2fs_inode_bitmap inode_imagic_map; /* AFS inodes */
--	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
-+	/* Are we connected directly to a tty? */
-+	int			interactive;
-+	char			start_meta[2], stop_meta[2];
-+	/*
-+	 * For the use of callers of the e2fsck functions; not used by
-+	 * e2fsck functions themselves.
-+	 */
-+	void			*priv_data;
-+	/* Undo file */
-+	char			*undo_file;
-+	/* How much are we allowed to readahead? */
-+	unsigned long long	readahead_kb;
- 
--	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
--	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
--	ext2fs_block_bitmap block_ea_map; /* Blocks which are used by EA's */
-+	/* ---- Following fields are shared by different threads for pass1 -*/
-+	/* E2fsck internal flags */
-+	int			flags;
-+	/*
-+	 * How we display the progress update (for unix)
-+	 */
-+	int			progress_fd;
-+	int			progress_pos;
-+	int			progress_last_percent;
-+	unsigned int		progress_last_time;
-+	int (*progress)(e2fsck_t ctx, int pass, unsigned long cur,
-+			unsigned long max);
-+	/* Metadata blocks */
-+	ext2fs_block_bitmap	block_metadata_map;
-+	profile_t		profile;
-+	/* Reserve blocks for root and l+f re-creation */
-+	blk64_t			root_repair_block, lnf_repair_block;
-+	/*
-+	 * Location of the lost and found directory
-+	 */
-+	ext2_ino_t		lost_and_found;
++void e2fsck_pass1_multithread(e2fsck_t ctx)
++{
++	errcode_t	retval;
++	e2fsck_t	thread_ctx;
 +
-+	/* ---- Following fields are seperated for each thread for pass1- */
-+	ext2_filsys		 fs;
-+	FILE			*logf;
-+	char			*log_fn;
-+	FILE			*problem_logf;
-+	char			*problem_log_fn;
++	retval = e2fsck_pass1_thread_prepare(ctx, &thread_ctx);
++	if (retval) {
++		com_err(ctx->program_name, 0,
++			_("while preparing pass1 thread\n"));
++		ctx->flags |= E2F_FLAG_ABORT;
++		return;
++	}
 +
-+	/* Inodes which are in use */
-+	ext2fs_inode_bitmap	inode_used_map;
-+	/* Inodes which are bad somehow */
-+	ext2fs_inode_bitmap	inode_bad_map;
-+	/* Inodes which are directories */
-+	ext2fs_inode_bitmap	inode_dir_map;
-+	/* Inodes which are in bad blocks */
-+	ext2fs_inode_bitmap	inode_bb_map;
-+	/* AFS inodes */
-+	ext2fs_inode_bitmap	inode_imagic_map;
-+	/* Inodes which are regular files */
-+	ext2fs_inode_bitmap	inode_reg_map;
-+	/* Inodes to rebuild extent trees */
-+	ext2fs_inode_bitmap	inodes_to_rebuild;
-+	/* Blocks which are in use */
-+	ext2fs_block_bitmap	block_found_map;
-+	/* Blks referenced more than once */
-+	ext2fs_block_bitmap	block_dup_map;
-+	/* Blocks which are used by EA's */
-+	ext2fs_block_bitmap	block_ea_map;
++#ifdef HAVE_SETJMP_H
++	/*
++	 * When fatal_error() happens, jump to here. The thread
++	 * context's flags will be saved, but its abort_loc will
++	 * be overwritten by original jump buffer for the later
++	 * tests.
++	 */
++	if (setjmp(thread_ctx->abort_loc)) {
++		thread_ctx->flags &= ~E2F_FLAG_SETJMP_OK;
++		e2fsck_pass1_thread_join(ctx, thread_ctx);
++		return;
++	}
++	thread_ctx->flags |= E2F_FLAG_SETJMP_OK;
++#endif
++
++	e2fsck_pass1_thread(thread_ctx);
++	retval = e2fsck_pass1_thread_join(ctx, thread_ctx);
++	if (retval) {
++		com_err(ctx->program_name, 0,
++			_("while joining pass1 thread\n"));
++		ctx->flags |= E2F_FLAG_ABORT;
++		return;
++	}
++}
++
++void e2fsck_pass1(e2fsck_t ctx)
++{
++	e2fsck_pass1_multithread(ctx);
++}
++
+ #undef FINISH_INODE_LOOP
  
- 	/*
- 	 * Inode count arrays
- 	 */
--	ext2_icount_t	inode_count;
--	ext2_icount_t inode_link_info;
-+	ext2_icount_t		inode_count;
-+	ext2_icount_t		inode_link_info;
+ /*
+@@ -2148,7 +2246,7 @@ static void process_inodes(e2fsck_t ctx, char *block_buf)
+ 		ehandler_operation(buf);
+ 		check_blocks(ctx, &pctx, block_buf,
+ 			     &inodes_to_process[i].ea_ibody_quota);
+-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		if (e2fsck_should_abort(ctx))
+ 			break;
+ 	}
+ 	ctx->stashed_inode = old_stashed_inode;
+@@ -3318,7 +3416,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	inlinedata_fs = ext2fs_has_feature_inline_data(ctx->fs->super);
  
--	ext2_refcount_t	refcount;
--	ext2_refcount_t refcount_extra;
-+	ext2_refcount_t		refcount;
-+	ext2_refcount_t		refcount_extra;
+ 	if (check_ext_attr(ctx, pctx, block_buf, &ea_block_quota)) {
+-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		if (e2fsck_should_abort(ctx))
+ 			goto out;
+ 		pb.num_blocks += EXT2FS_B2C(ctx->fs, ea_block_quota.blocks);
+ 	}
+@@ -3373,7 +3471,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	}
+ 	end_problem_latch(ctx, PR_LATCH_BLOCK);
+ 	end_problem_latch(ctx, PR_LATCH_TOOBIG);
+-	if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++	if (e2fsck_should_abort(ctx))
+ 		goto out;
+ 	if (pctx->errcode)
+ 		fix_problem(ctx, PR_1_BLOCK_ITERATE, pctx);
+@@ -3854,7 +3952,7 @@ static int process_bad_block(ext2_filsys fs,
+ 				*block_nr = 0;
+ 				return BLOCK_CHANGED;
+ 			}
+-			if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++			if (e2fsck_should_abort(ctx))
+ 				return BLOCK_ABORT;
+ 		} else
+ 			mark_block_used(ctx, blk);
+@@ -3951,7 +4049,7 @@ static int process_bad_block(ext2_filsys fs,
+ 			*block_nr = 0;
+ 			return BLOCK_CHANGED;
+ 		}
+-		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
++		if (e2fsck_should_abort(ctx))
+ 			return BLOCK_ABORT;
+ 		return 0;
+ 	}
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index c463d29e..8226aff7 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1444,6 +1444,7 @@ int main (int argc, char *argv[])
+ 	}
+ 	reserve_stdio_fds();
  
- 	/*
- 	 * Quota blocks and inodes to be charged for each ea block.
- 	 */
--	ext2_refcount_t ea_block_quota_blocks;
--	ext2_refcount_t ea_block_quota_inodes;
-+	ext2_refcount_t		ea_block_quota_blocks;
-+	ext2_refcount_t		ea_block_quota_inodes;
- 
- 	/*
- 	 * ea_inode references from attr entries.
- 	 */
--	ext2_refcount_t ea_inode_refs;
-+	ext2_refcount_t		ea_inode_refs;
- 
- 	/*
- 	 * Array of flags indicating whether an inode bitmap, block
- 	 * bitmap, or inode table is invalid
- 	 */
--	int *invalid_inode_bitmap_flag;
--	int *invalid_block_bitmap_flag;
--	int *invalid_inode_table_flag;
--	int invalid_bitmaps;	/* There are invalid bitmaps/itable */
-+	int			*invalid_inode_bitmap_flag;
-+	int			*invalid_block_bitmap_flag;
-+	int			*invalid_inode_table_flag;
-+	/* There are invalid bitmaps/itable */
-+	int			invalid_bitmaps;
- 
- 	/*
- 	 * Block buffer
- 	 */
--	char *block_buf;
-+	char			*block_buf;
- 
- 	/*
- 	 * For pass1_check_directory and pass1_get_blocks
- 	 */
--	ext2_ino_t stashed_ino;
--	struct ext2_inode *stashed_inode;
--
--	/*
--	 * Location of the lost and found directory
--	 */
--	ext2_ino_t lost_and_found;
--	int bad_lost_and_found;
-+	ext2_ino_t		stashed_ino;
-+	struct ext2_inode	*stashed_inode;
- 
- 	/*
- 	 * Directory information
-@@ -321,103 +385,46 @@ struct e2fsck_struct {
- 	/*
- 	 * Indexed directory information
- 	 */
--	int		dx_dir_info_count;
--	int		dx_dir_info_size;
--	struct dx_dir_info *dx_dir_info;
-+	int			dx_dir_info_count;
-+	int			dx_dir_info_size;
-+	struct dx_dir_info	*dx_dir_info;
- 
- 	/*
- 	 * Directories to hash
- 	 */
--	ext2_u32_list	dirs_to_hash;
-+	ext2_u32_list		dirs_to_hash;
- 
- 	/*
- 	 * Encrypted file information
- 	 */
- 	struct encrypted_file_info *encrypted_files;
- 
--	/*
--	 * Tuning parameters
--	 */
--	int process_inode_size;
--	int inode_buffer_blocks;
--	unsigned int htree_slack_percentage;
--
--	/*
--	 * ext3 journal support
--	 */
--	io_channel	journal_io;
--	char	*journal_name;
--
- 	/*
- 	 * Ext4 quota support
- 	 */
--	quota_ctx_t qctx;
--#ifdef RESOURCE_TRACK
--	/*
--	 * For timing purposes
--	 */
--	struct resource_track	global_rtrack;
--#endif
--
--	/*
--	 * How we display the progress update (for unix)
--	 */
--	int progress_fd;
--	int progress_pos;
--	int progress_last_percent;
--	unsigned int progress_last_time;
--	int interactive;	/* Are we connected directly to a tty? */
--	char start_meta[2], stop_meta[2];
--
-+	quota_ctx_t		qctx;
- 	/* File counts */
--	__u32 fs_directory_count;
--	__u32 fs_regular_count;
--	__u32 fs_blockdev_count;
--	__u32 fs_chardev_count;
--	__u32 fs_links_count;
--	__u32 fs_symlinks_count;
--	__u32 fs_fast_symlinks_count;
--	__u32 fs_fifo_count;
--	__u32 fs_total_count;
--	__u32 fs_badblocks_count;
--	__u32 fs_sockets_count;
--	__u32 fs_ind_count;
--	__u32 fs_dind_count;
--	__u32 fs_tind_count;
--	__u32 fs_fragmented;
--	__u32 fs_fragmented_dir;
--	__u32 large_files;
--	__u32 fs_ext_attr_inodes;
--	__u32 fs_ext_attr_blocks;
--	__u32 extent_depth_count[MAX_EXTENT_DEPTH_COUNT];
-+	__u32			fs_directory_count;
-+	__u32			fs_regular_count;
-+	__u32			fs_blockdev_count;
-+	__u32			fs_chardev_count;
-+	__u32			fs_links_count;
-+	__u32			fs_symlinks_count;
-+	__u32			fs_fast_symlinks_count;
-+	__u32			fs_fifo_count;
-+	__u32			fs_total_count;
-+	__u32			fs_badblocks_count;
-+	__u32			fs_sockets_count;
-+	__u32			fs_ind_count;
-+	__u32			fs_dind_count;
-+	__u32			fs_tind_count;
-+	__u32			fs_fragmented;
-+	__u32			fs_fragmented_dir;
-+	__u32			large_files;
-+	__u32			fs_ext_attr_inodes;
-+	__u32			fs_ext_attr_blocks;
-+	__u32			extent_depth_count[MAX_EXTENT_DEPTH_COUNT];
- 
--	/* misc fields */
--	time_t now;
--	time_t time_fudge;	/* For working around buggy init scripts */
--	int ext_attr_ver;
--	profile_t	profile;
--	int blocks_per_page;
--
--	/* Reserve blocks for root and l+f re-creation */
--	blk64_t root_repair_block, lnf_repair_block;
--
--	/*
--	 * For the use of callers of the e2fsck functions; not used by
--	 * e2fsck functions themselves.
--	 */
--	void *priv_data;
--	ext2fs_block_bitmap block_metadata_map; /* Metadata blocks */
--
--	/* How much are we allowed to readahead? */
--	unsigned long long readahead_kb;
--
--	/*
--	 * Inodes to rebuild extent trees
--	 */
--	ext2fs_inode_bitmap inodes_to_rebuild;
--
--	/* Undo file */
--	char *undo_file;
- };
- 
- /* Data structures to evaluate whether an extent tree needs rebuilding. */
++	ctx->global_ctx = NULL;
+ 	set_up_logging(ctx);
+ 	if (ctx->logf) {
+ 		int i;
 -- 
 2.25.2
 
