@@ -8,60 +8,60 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09B7DC2BA80
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B76AC2D0F4
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C446C20730
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 62DD320730
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FpSVh7zy"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oSHi90jY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726734AbgDHVzy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 17:55:54 -0400
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:46340 "EHLO
+        id S1727015AbgDHV4g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 17:56:36 -0400
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:34435 "EHLO
         mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726702AbgDHVzx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:53 -0400
-Received: by mail-pl1-f194.google.com with SMTP id x2so415599plv.13
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:52 -0700 (PDT)
+        with ESMTP id S1726707AbgDHVzv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:51 -0400
+Received: by mail-pl1-f194.google.com with SMTP id a23so3049222plm.1
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=X6Cdy/diJgY3l1SwROJcGixlj3eqYx1Ab0GaummoDv4=;
-        b=FpSVh7zyT21wLHrJL3I9lgDXsz6YbLVbU+HAFw1hSMlYz3VH5OmcN/JHvmw3s5dIoZ
-         GtcMzBVcp0X2FVkjS3Nj/gYzHEtPxKoLwHXTVuqrWC8J9AkYIMN1ZA/mgqoWgdGOxv7o
-         ILmTFXk6+Kl5g93jgO0QsVz3HwCWf+grTMG6GfEdhK74GWZe9aSbc43Lpn9nuhslynic
-         lA1yMlZFVmkmUN4/cA0odNRveRlf0zngCJoiloEzJ/JkZ8ffD+2KsXCLjZ6iInAyjjzx
-         vLTDWjLciHz7urE7DuPAGUzyd9fkWjYDio2AVSkzyI9N+Lnabgno2wIsxkXYVJxeRcWA
-         ygNg==
+        bh=Mvj8takKlh+auL4njKXthM3ts4E4u4tf8ZoUI6zM4LQ=;
+        b=oSHi90jY29kXojlSaBfR9QFjURYIOGtAZIPUZqLXI9jxUwvT2RvgzN2cXX1vWnU4KR
+         aZJ41nNFEhSlCYgv5wquAbiV/E7rJeKc5h3rKySzmFknj2Bpx0z7T13khNWcFbVDNKFu
+         sGl5QtlbL7NQtLCKXu8rL5m8KEYvAPoywP+Gr87zpwLP292l9Hf2HPXuZ+9Bpv2ciDU5
+         zJ5p7OUmTroxqTMDZPPrzT5LX/vYe/0xqz3hlRuDtGMKZC/aA4jH30CTrkX3gdIcRTtR
+         P/HLNvRAuqHO+wH+gPE0JRs3eZQTy2f1gWCErjrsFEw1xvRbMwB31WsISJniQKhnG7uK
+         I1Sg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=X6Cdy/diJgY3l1SwROJcGixlj3eqYx1Ab0GaummoDv4=;
-        b=jyx+ScS6Nra7FesS5ZtHb0rMIgZRV6zHQWga9utoX7ZL2Cx3MHCykGhYH717APPJTm
-         nbXSzTOFowK9W1hzFg/oJy9Y75VUqB7j9/1AKwqicKcwlPQxs5UtP2Kdnq0RyX8sxU0Z
-         LIBvVGO4e6IF+45sKnZB2KHuBGIkKLHKbvPYIcAzJ5nbMBv9j666eB1qXAJvFTHUUniM
-         3CSen50U3S3d9V+fpeWJR7KYIlfDHGUvuKrvnRr8NCQeYddp8CO4d1NkirTCRVBZ+jsc
-         VEBdiK2LLFfTNZyRO25q0DongIEdpbtPdaT8pJuvH996fDhSVqfTw4FgQ3Lm0N/qa9a2
-         yUTw==
-X-Gm-Message-State: AGi0Pua/NU/nAZkZTqGZKd4RSDWyFEdO7xfF7Jv8ipzIJy3omd7UIXgo
-        VgSy3Km2llJ6Ebhc9iWrC/2GpfUS
-X-Google-Smtp-Source: APiQypKkeCj8laEgMf3ohT/qHXDCmbibD96X6RQaIkha+ccQiG9VYnboZbjeMcCNKgQmTGoFs5TZ8Q==
-X-Received: by 2002:a17:902:8d86:: with SMTP id v6mr9331911plo.57.1586382951757;
-        Wed, 08 Apr 2020 14:55:51 -0700 (PDT)
+        bh=Mvj8takKlh+auL4njKXthM3ts4E4u4tf8ZoUI6zM4LQ=;
+        b=efmrZiSZAyXnrOo1g66ysuEqxrjvpx1rcFrEfsjn+w0QWozC/2tojIBgJoBErvSbtE
+         SMD7V6cUSM6ujNCIafjaYcCS9rZ4sN/UCpPx8WKy/yeS7nL3OulWw4tV8yq25Pi06ac4
+         7UX4Bgx6RioZgSjaIZe7px1wO6VIs0WJseZ4kYC3YK6UlBgffUV7PpSTaLrpbm2AGlkA
+         0Tpf+mHCJe1d+DArxay/N5Qg1pcJW4jFQq/xBQExPdAuUzGc+TESbRyyY2N/hk6aO3cf
+         cIYQy+Uydw4bW4xrSQ0SppsBt7zRDkVVFRyKyOl+R1f1Aj17rpDLNGHW5ENoTWpaklq2
+         WXGA==
+X-Gm-Message-State: AGi0PuZSAxLB9slPGu6xcNFIHGV5BqKh7QvCTHXqwOq8eEc/phs/QbyE
+        RIhHxyzrSzwi7DJcfEtbzkVOZVzI
+X-Google-Smtp-Source: APiQypKF20TlVf7v0tSSprLlXdWXF7GejMKBUgfJ42ri6tp158oArnss16DlfsvSQFdiJHlufwNn7Q==
+X-Received: by 2002:a17:90a:d596:: with SMTP id v22mr7490303pju.169.1586382949089;
+        Wed, 08 Apr 2020 14:55:49 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
-        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.51
+        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 08 Apr 2020 14:55:51 -0700 (PDT)
+        Wed, 08 Apr 2020 14:55:48 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 X-Google-Original-From: Harshad Shirwadkar <harshads@google.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v6 10/20] ext4: break ext4_unlink() and ext4_link()
-Date:   Wed,  8 Apr 2020 14:55:20 -0700
-Message-Id: <20200408215530.25649-10-harshads@google.com>
+Subject: [PATCH v6 06/20] jbd2: fast commit main commit path changes
+Date:   Wed,  8 Apr 2020 14:55:16 -0700
+Message-Id: <20200408215530.25649-6-harshads@google.com>
 X-Mailer: git-send-email 2.26.0.110.g2183baf09c-goog
 In-Reply-To: <20200408215530.25649-1-harshads@google.com>
 References: <20200408215530.25649-1-harshads@google.com>
@@ -74,230 +74,234 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-Break ext4_link() and ext4_unlink() each into 2 parts in order to make
-them usable in recovery path as well.
+Add 3 new APIs jbd2_start_async_fc_nowait(),
+jbd2_start_async_fc_wait() and jbd2_stop_async_fc(). These APIs can be
+used by file systems to indicate to jbd2 that they are starting or
+stopping a fast commit.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/ext4.h  |   4 ++
- fs/ext4/namei.c | 139 +++++++++++++++++++++++++++++-------------------
- 2 files changed, 88 insertions(+), 55 deletions(-)
+ fs/jbd2/commit.c     | 21 +++++++++++
+ fs/jbd2/journal.c    | 85 +++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/jbd2.h | 21 +++++++++++
+ 3 files changed, 126 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e9c82f555b6d..c39966facf86 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3365,6 +3365,10 @@ extern int ext4_handle_dirty_dirblock(handle_t *handle, struct inode *inode,
- extern int ext4_ci_compare(const struct inode *parent,
- 			   const struct qstr *fname,
- 			   const struct qstr *entry, bool quick);
-+extern int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
-+			 struct inode *inode);
-+extern int __ext4_link(struct inode *dir, struct inode *inode,
-+		       struct dentry *dentry);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index e855d8260433..280d11591bcb 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -413,6 +413,23 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	J_ASSERT(journal->j_running_transaction != NULL);
+ 	J_ASSERT(journal->j_committing_transaction == NULL);
  
- #define S_SHIFT 12
- static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a8aca4772aaa..77fc136fe718 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3171,39 +3171,36 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	return retval;
++	write_lock(&journal->j_state_lock);
++	journal->j_flags |= JBD2_FULL_COMMIT_ONGOING;
++	while (journal->j_flags & JBD2_FAST_COMMIT_ONGOING) {
++		DEFINE_WAIT(wait);
++
++		prepare_to_wait(&journal->j_wait_async_fc, &wait,
++				TASK_UNINTERRUPTIBLE);
++		write_unlock(&journal->j_state_lock);
++		schedule();
++		write_lock(&journal->j_state_lock);
++		finish_wait(&journal->j_wait_async_fc, &wait);
++	}
++	write_unlock(&journal->j_state_lock);
++
++	if (journal->j_fc_cleanup_callback)
++		journal->j_fc_cleanup_callback(journal);
++
+ 	commit_transaction = journal->j_running_transaction;
+ 
+ 	trace_jbd2_start_commit(journal, commit_transaction);
+@@ -420,6 +437,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 			commit_transaction->t_tid);
+ 
+ 	write_lock(&journal->j_state_lock);
++	journal->j_fc_off = 0;
+ 	J_ASSERT(commit_transaction->t_state == T_RUNNING);
+ 	commit_transaction->t_state = T_LOCKED;
+ 
+@@ -1125,6 +1143,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		  journal->j_commit_sequence, journal->j_tail_sequence);
+ 
+ 	write_lock(&journal->j_state_lock);
++	journal->j_flags &= ~JBD2_FULL_COMMIT_ONGOING;
++	journal->j_flags &= ~JBD2_FAST_COMMIT_ONGOING;
+ 	spin_lock(&journal->j_list_lock);
+ 	commit_transaction->t_state = T_FINISHED;
+ 	/* Check if the transaction can be dropped now that we are finished */
+@@ -1136,6 +1156,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	spin_unlock(&journal->j_list_lock);
+ 	write_unlock(&journal->j_state_lock);
+ 	wake_up(&journal->j_wait_done_commit);
++	wake_up(&journal->j_wait_async_fc);
+ 
+ 	/*
+ 	 * Calculate overall stats
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index f8f55d0814ea..d3897d155fb9 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -157,7 +157,9 @@ static void commit_timeout(struct timer_list *t)
+  *
+  * 1) COMMIT:  Every so often we need to commit the current state of the
+  *    filesystem to disk.  The journal thread is responsible for writing
+- *    all of the metadata buffers to disk.
++ *    all of the metadata buffers to disk. If a fast commit is ongoing
++ *    journal thread waits until it's done and then copntinues from
++ *    there on.
+  *
+  * 2) CHECKPOINT: We cannot reuse a used section of the log file until all
+  *    of the data in that part of the log has been rewritten elsewhere on
+@@ -714,6 +716,86 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ 	return err;
  }
  
--static int ext4_unlink(struct inode *dir, struct dentry *dentry)
-+int __ext4_unlink(struct inode *dir, const struct qstr *d_name,
-+		  struct inode *inode)
- {
--	int retval;
--	struct inode *inode;
- 	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
- 	handle_t *handle = NULL;
-+	int retval = -ENOENT;
-+	int skip_remove_dentry = 0;
- 
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
--		return -EIO;
--
--	trace_ext4_unlink_enter(dir, dentry);
--	/* Initialize quotas before so that eventual writes go
--	 * in separate transaction */
--	retval = dquot_initialize(dir);
--	if (retval)
--		return retval;
--	retval = dquot_initialize(d_inode(dentry));
--	if (retval)
--		return retval;
--
--	retval = -ENOENT;
--	bh = ext4_find_entry(dir, &dentry->d_name, &de, NULL);
-+	bh = ext4_find_entry(dir, d_name, &de, NULL);
- 	if (IS_ERR(bh))
- 		return PTR_ERR(bh);
--	if (!bh)
--		goto end_unlink;
- 
--	inode = d_inode(dentry);
-+	if (!bh) {
-+		retval = -ENOENT;
-+		goto end_unlink;
-+	}
- 
- 	retval = -EFSCORRUPTED;
--	if (le32_to_cpu(de->inode) != inode->i_ino)
--		goto end_unlink;
-+	if (le32_to_cpu(de->inode) != inode->i_ino) {
-+		/*
-+		 * It's okay if we find dont find dentry which matches
-+		 * the inode. That's because it might have gotten
-+		 * renamed to a different inode number
-+		 */
-+		if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
-+			skip_remove_dentry = 1;
-+		else
-+			goto end_unlink;
-+	}
- 
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
- 				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
-@@ -3216,15 +3213,20 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	retval = ext4_delete_entry(handle, dir, de, bh);
--	if (retval)
--		goto end_unlink;
--	dir->i_ctime = dir->i_mtime = current_time(dir);
--	ext4_update_dx_flag(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	if (!skip_remove_dentry) {
-+		retval = ext4_delete_entry(handle, dir, de, bh);
-+		if (retval)
-+			goto end_unlink;
-+		dir->i_ctime = dir->i_mtime = current_time(dir);
-+		ext4_update_dx_flag(dir);
-+		ext4_mark_inode_dirty(handle, dir);
-+	} else {
-+		retval = 0;
-+	}
-+
- 	if (inode->i_nlink == 0)
- 		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
--				   dentry->d_name.len, dentry->d_name.name);
-+				   d_name->len, d_name->name);
- 	else
- 		drop_nlink(inode);
- 	if (!inode->i_nlink)
-@@ -3232,6 +3234,33 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	inode->i_ctime = current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
-+end_unlink:
-+	brelse(bh);
-+	if (handle)
-+		ext4_journal_stop(handle);
-+	return retval;
-+}
-+
-+static int ext4_unlink(struct inode *dir, struct dentry *dentry)
++/*
++ * Returns 0 if async fc could be started. Returns -EINVAL if no full
++ * commit has been done yet. Returns -EALREADY if another fast /
++ * full commit is ongoing.
++ */
++int jbd2_start_async_fc_nowait(journal_t *journal, tid_t tid)
 +{
-+	int retval;
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
-+		return -EIO;
-+
-+	trace_ext4_unlink_enter(dir, dentry);
 +	/*
-+	 * Initialize quotas before so that eventual writes go
-+	 * in separate transaction
++	 * Fast commits only allowed if at least one full commit has
++	 * been processed.
 +	 */
-+	retval = dquot_initialize(dir);
-+	if (retval)
-+		return retval;
-+	retval = dquot_initialize(d_inode(dentry));
-+	if (retval)
-+		return retval;
++	if (!journal->j_stats.ts_tid)
++		return -EINVAL;
 +
-+	retval = __ext4_unlink(dir, &dentry->d_name, d_inode(dentry));
- #ifdef CONFIG_UNICODE
- 	/* VFS negative dentries are incompatible with Encoding and
- 	 * Case-insensitiveness. Eventually we'll want avoid
-@@ -3242,11 +3271,6 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (IS_CASEFOLDED(dir))
- 		d_invalidate(dentry);
- #endif
--
--end_unlink:
--	brelse(bh);
--	if (handle)
--		ext4_journal_stop(handle);
- 	trace_ext4_unlink_exit(dentry, retval);
- 	return retval;
- }
-@@ -3380,29 +3404,10 @@ static int ext4_symlink(struct inode *dir,
- 	return err;
- }
- 
--static int ext4_link(struct dentry *old_dentry,
--		     struct inode *dir, struct dentry *dentry)
-+int __ext4_link(struct inode *dir, struct inode *inode, struct dentry *dentry)
- {
- 	handle_t *handle;
--	struct inode *inode = d_inode(old_dentry);
- 	int err, retries = 0;
--
--	if (inode->i_nlink >= EXT4_LINK_MAX)
--		return -EMLINK;
--
--	err = fscrypt_prepare_link(old_dentry, dir, dentry);
--	if (err)
--		return err;
--
--	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
--	    (!projid_eq(EXT4_I(dir)->i_projid,
--			EXT4_I(old_dentry->d_inode)->i_projid)))
--		return -EXDEV;
--
--	err = dquot_initialize(dir);
--	if (err)
--		return err;
--
- retry:
- 	handle = ext4_journal_start(dir, EXT4_HT_DIR,
- 		(EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-@@ -3436,6 +3441,30 @@ static int ext4_link(struct dentry *old_dentry,
- 	return err;
- }
- 
-+static int ext4_link(struct dentry *old_dentry,
-+		     struct inode *dir, struct dentry *dentry)
-+{
-+	struct inode *inode = d_inode(old_dentry);
-+	int err;
++	if (tid <= journal->j_commit_sequence)
++		return -EALREADY;
 +
-+	if (inode->i_nlink >= EXT4_LINK_MAX)
-+		return -EMLINK;
++	write_lock(&journal->j_state_lock);
++	if (journal->j_flags &
++	    (JBD2_FAST_COMMIT_ONGOING | JBD2_FULL_COMMIT_ONGOING)) {
++		write_unlock(&journal->j_state_lock);
++		return -EALREADY;
++	}
 +
-+	err = fscrypt_prepare_link(old_dentry, dir, dentry);
-+	if (err)
-+		return err;
++	journal->j_flags |= JBD2_FAST_COMMIT_ONGOING;
++	write_unlock(&journal->j_state_lock);
 +
-+	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
-+	    (!projid_eq(EXT4_I(dir)->i_projid,
-+			EXT4_I(old_dentry->d_inode)->i_projid)))
-+		return -EXDEV;
-+
-+	err = dquot_initialize(dir);
-+	if (err)
-+		return err;
-+	return __ext4_link(dir, inode, dentry);
++	return 0;
 +}
 +
++/*
++ * Same as above but waits for any ongoing fast commits to complete.
++ * If a full commit is ongoing, this function returns with
++ * -EALREADY.
++ */
++int jbd2_start_async_fc_wait(journal_t *journal, tid_t tid)
++{
++	int ret;
++
++	/*
++	 * Fast commits only allowed if at least one full commit has
++	 * been processed.
++	 */
++	if (!journal->j_stats.ts_tid)
++		return -EINVAL;
++
++	if (tid <= journal->j_commit_sequence)
++		return -EALREADY;
++
++	write_lock(&journal->j_state_lock);
++restart:
++	if (journal->j_flags & JBD2_FULL_COMMIT_ONGOING) {
++		ret = -EALREADY;
++	} else if (journal->j_flags & JBD2_FAST_COMMIT_ONGOING) {
++		DEFINE_WAIT(wait);
++
++		prepare_to_wait(&journal->j_wait_async_fc, &wait,
++				TASK_UNINTERRUPTIBLE);
++		write_unlock(&journal->j_state_lock);
++		schedule();
++		write_lock(&journal->j_state_lock);
++		finish_wait(&journal->j_wait_async_fc, &wait);
++		goto restart;
++	} else {
++		journal->j_flags |= JBD2_FAST_COMMIT_ONGOING;
++		ret = 0;
++	}
++	write_unlock(&journal->j_state_lock);
++
++	return ret;
++}
++
++void jbd2_stop_async_fc(journal_t *journal, tid_t tid)
++{
++	write_lock(&journal->j_state_lock);
++	journal->j_flags &= ~JBD2_FAST_COMMIT_ONGOING;
++	write_unlock(&journal->j_state_lock);
++	wake_up(&journal->j_wait_async_fc);
++}
++
+ /* Return 1 when transaction with given tid has already committed. */
+ int jbd2_transaction_committed(journal_t *journal, tid_t tid)
+ {
+@@ -1140,6 +1222,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	init_waitqueue_head(&journal->j_wait_commit);
+ 	init_waitqueue_head(&journal->j_wait_updates);
+ 	init_waitqueue_head(&journal->j_wait_reserved);
++	init_waitqueue_head(&journal->j_wait_async_fc);
+ 	mutex_init(&journal->j_barrier);
+ 	mutex_init(&journal->j_checkpoint_mutex);
+ 	spin_lock_init(&journal->j_revoke_lock);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 1fc981cca479..0a4d9d484528 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -853,6 +853,13 @@ struct journal_s
+ 	 */
+ 	wait_queue_head_t	j_wait_reserved;
+ 
++	/**
++	 * @j_wait_async_fc:
++	 *
++	 * Wait queue to wait for completion of async fast commits.
++	 */
++	wait_queue_head_t	j_wait_async_fc;
++
+ 	/**
+ 	 * @j_checkpoint_mutex:
+ 	 *
+@@ -1203,6 +1210,14 @@ struct journal_s
+ 	 */
+ 	struct lockdep_map	j_trans_commit_map;
+ #endif
++
++	/**
++	 * @j_fc_cleanup_callback:
++	 *
++	 * Clean-up after fast commit or full commit. JBD2 calls this function
++	 * after every commit operation.
++	 */
++	void (*j_fc_cleanup_callback)(struct journal_s *journal);
+ };
+ 
+ #define jbd2_might_wait_for_commit(j) \
+@@ -1288,6 +1303,8 @@ JBD2_FEATURE_INCOMPAT_FUNCS(fast_commit,	FAST_COMMIT)
+ 						 * data write error in ordered
+ 						 * mode */
+ #define JBD2_REC_ERR	0x080	/* The errno in the sb has been recorded */
++#define JBD2_FAST_COMMIT_ONGOING	0x100	/* Fast commit is ongoing */
++#define JBD2_FULL_COMMIT_ONGOING	0x200	/* Full commit is ongoing */
  
  /*
-  * Try to find buffer head where contains the parent block.
+  * Function declarations for the journaling transaction and buffer
+@@ -1540,6 +1557,10 @@ void __jbd2_log_wait_for_space(journal_t *journal);
+ extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
+ extern int jbd2_cleanup_journal_tail(journal_t *);
+ 
++/* Fast commit related APIs */
++int jbd2_start_async_fc_nowait(journal_t *journal, tid_t tid);
++int jbd2_start_async_fc_wait(journal_t *journal, tid_t tid);
++void jbd2_stop_async_fc(journal_t *journal, tid_t tid);
+ void jbd2_init_fast_commit(journal_t *journal, int num_fc_blks);
+ /*
+  * is_journal_abort
 -- 
 2.26.0.110.g2183baf09c-goog
 
