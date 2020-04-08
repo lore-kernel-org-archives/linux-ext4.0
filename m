@@ -8,60 +8,60 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 799F2C2D0F4
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1632C2BB1D
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 450DB20730
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AF24620730
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 21:56:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OOKQ1Jv3"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pfYsbtrW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726787AbgDHVz7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 17:55:59 -0400
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:45998 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726714AbgDHVz5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:57 -0400
-Received: by mail-pg1-f195.google.com with SMTP id 128so1337370pge.12
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:56 -0700 (PDT)
+        id S1727007AbgDHV4d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 17:56:33 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:44588 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726762AbgDHVz7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 17:55:59 -0400
+Received: by mail-pf1-f194.google.com with SMTP id b72so3063864pfb.11
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 14:55:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=lCaX8GE0MlE8nC+Xaw9bovnVH2hHLFL66j0y6tOc93Q=;
-        b=OOKQ1Jv3WiPPzMr3b00CzuhiI4oS2TApu1RvcuxUdazT7SGp1UwRY2GpWfxdQAzu4f
-         rpytg8sA8zCyi1MnC+4VlPb0UIhORFOKecQ944UThR7M7ad15L23o3wztgg3kjpoDAQ5
-         pYF/S9bXhGViiuhZNU4aOIfXgoF6OX1wm7rHYfpkZKsCH6wHeOvZOgdBI981CCWC/Qeu
-         7e54nf90pfiu08IjowAPhl9YyNwc10lNviei2sW8UnbAVgoqEGSb/N74OJ1p1uyqLI+V
-         P+6bXihBPFkMa6Eg/Ec3V7uCOPcYxJhJlRHNW5/c3yzVM1dwTEuh0zzbV0cKsi5UvqiH
-         Dm4w==
+        bh=kQfvuRpZ4w8iMJngw8IAku8h4fGLGF0RHMC3sZquPto=;
+        b=pfYsbtrWoHfk/+7VSHj9p4qahodNc5+ucHaa6mUmtZh0+PEvTZMZKh3OQHYUsGmJkU
+         /7y/jR1yeydKM4imyXbE8MgC1GJ8H5pZf+QPvFFzaYWBcR95XrQc9xr83XaPXLDz1ets
+         0ow/9RToJmLDgedSZxu+gMwEtqaQvHQY7wCpBnlDMIjS/QCk6Gv9Yi8cC3uIlcC0bM6t
+         5Hi/nf7wMZOKMU/CYYhrg9FRggAaQl7K52SYgatB8gkch0UvI5WArWwqndKvjLPUsGCC
+         Onb17N3sV0fvtZ9Uxac/Y/yjIcqZqcqEGShp6NpKjmQ+0Y5om0Imc4zfNCo1WOOEC1fw
+         Z97g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=lCaX8GE0MlE8nC+Xaw9bovnVH2hHLFL66j0y6tOc93Q=;
-        b=jyKcYEgekm04V+Fz7CgfFpx4HaEk++rSBRIYKF4a5efOjLjq01/WfGhAPFzT4wT09I
-         THX78zNhu0EzkGvMLQUrkAkG4ClYGbpPQFlVcXNiXeq+yu2Tdp1iWv7liu3aOZZIoeGH
-         5DjLNKcD6cDKGo+5L+Mh+FITOYQBAY8q+sv0hIpozfv1a+7rfCGq+RrdU12z3lz9l4XX
-         WA+MYufIRwnLYR9ghg0YqYHpmKkl2tWqSjMcdgQNouC0YA+HwliUNcornIdblSs8DlJe
-         QK4juR0LP7bbpiw5O01g4mPpwK08/NuijK/5iW+IdkCTYgxlf7kQje0gWEbPPxoopDx2
-         DyTA==
-X-Gm-Message-State: AGi0PuYJngYW8Q8Oq0ti4JCPzeyiq0EWtNqHYwmUbPlVIctLrLMXg/1b
-        TvG7FtgG82dHRtMvlENx3f+tWyLx
-X-Google-Smtp-Source: APiQypIsJGM+9mzJ0SrbXCPKhTC6ep0H/Rh0gWXUEDhTTZRNhP1I3J7imEl0iPK6xvooXXedb5hu5Q==
-X-Received: by 2002:a65:424b:: with SMTP id d11mr8477450pgq.17.1586382955087;
-        Wed, 08 Apr 2020 14:55:55 -0700 (PDT)
+        bh=kQfvuRpZ4w8iMJngw8IAku8h4fGLGF0RHMC3sZquPto=;
+        b=eBVVBpZ637FKBlIZ5NzkmxZL61WppetRGGm67Cb4mU8k/vCLVieyfDlgfQeijo6ZwW
+         wA5fdA8rn40r+z3UMnjedXm++2sEel/JWXN7hcRcQKARgCFjyniUVOVkZtQtaB2XbVw3
+         t6LZWzby8rWOLJGc2WsHAl7nIDXwsJSdYKInm/pQ/3ySH7rW9kvzA77sLW5zyUCtR7Nt
+         6XAKvPEQk0+eTIv3GILvmECW95uehsr+U2GZ2CpukvlH6uYhhdNmPzbLxWJzO9tTjtep
+         qlZPBWfzVA6WOdVQ17X5OPPvMBhEZ4J17FK/tdYB9o0uFI9fMcOfCScJZDBeRaitOjgL
+         DBlw==
+X-Gm-Message-State: AGi0PuaGHwrxPjJd5OPDQJT0UnmTo+0CqhUpJKr+lwlO33tYKvtrkqO6
+        xAwJ4eU0LnVKd75rV0cI4fVjA6IB
+X-Google-Smtp-Source: APiQypJWgoHyTzVbjJ+a90qbC7zLqzENVN7eb/9boEZJnStTWsCP0VxbzMnHhOH7ias8lMPAxFeMPA==
+X-Received: by 2002:a63:e49:: with SMTP id 9mr8556628pgo.182.1586382957187;
+        Wed, 08 Apr 2020 14:55:57 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
-        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.54
+        by smtp.googlemail.com with ESMTPSA id z7sm450929pju.37.2020.04.08.14.55.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 08 Apr 2020 14:55:54 -0700 (PDT)
+        Wed, 08 Apr 2020 14:55:56 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 X-Google-Original-From: Harshad Shirwadkar <harshads@google.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v6 15/20] jbd2: add fast commit recovery path support
-Date:   Wed,  8 Apr 2020 14:55:25 -0700
-Message-Id: <20200408215530.25649-15-harshads@google.com>
+Subject: [PATCH v6 18/20] ext4: disable certain features in replay path
+Date:   Wed,  8 Apr 2020 14:55:28 -0700
+Message-Id: <20200408215530.25649-18-harshads@google.com>
 X-Mailer: git-send-email 2.26.0.110.g2183baf09c-goog
 In-Reply-To: <20200408215530.25649-1-harshads@google.com>
 References: <20200408215530.25649-1-harshads@google.com>
@@ -74,155 +74,345 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-Add fc_do_one_pass to invoke file system specific replay
-callback and pass discovered fast commit blocks to let
-file system handle those.
+Replay path uses similar code paths for replaying committed changes.
+But since it runs before full initialization of the file system and
+also since we don't have to be super careful about performance, we
+can and need to disable certain file system features during the replay
+path. More specifically, we disable most of the extent status tree
+stuff, mballoc and some places where we mark file system with errors.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/jbd2/recovery.c   | 67 +++++++++++++++++++++++++++++++++++++++++---
- include/linux/jbd2.h | 13 +++++++++
- 2 files changed, 76 insertions(+), 4 deletions(-)
+ fs/ext4/balloc.c         |  7 +++++-
+ fs/ext4/ext4_jbd2.c      |  2 +-
+ fs/ext4/extents_status.c | 24 +++++++++++++++++++
+ fs/ext4/ialloc.c         | 52 +++++++++++++++++++++++++++-------------
+ fs/ext4/inode.c          | 14 +++++++----
+ fs/ext4/mballoc.c        | 21 ++++++++++------
+ 6 files changed, 90 insertions(+), 30 deletions(-)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index a4967b27ffb6..09f069e59c36 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -35,7 +35,6 @@ struct recovery_info
- 	int		nr_revoke_hits;
- };
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 25960bb4fe69..220d818030ef 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -368,7 +368,12 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+ 				      struct buffer_head *bh)
+ {
+ 	ext4_fsblk_t	blk;
+-	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
++	struct ext4_group_info *grp;
++
++	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
++	grp = ext4_get_group_info(sb, block_group);
  
--enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
- static int do_one_pass(journal_t *journal,
- 				struct recovery_info *info, enum passtype pass);
- static int scan_revoke_records(journal_t *, struct buffer_head *,
-@@ -225,10 +224,63 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- /* Make sure we wrap around the log correctly! */
- #define wrap(journal, var)						\
- do {									\
--	if (var >= (journal)->j_last)					\
--		var -= ((journal)->j_last - (journal)->j_first);	\
-+	unsigned long _wrap_last =					\
-+		jbd2_has_feature_fast_commit(journal) ?			\
-+			(journal)->j_last_fc : (journal)->j_last;	\
-+									\
-+	if (var >= _wrap_last)						\
-+		var -= (_wrap_last - (journal)->j_first);		\
- } while (0)
+ 	if (buffer_verified(bh))
+ 		return 0;
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index bbba1b067fdf..b9b3833c8fdd 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -101,7 +101,7 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
+ 		return ERR_PTR(err);
  
-+static int fc_do_one_pass(journal_t *journal,
-+			  struct recovery_info *info, enum passtype pass)
-+{
-+	unsigned int expected_commit_id = info->end_transaction;
-+	unsigned long next_fc_block;
-+	struct buffer_head *bh;
-+	unsigned int seq;
-+	journal_header_t *jhdr;
-+	int err = 0;
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (!journal)
++	if (!journal || (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))
+ 		return ext4_get_nojournal();
+ 	return jbd2__journal_start(journal, blocks, rsv_blocks, revoke_creds,
+ 				   GFP_NOFS, type, line);
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index d996b44d2265..69c16ac7416e 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -311,6 +311,9 @@ void ext4_es_find_extent_range(struct inode *inode,
+ 			       ext4_lblk_t lblk, ext4_lblk_t end,
+ 			       struct extent_status *es)
+ {
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return;
 +
-+	next_fc_block = journal->j_first_fc;
-+
-+	while (next_fc_block <= journal->j_last_fc) {
-+		jbd_debug(3, "Fast commit replay: next block %ld",
-+			  next_fc_block);
-+		err = jread(&bh, journal, next_fc_block);
-+		if (err) {
-+			jbd_debug(3, "Fast commit replay: read error");
-+			break;
-+		}
-+
-+		jhdr = (journal_header_t *)bh->b_data;
-+		seq = be32_to_cpu(jhdr->h_sequence);
-+		if (be32_to_cpu(jhdr->h_magic) != JBD2_MAGIC_NUMBER ||
-+		    seq != expected_commit_id) {
-+			jbd_debug(3, "Fast commit replay: magic / commitid error [%d / %d / %d]\n",
-+				  be32_to_cpu(jhdr->h_magic), seq,
-+				  expected_commit_id);
-+			break;
-+		}
-+		jbd_debug(3, "Processing fast commit blk with seq %d",
-+			  seq);
-+		if (journal->j_fc_replay_callback) {
-+			err = journal->j_fc_replay_callback(
-+						journal, bh, pass,
-+						next_fc_block -
-+						journal->j_first_fc);
-+			if (err)
-+				break;
-+		}
-+		next_fc_block++;
-+	}
-+
-+	if (err)
-+		jbd_debug(3, "Fast commit replay failed, err = %d\n", err);
-+
-+	return err;
-+}
-+
- /**
-  * jbd2_journal_recover - recovers a on-disk journal
-  * @journal: the journal to recover
-@@ -470,7 +522,7 @@ static int do_one_pass(journal_t *journal,
- 				break;
+ 	trace_ext4_es_find_extent_range_enter(inode, lblk);
  
- 		jbd_debug(2, "Scanning for sequence ID %u at %lu/%lu\n",
--			  next_commit_ID, next_log_block, journal->j_last);
-+			  next_commit_ID, next_log_block, journal->j_last_fc);
+ 	read_lock(&EXT4_I(inode)->i_es_lock);
+@@ -361,6 +364,9 @@ bool ext4_es_scan_range(struct inode *inode,
+ {
+ 	bool ret;
  
- 		/* Skip over each chunk of the transaction looking
- 		 * either the next descriptor block or the final commit
-@@ -768,6 +820,9 @@ static int do_one_pass(journal_t *journal,
- 			if (err)
- 				goto failed;
- 			continue;
-+		case JBD2_FC_BLOCK:
-+			pr_warn("Unexpectedly found fast commit block.\n");
-+			continue;
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return false;
++
+ 	read_lock(&EXT4_I(inode)->i_es_lock);
+ 	ret = __es_scan_range(inode, matching_fn, lblk, end);
+ 	read_unlock(&EXT4_I(inode)->i_es_lock);
+@@ -404,6 +410,9 @@ bool ext4_es_scan_clu(struct inode *inode,
+ {
+ 	bool ret;
  
- 		default:
- 			jbd_debug(3, "Unrecognised magic %d, end of scan.\n",
-@@ -799,6 +854,10 @@ static int do_one_pass(journal_t *journal,
- 				success = -EIO;
- 		}
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return false;
++
+ 	read_lock(&EXT4_I(inode)->i_es_lock);
+ 	ret = __es_scan_clu(inode, matching_fn, lblk);
+ 	read_unlock(&EXT4_I(inode)->i_es_lock);
+@@ -812,6 +821,9 @@ int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	int err = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
+ 	es_debug("add [%u/%u) %llu %x to extent status tree of inode %lu\n",
+ 		 lblk, len, pblk, status, inode->i_ino);
+ 
+@@ -873,6 +885,9 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status newes;
+ 	ext4_lblk_t end = lblk + len - 1;
+ 
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return;
++
+ 	newes.es_lblk = lblk;
+ 	newes.es_len = len;
+ 	ext4_es_store_pblock_status(&newes, pblk, status);
+@@ -908,6 +923,9 @@ int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	struct rb_node *node;
+ 	int found = 0;
+ 
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
+ 	trace_ext4_es_lookup_extent_enter(inode, lblk);
+ 	es_debug("lookup extent in block %u\n", lblk);
+ 
+@@ -1419,6 +1437,9 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	int err = 0;
+ 	int reserved = 0;
+ 
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
+ 	trace_ext4_es_remove_extent(inode, lblk, len);
+ 	es_debug("remove [%u/%u) from extent status tree of inode %lu\n",
+ 		 lblk, len, inode->i_ino);
+@@ -1969,6 +1990,9 @@ int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
+ 	struct extent_status newes;
+ 	int err = 0;
+ 
++	if (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
+ 	es_debug("add [%u/1) delayed to extent status tree of inode %lu\n",
+ 		 lblk, inode->i_ino);
+ 
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 7ecac922d8a4..3ccdf7834ab6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -82,7 +82,12 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+ 				      struct buffer_head *bh)
+ {
+ 	ext4_fsblk_t	blk;
+-	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
++	struct ext4_group_info *grp;
++
++	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
++		return 0;
++
++	grp = ext4_get_group_info(sb, block_group);
+ 
+ 	if (buffer_verified(bh))
+ 		return 0;
+@@ -284,15 +289,17 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	bit = (ino - 1) % EXT4_INODES_PER_GROUP(sb);
+ 	bitmap_bh = ext4_read_inode_bitmap(sb, block_group);
+ 	/* Don't bother if the inode bitmap is corrupt. */
+-	grp = ext4_get_group_info(sb, block_group);
+ 	if (IS_ERR(bitmap_bh)) {
+ 		fatal = PTR_ERR(bitmap_bh);
+ 		bitmap_bh = NULL;
+ 		goto error_return;
  	}
-+
-+	if (jbd2_has_feature_fast_commit(journal) && pass != PASS_REVOKE)
-+		success = fc_do_one_pass(journal, info, pass);
-+
- 	if (block_error && success == 0)
- 		success = -EIO;
- 	return success;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 599113bef67f..01f6de8f6731 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -749,6 +749,8 @@ jbd2_time_diff(unsigned long start, unsigned long end)
+-	if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp))) {
+-		fatal = -EFSCORRUPTED;
+-		goto error_return;
++	if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
++		grp = ext4_get_group_info(sb, block_group);
++		if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp))) {
++			fatal = -EFSCORRUPTED;
++			goto error_return;
++		}
+ 	}
  
- #define JBD2_NR_BATCH	64
+ 	BUFFER_TRACE(bitmap_bh, "get_write_access");
+@@ -884,7 +891,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	ext4_group_t flex_group;
+-	struct ext4_group_info *grp;
++	struct ext4_group_info *grp = NULL;
+ 	int encrypt = 0;
  
-+enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
-+
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-@@ -1219,6 +1221,17 @@ struct journal_s
- 	 * after every commit operation.
- 	 */
- 	void (*j_fc_cleanup_callback)(struct journal_s *journal);
-+
-+	/*
-+	 * @j_fc_replay_callback:
-+	 *
-+	 * File-system specific function that performs replay of a fast
-+	 * commit. JBD2 calls this function for each fast commit block found in
-+	 * the journal.
-+	 */
-+	int (*j_fc_replay_callback)(struct journal_s *journal,
-+				    struct buffer_head *bh,
-+				    enum passtype pass, int off);
- };
+ 	/* Cannot create files in a deleted directory */
+@@ -1022,15 +1029,21 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		if (ext4_free_inodes_count(sb, gdp) == 0)
+ 			goto next_group;
  
- #define jbd2_might_wait_for_commit(j) \
+-		grp = ext4_get_group_info(sb, group);
+-		/* Skip groups with already-known suspicious inode tables */
+-		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
+-			goto next_group;
++		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
++			grp = ext4_get_group_info(sb, group);
++			/*
++			 * Skip groups with already-known suspicious inode
++			 * tables
++			 */
++			if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
++				goto next_group;
++		}
+ 
+ 		brelse(inode_bitmap_bh);
+ 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+ 		/* Skip groups with suspicious inode tables */
+-		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) ||
++		if (((!(sbi->s_mount_state & EXT4_FC_REPLAY))
++		     && EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) ||
+ 		    IS_ERR(inode_bitmap_bh)) {
+ 			inode_bitmap_bh = NULL;
+ 			goto next_group;
+@@ -1049,7 +1062,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 			goto next_group;
+ 		}
+ 
+-		if (!handle) {
++		if ((!(sbi->s_mount_state & EXT4_FC_REPLAY)) && !handle) {
+ 			BUG_ON(nblocks <= 0);
+ 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
+ 				 handle_type, nblocks, 0,
+@@ -1153,9 +1166,15 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	/* Update the relevant bg descriptor fields */
+ 	if (ext4_has_group_desc_csum(sb)) {
+ 		int free;
+-		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+-
+-		down_read(&grp->alloc_sem); /* protect vs itable lazyinit */
++		struct ext4_group_info *grp = NULL;
++
++		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
++			grp = ext4_get_group_info(sb, group);
++			down_read(&grp->alloc_sem); /*
++						     * protect vs itable
++						     * lazyinit
++						     */
++		}
+ 		ext4_lock_group(sb, group); /* while we modify the bg desc */
+ 		free = EXT4_INODES_PER_GROUP(sb) -
+ 			ext4_itable_unused_count(sb, gdp);
+@@ -1171,7 +1190,8 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		if (ino > free)
+ 			ext4_itable_unused_set(sb, gdp,
+ 					(EXT4_INODES_PER_GROUP(sb) - ino));
+-		up_read(&grp->alloc_sem);
++		if (!(sbi->s_mount_state & EXT4_FC_REPLAY))
++			up_read(&grp->alloc_sem);
+ 	} else {
+ 		ext4_lock_group(sb, group);
+ 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b5ca07497bbc..d6e5ffce5cf7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -508,7 +508,8 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 		return -EFSCORRUPTED;
+ 
+ 	/* Lookup extent status tree firstly */
+-	if (ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
++	if (!(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY) &&
++	    ext4_es_lookup_extent(inode, map->m_lblk, NULL, &es)) {
+ 		if (ext4_es_is_written(&es) || ext4_es_is_unwritten(&es)) {
+ 			map->m_pblk = ext4_es_pblock(&es) +
+ 					map->m_lblk - es.es_lblk;
+@@ -820,7 +821,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 	int create = map_flags & EXT4_GET_BLOCKS_CREATE;
+ 	int err;
+ 
+-	J_ASSERT(handle != NULL || create == 0);
++	J_ASSERT((EXT4_SB(inode->i_sb)->s_mount_state | EXT4_FC_REPLAY)
++		 || handle != NULL || create == 0);
+ 
+ 	map.m_lblk = block;
+ 	map.m_len = 1;
+@@ -836,7 +838,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ 		return ERR_PTR(-ENOMEM);
+ 	if (map.m_flags & EXT4_MAP_NEW) {
+ 		J_ASSERT(create != 0);
+-		J_ASSERT(handle != NULL);
++		J_ASSERT((EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY)
++			 || (handle != NULL));
+ 
+ 		/*
+ 		 * Now that we do not always journal data, we should
+@@ -4631,8 +4634,9 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 
+ 	if (!ext4_inode_csum_verify(inode, raw_inode, ei) ||
+ 	    ext4_simulate_fail(sb, EXT4_SIM_INODE_CRC)) {
+-		ext4_error_inode_err(inode, function, line, 0, EFSBADCRC,
+-				     "iget: checksum invalid");
++		if (!(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY))
++			ext4_error_inode_err(inode, function, line, 0,
++					EFSBADCRC, "iget: checksum invalid");
+ 		ret = -EFSBADCRC;
+ 		goto bad_inode;
+ 	}
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index db08208c1137..d6cdcc3e125c 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1449,14 +1449,16 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 
+ 		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+ 		blocknr += EXT4_C2B(sbi, block);
+-		ext4_grp_locked_error(sb, e4b->bd_group,
+-				      inode ? inode->i_ino : 0,
+-				      blocknr,
+-				      "freeing already freed block "
+-				      "(bit %u); block bitmap corrupt.",
+-				      block);
+-		ext4_mark_group_bitmap_corrupted(sb, e4b->bd_group,
++		if (!(sbi->s_mount_state & EXT4_FC_REPLAY)) {
++			ext4_grp_locked_error(sb, e4b->bd_group,
++					      inode ? inode->i_ino : 0,
++					      blocknr,
++					      "freeing already freed block (bit %u); block bitmap corrupt.",
++					      block);
++			ext4_mark_group_bitmap_corrupted(
++				sb, e4b->bd_group,
+ 				EXT4_GROUP_INFO_BBITMAP_CORRUPT);
++		}
+ 		mb_regenerate_buddy(e4b);
+ 		goto done;
+ 	}
+@@ -4116,6 +4118,9 @@ void ext4_discard_preallocations(struct inode *inode)
+ 		return;
+ 	}
+ 
++	if (EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY)
++		return;
++
+ 	mb_debug(1, "discard preallocation for inode %lu\n", inode->i_ino);
+ 	trace_ext4_discard_preallocations(inode);
+ 
+@@ -4591,6 +4596,8 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+ 
++	WARN_ON(sbi->s_mount_state & EXT4_FC_REPLAY);
++
+ 	trace_ext4_request_blocks(ar);
+ 
+ 	/* Allow to use superuser reservation for quota file */
 -- 
 2.26.0.110.g2183baf09c-goog
 
