@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0CE4C2BA2B
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:46:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 656E2C2D0EA
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:46:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6633420747
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:46:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 299F020747
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Apr 2020 10:46:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WMS8hY4K"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Drc092r2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728100AbgDHKqr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 06:46:47 -0400
-Received: from mail-pj1-f65.google.com ([209.85.216.65]:34095 "EHLO
-        mail-pj1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727026AbgDHKqq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 06:46:46 -0400
-Received: by mail-pj1-f65.google.com with SMTP id q16so2071360pje.1
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 03:46:44 -0700 (PDT)
+        id S1728289AbgDHKqt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Apr 2020 06:46:49 -0400
+Received: from mail-pj1-f68.google.com ([209.85.216.68]:55010 "EHLO
+        mail-pj1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726980AbgDHKqt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2020 06:46:49 -0400
+Received: by mail-pj1-f68.google.com with SMTP id np9so998166pjb.4
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Apr 2020 03:46:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=kNC6DmJMmMRsRohb1ZFlDLLq7TMQSB5L7qoWyrub6m4=;
-        b=WMS8hY4K4NveDvMO5Q90hyeSJddOuNbPgMK+hnzDvJ4BzRZ6MVJ+DqML3b3Udaahbb
-         DIWnKxLEjBNzOUJ45GcKwvH94KVZz09k2c5VLUo8xogQy3UFMzn2xSc8Wy+IGcLwjdfE
-         9a7oqhHYeHLg7uJFphzpZksOOveiQFKRqA7M5SQjKThFYWXTh1XBhsHcYBQCTAzdpZQs
-         frcX8TTqAMqahQdwn9unuhWr8Fi8s7BX7EtcTaR8FYkLITE9SqUh+qsnhXiaRde0fp+z
-         lqeLUMg/otnJr7y3znA33YSO37ojx0u6VUNaodr/htsFpvI/4lvo2mzPRZQ0yO1DQf8b
-         Gg5g==
+        bh=EBGXkTLDO+qkfmVTsY5v+eUq67B/IGtywx0ipqzj7ag=;
+        b=Drc092r2icgCOlBgkEI2ooEy8ExW1ODmdTMB1PKwBfsXr1WZ0dO2cuEhHc0MqIFR3k
+         ypEPVJ9NSsZWKah5e1m9WnMWjATdKRYpUpSNrCIZTF0DAeHRWeDUgaU3qjqGNA99fgRe
+         gSEspEBxvAD+/jyV64oYKsRjPotGWdC/fT+cBp6fjF+jdrFana+M+QhKhIXPKahd3iot
+         YUDlLmOSym3uTADGr/B+zv+qca3sJUoxTXx6w9sS3cyGqS5U9csfEKSfKEnhB4k0umGQ
+         6zFcb0p8VNEbIeO1OMPfm5sX4LuWY79fq3FhMWGXNbqTR+mVi4y1fRI+N0zVI0++hFSq
+         FgFg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=kNC6DmJMmMRsRohb1ZFlDLLq7TMQSB5L7qoWyrub6m4=;
-        b=KONydhVU99P0eOHJqJdghPJwCsnratV7K7NtC0fjTk5OKm7KYkdI9MbkgTzfeN5t6I
-         7k6eA0aUvS2/1UDH7sQlbatEOK9v6iVGgImaeoYxaeAMZroCiHXqhRUclP+5jP2RosYb
-         GycpFl482kJnMAys4W6Ld1DVCUTye964YaqWckrdh9k7MDOXvtUMT7dgTViCafvNromy
-         ofBvelZpyTe7nEN4bXt5rckb6bHSQSLHtu/SLyRMq0kI1QoPs1B1MkJTdvbgthcs3+8T
-         8UN/M0sNvqINIGsaPpYz+1z9TWqlPrVxzEAKG5epFW6E8j1evvqN5LMFEgmkuXX4mjxS
-         Z1yg==
-X-Gm-Message-State: AGi0Puaxb4Hd5H03xZUISo+ic6xguEKRgFDOV8M+P1F7nX0+qacEZ1IT
-        Fe7r6m1sOG/3c3wx/A3USATQOnBb9oM=
-X-Google-Smtp-Source: APiQypJZ3k0UQs/K8qSWi/T7SNjo2slZ2KiLBGXFjWCPkAzDJSFRLV63wBa4eY0gxqb/FudnijFIvg==
-X-Received: by 2002:a17:902:704b:: with SMTP id h11mr6269573plt.51.1586342803461;
-        Wed, 08 Apr 2020 03:46:43 -0700 (PDT)
+        bh=EBGXkTLDO+qkfmVTsY5v+eUq67B/IGtywx0ipqzj7ag=;
+        b=eas4gvDmYlMQInCoDx59/QbZ83C7CkXciMgR1R+xVa8E2WTqLJww2pbMSTgN+zm3q0
+         C4UhXswij5uUEbGCm3XdaOamAAasIKiSuDdtlKG5b+5pG+RjabVW8eh4abNr69O/wxIN
+         zcgkYeQWVxQpQ6x2hYO/nUEmQbsWWbUc/rHQyABYf7Ve+3IvLbYQmPfAQYMUfVNKFvT+
+         PicoPG6Z2Tt3ZrN8ehIefTDCTGdzJybj3q+2JAt//BG/REoJ07EI6aerWdo62LrHDdJe
+         R/ogc86xBbJG8fS6WN6YJCcPvkdAv+QyJ9eIF6/Ej3NvEf1iR8d33ITdCYV64SfqoiMH
+         p/lA==
+X-Gm-Message-State: AGi0PuZPULajWd/VPtsZmAzeFW4zEbzZPE4hIW5e33XdCAeBzn/6WyKo
+        FcocrqI8y7G2N1MqP7QwFciI4QFuU0E=
+X-Google-Smtp-Source: APiQypL5JeF/FXWxIaMrsIhRc20ebhTqVoZX6dPmLYnOag0HuLyfJe8qivlNkSdi4/NU/TImFxgegg==
+X-Received: by 2002:a17:90a:c78b:: with SMTP id gn11mr4516959pjb.147.1586342807771;
+        Wed, 08 Apr 2020 03:46:47 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y17sm16177024pfl.104.2020.04.08.03.46.41
+        by smtp.gmail.com with ESMTPSA id y17sm16177024pfl.104.2020.04.08.03.46.45
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 08 Apr 2020 03:46:42 -0700 (PDT)
+        Wed, 08 Apr 2020 03:46:47 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, sihara@ddn.com,
         Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH 33/46] e2fsck: move some fixes out of parallel pthreads
-Date:   Wed,  8 Apr 2020 19:45:01 +0900
-Message-Id: <1586342714-12536-34-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH 35/46] e2fsck: fix to protect EA checking
+Date:   Wed,  8 Apr 2020 19:45:03 +0900
+Message-Id: <1586342714-12536-36-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1586342714-12536-1-git-send-email-wangshilong1991@gmail.com>
 References: <1586342714-12536-1-git-send-email-wangshilong1991@gmail.com>
@@ -71,721 +71,436 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-We could only use @found_map_block to find free blocks
-after we have collectd all used blocks, so something like
-handle_fs_bad_blocks(), ext2fs_create_resize_inode(),
-e2fsck_pass1_dupblocks() really should be handled after
-all threads has been finished.
+EA related variables are now shared by different
+threads, but without any protections.
+
+So this patch try to fix these by seralizing operations.
+Optimizations could be done later, since EA blocks
+could be shared, need be careful to split and merge.
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/e2fsck.h                      |   2 +
- e2fsck/pass1.c                       | 314 +++++++++++++++++----------
- tests/f_multithread/expect.1         |   2 +-
- tests/f_multithread_logfile/expect.1 |   2 +-
- tests/f_multithread_no/expect.1      |   2 +-
- 5 files changed, 199 insertions(+), 123 deletions(-)
+ e2fsck/e2fsck.h |   2 +
+ e2fsck/pass1.c  | 184 ++++++++++++++++++++++++++++--------------------
+ 2 files changed, 111 insertions(+), 75 deletions(-)
 
 diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
-index 20d61651..19df6cd3 100644
+index 19df6cd3..4e156f17 100644
 --- a/e2fsck/e2fsck.h
 +++ b/e2fsck/e2fsck.h
-@@ -450,6 +450,8 @@ struct e2fsck_struct {
- 	__u32			extent_depth_count[MAX_EXTENT_DEPTH_COUNT];
- 	/* serialize fix operation for multiple threads */
+@@ -452,6 +452,8 @@ struct e2fsck_struct {
  	pthread_mutex_t		 fs_fix_mutex;
-+	/* protect block_found_map, block_dup_map */
-+	pthread_mutex_t		 fs_block_map_mutex;
+ 	/* protect block_found_map, block_dup_map */
+ 	pthread_mutex_t		 fs_block_map_mutex;
++	/* protect ea related structure */
++	pthread_mutex_t		 fs_ea_mutex;
  };
  
  #ifdef DEBUG_THREADS
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index f3b52103..793a2944 100644
+index 348cf46b..1e98f8b6 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -132,24 +132,35 @@ static void process_inodes(e2fsck_t ctx, char *block_buf,
- static __u64 ext2_max_sizes[EXT2_MAX_BLOCK_LOG_SIZE -
- 			    EXT2_MIN_BLOCK_LOG_SIZE + 1];
- 
-+#define e2fsck_get_lock_context(ctx)		\
-+	e2fsck_t global_ctx = ctx->global_ctx;	\
-+	if (!global_ctx)			\
-+		global_ctx = ctx;		\
-+
- static void e2fsck_pass1_fix_lock(e2fsck_t ctx)
- {
--	e2fsck_t global_ctx = ctx->global_ctx;
--	if (!global_ctx)
--		global_ctx = ctx;
--
-+	e2fsck_get_lock_context(ctx);
- 	pthread_mutex_lock(&global_ctx->fs_fix_mutex);
+@@ -161,6 +161,18 @@ static inline void e2fsck_pass1_block_map_unlock(e2fsck_t ctx)
+ 	pthread_mutex_unlock(&global_ctx->fs_block_map_mutex);
  }
  
- static void e2fsck_pass1_fix_unlock(e2fsck_t ctx)
- {
--	e2fsck_t global_ctx = ctx->global_ctx;
--	if (!global_ctx)
--		global_ctx = ctx;
--
-+	e2fsck_get_lock_context(ctx);
- 	pthread_mutex_unlock(&global_ctx->fs_fix_mutex);
- }
- 
-+static inline void e2fsck_pass1_block_map_lock(e2fsck_t ctx)
++static inline void e2fsck_pass1_ea_lock(e2fsck_t ctx)
 +{
 +	e2fsck_get_lock_context(ctx);
-+	pthread_mutex_lock(&global_ctx->fs_block_map_mutex);
++	pthread_mutex_lock(&global_ctx->fs_ea_mutex);
 +}
 +
-+static inline void e2fsck_pass1_block_map_unlock(e2fsck_t ctx)
++static inline void e2fsck_pass1_ea_unlock(e2fsck_t ctx)
 +{
 +	e2fsck_get_lock_context(ctx);
-+	pthread_mutex_unlock(&global_ctx->fs_block_map_mutex);
++	pthread_mutex_unlock(&global_ctx->fs_ea_mutex);
 +}
 +
  /*
   * Free all memory allocated by pass1 in preparation for restarting
   * things.
-@@ -789,11 +800,15 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
- 			if (i >= 4)
- 				not_device++;
- 
-+			e2fsck_pass1_block_map_lock(ctx);
- 			if (blk < ctx->fs->super->s_first_data_block ||
- 			    blk >= ext2fs_blocks_count(ctx->fs->super) ||
- 			    ext2fs_fast_test_block_bitmap2(ctx->block_found_map,
--							   blk))
-+							   blk)) {
-+				e2fsck_pass1_block_map_unlock(ctx);
- 				return;	/* Invalid block, can't be dir */
-+			}
-+			e2fsck_pass1_block_map_unlock(ctx);
- 		}
- 		blk = inode->i_block[0];
- 	}
-@@ -929,19 +944,15 @@ static void reserve_block_for_root_repair(e2fsck_t ctx)
- 	errcode_t	err;
- 	ext2_filsys	fs = ctx->fs;
- 
--	e2fsck_pass1_fix_lock(ctx);
- 	ctx->root_repair_block = 0;
- 	if (ext2fs_test_inode_bitmap2(ctx->inode_used_map, EXT2_ROOT_INO))
--		goto out;
-+		return;
- 
- 	err = ext2fs_new_block2(fs, 0, ctx->block_found_map, &blk);
- 	if (err)
--		goto out;
-+		return;
- 	ext2fs_mark_block_bitmap2(ctx->block_found_map, blk);
- 	ctx->root_repair_block = blk;
--out:
--	e2fsck_pass1_fix_unlock(ctx);
--	return;
- }
- 
- static void reserve_block_for_lnf_repair(e2fsck_t ctx)
-@@ -952,18 +963,15 @@ static void reserve_block_for_lnf_repair(e2fsck_t ctx)
- 	static const char name[] = "lost+found";
- 	ext2_ino_t	ino;
- 
--	e2fsck_pass1_fix_lock(ctx);
- 	ctx->lnf_repair_block = 0;
- 	if (!ext2fs_lookup(fs, EXT2_ROOT_INO, name, sizeof(name)-1, 0, &ino))
--		goto out;
-+		return;
- 
- 	err = ext2fs_new_block2(fs, 0, ctx->block_found_map, &blk);
- 	if (err)
--		goto out;
-+		return;
- 	ext2fs_mark_block_bitmap2(ctx->block_found_map, blk);
- 	ctx->lnf_repair_block = blk;
--out:
--	e2fsck_pass1_fix_unlock(ctx);
- 	return;
- }
- 
-@@ -1229,6 +1237,115 @@ static int e2fsck_should_abort(e2fsck_t ctx)
- 	return 0;
- }
- 
-+/*
-+ * We need call mark_table_blocks() before multiple
-+ * thread start, since all known system blocks should be
-+ * marked and checked later.
-+ */
-+static int _e2fsck_pass1_prepare(e2fsck_t ctx)
-+{
-+	struct problem_context pctx;
-+	ext2_filsys fs = ctx->fs;
-+
-+	clear_problem_context(&pctx);
-+	if (!(ctx->options & E2F_OPT_PREEN))
-+		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
-+
-+	pctx.errcode = e2fsck_allocate_subcluster_bitmap(ctx->fs,
-+			_("in-use block map"), EXT2FS_BMAP64_RBTREE,
-+			"block_found_map", &ctx->block_found_map);
-+	if (pctx.errcode) {
-+		pctx.num = 1;
-+		fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
-+		ctx->flags |= E2F_FLAG_ABORT;
-+		return pctx.errcode;
-+	}
-+	pctx.errcode = e2fsck_allocate_block_bitmap(ctx->fs,
-+			_("metadata block map"), EXT2FS_BMAP64_RBTREE,
-+			"block_metadata_map", &ctx->block_metadata_map);
-+	if (pctx.errcode) {
-+		pctx.num = 1;
-+		fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
-+		ctx->flags |= E2F_FLAG_ABORT;
-+		return pctx.errcode;
-+	}
-+
-+	mark_table_blocks(ctx);
-+	pctx.errcode = ext2fs_convert_subcluster_bitmap(ctx->fs,
-+						&ctx->block_found_map);
-+	if (pctx.errcode) {
-+		fix_problem(ctx, PR_1_CONVERT_SUBCLUSTER, &pctx);
-+		ctx->flags |= E2F_FLAG_ABORT;
-+		return pctx.errcode;
-+	}
-+
-+	if (ext2fs_has_feature_mmp(fs->super) &&
-+	    fs->super->s_mmp_block > fs->super->s_first_data_block &&
-+	    fs->super->s_mmp_block < ext2fs_blocks_count(fs->super))
-+		ext2fs_mark_block_bitmap2(ctx->block_found_map,
-+					  fs->super->s_mmp_block);
-+
-+	return 0;
-+}
-+
-+static void _e2fsck_pass1_post(e2fsck_t ctx)
-+{
-+	struct problem_context pctx;
-+	ext2_filsys fs = ctx->fs;
-+	char *block_buf;
-+
-+	reserve_block_for_root_repair(ctx);
-+	reserve_block_for_lnf_repair(ctx);
-+
-+	if (ctx->invalid_bitmaps)
-+		handle_fs_bad_blocks(ctx);
-+
-+	if (ctx->flags & E2F_FLAG_RESIZE_INODE) {
-+		struct ext2_inode *inode;
-+		int inode_size = EXT2_INODE_SIZE(fs->super);
-+		inode = e2fsck_allocate_memory(ctx, inode_size,
-+					       "scratch inode");
-+
-+		clear_problem_context(&pctx);
-+		pctx.errcode = ext2fs_create_resize_inode(fs);
-+		if (pctx.errcode) {
-+			if (!fix_problem(ctx, PR_1_RESIZE_INODE_CREATE,
-+					 &pctx)) {
-+				ctx->flags |= E2F_FLAG_ABORT;
-+				ext2fs_free_mem(&inode);
-+				return;
-+			}
-+			pctx.errcode = 0;
-+		}
-+		if (!pctx.errcode) {
-+			e2fsck_read_inode(ctx, EXT2_RESIZE_INO, inode,
-+					  "recreate inode");
-+			inode->i_mtime = ctx->now;
-+			e2fsck_write_inode(ctx, EXT2_RESIZE_INO, inode,
-+					   "recreate inode");
-+		}
-+		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
-+		ext2fs_free_mem(&inode);
-+	}
-+
-+	if (ctx->flags & E2F_FLAG_RESTART)
-+		return;
-+
-+	if (ctx->block_dup_map) {
-+		if (ctx->options & E2F_OPT_PREEN) {
-+			clear_problem_context(&pctx);
-+			fix_problem(ctx, PR_1_DUP_BLOCKS_PREENSTOP, &pctx);
-+		}
-+		block_buf =
-+			(char *)e2fsck_allocate_memory(ctx,
-+					ctx->fs->blocksize * 3,
-+					"block interate buffer");
-+		e2fsck_pass1_dupblocks(ctx, block_buf);
-+		ext2fs_free_mem(&block_buf);
-+	}
-+}
-+
-+
- void _e2fsck_pass1(e2fsck_t ctx)
+@@ -439,15 +451,16 @@ static void inc_ea_inode_refs(e2fsck_t ctx, struct problem_context *pctx,
+ 			      struct ext2_ext_attr_entry *first, void *end)
  {
- 	int	i;
-@@ -1267,10 +1384,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 		ctx->readahead_kb = e2fsck_guess_readahead(ctx->fs);
- 	pass1_readahead(ctx, &ra_group, &ino_threshold);
+ 	struct ext2_ext_attr_entry *entry;
++	e2fsck_t global_ctx = ctx->global_ctx ? ctx->global_ctx : ctx;
  
--	if (!(ctx->options & E2F_OPT_PREEN) &&
--	    ((!ctx->global_ctx) || (ctx->thread_info.et_thread_index == 0)))
--		fix_problem(ctx, PR_1_PASS_HEADER, &pctx);
--
- 	if (ext2fs_has_feature_dir_index(fs->super) &&
- 	    !(ctx->options & E2F_OPT_NO)) {
- 		if (ext2fs_u32_list_create(&ctx->dirs_to_hash, 50))
-@@ -1318,24 +1431,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 		ctx->flags |= E2F_FLAG_ABORT;
+ 	for (entry = first;
+ 	     (void *)entry < end && !EXT2_EXT_IS_LAST_ENTRY(entry);
+ 	     entry = EXT2_EXT_ATTR_NEXT(entry)) {
+ 		if (!entry->e_value_inum)
+ 			continue;
+-		if (!ctx->ea_inode_refs) {
++		if (!global_ctx->ea_inode_refs) {
+ 			pctx->errcode = ea_refcount_create(0,
+-							   &ctx->ea_inode_refs);
++						&global_ctx->ea_inode_refs);
+ 			if (pctx->errcode) {
+ 				pctx->num = 4;
+ 				fix_problem(ctx, PR_1_ALLOCATE_REFCOUNT, pctx);
+@@ -455,8 +468,8 @@ static void inc_ea_inode_refs(e2fsck_t ctx, struct problem_context *pctx,
+ 				return;
+ 			}
+ 		}
+-		ea_refcount_increment(ctx->ea_inode_refs, entry->e_value_inum,
+-				      0);
++		ea_refcount_increment(global_ctx->ea_inode_refs,
++				      entry->e_value_inum, 0);
+ 	}
+ }
+ 
+@@ -582,8 +595,10 @@ fix:
+ 	 * EA(s) in automatic fashion -bzzz
+ 	 */
+ 	if (problem == 0 || !fix_problem(ctx, problem, pctx)) {
++		e2fsck_pass1_ea_lock(ctx);
+ 		inc_ea_inode_refs(ctx, pctx,
+ 				  (struct ext2_ext_attr_entry *)start, end);
++		e2fsck_pass1_ea_unlock(ctx);
  		return;
  	}
--	pctx.errcode = e2fsck_allocate_subcluster_bitmap(fs,
--			_("in-use block map"), EXT2FS_BMAP64_RBTREE,
--			"block_found_map", &ctx->block_found_map);
--	if (pctx.errcode) {
--		pctx.num = 1;
--		fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
--		ctx->flags |= E2F_FLAG_ABORT;
--		return;
--	}
--	pctx.errcode = e2fsck_allocate_block_bitmap(fs,
--			_("metadata block map"), EXT2FS_BMAP64_RBTREE,
--			"block_metadata_map", &ctx->block_metadata_map);
--	if (pctx.errcode) {
--		pctx.num = 1;
--		fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
--		ctx->flags |= E2F_FLAG_ABORT;
--		return;
--	}
- 	pctx.errcode = e2fsck_setup_icount(ctx, "inode_link_info", 0, NULL,
- 					   &ctx->inode_link_info);
- 	if (pctx.errcode) {
-@@ -1377,14 +1472,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 
+@@ -1292,14 +1307,49 @@ static void _e2fsck_pass1_post(e2fsck_t ctx)
+ {
+ 	struct problem_context pctx;
+ 	ext2_filsys fs = ctx->fs;
+-	char *block_buf;
+ 
++	char *block_buf =
++		(char *)e2fsck_allocate_memory(ctx, ctx->fs->blocksize * 3,
++					      "block interate buffer");
+ 	reserve_block_for_root_repair(ctx);
+ 	reserve_block_for_lnf_repair(ctx);
+ 
++	/*
++	 * If any extended attribute blocks' reference counts need to
++	 * be adjusted, either up (ctx->refcount_extra), or down
++	 * (ctx->refcount), then fix them.
++	 */
++	if (ctx->refcount) {
++		adjust_extattr_refcount(ctx, ctx->refcount, block_buf, -1);
++		ea_refcount_free(ctx->refcount);
++		ctx->refcount = 0;
++	}
++	if (ctx->refcount_extra) {
++		adjust_extattr_refcount(ctx, ctx->refcount_extra,
++					block_buf, +1);
++		ea_refcount_free(ctx->refcount_extra);
++		ctx->refcount_extra = 0;
++	}
++
++	if (ctx->ea_block_quota_blocks) {
++		ea_refcount_free(ctx->ea_block_quota_blocks);
++		ctx->ea_block_quota_blocks = 0;
++	}
++
++	if (ctx->ea_block_quota_inodes) {
++		ea_refcount_free(ctx->ea_block_quota_inodes);
++		ctx->ea_block_quota_inodes = 0;
++	}
++
+ 	if (ctx->invalid_bitmaps)
+ 		handle_fs_bad_blocks(ctx);
+ 
++	/* We don't need the block_ea_map any more */
++	if (ctx->block_ea_map) {
++		ext2fs_free_block_bitmap(ctx->block_ea_map);
++		ctx->block_ea_map = 0;
++	}
++
+ 	if (ctx->flags & E2F_FLAG_RESIZE_INODE) {
+ 		struct ext2_inode *inode;
+ 		int inode_size = EXT2_INODE_SIZE(fs->super);
+@@ -1336,10 +1386,6 @@ static void _e2fsck_pass1_post(e2fsck_t ctx)
+ 			clear_problem_context(&pctx);
+ 			fix_problem(ctx, PR_1_DUP_BLOCKS_PREENSTOP, &pctx);
  		}
+-		block_buf =
+-			(char *)e2fsck_allocate_memory(ctx,
+-					ctx->fs->blocksize * 3,
+-					"block interate buffer");
+ 		e2fsck_pass1_dupblocks(ctx, block_buf);
+ 		ext2fs_free_mem(&block_buf);
  	}
- 
--	mark_table_blocks(ctx);
--	pctx.errcode = ext2fs_convert_subcluster_bitmap(fs,
--						&ctx->block_found_map);
--	if (pctx.errcode) {
--		fix_problem(ctx, PR_1_CONVERT_SUBCLUSTER, &pctx);
--		ctx->flags |= E2F_FLAG_ABORT;
--		goto endit;
--	}
- 	block_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize * 3,
- 						    "block interate buffer");
- 	if (EXT2_INODE_SIZE(fs->super) == EXT2_GOOD_OLD_INODE_SIZE)
-@@ -1418,12 +1505,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 	     fs->super->s_mkfs_time < fs->super->s_inodes_count))
- 		low_dtime_check = 0;
- 
--	if (ext2fs_has_feature_mmp(fs->super) &&
--	    fs->super->s_mmp_block > fs->super->s_first_data_block &&
--	    fs->super->s_mmp_block < ext2fs_blocks_count(fs->super))
--		ext2fs_mark_block_bitmap2(ctx->block_found_map,
--					  fs->super->s_mmp_block);
--
- 	/* Set up ctx->lost_and_found if possible */
- 	(void) e2fsck_get_lost_and_found(ctx, 0);
- 
-@@ -1774,8 +1855,10 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 				failed_csum = 0;
- 			}
- 
-+			e2fsck_pass1_block_map_lock(ctx);
- 			pctx.errcode = ext2fs_copy_bitmap(ctx->block_found_map,
- 							  &pb.fs_meta_blocks);
-+			e2fsck_pass1_block_map_unlock(ctx);
- 			if (pctx.errcode) {
- 				pctx.num = 4;
- 				fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
-@@ -2107,9 +2190,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
+@@ -2190,40 +2236,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
  	ext2fs_close_inode_scan(scan);
  	scan = NULL;
  
--	reserve_block_for_root_repair(ctx);
--	reserve_block_for_lnf_repair(ctx);
--
- 	/*
- 	 * If any extended attribute blocks' reference counts need to
- 	 * be adjusted, either up (ctx->refcount_extra), or down
-@@ -2137,11 +2217,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 		ctx->ea_block_quota_inodes = 0;
- 	}
- 
--	if (ctx->invalid_bitmaps) {
--		e2fsck_pass1_fix_lock(ctx);
--		handle_fs_bad_blocks(ctx);
--		e2fsck_pass1_fix_unlock(ctx);
+-	/*
+-	 * If any extended attribute blocks' reference counts need to
+-	 * be adjusted, either up (ctx->refcount_extra), or down
+-	 * (ctx->refcount), then fix them.
+-	 */
+-	if (ctx->refcount) {
+-		adjust_extattr_refcount(ctx, ctx->refcount, block_buf, -1);
+-		ea_refcount_free(ctx->refcount);
+-		ctx->refcount = 0;
 -	}
- 
- 	/* We don't need the block_ea_map any more */
- 	if (ctx->block_ea_map) {
-@@ -2152,31 +2227,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
+-	if (ctx->refcount_extra) {
+-		adjust_extattr_refcount(ctx, ctx->refcount_extra,
+-					block_buf, +1);
+-		ea_refcount_free(ctx->refcount_extra);
+-		ctx->refcount_extra = 0;
+-	}
+-
+-	if (ctx->ea_block_quota_blocks) {
+-		ea_refcount_free(ctx->ea_block_quota_blocks);
+-		ctx->ea_block_quota_blocks = 0;
+-	}
+-
+-	if (ctx->ea_block_quota_inodes) {
+-		ea_refcount_free(ctx->ea_block_quota_inodes);
+-		ctx->ea_block_quota_inodes = 0;
+-	}
+-
+-
+-	/* We don't need the block_ea_map any more */
+-	if (ctx->block_ea_map) {
+-		ext2fs_free_block_bitmap(ctx->block_ea_map);
+-		ctx->block_ea_map = 0;
+-	}
+-
  	/* We don't need the encryption policy => ID map any more */
  	destroy_encryption_policy_map(ctx);
  
--	if (ctx->flags & E2F_FLAG_RESIZE_INODE) {
--		clear_problem_context(&pctx);
--		e2fsck_pass1_fix_lock(ctx);
--		pctx.errcode = ext2fs_create_resize_inode(fs);
--		e2fsck_pass1_fix_unlock(ctx);
--		if (pctx.errcode) {
--			if (!fix_problem(ctx, PR_1_RESIZE_INODE_CREATE,
--					 &pctx)) {
--				ctx->flags |= E2F_FLAG_ABORT;
--				goto endit;
--			}
--			pctx.errcode = 0;
--		}
--		if (!pctx.errcode) {
--			e2fsck_read_inode(ctx, EXT2_RESIZE_INO, inode,
--					  "recreate inode");
--			e2fsck_pass1_fix_lock(ctx);
--			inode->i_mtime = ctx->now;
--			e2fsck_write_inode(ctx, EXT2_RESIZE_INO, inode,
--					   "recreate inode");
--			e2fsck_pass1_fix_unlock(ctx);
--		}
--		ctx->flags &= ~E2F_FLAG_RESIZE_INODE;
--	}
--
- 	if (ctx->flags & E2F_FLAG_RESTART) {
- 		/*
- 		 * Only the master copy of the superblock and block
-@@ -2189,15 +2239,6 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 		goto endit;
- 	}
- 
--	if (ctx->block_dup_map) {
--		if (ctx->options & E2F_OPT_PREEN) {
--			clear_problem_context(&pctx);
--			fix_problem(ctx, PR_1_DUP_BLOCKS_PREENSTOP, &pctx);
--		}
--		e2fsck_pass1_fix_lock(ctx);
--		e2fsck_pass1_dupblocks(ctx, block_buf);
--		e2fsck_pass1_fix_unlock(ctx);
--	}
- 	ctx->flags |= E2F_FLAG_ALLOC_OK;
- 	ext2fs_free_mem(&inodes_to_process);
- endit:
-@@ -2501,10 +2542,10 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx,
- 	assert(global_ctx->inode_reg_map == NULL);
- 	assert(global_ctx->inodes_to_rebuild == NULL);
- 
--	assert(global_ctx->block_found_map == NULL);
- 	assert(global_ctx->block_dup_map == NULL);
-+	assert(global_ctx->block_found_map != NULL);
-+	assert(global_ctx->block_metadata_map != NULL);
- 	assert(global_ctx->block_ea_map == NULL);
--	assert(global_ctx->block_metadata_map == NULL);
- 
- 	retval = ext2fs_get_mem(sizeof(struct e2fsck_struct), &thread_context);
- 	if (retval) {
-@@ -2672,10 +2713,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
- 	ext2fs_inode_bitmap inode_bb_map = global_ctx->inode_bb_map;
+@@ -2774,7 +2786,6 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
  	ext2fs_inode_bitmap inode_imagic_map = global_ctx->inode_imagic_map;
  	ext2fs_inode_bitmap inode_reg_map = global_ctx->inode_reg_map;
--	ext2fs_block_bitmap block_found_map = global_ctx->block_found_map;
  	ext2fs_block_bitmap block_dup_map = global_ctx->block_dup_map;
- 	ext2fs_block_bitmap block_ea_map = global_ctx->block_ea_map;
--	ext2fs_block_bitmap block_metadata_map = global_ctx->block_metadata_map;
+-	ext2fs_block_bitmap block_ea_map = global_ctx->block_ea_map;
  	ext2fs_block_bitmap inodes_to_rebuild = global_ctx->inodes_to_rebuild;
  	ext2_icount_t inode_count = global_ctx->inode_count;
  	ext2_icount_t inode_link_info = global_ctx->inode_link_info;
-@@ -2717,10 +2756,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+@@ -2803,6 +2814,12 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	int *invalid_inode_bitmap_flag = global_ctx->invalid_inode_bitmap_flag;
+ 	int *invalid_inode_table_flag  = global_ctx->invalid_inode_table_flag;
+ 	int invalid_bitmaps = global_ctx->invalid_bitmaps;
++	ext2_refcount_t refcount = global_ctx->refcount;
++	ext2_refcount_t refcount_extra = global_ctx->refcount_extra;
++	ext2_refcount_t ea_block_quota_blocks = global_ctx->ea_block_quota_blocks;
++	ext2_refcount_t ea_block_quota_inodes = global_ctx->ea_block_quota_inodes;
++	ext2fs_block_bitmap block_ea_map = global_ctx->block_ea_map;
++	ext2_refcount_t ea_inode_refs = global_ctx->ea_inode_refs;
+ 
+ #ifdef HAVE_SETJMP_H
+ 	jmp_buf		 old_jmp;
+@@ -2820,7 +2837,6 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
  	global_ctx->inode_imagic_map = inode_imagic_map;
  	global_ctx->inodes_to_rebuild = inodes_to_rebuild;
  	global_ctx->inode_reg_map = inode_reg_map;
--	global_ctx->block_found_map = block_found_map;
--	global_ctx->block_dup_map = block_dup_map;
- 	global_ctx->block_ea_map = block_ea_map;
--	global_ctx->block_metadata_map = block_metadata_map;
-+	global_ctx->block_dup_map = block_dup_map;
+-	global_ctx->block_ea_map = block_ea_map;
+ 	global_ctx->block_dup_map = block_dup_map;
  	global_ctx->dir_info = dir_info;
  	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
- 	global_ctx->dx_dir_info = dx_dir_info;
-@@ -2783,10 +2820,7 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+@@ -2830,6 +2846,12 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
+ 	global_ctx->inode_count = inode_count;
+ 	global_ctx->inode_link_info = inode_link_info;
++	global_ctx->refcount = refcount;
++	global_ctx->refcount_extra = refcount_extra;
++	global_ctx->ea_block_quota_blocks = ea_block_quota_blocks;
++	global_ctx->ea_block_quota_inodes = ea_block_quota_inodes;
++	global_ctx->block_ea_map = block_ea_map;
++	global_ctx->ea_inode_refs = ea_inode_refs;
+ 	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_directory_count);
+ 	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_regular_count);
+ 	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_blockdev_count);
+@@ -2889,7 +2911,6 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
  	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, inode_imagic_map);
  	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, inode_reg_map);
  	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, inodes_to_rebuild);
--	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, block_found_map);
--	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, block_dup_map);
- 	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, block_ea_map);
--	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, block_metadata_map);
+-	PASS1_MERGE_CTX_BITMAP(global_ctx, thread_ctx, block_ea_map);
  
  	return 0;
  }
-@@ -2809,10 +2843,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+@@ -2912,7 +2933,6 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
  	PASS1_FREE_CTX_BITMAP(thread_ctx, inode_imagic_map);
  	PASS1_FREE_CTX_BITMAP(thread_ctx, inode_reg_map);
  	PASS1_FREE_CTX_BITMAP(thread_ctx, inodes_to_rebuild);
--	PASS1_FREE_CTX_BITMAP(thread_ctx, block_found_map);
--	PASS1_FREE_CTX_BITMAP(thread_ctx, block_dup_map);
- 	PASS1_FREE_CTX_BITMAP(thread_ctx, block_ea_map);
--	PASS1_FREE_CTX_BITMAP(thread_ctx, block_metadata_map);
+-	PASS1_FREE_CTX_BITMAP(thread_ctx, block_ea_map);
  	ext2fs_free_icount(thread_ctx->inode_count);
  	ext2fs_free_icount(thread_ctx->inode_link_info);
  	ext2fs_free_mem(&thread_ctx);
-@@ -3010,7 +3041,12 @@ static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
- 	unsigned flexbg_size = 1;
- 	int max_threads;
+@@ -3118,6 +3138,7 @@ static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
  
-+	retval = _e2fsck_pass1_prepare(global_ctx);
-+	if (retval)
-+		goto out_abort;
-+
  	pthread_mutex_init(&global_ctx->fs_fix_mutex, NULL);
-+	pthread_mutex_init(&global_ctx->fs_block_map_mutex, NULL);
+ 	pthread_mutex_init(&global_ctx->fs_block_map_mutex, NULL);
++	pthread_mutex_init(&global_ctx->fs_ea_mutex, NULL);
  	if (ext2fs_has_feature_flex_bg(global_ctx->fs->super))
  		flexbg_size = 1 << global_ctx->fs->super->s_log_groups_per_flex;
  
-@@ -3049,6 +3085,7 @@ out_abort:
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 	e2fsck_pass1_multithread(ctx);
-+	_e2fsck_pass1_post(ctx);
- }
- 
- #undef FINISH_INODE_LOOP
-@@ -3234,7 +3271,12 @@ static void alloc_imagic_map(e2fsck_t ctx)
-  */
- static _INLINE_ void mark_block_used(e2fsck_t ctx, blk64_t block)
- {
--	struct		problem_context pctx;
-+	struct problem_context pctx;
-+	e2fsck_t global_ctx;
-+
-+	global_ctx = ctx->global_ctx;
-+	if (!global_ctx)
-+		global_ctx = ctx;
- 
- 	clear_problem_context(&pctx);
- 
-@@ -3243,11 +3285,15 @@ static _INLINE_ void mark_block_used(e2fsck_t ctx, blk64_t block)
- 		    !(ctx->options & E2F_OPT_UNSHARE_BLOCKS)) {
- 			return;
- 		}
--		if (!ctx->block_dup_map) {
-+		/**
-+		 * this should be safe because this operation has
-+		 * been serialized by mutex.
-+		 */
-+		if (!global_ctx->block_dup_map) {
- 			pctx.errcode = e2fsck_allocate_block_bitmap(ctx->fs,
- 					_("multiply claimed block map"),
- 					EXT2FS_BMAP64_RBTREE, "block_dup_map",
--					&ctx->block_dup_map);
-+					&global_ctx->block_dup_map);
+@@ -3434,12 +3455,10 @@ static void adjust_extattr_refcount(e2fsck_t ctx, ext2_refcount_t refcount,
+ 		should_be = header->h_refcount + adjust_sign * (int)count;
+ 		pctx.num = should_be;
+ 		if (fix_problem(ctx, PR_1_EXTATTR_REFCOUNT, &pctx)) {
+-			e2fsck_pass1_fix_lock(ctx);
+ 			header->h_refcount = should_be;
+ 			pctx.errcode = ext2fs_write_ext_attr3(fs, blk,
+ 							     block_buf,
+ 							     pctx.ino);
+-			e2fsck_pass1_fix_unlock(ctx);
  			if (pctx.errcode) {
- 				pctx.num = 3;
- 				fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR,
-@@ -3257,7 +3303,7 @@ static _INLINE_ void mark_block_used(e2fsck_t ctx, blk64_t block)
- 				return;
- 			}
- 		}
--		ext2fs_fast_mark_block_bitmap2(ctx->block_dup_map, block);
-+		ext2fs_fast_mark_block_bitmap2(global_ctx->block_dup_map, block);
- 	} else {
- 		ext2fs_fast_mark_block_bitmap2(ctx->block_found_map, block);
+ 				fix_problem(ctx, PR_1_EXTATTR_WRITE_ABORT,
+ 					    &pctx);
+@@ -3466,6 +3485,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 	__u64		quota_inodes = 0;
+ 	region_t	region = 0;
+ 	int		failed_csum = 0;
++	e2fsck_t	global_ctx = ctx->global_ctx ? ctx->global_ctx : ctx;
+ 
+ 	ea_block_quota->blocks = 0;
+ 	ea_block_quota->inodes = 0;
+@@ -3489,26 +3509,30 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
  	}
-@@ -3270,14 +3316,16 @@ static _INLINE_ void mark_block_used(e2fsck_t ctx, blk64_t block)
- static _INLINE_ void mark_blocks_used(e2fsck_t ctx, blk64_t block,
- 				      unsigned int num)
- {
--	if (ext2fs_test_block_bitmap_range2(ctx->block_found_map, block, num))
-+	e2fsck_pass1_block_map_lock(ctx);
-+	if (ext2fs_test_block_bitmap_range2(ctx->block_found_map, block, num)) {
- 		ext2fs_mark_block_bitmap_range2(ctx->block_found_map, block, num);
--	else {
-+	} else {
- 		unsigned int i;
  
- 		for (i = 0; i < num; i += EXT2FS_CLUSTER_RATIO(ctx->fs))
- 			mark_block_used(ctx, block + i);
- 	}
-+	e2fsck_pass1_block_map_unlock(ctx);
- }
- 
- /*
-@@ -3591,7 +3639,9 @@ refcount_fail:
- 
- 	inc_ea_inode_refs(ctx, pctx, first, end);
- 	ea_refcount_store(ctx->refcount, blk, header->h_refcount - 1);
-+	e2fsck_pass1_block_map_lock(ctx);
- 	mark_block_used(ctx, blk);
-+	e2fsck_pass1_block_map_unlock(ctx);
- 	ext2fs_fast_mark_block_bitmap2(ctx->block_ea_map, blk);
- 	return 1;
- 
-@@ -3976,7 +4026,9 @@ report_problem:
- 				pctx->str = "EXT2_EXTENT_UP";
- 				return;
- 			}
-+			e2fsck_pass1_block_map_lock(ctx);
- 			mark_block_used(ctx, blk);
-+			e2fsck_pass1_block_map_unlock(ctx);
- 			pb->num_blocks++;
- 			goto next;
- 		}
-@@ -4083,6 +4135,7 @@ alloc_later:
- 					      pb->last_block,
- 					      extent.e_pblk,
- 					      extent.e_lblk)) {
-+			e2fsck_pass1_block_map_lock(ctx);
- 			for (i = 0; i < extent.e_len; i++) {
- 				pctx->blk = extent.e_lblk + i;
- 				pctx->blk2 = extent.e_pblk + i;
-@@ -4090,6 +4143,7 @@ alloc_later:
- 				mark_block_used(ctx, extent.e_pblk + i);
- 				mark_block_used(ctx, extent.e_pblk + i);
- 			}
-+			e2fsck_pass1_block_map_unlock(ctx);
- 		}
- 
- 		/*
-@@ -4732,6 +4786,7 @@ static int process_block(ext2_filsys fs,
- 			*block_nr = 0;
+ 	/* If ea bitmap hasn't been allocated, create it */
+-	if (!ctx->block_ea_map) {
++	e2fsck_pass1_ea_lock(ctx);
++	if (!global_ctx->block_ea_map) {
+ 		pctx->errcode = e2fsck_allocate_block_bitmap(fs,
+ 					_("ext attr block map"),
+ 					EXT2FS_BMAP64_RBTREE, "block_ea_map",
+-					&ctx->block_ea_map);
++					&global_ctx->block_ea_map);
+ 		if (pctx->errcode) {
+ 			pctx->num = 2;
+ 			fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, pctx);
+ 			ctx->flags |= E2F_FLAG_ABORT;
++			e2fsck_pass1_ea_unlock(ctx);
  			return 0;
  		}
-+
- 		if (!p->suppress && (p->num_illegal_blocks % 12) == 0) {
- 			if (fix_problem(ctx, PR_1_TOO_MANY_BAD_BLOCKS, pctx)) {
- 				p->clear = 1;
-@@ -4773,8 +4828,11 @@ static int process_block(ext2_filsys fs,
- 		 * being in use; all of the other blocks are handled
- 		 * by mark_table_blocks()).
- 		 */
--		if (blockcnt == BLOCK_COUNT_DIND)
-+		if (blockcnt == BLOCK_COUNT_DIND) {
-+			e2fsck_pass1_block_map_lock(ctx);
- 			mark_block_used(ctx, blk);
-+			e2fsck_pass1_block_map_unlock(ctx);
-+		}
- 		p->num_blocks++;
- 	} else if (!(ctx->fs->cluster_ratio_bits &&
- 		     p->previous_block &&
-@@ -4782,15 +4840,19 @@ static int process_block(ext2_filsys fs,
- 		      EXT2FS_B2C(ctx->fs, p->previous_block)) &&
- 		     (blk & EXT2FS_CLUSTER_MASK(ctx->fs)) ==
- 		     ((unsigned) blockcnt & EXT2FS_CLUSTER_MASK(ctx->fs)))) {
-+		e2fsck_pass1_block_map_lock(ctx);
- 		mark_block_used(ctx, blk);
-+		e2fsck_pass1_block_map_unlock(ctx);
- 		p->num_blocks++;
- 	} else if (has_unaligned_cluster_map(ctx, p->previous_block,
- 					     p->last_block, blk, blockcnt)) {
- 		pctx->blk = blockcnt;
- 		pctx->blk2 = blk;
- 		fix_problem(ctx, PR_1_MISALIGNED_CLUSTER, pctx);
-+		e2fsck_pass1_block_map_lock(ctx);
- 		mark_block_used(ctx, blk);
- 		mark_block_used(ctx, blk);
-+		e2fsck_pass1_block_map_unlock(ctx);
- 	}
- 	if (blockcnt >= 0)
- 		p->last_block = blockcnt;
-@@ -4857,10 +4919,12 @@ static int process_bad_block(ext2_filsys fs,
  	}
  
- 	if (blockcnt < 0) {
-+		e2fsck_pass1_block_map_lock(ctx);
- 		if (ext2fs_test_block_bitmap2(p->fs_meta_blocks, blk)) {
- 			p->bbcheck = 1;
- 			if (fix_problem(ctx, PR_1_BB_FS_BLOCK, pctx)) {
- 				*block_nr = 0;
-+				e2fsck_pass1_block_map_unlock(ctx);
- 				return BLOCK_CHANGED;
- 			}
- 		} else if (ext2fs_test_block_bitmap2(ctx->block_found_map,
-@@ -4869,12 +4933,17 @@ static int process_bad_block(ext2_filsys fs,
- 			if (fix_problem(ctx, PR_1_BBINODE_BAD_METABLOCK,
- 					pctx)) {
- 				*block_nr = 0;
-+				e2fsck_pass1_block_map_unlock(ctx);
- 				return BLOCK_CHANGED;
- 			}
--			if (e2fsck_should_abort(ctx))
-+			if (e2fsck_should_abort(ctx)) {
-+				e2fsck_pass1_block_map_unlock(ctx);
- 				return BLOCK_ABORT;
--		} else
-+			}
-+		} else {
- 			mark_block_used(ctx, blk);
+ 	/* Create the EA refcount structure if necessary */
+-	if (!ctx->refcount) {
+-		pctx->errcode = ea_refcount_create(0, &ctx->refcount);
++	if (!global_ctx->refcount) {
++		pctx->errcode = ea_refcount_create(0,
++					&global_ctx->refcount);
+ 		if (pctx->errcode) {
+ 			pctx->num = 1;
+ 			fix_problem(ctx, PR_1_ALLOCATE_REFCOUNT, pctx);
+ 			ctx->flags |= E2F_FLAG_ABORT;
++			e2fsck_pass1_ea_unlock(ctx);
+ 			return 0;
+ 		}
+ 	}
+@@ -3519,37 +3543,44 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ #endif
+ 
+ 	/* Have we seen this EA block before? */
+-	if (ext2fs_fast_test_block_bitmap2(ctx->block_ea_map, blk)) {
++	if (ext2fs_fast_test_block_bitmap2(global_ctx->block_ea_map,
++					   blk)) {
+ 		ea_block_quota->blocks = EXT2FS_C2B(fs, 1);
+ 		ea_block_quota->inodes = 0;
+ 
+-		if (ctx->ea_block_quota_blocks) {
+-			ea_refcount_fetch(ctx->ea_block_quota_blocks, blk,
+-					  &quota_blocks);
++		if (global_ctx->ea_block_quota_blocks) {
++			ea_refcount_fetch(global_ctx->ea_block_quota_blocks,
++					  blk, &quota_blocks);
+ 			if (quota_blocks)
+ 				ea_block_quota->blocks = quota_blocks;
+ 		}
+ 
+-		if (ctx->ea_block_quota_inodes)
+-			ea_refcount_fetch(ctx->ea_block_quota_inodes, blk,
+-					  &ea_block_quota->inodes);
++		if (global_ctx->ea_block_quota_inodes)
++			ea_refcount_fetch(global_ctx->ea_block_quota_inodes,
++					  blk, &ea_block_quota->inodes);
+ 
+-		if (ea_refcount_decrement(ctx->refcount, blk, 0) == 0)
++		if (ea_refcount_decrement(global_ctx->refcount,
++					  blk, 0) == 0) {
++			e2fsck_pass1_ea_unlock(ctx);
+ 			return 1;
 +		}
-+		e2fsck_pass1_block_map_unlock(ctx);
- 		return 0;
+ 		/* Ooops, this EA was referenced more than it stated */
+-		if (!ctx->refcount_extra) {
++		if (!global_ctx->refcount_extra) {
+ 			pctx->errcode = ea_refcount_create(0,
+-					   &ctx->refcount_extra);
++					   &global_ctx->refcount_extra);
+ 			if (pctx->errcode) {
+ 				pctx->num = 2;
+ 				fix_problem(ctx, PR_1_ALLOCATE_REFCOUNT, pctx);
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_ea_unlock(ctx);
+ 				return 0;
+ 			}
+ 		}
+-		ea_refcount_increment(ctx->refcount_extra, blk, 0);
++		ea_refcount_increment(global_ctx->refcount_extra, blk, 0);
++		e2fsck_pass1_ea_unlock(ctx);
+ 		return 1;
  	}
- #if 0
-@@ -4887,10 +4956,13 @@ static int process_bad_block(ext2_filsys fs,
- 	 * there's an overlap between the filesystem table blocks
- 	 * (bitmaps and inode table) and the bad block list.
- 	 */
-+	e2fsck_pass1_block_map_lock(ctx);
- 	if (!ext2fs_test_block_bitmap2(ctx->block_found_map, blk)) {
- 		ext2fs_mark_block_bitmap2(ctx->block_found_map, blk);
-+		e2fsck_pass1_block_map_unlock(ctx);
- 		return 0;
- 	}
-+	e2fsck_pass1_block_map_unlock(ctx);
++	e2fsck_pass1_ea_unlock(ctx);
+ 
  	/*
- 	 * Try to find the where the filesystem block was used...
- 	 */
-@@ -5045,6 +5117,7 @@ static void new_table_block(e2fsck_t ctx, blk64_t first_block, dgrp_t group,
- 	fix_problem(ctx, (old_block ? PR_1_RELOC_FROM_TO :
- 			  PR_1_RELOC_TO), &pctx);
- 	pctx.blk2 = 0;
-+	e2fsck_pass1_block_map_lock(ctx);
- 	for (i = 0; i < num; i++) {
- 		pctx.blk = i;
- 		ext2fs_mark_block_bitmap2(ctx->block_found_map, (*new_block)+i);
-@@ -5065,6 +5138,7 @@ static void new_table_block(e2fsck_t ctx, blk64_t first_block, dgrp_t group,
- 		if (pctx.errcode)
- 			fix_problem(ctx, PR_1_RELOC_WRITE_ERR, &pctx);
+ 	 * OK, we haven't seen this EA block yet.  So we need to
+@@ -3676,44 +3707,47 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 			return 0;
  	}
-+	e2fsck_pass1_block_map_unlock(ctx);
- 	ext2fs_free_mem(&buf);
- }
  
-diff --git a/tests/f_multithread/expect.1 b/tests/f_multithread/expect.1
-index 8d2acd2b..4db68d9e 100644
---- a/tests/f_multithread/expect.1
-+++ b/tests/f_multithread/expect.1
-@@ -1,7 +1,7 @@
- ext2fs_open2: Bad magic number in super-block
- ../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
-+Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scan group range [0, 2)
--[Thread 0] Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scanned group range [0, 2), inodes 3008
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/f_multithread_logfile/expect.1 b/tests/f_multithread_logfile/expect.1
-index 8d2acd2b..4db68d9e 100644
---- a/tests/f_multithread_logfile/expect.1
-+++ b/tests/f_multithread_logfile/expect.1
-@@ -1,7 +1,7 @@
- ext2fs_open2: Bad magic number in super-block
- ../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
-+Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scan group range [0, 2)
--[Thread 0] Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scanned group range [0, 2), inodes 3008
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/f_multithread_no/expect.1 b/tests/f_multithread_no/expect.1
-index f85a3382..eda2fcac 100644
---- a/tests/f_multithread_no/expect.1
-+++ b/tests/f_multithread_no/expect.1
-@@ -1,7 +1,7 @@
- ext2fs_open2: Bad magic number in super-block
- ../e2fsck/e2fsck: Superblock invalid, trying backup blocks...
-+Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scan group range [0, 2)
--[Thread 0] Pass 1: Checking inodes, blocks, and sizes
- [Thread 0] Scanned group range [0, 2), inodes 3008
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
++	e2fsck_pass1_ea_lock(ctx);
+ 	if (quota_blocks != EXT2FS_C2B(fs, 1U)) {
+-		if (!ctx->ea_block_quota_blocks) {
++		if (!global_ctx->ea_block_quota_blocks) {
+ 			pctx->errcode = ea_refcount_create(0,
+-						&ctx->ea_block_quota_blocks);
++					&global_ctx->ea_block_quota_blocks);
+ 			if (pctx->errcode) {
+ 				pctx->num = 3;
+ 				goto refcount_fail;
+ 			}
+ 		}
+-		ea_refcount_store(ctx->ea_block_quota_blocks, blk,
+-				  quota_blocks);
++		ea_refcount_store(global_ctx->ea_block_quota_blocks,
++				  blk, quota_blocks);
+ 	}
+ 
+ 	if (quota_inodes) {
+-		if (!ctx->ea_block_quota_inodes) {
++		if (!global_ctx->ea_block_quota_inodes) {
+ 			pctx->errcode = ea_refcount_create(0,
+-						&ctx->ea_block_quota_inodes);
++					&global_ctx->ea_block_quota_inodes);
+ 			if (pctx->errcode) {
+ 				pctx->num = 4;
+ refcount_fail:
+ 				fix_problem(ctx, PR_1_ALLOCATE_REFCOUNT, pctx);
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_ea_unlock(ctx);
+ 				return 0;
+ 			}
+ 		}
+ 
+-		ea_refcount_store(ctx->ea_block_quota_inodes, blk,
+-				  quota_inodes);
++		ea_refcount_store(global_ctx->ea_block_quota_inodes,
++				  blk, quota_inodes);
+ 	}
+ 	ea_block_quota->blocks = quota_blocks;
+ 	ea_block_quota->inodes = quota_inodes;
+ 
+-	inc_ea_inode_refs(ctx, pctx, first, end);
+-	ea_refcount_store(ctx->refcount, blk, header->h_refcount - 1);
++	inc_ea_inode_refs(global_ctx, pctx, first, end);
++	ea_refcount_store(global_ctx->refcount, blk, header->h_refcount - 1);
+ 	e2fsck_pass1_block_map_lock(ctx);
+ 	mark_block_used(ctx, blk);
+ 	e2fsck_pass1_block_map_unlock(ctx);
+-	ext2fs_fast_mark_block_bitmap2(ctx->block_ea_map, blk);
++	ext2fs_fast_mark_block_bitmap2(global_ctx->block_ea_map, blk);
++	e2fsck_pass1_ea_unlock(ctx);
+ 	return 1;
+ 
+ clear_extattr:
 -- 
 2.25.2
 
