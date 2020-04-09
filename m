@@ -5,24 +5,24 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EA87CC2BA2B
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 01:50:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8CCDC2BA2B
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 03:19:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B2A8C20857
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 01:50:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 979F3212CC
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 03:19:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726534AbgDIBuT convert rfc822-to-8bit (ORCPT
+        id S1726684AbgDIDTy convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 21:50:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50332 "EHLO mail.kernel.org"
+        Wed, 8 Apr 2020 23:19:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60450 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726523AbgDIBuT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 8 Apr 2020 21:50:19 -0400
+        id S1726552AbgDIDTy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Apr 2020 23:19:54 -0400
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 205609] Multiple bugs in __ext4_expand_extra_isize (OOB write
- and UAF write)
-Date:   Thu, 09 Apr 2020 01:50:19 +0000
+Subject: [Bug 207165] Persistent ext4_search_dir: bad entry in directory:
+ directory entry too close to block end
+Date:   Thu, 09 Apr 2020 03:19:54 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -37,10 +37,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-205609-13602-Qnw52uh3gV@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-205609-13602@https.bugzilla.kernel.org/>
-References: <bug-205609-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-207165-13602-jwUCuktAUe@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-207165-13602@https.bugzilla.kernel.org/>
+References: <bug-207165-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -51,17 +51,16 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=205609
+https://bugzilla.kernel.org/show_bug.cgi?id=207165
 
---- Comment #8 from Theodore Tso (tytso@mit.edu) ---
-Tristan hasn't updated this bug in the last 4+ months, so I propose that we
-close this bug.
+Theodore Tso (tytso@mit.edu) changed:
 
-Tristan, if you find a problems in the future, please include the C reproducer
-and file separate bugs for each syzkaller problem for which you have a clean
-reproducer.   For bonus points, please try to take Syzkaller's reproducer
-(which often has a lot of unnecessary crud), and streamline it to the smallest
-possible reliable repro case.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #1 from Theodore Tso (tytso@mit.edu) ---
+Could you run dumpe2fs -h on the file system and attach it to the bug?
 
 Many thanks!!
 
