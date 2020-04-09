@@ -2,68 +2,72 @@ Return-Path: <SRS0=3SRl=5Z=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8CCDC2BA2B
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 03:19:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C8EDC2BB1D
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 04:55:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 979F3212CC
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 03:19:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 42D4D20757
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Apr 2020 04:55:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1586408120;
+	bh=m98uH8OLAJC+JHxIZ2H6jiYyM9KAeIiWwD5/Ked43no=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=NacybH8ishyp1PTOO7g0l+duZPHBdqqq7JTjkpDtiiQLkB+LE8x0USgjOwtJ7zrmY
+	 umz1rpSMB4xar3DgNGIhiuq62dG+N3CM4HXuDRvJ1fqxc3FzuSUDerSB8SMwpiUGvz
+	 vhHhkP9cT2nYFk+B+zYTU8UMNnX8k5mXktyG9/8g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726684AbgDIDTy convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Apr 2020 23:19:54 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60450 "EHLO mail.kernel.org"
+        id S1726654AbgDIEzJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Apr 2020 00:55:09 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44042 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726552AbgDIDTy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 8 Apr 2020 23:19:54 -0400
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 207165] Persistent ext4_search_dir: bad entry in directory:
- directory entry too close to block end
-Date:   Thu, 09 Apr 2020 03:19:54 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-207165-13602-jwUCuktAUe@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-207165-13602@https.bugzilla.kernel.org/>
-References: <bug-207165-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
-MIME-Version: 1.0
+        id S1726632AbgDIEzF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Apr 2020 00:55:05 -0400
+Subject: Re: [GIT PULL] iomap: bug fix for 5.7
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1586408105;
+        bh=m98uH8OLAJC+JHxIZ2H6jiYyM9KAeIiWwD5/Ked43no=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=CIsbiMfalFCQgb9fgO7r4Xu99V+aQVCpw/BQVmQbGaQg1o/xCdOmO5IjWiljghFZG
+         o7yKlok8bcb+CBxn/Bb8cAZhNL9cVNRxtrF3sdhAnkt2U65TW4xZaTn4l6jibZcbGJ
+         Ndh9AhTvkoOm6hgT1O16QG64JPRawVx0otgGmLco=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20200408155813.GB6741@magnolia>
+References: <20200408155813.GB6741@magnolia>
+X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20200408155813.GB6741@magnolia>
+X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
+ tags/iomap-5.7-merge-3
+X-PR-Tracked-Commit-Id: 457df33e035a2cffc6561992f3f25a6c61605c46
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 9744b923d50810bb489e49bfe89d0b4d5c84be31
+Message-Id: <158640810582.3202.9362182758979165280.pr-tracker-bot@kernel.org>
+Date:   Thu, 09 Apr 2020 04:55:05 +0000
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        david@fromorbit.com, linux-kernel@vger.kernel.org,
+        sandeen@sandeen.net, hch@lst.de,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=207165
+The pull request you sent on Wed, 8 Apr 2020 08:58:13 -0700:
 
-Theodore Tso (tytso@mit.edu) changed:
+> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.7-merge-3
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/9744b923d50810bb489e49bfe89d0b4d5c84be31
 
---- Comment #1 from Theodore Tso (tytso@mit.edu) ---
-Could you run dumpe2fs -h on the file system and attach it to the bug?
-
-Many thanks!!
+Thank you!
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
