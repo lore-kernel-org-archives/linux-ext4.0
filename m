@@ -1,124 +1,128 @@
-Return-Path: <SRS0=y2Es=52=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=RGpm=53=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68D8EC2D0EC
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Apr 2020 17:52:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60192C2BBFD
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:11:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 398FA207FF
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Apr 2020 17:52:05 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bVJsBg1A"
+	by mail.kernel.org (Postfix) with ESMTP id 39F422173E
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:11:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1586646716;
+	bh=N3zN9u0THX2oAotDU9qeg9BsLTyq0E2x6LfvyUnN4ss=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=Oj3BNdhzyzI5pKZKKE+91c64tOhMVu+Iu3a872rZ+9jGyyBMSR2vP0DI7OJQaYglW
+	 1lekB++S8UFt3Uo83nxvyYusdQgAwUoPttYFUIGLovI4F/hDMZeqM9Y25WStoS3MXd
+	 pCyZJ5fk7CWzJdLNs5WcPtQmpY/Jb1cjl/q3IHj4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726706AbgDJRwE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 10 Apr 2020 13:52:04 -0400
-Received: from mail-ot1-f67.google.com ([209.85.210.67]:39004 "EHLO
-        mail-ot1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726142AbgDJRwE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Apr 2020 13:52:04 -0400
-Received: by mail-ot1-f67.google.com with SMTP id x11so2548418otp.6
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Apr 2020 10:52:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=FGlqgNrrGlA6czGpnHrGWFTa/LGqYJr8f3bHftYfeIw=;
-        b=bVJsBg1AlcpTEg9CWE6riA1tvjWxi61pcg+g2VgoJX3p7ff4zkltQsDdGVGkyPjIw3
-         QdMqT8A2Bf7nis7HQQM8k9ltAISG+ITmo88lF1nTB4k7Nk3Xcs0B0GI7W5MuIWYcX7VQ
-         R5KgRcq/4bn8BoxDh5IxDP+YJINmGm5xKZkpldZ+oOPao+TJSwU1tNOHKHgtEU0V7Jf5
-         ZE/3Pj+1Beh2IYA8bVeIrYTrljH0zTxoOmN3WgWlvRhY659OUacCCUzAmXbK151gtpxM
-         EkFTkKJ1iqRDbhi5SWMiXbO/yQ+qx1fshpBRR5b/zrP4o+wZKvTr5PA1ybEyG6LGpF0y
-         1MNw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=FGlqgNrrGlA6czGpnHrGWFTa/LGqYJr8f3bHftYfeIw=;
-        b=TYezVS4eU2Xsp30+0D9CP4+Kq4FKxQUIkk5kBRkK2JJBVCmonHGk34rtJzGtYcXl6B
-         HcspMIrTfX/cpzba4IyISoA3/NdFBR7/b3sfdXDjVRL/PAPaemGxpEF7gD38Ac0hQipL
-         dlvNfYMsL+tmATf5OIEEsWw+cy8bHykWhNPbq/j54k4P3OkznPkHUMfyzz4kpX+/qr1n
-         6hkw/pR1gAziq3zf5XqdetPJw4/IPI023WAvPcHHtdmqw6SXQhMNmEk/aJ0cJP9eH+rO
-         KI8X33LUPT67eja0IWK8F5PCL4jxFe6X1l1HntgwZhT+uH7QZC4ZdVo0nWDhU52w1BnL
-         275Q==
-X-Gm-Message-State: AGi0PuZB4l5N4iy56Me7rY0NKkjfI6mmdP1rzX9OM205sxw5jVJyQb0I
-        yp3B+32C6h5zGFqbGEwipNLIuV9eJaLB0fC3OSTf7CqK
-X-Google-Smtp-Source: APiQypKoRe3e6Hw87ryxap7oXs/9q0+5iXnnoJW14elfLieFQbhj/qOGJX6adoz4TW05ymXJSv9Ctc5vFEGhEJr0wMs=
-X-Received: by 2002:a9d:340b:: with SMTP id v11mr5069961otb.14.1586541123610;
- Fri, 10 Apr 2020 10:52:03 -0700 (PDT)
+        id S1730021AbgDKXLy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 11 Apr 2020 19:11:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:51672 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729247AbgDKXLx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 11 Apr 2020 19:11:53 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id B7C7B21835;
+        Sat, 11 Apr 2020 23:11:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1586646713;
+        bh=N3zN9u0THX2oAotDU9qeg9BsLTyq0E2x6LfvyUnN4ss=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=IylCrUQy0s7nwArO0IBwOMeIrF1NGRC4ybiYBC871PWP0D9LCJ2N0yJ1Z3MHIx0eS
+         gc0yfp95K9S1wdyqeez10SljPPKcV7nvm8AXlGrjpTs4EYGoQ070hUHaO2wmaDz4Gd
+         Vf6QSAhcPPiDcJoPPGFn6MdOeSrNPvUQnL9x6tQE=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 104/108] ext4: avoid ENOSPC when avoiding to reuse recently deleted inodes
+Date:   Sat, 11 Apr 2020 19:09:39 -0400
+Message-Id: <20200411230943.24951-104-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200411230943.24951-1-sashal@kernel.org>
+References: <20200411230943.24951-1-sashal@kernel.org>
 MIME-Version: 1.0
-References: <20200408215530.25649-1-harshads@google.com> <20200408215530.25649-3-harshads@google.com>
- <C29FFBAA-43A0-4307-B0A3-ED91A572308F@dilger.ca>
-In-Reply-To: <C29FFBAA-43A0-4307-B0A3-ED91A572308F@dilger.ca>
-From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
-Date:   Fri, 10 Apr 2020 10:51:52 -0700
-Message-ID: <CAD+ocbw=pvAAE59GiaTrzfS0eaYLWLJrZzHNP57X2M2E_-B=4A@mail.gmail.com>
-Subject: Re: [PATCH v6 03/20] ext4, jbd2: add fast commit initialization routines
-To:     Andreas Dilger <adilger@dilger.ca>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>
-Content-Type: text/plain; charset="UTF-8"
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Apr 10, 2020 at 5:12 AM Andreas Dilger <adilger@dilger.ca> wrote:
->
-> On Apr 8, 2020, at 3:55 PM, Harshad Shirwadkar <harshadshirwadkar@gmail.com> wrote:
-> >
-> > From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-> >
-> > Define feature flags for fast commits and add routines to allow ext4 to
-> > initialize fast commits. Note that we allow 128 blocks to be used for
-> > fast commits. As of now, that's the default constant value.
-> >
-> > Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
->
-> > +static inline int ext4_should_fast_commit(struct super_block *sb)
-> > +{
-> > +     if (!ext4_has_feature_fast_commit(sb))
-> > +             return 0;
-> > +     if (!test_opt2(sb, JOURNAL_FAST_COMMIT))
-> > +             return 0;
-> > +     if (test_opt(sb, QUOTA))
-> > +             return 0;
-> > +     return 1;
-> > +}
->
-> This function seems more complex than it should be.  In this patch the
-> ext4_should_fast_commit() function is only called once during mount, but
-> in later patches it looks like it is called many times per file/inode.
->
-> Why not just check JOURNAL_FAST_COMMIT, and clear it at mount/remount
-> time if the other conditions prevent fast commits being used at all?
-> It seems that JOURNAL_FAST_COMMIT is only set if the FAST_COMMIT feature
-> is already in the superblock, so always doing both checks seems redundant.
-Sounds good, will fix that in the next version.
->
-> Also, maybe I missed the discussion, but why does having quotas enabled
-> on the filesystem disable fast commits entirely?  I see in patch 11/20
-> that EXT4_FC_REASON_QUOTA is a reason not to do fast commit on the quota
-> inodes themselves, which seems like a reasonable limitation if needed,
-> but the above check disables FC for any filesystem with quota, and I
-> can't find anywhere that this line is later removed in this series.
+From: Jan Kara <jack@suse.cz>
 
-Thanks Andreas for catching this. Actually, there is nothing stopping
-us from enabling fast commits for quota. As it turns out, this is an
-unintended carry over from an earlier version of the patchset. I'll
-re-enable it in the next version.
+[ Upstream commit d05466b27b19af8e148376590ed54d289b607f0a ]
 
-Thanks,
-Harshad
+When ext4 is running on a filesystem without a journal, it tries not to
+reuse recently deleted inodes to provide better chances for filesystem
+recovery in case of crash. However this logic forbids reuse of freed
+inodes for up to 5 minutes and especially for filesystems with smaller
+number of inodes can lead to ENOSPC errors returned when allocating new
+inodes.
 
->
-> Cheers, Andreas
->
->
->
->
->
+Fix the problem by allowing to reuse recently deleted inode if there's
+no other inode free in the scanned range.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20200318121317.31941-1-jack@suse.cz
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/ialloc.c | 23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index a6288730210e8..bfcf15beb87ad 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -709,21 +709,34 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
+ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
+ 			  struct buffer_head *bitmap, unsigned long *ino)
+ {
++	bool check_recently_deleted = EXT4_SB(sb)->s_journal == NULL;
++	unsigned long recently_deleted_ino = EXT4_INODES_PER_GROUP(sb);
++
+ next:
+ 	*ino = ext4_find_next_zero_bit((unsigned long *)
+ 				       bitmap->b_data,
+ 				       EXT4_INODES_PER_GROUP(sb), *ino);
+ 	if (*ino >= EXT4_INODES_PER_GROUP(sb))
+-		return 0;
++		goto not_found;
+ 
+-	if ((EXT4_SB(sb)->s_journal == NULL) &&
+-	    recently_deleted(sb, group, *ino)) {
++	if (check_recently_deleted && recently_deleted(sb, group, *ino)) {
++		recently_deleted_ino = *ino;
+ 		*ino = *ino + 1;
+ 		if (*ino < EXT4_INODES_PER_GROUP(sb))
+ 			goto next;
+-		return 0;
++		goto not_found;
+ 	}
+-
++	return 1;
++not_found:
++	if (recently_deleted_ino >= EXT4_INODES_PER_GROUP(sb))
++		return 0;
++	/*
++	 * Not reusing recently deleted inodes is mostly a preference. We don't
++	 * want to report ENOSPC or skew allocation patterns because of that.
++	 * So return even recently deleted inode if we could find better in the
++	 * given range.
++	 */
++	*ino = recently_deleted_ino;
+ 	return 1;
+ }
+ 
+-- 
+2.20.1
+
