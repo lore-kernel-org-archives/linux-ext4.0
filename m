@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F519C2BBC7
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:13:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3BE5C2BBC7
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:14:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 59C7320708
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:13:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7AD5021924
+	for <linux-ext4@archiver.kernel.org>; Sat, 11 Apr 2020 23:14:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586646804;
-	bh=1vPcV8somdtnL8mk5d4tR2o0GR4cfjZjti7/SpYaUHs=;
+	s=default; t=1586646852;
+	bh=mR5GXwSwTHAupboa0xGEPwVPq0sbIVg5pH7QEEdD7WE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=T+u7lfbjMLDAkZw4K345udKo+yKnUrSU3NqoerHUNyS19fdLYgyzsnBWcz0MnxzpL
-	 Hyf5qVvZFRwWCyYbLupU/A+7K92af/JIp8lQacWdl7ceeKMEPzi7TwfdaVKlV8GPNN
-	 wBzarVPn0Lgy/jcXl8UW1dkILn917pNbvOqwM1qk=
+	b=2OuIQvdJ07NP9RZH8jkrr55UsuQRZsGybpziBKaSGEyAFC2kNgu6wq38bAHNxHFrq
+	 dpnFbr/q+qsfz70avmt35Th2FTN/ByT6tD/81+TtpkgkYZPUObL2R7E+KdVNCK4ZkN
+	 h5Y453hvLM7a1Y2Ql33k5oAYO8cr9nRjXrv1j+gQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730412AbgDKXNW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 Apr 2020 19:13:22 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54388 "EHLO mail.kernel.org"
+        id S1730680AbgDKXOL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 11 Apr 2020 19:14:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55758 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730401AbgDKXNW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 11 Apr 2020 19:13:22 -0400
+        id S1730675AbgDKXOJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 11 Apr 2020 19:14:09 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id ECC2D217D8;
-        Sat, 11 Apr 2020 23:13:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CCC8220757;
+        Sat, 11 Apr 2020 23:14:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586646800;
-        bh=1vPcV8somdtnL8mk5d4tR2o0GR4cfjZjti7/SpYaUHs=;
+        s=default; t=1586646849;
+        bh=mR5GXwSwTHAupboa0xGEPwVPq0sbIVg5pH7QEEdD7WE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=n40B4avKx88jXAtsQ6UR2j/C5cNru9tDAU9fZd95rqqKdXvHHbotBolrP7t4Ct86i
-         irihvRcOIghpFq9IJGO62VwnAlGy68D4t3FgprKQfaqomKHXpw8m8xGabJK9QzeCKk
-         uhXeQHIgMoa+2suyNiqnUpWypgWMKRFZN5OOI0P4=
+        b=xsu8ubaKjq/k39Oefus04VGgZrfXD2NW8T0apbpwDRcwZ/yAekoJdGJffJqXxXY6x
+         hk3BZb0O/5CeeG+8E/kv9PifLlDD5wYkG14zDHdhjtRWnbri8HqKpPU8kYgC29ii3a
+         hVQtggvO5rDDO8oeNp/sPEYFIcuSxaDA5Wo52IOM=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Ritesh Harjani <riteshh@linux.ibm.com>,
         Harish Sriram <harish@linux.ibm.com>, Jan Kara <jack@suse.cz>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 63/66] ext4: check for non-zero journal inum in ext4_calculate_overhead
-Date:   Sat, 11 Apr 2020 19:12:00 -0400
-Message-Id: <20200411231203.25933-63-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 35/37] ext4: check for non-zero journal inum in ext4_calculate_overhead
+Date:   Sat, 11 Apr 2020 19:13:24 -0400
+Message-Id: <20200411231327.26550-35-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200411231203.25933-1-sashal@kernel.org>
-References: <20200411231203.25933-1-sashal@kernel.org>
+In-Reply-To: <20200411231327.26550-1-sashal@kernel.org>
+References: <20200411231327.26550-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -115,10 +115,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d44fc3f579e13..e00a9a51be42f 100644
+index f5646bcad7702..449644ee4ab1c 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3523,7 +3523,8 @@ int ext4_calculate_overhead(struct super_block *sb)
+@@ -3464,7 +3464,8 @@ int ext4_calculate_overhead(struct super_block *sb)
  	 */
  	if (sbi->s_journal && !sbi->journal_bdev)
  		overhead += EXT4_NUM_B2C(sbi, sbi->s_journal->j_maxlen);
