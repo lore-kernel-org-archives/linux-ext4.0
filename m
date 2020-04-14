@@ -2,209 +2,134 @@ Return-Path: <SRS0=nKcX=56=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AD58C3815B
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 15:05:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 71BE4C3815B
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 15:11:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 58D552076D
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 15:05:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5215720768
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 15:11:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="n9VR2R1R"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bKhU07Fd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406959AbgDNPEI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Apr 2020 11:04:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43538 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2405650AbgDNPCq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Apr 2020 11:02:46 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 81650C08C5F2;
-        Tue, 14 Apr 2020 08:02:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=rMBXZbDYF8tp6nGbl0mbz6hZ/ZqPkO4pir8qA4KqtBk=; b=n9VR2R1RA944jIP+xrBEaKZtyI
-        Hwf3Q6zOKZqRC84+ZHXYc0PipvygySH9sVRaGdH52MVayG50xZ1BCg5AOxb+41gLSfJb8hwQMbX5A
-        MFautTkAEs+hII5p9TB6W6Y3CyjJah4ZIqJK4AqIFoPv+vjB93aUVGOAkLBDrF7NkwZyXi3GT17Lc
-        UxjvtjTfr/FGbYbMd/IZiD47Qy7omD74xF2L/KdCmtgAQIk9BMjrCPYQY9ze87SZmDpGHlXRIhI1x
-        JnGpQZy/moadZVL8v8wR+FNej7T6Yj1cmLXwXIXJMXnJk0tVwfobMyGrmN0dUDiKHtbEcr0hujcYd
-        WWunU1wQ==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jON5A-0006PB-Ai; Tue, 14 Apr 2020 15:02:36 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, linux-xfs@vger.kernel.org,
-        William Kucharski <william.kucharski@oracle.com>
-Subject: [PATCH v11 17/25] btrfs: Convert from readpages to readahead
-Date:   Tue, 14 Apr 2020 08:02:25 -0700
-Message-Id: <20200414150233.24495-18-willy@infradead.org>
-X-Mailer: git-send-email 2.21.1
-In-Reply-To: <20200414150233.24495-1-willy@infradead.org>
-References: <20200414150233.24495-1-willy@infradead.org>
+        id S2437157AbgDNPLb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Apr 2020 11:11:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44892 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S2440246AbgDNPLH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Apr 2020 11:11:07 -0400
+Received: from mail-qv1-xf36.google.com (mail-qv1-xf36.google.com [IPv6:2607:f8b0:4864:20::f36])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3DEAC061A0C
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2020 08:11:07 -0700 (PDT)
+Received: by mail-qv1-xf36.google.com with SMTP id ef12so6329333qvb.11
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Apr 2020 08:11:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:content-transfer-encoding:in-reply-to
+         :user-agent;
+        bh=lePIBeP+/+RqgBx2vwurCX1/Io8vCDERHLvSF7u9v34=;
+        b=bKhU07FdadFzrp/GlEtWk9FKtU4AtSpBtfZV8FaJ4s6lP1eXhGTcV94v7k0lt+kw2n
+         2nzsAZ+ZMjLMmDdP7s76vTCon9INj0reDcGKDQBXcBVkN1hOnQrHJFF8dX2UR2fG4KgH
+         oqUwI90QoOTQyl6LqHKzL3bCtSNl42ArTKjouYtIM6ghGbrDBet8AxgNEzbIrGrDFP4H
+         VWzpV1hxgQfus5ONSTRLet1pMK1FmkSiUuPOcNQ/TA73YStNFq94eEAyF0RJLdgpylY1
+         /d7xudxyaNpdxmQiNfOYNkxpPTUZD+8Cekmp3gRuQVv2q5U0mGo/UkcVg5ZRNaKG9piZ
+         ek3w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:content-transfer-encoding
+         :in-reply-to:user-agent;
+        bh=lePIBeP+/+RqgBx2vwurCX1/Io8vCDERHLvSF7u9v34=;
+        b=Gn7eMOT4BqxE6MPrpmDn62RiJRP+B4goh9Ydf9Ljx1rNodw4QuCj2XaoBEV/GZSL4R
+         fdYJ8CgoaxYU67SOtXZna6jQWOFjmqLIGkWijLyMyAckXgk4Wysf7MxIXj3dEKew2QOp
+         nZ59ZcO3oNM0gKfLbyfRkt/5/snJsfX0XxVMTKf1VKgNVx7jciGk5XGCmbj4ixgAZQqT
+         zs++1shS+LPgLvXnrWGIJaiImoqIlApyluPPdcFxYnhasEgOrvb2gZRpZ/Yt+b3Dky6e
+         D7H18a/kiz9HQB/utN0ICtYmytY3orNSQmDB4qYeSWX8u4IFe9e0pA8UBTvrXVDi/j04
+         cwjg==
+X-Gm-Message-State: AGi0Pua7Z95ea6rrX0x7y/vDsSGGOXnsZElHAAXHgYZB9pJAnydknAF3
+        7cp7E/IyigOsAipLtUGlpGw=
+X-Google-Smtp-Source: APiQypJ3EUQ0SilvXEA6aNjBxTKMRH5PLkc12Dno45Wj9AFPtQaWJ5FClULlD5ktwBAV1EYiEoZemA==
+X-Received: by 2002:ad4:4507:: with SMTP id k7mr477908qvu.40.1586877066823;
+        Tue, 14 Apr 2020 08:11:06 -0700 (PDT)
+Received: from localhost.localdomain (c-73-60-226-25.hsd1.nh.comcast.net. [73.60.226.25])
+        by smtp.gmail.com with ESMTPSA id d23sm7540867qkj.26.2020.04.14.08.11.05
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 14 Apr 2020 08:11:06 -0700 (PDT)
+Date:   Tue, 14 Apr 2020 11:11:04 -0400
+From:   Eric Whitney <enwlinux@gmail.com>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+Subject: Re: generic/456 regression on 5.7-rc1, 1k test case
+Message-ID: <20200414151104.7x4ywbmvkkdjo6ix@localhost.localdomain>
+References: <20200413201211.wbcotcr6rg523wzs@localhost.localdomain>
+ <20200414034906.5CB8211C054@d06av25.portsmouth.uk.ibm.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <20200414034906.5CB8211C054@d06av25.portsmouth.uk.ibm.com>
+User-Agent: NeoMutt/20170113 (1.7.2)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
+* Ritesh Harjani <riteshh@linux.ibm.com>:
+> Hello Eric,
+> 
+> On 4/14/20 8:22 AM, Ritesh Harjani wrote:
+> > Hello Eric,
+> > 
+> > On 4/14/20 1:42 AM, Eric Whitney wrote:
+> > > I'm seeing consistent failures for generic/456 while running
+> > > kvm-xfstests' 1k
+> > > test case on 5.7-rc1.  This is with an x86-64 test appliance root
+> > > file system
+> > > image dated 23 March 2020.
+> > > 
+> > > The test fails when e2fsck reports "inconsistent fs: inode 12, i_size is
+> > > 147456, should be 163840".
+> > > 
+> > > Bisecting 5.7-rc1 identified the following patch as the cause:
+> > > ext4: don't set dioread_nolock by default for blocksize < pagesize
+> > > (626b035b816b).  Reverting the patch in 5.7-rc1 reliably eliminates
+> > > the test
+> > > failure.
+> > > 
+> > 
+> > Since you could reliably reproduce it. Could you please try with this
+> > patch and see if this fixes it for you?
+> > 
+> > https://patchwork.ozlabs.org/project/linux-ext4/patch/20200331105016.8674-1-jack@suse.cz/
+> 
+> 
+> Ok, so after updating the xfstests to latest, I could reliably reproduce
+> generic/456 failing on x86 with 1K blocksize on my setup too.
+> Although, with my limited testing, I couldn't see this issue on Power (where
+> blocksize == 4K and PAGESIZE=64K).
+> 
+> But either ways, after applying above patch the tests always passes for
+> me (tested on x86). So this should indeed fix your reported problem.
+> Saw an email too that Ted has now picked up this patch.
+> 
+> 
+> -ritesh
+>
 
-Implement the new readahead method in btrfs using the new
-readahead_page_batch() function.
+Hi, Ritesh:
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: William Kucharski <william.kucharski@oracle.com>
----
- fs/btrfs/extent_io.c | 43 ++++++++++++-------------------------------
- fs/btrfs/extent_io.h |  3 +--
- fs/btrfs/inode.c     | 16 +++++++---------
- 3 files changed, 20 insertions(+), 42 deletions(-)
+Thanks for pointing out that patch - I'd not noticed it.  Out of general
+thoroughness, I applied it to 5.7-rc1 and ran the entire 1k test case
+without a generic/456 failure or any other regressions.  So, that should
+resolve this issue.  (5.7-rc1 otherwise looks good to me generally after
+regression against 5.6 on x86_64).
 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index 39e45b8a5031..fc46adf2f5bf 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -4367,51 +4367,32 @@ int extent_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
--int extent_readpages(struct address_space *mapping, struct list_head *pages,
--		     unsigned nr_pages)
-+void extent_readahead(struct readahead_control *rac)
- {
- 	struct bio *bio = NULL;
- 	unsigned long bio_flags = 0;
- 	struct page *pagepool[16];
- 	struct extent_map *em_cached = NULL;
--	int nr = 0;
- 	u64 prev_em_start = (u64)-1;
-+	int nr;
- 
--	while (!list_empty(pages)) {
--		u64 contig_end = 0;
--
--		for (nr = 0; nr < ARRAY_SIZE(pagepool) && !list_empty(pages);) {
--			struct page *page = lru_to_page(pages);
--
--			prefetchw(&page->flags);
--			list_del(&page->lru);
--			if (add_to_page_cache_lru(page, mapping, page->index,
--						readahead_gfp_mask(mapping))) {
--				put_page(page);
--				break;
--			}
--
--			pagepool[nr++] = page;
--			contig_end = page_offset(page) + PAGE_SIZE - 1;
--		}
--
--		if (nr) {
--			u64 contig_start = page_offset(pagepool[0]);
-+	while ((nr = readahead_page_batch(rac, pagepool))) {
-+		u64 contig_start = page_offset(pagepool[0]);
-+		u64 contig_end = page_offset(pagepool[nr - 1]) + PAGE_SIZE - 1;
- 
--			ASSERT(contig_start + nr * PAGE_SIZE - 1 == contig_end);
-+		ASSERT(contig_start + nr * PAGE_SIZE - 1 == contig_end);
- 
--			contiguous_readpages(pagepool, nr, contig_start,
--				     contig_end, &em_cached, &bio, &bio_flags,
--				     &prev_em_start);
--		}
-+		contiguous_readpages(pagepool, nr, contig_start, contig_end,
-+				&em_cached, &bio, &bio_flags, &prev_em_start);
- 	}
- 
- 	if (em_cached)
- 		free_extent_map(em_cached);
- 
--	if (bio)
--		return submit_one_bio(bio, 0, bio_flags);
--	return 0;
-+	if (bio) {
-+		if (submit_one_bio(bio, 0, bio_flags))
-+			return;
-+	}
- }
- 
- /*
-diff --git a/fs/btrfs/extent_io.h b/fs/btrfs/extent_io.h
-index 2ed65bd0760e..25594e09fdcd 100644
---- a/fs/btrfs/extent_io.h
-+++ b/fs/btrfs/extent_io.h
-@@ -198,8 +198,7 @@ int extent_writepages(struct address_space *mapping,
- 		      struct writeback_control *wbc);
- int btree_write_cache_pages(struct address_space *mapping,
- 			    struct writeback_control *wbc);
--int extent_readpages(struct address_space *mapping, struct list_head *pages,
--		     unsigned nr_pages);
-+void extent_readahead(struct readahead_control *rac);
- int extent_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		__u64 start, __u64 len);
- void set_page_extent_mapped(struct page *page);
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index 320d1062068d..ba0aa8b4ad09 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -4856,8 +4856,8 @@ static void evict_inode_truncate_pages(struct inode *inode)
- 
- 	/*
- 	 * Keep looping until we have no more ranges in the io tree.
--	 * We can have ongoing bios started by readpages (called from readahead)
--	 * that have their endio callback (extent_io.c:end_bio_extent_readpage)
-+	 * We can have ongoing bios started by readahead that have
-+	 * their endio callback (extent_io.c:end_bio_extent_readpage)
- 	 * still in progress (unlocked the pages in the bio but did not yet
- 	 * unlocked the ranges in the io tree). Therefore this means some
- 	 * ranges can still be locked and eviction started because before
-@@ -7050,11 +7050,11 @@ static int lock_extent_direct(struct inode *inode, u64 lockstart, u64 lockend,
- 			 * for it to complete) and then invalidate the pages for
- 			 * this range (through invalidate_inode_pages2_range()),
- 			 * but that can lead us to a deadlock with a concurrent
--			 * call to readpages() (a buffered read or a defrag call
-+			 * call to readahead (a buffered read or a defrag call
- 			 * triggered a readahead) on a page lock due to an
- 			 * ordered dio extent we created before but did not have
- 			 * yet a corresponding bio submitted (whence it can not
--			 * complete), which makes readpages() wait for that
-+			 * complete), which makes readahead wait for that
- 			 * ordered extent to complete while holding a lock on
- 			 * that page.
- 			 */
-@@ -8293,11 +8293,9 @@ static int btrfs_writepages(struct address_space *mapping,
- 	return extent_writepages(mapping, wbc);
- }
- 
--static int
--btrfs_readpages(struct file *file, struct address_space *mapping,
--		struct list_head *pages, unsigned nr_pages)
-+static void btrfs_readahead(struct readahead_control *rac)
- {
--	return extent_readpages(mapping, pages, nr_pages);
-+	extent_readahead(rac);
- }
- 
- static int __btrfs_releasepage(struct page *page, gfp_t gfp_flags)
-@@ -10553,7 +10551,7 @@ static const struct address_space_operations btrfs_aops = {
- 	.readpage	= btrfs_readpage,
- 	.writepage	= btrfs_writepage,
- 	.writepages	= btrfs_writepages,
--	.readpages	= btrfs_readpages,
-+	.readahead	= btrfs_readahead,
- 	.direct_IO	= btrfs_direct_IO,
- 	.invalidatepage = btrfs_invalidatepage,
- 	.releasepage	= btrfs_releasepage,
--- 
-2.25.1
+Thanks very much for your help!
+
+Eric
 
