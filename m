@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83BFAC352B6
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 04:00:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13DDCC352BE
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 04:01:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6DD8A206D5
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 04:00:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F2323206E9
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Apr 2020 04:01:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726310AbgDNEAw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Apr 2020 00:00:52 -0400
-Received: from mga18.intel.com ([134.134.136.126]:61620 "EHLO mga18.intel.com"
+        id S1726457AbgDNEBB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Apr 2020 00:01:01 -0400
+Received: from mga06.intel.com ([134.134.136.31]:50669 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726129AbgDNEAt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 14 Apr 2020 00:00:49 -0400
-IronPort-SDR: XyLorU2JeoyBTcb/AQSOJDnxL6LgkYXVzgiuNkyUTgESD8N/ENFU8qdm1SjazDwa7pXo16gHvP
- JPw2OgFj6Kmg==
+        id S1726330AbgDNEA6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 14 Apr 2020 00:00:58 -0400
+IronPort-SDR: TzKqGIGIxIXWzYZdCOFzc6bllplW3QZaNnD/5QgdHI9gKbtMaxANFsgAi2GaVHhgaQiP39Ugds
+ bvQPTyIFcmzA==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga002.jf.intel.com ([10.7.209.21])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 Apr 2020 21:00:48 -0700
-IronPort-SDR: yVsi5uFMne5a2eU8Zb7MpKnoTwGjXNaPvof3XWsBiRvZNOvl4z4N+5Gps1nNIncN1rdBNAK8g4
- FNS97a95+YKw==
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 Apr 2020 21:00:54 -0700
+IronPort-SDR: 11MaLzUFtLlYlq1VFTGosvq+vPNuERq06CTUwZP98hldIDbBqsnJPLi59xFBdy33batTh3EPG4
+ +itqV1eQwJeg==
 X-IronPort-AV: E=Sophos;i="5.72,381,1580803200"; 
-   d="scan'208";a="271278106"
+   d="scan'208";a="269266869"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 Apr 2020 21:00:48 -0700
+  by orsmga008-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 Apr 2020 21:00:53 -0700
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
@@ -41,9 +41,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH RFC 4/8] fs/ext4: Introduce DAX inode flag
-Date:   Mon, 13 Apr 2020 21:00:26 -0700
-Message-Id: <20200414040030.1802884-5-ira.weiny@intel.com>
+Subject: [PATCH RFC 7/8] fs/ext4: Only change S_DAX on inode load
+Date:   Mon, 13 Apr 2020 21:00:29 -0700
+Message-Id: <20200414040030.1802884-8-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200414040030.1802884-1-ira.weiny@intel.com>
 References: <20200414040030.1802884-1-ira.weiny@intel.com>
@@ -56,120 +56,137 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Add a flag to preserve FS_XFLAG_DAX in the ext4 inode.
+To prevent complications with in memory inodes we only set S_DAX on
+inode load.  FS_XFLAG_DAX can be changed at any time and S_DAX will
+change after inode eviction and reload.
 
-Set the flag to be user visible and changeable.  Set the flag to be
-inherited.  Allow applications to change the flag at any time.
+Add init bool to ext4_set_inode_flags() to indicate if the inode is
+being newly initialized.
 
-Finally, on regular files, flag the inode to not be cached to facilitate
-changing S_DAX on the next creation of the inode.
+Assert that S_DAX is not set on an inode which is just being loaded.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- fs/ext4/ext4.h  | 13 +++++++++----
- fs/ext4/ioctl.c | 21 ++++++++++++++++++++-
- 2 files changed, 29 insertions(+), 5 deletions(-)
+ fs/ext4/ext4.h   | 2 +-
+ fs/ext4/ialloc.c | 2 +-
+ fs/ext4/inode.c  | 8 +++++---
+ fs/ext4/ioctl.c  | 3 ++-
+ fs/ext4/super.c  | 4 ++--
+ fs/ext4/verity.c | 2 +-
+ 6 files changed, 12 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 61b37a052052..434021fcec88 100644
+index aadf33d5b37d..7f9234cce5b8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -415,13 +415,16 @@ struct flex_groups {
- #define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
- #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
- #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+@@ -2699,7 +2699,7 @@ extern int ext4_can_truncate(struct inode *inode);
+ extern int ext4_truncate(struct inode *);
+ extern int ext4_break_layouts(struct inode *);
+ extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
+-extern void ext4_set_inode_flags(struct inode *);
++extern void ext4_set_inode_flags(struct inode *, bool init);
+ extern int ext4_alloc_da_blocks(struct inode *inode);
+ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index f95ee99091e4..1519a4bf42fa 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1104,7 +1104,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ei->i_block_group = group;
+ 	ei->i_last_alloc_group = ~0;
+ 
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, true);
+ 	if (IS_DIRSYNC(inode))
+ 		ext4_handle_sync(handle);
+ 	if (insert_inode_locked(inode) < 0) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e9d582e516bc..e9dfdfd6c698 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4408,11 +4408,13 @@ static bool ext4_enable_dax(struct inode *inode)
+ 	return (flags & EXT4_DAX_FL) == EXT4_DAX_FL;
+ }
+ 
+-void ext4_set_inode_flags(struct inode *inode)
++void ext4_set_inode_flags(struct inode *inode, bool init)
+ {
+ 	unsigned int flags = EXT4_I(inode)->i_flags;
+ 	unsigned int new_fl = 0;
+ 
++	J_ASSERT(!(IS_DAX(inode) && init));
 +
-+#define EXT4_DAX_FL			0x00800000 /* Inode is DAX */
-+
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
- #define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
--#define EXT4_FL_USER_VISIBLE		0x705BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x604BC0FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x70DBDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x60CBC0FF /* User modifiable flags */
- 
- /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
- #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
-@@ -429,14 +432,16 @@ struct flex_groups {
- 					 EXT4_APPEND_FL | \
- 					 EXT4_NODUMP_FL | \
- 					 EXT4_NOATIME_FL | \
--					 EXT4_PROJINHERIT_FL)
-+					 EXT4_PROJINHERIT_FL | \
-+					 EXT4_DAX_FL)
- 
- /* Flags that should be inherited by new inodes from their parent. */
- #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
- 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
--			   EXT4_PROJINHERIT_FL | EXT4_CASEFOLD_FL)
-+			   EXT4_PROJINHERIT_FL | EXT4_CASEFOLD_FL |\
-+			   EXT4_DAX_FL)
- 
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
- #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL | EXT4_CASEFOLD_FL |\
+ 	if (flags & EXT4_SYNC_FL)
+ 		new_fl |= S_SYNC;
+ 	if (flags & EXT4_APPEND_FL)
+@@ -4423,7 +4425,7 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (ext4_enable_dax(inode))
++	if (init && ext4_enable_dax(inode))
+ 		new_fl |= S_DAX;
+ 	if (flags & EXT4_ENCRYPT_FL)
+ 		new_fl |= S_ENCRYPTED;
+@@ -4639,7 +4641,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 		 * not initialized on a new filesystem. */
+ 	}
+ 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, true);
+ 	inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
+ 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
+ 	if (ext4_has_feature_64bit(sb))
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index ee3401a32e79..ca07d5086f03 100644
+index ca07d5086f03..efe41dcc8807 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -539,12 +539,15 @@ static inline __u32 ext4_iflags_to_xflags(unsigned long iflags)
- 		xflags |= FS_XFLAG_NOATIME;
- 	if (iflags & EXT4_PROJINHERIT_FL)
- 		xflags |= FS_XFLAG_PROJINHERIT;
-+	if (iflags & EXT4_DAX_FL)
-+		xflags |= FS_XFLAG_DAX;
- 	return xflags;
- }
+@@ -393,7 +393,8 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 			ext4_clear_inode_flag(inode, i);
+ 	}
  
- #define EXT4_SUPPORTED_FS_XFLAGS (FS_XFLAG_SYNC | FS_XFLAG_IMMUTABLE | \
- 				  FS_XFLAG_APPEND | FS_XFLAG_NODUMP | \
--				  FS_XFLAG_NOATIME | FS_XFLAG_PROJINHERIT)
-+				  FS_XFLAG_NOATIME | FS_XFLAG_PROJINHERIT | \
-+				  FS_XFLAG_DAX)
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, false);
++
+ 	inode->i_ctime = current_time(inode);
  
- /* Transfer xflags flags to internal */
- static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
-@@ -563,6 +566,8 @@ static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
- 		iflags |= EXT4_NOATIME_FL;
- 	if (xflags & FS_XFLAG_PROJINHERIT)
- 		iflags |= EXT4_PROJINHERIT_FL;
-+	if (xflags & FS_XFLAG_DAX)
-+		iflags |= EXT4_DAX_FL;
- 
- 	return iflags;
- }
-@@ -813,6 +818,17 @@ static int ext4_ioctl_get_es_cache(struct file *filp, unsigned long arg)
- 	return error;
- }
- 
-+static void ext4_dax_dontcache(struct inode *inode, unsigned int flags)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+
-+	if (S_ISDIR(inode->i_mode))
-+		return;
-+
-+	if ((ei->i_flags ^ flags) == EXT4_DAX_FL)
-+		inode->i_state |= I_DONTCACHE;
-+}
-+
- long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -1273,6 +1289,9 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 			return err;
- 
- 		inode_lock(inode);
-+
-+		ext4_dax_dontcache(inode, flags);
-+
- 		ext4_fill_fsxattr(inode, &old_fa);
- 		err = vfs_ioc_fssetxattr_check(inode, &old_fa, &fa);
+ 	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0175fbfeb2ea..43cc52ea7918 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1349,7 +1349,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+ 			ext4_clear_inode_state(inode,
+ 					EXT4_STATE_MAY_INLINE_DATA);
+-			ext4_set_inode_flags(inode);
++			ext4_set_inode_flags(inode, false);
+ 		}
+ 		return res;
+ 	}
+@@ -1372,7 +1372,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 				    ctx, len, 0);
+ 	if (!res) {
+ 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
+-		ext4_set_inode_flags(inode);
++		ext4_set_inode_flags(inode, false);
+ 		res = ext4_mark_inode_dirty(handle, inode);
+ 		if (res)
+ 			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index ce3f9a198d3b..4f7d780ff6da 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -244,7 +244,7 @@ static int ext4_end_enable_verity(struct file *filp, const void *desc,
  		if (err)
+ 			goto out_stop;
+ 		ext4_set_inode_flag(inode, EXT4_INODE_VERITY);
+-		ext4_set_inode_flags(inode);
++		ext4_set_inode_flags(inode, false);
+ 		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	}
+ out_stop:
 -- 
 2.25.1
 
