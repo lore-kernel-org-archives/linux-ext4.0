@@ -2,106 +2,123 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=DATE_IN_PAST_12_24,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6F66C2BA19
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 13:58:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01907C2BA19
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 13:58:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C27C02074F
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 13:58:13 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BIt+S2KE"
+	by mail.kernel.org (Postfix) with ESMTP id CA3C22076D
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 13:58:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2636349AbgDON6L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 09:58:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33968 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S2633783AbgDON6I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 09:58:08 -0400
-Received: from mail-wm1-x342.google.com (mail-wm1-x342.google.com [IPv6:2a00:1450:4864:20::342])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 542B2C061A0C;
-        Wed, 15 Apr 2020 06:58:08 -0700 (PDT)
-Received: by mail-wm1-x342.google.com with SMTP id g12so11354973wmh.3;
-        Wed, 15 Apr 2020 06:58:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=IYcapwzeMColCF8KnFlRv/qYBOctw6ROjcF5rd7fgio=;
-        b=BIt+S2KEHsJrN+2c/rX9t0sOuPITtIttaQUX75Y/fkAHbIiDffpG5iIYLP9bDrlR9s
-         AzDFJkC1m9YTrni0GQjXHE1k3TgziQ8wxetjO0ToSUZoT9tFoycIkxNBL0ozicaZmGzu
-         2Mv5UG0V0MAjsPkCJrJvhiJT9oFVmThFZrmSjJ8UK8+qX5pEb2DpP0DSfAt+Hq3GKmLo
-         AR0k6NM2aodFiPLuw8X146A9Bbw4OwrmCvikA+guFD7asFNyA+Ngev6GXzorE2t1Qh6Y
-         yKVzUiO8UysDxpZi8GODv84vGgv4pZnc1Tn2r2jCT6xByTf+TeLHE8oKo6RcKCDhxXDb
-         7VOg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=IYcapwzeMColCF8KnFlRv/qYBOctw6ROjcF5rd7fgio=;
-        b=P3De8fdfJ4H0UCmlMruj5z7WaOt9wbX9WPkyLmxeDJjFkFNchi4nb6Em7maZusszaL
-         sPxXbZktXajZ919D/ozFQRi+qa1/nVTxkwX8B8CmOjvdWUHlUNtHwAuEJEzV0OKafIfS
-         EgRc8IyNni1qJ0gzoEVdKzBt3TadjJH3NgvuXeutJNtyajkSgFzlH1o/RbO2Y0J6yzq5
-         /P6ClxEFu3Qse6UKVZtw4sK0mybK8sN1XzUq6auSf0riWa6FbxvKVN3+fz4C187obfZp
-         5SlasYxXmwKcFgntKNJ2OR5kYFfPBejeRiKMQ2ZfODZOypCoLUcOrAa6G4J7SHVY5/WC
-         I/Dw==
-X-Gm-Message-State: AGi0PuaRfFCWiuEcM1TXev7giw12VanhgN3gfqY6h0r+XWLwptejRFu3
-        NUKGYNBL7DLnGzr6+zJRm8k=
-X-Google-Smtp-Source: APiQypJhlZ6btS19pDdt1lNNHSlFGGLyu5Zv/UQ9xrb4s2/qeAcuFoN8i+UqcT8dwvZgZ+r7Le2zZg==
-X-Received: by 2002:a05:600c:210c:: with SMTP id u12mr5579723wml.135.1586959086949;
-        Wed, 15 Apr 2020 06:58:06 -0700 (PDT)
-Received: from localhost.localdomain ([31.4.236.56])
-        by smtp.gmail.com with ESMTPSA id t8sm23355590wrq.88.2020.04.15.06.58.05
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 15 Apr 2020 06:58:06 -0700 (PDT)
-From:   root <carlosteniswarrior@gmail.com>
-X-Google-Original-From: root <root@localhost.localdomain>
-To:     tytso@mit.edu
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        =?UTF-8?q?Carlos=20Guerrero=20=C3=81lvarez?= 
-        <carlosteniswarrior@gmail.com>
-Subject: [PATCH] EXT4: acl: Fix a style issue
-Date:   Wed, 15 Apr 2020 00:54:14 +0200
-Message-Id: <20200414225414.70014-1-root@localhost.localdomain>
-X-Mailer: git-send-email 2.25.2
+        id S2636374AbgDON6l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 09:58:41 -0400
+Received: from mx2.suse.de ([195.135.220.15]:38180 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2633783AbgDON6h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 09:58:37 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 08777AC19;
+        Wed, 15 Apr 2020 13:58:35 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 8E38D1E1250; Wed, 15 Apr 2020 15:58:34 +0200 (CEST)
+Date:   Wed, 15 Apr 2020 15:58:34 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     ira.weiny@intel.com
+Cc:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC 6/8] fs/ext4: Update ext4_should_use_dax()
+Message-ID: <20200415135834.GI6126@quack2.suse.cz>
+References: <20200414040030.1802884-1-ira.weiny@intel.com>
+ <20200414040030.1802884-7-ira.weiny@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200414040030.1802884-7-ira.weiny@intel.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Carlos Guerrero Álvarez <carlosteniswarrior@gmail.com>
+On Mon 13-04-20 21:00:28, ira.weiny@intel.com wrote:
+> From: Ira Weiny <ira.weiny@intel.com>
+> 
+> Change the logic of ext4_should_use_dax() to support using the inode dax
+> flag OR the overriding tri-state mount option.
+> 
+> While we are at it change the function to ext4_enable_dax() as this
+> better reflects the ask.
 
-Fixed an if statement where braces were not needed.
+I disagree with the renaming. ext4_enable_dax() suggests it enables
+something. It does not. I'd either leave ext4_should_use_dax() or maybe
+change it to ext4_should_enable_dax() if you really like the "enable" word
+:).
 
-Signed-off-by: Carlos Guerrero Álvarez <carlosteniswarrior@gmail.com>
----
- fs/ext4/acl.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+> ---
+>  fs/ext4/inode.c | 16 ++++++++++++----
+>  1 file changed, 12 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index fa0ff78dc033..e9d582e516bc 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4383,9 +4383,11 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+>  		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
+>  }
+>  
+> -static bool ext4_should_use_dax(struct inode *inode)
+> +static bool ext4_enable_dax(struct inode *inode)
+>  {
+> -	if (!test_opt(inode->i_sb, DAX))
+> +	unsigned int flags = EXT4_I(inode)->i_flags;
+> +
+> +	if (test_opt2(inode->i_sb, NODAX))
+>  		return false;
+>  	if (!S_ISREG(inode->i_mode))
+>  		return false;
+> @@ -4397,7 +4399,13 @@ static bool ext4_should_use_dax(struct inode *inode)
+>  		return false;
+>  	if (ext4_test_inode_flag(inode, EXT4_INODE_VERITY))
+>  		return false;
+> -	return true;
+> +	if (!bdev_dax_supported(inode->i_sb->s_bdev,
+> +				inode->i_sb->s_blocksize))
+> +		return false;
+> +	if (test_opt(inode->i_sb, DAX))
+> +		return true;
+> +
+> +	return (flags & EXT4_DAX_FL) == EXT4_DAX_FL;
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 8c7bbf3e566d..b3eba92f38f5 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -215,9 +215,8 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
- 				      value, size, xattr_flags);
- 
- 	kfree(value);
--	if (!error) {
-+	if (!error)
- 		set_cached_acl(inode, type, acl);
--	}
- 
- 	return error;
- }
+flags & EXT4_DAX_FL is enough here, isn't it?
+
+								Honza
+
+>  }
+>  
+>  void ext4_set_inode_flags(struct inode *inode)
+> @@ -4415,7 +4423,7 @@ void ext4_set_inode_flags(struct inode *inode)
+>  		new_fl |= S_NOATIME;
+>  	if (flags & EXT4_DIRSYNC_FL)
+>  		new_fl |= S_DIRSYNC;
+> -	if (ext4_should_use_dax(inode))
+> +	if (ext4_enable_dax(inode))
+>  		new_fl |= S_DAX;
+>  	if (flags & EXT4_ENCRYPT_FL)
+>  		new_fl |= S_ENCRYPTED;
+> -- 
+> 2.25.1
+> 
 -- 
-2.25.2
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
