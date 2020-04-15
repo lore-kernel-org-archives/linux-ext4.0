@@ -2,113 +2,97 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C56EC2BB55
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:03:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FA39C2BB55
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:05:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E216920575
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:03:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 308C72076C
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:05:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1586952350;
+	bh=3LC5W3ksQs8BAiEla9JyXaEan26FdDIhFIUrqtJlvHs=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=FehsPzlJajNrwkG5eSqordIuSu7AmTfLbGK7DGg87rLqoDiQCfTVEsEi2OxIQeox2
+	 46tp3Al3bytLixW7fG8NkDeUEsQ3QSqLF3gF6RUkdlM3HEpYaqzsgIRlIP37ymaH7l
+	 M8thiq4DgmTwFb/RWVN0T//kSoTYRm2uD5zEc2hg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S368214AbgDOMCq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:02:46 -0400
-Received: from mx2.suse.de ([195.135.220.15]:36694 "EHLO mx2.suse.de"
+        id S368384AbgDOMFr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:05:47 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42694 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409739AbgDOMCn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 08:02:43 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 20792AED8;
-        Wed, 15 Apr 2020 12:02:41 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 146861E1250; Wed, 15 Apr 2020 14:02:41 +0200 (CEST)
-Date:   Wed, 15 Apr 2020 14:02:41 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     ira.weiny@intel.com
-Cc:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC 3/8] fs/ext4: Disallow encryption if inode is DAX
-Message-ID: <20200415120241.GF6126@quack2.suse.cz>
-References: <20200414040030.1802884-1-ira.weiny@intel.com>
- <20200414040030.1802884-4-ira.weiny@intel.com>
+        id S2897641AbgDOLrf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:47:35 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0ED0721569;
+        Wed, 15 Apr 2020 11:47:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1586951245;
+        bh=3LC5W3ksQs8BAiEla9JyXaEan26FdDIhFIUrqtJlvHs=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=y3JcR4MI/4cTGDiEqfVrucT9MgWdAPFm9q9elQ5yPegoTPUPJcUEvq24t95N39/3H
+         MxmJoP/uxKZ+GeW0QS7zC58upyi5mESqIuVPnTvRxvZGeEyr0U2JLtzeAdpbUfkM7E
+         RxDRA+JJO53MV4ZgMqH3FjLhLOWRP4LAeMI9zH/Y=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Josh Triplett <josh@joshtriplett.org>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.14 12/30] ext4: fix incorrect group count in ext4_fill_super error message
+Date:   Wed, 15 Apr 2020 07:46:53 -0400
+Message-Id: <20200415114711.15381-12-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200415114711.15381-1-sashal@kernel.org>
+References: <20200415114711.15381-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200414040030.1802884-4-ira.weiny@intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 13-04-20 21:00:25, ira.weiny@intel.com wrote:
-> From: Ira Weiny <ira.weiny@intel.com>
-> 
-> Encryption and DAX are incompatible.  Changing the DAX mode due to a
-> change in Encryption mode is wrong without a corresponding
-> address_space_operations update.
-> 
-> Make the 2 options mutually exclusive by returning an error if DAX was
-> set first.
-> 
-> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-> ---
->  fs/ext4/super.c | 10 +---------
->  1 file changed, 1 insertion(+), 9 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 0c7c4adb664e..b14863058115 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1325,7 +1325,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	if (inode->i_ino == EXT4_ROOT_INO)
->  		return -EPERM;
->  
-> -	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
-> +	if (WARN_ON_ONCE(IS_DAX(inode)))
+From: Josh Triplett <josh@joshtriplett.org>
 
-Also here I don't think WARN_ON_ONCE() is warranted once we allow per-inode
-setting of DAX. It will then become a regular error condition...
+[ Upstream commit df41460a21b06a76437af040d90ccee03888e8e5 ]
 
-								Honza
+ext4_fill_super doublechecks the number of groups before mounting; if
+that check fails, the resulting error message prints the group count
+from the ext4_sb_info sbi, which hasn't been set yet. Print the freshly
+computed group count instead (which at that point has just been computed
+in "blocks_count").
 
->  		return -EINVAL;
->  
->  	res = ext4_convert_inline_data(inode);
-> @@ -1349,10 +1349,6 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  			ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
->  			ext4_clear_inode_state(inode,
->  					EXT4_STATE_MAY_INLINE_DATA);
-> -			/*
-> -			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -			 * S_DAX may be disabled
-> -			 */
->  			ext4_set_inode_flags(inode);
->  		}
->  		return res;
-> @@ -1376,10 +1372,6 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  				    ctx, len, 0);
->  	if (!res) {
->  		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -		/*
-> -		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-> -		 * S_DAX may be disabled
-> -		 */
->  		ext4_set_inode_flags(inode);
->  		res = ext4_mark_inode_dirty(handle, inode);
->  		if (res)
-> -- 
-> 2.25.1
-> 
+Signed-off-by: Josh Triplett <josh@joshtriplett.org>
+Fixes: 4ec1102813798 ("ext4: Add sanity checks for the superblock before mounting the filesystem")
+Link: https://lore.kernel.org/r/8b957cd1513fcc4550fe675c10bcce2175c33a49.1585431964.git.josh@joshtriplett.org
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index af55757bad699..47cbd51111739 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4101,9 +4101,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+ 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
+ 	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
+-		ext4_msg(sb, KERN_WARNING, "groups count too large: %u "
++		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
+ 		       "(block count %llu, first data block %u, "
+-		       "blocks per group %lu)", sbi->s_groups_count,
++		       "blocks per group %lu)", blocks_count,
+ 		       ext4_blocks_count(es),
+ 		       le32_to_cpu(es->s_first_data_block),
+ 		       EXT4_BLOCKS_PER_GROUP(sb));
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.20.1
+
