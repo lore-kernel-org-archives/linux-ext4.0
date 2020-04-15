@@ -2,136 +2,101 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C9DBC38A2C
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 04:56:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B780DC2BA2B
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:45:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1E2DB20936
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 04:56:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586926589;
-	bh=7/cyAEWqRIoOXcFZNvYgjU7w3cE8iC6Fh8sNAEooM88=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:List-ID:From;
-	b=i2GqZYoA6isYt/GZ274lBgU8gQUmuOTmoI2W9PdatV5NapIbWY9L1tzo9q9+rfQ76
-	 qiDv18a2J8SvjbU3Q9onvfrc3ISA7dNKjDKtQoBuhuNSEGD8ttdMDsZQHLwciXlUj4
-	 jgNEanL6NBgFGepl6367gUgLV4uML7mUIRKgPMAY=
+	by mail.kernel.org (Postfix) with ESMTP id 9E988206D9
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:45:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393163AbgDOE4U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 00:56:20 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49432 "EHLO mail.kernel.org"
+        id S2634974AbgDOGpq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 02:45:46 -0400
+Received: from mga01.intel.com ([192.55.52.88]:14284 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2393136AbgDOE4S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 00:56:18 -0400
-Received: from localhost.localdomain (c-73-231-172-41.hsd1.ca.comcast.net [73.231.172.41])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3BD0920784;
-        Wed, 15 Apr 2020 04:56:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586926577;
-        bh=7/cyAEWqRIoOXcFZNvYgjU7w3cE8iC6Fh8sNAEooM88=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=o7nTdRDWnBos1+imCHuZl8B8uuGul0yLnN9eMfYMaDqOlB+cl/NgjLOckV0vY0hpP
-         Ucm/O1A9vtop3dW0jo3wEyrWUTI/eFT4pIPVlWkKKNR0Qa5IVvC7y0T9VVsiPyVZ+6
-         YcmvoJe/CEGPjhSZX5DnQnSB/tg3reced0fueZDI=
-Date:   Tue, 14 Apr 2020 21:56:16 -0700
-From:   Andrew Morton <akpm@linux-foundation.org>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, linux-xfs@vger.kernel.org,
+        id S2634958AbgDOGpk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 02:45:40 -0400
+IronPort-SDR: H1edArZcFw4bkn4s4K8dVf4vdEgpr+oZo/kbIzwVseAoAAjq4/9gtNqfzjhfQ5kjOv6tTqqAg/
+ 0jlG9YUXPZTw==
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from fmsmga001.fm.intel.com ([10.253.24.23])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:40 -0700
+IronPort-SDR: Quwqhfxc0cdOGmPkkh1esd0bMlfn0dEGubd/2AQSW6Y4W719F4d43CCwXR3+OmzFqkda8m1CVw
+ +uxnpBhiVjOQ==
+X-IronPort-AV: E=Sophos;i="5.72,386,1580803200"; 
+   d="scan'208";a="363592877"
+Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
+  by fmsmga001-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:40 -0700
+From:   ira.weiny@intel.com
+To:     linux-kernel@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
         Christoph Hellwig <hch@lst.de>,
-        William Kucharski <william.kucharski@oracle.com>
-Subject: Re: [PATCH v11 05/25] mm: Add new readahead_control API
-Message-Id: <20200414215616.f665d12f8549f52606784d1e@linux-foundation.org>
-In-Reply-To: <20200415021808.GA5820@bombadil.infradead.org>
-References: <20200414150233.24495-1-willy@infradead.org>
-        <20200414150233.24495-6-willy@infradead.org>
-        <20200414181705.bfc4c0087092051a9475141e@linux-foundation.org>
-        <20200415021808.GA5820@bombadil.infradead.org>
-X-Mailer: Sylpheed 3.5.1 (GTK+ 2.24.31; x86_64-pc-linux-gnu)
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH V8 08/11] fs: Define I_DONTCACNE in VFS layer
+Date:   Tue, 14 Apr 2020 23:45:20 -0700
+Message-Id: <20200415064523.2244712-9-ira.weiny@intel.com>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200415064523.2244712-1-ira.weiny@intel.com>
+References: <20200415064523.2244712-1-ira.weiny@intel.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 14 Apr 2020 19:18:08 -0700 Matthew Wilcox <willy@infradead.org> wrote:
+From: Ira Weiny <ira.weiny@intel.com>
 
-> On Tue, Apr 14, 2020 at 06:17:05PM -0700, Andrew Morton wrote:
-> > On Tue, 14 Apr 2020 08:02:13 -0700 Matthew Wilcox <willy@infradead.org> wrote:
-> > > From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
-> > > 
-> > > Filesystems which implement the upcoming ->readahead method will get
-> > > their pages by calling readahead_page() or readahead_page_batch().
-> > > These functions support large pages, even though none of the filesystems
-> > > to be converted do yet.
-> > > 
-> > > +static inline struct page *readahead_page(struct readahead_control *rac)
-> > > +static inline unsigned int __readahead_batch(struct readahead_control *rac,
-> > > +		struct page **array, unsigned int array_sz)
-> > 
-> > These are large functions.  Was it correct to inline them?
-> 
-> Hmm.  They don't seem that big to me.
+DAX effective mode changes (setting of S_DAX) require inode eviction.
 
-They're really big!
+Define a flag which can be set to inform the VFS layer that inodes
+should not be cached.  This will expedite the eviction of those nodes
+requiring reload.
 
-> readahead_page, stripped of its sanity checks:
+Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+---
+ include/linux/fs.h | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Well, the sanity checks still count for cache footprint.
-
-otoh, I think a function which is expected to be called from a single
-site per filesystem is OK to be inlined, because there's not likely to
-be much icache benefit unless different filesystem types are
-simultaneously being used heavily, which sounds unlikely.  Although
-there's still a bit of overall code size bloat.
-
-> +       rac->_index += rac->_batch_count;
-> +       if (!rac->_nr_pages) {
-> +               rac->_batch_count = 0;
-> +               return NULL;
-> +       }
-> +       page = xa_load(&rac->mapping->i_pages, rac->_index);
-> +       rac->_batch_count = hpage_nr_pages(page);
-> 
-> __readahead_batch is much bigger, but it's only used by btrfs and fuse,
-> and it seemed unfair to make everybody pay the cost for a function only
-> used by two filesystems.
-
-Do we expect more filesystems to use these in the future?
-
-These function are really big!
-
-> > The batching API only appears to be used by fuse?  If so, do we really
-> > need it?  Does it provide some functional need, or is it a performance
-> > thing?  If the latter, how significant is it?
-> 
-> I must confess to not knowing the performance impact.  If the code uses
-> xa_load() repeatedly, it costs O(log n) each time as we walk down the tree
-> (mitigated to a large extent by cache, of course).  Using xas_for_each()
-> keeps us at the bottom of the tree and each iteration is O(1).
-> I'm interested to see if filesystem maintainers start to use the batch
-> function or if they're happier sticking with the individual lookups.
-> 
-> The batch API was originally written for use with btrfs, but it was a
-> significant simplification to convert fuse to use it.
-
-hm, OK.  It's not clear that its inclusion is justified?
-
-> > The code adds quite a few (inlined!) VM_BUG_ONs.  Can we plan to remove
-> > them at some stage?  Such as, before Linus shouts at us :)
-> 
-> I'd be happy to remove them.  Various reviewers said things like "are you
-> sure this can't happen?"
-
-Yeah, these things tend to live for ever.  Please add a todo to remove
-them after the code has matured?
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a818ced22961..e2db71d150c3 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2151,6 +2151,8 @@ static inline void kiocb_clone(struct kiocb *kiocb, struct kiocb *kiocb_src,
+  *
+  * I_CREATING		New object's inode in the middle of setting up.
+  *
++ * I_DONTCACHE		Do not cache the inode
++ *
+  * Q: What is the difference between I_WILL_FREE and I_FREEING?
+  */
+ #define I_DIRTY_SYNC		(1 << 0)
+@@ -2173,6 +2175,7 @@ static inline void kiocb_clone(struct kiocb *kiocb, struct kiocb *kiocb_src,
+ #define I_WB_SWITCH		(1 << 13)
+ #define I_OVL_INUSE		(1 << 14)
+ #define I_CREATING		(1 << 15)
++#define I_DONTCACHE		(1 << 16)
+ 
+ #define I_DIRTY_INODE (I_DIRTY_SYNC | I_DIRTY_DATASYNC)
+ #define I_DIRTY (I_DIRTY_INODE | I_DIRTY_PAGES)
+@@ -3042,7 +3045,8 @@ extern int inode_needs_sync(struct inode *inode);
+ extern int generic_delete_inode(struct inode *inode);
+ static inline int generic_drop_inode(struct inode *inode)
+ {
+-	return !inode->i_nlink || inode_unhashed(inode);
++	return !inode->i_nlink || inode_unhashed(inode) ||
++		(inode->i_state & I_DONTCACHE);
+ }
+ 
+ extern struct inode *ilookup5_nowait(struct super_block *sb,
+-- 
+2.25.1
 
