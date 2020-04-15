@@ -2,92 +2,112 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D675C38A29
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:27:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ED3AEC2BA19
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:31:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6EBDD2137B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:27:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C754B2074F
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:31:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1586953902;
+	bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=CGhlNMpfUfWTZo0uXf2x6jHfd4fFREnqwRVxiB1csMxkQon9oBmygCP+kwzaJJOKm
+	 5r3RdYZSwFANiLaKX3RWDLKQeCjI2SG53jniuzVN3kyTwvxcRMZ0JC9iizzJVvwRhd
+	 kypwl5GBFTk8VydpBcB6LDPX/hFlk8s5xgSmtF1E=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2409891AbgDOM1X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:27:23 -0400
-Received: from mx2.suse.de ([195.135.220.15]:56536 "EHLO mx2.suse.de"
+        id S2409097AbgDOLoo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:44:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37052 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409161AbgDOLpW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:45:22 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 79949ACD8;
-        Wed, 15 Apr 2020 11:45:19 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 5DB121E1250; Wed, 15 Apr 2020 13:45:18 +0200 (CEST)
-Date:   Wed, 15 Apr 2020 13:45:18 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     ira.weiny@intel.com
-Cc:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC 1/8] fs/ext4: Narrow scope of DAX check in setflags
-Message-ID: <20200415114518.GC6126@quack2.suse.cz>
-References: <20200414040030.1802884-1-ira.weiny@intel.com>
- <20200414040030.1802884-2-ira.weiny@intel.com>
+        id S2406142AbgDOLoU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:44:20 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0221221582;
+        Wed, 15 Apr 2020 11:44:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1586951059;
+        bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=kLIvWswUBswCAGeRaTrF59Vv1J8ZkZT6oDvXDEDojaWfOz+dvxq1LUqly6i1UdUzH
+         P6FDejtAE444QUPrH34nqp8tlf//se6FrZ6iXtydFUPuYZ9mFbG6soBaBpw6jsDr+K
+         gT4CEBWifsHoV8doRtFlc649WUYwUCtUFm2VJOUk=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Randy Dunlap <rdunlap@infradead.org>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Sasha Levin <sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 092/106] ext2: fix empty body warnings when -Wextra is used
+Date:   Wed, 15 Apr 2020 07:42:12 -0400
+Message-Id: <20200415114226.13103-92-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200415114226.13103-1-sashal@kernel.org>
+References: <20200415114226.13103-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200414040030.1802884-2-ira.weiny@intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain; charset=UTF-8
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 13-04-20 21:00:23, ira.weiny@intel.com wrote:
-> From: Ira Weiny <ira.weiny@intel.com>
-> 
-> When preventing DAX and journaling on an inode.  Use the effective DAX
-> check rather than the mount option.
-> 
-> This will be required to support per inode DAX flags.
-> 
-> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+From: Randy Dunlap <rdunlap@infradead.org>
 
-Looks good to me. You can add:
+[ Upstream commit 44a52022e7f15cbaab957df1c14f7a4f527ef7cf ]
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+When EXT2_ATTR_DEBUG is not defined, modify the 2 debug macros
+to use the no_printk() macro instead of <nothing>.
+This fixes gcc warnings when -Wextra is used:
 
-								Honza
+../fs/ext2/xattr.c:252:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:258:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:330:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+../fs/ext2/xattr.c:872:45: warning: suggest braces around empty body in an ‘else’ statement [-Wempty-body]
 
-> ---
->  fs/ext4/ioctl.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-> index a0ec750018dd..ee3401a32e79 100644
-> --- a/fs/ext4/ioctl.c
-> +++ b/fs/ext4/ioctl.c
-> @@ -405,9 +405,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
->  	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
->  		/*
->  		 * Changes to the journaling mode can cause unsafe changes to
-> -		 * S_DAX if we are using the DAX mount option.
-> +		 * S_DAX if the inode is DAX
->  		 */
-> -		if (test_opt(inode->i_sb, DAX)) {
-> +		if (IS_DAX(inode)) {
->  			err = -EBUSY;
->  			goto flags_out;
->  		}
-> -- 
-> 2.25.1
-> 
+I have verified that the only object code change (with gcc 7.5.0) is
+the reversal of some instructions from 'cmp a,b' to 'cmp b,a'.
+
+Link: https://lore.kernel.org/r/e18a7395-61fb-2093-18e8-ed4f8cf56248@infradead.org
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Jan Kara <jack@suse.com>
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext2/xattr.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 0456bc990b5ee..b91f99d9482e9 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -56,6 +56,7 @@
+ 
+ #include <linux/buffer_head.h>
+ #include <linux/init.h>
++#include <linux/printk.h>
+ #include <linux/slab.h>
+ #include <linux/mbcache.h>
+ #include <linux/quotaops.h>
+@@ -84,8 +85,8 @@
+ 		printk("\n"); \
+ 	} while (0)
+ #else
+-# define ea_idebug(f...)
+-# define ea_bdebug(f...)
++# define ea_idebug(inode, f...)	no_printk(f)
++# define ea_bdebug(bh, f...)	no_printk(f)
+ #endif
+ 
+ static int ext2_xattr_set2(struct inode *, struct buffer_head *,
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.20.1
+
