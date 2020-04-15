@@ -7,47 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47E4FC2BA19
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64F96C3815B
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 223F420737
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 386F6206A2
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586954640;
-	bh=6ABThuKfcs9bb20hYMcbkyDGTqWa0wK0bnJidWE479s=;
+	s=default; t=1586954655;
+	bh=7pPKbbQiiIW1pQ9v+MTWqY9mIKVp1u4JT5lVPI9A2Zg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=iE/TwSkJaeNWXeE8+1Cww0/w6n9jzVoIRPT0vTptPaiMj/Ccd8FcCN206ZeMxlUi6
-	 9DDMW9zOPcP4X/Sd7rPcofrD19rG7x37wIpk0MLAVRbzSwhezc0KDFwmsyRXu2k7kZ
-	 7zJpst14ubOUZDx2hNJqU645MIueVJwikY8eEOsM=
+	b=kn2fwEjEO16IHI8/ux7cXCGXQeaLZWrOo8q/THIOZzcLuU5RCEahJau2+6Z79C7F9
+	 OuYJ5+vJqGluGeelKt1jXF2Qvu5HKK/Ohpj343icjLEA9iuJHBhFjFoHtGpm914LLl
+	 oKM+co9R8k5khJKAwCmVJm1ZoClJdLw1DDLkPWRc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2897522AbgDOLnb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:43:31 -0400
+        id S370145AbgDOMoL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:44:11 -0400
 Received: from mail.kernel.org ([198.145.29.99]:35326 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2897509AbgDOLnY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:43:24 -0400
+        id S2897513AbgDOLnZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:43:25 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 802CA2168B;
-        Wed, 15 Apr 2020 11:43:22 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id C8C9C206A2;
+        Wed, 15 Apr 2020 11:43:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951003;
-        bh=6ABThuKfcs9bb20hYMcbkyDGTqWa0wK0bnJidWE479s=;
+        s=default; t=1586951005;
+        bh=7pPKbbQiiIW1pQ9v+MTWqY9mIKVp1u4JT5lVPI9A2Zg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=IQsB+g1iIGdGPTVmrb8ENiYJs8a+w1PeRUxMLITmq3OiIxEIilSwoXpd6ZT7B2zI0
-         5xBriN+39VODY5Ny7okBHTz4sXiPzaSEXQKvGc6+Xnl0/p2ywOvjW4uP1XRyoNrpUc
-         VszSbOII9CUjW001MsPZjJbSqoQ19xCj44NTpq5w=
+        b=mNAaHN5m4TZ5ZLcNeiGwkKgF49mKekkXTpChodxmvBXOeyKNJaCIT9Z1/xfIy9MRy
+         0CIcHCue8V2YpzJXlXl9hzS1b2+eLgT0cczIsAu6Kxv0t3FdnH9h3I8f1AoTuohdNV
+         7rTry2nwu5xjv5XjXMzGwTp+58upBXhR8Qjm/fy8=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Eric Sandeen <sandeen@redhat.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
+Cc:     Josh Triplett <josh@joshtriplett.org>,
         Andreas Dilger <adilger@dilger.ca>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 048/106] ext4: do not commit super on read-only bdev
-Date:   Wed, 15 Apr 2020 07:41:28 -0400
-Message-Id: <20200415114226.13103-48-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 050/106] ext4: fix incorrect inodes per group in error message
+Date:   Wed, 15 Apr 2020 07:41:30 -0400
+Message-Id: <20200415114226.13103-50-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114226.13103-1-sashal@kernel.org>
 References: <20200415114226.13103-1-sashal@kernel.org>
@@ -60,48 +59,37 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Josh Triplett <josh@joshtriplett.org>
 
-[ Upstream commit c96e2b8564adfb8ac14469ebc51ddc1bfecb3ae2 ]
+[ Upstream commit b9c538da4e52a7b79dfcf4cfa487c46125066dfb ]
 
-Under some circumstances we may encounter a filesystem error on a
-read-only block device, and if we try to save the error info to the
-superblock and commit it, we'll wind up with a noisy error and
-backtrace, i.e.:
+If ext4_fill_super detects an invalid number of inodes per group, the
+resulting error message printed the number of blocks per group, rather
+than the number of inodes per group. Fix it to print the correct value.
 
-[ 3337.146838] EXT4-fs error (device pmem1p2): ext4_get_journal_inode:4634: comm mount: inode #0: comm mount: iget: illegal inode #
-------------[ cut here ]------------
-generic_make_request: Trying to write to read-only block-device pmem1p2 (partno 2)
-WARNING: CPU: 107 PID: 115347 at block/blk-core.c:788 generic_make_request_checks+0x6b4/0x7d0
-...
-
-To avoid this, commit the error info in the superblock only if the
-block device is writable.
-
-Reported-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Fixes: cd6bb35bf7f6d ("ext4: use more strict checks for inodes_per_block on mount")
+Link: https://lore.kernel.org/r/8be03355983a08e5d4eed480944613454d7e2550.1585434649.git.josh@joshtriplett.org
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Link: https://lore.kernel.org/r/4b6e774d-cc00-3469-7abb-108eb151071a@sandeen.net
+Signed-off-by: Josh Triplett <josh@joshtriplett.org>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 71e2b80ff4aae..f59c587faccb5 100644
+index 3b4fc5036d91b..2b081f26a9f13 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -389,7 +389,8 @@ static void save_error_info(struct super_block *sb, const char *func,
- 			    unsigned int line)
- {
- 	__save_error_info(sb, func, line);
--	ext4_commit_super(sb, 1);
-+	if (!bdev_read_only(sb->s_bdev))
-+		ext4_commit_super(sb, 1);
- }
- 
- /*
+@@ -4113,7 +4113,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
+ 	    sbi->s_inodes_per_group > blocksize * 8) {
+ 		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
+-			 sbi->s_blocks_per_group);
++			 sbi->s_inodes_per_group);
+ 		goto failed_mount;
+ 	}
+ 	sbi->s_itb_per_group = sbi->s_inodes_per_group /
 -- 
 2.20.1
 
