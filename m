@@ -7,46 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64F96C3815B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66E5FC2BA19
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 386F6206A2
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3B661206A2
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:44:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586954655;
-	bh=7pPKbbQiiIW1pQ9v+MTWqY9mIKVp1u4JT5lVPI9A2Zg=;
+	s=default; t=1586954658;
+	bh=ZGYe20mJoQzycxAYk9OTE2qqIIK1qWUHJXIKff/rfkY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=kn2fwEjEO16IHI8/ux7cXCGXQeaLZWrOo8q/THIOZzcLuU5RCEahJau2+6Z79C7F9
-	 OuYJ5+vJqGluGeelKt1jXF2Qvu5HKK/Ohpj343icjLEA9iuJHBhFjFoHtGpm914LLl
-	 oKM+co9R8k5khJKAwCmVJm1ZoClJdLw1DDLkPWRc=
+	b=PhIisn3TqhZrGfPSjn4umxKSG3kxFeit1ia8njaq6F90wZH5RrtdD1hFnaVTigVSy
+	 oGfGHLlzHFokbdaIDRZILP9dLdKQxhX/n653xzRzfuP4kgPZ46swFN1KOAjH949ieR
+	 DhsE/40GeS4WX3Jcsroi5SY+YI7PUxKHXpCm5FSo=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S370145AbgDOMoL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:44:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35326 "EHLO mail.kernel.org"
+        id S370150AbgDOMoP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:44:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35346 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2897513AbgDOLnZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:43:25 -0400
+        id S2897511AbgDOLnY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:43:24 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C8C9C206A2;
-        Wed, 15 Apr 2020 11:43:24 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id BB33E20936;
+        Wed, 15 Apr 2020 11:43:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951005;
-        bh=7pPKbbQiiIW1pQ9v+MTWqY9mIKVp1u4JT5lVPI9A2Zg=;
+        s=default; t=1586951004;
+        bh=ZGYe20mJoQzycxAYk9OTE2qqIIK1qWUHJXIKff/rfkY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=mNAaHN5m4TZ5ZLcNeiGwkKgF49mKekkXTpChodxmvBXOeyKNJaCIT9Z1/xfIy9MRy
-         0CIcHCue8V2YpzJXlXl9hzS1b2+eLgT0cczIsAu6Kxv0t3FdnH9h3I8f1AoTuohdNV
-         7rTry2nwu5xjv5XjXMzGwTp+58upBXhR8Qjm/fy8=
+        b=lTH1yyDXbOLMlhW4CPIjezGLoDsUpCBn1NeQhh3lC0PkahN9quQkWOWDlVFMYx1Bm
+         Gy6y6+huA5hNlXbrCQVjFXe1YUgAQ9TAnSTWfWxGd3Brb5Du8C43Ah4UALV9gMAUXl
+         W4Yaj6uUGiE+AKSiWuewtyhAWqeCs8cfTUcth1ZQ=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Josh Triplett <josh@joshtriplett.org>,
-        Andreas Dilger <adilger@dilger.ca>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 050/106] ext4: fix incorrect inodes per group in error message
-Date:   Wed, 15 Apr 2020 07:41:30 -0400
-Message-Id: <20200415114226.13103-50-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 049/106] ext4: fix incorrect group count in ext4_fill_super error message
+Date:   Wed, 15 Apr 2020 07:41:29 -0400
+Message-Id: <20200415114226.13103-49-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114226.13103-1-sashal@kernel.org>
 References: <20200415114226.13103-1-sashal@kernel.org>
@@ -61,35 +60,39 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Josh Triplett <josh@joshtriplett.org>
 
-[ Upstream commit b9c538da4e52a7b79dfcf4cfa487c46125066dfb ]
+[ Upstream commit df41460a21b06a76437af040d90ccee03888e8e5 ]
 
-If ext4_fill_super detects an invalid number of inodes per group, the
-resulting error message printed the number of blocks per group, rather
-than the number of inodes per group. Fix it to print the correct value.
+ext4_fill_super doublechecks the number of groups before mounting; if
+that check fails, the resulting error message prints the group count
+from the ext4_sb_info sbi, which hasn't been set yet. Print the freshly
+computed group count instead (which at that point has just been computed
+in "blocks_count").
 
-Fixes: cd6bb35bf7f6d ("ext4: use more strict checks for inodes_per_block on mount")
-Link: https://lore.kernel.org/r/8be03355983a08e5d4eed480944613454d7e2550.1585434649.git.josh@joshtriplett.org
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Josh Triplett <josh@joshtriplett.org>
+Fixes: 4ec1102813798 ("ext4: Add sanity checks for the superblock before mounting the filesystem")
+Link: https://lore.kernel.org/r/8b957cd1513fcc4550fe675c10bcce2175c33a49.1585431964.git.josh@joshtriplett.org
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3b4fc5036d91b..2b081f26a9f13 100644
+index f59c587faccb5..3b4fc5036d91b 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4113,7 +4113,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (sbi->s_inodes_per_group < sbi->s_inodes_per_block ||
- 	    sbi->s_inodes_per_group > blocksize * 8) {
- 		ext4_msg(sb, KERN_ERR, "invalid inodes per group: %lu\n",
--			 sbi->s_blocks_per_group);
-+			 sbi->s_inodes_per_group);
- 		goto failed_mount;
- 	}
- 	sbi->s_itb_per_group = sbi->s_inodes_per_group /
+@@ -4242,9 +4242,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+ 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
+ 	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
+-		ext4_msg(sb, KERN_WARNING, "groups count too large: %u "
++		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
+ 		       "(block count %llu, first data block %u, "
+-		       "blocks per group %lu)", sbi->s_groups_count,
++		       "blocks per group %lu)", blocks_count,
+ 		       ext4_blocks_count(es),
+ 		       le32_to_cpu(es->s_first_data_block),
+ 		       EXT4_BLOCKS_PER_GROUP(sb));
 -- 
 2.20.1
 
