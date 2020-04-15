@@ -2,48 +2,51 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E639C2BA2B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:48:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5ADEDC2BB85
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:48:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 00308206D9
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:48:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 45504206D9
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 06:48:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393632AbgDOGpf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 02:45:35 -0400
-Received: from mga06.intel.com ([134.134.136.31]:21747 "EHLO mga06.intel.com"
+        id S2635079AbgDOGsU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 02:48:20 -0400
+Received: from mga04.intel.com ([192.55.52.120]:55537 "EHLO mga04.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2393622AbgDOGp3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 02:45:29 -0400
-IronPort-SDR: YIPQLdZGWIVt2+SmmDbFhkbdExEfa/rG8BjYeOsvSuOLJQrvAiiXuHh6HMVS/N/fG2EJYaQOd7
- QUFL0ElWTYYQ==
+        id S2393625AbgDOGpf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 02:45:35 -0400
+IronPort-SDR: gB42gDYrSj8OJVGIhVKJ0hGoBxbVtdXHH4Y0Jw5Oh0P4mydQ2xanJZGEiXyT65k4y1Q3WU07fp
+ Zpt8kzLMD50w==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga003.jf.intel.com ([10.7.209.27])
-  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:29 -0700
-IronPort-SDR: 8wOyZmsnH6o5HJKHD8WuPlabeQWYPODhv7hf6PS23SuqFN0w4W6JXQ0yI+/Tzby9GnyIpXGqVm
- H8h/cdISEcMQ==
+Received: from orsmga007.jf.intel.com ([10.7.209.58])
+  by fmsmga104.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:34 -0700
+IronPort-SDR: U7TpdcchaL7GW8teDrmI86p4ZeQEjGukh+KCCROGkWuYW5LEPkE2TESd+6J33AsQtg2rg5mAU1
+ +QT6Jo4by8yg==
 X-IronPort-AV: E=Sophos;i="5.72,386,1580803200"; 
-   d="scan'208";a="253435443"
+   d="scan'208";a="242223793"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga003-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:28 -0700
+  by orsmga007-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Apr 2020 23:45:33 -0700
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org,
         "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
+        Dave Chinner <dchinner@redhat.com>, Jan Kara <jack@suse.cz>,
         Dan Williams <dan.j.williams@intel.com>,
         Dave Chinner <david@fromorbit.com>,
         Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH V8 00/11] Enable per-file/per-directory DAX operations V8
-Date:   Tue, 14 Apr 2020 23:45:12 -0700
-Message-Id: <20200415064523.2244712-1-ira.weiny@intel.com>
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH V8 03/11] fs/stat: Define DAX statx attribute
+Date:   Tue, 14 Apr 2020 23:45:15 -0700
+Message-Id: <20200415064523.2244712-4-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200415064523.2244712-1-ira.weiny@intel.com>
+References: <20200415064523.2244712-1-ira.weiny@intel.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -53,159 +56,77 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Changes from V7:
-	Add DCACHE_DONTCACHE
-	If mount override don't worry about inode caching
-	Change mount flags to NEVER/ALWAYS
-	Clean up xfs_inode_enable_dax()
-	Clarify comments
-	Update documentation
+In order for users to determine if a file is currently operating in DAX
+state (effective DAX).  Define a statx attribute value and set that
+attribute if the effective DAX flag is set.
 
-At LSF/MM'19 [1] [2] we discussed applications that overestimate memory
-consumption due to their inability to detect whether the kernel will
-instantiate page cache for a file, and cases where a global dax enable via a
-mount option is too coarse.
+To go along with this we propose the following addition to the statx man
+page:
 
-The following patch series enables the use of DAX on individual files and/or
-directories on xfs, and lays some groundwork to do so in ext4.  It further
-enhances the dax mount option to be a tri-state of 'always', 'never', or
-'iflag' (default).  Furthermore, it maintians '-o dax' to be equivalent to '-o
-dax=always'.
+STATX_ATTR_DAX
 
-The insight at LSF/MM was to separate the per-mount or per-file "physical"
-(FS_XFLAG_DAX) capability switch from an "effective" (S_DAX) attribute for the
-file.
+	The file is in the DAX (cpu direct access) state.  DAX state
+	attempts to minimize software cache effects for both I/O and
+	memory mappings of this file.  It requires a file system which
+	has been configured to support DAX.
 
-At LSF/MM we discussed the difficulties of switching the DAX state of a file
-with active mappings / page cache.  It was thought the races could be avoided
-by limiting DAX state flips to 0-length files.
+	DAX generally assumes all accesses are via cpu load / store
+	instructions which can minimize overhead for small accesses, but
+	may adversely affect cpu utilization for large transfers.
 
-However, this turns out to not be true.[3][5] This is because address space
-operations (a_ops) may be in use at any time the inode is referenced.
+	File I/O is done directly to/from user-space buffers and memory
+	mapped I/O may be performed with direct memory mappings that
+	bypass kernel page cache.
 
-For this reason direct manipulation of the FS_XFLAG_DAX is allowed but the
-operation of the file (S_DAX) is not immediately changed.
+	While the DAX property tends to result in data being transferred
+	synchronously, it does not give the same guarantees of O_SYNC
+	where data and the necessary metadata are transferred together.
 
-Details of when and how DAX state can be changed on a file is included in a
-documentation patch.
+	A DAX file may support being mapped with the MAP_SYNC flag,
+	which enables a program to use CPU cache flush instructions to
+	persist CPU store operations without an explicit fsync(2).  See
+	mmap(2) for more information.
 
-It should be noted that FS_XFLAG_DAX inheritance is not shown in this patch set
-as it was maintained from previous work on XFS.  FS_XFLAG_DAX and it's
-inheritance will need to be added to other file systems for user control. 
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
-
-[1] https://lwn.net/Articles/787973/
-[2] https://lwn.net/Articles/787233/
-[3] https://lkml.org/lkml/2019/10/20/96
-[4] https://patchwork.kernel.org/patch/11310511/
-[5] https://lore.kernel.org/lkml/20200405061945.GA94792@iweiny-DESK2.sc.intel.com/
-
-
-To: linux-kernel@vger.kernel.org
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-
-Changes from V6:
-	Incorporate feedback on patches
-	Add ability to change FS_XFLAG_DAX on files at any time.
-		Add a don't cache flag to the VFS layer
-		Preserve internal XFS IDONTCACHE behavior for bulkstat
-		operations
-
-Changes from V5:
-	* make dax mount option a tri-state
-	* Reject changes to FS_XFLAG_DAX for regular files
-		- Allow only on directories
-	* Update documentation
-
-Changes from V4:
-	* Open code the aops lock rather than add it to the xfs_ilock()
-	  subsystem (Darrick's comments were obsoleted by this change)
-	* Fix lkp build suggestions and bugs
-
-Changes from V3:
-	* Remove global locking...  :-D
-	* put back per inode locking and remove pre-mature optimizations
-	* Fix issues with Directories having IS_DAX() set
-	* Fix kernel crash issues reported by Jeff
-	* Add some clean up patches
-	* Consolidate diflags to iflags functions
-	* Update/add documentation
-	* Reorder/rename patches quite a bit
-
+---
 Changes from V2:
+	Update man page text with comments from Darrick, Jan, Dan, and
+	Dave.
+---
+ fs/stat.c                 | 3 +++
+ include/uapi/linux/stat.h | 1 +
+ 2 files changed, 4 insertions(+)
 
-	* Move i_dax_sem to be a global percpu_rw_sem rather than per inode
-		Internal discussions with Dan determined this would be easier,
-		just as performant, and slightly less overhead that having it
-		in the SB as suggested by Jan
-	* Fix locking order in comments and throughout code
-	* Change "mode" to "state" throughout commits
-	* Add CONFIG_FS_DAX wrapper to disable inode_[un]lock_state() when not
-		configured
-	* Add static branch for which is activated by a device which supports
-		DAX in XFS
-	* Change "lock/unlock" to up/down read/write as appropriate
-		Previous names were over simplified
-	* Update comments/documentation
-
-	* Remove the xfs specific lock to the vfs (global) layer.
-	* Fix i_dax_sem locking order and comments
-
-	* Move 'i_mapped' count from struct inode to struct address_space and
-		rename it to mmap_count
-	* Add inode_has_mappings() call
-
-	* Fix build issues
-	* Clean up syntax spacing and minor issues
-	* Update man page text for STATX_ATTR_DAX
-	* Add reviewed-by's
-	* Rebase to 5.6
-
-	Rename patch:
-		from: fs/xfs: Add lock/unlock state to xfs
-		to: fs/xfs: Add write DAX lock to xfs layer
-	Add patch:
-		fs/xfs: Clarify lockdep dependency for xfs_isilocked()
-	Drop patch:
-		fs/xfs: Fix truncate up
-
-Ira Weiny (11):
-  fs/xfs: Remove unnecessary initialization of i_rwsem
-  fs: Remove unneeded IS_DAX() check in io_is_direct()
-  fs/stat: Define DAX statx attribute
-  fs/xfs: Change XFS_MOUNT_DAX to XFS_MOUNT_DAX_ALWAYS
-  fs/xfs: Make DAX mount option a tri-state
-  fs/xfs: Create function xfs_inode_enable_dax()
-  fs/xfs: Combine xfs_diflags_to_linux() and xfs_diflags_to_iflags()
-  fs: Define I_DONTCACNE in VFS layer
-  fs: Introduce DCACHE_DONTCACHE
-  fs/xfs: Change xfs_ioctl_setattr_dax_invalidate()
-  Documentation/dax: Update Usage section
-
- Documentation/filesystems/dax.txt | 166 +++++++++++++++++++++++++++++-
- drivers/block/loop.c              |   6 +-
- fs/dcache.c                       |   4 +
- fs/inode.c                        |  15 +++
- fs/stat.c                         |   3 +
- fs/xfs/xfs_icache.c               |   4 +-
- fs/xfs/xfs_inode.h                |   1 +
- fs/xfs/xfs_ioctl.c                | 138 ++++---------------------
- fs/xfs/xfs_iops.c                 |  72 ++++++++-----
- fs/xfs/xfs_mount.h                |   3 +-
- fs/xfs/xfs_super.c                |  46 ++++++++-
- include/linux/dcache.h            |   2 +
- include/linux/fs.h                |  14 +--
- include/uapi/linux/stat.h         |   1 +
- 14 files changed, 312 insertions(+), 163 deletions(-)
-
+diff --git a/fs/stat.c b/fs/stat.c
+index 030008796479..894699c74dde 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -79,6 +79,9 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ 	if (IS_AUTOMOUNT(inode))
+ 		stat->attributes |= STATX_ATTR_AUTOMOUNT;
+ 
++	if (IS_DAX(inode))
++		stat->attributes |= STATX_ATTR_DAX;
++
+ 	if (inode->i_op->getattr)
+ 		return inode->i_op->getattr(path, stat, request_mask,
+ 					    query_flags);
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index ad80a5c885d5..e5f9d5517f6b 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -169,6 +169,7 @@ struct statx {
+ #define STATX_ATTR_ENCRYPTED		0x00000800 /* [I] File requires key to decrypt in fs */
+ #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
+ #define STATX_ATTR_VERITY		0x00100000 /* [I] Verity protected file */
++#define STATX_ATTR_DAX			0x00002000 /* [I] File is DAX */
+ 
+ 
+ #endif /* _UAPI_LINUX_STAT_H */
 -- 
 2.25.1
 
