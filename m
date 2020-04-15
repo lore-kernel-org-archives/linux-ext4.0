@@ -2,112 +2,107 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF230C2BB55
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:08:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C946C3815B
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:09:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A0A14206A2
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:08:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586952531;
-	bh=RxG7sT2TZaY9cUwBJw2sOGIMMnDdQK0IvDqDfreJGso=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=lfmbFrO44UsgnWQbBEKrVhJaLPSEwDcmFmNjFO98KPSfkxvboHmoKWLcOEmJaGLYt
-	 AiQv14ozzzobgzCbA1mZxQTm0Qak2I2hJ+D9deFe4+yx0Eyqu8GMFW/BB67L8bi04U
-	 R6uLZSo/Xg42mvcHzsIz3TRPW5g18+lwbnEvDyQQ=
+	by mail.kernel.org (Postfix) with ESMTP id 1532F206A2
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 12:09:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2441288AbgDOMIt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 08:08:49 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41934 "EHLO mail.kernel.org"
+        id S2441295AbgDOMI7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 08:08:59 -0400
+Received: from mx2.suse.de ([195.135.220.15]:39518 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2897591AbgDOLrE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:47:04 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E6A0B20768;
-        Wed, 15 Apr 2020 11:47:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951223;
-        bh=RxG7sT2TZaY9cUwBJw2sOGIMMnDdQK0IvDqDfreJGso=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=wV7TnhkcbxYM61xc6zHv4NlFfCQQ8WiKclTb9PkY22D8OADIlG4u5jFqeL/8pgy5K
-         gwy6kzc2XkyLMkHGKONnmsLTgXfOlfaYfszi1HbBqwisVdq/cibt5cus88FdsAiJtk
-         0rRnSTeAZCiDN2PSJGDag5oRtBwKEsSeEjr0uFFQ=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Randy Dunlap <rdunlap@infradead.org>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Sasha Levin <sashal@kernel.org>
-Subject: [PATCH AUTOSEL 4.19 34/40] ext2: fix empty body warnings when -Wextra is used
-Date:   Wed, 15 Apr 2020 07:46:17 -0400
-Message-Id: <20200415114623.14972-34-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200415114623.14972-1-sashal@kernel.org>
-References: <20200415114623.14972-1-sashal@kernel.org>
+        id S2441289AbgDOMIu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 08:08:50 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id E6A2FABB2;
+        Wed, 15 Apr 2020 12:08:47 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 9FD9B1E1250; Wed, 15 Apr 2020 14:08:46 +0200 (CEST)
+Date:   Wed, 15 Apr 2020 14:08:46 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     ira.weiny@intel.com
+Cc:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC 4/8] fs/ext4: Introduce DAX inode flag
+Message-ID: <20200415120846.GG6126@quack2.suse.cz>
+References: <20200414040030.1802884-1-ira.weiny@intel.com>
+ <20200414040030.1802884-5-ira.weiny@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200414040030.1802884-5-ira.weiny@intel.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Randy Dunlap <rdunlap@infradead.org>
+On Mon 13-04-20 21:00:26, ira.weiny@intel.com wrote:
+> From: Ira Weiny <ira.weiny@intel.com>
+> 
+> Add a flag to preserve FS_XFLAG_DAX in the ext4 inode.
+> 
+> Set the flag to be user visible and changeable.  Set the flag to be
+> inherited.  Allow applications to change the flag at any time.
+> 
+> Finally, on regular files, flag the inode to not be cached to facilitate
+> changing S_DAX on the next creation of the inode.
+> 
+> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+> ---
+>  fs/ext4/ext4.h  | 13 +++++++++----
+>  fs/ext4/ioctl.c | 21 ++++++++++++++++++++-
+>  2 files changed, 29 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 61b37a052052..434021fcec88 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -415,13 +415,16 @@ struct flex_groups {
+>  #define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
+>  #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+>  #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+> +
+> +#define EXT4_DAX_FL			0x00800000 /* Inode is DAX */
+> +
 
-[ Upstream commit 44a52022e7f15cbaab957df1c14f7a4f527ef7cf ]
+You seem to be using somewhat older kernel... EXT4_EOFBLOCKS_FL doesn't
+exist anymore (but still it's good to leave it reserved for some time so
+the value you've chosen is OK).
 
-When EXT2_ATTR_DEBUG is not defined, modify the 2 debug macros
-to use the no_printk() macro instead of <nothing>.
-This fixes gcc warnings when -Wextra is used:
+> @@ -813,6 +818,17 @@ static int ext4_ioctl_get_es_cache(struct file *filp, unsigned long arg)
+>  	return error;
+>  }
+>  
+> +static void ext4_dax_dontcache(struct inode *inode, unsigned int flags)
+> +{
+> +	struct ext4_inode_info *ei = EXT4_I(inode);
+> +
+> +	if (S_ISDIR(inode->i_mode))
+> +		return;
+> +
+> +	if ((ei->i_flags ^ flags) == EXT4_DAX_FL)
+> +		inode->i_state |= I_DONTCACHE;
+> +}
+> +
 
-../fs/ext2/xattr.c:252:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-../fs/ext2/xattr.c:258:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-../fs/ext2/xattr.c:330:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
-../fs/ext2/xattr.c:872:45: warning: suggest braces around empty body in an ‘else’ statement [-Wempty-body]
+You probably want to use the function you've introduced in the XFS series
+here...
 
-I have verified that the only object code change (with gcc 7.5.0) is
-the reversal of some instructions from 'cmp a,b' to 'cmp b,a'.
-
-Link: https://lore.kernel.org/r/e18a7395-61fb-2093-18e8-ed4f8cf56248@infradead.org
-Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
-Cc: Jan Kara <jack@suse.com>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext2/xattr.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index dd8f10db82e99..4439bfaf1c57f 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -56,6 +56,7 @@
- 
- #include <linux/buffer_head.h>
- #include <linux/init.h>
-+#include <linux/printk.h>
- #include <linux/slab.h>
- #include <linux/mbcache.h>
- #include <linux/quotaops.h>
-@@ -84,8 +85,8 @@
- 		printk("\n"); \
- 	} while (0)
- #else
--# define ea_idebug(f...)
--# define ea_bdebug(f...)
-+# define ea_idebug(inode, f...)	no_printk(f)
-+# define ea_bdebug(bh, f...)	no_printk(f)
- #endif
- 
- static int ext2_xattr_set2(struct inode *, struct buffer_head *,
+								Honza
 -- 
-2.20.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
