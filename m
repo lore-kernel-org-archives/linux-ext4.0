@@ -4,48 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D3C4C3815B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7B31C2BA19
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2360A206A2
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8E0D1206A2
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586951764;
-	bh=2WU1KnZmrA8AQIpCo6xlMyXDOrFQw7bJMjD+x8xgYXk=;
+	s=default; t=1586951787;
+	bh=XsbHWB2fzAjBy9zC+9FurmC3XfqC+AFSHn+V4bj4/cw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=kKBmnxcdez9QiY9DDy7EVUueXAXRJafVfakx2LCeged+HUe63IHXESstAppKThiVQ
-	 0x2xddpYUhcBgFToOwJmm7cagd9sDUaEom4CvQlzLXXqg5maLDhC6jLi2Dt8NW4wRu
-	 wVwW24r1yHwfPMMeoqR9RK/ufmWwl764m4R+KFus=
+	b=tbL6reQ1Vnbrw1C/1+9oh/AwYvKPPY2CUUqzak9bfx4aDywuyykeIgZL3iEw2JHVv
+	 XikNtkWM4Lyjvmk2Lv61ehyN2C9toCBUS8+Y+C7F8B6mbVet68IoFXX0XNmkw8ye2o
+	 10mFks8QfMD/c9GxMmUOJuN+adDCIo2vOQk8grvA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2409615AbgDOL4A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:56:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43584 "EHLO mail.kernel.org"
+        id S2409638AbgDOL4Z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:56:25 -0400
+Received: from mail.kernel.org ([198.145.29.99]:43232 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409405AbgDOLr6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:47:58 -0400
+        id S2409397AbgDOLr5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:47:57 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9F47320732;
-        Wed, 15 Apr 2020 11:47:57 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6F7FF2168B;
+        Wed, 15 Apr 2020 11:47:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951278;
-        bh=2WU1KnZmrA8AQIpCo6xlMyXDOrFQw7bJMjD+x8xgYXk=;
+        s=default; t=1586951277;
+        bh=XsbHWB2fzAjBy9zC+9FurmC3XfqC+AFSHn+V4bj4/cw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jr4reM7z9ZlnbEs/DA5HTctS3BNO1gdcg+ptJj72W5Utjx8Sh5/rhlkS0GcrVlgWa
-         5ye2byGDGeFlFNPDtTmyQBjnFjK9L9sUaUnO0M3/30PntPgq5psd+w/raqvwAAGg1M
-         n0P4qqeeFogsxR8XhonIf2fHkzKsQidCjpVLCwts=
+        b=FhLZ1YGodOZldL1sVltM84AWCdkFGUxMiPslspFhv5vTalXIt1KDQuT0BHu3kawIP
+         bhhWdgxrz3J35VyfvsgBxYOo7rS35Ml5GCbyWvwmgGYtZTKyLwMA8ZNgwbEuYsATVK
+         hsHjju9GpOs1wuZ8E8WJ1ilpOKVf1FQf1TRt7Q7w=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Josh Triplett <josh@joshtriplett.org>,
+Cc:     Eric Sandeen <sandeen@redhat.com>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        Andreas Dilger <adilger@dilger.ca>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 08/21] ext4: fix incorrect group count in ext4_fill_super error message
-Date:   Wed, 15 Apr 2020 07:47:35 -0400
-Message-Id: <20200415114748.15713-8-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 07/21] ext4: do not commit super on read-only bdev
+Date:   Wed, 15 Apr 2020 07:47:34 -0400
+Message-Id: <20200415114748.15713-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200415114748.15713-1-sashal@kernel.org>
 References: <20200415114748.15713-1-sashal@kernel.org>
@@ -58,41 +60,48 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Josh Triplett <josh@joshtriplett.org>
+From: Eric Sandeen <sandeen@redhat.com>
 
-[ Upstream commit df41460a21b06a76437af040d90ccee03888e8e5 ]
+[ Upstream commit c96e2b8564adfb8ac14469ebc51ddc1bfecb3ae2 ]
 
-ext4_fill_super doublechecks the number of groups before mounting; if
-that check fails, the resulting error message prints the group count
-from the ext4_sb_info sbi, which hasn't been set yet. Print the freshly
-computed group count instead (which at that point has just been computed
-in "blocks_count").
+Under some circumstances we may encounter a filesystem error on a
+read-only block device, and if we try to save the error info to the
+superblock and commit it, we'll wind up with a noisy error and
+backtrace, i.e.:
 
-Signed-off-by: Josh Triplett <josh@joshtriplett.org>
-Fixes: 4ec1102813798 ("ext4: Add sanity checks for the superblock before mounting the filesystem")
-Link: https://lore.kernel.org/r/8b957cd1513fcc4550fe675c10bcce2175c33a49.1585431964.git.josh@joshtriplett.org
+[ 3337.146838] EXT4-fs error (device pmem1p2): ext4_get_journal_inode:4634: comm mount: inode #0: comm mount: iget: illegal inode #
+------------[ cut here ]------------
+generic_make_request: Trying to write to read-only block-device pmem1p2 (partno 2)
+WARNING: CPU: 107 PID: 115347 at block/blk-core.c:788 generic_make_request_checks+0x6b4/0x7d0
+...
+
+To avoid this, commit the error info in the superblock only if the
+block device is writable.
+
+Reported-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Link: https://lore.kernel.org/r/4b6e774d-cc00-3469-7abb-108eb151071a@sandeen.net
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/super.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 508995e7e31d8..cbea8ff6e6c7b 100644
+index 75f71e52ffc77..508995e7e31d8 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3952,9 +3952,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
- 	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
--		ext4_msg(sb, KERN_WARNING, "groups count too large: %u "
-+		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
- 		       "(block count %llu, first data block %u, "
--		       "blocks per group %lu)", sbi->s_groups_count,
-+		       "blocks per group %lu)", blocks_count,
- 		       ext4_blocks_count(es),
- 		       le32_to_cpu(es->s_first_data_block),
- 		       EXT4_BLOCKS_PER_GROUP(sb));
+@@ -344,7 +344,8 @@ static void save_error_info(struct super_block *sb, const char *func,
+ 			    unsigned int line)
+ {
+ 	__save_error_info(sb, func, line);
+-	ext4_commit_super(sb, 1);
++	if (!bdev_read_only(sb->s_bdev))
++		ext4_commit_super(sb, 1);
+ }
+ 
+ /*
 -- 
 2.20.1
 
