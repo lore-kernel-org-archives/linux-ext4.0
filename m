@@ -2,106 +2,95 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7B31C2BA19
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C73E4C2BA19
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:58:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8E0D1206A2
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:56:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1586951787;
-	bh=XsbHWB2fzAjBy9zC+9FurmC3XfqC+AFSHn+V4bj4/cw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=tbL6reQ1Vnbrw1C/1+9oh/AwYvKPPY2CUUqzak9bfx4aDywuyykeIgZL3iEw2JHVv
-	 XikNtkWM4Lyjvmk2Lv61ehyN2C9toCBUS8+Y+C7F8B6mbVet68IoFXX0XNmkw8ye2o
-	 10mFks8QfMD/c9GxMmUOJuN+adDCIo2vOQk8grvA=
+	by mail.kernel.org (Postfix) with ESMTP id A5DA72078A
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 11:58:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2409638AbgDOL4Z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 07:56:25 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43232 "EHLO mail.kernel.org"
+        id S2898011AbgDOL6O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 07:58:14 -0400
+Received: from mx2.suse.de ([195.135.220.15]:34412 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409397AbgDOLr5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 07:47:57 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6F7FF2168B;
-        Wed, 15 Apr 2020 11:47:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1586951277;
-        bh=XsbHWB2fzAjBy9zC+9FurmC3XfqC+AFSHn+V4bj4/cw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FhLZ1YGodOZldL1sVltM84AWCdkFGUxMiPslspFhv5vTalXIt1KDQuT0BHu3kawIP
-         bhhWdgxrz3J35VyfvsgBxYOo7rS35Ml5GCbyWvwmgGYtZTKyLwMA8ZNgwbEuYsATVK
-         hsHjju9GpOs1wuZ8E8WJ1ilpOKVf1FQf1TRt7Q7w=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Eric Sandeen <sandeen@redhat.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 07/21] ext4: do not commit super on read-only bdev
-Date:   Wed, 15 Apr 2020 07:47:34 -0400
-Message-Id: <20200415114748.15713-7-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200415114748.15713-1-sashal@kernel.org>
-References: <20200415114748.15713-1-sashal@kernel.org>
+        id S2897999AbgDOL6L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 07:58:11 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 3A8D2AB64;
+        Wed, 15 Apr 2020 11:58:08 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 800DE1E1250; Wed, 15 Apr 2020 13:58:07 +0200 (CEST)
+Date:   Wed, 15 Apr 2020 13:58:07 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     ira.weiny@intel.com
+Cc:     linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC 2/8] fs/ext4: Disallow verity if inode is DAX
+Message-ID: <20200415115807.GD6126@quack2.suse.cz>
+References: <20200414040030.1802884-1-ira.weiny@intel.com>
+ <20200414040030.1802884-3-ira.weiny@intel.com>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200414040030.1802884-3-ira.weiny@intel.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Sandeen <sandeen@redhat.com>
+On Mon 13-04-20 21:00:24, ira.weiny@intel.com wrote:
+> From: Ira Weiny <ira.weiny@intel.com>
+> 
+> Verity and DAX are incompatible.  Changing the DAX mode due to a verity
+> flag change is wrong without a corresponding address_space_operations
+> update.
+> 
+> Make the 2 options mutually exclusive by returning an error if DAX was
+> set first.
+> 
+> (Setting DAX is already disabled if Verity is set first.)
+> 
+> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
-[ Upstream commit c96e2b8564adfb8ac14469ebc51ddc1bfecb3ae2 ]
+Looks good to me. You can add:
 
-Under some circumstances we may encounter a filesystem error on a
-read-only block device, and if we try to save the error info to the
-superblock and commit it, we'll wind up with a noisy error and
-backtrace, i.e.:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-[ 3337.146838] EXT4-fs error (device pmem1p2): ext4_get_journal_inode:4634: comm mount: inode #0: comm mount: iget: illegal inode #
-------------[ cut here ]------------
-generic_make_request: Trying to write to read-only block-device pmem1p2 (partno 2)
-WARNING: CPU: 107 PID: 115347 at block/blk-core.c:788 generic_make_request_checks+0x6b4/0x7d0
-...
+								Honza
 
-To avoid this, commit the error info in the superblock only if the
-block device is writable.
-
-Reported-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Link: https://lore.kernel.org/r/4b6e774d-cc00-3469-7abb-108eb151071a@sandeen.net
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 75f71e52ffc77..508995e7e31d8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -344,7 +344,8 @@ static void save_error_info(struct super_block *sb, const char *func,
- 			    unsigned int line)
- {
- 	__save_error_info(sb, func, line);
--	ext4_commit_super(sb, 1);
-+	if (!bdev_read_only(sb->s_bdev))
-+		ext4_commit_super(sb, 1);
- }
- 
- /*
+> ---
+>  fs/ext4/verity.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+> index dc5ec724d889..ce3f9a198d3b 100644
+> --- a/fs/ext4/verity.c
+> +++ b/fs/ext4/verity.c
+> @@ -113,6 +113,9 @@ static int ext4_begin_enable_verity(struct file *filp)
+>  	handle_t *handle;
+>  	int err;
+>  
+> +	if (WARN_ON_ONCE(IS_DAX(inode)))
+> +		return -EINVAL;
+> +
+>  	if (ext4_verity_in_progress(inode))
+>  		return -EBUSY;
+>  
+> -- 
+> 2.25.1
+> 
 -- 
-2.20.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
