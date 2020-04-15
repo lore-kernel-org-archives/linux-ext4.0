@@ -2,91 +2,107 @@ Return-Path: <SRS0=naN3=57=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97FA0C2BA2B
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 20:32:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 342A4C3815B
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 20:34:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6B5F120774
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 20:32:58 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b0tMKhL6"
+	by mail.kernel.org (Postfix) with ESMTP id 0EEF720774
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Apr 2020 20:34:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2636977AbgDOUcy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Apr 2020 16:32:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38802 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S2506473AbgDOUb4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Apr 2020 16:31:56 -0400
-Received: from mail-qv1-xf42.google.com (mail-qv1-xf42.google.com [IPv6:2607:f8b0:4864:20::f42])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2A13BC061A0F
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2020 13:31:56 -0700 (PDT)
-Received: by mail-qv1-xf42.google.com with SMTP id y19so675024qvv.4
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2020 13:31:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=nuwGMvQLq8or7PSxB9QLqkVgVx418FK4SPPGWPWlhPo=;
-        b=b0tMKhL68bjzHBT4DZUynDVrp/BjHDdx4rRGGpbRrut4DPJ6v6wJVaxy3KV5+WR/PX
-         4PPwjhyVnAvfCwUQWJNn87PUACn4Imr1YigT+wm+LDw4D7t9zb8+1FO5Ou7LYwSN4ygJ
-         oTPOBnprB7jrIUUHUz4rt8V5gclmyffXBFD0rCt5weI191xqGN1b/uq+zmqLORTTGpzl
-         kqe7B0Q1bhtAhaCnTJ+niQ5HqPwJfaacKo6fmOZNoY+yI3Q2iUbLP2E/XNbOEhtRtdP/
-         dz/GAhPj+lMNRshnWLXRTx9K8ot+AYHhqV7m1i+WFuHPietJi5/o8n0jeKRe7Ym1C3Cs
-         kCpg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=nuwGMvQLq8or7PSxB9QLqkVgVx418FK4SPPGWPWlhPo=;
-        b=gOrm/27/wvRo7nfAPEjZ62g19+kR/zK2VKxgcTPMEbijUC4lqma7z2Qm+O5r+mTRop
-         pb3qCIwvCjtGiTsU6vguv+235IJ0xZgollgcBOn+2cd6feyTtGdPhJC60RcQYDaIhOUX
-         Z2peRgkaAvZ0NZpyAz49W98O0n6Bk7kn6cs+HRsM9L+nDgtVeDv+f/IjzhJNneoJOzIE
-         9XJ+2I/Ww8uO5x4NV6PrjkorPdJJMNO0528DX3UHMfbj+oj/8jwYkh+LD3rfW61VhmXV
-         MWLpS4UEOG6Is4SyicDgtOPTU5E0gogfoAfJLCKd3zv0vySWM4bbJU/D/vRuhCR6YJk/
-         B8tA==
-X-Gm-Message-State: AGi0PuY/9HRHOg73no8ec9ArAPvmHc5fT+aL95N3gy+3j8gBZ+NKSJOA
-        wMLLvjDH7Mi/up5zysDYqKYYgCR+
-X-Google-Smtp-Source: APiQypLEHjziPR4FDhizC/1ZA6E9dbsYCXER4ld0/ZGGfK/nObAoh9Ls9GhkgQi8ZF3NHOTTmAoWDA==
-X-Received: by 2002:a05:6214:1804:: with SMTP id o4mr6864260qvw.10.1586982715010;
-        Wed, 15 Apr 2020 13:31:55 -0700 (PDT)
-Received: from localhost.localdomain (c-73-60-226-25.hsd1.nh.comcast.net. [73.60.226.25])
-        by smtp.gmail.com with ESMTPSA id x8sm13198305qti.51.2020.04.15.13.31.53
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 15 Apr 2020 13:31:54 -0700 (PDT)
-From:   Eric Whitney <enwlinux@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH 0/2] remove EXT4_GET_BLOCKS_KEEP_SIZE flag, etc.
-Date:   Wed, 15 Apr 2020 16:31:38 -0400
-Message-Id: <20200415203140.30349-1-enwlinux@gmail.com>
-X-Mailer: git-send-email 2.11.0
+        id S371288AbgDOUeh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Apr 2020 16:34:37 -0400
+Received: from mga12.intel.com ([192.55.52.136]:1286 "EHLO mga12.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S371264AbgDOUee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Apr 2020 16:34:34 -0400
+IronPort-SDR: 2LyDLe2EYQold9G9rW+6J/c0YZHYE+r3kbkexYNd/oXQoDUDEDLspwKae6l4T6IKBr1VbW/tGd
+ d0JoVANzj/lg==
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 15 Apr 2020 13:34:33 -0700
+IronPort-SDR: qMIL+PP6t6fk+wubpecDb/RRcv1HkzBy5DZA+Ijw1V370MueFdQ+a7zyHFN7vAwnwmaeEKCaNq
+ yqKS9aAUU4Cw==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.72,388,1580803200"; 
+   d="scan'208";a="455027705"
+Received: from iweiny-desk2.sc.intel.com ([10.3.52.147])
+  by fmsmga006.fm.intel.com with ESMTP; 15 Apr 2020 13:34:33 -0700
+Date:   Wed, 15 Apr 2020 13:34:33 -0700
+From:   Ira Weiny <ira.weiny@intel.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-kernel@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC 2/8] fs/ext4: Disallow verity if inode is DAX
+Message-ID: <20200415203433.GB2309605@iweiny-DESK2.sc.intel.com>
+References: <20200414040030.1802884-1-ira.weiny@intel.com>
+ <20200414040030.1802884-3-ira.weiny@intel.com>
+ <20200415120002.GE6126@quack2.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200415120002.GE6126@quack2.suse.cz>
+User-Agent: Mutt/1.11.1 (2018-12-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Some code was left behind after removing EXT4_EOFBLOCKS_FL and the code
-associated with it in order to minimize the amount of change in that
-earlier patch and to make it easier to revert in the event that proved
-necessary.  The first patch in this series cleans that up.  While
-writing that patch I noticed that there were some ext4_map_blocks()
-flag translations missing, and the second patch in the series fixes
-that.  I've bundled them together here to aid merging, as there's
-a common dependency in ext4.h.
+On Wed, Apr 15, 2020 at 02:00:02PM +0200, Jan Kara wrote:
+> On Mon 13-04-20 21:00:24, ira.weiny@intel.com wrote:
+> > From: Ira Weiny <ira.weiny@intel.com>
+> > 
+> > Verity and DAX are incompatible.  Changing the DAX mode due to a verity
+> > flag change is wrong without a corresponding address_space_operations
+> > update.
+> > 
+> > Make the 2 options mutually exclusive by returning an error if DAX was
+> > set first.
+> > 
+> > (Setting DAX is already disabled if Verity is set first.)
+> > 
+> > Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+> > ---
+> >  fs/ext4/verity.c | 3 +++
+> >  1 file changed, 3 insertions(+)
+> > 
+> > diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+> > index dc5ec724d889..ce3f9a198d3b 100644
+> > --- a/fs/ext4/verity.c
+> > +++ b/fs/ext4/verity.c
+> > @@ -113,6 +113,9 @@ static int ext4_begin_enable_verity(struct file *filp)
+> >  	handle_t *handle;
+> >  	int err;
+> >  
+> > +	if (WARN_ON_ONCE(IS_DAX(inode)))
+> > +		return -EINVAL;
+> > +
+> 
+> Hum, one question, is there a reason for WARN_ON_ONCE()? If I understand
+> correctly, user could normally trigger this, couldn't he?
 
-Eric Whitney (2):
-  ext4: remove EXT4_GET_BLOCKS_KEEP_SIZE flag
-  ext4: translate a few more map flags to strings in tracepoints
+Removed and added to the verity doc.
+Ira
 
- fs/ext4/ext4.h              |  2 --
- fs/ext4/extents.c           |  4 ----
- fs/ext4/inode.c             | 12 ++++--------
- include/trace/events/ext4.h |  6 ++++--
- 4 files changed, 8 insertions(+), 16 deletions(-)
-
--- 
-2.11.0
-
+> 
+> 								Honza
+> 
+> >  	if (ext4_verity_in_progress(inode))
+> >  		return -EBUSY;
+> >  
+> > -- 
+> > 2.25.1
+> > 
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
