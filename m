@@ -4,45 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB039C54FCC
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F11DC54FC9
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B86BD20656
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0D21E20656
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726432AbgDUTSU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Apr 2020 15:18:20 -0400
-Received: from mga18.intel.com ([134.134.136.126]:2936 "EHLO mga18.intel.com"
+        id S1726399AbgDUTSP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Apr 2020 15:18:15 -0400
+Received: from mga11.intel.com ([192.55.52.93]:49007 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726419AbgDUTSU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Apr 2020 15:18:20 -0400
-IronPort-SDR: D03GqF2JeHPdX0l/XTq7j8EsDSJkOoBgz2qJ2ajltbT29QRHic4pOEM28Y0DQ29IMpN1B9DPTQ
- hCOd4LxRQPOw==
+        id S1726381AbgDUTSN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Apr 2020 15:18:13 -0400
+IronPort-SDR: yYv38XHyt/cKgHWA3b8ubYR+AECcfOzNHUzQn8WJuZ2J/ajWdFZrk4tC4gReF2u8EQQ9jDdi9o
+ YuP4BvCry4wQ==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:18 -0700
-IronPort-SDR: N3Q8Wl4WtqdS4Irk8kajFgaBV4mQSVdPQhXjOruW93UoVwkv+JfUv6LUnL1czurgqJJWc4if9n
- F5S2mov2/h5g==
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:12 -0700
+IronPort-SDR: RNyeQvJRRiWz4GybeOvV74pRNWVqHDmHUGNclIoLJx+FuTtposP4Ih6Lx7qcye3L1G3zv9IIuC
+ UEPJ6dk8iUkw==
 X-IronPort-AV: E=Sophos;i="5.72,411,1580803200"; 
-   d="scan'208";a="247257323"
+   d="scan'208";a="291693639"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:18 -0700
+  by orsmga008-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:11 -0700
 From:   ira.weiny@intel.com
 To:     linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
         "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Jan Kara <jack@suse.cz>,
+Cc:     Ira Weiny <ira.weiny@intel.com>,
+        Dave Chinner <dchinner@redhat.com>, Jan Kara <jack@suse.cz>,
+        Al Viro <viro@zeniv.linux.org.uk>,
         Dan Williams <dan.j.williams@intel.com>,
         Dave Chinner <david@fromorbit.com>,
         Christoph Hellwig <hch@lst.de>,
         "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
         linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH V9 06/11] fs/xfs: Create function xfs_inode_should_enable_dax()
-Date:   Tue, 21 Apr 2020 12:17:48 -0700
-Message-Id: <20200421191754.3372370-7-ira.weiny@intel.com>
+Subject: [PATCH V9 03/11] fs/stat: Define DAX statx attribute
+Date:   Tue, 21 Apr 2020 12:17:45 -0700
+Message-Id: <20200421191754.3372370-4-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200421191754.3372370-1-ira.weiny@intel.com>
 References: <20200421191754.3372370-1-ira.weiny@intel.com>
@@ -55,104 +57,77 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-xfs_inode_supports_dax() should reflect if the inode can support DAX not
-that it is enabled for DAX.
+In order for users to determine if a file is currently operating in DAX
+state (effective DAX).  Define a statx attribute value and set that
+attribute if the effective DAX flag is set.
 
-Change the use of xfs_inode_supports_dax() to reflect only if the inode
-and underlying storage support dax.
+To go along with this we propose the following addition to the statx man
+page:
 
-Add a new function xfs_inode_should_enable_dax() which reflects if the
-inode should be enabled for DAX.
+STATX_ATTR_DAX
 
+	The file is in the DAX (cpu direct access) state.  DAX state
+	attempts to minimize software cache effects for both I/O and
+	memory mappings of this file.  It requires a file system which
+	has been configured to support DAX.
+
+	DAX generally assumes all accesses are via cpu load / store
+	instructions which can minimize overhead for small accesses, but
+	may adversely affect cpu utilization for large transfers.
+
+	File I/O is done directly to/from user-space buffers and memory
+	mapped I/O may be performed with direct memory mappings that
+	bypass kernel page cache.
+
+	While the DAX property tends to result in data being transferred
+	synchronously, it does not give the same guarantees of O_SYNC
+	where data and the necessary metadata are transferred together.
+
+	A DAX file may support being mapped with the MAP_SYNC flag,
+	which enables a program to use CPU cache flush instructions to
+	persist CPU store operations without an explicit fsync(2).  See
+	mmap(2) for more information.
+
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V8
-	Change to 'should enable' (feedback given by Jan in ext4 series)
-		Darrick I've preserved your Reviewed-by for now LMK if
-		that is an issue.
-
-Changes from v7:
-	Move S_ISREG check first
-	use IS_ENABLED(CONFIG_FS_DAX) rather than duplicated function
-
-Changes from v6:
-	Change enable checks to be sequential logic.
-	Update for 2 bit tri-state option.
-	Make 'static' consistent.
-	Don't set S_DAX if !CONFIG_FS_DAX
-
-Changes from v5:
-	Update to reflect the new tri-state mount option
-
-Changes from v3:
-	Update functions and names to be more clear
-	Update commit message
-	Merge with
-		'fs/xfs: Clean up DAX support check'
-		don't allow IS_DAX() on a directory
-		use STATIC macro for static
-		make xfs_inode_supports_dax() static
+Changes from V2:
+	Update man page text with comments from Darrick, Jan, Dan, and
+	Dave.
 ---
- fs/xfs/xfs_iops.c | 28 ++++++++++++++++++++++------
- 1 file changed, 22 insertions(+), 6 deletions(-)
+ fs/stat.c                 | 3 +++
+ include/uapi/linux/stat.h | 1 +
+ 2 files changed, 4 insertions(+)
 
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index 462f89af479a..1814f10e43d3 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1243,13 +1243,12 @@ xfs_inode_supports_dax(
- {
- 	struct xfs_mount	*mp = ip->i_mount;
+diff --git a/fs/stat.c b/fs/stat.c
+index 030008796479..894699c74dde 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -79,6 +79,9 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ 	if (IS_AUTOMOUNT(inode))
+ 		stat->attributes |= STATX_ATTR_AUTOMOUNT;
  
--	/* Only supported on non-reflinked files. */
--	if (!S_ISREG(VFS_I(ip)->i_mode) || xfs_is_reflink_inode(ip))
-+	/* Only supported on regular files. */
-+	if (!S_ISREG(VFS_I(ip)->i_mode))
- 		return false;
- 
--	/* DAX mount option or DAX iflag must be set. */
--	if (!(mp->m_flags & XFS_MOUNT_DAX_ALWAYS) &&
--	    !(ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
-+	/* Only supported on non-reflinked files. */
-+	if (xfs_is_reflink_inode(ip))
- 		return false;
- 
- 	/* Block size must match page size */
-@@ -1260,6 +1259,23 @@ xfs_inode_supports_dax(
- 	return xfs_inode_buftarg(ip)->bt_daxdev != NULL;
- }
- 
-+static bool
-+xfs_inode_should_enable_dax(
-+	struct xfs_inode *ip)
-+{
-+	if (!IS_ENABLED(CONFIG_FS_DAX))
-+		return false;
-+	if (ip->i_mount->m_flags & XFS_MOUNT_DAX_NEVER)
-+		return false;
-+	if (!xfs_inode_supports_dax(ip))
-+		return false;
-+	if (ip->i_mount->m_flags & XFS_MOUNT_DAX_ALWAYS)
-+		return true;
-+	if (ip->i_d.di_flags2 & XFS_DIFLAG2_DAX)
-+		return true;
-+	return false;
-+}
++	if (IS_DAX(inode))
++		stat->attributes |= STATX_ATTR_DAX;
 +
- STATIC void
- xfs_diflags_to_iflags(
- 	struct inode		*inode,
-@@ -1278,7 +1294,7 @@ xfs_diflags_to_iflags(
- 		inode->i_flags |= S_SYNC;
- 	if (flags & XFS_DIFLAG_NOATIME)
- 		inode->i_flags |= S_NOATIME;
--	if (xfs_inode_supports_dax(ip))
-+	if (xfs_inode_should_enable_dax(ip))
- 		inode->i_flags |= S_DAX;
- }
+ 	if (inode->i_op->getattr)
+ 		return inode->i_op->getattr(path, stat, request_mask,
+ 					    query_flags);
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index ad80a5c885d5..e5f9d5517f6b 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -169,6 +169,7 @@ struct statx {
+ #define STATX_ATTR_ENCRYPTED		0x00000800 /* [I] File requires key to decrypt in fs */
+ #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
+ #define STATX_ATTR_VERITY		0x00100000 /* [I] Verity protected file */
++#define STATX_ATTR_DAX			0x00002000 /* [I] File is DAX */
  
+ 
+ #endif /* _UAPI_LINUX_STAT_H */
 -- 
 2.25.1
 
