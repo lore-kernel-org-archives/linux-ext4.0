@@ -2,142 +2,208 @@ Return-Path: <SRS0=/M55=6F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_2 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD3F6C54FC9
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E56E4C54FC9
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:53:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9B411206B8
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:18:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C1417206D9
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 19:53:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1587498804;
+	bh=9CQUlrC6I3zdb3MwnmyL7p4wbLljz1e6KpVFkkjBUWE=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References:List-ID:From;
+	b=ywjBiLVzRmwpuJolakvk/yKHlSQtcQexEikY1aUzcFTOECGkgMzl/hSBTUP5YgEke
+	 3niNjl0BIMX6dJaUXIQYV0UsAQhZd/7fabWO9UMd7rEHxJ8RHoclAr5z4e4XkHOFzI
+	 O+9dFBKpgVCbCdEiIrvLIIUhI3fhArdmnEPBlKZg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726109AbgDUTSz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Apr 2020 15:18:55 -0400
-Received: from mga05.intel.com ([192.55.52.43]:59462 "EHLO mga05.intel.com"
+        id S1726240AbgDUTxV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Apr 2020 15:53:21 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45972 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726389AbgDUTSP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Apr 2020 15:18:15 -0400
-IronPort-SDR: 2VrBZg3YsGpoPuY2e4ha4l7iDFxHrFko0Qo1L4PyjSw3w48v9gt7XS8PugHzn9Yofj2BJugiZr
- 5O5XQ0jcnjYA==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga001.jf.intel.com ([10.7.209.18])
-  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:15 -0700
-IronPort-SDR: BY38aG1IpsxE4DTwk6ImkdNLOfNRE9D4dSXAL6UoulrmXSK7Qvp2nHQw4RDpYkfMKSltb57JuY
- uLuNRQ68kYLA==
-X-IronPort-AV: E=Sophos;i="5.72,411,1580803200"; 
-   d="scan'208";a="334376226"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga001-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 Apr 2020 12:18:14 -0700
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Jan Kara <jack@suse.cz>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH V9 04/11] fs/xfs: Change XFS_MOUNT_DAX to XFS_MOUNT_DAX_ALWAYS
-Date:   Tue, 21 Apr 2020 12:17:46 -0700
-Message-Id: <20200421191754.3372370-5-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200421191754.3372370-1-ira.weiny@intel.com>
-References: <20200421191754.3372370-1-ira.weiny@intel.com>
+        id S1726024AbgDUTxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Apr 2020 15:53:20 -0400
+Received: from coco.lan (ip5f5ad4d8.dynamic.kabel-deutschland.de [95.90.212.216])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4D18F206D9;
+        Tue, 21 Apr 2020 19:53:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1587498799;
+        bh=9CQUlrC6I3zdb3MwnmyL7p4wbLljz1e6KpVFkkjBUWE=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=IbaJjE2yCaHwvsE+Gf5R9HULObEdPcY315s9bXU/UX3i97gXcsY60pU/6U4SRK55E
+         6uk2AALA2TD3SmPibf+SgFfx77vxHsZFSXEG670HfRyvwgIJ4iBZz90nBu0dXCGj0E
+         22sn23iN8k/LX4wLKJkQMrln6TbhE+y/Os4LlIU4=
+Date:   Tue, 21 Apr 2020 21:53:15 +0200
+From:   Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        ira.weiny@intel.com
+Subject: Re: [PATCH 12/34] docs: filesystems: convert dax.txt to ReST
+Message-ID: <20200421215315.4f591021@coco.lan>
+In-Reply-To: <20200421183121.GC6733@magnolia>
+References: <cover.1586960617.git.mchehab+huawei@kernel.org>
+        <71b1f910b2c3569a9fdaa8778378dd734f4f0091.1586960617.git.mchehab+huawei@kernel.org>
+        <20200415154144.GA6733@magnolia>
+        <20200421183117.2bf2b716@coco.lan>
+        <20200421183121.GC6733@magnolia>
+X-Mailer: Claws Mail 3.17.5 (GTK+ 2.24.32; x86_64-redhat-linux-gnu)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+Em Tue, 21 Apr 2020 11:31:21 -0700
+"Darrick J. Wong" <darrick.wong@oracle.com> escreveu:
 
-In prep for the new tri-state mount option which then introduces
-XFS_MOUNT_DAX_NEVER.
+> On Tue, Apr 21, 2020 at 06:31:17PM +0200, Mauro Carvalho Chehab wrote:
+> > Em Wed, 15 Apr 2020 08:41:44 -0700
+> > "Darrick J. Wong" <darrick.wong@oracle.com> escreveu:
+> >   
+> > > [add ira weiny to cc]
+> > > 
+> > > On Wed, Apr 15, 2020 at 04:32:25PM +0200, Mauro Carvalho Chehab wrote:  
+> > > > - Add a SPDX header;
+> > > > - Adjust document title;
+> > > > - Some whitespace fixes and new line breaks;
+> > > > - Add it to filesystems/index.rst.
+> > > > 
+> > > > Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+> > > > ---
+> > > >  Documentation/admin-guide/ext4.rst             | 2 +-
+> > > >  Documentation/filesystems/{dax.txt => dax.rst} | 9 +++++++--
+> > > >  Documentation/filesystems/ext2.rst             | 2 +-
+> > > >  Documentation/filesystems/index.rst            | 1 +
+> > > >  4 files changed, 10 insertions(+), 4 deletions(-)
+> > > >  rename Documentation/filesystems/{dax.txt => dax.rst} (97%)
+> > > > 
+> > > > diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
+> > > > index 9443fcef1876..103bcc345bad 100644
+> > > > --- a/Documentation/admin-guide/ext4.rst
+> > > > +++ b/Documentation/admin-guide/ext4.rst
+> > > > @@ -392,7 +392,7 @@ When mounting an ext4 filesystem, the following option are accepted:
+> > > >  
+> > > >    dax
+> > > >          Use direct access (no page cache).  See
+> > > > -        Documentation/filesystems/dax.txt.  Note that this option is
+> > > > +        Documentation/filesystems/dax.rst.  Note that this option is
+> > > >          incompatible with data=journal.
+> > > >  
+> > > >  Data Mode
+> > > > diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.rst
+> > > > similarity index 97%
+> > > > rename from Documentation/filesystems/dax.txt
+> > > > rename to Documentation/filesystems/dax.rst
+> > > > index 735f3859b19f..5838144f80f0 100644
+> > > > --- a/Documentation/filesystems/dax.txt
+> > > > +++ b/Documentation/filesystems/dax.rst    
+> > > 
+> > > Err, this will collide with the work that Ira's doing on DAX for 5.8[1].
+> > > Can the dax.txt conversion wait?  
+> > 
+> > Well, I can re-schedule it to 5.9. Or, if you merge the dax changes
+> > at linux-next, I can rebase my patch on the top of it.  
+> 
+> That depends on how quick Ira can get the series merged. :)
+> 
+> I personally think (hope) everyone's tired of arguing and we can just
+> get it done for 5.8, but past experience tells me that rescheduling the
+> rst conversion to 5.90 is at least a safer bet.
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+I can't tell much about Ira's patches, but, in the case of the ReST
+conversion, there are not much left to convert anymore. The vast majority
+of files under Documentation/*.txt are already in ReST format. They just
+need to be renamed/moved to a better place. Besides that, there are
+the fs patches on this series, network and a few misc text files.
 
----
-Changes from v8
-	Move bit to 26
----
- fs/xfs/xfs_iops.c  | 2 +-
- fs/xfs/xfs_mount.h | 3 +--
- fs/xfs/xfs_super.c | 8 ++++----
- 3 files changed, 6 insertions(+), 7 deletions(-)
+I have patches for the remaining stuff already.
 
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index f7a99b3bbcf7..462f89af479a 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1248,7 +1248,7 @@ xfs_inode_supports_dax(
- 		return false;
- 
- 	/* DAX mount option or DAX iflag must be set. */
--	if (!(mp->m_flags & XFS_MOUNT_DAX) &&
-+	if (!(mp->m_flags & XFS_MOUNT_DAX_ALWAYS) &&
- 	    !(ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
- 		return false;
- 
-diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-index b2e4598fdf7d..f6123fb0113c 100644
---- a/fs/xfs/xfs_mount.h
-+++ b/fs/xfs/xfs_mount.h
-@@ -237,8 +237,7 @@ typedef struct xfs_mount {
- #define XFS_MOUNT_FILESTREAMS	(1ULL << 24)	/* enable the filestreams
- 						   allocator */
- #define XFS_MOUNT_NOATTR2	(1ULL << 25)	/* disable use of attr2 format */
--
--#define XFS_MOUNT_DAX		(1ULL << 62)	/* TEST ONLY! */
-+#define XFS_MOUNT_DAX_ALWAYS	(1ULL << 26)
- 
- /*
-  * Max and min values for mount-option defined I/O
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index 424bb9a2d532..ce169d1c7474 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -129,7 +129,7 @@ xfs_fs_show_options(
- 		{ XFS_MOUNT_GRPID,		",grpid" },
- 		{ XFS_MOUNT_DISCARD,		",discard" },
- 		{ XFS_MOUNT_LARGEIO,		",largeio" },
--		{ XFS_MOUNT_DAX,		",dax" },
-+		{ XFS_MOUNT_DAX_ALWAYS,		",dax" },
- 		{ 0, NULL }
- 	};
- 	struct xfs_mount	*mp = XFS_M(root->d_sb);
-@@ -1261,7 +1261,7 @@ xfs_fc_parse_param(
- 		return 0;
- #ifdef CONFIG_FS_DAX
- 	case Opt_dax:
--		mp->m_flags |= XFS_MOUNT_DAX;
-+		mp->m_flags |= XFS_MOUNT_DAX_ALWAYS;
- 		return 0;
- #endif
- 	default:
-@@ -1454,7 +1454,7 @@ xfs_fc_fill_super(
- 	if (XFS_SB_VERSION_NUM(&mp->m_sb) == XFS_SB_VERSION_5)
- 		sb->s_flags |= SB_I_VERSION;
- 
--	if (mp->m_flags & XFS_MOUNT_DAX) {
-+	if (mp->m_flags & XFS_MOUNT_DAX_ALWAYS) {
- 		bool rtdev_is_dax = false, datadev_is_dax;
- 
- 		xfs_warn(mp,
-@@ -1468,7 +1468,7 @@ xfs_fc_fill_super(
- 		if (!rtdev_is_dax && !datadev_is_dax) {
- 			xfs_alert(mp,
- 			"DAX unsupported by block device. Turning off DAX.");
--			mp->m_flags &= ~XFS_MOUNT_DAX;
-+			mp->m_flags &= ~XFS_MOUNT_DAX_ALWAYS;
- 		}
- 		if (xfs_sb_version_hasreflink(&mp->m_sb)) {
- 			xfs_alert(mp,
--- 
-2.25.1
+> 
+> --D
+> 
+> > > 
+> > > --D
+> > > 
+> > > [1] https://lore.kernel.org/linux-xfs/20200415152942.GS6742@magnolia/T/#m804562299416d865d8829caa82589a522b2080a5
+> > >   
+> > > > @@ -1,5 +1,8 @@
+> > > > +.. SPDX-License-Identifier: GPL-2.0
+> > > > +
+> > > > +=======================
+> > > >  Direct Access for files
+> > > > ------------------------
+> > > > +=======================
+> > > >  
+> > > >  Motivation
+> > > >  ----------
+> > > > @@ -46,6 +49,7 @@ stall the CPU for an extended period, you should also not attempt to
+> > > >  implement direct_access.
+> > > >  
+> > > >  These block devices may be used for inspiration:
+> > > > +
+> > > >  - brd: RAM backed block device driver
+> > > >  - dcssblk: s390 dcss block device driver
+> > > >  - pmem: NVDIMM persistent memory driver
+> > > > @@ -55,6 +59,7 @@ Implementation Tips for Filesystem Writers
+> > > >  ------------------------------------------
+> > > >  
+> > > >  Filesystem support consists of
+> > > > +
+> > > >  - adding support to mark inodes as being DAX by setting the S_DAX flag in
+> > > >    i_flags
+> > > >  - implementing ->read_iter and ->write_iter operations which use dax_iomap_rw()
+> > > > @@ -127,6 +132,6 @@ by adding optional struct page support for pages under the control of
+> > > >  the driver (see CONFIG_NVDIMM_PFN in drivers/nvdimm for an example of
+> > > >  how to do this). In the non struct page cases O_DIRECT reads/writes to
+> > > >  those memory ranges from a non-DAX file will fail (note that O_DIRECT
+> > > > -reads/writes _of a DAX file_ do work, it is the memory that is being
+> > > > +reads/writes _of a DAX ``file_`` do work, it is the memory that is being
+> > > >  accessed that is key here).  Other things that will not work in the
+> > > >  non struct page case include RDMA, sendfile() and splice().
+> > > > diff --git a/Documentation/filesystems/ext2.rst b/Documentation/filesystems/ext2.rst
+> > > > index d83dbbb162e2..fa416b7a5802 100644
+> > > > --- a/Documentation/filesystems/ext2.rst
+> > > > +++ b/Documentation/filesystems/ext2.rst
+> > > > @@ -24,7 +24,7 @@ check=none, nocheck	(*)	Don't do extra checking of bitmaps on mount
+> > > >  				(check=normal and check=strict options removed)
+> > > >  
+> > > >  dax				Use direct access (no page cache).  See
+> > > > -				Documentation/filesystems/dax.txt.
+> > > > +				Documentation/filesystems/dax.rst.
+> > > >  
+> > > >  debug				Extra debugging information is sent to the
+> > > >  				kernel syslog.  Useful for developers.
+> > > > diff --git a/Documentation/filesystems/index.rst b/Documentation/filesystems/index.rst
+> > > > index c4f95f76ba6a..8e3ccb4ed483 100644
+> > > > --- a/Documentation/filesystems/index.rst
+> > > > +++ b/Documentation/filesystems/index.rst
+> > > > @@ -24,6 +24,7 @@ algorithms work.
+> > > >     splice
+> > > >     locking
+> > > >     directory-locking
+> > > > +   dax
+> > > >  
+> > > >     automount-support
+> > > >  
+> > > > -- 
+> > > > 2.25.2
+> > > >     
+> > 
+> > 
+> > 
+> > Thanks,
+> > Mauro  
 
+
+
+Thanks,
+Mauro
