@@ -2,161 +2,89 @@ Return-Path: <SRS0=/M55=6F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BCBEC54FCC
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 23:13:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB03DC2BA19
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 23:15:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6FE24206E9
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 23:13:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A675A206D5
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 23:15:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726327AbgDUXNy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Apr 2020 19:13:54 -0400
-Received: from mail104.syd.optusnet.com.au ([211.29.132.246]:40640 "EHLO
-        mail104.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725822AbgDUXNx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Apr 2020 19:13:53 -0400
-Received: from dread.disaster.area (pa49-180-0-232.pa.nsw.optusnet.com.au [49.180.0.232])
-        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 25B7E5886E7;
-        Wed, 22 Apr 2020 09:13:45 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1jR25H-0006j2-2b; Wed, 22 Apr 2020 09:13:43 +1000
-Date:   Wed, 22 Apr 2020 09:13:43 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Ira Weiny <ira.weiny@intel.com>
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH V9 10/11] fs/xfs: Update
- xfs_ioctl_setattr_dax_invalidate()
-Message-ID: <20200421231343.GD27860@dread.disaster.area>
-References: <20200421191754.3372370-1-ira.weiny@intel.com>
- <20200421191754.3372370-11-ira.weiny@intel.com>
- <20200421203140.GD6742@magnolia>
- <20200421213049.GC27860@dread.disaster.area>
- <20200421214328.GD3372712@iweiny-DESK2.sc.intel.com>
+        id S1726160AbgDUXP7 convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Apr 2020 19:15:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45380 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726039AbgDUXP7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Apr 2020 19:15:59 -0400
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 207367] Accraid / aptec / Microsemi / ext4 / larger then 16TB
+Date:   Tue, 21 Apr 2020 23:15:58 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-207367-13602-i41BjjiyCC@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-207367-13602@https.bugzilla.kernel.org/>
+References: <bug-207367-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200421214328.GD3372712@iweiny-DESK2.sc.intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=X6os11be c=1 sm=1 tr=0
-        a=XYjVcjsg+1UI/cdbgX7I7g==:117 a=XYjVcjsg+1UI/cdbgX7I7g==:17
-        a=kj9zAlcOel0A:10 a=cl8xLZFz6L8A:10 a=QyXUC8HyAAAA:8 a=7-415B0cAAAA:8
-        a=TYO8zY9xZc45-t_caPEA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 21, 2020 at 02:43:29PM -0700, Ira Weiny wrote:
-> On Wed, Apr 22, 2020 at 07:30:49AM +1000, Dave Chinner wrote:
-> > On Tue, Apr 21, 2020 at 01:31:40PM -0700, Darrick J. Wong wrote:
-> > > On Tue, Apr 21, 2020 at 12:17:52PM -0700, ira.weiny@intel.com wrote:
-> > > > From: Ira Weiny <ira.weiny@intel.com>
-> > > > 
-> > > > Because of the separation of FS_XFLAG_DAX from S_DAX and the delayed
-> > > > setting of S_DAX, data invalidation no longer needs to happen when
-> > > > FS_XFLAG_DAX is changed.
-> > > > 
-> > > > Change xfs_ioctl_setattr_dax_invalidate() to be
-> > > > xfs_ioctl_dax_check_set_cache() and alter the code to reflect the new
-> > > > functionality.
-> > > > 
-> > > > Furthermore, we no longer need the locking so we remove the join_flags
-> > > > logic.
-> > > > 
-> > > > Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-> > > > 
-> > > > ---
-> > > > Changes from V8:
-> > > > 	Change name of function to xfs_ioctl_dax_check_set_cache()
-> > > > 	Update commit message
-> > > > 	Fix bit manipulations
-> > > > 
-> > > > Changes from V7:
-> > > > 	Use new flag_inode_dontcache()
-> > > > 	Skip don't cache if mount over ride is active.
-> > > > 
-> > > > Changes from v6:
-> > > > 	Fix completely broken implementation and update commit message.
-> > > > 	Use the new VFS layer I_DONTCACHE to facilitate inode eviction
-> > > > 	and S_DAX changing on drop_caches
-> > > > 
-> > > > Changes from v5:
-> > > > 	New patch
-> > > > ---
-> > > >  fs/xfs/xfs_ioctl.c | 108 +++++++++------------------------------------
-> > > >  1 file changed, 20 insertions(+), 88 deletions(-)
-> > > > 
-> > > > diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> > > > index 104495ac187c..b87b571a6748 100644
-> > > > --- a/fs/xfs/xfs_ioctl.c
-> > > > +++ b/fs/xfs/xfs_ioctl.c
-> > > > @@ -1245,64 +1245,26 @@ xfs_ioctl_setattr_xflags(
-> > > >  	return 0;
-> > > >  }
-> > > >  
-> > > > -/*
-> > > > - * If we are changing DAX flags, we have to ensure the file is clean and any
-> > > > - * cached objects in the address space are invalidated and removed. This
-> > > > - * requires us to lock out other IO and page faults similar to a truncate
-> > > > - * operation. The locks need to be held until the transaction has been committed
-> > > > - * so that the cache invalidation is atomic with respect to the DAX flag
-> > > > - * manipulation.
-> > > > - */
-> > > > -static int
-> > > > -xfs_ioctl_setattr_dax_invalidate(
-> > > > +static void
-> > > > +xfs_ioctl_dax_check_set_cache(
-> > > 
-> > > That's a ... strange name.  Set cache on what?
-> > > 
-> > > Oh, this is the function that sets I_DONTCACHE if an FS_XFLAG_DAX change
-> > > could have an immediate effect on S_DAX (assuming no other users).  What
-> > > do you think of the following?
-> > > 
-> > > 	/*
-> > > 	 * If a change to FS_XFLAG_DAX will result in an change to S_DAX
-> > > 	 * the next time the incore inode is initialized, set the VFS
-> > > 	 * I_DONTCACHE flag to try to hurry that along.
-> > > 	 */
-> > > 	static void
-> > > 	xfs_ioctl_try_change_vfs_dax(...)
-> > 
-> > That doesn't seem any better. This is a preparation function now, in
-> > that it can't fail and doesn't change the outcome of the operation
-> > being performed. So, IMO, calling it something like
-> > xfs_ioctl_setattr_prepare_dax() would be a better name for it.
+https://bugzilla.kernel.org/show_bug.cgi?id=207367
+
+--- Comment #13 from Theodore Tso (tytso@mit.edu) ---
+On Tue, Apr 21, 2020 at 09:45:54AM -0700, Christoph Hellwig wrote:
+> On Tue, Apr 21, 2020 at 06:29:10PM +0200, Jan Kara wrote:
+> > Well, there are two problems with this - firstly, ocfs2 is also using jbd2
+> > and it knows nothing about iomap. So that would have to be implemented.
+> > Secondly, you have to somehow pass iomap ops to jbd2 so it all boils down
+> > to passing some callback to jbd2 during journal init to map blocks anyway
+> > as Dave said. And then it is upto filesystem to do the mapping - usually
+> > directly using its internal block mapping function - so no need for iomap
+> > AFAICT.
 > 
-> But it does potentially (after a check) set I_DONTCACHE.
+> You'll need to describe the mapping some how.  So why not reuse an
+> existing mechanism instead of creating a new ad-hoc one?
 
-That is an implementation detail - it doesn't change the outcome of
-the function, the current behaviour of the inode, or the result of
-the ioctl....
+Well, we could argue that bmap() is an "existing mechanism" --- again,
+bmap() returns a u64, so it's perfectly fine.  It's FIBMAP which is
+"fundamentally broken", not bmap().  If the goal is to eventually
+eliminate bmap() and aops->bmap(), sure, then we should force march
+all file systems to use iomap_bmap(), including ocfs2.
 
-> What about?
-> 
-> xfs_ioctl_dax_check_set_dontcache()?
+Otherwise, if the goal alert users of FIBMAP when it's returning an
+corrutped block number, why not move the check if the block is larger
+than INT_MAX to ioctl_fibmap() in fs/ioctl.c, instead of in
+iomap_bmap()?
 
-Then we have to rename it again the moment we change it's
-functionality. i.e. we have exactly the same problem we have now
-where the function name describes the implementation, not the
-operational reason the function is being called...
+If we can't fix this, I'm beginning to think that switching to iomap
+for fiemap and bmap is actually a lose for ext4.  It's causing
+performance regressions, and now we see it's causing functionality
+regressions.  Sure, it's saving a bit of code size, but is it really
+worth it to use iomap for fiemap/bmap?
 
-Cheers,
+                                                - Ted
 
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
