@@ -2,47 +2,93 @@ Return-Path: <SRS0=/M55=6F=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C02AFC2BA19
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 08:54:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8418C55182
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 08:54:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A103E206E9
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 08:54:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 99A20206E9
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Apr 2020 08:54:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726935AbgDUIyt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Apr 2020 04:54:49 -0400
-Received: from mx2.suse.de ([195.135.220.15]:41502 "EHLO mx2.suse.de"
+        id S1726018AbgDUIyv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Apr 2020 04:54:51 -0400
+Received: from mx2.suse.de ([195.135.220.15]:41498 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726600AbgDUIyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Apr 2020 04:54:49 -0400
+        id S1726052AbgDUIyu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 21 Apr 2020 04:54:50 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id CA4F2ACC2;
+        by mx2.suse.de (Postfix) with ESMTP id CC380ACD0;
         Tue, 21 Apr 2020 08:54:47 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 2DE771E0E57; Tue, 21 Apr 2020 10:54:48 +0200 (CEST)
+        id 395121E124D; Tue, 21 Apr 2020 10:54:48 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         Eric Sandeen <sandeen@sandeen.net>, Jan Kara <jack@suse.cz>
-Subject: ext4: Fix use after free issues with journalled data
-Date:   Tue, 21 Apr 2020 10:54:42 +0200
-Message-Id: <20200421085445.5731-1-jack@suse.cz>
+Subject: [PATCH 3/3] ext4: Avoid freeing inodes on dirty list
+Date:   Tue, 21 Apr 2020 10:54:45 +0200
+Message-Id: <20200421085445.5731-4-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20200421085445.5731-1-jack@suse.cz>
+References: <20200421085445.5731-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+When we are evicting inode with journalled data, we may race with
+transaction commit in the following way:
 
-this series of patches fixes possible use-after-free issues resulting from
-freed inode being still in writeback list. One partner was able to trigger
-this using fsstress on filesystem on pmem device. The first patch fixes
-mostly a theoretical issue, the third patch fixes a real issue happening
-in the wild and leading to kernel crashing.
+CPU0					CPU1
+jbd2_journal_commit_transaction()	evict(inode)
+					  inode_io_list_del()
+					  inode_wait_for_writeback()
+  process BJ_Forget list
+    __jbd2_journal_insert_checkpoint()
+    __jbd2_journal_refile_buffer()
+      __jbd2_journal_unfile_buffer()
+        if (test_clear_buffer_jbddirty(bh))
+          mark_buffer_dirty(bh)
+	    __mark_inode_dirty(inode)
+					  ext4_evict_inode(inode)
+					    frees the inode
 
-								Honza
+This results in use-after-free issues in the writeback code (or
+the assertion added in the previous commit triggering).
+
+Fix the problem by removing inode from writeback lists once all the page
+cache is evicted and so inode cannot be added to writeback lists again.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index e416096fc081..d8a9d3da678c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -220,6 +220,16 @@ void ext4_evict_inode(struct inode *inode)
+ 		ext4_begin_ordered_truncate(inode, 0);
+ 	truncate_inode_pages_final(&inode->i_data);
+ 
++	/*
++	 * For inodes with journalled data, transaction commit could have
++	 * dirtied the inode. Flush worker is ignoring it because of I_FREEING
++	 * flag but we still need to remove the inode from the writeback lists.
++	 */
++	if (!list_empty_careful(&inode->i_io_list)) {
++		WARN_ON_ONCE(!ext4_should_journal_data(inode));
++		inode_io_list_del(inode);
++	}
++
+ 	/*
+ 	 * Protect us against freezing - iput() caller didn't have to have any
+ 	 * protection against it
+-- 
+2.16.4
+
