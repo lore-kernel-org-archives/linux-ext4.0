@@ -2,138 +2,116 @@ Return-Path: <SRS0=jPnt=6G=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57F7FC55189
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 21:22:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3449CC55186
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 23:14:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 421CB2084D
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 21:22:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A8F82084D
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 23:14:26 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20150623.gappssmtp.com header.i=@toxicpanda-com.20150623.gappssmtp.com header.b="roi6w8e5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726816AbgDVVWP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Apr 2020 17:22:15 -0400
-Received: from mga18.intel.com ([134.134.136.126]:24777 "EHLO mga18.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726116AbgDVVVU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Apr 2020 17:21:20 -0400
-IronPort-SDR: 1ohNJLPiPz7lI3JlLmOr7nkLs3BmamoZQHZ4BRVjy2iji2FtsNdN7ezGP0S1XFjeYaWrIMCLT5
- 73btETRMQ3IA==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga001.fm.intel.com ([10.253.24.23])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Apr 2020 14:21:19 -0700
-IronPort-SDR: S2auKyJfl/wR/vW8f/SURq8zSGz9aCxNqu+pXA729LMWuIv+fHUut4o8EedrGSknJkgntenTLU
- IPCpmGczJAdw==
-X-IronPort-AV: E=Sophos;i="5.73,304,1583222400"; 
-   d="scan'208";a="365802102"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga001-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 22 Apr 2020 14:21:19 -0700
-From:   ira.weiny@intel.com
-To:     linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: [PATCH V10 02/11] fs: Remove unneeded IS_DAX() check in io_is_direct()
-Date:   Wed, 22 Apr 2020 14:20:53 -0700
-Message-Id: <20200422212102.3757660-3-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200422212102.3757660-1-ira.weiny@intel.com>
-References: <20200422212102.3757660-1-ira.weiny@intel.com>
+        id S1726262AbgDVXOZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Apr 2020 19:14:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42648 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1725839AbgDVXOZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Apr 2020 19:14:25 -0400
+Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29263C03C1AB
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2020 16:14:25 -0700 (PDT)
+Received: by mail-qk1-x731.google.com with SMTP id m67so4383659qke.12
+        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2020 16:14:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=toxicpanda-com.20150623.gappssmtp.com; s=20150623;
+        h=to:cc:from:subject:message-id:date:user-agent:mime-version
+         :content-language:content-transfer-encoding;
+        bh=yutIE/3Yrasa++aWOCa3PZNUoPlrlPERr3vYpXHco/M=;
+        b=roi6w8e5qBgfrEAFnX0ITcdhSDL8WSk9M0K+Pi5JsvodaNNOas+t0Q1f3de9phX1r3
+         zH9nNHarNQ5F0bPzz7BOwaRNKmtglTqtN0NM6aiRDb1o0ARGr4RLUKq2Ljipggfzmq4f
+         4lue9ey15OIgipQe2SFDgP3Zg483GPNPRk1b8P8tkH8JOTSig5IAtEHFk48/ttXK/xW3
+         HXoY6IUYmJ/pTBF9GpTUhyyw7weiMGNPNlwjMBnBqpgI6X0Q/tR6jaPPDUnk4ojUthH4
+         sJ/35wr3LbgYPfPQAvyDm9c7nFllFe/TQ0modirFmWgoD/qWXe5K3H06giTotm5Z7P3Z
+         jarQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:cc:from:subject:message-id:date:user-agent
+         :mime-version:content-language:content-transfer-encoding;
+        bh=yutIE/3Yrasa++aWOCa3PZNUoPlrlPERr3vYpXHco/M=;
+        b=Fu8eHCqGONNovXkiJDgcgvThgRUlMF7cSZG4iUwC7MEX8hIoF2P3xIV2vxj1HNlX/a
+         bm6I5rEAkBxz9MAHhHGUHwB8pRQkwV3O+5M7ZjlqS7Qg+qY2o6e2IXvBZaV1D+0cqJCl
+         bg/IX88mdSPcwPW8pZYXQ6YXma8Ej4ZRiMDjF5KPIEyhoFR7rg2fiGjFQJlKYEQbDpva
+         fOxQsrg/wdCv5Ib+aYBvlfuOkLtH3J5h8heiScRDniYvXJIbIufXbTZKi1jLw7cf6+Bc
+         UtUCCQHjAERfbEltzc979xQWDtlmlu/E/smDWQuxF+UJLNagHQNO+VV0cmBBllHR5rvj
+         k8Qg==
+X-Gm-Message-State: AGi0PuZiSBjMUN1dZKJvhfdxVjHPQiZMgfqTIz036Q1I5Hckp9iZNZE1
+        ZHgZSz5mAysMmXaTSSY4/vcqxA==
+X-Google-Smtp-Source: APiQypKpwv318za6PvBDHu/CmZW2XLyq7lRBmFefrk1Y5QT6hBrl33XFhRuafmp5OdsdRdB+WGIptg==
+X-Received: by 2002:a37:6415:: with SMTP id y21mr792941qkb.258.1587597263810;
+        Wed, 22 Apr 2020 16:14:23 -0700 (PDT)
+Received: from ?IPv6:2620:10d:c0a8:1102:ce0:3629:8daa:1271? ([2620:10d:c091:480::1:af35])
+        by smtp.gmail.com with ESMTPSA id q6sm534297qtd.61.2020.04.22.16.14.22
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 22 Apr 2020 16:14:23 -0700 (PDT)
+To:     Btrfs BTRFS <linux-btrfs@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "bpf@vger.kernel.org" <bpf@vger.kernel.org>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        "linux-nvme@vger.kernel.org" <linux-nvme@vger.kernel.org>
+Cc:     lsf-pc <lsf-pc@lists.linuxfoundation.org>
+From:   Josef Bacik <josef@toxicpanda.com>
+Subject: LSFMMBPF 2020 Cancellation announcement
+Message-ID: <0b6d3d6f-99de-3603-4b42-c3db5113633d@toxicpanda.com>
+Date:   Wed, 22 Apr 2020 19:14:21 -0400
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0)
+ Gecko/20100101 Thunderbird/68.7.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+Each year, we look forward to gathering at Linux Storage, Filesystem, Memory
+Management, and BPF Summit to share information, collaborate, and learn
+together. Due to continual assessments and growing concerns around COVID-19, we
+have made the decision to cancel Linux Storage, Filesystem, Memory Management,
+and BPF Summit this year. Next year the summit will be held in Palm Springs, on
+May 12-14, 2021 at the Riviera Palm Springs.  A new CFP and registration will be
+held again, along with a new round of invites.  The program committee will
+remain the same, and next year we will choose new members.
 
-Remove the check because DAX now has it's own read/write methods and
-file systems which support DAX check IS_DAX() prior to IOCB_DIRECT on
-their own.  Therefore, it does not matter if the file state is DAX when
-the iocb flags are created.
+Event Registration
 
-Also remove io_is_direct() as it is just a simple flag check.
+The Linux Foundation will take care of canceling all event registrations - you
+do not need to do anything.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+We thank you for your patience and understanding while we work through this very
+fluid situation. A great deal of work and preparation has gone into the
+information and content planned to be delivered at LSFMMBPF and we look forward
+to sharing it all with our community next year.
 
----
-Changes from v8:
-	Rebase to latest Linus tree
+Thank you again for your support. Our sincere sympathies are with all those
+being affected and we wish for good health and safety for all.
 
-Changes from v6:
-	remove io_is_direct() as well.
-	Remove Reviews since this is quite a bit different.
+Thank you on behalf of the program committee:
 
-Changes from v3:
-	Reword commit message.
-	Reordered to be a 'pre-cleanup' patch
----
- drivers/block/loop.c | 6 +++---
- include/linux/fs.h   | 7 +------
- 2 files changed, 4 insertions(+), 9 deletions(-)
-
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index da693e6a834e..14372df0f354 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -634,8 +634,8 @@ static int do_req_filebacked(struct loop_device *lo, struct request *rq)
- 
- static inline void loop_update_dio(struct loop_device *lo)
- {
--	__loop_update_dio(lo, io_is_direct(lo->lo_backing_file) |
--			lo->use_dio);
-+	__loop_update_dio(lo, (lo->lo_backing_file->f_flags & O_DIRECT) |
-+				lo->use_dio);
- }
- 
- static void loop_reread_partitions(struct loop_device *lo,
-@@ -1028,7 +1028,7 @@ static int loop_set_fd(struct loop_device *lo, fmode_t mode,
- 	if (!(lo_flags & LO_FLAGS_READ_ONLY) && file->f_op->fsync)
- 		blk_queue_write_cache(lo->lo_queue, true, false);
- 
--	if (io_is_direct(lo->lo_backing_file) && inode->i_sb->s_bdev) {
-+	if ((lo->lo_backing_file->f_flags & O_DIRECT) && inode->i_sb->s_bdev) {
- 		/* In case of direct I/O, match underlying block size */
- 		unsigned short bsize = bdev_logical_block_size(
- 			inode->i_sb->s_bdev);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4f6f59b4f22a..a87cc5845a02 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3394,11 +3394,6 @@ extern void setattr_copy(struct inode *inode, const struct iattr *attr);
- 
- extern int file_update_time(struct file *file);
- 
--static inline bool io_is_direct(struct file *filp)
--{
--	return (filp->f_flags & O_DIRECT) || IS_DAX(filp->f_mapping->host);
--}
--
- static inline bool vma_is_dax(const struct vm_area_struct *vma)
- {
- 	return vma->vm_file && IS_DAX(vma->vm_file->f_mapping->host);
-@@ -3423,7 +3418,7 @@ static inline int iocb_flags(struct file *file)
- 	int res = 0;
- 	if (file->f_flags & O_APPEND)
- 		res |= IOCB_APPEND;
--	if (io_is_direct(file))
-+	if (file->f_flags & O_DIRECT)
- 		res |= IOCB_DIRECT;
- 	if ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host))
- 		res |= IOCB_DSYNC;
--- 
-2.25.1
-
+         Josef Bacik (Filesystems)
+         Amir Goldstein (Filesystems)
+         Martin K. Petersen (Storage)
+         Omar Sandoval (Storage)
+         Michal Hocko (MM)
+         Dan Williams (MM)
+         Alexei Starovoitov (BPF)
+         Daniel Borkmann (BPF)
