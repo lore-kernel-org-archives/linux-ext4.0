@@ -5,51 +5,51 @@ X-Spam-Level:
 X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01586C5518A
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:41:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 263D8C55185
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:59:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CCAC12075A
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:41:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E8A262076E
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:59:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587552064;
-	bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
+	s=default; t=1587553187;
+	bh=IR9dinZycpk9fBA76RYC0kTqq4SSMvLiFis0KZdrM3U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=UnYuqFVkCCTWFba01ITpnIVjFAtWPEjItmonim1QFp7WpmaH8Ca2oNU83EnDHAHuW
-	 2j3U/jcF4MVufOpS3iqtlBaOR6BvFF5v7FBCAK56Qx9y7EOoRPZR83eIxBHho9xmHy
-	 F9bBpB1XbX54IfMcmEvVQEaXie0XCJ4EqASvZnws=
+	b=c31C/010PDYVN74wQTHqXYrwvt+yitRc2zXqoSgnV0+6KlKSkMa5BQwwp0LCYYXnq
+	 xfLNg/xTjhicbwzqi+C/h9IWqhv+z7BxQjQM6lj2r+JEuGRUB8hN3Ob7cw9DnwUV61
+	 ralcHfl/MJjNR0Daz/I+6lCtkAsF6jPn7s9LaGv4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730139AbgDVKk1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Apr 2020 06:40:27 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57038 "EHLO mail.kernel.org"
+        id S1729549AbgDVK7q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Apr 2020 06:59:46 -0400
+Received: from mail.kernel.org ([198.145.29.99]:51624 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730142AbgDVKVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Apr 2020 06:21:12 -0400
+        id S1727003AbgDVKCc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Apr 2020 06:02:32 -0400
 Received: from localhost (83-86-89-107.cable.dynamic.v4.ziggo.nl [83.86.89.107])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4D1ED208E4;
-        Wed, 22 Apr 2020 10:21:06 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 91AC420735;
+        Wed, 22 Apr 2020 10:02:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587550866;
-        bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
+        s=default; t=1587549752;
+        bh=IR9dinZycpk9fBA76RYC0kTqq4SSMvLiFis0KZdrM3U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=DcnCOxBWCkXz96ZXaT08ziYH74Hj+XnlpemxhRrtW9HjyxtUmBxedkT8NuUkHSCp4
-         Dswmoe5kFFdC1CJiaM/EYdaB7/sGuRIVCCKb65xaJ3x2TP9krX/5PSllEA6RA3tkSP
-         Su6WATh3Wu7LuYh0gEYUGvUiNJsQp/OrsfiWyv9s=
+        b=0xmZ/bVJZF51OOJ1QWpMdCta07PUCh1OBUZHn61RFtIIqAF3PluEKjEtxTvj0JyMn
+         JxzLGeT+bKcNg8gkF2+jC50XGLN9BUdxEOZj9zM6YMEgLa3n0QsI8wDSewjm9ynRLr
+         nMDMMqc8qAD1vPWb9t0UV/CcLt0eYeMGOA/bkb0w=
 From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         stable@vger.kernel.org, Randy Dunlap <rdunlap@infradead.org>,
         Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
         Jan Kara <jack@suse.cz>, Sasha Levin <sashal@kernel.org>
-Subject: [PATCH 5.4 090/118] ext2: fix empty body warnings when -Wextra is used
-Date:   Wed, 22 Apr 2020 11:57:31 +0200
-Message-Id: <20200422095046.123571574@linuxfoundation.org>
+Subject: [PATCH 4.4 091/100] ext2: fix empty body warnings when -Wextra is used
+Date:   Wed, 22 Apr 2020 11:57:01 +0200
+Message-Id: <20200422095039.371486451@linuxfoundation.org>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200422095031.522502705@linuxfoundation.org>
-References: <20200422095031.522502705@linuxfoundation.org>
+In-Reply-To: <20200422095022.476101261@linuxfoundation.org>
+References: <20200422095022.476101261@linuxfoundation.org>
 User-Agent: quilt/0.66
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -86,10 +86,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 0456bc990b5ee..b91f99d9482e9 100644
+index 22d817dc821e9..6f6f4f89a2f0c 100644
 --- a/fs/ext2/xattr.c
 +++ b/fs/ext2/xattr.c
-@@ -56,6 +56,7 @@
+@@ -55,6 +55,7 @@
  
  #include <linux/buffer_head.h>
  #include <linux/init.h>
@@ -97,7 +97,7 @@ index 0456bc990b5ee..b91f99d9482e9 100644
  #include <linux/slab.h>
  #include <linux/mbcache.h>
  #include <linux/quotaops.h>
-@@ -84,8 +85,8 @@
+@@ -85,8 +86,8 @@
  		printk("\n"); \
  	} while (0)
  #else
