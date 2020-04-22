@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BAB4FC5518E
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:31:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01586C5518A
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:41:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9310B2075A
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:31:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CCAC12075A
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 10:41:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587551482;
+	s=default; t=1587552064;
 	bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Iu0g1jpolXhjOLchUxMLIEXPJItWHgSwi81WMQqRrnu7qt7xOOKabyNWfXdRIN4Lr
-	 cHkIXSutdWJhKlhUXDxVsRWt3wAll4j6KgGFPaxgjTM5GqQT3a2VdV+jRzPABaj+Q9
-	 YEO+UftZMCNlsBKrZAe9z93zHF+4rwnhZlNKdmmA=
+	b=UnYuqFVkCCTWFba01ITpnIVjFAtWPEjItmonim1QFp7WpmaH8Ca2oNU83EnDHAHuW
+	 2j3U/jcF4MVufOpS3iqtlBaOR6BvFF5v7FBCAK56Qx9y7EOoRPZR83eIxBHho9xmHy
+	 F9bBpB1XbX54IfMcmEvVQEaXie0XCJ4EqASvZnws=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730692AbgDVK0P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Apr 2020 06:26:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35062 "EHLO mail.kernel.org"
+        id S1730139AbgDVKk1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Apr 2020 06:40:27 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57038 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730688AbgDVK0N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Apr 2020 06:26:13 -0400
+        id S1730142AbgDVKVM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Apr 2020 06:21:12 -0400
 Received: from localhost (83-86-89-107.cable.dynamic.v4.ziggo.nl [83.86.89.107])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 78E4920781;
-        Wed, 22 Apr 2020 10:26:12 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4D1ED208E4;
+        Wed, 22 Apr 2020 10:21:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587551172;
+        s=default; t=1587550866;
         bh=mHI9eyVLwiMuBtKcYBlu4Th72kzE+NJHQ4mxUFyM80E=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=yRhSN7KEWRACZHh5jbd73JnPKgyNvYrJeJ6DWM4E+n+qyHVWHNuN1JyPwrj9fThsp
-         elGPHywaHbh0P1k9o3ESF6RcMcOOhLivXAwQ/SZvIWCp1SqVqdcSth/VW3hr+bUk3m
-         ofwsA33YFFJNA+KqVBGq875l4xE+uSVzqZYApFuo=
+        b=DcnCOxBWCkXz96ZXaT08ziYH74Hj+XnlpemxhRrtW9HjyxtUmBxedkT8NuUkHSCp4
+         Dswmoe5kFFdC1CJiaM/EYdaB7/sGuRIVCCKb65xaJ3x2TP9krX/5PSllEA6RA3tkSP
+         Su6WATh3Wu7LuYh0gEYUGvUiNJsQp/OrsfiWyv9s=
 From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To:     linux-kernel@vger.kernel.org
 Cc:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         stable@vger.kernel.org, Randy Dunlap <rdunlap@infradead.org>,
         Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
         Jan Kara <jack@suse.cz>, Sasha Levin <sashal@kernel.org>
-Subject: [PATCH 5.6 131/166] ext2: fix empty body warnings when -Wextra is used
-Date:   Wed, 22 Apr 2020 11:57:38 +0200
-Message-Id: <20200422095102.480750890@linuxfoundation.org>
+Subject: [PATCH 5.4 090/118] ext2: fix empty body warnings when -Wextra is used
+Date:   Wed, 22 Apr 2020 11:57:31 +0200
+Message-Id: <20200422095046.123571574@linuxfoundation.org>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20200422095047.669225321@linuxfoundation.org>
-References: <20200422095047.669225321@linuxfoundation.org>
+In-Reply-To: <20200422095031.522502705@linuxfoundation.org>
+References: <20200422095031.522502705@linuxfoundation.org>
 User-Agent: quilt/0.66
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
