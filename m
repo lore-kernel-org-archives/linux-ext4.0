@@ -1,117 +1,84 @@
-Return-Path: <SRS0=jPnt=6G=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=xgOJ=6H=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3449CC55186
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 23:14:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42C42C55186
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 00:40:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0A8F82084D
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Apr 2020 23:14:26 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20150623.gappssmtp.com header.i=@toxicpanda-com.20150623.gappssmtp.com header.b="roi6w8e5"
+	by mail.kernel.org (Postfix) with ESMTP id 19D332076C
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 00:40:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726262AbgDVXOZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Apr 2020 19:14:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42648 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725839AbgDVXOZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 22 Apr 2020 19:14:25 -0400
-Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29263C03C1AB
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2020 16:14:25 -0700 (PDT)
-Received: by mail-qk1-x731.google.com with SMTP id m67so4383659qke.12
-        for <linux-ext4@vger.kernel.org>; Wed, 22 Apr 2020 16:14:25 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20150623.gappssmtp.com; s=20150623;
-        h=to:cc:from:subject:message-id:date:user-agent:mime-version
-         :content-language:content-transfer-encoding;
-        bh=yutIE/3Yrasa++aWOCa3PZNUoPlrlPERr3vYpXHco/M=;
-        b=roi6w8e5qBgfrEAFnX0ITcdhSDL8WSk9M0K+Pi5JsvodaNNOas+t0Q1f3de9phX1r3
-         zH9nNHarNQ5F0bPzz7BOwaRNKmtglTqtN0NM6aiRDb1o0ARGr4RLUKq2Ljipggfzmq4f
-         4lue9ey15OIgipQe2SFDgP3Zg483GPNPRk1b8P8tkH8JOTSig5IAtEHFk48/ttXK/xW3
-         HXoY6IUYmJ/pTBF9GpTUhyyw7weiMGNPNlwjMBnBqpgI6X0Q/tR6jaPPDUnk4ojUthH4
-         sJ/35wr3LbgYPfPQAvyDm9c7nFllFe/TQ0modirFmWgoD/qWXe5K3H06giTotm5Z7P3Z
-         jarQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:to:cc:from:subject:message-id:date:user-agent
-         :mime-version:content-language:content-transfer-encoding;
-        bh=yutIE/3Yrasa++aWOCa3PZNUoPlrlPERr3vYpXHco/M=;
-        b=Fu8eHCqGONNovXkiJDgcgvThgRUlMF7cSZG4iUwC7MEX8hIoF2P3xIV2vxj1HNlX/a
-         bm6I5rEAkBxz9MAHhHGUHwB8pRQkwV3O+5M7ZjlqS7Qg+qY2o6e2IXvBZaV1D+0cqJCl
-         bg/IX88mdSPcwPW8pZYXQ6YXma8Ej4ZRiMDjF5KPIEyhoFR7rg2fiGjFQJlKYEQbDpva
-         fOxQsrg/wdCv5Ib+aYBvlfuOkLtH3J5h8heiScRDniYvXJIbIufXbTZKi1jLw7cf6+Bc
-         UtUCCQHjAERfbEltzc979xQWDtlmlu/E/smDWQuxF+UJLNagHQNO+VV0cmBBllHR5rvj
-         k8Qg==
-X-Gm-Message-State: AGi0PuZiSBjMUN1dZKJvhfdxVjHPQiZMgfqTIz036Q1I5Hckp9iZNZE1
-        ZHgZSz5mAysMmXaTSSY4/vcqxA==
-X-Google-Smtp-Source: APiQypKpwv318za6PvBDHu/CmZW2XLyq7lRBmFefrk1Y5QT6hBrl33XFhRuafmp5OdsdRdB+WGIptg==
-X-Received: by 2002:a37:6415:: with SMTP id y21mr792941qkb.258.1587597263810;
-        Wed, 22 Apr 2020 16:14:23 -0700 (PDT)
-Received: from ?IPv6:2620:10d:c0a8:1102:ce0:3629:8daa:1271? ([2620:10d:c091:480::1:af35])
-        by smtp.gmail.com with ESMTPSA id q6sm534297qtd.61.2020.04.22.16.14.22
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 22 Apr 2020 16:14:23 -0700 (PDT)
-To:     Btrfs BTRFS <linux-btrfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "bpf@vger.kernel.org" <bpf@vger.kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "linux-nvme@vger.kernel.org" <linux-nvme@vger.kernel.org>
-Cc:     lsf-pc <lsf-pc@lists.linuxfoundation.org>
-From:   Josef Bacik <josef@toxicpanda.com>
-Subject: LSFMMBPF 2020 Cancellation announcement
-Message-ID: <0b6d3d6f-99de-3603-4b42-c3db5113633d@toxicpanda.com>
-Date:   Wed, 22 Apr 2020 19:14:21 -0400
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0)
- Gecko/20100101 Thunderbird/68.7.0
+        id S1726071AbgDWAkl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Apr 2020 20:40:41 -0400
+Received: from relay9-d.mail.gandi.net ([217.70.183.199]:59541 "EHLO
+        relay9-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726050AbgDWAkl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Apr 2020 20:40:41 -0400
+X-Originating-IP: 50.39.163.217
+Received: from localhost (50-39-163-217.bvtn.or.frontiernet.net [50.39.163.217])
+        (Authenticated sender: josh@joshtriplett.org)
+        by relay9-d.mail.gandi.net (Postfix) with ESMTPSA id 331BEFF802;
+        Thu, 23 Apr 2020 00:40:37 +0000 (UTC)
+Date:   Wed, 22 Apr 2020 17:40:33 -0700
+From:   Josh Triplett <josh@joshtriplett.org>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Jan Kara <jack@suse.cz>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: Inline data with 128-byte inodes?
+Message-ID: <20200423004033.GA161058@localhost>
+References: <20200414070207.GA170659@localhost>
+ <20200422160045.GC20756@quack2.suse.cz>
+ <331CEA49-83E0-462C-A70D-479F17A4FAB2@dilger.ca>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <331CEA49-83E0-462C-A70D-479F17A4FAB2@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Each year, we look forward to gathering at Linux Storage, Filesystem, Memory
-Management, and BPF Summit to share information, collaborate, and learn
-together. Due to continual assessments and growing concerns around COVID-19, we
-have made the decision to cancel Linux Storage, Filesystem, Memory Management,
-and BPF Summit this year. Next year the summit will be held in Palm Springs, on
-May 12-14, 2021 at the Riviera Palm Springs.  A new CFP and registration will be
-held again, along with a new round of invites.  The program committee will
-remain the same, and next year we will choose new members.
+On Wed, Apr 22, 2020 at 02:15:28PM -0600, Andreas Dilger wrote:
+> On Apr 22, 2020, at 10:00 AM, Jan Kara <jack@suse.cz> wrote:
+> > On Tue 14-04-20 00:02:07, Josh Triplett wrote:
+> >> Is there a fundamental reason that ext4 *can't* or *shouldn't* support
+> >> inline data with 128-byte inodes?
+> > 
+> > Well, where would we put it on disk? ext4 on-disk inode fills 128-bytes
+> > with 'osd2' union...
+> 
+> There are 60 bytes in the "i_block" field that can be used by inline_data.
 
-Event Registration
+Exactly. But the Linux ext4 implementation doesn't accept inline data
+unless the system.data xattr exists, even if the file's data fits in 60
+bytes (in which case system.data must exist and have 0 length).
 
-The Linux Foundation will take care of canceling all event registrations - you
-do not need to do anything.
+> > Or do you mean we should put inline data in an external xattr block?
 
-We thank you for your patience and understanding while we work through this very
-fluid situation. A great deal of work and preparation has gone into the
-information and content planned to be delivered at LSFMMBPF and we look forward
-to sharing it all with our community next year.
+Definitely not, no. That seems much more complex to deal with.
 
-Thank you again for your support. Our sincere sympathies are with all those
-being affected and we wish for good health and safety for all.
+I'm only talking about the case of files or directories <= 60 bytes
+fitting in the inode with 128-byte inodes. Effectively, this would mean
+accepting inodes with the inline data flag set, whether they have the
+system.data xattr or not.
 
-Thank you on behalf of the program committee:
+> Maybe there is a bigger win for small directories avoiding 4KB leaf blocks?
+>
+> That said, I'd be happy to see some numbers to show this is a win, and
+> I'm definitely not _against_ allowing this to work if there is a use for it.
 
-         Josef Bacik (Filesystems)
-         Amir Goldstein (Filesystems)
-         Martin K. Petersen (Storage)
-         Omar Sandoval (Storage)
-         Michal Hocko (MM)
-         Dan Williams (MM)
-         Alexei Starovoitov (BPF)
-         Daniel Borkmann (BPF)
+Some statistics, for ext4 with 4k blocks and 128-byte inodes, if 60-byte
+inline data worked with 128-byte inodes:
+
+A filesystem containing the source code of the Linux kernel would
+save about 1508 disk blocks, or around 6032k.
+
+A filesystem containing only my /etc directory would save about 650
+blocks, or 2600k, a substantial fraction of the entire directory (which
+takes up 9004k total without inline data).
+
+- Josh Triplett
