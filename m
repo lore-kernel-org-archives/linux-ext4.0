@@ -2,108 +2,79 @@ Return-Path: <SRS0=xgOJ=6H=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C556C54FCB
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 15:46:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58C6CC55186
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 21:41:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 39BBD2076C
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 15:46:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 389E120784
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Apr 2020 21:41:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729205AbgDWPqm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Apr 2020 11:46:42 -0400
-Received: from mx2.suse.de ([195.135.220.15]:38048 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729176AbgDWPqm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 23 Apr 2020 11:46:42 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 6C4F0AD66;
-        Thu, 23 Apr 2020 15:46:40 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 90E501E0E52; Thu, 23 Apr 2020 17:46:40 +0200 (CEST)
-Date:   Thu, 23 Apr 2020 17:46:40 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: don't ignore return values from ext4_ext_dirty()
-Message-ID: <20200423154640.GB28707@quack2.suse.cz>
-References: <20200421030247.34306-1-harshadshirwadkar@gmail.com>
+        id S1727094AbgDWVlQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Apr 2020 17:41:16 -0400
+Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:60409 "EHLO
+        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726976AbgDWVlP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 23 Apr 2020 17:41:15 -0400
+Received: from dread.disaster.area (pa49-180-0-232.pa.nsw.optusnet.com.au [49.180.0.232])
+        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 942913A2A5A;
+        Fri, 24 Apr 2020 07:41:08 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1jRjam-0006R8-3B; Fri, 24 Apr 2020 07:41:08 +1000
+Date:   Fri, 24 Apr 2020 07:41:08 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     ira.weiny@intel.com
+Cc:     linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jeff Moyer <jmoyer@redhat.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: [PATCH V10 02/11] fs: Remove unneeded IS_DAX() check in
+ io_is_direct()
+Message-ID: <20200423214108.GR27860@dread.disaster.area>
+References: <20200422212102.3757660-1-ira.weiny@intel.com>
+ <20200422212102.3757660-3-ira.weiny@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200421030247.34306-1-harshadshirwadkar@gmail.com>
+In-Reply-To: <20200422212102.3757660-3-ira.weiny@intel.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.3 cv=X6os11be c=1 sm=1 tr=0
+        a=XYjVcjsg+1UI/cdbgX7I7g==:117 a=XYjVcjsg+1UI/cdbgX7I7g==:17
+        a=kj9zAlcOel0A:10 a=cl8xLZFz6L8A:10 a=QyXUC8HyAAAA:8 a=yPCof4ZbAAAA:8
+        a=20KFwNOVAAAA:8 a=7-415B0cAAAA:8 a=JVZ9yd-c_uYkw5Y7WEkA:9
+        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 20-04-20 20:02:47, Harshad Shirwadkar wrote:
-> Don't ignore return values from ext4_ext_dirty, since the errors
-> indicate valid failures below Ext4.  In all of the other instances of
-> ext4_ext_dirty calls, the error return value is handled in some
-> way. This patch makes those remaining couple of places to handle
-> ext4_ext_dirty errors as well. In case of ext4_split_extent_at(), the
-> ignorance of return value is intentional. The reason is that we are
-> already in error path and there isn't much we can do if ext4_ext_dirty
-> returns error. This patch adds a comment for that case explaining why
-> we ignore the return value.
+On Wed, Apr 22, 2020 at 02:20:53PM -0700, ira.weiny@intel.com wrote:
+> From: Ira Weiny <ira.weiny@intel.com>
 > 
-> In the longer run, we probably should
-> make sure that errors from other mark_dirty routines are handled as
-> well.
+> Remove the check because DAX now has it's own read/write methods and
+> file systems which support DAX check IS_DAX() prior to IOCB_DIRECT on
+> their own.  Therefore, it does not matter if the file state is DAX when
+> the iocb flags are created.
 > 
-> Ran gce-xfstests smoke tests and verified that there were no
-> regressions.
+> Also remove io_is_direct() as it is just a simple flag check.
 > 
-> Changes since V1:
-> Fixed incorrect return value handling in ext4_split_extent_at()
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
-The 'Changes' part should go below the '---' separator. There's no need to
-have it included in the final commit message.
+Looks good.
 
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-
-Otherwise the patch looks good to me. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/extents.c | 6 +++++-
->  1 file changed, 5 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index f2b577b315a0..6425f4f9a197 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3244,6 +3244,10 @@ static int ext4_split_extent_at(handle_t *handle,
->  
->  fix_extent_len:
->  	ex->ee_len = orig_ex.ee_len;
-> +	/*
-> +	 * Ignore ext4_ext_dirty return value since we are already in error path
-> +	 * and err is a non-zero error code.
-> +	 */
->  	ext4_ext_dirty(handle, inode, path + path->p_depth);
->  	return err;
->  }
-> @@ -3503,7 +3507,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  	}
->  	if (allocated) {
->  		/* Mark the block containing both extents as dirty */
-> -		ext4_ext_dirty(handle, inode, path + depth);
-> +		err = ext4_ext_dirty(handle, inode, path + depth);
->  
->  		/* Update path to point to the right extent */
->  		path[depth].p_ext = abut_ex;
-> -- 
-> 2.26.1.301.g55bc3eb7cb9-goog
-> 
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Dave Chinner
+david@fromorbit.com
