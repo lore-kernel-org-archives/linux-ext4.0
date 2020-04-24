@@ -2,136 +2,97 @@ Return-Path: <SRS0=rNFB=6I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C317C55196
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 09:34:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF27CC55191
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 09:57:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 65AFF20736
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 09:34:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9A81620767
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 09:57:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726798AbgDXJeO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Apr 2020 05:34:14 -0400
-Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:33698 "EHLO
-        out30-131.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726628AbgDXJeJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 24 Apr 2020 05:34:09 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e07425;MF=jefflexu@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0TwVx7HD_1587720845;
-Received: from localhost(mailfrom:jefflexu@linux.alibaba.com fp:SMTPD_---0TwVx7HD_1587720845)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 24 Apr 2020 17:34:05 +0800
-From:   Jeffle Xu <jefflexu@linux.alibaba.com>
-To:     fstests@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, joseph.qi@linux.alibaba.com,
-        Jeffle Xu <jefflexu@linux.alibaba.com>
-Subject: [PATCH RFC 1/2] xfstests: fsx: add support for cluster size
-Date:   Fri, 24 Apr 2020 17:33:49 +0800
-Message-Id: <1587720830-11955-2-git-send-email-jefflexu@linux.alibaba.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1587720830-11955-1-git-send-email-jefflexu@linux.alibaba.com>
-References: <1587720830-11955-1-git-send-email-jefflexu@linux.alibaba.com>
+        id S1726707AbgDXJ5s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Apr 2020 05:57:48 -0400
+Received: from mx2.suse.de ([195.135.220.15]:34426 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726193AbgDXJ5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Apr 2020 05:57:48 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 21EACACD8;
+        Fri, 24 Apr 2020 09:57:46 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 349F21E128C; Fri, 24 Apr 2020 11:57:46 +0200 (CEST)
+Date:   Fri, 24 Apr 2020 11:57:46 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Jan Kara <jack@suse.com>, tytso@mit.edu,
+        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/2] fibmap: Warn and return an error in case of block >
+ INT_MAX
+Message-ID: <20200424095746.GB13069@quack2.suse.cz>
+References: <cover.1587670914.git.riteshh@linux.ibm.com>
+ <e34d1ac05d29aeeb982713a807345a0aaafc7fe0.1587670914.git.riteshh@linux.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <e34d1ac05d29aeeb982713a807345a0aaafc7fe0.1587670914.git.riteshh@linux.ibm.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The offset and size should be aligned with cluster size when inserting
-or collapsing range on ext4 with 'bigalloc' feature enabled. Currently
-I can find only ext4 with this limitation.
+On Fri 24-04-20 12:52:17, Ritesh Harjani wrote:
+> We better warn the fibmap user and not return a truncated and therefore
+> an incorrect block map address if the bmap() returned block address
+> is greater than INT_MAX (since user supplied integer pointer).
+> 
+> It's better to WARN all user of ioctl_fibmap() and return a proper error
+> code rather than silently letting a FS corruption happen if the user tries
+> to fiddle around with the returned block map address.
+> 
+> We fix this by returning an error code of -ERANGE and returning 0 as the
+> block mapping address in case if it is > INT_MAX.
+> 
+> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 
-Since fsx should have no assumption of the underlying filesystem, and
-thus add the '-u cluster_size' option. Tests can set this option when
-the underlying filesystem is ext4 with bigalloc enabled.
+The patch looks good to me. You can add:
 
-Signed-off-by: Jeffle Xu <jefflexu@linux.alibaba.com>
----
- ltp/fsx.c | 20 ++++++++++++++------
- 1 file changed, 14 insertions(+), 6 deletions(-)
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-diff --git a/ltp/fsx.c b/ltp/fsx.c
-index 9d598a4..5fe5738 100644
---- a/ltp/fsx.c
-+++ b/ltp/fsx.c
-@@ -133,6 +133,7 @@ int	dirpath = 0;			/* -P flag */
- int	fd;				/* fd for our test file */
- 
- blksize_t	block_size = 0;
-+blksize_t	cluster_size = 0;
- off_t		file_size = 0;
- off_t		biggest = 0;
- long long	testcalls = 0;		/* calls to function "test" */
-@@ -2146,8 +2147,8 @@ have_op:
- 		break;
- 	case OP_COLLAPSE_RANGE:
- 		TRIM_OFF_LEN(offset, size, file_size - 1);
--		offset = offset & ~(block_size - 1);
--		size = size & ~(block_size - 1);
-+		offset = offset & ~(cluster_size - 1);
-+		size = size & ~(cluster_size - 1);
- 		if (size == 0) {
- 			log4(OP_COLLAPSE_RANGE, offset, size, FL_SKIPPED);
- 			goto out;
-@@ -2157,8 +2158,8 @@ have_op:
- 	case OP_INSERT_RANGE:
- 		TRIM_OFF(offset, file_size);
- 		TRIM_LEN(file_size, size, maxfilelen);
--		offset = offset & ~(block_size - 1);
--		size = size & ~(block_size - 1);
-+		offset = offset & ~(cluster_size - 1);
-+		size = size & ~(cluster_size - 1);
- 		if (size == 0) {
- 			log4(OP_INSERT_RANGE, offset, size, FL_SKIPPED);
- 			goto out;
-@@ -2231,7 +2232,7 @@ void
- usage(void)
- {
- 	fprintf(stdout, "usage: %s",
--		"fsx [-dknqxABEFJLOWZ] [-b opnum] [-c Prob] [-g filldata] [-i logdev] [-j logid] [-l flen] [-m start:end] [-o oplen] [-p progressinterval] [-r readbdy] [-s style] [-t truncbdy] [-w writebdy] [-D startingop] [-N numops] [-P dirpath] [-S seed] fname\n\
-+		"fsx [-dknqxABEFJLOWZ] [-b opnum] [-c Prob] [-g filldata] [-i logdev] [-j logid] [-l flen] [-m start:end] [-o oplen] [-p progressinterval] [-r readbdy] [-s style] [-t truncbdy] [-u csize] [-w writebdy] [-D startingop] [-N numops] [-P dirpath] [-S seed] fname\n\
- 	-b opnum: beginning operation number (default 1)\n\
- 	-c P: 1 in P chance of file close+open at each op (default infinity)\n\
- 	-d: debug output for all operations\n\
-@@ -2249,6 +2250,7 @@ usage(void)
- 	-r readbdy: 4096 would make reads page aligned (default 1)\n\
- 	-s style: 1 gives smaller truncates (default 0)\n\
- 	-t truncbdy: 4096 would make truncates page aligned (default 1)\n\
-+	-u csize: filesystem specific cluster size that may be used for ops like insert/collapse range\n\
- 	-w writebdy: 4096 would make writes page aligned (default 1)\n\
- 	-x: preallocate file space before starting, XFS only (default 0)\n\
- 	-y synchronize changes to a file\n"
-@@ -2485,7 +2487,7 @@ main(int argc, char **argv)
- 	setvbuf(stdout, (char *)0, _IOLBF, 0); /* line buffered stdout */
- 
- 	while ((ch = getopt_long(argc, argv,
--				 "b:c:dfg:i:j:kl:m:no:p:qr:s:t:w:xyABD:EFJKHzCILN:OP:RS:WXZ",
-+				 "b:c:dfg:i:j:kl:m:no:p:qr:s:t:u:w:xyABD:EFJKHzCILN:OP:RS:WXZ",
- 				 longopts, NULL)) != EOF)
- 		switch (ch) {
- 		case 'b':
-@@ -2579,6 +2581,11 @@ main(int argc, char **argv)
- 			if (truncbdy <= 0)
- 				usage();
- 			break;
-+		case 'u':
-+			cluster_size = getnum(optarg, &endp);
-+			if (cluster_size <= 0)
-+				usage();
-+			break;
- 		case 'w':
- 			writebdy = getnum(optarg, &endp);
- 			if (writebdy <= 0)
-@@ -2720,6 +2727,7 @@ main(int argc, char **argv)
- 		exit(91);
- 	}
- 	block_size = statbuf.st_blksize;
-+	cluster_size = cluster_size ? : block_size;
- #ifdef XFS
- 	if (prealloc) {
- 		xfs_flock64_t	resv = { 0 };
+								Honza
+
+> ---
+>  fs/ioctl.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/fs/ioctl.c b/fs/ioctl.c
+> index f1d93263186c..3489f3a12c1d 100644
+> --- a/fs/ioctl.c
+> +++ b/fs/ioctl.c
+> @@ -71,6 +71,11 @@ static int ioctl_fibmap(struct file *filp, int __user *p)
+>  	block = ur_block;
+>  	error = bmap(inode, &block);
+>  
+> +	if (block > INT_MAX) {
+> +		error = -ERANGE;
+> +		WARN(1, "would truncate fibmap result\n");
+> +	}
+> +
+>  	if (error)
+>  		ur_block = 0;
+>  	else
+> -- 
+> 2.21.0
+> 
 -- 
-1.8.3.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
