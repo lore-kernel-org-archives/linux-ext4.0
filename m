@@ -4,50 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11354C55191
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:25:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9051C55191
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:26:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DB5C721473
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:25:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7322920767
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:26:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587731113;
-	bh=9Q2IOMdHquNMhWFmuNNMTvTXMfG9dO1N8X6bkgWoKM8=;
+	s=default; t=1587731160;
+	bh=0d+S0c9RGNFepIOls681etkyqAWB3Nn4eFH348tKhX8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=LXe08lzECAX0M8nQasE0a41OSfvolrKE1nbvnrrQFVft1faReXz9kAtI0qPPB/D6n
-	 LCEzyAMkBSaIyj9ERXZR9fqueS+kBTdrTqmvvJa8R00bKQ1Ndhilg6065o63Jkije8
-	 j6qxxuuzfPMin95HHpicwb8MYVubT3dRwfwlL7IU=
+	b=xWcIaQg7R6F6aDlz/D7IarzbJvyI2C3xmYgZbZB5UBjpwG8XA9fRfHKoNhrDQ8t86
+	 w7ovv3e9ZdLniBBZOSRkLQvmFxcPs9EbeK7CGF1p0hK4YC4silpx+Mektdvmb4Mwjk
+	 7i0kTT7bKuTAjQ+1FrpKr7FvrHO01ySjA6wlCXPw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728667AbgDXMZN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Apr 2020 08:25:13 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56350 "EHLO mail.kernel.org"
+        id S1728599AbgDXMZB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Apr 2020 08:25:01 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56010 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727891AbgDXMZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 24 Apr 2020 08:25:12 -0400
+        id S1728603AbgDXMZA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Apr 2020 08:25:00 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5AB5E21655;
-        Fri, 24 Apr 2020 12:25:11 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 981FF20776;
+        Fri, 24 Apr 2020 12:24:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587731111;
-        bh=9Q2IOMdHquNMhWFmuNNMTvTXMfG9dO1N8X6bkgWoKM8=;
+        s=default; t=1587731100;
+        bh=0d+S0c9RGNFepIOls681etkyqAWB3Nn4eFH348tKhX8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=lFcREYVtlJb0zAcjhvWeoGHrJodhZQcvIK2xhKgxMREb9hWJ2dRagOkC5fHuztj1D
-         M8NLqBm19ABmFaHnri+kqaNcn3hAneMg7OVorlqbvZqE/QNHf7y/LOTEOErteR6QHF
-         awlaRe6Wo9ZsDK2ceP+3ZxM+bHgOfVE2DSItLq68=
+        b=kk3fI48nDb2/PqdIHMga0jQ1jqXpDbnW/rxp2LE6j5pRyETnBCqFm/QZAKi6B56i3
+         FsoopTgYiA+TmLQkuLUuFuMhnd7uNXNrmIOx7xsN4JPpt0NfYmv03i/vgJbyEr4K8q
+         11tThVyQA0olQ3m2wphJXj98f+p6LMB5JTHEcu9w=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 7/8] ext4: convert BUG_ON's to WARN_ON's in mballoc.c
-Date:   Fri, 24 Apr 2020 08:25:02 -0400
-Message-Id: <20200424122503.11046-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 11/13] ext4: convert BUG_ON's to WARN_ON's in mballoc.c
+Date:   Fri, 24 Apr 2020 08:24:44 -0400
+Message-Id: <20200424122447.10882-11-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200424122503.11046-1-sashal@kernel.org>
-References: <20200424122503.11046-1-sashal@kernel.org>
+In-Reply-To: <20200424122447.10882-1-sashal@kernel.org>
+References: <20200424122447.10882-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -78,7 +78,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index fda49f4c5a8eb..04fab14e630c1 100644
+index c18668e3135e8..ac13de1a7e420 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
 @@ -1944,7 +1944,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
