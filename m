@@ -7,49 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF450C55197
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:23:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11354C55191
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:25:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 87F552087E
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:23:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DB5C721473
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:25:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587731032;
-	bh=1sRtclu5YtF/BdA/p0xwCVoFQqyA2qzRIAsl+w9VUSc=;
+	s=default; t=1587731113;
+	bh=9Q2IOMdHquNMhWFmuNNMTvTXMfG9dO1N8X6bkgWoKM8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=QBSGQgGvK1Nvfp3voUWFwGwWNhrfb4iM6U5pj5OChx0qkN8Z7lm6AJyXawsDXKJMt
-	 cLm/dnpigoXsAvbHrP80+CkA45pV6v9rjNTqzFF1zLUt0HfHgzBGDfA7f2kgT0DH/l
-	 4/hz3gcXmzDSl6ljZ9XFRUiBa45eLBay26wJN+Bo=
+	b=LXe08lzECAX0M8nQasE0a41OSfvolrKE1nbvnrrQFVft1faReXz9kAtI0qPPB/D6n
+	 LCEzyAMkBSaIyj9ERXZR9fqueS+kBTdrTqmvvJa8R00bKQ1Ndhilg6065o63Jkije8
+	 j6qxxuuzfPMin95HHpicwb8MYVubT3dRwfwlL7IU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728169AbgDXMXu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Apr 2020 08:23:50 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53966 "EHLO mail.kernel.org"
+        id S1728667AbgDXMZN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Apr 2020 08:25:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56350 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728159AbgDXMXt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 24 Apr 2020 08:23:49 -0400
+        id S1727891AbgDXMZM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Apr 2020 08:25:12 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id ADBF420776;
-        Fri, 24 Apr 2020 12:23:48 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5AB5E21655;
+        Fri, 24 Apr 2020 12:25:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587731029;
-        bh=1sRtclu5YtF/BdA/p0xwCVoFQqyA2qzRIAsl+w9VUSc=;
+        s=default; t=1587731111;
+        bh=9Q2IOMdHquNMhWFmuNNMTvTXMfG9dO1N8X6bkgWoKM8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Q3hL84gRdKAlKGRnO/1hQvw5TjsNssUbLma7puWD7BHahnGngSb6rWC2YT71Gn0TH
-         kmoBsO3Kjuq3vXpBh+oCU5hIhBvp8ukk4Nf1fzDHnliUDphU5iiMXxCepZaC5o9NnZ
-         /3T+IHnCbRdw5c3vqgs44x77U69GQM+tpjpT/gB8=
+        b=lFcREYVtlJb0zAcjhvWeoGHrJodhZQcvIK2xhKgxMREb9hWJ2dRagOkC5fHuztj1D
+         M8NLqBm19ABmFaHnri+kqaNcn3hAneMg7OVorlqbvZqE/QNHf7y/LOTEOErteR6QHF
+         awlaRe6Wo9ZsDK2ceP+3ZxM+bHgOfVE2DSItLq68=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     yangerkun <yangerkun@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        Jan Kara <jack@suse.cz>, Sasha Levin <sashal@kernel.org>,
+Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 22/26] ext4: use matching invalidatepage in ext4_writepage
-Date:   Fri, 24 Apr 2020 08:23:19 -0400
-Message-Id: <20200424122323.10194-22-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 7/8] ext4: convert BUG_ON's to WARN_ON's in mballoc.c
+Date:   Fri, 24 Apr 2020 08:25:02 -0400
+Message-Id: <20200424122503.11046-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200424122323.10194-1-sashal@kernel.org>
-References: <20200424122323.10194-1-sashal@kernel.org>
+In-Reply-To: <20200424122503.11046-1-sashal@kernel.org>
+References: <20200424122503.11046-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,38 +57,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: yangerkun <yangerkun@huawei.com>
+From: Theodore Ts'o <tytso@mit.edu>
 
-[ Upstream commit c2a559bc0e7ed5a715ad6b947025b33cb7c05ea7 ]
+[ Upstream commit 907ea529fc4c3296701d2bfc8b831dd2a8121a34 ]
 
-Run generic/388 with journal data mode sometimes may trigger the warning
-in ext4_invalidatepage. Actually, we should use the matching invalidatepage
-in ext4_writepage.
+If the in-core buddy bitmap gets corrupted (or out of sync with the
+block bitmap), issue a WARN_ON and try to recover.  In most cases this
+involves skipping trying to allocate out of a particular block group.
+We can end up declaring the file system corrupted, which is fair,
+since the file system probably should be checked before we proceed any
+further.
 
-Signed-off-by: yangerkun <yangerkun@huawei.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20200226041002.13914-1-yangerkun@huawei.com
+Link: https://lore.kernel.org/r/20200414035649.293164-1-tytso@mit.edu
+Google-Bug-Id: 34811296
+Google-Bug-Id: 34639169
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/mballoc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b9473fcc110fd..7e0c77de551bb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2131,7 +2131,7 @@ static int ext4_writepage(struct page *page,
- 	bool keep_towrite = false;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index fda49f4c5a8eb..04fab14e630c1 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1944,7 +1944,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 	int free;
  
- 	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb)))) {
--		ext4_invalidatepage(page, 0, PAGE_SIZE);
-+		inode->i_mapping->a_ops->invalidatepage(page, 0, PAGE_SIZE);
- 		unlock_page(page);
- 		return -EIO;
- 	}
+ 	free = e4b->bd_info->bb_free;
+-	BUG_ON(free <= 0);
++	if (WARN_ON(free <= 0))
++		return;
+ 
+ 	i = e4b->bd_info->bb_first_free;
+ 
+@@ -1965,7 +1966,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 		}
+ 
+ 		mb_find_extent(e4b, i, ac->ac_g_ex.fe_len, &ex);
+-		BUG_ON(ex.fe_len <= 0);
++		if (WARN_ON(ex.fe_len <= 0))
++			break;
+ 		if (free < ex.fe_len) {
+ 			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
+ 					"%d free clusters as per "
 -- 
 2.20.1
 
