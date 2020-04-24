@@ -2,105 +2,116 @@ Return-Path: <SRS0=rNFB=6I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6291BC54FCB
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:31:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A54C9C54FD0
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 15:01:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 43F1B20700
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 12:31:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1587731484;
-	bh=ZFamFEIyxLFqoZps+iwlPUAC68uaCGU+cjB/GQ1R06U=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=HIbvdVoaNgs9kaoPlme2sXJFfmj2c7TqTl4BJAgonaMGGjzrK/xrfvjB75xv14LnT
-	 jiMNwnin7IJ8RbVaAva01QjrJOQl/FneShN9nTpzndoPmPsFAh9/nyLwf1Q6KhCb36
-	 ogjqtSR4YRx2btEJbyHzAKt8HTTKw9gDwED8h5B4=
+	by mail.kernel.org (Postfix) with ESMTP id 589A620706
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Apr 2020 15:01:35 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=yandex.ru header.i=@yandex.ru header.b="K6a4oIx1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727837AbgDXMbX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Apr 2020 08:31:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52940 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727903AbgDXMXQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 24 Apr 2020 08:23:16 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 08DB021569;
-        Fri, 24 Apr 2020 12:23:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1587730996;
-        bh=ZFamFEIyxLFqoZps+iwlPUAC68uaCGU+cjB/GQ1R06U=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=EsWijhMaph/uDPVA0rGK3fidgRMj2j0PBKlaviwqfUXgNLnk9LoNnlL3buD5hqQb/
-         ar7SGSb6462KSVbMRZ6Q8Gnunm3DLmJQNX3gSTE9E+4gGqIQ6/UN8vWttfWLTMeCwL
-         8K6KVicpT3MPDObUXIW+tgol0V2mCFgoharqtqmg=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.6 34/38] ext4: convert BUG_ON's to WARN_ON's in mballoc.c
-Date:   Fri, 24 Apr 2020 08:22:32 -0400
-Message-Id: <20200424122237.9831-34-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200424122237.9831-1-sashal@kernel.org>
-References: <20200424122237.9831-1-sashal@kernel.org>
+        id S1727919AbgDXPBf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Apr 2020 11:01:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47482 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1727804AbgDXPBe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 24 Apr 2020 11:01:34 -0400
+X-Greylist: delayed 320 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 24 Apr 2020 08:01:34 PDT
+Received: from forward100j.mail.yandex.net (forward100j.mail.yandex.net [IPv6:2a02:6b8:0:801:2::100])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 045D3C09B045
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2020 08:01:34 -0700 (PDT)
+Received: from mxback1j.mail.yandex.net (mxback1j.mail.yandex.net [IPv6:2a02:6b8:0:1619::10a])
+        by forward100j.mail.yandex.net (Yandex) with ESMTP id 5138850E0C8E
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2020 17:56:10 +0300 (MSK)
+Received: from iva6-add863d6e49c.qloud-c.yandex.net (iva6-add863d6e49c.qloud-c.yandex.net [2a02:6b8:c0c:7ea0:0:640:add8:63d6])
+        by mxback1j.mail.yandex.net (mxback/Yandex) with ESMTP id tmVIDOZxB9-uAG0vdvK;
+        Fri, 24 Apr 2020 17:56:10 +0300
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex.ru; s=mail; t=1587740170;
+        bh=yPoKB9MrzR3dJpUElKnFxRCFrfjV9giH9j3qREPEU34=;
+        h=Subject:From:To:Date:Message-ID;
+        b=K6a4oIx1V1e4cbA27z/lO7eXh54VodsXfNuydvNoVhC6s1sk0q0lNS833/rB8YM/S
+         VKEBIGcqIPxZUwusxKJm1JKisFKJTPkhxz4KUWUFqTmmr6sZM6W+QRyk8Ox302/fUN
+         0Is1c6n3w7EEJCZevlKXPGFf/JCGUU3COEm73AiQ=
+Authentication-Results: mxback1j.mail.yandex.net; dkim=pass header.i=@yandex.ru
+Received: by iva6-add863d6e49c.qloud-c.yandex.net (smtp/Yandex) with ESMTPSA id 4g9yhZPVbh-u9XGFBak;
+        Fri, 24 Apr 2020 17:56:09 +0300
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits))
+        (Client certificate not present)
+To:     linux-ext4@vger.kernel.org
+From:   Konstantin Kharlamov <hi-angel@yandex.ru>
+Subject: Changing a workload results in performance drop
+Message-ID: <73a3416a-67d2-c494-1f3f-7d7789bdf61d@yandex.ru>
+Date:   Fri, 24 Apr 2020 17:56:09 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.7.0
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-GB-large
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+* SSDs are used in testing, so random access is not a concern. But I tried the
+   "steps to reproduce" with raw block device, and IOPS always holds 9k for me.
+* "Direct" IO is used to bypass file-system cache.
+* The issue is way less visible on XFS, so it looks specific to file systems.
+* The biggest difference I've seen is on 70% reads/30% writes workload. But for
+   simplicity in "steps to reproduce" I'm using 100% write.
+* it seems over time (perhaps a day) performance gets improved, so for best
+   results when testing that you need to re-create ext4 anew.
+* in "steps to reproduce" I grep fio stdout. That suppresses interactive
+   output. Interactive output may be interesting though, I've often seen workload
+   drops to 600-700 IOPS while average was 5-6k
+* Original problem I worked with https://github.com/openzfs/zfs/issues/10231
 
-[ Upstream commit 907ea529fc4c3296701d2bfc8b831dd2a8121a34 ]
+# Steps to reproduce (in terms of terminal commands)
 
-If the in-core buddy bitmap gets corrupted (or out of sync with the
-block bitmap), issue a WARN_ON and try to recover.  In most cases this
-involves skipping trying to allocate out of a particular block group.
-We can end up declaring the file system corrupted, which is fair,
-since the file system probably should be checked before we proceed any
-further.
+     $ cat fio_jobfile
+     [job-section]
+     name=temp-fio
+     bs=8k
+     ioengine=libaio
+     rw=randrw
+     rwmixread=0
+     rwmixwrite=100
+     filename=/mnt/test/file1
+     iodepth=1
+     numjobs=1
+     group_reporting
+     time_based
+     runtime=1m
+     direct=1
+     filesize=4G
+     $ mkfs.ext4 /dev/sdw1
+     $ mount /dev/sdw1 /mnt/test
+     $ truncate -s 100G /mnt/test/file1
+     $ fio fio_jobfile | grep -i IOPS
+       write: IOPS=12.5k, BW=97.0MiB/s (103MB/s)(5879MiB/60001msec)
+        iops        : min=10966, max=14730, avg=12524.20, stdev=1240.27, samples=119
+     $ sed -i 's/4G/100G/' fio_jobfile
+     $ fio fio_jobfile | grep -i IOPS
+       write: IOPS=5880, BW=45.9MiB/s (48.2MB/s)(2756MiB/60001msec)
+        iops        : min= 4084, max= 6976, avg=5879.31, stdev=567.58, samples=119
 
-Link: https://lore.kernel.org/r/20200414035649.293164-1-tytso@mit.edu
-Google-Bug-Id: 34811296
-Google-Bug-Id: 34639169
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/mballoc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+## Expected
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 51a78eb65f3cf..2f7aebee1a7b4 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1936,7 +1936,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
- 	int free;
- 
- 	free = e4b->bd_info->bb_free;
--	BUG_ON(free <= 0);
-+	if (WARN_ON(free <= 0))
-+		return;
- 
- 	i = e4b->bd_info->bb_first_free;
- 
-@@ -1959,7 +1960,8 @@ void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
- 		}
- 
- 		mb_find_extent(e4b, i, ac->ac_g_ex.fe_len, &ex);
--		BUG_ON(ex.fe_len <= 0);
-+		if (WARN_ON(ex.fe_len <= 0))
-+			break;
- 		if (free < ex.fe_len) {
- 			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
- 					"%d free clusters as per "
--- 
-2.20.1
+Performance should be more or less the same
 
+## Actual
+
+The second test is twice as slow
+
+# Versions
+
+* Kernel version: 5.6.2-050602-generic
+
+It seems however that the problem is present at least in 4.19 and 5.4. as well, so not a regression.
