@@ -2,129 +2,92 @@ Return-Path: <SRS0=2QqD=6J=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D586C55186
-	for <linux-ext4@archiver.kernel.org>; Sat, 25 Apr 2020 11:15:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F1B1C55185
+	for <linux-ext4@archiver.kernel.org>; Sat, 25 Apr 2020 11:49:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA37320714
-	for <linux-ext4@archiver.kernel.org>; Sat, 25 Apr 2020 11:15:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 44B00206A2
+	for <linux-ext4@archiver.kernel.org>; Sat, 25 Apr 2020 11:49:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726157AbgDYLPU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 25 Apr 2020 07:15:20 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:18378 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726124AbgDYLPT (ORCPT
+        id S1726097AbgDYLto (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 25 Apr 2020 07:49:44 -0400
+Received: from smtprelay0048.hostedemail.com ([216.40.44.48]:53252 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726060AbgDYLto (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 25 Apr 2020 07:15:19 -0400
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 03PB1RYM058156;
-        Sat, 25 Apr 2020 07:15:06 -0400
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 30mhr3tsyj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 25 Apr 2020 07:15:05 -0400
-Received: from m0098410.ppops.net (m0098410.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 03PBF5D4084488;
-        Sat, 25 Apr 2020 07:15:05 -0400
-Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 30mhr3tsy0-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 25 Apr 2020 07:15:05 -0400
-Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
-        by ppma02fra.de.ibm.com (8.16.0.27/8.16.0.27) with SMTP id 03PBAQqF029811;
-        Sat, 25 Apr 2020 11:15:02 GMT
-Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
-        by ppma02fra.de.ibm.com with ESMTP id 30mcu7rdff-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 25 Apr 2020 11:15:02 +0000
-Received: from d06av22.portsmouth.uk.ibm.com (d06av22.portsmouth.uk.ibm.com [9.149.105.58])
-        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 03PBF0Pe63242294
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 25 Apr 2020 11:15:00 GMT
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 76A5D4C040;
-        Sat, 25 Apr 2020 11:15:00 +0000 (GMT)
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id A2A484C046;
-        Sat, 25 Apr 2020 11:14:56 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.79.185.245])
-        by d06av22.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Sat, 25 Apr 2020 11:14:56 +0000 (GMT)
-Subject: Re: [PATCH 0/5] ext4/overlayfs: fiemap related fixes
-To:     Amir Goldstein <amir73il@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>
-Cc:     Ext4 <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        Theodore Tso <tytso@mit.edu>,
-        Andreas Dilger <adilger@dilger.ca>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Dan Carpenter <dan.carpenter@oracle.com>,
-        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
-        Murphy Zhou <jencce.kernel@gmail.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        overlayfs <linux-unionfs@vger.kernel.org>
-References: <cover.1587555962.git.riteshh@linux.ibm.com>
- <20200424101153.GC456@infradead.org>
- <20200424232024.A39974C046@d06av22.portsmouth.uk.ibm.com>
- <CAOQ4uxgiome-BnHDvDC=vHfidf4Ru3jqzOki0Z_YUkinEeYCRQ@mail.gmail.com>
- <20200425094350.GA11881@infradead.org>
- <CAOQ4uxg2KOVBxqF400KW3VaQEaX4JGqfb_vCW=esTMkJqZWwvA@mail.gmail.com>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Sat, 25 Apr 2020 16:44:55 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        Sat, 25 Apr 2020 07:49:44 -0400
+X-Greylist: delayed 369 seconds by postgrey-1.27 at vger.kernel.org; Sat, 25 Apr 2020 07:49:44 EDT
+Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
+        by smtpgrave06.hostedemail.com (Postfix) with ESMTP id 814AF800DDE3;
+        Sat, 25 Apr 2020 11:47:21 +0000 (UTC)
+Received: from filter.hostedemail.com (clb03-v110.bra.tucows.net [216.40.38.60])
+        by smtprelay05.hostedemail.com (Postfix) with ESMTP id 372BA18029124;
+        Sat, 25 Apr 2020 11:47:20 +0000 (UTC)
+X-Session-Marker: 6A6F6540706572636865732E636F6D
+X-HE-Tag: level16_22c4775d3930b
+X-Filterd-Recvd-Size: 3038
+Received: from XPS-9350.home (unknown [47.151.136.130])
+        (Authenticated sender: joe@perches.com)
+        by omf07.hostedemail.com (Postfix) with ESMTPA;
+        Sat, 25 Apr 2020 11:47:18 +0000 (UTC)
+Message-ID: <67d97b191f3e015bf6a1ef0472cc30c4f57fdaaf.camel@perches.com>
+Subject: Re: [PATCH 4.4 091/100] ext2: fix empty body warnings when -Wextra
+ is used
+From:   Joe Perches <joe@perches.com>
+To:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org
+Cc:     stable@vger.kernel.org, Randy Dunlap <rdunlap@infradead.org>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Sasha Levin <sashal@kernel.org>
+Date:   Sat, 25 Apr 2020 04:47:17 -0700
+In-Reply-To: <326458310dc7c982d2f2210e057f69d6bc0169c7.camel@perches.com>
+References: <20200422095022.476101261@linuxfoundation.org>
+         <20200422095039.371486451@linuxfoundation.org>
+         <326458310dc7c982d2f2210e057f69d6bc0169c7.camel@perches.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.36.1-2 
 MIME-Version: 1.0
-In-Reply-To: <CAOQ4uxg2KOVBxqF400KW3VaQEaX4JGqfb_vCW=esTMkJqZWwvA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-Message-Id: <20200425111456.A2A484C046@d06av22.portsmouth.uk.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.676
- definitions=2020-04-25_05:2020-04-24,2020-04-25 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
- bulkscore=0 spamscore=0 mlxscore=0 suspectscore=0 clxscore=1015
- priorityscore=1501 adultscore=0 phishscore=0 mlxlogscore=947
- impostorscore=0 malwarescore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2003020000 definitions=main-2004250092
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-
-On 4/25/20 4:19 PM, Amir Goldstein wrote:
-> On Sat, Apr 25, 2020 at 12:43 PM Christoph Hellwig <hch@infradead.org> wrote:
->>
->> On Sat, Apr 25, 2020 at 12:11:59PM +0300, Amir Goldstein wrote:
->>> FWIW, I agree with you.
->>> And seems like Jan does as well, since he ACKed all your patches.
->>> Current patches would be easier to backport to stable kernels.
->>
->> Honestly, the proper fix is pretty much trivial.  I wrote it up this
->> morning over coffee:
->>
->>      http://git.infradead.org/users/hch/misc.git/shortlog/refs/heads/fiemap-fix
->>
->> Still needs more testing, though.
+On Sat, 2020-04-25 at 04:43 -0700, Joe Perches wrote:
+> On Wed, 2020-04-22 at 11:57 +0200, Greg Kroah-Hartman wrote:
+> > From: Randy Dunlap <rdunlap@infradead.org>
+> > 
+> > [ Upstream commit 44a52022e7f15cbaab957df1c14f7a4f527ef7cf ]
+> > 
+> > When EXT2_ATTR_DEBUG is not defined, modify the 2 debug macros
+> > to use the no_printk() macro instead of <nothing>.
+> > This fixes gcc warnings when -Wextra is used:
+> > 
+> > ../fs/ext2/xattr.c:252:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+> > ../fs/ext2/xattr.c:258:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+> > ../fs/ext2/xattr.c:330:42: warning: suggest braces around empty body in an ‘if’ statement [-Wempty-body]
+> > ../fs/ext2/xattr.c:872:45: warning: suggest braces around empty body in an ‘else’ statement [-Wempty-body]
+> > 
+> > I have verified that the only object code change (with gcc 7.5.0) is
+> > the reversal of some instructions from 'cmp a,b' to 'cmp b,a'.
 > 
-> Very slick!
+> It'd be better to use the ext4 style defines:
 > 
-> I still think Ritesh's patches are easier for backporting because they are
-> mostly contained within the ext4/overlayfs subsystems and your patch
-> can follow up as interface cleanup.
+> fs/ext4/xattr.c:# define ea_idebug(inode, fmt, ...)                                     \
+> fs/ext4/xattr.c-        printk(KERN_DEBUG "inode %s:%lu: " fmt "\n",                    \
+> fs/ext4/xattr.c-               inode->i_sb->s_id, inode->i_ino, ##__VA_ARGS__)
+> fs/ext4/xattr.c:# define ea_bdebug(bh, fmt, ...)                                        \
+> fs/ext4/xattr.c-        printk(KERN_DEBUG "block %pg:%lu: " fmt "\n",                   \
+> fs/ext4/xattr.c-               bh->b_bdev, (unsigned long)bh->b_blocknr, ##__VA_ARGS__)
+> --
+> fs/ext4/xattr.c:# define ea_idebug(inode, fmt, ...)     no_printk(fmt, ##__VA_ARGS__)
+> fs/ext4/xattr.c:# define ea_bdebug(bh, fmt, ...)        no_printk(fmt, ##__VA_ARGS__)
 > 
-> I would use as generic helper name generic_fiemap_checks()
-> akin to generic_write_checks() and generic_remap_file_range_prep() =>
-> generic_remap_checks().
+> So the output logging won't be split across multiple lines.
 
-If it's ok, I will be happy to do this cleanup in the 2nd round.
+And beyond that, why is a -Wextra warning being fixed in -stable at all?
 
 
--ritesh
