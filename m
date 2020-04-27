@@ -2,793 +2,169 @@ Return-Path: <SRS0=EIo+=6L=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A259C54FD0
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:34:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F894C54FD0
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 04:03:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 46B1F206DD
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:34:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0C3F2206E2
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 04:03:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Pp9zdgui"
+	dkim=pass (1024-bit key) header.d=whamcloud.com header.i=@whamcloud.com header.b="EhYCkJ+M"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726340AbgD0Beo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 26 Apr 2020 21:34:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55030 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726234AbgD0Beo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 26 Apr 2020 21:34:44 -0400
-Received: from mail-pf1-x442.google.com (mail-pf1-x442.google.com [IPv6:2607:f8b0:4864:20::442])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7ED2AC061A0F
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2020 18:34:44 -0700 (PDT)
-Received: by mail-pf1-x442.google.com with SMTP id f7so8168934pfa.9
-        for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2020 18:34:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=z0Zlz+qD/JO3zikJoRw5ODBRQS89bpqVIGIZQ4nXXLM=;
-        b=Pp9zdguiIzoQ2a81FC2/NtP4XyaFekSalgQihS0/ByyuNy1tMlZtw8P2qvBqQP1QY0
-         6fRaL6ZAvPt7zMvHNrM45HHGsj4oikv0sgkZ3Ys8ZrQJNHT44mKoqnMJwjxH3o8/DGP0
-         4F0t9FDGfD/6zyPE40fMAgVnkQ0CiDScIdvO+WBQyppgbTNkZTZ5w6E3l/Eu8sY2bZA7
-         Xyd84puZ2XHCpBMt4cS8k1o5EC0J2SJQWzXq2MgqTVpf4Jc7fWJtooh+bEFJzPpK8FSF
-         plS3Sb++6NMQ02h2cQjSU5thcc6diupSK0Yy7gooLe0jybg2tWIu00vkGS71AMwAzrcu
-         +p/Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=z0Zlz+qD/JO3zikJoRw5ODBRQS89bpqVIGIZQ4nXXLM=;
-        b=YaFGXozeVO+N6pqx380bjfVSQRIm2DP2R5qhPZSXMgN3h6FBSiSi04B8D7mVN4+xgf
-         RWagja9ucaGuAbwRVrMR7dpY2vd1lGwGYzc/Pkry6wMv19nURWXTWiOYkAbGyclbOHb3
-         m5XcTqb0EPQD72TP5cpUYFP70nxRA/9IJ9AS5Gz3hp4o8+RVi0GOzyLJW20l+cw3iZeD
-         iOvF9quyrcjm4bfz1JqRr8hlXqv0AZd6tWZyDauW/xxHtLraGGBYabJEewnIgSUuc0+3
-         tRcCQSrDc5GKyMEwu0mcgI9SDNDL4458KSm7ZSwHHk65cquYkejCFsUeIro3XLJz6459
-         q8Kg==
-X-Gm-Message-State: AGi0PubTPFqsAPVTo7mMcfMAMzNgEkFiQIsA2mbLnJOpiZmawpNnmJN+
-        Y7sGtWPjRentl+aI3FKO6mw8hnpe
-X-Google-Smtp-Source: APiQypIX1cPnmSMzUjMR6nutNsSdrmmu2juch4Dl9461s6TagruS6v20YaandBzyvtBzLJTZ9FH71Q==
-X-Received: by 2002:aa7:8ec1:: with SMTP id b1mr21675826pfr.103.1587951283174;
-        Sun, 26 Apr 2020 18:34:43 -0700 (PDT)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
-        by smtp.googlemail.com with ESMTPSA id o198sm10913790pfg.183.2020.04.26.18.34.41
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 26 Apr 2020 18:34:42 -0700 (PDT)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH] ext4: handle ext4_mark_inode_dirty errors
-Date:   Sun, 26 Apr 2020 18:34:37 -0700
-Message-Id: <20200427013438.219117-1-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.26.2.303.gf8c07b1a785-goog
+        id S1726178AbgD0EDa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 Apr 2020 00:03:30 -0400
+Received: from mail-dm6nam11on2058.outbound.protection.outlook.com ([40.107.223.58]:32193
+        "EHLO NAM11-DM6-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726064AbgD0EDa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 27 Apr 2020 00:03:30 -0400
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=PZ4g3fZWJsOdsFkOC8183vMNSVDhBPfZf+SSydBCFvk8WvNIMGvptSfdTDURzVmwEl9mvVJYGRGmW0itI0QRUMISgSEKP7ioL1DKJxanJsKkhkfnMacHCcZHUJLgc/mSA3r5QoG1TUDn1NZPjCigbtp5X0tag07tncwcmlGxucyzgUobIctWxFj6cKp4u+jV/TxhIDXFaSVrTLwWpXc8KwG3klh0MPAkIPHxF5uC4I83BgV/4guzZE+MHTWUWpU9gG7RSCU+RGew4Kt86y3wuApp10t66EK08cm3M0351AqsE/yqgRCgxQzzGkCOy+0zuqZSmVCRePYpbIURTHlcyw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=7G1ibupKuT+5J7v99gHoMub6DCn9U+lkAbTSXaRR2Nw=;
+ b=gkDXLmnTzK5ugrILrlNBVlkDyG/JU7tq4bE2SSM6OwjBUt7duCoRdPw+b/ZdqN8P7Srzs88SwxW7TSZTD72u6n6i9/uhaTLZ3ZTQs4TjmaLcmU8X4JfPWpdkVNvOAEG42r+IghuiOEj6eG/Ha+wL/roiSflFqHPSFD1eLBaLbNmJpvBBLEi2MvubHRu9338MEos69ckVEpGM7cHeaihfSmbKUDdYyaBWsh11rtB64DRzf6jUaBOzknf9tRa0AftLavges7GphM7ceht9GomAam0Y7rLsNxcEA6aTXpxJLBLlP5tMgUZ/cJhoh0HRUMcZrGZPP8TU3dRM1KVfPIW17A==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=whamcloud.com; dmarc=pass action=none
+ header.from=whamcloud.com; dkim=pass header.d=whamcloud.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=whamcloud.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=7G1ibupKuT+5J7v99gHoMub6DCn9U+lkAbTSXaRR2Nw=;
+ b=EhYCkJ+MESfD8+y7GUj+2lX6Ma1tbkJ4JKv+g2ixPQHR9z0ftqmXgVvnWqOcMDplSp/mrVwOw/p6Vf55o7yVE2/ej9FbEEGkNNoEnroCbV0H630ZZO2/usFzLBJhOyWLzCM4zsuPMpC36kDYT5pNWAwsDJLHY1SHwoYfrjMaFi8=
+Received: from DM6PR19MB2441.namprd19.prod.outlook.com (2603:10b6:5:18d::16)
+ by DM6PR19MB2363.namprd19.prod.outlook.com (2603:10b6:5:c7::21) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.2937.13; Mon, 27 Apr
+ 2020 04:03:25 +0000
+Received: from DM6PR19MB2441.namprd19.prod.outlook.com
+ ([fe80::b111:c44a:87ea:4bf4]) by DM6PR19MB2441.namprd19.prod.outlook.com
+ ([fe80::b111:c44a:87ea:4bf4%7]) with mapi id 15.20.2937.023; Mon, 27 Apr 2020
+ 04:03:24 +0000
+From:   Alex Zhuravlev <azhuravlev@whamcloud.com>
+To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: [PATCH 2/2] ext4: skip non-loaded groups at cr=0/1
+Thread-Topic: [PATCH 2/2] ext4: skip non-loaded groups at cr=0/1
+Thread-Index: AQHWHEjMB7oRIPFrfU+3AQZmsRdo/g==
+Date:   Mon, 27 Apr 2020 04:03:24 +0000
+Message-ID: <0B6BF408-EDF7-4363-80CD-BDA0136BF62C@whamcloud.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=azhuravlev@whamcloud.com; 
+x-originating-ip: [95.73.42.212]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: c5331e79-b4e9-4f23-dc1f-08d7ea5feefa
+x-ms-traffictypediagnostic: DM6PR19MB2363:
+x-microsoft-antispam-prvs: <DM6PR19MB23638B1791BC9971D838C292CBAF0@DM6PR19MB2363.namprd19.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:10000;
+x-forefront-prvs: 0386B406AA
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR19MB2441.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFTY:;SFS:(4636009)(366004)(396003)(346002)(136003)(376002)(39840400004)(6486002)(478600001)(64756008)(66556008)(316002)(66446008)(66946007)(71200400001)(91956017)(66476007)(5660300002)(36756003)(186003)(966005)(8936002)(81156014)(26005)(8676002)(76116006)(33656002)(2906002)(86362001)(6512007)(2616005)(6916009)(6506007);DIR:OUT;SFP:1101;
+received-spf: None (protection.outlook.com: whamcloud.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: FQR+Th1UkeRiCd/Zmm7vIGEeVGVtBbkb4VwbD9AJyVBAru5nZ9flj2Yv2mENH3pZHA/1aIyi9lDOXEUhu+bTI806YvhL3xAzW5Gl99XAkGKR7kCgBS9a3mO0SA3iNYssZZbq8kTG8uMQRe/2Cs//G/236EmkTUw8WAGIeROpsNwNOU9gP97yeZpJVtiSx9PmXHUlMstXL4QwXgvGtuZbW9BEgyLIlEd2TiGH65PtW7bdgRfA2byJ4nbHCtmWUhcwBdLry0tOcG8cvJ37QFtOJb3cH3yoIvNCaUlAejIzUxwCfJVkVZsmg+2ulBzoVqjpuvPbHbq1QhqGq5Mywo646UUuWKXYnBx7nKg2aSPlsw3s6oCu0gRg7fakQ+1Hr1Al7SKodg9TZ6VgFE/yDGIjo41MYRsAmIRbdiV0VHYr1VlqFFjyHXIp/OQPVlwRCQvSCAsQNW1kfo1eAzP5JKxyqIIWnrZi6i7fkT1i0Z4FyJWnHcpe0966BqkpIS3dTuh6nf2X/tWhVGEek89JRC4KWw==
+x-ms-exchange-antispam-messagedata: fIlORyohG9mr0SbR6JhXQDTmfVmWNXHs2YQ5kNF80FAD6utqqhCOMgHDlWJK7VlAMIJKx/CsZqzbbd0SYUR1RoP47P8bG1UOq5uwZ9c46ahWajXyS5Tcs73ky2ovGfTJBimeWAoE6TpuTnqqkivtciwFBneJtQDbOnYDZxRsEjTsA+QPd+SK03o0wU4PPnQp77EoaWLRxsjYEmDfi/CBbapSeSHL4GILs6jXJk00wgJsYDUlXc/B/jgnKecBsv53YqmAzg/YlslZZxeUsxIcDq5SN4qpgt5bDRMflkEQya9HL9rs0FWWQmtUEo47wnemlg+pVRwz88Va4DsgU+BXVuVfGtOl6Id6z8IFjq4ImwswqsKglxBzkpGBQMSUkI1E03fEcZo9BkPAJwsZ1ezZFxbWLasCI/PonsoiWVyWkamLdl6fYRxAD5b9PveSQE51D3v/FHQDUs4MiJd8K+alW2MXg9fsxzlQxqlnvuaYiVeu/vwBz3n/DoWD20giQt8Hh4C6v02QR1FUky7CNRMcVtVGkSIwdNbCNB87e2GwHegknb7HtOzt3grDpzK+f9Jp+md6ArzrCHX8ZJonWL+1iFl3gAcNnd0XriuSDqcGCdP82ftPFaPEz0gY+Od3Mf6nVaiikodmakN7PI421ztcMuNe9APq9HYAtaxAaKNks7tXulRq+ZSCjQTzP5c9mS6ALjodUBGt8T+sdKKtpwDU6sTL+pxd7XmGqvz9h85hOOOLjT03sunO5Jlpp0k32zPkM9B8ZNqZr08yGE2+ogMDSjVRrhCijGXlP2n+lu7PrvY=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <F2803DC2CCF1EE42A899F99553D06E06@namprd19.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-OriginatorOrg: whamcloud.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: c5331e79-b4e9-4f23-dc1f-08d7ea5feefa
+X-MS-Exchange-CrossTenant-originalarrivaltime: 27 Apr 2020 04:03:24.7095
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: 9rTrQ6n4q+yNA2NRTq/e5OTXS55yBsVcWOkBl86HYxn3L7BtE1962dzDP+1rBOp/W0Z3fSUqGW6Nqufa3hHW5w==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR19MB2363
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4_mark_inode_dirty() can fail for real reasons. Ignoring its return
-value may lead ext4 to ignore real failures that would result in
-corruption / crashes. Harden ext4_mark_inode_dirty error paths to fail
-as soon as possible and return errors to the caller whenever
-appropriate.
+Hi, yet another patch.
 
-One of the possible scnearios when this bug could affected is that
-while creating a new inode, its directory entry gets added
-successfully but while writing the inode itself mark_inode_dirty
-returns error which is ignored. This would result in inconsistency
-that the directory entry points to a non-existent inode.
+cr=3D0 is supposed to be an optimization to save CPU cycles, but if buddy d=
+ata (in memory)
+is not initialized then all this makes no sense as we have to do sync IO ta=
+king a lot of cycles.
+also, at cr=3D0 mballoc doesn't store any avaibale chunk. cr=3D1 also skips=
+ groups using heuristic
+based on avg. fragment size. it's more useful to skip such groups and switc=
+h to cr=3D2 where
+groups will be scanned for available chunks.
 
-Ran gce-xfstests smoke tests and verified that there were no
-regressions.
+using sparse image and dm-slow virtual device of 120TB was simulated. then =
+the image was
+formatted and filled using debugfs to mark ~85% of available space as busy.=
+ mount process w/o
+the patch couldn't complete in half an hour (according to vmstat it would t=
+ake ~10-11 hours).
+with the patch applied mount took ~20 seconds.
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Lustre-bug-id: https://jira.whamcloud.com/browse/LU-12988
+Signed-off-by: Alex Zhuravlev <bzzz@whamcloud.com>
+Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
 ---
- fs/ext4/acl.c       |  2 +-
- fs/ext4/ext4.h      |  2 +-
- fs/ext4/ext4_jbd2.h |  5 ++-
- fs/ext4/extents.c   | 34 +++++++++++---------
- fs/ext4/file.c      | 11 +++++--
- fs/ext4/indirect.c  |  4 ++-
- fs/ext4/inline.c    |  6 ++--
- fs/ext4/inode.c     | 38 ++++++++++++++++-------
- fs/ext4/migrate.c   | 12 ++++---
- fs/ext4/namei.c     | 76 +++++++++++++++++++++++++++++----------------
- fs/ext4/super.c     | 16 ++++++----
- fs/ext4/xattr.c     |  6 ++--
- 12 files changed, 139 insertions(+), 73 deletions(-)
+ fs/ext4/mballoc.c | 25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index 8c7bbf3e566d..470be69f19aa 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -256,7 +256,7 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- 	if (!error && update_mode) {
- 		inode->i_mode = mode;
- 		inode->i_ctime = current_time(inode);
--		ext4_mark_inode_dirty(handle, inode);
-+		error = ext4_mark_inode_dirty(handle, inode);
- 	}
- out_stop:
- 	ext4_journal_stop(handle);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 91eb4381cae5..68f13ba16f55 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3354,7 +3354,7 @@ struct ext4_extent;
-  */
- #define EXT_MAX_BLOCKS	0xffffffff
- 
--extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
-+extern void ext4_ext_tree_init(handle_t *handle, struct inode *inode);
- extern int ext4_ext_index_trans_blocks(struct inode *inode, int extents);
- extern int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			       struct ext4_map_blocks *map, int flags);
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 4b9002f0e84c..3bacf76d2609 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -222,7 +222,10 @@ ext4_mark_iloc_dirty(handle_t *handle,
- int ext4_reserve_inode_write(handle_t *handle, struct inode *inode,
- 			struct ext4_iloc *iloc);
- 
--int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode);
-+#define ext4_mark_inode_dirty(__h, __i)					\
-+		__ext4_mark_inode_dirty((__h), (__i), __func__, __LINE__)
-+int __ext4_mark_inode_dirty(handle_t *handle, struct inode *inode,
-+				const char *func, unsigned int line);
- 
- int ext4_expand_extra_isize(struct inode *inode,
- 			    unsigned int new_extra_isize,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6425f4f9a197..218e58c8da9c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -816,7 +816,7 @@ ext4_ext_binsearch(struct inode *inode,
- 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e84c298e739b..83e3e6ab1240 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1877,6 +1877,21 @@ int ext4_mb_find_by_goal(struct ext4_allocation_cont=
+ext *ac,
+ 	return 0;
  }
- 
--int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
-+void ext4_ext_tree_init(handle_t *handle, struct inode *inode)
- {
- 	struct ext4_extent_header *eh;
- 
-@@ -826,7 +826,6 @@ int ext4_ext_tree_init(handle_t *handle, struct inode *inode)
- 	eh->eh_magic = EXT4_EXT_MAGIC;
- 	eh->eh_max = cpu_to_le16(ext4_ext_space_root(inode, 0));
- 	ext4_mark_inode_dirty(handle, inode);
--	return 0;
- }
- 
- struct ext4_ext_path *
-@@ -1319,7 +1318,7 @@ static int ext4_ext_grow_indepth(handle_t *handle, struct inode *inode,
- 		  ext4_idx_pblock(EXT_FIRST_INDEX(neh)));
- 
- 	le16_add_cpu(&neh->eh_depth, 1);
--	ext4_mark_inode_dirty(handle, inode);
-+	err = ext4_mark_inode_dirty(handle, inode);
- out:
- 	brelse(bh);
- 
-@@ -4367,7 +4366,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 	struct inode *inode = file_inode(file);
- 	handle_t *handle;
- 	int ret = 0;
--	int ret2 = 0;
-+	int ret2 = 0, ret3 = 0;
- 	int retries = 0;
- 	int depth = 0;
- 	struct ext4_map_blocks map;
-@@ -4427,10 +4426,11 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 			if (ext4_update_inode_size(inode, epos) & 0x1)
- 				inode->i_mtime = inode->i_ctime;
- 		}
--		ext4_mark_inode_dirty(handle, inode);
-+		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
--		ret2 = ext4_journal_stop(handle);
--		if (ret2)
-+		ret3 = ext4_journal_stop(handle);
-+		ret2 = ret3 ? ret3 : ret2;
-+		if (unlikely(ret2))
- 			break;
- 	}
- 	if (ret == -ENOSPC &&
-@@ -4581,7 +4581,9 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
- 	if (new_size)
- 		ext4_update_inode_size(inode, new_size);
--	ext4_mark_inode_dirty(handle, inode);
-+	ret = ext4_mark_inode_dirty(handle, inode);
-+	if (unlikely(ret))
-+		goto out_handle;
- 
- 	/* Zero out partial block at the edges of the range */
- 	ret = ext4_zero_partial_blocks(handle, inode, offset, len);
-@@ -4591,6 +4593,7 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	if (file->f_flags & O_SYNC)
- 		ext4_handle_sync(handle);
- 
-+out_handle:
- 	ext4_journal_stop(handle);
- out_mutex:
- 	inode_unlock(inode);
-@@ -4704,8 +4707,7 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 				   loff_t offset, ssize_t len)
- {
- 	unsigned int max_blocks;
--	int ret = 0;
--	int ret2 = 0;
-+	int ret = 0, ret2 = 0, ret3 = 0;
- 	struct ext4_map_blocks map;
- 	unsigned int blkbits = inode->i_blkbits;
- 	unsigned int credits = 0;
-@@ -4738,9 +4740,13 @@ int ext4_convert_unwritten_extents(handle_t *handle, struct inode *inode,
- 				     "ext4_ext_map_blocks returned %d",
- 				     inode->i_ino, map.m_lblk,
- 				     map.m_len, ret);
--		ext4_mark_inode_dirty(handle, inode);
--		if (credits)
--			ret2 = ext4_journal_stop(handle);
-+		ret2 = ext4_mark_inode_dirty(handle, inode);
-+		if (credits) {
-+			ret3 = ext4_journal_stop(handle);
-+			if (unlikely(ret3))
-+				ret2 = ret3;
-+		}
+=20
++static inline int ext4_mb_uninit_on_disk(struct super_block *sb,
++				    ext4_group_t group)
++{
++	struct ext4_group_desc *desc;
 +
- 		if (ret <= 0 || ret2)
- 			break;
- 	}
-@@ -5277,7 +5283,7 @@ static int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	ret = ext4_mark_inode_dirty(handle, inode);
- 	ext4_update_inode_fsync_trans(handle, inode, 1);
- 
- out_stop:
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 0d624250a62b..b8e69f9e3858 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -287,6 +287,7 @@ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
- 	bool truncate = false;
- 	u8 blkbits = inode->i_blkbits;
- 	ext4_lblk_t written_blk, end_blk;
-+	int ret;
- 
- 	/*
- 	 * Note that EXT4_I(inode)->i_disksize can get extended up to
-@@ -327,8 +328,14 @@ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
- 		goto truncate;
- 	}
- 
--	if (ext4_update_inode_size(inode, offset + written))
--		ext4_mark_inode_dirty(handle, inode);
-+	if (ext4_update_inode_size(inode, offset + written)) {
-+		ret = ext4_mark_inode_dirty(handle, inode);
-+		if (unlikely(ret)) {
-+			written = ret;
-+			ext4_journal_stop(handle);
-+			goto truncate;
-+		}
-+	}
- 
- 	/*
- 	 * We may need to truncate allocated but not written blocks beyond EOF.
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 107f0043f67f..be2b66eb65f7 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -467,7 +467,9 @@ static int ext4_splice_branch(handle_t *handle,
- 		/*
- 		 * OK, we spliced it into the inode itself on a direct block.
- 		 */
--		ext4_mark_inode_dirty(handle, ar->inode);
-+		err = ext4_mark_inode_dirty(handle, ar->inode);
-+		if (unlikely(err))
-+			goto err_out;
- 		jbd_debug(5, "splicing direct\n");
- 	}
- 	return err;
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index f35e289e17aa..c3a1ad2db122 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1260,7 +1260,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
- int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
- 			      struct inode *dir, struct inode *inode)
- {
--	int ret, inline_size, no_expand;
-+	int ret, ret2, inline_size, no_expand;
- 	void *inline_start;
- 	struct ext4_iloc iloc;
- 
-@@ -1314,7 +1314,9 @@ int ext4_try_add_inline_entry(handle_t *handle, struct ext4_filename *fname,
- 
- out:
- 	ext4_write_unlock_xattr(dir, &no_expand);
--	ext4_mark_inode_dirty(handle, dir);
-+	ret2 = ext4_mark_inode_dirty(handle, dir);
-+	if (unlikely(ret2 && !ret))
-+		ret = ret2;
- 	brelse(iloc.bh);
- 	return ret;
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2a4aae6acdcb..87430d276bcc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1296,7 +1296,7 @@ static int ext4_write_end(struct file *file,
- 	 * filesystems.
- 	 */
- 	if (i_size_changed || inline_data)
--		ext4_mark_inode_dirty(handle, inode);
-+		ret = ext4_mark_inode_dirty(handle, inode);
- 
- 	if (pos + len > inode->i_size && !verity && ext4_can_truncate(inode))
- 		/* if we have allocated more blocks and copied
-@@ -3077,7 +3077,7 @@ static int ext4_da_write_end(struct file *file,
- 			 * new_i_size is less that inode->i_size
- 			 * bu greater than i_disksize.(hint delalloc)
- 			 */
--			ext4_mark_inode_dirty(handle, inode);
-+			ret = ext4_mark_inode_dirty(handle, inode);
- 		}
- 	}
- 
-@@ -3094,7 +3094,7 @@ static int ext4_da_write_end(struct file *file,
- 	if (ret2 < 0)
- 		ret = ret2;
- 	ret2 = ext4_journal_stop(handle);
--	if (!ret)
-+	if (unlikely(ret2 && !ret))
- 		ret = ret2;
- 
- 	return ret ? ret : copied;
-@@ -3886,6 +3886,8 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- 				      loff_t len)
- {
- 	handle_t *handle;
-+	int ret;
++	if (!ext4_has_group_desc_csum(sb))
++		return 0;
 +
- 	loff_t size = i_size_read(inode);
- 
- 	WARN_ON(!inode_is_locked(inode));
-@@ -3899,10 +3901,10 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 	ext4_update_i_disksize(inode, size);
--	ext4_mark_inode_dirty(handle, inode);
-+	ret = ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
- 
--	return 0;
-+	return ret;
- }
- 
- static void ext4_wait_dax_page(struct ext4_inode_info *ei)
-@@ -3954,7 +3956,7 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	loff_t first_block_offset, last_block_offset;
- 	handle_t *handle;
- 	unsigned int credits;
--	int ret = 0;
-+	int ret = 0, ret2 = 0;
- 
- 	trace_ext4_punch_hole(inode, offset, length, 0);
- 
-@@ -4077,7 +4079,9 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 		ext4_handle_sync(handle);
- 
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	ret2 = ext4_mark_inode_dirty(handle, inode);
-+	if (unlikely(ret2))
-+		ret = ret2;
- 	if (ret >= 0)
- 		ext4_update_inode_fsync_trans(handle, inode, 1);
- out_stop:
-@@ -4146,7 +4150,7 @@ int ext4_truncate(struct inode *inode)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	unsigned int credits;
--	int err = 0;
-+	int err = 0, err2;
- 	handle_t *handle;
- 	struct address_space *mapping = inode->i_mapping;
- 
-@@ -4234,7 +4238,9 @@ int ext4_truncate(struct inode *inode)
- 		ext4_orphan_del(handle, inode);
- 
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	err2 = ext4_mark_inode_dirty(handle, inode);
-+	if (unlikely(err2 && !err))
-+		err = err2;
- 	ext4_journal_stop(handle);
- 
- 	trace_ext4_truncate_exit(inode);
-@@ -5292,6 +5298,8 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 			inode->i_gid = attr->ia_gid;
- 		error = ext4_mark_inode_dirty(handle, inode);
- 		ext4_journal_stop(handle);
-+		if (unlikely(error))
-+			return error;
- 	}
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
-@@ -5777,7 +5785,8 @@ int ext4_expand_extra_isize(struct inode *inode,
-  * Whenever the user wants stuff synced (sys_sync, sys_msync, sys_fsync)
-  * we start and wait on commits.
-  */
--int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
-+int __ext4_mark_inode_dirty(handle_t *handle, struct inode *inode,
-+				const char *func, unsigned int line)
- {
- 	struct ext4_iloc iloc;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-@@ -5787,13 +5796,18 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
- 	trace_ext4_mark_inode_dirty(inode, _RET_IP_);
- 	err = ext4_reserve_inode_write(handle, inode, &iloc);
- 	if (err)
--		return err;
-+		goto out;
- 
- 	if (EXT4_I(inode)->i_extra_isize < sbi->s_want_extra_isize)
- 		ext4_try_to_expand_extra_isize(inode, sbi->s_want_extra_isize,
- 					       iloc, handle);
- 
--	return ext4_mark_iloc_dirty(handle, inode, &iloc);
-+	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
-+out:
-+	if (unlikely(err))
-+		ext4_error_inode_err(inode, func, line, 0, err,
-+					"mark_inode_dirty error");
-+	return err;
- }
- 
++	desc =3D ext4_get_group_desc(sb, group, NULL);
++	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))
++		return 1;
++
++	return 0;
++}
++
  /*
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index fb6520f37135..c5e3fc998211 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -287,7 +287,7 @@ static int free_ind_block(handle_t *handle, struct inode *inode, __le32 *i_data)
- static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
- 						struct inode *tmp_inode)
- {
--	int retval;
-+	int retval, retval2 = 0;
- 	__le32	i_data[3];
- 	struct ext4_inode_info *ei = EXT4_I(inode);
- 	struct ext4_inode_info *tmp_ei = EXT4_I(tmp_inode);
-@@ -342,7 +342,9 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
- 	 * i_blocks when freeing the indirect meta-data blocks
- 	 */
- 	retval = free_ind_block(handle, inode, i_data);
--	ext4_mark_inode_dirty(handle, inode);
-+	retval2 = ext4_mark_inode_dirty(handle, inode);
-+	if (unlikely(retval2 && !retval))
-+		retval = retval2;
- 
- err_out:
- 	return retval;
-@@ -601,7 +603,7 @@ int ext4_ind_migrate(struct inode *inode)
- 	ext4_lblk_t			start, end;
- 	ext4_fsblk_t			blk;
- 	handle_t			*handle;
--	int				ret;
-+	int				ret, ret2 = 0;
- 
- 	if (!ext4_has_feature_extents(inode->i_sb) ||
- 	    (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
-@@ -655,7 +657,9 @@ int ext4_ind_migrate(struct inode *inode)
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	for (i = start; i <= end; i++)
- 		ei->i_data[i] = cpu_to_le32(blk++);
--	ext4_mark_inode_dirty(handle, inode);
-+	ret2 = ext4_mark_inode_dirty(handle, inode);
-+	if (unlikely(ret2 && !ret))
-+		ret = ret2;
- errout:
- 	ext4_journal_stop(handle);
- 	up_write(&EXT4_I(inode)->i_data_sem);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a8aca4772aaa..56738b538ddf 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1993,7 +1993,7 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
- {
- 	unsigned int	blocksize = dir->i_sb->s_blocksize;
- 	int		csum_size = 0;
--	int		err;
-+	int		err, err2;
- 
- 	if (ext4_has_metadata_csum(inode->i_sb))
- 		csum_size = sizeof(struct ext4_dir_entry_tail);
-@@ -2028,12 +2028,12 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
- 	ext4_update_dx_flag(dir);
- 	inode_inc_iversion(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	err2 = ext4_mark_inode_dirty(handle, dir);
- 	BUFFER_TRACE(bh, "call ext4_handle_dirty_metadata");
- 	err = ext4_handle_dirty_dirblock(handle, dir, bh);
- 	if (err)
- 		ext4_std_error(dir->i_sb, err);
--	return 0;
-+	return err ? err : err2;
- }
- 
- /*
-@@ -2223,7 +2223,9 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		}
- 		ext4_clear_inode_flag(dir, EXT4_INODE_INDEX);
- 		dx_fallback++;
--		ext4_mark_inode_dirty(handle, dir);
-+		retval = ext4_mark_inode_dirty(handle, dir);
-+		if (unlikely(retval))
-+			goto out;
+  * The routine scans buddy structures (not bitmap!) from given order
+  * to max order and tries to find big enough chunk to satisfy the req
+@@ -2060,7 +2075,15 @@ static int ext4_mb_good_group(struct ext4_allocation=
+_context *ac,
+=20
+ 	/* We only do this if the grp has never been initialized */
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+-		int ret =3D ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
++		int ret;
++
++		/* cr=3D0/1 is a very optimistic search to find large
++		 * good chunks almost for free. if buddy data is
++		 * not ready, then this optimization makes no sense */
++
++		if (cr < 2 && !ext4_mb_uninit_on_disk(ac->ac_sb, group))
++			return 0;
++		ret =3D ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
+ 		if (ret)
+ 			return ret;
  	}
- 	blocks = dir->i_size >> sb->s_blocksize_bits;
- 	for (block = 0; block < blocks; block++) {
-@@ -2576,12 +2578,12 @@ static int ext4_add_nondir(handle_t *handle,
- 	struct inode *inode = *inodep;
- 	int err = ext4_add_entry(handle, dentry, inode);
- 	if (!err) {
--		ext4_mark_inode_dirty(handle, inode);
-+		err = ext4_mark_inode_dirty(handle, inode);
- 		if (IS_DIRSYNC(dir))
- 			ext4_handle_sync(handle);
- 		d_instantiate_new(dentry, inode);
- 		*inodep = NULL;
--		return 0;
-+		return err;
- 	}
- 	drop_nlink(inode);
- 	ext4_orphan_add(handle, inode);
-@@ -2775,7 +2777,7 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- {
- 	handle_t *handle;
- 	struct inode *inode;
--	int err, credits, retries = 0;
-+	int err, err2 = 0, credits, retries = 0;
- 
- 	if (EXT4_DIR_LINK_MAX(dir))
- 		return -EMLINK;
-@@ -2808,7 +2810,9 @@ static int ext4_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- 		clear_nlink(inode);
- 		ext4_orphan_add(handle, inode);
- 		unlock_new_inode(inode);
--		ext4_mark_inode_dirty(handle, inode);
-+		err2 = ext4_mark_inode_dirty(handle, inode);
-+		if (unlikely(err2))
-+			err = err2;
- 		ext4_journal_stop(handle);
- 		iput(inode);
- 		goto out_retry;
-@@ -3148,10 +3152,12 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	inode->i_size = 0;
- 	ext4_orphan_add(handle, inode);
- 	inode->i_ctime = dir->i_ctime = dir->i_mtime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	retval = ext4_mark_inode_dirty(handle, inode);
-+	if (retval)
-+		goto end_rmdir;
- 	ext4_dec_count(handle, dir);
- 	ext4_update_dx_flag(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	retval = ext4_mark_inode_dirty(handle, dir);
- 
- #ifdef CONFIG_UNICODE
- 	/* VFS negative dentries are incompatible with Encoding and
-@@ -3221,7 +3227,9 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 		goto end_unlink;
- 	dir->i_ctime = dir->i_mtime = current_time(dir);
- 	ext4_update_dx_flag(dir);
--	ext4_mark_inode_dirty(handle, dir);
-+	retval = ext4_mark_inode_dirty(handle, dir);
-+	if (retval)
-+		goto end_unlink;
- 	if (inode->i_nlink == 0)
- 		ext4_warning_inode(inode, "Deleting file '%.*s' with no links",
- 				   dentry->d_name.len, dentry->d_name.name);
-@@ -3230,7 +3238,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	if (!inode->i_nlink)
- 		ext4_orphan_add(handle, inode);
- 	inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	retval = ext4_mark_inode_dirty(handle, inode);
- 
- #ifdef CONFIG_UNICODE
- 	/* VFS negative dentries are incompatible with Encoding and
-@@ -3419,7 +3427,7 @@ static int ext4_link(struct dentry *old_dentry,
- 
- 	err = ext4_add_entry(handle, dentry, inode);
- 	if (!err) {
--		ext4_mark_inode_dirty(handle, inode);
-+		err = ext4_mark_inode_dirty(handle, inode);
- 		/* this can happen only for tmpfile being
- 		 * linked the first time
- 		 */
-@@ -3531,7 +3539,7 @@ static int ext4_rename_dir_finish(handle_t *handle, struct ext4_renament *ent,
- static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
- 		       unsigned ino, unsigned file_type)
- {
--	int retval;
-+	int retval, retval2;
- 
- 	BUFFER_TRACE(ent->bh, "get write access");
- 	retval = ext4_journal_get_write_access(handle, ent->bh);
-@@ -3543,19 +3551,19 @@ static int ext4_setent(handle_t *handle, struct ext4_renament *ent,
- 	inode_inc_iversion(ent->dir);
- 	ent->dir->i_ctime = ent->dir->i_mtime =
- 		current_time(ent->dir);
--	ext4_mark_inode_dirty(handle, ent->dir);
-+	retval = ext4_mark_inode_dirty(handle, ent->dir);
- 	BUFFER_TRACE(ent->bh, "call ext4_handle_dirty_metadata");
- 	if (!ent->inlined) {
--		retval = ext4_handle_dirty_dirblock(handle, ent->dir, ent->bh);
--		if (unlikely(retval)) {
--			ext4_std_error(ent->dir->i_sb, retval);
--			return retval;
-+		retval2 = ext4_handle_dirty_dirblock(handle, ent->dir, ent->bh);
-+		if (unlikely(retval2)) {
-+			ext4_std_error(ent->dir->i_sb, retval2);
-+			return retval2;
- 		}
- 	}
- 	brelse(ent->bh);
- 	ent->bh = NULL;
- 
--	return 0;
-+	return retval;
- }
- 
- static int ext4_find_delete_entry(handle_t *handle, struct inode *dir,
-@@ -3790,7 +3798,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 				     EXT4_FT_CHRDEV);
- 		if (retval)
- 			goto end_rename;
--		ext4_mark_inode_dirty(handle, whiteout);
-+		retval = ext4_mark_inode_dirty(handle, whiteout);
-+		if (unlikely(retval))
-+			goto end_rename;
- 	}
- 	if (!new.bh) {
- 		retval = ext4_add_entry(handle, new.dentry, old.inode);
-@@ -3811,7 +3821,9 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	 * rename.
- 	 */
- 	old.inode->i_ctime = current_time(old.inode);
--	ext4_mark_inode_dirty(handle, old.inode);
-+	retval = ext4_mark_inode_dirty(handle, old.inode);
-+	if (unlikely(retval))
-+		goto end_rename;
- 
- 	if (!whiteout) {
- 		/*
-@@ -3840,12 +3852,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		} else {
- 			ext4_inc_count(handle, new.dir);
- 			ext4_update_dx_flag(new.dir);
--			ext4_mark_inode_dirty(handle, new.dir);
-+			retval = ext4_mark_inode_dirty(handle, new.dir);
-+			if (unlikely(retval))
-+				goto end_rename;
- 		}
- 	}
--	ext4_mark_inode_dirty(handle, old.dir);
-+	retval = ext4_mark_inode_dirty(handle, old.dir);
-+	if (unlikely(retval))
-+		goto end_rename;
- 	if (new.inode) {
--		ext4_mark_inode_dirty(handle, new.inode);
-+		retval = ext4_mark_inode_dirty(handle, new.inode);
-+		if (unlikely(retval))
-+			goto end_rename;
- 		if (!new.inode->i_nlink)
- 			ext4_orphan_add(handle, new.inode);
- 	}
-@@ -3979,8 +3997,12 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	ctime = current_time(old.inode);
- 	old.inode->i_ctime = ctime;
- 	new.inode->i_ctime = ctime;
--	ext4_mark_inode_dirty(handle, old.inode);
--	ext4_mark_inode_dirty(handle, new.inode);
-+	retval = ext4_mark_inode_dirty(handle, old.inode);
-+	if (unlikely(retval))
-+		goto end_rename;
-+	retval = ext4_mark_inode_dirty(handle, new.inode);
-+	if (unlikely(retval))
-+		goto end_rename;
- 
- 	if (old.dir_bh) {
- 		retval = ext4_rename_dir_finish(handle, &old, new.dir->i_ino);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bf5fcb477f66..6135e187e3ed 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5885,7 +5885,7 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
- 		EXT4_I(inode)->i_flags |= EXT4_NOATIME_FL | EXT4_IMMUTABLE_FL;
- 		inode_set_flags(inode, S_NOATIME | S_IMMUTABLE,
- 				S_NOATIME | S_IMMUTABLE);
--		ext4_mark_inode_dirty(handle, inode);
-+		err = ext4_mark_inode_dirty(handle, inode);
- 		ext4_journal_stop(handle);
- 	unlock_inode:
- 		inode_unlock(inode);
-@@ -5987,12 +5987,14 @@ static int ext4_quota_off(struct super_block *sb, int type)
- 	 * this is not a hard failure and quotas are already disabled.
- 	 */
- 	handle = ext4_journal_start(inode, EXT4_HT_QUOTA, 1);
--	if (IS_ERR(handle))
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
- 		goto out_unlock;
-+	}
- 	EXT4_I(inode)->i_flags &= ~(EXT4_NOATIME_FL | EXT4_IMMUTABLE_FL);
- 	inode_set_flags(inode, 0, S_NOATIME | S_IMMUTABLE);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
--	ext4_mark_inode_dirty(handle, inode);
-+	err = ext4_mark_inode_dirty(handle, inode);
- 	ext4_journal_stop(handle);
- out_unlock:
- 	inode_unlock(inode);
-@@ -6050,7 +6052,7 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
- {
- 	struct inode *inode = sb_dqopt(sb)->files[type];
- 	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
--	int err, offset = off & (sb->s_blocksize - 1);
-+	int err = 0, err2 = 0, offset = off & (sb->s_blocksize - 1);
- 	int retries = 0;
- 	struct buffer_head *bh;
- 	handle_t *handle = journal_current_handle();
-@@ -6098,9 +6100,11 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 	if (inode->i_size < off + len) {
- 		i_size_write(inode, off + len);
- 		EXT4_I(inode)->i_disksize = inode->i_size;
--		ext4_mark_inode_dirty(handle, inode);
-+		err2 = ext4_mark_inode_dirty(handle, inode);
-+		if (unlikely(err2 && !err))
-+			err = err2;
- 	}
--	return len;
-+	return err ? err : len;
- }
- #endif
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 21df43a25328..b4847aad5a8f 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1327,7 +1327,7 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
- 	int blocksize = ea_inode->i_sb->s_blocksize;
- 	int max_blocks = (bufsize + blocksize - 1) >> ea_inode->i_blkbits;
- 	int csize, wsize = 0;
--	int ret = 0;
-+	int ret = 0, ret2 = 0;
- 	int retries = 0;
- 
- retry:
-@@ -1385,7 +1385,9 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
- 	ext4_update_i_disksize(ea_inode, wsize);
- 	inode_unlock(ea_inode);
- 
--	ext4_mark_inode_dirty(handle, ea_inode);
-+	ret2 = ext4_mark_inode_dirty(handle, ea_inode);
-+	if (unlikely(ret2 && !ret))
-+		ret = ret2;
- 
- out:
- 	brelse(bh);
--- 
-2.26.2.303.gf8c07b1a785-goog
+--=20
+
+
 
