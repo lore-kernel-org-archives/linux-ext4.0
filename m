@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46BA4C7C881
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 09:59:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCD74C7C881
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 09:59:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 21C2F20656
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 09:59:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9CC57206B8
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 09:59:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="g4m7rclB"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="gYDzouml"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726899AbgD0J7J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 27 Apr 2020 05:59:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48398 "EHLO
+        id S1726930AbgD0J7O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 Apr 2020 05:59:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48418 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726434AbgD0J7I (ORCPT
+        by vger.kernel.org with ESMTP id S1726826AbgD0J7N (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 27 Apr 2020 05:59:08 -0400
+        Mon, 27 Apr 2020 05:59:13 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 938F5C0610D5;
-        Mon, 27 Apr 2020 02:59:08 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8057CC0610D6;
+        Mon, 27 Apr 2020 02:59:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=UzizbhEUz8RFxwkADEYr7j5yKrh6yIY3xrVXEDanUrk=; b=g4m7rclBu0F/9TX73OsJlOLsQO
-        Us4M7RX6yj27i1Qbcs5V8++Of8xiL9KkAgjFqybCpptBF9n3vQFmswhw/uBKBdOJOOZ+bO7ZBJcNS
-        BCrDYIsS80FcfeYiBeFUoJUHKzpuvgloIAdy0fqExiRFBpMU6Z6ma0Qxu78ZmF1F0ZyLfqR5J5NBM
-        t5tlaGPSoNVaNoBVGs2ralX2j9EIQ8SvUPD6YqnFDeerHZtp4PLPr8BVWBgGq1oO+kkvKXtBwa10M
-        YfhDgEYWkPNttATDK559I8xLeIRwY2kX9+jpDQqQKdxfwcXrq/wWiDq8FJfym7x9I458BWYGzhWuj
-        LNF0PGeQ==;
+        bh=fiuWFSiyWrxr5pZxiwa99BOM3ARppZRkANpBIsZuVbs=; b=gYDzoumlq0F5c4vAjNogRUuTgf
+        RMLnBxdYg5G9ZJJTPfvpXFk0ldSTHnjPpwWRVjtCBKYYjcWG832oLknPhSlVrPv3A0GaAtdDL2l1/
+        U8FcjO+EN6juTY5DG7jqAKqoCurovCwbSE+OV5DNmoEH2fPIm+R5NW0jo+BKLY/frncByS2odBfmM
+        Ycug6TDO0Q4UZco0vn6uAiShJfb75lL6wGe/P/sMT5CsW0tJ951BNjZi1C8vmqJcuVO0UfUyK3rBc
+        I84/MZXzSMOZyb7iT/QsYUsBhjnWuLT4ripfHdnr0+UqRR/f6QAWI4e01pDtfSIIg60DpNxkSnH0b
+        Ccf7BA9A==;
 Received: from [2001:4bb8:193:f203:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1jT0Xc-0003g6-2P; Mon, 27 Apr 2020 09:59:08 +0000
+        id 1jT0Xg-0003iN-VL; Mon, 27 Apr 2020 09:59:13 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
 Cc:     jack@suse.cz, tytso@mit.edu, adilger@dilger.ca,
         riteshh@linux.ibm.com, amir73il@gmail.com,
         linux-fsdevel@vger.kernel.org, linux-unionfs@vger.kernel.org
-Subject: [PATCH 3/8] ext4: split _ext4_fiemap
-Date:   Mon, 27 Apr 2020 11:58:53 +0200
-Message-Id: <20200427095858.1440608-4-hch@lst.de>
+Subject: [PATCH 5/8] fs: mark __generic_block_fiemap static
+Date:   Mon, 27 Apr 2020 11:58:55 +0200
+Message-Id: <20200427095858.1440608-6-hch@lst.de>
 X-Mailer: git-send-email 2.26.1
 In-Reply-To: <20200427095858.1440608-1-hch@lst.de>
 References: <20200427095858.1440608-1-hch@lst.de>
@@ -57,127 +57,51 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The fiemap and EXT4_IOC_GET_ES_CACHE cases share almost no code, so split
-them into entirely separate functions.
+There is no caller left outside of ioctl.c.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ext4/extents.c | 72 +++++++++++++++++++++++------------------------
- 1 file changed, 35 insertions(+), 37 deletions(-)
+ fs/ioctl.c         | 4 +---
+ include/linux/fs.h | 4 ----
+ 2 files changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2b4b94542e34d..d2a2a3ba5c44a 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4854,11 +4854,9 @@ static int ext4_fiemap_check_ranges(struct inode *inode, u64 start, u64 *len)
- 	return 0;
- }
- 
--static int _ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
--			__u64 start, __u64 len, bool from_es_cache)
-+int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		u64 start, u64 len)
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 282d45be6f453..f55f53c7824bb 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -299,8 +299,7 @@ static inline loff_t blk_to_logical(struct inode *inode, sector_t blk)
+  * If you use this function directly, you need to do your own locking. Use
+  * generic_block_fiemap if you want the locking done for you.
+  */
+-
+-int __generic_block_fiemap(struct inode *inode,
++static int __generic_block_fiemap(struct inode *inode,
+ 			   struct fiemap_extent_info *fieinfo, loff_t start,
+ 			   loff_t len, get_block_t *get_block)
  {
--	ext4_lblk_t start_blk;
--	u32 ext4_fiemap_flags = FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR;
- 	int error = 0;
+@@ -445,7 +444,6 @@ int __generic_block_fiemap(struct inode *inode,
  
- 	if (fieinfo->fi_flags & FIEMAP_FLAG_CACHE) {
-@@ -4868,10 +4866,7 @@ static int _ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		fieinfo->fi_flags &= ~FIEMAP_FLAG_CACHE;
- 	}
- 
--	if (from_es_cache)
--		ext4_fiemap_flags &= FIEMAP_FLAG_XATTR;
--
--	if (fiemap_check_flags(fieinfo, ext4_fiemap_flags))
-+	if (fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR))
- 		return -EBADR;
- 
- 	/*
-@@ -4885,40 +4880,20 @@ static int _ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 
- 	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
- 		fieinfo->fi_flags &= ~FIEMAP_FLAG_XATTR;
--		error = iomap_fiemap(inode, fieinfo, start, len,
--				     &ext4_iomap_xattr_ops);
--	} else if (!from_es_cache) {
--		error = iomap_fiemap(inode, fieinfo, start, len,
--				     &ext4_iomap_report_ops);
--	} else {
--		ext4_lblk_t len_blks;
--		__u64 last_blk;
--
--		start_blk = start >> inode->i_sb->s_blocksize_bits;
--		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
--		if (last_blk >= EXT_MAX_BLOCKS)
--			last_blk = EXT_MAX_BLOCKS-1;
--		len_blks = ((ext4_lblk_t) last_blk) - start_blk + 1;
--
--		/*
--		 * Walk the extent tree gathering extent information
--		 * and pushing extents back to the user.
--		 */
--		error = ext4_fill_es_cache_info(inode, start_blk, len_blks,
--						fieinfo);
-+		return iomap_fiemap(inode, fieinfo, start, len,
-+				    &ext4_iomap_xattr_ops);
- 	}
--	return error;
--}
- 
--int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
--		__u64 start, __u64 len)
--{
--	return _ext4_fiemap(inode, fieinfo, start, len, false);
-+	return iomap_fiemap(inode, fieinfo, start, len, &ext4_iomap_report_ops);
+ 	return ret;
  }
+-EXPORT_SYMBOL(__generic_block_fiemap);
  
- int ext4_get_es_cache(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		      __u64 start, __u64 len)
- {
-+	ext4_lblk_t start_blk, len_blks;
-+	__u64 last_blk;
-+	int error = 0;
-+
- 	if (ext4_has_inline_data(inode)) {
- 		int has_inline;
+ /**
+  * generic_block_fiemap - FIEMAP for block based inodes
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 4f6f59b4f22a8..3104c6f7527b5 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3299,10 +3299,6 @@ static inline int vfs_fstat(int fd, struct kstat *stat)
+ extern const char *vfs_get_link(struct dentry *, struct delayed_call *);
+ extern int vfs_readlink(struct dentry *, char __user *, int);
  
-@@ -4929,9 +4904,32 @@ int ext4_get_es_cache(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			return 0;
- 	}
- 
--	return _ext4_fiemap(inode, fieinfo, start, len, true);
--}
-+	if (fieinfo->fi_flags & FIEMAP_FLAG_CACHE) {
-+		error = ext4_ext_precache(inode);
-+		if (error)
-+			return error;
-+		fieinfo->fi_flags &= ~FIEMAP_FLAG_CACHE;
-+	}
-+
-+	if (fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC))
-+		return -EBADR;
- 
-+	error = ext4_fiemap_check_ranges(inode, start, &len);
-+	if (error)
-+		return error;
-+
-+	start_blk = start >> inode->i_sb->s_blocksize_bits;
-+	last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
-+	if (last_blk >= EXT_MAX_BLOCKS)
-+		last_blk = EXT_MAX_BLOCKS-1;
-+	len_blks = ((ext4_lblk_t) last_blk) - start_blk + 1;
-+
-+	/*
-+	 * Walk the extent tree gathering extent information
-+	 * and pushing extents back to the user.
-+	 */
-+	return ext4_fill_es_cache_info(inode, start_blk, len_blks, fieinfo);
-+}
- 
- /*
-  * ext4_access_path:
+-extern int __generic_block_fiemap(struct inode *inode,
+-				  struct fiemap_extent_info *fieinfo,
+-				  loff_t start, loff_t len,
+-				  get_block_t *get_block);
+ extern int generic_block_fiemap(struct inode *inode,
+ 				struct fiemap_extent_info *fieinfo, u64 start,
+ 				u64 len, get_block_t *get_block);
 -- 
 2.26.1
 
