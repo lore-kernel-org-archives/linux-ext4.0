@@ -2,103 +2,133 @@ Return-Path: <SRS0=EIo+=6L=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4AEFC54FD0
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:04:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4C55C55194
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:34:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 77863206DD
-	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:04:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A25B8206DD
+	for <linux-ext4@archiver.kernel.org>; Mon, 27 Apr 2020 01:34:45 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HVVL50XG"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726327AbgD0BEw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 26 Apr 2020 21:04:52 -0400
-Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:44681 "EHLO
-        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726227AbgD0BEw (ORCPT
+        id S1726349AbgD0Bep (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 26 Apr 2020 21:34:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55032 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726327AbgD0Beo (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 26 Apr 2020 21:04:52 -0400
-Received: from dread.disaster.area (pa49-195-157-175.pa.nsw.optusnet.com.au [49.195.157.175])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 135283A48CB;
-        Mon, 27 Apr 2020 11:04:45 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1jSsCS-0000xz-SL; Mon, 27 Apr 2020 11:04:44 +1000
-Date:   Mon, 27 Apr 2020 11:04:44 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        Jan Kara <jack@suse.com>, tytso@mit.edu,
-        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/2] fibmap: Warn and return an error in case of block >
- INT_MAX
-Message-ID: <20200427010444.GF2040@dread.disaster.area>
-References: <cover.1587670914.git.riteshh@linux.ibm.com>
- <e34d1ac05d29aeeb982713a807345a0aaafc7fe0.1587670914.git.riteshh@linux.ibm.com>
- <20200424191739.GA217280@gmail.com>
- <20200424225425.6521D4C040@d06av22.portsmouth.uk.ibm.com>
- <20200424234058.GA29705@bombadil.infradead.org>
- <20200424234647.GX6749@magnolia>
- <20200425070335.B43334C046@d06av22.portsmouth.uk.ibm.com>
+        Sun, 26 Apr 2020 21:34:44 -0400
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDB1FC061A10
+        for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2020 18:34:44 -0700 (PDT)
+Received: by mail-pf1-x443.google.com with SMTP id y25so8180897pfn.5
+        for <linux-ext4@vger.kernel.org>; Sun, 26 Apr 2020 18:34:44 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=ApY71GV24xgG9hyj18t7ETunrHn4njw09UQGn+OtWvs=;
+        b=HVVL50XGFdafZjM4+UjTbNoHYQclR+skPlGtaM0tSYlsp5WHUd24ihbV4UqTPWssq2
+         Yhn95MC/0dIWA/H6eJ90pCMHu6+HyS1dH3HZcpmbELkjpjc4hR0opQyTqcV3ZAkN5WLc
+         BuDYMKjmdmGOUdPTU1wxn4PU/QXTyP421lgZmhmM5fRkszIht2YVfQzpmExj8VFYAvwb
+         m3NhPs5KccqJ6Kq+gGNDbeAGcim3y0X2zIB641sN7A6dtAWTDMgikQmlK0ZGfw1bGbuz
+         0JQclt29tEOCQRpYu+a7WDgWjh9stU8MKGYP7fYN36L0jGaR6qq/6LuP5SvzNUxKWVfM
+         wvZg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=ApY71GV24xgG9hyj18t7ETunrHn4njw09UQGn+OtWvs=;
+        b=igS0kXiJoG0B7yqo8odwET9acpcsVrEyfPPCZ54YaUEIcBPW1Ls3t8fyO1sUZPfQNA
+         rzmMqMUIahcAxjJtyDEJ4jyX8wkdK6MCiQGDEUgSrctdXFnlNXhIHcS5t88bCuffCbis
+         UIn43tE10tiEcghseHYc18nj5r96BSmRA67Yfaq+27xWtfCE9iCe1jC6Ppxvjl3u+aZ/
+         uDRBXdLxGBSvHoeZC1if1HMDZwXnqw7L7kY5q28eU02SBXs37NmtRkRVyg4Iec0Uqi1E
+         MU2MEPFkCFD+VzGg4jWckqPBMLqDIOzT4Nx5jOpJfHVCC/QmpK/s9uW9L5TMfWmnLgzF
+         eCWw==
+X-Gm-Message-State: AGi0Pua25ykSQ+0PZnlemvT6ePbVCbJuFf9jXcYAcf0tDH2VucERUKUT
+        tWEv/JVRojUceox99ZLdy4JC3ZOj
+X-Google-Smtp-Source: APiQypKDIDVB5lU9x3ZPKD4Vl7U5+FrfZkpqBj0m1Pch9bQMEeLxOnj9XUsdu2L3Pravl4GS4tKo9g==
+X-Received: by 2002:a62:81c6:: with SMTP id t189mr21315030pfd.174.1587951283830;
+        Sun, 26 Apr 2020 18:34:43 -0700 (PDT)
+Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:6271:607:aca0:b6f7])
+        by smtp.googlemail.com with ESMTPSA id o198sm10913790pfg.183.2020.04.26.18.34.43
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 26 Apr 2020 18:34:43 -0700 (PDT)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH v3] ext4: don't ignore return values from ext4_ext_dirty()
+Date:   Sun, 26 Apr 2020 18:34:38 -0700
+Message-Id: <20200427013438.219117-2-harshadshirwadkar@gmail.com>
+X-Mailer: git-send-email 2.26.2.303.gf8c07b1a785-goog
+In-Reply-To: <20200427013438.219117-1-harshadshirwadkar@gmail.com>
+References: <20200427013438.219117-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200425070335.B43334C046@d06av22.portsmouth.uk.ibm.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=QIgWuTDL c=1 sm=1 tr=0
-        a=ONQRW0k9raierNYdzxQi9Q==:117 a=ONQRW0k9raierNYdzxQi9Q==:17
-        a=kj9zAlcOel0A:10 a=cl8xLZFz6L8A:10 a=7-415B0cAAAA:8
-        a=XPaiuk4yifFrNG777nsA:9 a=DN0oiWT_x0Zc_wvr:21 a=PPZh3J10_SXtonLC:21
-        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Apr 25, 2020 at 12:33:34PM +0530, Ritesh Harjani wrote:
-> 
-> 
-> On 4/25/20 5:16 AM, Darrick J. Wong wrote:
-> > On Fri, Apr 24, 2020 at 04:40:58PM -0700, Matthew Wilcox wrote:
-> > > On Sat, Apr 25, 2020 at 04:24:24AM +0530, Ritesh Harjani wrote:
-> > > > Ok, I see.
-> > > > Let me replace WARN() with below pr_warn() line then. If no objections,
-> > > > then will send this in a v2 with both patches combined as Darrick
-> > > > suggested. - (with Reviewed-by tags of Jan & Christoph).
-> > > > 
-> > > > pr_warn("fibmap: this would truncate fibmap result\n");
-> > > 
-> > > We generally don't like userspace to be able to trigger kernel messages
-> > > on demand, so they can't swamp the logfiles.  printk_ratelimited()?
-> > 
-> > Or WARN_ON_ONCE...
-> 
-> So, Eric was mentioning WARN_** are mostly for kernel side of bugs.
-> But this is mostly a API fault which affects user side and also to
-> warn the user about the possible truncation in the block fibmap
-> addr.
-> Also WARN_ON_ONCE, will be shown only once and won't be printed for
-> every other file for which block addr > INT_MAX.
-> 
-> I think we could go with below. If ok, I could post this in v2.
-> 
-> pr_warn_ratelimited("fibmap: would truncate fibmap result\n");
+Don't ignore return values from ext4_ext_dirty, since the errors
+indicate valid failures below Ext4.  In all of the other instances of
+ext4_ext_dirty calls, the error return value is handled in some
+way. This patch makes those remaining couple of places to handle
+ext4_ext_dirty errors as well. In case of ext4_split_extent_at(), the
+ignorance of return value is intentional. The reason is that we are
+already in error path and there isn't much we can do if ext4_ext_dirty
+returns error. This patch adds a comment for that case explaining why
+we ignore the return value.
 
-Please include the process ID, the superblock ID and the task name
-that is triggering this warning. Otherwise the administrator will
-have no clue what is generating it and so won't be able to fix it...
+In the longer run, we probably should
+make sure that errors from other mark_dirty routines are handled as
+well.
 
-Cheers,
+Ran gce-xfstests smoke tests and verified that there were no
+regressions.
 
-Dave.
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ Changes since V2:
+ * Reorganized commit message
+
+ Changes since V1:
+ * Fixed incorrect return value handling in ext4_split_extent_at()
+
+ fs/ext4/extents.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index f2b577b315a0..6425f4f9a197 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3244,6 +3244,10 @@ static int ext4_split_extent_at(handle_t *handle,
+ 
+ fix_extent_len:
+ 	ex->ee_len = orig_ex.ee_len;
++	/*
++	 * Ignore ext4_ext_dirty return value since we are already in error path
++	 * and err is a non-zero error code.
++	 */
+ 	ext4_ext_dirty(handle, inode, path + path->p_depth);
+ 	return err;
+ }
+@@ -3503,7 +3507,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 	}
+ 	if (allocated) {
+ 		/* Mark the block containing both extents as dirty */
+-		ext4_ext_dirty(handle, inode, path + depth);
++		err = ext4_ext_dirty(handle, inode, path + depth);
+ 
+ 		/* Update path to point to the right extent */
+ 		path[depth].p_ext = abut_ex;
 -- 
-Dave Chinner
-david@fromorbit.com
+2.26.2.303.gf8c07b1a785-goog
+
