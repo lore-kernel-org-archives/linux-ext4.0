@@ -1,59 +1,92 @@
 Return-Path: <SRS0=jPQg=6M=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: *
-X-Spam-Status: No, score=1.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,PHP_ORIG_SCRIPT,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Level: 
+X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C00E5C83002
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 02:16:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC5F9C83002
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 02:26:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6497206D9
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 02:16:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE4652076A
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 02:26:21 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WMtwLvKU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726422AbgD1CQw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 27 Apr 2020 22:16:52 -0400
-Received: from comunidaddenegocios.com ([167.86.78.137]:57718 "EHLO
-        vmi244585.contaboserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726251AbgD1CQv (ORCPT
+        id S1726275AbgD1C0V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 27 Apr 2020 22:26:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33526 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726261AbgD1C0U (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 27 Apr 2020 22:16:51 -0400
-X-Greylist: delayed 3303 seconds by postgrey-1.27 at vger.kernel.org; Mon, 27 Apr 2020 22:16:51 EDT
-Received: from comunidaddenegoc by vmi244585.contaboserver.net with local (Exim 4.93)
-        (envelope-from <support@planc.comunidaddenegocios.com>)
-        id 1jTENa-0005I7-13
-        for linux-ext4@vger.kernel.org; Tue, 28 Apr 2020 02:45:42 +0200
-To:     linux-ext4@vger.kernel.org
-Subject: Curiosity
-X-PHP-Script: planc.comunidaddenegocios.com/wp-content/plugins/ocbhfaobnrrke.php for 109.236.16.121
-X-PHP-Originating-Script: 1000:ocbhfaobnrrke.php
-Date:   Tue, 28 Apr 2020 00:45:42 +0000
-From:   support@planc.comunidaddenegocios.com
-Reply-To: lindhanse@aol.com
-Message-ID: <45f7afc3660fd78bf555bb3c1a559219@planc.comunidaddenegocios.com>
+        Mon, 27 Apr 2020 22:26:20 -0400
+Received: from mail-io1-xd44.google.com (mail-io1-xd44.google.com [IPv6:2607:f8b0:4864:20::d44])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 69070C03C1A8;
+        Mon, 27 Apr 2020 19:26:19 -0700 (PDT)
+Received: by mail-io1-xd44.google.com with SMTP id k6so21244245iob.3;
+        Mon, 27 Apr 2020 19:26:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=FMvwtGQZLq1L/lrozASgEEmqeKN2vH77hyNyQPJ8S5w=;
+        b=WMtwLvKUh2T8bj7twbhvT28/7Rm//2fQwrABXEyjG0ghPG8gKkw2RslGTLbcbm5sW1
+         +R07Dn7q1ToS0ZkSZc5/zNb7qy1rC+d2PNnh6tDk9lk5KUmWWRyshQACmhSfEY01+aqT
+         tLEYuVhDd+hVu9xOXRL7ZUfoRROPo0Yl4T6HuLJ+Ire0K7gTa8YNkIL3c1KB12581qcG
+         qGS12oYhvz7RynAu2UbjAYGXXv4un4ZHTDNaycp69bXHHYNNA1RGBQFmoIy1Yj7+yndZ
+         LXY4X7WOSzTuozb3uSjCGcvbiNUgkZaXuQhyxKecSHpoW8Gb06Fc5U2tlCJIyekGw9Ac
+         xEqQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=FMvwtGQZLq1L/lrozASgEEmqeKN2vH77hyNyQPJ8S5w=;
+        b=qnTJn8BWufSdExZ3IoNjggoGPajxBbrlvYv8DgaAQXh/Zs9zDYR1wKkIsasdmod2zq
+         QyIWDeB8w4D5zIry4LCK3nilhRee5u6TYQdRCFhoxChI7e+u8QMVRjtGeVwIKglNI1M5
+         JDucIYNiJIkK6biUelwFRzL3RBMlMSrdcIsprwR7bvyyZH3FhASmSTlYABvvWBtqjtud
+         1wpSVFYtJOShNUgIandZrKW1B9JjFrm5EirERX6mgh8l0OZLrje3WcXHaBIyLN3V4NWG
+         wvybvSGBX9l7VjkRz7eGJpLKlbLNqNKfgs0BjgtJIX2I4eFg6E9domKvMrlOFjUwtYAq
+         UvwA==
+X-Gm-Message-State: AGi0Pubs8DnutmVt/wXNkcVW2mdbJEgGSbXwRr6IlkdwMbsBgftcuv3Q
+        KrM48THH1WBnBY9Cw494JwAPGRr9inroiB7DQDA3skc9
+X-Google-Smtp-Source: APiQypJa4Bmq8SUVveALMu0EuXsQBvvkLvIQ2EOIFIl2XTHp5c2ju7RDRhCFNDct2aKaHTWVZs7k0pzDtPkZ59TS7C4=
+X-Received: by 2002:a5e:a90a:: with SMTP id c10mr24021886iod.64.1588040778785;
+ Mon, 27 Apr 2020 19:26:18 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - vmi244585.contaboserver.net
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [1000 993] / [47 12]
-X-AntiAbuse: Sender Address Domain - planc.comunidaddenegocios.com
-X-Get-Message-Sender-Via: vmi244585.contaboserver.net: authenticated_id: comunidaddenegoc/from_h
-X-Authenticated-Sender: vmi244585.contaboserver.net: support@planc.comunidaddenegocios.com
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
+References: <20200427181957.1606257-1-hch@lst.de> <20200427181957.1606257-10-hch@lst.de>
+In-Reply-To: <20200427181957.1606257-10-hch@lst.de>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Tue, 28 Apr 2020 05:26:07 +0300
+Message-ID: <CAOQ4uxj8=C887JUSEMDZtyUz+m9muVUd1Z4o64RX1pH8LJYrkw@mail.gmail.com>
+Subject: Re: [PATCH 09/11] fs: handle FIEMAP_FLAG_SYNC in fiemap_prep
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Ext4 <linux-ext4@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        Theodore Tso <tytso@mit.edu>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        overlayfs <linux-unionfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+On Mon, Apr 27, 2020 at 9:20 PM Christoph Hellwig <hch@lst.de> wrote:
+>
+> By moving FIEMAP_FLAG_SYNC handling to fiemap_prep we ensure it is
+> handled once instead of duplicated, but can still be done under fs locks,
+> like xfs/iomap intended with its duplicate handling.  Also make sure the
+> error value of filemap_write_and_wait is propagated to user space.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-I am writing to certify if you receive my email  yesterday?
+Nice!
 
-Regards,
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
-Linda
-
+Thanks for fixing this,
+Amir.
