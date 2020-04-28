@@ -7,48 +7,48 @@ X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7BF1C8300A
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 16:46:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B46D0C83000
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 16:46:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B5C652063A
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 16:46:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8FD532063A
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Apr 2020 16:46:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Z2HH80y+"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="FkyWb57k"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728397AbgD1QqE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 28 Apr 2020 12:46:04 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:22326 "EHLO
+        id S1728487AbgD1QqG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 28 Apr 2020 12:46:06 -0400
+Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:26854 "EHLO
         us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728335AbgD1QqD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2020 12:46:03 -0400
+        with ESMTP id S1728335AbgD1QqG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2020 12:46:06 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1588092362;
+        s=mimecast20190719; t=1588092365;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=awIdlJPQ9LlyBzZxzGVt+TGNC0E18izI0m2rhnL0YqM=;
-        b=Z2HH80y+o2YY6c5+kOPCDije+LCai5bxHjJXTXATf8mfv5MP3DBw17oIR6KDDoBF0w761G
-        sZMNd5oIS58WMmKE4s0g6ZYr5p/OormQusjUy0hy7uNh17ha0KppIfCFUFlf72IE7D7y3w
-        dAjND1a/y+hmd+eqdhNrZ+YFPUlhhKk=
+        bh=nqFcUeESBHvk57xWRzVAWI9c7p4HOTfwGhjSrI5Yheo=;
+        b=FkyWb57kyovO6eK09A2lJvRdVh3xFwLUQkEtie6qo6ouuA5u0Ej8h1ijRtx79q1UT06lEE
+        bCJ/56elJ7dPr2hGG6Ts+g5kT+Fbe1HIyqRoAc09ojKCnzkxhbRvLdlYgAiTnUIm/9AGV8
+        DFz5gWte5/4grCu7XelvHZeT1GzDBJg=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-494-dz7VEMY1Nx-TR-hnkJq-XA-1; Tue, 28 Apr 2020 12:45:58 -0400
-X-MC-Unique: dz7VEMY1Nx-TR-hnkJq-XA-1
+ us-mta-135-76Qetu4xNXmgtCMc6yXb7Q-1; Tue, 28 Apr 2020 12:46:01 -0400
+X-MC-Unique: 76Qetu4xNXmgtCMc6yXb7Q-1
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AD546835B46;
-        Tue, 28 Apr 2020 16:45:57 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3CD36100A61F;
+        Tue, 28 Apr 2020 16:46:00 +0000 (UTC)
 Received: from localhost.localdomain (unknown [10.40.192.34])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C1E6B1002388;
-        Tue, 28 Apr 2020 16:45:56 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 4DA1C1000322;
+        Tue, 28 Apr 2020 16:45:59 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk
-Subject: [PATCH v2 10/17] ext4: clean up return values in handle_mount_opt()
-Date:   Tue, 28 Apr 2020 18:45:29 +0200
-Message-Id: <20200428164536.462-11-lczerner@redhat.com>
+Subject: [PATCH v2 12/17] ext4: refactor ext4_remount()
+Date:   Tue, 28 Apr 2020 18:45:31 +0200
+Message-Id: <20200428164536.462-13-lczerner@redhat.com>
 In-Reply-To: <20200428164536.462-1-lczerner@redhat.com>
 References: <20200428164536.462-1-lczerner@redhat.com>
 MIME-Version: 1.0
@@ -59,101 +59,130 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Clean up return values in handle_mount_opt() and rename the function to
-ext4_parse_param()
-
-Now we can use it in fs_context_operations as .parse_param.
+Refactor ext4_remount() so that we can parse mount options separately.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/super.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+ fs/ext4/super.c | 62 +++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 50 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ea7c8f7d4c7c..81238dddc3b7 100644
+index 729a07c298e2..a340b4943544 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -92,6 +92,7 @@ static int ext4_validate_options(struct fs_context *fc)=
-;
- static int ext4_check_opt_consistency(struct fs_context *fc,
- 				      struct super_block *sb);
- static void ext4_apply_options(struct fs_context *fc, struct super_block=
- *sb);
-+static int ext4_parse_param(struct fs_context *fc, struct fs_parameter *=
-param);
+@@ -5926,8 +5926,10 @@ struct ext4_mount_options {
+ #endif
+ };
 =20
- /*
-  * Lock ordering
-@@ -121,6 +122,10 @@ static void ext4_apply_options(struct fs_context *fc=
-, struct super_block *sb);
-  * transaction start -> page lock(s) -> i_data_sem (rw)
-  */
-=20
-+static const struct fs_context_operations ext4_context_ops =3D {
-+	.parse_param	=3D ext4_parse_param,
-+};
-+
- #if !defined(CONFIG_EXT2_FS) && !defined(CONFIG_EXT2_FS_MODULE) && defin=
-ed(CONFIG_EXT4_USE_FOR_EXT2)
- static struct file_system_type ext2_fs_type =3D {
- 	.owner		=3D THIS_MODULE,
-@@ -2028,7 +2033,7 @@ EXT4_SET_CTX(mount_opt2);
- EXT4_SET_CTX(mount_flags);
-=20
-=20
--static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *=
-param)
-+static int ext4_parse_param(struct fs_context *fc, struct fs_parameter *=
-param)
+-static int ext4_remount(struct super_block *sb, int *flags, char *data)
++static int __ext4_remount(struct fs_context *fc, struct super_block *sb,
++			  int *flags)
  {
- 	struct ext4_fs_context *ctx =3D fc->fs_private;
- 	const struct mount_opts *m;
-@@ -2062,19 +2067,19 @@ static int handle_mount_opt(struct fs_context *fc=
-, struct fs_parameter *param)
- 	case Opt_removed:
- 		ext4_msg(NULL, KERN_WARNING, "Ignoring removed %s option",
- 			 param->key);
--		return 1;
-+		return 0;
- 	case Opt_abort:
- 		set_mount_flags(ctx, EXT4_MF_FS_ABORTED);
--		return 1;
-+		return 0;
- 	case Opt_i_version:
- 		set_flags(ctx, SB_I_VERSION);
--		return 1;
-+		return 0;
- 	case Opt_lazytime:
- 		set_flags(ctx, SB_LAZYTIME);
--		return 1;
-+		return 0;
- 	case Opt_nolazytime:
- 		clear_flags(ctx, SB_LAZYTIME);
--		return 1;
-+		return 0;
- 	case Opt_errors:
- 	case Opt_data:
- 	case Opt_data_err:
-@@ -2275,7 +2280,7 @@ static int handle_mount_opt(struct fs_context *fc, =
-struct fs_parameter *param)
- 		else
- 			clear_mount_opt(ctx, m->mount_opt);
- 	}
--	return 1;
-+	return 0;
++	struct ext4_fs_context *ctx =3D fc->fs_private;
+ 	struct ext4_super_block *es;
+ 	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
+ 	unsigned long old_sb_flags;
+@@ -5940,10 +5942,6 @@ static int ext4_remount(struct super_block *sb, in=
+t *flags, char *data)
+ 	int i, j;
+ 	char *to_free[EXT4_MAXQUOTAS];
+ #endif
+-	char *orig_data =3D kstrdup(data, GFP_KERNEL);
+-
+-	if (data && !orig_data)
+-		return -ENOMEM;
+=20
+ 	/* Store the original options */
+ 	old_sb_flags =3D sb->s_flags;
+@@ -5964,7 +5962,6 @@ static int ext4_remount(struct super_block *sb, int=
+ *flags, char *data)
+ 			if (!old_opts.s_qf_names[i]) {
+ 				for (j =3D 0; j < i; j++)
+ 					kfree(old_opts.s_qf_names[j]);
+-				kfree(orig_data);
+ 				return -ENOMEM;
+ 			}
+ 		} else
+@@ -5973,9 +5970,10 @@ static int ext4_remount(struct super_block *sb, in=
+t *flags, char *data)
+ 	if (sbi->s_journal && sbi->s_journal->j_task->io_context)
+ 		journal_ioprio =3D sbi->s_journal->j_task->io_context->ioprio;
+=20
+-	err =3D parse_apply_options(data, sb, NULL, &journal_ioprio, 1);
+-	if (err < 0)
+-		goto restore_opts;
++	if (ctx->spec & EXT4_SPEC_JOURNAL_IOPRIO)
++		journal_ioprio =3D ctx->journal_ioprio;
++
++	ext4_apply_options(fc, sb);
+=20
+ 	if ((old_opts.s_mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) ^
+ 	    test_opt(sb, JOURNAL_CHECKSUM)) {
+@@ -6172,8 +6170,7 @@ static int ext4_remount(struct super_block *sb, int=
+ *flags, char *data)
+ #endif
+=20
+ 	*flags =3D (*flags & ~SB_LAZYTIME) | (sb->s_flags & SB_LAZYTIME);
+-	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+-	kfree(orig_data);
++	ext4_msg(sb, KERN_INFO, "re-mounted.");
+ 	return 0;
+=20
+ restore_opts:
+@@ -6195,10 +6192,51 @@ static int ext4_remount(struct super_block *sb, i=
+nt *flags, char *data)
+ 	for (i =3D 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(to_free[i]);
+ #endif
+-	kfree(orig_data);
+ 	return err;
  }
 =20
- static int parse_options(struct fs_context *fc, char *options)
-@@ -2311,7 +2316,7 @@ static int parse_options(struct fs_context *fc, cha=
-r *options)
- 			param.key =3D key;
- 			param.size =3D v_len;
-=20
--			ret =3D handle_mount_opt(fc, &param);
-+			ret =3D ext4_parse_param(fc, &param);
- 			if (param.string)
- 				kfree(param.string);
- 			if (ret < 0)
++static int ext4_remount(struct super_block *sb, int *flags, char *data)
++{
++	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
++	struct ext4_fs_context ctx;
++	struct fs_context fc;
++	char *orig_data;
++	int ret;
++
++	orig_data =3D kstrdup(data, GFP_KERNEL);
++	if (data && !orig_data)
++		return -ENOMEM;
++
++	memset(&fc, 0, sizeof(fc));
++	memset(&ctx, 0, sizeof(ctx));
++
++	fc.fs_private =3D &ctx;
++	fc.purpose =3D FS_CONTEXT_FOR_RECONFIGURE;
++	fc.s_fs_info =3D sbi;
++
++	ret =3D parse_options(&fc, (char *) data);
++	if (ret < 0)
++		goto err_out;
++
++	ret =3D ext4_check_opt_consistency(&fc, sb);
++	if (ret < 0)
++		goto err_out;
++
++	ret =3D __ext4_remount(&fc, sb, flags);
++	if (ret < 0)
++		goto err_out;
++
++	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
++	cleanup_ctx(&ctx);
++	kfree(orig_data);
++	return 0;
++
++err_out:
++	cleanup_ctx(&ctx);
++	kfree(orig_data);
++	return ret;
++}
++
+ #ifdef CONFIG_QUOTA
+ static int ext4_statfs_project(struct super_block *sb,
+ 			       kprojid_t projid, struct kstatfs *buf)
 --=20
 2.21.1
 
