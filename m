@@ -2,222 +2,66 @@ Return-Path: <SRS0=7uWi=6N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E868C83007
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 07:22:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 483E4C83004
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 07:22:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F6E820787
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 07:22:13 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="I7kClOzm"
+	by mail.kernel.org (Postfix) with ESMTP id 338372083B
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 07:22:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726681AbgD2HWL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Apr 2020 03:22:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50818 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726618AbgD2HVe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Apr 2020 03:21:34 -0400
-Received: from mail-qv1-xf4a.google.com (mail-qv1-xf4a.google.com [IPv6:2607:f8b0:4864:20::f4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9705DC09B043
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2020 00:21:34 -0700 (PDT)
-Received: by mail-qv1-xf4a.google.com with SMTP id bm3so1663996qvb.0
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2020 00:21:34 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
-         :cc;
-        bh=5Mo+7MFFBs4sdz9XooTQaPI4Fqr1H1d4GlYPjtWQb8M=;
-        b=I7kClOzmTA/wrxEymX9+bQY/uNDPHNXeuBH6wJwB7E9qYl97j1h9k4xUVUJbODo3tO
-         JPZ7apzzY/QxnPmjsHNPBCOtBURyQkqwZymtt1uCUNp3xX9ELk1KWfTRAQgfnwlcBNts
-         P6pCs01aabeU4M9ciU88WGASxRihBCxwBbNmA3d9P0AcnnCQI4cymkoXFJeYV5rUmFLr
-         PRKeMz7xwWnkqZ5Fbull+TOmR8d9R38oSISpq1T+6E8mKArYYo7JBwDA4RDjYqIiJVRb
-         S8URvchFKtXCETzCgDab7TavKIsCKuTWBQkdU3yOayOaS3ywEPq72UtGM3DMcZDeaytv
-         hQtA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=5Mo+7MFFBs4sdz9XooTQaPI4Fqr1H1d4GlYPjtWQb8M=;
-        b=S4vYKwznRj0iTzul27EFA5ySbnn8oVEwAy1XIhrtO86QE7umqwGtqZDYM7Lpk11MWs
-         8LQxYFfINHwO48cGKfA3L+JayVzbVsaL87a4hzD55Zdhon6g3s8gC27HnDtM3mMHujiI
-         cPUOOiYORdfyj11OPiSBSs3vQBLXn3vUmYgT9Hrtn6U0YDAQJW5v/qGsb7vFqeTDc7GO
-         UjsVHEtjQYcgnfwIeVEH17bdxsHNyYvbcBIaCwdyYVf4JMDkT21G9PEc6R1sSeydZwkc
-         XASZ66G55gatGrkLPjqaOKyjZY0eexJ7lHyKsSut62R6yA7mS38YFhBrt5hBPSTZRTIs
-         +n0g==
-X-Gm-Message-State: AGi0PuaZ5BRjLMfXEk2dYEHJyfTGMDYpn+n+uvSSYGibimvBimp1ZMn0
-        CimXsMwHhnvmBJZ+lclVBryL6AkhZZU=
-X-Google-Smtp-Source: APiQypKMUvPJ1WDTi+RZxM7ebkhMHyaIPvn+6oN+h7e3EzQfL31PHWMOYerxu68ZIum149zO8oAgKyVAGmM=
-X-Received: by 2002:ad4:4e65:: with SMTP id ec5mr32206941qvb.32.1588144893748;
- Wed, 29 Apr 2020 00:21:33 -0700 (PDT)
-Date:   Wed, 29 Apr 2020 07:21:13 +0000
-In-Reply-To: <20200429072121.50094-1-satyat@google.com>
-Message-Id: <20200429072121.50094-5-satyat@google.com>
-Mime-Version: 1.0
-References: <20200429072121.50094-1-satyat@google.com>
-X-Mailer: git-send-email 2.26.2.303.gf8c07b1a785-goog
-Subject: [PATCH v11 04/12] block: Make blk-integrity preclude hardware inline encryption
-From:   Satya Tangirala <satyat@google.com>
-To:     linux-block@vger.kernel.org, linux-scsi@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
-Cc:     Barani Muthukumaran <bmuthuku@qti.qualcomm.com>,
-        Kuohong Wang <kuohong.wang@mediatek.com>,
-        Kim Boojin <boojin.kim@samsung.com>,
-        Satya Tangirala <satyat@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726456AbgD2HWy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Apr 2020 03:22:54 -0400
+Received: from out30-43.freemail.mail.aliyun.com ([115.124.30.43]:32982 "EHLO
+        out30-43.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726401AbgD2HWy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 29 Apr 2020 03:22:54 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R101e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04357;MF=jefflexu@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0Tx.9S2O_1588144970;
+Received: from admindeMacBook-Pro-2.local(mailfrom:jefflexu@linux.alibaba.com fp:SMTPD_---0Tx.9S2O_1588144970)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Wed, 29 Apr 2020 15:22:50 +0800
+Subject: Re: [PATCH RFC 1/2] xfstests: fsx: add support for cluster size
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        joseph.qi@linux.alibaba.com
+References: <1587720830-11955-1-git-send-email-jefflexu@linux.alibaba.com>
+ <1587720830-11955-2-git-send-email-jefflexu@linux.alibaba.com>
+ <20200427172929.GL6740@magnolia>
+From:   JeffleXu <jefflexu@linux.alibaba.com>
+Message-ID: <66363e66-9c89-b877-e8d5-830d2c100b3b@linux.alibaba.com>
+Date:   Wed, 29 Apr 2020 15:22:49 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0)
+ Gecko/20100101 Thunderbird/68.7.0
+MIME-Version: 1.0
+In-Reply-To: <20200427172929.GL6740@magnolia>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Whenever a device supports blk-integrity, the kernel will now always
-pretend that the device doesn't support inline encryption (essentially
-by setting the keyslot manager in the request queue to NULL).
 
-There's no hardware currently that supports both integrity and inline
-encryption. However, it seems possible that there will be such hardware
-in the near future (like the NVMe key per I/O support that might support
-both inline encryption and PI).
+On 4/28/20 1:29 AM, Darrick J. Wong wrote:
+> On Fri, Apr 24, 2020 at 05:33:49PM +0800, Jeffle Xu wrote:
+>> The offset and size should be aligned with cluster size when inserting
+>> or collapsing range on ext4 with 'bigalloc' feature enabled. Currently
+>> I can find only ext4 with this limitation.
+> ocfs2 also has this magic, um, ability.
+>
+> As does xfs under certain circumstance (realtime volumes).
+>
+>> Since fsx should have no assumption of the underlying filesystem, and
+>> thus add the '-u cluster_size' option. Tests can set this option when
+>> the underlying filesystem is ext4 with bigalloc enabled.
+> Do copyrange, clonerange, or deduperange have this problem? ;)
 
-But properly integrating both features is not trivial, and without
-real hardware that implements both, it is difficult to tell if it will
-be done correctly by the majority of hardware that support both.
-So it seems best not to support both features together right now, and
-to decide what to do at probe time.
 
-Signed-off-by: Satya Tangirala <satyat@google.com>
----
- block/bio-integrity.c   |  3 +++
- block/blk-integrity.c   |  7 +++++++
- block/keyslot-manager.c | 19 +++++++++++++++++++
- include/linux/blkdev.h  | 30 ++++++++++++++++++++++++++++++
- 4 files changed, 59 insertions(+)
-
-diff --git a/block/bio-integrity.c b/block/bio-integrity.c
-index bf62c25cde8f4..3579ac0f6ec1f 100644
---- a/block/bio-integrity.c
-+++ b/block/bio-integrity.c
-@@ -42,6 +42,9 @@ struct bio_integrity_payload *bio_integrity_alloc(struct bio *bio,
- 	struct bio_set *bs = bio->bi_pool;
- 	unsigned inline_vecs;
- 
-+	if (WARN_ON_ONCE(bio_has_crypt_ctx(bio)))
-+		return ERR_PTR(-EOPNOTSUPP);
-+
- 	if (!bs || !mempool_initialized(&bs->bio_integrity_pool)) {
- 		bip = kmalloc(struct_size(bip, bip_inline_vecs, nr_vecs), gfp_mask);
- 		inline_vecs = nr_vecs;
-diff --git a/block/blk-integrity.c b/block/blk-integrity.c
-index ff1070edbb400..b45711fc37df4 100644
---- a/block/blk-integrity.c
-+++ b/block/blk-integrity.c
-@@ -409,6 +409,13 @@ void blk_integrity_register(struct gendisk *disk, struct blk_integrity *template
- 	bi->tag_size = template->tag_size;
- 
- 	disk->queue->backing_dev_info->capabilities |= BDI_CAP_STABLE_WRITES;
-+
-+#ifdef CONFIG_BLK_INLINE_ENCRYPTION
-+	if (disk->queue->ksm) {
-+		pr_warn("blk-integrity: Integrity and hardware inline encryption are not supported together. Unregistering keyslot manager from request queue, to disable hardware inline encryption.\n");
-+		blk_ksm_unregister(disk->queue);
-+	}
-+#endif
- }
- EXPORT_SYMBOL(blk_integrity_register);
- 
-diff --git a/block/keyslot-manager.c b/block/keyslot-manager.c
-index b584723b392ad..834f45fdd33e2 100644
---- a/block/keyslot-manager.c
-+++ b/block/keyslot-manager.c
-@@ -25,6 +25,9 @@
-  * Upper layers will call blk_ksm_get_slot_for_key() to program a
-  * key into some slot in the inline encryption hardware.
-  */
-+
-+#define pr_fmt(fmt) "blk_crypto: " fmt
-+
- #include <crypto/algapi.h>
- #include <linux/keyslot-manager.h>
- #include <linux/atomic.h>
-@@ -378,3 +381,19 @@ void blk_ksm_destroy(struct blk_keyslot_manager *ksm)
- 	memzero_explicit(ksm, sizeof(*ksm));
- }
- EXPORT_SYMBOL_GPL(blk_ksm_destroy);
-+
-+bool blk_ksm_register(struct blk_keyslot_manager *ksm, struct request_queue *q)
-+{
-+	if (blk_integrity_queue_supports_integrity(q)) {
-+		pr_warn("Integrity and hardware inline encryption are not supported together. Hardware inline encryption is being disabled.\n");
-+		return false;
-+	}
-+	q->ksm = ksm;
-+	return true;
-+}
-+EXPORT_SYMBOL_GPL(blk_ksm_register);
-+
-+void blk_ksm_unregister(struct request_queue *q)
-+{
-+	q->ksm = NULL;
-+}
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 98aae4638fda9..17738dab8ae04 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -1562,6 +1562,12 @@ struct blk_integrity *bdev_get_integrity(struct block_device *bdev)
- 	return blk_get_integrity(bdev->bd_disk);
- }
- 
-+static inline bool
-+blk_integrity_queue_supports_integrity(struct request_queue *q)
-+{
-+	return q->integrity.profile;
-+}
-+
- static inline bool blk_integrity_rq(struct request *rq)
- {
- 	return rq->cmd_flags & REQ_INTEGRITY;
-@@ -1642,6 +1648,11 @@ static inline struct blk_integrity *blk_get_integrity(struct gendisk *disk)
- {
- 	return NULL;
- }
-+static inline bool
-+blk_integrity_queue_supports_integrity(struct request_queue *q)
-+{
-+	return false;
-+}
- static inline int blk_integrity_compare(struct gendisk *a, struct gendisk *b)
- {
- 	return 0;
-@@ -1693,6 +1704,25 @@ static inline struct bio_vec *rq_integrity_vec(struct request *rq)
- 
- #endif /* CONFIG_BLK_DEV_INTEGRITY */
- 
-+#ifdef CONFIG_BLK_INLINE_ENCRYPTION
-+
-+bool blk_ksm_register(struct blk_keyslot_manager *ksm, struct request_queue *q);
-+
-+void blk_ksm_unregister(struct request_queue *q);
-+
-+#else /* CONFIG_BLK_INLINE_ENCRYPTION */
-+
-+static inline bool blk_ksm_register(struct blk_keyslot_manager *ksm,
-+				    struct request_queue *q)
-+{
-+	return true;
-+}
-+
-+static inline void blk_ksm_unregister(struct request_queue *q) { }
-+
-+#endif /* CONFIG_BLK_INLINE_ENCRYPTION */
-+
-+
- struct block_device_operations {
- 	int (*open) (struct block_device *, fmode_t);
- 	void (*release) (struct gendisk *, fmode_t);
--- 
-2.26.2.303.gf8c07b1a785-goog
+clonerange and deduperange are not supported in ext4, while copyrange
+  and zerorange work as the range has no need to be aligned with cluster size
+in these two situations.
 
