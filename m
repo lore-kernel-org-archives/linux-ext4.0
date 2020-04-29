@@ -2,239 +2,151 @@ Return-Path: <SRS0=7uWi=6N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.7 required=3.0 tests=DATE_IN_FUTURE_06_12,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 21BB1C83003
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:15:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D39C1C83007
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE05020775
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:15:12 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="J8Rw+AvW"
+	by mail.kernel.org (Postfix) with ESMTP id B7A522085B
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726662AbgD2LPM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Apr 2020 07:15:12 -0400
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:44379 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726345AbgD2LPM (ORCPT
+        id S1726904AbgD2LsL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Apr 2020 07:48:11 -0400
+Received: from ex13-edg-ou-002.vmware.com ([208.91.0.190]:20549 "EHLO
+        EX13-EDG-OU-002.vmware.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726886AbgD2LsI (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 29 Apr 2020 07:15:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1588158910;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ML4rKbtGgsi0JjgxUp2Z9HVs9hh0/DgFuxbZ1atkKoU=;
-        b=J8Rw+AvWyCKwP0iN9yfHXbAC6G74+gzP+7KiwR8VpiH82BfWFrj2ZyRJclQTfAscEEYY14
-        uM2OWvl+khm5ymyp77f8JadUaq7KTH14Ys2lJFFbuS9QdU4OHBmZclfvnY4wliRoGOjnsZ
-        NnFE/7IhfBGf+AtIWljn2PAa0adzfJA=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-270-FTW_Wj1-My6pHtfFV76D6Q-1; Wed, 29 Apr 2020 07:15:08 -0400
-X-MC-Unique: FTW_Wj1-My6pHtfFV76D6Q-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 90704EC1C4;
-        Wed, 29 Apr 2020 11:15:07 +0000 (UTC)
-Received: from work (unknown [10.40.192.34])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 994A366070;
-        Wed, 29 Apr 2020 11:15:04 +0000 (UTC)
-Date:   Wed, 29 Apr 2020 13:15:01 +0200
-From:   Lukas Czerner <lczerner@redhat.com>
-To:     David Howells <dhowells@redhat.com>
-Cc:     viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org
-Subject: Re: Notes on ext4 mount API parsing stuff
-Message-ID: <20200429111501.lsshz3cd4lvur3gh@work>
-References: <1020558.1588082682@warthog.procyon.org.uk>
+        Wed, 29 Apr 2020 07:48:08 -0400
+Received: from sc9-mailhost2.vmware.com (10.113.161.72) by
+ EX13-EDG-OU-002.vmware.com (10.113.208.156) with Microsoft SMTP Server id
+ 15.0.1156.6; Wed, 29 Apr 2020 04:33:04 -0700
+Received: from localhost.localdomain (ashwinh-vm-1.vmware.com [10.110.19.225])
+        by sc9-mailhost2.vmware.com (Postfix) with ESMTP id 15B6DB1F56;
+        Wed, 29 Apr 2020 07:33:03 -0400 (EDT)
+From:   ashwin-h <ashwinh@vmware.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>
+CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <stable@kernel.org>, <srivatsab@vmware.com>,
+        <srivatsa@csail.mit.edu>, <rostedt@goodmis.org>,
+        <srostedt@vmware.com>, <gregkh@linuxfoundation.org>,
+        <ashwin.hiranniah@gmail.com>, Ashwin H <ashwinh@vmware.com>
+Subject: [PATCH 2/5] ext4: protect journal inode's blocks using block_validity
+Date:   Thu, 30 Apr 2020 00:51:36 +0530
+Message-ID: <722d8a1048d1ecca88922c2248cbc1af9971d83d.1587713792.git.ashwinh@vmware.com>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <cover.1587713792.git.ashwinh@vmware.com>
+References: <cover.1587713792.git.ashwinh@vmware.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1020558.1588082682@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+Content-Type: text/plain
+Received-SPF: None (EX13-EDG-OU-002.vmware.com: ashwinh@vmware.com does not
+ designate permitted sender hosts)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 28, 2020 at 03:04:42PM +0100, David Howells wrote:
-> Hi Lukas,
-> 
-> Here are some notes on your ext4 mount API parsing stuff.
-> 
-> >static int note_qf_name(struct fs_context *fc, int qtype,
-> >		       struct fs_parameter *param)
-> >{
-> >...
-> >	qname = kmemdup_nul(param->string, param->size, GFP_KERNEL);
-> 
-> No need to do this.  You're allowed to steal param->string.  Just NULL it out
-> afterwards.  It's guaranteed to be NUL-terminated.
-> 
-> 	ctx->s_qf_names[qtype] = param->string;
-> 	param->string = NULL;
+From: Theodore Ts'o <tytso@mit.edu>
 
-Good to know, I'll do that.
+commit 345c0dbf3a30872d9b204db96b5857cd00808cae upstream.
 
-> 
-> >...
-> >}
-> > ...
-> >static int ext4_parse_param(struct fs_context *fc, struct fs_parameter *param)
-> >{
-> >	struct ext4_fs_context *ctx = fc->fs_private;
-> >	const struct mount_opts *m;
-> >	struct fs_parse_result result;
-> >	kuid_t uid;
-> >	kgid_t gid;
-> >	int token;
-> >
-> >	token = fs_parse(fc, ext4_param_specs, param, &result);
-> >	if (token < 0)
-> >		return token;
-> >
-> >#ifdef CONFIG_QUOTA
-> >	if (token == Opt_usrjquota) {
-> >		if (!*param->string)
-> >			return unnote_qf_name(fc, USRQUOTA);
-> >		else
-> >			return note_qf_name(fc, USRQUOTA, param);
-> >	} else if (token == Opt_grpjquota) {
-> >		if (!*param->string)
-> >			return unnote_qf_name(fc, GRPQUOTA);
-> >		else
-> >			return note_qf_name(fc, GRPQUOTA, param);
-> >	}
-> >#endif
-> 
-> Merge this into the switch-statement below?
+Add the blocks which belong to the journal inode to block_validity's
+system zone so attempts to deallocate or overwrite the journal due a
+corrupted file system where the journal blocks are also claimed by
+another inode.
 
-Yes, I'd like to. But I am trying to avoid cleanup changes that are not
-necessarily needed for the API conversion. So yes, I will do this, but
-with a separate series, there is a lot more to clean up as well.
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=202879
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Ashwin H <ashwinh@vmware.com>
+Cc: stable@kernel.org
+---
+ fs/ext4/block_validity.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c          |  4 ++++
+ 2 files changed, 52 insertions(+)
 
-> 
-> >	switch (token) {
-> >	case Opt_noacl:
-> >	case Opt_nouser_xattr:
-> >		ext4_msg(NULL, KERN_WARNING, deprecated_msg, param->key, "3.5");
-> >		break;
-> >	case Opt_removed:
-> >		ext4_msg(NULL, KERN_WARNING, "Ignoring removed %s option",
-> >			 param->key);
-> >		return 0;
-> >	case Opt_abort:
-> >		set_mount_flags(ctx, EXT4_MF_FS_ABORTED);
-> >		return 0;
-> >	case Opt_i_version:
-> >		set_flags(ctx, SB_I_VERSION);
-> >		return 0;
-> >	case Opt_lazytime:
-> >		set_flags(ctx, SB_LAZYTIME);
-> >		return 0;
-> >	case Opt_nolazytime:
-> >		clear_flags(ctx, SB_LAZYTIME);
-> >		return 0;
-> >	case Opt_errors:
-> >	case Opt_data:
-> >	case Opt_data_err:
-> >	case Opt_jqfmt:
-> >		token = result.uint_32;
-> >	}
-> 
-> Missing break directive?
-
-yep, thanks.
-
-> 
-> >	for (m = ext4_mount_opts; m->token != Opt_err; m++)
-> >		if (token == m->token)
-> >			break;
-> 
-> I guess this can't be turned into a direct array lookup given what else
-> ext4_mount_opts[] is used for.
-
-Yes, unfortunatelly. But I'd like to change that in the cleanup series
-after the conversion.
-
-> 
-> >	ctx->opt_flags |= m->flags;
-> >
-> >	if (m->token == Opt_err) {
-> >		ext4_msg(NULL, KERN_ERR, "Unrecognized mount option \"%s\" "
-> >			 "or missing value", param->key);
-> >		return -EINVAL;
-> >	}
-> >
-> >	if (m->flags & MOPT_EXPLICIT) {
-> >		if (m->mount_opt & EXT4_MOUNT_DELALLOC) {
-> >			set_mount_opt2(ctx, EXT4_MOUNT2_EXPLICIT_DELALLOC);
-> >		} else if (m->mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) {
-> >			set_mount_opt2(ctx,
-> >				       EXT4_MOUNT2_EXPLICIT_JOURNAL_CHECKSUM);
-> >		} else
-> >			return -EINVAL;
-> >	}
-> >	if (m->flags & MOPT_CLEAR_ERR)
-> >		clear_mount_opt(ctx, EXT4_MOUNT_ERRORS_MASK);
-> >
-> >	if (m->flags & MOPT_NOSUPPORT) {
-> >		ext4_msg(NULL, KERN_ERR, "%s option not supported",
-> >			 param->key);
-> >	} else if (token == Opt_commit) {
-> >		if (result.uint_32 == 0)
-> >			ctx->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE;
-> >		else if (result.uint_32 > INT_MAX / HZ) {
-> >			ext4_msg(NULL, KERN_ERR,
-> >				 "Invalid commit interval %d, "
-> >				 "must be smaller than %d",
-> >				 result.uint_32, INT_MAX / HZ);
-> >			return -EINVAL;
-> 
-> You're doing this a lot.  It might be worth making a macro something like:
-> 
-> #define ext4_inval(fmt, ...) \
-> 	({ ext4_msg(NULL, KERN_ERR, ## __VA_LIST__), -EINVAL })
-> 
-> then you can just do:
-> 
-> 	return ext4_inval("Invalid commit interval %d, must be smaller than %d",
-> 			  result.uint_32, INT_MAX / HZ);
-
-Yeah, it might be worth doing. Thanks.
-
-> 
-> >		}
-> >		ctx->s_commit_interval = HZ * result.uint_32;
-> >		ctx->spec |= EXT4_SPEC_s_commit_interval;
-> >	} else if (token == Opt_debug_want_extra_isize) {
-> 
-> This whole thing looks like it might be better as a switch-statement.
-
-Indeed, but again not as a part of api conversion.
-
-> 
-> >	}
-> >	return 0;
-> >}
-> >
-> >static int parse_options(struct fs_context *fc, char *options)
-> >{
-> >}
-> 
-> I wonder if this could be replaced with a call to generic_parse_monolithic() -
-> though that calls security_sb_eat_lsm_opts() which you might not want.
-
-This is eventually only used to parse mount options in super block, so
-we do not want to call security_sb_eat_lsm_opts(). Other than that it's
-basically exactly what generic_parse_monolithic() does.
-
-Thanks!
--Lukas
-
-> 
-> David
-> 
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index fdb1954..bdc8e48 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -136,6 +136,48 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
+ 	printk(KERN_CONT "\n");
+ }
+ 
++static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
++{
++	struct inode *inode;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_map_blocks map;
++	u32 i = 0, err = 0, num, n;
++
++	if ((ino < EXT4_ROOT_INO) ||
++	    (ino > le32_to_cpu(sbi->s_es->s_inodes_count)))
++		return -EINVAL;
++	inode = ext4_iget(sb, ino, EXT4_IGET_SPECIAL);
++	if (IS_ERR(inode))
++		return PTR_ERR(inode);
++	num = (inode->i_size + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
++	while (i < num) {
++		map.m_lblk = i;
++		map.m_len = num - i;
++		n = ext4_map_blocks(NULL, inode, &map, 0);
++		if (n < 0) {
++			err = n;
++			break;
++		}
++		if (n == 0) {
++			i++;
++		} else {
++			if (!ext4_data_block_valid(sbi, map.m_pblk, n)) {
++				ext4_error(sb, "blocks %llu-%llu from inode %u "
++					   "overlap system zone", map.m_pblk,
++					   map.m_pblk + map.m_len - 1, ino);
++				err = -EFSCORRUPTED;
++				break;
++			}
++			err = add_system_zone(sbi, map.m_pblk, n);
++			if (err < 0)
++				break;
++			i += n;
++		}
++	}
++	iput(inode);
++	return err;
++}
++
+ int ext4_setup_system_zone(struct super_block *sb)
+ {
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+@@ -170,6 +212,12 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 		if (ret)
+ 			return ret;
+ 	}
++	if (ext4_has_feature_journal(sb) && sbi->s_es->s_journal_inum) {
++		ret = ext4_protect_reserved_inode(sb,
++				le32_to_cpu(sbi->s_es->s_journal_inum));
++		if (ret)
++			return ret;
++	}
+ 
+ 	if (test_opt(sb, DEBUG))
+ 		debug_print_tree(EXT4_SB(sb));
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3a9fd5f..dc08c2b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -374,6 +374,10 @@ static int __check_block_validity(struct inode *inode, const char *func,
+ 				unsigned int line,
+ 				struct ext4_map_blocks *map)
+ {
++	if (ext4_has_feature_journal(inode->i_sb) &&
++	    (inode->i_ino ==
++	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
++		return 0;
+ 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
+ 				   map->m_len)) {
+ 		ext4_error_inode(inode, func, line, map->m_pblk,
+-- 
+2.7.4
 
