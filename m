@@ -4,38 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=DATE_IN_FUTURE_06_12,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FBCAC83007
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 986A8C83003
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E3E8E2085B
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 76AE32073E
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726935AbgD2LsQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Apr 2020 07:48:16 -0400
-Received: from ex13-edg-ou-002.vmware.com ([208.91.0.190]:20551 "EHLO
+        id S1726968AbgD2LsV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Apr 2020 07:48:21 -0400
+Received: from ex13-edg-ou-002.vmware.com ([208.91.0.190]:20553 "EHLO
         EX13-EDG-OU-002.vmware.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726913AbgD2LsO (ORCPT
+        by vger.kernel.org with ESMTP id S1726886AbgD2LsT (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 29 Apr 2020 07:48:14 -0400
+        Wed, 29 Apr 2020 07:48:19 -0400
 Received: from sc9-mailhost2.vmware.com (10.113.161.72) by
  EX13-EDG-OU-002.vmware.com (10.113.208.156) with Microsoft SMTP Server id
- 15.0.1156.6; Wed, 29 Apr 2020 04:33:07 -0700
+ 15.0.1156.6; Wed, 29 Apr 2020 04:33:14 -0700
 Received: from localhost.localdomain (ashwinh-vm-1.vmware.com [10.110.19.225])
-        by sc9-mailhost2.vmware.com (Postfix) with ESMTP id 64B38B2643;
-        Wed, 29 Apr 2020 07:33:07 -0400 (EDT)
+        by sc9-mailhost2.vmware.com (Postfix) with ESMTP id 196D8B1F56;
+        Wed, 29 Apr 2020 07:33:13 -0400 (EDT)
 From:   ashwin-h <ashwinh@vmware.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>
 CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <stable@kernel.org>, <srivatsab@vmware.com>,
         <srivatsa@csail.mit.edu>, <rostedt@goodmis.org>,
         <srostedt@vmware.com>, <gregkh@linuxfoundation.org>,
-        <ashwin.hiranniah@gmail.com>, Ashwin H <ashwinh@vmware.com>
-Subject: [PATCH 3/5] ext4: don't perform block validity checks on the journal inode
-Date:   Thu, 30 Apr 2020 00:51:37 +0530
-Message-ID: <1884f659f99a03cf5a0751ac1d848eae662892e2.1587713792.git.ashwinh@vmware.com>
+        <ashwin.hiranniah@gmail.com>,
+        Colin Ian King <colin.king@canonical.com>,
+        Ashwin H <ashwinh@vmware.com>
+Subject: [PATCH 5/5] ext4: unsigned int compared against zero
+Date:   Thu, 30 Apr 2020 00:51:39 +0530
+Message-ID: <3a2fb96b84ddc0421315de9dc4fb39df5da06376.1587713792.git.ashwinh@vmware.com>
 X-Mailer: git-send-email 2.7.4
 In-Reply-To: <cover.1587713792.git.ashwinh@vmware.com>
 References: <cover.1587713792.git.ashwinh@vmware.com>
@@ -48,57 +50,37 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+From: Colin Ian King <colin.king@canonical.com>
 
-commit 0a944e8a6c66ca04c7afbaa17e22bf208a8b37f0 upstream.
+commit fbbbbd2f28aec991f3fbc248df211550fbdfd58c upstream.
 
-Since the journal inode is already checked when we added it to the
-block validity's system zone, if we check it again, we'll just trigger
-a failure.
+There are two cases where u32 variables n and err are being checked
+for less than zero error values, the checks is always false because
+the variables are not signed. Fix this by making the variables ints.
 
-This was causing failures like this:
-
-[   53.897001] EXT4-fs error (device sda): ext4_find_extent:909: inode
-#8: comm jbd2/sda-8: pblk 121667583 bad header/extent: invalid extent entries - magic f30a, entries 8, max 340(340), depth 0(0)
-[   53.931430] jbd2_journal_bmap: journal block not found at offset 49 on sda-8
-[   53.938480] Aborting journal on device sda-8.
-
-... but only if the system was under enough memory pressure that
-logical->physical mapping for the journal inode gets pushed out of the
-extent cache.  (This is why it wasn't noticed earlier.)
-
+Addresses-Coverity: ("Unsigned compared against 0")
 Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
-Reported-by: Dan Rue <dan.rue@linaro.org>
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Tested-by: Naresh Kamboju <naresh.kamboju@linaro.org>
 Signed-off-by: Ashwin H <ashwinh@vmware.com>
 ---
- fs/ext4/extents.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ fs/ext4/block_validity.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 71c68bd..76a8a03 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -530,10 +530,14 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 	}
- 	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
- 		return bh;
--	err = __ext4_ext_check(function, line, inode,
--			       ext_block_hdr(bh), depth, pblk);
--	if (err)
--		goto errout;
-+	if (!ext4_has_feature_journal(inode->i_sb) ||
-+	    (inode->i_ino !=
-+	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum))) {
-+		err = __ext4_ext_check(function, line, inode,
-+				       ext_block_hdr(bh), depth, pblk);
-+		if (err)
-+			goto errout;
-+	}
- 	set_buffer_verified(bh);
- 	/*
- 	 * If this is a leaf block, cache all of its entries
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 9c9c639..d31d93e 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -141,7 +141,8 @@ static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
+ 	struct inode *inode;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_map_blocks map;
+-	u32 i = 0, err = 0, num, n;
++	u32 i = 0, num;
++	int err = 0, n;
+ 
+ 	if ((ino < EXT4_ROOT_INO) ||
+ 	    (ino > le32_to_cpu(sbi->s_es->s_inodes_count)))
 -- 
 2.7.4
 
