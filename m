@@ -2,43 +2,41 @@ Return-Path: <SRS0=7uWi=6N=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=DATE_IN_FUTURE_06_12,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=DATE_IN_FUTURE_06_12,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EEF5C83004
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A67B0C83003
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D7EE62073E
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 895E62073E
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 11:48:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726961AbgD2LsZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Apr 2020 07:48:25 -0400
-Received: from ex13-edg-ou-002.vmware.com ([208.91.0.190]:20553 "EHLO
+        id S1726861AbgD2LsF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Apr 2020 07:48:05 -0400
+Received: from ex13-edg-ou-002.vmware.com ([208.91.0.190]:20545 "EHLO
         EX13-EDG-OU-002.vmware.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726951AbgD2LsU (ORCPT
+        by vger.kernel.org with ESMTP id S1726457AbgD2LsE (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 29 Apr 2020 07:48:20 -0400
+        Wed, 29 Apr 2020 07:48:04 -0400
+X-Greylist: delayed 903 seconds by postgrey-1.27 at vger.kernel.org; Wed, 29 Apr 2020 07:48:04 EDT
 Received: from sc9-mailhost2.vmware.com (10.113.161.72) by
  EX13-EDG-OU-002.vmware.com (10.113.208.156) with Microsoft SMTP Server id
- 15.0.1156.6; Wed, 29 Apr 2020 04:33:11 -0700
+ 15.0.1156.6; Wed, 29 Apr 2020 04:32:57 -0700
 Received: from localhost.localdomain (ashwinh-vm-1.vmware.com [10.110.19.225])
-        by sc9-mailhost2.vmware.com (Postfix) with ESMTP id B3A7FB1F56;
-        Wed, 29 Apr 2020 07:33:10 -0400 (EDT)
+        by sc9-mailhost2.vmware.com (Postfix) with ESMTP id 5FD23B1F56;
+        Wed, 29 Apr 2020 07:32:57 -0400 (EDT)
 From:   ashwin-h <ashwinh@vmware.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>
 CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <stable@kernel.org>, <srivatsab@vmware.com>,
         <srivatsa@csail.mit.edu>, <rostedt@goodmis.org>,
         <srostedt@vmware.com>, <gregkh@linuxfoundation.org>,
-        <ashwin.hiranniah@gmail.com>, Ashwin H <ashwinh@vmware.com>
-Subject: [PATCH 4/5] ext4: fix block validity checks for journal inodes using indirect blocks
-Date:   Thu, 30 Apr 2020 00:51:38 +0530
-Message-ID: <4a0508c21cf3113aea8dce2f678d8188915cf77f.1587713792.git.ashwinh@vmware.com>
+        <ashwin.hiranniah@gmail.com>, ashwin-h <ashwinh@vmware.com>
+Subject: [PATCH 0/5] Backport to 4.9- ext4: protect journal inode's blocks using block_validity 
+Date:   Thu, 30 Apr 2020 00:51:34 +0530
+Message-ID: <cover.1587713792.git.ashwinh@vmware.com>
 X-Mailer: git-send-email 2.7.4
-In-Reply-To: <cover.1587713792.git.ashwinh@vmware.com>
-References: <cover.1587713792.git.ashwinh@vmware.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Received-SPF: None (EX13-EDG-OU-002.vmware.com: ashwinh@vmware.com does not
@@ -48,44 +46,42 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+[PATCH 1/5] ext4: avoid declaring fs inconsistent due to invalid file
+handles
+This patch is backported as functionality in this commit is used by
+Patch 2 in this patchset.
 
-commit 170417c8c7bb2cbbdd949bf5c443c0c8f24a203b upstream.
+[PATCH 2/5] ext4: protect journal inode's blocks using block_validity
+Backport to 4.9
 
-Commit 345c0dbf3a30 ("ext4: protect journal inode's blocks using
-block_validity") failed to add an exception for the journal inode in
-ext4_check_blockref(), which is the function used by ext4_get_branch()
-for indirect blocks.  This caused attempts to read from the ext3-style
-journals to fail with:
+[PATCH 3/5] ext4: don't perform block validity checks on the journal
+[PATCH 4/5] ext4: fix block validity checks for journal inodes using
+[PATCH 5/5] ext4: unsigned int compared against zero
+Fixes issues found in Patch 2 in this patchset.
 
-[  848.968550] EXT4-fs error (device sdb7): ext4_get_branch:171: inode #8: block 30343695: comm jbd2/sdb7-8: invalid block
+These patches addresses CVE-2019-19319
 
-Fix this by adding the missing exception check.
+Colin Ian King (1):
+  ext4: unsigned int compared against zero
 
-Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
-Reported-by: Arthur Marsh <arthur.marsh@internode.on.net>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Ashwin H <ashwinh@vmware.com>
----
- fs/ext4/block_validity.c | 5 +++++
- 1 file changed, 5 insertions(+)
+Theodore Ts'o (4):
+  ext4: avoid declaring fs inconsistent due to invalid file handles
+  ext4: protect journal inode's blocks using block_validity
+  ext4: don't perform block validity checks on the journal inode
+  ext4: fix block validity checks for journal inodes using indirect
+    blocks
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index bdc8e48..9c9c639 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -274,6 +274,11 @@ int ext4_check_blockref(const char *function, unsigned int line,
- 	__le32 *bref = p;
- 	unsigned int blk;
- 
-+	if (ext4_has_feature_journal(inode->i_sb) &&
-+	    (inode->i_ino ==
-+	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
-+		return 0;
-+
- 	while (bref < p+max) {
- 		blk = le32_to_cpu(*bref++);
- 		if (blk &&
+ fs/ext4/block_validity.c | 54 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h           | 15 ++++++++++++--
+ fs/ext4/extents.c        | 12 +++++++----
+ fs/ext4/ialloc.c         |  2 +-
+ fs/ext4/inode.c          | 48 ++++++++++++++++++++++++++++++------------
+ fs/ext4/ioctl.c          |  2 +-
+ fs/ext4/namei.c          |  4 ++--
+ fs/ext4/resize.c         |  5 +++--
+ fs/ext4/super.c          | 19 +++++------------
+ 9 files changed, 122 insertions(+), 39 deletions(-)
+
 -- 
 2.7.4
 
