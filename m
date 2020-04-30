@@ -4,28 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=DATE_IN_FUTURE_06_12,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A25E0C83004
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 20:33:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 821A7C83000
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 20:33:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 849E420B1F
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 20:33:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6539A20B1F
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Apr 2020 20:33:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727098AbgD2Udp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Apr 2020 16:33:45 -0400
-Received: from ex13-edg-ou-001.vmware.com ([208.91.0.189]:13804 "EHLO
+        id S1726776AbgD2Udi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Apr 2020 16:33:38 -0400
+Received: from ex13-edg-ou-001.vmware.com ([208.91.0.189]:13784 "EHLO
         EX13-EDG-OU-001.vmware.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727095AbgD2Udo (ORCPT
+        by vger.kernel.org with ESMTP id S1726481AbgD2Udh (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 29 Apr 2020 16:33:44 -0400
+        Wed, 29 Apr 2020 16:33:37 -0400
 Received: from sc9-mailhost3.vmware.com (10.113.161.73) by
  EX13-EDG-OU-001.vmware.com (10.113.208.155) with Microsoft SMTP Server id
- 15.0.1156.6; Wed, 29 Apr 2020 13:33:40 -0700
+ 15.0.1156.6; Wed, 29 Apr 2020 13:33:33 -0700
 Received: from localhost.localdomain (ashwinh-vm-1.vmware.com [10.110.19.225])
-        by sc9-mailhost3.vmware.com (Postfix) with ESMTP id 520D740F60;
-        Wed, 29 Apr 2020 13:33:40 -0700 (PDT)
+        by sc9-mailhost3.vmware.com (Postfix) with ESMTP id 55D6240F60;
+        Wed, 29 Apr 2020 13:33:33 -0700 (PDT)
 From:   ashwin-h <ashwinh@vmware.com>
 To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>
 CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
@@ -33,9 +33,9 @@ CC:     <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
         <srivatsa@csail.mit.edu>, <rostedt@goodmis.org>,
         <srostedt@vmware.com>, <gregkh@linuxfoundation.org>,
         <ashwin.hiranniah@gmail.com>, Ashwin H <ashwinh@vmware.com>
-Subject: [PATCH 4/5] ext4: fix block validity checks for journal inodes using indirect blocks
-Date:   Thu, 30 Apr 2020 09:52:06 +0530
-Message-ID: <635145d00af4aa62ac233f754188b8c76f54d955.1588189373.git.ashwinh@vmware.com>
+Subject: [PATCH 2/5] ext4: protect journal inode's blocks using block_validity
+Date:   Thu, 30 Apr 2020 09:52:04 +0530
+Message-ID: <b863a48f25060f6836db011a925c7a591a797137.1588189373.git.ashwinh@vmware.com>
 X-Mailer: git-send-email 2.7.4
 In-Reply-To: <cover.1588189373.git.ashwinh@vmware.com>
 References: <cover.1588189373.git.ashwinh@vmware.com>
@@ -50,42 +50,103 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Theodore Ts'o <tytso@mit.edu>
 
-commit 170417c8c7bb2cbbdd949bf5c443c0c8f24a203b upstream.
+commit 345c0dbf3a30872d9b204db96b5857cd00808cae upstream.
 
-Commit 345c0dbf3a30 ("ext4: protect journal inode's blocks using
-block_validity") failed to add an exception for the journal inode in
-ext4_check_blockref(), which is the function used by ext4_get_branch()
-for indirect blocks.  This caused attempts to read from the ext3-style
-journals to fail with:
+Add the blocks which belong to the journal inode to block_validity's
+system zone so attempts to deallocate or overwrite the journal due a
+corrupted file system where the journal blocks are also claimed by
+another inode.
 
-[  848.968550] EXT4-fs error (device sdb7): ext4_get_branch:171: inode #8: block 30343695: comm jbd2/sdb7-8: invalid block
-
-Fix this by adding the missing exception check.
-
-Fixes: 345c0dbf3a30 ("ext4: protect journal inode's blocks using block_validity")
-Reported-by: Arthur Marsh <arthur.marsh@internode.on.net>
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=202879
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Ashwin H <ashwinh@vmware.com>
+Cc: stable@kernel.org
 ---
- fs/ext4/block_validity.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/ext4/block_validity.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c          |  4 ++++
+ 2 files changed, 52 insertions(+)
 
 diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 2370dfd..7ba8920 100644
+index bee888e..2370dfd 100644
 --- a/fs/ext4/block_validity.c
 +++ b/fs/ext4/block_validity.c
-@@ -275,6 +275,11 @@ int ext4_check_blockref(const char *function, unsigned int line,
- 	__le32 *bref = p;
- 	unsigned int blk;
+@@ -137,6 +137,48 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
+ 	printk(KERN_CONT "\n");
+ }
  
++static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
++{
++	struct inode *inode;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_map_blocks map;
++	u32 i = 0, err = 0, num, n;
++
++	if ((ino < EXT4_ROOT_INO) ||
++	    (ino > le32_to_cpu(sbi->s_es->s_inodes_count)))
++		return -EINVAL;
++	inode = ext4_iget(sb, ino, EXT4_IGET_SPECIAL);
++	if (IS_ERR(inode))
++		return PTR_ERR(inode);
++	num = (inode->i_size + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
++	while (i < num) {
++		map.m_lblk = i;
++		map.m_len = num - i;
++		n = ext4_map_blocks(NULL, inode, &map, 0);
++		if (n < 0) {
++			err = n;
++			break;
++		}
++		if (n == 0) {
++			i++;
++		} else {
++			if (!ext4_data_block_valid(sbi, map.m_pblk, n)) {
++				ext4_error(sb, "blocks %llu-%llu from inode %u "
++					   "overlap system zone", map.m_pblk,
++					   map.m_pblk + map.m_len - 1, ino);
++				err = -EFSCORRUPTED;
++				break;
++			}
++			err = add_system_zone(sbi, map.m_pblk, n);
++			if (err < 0)
++				break;
++			i += n;
++		}
++	}
++	iput(inode);
++	return err;
++}
++
+ int ext4_setup_system_zone(struct super_block *sb)
+ {
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+@@ -171,6 +213,12 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 		if (ret)
+ 			return ret;
+ 	}
++	if (ext4_has_feature_journal(sb) && sbi->s_es->s_journal_inum) {
++		ret = ext4_protect_reserved_inode(sb,
++				le32_to_cpu(sbi->s_es->s_journal_inum));
++		if (ret)
++			return ret;
++	}
+ 
+ 	if (test_opt(sb, DEBUG))
+ 		debug_print_tree(EXT4_SB(sb));
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 07476c1..390431d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -407,6 +407,10 @@ static int __check_block_validity(struct inode *inode, const char *func,
+ 				unsigned int line,
+ 				struct ext4_map_blocks *map)
+ {
 +	if (ext4_has_feature_journal(inode->i_sb) &&
 +	    (inode->i_ino ==
 +	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
 +		return 0;
-+
- 	while (bref < p+max) {
- 		blk = le32_to_cpu(*bref++);
- 		if (blk &&
+ 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
+ 				   map->m_len)) {
+ 		ext4_error_inode(inode, func, line, map->m_pblk,
 -- 
 2.7.4
 
