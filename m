@@ -5,62 +5,62 @@ X-Spam-Level:
 X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no version=3.4.0
+	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CC410C83010
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 12:00:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7031C8300D
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 12:00:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6B9120775
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 12:00:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9561520775
+	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 12:00:30 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="PSfczzi8"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="BMzibYRQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727093AbgD3MAQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 Apr 2020 08:00:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37338 "EHLO
+        id S1727768AbgD3MA2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 30 Apr 2020 08:00:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37350 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726942AbgD3MAO (ORCPT
+        by vger.kernel.org with ESMTP id S1727123AbgD3MAV (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 30 Apr 2020 08:00:14 -0400
+        Thu, 30 Apr 2020 08:00:21 -0400
 Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BFD7DC09B047
-        for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2020 05:00:13 -0700 (PDT)
-Received: by mail-yb1-xb4a.google.com with SMTP id m138so7418178ybf.12
-        for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2020 05:00:13 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1ECCC08E859
+        for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2020 05:00:19 -0700 (PDT)
+Received: by mail-yb1-xb4a.google.com with SMTP id s8so7397614ybj.9
+        for <linux-ext4@vger.kernel.org>; Thu, 30 Apr 2020 05:00:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=0aiZfOCHE6WFReYT1oUcAoa6v5nxJGKFBvTRimyUlpA=;
-        b=PSfczzi8HpdcBzes1SMUfuvaJ72yINhi49/RGGfxHF8krSR52ewxtH8bS/9YgNzjlt
-         Q97tI/Wh1W5+Jj5wY5cDkbzmDroMiFuUH6yfny3o13qpqtxi7taEJB9mnuwf/VF6RpSy
-         7N2C7xFd0M0XvT3PbHyBQpCmnF17oZv/jpgQbyrDoPCegMYZvOuhxScy9r1lLxHmiS0/
-         ySLW+C5mJIRaQ1ZhJfBcH/DcHr9Uk8ciKH3t0wB382oRmKK798ag94GB+77LGVxcMyKP
-         Z1P34FKqExBBU1z/XNZAxkKdPirIqxZHE2SC8ApUD2lhcY8TR7tIDnPNfTKejsPerJKX
-         CTUw==
+        bh=8xi+eRNHWgXdVhsYfo5zSJ9HHfQ0KOMyDBcY/UWa0FM=;
+        b=BMzibYRQhKMrMr+D0k9GiKYuF3Zvf7fSuIdaSXD8JSuFT3Hp0Ll5kCKF9unp9t2hb/
+         1AS0WdUIbTKB0cKwpwxLtivP9zpS78PIminE/rSpp+Lq9jyOrkzD4G5vUNlIdTDiwW5A
+         TwMZKjiE8CTK9FmGZJIDMpHk/QBhh6TfLIHdbQvv+f1PsS3z/bnGsteJPyA1AwcjBUU6
+         +yy17wLx2m5+BD0KIETjhDOpFAZvnbMfM/vA1Mot3SCnsuI9YsPaNmJFg3c2Yhq0R5/9
+         V9BLO8Ivchcu6GwbXS4vhL60Fj0KZarvkloAbMRhXMDOEtsNaLno/+Jl5Fn11bwnNv0q
+         7m6g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=0aiZfOCHE6WFReYT1oUcAoa6v5nxJGKFBvTRimyUlpA=;
-        b=HtKknr0Z0bPa/zQHQClc7Hqv/TuKTp5CdTDXsN8UGAIRMaeIliscpBTEeM9Cr3lMOL
-         /5jaqAr5ofeGAHzbtJ0f5P1UhH0M1upgJbAQqjfoDltmS8xKkcVnat4qhEemZPIfxtJS
-         uR5PN3qFN3Olzp1eQu3xUj8IlB9xusl2g8VgoeDyJJzZnh2kXE7rbTdaaSWNChvrdsy+
-         sbF2noGbrGl308fQzfgDvZUfHdOfMwJpVGgRK2PfHoi2myBZ/4RN4ZIqkj7HFx2A1/ux
-         U4eXlC0vxYrd9ihGQOZZgS2CTu1V9BvXYeKw9QSwBKvjF7rcRuIeiyiqDGBD+JRJ0xA+
-         n6Ew==
-X-Gm-Message-State: AGi0PuaxiY8krzfaZn1LCktj09aLI1Kdc0EBBCmCKMpxViEcVtc2OW3b
-        pwB7kLBbMVosadlcMnX4eMBH0KWrHp0=
-X-Google-Smtp-Source: APiQypJbmrf+4v3aTMT1CsmPngTKbZiXFNM9+KpT7ml3+odUSrYynO2p0edW5LmEwZyyKvfo6Q5J6aLe7H4=
-X-Received: by 2002:a25:b8c1:: with SMTP id g1mr5080091ybm.411.1588248012989;
- Thu, 30 Apr 2020 05:00:12 -0700 (PDT)
-Date:   Thu, 30 Apr 2020 11:59:54 +0000
+        bh=8xi+eRNHWgXdVhsYfo5zSJ9HHfQ0KOMyDBcY/UWa0FM=;
+        b=tk0cDBu63fYYhOchmmuEQcbtkZ/yyybzHeCSF+gQudLbPoeo2CLR6xUnq0dwzjAWtP
+         lOpUHNZ+BEFaZNz/nOskf3Ej0KiKJ7vQzl7uu2Y9NhjZBGm0wHBbaxZdWM/UdXRVTVoU
+         FJqBFGLlMqhw/zvx7Nadmvy2tA/1I7bKS2L2OKIolHKyh5AYSjLklNhDMPs4EbdkjBHL
+         Jx+ml4C8UIWzJMy4RQ4dPRJR4FxnPKHX1q48F3afsqhJ/nAmN6zDeSBZiRnGgr9W+Kma
+         XwMTDyNGGzIe+IvKyw4s1U/yO9xN4fpWCpstL5+IQscHjcmOq63N2TFCMWihgoh2sWb7
+         bFNg==
+X-Gm-Message-State: AGi0Puag9ETkbuelf+JMT2c8zKfZNPOkfQhwfznWkSS8ohtd74IZEdkt
+        yliInC7qKuGvNPrCQTt/yYvarwsrABA=
+X-Google-Smtp-Source: APiQypJdCPNjVqpXyZujJIzyg1FGx0+8h72x9GIZZHuGSXQMsnBAkkCp+j1iw01VYTcDjHRIk89KJgo1KvU=
+X-Received: by 2002:a25:3d05:: with SMTP id k5mr4985571yba.111.1588248018943;
+ Thu, 30 Apr 2020 05:00:18 -0700 (PDT)
+Date:   Thu, 30 Apr 2020 11:59:58 +0000
 In-Reply-To: <20200430115959.238073-1-satyat@google.com>
-Message-Id: <20200430115959.238073-8-satyat@google.com>
+Message-Id: <20200430115959.238073-12-satyat@google.com>
 Mime-Version: 1.0
 References: <20200430115959.238073-1-satyat@google.com>
 X-Mailer: git-send-email 2.26.2.303.gf8c07b1a785-goog
-Subject: [PATCH v12 07/12] scsi: ufs: UFS crypto API
+Subject: [PATCH v12 11/12] f2fs: add inline encryption support
 From:   Satya Tangirala <satyat@google.com>
 To:     linux-block@vger.kernel.org, linux-scsi@vger.kernel.org,
         linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
@@ -68,381 +68,304 @@ To:     linux-block@vger.kernel.org, linux-scsi@vger.kernel.org,
 Cc:     Barani Muthukumaran <bmuthuku@qti.qualcomm.com>,
         Kuohong Wang <kuohong.wang@mediatek.com>,
         Kim Boojin <boojin.kim@samsung.com>,
-        Satya Tangirala <satyat@google.com>
+        Satya Tangirala <satyat@google.com>,
+        Eric Biggers <ebiggers@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Introduce functions to manipulate UFS inline encryption hardware
-in line with the JEDEC UFSHCI v2.1 specification and to work with the
-block keyslot manager.
+Wire up f2fs to support inline encryption via the helper functions which
+fs/crypto/ now provides.  This includes:
 
-The UFS crypto API will assume by default that a vendor driver doesn't
-support UFS crypto, even if the hardware advertises the capability, because
-a lot of hardware requires some special handling that's not specified in
-the aforementioned JEDEC spec. Each vendor driver must explicity set
-hba->caps |= UFSHCD_CAP_CRYPTO before ufshcd_hba_init_crypto is called to
-opt-in to UFS crypto support.
+- Adding a mount option 'inlinecrypt' which enables inline encryption
+  on encrypted files where it can be used.
 
+- Setting the bio_crypt_ctx on bios that will be submitted to an
+  inline-encrypted file.
+
+- Not adding logically discontiguous data to bios that will be submitted
+  to an inline-encrypted file.
+
+- Not doing filesystem-layer crypto on inline-encrypted files.
+
+Co-developed-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
 Signed-off-by: Satya Tangirala <satyat@google.com>
 ---
- drivers/scsi/ufs/Kconfig         |   9 ++
- drivers/scsi/ufs/Makefile        |   1 +
- drivers/scsi/ufs/ufshcd-crypto.c | 226 +++++++++++++++++++++++++++++++
- drivers/scsi/ufs/ufshcd-crypto.h |  42 ++++++
- drivers/scsi/ufs/ufshcd.h        |  12 ++
- 5 files changed, 290 insertions(+)
- create mode 100644 drivers/scsi/ufs/ufshcd-crypto.c
- create mode 100644 drivers/scsi/ufs/ufshcd-crypto.h
+ Documentation/filesystems/f2fs.rst |  7 ++-
+ fs/f2fs/compress.c                 |  2 +-
+ fs/f2fs/data.c                     | 68 +++++++++++++++++++++++++-----
+ fs/f2fs/super.c                    | 32 ++++++++++++++
+ 4 files changed, 97 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/scsi/ufs/Kconfig b/drivers/scsi/ufs/Kconfig
-index e2005aeddc2db..5ed3f209f8810 100644
---- a/drivers/scsi/ufs/Kconfig
-+++ b/drivers/scsi/ufs/Kconfig
-@@ -160,3 +160,12 @@ config SCSI_UFS_BSG
+diff --git a/Documentation/filesystems/f2fs.rst b/Documentation/filesystems/f2fs.rst
+index 87d794bc75a47..e0e0353f8a498 100644
+--- a/Documentation/filesystems/f2fs.rst
++++ b/Documentation/filesystems/f2fs.rst
+@@ -254,7 +254,12 @@ compress_extension=%s  Support adding specified extension, so that f2fs can enab
+                        on compression extension list and enable compression on
+                        these file by default rather than to enable it via ioctl.
+                        For other files, we can still enable compression via ioctl.
+-====================== ============================================================
++inlinecrypt
++                       Encrypt/decrypt the contents of encrypted files using the
++                       blk-crypto framework rather than filesystem-layer encryption.
++                       This allows the use of inline encryption hardware. The on-disk
++                       format is unaffected. For more details, see
++                       Documentation/block/inline-encryption.rst.
  
- 	  Select this if you need a bsg device node for your UFS controller.
- 	  If unsure, say N.
-+
-+config SCSI_UFS_CRYPTO
-+	bool "UFS Crypto Engine Support"
-+	depends on SCSI_UFSHCD && BLK_INLINE_ENCRYPTION
-+	help
-+	  Enable Crypto Engine Support in UFS.
-+	  Enabling this makes it possible for the kernel to use the crypto
-+	  capabilities of the UFS device (if present) to perform crypto
-+	  operations on data being transferred to/from the device.
-diff --git a/drivers/scsi/ufs/Makefile b/drivers/scsi/ufs/Makefile
-index 94c6c5d7334b6..197e178f44bce 100644
---- a/drivers/scsi/ufs/Makefile
-+++ b/drivers/scsi/ufs/Makefile
-@@ -7,6 +7,7 @@ obj-$(CONFIG_SCSI_UFS_QCOM) += ufs-qcom.o
- obj-$(CONFIG_SCSI_UFSHCD) += ufshcd-core.o
- ufshcd-core-y				+= ufshcd.o ufs-sysfs.o
- ufshcd-core-$(CONFIG_SCSI_UFS_BSG)	+= ufs_bsg.o
-+ufshcd-core-$(CONFIG_SCSI_UFS_CRYPTO) += ufshcd-crypto.o
- obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
- obj-$(CONFIG_SCSI_UFSHCD_PLATFORM) += ufshcd-pltfrm.o
- obj-$(CONFIG_SCSI_UFS_HISI) += ufs-hisi.o
-diff --git a/drivers/scsi/ufs/ufshcd-crypto.c b/drivers/scsi/ufs/ufshcd-crypto.c
-new file mode 100644
-index 0000000000000..65a3115d2a2d4
---- /dev/null
-+++ b/drivers/scsi/ufs/ufshcd-crypto.c
-@@ -0,0 +1,226 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright 2019 Google LLC
-+ */
-+
-+#include "ufshcd.h"
-+#include "ufshcd-crypto.h"
-+
-+/* Blk-crypto modes supported by UFS crypto */
-+static const struct ufs_crypto_alg_entry {
-+	enum ufs_crypto_alg ufs_alg;
-+	enum ufs_crypto_key_size ufs_key_size;
-+} ufs_crypto_algs[BLK_ENCRYPTION_MODE_MAX] = {
-+	[BLK_ENCRYPTION_MODE_AES_256_XTS] = {
-+		.ufs_alg = UFS_CRYPTO_ALG_AES_XTS,
-+		.ufs_key_size = UFS_CRYPTO_KEY_SIZE_256,
-+	},
-+};
-+
-+static void ufshcd_program_key(struct ufs_hba *hba,
-+			       const union ufs_crypto_cfg_entry *cfg,
-+			       int slot)
-+{
-+	int i;
-+	u32 slot_offset = hba->crypto_cfg_register + slot * sizeof(*cfg);
-+
-+	ufshcd_hold(hba, false);
-+	/* Ensure that CFGE is cleared before programming the key */
-+	ufshcd_writel(hba, 0, slot_offset + 16 * sizeof(cfg->reg_val[0]));
-+	for (i = 0; i < 16; i++) {
-+		ufshcd_writel(hba, le32_to_cpu(cfg->reg_val[i]),
-+			      slot_offset + i * sizeof(cfg->reg_val[0]));
-+	}
-+	/* Write dword 17 */
-+	ufshcd_writel(hba, le32_to_cpu(cfg->reg_val[17]),
-+		      slot_offset + 17 * sizeof(cfg->reg_val[0]));
-+	/* Dword 16 must be written last */
-+	ufshcd_writel(hba, le32_to_cpu(cfg->reg_val[16]),
-+		      slot_offset + 16 * sizeof(cfg->reg_val[0]));
-+	ufshcd_release(hba);
-+}
-+
-+static int ufshcd_crypto_keyslot_program(struct blk_keyslot_manager *ksm,
-+					 const struct blk_crypto_key *key,
-+					 unsigned int slot)
-+{
-+	struct ufs_hba *hba = container_of(ksm, struct ufs_hba, ksm);
-+	const union ufs_crypto_cap_entry *ccap_array = hba->crypto_cap_array;
-+	const struct ufs_crypto_alg_entry *alg =
-+			&ufs_crypto_algs[key->crypto_cfg.crypto_mode];
-+	u8 data_unit_mask = key->crypto_cfg.data_unit_size / 512;
-+	int i;
-+	int cap_idx = -1;
-+	union ufs_crypto_cfg_entry cfg = { 0 };
-+
-+	BUILD_BUG_ON(UFS_CRYPTO_KEY_SIZE_INVALID != 0);
-+	for (i = 0; i < hba->crypto_capabilities.num_crypto_cap; i++) {
-+		if (ccap_array[i].algorithm_id == alg->ufs_alg &&
-+		    ccap_array[i].key_size == alg->ufs_key_size &&
-+		    (ccap_array[i].sdus_mask & data_unit_mask)) {
-+			cap_idx = i;
-+			break;
-+		}
-+	}
-+
-+	if (WARN_ON(cap_idx < 0))
-+		return -EOPNOTSUPP;
-+
-+	cfg.data_unit_size = data_unit_mask;
-+	cfg.crypto_cap_idx = cap_idx;
-+	cfg.config_enable = UFS_CRYPTO_CONFIGURATION_ENABLE;
-+
-+	if (ccap_array[cap_idx].algorithm_id == UFS_CRYPTO_ALG_AES_XTS) {
-+		/* In XTS mode, the blk_crypto_key's size is already doubled */
-+		memcpy(cfg.crypto_key, key->raw, key->size/2);
-+		memcpy(cfg.crypto_key + UFS_CRYPTO_KEY_MAX_SIZE/2,
-+		       key->raw + key->size/2, key->size/2);
-+	} else {
-+		memcpy(cfg.crypto_key, key->raw, key->size);
-+	}
-+
-+	ufshcd_program_key(hba, &cfg, slot);
-+
-+	memzero_explicit(&cfg, sizeof(cfg));
-+	return 0;
-+}
-+
-+static void ufshcd_clear_keyslot(struct ufs_hba *hba, int slot)
+ Debugfs Entries
+ ===============
+diff --git a/fs/f2fs/compress.c b/fs/f2fs/compress.c
+index df7b2d15eacde..a19c093711a68 100644
+--- a/fs/f2fs/compress.c
++++ b/fs/f2fs/compress.c
+@@ -975,7 +975,7 @@ static int f2fs_write_compressed_pages(struct compress_ctx *cc,
+ 		.submitted = false,
+ 		.io_type = io_type,
+ 		.io_wbc = wbc,
+-		.encrypted = f2fs_encrypted_file(cc->inode),
++		.encrypted = fscrypt_inode_uses_fs_layer_crypto(cc->inode),
+ 	};
+ 	struct dnode_of_data dn;
+ 	struct node_info ni;
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index cdf2f626bea7a..0dfa8d3361428 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -14,6 +14,7 @@
+ #include <linux/pagevec.h>
+ #include <linux/blkdev.h>
+ #include <linux/bio.h>
++#include <linux/blk-crypto.h>
+ #include <linux/swap.h>
+ #include <linux/prefetch.h>
+ #include <linux/uio.h>
+@@ -457,6 +458,33 @@ static struct bio *__bio_alloc(struct f2fs_io_info *fio, int npages)
+ 	return bio;
+ }
+ 
++static void f2fs_set_bio_crypt_ctx(struct bio *bio, const struct inode *inode,
++				  pgoff_t first_idx,
++				  const struct f2fs_io_info *fio,
++				  gfp_t gfp_mask)
 +{
 +	/*
-+	 * Clear the crypto cfg on the device. Clearing CFGE
-+	 * might not be sufficient, so just clear the entire cfg.
++	 * The f2fs garbage collector sets ->encrypted_page when it wants to
++	 * read/write raw data without encryption.
 +	 */
-+	union ufs_crypto_cfg_entry cfg = { 0 };
-+
-+	ufshcd_program_key(hba, &cfg, slot);
++	if (!fio || !fio->encrypted_page)
++		fscrypt_set_bio_crypt_ctx(bio, inode, first_idx, gfp_mask);
 +}
 +
-+static int ufshcd_crypto_keyslot_evict(struct blk_keyslot_manager *ksm,
-+				       const struct blk_crypto_key *key,
-+				       unsigned int slot)
++static bool f2fs_crypt_mergeable_bio(struct bio *bio, const struct inode *inode,
++				     pgoff_t next_idx,
++				     const struct f2fs_io_info *fio)
 +{
-+	struct ufs_hba *hba = container_of(ksm, struct ufs_hba, ksm);
-+
-+	ufshcd_clear_keyslot(hba, slot);
-+
-+	return 0;
-+}
-+
-+bool ufshcd_crypto_enable(struct ufs_hba *hba)
-+{
-+	if (!(hba->caps & UFSHCD_CAP_CRYPTO))
-+		return false;
-+
-+	/* Reset might clear all keys, so reprogram all the keys. */
-+	blk_ksm_reprogram_all_keys(&hba->ksm);
-+	return true;
-+}
-+
-+static const struct blk_ksm_ll_ops ufshcd_ksm_ops = {
-+	.keyslot_program	= ufshcd_crypto_keyslot_program,
-+	.keyslot_evict		= ufshcd_crypto_keyslot_evict,
-+};
-+
-+static enum blk_crypto_mode_num
-+ufshcd_find_blk_crypto_mode(union ufs_crypto_cap_entry cap)
-+{
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(ufs_crypto_algs); i++) {
-+		BUILD_BUG_ON(UFS_CRYPTO_KEY_SIZE_INVALID != 0);
-+		if (ufs_crypto_algs[i].ufs_alg == cap.algorithm_id &&
-+		    ufs_crypto_algs[i].ufs_key_size == cap.key_size) {
-+			return i;
-+		}
-+	}
-+	return BLK_ENCRYPTION_MODE_INVALID;
-+}
-+
-+/**
-+ * ufshcd_hba_init_crypto - Read crypto capabilities, init crypto fields in hba
-+ * @hba: Per adapter instance
-+ *
-+ * Return: 0 if crypto was initialized or is not supported, else a -errno value.
-+ */
-+int ufshcd_hba_init_crypto(struct ufs_hba *hba)
-+{
-+	int cap_idx = 0;
-+	int err = 0;
-+	enum blk_crypto_mode_num blk_mode_num;
-+	int slot = 0;
-+	int num_keyslots;
-+
 +	/*
-+	 * Don't use crypto if either the hardware doesn't advertise the
-+	 * standard crypto capability bit *or* if the vendor specific driver
-+	 * hasn't advertised that crypto is supported.
++	 * The f2fs garbage collector sets ->encrypted_page when it wants to
++	 * read/write raw data without encryption.
 +	 */
-+	if (!(hba->capabilities & MASK_CRYPTO_SUPPORT) ||
-+	    !(hba->caps & UFSHCD_CAP_CRYPTO))
-+		goto out;
++	if (fio && fio->encrypted_page)
++		return !bio_has_crypt_ctx(bio);
 +
-+	hba->crypto_capabilities.reg_val =
-+			cpu_to_le32(ufshcd_readl(hba, REG_UFS_CCAP));
-+	hba->crypto_cfg_register =
-+		(u32)hba->crypto_capabilities.config_array_ptr * 0x100;
-+	hba->crypto_cap_array =
-+		devm_kcalloc(hba->dev, hba->crypto_capabilities.num_crypto_cap,
-+			     sizeof(hba->crypto_cap_array[0]), GFP_KERNEL);
-+	if (!hba->crypto_cap_array) {
-+		err = -ENOMEM;
-+		goto out;
-+	}
-+
-+	/* The actual number of configurations supported is (CFGC+1) */
-+	num_keyslots = hba->crypto_capabilities.config_count + 1;
-+	err = blk_ksm_init(&hba->ksm, num_keyslots);
-+	if (err)
-+		goto out_free_caps;
-+
-+	hba->ksm.ksm_ll_ops = ufshcd_ksm_ops;
-+	/* UFS only supports 8 bytes for any DUN */
-+	hba->ksm.max_dun_bytes_supported = 8;
-+	hba->ksm.dev = hba->dev;
-+
-+	/*
-+	 * Cache all the UFS crypto capabilities and advertise the supported
-+	 * crypto modes and data unit sizes to the block layer.
-+	 */
-+	for (cap_idx = 0; cap_idx < hba->crypto_capabilities.num_crypto_cap;
-+	     cap_idx++) {
-+		hba->crypto_cap_array[cap_idx].reg_val =
-+			cpu_to_le32(ufshcd_readl(hba,
-+						 REG_UFS_CRYPTOCAP +
-+						 cap_idx * sizeof(__le32)));
-+		blk_mode_num = ufshcd_find_blk_crypto_mode(
-+						hba->crypto_cap_array[cap_idx]);
-+		if (blk_mode_num != BLK_ENCRYPTION_MODE_INVALID)
-+			hba->ksm.crypto_modes_supported[blk_mode_num] |=
-+				hba->crypto_cap_array[cap_idx].sdus_mask * 512;
-+	}
-+
-+	for (slot = 0; slot < num_keyslots; slot++)
-+		ufshcd_clear_keyslot(hba, slot);
-+
-+	return 0;
-+
-+out_free_caps:
-+	devm_kfree(hba->dev, hba->crypto_cap_array);
-+out:
-+	/* Indicate that init failed by clearing UFSHCD_CAP_CRYPTO */
-+	hba->caps &= ~UFSHCD_CAP_CRYPTO;
-+	return err;
++	return fscrypt_mergeable_bio(bio, inode, next_idx);
 +}
 +
-+void ufshcd_crypto_setup_rq_keyslot_manager(struct ufs_hba *hba,
-+					    struct request_queue *q)
-+{
-+	if (hba->caps & UFSHCD_CAP_CRYPTO)
-+		blk_ksm_register(&hba->ksm, q);
-+}
-+
-+void ufshcd_crypto_destroy_keyslot_manager(struct ufs_hba *hba)
-+{
-+	blk_ksm_destroy(&hba->ksm);
-+}
-diff --git a/drivers/scsi/ufs/ufshcd-crypto.h b/drivers/scsi/ufs/ufshcd-crypto.h
-new file mode 100644
-index 0000000000000..22677619de595
---- /dev/null
-+++ b/drivers/scsi/ufs/ufshcd-crypto.h
-@@ -0,0 +1,42 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Copyright 2019 Google LLC
-+ */
-+
-+#ifndef _UFSHCD_CRYPTO_H
-+#define _UFSHCD_CRYPTO_H
-+
-+#ifdef CONFIG_SCSI_UFS_CRYPTO
-+#include "ufshcd.h"
-+#include "ufshci.h"
-+
-+bool ufshcd_crypto_enable(struct ufs_hba *hba);
-+
-+int ufshcd_hba_init_crypto(struct ufs_hba *hba);
-+
-+void ufshcd_crypto_setup_rq_keyslot_manager(struct ufs_hba *hba,
-+					    struct request_queue *q);
-+
-+void ufshcd_crypto_destroy_keyslot_manager(struct ufs_hba *hba);
-+
-+#else /* CONFIG_SCSI_UFS_CRYPTO */
-+
-+static inline bool ufshcd_crypto_enable(struct ufs_hba *hba)
-+{
-+	return false;
-+}
-+
-+static inline int ufshcd_hba_init_crypto(struct ufs_hba *hba)
-+{
-+	return 0;
-+}
-+
-+static inline void ufshcd_crypto_setup_rq_keyslot_manager(struct ufs_hba *hba,
-+						struct request_queue *q) { }
-+
-+static inline void ufshcd_crypto_destroy_keyslot_manager(struct ufs_hba *hba)
-+{ }
-+
-+#endif /* CONFIG_SCSI_UFS_CRYPTO */
-+
-+#endif /* _UFSHCD_CRYPTO_H */
-diff --git a/drivers/scsi/ufs/ufshcd.h b/drivers/scsi/ufs/ufshcd.h
-index 1eebb589159d6..e8f3127276abc 100644
---- a/drivers/scsi/ufs/ufshcd.h
-+++ b/drivers/scsi/ufs/ufshcd.h
-@@ -57,6 +57,7 @@
- #include <linux/regulator/consumer.h>
- #include <linux/bitfield.h>
- #include <linux/devfreq.h>
-+#include <linux/keyslot-manager.h>
- #include "unipro.h"
+ static inline void __submit_bio(struct f2fs_sb_info *sbi,
+ 				struct bio *bio, enum page_type type)
+ {
+@@ -653,6 +681,9 @@ int f2fs_submit_page_bio(struct f2fs_io_info *fio)
+ 	/* Allocate a new bio */
+ 	bio = __bio_alloc(fio, 1);
  
- #include <asm/irq.h>
-@@ -614,6 +615,10 @@ enum ufshcd_caps {
-  * @is_urgent_bkops_lvl_checked: keeps track if the urgent bkops level for
-  *  device is known or not.
-  * @scsi_block_reqs_cnt: reference counting for scsi block requests
-+ * @crypto_capabilities: Content of crypto capabilities register (0x100)
-+ * @crypto_cap_array: Array of crypto capabilities
-+ * @crypto_cfg_register: Start of the crypto cfg array
-+ * @ksm: the keyslot manager tied to this hba
-  */
- struct ufs_hba {
- 	void __iomem *mmio_base;
-@@ -733,6 +738,13 @@ struct ufs_hba {
- 
- 	struct device		bsg_dev;
- 	struct request_queue	*bsg_queue;
++	f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
++			       fio->page->index, fio, GFP_NOIO);
 +
-+#ifdef CONFIG_SCSI_UFS_CRYPTO
-+	union ufs_crypto_capabilities crypto_capabilities;
-+	union ufs_crypto_cap_entry *crypto_cap_array;
-+	u32 crypto_cfg_register;
-+	struct blk_keyslot_manager ksm;
+ 	if (bio_add_page(bio, page, PAGE_SIZE, 0) < PAGE_SIZE) {
+ 		bio_put(bio);
+ 		return -EFAULT;
+@@ -841,12 +872,16 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
+ 	trace_f2fs_submit_page_bio(page, fio);
+ 	f2fs_trace_ios(fio, 0);
+ 
+-	if (bio && !page_is_mergeable(fio->sbi, bio, *fio->last_block,
+-						fio->new_blkaddr))
++	if (bio && (!page_is_mergeable(fio->sbi, bio, *fio->last_block,
++				       fio->new_blkaddr) ||
++		    !f2fs_crypt_mergeable_bio(bio, fio->page->mapping->host,
++					      fio->page->index, fio)))
+ 		f2fs_submit_merged_ipu_write(fio->sbi, &bio, NULL);
+ alloc_new:
+ 	if (!bio) {
+ 		bio = __bio_alloc(fio, BIO_MAX_PAGES);
++		f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
++				       fio->page->index, fio, GFP_NOIO);
+ 		bio_set_op_attrs(bio, fio->op, fio->op_flags);
+ 
+ 		add_bio_entry(fio->sbi, bio, page, fio->temp);
+@@ -903,8 +938,11 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
+ 
+ 	inc_page_count(sbi, WB_DATA_TYPE(bio_page));
+ 
+-	if (io->bio && !io_is_mergeable(sbi, io->bio, io, fio,
+-			io->last_block_in_bio, fio->new_blkaddr))
++	if (io->bio &&
++	    (!io_is_mergeable(sbi, io->bio, io, fio, io->last_block_in_bio,
++			      fio->new_blkaddr) ||
++	     !f2fs_crypt_mergeable_bio(io->bio, fio->page->mapping->host,
++				       fio->page->index, fio)))
+ 		__submit_merged_bio(io);
+ alloc_new:
+ 	if (io->bio == NULL) {
+@@ -916,6 +954,8 @@ void f2fs_submit_page_write(struct f2fs_io_info *fio)
+ 			goto skip;
+ 		}
+ 		io->bio = __bio_alloc(fio, BIO_MAX_PAGES);
++		f2fs_set_bio_crypt_ctx(io->bio, fio->page->mapping->host,
++				       fio->page->index, fio, GFP_NOIO);
+ 		io->fio = *fio;
+ 	}
+ 
+@@ -960,11 +1000,14 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
+ 								for_write);
+ 	if (!bio)
+ 		return ERR_PTR(-ENOMEM);
++
++	f2fs_set_bio_crypt_ctx(bio, inode, first_idx, NULL, GFP_NOFS);
++
+ 	f2fs_target_device(sbi, blkaddr, bio);
+ 	bio->bi_end_io = f2fs_read_end_io;
+ 	bio_set_op_attrs(bio, REQ_OP_READ, op_flag);
+ 
+-	if (f2fs_encrypted_file(inode))
++	if (fscrypt_inode_uses_fs_layer_crypto(inode))
+ 		post_read_steps |= 1 << STEP_DECRYPT;
+ 	if (f2fs_compressed_file(inode))
+ 		post_read_steps |= 1 << STEP_DECOMPRESS;
+@@ -1988,8 +2031,9 @@ static int f2fs_read_single_page(struct inode *inode, struct page *page,
+ 	 * This page will go to BIO.  Do we need to send this
+ 	 * BIO off first?
+ 	 */
+-	if (bio && !page_is_mergeable(F2FS_I_SB(inode), bio,
+-				*last_block_in_bio, block_nr)) {
++	if (bio && (!page_is_mergeable(F2FS_I_SB(inode), bio,
++				       *last_block_in_bio, block_nr) ||
++		    !f2fs_crypt_mergeable_bio(bio, inode, page->index, NULL))) {
+ submit_and_realloc:
+ 		__submit_bio(F2FS_I_SB(inode), bio, DATA);
+ 		bio = NULL;
+@@ -2117,8 +2161,9 @@ int f2fs_read_multi_pages(struct compress_ctx *cc, struct bio **bio_ret,
+ 		blkaddr = data_blkaddr(dn.inode, dn.node_page,
+ 						dn.ofs_in_node + i + 1);
+ 
+-		if (bio && !page_is_mergeable(sbi, bio,
+-					*last_block_in_bio, blkaddr)) {
++		if (bio && (!page_is_mergeable(sbi, bio,
++					*last_block_in_bio, blkaddr) ||
++		    !f2fs_crypt_mergeable_bio(bio, inode, page->index, NULL))) {
+ submit_and_realloc:
+ 			__submit_bio(sbi, bio, DATA);
+ 			bio = NULL;
+@@ -2337,6 +2382,9 @@ int f2fs_encrypt_one_page(struct f2fs_io_info *fio)
+ 	/* wait for GCed page writeback via META_MAPPING */
+ 	f2fs_wait_on_block_writeback(inode, fio->old_blkaddr);
+ 
++	if (fscrypt_inode_uses_inline_crypto(inode))
++		return 0;
++
+ retry_encrypt:
+ 	fio->encrypted_page = fscrypt_encrypt_pagecache_blocks(page,
+ 					PAGE_SIZE, 0, gfp_flags);
+@@ -2510,7 +2558,7 @@ int f2fs_do_write_data_page(struct f2fs_io_info *fio)
+ 			f2fs_unlock_op(fio->sbi);
+ 		err = f2fs_inplace_write_data(fio);
+ 		if (err) {
+-			if (f2fs_encrypted_file(inode))
++			if (fscrypt_inode_uses_fs_layer_crypto(inode))
+ 				fscrypt_finalize_bounce_page(&fio->encrypted_page);
+ 			if (PageWriteback(page))
+ 				end_page_writeback(page);
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index f2dfc21c6abb0..8ccda50f28888 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -138,6 +138,7 @@ enum {
+ 	Opt_alloc,
+ 	Opt_fsync,
+ 	Opt_test_dummy_encryption,
++	Opt_inlinecrypt,
+ 	Opt_checkpoint_disable,
+ 	Opt_checkpoint_disable_cap,
+ 	Opt_checkpoint_disable_cap_perc,
+@@ -203,6 +204,7 @@ static match_table_t f2fs_tokens = {
+ 	{Opt_alloc, "alloc_mode=%s"},
+ 	{Opt_fsync, "fsync_mode=%s"},
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
++	{Opt_inlinecrypt, "inlinecrypt"},
+ 	{Opt_checkpoint_disable, "checkpoint=disable"},
+ 	{Opt_checkpoint_disable_cap, "checkpoint=disable:%u"},
+ 	{Opt_checkpoint_disable_cap_perc, "checkpoint=disable:%u%%"},
+@@ -788,6 +790,13 @@ static int parse_options(struct super_block *sb, char *options)
+ 			f2fs_info(sbi, "Test dummy encryption mode enabled");
+ #else
+ 			f2fs_info(sbi, "Test dummy encryption mount option ignored");
 +#endif
- };
++			break;
++		case Opt_inlinecrypt:
++#ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
++			sb->s_flags |= SB_INLINECRYPT;
++#else
++			f2fs_info(sbi, "inline encryption not supported");
+ #endif
+ 			break;
+ 		case Opt_checkpoint_disable_cap_perc:
+@@ -1583,6 +1592,8 @@ static void default_options(struct f2fs_sb_info *sbi)
+ 	F2FS_OPTION(sbi).compress_ext_cnt = 0;
+ 	F2FS_OPTION(sbi).bggc_mode = BGGC_MODE_ON;
  
- /* Returns true if clocks can be gated. Otherwise false */
++	sbi->sb->s_flags &= ~SB_INLINECRYPT;
++
+ 	set_opt(sbi, INLINE_XATTR);
+ 	set_opt(sbi, INLINE_DATA);
+ 	set_opt(sbi, INLINE_DENTRY);
+@@ -2427,6 +2438,25 @@ static void f2fs_get_ino_and_lblk_bits(struct super_block *sb,
+ 	*lblk_bits_ret = 8 * sizeof(block_t);
+ }
+ 
++static int f2fs_get_num_devices(struct super_block *sb)
++{
++	struct f2fs_sb_info *sbi = F2FS_SB(sb);
++
++	if (f2fs_is_multi_device(sbi))
++		return sbi->s_ndevs;
++	return 1;
++}
++
++static void f2fs_get_devices(struct super_block *sb,
++			     struct request_queue **devs)
++{
++	struct f2fs_sb_info *sbi = F2FS_SB(sb);
++	int i;
++
++	for (i = 0; i < sbi->s_ndevs; i++)
++		devs[i] = bdev_get_queue(FDEV(i).bdev);
++}
++
+ static const struct fscrypt_operations f2fs_cryptops = {
+ 	.key_prefix		= "f2fs:",
+ 	.get_context		= f2fs_get_context,
+@@ -2436,6 +2466,8 @@ static const struct fscrypt_operations f2fs_cryptops = {
+ 	.max_namelen		= F2FS_NAME_LEN,
+ 	.has_stable_inodes	= f2fs_has_stable_inodes,
+ 	.get_ino_and_lblk_bits	= f2fs_get_ino_and_lblk_bits,
++	.get_num_devices	= f2fs_get_num_devices,
++	.get_devices		= f2fs_get_devices,
+ };
+ #endif
+ 
 -- 
 2.26.2.303.gf8c07b1a785-goog
 
