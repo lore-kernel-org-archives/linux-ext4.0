@@ -1,96 +1,129 @@
-Return-Path: <SRS0=Wcou=6O=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=JmOq=6P=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54D06C4724C
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 22:35:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D357C4724C
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 May 2020 06:30:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2EF8920731
-	for <linux-ext4@archiver.kernel.org>; Thu, 30 Apr 2020 22:35:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588286105;
-	bh=M3JxNsWKgExkI8i1lNZFsxBk05w+tX6N63RVAkYOjCM=;
-	h=Date:From:To:Cc:Subject:List-ID:From;
-	b=2pQh/obMdygeuiJLUOu+XSeOS7pRD0vIl1ZXAm2+0OFHOZ9v1aRZe3vAg2AAWWIvC
-	 DdmcTcbORemHjlx4dgGvzlgqEq9pPWTUbergJ31aUHVH2FckXMOhDIKbTv5FMaEgre
-	 BLKGAwnBcwR6yIKcI37HR3w3h6D0ad5T1j1N3AZ0=
+	by mail.kernel.org (Postfix) with ESMTP id 4A4C8208DB
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 May 2020 06:30:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727077AbgD3WfA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 30 Apr 2020 18:35:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34788 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726784AbgD3WfA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 30 Apr 2020 18:35:00 -0400
-Received: from localhost (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6BE1820731;
-        Thu, 30 Apr 2020 22:34:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588286099;
-        bh=M3JxNsWKgExkI8i1lNZFsxBk05w+tX6N63RVAkYOjCM=;
-        h=Date:From:To:Cc:Subject:From;
-        b=BnnXkFS0fLFhaPXHl4P5E3UVsVmUtR07WwGxJBqhz5d3OPjd4ZyJYBFYlX4EjcdFJ
-         PGk7o14wzeHcmcErTQ3jvNuGCW8ufrhUP3Vz6FA9RYUko6hzrlfGErj1Y+8uAgLfQk
-         L7jqy7HqrsWmYDHNsK7DppD93TW3Pq9u2Q+FbDJA=
-Date:   Thu, 30 Apr 2020 18:34:58 -0400
-From:   Sasha Levin <sashal@kernel.org>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, stable@vger.kernel.org,
-        linux-kernel@vger.kernel.org, runderwood@linkedin.com
-Subject: ext4 perf regression on LTS kernels
-Message-ID: <20200430223458.GY13035@sasha-vm>
+        id S1728241AbgEAGaX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 1 May 2020 02:30:23 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:32818 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728126AbgEAGaW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2020 02:30:22 -0400
+Received: from pps.filterd (m0098421.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 04161SeF074330;
+        Fri, 1 May 2020 02:30:15 -0400
+Received: from ppma01fra.de.ibm.com (46.49.7a9f.ip4.static.sl-reverse.com [159.122.73.70])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 30r81ggyrw-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 01 May 2020 02:30:15 -0400
+Received: from pps.filterd (ppma01fra.de.ibm.com [127.0.0.1])
+        by ppma01fra.de.ibm.com (8.16.0.27/8.16.0.27) with SMTP id 0416AvJR014986;
+        Fri, 1 May 2020 06:30:13 GMT
+Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
+        by ppma01fra.de.ibm.com with ESMTP id 30mcu8fa98-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 01 May 2020 06:30:13 +0000
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
+        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 0416UAru64553070
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 1 May 2020 06:30:10 GMT
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id CD2F2A4064;
+        Fri,  1 May 2020 06:30:10 +0000 (GMT)
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 41E0BA4068;
+        Fri,  1 May 2020 06:30:09 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.85.81.13])
+        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Fri,  1 May 2020 06:30:09 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     "Paul E . McKenney" <paulmck@kernel.org>,
+        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>,
+        tytso@mit.edu, "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [RFC 01/20] ext4: mballoc: Refactor ext4_mb_discard_preallocations()
+Date:   Fri,  1 May 2020 11:59:43 +0530
+Message-Id: <6edef7f5ced72cb3cbec0585df84159a58c9ea59.1588313626.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <cover.1588313626.git.riteshh@linux.ibm.com>
+References: <cover.1588313626.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Disposition: inline
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.138,18.0.676
+ definitions=2020-05-01_01:2020-04-30,2020-05-01 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
+ impostorscore=0 malwarescore=0 spamscore=0 mlxscore=0 priorityscore=1501
+ suspectscore=1 clxscore=1015 adultscore=0 bulkscore=0 phishscore=0
+ mlxlogscore=999 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2003020000 definitions=main-2005010040
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi folks,
+Implement ext4_mb_discard_preallocations_should_retry()
+which we will need in later patches to add more logic
+like check for sequence number match to see if we should
+retry for block allocation or not.
 
-We're working on trying to figure out a severe performance regression in
-the 5.4 and older LTS trees. The regression seems to happen only on
-physical spinning rust disks, which is why it was probably went
-unnoticed.
+There should be no functionality change in this patch.
 
-The regression seems to be introduced in v4.7 with:
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ fs/ext4/mballoc.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-        1f60fbe72749 ("ext4: allow readdir()'s of large empty directories to be interrupted")
-
-The fio test used to reproduce it is:
-
-	sync; i=0; while [ $i -lt 4 ]; do ( ( time fio
-	--name=disk-burner --readwrite=write --bs=4096 --invalidate=1
-	--end_fsync=0 --filesize=800M --runtime=120 --ioengine=libaio
-	--thread --numjobs=20 --iodepth=1 --unlink=1 ) 2>&1 | grep
-	'^real' ); ((i++)); done
-
-When run with the offending commit, it'll take 3-4x longer to complete.
-
-The regression was fixed upstream somewhere in this merge:
-
-        e5da4c933c50 ("Merge tag 'ext4_for_linus' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4")
-
-but it seems to be a combination of commits that fix it rather than a
-single one.
-
-Now, here's the tricky part... reverting these two commits on top of
-v4.19.118 "fixes" the issue:
-
-        06bd3c36a733 ("ext4: fix data exposure after a crash")
-        1f60fbe72749 ("ext4: allow readdir()'s of large empty directories to be interrupted")
-
-but clearly this is not something we want to do in the stable trees, so
-we're trying to figure out the proper way to fix this.
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 30d5d97548c4..a742e51e33b8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4486,6 +4486,17 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ 	return freed;
+ }
+ 
++static bool ext4_mb_discard_preallocations_should_retry(struct super_block *sb,
++			struct ext4_allocation_context *ac)
++{
++	int freed;
++
++	freed = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
++	if (freed)
++		return true;
++	return false;
++}
++
+ /*
+  * Main entry point into mballoc to allocate blocks
+  * it tries to use preallocation first, then falls back
+@@ -4494,7 +4505,6 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 				struct ext4_allocation_request *ar, int *errp)
+ {
+-	int freed;
+ 	struct ext4_allocation_context *ac = NULL;
+ 	struct ext4_sb_info *sbi;
+ 	struct super_block *sb;
+@@ -4593,8 +4603,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			ar->len = ac->ac_b_ex.fe_len;
+ 		}
+ 	} else {
+-		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
+-		if (freed)
++		if (ext4_mb_discard_preallocations_should_retry(sb, ac))
+ 			goto repeat;
+ 		*errp = -ENOSPC;
+ 	}
 -- 
-Thanks,
-Sasha
+2.21.0
+
