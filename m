@@ -1,73 +1,95 @@
-Return-Path: <SRS0=7bDU=6Q=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=+SyN=6R=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E2A3C3A5A9
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 May 2020 18:45:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B5A7C28CBC
+	for <linux-ext4@archiver.kernel.org>; Sun,  3 May 2020 12:52:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F037120836
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 May 2020 18:45:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1588445108;
-	bh=s0z1+Ustle/5LPDXfg8sKPJ5kKTcNvfSNnMWHuEwuuU=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=RECrqv4FVjfAZvkKpvl+0ezHuD8dZUNvI78gOeBjIZZ/XY6iugTYNcazlIT7/GqVo
-	 PhaeacBBcCtjwKRRoywShiNoyuoEwNcspKqNMX17NxPxXIUj/gKV58S8i2KKtdgAqB
-	 0GvBAlAnYhSsXfC/HZcLgz6ZcbbcYffeiOQphnYM=
+	by mail.kernel.org (Postfix) with ESMTP id 3BD9A20757
+	for <linux-ext4@archiver.kernel.org>; Sun,  3 May 2020 12:52:31 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=jguk.org header.i=@jguk.org header.b="Na7j4Gn9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728491AbgEBSpE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 2 May 2020 14:45:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59938 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728411AbgEBSpC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 2 May 2020 14:45:02 -0400
-Subject: Re: [GIT PULL] iomap: bug fix for 5.7-rc3
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1588445102;
-        bh=s0z1+Ustle/5LPDXfg8sKPJ5kKTcNvfSNnMWHuEwuuU=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=i0mBLSUMC3B9vy3S+iQqaYTjH6CEA1GVLEXSCN8WSiGxKKzM8TJCIOwz+7jKmS08S
-         hpQoRNGDFZ1CY4poq2blHx5GPpxzWf2UAlbFZxdnjzLFomL3LmZY08J8p43RRts2iY
-         w9wWrXzXlRYjJge2H7wK2OQtcStXNbx3o3PctmbQ=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20200502170801.GB6742@magnolia>
-References: <20200502170801.GB6742@magnolia>
-X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20200502170801.GB6742@magnolia>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
- tags/iomap-5.7-fixes-1
-X-PR-Tracked-Commit-Id: b75dfde1212991b24b220c3995101c60a7b8ae74
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: f66ed1ebbfde37631fba289f7c399eaa70632abf
-Message-Id: <158844510226.26966.830662685597317444.pr-tracker-bot@kernel.org>
-Date:   Sat, 02 May 2020 18:45:02 +0000
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-kernel@vger.kernel.org,
-        sandeen@sandeen.net, hch@lst.de,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>, riteshh@linux.ibm.com
+        id S1728614AbgECMwa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 3 May 2020 08:52:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40130 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728378AbgECMwa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 May 2020 08:52:30 -0400
+Received: from mail-wr1-x42a.google.com (mail-wr1-x42a.google.com [IPv6:2a00:1450:4864:20::42a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBE4AC061A0C
+        for <linux-ext4@vger.kernel.org>; Sun,  3 May 2020 05:52:28 -0700 (PDT)
+Received: by mail-wr1-x42a.google.com with SMTP id d17so17543511wrg.11
+        for <linux-ext4@vger.kernel.org>; Sun, 03 May 2020 05:52:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=jguk.org; s=google;
+        h=to:from:subject:message-id:date:user-agent:mime-version
+         :content-language:content-transfer-encoding;
+        bh=GLeJXzh/B8dRu76vlsSovp06eFw86bismr4DVFJeKqU=;
+        b=Na7j4Gn91+vw0NHVtLSXMbiOHelWndIDa/ye9VVs93/Cc3QrmG/wndCGNgSArhI5F8
+         gTIqeei7XYQHtshw/fd5YnYATBg/RrVQ5NiS+f6r4hjCY3EzRZBz3Y8v47O1+gSiqE7r
+         YZY0wAaq50Iutly22mybJJMtNYzx7AuwfRt+vcUYStzdShsjzXcDOQl6QdX4LeRojuhC
+         Jp1pZECV1CPirTFKBjmvcv9skP/Ywo/oDZ6y+kHT122CgAM1lFeP4RrjbJ/gwKOADajF
+         GfzenM543MiVuVqN4oGQI5ydAFEmsacEq3Cmh6MC1lUG5wXAXhbiciMJYw1vIDPv8AuZ
+         kQcA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:from:subject:message-id:date:user-agent
+         :mime-version:content-language:content-transfer-encoding;
+        bh=GLeJXzh/B8dRu76vlsSovp06eFw86bismr4DVFJeKqU=;
+        b=IJkftKyV2mJmYwHWHUDOnHrwOz5ZWMCive9zyNFOpZqMI0KycNiRCqSBqrzvTww/xP
+         0MzG8SXxcSRBmkmlWbMqPqccd9fLM7ZzhDd82ouYjD96zynMaf6PM7fJZBWrEXVbE+q0
+         rg9PvGpdK9fUN77EyFQ2xRmxsJ1hv7zD/1b7AuOL3iwr+8jXaTm/I/QsVZ8uvrCSPmE3
+         JEC3foFXhfPES0gDMhwsJFCo3dZXRKJrCeIZHxNZmddo3M+GH4wGLLk6i74Vs7Vf8w5Z
+         6ebGZjvZP1JXgBq+LQgaPmmZ5YtNu9IJK4vRMHNqAROkg14Aj/468Trm5xvoVAJj5n3P
+         JHKA==
+X-Gm-Message-State: AGi0PuavJeDmCzD5iI1d0mdUzg8Q+5IngTwk5/y7dUEY8ljEnJy/1FqN
+        7qYaGnMj+jGlmJJhbLXQAQw+4g==
+X-Google-Smtp-Source: APiQypJWOp1hsuP2izJRehLzL3QqPYhI9RTLyZw5sDg6JMIhBHsYMpG7T1+EOgPlHynqSEseX3GbUg==
+X-Received: by 2002:adf:e449:: with SMTP id t9mr2914752wrm.108.1588510346297;
+        Sun, 03 May 2020 05:52:26 -0700 (PDT)
+Received: from [192.168.0.12] (cpc87281-slou4-2-0-cust47.17-4.cable.virginm.net. [92.236.12.48])
+        by smtp.gmail.com with ESMTPSA id i129sm9188524wmi.20.2020.05.03.05.52.24
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 03 May 2020 05:52:25 -0700 (PDT)
+To:     linux-ext4@vger.kernel.org
+From:   Jonny Grant <jg@jguk.org>
+Subject: /fs/ext4/ext4.h add a comment to ext4_dir_entry_2
+Message-ID: <bf50e54f-2a0c-17a4-89c3-4afcc298daeb@jguk.org>
+Date:   Sun, 3 May 2020 13:52:24 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.7.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-GB
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Sat, 2 May 2020 10:08:01 -0700:
+Hello
 
-> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.7-fixes-1
+Could a comment be added to clarify 'file_type' ?
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/f66ed1ebbfde37631fba289f7c399eaa70632abf
+struct ext4_dir_entry_2 {
+     __le32    inode;            /* Inode number */
+     __le16    rec_len;        /* Directory entry length */
+     __u8    name_len;        /* Name length */
+     __u8    file_type;
+     char    name[EXT4_NAME_LEN];    /* File name */
+};
 
-Thank you!
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+
+This what I am proposing to add:
+
+     __u8    file_type;        /* See directory file type macros below */
+
+
+Thank you
+Jonny
