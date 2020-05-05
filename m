@@ -2,55 +2,74 @@ Return-Path: <SRS0=6az6=6T=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CD5CC47247
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 May 2020 10:44:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDE34C47259
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 May 2020 15:43:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 13578206B9
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 May 2020 10:44:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B52942078C
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 May 2020 15:43:31 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="CZwudL8M"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728725AbgEEKoR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 May 2020 06:44:17 -0400
-Received: from verein.lst.de ([213.95.11.211]:34604 "EHLO verein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728233AbgEEKoR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 5 May 2020 06:44:17 -0400
-Received: by verein.lst.de (Postfix, from userid 2407)
-        id 4F60368C4E; Tue,  5 May 2020 12:44:14 +0200 (CEST)
-Date:   Tue, 5 May 2020 12:44:14 +0200
+        id S1730323AbgEEPnb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 May 2020 11:43:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34686 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729317AbgEEPna (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 May 2020 11:43:30 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB9B0C061A0F;
+        Tue,  5 May 2020 08:43:30 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=kE1QN5CpddlIzejqrV6uBZwikbIlszGwNuIcuIFnBgY=; b=CZwudL8M/p/3X1V8M5/wCJc4+M
+        i7jsfxBiHEannSQkukG84F0KQUzDbEpuY5/vcvnjhW8sDIyln9UnCQR7fpo86PSRAIQGHH1lsJnFh
+        6cH/QgI+1rTJBglLxUGaHdPkf6Q76IoPWqKhPGTWf1PBl+mGGYs8kCQVZ3zwRvtkNHkNBBdpW4FoU
+        B/iH4grODM2+xCPb0/H7l8SSHtZb0hKdlS2+8Vw6qt2WbO5b40CfUmPacSQqrsV4N/VoLBVv36Gau
+        VUmhC5+LwivxYWUYj8YbROycLD5l0o+m/NGg42q9hnr39fGJviPCbVOlNcRyiQyi8gopS9dzAalhZ
+        svIoe8dg==;
+Received: from [2001:4bb8:191:66b6:c70:4a89:bc61:2] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jVzjE-0003y2-SJ; Tue, 05 May 2020 15:43:29 +0000
 From:   Christoph Hellwig <hch@lst.de>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        viro@zeniv.linux.org.uk, jack@suse.cz, tytso@mit.edu,
-        adilger@dilger.ca, riteshh@linux.ibm.com, amir73il@gmail.com,
+To:     linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk
+Cc:     jack@suse.cz, tytso@mit.edu, adilger@dilger.ca,
+        riteshh@linux.ibm.com, amir73il@gmail.com,
         linux-fsdevel@vger.kernel.org, linux-unionfs@vger.kernel.org
-Subject: Re: [PATCH 10/11] fs: remove the access_ok() check in ioctl_fiemap
-Message-ID: <20200505104414.GD15815@lst.de>
-References: <20200427181957.1606257-1-hch@lst.de> <20200427181957.1606257-11-hch@lst.de> <20200428152124.GL6741@magnolia>
+Subject: fix fiemap for ext4 bitmap files (+ cleanups) v3
+Date:   Tue,  5 May 2020 17:43:13 +0200
+Message-Id: <20200505154324.3226743-1-hch@lst.de>
+X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200428152124.GL6741@magnolia>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 28, 2020 at 08:21:24AM -0700, Darrick J. Wong wrote:
-> On Mon, Apr 27, 2020 at 08:19:56PM +0200, Christoph Hellwig wrote:
-> > access_ok just checks we are fed a proper user pointer.  We also do that
-> > in copy_to_user itself, so no need to do this early.
-> > 
-> > Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Hmm.  It's a minor behavioral change that we no longer require the
-> entire extent array to be accessible at the start even if parts of it
-> would never have gotten accessed, but I don't think that matters, so:
+Hi all,
 
-Note that access_ok only checks if the memory actually is in userspace,
-so they only thing seeing a behavior difference would be an exploit of
-some kind.
+the first two patches should fix the issue where ext4 doesn't
+properly check the max file size for bitmap files in fiemap.
+
+The rest cleans up the fiemap support in ext4 and in general.
+
+Changes since v2:
+ - commit message typo
+ - doc updates
+ - use d_inode in cifs
+ - add a missing return statement in cifs
+ - remove the filemap_write_and_wait call from ext4_ioctl_get_es_cache
+
+Changes since v1:
+ - rename fiemap_validate to fiemap_prep
+ - lift FIEMAP_FLAG_SYNC handling to common code
+ - add a new linux/fiemap.h header
+ - remove __generic_block_fiemap
+ - remove access_ok calls from fiemap and ext4
