@@ -2,73 +2,74 @@ Return-Path: <SRS0=pBXC=6Z=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D31AEC54E8E
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 May 2020 13:14:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 79B74C54E8D
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 May 2020 13:14:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B0C8020736
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 May 2020 13:14:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 566B020736
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 May 2020 13:14:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="hIRznpXq"
+	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="ShZCN8aQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730145AbgEKNOZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 May 2020 09:14:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55926 "EHLO
+        id S1730159AbgEKNOc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 May 2020 09:14:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55970 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726687AbgEKNOX (ORCPT
+        by vger.kernel.org with ESMTP id S1729616AbgEKNOb (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 May 2020 09:14:23 -0400
-Received: from mail-lf1-x134.google.com (mail-lf1-x134.google.com [IPv6:2a00:1450:4864:20::134])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6AB94C061A0E
-        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2020 06:14:21 -0700 (PDT)
-Received: by mail-lf1-x134.google.com with SMTP id a4so7452623lfh.12
-        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2020 06:14:21 -0700 (PDT)
+        Mon, 11 May 2020 09:14:31 -0400
+Received: from mail-lj1-x241.google.com (mail-lj1-x241.google.com [IPv6:2a00:1450:4864:20::241])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DEEAAC05BD09
+        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2020 06:14:30 -0700 (PDT)
+Received: by mail-lj1-x241.google.com with SMTP id o14so8352995ljp.4
+        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2020 06:14:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=linaro.org; s=google;
         h=from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=U5G2udOSHaQZv+/vRn9bY4n/DXBHSBdIm8Dj9bPbJOA=;
-        b=hIRznpXq1Mi0E8mpdkPnk3hmCkIkEdeRf6pMnebUkb/1CDDnNzap+KPo0X8tCEvAHM
-         xux9V5R+UKSG7LTlNhow80b5oSyz4xu9EjSrj8Pt40WjDISGvgcW8IJY/kKUaLIARklB
-         EbZt05Xvxf090qFRJbw+YxVv3z4tehsHGxa7zVsxhhW7/b1rCSP3K5Fg5ihZdeS3Uwns
-         dc/rCGAp97V3cXOpMFrs3ekRGUiaufkpPWfCoOFWPi0BgV3Ve2ztEHzwmtpn1PC4zUsJ
-         +32zH47SoxY/QYEMo58iwTYlsCsokYNHuIVcee4mk2XUGMQNnJfdWs6oP8a3HdQdYGEO
-         lBLg==
+        bh=MSSALeybJON0vdo6J8wFop6P10hjXeJOgeHK6FMq2ec=;
+        b=ShZCN8aQt2lDeT7IBRUe0XPp++Ppjd3Wf+JazE2uSWM+DGYMvzTnOuNYhfhjwYcrYo
+         pNK5eF1MN/SeH6/xg1hI+0q9NIX9nRh3Yj+im62KmRrvalPpub1k3+w9IiaAgsufKNGC
+         mht3gSfrZcbae2YVfcV3fLypaZ1V1mFYClMmTcH0v+uDo35eAbGgwPcJBmTybFehIroT
+         b0LipaBWKRAB4gY3Mf1Pk9SWeGX/M6zgeExJp+E4EEKl3QP6vPFIq34n3/AngqsMJ+ZU
+         unHO5L3MWOTw09NWFiVj0IjgyL5IquM8Jt817RP80kHYKi6ttzOr/5Pww6WzAvU5vv2a
+         +wVA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=U5G2udOSHaQZv+/vRn9bY4n/DXBHSBdIm8Dj9bPbJOA=;
-        b=aqTZXZhRoQthCbJFfd0OUv3JWadedsMNu96JI1DP4PryHvDy7zefEFDdNlTCtF9klJ
-         5kngmfrw4Bz/cAUHCo1ut1Eqzc6XJi6/0CmQjFd0vmyPSj023x4eB9ddKmPrAyWgDuqf
-         Vm21mKapPRz4iLx8BIINVVjrV8dnPdc9BcrMzZkDLpzDfnL4LNmlPMNlqKGAHc/WV0uW
-         vXxQbFeBWkSKF9YZoBaZTkEyuCcOOgmQkSyzPgOAsuL4KvAwA+4Aw0bYx5js4nDF4G/X
-         ATjCTHgBKvzf70iF66a2IQEBfG5ohm7XvVWV7pZ5s/vlpU3q7Agd1iq7OYnLXmpHDnDr
-         uplA==
-X-Gm-Message-State: AOAM531m3W5q+ImPk969wsluvS5AT/yDrbKy2VIvAysqD3EiJYlfjJH0
-        GHUtnmvC/e/6TmgGgFSQu83piQ==
-X-Google-Smtp-Source: ABdhPJyxP3hgaWRGIbs7CbiGxBLMK1Agzv2v0iWSsVIzG1UmL0wwG1g4ObOsnQjUF+BkJb3I4c3vbw==
-X-Received: by 2002:a19:cc92:: with SMTP id c140mr10986211lfg.34.1589202859704;
-        Mon, 11 May 2020 06:14:19 -0700 (PDT)
+        bh=MSSALeybJON0vdo6J8wFop6P10hjXeJOgeHK6FMq2ec=;
+        b=B7ifrok49KfgMld1xaPk9Yf9HJHC3m76dB7QKCDq58aGe27Rn90b8wJftLu2POH3Wn
+         OGRU0clAYcYlDtAZkpDedBaXSp1bB+PHa2LUj4d5EK2obdPARYXCHjLkAfwFLu+ws5xd
+         5DmWwi/1THakuXuJ9OOEQ0eX3AEAvByl1uNyNqVY/DLHnbPY0Vuv4ygLSZkFZWIUFpRD
+         Ndi5XdXm8Qw7EVF7QqZMwOvWGlNDAJjQTNyK3J6vNnqzgoocQ8aPkkHnk7OjG+5hlNvX
+         owMrr17f94cI7zUTEZqmzI9OtR/XmUd5MczN0cdHSgBemRoSNYdUggoN8m0lQ84Ymnf7
+         fi0g==
+X-Gm-Message-State: AOAM531SLJaADgdBj1kz/+hGuoBmYGiEEShNAofMPzMAYe4halpjEUoh
+        mILb6fBU7jbRnI/0dVDzGSHWDQ==
+X-Google-Smtp-Source: ABdhPJyhzpIMLamxyIU5PPcM4PrHEKVYAkzZntlZA60vssYAUXAMW4ONcVmO796LO9RIZw+wNK47qQ==
+X-Received: by 2002:a2e:8108:: with SMTP id d8mr9840244ljg.184.1589202869384;
+        Mon, 11 May 2020 06:14:29 -0700 (PDT)
 Received: from localhost (c-8c28e555.07-21-73746f28.bbcust.telenor.se. [85.229.40.140])
-        by smtp.gmail.com with ESMTPSA id f24sm11918890lfk.36.2020.05.11.06.14.19
+        by smtp.gmail.com with ESMTPSA id a11sm10031361lji.62.2020.05.11.06.14.28
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 11 May 2020 06:14:19 -0700 (PDT)
+        Mon, 11 May 2020 06:14:28 -0700 (PDT)
 From:   Anders Roxell <anders.roxell@linaro.org>
-To:     brendanhiggins@google.com, akpm@linux-foundation.org,
-        gregkh@linuxfoundation.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, john.johansen@canonical.com,
-        jmorris@namei.org, serge@hallyn.com
-Cc:     linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com,
+To:     brendanhiggins@google.com
+Cc:     john.johansen@canonical.com, jmorris@namei.org, serge@hallyn.com,
+        tytso@mit.edu, adilger.kernel@dilger.ca,
+        gregkh@linuxfoundation.org, akpm@linux-foundation.org,
+        linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com,
         linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-security-module@vger.kernel.org, elver@google.com,
         davidgow@google.com, Anders Roxell <anders.roxell@linaro.org>
-Subject: [PATCH v3 0/6] Enable as many KUnit tests as possible
-Date:   Mon, 11 May 2020 15:13:50 +0200
-Message-Id: <20200511131350.29638-1-anders.roxell@linaro.org>
+Subject: [PATCH v3 2/6] kunit: default KUNIT_* fragments to KUNIT_ALL_TESTS
+Date:   Mon, 11 May 2020 15:14:25 +0200
+Message-Id: <20200511131425.29808-1-anders.roxell@linaro.org>
 X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -77,44 +78,52 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+This makes it easier to enable all KUnit fragments.
 
-This patchset will try to enable as many KUnit test fragments as
-possible for the current .config file.
-This will make it easier for both developers that tests their specific
-feature and also for test-systems that would like to get as much as
-possible for their current .config file.
+Adding 'if !KUNIT_ALL_TESTS' so individual tests can not be turned off.
+Therefore if KUNIT_ALL_TESTS is enabled that will hide the prompt in
+menuconfig.
 
-I will send a separate KCSAN KUnit patch after this patchset since that
-isn't in mainline yet.
+Reviewed-by: David Gow <davidgow@google.com>
+Signed-off-by: Anders Roxell <anders.roxell@linaro.org>
+---
+ lib/kunit/Kconfig | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-Since v2:
-Fixed David's comments. KUNIT_RUN_ALL -> KUNIT_ALL_TESTS, and he
-suggested a great help text.
-
-Since v1:
-Marco commented to split up the patches, and change a "." to a ",".
-
-
-Cheers,
-Anders
-
-Anders Roxell (6):
-  kunit: Kconfig: enable a KUNIT_ALL_TESTS fragment
-  kunit: default KUNIT_* fragments to KUNIT_ALL_TESTS
-  lib: Kconfig.debug: default KUNIT_* fragments to KUNIT_ALL_TESTS
-  drivers: base: default KUNIT_* fragments to KUNIT_ALL_TESTS
-  fs: ext4: default KUNIT_* fragments to KUNIT_ALL_TESTS
-  security: apparmor: default KUNIT_* fragments to KUNIT_ALL_TESTS
-
- drivers/base/Kconfig      |  3 ++-
- drivers/base/test/Kconfig |  3 ++-
- fs/ext4/Kconfig           |  3 ++-
- lib/Kconfig.debug         |  6 ++++--
- lib/kunit/Kconfig         | 23 ++++++++++++++++++++---
- security/apparmor/Kconfig |  3 ++-
- 6 files changed, 32 insertions(+), 9 deletions(-)
-
+diff --git a/lib/kunit/Kconfig b/lib/kunit/Kconfig
+index bdeee7639005..00909e6a2443 100644
+--- a/lib/kunit/Kconfig
++++ b/lib/kunit/Kconfig
+@@ -15,7 +15,8 @@ menuconfig KUNIT
+ if KUNIT
+ 
+ config KUNIT_DEBUGFS
+-	bool "KUnit - Enable /sys/kernel/debug/kunit debugfs representation"
++	bool "KUnit - Enable /sys/kernel/debug/kunit debugfs representation" if !KUNIT_ALL_TESTS
++	default KUNIT_ALL_TESTS
+ 	help
+ 	  Enable debugfs representation for kunit.  Currently this consists
+ 	  of /sys/kernel/debug/kunit/<test_suite>/results files for each
+@@ -23,7 +24,8 @@ config KUNIT_DEBUGFS
+ 	  run that occurred.
+ 
+ config KUNIT_TEST
+-	tristate "KUnit test for KUnit"
++	tristate "KUnit test for KUnit" if !KUNIT_ALL_TESTS
++	default KUNIT_ALL_TESTS
+ 	help
+ 	  Enables the unit tests for the KUnit test framework. These tests test
+ 	  the KUnit test framework itself; the tests are both written using
+@@ -32,7 +34,8 @@ config KUNIT_TEST
+ 	  expected.
+ 
+ config KUNIT_EXAMPLE_TEST
+-	tristate "Example test for KUnit"
++	tristate "Example test for KUnit" if !KUNIT_ALL_TESTS
++	default KUNIT_ALL_TESTS
+ 	help
+ 	  Enables an example unit test that illustrates some of the basic
+ 	  features of KUnit. This test only exists to help new users understand
 -- 
 2.20.1
 
