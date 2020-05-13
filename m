@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B31CC2D0F9
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:43:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81347C2D0F8
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:43:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F0EEC20659
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:43:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 64615206F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:43:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729219AbgEMFnl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 13 May 2020 01:43:41 -0400
-Received: from mga01.intel.com ([192.55.52.88]:28729 "EHLO mga01.intel.com"
+        id S1729145AbgEMFne (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 13 May 2020 01:43:34 -0400
+Received: from mga06.intel.com ([134.134.136.31]:12649 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729161AbgEMFnf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 13 May 2020 01:43:35 -0400
-IronPort-SDR: 0NDnqg+bzE/iMMLaRXyDn2viLqZy08dOX04dgZ1lMOkIAWYwzBWybg/2uNQ9J6u1kzKtaKB5Rx
- a3ZbKtzyWy4g==
+        id S1729110AbgEMFnc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 13 May 2020 01:43:32 -0400
+IronPort-SDR: 9DzJvz15vmmGQ1y2ZW6dPqLy63XHc9Acc2c2SlzHBHcHHTodhPetilDdYsLULvpCBxvKKancEn
+ 4tcWc/RGwr2g==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga001.jf.intel.com ([10.7.209.18])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:34 -0700
-IronPort-SDR: /7J2wgvlbA4JuFwXtFDpWIH4fynSgaRQnUJ8n65Npv3+9AnFcDm6osBNahWG9MM8WdhtUkcd/U
- SXsjxbLwd9EA==
+Received: from orsmga002.jf.intel.com ([10.7.209.21])
+  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:32 -0700
+IronPort-SDR: QfxkYo4zwnuMogo2fCMzvUmopRKFineXUbiWeReeij6rUJuy8UhOkp2D+8ZIjVbdEhHqXBrR3A
+ sKoeVD9gmiGQ==
 X-IronPort-AV: E=Sophos;i="5.73,386,1583222400"; 
-   d="scan'208";a="341142971"
+   d="scan'208";a="280386428"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga001-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:33 -0700
+  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:31 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -41,9 +41,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 9/9] Documentation/dax: Update DAX enablement for ext4
-Date:   Tue, 12 May 2020 22:43:24 -0700
-Message-Id: <20200513054324.2138483-10-ira.weiny@intel.com>
+Subject: [PATCH 5/9] fs/ext4: Update ext4_should_use_dax()
+Date:   Tue, 12 May 2020 22:43:20 -0700
+Message-Id: <20200513054324.2138483-6-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200513054324.2138483-1-ira.weiny@intel.com>
 References: <20200513054324.2138483-1-ira.weiny@intel.com>
@@ -56,41 +56,66 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Update the document to reflect ext4 and xfs now behave the same.
+S_DAX should only be enabled when the underlying block device supports
+dax.
+
+Change ext4_should_use_dax() to check for device support prior to the
+over riding mount option.
+
+While we are at it change the function to ext4_should_enable_dax() as
+this better reflects the ask as well as matches xfs.
 
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from RFC:
-	Update with ext2 text...
+Changes from RFC
+	Change function name to 'should enable'
+	Clean up bool conversion
+	Reorder this for better bisect-ability
 ---
- Documentation/filesystems/dax.txt | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.txt
-index 735fb4b54117..265c4f808dbf 100644
---- a/Documentation/filesystems/dax.txt
-+++ b/Documentation/filesystems/dax.txt
-@@ -25,7 +25,7 @@ size when creating the filesystem.
- Currently 3 filesystems support DAX: ext2, ext4 and xfs.  Enabling DAX on them
- is different.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index a10ff12194db..d3a4c2ed7a1c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4398,10 +4398,8 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ 		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
+ }
  
--Enabling DAX on ext4 and ext2
-+Enabling DAX on ext2
- -----------------------------
+-static bool ext4_should_use_dax(struct inode *inode)
++static bool ext4_should_enable_dax(struct inode *inode)
+ {
+-	if (!test_opt(inode->i_sb, DAX_ALWAYS))
+-		return false;
+ 	if (!S_ISREG(inode->i_mode))
+ 		return false;
+ 	if (ext4_should_journal_data(inode))
+@@ -4412,7 +4410,13 @@ static bool ext4_should_use_dax(struct inode *inode)
+ 		return false;
+ 	if (ext4_test_inode_flag(inode, EXT4_INODE_VERITY))
+ 		return false;
+-	return true;
++	if (!bdev_dax_supported(inode->i_sb->s_bdev,
++				inode->i_sb->s_blocksize))
++		return false;
++	if (test_opt(inode->i_sb, DAX_ALWAYS))
++		return true;
++
++	return false;
+ }
  
- When mounting the filesystem, use the "-o dax" option on the command line or
-@@ -33,8 +33,8 @@ add 'dax' to the options in /etc/fstab.  This works to enable DAX on all files
- within the filesystem.  It is equivalent to the '-o dax=always' behavior below.
- 
- 
--Enabling DAX on xfs
---------------------
-+Enabling DAX on xfs and ext4
-+----------------------------
- 
- Summary
- -------
+ void ext4_set_inode_flags(struct inode *inode)
+@@ -4430,7 +4434,7 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (ext4_should_use_dax(inode))
++	if (ext4_should_enable_dax(inode))
+ 		new_fl |= S_DAX;
+ 	if (flags & EXT4_ENCRYPT_FL)
+ 		new_fl |= S_ENCRYPTED;
 -- 
 2.25.1
 
