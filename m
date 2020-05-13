@@ -2,105 +2,183 @@ Return-Path: <SRS0=l1WF=63=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7896C2D0FD
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:44:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 421B5CA90AF
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 08:15:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BD84320659
-	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 05:44:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1F65320673
+	for <linux-ext4@archiver.kernel.org>; Wed, 13 May 2020 08:15:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728991AbgEMFna (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 13 May 2020 01:43:30 -0400
-Received: from mga05.intel.com ([192.55.52.43]:40375 "EHLO mga05.intel.com"
+        id S1730616AbgEMIPn convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 13 May 2020 04:15:43 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37418 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728097AbgEMFn3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 13 May 2020 01:43:29 -0400
-IronPort-SDR: qGgY2PZKhs7nps/88OPZ8JI/v9pjVb6CYa00n/H4ZWhzaqA5OFW0eJiP1GhULS6wv4s6M43z64
- n1uKKcuqg6WA==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by fmsmga105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:29 -0700
-IronPort-SDR: SK59B42UbMYq2ls4ncVnwTImTJhK0cVzDiqBcnn6kBo26zDsrhp8LgIuVowGEwKjJKfpHifoyn
- Ls586/o5KqSg==
-X-IronPort-AV: E=Sophos;i="5.73,386,1583222400"; 
-   d="scan'208";a="265754104"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga006-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 May 2020 22:43:28 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Jeff Moyer <jmoyer@redhat.com>, linux-kernel@vger.kernel.org
-Subject: [PATCH 0/9] Enable ext4 support for per-file/directory DAX operations
-Date:   Tue, 12 May 2020 22:43:15 -0700
-Message-Id: <20200513054324.2138483-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
+        id S1729106AbgEMIPn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 13 May 2020 04:15:43 -0400
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 207729] New: Mounting EXT4 with data_err=abort does not abort
+ journal on data block write failure
+Date:   Wed, 13 May 2020 08:15:42 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: new
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: rebello.anthony@gmail.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_id short_desc product version
+ cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
+ priority component assigned_to reporter cf_regression attachments.created
+Message-ID: <bug-207729-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=207729
 
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
+            Bug ID: 207729
+           Summary: Mounting EXT4 with data_err=abort does not abort
+                    journal on data block write failure
+           Product: File System
+           Version: 2.5
+    Kernel Version: 5.3.2
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: rebello.anthony@gmail.com
+        Regression: No
 
-This passes the same xfstests test as XFS.
+Created attachment 289111
+  --> https://bugzilla.kernel.org/attachment.cgi?id=289111&action=edit
+TGZ containing shell script and c code to reproduce the bug
 
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
+Hi,
 
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
+I've been performing some experiments that involve fault injection in the ext4
+file system and noticed something that might be a bug.
 
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
+According to [ext4
+Documentation](https://www.kernel.org/doc/Documentation/filesystems/ext4.txt), 
+`data_err=abort` should abort the journal if an error occurs in a file data
+buffer in ordered mode.
 
-To: linux-kernel@vger.kernel.org
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
+The assumption I'm making is that the mount option `data_err=abort` will abort
+the journal if the file system fails to write a data block to disk (I'm not
+sure about my assumption since the documentation mentions a "file data
+buffer").
 
-Ira Weiny (9):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Disallow encryption if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
+### Overview
 
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  7 +++
- Documentation/filesystems/fscrypt.rst     |  4 +-
- fs/ext4/ext4.h                            | 20 ++++---
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 27 +++++++--
- fs/ext4/ioctl.c                           | 32 +++++++++--
- fs/ext4/super.c                           | 67 +++++++++++++++--------
- fs/ext4/verity.c                          |  5 +-
- 9 files changed, 125 insertions(+), 45 deletions(-)
+I have noticed that when fsync fails due to a failed data block write, the
+journal is not aborted even when the file system is mounted with
+`data_err=abort`. The file system continues to accept and handle future writes
+and fsyncs.
+
+I've attached a tgz which contains a small C program along with a shell script
+to reproduce the problem. The C file is a simple workload that writes and
+fsyncs a file. The shell script uses losetup to create a loop device,
+configures the device mapper to fail certain sectors, mounts the ext4 file
+system, and runs the compiled C file to demonstrate the issue.
+
+Usage
+
+```
+tar -xvzf ext4-data-err-abort-bug.tgz
+cd ext4-data-err-abort-bug
+bash run_bug.sh
+```
+
+### Steps to reproduce independently
+
+1. Create a 1GB loopdevice and mkfs -t ext4
+2. Create a file with 12K data on the mounted loopdevice
+3. Using debugfs, identify the 3 blocks for the file
+4. Create a device mapper device using the dmsetup create command, configure
+the 2nd block to use error target while everything else is a linear target
+5. Open the file, write to the 2nd page, fsyncs (this fsync should fail)
+6. Write to the 3rd page, fsync (This passes even though we expect it to fail
+because of the `data_err=abort` mount option)
+7. close file, unmount, dmsetup remove, etc
+
+### Actual results
+
+I observed that the first fsync fails because of the write failure. However,
+the journal is not aborted. The second write and fsync succeed.
+
+### Expected results
+
+The first fsync should fail and the journal should be aborted. Any future
+write/fsync would cause the file system to detect an aborted journal and
+probably remount in read only mode.
+
+
+### Other information
+
+I used an unmodified linux 5.3.2 from
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/snapshot/linux-5.3.2.tar.gz
+on an Intel Xeon Silver 4114 deca core processor.
+
+```
+$ awk -f scripts/ver_linux
+If some fields are empty or look unusual you may have an old version.
+Compare to the current minimal requirements in Documentation/Changes.
+
+Linux my-hostname 5.3.2 #1 SMP Mon May 11 14:13:56 CDT 2020 x86_64 x86_64
+x86_64 GNU/Linux
+
+GNU Make                4.1
+Binutils                2.30
+Util-linux              2.31.1
+Mount                   2.31.1
+Module-init-tools       24
+E2fsprogs               1.44.1
+Xfsprogs                4.9.0
+Nfs-utils               1.3.3
+Linux C Library         2.27
+Dynamic linker (ldd)    2.27
+Linux C++ Library       6.0.25
+Procps                  3.3.12
+Net-tools               2.10
+Kbd                     2.0.4
+Console-tools           2.0.4
+Sh-utils                8.28
+Udev                    237
+Modules Loaded          acpi_pad acpi_power_meter aesni_intel aes_x86_64 ahci
+autofs4 binfmt_misc coretemp crc32_pclmul crct10dif_pclmul cryptd crypto_simd
+dca drm drm_kms_helper drm_vram_helper fb_sys_fops fscache ghash_clmulni_intel
+glue_helper grace hid hid_generic i2c_algo_bit i40e ib_cm ib_core ib_iser
+input_leds intel_cstate intel_powerclamp intel_rapl_common intel_rapl_msr
+intel_rapl_perf ioatdma ipmi_devintf ipmi_msghandler ipmi_si ipmi_ssif ipod
+ip_tables irqbypass iscsi_tcp iw_cm ixgbe joydev kvm kvm_intel libahci
+libcrc32c libiscsi libiscsi_tcp lockd lpc_ich mac_hid mdio mei mei_me mgag200
+mpt3sas nfit nfs nfs_acl nfsv3 pps_core ptp raid_class rdma_cm sch_fq_codel
+scsi_transport_iscsi scsi_transport_sas skx_edac sunrpc syscopyarea sysfillrect
+sysimgblt ttm usbhid wmi x86_pkg_temp_thermal xfrm_algo xfs x_tables
+```
 
 -- 
-2.25.1
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
