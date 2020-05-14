@@ -6,51 +6,70 @@ X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E842FC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 14:57:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E846C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 14:57:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D3C57206D8
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 14:57:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 45BE4205CB
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 14:57:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726707AbgENO5j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 May 2020 10:57:39 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59684 "EHLO
+        id S1727838AbgENO5u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 May 2020 10:57:50 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59709 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726316AbgENO5j (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2020 10:57:39 -0400
+        with ESMTP id S1726179AbgENO5u (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2020 10:57:50 -0400
 Received: from callcc.thunk.org (pool-100-0-195-244.bstnma.fios.verizon.net [100.0.195.244])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 04EEvVAn008896
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 04EEvi0s008963
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 14 May 2020 10:57:31 -0400
+        Thu, 14 May 2020 10:57:44 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 03A1F420304; Thu, 14 May 2020 10:57:30 -0400 (EDT)
-Date:   Thu, 14 May 2020 10:57:30 -0400
+        id 37502420304; Thu, 14 May 2020 10:57:44 -0400 (EDT)
+Date:   Thu, 14 May 2020 10:57:44 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
 To:     Jan Kara <jack@suse.cz>
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 2/3] writeback: Export inode_io_list_del()
-Message-ID: <20200514145730.GV1596452@mit.edu>
+Subject: Re: [PATCH 3/3] ext4: Avoid freeing inodes on dirty list
+Message-ID: <20200514145744.GW1596452@mit.edu>
 References: <20200421085445.5731-1-jack@suse.cz>
- <20200421085445.5731-3-jack@suse.cz>
+ <20200421085445.5731-4-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200421085445.5731-3-jack@suse.cz>
+In-Reply-To: <20200421085445.5731-4-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 21, 2020 at 10:54:44AM +0200, Jan Kara wrote:
-> Ext4 needs to remove inode from writeback lists after it is out of
-> visibility of its journalling machinery (which can still dirty the
-> inode). Export inode_io_list_del() for it.
+On Tue, Apr 21, 2020 at 10:54:45AM +0200, Jan Kara wrote:
+> When we are evicting inode with journalled data, we may race with
+> transaction commit in the following way:
+> 
+> CPU0					CPU1
+> jbd2_journal_commit_transaction()	evict(inode)
+> 					  inode_io_list_del()
+> 					  inode_wait_for_writeback()
+>   process BJ_Forget list
+>     __jbd2_journal_insert_checkpoint()
+>     __jbd2_journal_refile_buffer()
+>       __jbd2_journal_unfile_buffer()
+>         if (test_clear_buffer_jbddirty(bh))
+>           mark_buffer_dirty(bh)
+> 	    __mark_inode_dirty(inode)
+> 					  ext4_evict_inode(inode)
+> 					    frees the inode
+> 
+> This results in use-after-free issues in the writeback code (or
+> the assertion added in the previous commit triggering).
+> 
+> Fix the problem by removing inode from writeback lists once all the page
+> cache is evicted and so inode cannot be added to writeback lists again.
 > 
 > Signed-off-by: Jan Kara <jack@suse.cz>
 
 Applied, thanks.
 
-					- Ted
+						- Ted
