@@ -2,114 +2,88 @@ Return-Path: <SRS0=9mDZ=64=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48202C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CF89C433E1
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:55:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 31DBA206BE
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1C201206BE
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:55:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726010AbgENGxU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 May 2020 02:53:20 -0400
-Received: from mga14.intel.com ([192.55.52.115]:43897 "EHLO mga14.intel.com"
+        id S1725935AbgENGz0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 May 2020 02:55:26 -0400
+Received: from mga07.intel.com ([134.134.136.100]:24279 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725911AbgENGxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 May 2020 02:53:20 -0400
-IronPort-SDR: 0mKsgizaAJBsC+Hh6bnuFMUdXQ5JuvE69941voollJVW8B6lMj2Y4Gu/IlkBT1rm6vvTUuq+FV
- KKruyyBCgk0w==
+        id S1725831AbgENGz0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 May 2020 02:55:26 -0400
+IronPort-SDR: LmGVgLkRdaEFxxRrNnTbG+YU0GlEAgYw34/dzCUlj86jByMeJRw6Vgoc+9xFH6z0bNVLytw6bW
+ tdG0oK4nQqHw==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga002.jf.intel.com ([10.7.209.21])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:19 -0700
-IronPort-SDR: xQA7GUCRkzw8iPfjj8bl4+ul4+nvOn1axPrDtT4pLTz1uuf5Ocze0gFCculivz2DSNuPh7Aswf
- ksmXH2yGcmhg==
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:55:25 -0700
+IronPort-SDR: 4EAhcH2eyjRNOzx8+C1/Q5Cp+otOL2Ga0272rzp6JWprrN/Q7Ido8gTOuH7YhUPeM66uO8vav/
+ LKhqViWQUQGA==
+X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.73,390,1583222400"; 
-   d="scan'208";a="280757800"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:18 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
+   d="scan'208";a="464413086"
+Received: from iweiny-desk2.sc.intel.com ([10.3.52.147])
+  by fmsmga006.fm.intel.com with ESMTP; 13 May 2020 23:55:25 -0700
+Date:   Wed, 13 May 2020 23:55:25 -0700
+From:   Ira Weiny <ira.weiny@intel.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Al Viro <viro@zeniv.linux.org.uk>,
         Dan Williams <dan.j.williams@intel.com>,
         Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Jeff Moyer <jmoyer@redhat.com>
-Subject: [PATCH V1 0/9] Enable ext4 support for per-file/directory DAX operations
-Date:   Wed, 13 May 2020 23:53:06 -0700
-Message-Id: <20200514065316.2500078-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
+        Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 8/9] fs/ext4: Introduce DAX inode flag
+Message-ID: <20200514065524.GC2140786@iweiny-DESK2.sc.intel.com>
+References: <20200513054324.2138483-1-ira.weiny@intel.com>
+ <20200513054324.2138483-9-ira.weiny@intel.com>
+ <20200513144706.GH27709@quack2.suse.cz>
+ <20200513214154.GB2140786@iweiny-DESK2.sc.intel.com>
+ <20200514064335.GB9569@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200514064335.GB9569@quack2.suse.cz>
+User-Agent: Mutt/1.11.1 (2018-12-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+On Thu, May 14, 2020 at 08:43:35AM +0200, Jan Kara wrote:
+> On Wed 13-05-20 14:41:55, Ira Weiny wrote:
+> > On Wed, May 13, 2020 at 04:47:06PM +0200, Jan Kara wrote:
+> > >
+> > > So I think you'll have to check
+> > > whether DAX flag is being changed,
+> > 
+> > ext4_dax_dontcache() does check if the flag is being changed.
+> 
+> Yes, but if you call it after inode flags change, you cannot determine that
+> just from flags and EXT4_I(inode)->i_flags. So that logic needs to change.
 
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
+I just caught this email... just after sending V1.
 
-This passes the same xfstests test as XFS.
+I've moved where ext4_dax_dontcache() is called.  I think it is ok now with the
+current check.
 
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
+LMK if I've messed it up...  :-/
 
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
+Ira
 
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
-
-Changes from V0:
-	Collect reviews
-	Fix up setting don't cache in ioctl code
-	Add FS_DAX_FL flag for consistency
-
-
-To: linux-ext4@vger.kernel.org
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-
-
-Ira Weiny (9):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Disallow encryption if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
-
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  7 +++
- Documentation/filesystems/fscrypt.rst     |  4 +-
- fs/ext4/ext4.h                            | 20 ++++---
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 27 +++++++--
- fs/ext4/ioctl.c                           | 31 +++++++++--
- fs/ext4/super.c                           | 67 +++++++++++++++--------
- fs/ext4/verity.c                          |  5 +-
- include/uapi/linux/fs.h                   |  1 +
- 10 files changed, 125 insertions(+), 45 deletions(-)
-
--- 
-2.25.1
-
+> 
+> 								Honza
+> 
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
