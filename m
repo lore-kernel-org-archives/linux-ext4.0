@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20FA4C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94B3CC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 11AD2206BE
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7AE2A206BE
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 May 2020 06:54:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726645AbgENGx6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 May 2020 02:53:58 -0400
-Received: from mga07.intel.com ([134.134.136.100]:24100 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726034AbgENGxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726037AbgENGxV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 14 May 2020 02:53:21 -0400
-IronPort-SDR: umbg94bAomxyBiYfb35fxpqDOJQRiU/MfLwnxlZ4tzWB3hv3XAH8OpLyq1+0GOIFykn30lvQF2
- pegeQ6uUWYDw==
+Received: from mga03.intel.com ([134.134.136.65]:2893 "EHLO mga03.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725979AbgENGxU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 May 2020 02:53:20 -0400
+IronPort-SDR: bVdYOmAc+ImvTljnNUu5s3lkNOFBoJnw+I2OwvzUOGRadX5xQ8QJaQFtJGIWA6ZruaYJi1R7tP
+ nTvdvvYaFuWA==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:20 -0700
-IronPort-SDR: CoA/uy7sbXze7imXWR7ydgQ0P4Is3UOhFPWglk63t2c+7NwhmPaBBESk82Mk2xQUBWg3U7Ad1v
- u4OeNWSqJGag==
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:20 -0700
+IronPort-SDR: GQ1hzhuh/TPZ67YOSApRWHc8Iy7TvflZ/UemSyzmBNp7CscHHJ8BwECoY2udEzrOPjGg9J75Hd
+ Rl8goN+obTIQ==
 X-IronPort-AV: E=Sophos;i="5.73,390,1583222400"; 
-   d="scan'208";a="298613492"
+   d="scan'208";a="297929571"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga008-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:20 -0700
+  by fmsmga002-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 13 May 2020 23:53:19 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -41,9 +41,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V1 2/9] fs/ext4: Disallow verity if inode is DAX
-Date:   Wed, 13 May 2020 23:53:08 -0700
-Message-Id: <20200514065316.2500078-3-ira.weiny@intel.com>
+Subject: [PATCH V1 1/9] fs/ext4: Narrow scope of DAX check in setflags
+Date:   Wed, 13 May 2020 23:53:07 -0700
+Message-Id: <20200514065316.2500078-2-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200514065316.2500078-1-ira.weiny@intel.com>
 References: <20200514065316.2500078-1-ira.weiny@intel.com>
@@ -56,55 +56,33 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Verity and DAX are incompatible.  Changing the DAX mode due to a verity
-flag change is wrong without a corresponding address_space_operations
-update.
+When preventing DAX and journaling on an inode.  Use the effective DAX
+check rather than the mount option.
 
-Make the 2 options mutually exclusive by returning an error if DAX was
-set first.
+This will be required to support per inode DAX flags.
 
-(Setting DAX is already disabled if Verity is set first.)
-
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-
 ---
-Changes:
-	remove WARN_ON_ONCE
-	Add documentation for DAX/Verity exclusivity
----
- Documentation/filesystems/ext4/verity.rst | 7 +++++++
- fs/ext4/verity.c                          | 3 +++
- 2 files changed, 10 insertions(+)
+ fs/ext4/ioctl.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4/verity.rst b/Documentation/filesystems/ext4/verity.rst
-index 3e4c0ee0e068..51ab1aa17e59 100644
---- a/Documentation/filesystems/ext4/verity.rst
-+++ b/Documentation/filesystems/ext4/verity.rst
-@@ -39,3 +39,10 @@ is encrypted as well as the data itself.
- 
- Verity files cannot have blocks allocated past the end of the verity
- metadata.
-+
-+Verity and DAX
-+--------------
-+
-+Verity and DAX are not compatible and attempts to set both of these flags on a
-+file will fail.
-+
-diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
-index dc5ec724d889..f05a09fb2ae4 100644
---- a/fs/ext4/verity.c
-+++ b/fs/ext4/verity.c
-@@ -113,6 +113,9 @@ static int ext4_begin_enable_verity(struct file *filp)
- 	handle_t *handle;
- 	int err;
- 
-+	if (IS_DAX(inode))
-+		return -EINVAL;
-+
- 	if (ext4_verity_in_progress(inode))
- 		return -EBUSY;
- 
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index bfc1281fc4cb..5813e5e73eab 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -393,9 +393,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
+ 		/*
+ 		 * Changes to the journaling mode can cause unsafe changes to
+-		 * S_DAX if we are using the DAX mount option.
++		 * S_DAX if the inode is DAX
+ 		 */
+-		if (test_opt(inode->i_sb, DAX)) {
++		if (IS_DAX(inode)) {
+ 			err = -EBUSY;
+ 			goto flags_out;
+ 		}
 -- 
 2.25.1
 
