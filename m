@@ -2,34 +2,34 @@ Return-Path: <SRS0=4nMf=65=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DAB48C433E1
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42238C433DF
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B9FD82065F
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2704A2065F
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726639AbgEOEly (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 May 2020 00:41:54 -0400
-Received: from mga18.intel.com ([134.134.136.126]:36394 "EHLO mga18.intel.com"
+        id S1726670AbgEOEmG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 May 2020 00:42:06 -0400
+Received: from mga09.intel.com ([134.134.136.24]:14758 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726295AbgEOEl3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 May 2020 00:41:29 -0400
-IronPort-SDR: VpQ6mXIAo5/bJ1nq/OvNrGZT96l+fAJ8A/f4ylVjqxKb77AXzNFk3FISVRDdLm7/271l7dCC7M
- VeoNgmtWYKPg==
+        id S1726198AbgEOEl1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 May 2020 00:41:27 -0400
+IronPort-SDR: PLNerIxd+1+148hztX+l65E4DwI8OLrSpNoNBDJOj5bXqTD/g2xzSv8VZYWc5QLPYgGouAyeoo
+ Tn5JpbAKQJXw==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:29 -0700
-IronPort-SDR: pKQRKRkRBjduPfwPprxtCT92jdIMSmzeFM65hVHKWsC/WKXLcTmFQS6WSy+uo2M45nE3aJCScz
- gL2eZBhpjyBg==
+Received: from fmsmga008.fm.intel.com ([10.253.24.58])
+  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:27 -0700
+IronPort-SDR: oj0y3Ftz/O+KUXaXmCj1JEMLNjqitpMfToxOJcRJ5eTtWNO1d+1XkofQxM8WIYcdsLGpnKjTc4
+ 5D/QOfNmPkOg==
 X-IronPort-AV: E=Sophos;i="5.73,394,1583222400"; 
-   d="scan'208";a="464592190"
+   d="scan'208";a="253687729"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga005-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:28 -0700
+  by fmsmga008-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:26 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -40,9 +40,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 5/9] fs/ext4: Update ext4_should_use_dax()
-Date:   Thu, 14 May 2020 21:41:17 -0700
-Message-Id: <20200515044121.2987940-6-ira.weiny@intel.com>
+Subject: [PATCH v2 2/9] fs/ext4: Disallow verity if inode is DAX
+Date:   Thu, 14 May 2020 21:41:14 -0700
+Message-Id: <20200515044121.2987940-3-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200515044121.2987940-1-ira.weiny@intel.com>
 References: <20200515044121.2987940-1-ira.weiny@intel.com>
@@ -55,67 +55,56 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-S_DAX should only be enabled when the underlying block device supports
-dax.
+Verity and DAX are incompatible.  Changing the DAX mode due to a verity
+flag change is wrong without a corresponding address_space_operations
+update.
 
-Change ext4_should_use_dax() to check for device support prior to the
-over riding mount option.
+Make the 2 options mutually exclusive by returning an error if DAX was
+set first.
 
-While we are at it change the function to ext4_should_enable_dax() as
-this better reflects the ask as well as matches xfs.
+(Setting DAX is already disabled if Verity is set first.)
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from RFC
-	Change function name to 'should enable'
-	Clean up bool conversion
-	Reorder this for better bisect-ability
+Changes:
+	remove WARN_ON_ONCE
+	Add documentation for DAX/Verity exclusivity
 ---
- fs/ext4/inode.c | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ Documentation/filesystems/ext4/verity.rst | 7 +++++++
+ fs/ext4/verity.c                          | 3 +++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a10ff12194db..d3a4c2ed7a1c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4398,10 +4398,8 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
- }
+diff --git a/Documentation/filesystems/ext4/verity.rst b/Documentation/filesystems/ext4/verity.rst
+index 3e4c0ee0e068..51ab1aa17e59 100644
+--- a/Documentation/filesystems/ext4/verity.rst
++++ b/Documentation/filesystems/ext4/verity.rst
+@@ -39,3 +39,10 @@ is encrypted as well as the data itself.
  
--static bool ext4_should_use_dax(struct inode *inode)
-+static bool ext4_should_enable_dax(struct inode *inode)
- {
--	if (!test_opt(inode->i_sb, DAX_ALWAYS))
--		return false;
- 	if (!S_ISREG(inode->i_mode))
- 		return false;
- 	if (ext4_should_journal_data(inode))
-@@ -4412,7 +4410,13 @@ static bool ext4_should_use_dax(struct inode *inode)
- 		return false;
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_VERITY))
- 		return false;
--	return true;
-+	if (!bdev_dax_supported(inode->i_sb->s_bdev,
-+				inode->i_sb->s_blocksize))
-+		return false;
-+	if (test_opt(inode->i_sb, DAX_ALWAYS))
-+		return true;
+ Verity files cannot have blocks allocated past the end of the verity
+ metadata.
 +
-+	return false;
- }
++Verity and DAX
++--------------
++
++Verity and DAX are not compatible and attempts to set both of these flags on a
++file will fail.
++
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index dc5ec724d889..f05a09fb2ae4 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -113,6 +113,9 @@ static int ext4_begin_enable_verity(struct file *filp)
+ 	handle_t *handle;
+ 	int err;
  
- void ext4_set_inode_flags(struct inode *inode)
-@@ -4430,7 +4434,7 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & EXT4_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
--	if (ext4_should_use_dax(inode))
-+	if (ext4_should_enable_dax(inode))
- 		new_fl |= S_DAX;
- 	if (flags & EXT4_ENCRYPT_FL)
- 		new_fl |= S_ENCRYPTED;
++	if (IS_DAX(inode))
++		return -EINVAL;
++
+ 	if (ext4_verity_in_progress(inode))
+ 		return -EBUSY;
+ 
 -- 
 2.25.1
 
