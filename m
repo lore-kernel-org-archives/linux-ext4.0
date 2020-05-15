@@ -2,112 +2,79 @@ Return-Path: <SRS0=4nMf=65=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_2
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDDBDC433E1
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FA36C433E2
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 06:35:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BB92E2065F
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:42:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D0D4220728
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 06:35:31 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=mediatek.com header.i=@mediatek.com header.b="kwP3dkT2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726231AbgEOEl1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 May 2020 00:41:27 -0400
-Received: from mga12.intel.com ([192.55.52.136]:45791 "EHLO mga12.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726064AbgEOEl1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 May 2020 00:41:27 -0400
-IronPort-SDR: 4Z6AkquiHgTCJQEsv+vMsauIH7nn38UT/t2T0BI7pa3emCRqb7XndaML06d5BFwjlf0BMGwsDo
- ri7jsABsnuDw==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga001.jf.intel.com ([10.7.209.18])
-  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:26 -0700
-IronPort-SDR: XvCID+xrSHmqvNt9J29YB2SrWaVHM6cDjVEAKJ3qzIdoeexsMeCoAiDH1ayTXqGU+VAG+5A7Cm
- /NygluhkY13g==
-X-IronPort-AV: E=Sophos;i="5.73,394,1583222400"; 
-   d="scan'208";a="341858147"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga001-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:25 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Jeff Moyer <jmoyer@redhat.com>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 0/9] Enable ext4 support for per-file/directory DAX operations
-Date:   Thu, 14 May 2020 21:41:12 -0700
-Message-Id: <20200515044121.2987940-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
+        id S1726385AbgEOGfa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 May 2020 02:35:30 -0400
+Received: from mailgw02.mediatek.com ([210.61.82.184]:39623 "EHLO
+        mailgw02.mediatek.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726191AbgEOGfa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 May 2020 02:35:30 -0400
+X-UUID: a627162ab9be4896a6a78854bb275d10-20200515
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=mediatek.com; s=dk;
+        h=Content-Transfer-Encoding:MIME-Version:Content-Type:References:In-Reply-To:Date:CC:To:From:Subject:Message-ID; bh=dnVzAwZEKYSKKY4z6dkr6lk8gdmk1Zn9tS3rjZChFxw=;
+        b=kwP3dkT2wnhIK6hP6had2V0Z7rwvK+3/mjplUJSj+Y2YTlsYDUe1aNcX60PT1zJsQI+DGMO5AOQuCjtilA4TxJRcvm/jQ4MZXj4SIX54zHioqFt/GT2+ucgVaVjbC/X8ONuXj0OGZArn4uLYaSbrzzSD73g88Df20DCAmLwlh5U=;
+X-UUID: a627162ab9be4896a6a78854bb275d10-20200515
+Received: from mtkexhb02.mediatek.inc [(172.21.101.103)] by mailgw02.mediatek.com
+        (envelope-from <stanley.chu@mediatek.com>)
+        (Cellopoint E-mail Firewall v4.1.10 Build 0809 with TLS)
+        with ESMTP id 782748912; Fri, 15 May 2020 14:35:27 +0800
+Received: from mtkcas07.mediatek.inc (172.21.101.84) by
+ mtkmbs02n1.mediatek.inc (172.21.101.77) with Microsoft SMTP Server (TLS) id
+ 15.0.1497.2; Fri, 15 May 2020 14:35:24 +0800
+Received: from [172.21.77.33] (172.21.77.33) by mtkcas07.mediatek.inc
+ (172.21.101.73) with Microsoft SMTP Server id 15.0.1497.2 via Frontend
+ Transport; Fri, 15 May 2020 14:35:24 +0800
+Message-ID: <1589524526.3197.110.camel@mtkswgap22>
+Subject: Re: [PATCH v13 07/12] scsi: ufs: UFS crypto API
+From:   Stanley Chu <stanley.chu@mediatek.com>
+To:     Satya Tangirala <satyat@google.com>
+CC:     <linux-block@vger.kernel.org>, <linux-scsi@vger.kernel.org>,
+        <linux-fscrypt@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        <linux-ext4@vger.kernel.org>,
+        "Barani Muthukumaran" <bmuthuku@qti.qualcomm.com>,
+        Kuohong Wang <kuohong.wang@mediatek.com>,
+        Kim Boojin <boojin.kim@samsung.com>,
+        "Eric Biggers" <ebiggers@google.com>
+Date:   Fri, 15 May 2020 14:35:26 +0800
+In-Reply-To: <20200514003727.69001-8-satyat@google.com>
+References: <20200514003727.69001-1-satyat@google.com>
+         <20200514003727.69001-8-satyat@google.com>
+Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Evolution 3.2.3-0ubuntu6 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-MTK:  N
+Content-Transfer-Encoding: base64
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
-
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
-
-This passes the same xfstests test as XFS.
-
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
-
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
-
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
-
----
-Changes from V1:
-	Fix up mount options
-	Pick up reviews
-
-To: linux-kernel@vger.kernel.org
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-
-
-Ira Weiny (9):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Disallow encryption if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
-
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  7 ++
- Documentation/filesystems/fscrypt.rst     |  4 +-
- fs/ext4/ext4.h                            | 21 ++++--
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 27 +++++--
- fs/ext4/ioctl.c                           | 31 ++++++--
- fs/ext4/super.c                           | 87 ++++++++++++++++-------
- fs/ext4/verity.c                          |  5 +-
- include/uapi/linux/fs.h                   |  1 +
- 10 files changed, 144 insertions(+), 47 deletions(-)
-
--- 
-2.25.1
+SGkgU2F0eWEsDQoNCk9uIFRodSwgMjAyMC0wNS0xNCBhdCAwMDozNyArMDAwMCwgU2F0eWEgVGFu
+Z2lyYWxhIHdyb3RlOg0KPiBJbnRyb2R1Y2UgZnVuY3Rpb25zIHRvIG1hbmlwdWxhdGUgVUZTIGlu
+bGluZSBlbmNyeXB0aW9uIGhhcmR3YXJlDQo+IGluIGxpbmUgd2l0aCB0aGUgSkVERUMgVUZTSENJ
+IHYyLjEgc3BlY2lmaWNhdGlvbiBhbmQgdG8gd29yayB3aXRoIHRoZQ0KPiBibG9jayBrZXlzbG90
+IG1hbmFnZXIuDQo+IA0KPiBUaGUgVUZTIGNyeXB0byBBUEkgd2lsbCBhc3N1bWUgYnkgZGVmYXVs
+dCB0aGF0IGEgdmVuZG9yIGRyaXZlciBkb2Vzbid0DQo+IHN1cHBvcnQgVUZTIGNyeXB0bywgZXZl
+biBpZiB0aGUgaGFyZHdhcmUgYWR2ZXJ0aXNlcyB0aGUgY2FwYWJpbGl0eSwgYmVjYXVzZQ0KPiBh
+IGxvdCBvZiBoYXJkd2FyZSByZXF1aXJlcyBzb21lIHNwZWNpYWwgaGFuZGxpbmcgdGhhdCdzIG5v
+dCBzcGVjaWZpZWQgaW4NCj4gdGhlIGFmb3JlbWVudGlvbmVkIEpFREVDIHNwZWMuIEVhY2ggdmVu
+ZG9yIGRyaXZlciBtdXN0IGV4cGxpY2l0eSBzZXQNCg0KZXhwbGljaXRseQ0KDQo+IGhiYS0+Y2Fw
+cyB8PSBVRlNIQ0RfQ0FQX0NSWVBUTyBiZWZvcmUgdWZzaGNkX2hiYV9pbml0X2NyeXB0byBpcyBj
+YWxsZWQgdG8NCj4gb3B0LWluIHRvIFVGUyBjcnlwdG8gc3VwcG9ydC4NCj4gDQo+IFNpZ25lZC1v
+ZmYtYnk6IFNhdHlhIFRhbmdpcmFsYSA8c2F0eWF0QGdvb2dsZS5jb20+DQo+IFJldmlld2VkLWJ5
+OiBFcmljIEJpZ2dlcnMgPGViaWdnZXJzQGdvb2dsZS5jb20+DQoNClJldmlld2VkLWJ5OiBTdGFu
+bGV5IENodSA8c3RhbmxleS5jaHVAbWVkaWF0ZWsuY29tPg0KDQo=
 
