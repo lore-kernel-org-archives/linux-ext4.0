@@ -2,34 +2,34 @@ Return-Path: <SRS0=4nMf=65=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B19DCC433DF
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:41:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B783EC433E1
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:41:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9259F2065F
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:41:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 90BBA20801
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 May 2020 04:41:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726371AbgEOElc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 May 2020 00:41:32 -0400
-Received: from mga18.intel.com ([134.134.136.126]:36394 "EHLO mga18.intel.com"
+        id S1726229AbgEOEll (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 May 2020 00:41:41 -0400
+Received: from mga18.intel.com ([134.134.136.126]:36399 "EHLO mga18.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726311AbgEOElc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 May 2020 00:41:32 -0400
-IronPort-SDR: v5P0NgXWShSzoEeOJV29HPIjl2EQS7O6DUBIAX7ohWXGvXO9FqQlaqIw+/+qTAioTzq7b/ES5O
- hvWedJDfbMmA==
+        id S1726179AbgEOElb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 May 2020 00:41:31 -0400
+IronPort-SDR: Ham0KcT7JOWHsTjsmhwegYDEb/5XZX4wxQWD2nWGN/ZIUPppI4zWfMLZeNmbTy3AvNHvkd2xoe
+ UIS11He28ERA==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:29 -0700
-IronPort-SDR: h0dusB/z3gPwWClmcYIGIaMDgwHPpSbMHWcH11YxZd9rUXbPm/qYRChpCelysihSMrCXmHqn1G
- RiPXg1A4yZSQ==
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:30 -0700
+IronPort-SDR: SRqXEoxPgn5C3CDNI3PkD+pS6kLXYn++wMdJAL9eVZwlCArX/mr5+mbPKCTeCA77tGnKtZDNCF
+ rr7GWkpfpHRA==
 X-IronPort-AV: E=Sophos;i="5.73,394,1583222400"; 
-   d="scan'208";a="266482062"
+   d="scan'208";a="464776443"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga006-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:29 -0700
+  by fmsmga006-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 May 2020 21:41:30 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -40,9 +40,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 7/9] fs/ext4: Make DAX mount option a tri-state
-Date:   Thu, 14 May 2020 21:41:19 -0700
-Message-Id: <20200515044121.2987940-8-ira.weiny@intel.com>
+Subject: [PATCH v2 9/9] Documentation/dax: Update DAX enablement for ext4
+Date:   Thu, 14 May 2020 21:41:21 -0700
+Message-Id: <20200515044121.2987940-10-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200515044121.2987940-1-ira.weiny@intel.com>
 References: <20200515044121.2987940-1-ira.weiny@intel.com>
@@ -55,192 +55,42 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-We add 'always', 'never', and 'inode' (default).  '-o dax' continues to
-operate the same which is equivalent to 'always'.  This new
-functionality is limited to ext4 only.
+Update the document to reflect ext4 and xfs now behave the same.
 
-Specifically we introduce a 2nd DAX mount flag EXT4_MOUNT2_DAX_NEVER and set
-it and EXT4_MOUNT_DAX_ALWAYS appropriately for the mode.
-
-We also force EXT4_MOUNT2_DAX_NEVER if !CONFIG_FS_DAX.
-
-Finally, EXT4_MOUNT2_DAX_INODE is used solely to detect if the user
-specified that option for printing.
-
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V1:
-	Fix up mounting options to only show an option if specified
-	Fix remount to prevent dax changes
-	Isolate behavior to ext4 only
-
 Changes from RFC:
-	Combine remount check for DAX_NEVER with DAX_ALWAYS
-	Update ext4_should_enable_dax()
+	Update with ext2 text...
 ---
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/inode.c |  2 ++
- fs/ext4/super.c | 67 +++++++++++++++++++++++++++++++++++++++++--------
- 3 files changed, 61 insertions(+), 10 deletions(-)
+ Documentation/filesystems/dax.txt | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 86a0994332ce..6235440e4c39 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1168,6 +1168,8 @@ struct ext4_inode_info {
- 						      blocks */
- #define EXT4_MOUNT2_HURD_COMPAT		0x00000004 /* Support HURD-castrated
- 						      file systems */
-+#define EXT4_MOUNT2_DAX_NEVER		0x00000008 /* Do not allow Direct Access */
-+#define EXT4_MOUNT2_DAX_INODE		0x00000010 /* For printing options only */
+diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.txt
+index 735fb4b54117..265c4f808dbf 100644
+--- a/Documentation/filesystems/dax.txt
++++ b/Documentation/filesystems/dax.txt
+@@ -25,7 +25,7 @@ size when creating the filesystem.
+ Currently 3 filesystems support DAX: ext2, ext4 and xfs.  Enabling DAX on them
+ is different.
  
- #define EXT4_MOUNT2_EXPLICIT_JOURNAL_CHECKSUM	0x00000008 /* User explicitly
- 						specified journal checksum */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 23e42a223235..140b1930e2f4 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4400,6 +4400,8 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+-Enabling DAX on ext4 and ext2
++Enabling DAX on ext2
+ -----------------------------
  
- static bool ext4_should_enable_dax(struct inode *inode)
- {
-+	if (test_opt2(inode->i_sb, DAX_NEVER))
-+		return false;
- 	if (!S_ISREG(inode->i_mode))
- 		return false;
- 	if (ext4_should_journal_data(inode))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 5ec900fdf73c..4753de53b186 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1504,7 +1504,8 @@ enum {
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_jqfmt_vfsv1, Opt_quota,
- 	Opt_noquota, Opt_barrier, Opt_nobarrier, Opt_err,
--	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version, Opt_dax,
-+	Opt_usrquota, Opt_grpquota, Opt_prjquota, Opt_i_version,
-+	Opt_dax, Opt_dax_always, Opt_dax_inode, Opt_dax_never,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc, Opt_warn_on_error,
- 	Opt_nowarn_on_error, Opt_mblk_io_submit,
- 	Opt_lazytime, Opt_nolazytime, Opt_debug_want_extra_isize,
-@@ -1571,6 +1572,9 @@ static const match_table_t tokens = {
- 	{Opt_nobarrier, "nobarrier"},
- 	{Opt_i_version, "i_version"},
- 	{Opt_dax, "dax"},
-+	{Opt_dax_always, "dax=always"},
-+	{Opt_dax_inode, "dax=inode"},
-+	{Opt_dax_never, "dax=never"},
- 	{Opt_stripe, "stripe=%u"},
- 	{Opt_delalloc, "delalloc"},
- 	{Opt_warn_on_error, "warn_on_error"},
-@@ -1718,6 +1722,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
- #define MOPT_NO_EXT3	0x0200
- #define MOPT_EXT4_ONLY	(MOPT_NO_EXT2 | MOPT_NO_EXT3)
- #define MOPT_STRING	0x0400
-+#define MOPT_SKIP	0x0800
+ When mounting the filesystem, use the "-o dax" option on the command line or
+@@ -33,8 +33,8 @@ add 'dax' to the options in /etc/fstab.  This works to enable DAX on all files
+ within the filesystem.  It is equivalent to the '-o dax=always' behavior below.
  
- static const struct mount_opts {
- 	int	token;
-@@ -1767,7 +1772,13 @@ static const struct mount_opts {
- 	{Opt_min_batch_time, 0, MOPT_GTE0},
- 	{Opt_inode_readahead_blks, 0, MOPT_GTE0},
- 	{Opt_init_itable, 0, MOPT_GTE0},
--	{Opt_dax, EXT4_MOUNT_DAX_ALWAYS, MOPT_SET},
-+	{Opt_dax, EXT4_MOUNT_DAX_ALWAYS, MOPT_SET | MOPT_SKIP},
-+	{Opt_dax_always, EXT4_MOUNT_DAX_ALWAYS,
-+		MOPT_EXT4_ONLY | MOPT_SET | MOPT_SKIP},
-+	{Opt_dax_inode, EXT4_MOUNT2_DAX_INODE,
-+		MOPT_EXT4_ONLY | MOPT_SET | MOPT_SKIP},
-+	{Opt_dax_never, EXT4_MOUNT2_DAX_NEVER,
-+		MOPT_EXT4_ONLY | MOPT_SET | MOPT_SKIP},
- 	{Opt_stripe, 0, MOPT_GTE0},
- 	{Opt_resuid, 0, MOPT_GTE0},
- 	{Opt_resgid, 0, MOPT_GTE0},
-@@ -2076,13 +2087,32 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		}
- 		sbi->s_jquota_fmt = m->mount_opt;
- #endif
--	} else if (token == Opt_dax) {
-+	} else if (token == Opt_dax || token == Opt_dax_always ||
-+		   token == Opt_dax_inode || token == Opt_dax_never) {
- #ifdef CONFIG_FS_DAX
--		ext4_msg(sb, KERN_WARNING,
--		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
--		sbi->s_mount_opt |= m->mount_opt;
-+		switch (token) {
-+		case Opt_dax:
-+		case Opt_dax_always:
-+			ext4_msg(sb, KERN_WARNING,
-+				"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-+			sbi->s_mount_opt |= EXT4_MOUNT_DAX_ALWAYS;
-+			sbi->s_mount_opt2 &= ~EXT4_MOUNT2_DAX_NEVER;
-+			break;
-+		case Opt_dax_never:
-+			sbi->s_mount_opt2 |= EXT4_MOUNT2_DAX_NEVER;
-+			sbi->s_mount_opt &= ~EXT4_MOUNT_DAX_ALWAYS;
-+			break;
-+		case Opt_dax_inode:
-+			sbi->s_mount_opt &= ~EXT4_MOUNT_DAX_ALWAYS;
-+			sbi->s_mount_opt2 &= ~EXT4_MOUNT2_DAX_NEVER;
-+			/* Strictly for printing options */
-+			sbi->s_mount_opt2 |= EXT4_MOUNT2_DAX_INODE;
-+			break;
-+		}
- #else
- 		ext4_msg(sb, KERN_INFO, "dax option not supported");
-+		sbi->s_mount_opt2 |= EXT4_MOUNT2_DAX_NEVER;
-+		sbi->s_mount_opt &= ~EXT4_MOUNT_DAX_ALWAYS;
- 		return -1;
- #endif
- 	} else if (token == Opt_data_err_abort) {
-@@ -2246,7 +2276,7 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
- 	for (m = ext4_mount_opts; m->token != Opt_err; m++) {
- 		int want_set = m->flags & MOPT_SET;
- 		if (((m->flags & (MOPT_SET|MOPT_CLEAR)) == 0) ||
--		    (m->flags & MOPT_CLEAR_ERR))
-+		    (m->flags & MOPT_CLEAR_ERR) || m->flags & MOPT_SKIP)
- 			continue;
- 		if (!nodefs && !(m->mount_opt & (sbi->s_mount_opt ^ def_mount_opt)))
- 			continue; /* skip if same as the default */
-@@ -2306,6 +2336,17 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
- 	if (DUMMY_ENCRYPTION_ENABLED(sbi))
- 		SEQ_OPTS_PUTS("test_dummy_encryption");
  
-+	if (test_opt(sb, DAX_ALWAYS)) {
-+		if (IS_EXT2_SB(sb))
-+			SEQ_OPTS_PUTS("dax");
-+		else
-+			SEQ_OPTS_PUTS("dax=always");
-+	} else if (test_opt2(sb, DAX_NEVER)) {
-+		SEQ_OPTS_PUTS("dax=never");
-+	} else if (test_opt2(sb, DAX_INODE)) {
-+		SEQ_OPTS_PUTS("dax=inode");
-+	}
-+
- 	ext4_show_quota_options(seq, sb);
- 	return 0;
- }
-@@ -5425,10 +5466,16 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		goto restore_opts;
- 	}
+-Enabling DAX on xfs
+--------------------
++Enabling DAX on xfs and ext4
++----------------------------
  
--	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX_ALWAYS) {
-+	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX_ALWAYS ||
-+	    (sbi->s_mount_opt2 ^ old_opts.s_mount_opt2) & EXT4_MOUNT2_DAX_NEVER ||
-+	    (sbi->s_mount_opt2 ^ old_opts.s_mount_opt2) & EXT4_MOUNT2_DAX_INODE) {
- 		ext4_msg(sb, KERN_WARNING, "warning: refusing change of "
--			"dax flag with busy inodes while remounting");
--		sbi->s_mount_opt ^= EXT4_MOUNT_DAX_ALWAYS;
-+			"dax mount option with busy inodes while remounting");
-+		sbi->s_mount_opt &= ~EXT4_MOUNT_DAX_ALWAYS;
-+		sbi->s_mount_opt |= old_opts.s_mount_opt & EXT4_MOUNT_DAX_ALWAYS;
-+		sbi->s_mount_opt2 &= ~(EXT4_MOUNT2_DAX_NEVER | EXT4_MOUNT2_DAX_INODE);
-+		sbi->s_mount_opt2 |= old_opts.s_mount_opt2 &
-+				     (EXT4_MOUNT2_DAX_NEVER | EXT4_MOUNT2_DAX_INODE);
- 	}
- 
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+ Summary
+ -------
 -- 
 2.25.1
 
