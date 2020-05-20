@@ -2,130 +2,119 @@ Return-Path: <SRS0=j5GV=7C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0035C433E1
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 06:41:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D082DC433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 08:40:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7AEF920657
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 06:41:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9A8EA207D3
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 08:40:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=whamcloud.com header.i=@whamcloud.com header.b="q15bxHrQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726619AbgETGlL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 May 2020 02:41:11 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:56476 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726596AbgETGlK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 May 2020 02:41:10 -0400
-Received: from pps.filterd (m0098421.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 04K6VNgX039696;
-        Wed, 20 May 2020 02:41:04 -0400
-Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 312c659w81-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 20 May 2020 02:41:04 -0400
-Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
-        by ppma03ams.nl.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 04K6eOsE007591;
-        Wed, 20 May 2020 06:41:02 GMT
-Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
-        by ppma03ams.nl.ibm.com with ESMTP id 313xas32ng-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 20 May 2020 06:41:02 +0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 04K6f0vn56819850
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 20 May 2020 06:41:00 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id ECDCCA4060;
-        Wed, 20 May 2020 06:40:59 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 6D59CA4066;
-        Wed, 20 May 2020 06:40:58 +0000 (GMT)
-Received: from localhost.localdomain.com (unknown [9.79.188.115])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Wed, 20 May 2020 06:40:58 +0000 (GMT)
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>,
-        tytso@mit.edu, "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
-        linux-kernel@vger.kernel.org,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv5 2/5] ext4: mballoc: Refactor ext4_mb_discard_preallocations()
-Date:   Wed, 20 May 2020 12:10:33 +0530
-Message-Id: <1cfae0098d2aa9afbeb59331401258182868c8f2.1589955723.git.riteshh@linux.ibm.com>
-X-Mailer: git-send-email 2.21.0
-In-Reply-To: <cover.1589955723.git.riteshh@linux.ibm.com>
-References: <cover.1589955723.git.riteshh@linux.ibm.com>
+        id S1726851AbgETIko (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 May 2020 04:40:44 -0400
+Received: from mail-eopbgr680055.outbound.protection.outlook.com ([40.107.68.55]:21836
+        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726436AbgETIkm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 May 2020 04:40:42 -0400
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=V6KRB+E6EIJat8JQ93v7ybzTurUk3Zpynis7iG/t1Tx2FAsfX89HfXRUSoidxxf0d2Qe7GaeSxU1V9Rg/NKppiIgSabUryhuqBsCBZvVNWDR/tYs7mVOesXfmWc1ryu24UtkKCSMzsaG939Av4vlQJuki7kxsJfwuUooEl7nnWLZCqlAeBScHPsZihJyZZOtSWHeIeYjohZwALXEGLuv04UnXbwTijfe0h+Q9F/hE9pydq+PQjXT588r4zl0HoC+eDO3YgZgyqh9NyCVsxVDUhXusdzQlvrLQ8QGEraW/OcQTMojAQKTS2B8RtXWhnc3BOWfewjZn2Q8PXyXh5Fjdw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=cu4KTLVfzrpY4P8KaKGZE7fLzqAfQxmdc4+nLoWgnps=;
+ b=QehHpA43T4WxDClPSQNrbRK/9s/FQi5963tC5ifYfedHM5Ak152vUBWNtOhEXbroXNN1sWpDNavjIk/pUXDf2vki7/YNt/suPeRCA+D2Z2TlfqVbZMIaIUDa6Sz1qzvcTpSuZI9aGntiVP1bhNuffjr8L/l4UI3u7vwdaEfj1DiJHz89LwSmlHoDkXvP/mdz0McZcz2d2p7OBoJ00efu78uIzTS5FDDsXP9cbii5acEvoKtKaZ+NwRnltKTH0Od4RRDO1G4vN3mRo+iycstUyjJv8PzP8eOLnRwKHR2aTB6jdAufg2VxNMZEZmVQed/tq0hSTKbFNlL/2HB+neCORg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=whamcloud.com; dmarc=pass action=none
+ header.from=whamcloud.com; dkim=pass header.d=whamcloud.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=whamcloud.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=cu4KTLVfzrpY4P8KaKGZE7fLzqAfQxmdc4+nLoWgnps=;
+ b=q15bxHrQU/ua9LFXZAK+zEPsntou/Se7RmbGeIgpzSsFGBpfPJgP/0AfItbbad1d+oyAZRcOtPzG6swqsXnQcEtkZxDbxbe2SMM/dTU06pkoRIUqimHyTFWo9ciV1p3YIL6ZSWAn/8XwCnMomZ9mPmovXCve466PHSGfTFa0v5M=
+Received: from DM6PR19MB2441.namprd19.prod.outlook.com (2603:10b6:5:18d::16)
+ by DM6PR19MB2875.namprd19.prod.outlook.com (2603:10b6:5:137::28) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3000.20; Wed, 20 May
+ 2020 08:40:39 +0000
+Received: from DM6PR19MB2441.namprd19.prod.outlook.com
+ ([fe80::b111:c44a:87ea:4bf4]) by DM6PR19MB2441.namprd19.prod.outlook.com
+ ([fe80::b111:c44a:87ea:4bf4%7]) with mapi id 15.20.3000.034; Wed, 20 May 2020
+ 08:40:39 +0000
+From:   Alex Zhuravlev <azhuravlev@whamcloud.com>
+To:     Andreas Dilger <adilger@dilger.ca>
+CC:     Alex Zhuravlev <azhuravlev@whamcloud.com>,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 2/2] ext4: skip non-loaded groups at cr=0/1
+Thread-Topic: [PATCH 2/2] ext4: skip non-loaded groups at cr=0/1
+Thread-Index: AQHWHEjMGVpmuPlRl0Kqrw5gTNRAkaindXQAgAF/eoCAAxN2gIAEw7YA
+Date:   Wed, 20 May 2020 08:40:39 +0000
+Message-ID: <3158FFEB-D9F7-450B-85C5-38B1C218321F@whamcloud.com>
+References: <0B6BF408-EDF7-4363-80CD-BDA0136BF62C@whamcloud.com>
+ <20200514100411.D1A15A405C@b06wcsmtp001.portsmouth.uk.ibm.com>
+ <914597DA-395A-47A5-A8D6-DFCE2D674289@whamcloud.com>
+ <3BA1CBB1-77DB-43C8-A9CD-A3B85223F86F@dilger.ca>
+In-Reply-To: <3BA1CBB1-77DB-43C8-A9CD-A3B85223F86F@dilger.ca>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: dilger.ca; dkim=none (message not signed)
+ header.d=none;dilger.ca; dmarc=none action=none header.from=whamcloud.com;
+x-originating-ip: [95.73.208.89]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 5160878c-4458-47f7-3fad-08d7fc997964
+x-ms-traffictypediagnostic: DM6PR19MB2875:
+x-ms-exchange-transport-forked: True
+x-microsoft-antispam-prvs: <DM6PR19MB287539336379D0872F20A149CBB60@DM6PR19MB2875.namprd19.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:10000;
+x-forefront-prvs: 04097B7F7F
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: bMZwZQTdJMAyYjUrKW9fNJ121aKIFvlSH20v0vA8NvnlTp9wXGAhvEHDAWfnnpYeDOOcOea8959z6PGwPyEqpxiwEjWYcqxb50J/eDSiTaORMoDbao08hU1H8djeHVe2kKIS9k9KhD06g1MG1ecfdxRuGw3PpK3SjdbQ9DRw3PpoRw7GAHa/qg0lHH/8zJQ/+RzbNl60b8sgmnrXONfp4TjUQMh6Wrf2FOcx3AEP/yaRwAon7irnA3KA/9os4vIrZJlHkdhOvQ2N29CXL3uV4hIcjm+INOCgVy6PbiTVcBWh4tOchOQcYzH59ELiMudi/iBb2MyG1Xl2ZC51K1a4GKq4DkIioR7hxKKASMVIluaW1uqCQhcUbRUf2ZSg+a3EDKddX9PBsJj4SvxZ8tO/75qohBcOqUpxUMASYvPgDcPuh7qMz2NFgl5a2Zc9k6F5
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM6PR19MB2441.namprd19.prod.outlook.com;PTR:;CAT:NONE;SFTY:;SFS:(4636009)(366004)(376002)(396003)(136003)(39850400004)(346002)(66946007)(2906002)(5660300002)(66446008)(91956017)(6512007)(64756008)(316002)(478600001)(66556008)(76116006)(6486002)(86362001)(66476007)(53546011)(36756003)(6506007)(6916009)(54906003)(186003)(33656002)(2616005)(71200400001)(4326008)(8936002)(8676002)(26005);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata: T5IRzr5fMexL5UNaF1kqvDO7xCFsMunN/ASSR0woy/XVEYUkNc97cCU3vgBkKz7nh0hgJNTrWB+ENP58P6EGgy96WNHue6wDu5bqZpwTWvNNNQ9MjVTQYjGyVblpte4bj/lUyDY0vF1wGpVe0IWlnjbb0MTMAoBwDKjfTmMvMBsOgVWeHuTSX82ufZO2nzOy2ACopyPuF7hqF1rtfy7tTGpC2YaL59DPdhFPA+KaiCVJJVL017ObhwnUNw0odspdcy2aD3TZiJ44UTPA77RUdv/NbTfUhrsdRXMgXodxkWhZqIuL56zXiE6jYwfb+TBB4O0ujUivGdiObJhD3P8d2vC6F3jYE9v+Ea3d3GO2qqcfb9uoUUVV3QiPhcCvboFtAu9jhaAKBwEWQjnNnh5EKTNpd6OOwXVZsU8ocsXY4wRVfUehEhJ+v3Ic1VLX8VeDfbOHhzohvL+psfVRNmSg0mMHsnKzDOErvMLaJ4QpMLs=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <0F5CA66686A6934D8EA390BD32108704@namprd19.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.216,18.0.676
- definitions=2020-05-20_02:2020-05-19,2020-05-20 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 impostorscore=0
- malwarescore=0 suspectscore=1 mlxlogscore=999 cotscore=-2147483648
- spamscore=0 priorityscore=1501 bulkscore=0 adultscore=0 phishscore=0
- mlxscore=0 lowpriorityscore=0 clxscore=1015 classifier=spam adjust=0
- reason=mlx scancount=1 engine=8.12.0-2004280000
- definitions=main-2005200051
+X-OriginatorOrg: whamcloud.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 5160878c-4458-47f7-3fad-08d7fc997964
+X-MS-Exchange-CrossTenant-originalarrivaltime: 20 May 2020 08:40:39.1034
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 753b6e26-6fd3-43e6-8248-3f1735d59bb4
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: MqR1WSkyQqy3BA21hRgD1DkO6sQTMWdLe07apvByXg+oGDmeriscV0JzBttMOLdx5+Smi1wvFB76b0QwgsVzow==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR19MB2875
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Implement ext4_mb_discard_preallocations_should_retry()
-which we will need in later patches to add more logic
-like check for sequence number match to see if we should
-retry for block allocation or not.
-
-There should be no functionality change in this patch.
-
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
----
- fs/ext4/mballoc.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index decc5168d126..b75408d72773 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4543,6 +4543,17 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
- 	return freed;
- }
- 
-+static bool ext4_mb_discard_preallocations_should_retry(struct super_block *sb,
-+			struct ext4_allocation_context *ac)
-+{
-+	int freed;
-+
-+	freed = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
-+	if (freed)
-+		return true;
-+	return false;
-+}
-+
- /*
-  * Main entry point into mballoc to allocate blocks
-  * it tries to use preallocation first, then falls back
-@@ -4551,7 +4562,6 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
- ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 				struct ext4_allocation_request *ar, int *errp)
- {
--	int freed;
- 	struct ext4_allocation_context *ac = NULL;
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
-@@ -4656,8 +4666,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 			ar->len = ac->ac_b_ex.fe_len;
- 		}
- 	} else {
--		freed  = ext4_mb_discard_preallocations(sb, ac->ac_o_ex.fe_len);
--		if (freed)
-+		if (ext4_mb_discard_preallocations_should_retry(sb, ac))
- 			goto repeat;
- 		/*
- 		 * If block allocation fails then the pa allocated above
--- 
-2.21.0
-
+DQoNCj4gT24gMTcgTWF5IDIwMjAsIGF0IDEwOjU1LCBBbmRyZWFzIERpbGdlciA8YWRpbGdlckBk
+aWxnZXIuY2E+IHdyb3RlOg0KPiANCj4gVGhlIHF1ZXN0aW9uIGlzIHdoZXRoZXIgdGhpcyBpcyBz
+aXR1YXRpb24gaXMgYWZmZWN0aW5nIG9ubHkgYSBmZXcgaW5vZGUNCj4gYWxsb2NhdGlvbnMgZm9y
+IGEgc2hvcnQgdGltZSBhZnRlciBtb3VudCwgb3IgZG9lcyB0aGlzIHBlcnNpc3QgZm9yIGEgbG9u
+Zw0KPiB0aW1lPyAgSSB0aGluayB0aGF0IGl0IF9zaG91bGRfIGJlIG9ubHkgYSBzaG9ydCB0aW1l
+LCBiZWNhdXNlIHRoZXNlIG90aGVyDQo+IHRocmVhZHMgc2hvdWxkIGFsbCBzdGFydCBwcmVmZXRj
+aCBvbiB0aGVpciBwcmVmZXJyZWQgZ3JvdXBzLCBzbyBldmVuIGlmIGENCj4gZmV3IGlub2RlcyBo
+YXZlIHRoZWlyIGJsb2NrcyBhbGxvY2F0ZWQgaW4gdGhlICJ3cm9uZyIgZ3JvdXAsIGl0IHNob3Vs
+ZG4ndA0KPiBiZSBhIGxvbmcgdGVybSBwcm9ibGVtIHNpbmNlIHRoZSBwcmVmZXRjaGVkIGJpdG1h
+cHMgd2lsbCBmaW5pc2ggbG9hZGluZw0KPiBhbmQgYWxsb3cgdGhlIGJsb2NrcyB0byBiZSBhbGxv
+Y2F0ZWQsIG9yIHNraXBwZWQgaWYgZ3JvdXAgaXMgZnJhZ21lbnRlZC4NCg0KWWVzLCB0aGF04oCZ
+cyB0aGUgaWRlYSAtIHRoZXJlIGlzIGEgc2hvcnQgd2luZG93IHdoZW4gYnVkZHkgZGF0YSBpcyBi
+ZWluZw0KcG9wdWxhdGVkLiBBbmQgZm9yIGVhY2gg4oCcY2x1c3RlcuKAnSAobm90IGp1c3QgYSBz
+aW5nbGUgZ3JvdXApIHByZWZldGNoaW5nDQp3aWxsIGJlIGluaXRpYXRlZCBieSBhbGxvY2F0aW9u
+Lg0KSXTigJlzIHBvc3NpYmxlIHRoYXQgc29tZSBudW1iZXIgb2YgaW5vZGVzIHdpbGwgZ2V0IOKA
+nGJhZOKAnSBibG9ja3MgcmlnaHQgYWZ0ZXINCmFmdGVyIG1vdW50Lg0KSWYgeW91IHRoaW5rIHRo
+aXMgaXMgYSBiYWQgc2NlbmFyaW8gSSBjYW4gaW50cm9kdWNlIGNvdXBsZSBtb3JlIHRoaW5nczoN
+CjEpIGZldyB0aW1lcyBkaXNjdXNzZWQgcHJlZmV0Y2hpbmcgdGhyZWFkDQoyKSBsZXQgbWJhbGxv
+YyB3YWl0IGZvciB0aGUgZ29hbCBncm91cCB0byBnZXQgcmVhZHkgLSB0aGlzIGVzc2VudGlhbHMg
+b25lDQogICAgbW9yZSBjaGVjayBpbiBleHQ0X21iX2dvb2RfZ3JvdXAoKQ0KIA0KDQpUaGFua3Ms
+IEFsZXgNCg0K
