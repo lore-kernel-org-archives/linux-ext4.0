@@ -2,110 +2,182 @@ Return-Path: <SRS0=j5GV=7C=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 248B3C433E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 05:58:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 76A58C433E1
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 06:41:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E74EE2053B
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 05:58:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 54BAE20657
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 May 2020 06:41:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726447AbgETF55 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 May 2020 01:57:57 -0400
-Received: from mga09.intel.com ([134.134.136.24]:55135 "EHLO mga09.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725998AbgETF54 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 May 2020 01:57:56 -0400
-IronPort-SDR: NRerxWQn3JZ7nq7XxrX2N7tNIF8Naa7WPiGXdeAqmWR7qH/KGvNDR58AUKkmFbPorwwJltnAMW
- J1FhFcaIjXLA==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga002.jf.intel.com ([10.7.209.21])
-  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 May 2020 22:57:56 -0700
-IronPort-SDR: yWLipC+hmd5lakfByb0Vq9XwPzKj4cmS+tJjAAirb7gYf7UDH2V+4CWg/XOL3iIIoJ5yVrN8Pw
- rF1mqJUHJbcg==
-X-IronPort-AV: E=Sophos;i="5.73,412,1583222400"; 
-   d="scan'208";a="282570629"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 May 2020 22:57:55 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@kernel.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Jeff Moyer <jmoyer@redhat.com>, linux-kernel@vger.kernel.org
-Subject: [PATCH V3 0/8] Enable ext4 support for per-file/directory DAX operations
-Date:   Tue, 19 May 2020 22:57:45 -0700
-Message-Id: <20200520055753.3733520-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
+        id S1726455AbgETGlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 May 2020 02:41:07 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:2610 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726369AbgETGlG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 May 2020 02:41:06 -0400
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 04K6WW2x075620;
+        Wed, 20 May 2020 02:41:01 -0400
+Received: from ppma04ams.nl.ibm.com (63.31.33a9.ip4.static.sl-reverse.com [169.51.49.99])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 314rxd24xk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 20 May 2020 02:41:01 -0400
+Received: from pps.filterd (ppma04ams.nl.ibm.com [127.0.0.1])
+        by ppma04ams.nl.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 04K6eqTe003282;
+        Wed, 20 May 2020 06:40:59 GMT
+Received: from b06cxnps3075.portsmouth.uk.ibm.com (d06relay10.portsmouth.uk.ibm.com [9.149.109.195])
+        by ppma04ams.nl.ibm.com with ESMTP id 313xehk2qw-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 20 May 2020 06:40:58 +0000
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
+        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 04K6euGd65470584
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 20 May 2020 06:40:56 GMT
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 337DFA4060;
+        Wed, 20 May 2020 06:40:56 +0000 (GMT)
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 9E01AA4054;
+        Wed, 20 May 2020 06:40:54 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.79.188.115])
+        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Wed, 20 May 2020 06:40:54 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.com>,
+        tytso@mit.edu, "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
+        linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [PATCHv5 0/5] Improve ext4 handling of ENOSPC with multi-threaded use-case
+Date:   Wed, 20 May 2020 12:10:31 +0530
+Message-Id: <cover.1589955723.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.21.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.216,18.0.676
+ definitions=2020-05-20_02:2020-05-19,2020-05-20 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 spamscore=0
+ bulkscore=0 clxscore=1015 cotscore=-2147483648 malwarescore=0
+ impostorscore=0 lowpriorityscore=0 mlxscore=0 priorityscore=1501
+ mlxlogscore=999 adultscore=0 suspectscore=0 classifier=spam adjust=0
+ reason=mlx scancount=1 engine=8.12.0-2004280000
+ definitions=main-2005200051
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+Hello All,
 
-Changes from V2:
-	Rework DAX exclusivity with verity and encryption based on feedback
-	from Eric
+Please note that these patches are based on top of mballoc cleanup series [2]
+which is also pending review. :)
 
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
+v4 -> v5:
+1. Removed ext4_lock_group() from fastpath and added that in the retry attempt,
+so that the performance of fastpath is not affected.
 
-This passes the same xfstests test as XFS.
-
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
-
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
-
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
-
-To: linux-kernel@vger.kernel.org
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
+v3 -> v4:
+1. Splitted code cleanups and debug improvements as a separate patch series.
+2. Dropped rcu_barrier() approach since it did cause some latency
+in my testing of ENOSPC handling.
+3. This patch series takes a different approach to improve the multi-threaded
+ENOSPC handling in ext4 mballoc code. Below mail gives more details.
 
 
-Ira Weiny (8):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
+Background
+==========
+Consider a case where your disk is close to full but still enough space
+remains for your multi-threaded application to run. Now when this application
+threads tries to write (e.g. sparse file followed by mmap write or
+even fallocate multiple files) in parallel, then with current code of
+ext4 multi-block allocator, the application may get an ENOSPC error in some
+cases. Examining disk space at this time, we see there is sufficient space
+remaining for your application to continue to run.
 
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  3 +
- fs/ext4/ext4.h                            | 22 +++++--
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 25 +++++--
- fs/ext4/ioctl.c                           | 41 ++++++++++--
- fs/ext4/super.c                           | 80 ++++++++++++++++++-----
- fs/ext4/verity.c                          |  5 +-
- include/uapi/linux/fs.h                   |  1 +
- 9 files changed, 148 insertions(+), 37 deletions(-)
+Additional info:
+============================
+1. Our internal test team was easily able to reproduce this ENOSPC error on 
+   an upstream kernel with 2GB ext4 image, with 64K blocksize. They didn't try
+   above 2GB and reprorted this issue directly to dev team. On examining the
+   free space when the application gets ENOSPC, the free space left was more
+   then 50% of filesystem size in some cases.
+
+2. For debugging/development of these patches, I used below script [1] to
+   trigger this issue quite frequently on a 64K blocksize setup with 240MB
+   ext4 image.
+
+
+Summary of patches and problem with current design
+==================================================
+There were 3 main problems which these patches tries to address and hence
+improve the ENOSPC handling in ext4's multi-block allocator code.
+
+1. Patch-2: Earlier we were considering the group is good or not (means
+   checking if it has enough free blocks to serve your request) without taking
+   the group's lock. This could result into a race where, if another thread is
+   discarding the group's prealloc list, then the allocation thread will not
+   consider those about to be free blocks and will fail will return that group
+   is not fit for allocation thus eventually fails with ENOSPC error.
+
+2. Patch-4: Discard PA algoritm only scans the PA list to free up the
+   additional blocks which got added to PA. This is done by the same thread-A
+   which at 1st couldn't allocate any blocks. But there is a window where,
+   once the blocks were allocated (say by some other thread-B previously) we
+   drop the group's lock and then checks to see if some of these blocks could
+   be added to prealloc list of the group from where we allocated some blocks.
+   After that we take the lock and add these additional blocks allocated by
+   thread-B to the PA list. But say if thread-A tries to scan the PA list
+   between this time interval then there is possibilty that it won't find any
+   blocks added to the PA list and hence may return ENOSPC error.
+   Hence this patch tries to add those additional blocks to the PA list just
+   after the blocks are marked as used with the same group's spinlock held.
+   
+3. Patch-3: Introduces a per cpu discard_pa_seq counter which is increased
+   whenever there is block allocation/freeing or when the discarding of any
+   group's PA list has started. With this we could know when to stop the
+   retrying logic and return ENOSPC error if there is actually no free space
+   left.
+   There is an optimization done in the block allocation fast path with this
+   approach that, before starting the block allocation, we only sample the
+   percpu seq count on that cpu. Only when the allocation fails and discard
+   couldn't free up any of the blocks in all of the group's PA list, that is
+   when we sample the percpu seq counter sum over all possible cpus to check
+   if we need to retry.
+
+
+Testing:
+=========
+Tested fstests with default bs of 4K and bs == PAGESIZE ("-g auto")
+No new failures were reported with this patch series in this testing.
+
+NOTE:
+1. This patch series is based on top of mballoc code cleanup patch series
+posted at [2].
+
+References:
+===========
+[v3]: https://lkml.kernel.org/linux-ext4/cover.1588313626.git.riteshh@linux.ibm.com/
+[1]: https://github.com/riteshharjani/LinuxStudy/blob/master/tools/test_mballoc.sh
+[2]: https://lkml.kernel.org/linux-ext4/cover.1589086800.git.riteshh@linux.ibm.com/
+
+
+Ritesh Harjani (5):
+  ext4: mballoc: Add blocks to PA list under same spinlock after allocating blocks
+  ext4: mballoc: Refactor ext4_mb_discard_preallocations()
+  ext4: mballoc: Introduce pcpu seqcnt for freeing PA to improve ENOSPC handling
+  ext4: mballoc: Refactor ext4_mb_good_group()
+  ext4: mballoc: Use lock for checking free blocks while retrying
+
+ fs/ext4/ext4.h              |   2 +
+ fs/ext4/mballoc.c           | 247 ++++++++++++++++++++++++++----------
+ include/trace/events/ext4.h |   3 +-
+ 3 files changed, 185 insertions(+), 67 deletions(-)
 
 -- 
-2.25.1
+2.21.0
 
