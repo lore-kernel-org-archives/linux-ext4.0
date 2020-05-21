@@ -2,117 +2,341 @@ Return-Path: <SRS0=JSyQ=7D=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0184FC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 19:13:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96F15C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 19:18:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E497D20759
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 19:13:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 762E720738
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 19:18:14 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=cmpxchg-org.20150623.gappssmtp.com header.i=@cmpxchg-org.20150623.gappssmtp.com header.b="IZHHDCMO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729990AbgEUTNS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 May 2020 15:13:18 -0400
-Received: from mga09.intel.com ([134.134.136.24]:54416 "EHLO mga09.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729593AbgEUTNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 May 2020 15:13:18 -0400
-IronPort-SDR: 7NfA+RssM2oxqP9PwDnul1nIsqrqdegNBuT8BpKAKNK6cCqSc9R5RHSp/i0U4LoGzIsJhHAJZv
- SSI1amTkVIDg==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga004.jf.intel.com ([10.7.209.38])
-  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 May 2020 12:13:17 -0700
-IronPort-SDR: ujuwjXnfhlAS/wLHOjcQHidVe/I589qgyOG3ix97c9JZrd0rybb4Pcr85nPMOo4kFKQL5JH1Mc
- sXqKPaz6KX0Q==
-X-IronPort-AV: E=Sophos;i="5.73,418,1583222400"; 
-   d="scan'208";a="412509503"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga004-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 May 2020 12:13:16 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
+        id S1730389AbgEUTSO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 May 2020 15:18:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43818 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730331AbgEUTSL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 May 2020 15:18:11 -0400
+Received: from mail-qt1-x842.google.com (mail-qt1-x842.google.com [IPv6:2607:f8b0:4864:20::842])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62DD9C08C5C0
+        for <linux-ext4@vger.kernel.org>; Thu, 21 May 2020 12:18:11 -0700 (PDT)
+Received: by mail-qt1-x842.google.com with SMTP id n22so6370915qtv.12
+        for <linux-ext4@vger.kernel.org>; Thu, 21 May 2020 12:18:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=cmpxchg-org.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=3saNR5c+6VNupgYjih4e3CSZVXxO/Uu/tqHqOuV8bQg=;
+        b=IZHHDCMOyktHFom60CWiiTZknilhOZz2yQd0nUXDZoj4AWiZZoLpX54YbH1BHJEwAr
+         ISqrRSXko4V4gmriEkRFbmWgaTiJhYeOIhuVFGVBsr6kIs7FuL9BVTwQYgvv+cUQcCvI
+         cwPKnifZ6trujNffSOBlfNAYuzfnTyCo6H0wEwK6htR8qWlsCT6Thi3pVTHSSd8Q3dmO
+         vB2eX0uQX772TtB9QLPUkTOvgnp78QZH5zqVyMRVI3OCix8duRSLLcl+31RlEbr9l7r1
+         /8hPAk5zNBB3jfH2nGYdBaa2EKHPtHMy7KVXRqQpSf3UYQs1mKQaWvJRJTz7wNJ7NIuX
+         0EFQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=3saNR5c+6VNupgYjih4e3CSZVXxO/Uu/tqHqOuV8bQg=;
+        b=Z7gIBsO9ONdKgTdoaAWANaaK2DQ8HgewkdHzBr3oJnWFkB18OrlOgDu1B5cNdsymQD
+         JfppAAjHeKu9z2PsQMMSLvSFPJxaTGoCGVbaJCApB+n77EMAaZM4i6T0dSbDkE1rvh8j
+         KKqgyuaWDEbZKSLaf8G+mx1bBcetKmR/t81KHoWlN+NWPZK0Pla2PW1lrVirUQIX7NdM
+         YqKKru4+r1zdEm39hZnXhZh5yL5V3LWuVz/gIQQELc2g5EKjBjkgx8PuaNfnapYaXVZt
+         7U/+Lqhfb8lvCRaVOQHzOSsb1oZlxXscCigN04+Psj7hizxCe/PK9+/CGzYsKLNQ2bx3
+         ZdPA==
+X-Gm-Message-State: AOAM5326j9/Lbod0XVXjszOYqHhjVGkyOt2hIT779DMG4+1DdvsPIGk/
+        u4oDSNSr+Yxd5fNOMZ0Ky1/ibQ==
+X-Google-Smtp-Source: ABdhPJzVWP1hA7wiiSGD2yjVWj4mcyrIqhfmshAaGG5iJui8AOs5vLOi37iHWy6Hm3r3/Z1bDOTdTg==
+X-Received: by 2002:ac8:17f0:: with SMTP id r45mr12186357qtk.114.1590088690329;
+        Thu, 21 May 2020 12:18:10 -0700 (PDT)
+Received: from localhost ([2620:10d:c091:480::1:4708])
+        by smtp.gmail.com with ESMTPSA id j3sm5380605qkf.9.2020.05.21.12.18.08
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 21 May 2020 12:18:09 -0700 (PDT)
+Date:   Thu, 21 May 2020 15:17:46 -0400
+From:   Johannes Weiner <hannes@cmpxchg.org>
+To:     Michal Hocko <mhocko@kernel.org>
+Cc:     Hugh Dickins <hughd@google.com>,
+        Naresh Kamboju <naresh.kamboju@linaro.org>,
+        Chris Down <chris@chrisdown.name>,
+        Yafang Shao <laoar.shao@gmail.com>,
+        Anders Roxell <anders.roxell@linaro.org>,
+        "Linux F2FS DEV, Mailing List" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-block <linux-block@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        open list <linux-kernel@vger.kernel.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, Arnd Bergmann <arnd@arndb.de>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@kernel.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V4 0/8] Enable ext4 support for per-file/directory DAX operations
-Date:   Thu, 21 May 2020 12:13:05 -0700
-Message-Id: <20200521191313.261929-1-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Chao Yu <yuchao0@huawei.com>, lkft-triage@lists.linaro.org,
+        Roman Gushchin <guro@fb.com>, Cgroups <cgroups@vger.kernel.org>
+Subject: Re: mm: mkfs.ext4 invoked oom-killer on i386 - pagecache_get_page
+Message-ID: <20200521191746.GB815980@cmpxchg.org>
+References: <CAK8P3a2T_j-Ynvhsqe_FCqS2-ZdLbo0oMbHhHChzMbryE0izAQ@mail.gmail.com>
+ <20200519084535.GG32497@dhcp22.suse.cz>
+ <CA+G9fYvzLm7n1BE7AJXd8_49fOgPgWWTiQ7sXkVre_zoERjQKg@mail.gmail.com>
+ <CA+G9fYsXnwyGetj-vztAKPt8=jXrkY8QWe74u5EEA3XPW7aikQ@mail.gmail.com>
+ <20200520190906.GA558281@chrisdown.name>
+ <20200521095515.GK6462@dhcp22.suse.cz>
+ <CA+G9fYvAB9F+Xo0vUsSveKnExkv3cV9-oOG9gBqGEcXsO95m0w@mail.gmail.com>
+ <20200521105801.GL6462@dhcp22.suse.cz>
+ <alpine.LSU.2.11.2005210504110.1185@eggly.anvils>
+ <20200521124444.GP6462@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200521124444.GP6462@dhcp22.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+On Thu, May 21, 2020 at 02:44:44PM +0200, Michal Hocko wrote:
+> On Thu 21-05-20 05:24:27, Hugh Dickins wrote:
+> > On Thu, 21 May 2020, Michal Hocko wrote:
+> > > On Thu 21-05-20 16:11:11, Naresh Kamboju wrote:
+> > > > On Thu, 21 May 2020 at 15:25, Michal Hocko <mhocko@kernel.org> wrote:
+> > > > >
+> > > > > On Wed 20-05-20 20:09:06, Chris Down wrote:
+> > > > > > Hi Naresh,
+> > > > > >
+> > > > > > Naresh Kamboju writes:
+> > > > > > > As a part of investigation on this issue LKFT teammate Anders Roxell
+> > > > > > > git bisected the problem and found bad commit(s) which caused this problem.
+> > > > > > >
+> > > > > > > The following two patches have been reverted on next-20200519 and retested the
+> > > > > > > reproducible steps and confirmed the test case mkfs -t ext4 got PASS.
+> > > > > > > ( invoked oom-killer is gone now)
+> > > > > > >
+> > > > > > > Revert "mm, memcg: avoid stale protection values when cgroup is above
+> > > > > > > protection"
+> > > > > > >    This reverts commit 23a53e1c02006120f89383270d46cbd040a70bc6.
+> > > > > > >
+> > > > > > > Revert "mm, memcg: decouple e{low,min} state mutations from protection
+> > > > > > > checks"
+> > > > > > >    This reverts commit 7b88906ab7399b58bb088c28befe50bcce076d82.
+> > > > > >
+> > > > > > Thanks Anders and Naresh for tracking this down and reverting.
+> > > > > >
+> > > > > > I'll take a look tomorrow. I don't see anything immediately obviously wrong
+> > > > > > in either of those commits from a (very) cursory glance, but they should
+> > > > > > only be taking effect if protections are set.
+> > > > >
+> > > > > Agreed. If memory.{low,min} is not used then the patch should be
+> > > > > effectively a nop. Btw. do you see the problem when booting with
+> > > > > cgroup_disable=memory kernel command line parameter?
+> > > > 
+> > > > With extra kernel command line parameters, cgroup_disable=memory
+> > > > I have noticed a differ problem now.
+> > > > 
+> > > > + mkfs -t ext4 /dev/disk/by-id/ata-TOSHIBA_MG04ACA100N_Y8NRK0BPF6XF
+> > > > mke2fs 1.43.8 (1-Jan-2018)
+> > > > Creating filesystem with 244190646 4k blocks and 61054976 inodes
+> > > > Filesystem UUID: 3bb1a285-2cb4-44b4-b6e8-62548f3ac620
+> > > > Superblock backups stored on blocks:
+> > > > 32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+> > > > 4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+> > > > 102400000, 214990848
+> > > > Allocating group tables:    0/7453                           done
+> > > > Writing inode tables:    0/7453                           done
+> > > > Creating journal (262144 blocks): [   35.502102] BUG: kernel NULL
+> > > > pointer dereference, address: 000000c8
+> > > > [   35.508372] #PF: supervisor read access in kernel mode
+> > > > [   35.513506] #PF: error_code(0x0000) - not-present page
+> > > > [   35.518638] *pde = 00000000
+> > > > [   35.521514] Oops: 0000 [#1] SMP
+> > > > [   35.524652] CPU: 0 PID: 145 Comm: kswapd0 Not tainted
+> > > > 5.7.0-rc6-next-20200519+ #1
+> > > > [   35.532121] Hardware name: Supermicro SYS-5019S-ML/X11SSH-F, BIOS
+> > > > 2.2 05/23/2018
+> > > > [   35.539507] EIP: mem_cgroup_get_nr_swap_pages+0x28/0x60
+> > > 
+> > > Could you get faddr2line for this offset?
+> > 
+> > No need for that, I can help with the "cgroup_disabled=memory" crash:
+> > I've been happily running with the fixup below, but haven't got to
+> > send it in yet (and wouldn't normally be reading mail at this time!)
+> > because of busy chasing a couple of other bugs (not necessarily mm);
+> > and maybe the fix would be better with explicit mem_cgroup_disabled()
+> > test, or maybe that should be where cgroup_memory_noswap is decided -
+> > up to Johannes.
+> 
+> Thanks Hugh. I can see what is the problem now. I was looking at the
+> Linus' tree and we have a different code there
+> 
+> 	long nr_swap_pages = get_nr_swap_pages();
+> 
+>         if (!do_swap_account || !cgroup_subsys_on_dfl(memory_cgrp_subsys))
+>                 return nr_swap_pages;
+> 
+> which would be impossible to crash so I was really wondering what is
+> going on here. But there are other changes in the mmotm which I haven't
+> reviewed yet. Looking at the next tree now it is a fallout from "mm:
+> memcontrol: prepare swap controller setup for integration".
+> 
+> !memcg check slightly more cryptic than an explicit mem_cgroup_disabled
+> but I would just leave it to Johannes as well.
 
-Changes from V3:
-	Change EXT4_DAX_FL to bit24
-	Cache device DAX support in the super block and use that is
-		ext4_should_use_dax()
+Very much appreciate you guys tracking it down so quickly. Sorry about
+the breakage.
 
-Changes from V2:
-	Rework DAX exclusivity with verity and encryption based on feedback
-	from Eric
+I think mem_cgroup_disabled() checks are pretty good markers of public
+entry points to the memcg API, so I'd prefer that even if a bit more
+verbose. What do you think?
 
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
+---
+From cd373ec232942a9bc43ee5e7d2171352019a58fb Mon Sep 17 00:00:00 2001
+From: Hugh Dickins <hughd@google.com>
+Date: Thu, 21 May 2020 14:58:36 -0400
+Subject: [PATCH] mm: memcontrol: prepare swap controller setup for integration
+ fix
 
-This passes the same xfstests test as XFS.
+Fix crash with cgroup_disable=memory:
 
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
+> > > > + mkfs -t ext4 /dev/disk/by-id/ata-TOSHIBA_MG04ACA100N_Y8NRK0BPF6XF
+> > > > mke2fs 1.43.8 (1-Jan-2018)
+> > > > Creating filesystem with 244190646 4k blocks and 61054976 inodes
+> > > > Filesystem UUID: 3bb1a285-2cb4-44b4-b6e8-62548f3ac620
+> > > > Superblock backups stored on blocks:
+> > > > 32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632, 2654208,
+> > > > 4096000, 7962624, 11239424, 20480000, 23887872, 71663616, 78675968,
+> > > > 102400000, 214990848
+> > > > Allocating group tables:    0/7453                           done
+> > > > Writing inode tables:    0/7453                           done
+> > > > Creating journal (262144 blocks): [   35.502102] BUG: kernel NULL
+> > > > pointer dereference, address: 000000c8
+> > > > [   35.508372] #PF: supervisor read access in kernel mode
+> > > > [   35.513506] #PF: error_code(0x0000) - not-present page
+> > > > [   35.518638] *pde = 00000000
+> > > > [   35.521514] Oops: 0000 [#1] SMP
+> > > > [   35.524652] CPU: 0 PID: 145 Comm: kswapd0 Not tainted
+> > > > 5.7.0-rc6-next-20200519+ #1
+> > > > [   35.532121] Hardware name: Supermicro SYS-5019S-ML/X11SSH-F, BIOS
+> > > > 2.2 05/23/2018
+> > > > [   35.539507] EIP: mem_cgroup_get_nr_swap_pages+0x28/0x60
 
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
+do_memsw_account() used to be automatically false when the cgroup
+controller was disabled. Now that it's replaced by
+cgroup_memory_noswap, for which this isn't true, make the
+mem_cgroup_disabled() checks explicit in the swap control API.
 
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
+[hannes@cmpxchg.org: use mem_cgroup_disabled() in all API functions]
+Reported-by: Naresh Kamboju <naresh.kamboju@linaro.org>
+Debugged-by: Hugh Dickins <hughd@google.com>
+Debugged-by: Michal Hocko <mhocko@kernel.org>
+Signed-off-by: Johannes Weiner <hannes@cmpxchg.org>
+---
+ mm/memcontrol.c | 47 +++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 41 insertions(+), 6 deletions(-)
 
-To: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-To: Eric Biggers <ebiggers@kernel.org>
-
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Jeff Moyer <jmoyer@redhat.com>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-
-Ira Weiny (8):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
-
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  3 +
- fs/ext4/ext4.h                            | 23 ++++--
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 26 +++++--
- fs/ext4/ioctl.c                           | 41 +++++++++--
- fs/ext4/super.c                           | 85 ++++++++++++++++++-----
- fs/ext4/verity.c                          |  5 +-
- include/uapi/linux/fs.h                   |  1 +
- 9 files changed, 154 insertions(+), 38 deletions(-)
-
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index 3e000a316b59..850bca380562 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -6811,6 +6811,9 @@ void mem_cgroup_swapout(struct page *page, swp_entry_t entry)
+ 	VM_BUG_ON_PAGE(PageLRU(page), page);
+ 	VM_BUG_ON_PAGE(page_count(page), page);
+ 
++	if (mem_cgroup_disabled())
++		return;
++
+ 	if (cgroup_subsys_on_dfl(memory_cgrp_subsys))
+ 		return;
+ 
+@@ -6876,6 +6879,10 @@ int mem_cgroup_try_charge_swap(struct page *page, swp_entry_t entry)
+ 	struct mem_cgroup *memcg;
+ 	unsigned short oldid;
+ 
++	if (mem_cgroup_disabled())
++		return 0;
++
++	/* Only cgroup2 has swap.max */
+ 	if (!cgroup_subsys_on_dfl(memory_cgrp_subsys))
+ 		return 0;
+ 
+@@ -6920,6 +6927,9 @@ void mem_cgroup_uncharge_swap(swp_entry_t entry, unsigned int nr_pages)
+ 	struct mem_cgroup *memcg;
+ 	unsigned short id;
+ 
++	if (mem_cgroup_disabled())
++		return;
++
+ 	id = swap_cgroup_record(entry, 0, nr_pages);
+ 	rcu_read_lock();
+ 	memcg = mem_cgroup_from_id(id);
+@@ -6940,12 +6950,25 @@ long mem_cgroup_get_nr_swap_pages(struct mem_cgroup *memcg)
+ {
+ 	long nr_swap_pages = get_nr_swap_pages();
+ 
+-	if (cgroup_memory_noswap || !cgroup_subsys_on_dfl(memory_cgrp_subsys))
+-		return nr_swap_pages;
++	if (mem_cgroup_disabled())
++		goto out;
++
++	/* Swap control disabled */
++	if (cgroup_memory_noswap)
++		goto out;
++
++	/*
++	 * Only cgroup2 has swap.max, cgroup1 does mem+sw accounting,
++	 * which does not place restrictions specifically on swap.
++	 */
++	if (!cgroup_subsys_on_dfl(memory_cgrp_subsys))
++		goto out;
++
+ 	for (; memcg != root_mem_cgroup; memcg = parent_mem_cgroup(memcg))
+ 		nr_swap_pages = min_t(long, nr_swap_pages,
+ 				      READ_ONCE(memcg->swap.max) -
+ 				      page_counter_read(&memcg->swap));
++out:
+ 	return nr_swap_pages;
+ }
+ 
+@@ -6957,18 +6980,30 @@ bool mem_cgroup_swap_full(struct page *page)
+ 
+ 	if (vm_swap_full())
+ 		return true;
+-	if (cgroup_memory_noswap || !cgroup_subsys_on_dfl(memory_cgrp_subsys))
+-		return false;
++
++	if (mem_cgroup_disabled())
++		goto out;
++
++	/* Swap control disabled */
++	if (cgroup_memory_noswap)
++		goto out;
++
++	/*
++	 * Only cgroup2 has swap.max, cgroup1 does mem+sw accounting,
++	 * which does not place restrictions specifically on swap.
++	 */
++	if (!cgroup_subsys_on_dfl(memory_cgrp_subsys))
++		goto out;
+ 
+ 	memcg = page->mem_cgroup;
+ 	if (!memcg)
+-		return false;
++		goto out;
+ 
+ 	for (; memcg != root_mem_cgroup; memcg = parent_mem_cgroup(memcg))
+ 		if (page_counter_read(&memcg->swap) * 2 >=
+ 		    READ_ONCE(memcg->swap.max))
+ 			return true;
+-
++out:
+ 	return false;
+ }
+ 
 -- 
-2.25.1
+2.26.2
 
