@@ -2,60 +2,66 @@ Return-Path: <SRS0=JSyQ=7D=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB21CC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 17:20:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6FBFC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 18:26:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BB6FF20826
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 17:20:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B2580207D3
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 May 2020 18:26:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728778AbgEURUm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 May 2020 13:20:42 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:35166 "EHLO
+        id S1728979AbgEUS06 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 May 2020 14:26:58 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45649 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728796AbgEURUm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 May 2020 13:20:42 -0400
+        with ESMTP id S1728240AbgEUS06 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 May 2020 14:26:58 -0400
 Received: from callcc.thunk.org (pool-100-0-195-244.bstnma.fios.verizon.net [100.0.195.244])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 04LHKZtw016256
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 04LIQocA007023
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 May 2020 13:20:35 -0400
+        Thu, 21 May 2020 14:26:50 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 1607F420304; Thu, 21 May 2020 13:20:35 -0400 (EDT)
-Date:   Thu, 21 May 2020 13:20:35 -0400
+        id 2CF13420304; Thu, 21 May 2020 14:26:50 -0400 (EDT)
+Date:   Thu, 21 May 2020 14:26:50 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Jonny Grant <jg@jguk.org>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH] /fs/ext4/ext4.h add a comment to ext4_dir_entry_2
-Message-ID: <20200521172035.GB2946569@mit.edu>
-References: <5b9bc322-fe02-72cc-9aa7-a27b26894ce0@jguk.org>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Jan Kara <jack@suse.com>,
+        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>
+Subject: Re: [RFC 16/16] ext4: Add process name and pid in ext4_msg()
+Message-ID: <20200521182650.GC2946569@mit.edu>
+References: <cover.1589086800.git.riteshh@linux.ibm.com>
+ <3d99e1291b3bc8f2a78467d11b1a7a31393180fc.1589086800.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <5b9bc322-fe02-72cc-9aa7-a27b26894ce0@jguk.org>
+In-Reply-To: <3d99e1291b3bc8f2a78467d11b1a7a31393180fc.1589086800.git.riteshh@linux.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, May 08, 2020 at 09:36:43PM +0100, Jonny Grant wrote:
-> Please find attached patch for review.
+On Sun, May 10, 2020 at 11:54:56AM +0530, Ritesh Harjani wrote:
+> This adds process name and pid for ext4_msg().
+> I found this to be useful. For e.g. below print gives more
+> info about process name and pid.
 > 
-> 2020-05-08  Jonny Grant  <jg@jguk.org>
-> 
-> 	tests: comment ext4_dir_entry_2 file_type member
-> 
-> Cheers, Jonny
+> [ 7671.131912]  [mount/12543] EXT4-fs (dm-0): mounted filesystem with ordered data mode. Opts: acl,user_xattr
 
-Hi Johnny, could you resubmit with the Signed-off-By: line?  That's
-really important.  If you don't understand why, please read:
+I'm not entirely sure about adding the command/pid at the beginning of
+the message.  The way we do this in ext4_warning and ext4_err is to
+print that information like this:
 
-https://www.kernel.org/doc/html/latest/process/submitting-patches.html#sign-your-work-the-developer-s-certificate-of-origin       
+		printk(KERN_CRIT
+		       "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
+		       sb->s_id, function, line, current->comm, &vaf);
 
-Cheers,
+... and I wonder if it would make more sense to add something like to
+ext4_msg(), just out of consistency's sake.  Which of the debugging
+messages were you finding this to be most helpful?
 
-						- Ted
+	      	  	       	     - Ted
