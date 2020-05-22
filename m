@@ -2,86 +2,114 @@ Return-Path: <SRS0=ZJMC=7E=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BEF1CC433DF
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 399D2C433DF
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 91A2A206BE
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 14C1220738
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="LZNhGeFL"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HSwpbmpN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726910AbgEVE4C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 May 2020 00:56:02 -0400
-Received: from sender2-op-o12.zoho.com.cn ([163.53.93.243]:17170 "EHLO
-        sender2-op-o12.zoho.com.cn" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726421AbgEVE4C (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 22 May 2020 00:56:02 -0400
-ARC-Seal: i=1; a=rsa-sha256; t=1590122447; cv=none; 
-        d=zoho.com.cn; s=zohoarc; 
-        b=lJcr7vXpK40LMj5JvsWjdAj6Nq4q7wa1WUgvulpKG6OrsQdKs7ZXO/i+96cyLRk4Lfv5+gzUYOTmF/OCxPA8e3/aiq4/zNAy1GYoo95KuUetd7VydcMbiE/5bnnDsSRCNG0uXroVRGu4b/g+ppmDnOsa4PAWxODJe62N+d9+pPw=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1590122447; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:MIME-Version:Message-ID:Subject:To; 
-        bh=0TUX0uJD+XsSVxCFSykWLZrCh6BscwdhEbIJbkQTBuw=; 
-        b=OWwQRR391lz+uSpnNoB72OW4YB2vjPbiLKKFai3xxuKpQ93laaYaCaNpD9lHg1rltPXSg32frSm8eOjOQW+alhB0AJjxqscMPyAH5rHfFbS5LWUz7nem4ouItm01P1tTc6QPqfPd9hLSQpjzS3YTQ2poaRxd+qnH8w7YZGX/ujw=
-ARC-Authentication-Results: i=1; mx.zoho.com.cn;
-        dkim=pass  header.i=mykernel.net;
-        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
-        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1590122447;
-        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
-        h=From:To:Cc:Message-ID:Subject:Date:MIME-Version:Content-Transfer-Encoding:Content-Type;
-        bh=0TUX0uJD+XsSVxCFSykWLZrCh6BscwdhEbIJbkQTBuw=;
-        b=LZNhGeFLHPmkJE3l9Zt8p1ndm05hH/tFjgmZuy7xAt94mGgAFmdYQS7NVXozJw+r
-        vcCOmnfkAhA/HOjqFFKbjrHy9DsHRSVvjAx6tqCf8X7ki6d/9Zx5CmlW/xY9eHezWD9
-        oQRuSAPFSunNuicu1hekDQwoPtpYMsfgt0qbZ9Ok=
-Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
-        with SMTPS id 1590122444475531.2078805086636; Fri, 22 May 2020 12:40:44 +0800 (CST)
-From:   Chengguang Xu <cgxu519@mykernel.net>
-To:     jack@suse.com
-Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
-Message-ID: <20200522044035.24190-1-cgxu519@mykernel.net>
-Subject: [PATCH 1/2] ext2: fix incorrect i_op for special inode
-Date:   Fri, 22 May 2020 12:40:34 +0800
-X-Mailer: git-send-email 2.20.1
+        id S1727770AbgEVE4Y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 May 2020 00:56:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49228 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726338AbgEVE4Y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2020 00:56:24 -0400
+Received: from mail-pj1-x1044.google.com (mail-pj1-x1044.google.com [IPv6:2607:f8b0:4864:20::1044])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5650AC061A0E;
+        Thu, 21 May 2020 21:56:24 -0700 (PDT)
+Received: by mail-pj1-x1044.google.com with SMTP id k7so4380257pjs.5;
+        Thu, 21 May 2020 21:56:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=HUbHfPNmTbu4ctyPCNklCkDL8Qa0yGq7Hose+vNxUdI=;
+        b=HSwpbmpN/NsMlf8GRobtYw4MbqLnCFOmBsW9Coz/cHTxIrITp0Sbk2T+YtZz/+MInO
+         bUmzGD/8ya32drYpzuNGs7PHIkgAfF6iRsWlQZOstMlslCS/Hkq4M20H/3v40T+PS1WU
+         Co01HEJHU/O8QfANYlmNo84IEYbyNfG0n+zBwIw+WVHkiMFpsKPhP3WjhGG3wod8jIcI
+         71For32tEZwABqW/Jby+5vAzMMq1T2X/KSb/azM+BZCgmG1WO8dFAS7RgcU46Tzj7U4R
+         aV+4OdAIau35x5GD9gmNhm/P4aDR3MY3PLj7mUO1w/aT9jS0Hv0mbrRy9r/PvyeO2/WQ
+         P+vw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=HUbHfPNmTbu4ctyPCNklCkDL8Qa0yGq7Hose+vNxUdI=;
+        b=JVT+cZ5cq2nFkAjkPunr0Tkbm6aZIEEhiiP5UTPOvFKI/qJvx8stoejwXgA7XRMVDD
+         HCd1sBa2FLQkLy6aDTaaQ84cU+De5+RMy1kRxHbnBpo274vKJSYDVyAK097jzlUs4WuB
+         lmPRy9EKSLkL5VtuodK2TodjeMqD5MWru9r2q+SSE7ZZh92tHGGYKfWm+9mMk5cAa9Hm
+         XKWBWwKv+BYbuG3arvnqjrPqoNpV737rYHHupwj9Wi/osOCuKD1ei1tf+rQtqB1pqbhH
+         lajbiG0QDG5mTaA67oTX1eEXxfO4fZ/uX6ywIELkF/xGPtmrkHEqx1dqKBX5rjUQggRD
+         ecJQ==
+X-Gm-Message-State: AOAM533J66cbTv4OKwy9SN0iyC3iWZEIFVljk4Jxfx4cSJOd5J4W2d9G
+        gQXhzsnuZVeW3TfP/08PCRW1hIgjIiQ=
+X-Google-Smtp-Source: ABdhPJyazPRDMrtnKsAL0hgIQjLDKmHhDTs11sSstZoPCTQMV4mlMgCCBg75JfoZ1ZurURWSqpqI1Q==
+X-Received: by 2002:a17:902:b68d:: with SMTP id c13mr2589481pls.210.1590123383741;
+        Thu, 21 May 2020 21:56:23 -0700 (PDT)
+Received: from localhost ([209.132.188.80])
+        by smtp.gmail.com with ESMTPSA id fw4sm5668348pjb.31.2020.05.21.21.56.22
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 21 May 2020 21:56:23 -0700 (PDT)
+Date:   Fri, 22 May 2020 12:56:15 +0800
+From:   Murphy Zhou <jencce.kernel@gmail.com>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     Murphy Zhou <jencce.kernel@gmail.com>, linux-ext4@vger.kernel.org,
+        jack@suse.cz, tytso@mit.edu, adilger@dilger.ca,
+        darrick.wong@oracle.com, hch@infradead.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Amir Goldstein <amir73il@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-unionfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] ext4/overlayfs: fiemap related fixes
+Message-ID: <20200522045615.y3vhtfdbmpndzwvp@xzhoux.usersys.redhat.com>
+References: <cover.1587555962.git.riteshh@linux.ibm.com>
+ <20200519024311.7bkxi2fkxboon2ig@xzhoux.usersys.redhat.com>
+ <20200521060833.855415204F@d06av21.portsmouth.uk.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-X-ZohoCNMailClient: External
-Content-Type: text/plain; charset=utf8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200521060833.855415204F@d06av21.portsmouth.uk.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We should always set &ext2_special_inode_operations to i_op
-for special inode regardless of CONFIG_EXT2_FS_XATTR setting.
+Hi Ritesh,
 
-Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
----
- fs/ext2/namei.c | 2 --
- 1 file changed, 2 deletions(-)
+On Thu, May 21, 2020 at 11:38:32AM +0530, Ritesh Harjani wrote:
+> Hello Murphy,
+> 
+> On 5/19/20 8:13 AM, Murphy Zhou wrote:
+> > On Thu, Apr 23, 2020 at 04:17:52PM +0530, Ritesh Harjani wrote:
+> > > Hello All,
+> > > 
+> > > Here are some changes, which as I understand, takes the right approach in fixing
+> > > the offset/length bounds check problem reported in threads [1]-[2].
+> > > These warnings in iomap_apply/ext4 path are reported after ext4_fiemap()
+> > > was moved to use iomap framework and when overlayfs is mounted on top of ext4.
+> > > Though the issues were identified after ext4 moved to iomap framework, but
+> > > these changes tries to fix the problem which are anyways present in current code
+> > > irrespective of ext4 using iomap framework for fiemap or not.
+> > 
+> > Ping?
+> 
+> It's superseded by below mentioned patch series.
+> Please follow below thread.
+> https://lore.kernel.org/linux-ext4/20200520032837.GA2744481@mit.edu/T/#t
 
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index ccfbbf59e2fc..1a5421a34ef7 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -136,9 +136,7 @@ static int ext2_mknod (struct inode * dir, struct dentr=
-y *dentry, umode_t mode,
- =09err =3D PTR_ERR(inode);
- =09if (!IS_ERR(inode)) {
- =09=09init_special_inode(inode, inode->i_mode, rdev);
--#ifdef CONFIG_EXT2_FS_XATTR
- =09=09inode->i_op =3D &ext2_special_inode_operations;
--#endif
- =09=09mark_inode_dirty(inode);
- =09=09err =3D ext2_add_nondir(dentry, inode);
- =09}
---=20
-2.20.1
+Great. Thanks for the info!
 
+> 
+> -ritesh
 
+-- 
+Murphy
