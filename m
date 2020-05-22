@@ -2,148 +2,153 @@ Return-Path: <SRS0=ZJMC=7E=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E3D3C433E0
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:18:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1E87C433E0
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 44DC220663
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:18:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 521C9206BE
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 May 2020 04:56:01 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="YLESegDj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726453AbgEVES5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 May 2020 00:18:57 -0400
-Received: from out4436.biz.mail.alibaba.com ([47.88.44.36]:39282 "EHLO
-        out4436.biz.mail.alibaba.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725921AbgEVES4 (ORCPT
+        id S1726549AbgEVE4A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 May 2020 00:56:00 -0400
+Received: from sender2-op-o12.zoho.com.cn ([163.53.93.243]:17108 "EHLO
+        sender2-op-o12.zoho.com.cn" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726404AbgEVE4A (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 22 May 2020 00:18:56 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R291e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e01358;MF=jefflexu@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0TzFAC1R_1590121124;
-Received: from localhost(mailfrom:jefflexu@linux.alibaba.com fp:SMTPD_---0TzFAC1R_1590121124)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 22 May 2020 12:18:44 +0800
-From:   Jeffle Xu <jefflexu@linux.alibaba.com>
-To:     tytso@mit.edu, enwlinux@gmail.com
-Cc:     linux-ext4@vger.kernel.org, joseph.qi@linux.alibaba.com
-Subject: [PATCH] ext4: fix partial cluster initialization when splitting extent
-Date:   Fri, 22 May 2020 12:18:44 +0800
-Message-Id: <1590121124-37096-1-git-send-email-jefflexu@linux.alibaba.com>
-X-Mailer: git-send-email 1.8.3.1
+        Fri, 22 May 2020 00:56:00 -0400
+X-Greylist: delayed 906 seconds by postgrey-1.27 at vger.kernel.org; Fri, 22 May 2020 00:55:58 EDT
+ARC-Seal: i=1; a=rsa-sha256; t=1590122448; cv=none; 
+        d=zoho.com.cn; s=zohoarc; 
+        b=he6nu6wkE+XYo2JvcvjAilg5UOMSuG+lQgotqaBFg28g8ZGIVL/yMUhtaJkZ1rGl1fmdQH05XmPMau9XePjAGVzTvsEljXrG+WU/9PzwN9MKGjZdLBYatA1bn/UvyeFGwCeDYWyVtgtUQLARsJ/7Krfgd+sHZt+XIlZ4mP5eKJY=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
+        t=1590122448; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:MIME-Version:Message-ID:References:Subject:To; 
+        bh=6ampF46FIPZidEcIeoRzm542SN45rKX0OotH3WJOgpM=; 
+        b=Z/mJnOZHTRO9Za7PiC9PCiecffdPD80C1wzurDYFLCh/FJLJBv89q/RO0FCC5P+Z8YewgX4qJhXlq13nqn7veT72c9K//nKru3sABA4ooIt0RuZ8LnEmC9binwO6++D7Eg0KHrrUoEIBJmxb7l5LQRL+Niry9hJqUq9/IK/JSTs=
+ARC-Authentication-Results: i=1; mx.zoho.com.cn;
+        dkim=pass  header.i=mykernel.net;
+        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
+        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1590122448;
+        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
+        h=From:To:Cc:Message-ID:Subject:Date:In-Reply-To:References:MIME-Version:Content-Transfer-Encoding:Content-Type;
+        bh=6ampF46FIPZidEcIeoRzm542SN45rKX0OotH3WJOgpM=;
+        b=YLESegDjkXNANSrKu1uo2aEJHJLPCKA1FQhhryGIRyj+ttL8GILXp0Ed2Wp+rPsT
+        RmyF3L4EqfYcsVUbgvjG2BEyUX+kPxQu0fykBBszSLeXm78hTNAfwRzwK8ENCVtbk30
+        hkrydUSL4P2M62aMq5zyjcHTUGoNqi7jtCjNJb6U=
+Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
+        with SMTPS id 1590122447860348.83208081168164; Fri, 22 May 2020 12:40:47 +0800 (CST)
+From:   Chengguang Xu <cgxu519@mykernel.net>
+To:     jack@suse.com
+Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
+Message-ID: <20200522044035.24190-2-cgxu519@mykernel.net>
+Subject: [PATCH 2/2] ext2: code cleanup by removing ifdef macro surrounding
+Date:   Fri, 22 May 2020 12:40:35 +0800
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200522044035.24190-1-cgxu519@mykernel.net>
+References: <20200522044035.24190-1-cgxu519@mykernel.net>
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+X-ZohoCNMailClient: External
+Content-Type: text/plain; charset=utf8
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fix the bug when calculating the physical block number of the first
-block in the split extent.
+Define ext2_listxattr to NULL when CONFIG_EROFS_FS_XATTR
+is not enabled, then we can remove many ugly ifdef macros
+in the code.
 
-This bug will cause xfstests shared/298 failure on ext4 with bigalloc
-enabled occasionally. Ext4 error messages indicate that previously freed
-blocks are being freed again, and the following fsck will fail due to
-the inconsistency of block bitmap and bg descriptor.
-
-The following is an example case:
-
-1. First, Initialize a ext4 filesystem with cluster size '16K', block size
-'4K', in which case, one cluster contains four blocks.
-
-2. Create one file (e.g., xxx.img) on this ext4 filesystem. Now the extent
-tree of this file is like:
-
-...
-36864:[0]4:220160
-36868:[0]14332:145408
-51200:[0]2:231424
-...
-
-3. Then execute PUNCH_HOLE fallocate on this file. The hole range is
-like:
-
-..
-ext4_ext_remove_space: dev 254,16 ino 12 since 49506 end 49506 depth 1
-ext4_ext_remove_space: dev 254,16 ino 12 since 49544 end 49546 depth 1
-ext4_ext_remove_space: dev 254,16 ino 12 since 49605 end 49607 depth 1
-...
-
-4. Then the extent tree of this file after punching is like
-
-...
-49507:[0]37:158047
-49547:[0]58:158087
-...
-
-5. Detailed procedure of punching hole [49544, 49546]
-
-5.1. The block address space:
-```
-lblk        ~49505  49506   49507~49543     49544~49546    49547~
-	  ---------+------+-------------+----------------+--------
-	    extent | hole |   extent	|	hole	 | extent
-	  ---------+------+-------------+----------------+--------
-pblk       ~158045  158046  158047~158083  158084~158086   158087~
-```
-
-5.2. The detailed layout of cluster 39521:
-```
-		cluster 39521
-	<------------------------------->
-
-		hole		  extent
-	<----------------------><--------
-
-lblk      49544   49545   49546   49547
-	+-------+-------+-------+-------+
-	|	|	|	|	|
-	+-------+-------+-------+-------+
-pblk     158084  1580845  158086  158087
-```
-
-5.3. The ftrace output when punching hole [49544, 49546]:
-- ext4_ext_remove_space (start 49544, end 49546)
-  - ext4_ext_rm_leaf (start 49544, end 49546, last_extent [49507(158047), 40], partial [pclu 39522 lblk 0 state 2])
-    - ext4_remove_blocks (extent [49507(158047), 40], from 49544 to 49546, partial [pclu 39522 lblk 0 state 2]
-      - ext4_free_blocks: (block 158084 count 4)
-        - ext4_mballoc_free (extent 1/6753/1)
-
-5.4. Ext4 error message in dmesg:
-EXT4-fs error (device vdb): mb_free_blocks:1457: group 1, block 158084:freeing already freed block (bit 6753); block bitmap corrupt.
-EXT4-fs error (device vdb): ext4_mb_generate_buddy:747: group 1, block bitmap and bg descriptor inconsistent: 19550 vs 19551 free clusters
-
-
-In this case, the whole cluster 39521 is freed mistakenly when freeing
-pblock 158084~158086 (i.e., the first three blocks of this cluster),
-although pblock 158087 (the last remaining block of this cluster) has
-not been freed yet.
-
-The root cause of this isuue is that, the pclu of the partial cluster is
-calculated mistakenly in ext4_ext_remove_space(). The correct
-partial_cluster.pclu (i.e., the cluster number of the first block in the
-next extent, that is, lblock 49597 (pblock 158086)) should be 39521 rather
-than 39522.
-
-Fixes: f4226d9ea400 ("ext4: fix partial cluster initialization")
-Signed-off-by: Jeffle Xu <jefflexu@linux.alibaba.com>
-Reviewed-by: Eric Whitney <enwlinux@gmail.com>
-Cc: stable@kernel.org # v3.19+
+Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
 ---
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext2/file.c    | 2 --
+ fs/ext2/namei.c   | 4 ----
+ fs/ext2/symlink.c | 4 ----
+ fs/ext2/xattr.h   | 1 +
+ 4 files changed, 1 insertion(+), 10 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index f2b577b..cb74496 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2828,7 +2828,7 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 			 * in use to avoid freeing it when removing blocks.
- 			 */
- 			if (sbi->s_cluster_ratio > 1) {
--				pblk = ext4_ext_pblock(ex) + end - ee_block + 2;
-+				pblk = ext4_ext_pblock(ex) + end - ee_block + 1;
- 				partial.pclu = EXT4_B2C(sbi, pblk);
- 				partial.state = nofree;
- 			}
--- 
-1.8.3.1
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 39c4772e96c9..b4de9a0f170d 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -196,9 +196,7 @@ const struct file_operations ext2_file_operations =3D {
+ };
+=20
+ const struct inode_operations ext2_file_inode_operations =3D {
+-#ifdef CONFIG_EXT2_FS_XATTR
+ =09.listxattr=09=3D ext2_listxattr,
+-#endif
+ =09.getattr=09=3D ext2_getattr,
+ =09.setattr=09=3D ext2_setattr,
+ =09.get_acl=09=3D ext2_get_acl,
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 1a5421a34ef7..ba3e3e075891 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -411,9 +411,7 @@ const struct inode_operations ext2_dir_inode_operations=
+ =3D {
+ =09.rmdir=09=09=3D ext2_rmdir,
+ =09.mknod=09=09=3D ext2_mknod,
+ =09.rename=09=09=3D ext2_rename,
+-#ifdef CONFIG_EXT2_FS_XATTR
+ =09.listxattr=09=3D ext2_listxattr,
+-#endif
+ =09.getattr=09=3D ext2_getattr,
+ =09.setattr=09=3D ext2_setattr,
+ =09.get_acl=09=3D ext2_get_acl,
+@@ -422,9 +420,7 @@ const struct inode_operations ext2_dir_inode_operations=
+ =3D {
+ };
+=20
+ const struct inode_operations ext2_special_inode_operations =3D {
+-#ifdef CONFIG_EXT2_FS_XATTR
+ =09.listxattr=09=3D ext2_listxattr,
+-#endif
+ =09.getattr=09=3D ext2_getattr,
+ =09.setattr=09=3D ext2_setattr,
+ =09.get_acl=09=3D ext2_get_acl,
+diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+index 00cdb8679486..948d3a441403 100644
+--- a/fs/ext2/symlink.c
++++ b/fs/ext2/symlink.c
+@@ -25,16 +25,12 @@ const struct inode_operations ext2_symlink_inode_operat=
+ions =3D {
+ =09.get_link=09=3D page_get_link,
+ =09.getattr=09=3D ext2_getattr,
+ =09.setattr=09=3D ext2_setattr,
+-#ifdef CONFIG_EXT2_FS_XATTR
+ =09.listxattr=09=3D ext2_listxattr,
+-#endif
+ };
+ =20
+ const struct inode_operations ext2_fast_symlink_inode_operations =3D {
+ =09.get_link=09=3D simple_get_link,
+ =09.getattr=09=3D ext2_getattr,
+ =09.setattr=09=3D ext2_setattr,
+-#ifdef CONFIG_EXT2_FS_XATTR
+ =09.listxattr=09=3D ext2_listxattr,
+-#endif
+ };
+diff --git a/fs/ext2/xattr.h b/fs/ext2/xattr.h
+index 16272e6ddcf4..7925f596e8e2 100644
+--- a/fs/ext2/xattr.h
++++ b/fs/ext2/xattr.h
+@@ -100,6 +100,7 @@ static inline void ext2_xattr_destroy_cache(struct mb_c=
+ache *cache)
+ }
+=20
+ #define ext2_xattr_handlers NULL
++#define ext2_listxattr NULL
+=20
+ # endif  /* CONFIG_EXT2_FS_XATTR */
+=20
+--=20
+2.20.1
+
 
