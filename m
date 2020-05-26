@@ -6,31 +6,31 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED492C433E1
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 848C5C433E0
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D14A32053B
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 57C402053B
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731381AbgEZHTW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1731383AbgEZHTW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 26 May 2020 03:19:22 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:51104 "EHLO huawei.com"
+Received: from szxga04-in.huawei.com ([45.249.212.190]:4899 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726641AbgEZHTV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 26 May 2020 03:19:21 -0400
-Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id E4E1D8E00C4CC26B7F8E;
-        Tue, 26 May 2020 15:19:14 +0800 (CST)
+        id S1731340AbgEZHTW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 26 May 2020 03:19:22 -0400
+Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id 0434FCE7620702D08BEF;
+        Tue, 26 May 2020 15:19:20 +0800 (CST)
 Received: from huawei.com (10.175.124.28) by DGGEMS406-HUB.china.huawei.com
  (10.3.19.206) with Microsoft SMTP Server id 14.3.487.0; Tue, 26 May 2020
- 15:19:09 +0800
+ 15:19:11 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
         <yi.zhang@huawei.com>, <zhangxiaoxu5@huawei.com>
-Subject: [PATCH 05/10] ext4: replace sb_bread*() with ext4_sb_bread*()
-Date:   Tue, 26 May 2020 15:17:49 +0800
-Message-ID: <20200526071754.33819-6-yi.zhang@huawei.com>
+Subject: [PATCH 09/10] ext4: abort the filesystem while freeing the write error io buffer
+Date:   Tue, 26 May 2020 15:17:53 +0800
+Message-ID: <20200526071754.33819-10-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.21.3
 In-Reply-To: <20200526071754.33819-1-yi.zhang@huawei.com>
 References: <20200526071754.33819-1-yi.zhang@huawei.com>
@@ -44,181 +44,107 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For the cases of sb_bread() and sb_bread_unmovable(), we also need to
-check the buffer is actually uptodate or not and fix the uptodate flag.
+Now we can prevent reading old metadata buffer from the disk which has
+been failed to write out through checking write io error when getting
+the buffer. One more thing need to do is to prevent freeing the write
+io error buffer. If the buffer was freed, we lose the latest data and
+buffer stats, finally it will also lead to inconsistency.
 
-Add a wrapper function ext4_sb_bread_unmovable() and replace all
-sb_bread*() with ext4_sb_bread*().
+So, this patch abort the journal in journal mode and invoke
+ext4_error_err() in nojournal mode to prevent further inconsistency.
 
 Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h     | 17 +++++++++++++++--
- fs/ext4/indirect.c |  6 +++---
- fs/ext4/resize.c   | 12 ++++++------
- fs/ext4/super.c    | 33 +++++++++++++++++++--------------
- 4 files changed, 43 insertions(+), 25 deletions(-)
+ fs/ext4/super.c       | 32 +++++++++++++++++++++++++++++++-
+ fs/jbd2/transaction.c | 13 +++++++++++++
+ 2 files changed, 44 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2ee76efd029b..609c2b555d29 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2763,8 +2763,9 @@ extern struct buffer_head *__ext4_sb_getblk_gfp(struct super_block *sb,
- 						gfp_t gfp);
- extern struct buffer_head *__ext4_sb_getblk(struct super_block *sb,
- 					     sector_t block, bool lock);
--extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
--					 sector_t block, int op_flags);
-+extern struct buffer_head *__ext4_sb_bread_gfp(struct super_block *sb,
-+					       sector_t block, int op_flags,
-+					       gfp_t gfp);
- extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
- extern int ext4_calculate_overhead(struct super_block *sb);
- extern void ext4_superblock_csum_set(struct super_block *sb);
-@@ -2969,6 +2970,18 @@ ext4_sb_getblk_locked(struct super_block *sb, sector_t block)
- 	return __ext4_sb_getblk(sb, block, true);
- }
- 
-+static inline struct buffer_head *
-+ext4_sb_bread(struct super_block *sb, sector_t block, int op_flags)
-+{
-+	return __ext4_sb_bread_gfp(sb, block, op_flags, __GFP_MOVABLE);
-+}
-+
-+static inline struct buffer_head *
-+ext4_sb_bread_unmovable(struct super_block *sb, sector_t block)
-+{
-+	return __ext4_sb_bread_gfp(sb, block, 0, 0);
-+}
-+
- static inline int ext4_has_metadata_csum(struct super_block *sb)
- {
- 	WARN_ON_ONCE(ext4_has_feature_metadata_csum(sb) &&
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 8dcbf21439c1..bd4d86211ab8 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1012,14 +1012,14 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			}
- 
- 			/* Go read the buffer for the next level down */
--			bh = sb_bread(inode->i_sb, nr);
-+			bh = ext4_sb_bread(inode->i_sb, nr, 0);
- 
- 			/*
- 			 * A read failure? Report error and clear slot
- 			 * (should be rare).
- 			 */
--			if (!bh) {
--				ext4_error_inode_block(inode, nr, EIO,
-+			if (IS_ERR(bh)) {
-+				ext4_error_inode_block(inode, nr, PTR_ERR(bh),
- 						       "Read failure");
- 				continue;
- 			}
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 414198e4d873..ff018e63bb55 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1806,10 +1806,10 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 			     o_blocks_count + add, add);
- 
- 	/* See if the device is actually as big as what was requested */
--	bh = sb_bread(sb, o_blocks_count + add - 1);
--	if (!bh) {
-+	bh = ext4_sb_bread(sb, o_blocks_count + add - 1, 0);
-+	if (IS_ERR(bh)) {
- 		ext4_warning(sb, "can't read last block, resize aborted");
--		return -ENOSPC;
-+		return PTR_ERR(bh);
- 	}
- 	brelse(bh);
- 
-@@ -1932,10 +1932,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 	int meta_bg;
- 
- 	/* See if the device is actually as big as what was requested */
--	bh = sb_bread(sb, n_blocks_count - 1);
--	if (!bh) {
-+	bh = ext4_sb_bread(sb, n_blocks_count - 1, 0);
-+	if (IS_ERR(bh)) {
- 		ext4_warning(sb, "can't read last block, resize aborted");
--		return -ENOSPC;
-+		return PTR_ERR(bh);
- 	}
- 	brelse(bh);
- 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 111fff55fada..b9aab334a5d0 100644
+index d25a0fe44bec..1e15179aa1c4 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -194,17 +194,18 @@ __ext4_sb_getblk(struct super_block *sb, sector_t block, bool lock)
+@@ -1349,6 +1349,36 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
+ 	return ext4_write_inode(inode, &wbc);
  }
  
++static int bdev_try_to_free_buffer(struct super_block *sb, struct page *page)
++{
++	struct buffer_head *head, *bh;
++	bool has_write_io_error = false;
++
++	head = page_buffers(page);
++	bh = head;
++	do {
++		/*
++		 * If the buffer has been failed to write out, the metadata
++		 * in this buffer is uptodate but which on disk is old, may
++		 * lead to inconsistency while reading the old data
++		 * successfully.
++		 */
++		if (buffer_write_io_error(bh) && !buffer_uptodate(bh)) {
++			has_write_io_error = true;
++			break;
++		}
++	} while ((bh = bh->b_this_page) != head);
++
++	if (has_write_io_error)
++		ext4_error_err(sb, EIO, "Free metadata buffer (%llu) that has "
++			       "been failed to write out. There is a risk of "
++			       "filesystem inconsistency in case of reading "
++			       "metadata from this block subsequently.",
++			       (unsigned long long) bh->b_blocknr);
++
++	return try_to_free_buffers(page);
++}
++
  /*
-- * This works like sb_bread() except it uses ERR_PTR for error
-- * returns.  Currently with sb_bread it's impossible to distinguish
-- * between ENOMEM and EIO situations (since both result in a NULL
-- * return.
-+ * This works like __bread_gfp() except it allow to pass op_flags and
-+ * uses ERR_PTR for error returns.  Currently with sb_bread it's
-+ * impossible to distinguish between ENOMEM and EIO situations (since
-+ * both result in a NULL return.
-  */
- struct buffer_head *
--ext4_sb_bread(struct super_block *sb, sector_t block, int op_flags)
-+__ext4_sb_bread_gfp(struct super_block *sb, sector_t block,
-+		    int op_flags, gfp_t gfp)
+  * Try to release metadata pages (indirect blocks, directories) which are
+  * mapped via the block device.  Since these pages could have journal heads
+@@ -1366,7 +1396,7 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
+ 	if (journal)
+ 		return jbd2_journal_try_to_free_buffers(journal, page,
+ 						wait & ~__GFP_DIRECT_RECLAIM);
+-	return try_to_free_buffers(page);
++	return bdev_try_to_free_buffer(sb, page);
+ }
+ 
+ #ifdef CONFIG_FS_ENCRYPTION
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 3dccc23cf010..ac6a077afec3 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2109,6 +2109,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
  {
+ 	struct buffer_head *head;
  	struct buffer_head *bh;
++	bool has_write_io_error = false;
+ 	int ret = 0;
  
--	bh = ext4_sb_getblk_locked(sb, block);
-+	bh = ext4_sb_getblk_locked_gfp(sb, block, gfp);
- 	if (bh == NULL)
- 		return ERR_PTR(-ENOMEM);
- 	if (buffer_uptodate(bh))
-@@ -3777,8 +3778,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		logical_sb_block = sb_block;
- 	}
+ 	J_ASSERT(PageLocked(page));
+@@ -2133,11 +2134,23 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+ 		jbd2_journal_put_journal_head(jh);
+ 		if (buffer_jbd(bh))
+ 			goto busy;
++
++		/*
++		 * If the buffer has been failed to write out, the metadata
++		 * in this buffer is uptodate but which on disk is old,
++		 * abort journal to prevent subsequent inconsistency while
++		 * reading the old data successfully.
++		 */
++		if (buffer_write_io_error(bh) && !buffer_uptodate(bh))
++			has_write_io_error = true;
+ 	} while ((bh = bh->b_this_page) != head);
  
--	if (!(bh = sb_bread_unmovable(sb, logical_sb_block))) {
--		ext4_msg(sb, KERN_ERR, "unable to read superblock");
-+	bh = ext4_sb_bread_unmovable(sb, logical_sb_block);
-+	if (IS_ERR(bh)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "unable to read superblock: %ld", PTR_ERR(bh));
- 		goto out_fail;
- 	}
- 	/*
-@@ -4175,10 +4178,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		brelse(bh);
- 		logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
- 		offset = do_div(logical_sb_block, blocksize);
--		bh = sb_bread_unmovable(sb, logical_sb_block);
--		if (!bh) {
-+		bh = ext4_sb_bread_unmovable(sb, logical_sb_block);
-+		if (IS_ERR(bh)) {
- 			ext4_msg(sb, KERN_ERR,
--			       "Can't read superblock on 2nd try");
-+				 "Can't read superblock on 2nd try: %ld",
-+				 PTR_ERR(bh));
- 			goto failed_mount;
- 		}
- 		es = (struct ext4_super_block *)(bh->b_data + offset);
-@@ -4398,10 +4402,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		struct buffer_head *bh;
+ 	ret = try_to_free_buffers(page);
  
- 		block = descriptor_loc(sb, logical_sb_block, i);
--		bh = sb_bread_unmovable(sb, block);
--		if (!bh) {
-+		bh = ext4_sb_bread_unmovable(sb, block);
-+		if (IS_ERR(bh)) {
- 			ext4_msg(sb, KERN_ERR,
--			       "can't read group descriptor %d", i);
-+				 "can't read group descriptor %d: %ld",
-+				 i, PTR_ERR(bh));
- 			db_count = i;
- 			goto failed_mount2;
- 		}
+ busy:
++	if (has_write_io_error)
++		jbd2_journal_abort(journal, -EIO);
++
+ 	return ret;
+ }
+ 
 -- 
 2.21.3
 
