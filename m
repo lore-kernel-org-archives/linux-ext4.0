@@ -2,36 +2,38 @@ Return-Path: <SRS0=8h4A=7I=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E2F7C433E2
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43AF5C433DF
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E72AE2053B
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29B532053B
+	for <linux-ext4@archiver.kernel.org>; Tue, 26 May 2020 07:19:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731015AbgEZHTU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 26 May 2020 03:19:20 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:51100 "EHLO huawei.com"
+        id S1731363AbgEZHTV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 26 May 2020 03:19:21 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:4896 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726761AbgEZHTT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 26 May 2020 03:19:19 -0400
+        id S1726809AbgEZHTV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 26 May 2020 03:19:21 -0400
 Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id E9EAFCEFF18647B9AD2C;
-        Tue, 26 May 2020 15:19:14 +0800 (CST)
+        by Forcepoint Email with ESMTP id 038D9DF6CCD7E8D1452C;
+        Tue, 26 May 2020 15:19:15 +0800 (CST)
 Received: from huawei.com (10.175.124.28) by DGGEMS406-HUB.china.huawei.com
  (10.3.19.206) with Microsoft SMTP Server id 14.3.487.0; Tue, 26 May 2020
- 15:19:06 +0800
+ 15:19:07 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
         <yi.zhang@huawei.com>, <zhangxiaoxu5@huawei.com>
-Subject: [PATCH 00/10] ext4: fix inconsistency since reading old metadata from disk
-Date:   Tue, 26 May 2020 15:17:44 +0800
-Message-ID: <20200526071754.33819-1-yi.zhang@huawei.com>
+Subject: [PATCH 02/10] fs: pick out ll_rw_one_block() helper function
+Date:   Tue, 26 May 2020 15:17:46 +0800
+Message-ID: <20200526071754.33819-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.21.3
+In-Reply-To: <20200526071754.33819-1-yi.zhang@huawei.com>
+References: <20200526071754.33819-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -42,109 +44,86 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Background
-==========
+Pick out ll_rw_one_block() helper function from ll_rw_block() for
+submitting one locked buffer for reading/writing.
 
-This patch set point to fix the inconsistency problem which has been
-discussed and partial fixed in [1].
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/buffer.c                 | 41 ++++++++++++++++++++++---------------
+ include/linux/buffer_head.h |  1 +
+ 2 files changed, 26 insertions(+), 16 deletions(-)
 
-Now, the problem is on the unstable storage which has a flaky transport
-(e.g. iSCSI transport may disconnect few seconds and reconnect due to
-the bad network environment), if we failed to async write metadata in
-background, the end write routine in block layer will clear the buffer's
-uptodate flag, but the data in such buffer is actually uptodate. Finally
-we may read "old && inconsistent" metadata from the disk when we get the
-buffer later because not only the uptodate flag was cleared but also we
-do not check the write io error flag, or even worse the buffer has been
-freed due to memory presure.
-
-Fortunately, if the jbd2 do checkpoint after async IO error happens,
-the checkpoint routine will check the write_io_error flag and abort the
-the journal if detect IO error. And in the journal recover case, the
-recover code will invoke sync_blockdev() after recover complete, it will
-also detect IO error and refuse to mount the filesystem.
-
-Current ext4 have already deal with this problem in __ext4_get_inode_loc()
-and commit 7963e5ac90125 ("ext4: treat buffers with write errors as
-containing valid data"), but it's not enough.
-
-[1] https://lore.kernel.org/linux-ext4/20190823030207.GC8130@mit.edu/
-
-Description
-===========
-
-This patch set add and rework 7 wrapper functions of getting metadata
-blocks, replace all sb_bread() / sb_getblk*() / ext4_bread() and
-sb_breadahead*(). Add buffer_write_io_error() checking into them, if
-the buffer isn't uptodate and write_io_error flag was set, which means
-that the buffer has been failed to write out to disk, re-add the
-uptodate flag to prevent subsequent read operation.
-
- - ext4_sb_getblk(): works the same as sb_getblk(), use to replace all
-   sb_getblk() used for newly allocated blocks and getting buffers.
- - ext4_sb_getblk_locked(): works the same as sb_getblk() except check &
-   fix buffer uotpdate flag, use to replace all sb_getblk() used for
-   getting buffers to read.
- - ext4_sb_getblk_gfp(): gfp version of ext4_sb_getblk().
- - ext4_sb_getblk_locked_gfp(): gfp version of ext4_sb_getblk_locked().
- - ext4_sb_bread(): get buffer and submit read bio if buffer is actually
-   not uptodate.
- - ext4_sb_bread_unmovable(): unmovable version of ext4_sb_bread().
- - ext4_sb_breadahead_unmovable(): works the same to ext4_sb_bread_unmovable()
-   except skip submit read bio if failed to lock the buffer.
-
-Patch 1-2: do some small change in ext4 inode eio simulation and add a
-helper in buffer.c, just prepare for below patches.
-Patch 3: add the ext4_sb_*() function to deal with the write_io_error
-flag in buffer.
-Patch 4-8: replace all sb_*() with ext4_sb_*() in ext4.
-Patch 9: deal with the buffer shrinking case, abort jbd2/fs when
-shrinking a buffer with write_io_error flag.
-Patch 10: just do some cleanup.
-
-After this patch set, we need to use above 7 wrapper functions to
-get/read metadata block instead of invoke sb_*() functions defined in
-fs/buffer.h.
-
-Test
-====
-
-This patch set is based on linux-5.7-rc7 and has been tests by xfstests
-in auto mode.
-
-Thanks,
-Yi.
-
-
-zhangyi (F) (10):
-  ext4: move inode eio simulation behind io completeion
-  fs: pick out ll_rw_one_block() helper function
-  ext4: add ext4_sb_getblk*() wrapper functions
-  ext4: replace sb_getblk() with ext4_sb_getblk_locked()
-  ext4: replace sb_bread*() with ext4_sb_bread*()
-  ext4: replace sb_getblk() with ext4_sb_getblk()
-  ext4: switch to use ext4_sb_getblk_locked() in ext4_getblk()
-  ext4: replace sb_breadahead() with ext4_sb_breadahead()
-  ext4: abort the filesystem while freeing the write error io buffer
-  ext4: remove unused parameter in jbd2_journal_try_to_free_buffers()
-
- fs/buffer.c                 |  41 ++++++----
- fs/ext4/balloc.c            |   6 +-
- fs/ext4/ext4.h              |  60 ++++++++++++---
- fs/ext4/extents.c           |  13 ++--
- fs/ext4/ialloc.c            |   6 +-
- fs/ext4/indirect.c          |  13 ++--
- fs/ext4/inline.c            |   2 +-
- fs/ext4/inode.c             |  53 +++++--------
- fs/ext4/mmp.c               |   2 +-
- fs/ext4/resize.c            |  24 +++---
- fs/ext4/super.c             | 145 +++++++++++++++++++++++++++++++-----
- fs/ext4/xattr.c             |   4 +-
- fs/jbd2/transaction.c       |  20 +++--
- include/linux/buffer_head.h |   1 +
- include/linux/jbd2.h        |   3 +-
- 15 files changed, 277 insertions(+), 116 deletions(-)
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index a60f60396cfa..3a2226f88b2d 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3081,6 +3081,29 @@ int submit_bh(int op, int op_flags, struct buffer_head *bh)
+ }
+ EXPORT_SYMBOL(submit_bh);
+ 
++void ll_rw_one_block(int op, int op_flags, struct buffer_head *bh)
++{
++	BUG_ON(!buffer_locked(bh));
++
++	if (op == WRITE) {
++		if (test_clear_buffer_dirty(bh)) {
++			bh->b_end_io = end_buffer_write_sync;
++			get_bh(bh);
++			submit_bh(op, op_flags, bh);
++			return;
++		}
++	} else {
++		if (!buffer_uptodate(bh)) {
++			bh->b_end_io = end_buffer_read_sync;
++			get_bh(bh);
++			submit_bh(op, op_flags, bh);
++			return;
++		}
++	}
++	unlock_buffer(bh);
++}
++EXPORT_SYMBOL(ll_rw_one_block);
++
+ /**
+  * ll_rw_block: low-level access to block devices (DEPRECATED)
+  * @op: whether to %READ or %WRITE
+@@ -3116,22 +3139,8 @@ void ll_rw_block(int op, int op_flags,  int nr, struct buffer_head *bhs[])
+ 
+ 		if (!trylock_buffer(bh))
+ 			continue;
+-		if (op == WRITE) {
+-			if (test_clear_buffer_dirty(bh)) {
+-				bh->b_end_io = end_buffer_write_sync;
+-				get_bh(bh);
+-				submit_bh(op, op_flags, bh);
+-				continue;
+-			}
+-		} else {
+-			if (!buffer_uptodate(bh)) {
+-				bh->b_end_io = end_buffer_read_sync;
+-				get_bh(bh);
+-				submit_bh(op, op_flags, bh);
+-				continue;
+-			}
+-		}
+-		unlock_buffer(bh);
++
++		ll_rw_one_block(op, op_flags, bh);
+ 	}
+ }
+ EXPORT_SYMBOL(ll_rw_block);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 15b765a181b8..11aa412c0bcd 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -198,6 +198,7 @@ struct buffer_head *alloc_buffer_head(gfp_t gfp_flags);
+ void free_buffer_head(struct buffer_head * bh);
+ void unlock_buffer(struct buffer_head *bh);
+ void __lock_buffer(struct buffer_head *bh);
++void ll_rw_one_block(int op, int op_flags, struct buffer_head *bh);
+ void ll_rw_block(int, int, int, struct buffer_head * bh[]);
+ int sync_dirty_buffer(struct buffer_head *bh);
+ int __sync_dirty_buffer(struct buffer_head *bh, int op_flags);
 -- 
 2.21.3
 
