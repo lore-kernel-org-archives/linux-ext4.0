@@ -2,131 +2,194 @@ Return-Path: <SRS0=gd/I=7J=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB271C433DF
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 May 2020 11:49:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09DCEC433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 May 2020 14:09:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8027720873
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 May 2020 11:49:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DB62B207D3
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 May 2020 14:09:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="dZ2EO3Ld"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mpABZHQf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728185AbgE0Ltd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 May 2020 07:49:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47726 "EHLO
+        id S2387503AbgE0OJD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 May 2020 10:09:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41244 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726019AbgE0Lt3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2020 07:49:29 -0400
-Received: from mail-lf1-x143.google.com (mail-lf1-x143.google.com [IPv6:2a00:1450:4864:20::143])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0599CC061A0F
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2020 04:49:29 -0700 (PDT)
-Received: by mail-lf1-x143.google.com with SMTP id e125so14286854lfd.1
-        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2020 04:49:28 -0700 (PDT)
+        with ESMTP id S1725939AbgE0OJD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2020 10:09:03 -0400
+Received: from mail-pg1-x542.google.com (mail-pg1-x542.google.com [IPv6:2607:f8b0:4864:20::542])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1A83FC08C5C1
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2020 07:09:03 -0700 (PDT)
+Received: by mail-pg1-x542.google.com with SMTP id p21so11791279pgm.13
+        for <linux-ext4@vger.kernel.org>; Wed, 27 May 2020 07:09:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=1eb8hhRgWhldc6gNCY/BHu4k6Mc3ON849X4b3k08UMU=;
-        b=dZ2EO3LdRXmW0rb/PbGBy5/ATbLPpBSpne2iHWL8g4cHa5pFCH5GCbOAD7jC3Kzi3S
-         MISYPGpgS2exm9jQV0gLr3s2v7seE3tyMVMGbhwvcq5KWBC2lbp4WRogLsHJmD56dSoF
-         SaGqBkdQFcT/Q8+h09FriRhyy32nZ8Qbam2ia6qehADmirwsw9FzofuUIssUXiEf/O1M
-         PNKyMGSEEuXIahADQmZbrbIFZkk9iuRkEcQbQIaG2M4cssRD0uw+ZxOkNkqohemuxYe7
-         g5KMFqDZR/29AuHUIPPzijSDWnAEbdNVWRVRrdnecAjUZPqBYLoGLUucygRKxHZITQJs
-         lRlw==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=jQNRI+l8uJJt0mnUF9lyAireteisnpWtnB1IBiEZvZk=;
+        b=mpABZHQfVwzcrFdW24kkfOV79i0ng5zJwbFiek0w9BPRfy2Tu4XTT7FVZ/0gQyEuEj
+         sIYI+DbTZXAcdOyAB+iWQdOX13stltqUjQEqwgAEYLztxUEjBjJX1J6uOZEFuYptrUtw
+         qmnIEch567sZiDbeimIDOf8x/WHEWvstFx9GnasRxKDPKj08epFiR7hDQULbTNV3LavO
+         PE8dU9kf8hI5KrL6KbMtotHSIgXcJUKxkLeqYFOX0rltvoUquLp4Bo/6A6QAEeYKBmAm
+         3NWbdqUYUiku3IFehZ5wckuDSe69/nvm9PRVMdG3u2ScNC4vy17JVVXWSnWRvJtjDgzo
+         urTA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=1eb8hhRgWhldc6gNCY/BHu4k6Mc3ON849X4b3k08UMU=;
-        b=IJnn2DCtUTzFRjqikUga9WjpMB0lqnd/7qNIt9bYT5Qf8mC5cEDPM3IfSz2i7186cu
-         4/KgknrDty0GU7DXWTyW1q00aDd6wUIet75NZ9onAR3xXz1Y0EoNOoCYM93N0JZ1roY/
-         Co0AXdnGKyrpl1Yq3+LhXuOHEjVCI9tdY68QH2iqcnIpEqNWHsOeEDHktHZow3WEoNCS
-         z6hyXIyzFIFB24t7PWJZJKuwgQf11XC33q2BcbtPEvkRkIJcLnxdFzPnllm/OX5xKYIq
-         AroLu2r/Z1DcxPmfd7R4hzLoZyUzkmKmm8XK5z7fXrC7vd2JBFW5yBpuSnmvCcfpVOjG
-         f0YA==
-X-Gm-Message-State: AOAM533JCqnGQUUEqgS0gDYZFms2Ahd3rmnwDgbBK1g0do334RVRzchP
-        P0N5SPNbBU9TyyBPaXhdobT9cHtwpEwCFHtMKDXlTA==
-X-Google-Smtp-Source: ABdhPJxtfHGgD1x+0sGWQDtxJJeB9uCl6Feg/5utDqmnhP3TYYxI7kATndRbmt63ldid6mOZbKhfx/ZSXQlPvqovUXQ=
-X-Received: by 2002:a05:6512:1051:: with SMTP id c17mr2908078lfb.206.1590580167403;
- Wed, 27 May 2020 04:49:27 -0700 (PDT)
-MIME-Version: 1.0
-References: <20200511131350.29638-1-anders.roxell@linaro.org>
-In-Reply-To: <20200511131350.29638-1-anders.roxell@linaro.org>
-From:   Anders Roxell <anders.roxell@linaro.org>
-Date:   Wed, 27 May 2020 13:49:16 +0200
-Message-ID: <CADYN=9LkA2h6dANREfPQq4iDvVEJX1wAdxjv31mpVBkaM_g0ZQ@mail.gmail.com>
-Subject: Re: [PATCH v3 0/6] Enable as many KUnit tests as possible
-To:     Brendan Higgins <brendanhiggins@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        John Johansen <john.johansen@canonical.com>,
-        James Morris <jmorris@namei.org>,
-        "Serge E. Hallyn" <serge@hallyn.com>
-Cc:     "open list:KERNEL SELFTEST FRAMEWORK" 
-        <linux-kselftest@vger.kernel.org>,
-        KUnit Development <kunit-dev@googlegroups.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org,
-        linux-security-module <linux-security-module@vger.kernel.org>,
-        Marco Elver <elver@google.com>, David Gow <davidgow@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=jQNRI+l8uJJt0mnUF9lyAireteisnpWtnB1IBiEZvZk=;
+        b=b/Tg17BaqHM6ZPD3Pdq+c6KUQxF7b/RXUSiAq+v1V+nQUfH2/CjC4x8ynv8Od36+Qk
+         LiHswCkMLZVRA3tD2FAgU7udcqnmJZ5dU4NI5s1jI7ikJhddykWdxt9we/tgrnDoD+su
+         +iy6rAeUrRBbtvATSeUMBTz9mJS/N500sqQfgB2T1ZDAxKgZxzI8PRPiYFsYcJTxc6px
+         Cl5l76jfEmqBwX8ZCwfbP7hULn0+8WHSGkLPn/s8Jzz3ogyvukYEKuWloijbne0ZhyNo
+         hr1WCbaRn9CoQWdsH1Lf76sWHm/IKU+s4JVRuZx6zTAedeO0mj5XsLuZUMQsMOh0xpUu
+         sXRA==
+X-Gm-Message-State: AOAM533fMKR4Ph2p/JTk8elbdiOoxx4G73WHCU2IC8Wm5/QCLGlpxpFr
+        dyxwm70QIQYC0cE2oJ/iM6wQViXd0qo=
+X-Google-Smtp-Source: ABdhPJxkfLaG3/V0grfE6Rs6ipiMpgO9VCDfc5+sd/SFeiFKHyXrdQiE8P7uUZZiyWJxqcFJw7/I0w==
+X-Received: by 2002:a63:9347:: with SMTP id w7mr4023591pgm.409.1590588542233;
+        Wed, 27 May 2020 07:09:02 -0700 (PDT)
+Received: from localhost.localdomain (fs276ec80e.tkyc203.ap.nuro.jp. [39.110.200.14])
+        by smtp.gmail.com with ESMTPSA id q201sm2292580pfq.40.2020.05.27.07.08.59
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 27 May 2020 07:09:01 -0700 (PDT)
+From:   Wang Shilong <wangshilong1991@gmail.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     Wang Shilong <wshilong@ddn.com>, Shuichi Ihara <sihara@ddn.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Wang Shilong <wangshilong1991@gmail.com>,
+        Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 1/2] e2fsprogs: add EXT2_FLAG_BG_WAS_TRIMMED to optimize fstrim
+Date:   Wed, 27 May 2020 23:08:43 +0900
+Message-Id: <1590588525-29669-1-git-send-email-wangshilong1991@gmail.com>
+X-Mailer: git-send-email 1.9.1
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+From: Wang Shilong <wshilong@ddn.com>
 
-Friendly ping: who can take this?
+1)mkfs will set this flag if discard is triggered.
+2)whenver we free blocks from block group, this flag will be cleared.
+3)make dumpe2fs aware of new flag.
 
-Cheers,
-Anders
+Cc: Shuichi Ihara <sihara@ddn.com>
+Cc: Andreas Dilger <adilger@dilger.ca>
+Cc: Wang Shilong <wangshilong1991@gmail.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ lib/ext2fs/alloc_stats.c  | 8 ++++++--
+ lib/ext2fs/alloc_tables.c | 2 ++
+ lib/ext2fs/ext2_fs.h      | 1 +
+ lib/ext2fs/ext2fs.h       | 1 +
+ misc/dumpe2fs.c           | 2 ++
+ misc/mke2fs.c             | 3 +++
+ 6 files changed, 15 insertions(+), 2 deletions(-)
 
-On Mon, 11 May 2020 at 15:14, Anders Roxell <anders.roxell@linaro.org> wrote:
->
-> Hi,
->
-> This patchset will try to enable as many KUnit test fragments as
-> possible for the current .config file.
-> This will make it easier for both developers that tests their specific
-> feature and also for test-systems that would like to get as much as
-> possible for their current .config file.
->
-> I will send a separate KCSAN KUnit patch after this patchset since that
-> isn't in mainline yet.
->
-> Since v2:
-> Fixed David's comments. KUNIT_RUN_ALL -> KUNIT_ALL_TESTS, and he
-> suggested a great help text.
->
-> Since v1:
-> Marco commented to split up the patches, and change a "." to a ",".
->
->
-> Cheers,
-> Anders
->
-> Anders Roxell (6):
->   kunit: Kconfig: enable a KUNIT_ALL_TESTS fragment
->   kunit: default KUNIT_* fragments to KUNIT_ALL_TESTS
->   lib: Kconfig.debug: default KUNIT_* fragments to KUNIT_ALL_TESTS
->   drivers: base: default KUNIT_* fragments to KUNIT_ALL_TESTS
->   fs: ext4: default KUNIT_* fragments to KUNIT_ALL_TESTS
->   security: apparmor: default KUNIT_* fragments to KUNIT_ALL_TESTS
->
->  drivers/base/Kconfig      |  3 ++-
->  drivers/base/test/Kconfig |  3 ++-
->  fs/ext4/Kconfig           |  3 ++-
->  lib/Kconfig.debug         |  6 ++++--
->  lib/kunit/Kconfig         | 23 ++++++++++++++++++++---
->  security/apparmor/Kconfig |  3 ++-
->  6 files changed, 32 insertions(+), 9 deletions(-)
->
-> --
-> 2.20.1
->
+diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
+index 3949f618..2a6e0557 100644
+--- a/lib/ext2fs/alloc_stats.c
++++ b/lib/ext2fs/alloc_stats.c
+@@ -69,10 +69,12 @@ void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse)
+ #endif
+ 		return;
+ 	}
+-	if (inuse > 0)
++	if (inuse > 0) {
+ 		ext2fs_mark_block_bitmap2(fs->block_map, blk);
+-	else
++	} else {
+ 		ext2fs_unmark_block_bitmap2(fs->block_map, blk);
++		ext2fs_bg_flags_clear(fs, group, EXT2_BG_WAS_TRIMMED);
++	}
+ 	ext2fs_bg_free_blocks_count_set(fs, group, ext2fs_bg_free_blocks_count(fs, group) - inuse);
+ 	ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+ 	ext2fs_group_desc_csum_set(fs, group);
+@@ -138,6 +140,8 @@ void ext2fs_block_alloc_stats_range(ext2_filsys fs, blk64_t blk,
+ 			ext2fs_bg_free_blocks_count(fs, group) -
+ 			inuse*n/EXT2FS_CLUSTER_RATIO(fs));
+ 		ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
++		if (inuse < 0)
++			ext2fs_bg_flags_clear(fs, group, EXT2_BG_WAS_TRIMMED);
+ 		ext2fs_group_desc_csum_set(fs, group);
+ 		ext2fs_free_blocks_count_add(fs->super, -inuse * (blk64_t) n);
+ 		blk += n;
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 971a6ceb..17087890 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -250,6 +250,8 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 		}
+ 		ext2fs_inode_table_loc_set(fs, group, new_blk);
+ 	}
++	if (fs->flags & EXT2_FLAG_BG_WAS_TRIMMED)
++		ext2fs_bg_flags_set(fs, group, EXT2_BG_WAS_TRIMMED);
+ 	ext2fs_group_desc_csum_set(fs, group);
+ 	return 0;
+ }
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 6c20ea77..86d6f438 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -211,6 +211,7 @@ struct ext4_group_desc
+ #define EXT2_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not initialized */
+ #define EXT2_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not initialized */
+ #define EXT2_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
++#define EXT2_BG_WAS_TRIMMED	0x0008	/* Block group was trimmed */
+ 
+ /*
+  * Data structures used by the directory indexing feature
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 69c8a3ff..3dd99430 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -206,6 +206,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_IGNORE_SB_ERRORS	0x800000
+ #define EXT2_FLAG_BBITMAP_TAIL_PROBLEM	0x1000000
+ #define EXT2_FLAG_IBITMAP_TAIL_PROBLEM	0x2000000
++#define EXT2_FLAG_BG_WAS_TRIMMED	0x4000000
+ 
+ /*
+  * Special flag in the ext2 inode i_flag field that means that this is
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index d295ba4d..a305ec9b 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -131,6 +131,8 @@ static void print_bg_opts(ext2_filsys fs, dgrp_t i)
+  		     &first);
+ 	print_bg_opt(bg_flags, EXT2_BG_INODE_ZEROED, "ITABLE_ZEROED",
+  		     &first);
++	print_bg_opt(bg_flags, EXT2_BG_WAS_TRIMMED, "WAS_TRIMMED",
++		     &first);
+ 	if (!first)
+ 		fputc(']', stdout);
+ 	fputc('\n', stdout);
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index c90dcf0e..07ee620e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -403,6 +403,7 @@ static errcode_t packed_allocate_tables(ext2_filsys fs)
+ 		ext2fs_block_alloc_stats_range(fs, goal,
+ 					       fs->inode_blocks_per_group, +1);
+ 		ext2fs_inode_table_loc_set(fs, i, goal);
++		ext2fs_bg_flags_set(fs, i, EXT2_BG_WAS_TRIMMED);
+ 		ext2fs_group_desc_csum_set(fs, i);
+ 	}
+ 	return 0;
+@@ -3037,6 +3038,8 @@ int main (int argc, char *argv[])
+ 	/* Can't undo discard ... */
+ 	if (!noaction && discard && dev_size && (io_ptr != undo_io_manager)) {
+ 		retval = mke2fs_discard_device(fs);
++		if (!retval)
++			fs->flags |= EXT2_FLAG_BG_WAS_TRIMMED;
+ 		if (!retval && io_channel_discard_zeroes_data(fs->io)) {
+ 			if (verbose)
+ 				printf("%s",
+-- 
+2.25.4
+
