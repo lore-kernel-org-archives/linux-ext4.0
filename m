@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39A83C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A36FC433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1C0BD2075F
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FFAE20897
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404077AbgE1PAk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 11:00:40 -0400
-Received: from mga14.intel.com ([192.55.52.115]:1158 "EHLO mga14.intel.com"
+        id S2404046AbgE1PAX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 11:00:23 -0400
+Received: from mga18.intel.com ([134.134.136.126]:59623 "EHLO mga18.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2404071AbgE1PAi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 11:00:38 -0400
-IronPort-SDR: Y8uViMIethO0MkCEhvR9VOaQo4rCdZoPZZ16WvrbxaOWarbL+YXwAXtwlHt9kIvhqGctihczQk
- 1FBmHsC2QDeA==
+        id S2403933AbgE1PAW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 May 2020 11:00:22 -0400
+IronPort-SDR: 9IrUsf65/sxCy5Ek2tAmnuyh/LxlvysYoajdIoZuvU4dfGROnHmXqG7hHCm091PJQyDVyDhNVB
+ ZBNtzgD0imSQ==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga003.jf.intel.com ([10.7.209.27])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
-IronPort-SDR: 6N8dWPAxPrX53sMbbv5wZaIXtDwBwCLk1QRpyPK+kZDPuERC+bTR72rxhkzT99XkN5JxmD/M61
- 07sOm4tAgWOg==
+Received: from orsmga001.jf.intel.com ([10.7.209.18])
+  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:12 -0700
+IronPort-SDR: IQoaQF4QNlijXhTZVhp1aYk63DUWeazbrKW1+FmpERrzKf06zIFbwvfXh4HNE9QTzKQQ2+hECt
+ X+dUJ9l3ULZA==
 X-IronPort-AV: E=Sophos;i="5.73,445,1583222400"; 
-   d="scan'208";a="267242300"
+   d="scan'208";a="345927916"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga003-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:06 -0700
+  by orsmga001-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:11 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -42,9 +42,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V5 1/9] fs/ext4: Narrow scope of DAX check in setflags
-Date:   Thu, 28 May 2020 07:59:55 -0700
-Message-Id: <20200528150003.828793-2-ira.weiny@intel.com>
+Subject: [PATCH V5 9/9] Documentation/dax: Update DAX enablement for ext4
+Date:   Thu, 28 May 2020 08:00:03 -0700
+Message-Id: <20200528150003.828793-10-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200528150003.828793-1-ira.weiny@intel.com>
 References: <20200528150003.828793-1-ira.weiny@intel.com>
@@ -57,33 +57,42 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-When preventing DAX and journaling on an inode.  Use the effective DAX
-check rather than the mount option.
-
-This will be required to support per inode DAX flags.
+Update the document to reflect ext4 and xfs now behave the same.
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
----
- fs/ext4/ioctl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0746532ba463..f23168387deb 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -393,9 +393,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
- 		/*
- 		 * Changes to the journaling mode can cause unsafe changes to
--		 * S_DAX if we are using the DAX mount option.
-+		 * S_DAX if the inode is DAX
- 		 */
--		if (test_opt(inode->i_sb, DAX)) {
-+		if (IS_DAX(inode)) {
- 			err = -EBUSY;
- 			goto flags_out;
- 		}
+---
+Changes from RFC:
+	Update with ext2 text...
+---
+ Documentation/filesystems/dax.txt | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.txt
+index 735fb4b54117..265c4f808dbf 100644
+--- a/Documentation/filesystems/dax.txt
++++ b/Documentation/filesystems/dax.txt
+@@ -25,7 +25,7 @@ size when creating the filesystem.
+ Currently 3 filesystems support DAX: ext2, ext4 and xfs.  Enabling DAX on them
+ is different.
+ 
+-Enabling DAX on ext4 and ext2
++Enabling DAX on ext2
+ -----------------------------
+ 
+ When mounting the filesystem, use the "-o dax" option on the command line or
+@@ -33,8 +33,8 @@ add 'dax' to the options in /etc/fstab.  This works to enable DAX on all files
+ within the filesystem.  It is equivalent to the '-o dax=always' behavior below.
+ 
+ 
+-Enabling DAX on xfs
+--------------------
++Enabling DAX on xfs and ext4
++----------------------------
+ 
+ Summary
+ -------
 -- 
 2.25.1
 
