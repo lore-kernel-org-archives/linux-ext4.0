@@ -4,33 +4,32 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EDCFC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63622C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E411D2084C
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4A58D2075F
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404031AbgE1PAU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 11:00:20 -0400
-Received: from mga06.intel.com ([134.134.136.31]:51406 "EHLO mga06.intel.com"
+        id S2404122AbgE1PBL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 11:01:11 -0400
+Received: from mga07.intel.com ([134.134.136.100]:2309 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2403882AbgE1PAO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 11:00:14 -0400
-IronPort-SDR: l6lTUHZJmNjjVY+jbZrpDZldqbXf7iIckyUB6SYorfUngYvcdYLSXU3/AjvwUfTe0zmUvBibqm
- h/XyWvapiTzQ==
+        id S2404025AbgE1PAP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 May 2020 11:00:15 -0400
+IronPort-SDR: 8iRVyiTdsf/S3mtZ/4Lh8ISMVC5lYOoeAJfpDY5eq76opl0gz+kUfLSlby8qaZddYIxQX7G4KY
+ UZv8YeACIxkQ==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga006.fm.intel.com ([10.253.24.20])
-  by orsmga104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
-IronPort-SDR: lPth9ZfV53omOABDvcctzoYxuH/RjXHOmax1UF2rmL33N6IL2HNORetaXe5gvJXxkGF4Cpc9/L
- zvskHamJeNYg==
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:10 -0700
+IronPort-SDR: A8j3Z7IoeQWpMt4y9Vhwt/NW1pH9moyOUNDJDzf5Lz4BniuKztolZ+9iQmQAuHFmnj6xEuoyB9
+ B8B1uOkBG9ew==
 X-IronPort-AV: E=Sophos;i="5.73,445,1583222400"; 
-   d="scan'208";a="469158663"
+   d="scan'208";a="302502474"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga006-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
+  by fmsmga002-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:09 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -42,9 +41,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V5 2/9] fs/ext4: Disallow verity if inode is DAX
-Date:   Thu, 28 May 2020 07:59:56 -0700
-Message-Id: <20200528150003.828793-3-ira.weiny@intel.com>
+Subject: [PATCH V5 7/9] fs/ext4: Remove jflag variable
+Date:   Thu, 28 May 2020 08:00:01 -0700
+Message-Id: <20200528150003.828793-8-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200528150003.828793-1-ira.weiny@intel.com>
 References: <20200528150003.828793-1-ira.weiny@intel.com>
@@ -57,55 +56,67 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Verity and DAX are incompatible.  Changing the DAX mode due to a verity
-flag change is wrong without a corresponding address_space_operations
-update.
+The jflag variable serves almost no purpose.  Remove it.
 
-Make the 2 options mutually exclusive by returning an error if DAX was
-set first.
-
-(Setting DAX is already disabled if Verity is set first.)
-
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V2:
-	Remove Section title 'Verity and DAX'
-
-Changes:
-	remove WARN_ON_ONCE
-	Add documentation for DAX/Verity exclusivity
+Changes from V4:
+	New for this series.
 ---
- Documentation/filesystems/ext4/verity.rst | 3 +++
- fs/ext4/verity.c                          | 3 +++
- 2 files changed, 6 insertions(+)
+ fs/ext4/ioctl.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4/verity.rst b/Documentation/filesystems/ext4/verity.rst
-index 3e4c0ee0e068..e99ff3fd09f7 100644
---- a/Documentation/filesystems/ext4/verity.rst
-+++ b/Documentation/filesystems/ext4/verity.rst
-@@ -39,3 +39,6 @@ is encrypted as well as the data itself.
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 7ccf20b1488b..e8a5cdade59f 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -300,7 +300,6 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	int err = -EPERM, migrate = 0;
+ 	struct ext4_iloc iloc;
+ 	unsigned int oldflags, mask, i;
+-	unsigned int jflag;
+ 	struct super_block *sb = inode->i_sb;
  
- Verity files cannot have blocks allocated past the end of the verity
- metadata.
-+
-+Verity and DAX are not compatible and attempts to set both of these flags
-+on a file will fail.
-diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
-index dc5ec724d889..f05a09fb2ae4 100644
---- a/fs/ext4/verity.c
-+++ b/fs/ext4/verity.c
-@@ -113,6 +113,9 @@ static int ext4_begin_enable_verity(struct file *filp)
- 	handle_t *handle;
- 	int err;
+ 	/* Is it quota file? Do not allow user to mess with it */
+@@ -309,9 +308,6 @@ static int ext4_ioctl_setflags(struct inode *inode,
  
-+	if (IS_DAX(inode))
-+		return -EINVAL;
-+
- 	if (ext4_verity_in_progress(inode))
- 		return -EBUSY;
+ 	oldflags = ei->i_flags;
  
+-	/* The JOURNAL_DATA flag is modifiable only by root */
+-	jflag = flags & EXT4_JOURNAL_DATA_FL;
+-
+ 	err = vfs_ioc_setflags_prepare(inode, oldflags, flags);
+ 	if (err)
+ 		goto flags_out;
+@@ -320,7 +316,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	 * The JOURNAL_DATA flag can only be changed by
+ 	 * the relevant capability.
+ 	 */
+-	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
++	if ((flags ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
+ 		if (!capable(CAP_SYS_RESOURCE))
+ 			goto flags_out;
+ 	}
+@@ -391,7 +387,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	if (err)
+ 		goto flags_out;
+ 
+-	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
++	if ((flags ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
+ 		/*
+ 		 * Changes to the journaling mode can cause unsafe changes to
+ 		 * S_DAX if the inode is DAX
+@@ -401,7 +397,8 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 			goto flags_out;
+ 		}
+ 
+-		err = ext4_change_inode_journal_flag(inode, jflag);
++		err = ext4_change_inode_journal_flag(inode,
++						     flags & EXT4_JOURNAL_DATA_FL);
+ 		if (err)
+ 			goto flags_out;
+ 	}
 -- 
 2.25.1
 
