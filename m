@@ -4,32 +4,33 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63622C433DF
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC510C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4A58D2075F
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5D812075F
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404122AbgE1PBL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 11:01:11 -0400
-Received: from mga07.intel.com ([134.134.136.100]:2309 "EHLO mga07.intel.com"
+        id S2404116AbgE1PBK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 11:01:10 -0400
+Received: from mga18.intel.com ([134.134.136.126]:59623 "EHLO mga18.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2404025AbgE1PAP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 11:00:15 -0400
-IronPort-SDR: 8iRVyiTdsf/S3mtZ/4Lh8ISMVC5lYOoeAJfpDY5eq76opl0gz+kUfLSlby8qaZddYIxQX7G4KY
- UZv8YeACIxkQ==
+        id S2404026AbgE1PAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 May 2020 11:00:16 -0400
+IronPort-SDR: PsPHzq/9T6GFfXw02cNnS/zHmoQX4971ds+jtwmuj2NIwmiKtLa8GAKeFKKsxuRPykwRqV9pbD
+ Pm//S/Wmi0MQ==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by orsmga105.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:10 -0700
-IronPort-SDR: A8j3Z7IoeQWpMt4y9Vhwt/NW1pH9moyOUNDJDzf5Lz4BniuKztolZ+9iQmQAuHFmnj6xEuoyB9
- B8B1uOkBG9ew==
+Received: from fmsmga003.fm.intel.com ([10.253.24.29])
+  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
+IronPort-SDR: npJfXFrRD17PrTS70Fa2zcsivEckpqTM5i/juRrb+3tm+JBCh7cG1DcUa9o/xtKJ3v6cBFjTYi
+ cNAEUxyT7Yhw==
 X-IronPort-AV: E=Sophos;i="5.73,445,1583222400"; 
-   d="scan'208";a="302502474"
+   d="scan'208";a="310947365"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga002-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:09 -0700
+  by fmsmga003-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:08 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -41,9 +42,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V5 7/9] fs/ext4: Remove jflag variable
-Date:   Thu, 28 May 2020 08:00:01 -0700
-Message-Id: <20200528150003.828793-8-ira.weiny@intel.com>
+Subject: [PATCH V5 3/9] fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
+Date:   Thu, 28 May 2020 07:59:57 -0700
+Message-Id: <20200528150003.828793-4-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20200528150003.828793-1-ira.weiny@intel.com>
 References: <20200528150003.828793-1-ira.weiny@intel.com>
@@ -56,67 +57,103 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-The jflag variable serves almost no purpose.  Remove it.
+In prep for the new tri-state mount option which then introduces
+EXT4_MOUNT_DAX_NEVER.
 
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V4:
-	New for this series.
+Changes:
+	New patch
 ---
- fs/ext4/ioctl.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ fs/ext4/ext4.h  |  4 ++--
+ fs/ext4/inode.c |  2 +-
+ fs/ext4/super.c | 12 ++++++------
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 7ccf20b1488b..e8a5cdade59f 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -300,7 +300,6 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	int err = -EPERM, migrate = 0;
- 	struct ext4_iloc iloc;
- 	unsigned int oldflags, mask, i;
--	unsigned int jflag;
- 	struct super_block *sb = inode->i_sb;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ad2dbf6e4924..6c65fa2f5e00 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1123,9 +1123,9 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_MINIX_DF		0x00080	/* Mimics the Minix statfs */
+ #define EXT4_MOUNT_NOLOAD		0x00100	/* Don't use existing journal*/
+ #ifdef CONFIG_FS_DAX
+-#define EXT4_MOUNT_DAX			0x00200	/* Direct Access */
++#define EXT4_MOUNT_DAX_ALWAYS		0x00200	/* Direct Access */
+ #else
+-#define EXT4_MOUNT_DAX			0
++#define EXT4_MOUNT_DAX_ALWAYS		0
+ #endif
+ #define EXT4_MOUNT_DATA_FLAGS		0x00C00	/* Mode for data writes: */
+ #define EXT4_MOUNT_JOURNAL_DATA		0x00400	/* Write data to journal */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2a4aae6acdcb..a10ff12194db 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4400,7 +4400,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
  
- 	/* Is it quota file? Do not allow user to mess with it */
-@@ -309,9 +308,6 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 
- 	oldflags = ei->i_flags;
- 
--	/* The JOURNAL_DATA flag is modifiable only by root */
--	jflag = flags & EXT4_JOURNAL_DATA_FL;
--
- 	err = vfs_ioc_setflags_prepare(inode, oldflags, flags);
- 	if (err)
- 		goto flags_out;
-@@ -320,7 +316,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	 * The JOURNAL_DATA flag can only be changed by
- 	 * the relevant capability.
- 	 */
--	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
-+	if ((flags ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
- 		if (!capable(CAP_SYS_RESOURCE))
- 			goto flags_out;
- 	}
-@@ -391,7 +387,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	if (err)
- 		goto flags_out;
- 
--	if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
-+	if ((flags ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
- 		/*
- 		 * Changes to the journaling mode can cause unsafe changes to
- 		 * S_DAX if the inode is DAX
-@@ -401,7 +397,8 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 			goto flags_out;
+ static bool ext4_should_use_dax(struct inode *inode)
+ {
+-	if (!test_opt(inode->i_sb, DAX))
++	if (!test_opt(inode->i_sb, DAX_ALWAYS))
+ 		return false;
+ 	if (!S_ISREG(inode->i_mode))
+ 		return false;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bf5fcb477f66..7b99c44d0a91 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1775,7 +1775,7 @@ static const struct mount_opts {
+ 	{Opt_min_batch_time, 0, MOPT_GTE0},
+ 	{Opt_inode_readahead_blks, 0, MOPT_GTE0},
+ 	{Opt_init_itable, 0, MOPT_GTE0},
+-	{Opt_dax, EXT4_MOUNT_DAX, MOPT_SET},
++	{Opt_dax, EXT4_MOUNT_DAX_ALWAYS, MOPT_SET},
+ 	{Opt_stripe, 0, MOPT_GTE0},
+ 	{Opt_resuid, 0, MOPT_GTE0},
+ 	{Opt_resgid, 0, MOPT_GTE0},
+@@ -3982,7 +3982,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				 "both data=journal and dioread_nolock");
+ 			goto failed_mount;
  		}
- 
--		err = ext4_change_inode_journal_flag(inode, jflag);
-+		err = ext4_change_inode_journal_flag(inode,
-+						     flags & EXT4_JOURNAL_DATA_FL);
- 		if (err)
- 			goto flags_out;
+-		if (test_opt(sb, DAX)) {
++		if (test_opt(sb, DAX_ALWAYS)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "both data=journal and dax");
+ 			goto failed_mount;
+@@ -4092,7 +4092,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
  	}
+ 
+-	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
++	if (sbi->s_mount_opt & EXT4_MOUNT_DAX_ALWAYS) {
+ 		if (ext4_has_feature_inline_data(sb)) {
+ 			ext4_msg(sb, KERN_ERR, "Cannot use DAX on a filesystem"
+ 					" that may contain inline data");
+@@ -5412,7 +5412,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			err = -EINVAL;
+ 			goto restore_opts;
+ 		}
+-		if (test_opt(sb, DAX)) {
++		if (test_opt(sb, DAX_ALWAYS)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "both data=journal and dax");
+ 			err = -EINVAL;
+@@ -5433,10 +5433,10 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		goto restore_opts;
+ 	}
+ 
+-	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX) {
++	if ((sbi->s_mount_opt ^ old_opts.s_mount_opt) & EXT4_MOUNT_DAX_ALWAYS) {
+ 		ext4_msg(sb, KERN_WARNING, "warning: refusing change of "
+ 			"dax flag with busy inodes while remounting");
+-		sbi->s_mount_opt ^= EXT4_MOUNT_DAX;
++		sbi->s_mount_opt ^= EXT4_MOUNT_DAX_ALWAYS;
+ 	}
+ 
+ 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
 -- 
 2.25.1
 
