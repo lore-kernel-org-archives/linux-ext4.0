@@ -2,34 +2,34 @@ Return-Path: <SRS0=C1oI=7K=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AEF5C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEFC5C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2497E2084C
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D563A2075F
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:00:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404017AbgE1PAK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 11:00:10 -0400
-Received: from mga17.intel.com ([192.55.52.151]:19225 "EHLO mga17.intel.com"
+        id S2404039AbgE1PAV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 11:00:21 -0400
+Received: from mga09.intel.com ([134.134.136.24]:7520 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2403761AbgE1PAH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 11:00:07 -0400
-IronPort-SDR: dDQWGQ3nfTj0DShZwYYMM0pBff195/nJr9R7rD13LqoFIsaQ0nLbvs23HqiXaASgLLgZvZ0Wv4
- DeMclpEtwE0A==
+        id S2404022AbgE1PAO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 May 2020 11:00:14 -0400
+IronPort-SDR: 4lV4agil5GtLim3Y439XlfjHz5F7j3Z0LWBMf3tWQn7QGF48VplY3f0ItkdZWlQc40NbRR7CIX
+ WW91jjZ/Nvyg==
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
-IronPort-SDR: akjpAeh3IlKKiqVT11n31OdwhJP6p5ERYRDOV0+U4clY9f42cnMhMDsgUnRzmW8/4Va6hxoQng
- 7Gbe0SuZejxw==
+Received: from orsmga002.jf.intel.com ([10.7.209.21])
+  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:09 -0700
+IronPort-SDR: pM4wjcuPZRQ5vwDho/yQiEyZonBjz3nKr5g1cDiMgTK9IFSqR6p66oTovWoO44rBrFz2zvNI00
+ RmIB6JvYOCVA==
 X-IronPort-AV: E=Sophos;i="5.73,445,1583222400"; 
-   d="scan'208";a="270875408"
+   d="scan'208";a="285191585"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga006-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:06 -0700
+  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:08 -0700
 From:   ira.weiny@intel.com
 To:     linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -41,10 +41,12 @@ Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V5 0/9] Enable ext4 support for per-file/directory DAX operations
-Date:   Thu, 28 May 2020 07:59:54 -0700
-Message-Id: <20200528150003.828793-1-ira.weiny@intel.com>
+Subject: [PATCH V5 5/9] fs/ext4: Only change S_DAX on inode load
+Date:   Thu, 28 May 2020 07:59:59 -0700
+Message-Id: <20200528150003.828793-6-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200528150003.828793-1-ira.weiny@intel.com>
+References: <20200528150003.828793-1-ira.weiny@intel.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -54,69 +56,152 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-Changes from V4:
-	Fix up DAX mutual exclusion with other flags.
-	Add clean up patch (remove jflags)
+To prevent complications with in memory inodes we only set S_DAX on
+inode load.  FS_XFLAG_DAX can be changed at any time and S_DAX will
+change after inode eviction and reload.
 
-Changes from V3:
-	Change EXT4_DAX_FL to bit24
-	Cache device DAX support in the super block and use that is
-		ext4_should_use_dax()
+Add init bool to ext4_set_inode_flags() to indicate if the inode is
+being newly initialized.
 
+Assert that S_DAX is not set on an inode which is just being loaded.
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+
+---
 Changes from V2:
-	Rework DAX exclusivity with verity and encryption based on feedback
-	from Eric
+	Rework based on moving the encryption patch to the end.
 
-Enable the same per file DAX support in ext4 as was done for xfs.  This series
-builds and depends on the V11 series for xfs.[1]
+Changes from RFC:
+	Change J_ASSERT() to WARN_ON_ONCE()
+	Fix bug which would clear S_DAX incorrectly
+---
+ fs/ext4/ext4.h   |  2 +-
+ fs/ext4/ialloc.c |  2 +-
+ fs/ext4/inode.c  | 13 ++++++++++---
+ fs/ext4/ioctl.c  |  3 ++-
+ fs/ext4/super.c  |  4 ++--
+ fs/ext4/verity.c |  2 +-
+ 6 files changed, 17 insertions(+), 9 deletions(-)
 
-This passes the same xfstests test as XFS.
-
-The only issue is that this modifies the old mount option parsing code rather
-than waiting for the new parsing code to be finalized.
-
-This series starts with 3 fixes which include making Verity and Encrypt truly
-mutually exclusive from DAX.  I think these first 3 patches should be picked up
-for 5.8 regardless of what is decided regarding the mount parsing.
-
-[1] https://lore.kernel.org/lkml/20200428002142.404144-1-ira.weiny@intel.com/
-
-To: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger.kernel@dilger.ca>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-To: Eric Biggers <ebiggers@kernel.org>
-
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Jeff Moyer <jmoyer@redhat.com>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Ira Weiny (9):
-  fs/ext4: Narrow scope of DAX check in setflags
-  fs/ext4: Disallow verity if inode is DAX
-  fs/ext4: Change EXT4_MOUNT_DAX to EXT4_MOUNT_DAX_ALWAYS
-  fs/ext4: Update ext4_should_use_dax()
-  fs/ext4: Only change S_DAX on inode load
-  fs/ext4: Make DAX mount option a tri-state
-  fs/ext4: Remove jflag variable
-  fs/ext4: Introduce DAX inode flag
-  Documentation/dax: Update DAX enablement for ext4
-
- Documentation/filesystems/dax.txt         |  6 +-
- Documentation/filesystems/ext4/verity.rst |  3 +
- fs/ext4/ext4.h                            | 27 +++++--
- fs/ext4/ialloc.c                          |  2 +-
- fs/ext4/inode.c                           | 26 +++++--
- fs/ext4/ioctl.c                           | 65 ++++++++++++++---
- fs/ext4/super.c                           | 85 ++++++++++++++++++-----
- fs/ext4/verity.c                          |  5 +-
- include/uapi/linux/fs.h                   |  1 +
- 9 files changed, 175 insertions(+), 45 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3fdd044304a0..94e213e6d8ca 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2693,7 +2693,7 @@ extern int ext4_can_truncate(struct inode *inode);
+ extern int ext4_truncate(struct inode *);
+ extern int ext4_break_layouts(struct inode *);
+ extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
+-extern void ext4_set_inode_flags(struct inode *);
++extern void ext4_set_inode_flags(struct inode *, bool init);
+ extern int ext4_alloc_da_blocks(struct inode *inode);
+ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4b8c9a9bdf0c..7941c140723f 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1116,7 +1116,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ei->i_block_group = group;
+ 	ei->i_last_alloc_group = ~0;
+ 
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, true);
+ 	if (IS_DIRSYNC(inode))
+ 		ext4_handle_sync(handle);
+ 	if (insert_inode_locked(inode) < 0) {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6532870f6a0b..01636cf5f322 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4420,11 +4420,13 @@ static bool ext4_should_enable_dax(struct inode *inode)
+ 	return false;
+ }
+ 
+-void ext4_set_inode_flags(struct inode *inode)
++void ext4_set_inode_flags(struct inode *inode, bool init)
+ {
+ 	unsigned int flags = EXT4_I(inode)->i_flags;
+ 	unsigned int new_fl = 0;
+ 
++	WARN_ON_ONCE(IS_DAX(inode) && init);
++
+ 	if (flags & EXT4_SYNC_FL)
+ 		new_fl |= S_SYNC;
+ 	if (flags & EXT4_APPEND_FL)
+@@ -4435,8 +4437,13 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (ext4_should_enable_dax(inode))
++
++	/* Because of the way inode_set_flags() works we must preserve S_DAX
++	 * here if already set. */
++	new_fl |= (inode->i_flags & S_DAX);
++	if (init && ext4_should_enable_dax(inode))
+ 		new_fl |= S_DAX;
++
+ 	if (flags & EXT4_ENCRYPT_FL)
+ 		new_fl |= S_ENCRYPTED;
+ 	if (flags & EXT4_CASEFOLD_FL)
+@@ -4650,7 +4657,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 		 * not initialized on a new filesystem. */
+ 	}
+ 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, true);
+ 	inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
+ 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
+ 	if (ext4_has_feature_64bit(sb))
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index f23168387deb..7ccf20b1488b 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -381,7 +381,8 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 			ext4_clear_inode_flag(inode, i);
+ 	}
+ 
+-	ext4_set_inode_flags(inode);
++	ext4_set_inode_flags(inode, false);
++
+ 	inode->i_ctime = current_time(inode);
+ 
+ 	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f7d76dcaedfe..80eb814c47eb 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1348,7 +1348,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+ 			 * S_DAX may be disabled
+ 			 */
+-			ext4_set_inode_flags(inode);
++			ext4_set_inode_flags(inode, false);
+ 		}
+ 		return res;
+ 	}
+@@ -1375,7 +1375,7 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
+ 		 * S_DAX may be disabled
+ 		 */
+-		ext4_set_inode_flags(inode);
++		ext4_set_inode_flags(inode, false);
+ 		res = ext4_mark_inode_dirty(handle, inode);
+ 		if (res)
+ 			EXT4_ERROR_INODE(inode, "Failed to mark inode dirty");
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index f05a09fb2ae4..89a155ece323 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -244,7 +244,7 @@ static int ext4_end_enable_verity(struct file *filp, const void *desc,
+ 		if (err)
+ 			goto out_stop;
+ 		ext4_set_inode_flag(inode, EXT4_INODE_VERITY);
+-		ext4_set_inode_flags(inode);
++		ext4_set_inode_flags(inode, false);
+ 		err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+ 	}
+ out_stop:
 -- 
 2.25.1
 
