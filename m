@@ -2,163 +2,114 @@ Return-Path: <SRS0=C1oI=7K=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24580C433E1
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29B1CC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:03:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0AF8C2075F
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:01:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A99E2075F
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 15:03:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1590678204;
+	bh=yCrRflPa+owv3moiIgb+n52ywNy7D1ovIWfQG7sa6Jc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=ptKufmSQbj6/2WdKqzG18teV0kGUwhwcXuvHBKNnx13Wsdcaw3gRL44ppuXI0Lm0H
+	 Y7fqr/nB2kBKiJirTWSOfN/XFDVlqjHIy7M3qrGCOQJBjkH8pqD1fqmzVyhTBny4MO
+	 ObtR4ioSjDGbVfw8WmNy87R+QDdmdVo5+ritpba4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404108AbgE1PBJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 11:01:09 -0400
-Received: from mga11.intel.com ([192.55.52.93]:27832 "EHLO mga11.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2404027AbgE1PAQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 11:00:16 -0400
-IronPort-SDR: RmpXFIbRbAZtkQhduLruqW2A01MKw/2Q8WHb3VpM2OztlPN1aR1VmRS5SIHd9gAMg+qjMEs6A1
- nXC4eMeAOfzA==
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from orsmga007.jf.intel.com ([10.7.209.58])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:08 -0700
-IronPort-SDR: u4B2T39OHPzCu99pkfNmTrzIcsDmNQoNoFn4oedhF8dLDDZn3uHDzU6lRaQdpDmeMkD6VhlCJ/
- SedLHmvlGqmQ==
-X-IronPort-AV: E=Sophos;i="5.73,445,1583222400"; 
-   d="scan'208";a="256185421"
-Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga007-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 28 May 2020 08:00:07 -0700
-From:   ira.weiny@intel.com
-To:     linux-ext4@vger.kernel.org,
+        id S2404159AbgE1PDT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 11:03:19 -0400
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:35115 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2403912AbgE1PDQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2020 11:03:16 -0400
+Received: by mail-wm1-f66.google.com with SMTP id n5so3561883wmd.0;
+        Thu, 28 May 2020 08:03:13 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=evz1lutsdd2Eqt9o4+KgC57g/gR26qB8cQ2KV6NODWs=;
+        b=VJx/HwbXl5o/d18rL9jXFWIru48CRcbu6zMa/nbL8uHL5RkpLFzluxqMPSHkiUACnq
+         8fpdo/KWej952ZGVeM52GUKte5NExvG3LpYfxGglSAuy0TBPmQxlIIK82X7RgOLgJmXB
+         +pjpUIOL/bVQorU96JoWT/ysuQZBRxRchyXcPh4B01yzJEnbYuNZSzg4Di2PgdvnQw22
+         ksF9CdT4clBfpm1g7Phqf34d9bI09L/NOjel519iuryPdW9UVpqHeITg1pNWQgwAcNU0
+         V4UJuQwu9Zb4g6+2NLS3L5y+wF758rtkI/+FjSh/df4TUBaKBHx9YBdCX2ufGjpBOo78
+         eMbg==
+X-Gm-Message-State: AOAM5335KeIBGypNdrt0JATwyrPXP/uVxG66RygJwBLuKrIswRUKlp8s
+        U+85bywfUrHGjRi+1zXV9K4=
+X-Google-Smtp-Source: ABdhPJzniI6Aw1b/FqGaEPNB/a6M/vRt8hKQ5Zx5UYlLdgljMoGjhh+KSxCloB6yCJzH8NHlfHrceg==
+X-Received: by 2002:a1c:b0c8:: with SMTP id z191mr3947280wme.165.1590678193035;
+        Thu, 28 May 2020 08:03:13 -0700 (PDT)
+Received: from localhost (ip-37-188-185-40.eurotel.cz. [37.188.185.40])
+        by smtp.gmail.com with ESMTPSA id k14sm6163539wrq.97.2020.05.28.08.03.11
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 28 May 2020 08:03:11 -0700 (PDT)
+Date:   Thu, 28 May 2020 17:03:10 +0200
+From:   Michal Hocko <mhocko@kernel.org>
+To:     Naresh Kamboju <naresh.kamboju@linaro.org>
+Cc:     Yafang Shao <laoar.shao@gmail.com>,
+        Chris Down <chris@chrisdown.name>,
+        Anders Roxell <anders.roxell@linaro.org>,
+        "Linux F2FS DEV, Mailing List" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-block <linux-block@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        open list <linux-kernel@vger.kernel.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, Arnd Bergmann <arnd@arndb.de>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@kernel.org>
-Cc:     Ira Weiny <ira.weiny@intel.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@lst.de>, Jeff Moyer <jmoyer@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH V5 4/9] fs/ext4: Update ext4_should_use_dax()
-Date:   Thu, 28 May 2020 07:59:58 -0700
-Message-Id: <20200528150003.828793-5-ira.weiny@intel.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200528150003.828793-1-ira.weiny@intel.com>
-References: <20200528150003.828793-1-ira.weiny@intel.com>
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Chao Yu <yuchao0@huawei.com>, lkft-triage@lists.linaro.org,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Roman Gushchin <guro@fb.com>, Cgroups <cgroups@vger.kernel.org>
+Subject: Re: mm: mkfs.ext4 invoked oom-killer on i386 - pagecache_get_page
+Message-ID: <20200528150310.GG27484@dhcp22.suse.cz>
+References: <20200519075213.GF32497@dhcp22.suse.cz>
+ <CAK8P3a2T_j-Ynvhsqe_FCqS2-ZdLbo0oMbHhHChzMbryE0izAQ@mail.gmail.com>
+ <20200519084535.GG32497@dhcp22.suse.cz>
+ <CA+G9fYvzLm7n1BE7AJXd8_49fOgPgWWTiQ7sXkVre_zoERjQKg@mail.gmail.com>
+ <CA+G9fYsXnwyGetj-vztAKPt8=jXrkY8QWe74u5EEA3XPW7aikQ@mail.gmail.com>
+ <20200520190906.GA558281@chrisdown.name>
+ <20200521095515.GK6462@dhcp22.suse.cz>
+ <20200521163450.GV6462@dhcp22.suse.cz>
+ <CA+G9fYuDWGZx50UpD+WcsDeHX9vi3hpksvBAWbMgRZadb0Pkww@mail.gmail.com>
+ <CA+G9fYs2jg-j_5fdb0OW0G-JzDjN7b8d9qnX7uuk9p4c7mVSig@mail.gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CA+G9fYs2jg-j_5fdb0OW0G-JzDjN7b8d9qnX7uuk9p4c7mVSig@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+On Fri 22-05-20 02:23:09, Naresh Kamboju wrote:
+> My apology !
+> As per the test results history this problem started happening from
+> Bad : next-20200430 (still reproducible on next-20200519)
+> Good : next-20200429
+> 
+> The git tree / tag used for testing is from linux next-20200430 tag and reverted
+> following three patches and oom-killer problem fixed.
+> 
+> Revert "mm, memcg: avoid stale protection values when cgroup is above
+> protection"
+> Revert "mm, memcg: decouple e{low,min} state mutations from protectinn checks"
+> Revert "mm-memcg-decouple-elowmin-state-mutations-from-protection-checks-fix"
 
-S_DAX should only be enabled when the underlying block device supports
-dax.
-
-Cache the underlying support for DAX in the super block and modify
-ext4_should_use_dax() to check for device support prior to the over
-riding mount option.
-
-While we are at it change the function to ext4_should_enable_dax() as
-this better reflects the ask as well as matches xfs.
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-
----
-Changes from V3:
-	Add a sb DAX supported flag for performance
-
-Changes from RFC
-	Change function name to 'should enable'
-	Clean up bool conversion
-	Reorder this for better bisect-ability
----
- fs/ext4/ext4.h  |  1 +
- fs/ext4/inode.c | 15 ++++++++++-----
- fs/ext4/super.c |  5 ++++-
- 3 files changed, 15 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6c65fa2f5e00..3fdd044304a0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1979,6 +1979,7 @@ static inline bool ext4_has_incompat_features(struct super_block *sb)
-  */
- #define EXT4_FLAGS_RESIZING	0
- #define EXT4_FLAGS_SHUTDOWN	1
-+#define EXT4_FLAGS_BDEV_IS_DAX	2
- 
- static inline int ext4_forced_shutdown(struct ext4_sb_info *sbi)
- {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a10ff12194db..6532870f6a0b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4398,10 +4398,10 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
- 		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
- }
- 
--static bool ext4_should_use_dax(struct inode *inode)
-+static bool ext4_should_enable_dax(struct inode *inode)
- {
--	if (!test_opt(inode->i_sb, DAX_ALWAYS))
--		return false;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+
- 	if (!S_ISREG(inode->i_mode))
- 		return false;
- 	if (ext4_should_journal_data(inode))
-@@ -4412,7 +4412,12 @@ static bool ext4_should_use_dax(struct inode *inode)
- 		return false;
- 	if (ext4_test_inode_flag(inode, EXT4_INODE_VERITY))
- 		return false;
--	return true;
-+	if (!test_bit(EXT4_FLAGS_BDEV_IS_DAX, &sbi->s_ext4_flags))
-+		return false;
-+	if (test_opt(inode->i_sb, DAX_ALWAYS))
-+		return true;
-+
-+	return false;
- }
- 
- void ext4_set_inode_flags(struct inode *inode)
-@@ -4430,7 +4435,7 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & EXT4_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
--	if (ext4_should_use_dax(inode))
-+	if (ext4_should_enable_dax(inode))
- 		new_fl |= S_DAX;
- 	if (flags & EXT4_ENCRYPT_FL)
- 		new_fl |= S_ENCRYPTED;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7b99c44d0a91..f7d76dcaedfe 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4092,13 +4092,16 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
-+	if (bdev_dax_supported(sb->s_bdev, blocksize))
-+		set_bit(EXT4_FLAGS_BDEV_IS_DAX, &sbi->s_ext4_flags);
-+
- 	if (sbi->s_mount_opt & EXT4_MOUNT_DAX_ALWAYS) {
- 		if (ext4_has_feature_inline_data(sb)) {
- 			ext4_msg(sb, KERN_ERR, "Cannot use DAX on a filesystem"
- 					" that may contain inline data");
- 			goto failed_mount;
- 		}
--		if (!bdev_dax_supported(sb->s_bdev, blocksize)) {
-+		if (!test_bit(EXT4_FLAGS_BDEV_IS_DAX, &sbi->s_ext4_flags)) {
- 			ext4_msg(sb, KERN_ERR,
- 				"DAX unsupported by block device.");
- 			goto failed_mount;
+The discussion has fragmented and I got lost TBH.
+In http://lkml.kernel.org/r/CA+G9fYuDWGZx50UpD+WcsDeHX9vi3hpksvBAWbMgRZadb0Pkww@mail.gmail.com
+you have said that none of the added tracing output has triggered. Does
+this still hold? Because I still have a hard time to understand how
+those three patches could have the observed effects.
 -- 
-2.25.1
-
+Michal Hocko
+SUSE Labs
