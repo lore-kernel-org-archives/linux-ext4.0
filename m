@@ -1,140 +1,156 @@
-Return-Path: <SRS0=C1oI=7K=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=2juh=7L=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2777CC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 21:56:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF8DBC433E0
+	for <linux-ext4@archiver.kernel.org>; Fri, 29 May 2020 01:51:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F3FCD2073B
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 May 2020 21:56:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1590702986;
-	bh=YrvA6l1wo4LASJiVpABx+mDsD3QcKwzk5VGr+qu3r4c=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=MCN871L+4lSf/vN09Pb7aYdOi+AvRPhehwELFdjvoqu8OTElksuGGO16JWf9CBBch
-	 G0WKYRJMVDQkqAwr6yVTTIUiNKKBh5Ia6cpzsI4hvXEBPUpYZmvv/LEz9elk6WaPLU
-	 X2gId/FyFtfxYfCl/PD1WBlip/8loAxk8c1wioN0=
+	by mail.kernel.org (Postfix) with ESMTP id C90F02075A
+	for <linux-ext4@archiver.kernel.org>; Fri, 29 May 2020 01:51:17 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hv3Ro80U"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2436777AbgE1V4Z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 May 2020 17:56:25 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52240 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2436745AbgE1V4X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 May 2020 17:56:23 -0400
-Received: from gmail.com (unknown [104.132.1.76])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4C1E0206F1;
-        Thu, 28 May 2020 21:56:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1590702982;
-        bh=YrvA6l1wo4LASJiVpABx+mDsD3QcKwzk5VGr+qu3r4c=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=rEJMBMPXsLqP516mYlBkqFn4ZibP50uBkCESunKDePTB/L5cCrgLy2v/2tR1SN+aa
-         g3GjRaUu76j+HeqJkWL7d6rAhzwYeGle3Q+vgQj6s/0yhQ+hWVDunlbLRfOr835Mt5
-         mac8NUQU0tbuTlMA7ONnECD74zrStT9vhTojjbxQ=
-Date:   Thu, 28 May 2020 14:54:30 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Satya Tangirala <satyat@google.com>
-Cc:     linux-block@vger.kernel.org, linux-scsi@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        Barani Muthukumaran <bmuthuku@qti.qualcomm.com>,
-        Kuohong Wang <kuohong.wang@mediatek.com>,
-        Kim Boojin <boojin.kim@samsung.com>
-Subject: Re: [PATCH v13 10/12] fscrypt: add inline encryption support
-Message-ID: <20200528215430.GA143195@gmail.com>
-References: <20200514003727.69001-1-satyat@google.com>
- <20200514003727.69001-11-satyat@google.com>
+        id S2391050AbgE2BvO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 May 2020 21:51:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35590 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390018AbgE2BvK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2020 21:51:10 -0400
+Received: from mail-il1-x144.google.com (mail-il1-x144.google.com [IPv6:2607:f8b0:4864:20::144])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46C4EC08C5C6;
+        Thu, 28 May 2020 18:51:10 -0700 (PDT)
+Received: by mail-il1-x144.google.com with SMTP id t8so438183ilm.7;
+        Thu, 28 May 2020 18:51:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=H3h/KKWXDUeQOc5C3bt+8FTDd7C+ZKV4cv02x2eGUM0=;
+        b=hv3Ro80UVyre+PN/oxyCxv5Wj3U9Miq4RcYmwn7Wer3m5lna+secRy/iNZy1XU5vs6
+         DwjrNtSLHZt3BxA7cIhF92ENeQKAwPhXRCSqVVVGdfZEG1vXKe2rTqhNQ5Hvrpi2UFjd
+         LXRB+yKNrnG7mdAT8gMmN500gmHD5X41hEKBe0ZSg81bWVcCF0wDSjdIsr/DX4GRWgtn
+         jcsGk9dGIRwLlEPEmqwg9TjN0k2usiunSA7X//YLVJEyZx8FK26kMVPXHvJZ+cbDD4ho
+         dfy41JIPsQje/uQaXQhSJnK2rs1lAoB5dKeFYnuDrG4bDMDOculzn8iblXX+9y2QjMdX
+         sHpA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=H3h/KKWXDUeQOc5C3bt+8FTDd7C+ZKV4cv02x2eGUM0=;
+        b=Z6rdMIlkKUQtcxDveLz7QSTlLJyE0dU1drQHpQ36JTqjQbP/xlGw3JvBCwp6aJ38YO
+         yrRvb9CBHSEP5YKAz8fUcwF1qzJdkDHx95lmyZHtWQyZIJackPpaponrSDUJiQ7KSNGW
+         f1gFJxFNccq7aEDd9H8UMvY0SJZlVW0Oe2FfTyVrjFMvKsgS5Jz0Z8dB8I5nFXIMhqvI
+         z50D1RxnzwX5qFtNfaaX8IBcsmRtA0aytgdgNX9cJ8P2fUF4EL0x1qk5GgGyI9fnp7TH
+         0wzN37b8O2QNVQ7JmXmuLlxGyf1nnYmmQBSgPkNwJiz3FHOieejAvWHI7KExkj1Sh/ZE
+         Vfdg==
+X-Gm-Message-State: AOAM530GXaFmL595/YXvCsRAxesB0uuiT5qrqaTMbGlopesjoJ2Gzjd1
+        0QwQztxL3wl4mys1AGnxkq4tv2TkZ4eOpBIbUuk=
+X-Google-Smtp-Source: ABdhPJwOdvRBv/VOCAVzd3CfESY0S+IdHP0T8BAuYkYNjREwWIKEF46vM4w9mjj36My18HtWSo+lPWWNSsKWEHxCsAY=
+X-Received: by 2002:a92:770c:: with SMTP id s12mr79501ilc.203.1590717069612;
+ Thu, 28 May 2020 18:51:09 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200514003727.69001-11-satyat@google.com>
+References: <20200519084535.GG32497@dhcp22.suse.cz> <CA+G9fYvzLm7n1BE7AJXd8_49fOgPgWWTiQ7sXkVre_zoERjQKg@mail.gmail.com>
+ <CA+G9fYsXnwyGetj-vztAKPt8=jXrkY8QWe74u5EEA3XPW7aikQ@mail.gmail.com>
+ <20200520190906.GA558281@chrisdown.name> <20200521095515.GK6462@dhcp22.suse.cz>
+ <20200521163450.GV6462@dhcp22.suse.cz> <CA+G9fYuDWGZx50UpD+WcsDeHX9vi3hpksvBAWbMgRZadb0Pkww@mail.gmail.com>
+ <CA+G9fYs2jg-j_5fdb0OW0G-JzDjN7b8d9qnX7uuk9p4c7mVSig@mail.gmail.com>
+ <20200528150310.GG27484@dhcp22.suse.cz> <CA+G9fYvDXiZ9E9EfU6h0gsJ+xaXY77mRu9Jg+J7C=X4gJ3qvLg@mail.gmail.com>
+ <20200528164121.GA839178@chrisdown.name>
+In-Reply-To: <20200528164121.GA839178@chrisdown.name>
+From:   Yafang Shao <laoar.shao@gmail.com>
+Date:   Fri, 29 May 2020 09:50:33 +0800
+Message-ID: <CALOAHbAHGOsAUUM7qn=9L1u8kAf6Gztqt=SyHSmZ9XuYZWcKmg@mail.gmail.com>
+Subject: Re: mm: mkfs.ext4 invoked oom-killer on i386 - pagecache_get_page
+To:     Chris Down <chris@chrisdown.name>
+Cc:     Naresh Kamboju <naresh.kamboju@linaro.org>,
+        Michal Hocko <mhocko@kernel.org>,
+        Anders Roxell <anders.roxell@linaro.org>,
+        "Linux F2FS DEV, Mailing List" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-block <linux-block@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        open list <linux-kernel@vger.kernel.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Chao Yu <yuchao0@huawei.com>, lkft-triage@lists.linaro.org,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Roman Gushchin <guro@fb.com>, Cgroups <cgroups@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-A few minor things to clean up when you resend this after v5.8-rc1:
+On Fri, May 29, 2020 at 12:41 AM Chris Down <chris@chrisdown.name> wrote:
+>
+> Naresh Kamboju writes:
+> >On Thu, 28 May 2020 at 20:33, Michal Hocko <mhocko@kernel.org> wrote:
+> >>
+> >> On Fri 22-05-20 02:23:09, Naresh Kamboju wrote:
+> >> > My apology !
+> >> > As per the test results history this problem started happening from
+> >> > Bad : next-20200430 (still reproducible on next-20200519)
+> >> > Good : next-20200429
+> >> >
+> >> > The git tree / tag used for testing is from linux next-20200430 tag and reverted
+> >> > following three patches and oom-killer problem fixed.
+> >> >
+> >> > Revert "mm, memcg: avoid stale protection values when cgroup is above
+> >> > protection"
+> >> > Revert "mm, memcg: decouple e{low,min} state mutations from protectinn checks"
+> >> > Revert "mm-memcg-decouple-elowmin-state-mutations-from-protection-checks-fix"
+> >>
+> >> The discussion has fragmented and I got lost TBH.
+> >> In http://lkml.kernel.org/r/CA+G9fYuDWGZx50UpD+WcsDeHX9vi3hpksvBAWbMgRZadb0Pkww@mail.gmail.com
+> >> you have said that none of the added tracing output has triggered. Does
+> >> this still hold? Because I still have a hard time to understand how
+> >> those three patches could have the observed effects.
+> >
+> >On the other email thread [1] this issue is concluded.
+> >
+> >Yafang wrote on May 22 2020,
+> >
+> >Regarding the root cause, my guess is it makes a similar mistake that
+> >I tried to fix in the previous patch that the direct reclaimer read a
+> >stale protection value.  But I don't think it is worth to add another
+> >fix. The best way is to revert this commit.
+>
+> This isn't a conclusion, just a guess (and one I think is unlikely). For this
+> to reliably happen, it implies that the same race happens the same way each
+> time.
 
-(You'll have to resolve the conflicts with
- https://lore.kernel.org/r/20200515204141.251098-1-ebiggers@kernel.org
- too, but it shouldn't be too hard.  Note that I made setup_per_mode_enc_key()
- use a mutex, like this patch does.)
 
-On Thu, May 14, 2020 at 12:37:25AM +0000, Satya Tangirala wrote:
-> Add support for inline encryption to fs/crypto/.  With "inline
-> encryption", the block layer handles the decryption/encryption as part
-> of the bio, instead of the filesystem doing the crypto itself via
-> Linux's crypto API.  This model is needed in order to take advantage of
-> the inline encryption hardware present on most modern mobile SoCs.
-> 
-> To use inline encryption, the filesystem needs to be mounted with
-> '-o inlinecrypt'.  The contents of any encrypted files will then be
-> encrypted using blk-crypto, instead of using the traditional
-> filesystem-layer crypto. Fscrypt still provides the key and IV to use,
-> and the actual ciphertext on-disk is still the same; therefore it's
-> testable using the existing fscrypt ciphertext verification tests.
-> 
-> Note that since blk-crypto has a fallack to Linux's crypto API, and
+Hi Chris,
 
-"fallack" => "fallback"
+Look at this patch[1] carefully you will find that it introduces the
+same issue that I tried to fix in another patch [2]. Even more sad is
+these two patches are in the same patchset. Although this issue isn't
+related with the issue found by Naresh, we have to ask ourselves why
+we always make the same mistake ?
+One possible answer is that we always forget the lifecyle of
+memory.emin before we read it. memory.emin doesn't have the same
+lifecycle with the memcg, while it really has the same lifecyle with
+the reclaimer. IOW, once a reclaimer begins the protetion value should
+be set to 0, and after we traversal the memcg tree we calculate a
+protection value for this reclaimer, finnaly it disapears after the
+reclaimer stops. That is why I highly suggest to add an new protection
+member in scan_control before.
 
->  struct fscrypt_info {
->  
-> -	/* The actual crypto transform used for encryption and decryption */
-> -	struct crypto_skcipher *ci_ctfm;
-> +	/* The key in a form prepared for actual encryption/decryption */
-> +	struct fscrypt_prepared_key	ci_key;
->  
+[1]. https://lore.kernel.org/linux-mm/20200505084127.12923-3-laoar.shao@gmail.com/
+[2]. https://lore.kernel.org/linux-mm/20200505084127.12923-2-laoar.shao@gmail.com/
 
-It would be clearer to call this field 'ci_enc_key' instead of 'ci_key'.
-Since there are several types of fscrypt keys, including the recently added
-ci_dirhash_key, I've been trying to clarify what type of key is meant when it's
-ambiguous.  E.g. see https://git.kernel.org/torvalds/c/f592efe735a29c76
-
->  	/* True if the key should be freed when this fscrypt_info is freed */
-
-If taking the above suggestion, this would need "the key" => "ci_enc_key"
-
->  	/*
->  	 * If non-NULL, then encryption is done using the master key directly
-> -	 * and ci_ctfm will equal ci_direct_key->dk_ctfm.
-> +	 * and ci_key will equal ci_direct_key->dk_key.
->  	 */
-
-If taking the above suggestion, this would need "ci_key" => "ci_enc_key"
-
-> +/* inline_crypt.c */
-> +#ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
-> +extern void fscrypt_select_encryption_impl(struct fscrypt_info *ci);
-
-I'm now trying to consistently not use 'extern' on function declarations.  So,
-can you remove it from the new declarations here and include/linux/fscrypt.h?
-
-> +/**
-> + * fscrypt_set_bio_crypt_ctx - prepare a file contents bio for inline encryption
-
-I'm also now trying to consistently include the parentheses in the function
-names in kerneldoc comments.  So:
-
- * fscrypt_set_bio_crypt_ctx() - prepare a file data bio for inline crypto
-
- * fscrypt_set_bio_crypt_ctx_bh() - prepare a file data bio for inline crypto
-
-(similarly for the other new kerneldoc comments)
-
-Make sure to also run
-
-	scripts/kernel-doc -v -none fs/crypto/*.{c,h} include/linux/fscrypt.h
-
-to check for new kerneldoc warnings.  In fscrypt.git#master I've gotten rid of
-all the existing ones.
-
-Thanks!
-
-- Eric
+-- 
+Thanks
+Yafang
