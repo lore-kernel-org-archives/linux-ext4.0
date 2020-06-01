@@ -2,71 +2,118 @@ Return-Path: <SRS0=P8iI=7O=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D837CC433DF
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jun 2020 19:35:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E19EC433DF
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jun 2020 20:07:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B3B75206E2
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jun 2020 19:35:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49CB820734
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Jun 2020 20:07:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1591040156;
-	bh=tUb3ekvU9GlhHcK4V45Bi06IqlKQCN2nkMKHtfMvVso=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=RwXNPqK2BBkcjZyLcF5wJILgif1uTH42h4+9aIKsi7JN4982vkUUGpNtnbNbg8cZP
-	 7qUcZ5K/Eo36d/LJi8bdeZmfjZAKeKLqvXB6Ttcd7tS6K/ZuKDHi5dQg5+ExuoPGnL
-	 j59cKbvG+VO9vsYm5cG30HaNX21k62UVWEeZ3rTg=
+	s=default; t=1591042052;
+	bh=WLG4kcqEt9VdTt2Je1rr3PBXsRXzaEOmL6iqofLYZlU=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=2Gpp5+djNJRPCzQJaqr1WUPYuSVFCsNPhIaSWU+lls503rHyajXXO1DgQFja/X4ns
+	 t0XUq9ll3Pv6+sf488dP0aVX42Ueijf0xugD8tPKFpgcQ6+iV8E9shnl2zUPWElPrO
+	 /wMzDCdgHNFVHjRZjkuuOZ1ZCS4qSVVViCyI9Av8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728398AbgFATfD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Jun 2020 15:35:03 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57644 "EHLO mail.kernel.org"
+        id S1728399AbgFAUHb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Jun 2020 16:07:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46082 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728133AbgFATfC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Jun 2020 15:35:02 -0400
-Subject: Re: [GIT PULL] fscrypt updates for 5.8
+        id S1726201AbgFAUHb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jun 2020 16:07:31 -0400
+Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 898D82074B;
+        Mon,  1 Jun 2020 20:07:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1591040102;
-        bh=tUb3ekvU9GlhHcK4V45Bi06IqlKQCN2nkMKHtfMvVso=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=yHvB5tN0rf5bOSh4MLRjHoZIDvOq9AuIa+SvvQM835LQ3dji88L4esQeK5PxwflsZ
-         Pn1NWQtfhceZty02BxQswjwaz1BD9yMQes3bkD+u6u3Y4N/8sorEca/tPkgqYMt18X
-         0yq63fhTUl5lLCN8EgZBcRiXy0ph3hrjk6GWXspY=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20200601062848.GA11054@sol.localdomain>
-References: <20200601062848.GA11054@sol.localdomain>
-X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20200601062848.GA11054@sol.localdomain>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git
- tags/fscrypt-for-linus
-X-PR-Tracked-Commit-Id: e3b1078bedd323df343894a27eb3b3c34944dfd1
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: afdb0f2ec57d4899eda2c5e09fc3a005f2119690
-Message-Id: <159104010228.18844.5659318322191292629.pr-tracker-bot@kernel.org>
-Date:   Mon, 01 Jun 2020 19:35:02 +0000
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        s=default; t=1591042050;
+        bh=WLG4kcqEt9VdTt2Je1rr3PBXsRXzaEOmL6iqofLYZlU=;
+        h=From:To:Cc:Subject:Date:From;
+        b=U/7r1QVUCvm+wEhm5Ri1zhOAfxcLfglh4KLlLcNS7Ul+dX4GsRGMJKMuQfOpLEixR
+         gwU3C/dECGBpe0rLgADp2TyoAXRq6gM/6EYE30LI9Llwg9z18xiFP3PNvAUMGLiTYC
+         9kTnCYrYqc79N0QRx7pf5oOhOXRh/o6brZJRhtwY=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org
+Cc:     Daniel Rosenberg <drosen@google.com>, stable@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v2] ext4: avoid utf8_strncasecmp() with unstable name
+Date:   Mon,  1 Jun 2020 13:05:43 -0700
+Message-Id: <20200601200543.59417-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.26.2
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Sun, 31 May 2020 23:28:48 -0700:
+From: Eric Biggers <ebiggers@google.com>
 
-> https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git tags/fscrypt-for-linus
+If the dentry name passed to ->d_compare() fits in dentry::d_iname, then
+it may be concurrently modified by a rename.  This can cause undefined
+behavior (possibly out-of-bounds memory accesses or crashes) in
+utf8_strncasecmp(), since fs/unicode/ isn't written to handle strings
+that may be concurrently modified.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/afdb0f2ec57d4899eda2c5e09fc3a005f2119690
+Fix this by first copying the filename to a stack buffer if needed.
+This way we get a stable snapshot of the filename.
 
-Thank you!
+Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
+Cc: <stable@vger.kernel.org> # v5.2+
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Daniel Rosenberg <drosen@google.com>
+Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
 
+v2: use memcpy() + barrier() instead of a byte-by-byte copy.
+
+ fs/ext4/dir.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index c654205f648dd..1d82336b1cd45 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -675,6 +675,7 @@ static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
+ 	struct qstr qstr = {.name = str, .len = len };
+ 	const struct dentry *parent = READ_ONCE(dentry->d_parent);
+ 	const struct inode *inode = READ_ONCE(parent->d_inode);
++	char strbuf[DNAME_INLINE_LEN];
+ 
+ 	if (!inode || !IS_CASEFOLDED(inode) ||
+ 	    !EXT4_SB(inode->i_sb)->s_encoding) {
+@@ -683,6 +684,21 @@ static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
+ 		return memcmp(str, name->name, len);
+ 	}
+ 
++	/*
++	 * If the dentry name is stored in-line, then it may be concurrently
++	 * modified by a rename.  If this happens, the VFS will eventually retry
++	 * the lookup, so it doesn't matter what ->d_compare() returns.
++	 * However, it's unsafe to call utf8_strncasecmp() with an unstable
++	 * string.  Therefore, we have to copy the name into a temporary buffer.
++	 */
++	if (len <= DNAME_INLINE_LEN - 1) {
++		memcpy(strbuf, str, len);
++		strbuf[len] = 0;
++		qstr.name = strbuf;
++		/* prevent compiler from optimizing out the temporary buffer */
++		barrier();
++	}
++
+ 	return ext4_ci_compare(inode, name, &qstr, false);
+ }
+ 
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+2.26.2
+
