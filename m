@@ -6,43 +6,43 @@ X-Spam-Status: No, score=-0.4 required=3.0 tests=FROM_LOCAL_HEX,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D523FC433E1
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 11:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4062DC433DF
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:19:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BE71120679
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 11:20:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2BF5720663
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:19:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726580AbgFBLU2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Jun 2020 07:20:28 -0400
-Received: from mail-il1-f199.google.com ([209.85.166.199]:32960 "EHLO
-        mail-il1-f199.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725969AbgFBLUS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2020 07:20:18 -0400
-Received: by mail-il1-f199.google.com with SMTP id c11so7843133ilq.0
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Jun 2020 04:20:17 -0700 (PDT)
+        id S1727776AbgFBMTT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Jun 2020 08:19:19 -0400
+Received: from mail-il1-f200.google.com ([209.85.166.200]:45751 "EHLO
+        mail-il1-f200.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726130AbgFBMTR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2020 08:19:17 -0400
+Received: by mail-il1-f200.google.com with SMTP id q24so11506708ili.12
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Jun 2020 05:19:17 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
-        bh=zMicM0NHbCSTRWS4r82QF2SXzu5Q7H29IEKe/4Smvew=;
-        b=QybZFWCVScci8VTeKCoQubAgpthZcGXk+iKj6L4MuissQsXD2Wn1bcQcuJBt8tjdqq
-         4N25FpyuRi6lzObv88L73YenM1Y89UtxI5ETTUCR/mOi+vdyywKl/uI3CZzi4L0XM7NO
-         GumZsaLuS/x+w7pearF9aXAQeNgN+U4lLWOHe7rxv5ioweuzyhKm0GThnx+33/+uwx04
-         1s9m6Huqy//jL5Wrw0NUwJN3Hiwt6EMqpLTGsshxzRg8kDxrzjc8WJmFu2JyJSGGZg6V
-         Xb+Blcu/zh3jJHFVru2+1zEQ/aLYpsBRanMbakXFe7wrqqn2bcUOu9tdko5njNmw58GH
-         e61w==
-X-Gm-Message-State: AOAM5312++ATovO+nC0T0tlsMUneli5MsfPxZn4eo/H4KkyqeWIwSMdF
-        Ebrao8HqWndBVM+heiYwLAPnRbrLe+KjVPft4+HqZ6SFXaUA
-X-Google-Smtp-Source: ABdhPJwd5/P+dkeerOSL4vtqpDMgbEz3TJ/gVhSpiVhzNtZKOPYyEBX9SOJi9pOTo8GI4a9Hf94RBj8rRJsT5JMG09Hx74jWrJFC
+        bh=eQ2+uYvpfAMYJ+IwE3wLZvLyu6j8DAIHHoUAmzbWd50=;
+        b=FLaeBapxnuz2tA6nmV5VU1TrsOQqFPWpDTqsnQHMoM3v4OtvBBXLnFUP3BLYr9sFDi
+         8sk6276M0/aGJbF5KMhSKVXtIoVAeN/hrQQhSOGdO/6e9TLBXIiuEfXuFfMofERoVoaQ
+         yafV5MWEj2yV1wnjcFDOTH72higkOxHHvMbfXpQxFkGZDLfgHwXm9Rr8QQNvwepOZc2Q
+         Le3wydyMm1+K07YyYnQtFnJA67vBgGFyK7QwFKDfG77u5YaIPiyyEsfoBIF1c9KMgVxh
+         8F8FhI0f5Pt+owIiMhOtxF+w9y6cBOS4GlF096U+k0tflwaIZ53jQq5PfpjfCj+uwi0t
+         vcYg==
+X-Gm-Message-State: AOAM532sZIuHM1f4PKQS1lXbqnh7lt+4nujgbyxdenQxO2a+1nHYrsdI
+        FqyaEP4JJhbHSrp1/xs6wX9LLz0+4Yvi5LFFJODrmEEPEr0E
+X-Google-Smtp-Source: ABdhPJxmKTK/UAXXjZL8VRvMo0EoxHrGPExnzY2LKSCcg1QSFM5Ki8O4ugpOBdbifOw263wAxAkZhtMIkUvZ2LZ5Ij/SJ1KQq9jH
 MIME-Version: 1.0
-X-Received: by 2002:a05:6638:101c:: with SMTP id r28mr26033924jab.84.1591096816692;
- Tue, 02 Jun 2020 04:20:16 -0700 (PDT)
-Date:   Tue, 02 Jun 2020 04:20:16 -0700
+X-Received: by 2002:a92:730b:: with SMTP id o11mr21739529ilc.153.1591100356951;
+ Tue, 02 Jun 2020 05:19:16 -0700 (PDT)
+Date:   Tue, 02 Jun 2020 05:19:16 -0700
 X-Google-Appengine-App-Id: s~syzkaller
 X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <0000000000008ff8ea05a71818b5@google.com>
+Message-ID: <0000000000009406b205a718eb10@google.com>
 Subject: linux-next test error: BUG: using smp_processor_id() in preemptible
- [ADDR] code: syz-fuzzer/6792
-From:   syzbot <syzbot+82f324bb69744c5f6969@syzkaller.appspotmail.com>
+ [ADDR] code: systemd-rfkill/6726
+From:   syzbot <syzbot+94f7894cc5600cc07094@syzkaller.appspotmail.com>
 To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-next@vger.kernel.org,
         sfr@canb.auug.org.au, syzkaller-bugs@googlegroups.com,
@@ -59,17 +59,17 @@ syzbot found the following crash on:
 
 HEAD commit:    0e21d462 Add linux-next specific files for 20200602
 git tree:       linux-next
-console output: https://syzkaller.appspot.com/x/log.txt?x=127233ee100000
+console output: https://syzkaller.appspot.com/x/log.txt?x=13a7ffe2100000
 kernel config:  https://syzkaller.appspot.com/x/.config?x=ecc1aef35f550ee3
-dashboard link: https://syzkaller.appspot.com/bug?extid=82f324bb69744c5f6969
+dashboard link: https://syzkaller.appspot.com/bug?extid=94f7894cc5600cc07094
 compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+82f324bb69744c5f6969@syzkaller.appspotmail.com
+Reported-by: syzbot+94f7894cc5600cc07094@syzkaller.appspotmail.com
 
-BUG: using smp_processor_id() in preemptible [00000000] code: syz-fuzzer/6792
+BUG: using smp_processor_id() in preemptible [00000000] code: systemd-rfkill/6726
 caller is ext4_mb_new_blocks+0xa4d/0x3b70 fs/ext4/mballoc.c:4711
-CPU: 1 PID: 6792 Comm: syz-fuzzer Not tainted 5.7.0-next-20200602-syzkaller #0
+CPU: 0 PID: 6726 Comm: systemd-rfkill Not tainted 5.7.0-next-20200602-syzkaller #0
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
 Call Trace:
  __dump_stack lib/dump_stack.c:77 [inline]
@@ -87,14 +87,14 @@ Call Trace:
  do_mkdirat+0x21e/0x280 fs/namei.c:3655
  do_syscall_64+0x60/0xe0 arch/x86/entry/common.c:359
  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x4b02a0
+RIP: 0033:0x7fa49b78d687
 Code: Bad RIP value.
-RSP: 002b:000000c00010d4b8 EFLAGS: 00000212 ORIG_RAX: 0000000000000102
-RAX: ffffffffffffffda RBX: 000000c00002c000 RCX: 00000000004b02a0
-RDX: 00000000000001c0 RSI: 000000c000026b40 RDI: ffffffffffffff9c
-RBP: 000000c00010d510 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000212 R12: ffffffffffffffff
-R13: 000000000000005b R14: 000000000000005a R15: 0000000000000100
+RSP: 002b:00007ffde44382d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000053
+RAX: ffffffffffffffda RBX: 00005647ba692985 RCX: 00007fa49b78d687
+RDX: 00007ffde44381a0 RSI: 00000000000001ed RDI: 00005647ba692985
+RBP: 00007fa49b78d680 R08: 0000000000000100 R09: 0000000000000000
+R10: 00005647ba692980 R11: 0000000000000246 R12: 00000000000001ed
+R13: 00007ffde4438460 R14: 0000000000000000 R15: 0000000000000000
 
 
 ---
