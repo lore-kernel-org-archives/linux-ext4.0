@@ -2,105 +2,63 @@ Return-Path: <SRS0=wrvr=7P=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.4 required=3.0 tests=FROM_LOCAL_HEX,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.4 required=3.0 tests=FROM_LOCAL_HEX,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CF44C433DF
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:20:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2498C433DF
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:41:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 76252206A2
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:20:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B0EC20679
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 12:41:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728056AbgFBMUS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Jun 2020 08:20:18 -0400
-Received: from mail-il1-f197.google.com ([209.85.166.197]:53471 "EHLO
-        mail-il1-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727032AbgFBMUR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2020 08:20:17 -0400
-Received: by mail-il1-f197.google.com with SMTP id c29so11567888ilf.20
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Jun 2020 05:20:17 -0700 (PDT)
+        id S1728056AbgFBMlr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Jun 2020 08:41:47 -0400
+Received: from mail-il1-f200.google.com ([209.85.166.200]:40919 "EHLO
+        mail-il1-f200.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726320AbgFBMlq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2020 08:41:46 -0400
+Received: by mail-il1-f200.google.com with SMTP id s4so9043952ilc.7
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Jun 2020 05:41:45 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
-        bh=h3tn7L8YlQ4td3n8uENjqvRX7Z+upsyhDNzdhaP0eBg=;
-        b=FPEYuro2mfV75JW4gSJORhCNHu5+ZfAhl00JXFANDBGaZGSLroPz3QwlzXXpsK6b2y
-         /Vxh978zSiHJ9WzzCvxB8aX28GbyyzxjfV4IHU2tN9+bcgtTp7SPrtRLHxdz0EKS+M/1
-         LC8VKnGD7y+zE+PgPS4c8L4geBJ0WGLpPQFzL+kqHT+H/ohecOym+9mQ8NCiAik+hoXb
-         zVfqkqUwYVXnBKRm/mIkK4cE+WGggxh52IyaPJZvLgP8heiGR24nk5nrFfi9LXF1h4X4
-         813Ki74FDaRR8vXMRywRfOdMshowr4Ff7MlLwF0pe+Ixk6kgtmi11nQgrPSBSxLRNQxc
-         fZDg==
-X-Gm-Message-State: AOAM531TK7KF362RYyNf/Yl10uHBY36ugnfaXWkKR7bAXdznJE7MNzRq
-        BLKg81/AXFvmS5+MfGUSFW4t+frQ4lQphHO1yAbXhEggpXcJ
-X-Google-Smtp-Source: ABdhPJx8n2GPImG5q/AR+WM+SpJU3w/GQcDyxuepA/kjSkWcBk7A0GOZQAckLphBw7yVoXtcwNl16abR2kp+kJtFdo+eakrobM4d
+        h=x-gm-message-state:mime-version:date:in-reply-to:message-id:subject
+         :from:to:cc;
+        bh=tAlIbuV2NmJbjQsrEd8aARaADyAiwp04Ya0IbnrBnn0=;
+        b=Wd1k2AAm5SiG4sOxjMrvPUpW8QYuoAOletgTZCxNyv1Tb+l2TGKn/3unxrjGam2fKo
+         RxlMzIQRbYuSf2GxreXse339xPL2zYCNsyPRywAeZiuaiC5aMCpnZ3HhwSWrlJLWlXk6
+         6Aw39ZR/gS0TrlSccbliZfJM+6dJ8LYvJSNCvGQ5W9u7ogwjfejQrcOEmJNPaxwLe0NF
+         iJAf+ndvayHJEors6Vc5zqXdORGXed3WklMm9cvwAfFAzVs1/a/73XvxjgYn27V15Oya
+         2mBZm4NhgBsVP3CueBIEgBNAWuk4M9ZnhrLuPzmcS7HEG1C3QxYqCwVkfhyMc3UhKnmR
+         2dAg==
+X-Gm-Message-State: AOAM5311VHWQsbh1XOB/1LD0uqRiUbSRLPMMVUhbtih0Q5w1q8J07pPr
+        /x3d8hYb0o8Jc7LOiYGZRLDJnFmJkhOQAQnGyJkqcv0A8cPE
+X-Google-Smtp-Source: ABdhPJy0duXvd9nJwf4jJ+gZCXXpt1+wEmsQ8/kmPREsBEIwiOWpnsvild1FxcJtKuX5Yj6pRJyHODOemxR+emeQ45aoT2uGgm3p
 MIME-Version: 1.0
-X-Received: by 2002:a92:1fc7:: with SMTP id f68mr26465899ilf.133.1591100416736;
- Tue, 02 Jun 2020 05:20:16 -0700 (PDT)
-Date:   Tue, 02 Jun 2020 05:20:16 -0700
+X-Received: by 2002:a02:ce56:: with SMTP id y22mr25228557jar.18.1591101704812;
+ Tue, 02 Jun 2020 05:41:44 -0700 (PDT)
+Date:   Tue, 02 Jun 2020 05:41:44 -0700
+In-Reply-To: <20200602124130.256274203F@d06av24.portsmouth.uk.ibm.com>
 X-Google-Appengine-App-Id: s~syzkaller
 X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <00000000000024436605a718ef99@google.com>
-Subject: linux-next test error: BUG: using smp_processor_id() in preemptible
- [ADDR] code: systemd-rfkill/6731
-From:   syzbot <syzbot+7f2b4a7d4281e8c2aad0@syzkaller.appspotmail.com>
-To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+Message-ID: <000000000000eabc7505a7193b6a@google.com>
+Subject: Re: Re: linux-next test error: BUG: using smp_processor_id() in
+ preemptible [ADDR] code: syz-fuzzer/6792
+From:   syzbot <syzbot+82f324bb69744c5f6969@syzkaller.appspotmail.com>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-next@vger.kernel.org,
-        sfr@canb.auug.org.au, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
+        riteshh@linux.ibm.com, sfr@canb.auug.org.au,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+> #syz test: 
 
-syzbot found the following crash on:
+This crash does not have a reproducer. I cannot test it.
 
-HEAD commit:    0e21d462 Add linux-next specific files for 20200602
-git tree:       linux-next
-console output: https://syzkaller.appspot.com/x/log.txt?x=102c59ce100000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=ecc1aef35f550ee3
-dashboard link: https://syzkaller.appspot.com/bug?extid=7f2b4a7d4281e8c2aad0
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+7f2b4a7d4281e8c2aad0@syzkaller.appspotmail.com
-
-BUG: using smp_processor_id() in preemptible [00000000] code: systemd-rfkill/6731
-caller is ext4_mb_new_blocks+0xa4d/0x3b70 fs/ext4/mballoc.c:4711
-CPU: 0 PID: 6731 Comm: systemd-rfkill Not tainted 5.7.0-next-20200602-syzkaller #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
-Call Trace:
- __dump_stack lib/dump_stack.c:77 [inline]
- dump_stack+0x18f/0x20d lib/dump_stack.c:118
- check_preemption_disabled+0x20d/0x220 lib/smp_processor_id.c:48
- ext4_mb_new_blocks+0xa4d/0x3b70 fs/ext4/mballoc.c:4711
- ext4_ext_map_blocks+0x201b/0x33e0 fs/ext4/extents.c:4244
- ext4_map_blocks+0x4cb/0x1640 fs/ext4/inode.c:626
- ext4_getblk+0xad/0x520 fs/ext4/inode.c:833
- ext4_bread+0x7c/0x380 fs/ext4/inode.c:883
- ext4_append+0x153/0x360 fs/ext4/namei.c:67
- ext4_init_new_dir fs/ext4/namei.c:2757 [inline]
- ext4_mkdir+0x5e0/0xdf0 fs/ext4/namei.c:2802
- vfs_mkdir+0x419/0x690 fs/namei.c:3632
- do_mkdirat+0x21e/0x280 fs/namei.c:3655
- do_syscall_64+0x60/0xe0 arch/x86/entry/common.c:359
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x7fe0d32c9687
-Code: Bad RIP value.
-RSP: 002b:00007fffd5e80488 EFLAGS: 00000246 ORIG_RAX: 0000000000000053
-RAX: ffffffffffffffda RBX: 000055fab378a985 RCX: 00007fe0d32c9687
-RDX: 00007fffd5e80350 RSI: 00000000000001ed RDI: 000055fab378a985
-RBP: 00007fe0d32c9680 R08: 0000000000000100 R09: 0000000000000000
-R10: 000055fab378a980 R11: 0000000000000246 R12: 00000000000001ed
-R13: 00007fffd5e80610 R14: 0000000000000000 R15: 0000000000000000
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+> https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git 
+> 0e21d4620dd047da7952f44a2e1ac777ded2d57e
