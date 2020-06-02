@@ -2,109 +2,125 @@ Return-Path: <SRS0=wrvr=7P=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9AA3FC433DF
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 17:25:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7CBAC433DF
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 18:17:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6795B2068D
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 17:25:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1591118756;
-	bh=BKGcxnycRsYmacJ65+dG6H2NfGLKvm6eXJrUb+JxQ2c=;
-	h=Date:From:To:Cc:Subject:List-ID:From;
-	b=g+yaY1frh7bMaEQCZAftCpz/q5EGf9/ohMlyPom/MrUIqNxjOSi//6p0ZQd1J8zr1
-	 z+YWploHrkuL3mqdvYY4aBGMKkOcLD+aqeIB+CvwJnhKw1Oq6PLDu0mE001tj4SW5P
-	 mGcNCgACGEwgIyMG7RDbdvS6hVv4BmaeZ+gN10a4=
+	by mail.kernel.org (Postfix) with ESMTP id 8948F2068D
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Jun 2020 18:17:22 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Lv5g79NM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726853AbgFBRZw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Jun 2020 13:25:52 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52766 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726019AbgFBRZv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Jun 2020 13:25:51 -0400
-Received: from localhost (c-67-169-218-210.hsd1.or.comcast.net [67.169.218.210])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 25F452068D;
-        Tue,  2 Jun 2020 17:25:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1591118751;
-        bh=BKGcxnycRsYmacJ65+dG6H2NfGLKvm6eXJrUb+JxQ2c=;
-        h=Date:From:To:Cc:Subject:From;
-        b=R8pKIgFFzaZ4XegA/75oYHzQgfiFDiZKWkM5JxZatAKxpQljeGCaxMEQpCkdoMhNu
-         j0pBTqby+DIpaYEFNRzm6sWUSpCKqYpzmv4Xars+qzUVErycCNXiyMhGC9pywI2ML3
-         spck6YBUuZdetclcx5MIkJo2eb2rlEnfoIk8cBuc=
-Date:   Tue, 2 Jun 2020 10:25:50 -0700
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     "Darrick J. Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-kernel@vger.kernel.org,
-        sandeen@sandeen.net, hch@lst.de,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>, ira.weiny@intel.com
-Subject: [GIT PULL] vfs: improve DAX behavior for 5.8, part 2
-Message-ID: <20200602172550.GF8204@magnolia>
+        id S1726223AbgFBSRS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Jun 2020 14:17:18 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:59046 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726000AbgFBSRR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Jun 2020 14:17:17 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 052I7t1h177905;
+        Tue, 2 Jun 2020 18:17:00 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=mime-version :
+ message-id : date : from : to : cc : subject : references : in-reply-to :
+ content-type : content-transfer-encoding; s=corp-2020-01-29;
+ bh=X49wKSnu9fOxTqf6/taZw+DmoyGY5qqdKkF7CwXyyhU=;
+ b=Lv5g79NM3PnfnYv8QvcLbn0XfFCOXjNP4txvAUlj2UekN+oloAsfr/MoevQSCgU/YA2F
+ 1L1Q6Lr1MVk2lkLoAXh0cbPvlZxcuOxAvDVmjlzK2GzST09NxCZKl5hgP2GogLZ3yN5W
+ Zg0dczpNpX8oennm5UYn+xxRXbjn3OLezuCqEeihy0kzDwM0NnzihsUAWOUHARtwqg/G
+ hezD+fKVptJ7hDiIXu5fopCOlicWKD+EpjVT8lx64+9b8XcDMunTNXPwjS+hKhZ68fwO
+ 88N7SedbcMhA0G5XuF2VmpkhtqvfENgk09P+t6SOE/Vk/XCw14ZV1Sn3WST0MA8+39aE Rw== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 31bewqwhdb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Tue, 02 Jun 2020 18:17:00 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 052I80jG005905;
+        Tue, 2 Jun 2020 18:15:00 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3020.oracle.com with ESMTP id 31dju1wkvj-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 02 Jun 2020 18:15:00 +0000
+Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 052IEvIo025425;
+        Tue, 2 Jun 2020 18:14:57 GMT
+Received: from localhost (/67.169.218.210) by default (Oracle Beehive Gateway
+ v4.0) with ESMTP ; Tue, 02 Jun 2020 11:14:46 -0700
 MIME-Version: 1.0
+Message-ID: <20200602181444.GD8230@magnolia>
+Date:   Tue, 2 Jun 2020 11:14:44 -0700 (PDT)
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Xiao Yang <yangx.jy@cn.fujitsu.com>
+Cc:     ira.weiny@intel.com, fstests@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Jeff Moyer <jmoyer@redhat.com>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] xfs/XXX: Add xfs/XXX
+References: <20200413054419.1560503-1-ira.weiny@intel.com>
+ <20200413163025.GB6742@magnolia> <5ED61324.6010300@cn.fujitsu.com>
+In-Reply-To: <5ED61324.6010300@cn.fujitsu.com>
 Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 7bit
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9640 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 mlxlogscore=999
+ phishscore=0 malwarescore=0 mlxscore=0 adultscore=0 bulkscore=0
+ suspectscore=1 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2004280000 definitions=main-2006020132
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9640 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 bulkscore=0
+ phishscore=0 suspectscore=1 impostorscore=0 cotscore=-2147483648
+ lowpriorityscore=0 mlxscore=0 adultscore=0 spamscore=0 mlxlogscore=999
+ malwarescore=0 clxscore=1015 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.12.0-2004280000 definitions=main-2006020132
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Linus,
+On Tue, Jun 02, 2020 at 04:51:48PM +0800, Xiao Yang wrote:
+> On 2020/4/14 0:30, Darrick J. Wong wrote:
+> > This might be a good time to introduce a few new helpers:
+> > 
+> > _require_scratch_dax ("Does $SCRATCH_DEV support DAX?")
+> > _require_scratch_dax_mountopt ("Does the fs support the DAX mount options?")
+> > _require_scratch_daX_iflag ("Does the fs support FS_XFLAG_DAX?")
+> Hi Darrick,
+> 
+> Now, I am trying to introduce these new helpers and have some questions:
+> 1) There are five testcases related to old dax implementation, should we
+> only convert them to new dax implementation or make them compatible with old
+> and new dax implementation?
 
-Please pull this second part of the 5.8 DAX changes.  This time around,
-we're hoisting the DONTCACHE flag from XFS into the VFS so that we can
-make the incore DAX mode changes become effective sooner.
+What is the 'old' DAX implementation?  ext2 XIP?
 
-We can't change the file data access mode on a live inode because we
-don't have a safe way to change the file ops pointers.  The incore state
-change becomes effective at inode loading time, which can happen if the
-inode is evicted.  Therefore, we're making it so that filesystems can
-ask the VFS to evict the inode as soon as the last holder drops.  The
-per-fs changes to make this call this will be in subsequent pull
-requests from Ted and myself.
+> 2) I think _require_xfs_io_command "chattr" "x" is enough to check if fs
+> supports FS_XFLAG_DAX.  Is it necessary to add _require_scratch_dax_iflag()?
+> like this:
+> _require_scratch_dax_iflag()
+> {
+> 	_require_xfs_io_command "chattr" "x"
+> }
 
-I did a test merge of this branch against upstream this morning and
-there weren't any conflicts.  Please let us know if you have any
-complaints about pulling this.
+I suggested that list based on the major control knobs that will be
+visible to userspace programs.  Even if this is just a one-line helper,
+its name is useful for recognizing which of those knobs we're looking
+for.
+
+Yes, you could probably save a trivial amount of time by skipping one
+iteration of bash function calling, but now everyone has to remember
+that the xfs_io chattr "x" flag means the dax inode flag, and not
+confuse it for chmod +x or something else.
 
 --D
 
-The following changes since commit 83d9088659e8f113741bb197324bd9554d159657:
-
-  Documentation/dax: Update Usage section (2020-05-04 08:49:39 -0700)
-
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/vfs-5.8-merge-2
-
-for you to fetch changes up to 2c567af418e3f9380c2051aada58b4e5a4b5c2ad:
-
-  fs: Introduce DCACHE_DONTCACHE (2020-05-13 08:44:35 -0700)
-
-----------------------------------------------------------------
-(More) new code for 5.8:
-- Introduce DONTCACHE flags for dentries and inodes.  This hint will
-  cause the VFS to drop the associated objects immediately after the
-  last put, so that we can change the file access mode (DAX or page
-  cache) on the fly.
-
-----------------------------------------------------------------
-Ira Weiny (2):
-      fs: Lift XFS_IDONTCACHE to the VFS layer
-      fs: Introduce DCACHE_DONTCACHE
-
- fs/dcache.c            | 19 +++++++++++++++++++
- fs/xfs/xfs_icache.c    |  4 ++--
- fs/xfs/xfs_inode.h     |  3 +--
- fs/xfs/xfs_super.c     |  2 +-
- include/linux/dcache.h |  2 ++
- include/linux/fs.h     |  7 ++++++-
- 6 files changed, 31 insertions(+), 6 deletions(-)
+> Best Regards,
+> Xiao Yang
+> 
+> 
