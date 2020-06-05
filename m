@@ -2,105 +2,84 @@ Return-Path: <SRS0=5ES6=7S=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF109C433E0
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jun 2020 04:13:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F414DC433DF
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jun 2020 08:14:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8CA4420738
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jun 2020 04:13:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1591330439;
-	bh=xmmyxOLDxp4vA/v92jpb4ZNMB7XoNfpyVBAZ8tip5cY=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=x1kp6b8txqEQ8rpUdF/AxXuS0Q393+D7Z/MaraWJz+8RcckloQ2ewphuAVANsxJ8s
-	 wCsWyvpHyBQ+WD7TIq5B3pcXdCPqOqy4YI6lvSjWq5p4EX7kq1QnoSAoMtyzBb4s4G
-	 w1tIT0OZgsSyfN2nccpso5ldaeXc+SEnTCOyR/jc=
+	by mail.kernel.org (Postfix) with ESMTP id BF65E207F5
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Jun 2020 08:14:55 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Wlt+LlFo"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726239AbgFEEN4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 5 Jun 2020 00:13:56 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52070 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725968AbgFEEN4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 5 Jun 2020 00:13:56 -0400
-Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1726191AbgFEIOz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 5 Jun 2020 04:14:55 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:24149 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726151AbgFEIOz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2020 04:14:55 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1591344894;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=HVDhWb1r7rguUcuYJMaAA2ah74lsJ+LpFlzYZhEXRdA=;
+        b=Wlt+LlFoa03Nbz9LBbrNxK8lrsfvoFDZ8O4/gFiYE/KxMUTiHlBdPcimJTpWG7zkyD52CZ
+        f2IehllCFDvzYK7E3hLwkgn/yl8bF25QiVI4yX3FyX8B76hPmlnbrSBhIFRafRNO3LS9AA
+        d7GdmaStvYtk5yBbxrh5Qk7xo+GjkBg=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-72-MhrP8fvGPEegi_BALlelKg-1; Fri, 05 Jun 2020 04:14:52 -0400
+X-MC-Unique: MhrP8fvGPEegi_BALlelKg-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3138820738;
-        Fri,  5 Jun 2020 04:13:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1591330435;
-        bh=xmmyxOLDxp4vA/v92jpb4ZNMB7XoNfpyVBAZ8tip5cY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=2kTI43S9t7SOafMg3P2PRec8X7ElNxhEFnhyy/5+wILOsyhBKjwvCxhD9qXjz3XEU
-         m4JLs7h+FbrziWYRIdELZDIUdOh5VVtdoLUwbwbRbTEmb2oEbhOnawL0yXb5t1G0eh
-         YANLx0/8/hi3ks/Pxff1nUbjMPOncRL8zdqlKqVA=
-Date:   Thu, 4 Jun 2020 21:13:53 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     syzbot <syzbot+7f2b4a7d4281e8c2aad0@syzkaller.appspotmail.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-next@vger.kernel.org,
-        sfr@canb.auug.org.au, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Subject: Re: linux-next test error: BUG: using smp_processor_id() in
- preemptible [ADDR] code: systemd-rfkill/6731
-Message-ID: <20200605041353.GI2667@sol.localdomain>
-References: <00000000000024436605a718ef99@google.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 179EA835B41
+        for <linux-ext4@vger.kernel.org>; Fri,  5 Jun 2020 08:14:52 +0000 (UTC)
+Received: from localhost.localdomain (unknown [10.40.194.50])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 85E0C6ACF6
+        for <linux-ext4@vger.kernel.org>; Fri,  5 Jun 2020 08:14:51 +0000 (UTC)
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     linux-ext4@vger.kernel.org
+Subject: [PATCH 3/4] e2fsck: use the right conversion specifier in e2fsck_allocate_memory()
+Date:   Fri,  5 Jun 2020 10:14:41 +0200
+Message-Id: <20200605081442.13428-3-lczerner@redhat.com>
+In-Reply-To: <20200605081442.13428-1-lczerner@redhat.com>
+References: <20200605081442.13428-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <00000000000024436605a718ef99@google.com>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jun 02, 2020 at 05:20:16AM -0700, syzbot wrote:
-> Hello,
-> 
-> syzbot found the following crash on:
-> 
-> HEAD commit:    0e21d462 Add linux-next specific files for 20200602
-> git tree:       linux-next
-> console output: https://syzkaller.appspot.com/x/log.txt?x=102c59ce100000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=ecc1aef35f550ee3
-> dashboard link: https://syzkaller.appspot.com/bug?extid=7f2b4a7d4281e8c2aad0
-> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-> 
-> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> Reported-by: syzbot+7f2b4a7d4281e8c2aad0@syzkaller.appspotmail.com
-> 
-> BUG: using smp_processor_id() in preemptible [00000000] code: systemd-rfkill/6731
-> caller is ext4_mb_new_blocks+0xa4d/0x3b70 fs/ext4/mballoc.c:4711
-> CPU: 0 PID: 6731 Comm: systemd-rfkill Not tainted 5.7.0-next-20200602-syzkaller #0
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
-> Call Trace:
->  __dump_stack lib/dump_stack.c:77 [inline]
->  dump_stack+0x18f/0x20d lib/dump_stack.c:118
->  check_preemption_disabled+0x20d/0x220 lib/smp_processor_id.c:48
->  ext4_mb_new_blocks+0xa4d/0x3b70 fs/ext4/mballoc.c:4711
->  ext4_ext_map_blocks+0x201b/0x33e0 fs/ext4/extents.c:4244
->  ext4_map_blocks+0x4cb/0x1640 fs/ext4/inode.c:626
->  ext4_getblk+0xad/0x520 fs/ext4/inode.c:833
->  ext4_bread+0x7c/0x380 fs/ext4/inode.c:883
->  ext4_append+0x153/0x360 fs/ext4/namei.c:67
->  ext4_init_new_dir fs/ext4/namei.c:2757 [inline]
->  ext4_mkdir+0x5e0/0xdf0 fs/ext4/namei.c:2802
->  vfs_mkdir+0x419/0x690 fs/namei.c:3632
->  do_mkdirat+0x21e/0x280 fs/namei.c:3655
->  do_syscall_64+0x60/0xe0 arch/x86/entry/common.c:359
->  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> RIP: 0033:0x7fe0d32c9687
-> Code: Bad RIP value.
-> RSP: 002b:00007fffd5e80488 EFLAGS: 00000246 ORIG_RAX: 0000000000000053
-> RAX: ffffffffffffffda RBX: 000055fab378a985 RCX: 00007fe0d32c9687
-> RDX: 00007fffd5e80350 RSI: 00000000000001ed RDI: 000055fab378a985
-> RBP: 00007fe0d32c9680 R08: 0000000000000100 R09: 0000000000000000
-> R10: 000055fab378a980 R11: 0000000000000246 R12: 00000000000001ed
-> R13: 00007fffd5e80610 R14: 0000000000000000 R15: 0000000000000000
-> 
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ e2fsck/util.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-#syz dup: linux-next test error: BUG: using smp_processor_id() in preemptible [ADDR] code: syz-fuzzer/6792
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index 88e0ea8a..79916928 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -123,10 +123,10 @@ void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned long size,
+ 	char buf[256];
+ 
+ #ifdef DEBUG_ALLOCATE_MEMORY
+-	printf("Allocating %u bytes for %s...\n", size, description);
++	printf("Allocating %lu bytes for %s...\n", size, description);
+ #endif
+ 	if (ext2fs_get_memzero(size, &ret)) {
+-		sprintf(buf, "Can't allocate %u bytes for %s\n",
++		sprintf(buf, "Can't allocate %lu bytes for %s\n",
+ 			size, description);
+ 		fatal_error(ctx, buf);
+ 	}
+-- 
+2.21.3
 
