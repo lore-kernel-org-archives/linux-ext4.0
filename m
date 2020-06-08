@@ -2,166 +2,207 @@ Return-Path: <SRS0=KfeM=7V=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9C11C433E0
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:13:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BB8AC433DF
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:25:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C38C7206A4
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:13:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 03D5A206D5
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:25:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728807AbgFHDNU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Jun 2020 23:13:20 -0400
-Received: from szxga07-in.huawei.com ([45.249.212.35]:55164 "EHLO huawei.com"
+        id S1728691AbgFHDZf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Jun 2020 23:25:35 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:5863 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728065AbgFHDNU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 7 Jun 2020 23:13:20 -0400
-Received: from DGGEMS410-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 5FB26F1A88578CC055FB
-        for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2020 11:13:18 +0800 (CST)
-Received: from huawei.com (10.175.124.28) by DGGEMS410-HUB.china.huawei.com
- (10.3.19.210) with Microsoft SMTP Server id 14.3.487.0; Mon, 8 Jun 2020
- 11:13:07 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
+        id S1728065AbgFHDZf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 7 Jun 2020 23:25:35 -0400
+Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 3471FD8015FC39EABC3A;
+        Mon,  8 Jun 2020 11:25:32 +0800 (CST)
+Received: from [127.0.0.1] (10.166.215.198) by DGGEMS405-HUB.china.huawei.com
+ (10.3.19.205) with Microsoft SMTP Server id 14.3.487.0; Mon, 8 Jun 2020
+ 11:25:24 +0800
+Subject: Re: [PATCH] ext4, jbd2: switch to use completion variable instead of
+ JBD2_REC_ERR
 To:     <linux-ext4@vger.kernel.org>
-CC:     <jack@suse.cz>, <yi.zhang@huawei.com>
-Subject: [PATCH v3 2/2] ext2: ext2_find_entry() return -ENOENT if no entry found
-Date:   Mon, 8 Jun 2020 11:40:43 +0800
-Message-ID: <20200608034043.10451-2-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.21.3
-In-Reply-To: <20200608034043.10451-1-yi.zhang@huawei.com>
-References: <20200608034043.10451-1-yi.zhang@huawei.com>
+CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
+        <zhangxiaoxu5@huawei.com>
+References: <20200526142039.32643-1-yi.zhang@huawei.com>
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <3539a7de-2bc5-cdeb-18a3-8fd72d1ac1ec@huawei.com>
+Date:   Mon, 8 Jun 2020 11:25:23 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.3.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.124.28]
+In-Reply-To: <20200526142039.32643-1-yi.zhang@huawei.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.166.215.198]
 X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Almost all callers of ext2_find_entry() transform NULL return value to
--ENOENT, so just let ext2_find_entry() retuen -ENOENT instead of NULL
-if no valid entry found, and also switch to check the return value of
-ext2_inode_by_name() in ext2_lookup() and ext2_get_parent().
+Hi，Ted and Jan, any suggestions of this patch?
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Suggested-by: Jan Kara <jack@suse.cz>
----
-v2 -> v3:
- - Remove "de->inode == 0" checking.
+Thanks,
+Yi.
 
- fs/ext2/dir.c   |  4 ++--
- fs/ext2/namei.c | 27 ++++++++-------------------
- 2 files changed, 10 insertions(+), 21 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 95e4f0bd55a3..70355ab6740e 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -393,7 +393,7 @@ struct ext2_dir_entry_2 *ext2_find_entry (struct inode *dir,
- 		}
- 	} while (n != start);
- out:
--	return NULL;
-+	return ERR_PTR(-ENOENT);
- 
- found:
- 	*res_page = page;
-@@ -419,7 +419,7 @@ int ext2_inode_by_name(struct inode *dir, const struct qstr *child, ino_t *ino)
- 	struct page *page;
- 	
- 	de = ext2_find_entry(dir, child, &page);
--	if (IS_ERR_OR_NULL(de))
-+	if (IS_ERR(de))
- 		return PTR_ERR(de);
- 
- 	*ino = le32_to_cpu(de->inode);
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 4b38e558d477..9601d469c5b1 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -56,17 +56,18 @@ static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
- static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, unsigned int flags)
- {
- 	struct inode * inode;
--	ino_t ino = 0;
-+	ino_t ino;
- 	int res;
- 	
- 	if (dentry->d_name.len > EXT2_NAME_LEN)
- 		return ERR_PTR(-ENAMETOOLONG);
- 
- 	res = ext2_inode_by_name(dir, &dentry->d_name, &ino);
--	if (res)
--		return ERR_PTR(res);
--	inode = NULL;
--	if (ino) {
-+	if (res) {
-+		if (res != -ENOENT)
-+			return ERR_PTR(res);
-+		inode = NULL;
-+	} else {
- 		inode = ext2_iget(dir->i_sb, ino);
- 		if (inode == ERR_PTR(-ESTALE)) {
- 			ext2_error(dir->i_sb, __func__,
-@@ -81,14 +82,13 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, uns
- struct dentry *ext2_get_parent(struct dentry *child)
- {
- 	struct qstr dotdot = QSTR_INIT("..", 2);
--	ino_t ino = 0;
-+	ino_t ino;
- 	int res;
- 
- 	res = ext2_inode_by_name(d_inode(child), &dotdot, &ino);
- 	if (res)
- 		return ERR_PTR(res);
--	if (!ino)
--		return ERR_PTR(-ENOENT);
-+
- 	return d_obtain_alias(ext2_iget(child->d_sb, ino));
- } 
- 
-@@ -289,10 +289,6 @@ static int ext2_unlink(struct inode * dir, struct dentry *dentry)
- 		err = PTR_ERR(de);
- 		goto out;
- 	}
--	if (!de) {
--		err = -ENOENT;
--		goto out;
--	}
- 
- 	err = ext2_delete_entry (de, page);
- 	if (err)
-@@ -349,10 +345,6 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 		err = PTR_ERR(old_de);
- 		goto out;
- 	}
--	if (!old_de) {
--		err = -ENOENT;
--		goto out;
--	}
- 
- 	if (S_ISDIR(old_inode->i_mode)) {
- 		err = -EIO;
-@@ -369,14 +361,11 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 		if (dir_de && !ext2_empty_dir (new_inode))
- 			goto out_dir;
- 
--		err = -ENOENT;
- 		new_de = ext2_find_entry(new_dir, &new_dentry->d_name, &new_page);
- 		if (IS_ERR(new_de)) {
- 			err = PTR_ERR(new_de);
- 			goto out_dir;
- 		}
--		if (!new_de)
--			goto out_dir;
- 		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
- 		new_inode->i_ctime = current_time(new_inode);
- 		if (dir_de)
--- 
-2.21.3
+On 2020/5/26 22:20, zhangyi (F) wrote:
+> In the ext4 filesystem with errors=panic, if one process is recording
+> errno in the superblock when invoking jbd2_journal_abort() due to some
+> error cases, it could be raced by another __ext4_abort() which is
+> setting the SB_RDONLY flag but missing panic because errno has not been
+> recorded.
+> 
+> jbd2_journal_abort()
+>  journal->j_flags |= JBD2_ABORT;
+>  jbd2_journal_update_sb_errno()
+>                                    | __ext4_abort()
+>                                    |  sb->s_flags |= SB_RDONLY;
+>                                    |  if (!JBD2_REC_ERR)
+>                                    |       return;
+>  journal->j_flags |= JBD2_REC_ERR;
+> 
+> Finally, it will no longer trigger panic because the filesystem has
+> already been set read-only. Fix this by remove JBD2_REC_ERR and switch
+> to use completion variable instead.
+> 
+> Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> ---
+>  fs/ext4/super.c      | 25 +++++++++++++------------
+>  fs/jbd2/journal.c    |  6 ++----
+>  include/linux/jbd2.h |  6 +++++-
+>  3 files changed, 20 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index bf5fcb477f66..987a0bd5b78a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -495,6 +495,8 @@ static bool system_going_down(void)
+>  
+>  static void ext4_handle_error(struct super_block *sb)
+>  {
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +
+>  	if (test_opt(sb, WARN_ON_ERROR))
+>  		WARN_ON_ONCE(1);
+>  
+> @@ -502,9 +504,9 @@ static void ext4_handle_error(struct super_block *sb)
+>  		return;
+>  
+>  	if (!test_opt(sb, ERRORS_CONT)) {
+> -		journal_t *journal = EXT4_SB(sb)->s_journal;
+> +		journal_t *journal = sbi->s_journal;
+>  
+> -		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+> +		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
+>  		if (journal)
+>  			jbd2_journal_abort(journal, -EIO);
+>  	}
+> @@ -522,9 +524,8 @@ static void ext4_handle_error(struct super_block *sb)
+>  		smp_wmb();
+>  		sb->s_flags |= SB_RDONLY;
+>  	} else if (test_opt(sb, ERRORS_PANIC)) {
+> -		if (EXT4_SB(sb)->s_journal &&
+> -		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
+> -			return;
+> +		if (sbi->s_journal && is_journal_aborted(sbi->s_journal))
+> +			wait_for_completion(&sbi->s_journal->j_record_errno);
+>  		panic("EXT4-fs (device %s): panic forced after error\n",
+>  			sb->s_id);
+>  	}
+> @@ -710,10 +711,11 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+>  void __ext4_abort(struct super_block *sb, const char *function,
+>  		  unsigned int line, int error, const char *fmt, ...)
+>  {
+> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	struct va_format vaf;
+>  	va_list args;
+>  
+> -	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +	if (unlikely(ext4_forced_shutdown(sbi)))
+>  		return;
+>  
+>  	save_error_info(sb, error, 0, 0, function, line);
+> @@ -726,20 +728,19 @@ void __ext4_abort(struct super_block *sb, const char *function,
+>  
+>  	if (sb_rdonly(sb) == 0) {
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+> -		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
+> +		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
+>  		/*
+>  		 * Make sure updated value of ->s_mount_flags will be visible
+>  		 * before ->s_flags update
+>  		 */
+>  		smp_wmb();
+>  		sb->s_flags |= SB_RDONLY;
+> -		if (EXT4_SB(sb)->s_journal)
+> -			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+> +		if (sbi->s_journal)
+> +			jbd2_journal_abort(sbi->s_journal, -EIO);
+>  	}
+>  	if (test_opt(sb, ERRORS_PANIC) && !system_going_down()) {
+> -		if (EXT4_SB(sb)->s_journal &&
+> -		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
+> -			return;
+> +		if (sbi->s_journal && is_journal_aborted(sbi->s_journal))
+> +			wait_for_completion(&sbi->s_journal->j_record_errno);
+>  		panic("EXT4-fs panic from previous error\n");
+>  	}
+>  }
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index a49d0e670ddf..b8acdb2f7ac7 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -1140,6 +1140,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
+>  	init_waitqueue_head(&journal->j_wait_commit);
+>  	init_waitqueue_head(&journal->j_wait_updates);
+>  	init_waitqueue_head(&journal->j_wait_reserved);
+> +	init_completion(&journal->j_record_errno);
+>  	mutex_init(&journal->j_barrier);
+>  	mutex_init(&journal->j_checkpoint_mutex);
+>  	spin_lock_init(&journal->j_revoke_lock);
+> @@ -2188,10 +2189,7 @@ void jbd2_journal_abort(journal_t *journal, int errno)
+>  	 * layer could realise that a filesystem check is needed.
+>  	 */
+>  	jbd2_journal_update_sb_errno(journal);
+> -
+> -	write_lock(&journal->j_state_lock);
+> -	journal->j_flags |= JBD2_REC_ERR;
+> -	write_unlock(&journal->j_state_lock);
+> +	complete_all(&journal->j_record_errno);
+>  }
+>  
+>  /**
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index f613d8529863..0f623b0c347f 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -765,6 +765,11 @@ struct journal_s
+>  	 */
+>  	int			j_errno;
+>  
+> +	/**
+> +	 * @j_record_errno: complete to record errno in the journal superblock
+> +	 */
+> +	struct completion	j_record_errno;
+> +
+>  	/**
+>  	 * @j_sb_buffer: The first part of the superblock buffer.
+>  	 */
+> @@ -1247,7 +1252,6 @@ JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
+>  #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
+>  						 * data write error in ordered
+>  						 * mode */
+> -#define JBD2_REC_ERR	0x080	/* The errno in the sb has been recorded */
+>  
+>  /*
+>   * Function declarations for the journaling transaction and buffer
+> 
 
