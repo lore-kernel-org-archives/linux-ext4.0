@@ -2,143 +2,233 @@ Return-Path: <SRS0=KfeM=7V=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DB753C433E0
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 01:39:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F56FC433E0
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:13:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 93CA3206A4
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 01:39:56 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=jguk.org header.i=@jguk.org header.b="Bkzyd7gM"
+	by mail.kernel.org (Postfix) with ESMTP id 64E42206A4
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:13:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728196AbgFHBj4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Jun 2020 21:39:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36552 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728065AbgFHBj4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Jun 2020 21:39:56 -0400
-Received: from mail-wm1-x344.google.com (mail-wm1-x344.google.com [IPv6:2a00:1450:4864:20::344])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B917BC08C5C3
-        for <linux-ext4@vger.kernel.org>; Sun,  7 Jun 2020 18:39:54 -0700 (PDT)
-Received: by mail-wm1-x344.google.com with SMTP id l17so2569976wmj.0
-        for <linux-ext4@vger.kernel.org>; Sun, 07 Jun 2020 18:39:54 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=jguk.org; s=google;
-        h=from:subject:to:cc:references:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=hc+ccXW71+qNr4G7lwCMMXSLLdx8mR+aqwaHOWDLr14=;
-        b=Bkzyd7gM1jXtBwZ4MNFf7OxQClsi2BPivyPNGfi2yDpZOTZPs/4p6bIlJdVh7TF7WI
-         41y1luJ7ivkk9R3LWfaZk+aeT69tLtsj12NX7H45ygsqqQXtQVvcKNIz2hoEakS9gN/h
-         vP7azpsDk2E/ShpJxTcqvl7xNdvr+9wd3hbX0ljB481m9CZBycRQ8SDbNVhmu9S+tDv8
-         fg3YcpQC7/APbszCJ97wuAtOBC7vOS9fH0xyIzZnUKcw6/m0KnfMvI/worBXkQvr2CSa
-         UF2XnOjRgcsWBYjZWiC+85vwXOetI8deqnQrK/K0I/O7eAMn4fNGozzPO3jK3DfNEiLj
-         ou/g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:subject:to:cc:references:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=hc+ccXW71+qNr4G7lwCMMXSLLdx8mR+aqwaHOWDLr14=;
-        b=Wx77kGMyPbm5nGhhWJViORXGNvKdNYdkD/MSIdpi0i7TuE4FTtq/JSjXBCQ6W/6Fu2
-         oLyVbJz03D+6aGdTNc7sweckRqZ0lmy/LIvm/DFXfZ8HxDcqYugL4KaaQSj0bfcqkGSb
-         +lGrpQSg16qVnSQ7c18hQbVVZnEqit/IVTmbT5nxv3FZHrYgnDmf7H6C5kLhrKxAxY+8
-         5V/KIwGNXQTdrinbLBX6u6CwXbvd68BcoFzMT8hBZyzAULZ7DEvHaVRmymOXNFRP0ugP
-         sWO1ltQKdxYiAYQyD4rQJ0lPBVashcP0GuWhta6mQtjf+DOKfMoCAlVdy2N3uZFuWtw7
-         2DOQ==
-X-Gm-Message-State: AOAM532ORhk0rWeJI2rt1mGlJqqJ+sjUEMgnde/Xo7Vh+XNngKnghp0t
-        8gAfhr2spP6TUcnhspPsk8bL2+ci9cQ=
-X-Google-Smtp-Source: ABdhPJxpZnuO9M/OnjeCs8H7cLQ4TZvmo6yAimcBwOyXXeHRs5XeQhBfwzA8R369+YOYOKqUF0FwQQ==
-X-Received: by 2002:a1c:9e13:: with SMTP id h19mr14430757wme.107.1591580392955;
-        Sun, 07 Jun 2020 18:39:52 -0700 (PDT)
-Received: from [192.168.0.12] (cpc87281-slou4-2-0-cust47.17-4.cable.virginm.net. [92.236.12.48])
-        by smtp.gmail.com with ESMTPSA id h188sm21693820wmh.2.2020.06.07.18.39.51
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 07 Jun 2020 18:39:51 -0700 (PDT)
-From:   Jonny Grant <jg@jguk.org>
-Subject: Re: /fs/ext4/namei.c ext4_find_dest_de()
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-References: <2edc7d6a-289e-57ad-baf1-477dc240474d@jguk.org>
- <20200504015122.GB404484@mit.edu>
- <e6e172ae-ba19-f303-3aa9-a388adba8cb0@jguk.org>
- <20200528011221.GC228632@mit.edu>
-Message-ID: <fea0b424-cdb4-b6f8-ec0a-3aae8d66233e@jguk.org>
-Date:   Mon, 8 Jun 2020 02:39:50 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.8.0
+        id S1728782AbgFHDNR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Jun 2020 23:13:17 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:40420 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728065AbgFHDNP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 7 Jun 2020 23:13:15 -0400
+Received: from DGGEMS410-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 546AF9800714CF17232E
+        for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2020 11:13:13 +0800 (CST)
+Received: from huawei.com (10.175.124.28) by DGGEMS410-HUB.china.huawei.com
+ (10.3.19.210) with Microsoft SMTP Server id 14.3.487.0; Mon, 8 Jun 2020
+ 11:13:06 +0800
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <jack@suse.cz>, <yi.zhang@huawei.com>
+Subject: [PATCH v3 1/2] ext2: propagate errors up to ext2_find_entry()'s callers
+Date:   Mon, 8 Jun 2020 11:40:42 +0800
+Message-ID: <20200608034043.10451-1-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.21.3
 MIME-Version: 1.0
-In-Reply-To: <20200528011221.GC228632@mit.edu>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-GB
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.124.28]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+The same to commit <36de928641ee4> (ext4: propagate errors up to
+ext4_find_entry()'s callers') in ext4, also return error instead of NULL
+pointer in case of some error happens in ext2_find_entry() (e.g. -ENOMEM
+or -EIO). This could avoid a negative dentry cache entry installed even
+it failed to read directory block due to IO error.
 
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+v1 -> v2:
+ - Remove ret parameter in ext2_find_entry().
 
-On 28/05/2020 02:12, Theodore Y. Ts'o wrote:
-> On Wed, May 27, 2020 at 10:25:43PM +0100, Jonny Grant wrote:
->>
->>
->> How about adding an improved mkdir to POSIX and the Linux kernel? Let's call it mkdir2()
->>
->> It has one more error, for EISDIR
->>
->> [EEXIST]
->> The named file exists.
->>
->> [EISDIR]
->> Directory with that name exists.
-> 
-> It's *really* not worth it.
+ fs/ext2/dir.c   | 53 ++++++++++++++++++++++++-------------------------
+ fs/ext2/ext2.h  |  3 ++-
+ fs/ext2/namei.c | 32 +++++++++++++++++++++++------
+ 3 files changed, 54 insertions(+), 34 deletions(-)
 
-You're right.
-
-> You seem to really care about this; why don't you just keep your own
-> version of shellutils which calls stat(1) if you get EEXIST and to
-> distinguish between these two cases?
-> 
-> I know the shellutils maintainers has rejected this.  But that's OK,
-> you can have your own copy on your systems.  You might want to reflect
-> that if the shellutils maintainer refused to add the stat(1) on the
-> error path, what makes you think they will accept a change to use a
-> non-standard mkdir2() system call?
-
-You're right, it's unlikely.
-
-> If you want to try to convince Austin Common Standards Revision Group
-> that it's worth it to mandate a whole new system call *just* for a new
-> error code, you're welcome to try.  I suspect you will not get a good
-> reception, and even if you did, Linux VFS maintainer may well very
-> well deride the proposal as silly, and refuse to follow the lead of
-> the Austin group.  In fact, Al Viro is very likely not to be as
-> politic as I have been.  (It's likely the response would have included
-> things like "idiotic idea" and "stupid".)
-> 
->> I'm tempted to suggest this new function mkdir2() returns 0 on success, or
->> an error number directly number. That would do away with 'errno' for this as
->> well.
-> 
-> This is not going to get a good reception from either Al or the Austin
-> Group, I predict.  If you really have strong ideas of what you think
-> an OS and its interfaces should look like, perhaps you should just
-> design your own OS from scratch.
-
-Yes, I agree, no one would want to change anything.
-I recall other APIs like pthread_setname_np return 0 on success, and the error code directly, so there is some trend in 
-that direction. That's part of POSIX.1
-
-
-Hmm designing an OS, could be fun as a hobby, but wouldn't be big and professional like linux is on x86 x64 these days. 
-I'd probably seek feedback on things people like/dislike in POSIX, as any OS would resemble it somewhat anyway, at least 
-due to practical reasons compiling common tools. It would end up with a POSIX wrapper, on top of any APIs I designed, 
-and then there would be no reason to use my APIs anyway. It's more fun to contribute to something with global appeal 
-than a hobby project.
-
-Regards, Jonny
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 13318e255ebf..95e4f0bd55a3 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -348,7 +348,6 @@ struct ext2_dir_entry_2 *ext2_find_entry (struct inode *dir,
+ 	struct page *page = NULL;
+ 	struct ext2_inode_info *ei = EXT2_I(dir);
+ 	ext2_dirent * de;
+-	int dir_has_error = 0;
+ 
+ 	if (npages == 0)
+ 		goto out;
+@@ -362,25 +361,25 @@ struct ext2_dir_entry_2 *ext2_find_entry (struct inode *dir,
+ 	n = start;
+ 	do {
+ 		char *kaddr;
+-		page = ext2_get_page(dir, n, dir_has_error);
+-		if (!IS_ERR(page)) {
+-			kaddr = page_address(page);
+-			de = (ext2_dirent *) kaddr;
+-			kaddr += ext2_last_byte(dir, n) - reclen;
+-			while ((char *) de <= kaddr) {
+-				if (de->rec_len == 0) {
+-					ext2_error(dir->i_sb, __func__,
+-						"zero-length directory entry");
+-					ext2_put_page(page);
+-					goto out;
+-				}
+-				if (ext2_match (namelen, name, de))
+-					goto found;
+-				de = ext2_next_entry(de);
++		page = ext2_get_page(dir, n, 0);
++		if (IS_ERR(page))
++			return ERR_CAST(page);
++
++		kaddr = page_address(page);
++		de = (ext2_dirent *) kaddr;
++		kaddr += ext2_last_byte(dir, n) - reclen;
++		while ((char *) de <= kaddr) {
++			if (de->rec_len == 0) {
++				ext2_error(dir->i_sb, __func__,
++					"zero-length directory entry");
++				ext2_put_page(page);
++				goto out;
+ 			}
+-			ext2_put_page(page);
+-		} else
+-			dir_has_error = 1;
++			if (ext2_match(namelen, name, de))
++				goto found;
++			de = ext2_next_entry(de);
++		}
++		ext2_put_page(page);
+ 
+ 		if (++n >= npages)
+ 			n = 0;
+@@ -414,18 +413,18 @@ struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
+ 	return de;
+ }
+ 
+-ino_t ext2_inode_by_name(struct inode *dir, const struct qstr *child)
++int ext2_inode_by_name(struct inode *dir, const struct qstr *child, ino_t *ino)
+ {
+-	ino_t res = 0;
+ 	struct ext2_dir_entry_2 *de;
+ 	struct page *page;
+ 	
+-	de = ext2_find_entry (dir, child, &page);
+-	if (de) {
+-		res = le32_to_cpu(de->inode);
+-		ext2_put_page(page);
+-	}
+-	return res;
++	de = ext2_find_entry(dir, child, &page);
++	if (IS_ERR_OR_NULL(de))
++		return PTR_ERR(de);
++
++	*ino = le32_to_cpu(de->inode);
++	ext2_put_page(page);
++	return 0;
+ }
+ 
+ static int ext2_prepare_chunk(struct page *page, loff_t pos, unsigned len)
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 8178bd38a9d6..a321ff9bf1b4 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -738,7 +738,8 @@ extern void ext2_rsv_window_add(struct super_block *sb, struct ext2_reserve_wind
+ 
+ /* dir.c */
+ extern int ext2_add_link (struct dentry *, struct inode *);
+-extern ino_t ext2_inode_by_name(struct inode *, const struct qstr *);
++extern int ext2_inode_by_name(struct inode *dir,
++			      const struct qstr *child, ino_t *ino);
+ extern int ext2_make_empty(struct inode *, struct inode *);
+ extern struct ext2_dir_entry_2 * ext2_find_entry (struct inode *,const struct qstr *, struct page **);
+ extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index ccfbbf59e2fc..4b38e558d477 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -56,12 +56,15 @@ static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
+ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, unsigned int flags)
+ {
+ 	struct inode * inode;
+-	ino_t ino;
++	ino_t ino = 0;
++	int res;
+ 	
+ 	if (dentry->d_name.len > EXT2_NAME_LEN)
+ 		return ERR_PTR(-ENAMETOOLONG);
+ 
+-	ino = ext2_inode_by_name(dir, &dentry->d_name);
++	res = ext2_inode_by_name(dir, &dentry->d_name, &ino);
++	if (res)
++		return ERR_PTR(res);
+ 	inode = NULL;
+ 	if (ino) {
+ 		inode = ext2_iget(dir->i_sb, ino);
+@@ -78,7 +81,12 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, uns
+ struct dentry *ext2_get_parent(struct dentry *child)
+ {
+ 	struct qstr dotdot = QSTR_INIT("..", 2);
+-	unsigned long ino = ext2_inode_by_name(d_inode(child), &dotdot);
++	ino_t ino = 0;
++	int res;
++
++	res = ext2_inode_by_name(d_inode(child), &dotdot, &ino);
++	if (res)
++		return ERR_PTR(res);
+ 	if (!ino)
+ 		return ERR_PTR(-ENOENT);
+ 	return d_obtain_alias(ext2_iget(child->d_sb, ino));
+@@ -276,7 +284,11 @@ static int ext2_unlink(struct inode * dir, struct dentry *dentry)
+ 	if (err)
+ 		goto out;
+ 
+-	de = ext2_find_entry (dir, &dentry->d_name, &page);
++	de = ext2_find_entry(dir, &dentry->d_name, &page);
++	if (IS_ERR(de)) {
++		err = PTR_ERR(de);
++		goto out;
++	}
+ 	if (!de) {
+ 		err = -ENOENT;
+ 		goto out;
+@@ -332,7 +344,11 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
+ 	if (err)
+ 		goto out;
+ 
+-	old_de = ext2_find_entry (old_dir, &old_dentry->d_name, &old_page);
++	old_de = ext2_find_entry(old_dir, &old_dentry->d_name, &old_page);
++	if (IS_ERR(old_de)) {
++		err = PTR_ERR(old_de);
++		goto out;
++	}
+ 	if (!old_de) {
+ 		err = -ENOENT;
+ 		goto out;
+@@ -354,7 +370,11 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
+ 			goto out_dir;
+ 
+ 		err = -ENOENT;
+-		new_de = ext2_find_entry (new_dir, &new_dentry->d_name, &new_page);
++		new_de = ext2_find_entry(new_dir, &new_dentry->d_name, &new_page);
++		if (IS_ERR(new_de)) {
++			err = PTR_ERR(new_de);
++			goto out_dir;
++		}
+ 		if (!new_de)
+ 			goto out_dir;
+ 		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
+-- 
+2.21.3
 
