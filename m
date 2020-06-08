@@ -2,41 +2,41 @@ Return-Path: <SRS0=KfeM=7V=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BB8AC433DF
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:25:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EE12C433DF
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:32:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 03D5A206D5
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:25:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2E58820724
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Jun 2020 03:32:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728691AbgFHDZf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Jun 2020 23:25:35 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:5863 "EHLO huawei.com"
+        id S1728781AbgFHDcW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Jun 2020 23:32:22 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:5864 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728065AbgFHDZf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 7 Jun 2020 23:25:35 -0400
-Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 3471FD8015FC39EABC3A;
-        Mon,  8 Jun 2020 11:25:32 +0800 (CST)
-Received: from [127.0.0.1] (10.166.215.198) by DGGEMS405-HUB.china.huawei.com
- (10.3.19.205) with Microsoft SMTP Server id 14.3.487.0; Mon, 8 Jun 2020
- 11:25:24 +0800
-Subject: Re: [PATCH] ext4, jbd2: switch to use completion variable instead of
- JBD2_REC_ERR
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
+        id S1728065AbgFHDcV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 7 Jun 2020 23:32:21 -0400
+Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 72B11F343B1D7C55C030;
+        Mon,  8 Jun 2020 11:32:19 +0800 (CST)
+Received: from [127.0.0.1] (10.166.215.198) by DGGEMS406-HUB.china.huawei.com
+ (10.3.19.206) with Microsoft SMTP Server id 14.3.487.0; Mon, 8 Jun 2020
+ 11:32:11 +0800
+Subject: Re: [PATCH 00/10] ext4: fix inconsistency since reading old metadata
+ from disk
+To:     <tytso@mit.edu>, <jack@suse.cz>
+CC:     <linux-ext4@vger.kernel.org>, <adilger.kernel@dilger.ca>,
         <zhangxiaoxu5@huawei.com>
-References: <20200526142039.32643-1-yi.zhang@huawei.com>
+References: <20200526071754.33819-1-yi.zhang@huawei.com>
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
-Message-ID: <3539a7de-2bc5-cdeb-18a3-8fd72d1ac1ec@huawei.com>
-Date:   Mon, 8 Jun 2020 11:25:23 +0800
+Message-ID: <9404b417-73ea-c80c-5313-30f159378675@huawei.com>
+Date:   Mon, 8 Jun 2020 11:32:11 +0800
 User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
  Thunderbird/68.3.0
 MIME-Version: 1.0
-In-Reply-To: <20200526142039.32643-1-yi.zhang@huawei.com>
+In-Reply-To: <20200526071754.33819-1-yi.zhang@huawei.com>
 Content-Type: text/plain; charset="utf-8"
 Content-Language: en-US
 Content-Transfer-Encoding: 8bit
@@ -47,162 +47,113 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi，Ted and Jan, any suggestions of this patch?
+Hi，Ted and Jan, any suggestions of this patch set?
 
 Thanks,
 Yi.
 
-On 2020/5/26 22:20, zhangyi (F) wrote:
-> In the ext4 filesystem with errors=panic, if one process is recording
-> errno in the superblock when invoking jbd2_journal_abort() due to some
-> error cases, it could be raced by another __ext4_abort() which is
-> setting the SB_RDONLY flag but missing panic because errno has not been
-> recorded.
+On 2020/5/26 15:17, zhangyi (F) wrote:
+> Background
+> ==========
 > 
-> jbd2_journal_abort()
->  journal->j_flags |= JBD2_ABORT;
->  jbd2_journal_update_sb_errno()
->                                    | __ext4_abort()
->                                    |  sb->s_flags |= SB_RDONLY;
->                                    |  if (!JBD2_REC_ERR)
->                                    |       return;
->  journal->j_flags |= JBD2_REC_ERR;
+> This patch set point to fix the inconsistency problem which has been
+> discussed and partial fixed in [1].
 > 
-> Finally, it will no longer trigger panic because the filesystem has
-> already been set read-only. Fix this by remove JBD2_REC_ERR and switch
-> to use completion variable instead.
+> Now, the problem is on the unstable storage which has a flaky transport
+> (e.g. iSCSI transport may disconnect few seconds and reconnect due to
+> the bad network environment), if we failed to async write metadata in
+> background, the end write routine in block layer will clear the buffer's
+> uptodate flag, but the data in such buffer is actually uptodate. Finally
+> we may read "old && inconsistent" metadata from the disk when we get the
+> buffer later because not only the uptodate flag was cleared but also we
+> do not check the write io error flag, or even worse the buffer has been
+> freed due to memory presure.
 > 
-> Fixes: 4327ba52afd03 ("ext4, jbd2: ensure entering into panic after recording an error in superblock")
-> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-> ---
->  fs/ext4/super.c      | 25 +++++++++++++------------
->  fs/jbd2/journal.c    |  6 ++----
->  include/linux/jbd2.h |  6 +++++-
->  3 files changed, 20 insertions(+), 17 deletions(-)
+> Fortunately, if the jbd2 do checkpoint after async IO error happens,
+> the checkpoint routine will check the write_io_error flag and abort the
+> the journal if detect IO error. And in the journal recover case, the
+> recover code will invoke sync_blockdev() after recover complete, it will
+> also detect IO error and refuse to mount the filesystem.
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index bf5fcb477f66..987a0bd5b78a 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -495,6 +495,8 @@ static bool system_going_down(void)
->  
->  static void ext4_handle_error(struct super_block *sb)
->  {
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +
->  	if (test_opt(sb, WARN_ON_ERROR))
->  		WARN_ON_ONCE(1);
->  
-> @@ -502,9 +504,9 @@ static void ext4_handle_error(struct super_block *sb)
->  		return;
->  
->  	if (!test_opt(sb, ERRORS_CONT)) {
-> -		journal_t *journal = EXT4_SB(sb)->s_journal;
-> +		journal_t *journal = sbi->s_journal;
->  
-> -		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
-> +		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
->  		if (journal)
->  			jbd2_journal_abort(journal, -EIO);
->  	}
-> @@ -522,9 +524,8 @@ static void ext4_handle_error(struct super_block *sb)
->  		smp_wmb();
->  		sb->s_flags |= SB_RDONLY;
->  	} else if (test_opt(sb, ERRORS_PANIC)) {
-> -		if (EXT4_SB(sb)->s_journal &&
-> -		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-> -			return;
-> +		if (sbi->s_journal && is_journal_aborted(sbi->s_journal))
-> +			wait_for_completion(&sbi->s_journal->j_record_errno);
->  		panic("EXT4-fs (device %s): panic forced after error\n",
->  			sb->s_id);
->  	}
-> @@ -710,10 +711,11 @@ void __ext4_std_error(struct super_block *sb, const char *function,
->  void __ext4_abort(struct super_block *sb, const char *function,
->  		  unsigned int line, int error, const char *fmt, ...)
->  {
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	struct va_format vaf;
->  	va_list args;
->  
-> -	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
-> +	if (unlikely(ext4_forced_shutdown(sbi)))
->  		return;
->  
->  	save_error_info(sb, error, 0, 0, function, line);
-> @@ -726,20 +728,19 @@ void __ext4_abort(struct super_block *sb, const char *function,
->  
->  	if (sb_rdonly(sb) == 0) {
->  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
-> -		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
-> +		sbi->s_mount_flags |= EXT4_MF_FS_ABORTED;
->  		/*
->  		 * Make sure updated value of ->s_mount_flags will be visible
->  		 * before ->s_flags update
->  		 */
->  		smp_wmb();
->  		sb->s_flags |= SB_RDONLY;
-> -		if (EXT4_SB(sb)->s_journal)
-> -			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
-> +		if (sbi->s_journal)
-> +			jbd2_journal_abort(sbi->s_journal, -EIO);
->  	}
->  	if (test_opt(sb, ERRORS_PANIC) && !system_going_down()) {
-> -		if (EXT4_SB(sb)->s_journal &&
-> -		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
-> -			return;
-> +		if (sbi->s_journal && is_journal_aborted(sbi->s_journal))
-> +			wait_for_completion(&sbi->s_journal->j_record_errno);
->  		panic("EXT4-fs panic from previous error\n");
->  	}
->  }
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index a49d0e670ddf..b8acdb2f7ac7 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -1140,6 +1140,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
->  	init_waitqueue_head(&journal->j_wait_commit);
->  	init_waitqueue_head(&journal->j_wait_updates);
->  	init_waitqueue_head(&journal->j_wait_reserved);
-> +	init_completion(&journal->j_record_errno);
->  	mutex_init(&journal->j_barrier);
->  	mutex_init(&journal->j_checkpoint_mutex);
->  	spin_lock_init(&journal->j_revoke_lock);
-> @@ -2188,10 +2189,7 @@ void jbd2_journal_abort(journal_t *journal, int errno)
->  	 * layer could realise that a filesystem check is needed.
->  	 */
->  	jbd2_journal_update_sb_errno(journal);
-> -
-> -	write_lock(&journal->j_state_lock);
-> -	journal->j_flags |= JBD2_REC_ERR;
-> -	write_unlock(&journal->j_state_lock);
-> +	complete_all(&journal->j_record_errno);
->  }
->  
->  /**
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index f613d8529863..0f623b0c347f 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -765,6 +765,11 @@ struct journal_s
->  	 */
->  	int			j_errno;
->  
-> +	/**
-> +	 * @j_record_errno: complete to record errno in the journal superblock
-> +	 */
-> +	struct completion	j_record_errno;
-> +
->  	/**
->  	 * @j_sb_buffer: The first part of the superblock buffer.
->  	 */
-> @@ -1247,7 +1252,6 @@ JBD2_FEATURE_INCOMPAT_FUNCS(csum3,		CSUM_V3)
->  #define JBD2_ABORT_ON_SYNCDATA_ERR	0x040	/* Abort the journal on file
->  						 * data write error in ordered
->  						 * mode */
-> -#define JBD2_REC_ERR	0x080	/* The errno in the sb has been recorded */
->  
->  /*
->   * Function declarations for the journaling transaction and buffer
+> Current ext4 have already deal with this problem in __ext4_get_inode_loc()
+> and commit 7963e5ac90125 ("ext4: treat buffers with write errors as
+> containing valid data"), but it's not enough.
+> 
+> [1] https://lore.kernel.org/linux-ext4/20190823030207.GC8130@mit.edu/
+> 
+> Description
+> ===========
+> 
+> This patch set add and rework 7 wrapper functions of getting metadata
+> blocks, replace all sb_bread() / sb_getblk*() / ext4_bread() and
+> sb_breadahead*(). Add buffer_write_io_error() checking into them, if
+> the buffer isn't uptodate and write_io_error flag was set, which means
+> that the buffer has been failed to write out to disk, re-add the
+> uptodate flag to prevent subsequent read operation.
+> 
+>  - ext4_sb_getblk(): works the same as sb_getblk(), use to replace all
+>    sb_getblk() used for newly allocated blocks and getting buffers.
+>  - ext4_sb_getblk_locked(): works the same as sb_getblk() except check &
+>    fix buffer uotpdate flag, use to replace all sb_getblk() used for
+>    getting buffers to read.
+>  - ext4_sb_getblk_gfp(): gfp version of ext4_sb_getblk().
+>  - ext4_sb_getblk_locked_gfp(): gfp version of ext4_sb_getblk_locked().
+>  - ext4_sb_bread(): get buffer and submit read bio if buffer is actually
+>    not uptodate.
+>  - ext4_sb_bread_unmovable(): unmovable version of ext4_sb_bread().
+>  - ext4_sb_breadahead_unmovable(): works the same to ext4_sb_bread_unmovable()
+>    except skip submit read bio if failed to lock the buffer.
+> 
+> Patch 1-2: do some small change in ext4 inode eio simulation and add a
+> helper in buffer.c, just prepare for below patches.
+> Patch 3: add the ext4_sb_*() function to deal with the write_io_error
+> flag in buffer.
+> Patch 4-8: replace all sb_*() with ext4_sb_*() in ext4.
+> Patch 9: deal with the buffer shrinking case, abort jbd2/fs when
+> shrinking a buffer with write_io_error flag.
+> Patch 10: just do some cleanup.
+> 
+> After this patch set, we need to use above 7 wrapper functions to
+> get/read metadata block instead of invoke sb_*() functions defined in
+> fs/buffer.h.
+> 
+> Test
+> ====
+> 
+> This patch set is based on linux-5.7-rc7 and has been tests by xfstests
+> in auto mode.
+> 
+> Thanks,
+> Yi.
+> 
+> 
+> zhangyi (F) (10):
+>   ext4: move inode eio simulation behind io completeion
+>   fs: pick out ll_rw_one_block() helper function
+>   ext4: add ext4_sb_getblk*() wrapper functions
+>   ext4: replace sb_getblk() with ext4_sb_getblk_locked()
+>   ext4: replace sb_bread*() with ext4_sb_bread*()
+>   ext4: replace sb_getblk() with ext4_sb_getblk()
+>   ext4: switch to use ext4_sb_getblk_locked() in ext4_getblk()
+>   ext4: replace sb_breadahead() with ext4_sb_breadahead()
+>   ext4: abort the filesystem while freeing the write error io buffer
+>   ext4: remove unused parameter in jbd2_journal_try_to_free_buffers()
+> 
+>  fs/buffer.c                 |  41 ++++++----
+>  fs/ext4/balloc.c            |   6 +-
+>  fs/ext4/ext4.h              |  60 ++++++++++++---
+>  fs/ext4/extents.c           |  13 ++--
+>  fs/ext4/ialloc.c            |   6 +-
+>  fs/ext4/indirect.c          |  13 ++--
+>  fs/ext4/inline.c            |   2 +-
+>  fs/ext4/inode.c             |  53 +++++--------
+>  fs/ext4/mmp.c               |   2 +-
+>  fs/ext4/resize.c            |  24 +++---
+>  fs/ext4/super.c             | 145 +++++++++++++++++++++++++++++++-----
+>  fs/ext4/xattr.c             |   4 +-
+>  fs/jbd2/transaction.c       |  20 +++--
+>  include/linux/buffer_head.h |   1 +
+>  include/linux/jbd2.h        |   3 +-
+>  15 files changed, 277 insertions(+), 116 deletions(-)
 > 
 
