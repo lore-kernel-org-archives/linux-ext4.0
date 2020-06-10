@@ -1,88 +1,107 @@
-Return-Path: <SRS0=dHPg=7W=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=FgUg=7X=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.4 required=3.0 tests=FROM_LOCAL_HEX,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D1CCC433DF
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Jun 2020 20:28:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D82BAC433E1
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Jun 2020 01:48:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6532C20737
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Jun 2020 20:28:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1591734507;
-	bh=H/1jyA2ENEl76fko3i9AUC1qpu0Coz7F0CswtYS3WFg=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=2ON8VvcF2SN1AtuS7WUUkdEPFyHlwq63HsPFGTzENqQhDoRhAARMV8lrTGU+3ECV0
-	 YwYoLfvM24luw+rAWpkRtugfRSNVX+FnSyfbJOTcDgEhH37byi8m0AAM4+eTpmzYMT
-	 uR+nS+Q1nmN82mhR++5x1HxRHGtU2LucVQF60KFE=
+	by mail.kernel.org (Postfix) with ESMTP id B8CCD20734
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Jun 2020 01:48:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387786AbgFIU20 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Jun 2020 16:28:26 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44700 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733222AbgFIU2X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Jun 2020 16:28:23 -0400
-Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7DB8A206C3;
-        Tue,  9 Jun 2020 20:28:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1591734502;
-        bh=H/1jyA2ENEl76fko3i9AUC1qpu0Coz7F0CswtYS3WFg=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=P4T3MvRrVMmtF3DbaNR6Vf9oaL5Jydxxzs2uKXV09TAGaRgb3FsE2ef7SwvZALph5
-         oLzKqq/yk82ZVm20+xmwMUS0IlcojUDB+UExygverfwT7n9SSgELPQgUAZuSMTp3+/
-         zSn333TkeHIJXbPbfcPqt0I9lUR/Dp6eiEyNsjFA=
-Date:   Tue, 9 Jun 2020 13:28:21 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Daniel Rosenberg <drosen@google.com>, stable@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: Re: [PATCH v2] ext4: avoid utf8_strncasecmp() with unstable name
-Message-ID: <20200609202821.GB1105@sol.localdomain>
-References: <20200601200543.59417-1-ebiggers@kernel.org>
+        id S1726090AbgFJBsR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Jun 2020 21:48:17 -0400
+Received: from mail-io1-f70.google.com ([209.85.166.70]:35476 "EHLO
+        mail-io1-f70.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725988AbgFJBsP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2020 21:48:15 -0400
+Received: by mail-io1-f70.google.com with SMTP id c5so563497ioh.2
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Jun 2020 18:48:14 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
+        bh=tCNv4MDksUTvEJtckn2siy6hhdfAtvNNzotf7ihGV9M=;
+        b=dhoCsNXDd6t7Jg78YQUXOInEUbNpNdzEryOhuihJkDXQoVIJzC8w1bjvgWngDO/mZ/
+         V/yd9tSODmGvL/HtD0pxGAuWNgGnplkvnr8u17GsO2HbKJribELVsPyon9ZU5f+uZrb5
+         P+rTjxI7EhZ+jOIv4x237SZW+vaS6SUFtiE71ybhHJ7+hdktpnqypsoYpqMP2dOczWZi
+         gRmpbhbfTQy+D0kO32uuq0gUQM8VAxTgIuECMQa+vtFhzNrvfuqtOeS0D+0A1C+7Gb6P
+         shp9PUVjRFlCz3fvXrA8DzSRio+yL2Rq3oBiIwALupdKZ2YQk9uV62vuy588g7pXEEqL
+         ITaw==
+X-Gm-Message-State: AOAM532g1iFdvFU8cPIXXJTP6Ly1R7OZ+Tdssin5JVDP8WX74vrDmX1B
+        RWkgv4ySkeVuMAVUlyBoNqg9d2tg6hSZIqA5G4Kb0BLZ7mX+
+X-Google-Smtp-Source: ABdhPJzlbbQqB+bRC/Lpi5Ncz3C53bANqqT4UivwwU48hlv7Ea2cNi/oHmCV7GKnB7uL5/fOrvLrCG+ZyxAfqp0k+QhYJ3u3uZQk
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200601200543.59417-1-ebiggers@kernel.org>
+X-Received: by 2002:a6b:7516:: with SMTP id l22mr1061993ioh.18.1591753693598;
+ Tue, 09 Jun 2020 18:48:13 -0700 (PDT)
+Date:   Tue, 09 Jun 2020 18:48:13 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <0000000000007a16f705a7b1096d@google.com>
+Subject: upstream test error: BUG: using smp_processor_id() in preemptible
+ code in ext4_mb_new_blocks
+From:   syzbot <syzbot+0113b9be6667b5b50840@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 01, 2020 at 01:05:43PM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> If the dentry name passed to ->d_compare() fits in dentry::d_iname, then
-> it may be concurrently modified by a rename.  This can cause undefined
-> behavior (possibly out-of-bounds memory accesses or crashes) in
-> utf8_strncasecmp(), since fs/unicode/ isn't written to handle strings
-> that may be concurrently modified.
-> 
-> Fix this by first copying the filename to a stack buffer if needed.
-> This way we get a stable snapshot of the filename.
-> 
-> Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
-> Cc: <stable@vger.kernel.org> # v5.2+
-> Cc: Al Viro <viro@zeniv.linux.org.uk>
-> Cc: Daniel Rosenberg <drosen@google.com>
-> Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
-> 
-> v2: use memcpy() + barrier() instead of a byte-by-byte copy.
-> 
->  fs/ext4/dir.c | 16 ++++++++++++++++
->  1 file changed, 16 insertions(+)
+Hello,
 
-Ted, could you take this through the ext4 tree as a fix for 5.8?
-The f2fs patch has been merged already.
+syzbot found the following crash on:
 
-- Eric
+HEAD commit:    5b14671b Merge tag 'fuse-update-5.8' of git://git.kernel.o..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=12a11ec1100000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=d1ea633f7958e008
+dashboard link: https://syzkaller.appspot.com/bug?extid=0113b9be6667b5b50840
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+0113b9be6667b5b50840@syzkaller.appspotmail.com
+
+BUG: using smp_processor_id() in preemptible [00000000] code: systemd-rfkill/6740
+caller is ext4_mb_new_blocks+0xa77/0x3b30 fs/ext4/mballoc.c:4711
+CPU: 0 PID: 6740 Comm: systemd-rfkill Not tainted 5.7.0-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+Call Trace:
+ __dump_stack lib/dump_stack.c:77 [inline]
+ dump_stack+0x18f/0x20d lib/dump_stack.c:118
+ check_preemption_disabled lib/smp_processor_id.c:47 [inline]
+ debug_smp_processor_id.cold+0x88/0x9b lib/smp_processor_id.c:57
+ ext4_mb_new_blocks+0xa77/0x3b30 fs/ext4/mballoc.c:4711
+ ext4_ext_map_blocks+0x2044/0x3410 fs/ext4/extents.c:4244
+ ext4_map_blocks+0x4cb/0x1640 fs/ext4/inode.c:626
+ ext4_getblk+0xad/0x520 fs/ext4/inode.c:833
+ ext4_bread+0x7c/0x380 fs/ext4/inode.c:883
+ ext4_append+0x153/0x360 fs/ext4/namei.c:67
+ ext4_init_new_dir fs/ext4/namei.c:2757 [inline]
+ ext4_mkdir+0x5e0/0xdf0 fs/ext4/namei.c:2802
+ vfs_mkdir+0x419/0x690 fs/namei.c:3641
+ do_mkdirat+0x21e/0x280 fs/namei.c:3664
+ do_syscall_64+0xf6/0x7d0 arch/x86/entry/common.c:295
+ entry_SYSCALL_64_after_hwframe+0x49/0xb3
+RIP: 0033:0x7f449ff49687
+Code: Bad RIP value.
+RSP: 002b:00007ffdd3b9fe58 EFLAGS: 00000246 ORIG_RAX: 0000000000000053
+RAX: ffffffffffffffda RBX: 00005567752fd985 RCX: 00007f449ff49687
+RDX: 00007ffdd3b9fd20 RSI: 00000000000001ed RDI: 00005567752fd985
+RBP: 00007f449ff49680 R08: 0000000000000100 R09: 0000000000000000
+R10: 00005567752fd980 R11: 0000000000000246 R12: 00000000000001ed
+R13: 00007ffdd3b9ffe0 R14: 0000000000000000 R15: 0000000000000000
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
