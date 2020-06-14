@@ -1,73 +1,108 @@
-Return-Path: <SRS0=8HWi=72=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=PPFu=73=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 855D8C433E1
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jun 2020 19:50:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DED4C433E2
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Jun 2020 04:45:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6670C2078A
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Jun 2020 19:50:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1592077811;
-	bh=PIDr7krUz7eRz37b3Yuex93OVD7tFEbF0YtN9KBD4L8=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
-	b=LI5qVcu7QP9HckFCeOnAg0bC1WdPkAw4mnypfS9GyqwB14Xc0TkpPWLeogsxBwaJV
-	 h7l1MJl/rMp8KqZlcJYBwbCXC+Wt35p32CScZ+jJgD6/zTW/ZAhlMctziNtB1ualPB
-	 0U0hX764xrnSt8JLdOBYzmh4lCgTPmW8OX8W22aw=
+	by mail.kernel.org (Postfix) with ESMTP id 6A29C20747
+	for <linux-ext4@archiver.kernel.org>; Sun, 14 Jun 2020 04:45:56 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kCTPcsC5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726678AbgFMTuJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 13 Jun 2020 15:50:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59548 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726651AbgFMTuH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 13 Jun 2020 15:50:07 -0400
-Subject: Re: [GIT PULL] iomap: bug fix for 5.8-rc1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1592077806;
-        bh=PIDr7krUz7eRz37b3Yuex93OVD7tFEbF0YtN9KBD4L8=;
-        h=From:In-Reply-To:References:Date:To:Cc:From;
-        b=ex66Op3zfI5MADKExjF5G4ZDeTExb/570oU8ZNDPWM9aEvdV9XzrRa3eefGfXTmG1
-         8V+ZlGniZion5miqCHz+ceb/ljeh3KUKT+vr3n8SoRgEvIKv4jufWAuhloihK5VvEu
-         7ez4pO7cHOSpvL9L015axAsyhPn4AO9E74lh1KU0=
-From:   pr-tracker-bot@kernel.org
-In-Reply-To: <20200613054431.GL11245@magnolia>
-References: <20200613054431.GL11245@magnolia>
-X-PR-Tracked-List-Id: <linux-fsdevel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20200613054431.GL11245@magnolia>
-X-PR-Tracked-Remote: git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git
- tags/iomap-5.8-merge-1
-X-PR-Tracked-Commit-Id: d4ff3b2ef901cd451fb8a9ff4623d060a79502cd
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 593bd5e5d3e245262c40c7dd2f5edbac705ff578
-Message-Id: <159207780664.22916.15207516755327237475.pr-tracker-bot@kernel.org>
-Date:   Sat, 13 Jun 2020 19:50:06 +0000
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-kernel@vger.kernel.org,
-        sandeen@sandeen.net, hch@lst.de,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>, riteshh@linux.ibm.com
+        id S1726486AbgFNEpv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 14 Jun 2020 00:45:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39006 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725385AbgFNEpu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Jun 2020 00:45:50 -0400
+Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B7621C08C5C2;
+        Sat, 13 Jun 2020 21:45:49 -0700 (PDT)
+Received: by mail-pf1-x444.google.com with SMTP id x22so6321913pfn.3;
+        Sat, 13 Jun 2020 21:45:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=to:cc:from:subject:message-id:date:user-agent:mime-version
+         :content-language:content-transfer-encoding;
+        bh=/YXgQCn0zrgR49JfvgzrosE8wv5QZY9x0gXhrf0GGsw=;
+        b=kCTPcsC5tJRcZ5u6nrgR2c9aGSl4dPEu4YvdQo7W5oAVEZp6EoQ3orDR7KSrg5tkw9
+         8JDJw1wVagb1Nb/dVHN9Gbyeh/CkG0z9V+reZXLv/yCs6mJevc09NpWAl5MG6YWIY9uT
+         6NAyVxjqr7y0zLIoe0RwpMBd2SqpOETmk0vekVuavXXTO6qL/fzyfaT117iq07bKrrZs
+         vc2vSL98+ogxUqknkSX+uLYelucSN8/4RpejE86uLRnRcPftuXXzydmUOW1u2Q/ecxXc
+         DES+03aBbCA8G0MEDqVFyL2dY4OxNnI0bLkSHbsb8w/NVVeM7jMiGc7p9qpZSZw+aTN4
+         8vSQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:cc:from:subject:message-id:date:user-agent
+         :mime-version:content-language:content-transfer-encoding;
+        bh=/YXgQCn0zrgR49JfvgzrosE8wv5QZY9x0gXhrf0GGsw=;
+        b=p0koBUC3uua4yD9yLkgI9Js5ng9wIMiAciW3dL0b1x/cKqkeYy7dKn84VYlYmCAXp3
+         i1i85bQzEYNgdXR6xTN81IDIcnGrVMszqXcXNxud29DIdJas5aXdzJUQwuy72ZIt2g0O
+         a8kCRoXEBnlRKatDstuvsdYUJiCTfKL2VhIV1uOeaLpmSMceFD5oEiVP8IMREehtIUTI
+         tQOzc6wvK3HybXWVjO87HNSD7MA5r5ZeCtFLcfbQ+pN8suiVDiYMxCJIGJXUZBU6R2Ph
+         FYevfRAoT8pw0B/ziezqLXcKrJBKfjlLOOoS78xS1rOi6jHgwAVirW9h3Bhs/GJpj1gx
+         AKwQ==
+X-Gm-Message-State: AOAM532Bqi4KOFcmtg7vvyf+yfmnyOa2SS29AxFTck3iIwAb1S5JxAL9
+        QRc07yrbs8+3RriBpmEZ4KaqaOfE
+X-Google-Smtp-Source: ABdhPJyhTNvT09JshTimknf2cefDP/4JYK075PIauZOG0xgz6/XtEkWBgEp0bYM8YBkZ7w24gRKNgQ==
+X-Received: by 2002:a62:2b55:: with SMTP id r82mr18905403pfr.68.1592109949009;
+        Sat, 13 Jun 2020 21:45:49 -0700 (PDT)
+Received: from ASMDT.1 ([182.1.234.31])
+        by smtp.gmail.com with ESMTPSA id z144sm10693791pfc.195.2020.06.13.21.45.47
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 13 Jun 2020 21:45:48 -0700 (PDT)
+To:     tytso@mit.edu
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+From:   Dio Putra <dioput12@gmail.com>
+Subject: [PATCH] ext4: fix coding style in file.c
+Message-ID: <239fcd8f-d33f-8621-9e82-0416dd3f9c94@gmail.com>
+Date:   Sun, 14 Jun 2020 11:45:44 +0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.9.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The pull request you sent on Fri, 12 Jun 2020 22:44:31 -0700:
+Fixed a few coding style issues in file.c
 
-> git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.8-merge-1
+Signed-off-by: Dio Putra <dioput12@gmail.com>
+---
+ fs/ext4/file.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/593bd5e5d3e245262c40c7dd2f5edbac705ff578
-
-Thank you!
-
--- 
-Deet-doot-dot, I am a bot.
-https://korg.wiki.kernel.org/userdoc/prtracker
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 0d624250a62b..10e4a8389885 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -145,8 +145,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
+ 	/* if we are the last writer on the inode, drop the block reservation */
+ 	if ((filp->f_mode & FMODE_WRITE) &&
+ 			(atomic_read(&inode->i_writecount) == 1) &&
+-		        !EXT4_I(inode)->i_reserved_data_blocks)
+-	{
++			!EXT4_I(inode)->i_reserved_data_blocks) {
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+ 		ext4_discard_preallocations(inode);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+@@ -797,7 +796,7 @@ static int ext4_sample_last_mounted(struct super_block *sb,
+ 	return err;
+ }
+ 
+-static int ext4_file_open(struct inode * inode, struct file * filp)
++static int ext4_file_open(struct inode *inode, struct file *filp)
+ {
+ 	int ret;
+ 
