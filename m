@@ -1,81 +1,117 @@
-Return-Path: <SRS0=jTk8=74=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=DJ7Z=75=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0861C433DF
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Jun 2020 22:22:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59DC3C433E0
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Jun 2020 20:21:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A0413207D3
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Jun 2020 22:22:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1592259762;
-	bh=dEKEM9tfJcQh4c0Hq4LpP7QhlBxMRIlRi8fRHrmGiMA=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=uJ/rbIXW5ORnMim8gHPC5WNTjqgFtVwUx1fPvgCazCraDbM87bzb1QXo0SZe7S7Ht
-	 ffmAdmFfIii9pO9w9C/6/Wdg6S1rY3nQ0k0m7SH/C2VBTP5kgbiAt6DNWPFJ3MXR4W
-	 HEAi09rMFv0y9s3gzYCl5niURdhJhwQD4QVZjRdo=
+	by mail.kernel.org (Postfix) with ESMTP id 2F18A2078D
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Jun 2020 20:21:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dg/HgUWf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726341AbgFOWWm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 15 Jun 2020 18:22:42 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44730 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725960AbgFOWWm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 15 Jun 2020 18:22:42 -0400
-Received: from gmail.com (unknown [104.132.1.76])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9116D20714;
-        Mon, 15 Jun 2020 22:22:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1592259761;
-        bh=dEKEM9tfJcQh4c0Hq4LpP7QhlBxMRIlRi8fRHrmGiMA=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=yV101K4k+8nMYB0Hj90e2MhEqc9Xu+Ra/bdEaJZ0JS5P7F8G7xT21kYJ2SlAgD475
-         j8kBgnWtwl7BmuuumVNCU3C7QzldqCW0/oFHvrchS+qR9y2yo7M1zZ/d8qkVnDtwCR
-         s9DXnj1sWrjZWF906LLWq0j7/LKBXDZZ+z/pHWAA=
-Date:   Mon, 15 Jun 2020 15:22:40 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org
-Subject: Re: [PATCH 0/4] e2fsprogs: fix and document the stable_inodes feature
-Message-ID: <20200615222240.GD85413@gmail.com>
-References: <20200401203239.163679-1-ebiggers@kernel.org>
- <20200410152406.GO45598@mit.edu>
- <20200507181847.GD236103@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200507181847.GD236103@gmail.com>
+        id S1731742AbgFPUVl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 16 Jun 2020 16:21:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60986 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726856AbgFPUVl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jun 2020 16:21:41 -0400
+Received: from mail-qt1-x844.google.com (mail-qt1-x844.google.com [IPv6:2607:f8b0:4864:20::844])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5DC92C061573;
+        Tue, 16 Jun 2020 13:21:41 -0700 (PDT)
+Received: by mail-qt1-x844.google.com with SMTP id c12so16579788qtq.11;
+        Tue, 16 Jun 2020 13:21:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=fn4EkDtyCwWOYjkj5abb0ivOrfVPzRJ74WkGvYptq6M=;
+        b=dg/HgUWfWS+M4LYIXTdMrGl3x3ZRCXBAitiRGyBsR/f//oA0ExU5pFXfOj5RutZfPo
+         eKtzh4Lj8nDNTmhzIPK+EevDMuqxYgCckV1AIRXbnODOOOvMqrMAUo7VceZ86IDGmZGF
+         bOip7xlLpxKsZSanlH9iesa0jpyFMaeM94CRD+F8E7K/7VXU4GOIFgQmL6Uyxys2aSVm
+         wwAQxoXNACyomKG9viuY/h2q0DEdPoe0wrHR4OebvwXqgg+CkCBAoaY8BKqhAXsFFN4B
+         hIzjT0oO2mjsaGEucqtfy7vOx7/itxVxyQYfYa6GDlbpawx55bbdKjSiLMypeKtMoixV
+         KI7g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=fn4EkDtyCwWOYjkj5abb0ivOrfVPzRJ74WkGvYptq6M=;
+        b=VyDhH8OVwfSizaQ2SGlj1w3qHowfPjvuiAPAk/W5SBRuxjQ9xM1bpXseANfg7EamBA
+         7V0MFYujQ/zlzSjo9uERX1hdg6jFtA4Jyq6v9+rfbYK2Wm3vYY37WVrfWp7HXBw6cUI0
+         AJJijN+duWHQGQRr7XBR/IMEleFqC/7nhdf8ONIRQnlpbBElhKnJvIAOeleph2oUsW8U
+         eaIZRFkUNR8WHVM9GeAqo6eKk8CvVn8yGyyO2rDAVZlNJPOUxws3SDVTwOTKx7469Lw/
+         ew3lZWNHYMJW8v2DCpoo5tIdTOQi6Be4GugVyk86Ld8IswrV+m6TDLnotY59HrQciiP1
+         E7mg==
+X-Gm-Message-State: AOAM530J4mHY0k7NdRfSbQHaGdd90eu+Q+hzQ79IEDDe2DBAgGjxvHhL
+        vxj8TW8w/7YYUpsd1HLJfQ==
+X-Google-Smtp-Source: ABdhPJwVNG6Y075bcXUmYimMU9ZVj2934sQIGstMjpXrJVeRJ0GvNAgeGtyjpRV91E8NQqr2ZXc6OA==
+X-Received: by 2002:aed:21d7:: with SMTP id m23mr22545244qtc.342.1592338900651;
+        Tue, 16 Jun 2020 13:21:40 -0700 (PDT)
+Received: from localhost (209-6-122-159.s2973.c3-0.arl-cbr1.sbo-arl.ma.cable.rcncustomer.com. [209.6.122.159])
+        by smtp.gmail.com with ESMTPSA id k20sm16401468qtu.16.2020.06.16.13.21.39
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 16 Jun 2020 13:21:40 -0700 (PDT)
+From:   Masayoshi Mizuma <msys.mizuma@gmail.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc:     Masayoshi Mizuma <msys.mizuma@gmail.com>,
+        Masayoshi Mizuma <m.mizuma@jp.fujitsu.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH] fs: i_version mntopt gets visible through /proc/mounts
+Date:   Tue, 16 Jun 2020 16:21:23 -0400
+Message-Id: <20200616202123.12656-1-msys.mizuma@gmail.com>
+X-Mailer: git-send-email 2.17.1
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, May 07, 2020 at 11:18:47AM -0700, Eric Biggers wrote:
-> On Fri, Apr 10, 2020 at 11:24:06AM -0400, Theodore Y. Ts'o wrote:
-> > On Wed, Apr 01, 2020 at 01:32:35PM -0700, Eric Biggers wrote:
-> > > Fix tune2fs to not allow cases where IV_INO_LBLK_64-encrypted files
-> > > (which can exist if the stable_inodes feature is set) could be broken:
-> > > 
-> > > - Changing the filesystem's UUID
-> > > - Clearing the stable_inodes feature
-> > > 
-> > > Also document the stable_inodes feature in the appropriate places.
-> > > 
-> > > Eric Biggers (4):
-> > >   tune2fs: prevent changing UUID of fs with stable_inodes feature
-> > >   tune2fs: prevent stable_inodes feature from being cleared
-> > >   ext4.5: document the stable_inodes feature
-> > >   tune2fs.8: document the stable_inodes feature
-> > 
-> > Thanks, I've applied this patch series.
-> > 
-> 
-> Ted, I still don't see this in git.  Are you planning to push it out?
-> 
+From: Masayoshi Mizuma <m.mizuma@jp.fujitsu.com>
 
-Ping?
+/proc/mounts doesn't show 'i_version' even if iversion
+mount option is set to XFS.
+
+iversion mount option is a VFS option, not ext4 specific option.
+Move the handler to show_sb_opts() so that /proc/mounts can show
+'i_version' on not only ext4 but also the other filesystem.
+
+Signed-off-by: Masayoshi Mizuma <m.mizuma@jp.fujitsu.com>
+---
+ fs/ext4/super.c     | 2 --
+ fs/proc_namespace.c | 1 +
+ 2 files changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a29e8ea1a7ab..879289de1818 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2325,8 +2325,6 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
+ 		SEQ_OPTS_PRINT("min_batch_time=%u", sbi->s_min_batch_time);
+ 	if (nodefs || sbi->s_max_batch_time != EXT4_DEF_MAX_BATCH_TIME)
+ 		SEQ_OPTS_PRINT("max_batch_time=%u", sbi->s_max_batch_time);
+-	if (sb->s_flags & SB_I_VERSION)
+-		SEQ_OPTS_PUTS("i_version");
+ 	if (nodefs || sbi->s_stripe)
+ 		SEQ_OPTS_PRINT("stripe=%lu", sbi->s_stripe);
+ 	if (nodefs || EXT4_MOUNT_DATA_FLAGS &
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+index 3059a9394c2d..848c4afaef05 100644
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -49,6 +49,7 @@ static int show_sb_opts(struct seq_file *m, struct super_block *sb)
+ 		{ SB_DIRSYNC, ",dirsync" },
+ 		{ SB_MANDLOCK, ",mand" },
+ 		{ SB_LAZYTIME, ",lazytime" },
++		{ SB_I_VERSION, ",i_version" },
+ 		{ 0, NULL }
+ 	};
+ 	const struct proc_fs_opts *fs_infop;
+-- 
+2.18.4
+
