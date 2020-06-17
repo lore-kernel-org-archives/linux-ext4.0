@@ -2,39 +2,36 @@ Return-Path: <SRS0=1ImQ=76=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 867B2C433E1
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B1ECC433E5
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6E690207DD
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 03B11206D8
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726833AbgFQL6r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1726817AbgFQL6r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 17 Jun 2020 07:58:47 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:6352 "EHLO huawei.com"
+Received: from szxga05-in.huawei.com ([45.249.212.191]:6274 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726494AbgFQL6p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726341AbgFQL6p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 17 Jun 2020 07:58:45 -0400
-Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 839C8821DED86C1DCC9C;
+Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id AE3B7BEBE72483282702;
         Wed, 17 Jun 2020 19:58:41 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS412-HUB.china.huawei.com
  (10.3.19.212) with Microsoft SMTP Server id 14.3.487.0; Wed, 17 Jun 2020
- 19:58:34 +0800
+ 19:58:32 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, <jack@suse.cz>
 CC:     <adilger.kernel@dilger.ca>, <zhangxiaoxu5@huawei.com>,
         <yi.zhang@huawei.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v2 2/5] ext4: mark filesystem error if failed to async write metadata
-Date:   Wed, 17 Jun 2020 19:59:44 +0800
-Message-ID: <20200617115947.836221-3-yi.zhang@huawei.com>
+Subject: [PATCH v2 0/5] ext4: fix inconsistency since reading old metadata from disk
+Date:   Wed, 17 Jun 2020 19:59:42 +0800
+Message-ID: <20200617115947.836221-1-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20200617115947.836221-1-yi.zhang@huawei.com>
-References: <20200617115947.836221-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -45,153 +42,70 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There is a risk of filesystem inconsistency if we failed to async write
-back metadata buffer in the background. Because of current buffer's end
-io procedure is handled by end_buffer_async_write() in the block layer,
-and it only clear the buffer's uptodate flag and mark the write_io_error
-flag, so ext4 cannot detect such failure immediately. In most cases of
-getting metadata buffer (e.g. ext4_read_inode_bitmap()), although the
-buffer's data is actually uptodate, it may still read data from disk
-because the buffer's uptodate flag has been cleared. Finally, it may
-lead to on-disk filesystem inconsistency if reading old data from the
-disk successfully and write them out again.
+Changes since v1:
+ - Give up the solution of re-adding metadata buffer's uptodate flag.
+ - Patch 1-2: Add a call back for end_buffer_async_write() and invoke
+   ext4_error_err() to handle metadata buffer async write IO error
+   immediately.
+ - Patch 3: Add mapping->wb_err check and also invoke ext4_error_err()
+   in ext4_journal_get_write_access() if wb_err is different from the
+   original one saved at mount time. Add this patch because patch 2
+   could not fix all cases.
+ - Patch 4-5: Remove partial fix <7963e5ac90125> and <9c83a923c67d>.
 
-This patch propagate ext4 end buffer callback to the block layer which
-could detect metadata buffer's async error and invoke ext4 error handler
-immediately.
+The above 5 patches are based on linux-5.8-rc1 and have been tested by
+xfstests, no new failures.
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- fs/ext4/ext4.h    |  7 +++++++
- fs/ext4/page-io.c | 47 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/super.c   | 13 +++++++++++++
- 3 files changed, 67 insertions(+)
+Thanks,
+Yi.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 15b062efcff1..2f22476f41d2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1515,6 +1515,10 @@ struct ext4_sb_info {
- 	/* workqueue for reserved extent conversions (buffered io) */
- 	struct workqueue_struct *rsv_conversion_wq;
- 
-+	/* workqueue for handle metadata buffer async writeback error */
-+	struct workqueue_struct *s_bdev_wb_err_wq;
-+	struct work_struct s_bdev_wb_err_work;
-+
- 	/* timer for periodic error stats printing */
- 	struct timer_list s_err_report;
- 
-@@ -3426,6 +3430,9 @@ extern int ext4_bio_write_page(struct ext4_io_submit *io,
- 			       bool keep_towrite);
- extern struct ext4_io_end_vec *ext4_alloc_io_end_vec(ext4_io_end_t *io_end);
- extern struct ext4_io_end_vec *ext4_last_io_end_vec(ext4_io_end_t *io_end);
-+extern void ext4_end_buffer_async_write_error(struct work_struct *work);
-+extern int ext4_bdev_write_page(struct page *page, get_block_t *get_block,
-+				struct writeback_control *wbc);
- 
- /* mmp.c */
- extern int ext4_multi_mount_protect(struct super_block *, ext4_fsblk_t);
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index de6fe969f773..50aa8e26e38c 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -560,3 +560,50 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
- 		end_page_writeback(page);
- 	return ret;
- }
-+
-+/*
-+ * Handle error of async writeback metadata buffer, just mark the filesystem
-+ * error to prevent potential further inconsistency.
-+ */
-+void ext4_end_buffer_async_write_error(struct work_struct *work)
-+{
-+	struct ext4_sb_info *sbi = container_of(work,
-+				struct ext4_sb_info, s_bdev_wb_err_work);
-+
-+	/*
-+	 * If we failed to async write back metadata buffer, there is a risk
-+	 * of filesystem inconsistency since we may read old metadata from the
-+	 * disk successfully and write them out again.
-+	 */
-+	ext4_error_err(sbi->s_sb, -EIO, "Error while async write back metadata buffer");
-+}
-+
-+static void ext4_end_buffer_async_write(struct buffer_head *bh, int uptodate)
-+{
-+	struct super_block *sb = bh->b_bdev->bd_super;
-+
-+	end_buffer_async_write(bh, uptodate);
-+
-+	if (!uptodate && sb && !sb_rdonly(sb)) {
-+		struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+		/* Handle error of async writeback metadata buffer */
-+		queue_work(sbi->s_bdev_wb_err_wq, &sbi->s_bdev_wb_err_work);
-+	}
-+}
-+
-+int ext4_bdev_write_page(struct page *page, get_block_t *get_block,
-+			 struct writeback_control *wbc)
-+{
-+	struct inode * const inode = page->mapping->host;
-+	loff_t i_size = i_size_read(inode);
-+	const pgoff_t end_index = i_size >> PAGE_SHIFT;
-+	unsigned int offset;
-+
-+	offset = i_size & ~PAGE_MASK;
-+	if (page->index == end_index && offset)
-+		zero_user_segment(page, offset, PAGE_SIZE);
-+
-+	return __block_write_full_page(inode, page, get_block,
-+				       wbc, ext4_end_buffer_async_write);
-+}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9824cd8203e8..f04b161a64a0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1013,6 +1013,7 @@ static void ext4_put_super(struct super_block *sb)
- 	ext4_quota_off_umount(sb);
- 
- 	destroy_workqueue(sbi->rsv_conversion_wq);
-+	destroy_workqueue(sbi->s_bdev_wb_err_wq);
- 
- 	/*
- 	 * Unregister sysfs before destroying jbd2 journal.
-@@ -1492,6 +1493,7 @@ static const struct super_operations ext4_sops = {
- 	.get_dquots	= ext4_get_dquots,
- #endif
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
-+	.bdev_write_page = ext4_bdev_write_page,
- };
- 
- static const struct export_operations ext4_export_ops = {
-@@ -4598,6 +4600,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount4;
- 	}
- 
-+	EXT4_SB(sb)->s_bdev_wb_err_wq =
-+		alloc_workqueue("ext4-bdev-write-error", WQ_MEM_RECLAIM | WQ_UNBOUND, 1);
-+	if (!EXT4_SB(sb)->s_bdev_wb_err_wq) {
-+		ext4_msg(sb, KERN_ERR, "failed to create workqueue\n");
-+		ret = -ENOMEM;
-+		goto failed_mount4;
-+	}
-+	INIT_WORK(&EXT4_SB(sb)->s_bdev_wb_err_work, ext4_end_buffer_async_write_error);
-+
- 	/*
- 	 * The jbd2_journal_load will have done any necessary log recovery,
- 	 * so we can safely mount the rest of the filesystem now.
-@@ -4781,6 +4792,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_root = NULL;
- failed_mount4:
- 	ext4_msg(sb, KERN_ERR, "mount failed");
-+	if (EXT4_SB(sb)->s_bdev_wb_err_wq)
-+		destroy_workqueue(EXT4_SB(sb)->s_bdev_wb_err_wq);
- 	if (EXT4_SB(sb)->rsv_conversion_wq)
- 		destroy_workqueue(EXT4_SB(sb)->rsv_conversion_wq);
- failed_mount_wq:
+-----------------------
+
+Original background
+===================
+
+This patch set point to fix the inconsistency problem which has been
+discussed and partial fixed in [1].
+
+Now, the problem is on the unstable storage which has a flaky transport
+(e.g. iSCSI transport may disconnect few seconds and reconnect due to
+the bad network environment), if we failed to async write metadata in
+background, the end write routine in block layer will clear the buffer's
+uptodate flag, but the data in such buffer is actually uptodate. Finally
+we may read "old && inconsistent" metadata from the disk when we get the
+buffer later because not only the uptodate flag was cleared but also we
+do not check the write io error flag, or even worse the buffer has been
+freed due to memory presure.
+
+Fortunately, if the jbd2 do checkpoint after async IO error happens,
+the checkpoint routine will check the write_io_error flag and abort the
+the journal if detect IO error. And in the journal recover case, the
+recover code will invoke sync_blockdev() after recover complete, it will
+also detect IO error and refuse to mount the filesystem.
+
+Current ext4 have already deal with this problem in __ext4_get_inode_loc()
+and commit 7963e5ac90125 ("ext4: treat buffers with write errors as
+containing valid data"), but it's not enough.
+
+[1] https://lore.kernel.org/linux-ext4/20190823030207.GC8130@mit.edu/
+
+zhangyi (F) (5):
+  fs: add bdev writepage hook to block device
+  ext4: mark filesystem error if failed to async write metadata
+  ext4: detect metadata async write error when getting journal's write
+    access
+  ext4: remove ext4_buffer_uptodate()
+  ext4: remove write io error check before read inode block
+
+ fs/block_dev.c      |  5 ++++
+ fs/ext4/ext4.h      | 24 +++++++++----------
+ fs/ext4/ext4_jbd2.c | 34 +++++++++++++++++++++++----
+ fs/ext4/inode.c     | 13 ++---------
+ fs/ext4/page-io.c   | 57 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/super.c     | 32 ++++++++++++++++++++++++-
+ include/linux/fs.h  |  1 +
+ 7 files changed, 136 insertions(+), 30 deletions(-)
+
 -- 
 2.25.4
 
