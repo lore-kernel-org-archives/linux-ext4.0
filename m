@@ -2,87 +2,103 @@ Return-Path: <SRS0=1ImQ=76=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B1D4C433E6
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD80AC433DF
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 12:15:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1B342206D8
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 11:58:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9AA8D2082F
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Jun 2020 12:15:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726809AbgFQL6r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 17 Jun 2020 07:58:47 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:6353 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726280AbgFQL6o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Jun 2020 07:58:44 -0400
-Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 7F84526374A69B09578E;
-        Wed, 17 Jun 2020 19:58:41 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by DGGEMS412-HUB.china.huawei.com
- (10.3.19.212) with Microsoft SMTP Server id 14.3.487.0; Wed, 17 Jun 2020
- 19:58:33 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, <jack@suse.cz>
-CC:     <adilger.kernel@dilger.ca>, <zhangxiaoxu5@huawei.com>,
-        <yi.zhang@huawei.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v2 1/5] fs: add bdev writepage hook to block device
-Date:   Wed, 17 Jun 2020 19:59:43 +0800
-Message-ID: <20200617115947.836221-2-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20200617115947.836221-1-yi.zhang@huawei.com>
-References: <20200617115947.836221-1-yi.zhang@huawei.com>
+        id S1726271AbgFQMPC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 17 Jun 2020 08:15:02 -0400
+Received: from mx2.suse.de ([195.135.220.15]:42606 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725901AbgFQMPC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 17 Jun 2020 08:15:02 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 4B5AEAAC6;
+        Wed, 17 Jun 2020 12:15:05 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id CD4221E128D; Wed, 17 Jun 2020 14:15:00 +0200 (CEST)
+Date:   Wed, 17 Jun 2020 14:15:00 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Lukas Czerner <lczerner@redhat.com>
+Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.com>
+Subject: Re: [PATCH] jbd2: make sure jh have b_transaction set in
+ refile/unlink_buffer
+Message-ID: <20200617121500.GA29763@quack2.suse.cz>
+References: <20200617091031.6558-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200617091031.6558-1-lczerner@redhat.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a new bdev_write_page hook into struct super_operations and called
-by bdev_writepage(), which could be used by filesystem to propagate
-private handlers.
+On Wed 17-06-20 11:10:31, Lukas Czerner wrote:
+> Callers of __jbd2_journal_unfile_buffer() and
+> __jbd2_journal_refile_buffer() assume that the b_transaction is set. In
+> fact if it's not, we can end up with journal_head refcounting errors
+> leading to crash much later that might be very hard to track down. Add
+> asserts to make sure that is the case.
+> 
+> We also make sure that b_next_transaction is NULL in
+> __jbd2_journal_unfile_buffer() since the callers expect that as well and
+> we should not get into that stage in this state anyway, leading to
+> problems later on if we do.
+> 
+> Tested with fstests.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- fs/block_dev.c     | 5 +++++
- include/linux/fs.h | 1 +
- 2 files changed, 6 insertions(+)
+Thanks! The patch looks good to me. You can add:
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 47860e589388..46e25a4e3ebf 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -606,6 +606,11 @@ EXPORT_SYMBOL(thaw_bdev);
- 
- static int blkdev_writepage(struct page *page, struct writeback_control *wbc)
- {
-+	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
-+
-+	if (super && super->s_op->bdev_write_page)
-+		return super->s_op->bdev_write_page(page, blkdev_get_block, wbc);
-+
- 	return block_write_full_page(page, blkdev_get_block, wbc);
- }
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cffc3619eed5..b87b784c6bc6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1983,6 +1983,7 @@ struct super_operations {
- 	struct dquot **(*get_dquots)(struct inode *);
- #endif
- 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
-+	int (*bdev_write_page)(struct page *, get_block_t *, struct writeback_control *);
- 	long (*nr_cached_objects)(struct super_block *,
- 				  struct shrink_control *);
- 	long (*free_cached_objects)(struct super_block *,
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/jbd2/transaction.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index e91aad3637a2..e65e0aca2826 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -2026,6 +2026,9 @@ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh)
+>   */
+>  static void __jbd2_journal_unfile_buffer(struct journal_head *jh)
+>  {
+> +	J_ASSERT_JH(jh, jh->b_transaction != NULL);
+> +	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
+> +
+>  	__jbd2_journal_temp_unlink_buffer(jh);
+>  	jh->b_transaction = NULL;
+>  }
+> @@ -2572,6 +2575,13 @@ bool __jbd2_journal_refile_buffer(struct journal_head *jh)
+>  
+>  	was_dirty = test_clear_buffer_jbddirty(bh);
+>  	__jbd2_journal_temp_unlink_buffer(jh);
+> +
+> +	/*
+> +	 * b_transaction must be set, otherwise the new b_transaction won't
+> +	 * be holding jh reference
+> +	 */
+> +	J_ASSERT_JH(jh, jh->b_transaction != NULL);
+> +
+>  	/*
+>  	 * We set b_transaction here because b_next_transaction will inherit
+>  	 * our jh reference and thus __jbd2_journal_file_buffer() must not
+> -- 
+> 2.21.3
+> 
 -- 
-2.25.4
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
