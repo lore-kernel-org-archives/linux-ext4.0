@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4492C433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEDECC433DF
 	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8294E206E2
+	by mail.kernel.org (Postfix) with ESMTP id CA22A206E2
 	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U7Of552r"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HycUmPuX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731689AbgFRPa0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:30:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36438 "EHLO
+        id S1731690AbgFRPa2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:30:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36424 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731686AbgFRPaQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:16 -0400
-Received: from mail-pj1-x1042.google.com (mail-pj1-x1042.google.com [IPv6:2607:f8b0:4864:20::1042])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09435C0613EE
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:16 -0700 (PDT)
-Received: by mail-pj1-x1042.google.com with SMTP id i12so2696289pju.3
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:16 -0700 (PDT)
+        with ESMTP id S1731321AbgFRPaL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:11 -0400
+Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 704CFC06174E
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:11 -0700 (PDT)
+Received: by mail-pg1-x541.google.com with SMTP id v14so3072294pgl.1
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=eLCJ6I97JiPo/t9HsZdpYZmT0+udGJ9ueal4Vmm5Jng=;
-        b=U7Of552rz80DtX0sH50ol1fsZdwzJTq9OZcYmyVxwXMmMMGQHZ1X7UVPBPk3YjoDVe
-         vH6Tax0LSMynyeTMLgOa6wNeFhcZdJSXObb83trkhfSbvefPWnTfy0sou4jqjwaI5iiw
-         m3A39cwRmfuebUza3heqlhxzuQ6RguQKe5bJcAqMrFek4FHyDqCGks/G2XT0NT/onDCF
-         O6gjd5DdijDC+bK4GuVwfgK0wBMYEA0N+isT70SCMA/IY1FrOw//V3eyb60lCOQxb65N
-         lHQpdVtb/K4kbEIg0HEDs7mOaNj5W4mnXGbTiwtX3MNNss+MEIZrMA7x+zVz+6CcedUn
-         JyKQ==
+        bh=9a9WnBjx07L+yJk5J10En0OLTFK3qkAegKJrqlvWsLA=;
+        b=HycUmPuXV4SQxSObHpm/qE+abYzJECf3M2GId2Nj8I1Nr2kg0yYzc1rMBXl1yk6XQv
+         sP+mHP1Ba2Sfn9pSIrdMV3jPHMrkXEx5xtF0HdR9/0TJ2/9ceMbMNUciI3ykGvtI5dCJ
+         ujhGaakLvC3cqmhZlJIg2qJ/8odu2d19ksIqYphAutifRV+fKjuy2YlWPv8XySJM/3UD
+         mgjjtCqGo9MrNIMDs+aeXH/lwJlAMb1VQGH+nHSd3koW+ZkJGFKu5O1EA+7M8QbbG8zH
+         e6nPEH+IV8vNNwoj/SnKT28VvmlW+QZq2FzUHKnBvB1jCtIvRxNDjmPxswWK5kcNOKI7
+         CmRQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=eLCJ6I97JiPo/t9HsZdpYZmT0+udGJ9ueal4Vmm5Jng=;
-        b=hzFVTFym3fD+fzw9CDuCURWGvoSA56j3a7OuJD8PfkCWeP7PJ9f6tT6ABYubvmdqDV
-         1vHhw6G6pDxr8Wrg1Ig+VhnKzCpnQZXBBQ7DiJnkOQLtFOxamFeaqoLF1yaNDCRGE+sg
-         yLPJVIA89VKcMScx55Vqa0eLNHeZIfOiBmjHVxQbTpt154r9w1SgeSmj/Rhpah6FzD8S
-         bKfsy2/S251mm2NdPXPET5Tyw0rf9zBR7iF0yTPHCEV9Yr8xGPl+IouU8XOBVS6tr7LO
-         uVyNFt9LnIUTkxEXRJr8ndBkBbPfJTLg3E646h7GWrYP1YXDrCz50dRLgY2RNUjtnfyM
-         ZYaw==
-X-Gm-Message-State: AOAM531lvUnY3Nheid+prgH8Tou+M0g5MEbYzioVv4ckKjgHKxcDUaER
-        MNBboneXQCDXE/AGZlFWUIfZChtVcok=
-X-Google-Smtp-Source: ABdhPJx4mIM4FXyzdJv0Kq2UTdzx6KtJRA/7zk+T/4llUD25ZbIGZ2XhCMI37svcNy+SisEepb91ew==
-X-Received: by 2002:a17:902:9882:: with SMTP id s2mr4197115plp.112.1592494215248;
-        Thu, 18 Jun 2020 08:30:15 -0700 (PDT)
+        bh=9a9WnBjx07L+yJk5J10En0OLTFK3qkAegKJrqlvWsLA=;
+        b=uF4Rkj0DbcAsi2eOv2NcrlojNQCKmAPWsVlG0Bb9JIKJ05LMOl0HR2CDKIgzsKFq3q
+         hPD5meVjqlELYgFO1WXrYu10RZlfO8c59ECm7GT1PkrS8sOBuePZYqg6o9PCDVA+ack0
+         sd6Pm5jf9u1B2i5IRaqSBM9TJ/ICKf2SfkRao/KHBTjd+AMBR8aWTGuh6B9rQQNGHdNQ
+         E/TWilpELvYET512VrvpN/76d2aM+Nc6mK7J777vfpn6dc7rBq2n4GC8wM3xlgfb4Dcm
+         2U29j3a9M+wuO/S3Hn5BOc/kwpOqPUSefacIZnDx4pzKJpGa7YmW8+eDBdeCNajrhJwj
+         SmPg==
+X-Gm-Message-State: AOAM532Le1W/ea7HDkOqU8FeAUjY5LQqj11E5T7F+IePsp4pTFardBTo
+        BJtKH35E2oUVEyYJIcSVsvitlZTvd2g=
+X-Google-Smtp-Source: ABdhPJxJlk0XF7FbzyrqRAYhYDqffic7EeBI+hy+er4QvJtO7VaI/1TzX6r1Y6iL8bguNMOBOaj/2Q==
+X-Received: by 2002:a62:1444:: with SMTP id 65mr4021571pfu.294.1592494210573;
+        Thu, 18 Jun 2020 08:30:10 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.13
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.08
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:30:14 -0700 (PDT)
+        Thu, 18 Jun 2020 08:30:10 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 51/51] e2fsck: fix to avoid too much memory allocation for pfsck
-Date:   Fri, 19 Jun 2020 00:27:54 +0900
-Message-Id: <1592494074-28991-52-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 49/51] e2fsck: wait fix thread finish before checking
+Date:   Fri, 19 Jun 2020 00:27:52 +0900
+Message-Id: <1592494074-28991-50-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,82 +74,292 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-e2fsck init memory according to filesystem inodes/dir numbers
-recorded in the superblock, this should be aware of filesystem
-number of threads, otherwise, oom happen.
+Before proceeding next inodes, waitting existed
+fixing finished.
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c      | 1 +
- lib/ext2fs/dblist.c | 2 ++
- lib/ext2fs/ext2fs.h | 3 ++-
- lib/ext2fs/icount.c | 4 ++++
- 4 files changed, 9 insertions(+), 1 deletion(-)
+ e2fsck/e2fsck.h |  2 +-
+ e2fsck/pass1.c  | 72 +++++++++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 65 insertions(+), 9 deletions(-)
 
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 4a4f1098..86ec04ec 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -448,7 +448,7 @@ struct e2fsck_struct {
+ 	__u32			extent_depth_count[MAX_EXTENT_DEPTH_COUNT];
+ 	__u32			fs_num_threads;
+ 	/* serialize fix operation for multiple threads */
+-	pthread_mutex_t		 fs_fix_mutex;
++	pthread_rwlock_t	 fs_fix_rwlock;
+ 	/* protect block_found_map, block_dup_map */
+ 	pthread_rwlock_t	 fs_block_map_rwlock;
+ };
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 990e4b04..ca8d30c4 100644
+index 969475b4..52af4f13 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -1315,6 +1315,7 @@ static void e2fsck_pass1_set_thread_num(e2fsck_t ctx)
- 			num_threads = max_threads / times;
- 	}
- 	ctx->fs_num_threads = num_threads;
-+	ctx->fs->fs_num_threads = num_threads;
+@@ -137,16 +137,40 @@ static __u64 ext2_max_sizes[EXT2_MAX_BLOCK_LOG_SIZE -
+ 	if (!global_ctx)			\
+ 		global_ctx = ctx;		\
+ 
++/**
++ * before we hold write lock, read lock should
++ * has been held.
++ */
+ static void e2fsck_pass1_fix_lock(e2fsck_t ctx)
+ {
++	int err;
++
+ 	e2fsck_get_lock_context(ctx);
+-	pthread_mutex_lock(&global_ctx->fs_fix_mutex);
++	err = pthread_rwlock_trywrlock(&global_ctx->fs_fix_rwlock);
++	assert(err != 0);
++	pthread_rwlock_unlock(&global_ctx->fs_fix_rwlock);
++	pthread_rwlock_wrlock(&global_ctx->fs_fix_rwlock);
  }
  
- static void init_ext2_max_sizes()
-diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
-index 046b1e68..55e58306 100644
---- a/lib/ext2fs/dblist.c
-+++ b/lib/ext2fs/dblist.c
-@@ -58,6 +58,8 @@ static errcode_t make_dblist(ext2_filsys fs, ext2_ino_t size,
- 		if (retval)
- 			goto cleanup;
- 		dblist->size = (num_dirs * 2) + 12;
-+		if (fs->fs_num_threads)
-+			dblist->size /= fs->fs_num_threads;
- 	}
- 	len = (size_t) sizeof(struct ext2_db_entry2) * dblist->size;
- 	dblist->count = count;
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 44e569e6..9e77f6d1 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -255,10 +255,11 @@ struct struct_ext2_filsys {
- 	int				cluster_ratio_bits;
- 	__u16				default_bitmap_type;
- 	__u16				pad;
-+	__u32				fs_num_threads;
- 	/*
- 	 * Reserved for future expansion
- 	 */
--	__u32				reserved[5];
-+	__u32				reserved[4];
+ static void e2fsck_pass1_fix_unlock(e2fsck_t ctx)
+ {
+ 	e2fsck_get_lock_context(ctx);
+-	pthread_mutex_unlock(&global_ctx->fs_fix_mutex);
++	/* unlock write lock */
++	pthread_rwlock_unlock(&global_ctx->fs_fix_rwlock);
++	/* get read lock again */
++	pthread_rwlock_rdlock(&global_ctx->fs_fix_rwlock);
++}
++
++static void e2fsck_pass1_check_lock(e2fsck_t ctx)
++{
++	e2fsck_get_lock_context(ctx);
++	pthread_rwlock_rdlock(&global_ctx->fs_fix_rwlock);
++}
++
++static void e2fsck_pass1_check_unlock(e2fsck_t ctx)
++{
++	e2fsck_get_lock_context(ctx);
++	pthread_rwlock_unlock(&global_ctx->fs_fix_rwlock);
+ }
  
- 	/*
- 	 * Reserved for the use of the calling application.
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index 8fe6ff4e..25ec75c2 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -237,6 +237,8 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs EXT2FS_NO_TDB_UNUSED,
- 	 * value.
- 	 */
- 	num_inodes = fs->super->s_inodes_count - fs->super->s_free_inodes_count;
-+	if (fs->fs_num_threads)
-+		num_inodes /= fs->fs_num_threads;
- 
- 	icount->tdb = tdb_open(fn, num_inodes, TDB_NOLOCK | TDB_NOSYNC,
- 			       O_RDWR | O_CREAT | O_TRUNC, 0600);
-@@ -288,6 +290,8 @@ errcode_t ext2fs_create_icount2(ext2_filsys fs, int flags, unsigned int size,
- 		if (retval)
- 			goto errout;
- 		icount->size += fs->super->s_inodes_count / 50;
-+		if (fs->fs_num_threads)
-+			icount->size /= fs->fs_num_threads;
+ static inline void e2fsck_pass1_block_map_w_lock(e2fsck_t ctx)
+@@ -1655,6 +1679,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
  	}
  
- 	bytes = (size_t) (icount->size * sizeof(struct ext2_icount_el));
+ 	while (1) {
++		e2fsck_pass1_check_lock(ctx);
+ 		if (ino % (fs->super->s_inodes_per_group * 4) == 1) {
+ 			if (e2fsck_mmp_update(fs))
+ 				fatal_error(ctx, 0);
+@@ -1665,8 +1690,10 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 		if (ino > ino_threshold)
+ 			pass1_readahead(ctx, &ra_group, &ino_threshold);
+ 		ehandler_operation(old_op);
+-		if (e2fsck_should_abort(ctx))
++		if (e2fsck_should_abort(ctx)) {
++			e2fsck_pass1_check_unlock(ctx);
+ 			goto endit;
++		}
+ 		if (pctx.errcode == EXT2_ET_BAD_BLOCK_IN_INODE_TABLE) {
+ 			/*
+ 			 * If badblocks says badblocks is bad, offer to clear
+@@ -1691,25 +1718,32 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 					ctx->flags |= E2F_FLAG_ABORT;
+ 				} else
+ 					ctx->flags |= E2F_FLAG_RESTART;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 			if (!ctx->inode_bb_map)
+ 				alloc_bb_map(ctx);
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_bb_map, ino);
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
++			e2fsck_pass1_check_unlock(ctx);
+ 			continue;
+ 		}
+-		if (pctx.errcode == EXT2_ET_SCAN_FINISHED)
++		if (pctx.errcode == EXT2_ET_SCAN_FINISHED) {
++			e2fsck_pass1_check_unlock(ctx);
+ 			break;
++		}
+ 		if (pctx.errcode &&
+ 		    pctx.errcode != EXT2_ET_INODE_CSUM_INVALID &&
+ 		    pctx.errcode != EXT2_ET_INODE_IS_GARBAGE) {
+ 			fix_problem(ctx, PR_1_ISCAN_ERROR, &pctx);
+ 			ctx->flags |= E2F_FLAG_ABORT;
++			e2fsck_pass1_check_unlock(ctx);
+ 			goto endit;
+ 		}
+-		if (!ino)
++		if (!ino) {
++			e2fsck_pass1_check_unlock(ctx);
+ 			break;
++		}
+ 		if (ctx->global_ctx)
+ 		        ctx->thread_info.et_inode_number++;
+ 		pctx.ino = ino;
+@@ -1764,6 +1798,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				pctx.num = inode->i_links_count;
+ 				fix_problem(ctx, PR_1_ICOUNT_STORE, &pctx);
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 		} else if ((ino >= EXT2_FIRST_INODE(fs->super)) &&
+@@ -1780,6 +1815,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				}
+ 			}
+ 			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++			e2fsck_pass1_check_unlock(ctx);
+ 			continue;
+ 		}
+ 
+@@ -1800,6 +1836,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 							       &pctx);
+ 			if (res < 0) {
+ 				/* skip FINISH_INODE_LOOP */
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 		}
+@@ -1822,6 +1859,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				e2fsck_clear_inode(ctx, ino, inode, 0, "pass1");
+ 				e2fsck_pass1_fix_unlock(ctx);
+ 				/* skip FINISH_INODE_LOOP */
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 		}
+@@ -1868,6 +1906,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 						pctx.errcode = err;
+ 						ctx->flags |= E2F_FLAG_ABORT;
+ 						e2fsck_pass1_fix_unlock(ctx);
++						e2fsck_pass1_check_unlock(ctx);
+ 						goto endit;
+ 					}
+ 					inode->i_flags &= ~EXT4_INLINE_DATA_FL;
+@@ -1883,6 +1922,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				/* Some other kind of non-xattr error? */
+ 				pctx.errcode = err;
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 		}
+@@ -1922,6 +1962,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 					ext2fs_mark_inode_bitmap2(ctx->inode_used_map,
+ 								 ino);
+ 				/* skip FINISH_INODE_LOOP */
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 		}
+@@ -1992,6 +2033,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				pctx.num = 4;
+ 				fix_problem(ctx, PR_1_ALLOCATE_BBITMAP_ERROR, &pctx);
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 			pb.ino = EXT2_BAD_INO;
+@@ -2009,16 +2051,19 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 			if (pctx.errcode) {
+ 				fix_problem(ctx, PR_1_BLOCK_ITERATE, &pctx);
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 			if (pb.bbcheck)
+ 				if (!fix_problem(ctx, PR_1_BBINODE_BAD_METABLOCK_PROMPT, &pctx)) {
+ 				ctx->flags |= E2F_FLAG_ABORT;
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
+ 			}
+ 			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
+ 			clear_problem_context(&pctx);
+ 			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++			e2fsck_pass1_check_unlock(ctx);
+ 			continue;
+ 		} else if (ino == EXT2_ROOT_INO) {
+ 			/*
+@@ -2064,6 +2109,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				}
+ 				check_blocks(ctx, &pctx, block_buf, NULL);
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 			if ((inode->i_links_count ||
+@@ -2095,6 +2141,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 				}
+ 				check_blocks(ctx, &pctx, block_buf, NULL);
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 			if ((inode->i_links_count ||
+@@ -2137,11 +2184,13 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 			}
+ 			check_blocks(ctx, &pctx, block_buf, NULL);
+ 			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++			e2fsck_pass1_check_unlock(ctx);
+ 			continue;
+ 		}
+ 
+ 		if (!inode->i_links_count) {
+ 			FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++			e2fsck_pass1_check_unlock(ctx);
+ 			continue;
+ 		}
+ 		/*
+@@ -2250,12 +2299,14 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 			ctx->fs_symlinks_count++;
+ 			if (inode->i_flags & EXT4_INLINE_DATA_FL) {
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			} else if (ext2fs_is_fast_symlink(inode)) {
+ 				ctx->fs_fast_symlinks_count++;
+ 				check_blocks(ctx, &pctx, block_buf,
+ 					     &ea_ibody_quota);
+ 				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++				e2fsck_pass1_check_unlock(ctx);
+ 				continue;
+ 			}
+ 		}
+@@ -2303,16 +2354,21 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 
+ 		FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
+ 
+-		if (e2fsck_should_abort(ctx))
++		if (e2fsck_should_abort(ctx)) {
++			e2fsck_pass1_check_unlock(ctx);
+ 			goto endit;
++		}
+ 
+ 		if (process_inode_count >= ctx->process_inode_size) {
+ 			process_inodes(ctx, block_buf, inodes_to_process,
+ 				       &process_inode_count);
+ 
+-			if (e2fsck_should_abort(ctx))
++			if (e2fsck_should_abort(ctx)) {
++				e2fsck_pass1_check_unlock(ctx);
+ 				goto endit;
++			}
+ 		}
++		e2fsck_pass1_check_unlock(ctx);
+ 	}
+ 	process_inodes(ctx, block_buf, inodes_to_process,
+ 		       &process_inode_count);
+@@ -3328,7 +3384,7 @@ static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
+ 	struct e2fsck_thread_info	*infos = NULL;
+ 	errcode_t			 retval;
+ 
+-	pthread_mutex_init(&global_ctx->fs_fix_mutex, NULL);
++	pthread_rwlock_init(&global_ctx->fs_fix_rwlock, NULL);
+ 	pthread_rwlock_init(&global_ctx->fs_block_map_rwlock, NULL);
+ 	retval = e2fsck_pass1_threads_start(&infos, global_ctx);
+ 	if (retval) {
 -- 
 2.25.4
 
