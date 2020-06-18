@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A87EC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD290C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 56B1320888
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B81152075E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:24 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ng8suade"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UMcDY/MW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731539AbgFRP3H (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:29:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36200 "EHLO
+        id S1731592AbgFRP3U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:29:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36248 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731531AbgFRP3E (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:04 -0400
-Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12331C0613ED
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:04 -0700 (PDT)
-Received: by mail-pf1-x443.google.com with SMTP id 64so2925285pfv.11
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:04 -0700 (PDT)
+        with ESMTP id S1728050AbgFRP3S (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:18 -0400
+Received: from mail-pl1-x644.google.com (mail-pl1-x644.google.com [IPv6:2607:f8b0:4864:20::644])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D9CD0C06174E
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:17 -0700 (PDT)
+Received: by mail-pl1-x644.google.com with SMTP id d8so2562632plo.12
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=Pj3QnV1F9sep4avLnVMWVNXOW1kFyUq+/zRTjNJYlyI=;
-        b=Ng8suadeZ0Uja+8pfDVundngIPULO/tnKSqI45SqAbX3BdJSREwHnH1VG30sqEaOWw
-         8FnXJruUMvTPlvE1F1gQt7xq36B+N7q9CT/qvyxRgc2V2oP2k+D6eMDNauImtNSDZKId
-         IDyGZHLKiNuJIGkybrYHpzGh21WZXfLIc6g3Mw/jSZoe8nkFTT21jCHBzZyYjrvkpvZC
-         UQmNOY+0L0CbrACxc3yQp5DpiAkKau09n3H5t1KqVnKUnc+7mabrE5QPgOPeJUldteg+
-         H6U9aCSrVf/ucGD+NqD/QQfHIwzNhqakr5/uDZDxFWFdEe/1qZyDXi9o/ks4P38xyLbQ
-         E/2g==
+        bh=zXDFhC2anvWhs84d4TWDmHEFqzkGFri33k4iQWrCYO0=;
+        b=UMcDY/MWVLQCMhftHpGZoJJQFHZS+SmxAV6FTdc3l0uvlolvx+Xb90zVhpF5uNdOHH
+         IjkjGu/7FcPXHtbknQmWbgjxEt36u46iOZoLY6cPkgAddiRuMMaR5EZp17kGaNIvmfE9
+         IhbxVNxz0IjMNHseRp8fN1X0el+YBQd4JsfacWrzCp683M4P4E4iHL9N/bg/vBo1u+dK
+         74sDr5fg6GOziXxKIfRvJ9IeLUcZrToXKznn1AaydFX3PEx07CvIQ966G1diK2mWWX7U
+         HIYrwUPzNnIBc8pFbfhzW89ceEwSW2kcIFPMyRD+Hv2m1FJBgTS0XA1miTGc/Ca/mgpn
+         Ou0g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=Pj3QnV1F9sep4avLnVMWVNXOW1kFyUq+/zRTjNJYlyI=;
-        b=LTx6OQQnrrxvb++u/HFuFlHtYMroWCnnLhKk6QEuyfyWCY6BS5SQN0e+R9eeouZqVx
-         9qeZrlKnS4RJ+33I17FpSizHI7X+t1eMRENh+uAF13TRgAScR7JVCO1GIbu5OBrNedFx
-         ckljtY2fwsluK3XPOUCOzJ/A/MZn8QSmqdhUz3sa9CXSm2CPKvEZTd5F7xaRqy2yGVdq
-         ubnVkyQ685lcRNAUJQRVrgsZfX3Oz1srecZ7pT4XK73nAesAanUb20be4BaEfZutfqw+
-         cDToA4lv15UXIC80ldDKChVO0ozl5k1uR5coAnf1HMwZuldejmnJikHt0J+WfmLSw07G
-         ZvHQ==
-X-Gm-Message-State: AOAM532CjtB05zJQigLwlebrAzNPd/zhhR2fHF56S7LAwSNROdAZE6+0
-        BPn0pw6k/CIilLCEZRyHzvr8oJSdLn8=
-X-Google-Smtp-Source: ABdhPJxU6L3Vbxwj2Om4ZVvod9sO+FacwuK8nJJ/JqPlBnLINxghECmqUUHJgNSgMp9jBuozlzLQ1w==
-X-Received: by 2002:a63:f502:: with SMTP id w2mr3699768pgh.321.1592494143166;
-        Thu, 18 Jun 2020 08:29:03 -0700 (PDT)
+        bh=zXDFhC2anvWhs84d4TWDmHEFqzkGFri33k4iQWrCYO0=;
+        b=pIVyjFJwOCMNkwNrdVFLLVhQejnf7lGC4y62J2pJvpKeZrC+KoBZcvVeMWiE5z8yQK
+         zs4hxk53Acq0I09wAwrfA9hmE9XKqECoPw8uJEg0quZbs2Q4+aeaVnU57oEjZo1WfjJe
+         3XAA0L16uc5gWUj6jO/S+bSFLs2c93dJzfsAQmQOSTEm/lA5eKecVpD4zDkPvV71lT0i
+         ryjDintBVlWyYh4REsdErKcDlnD0kbMvGCmqtfg8OWvYEcTBi1JbfIQNdIv1nTPCT+o8
+         B0i6bd69UQWkQPBMggxBmXwCLsX275+Y3/H/mAjqrrXvsgNYSfjFREmtXb7ZRK5uwdLp
+         gcKw==
+X-Gm-Message-State: AOAM532fP5fjRsdxrQctY9Fx3vI04dH2ioXLspDygL1iOGiEtn6/dFdh
+        ++N3KO3gRwselF4Qe++ekOthGswvkSI=
+X-Google-Smtp-Source: ABdhPJxaVfc+hq0qyoFVxmXhkM/rL8jS7YlIKA0mY0AkuxcdfovJB0BUnAO44dHQd0GZ7Kre1De0Sg==
+X-Received: by 2002:a17:90a:ac05:: with SMTP id o5mr4960228pjq.228.1592494157079;
+        Thu, 18 Jun 2020 08:29:17 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.01
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.15
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:29:02 -0700 (PDT)
+        Thu, 18 Jun 2020 08:29:16 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 21/51] e2fsck: rbtree bitmap for dir
-Date:   Fri, 19 Jun 2020 00:27:24 +0900
-Message-Id: <1592494074-28991-22-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 27/51] LU-8465 e2fsck: merge fs flags when threads finish
+Date:   Fri, 19 Jun 2020 00:27:30 +0900
+Message-Id: <1592494074-28991-28-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,40 +74,42 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Li Xi <lixi@ddn.com>
 
-Only rbtree supports merge, so use it for all bitmaps.
-
-Change-Id: I863687ce275f9c891cd2d18c115cb75c6e24f4e4
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- lib/ext2fs/gen_bitmap64.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+ e2fsck/pass1.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/lib/ext2fs/gen_bitmap64.c b/lib/ext2fs/gen_bitmap64.c
-index 2617ac22..7bae443f 100644
---- a/lib/ext2fs/gen_bitmap64.c
-+++ b/lib/ext2fs/gen_bitmap64.c
-@@ -86,7 +86,6 @@ static void warn_bitmap(ext2fs_generic_bitmap_64 bitmap,
- #define INC_STAT(map, name) ;;
- #endif
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index efab125d..68b7ae26 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2273,6 +2273,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	ext2fs_block_bitmap block_map;
+ 	ext2_badblocks_list badblocks;
+ 	ext2_dblist dblist;
++	int flags;
  
--
- errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
- 				    int type, __u64 start, __u64 end,
- 				    __u64 real_end,
-@@ -109,11 +108,7 @@ errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
- 		ops = &ext2fs_blkmap64_rbtree;
- 		break;
- 	case EXT2FS_BMAP64_AUTODIR:
--		retval = ext2fs_get_num_dirs(fs, &num_dirs);
--		if (retval || num_dirs > (fs->super->s_inodes_count / 320))
--			ops = &ext2fs_blkmap64_bitarray;
--		else
--			ops = &ext2fs_blkmap64_rbtree;
-+		ops = &ext2fs_blkmap64_rbtree;
- 		break;
- 	default:
- 		return EINVAL;
+ 	dest_io = dest->io;
+ 	dest_image_io = dest->image_io;
+@@ -2280,6 +2281,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	block_map = dest->block_map;
+ 	badblocks = dest->badblocks;
+ 	dblist = dest->dblist;
++	flags = dest->flags;
+ 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
+ 	dest->io = dest_io;
+ 	dest->image_io = dest_image_io;
+@@ -2287,6 +2289,9 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	dest->block_map = block_map;
+ 	dest->badblocks = badblocks;
+ 	dest->dblist = dblist;
++	dest->flags = src->flags | flags;
++	if (!(src->flags & EXT2_FLAG_VALID) || !(flags & EXT2_FLAG_VALID))
++		ext2fs_unmark_valid(dest);
+ 	/*
+ 	 * PASS1_MERGE_FS_BITMAP might return directly from this function,
+ 	 * so please do NOT leave any garbage behind after returning.
 -- 
 2.25.4
 
