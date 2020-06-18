@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4412C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B4B8C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B35F02075E
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0C8322075E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sm8qu6E5"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UKiOsD9u"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731672AbgFRPaB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1731643AbgFRPaB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 18 Jun 2020 11:30:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36372 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36346 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731643AbgFRP35 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:57 -0400
+        with ESMTP id S1731644AbgFRP3u (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:50 -0400
 Received: from mail-pj1-x1041.google.com (mail-pj1-x1041.google.com [IPv6:2607:f8b0:4864:20::1041])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 40582C06174E
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:57 -0700 (PDT)
-Received: by mail-pj1-x1041.google.com with SMTP id s88so2823719pjb.5
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:57 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE55FC0613EE
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:47 -0700 (PDT)
+Received: by mail-pj1-x1041.google.com with SMTP id d6so2828362pjs.3
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=EduJshcGjZh+WKDrU6Lmf1BSs+WU3ecYKxJHkpij3Lg=;
-        b=sm8qu6E5lZ1Y3I8P+Sma/XxUuRy2Fg/UbS/2EFg+D142bJKhSMbumuL4wIjocketBj
-         aZgHBIq1KmX5DqofM6OGo+xZlLCm6Ely7Su6PEU3mHxysf1e+uloUSMrfi6kfhIiCcmf
-         LYkuwy6szXyyKKmZ9P5smua4Rh7cretAKFE0wk4uqTKwM5Upd6k3hU6wPnEcZ04VVMiC
-         CD9ipyplfDviATA0xwPd09Mguw09HvZ1ezi/CJPMY86t3uk/SnIbMVL8UZOhqnjtU1En
-         qxOX8AOgjLOKZDXCG3FB4EIx6khV6c2/JdaHkHWjgygk5QfSLqmlVyGpaQql0vtHFENn
-         +WnA==
+        bh=q8oLpAav82yILYMsj/pigwiul7ITwgG8XYzfBCRL+z0=;
+        b=UKiOsD9uX/dZ1t0QzxoURmy8adiH6VpefJCGyh7wdlhDZfmsj5LAlN0JrxpLvowuy3
+         rUJEkx2xJg/Otm1HtAUloFkjjcpv13cbp2DiDE2P+MrCKTeku8tIetFH86s8TarnCGh7
+         TBNXhu5CQvp7/cTeU0132wbwhTpONFlualShOQACcSuvBdRycDRabA7DD0KnUhmZ2NeQ
+         9aU+A7Ho4LgdyNqBqo5LG/NLzhiET4FLaOh03Qz6tEHExK0hYP9htRXoBErfvPeMHvFz
+         uDe0917bkkbUT9Y5J92pVB+yjYi9jtk9T8YrpQJaVp0Ha8pJ7JBh9Ho14GMpRhpoBhAx
+         eemw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=EduJshcGjZh+WKDrU6Lmf1BSs+WU3ecYKxJHkpij3Lg=;
-        b=RJcFMXFLueU5uVQ9Giim1XeJYjsVir5dxqch27AEpKofzmGVZOxa1qYto7XWQdMWvj
-         ZyhL8Hre+//8l5ObT74ctEb/Ux7RESDeI5FtQ9MLIU4ZpZGUYUmnxHcBeKyjOqzsRJ0n
-         tRG2l8kxsEf7VpJeXY/5lVhdhsjHwkv5qe0KwQXFhKU88LWXVtXreuo97QWlOXUaZT0E
-         +At6D63NfACB4a9LnsOk6rZ2V9Sv3IKLj58ZBvoAcvdmvfXxvRFkaAKyCjS6HYNdvxka
-         cbHEIveOqBchO/NkyqdZEOpQ7Sx7GAaqg63+XcEi7w/u2IHHH8xj88glu+nybn0MAoVV
-         Ktpw==
-X-Gm-Message-State: AOAM532H2Cc/M0hoUI0yNYKmsH75xLxvKsTGdSvOFmVcDASuiB0c11/a
-        SZb1dsHNTB/+Y7VqCeGcKg8g+Mgqz74=
-X-Google-Smtp-Source: ABdhPJyVtTpc/nYe0f3QJo/M0tWEV96nbE8E/deM4BhptJ87RM5SYVlphS5Qjmm8SEQ+NVTELOQb0g==
-X-Received: by 2002:a17:902:7d89:: with SMTP id a9mr4053629plm.309.1592494196335;
-        Thu, 18 Jun 2020 08:29:56 -0700 (PDT)
+        bh=q8oLpAav82yILYMsj/pigwiul7ITwgG8XYzfBCRL+z0=;
+        b=bsn1p79/U2+f0runw5Qgo0KnHwnua6V3u6Ma2olkWf3E+wLVE1cSiUWNlJrFzretI0
+         KM3dLGzFRS5OUaa3SBLaA1NAh/ySWYAq0DvUe+T9mGuQJNNL4uWjdJsOqaphaWjkMML8
+         SjitPqA2eHXZc7hnZ+Gr47tMa3xkqw6/3w58agtvy5FXfPVCG7bsLY1JJCahIytN20Ij
+         3Vlxd7OErey4mk2R4AUBM80cllomltAi2YOD5c1eZxAqA81YEzuAANniPbA+WFHuR3/O
+         y47qXrLl/St8+Dq/zu09FcuH8HzHOopzWGQ5wTnEYo1VsVYPXQTMR4JKD2yw1iz7KUcN
+         aiVw==
+X-Gm-Message-State: AOAM531z+0WXw1yUOF5cr+NMpeX+GB/AJqMnq+iZV492MizOfsCm4KUY
+        P0qRsSSl/CKsRhidoc0U4djqXDEZxeU=
+X-Google-Smtp-Source: ABdhPJwrkL1QB3OfzEGXgTh0rcO+K5Cfs5dzsyNHQKWIxU+8/gsju7JSCuc7MJFasYV/dkGy22oN2Q==
+X-Received: by 2002:a17:90a:260e:: with SMTP id l14mr4927721pje.76.1592494186765;
+        Thu, 18 Jun 2020 08:29:46 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.54
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.44
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:29:55 -0700 (PDT)
+        Thu, 18 Jun 2020 08:29:46 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 43/51] e2fsck: simplify e2fsck context merging codes
-Date:   Fri, 19 Jun 2020 00:27:46 +0900
-Message-Id: <1592494074-28991-44-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 39/51] e2fsck: fix readahead for pfsck of pass1
+Date:   Fri, 19 Jun 2020 00:27:42 +0900
+Message-Id: <1592494074-28991-40-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,231 +74,204 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-We tried to copy thread context to global context directly
-and then copy back some saved variables before merging.
+Several improvments for this patch:
 
-Since we have finished almost all necessary variables
-in the e2fsck context, we could simplify codes, and
-this could help us understand what is missing rather
-than hide problems.
+1) move readahead_kb detection to preparing phase.
+2) inode readahead should be aware of thread block group
+boundary.
+3) make readahead_kb aware of multiple threads.
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 153 +++++++++----------------------------------------
- 1 file changed, 27 insertions(+), 126 deletions(-)
+ e2fsck/pass1.c | 90 ++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 55 insertions(+), 35 deletions(-)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index dc710e4d..7d6e531a 100644
+index 0cc4e60d..457c713f 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2390,11 +2390,6 @@ do {									\
-     }									\
- } while (0)
+@@ -1177,13 +1177,14 @@ static void pass1_readahead(e2fsck_t ctx, dgrp_t *group, ext2_ino_t *next_ino)
+ 	dgrp_t start = *group, grp;
+ 	blk64_t blocks_to_read = 0;
+ 	errcode_t err = EXT2_ET_INVALID_ARGUMENT;
++	dgrp_t grp_end = ctx->thread_info.et_group_end;
  
--#define PASS1_MERGE_CTX_COUNT(_dest, _src, _field)			\
--do {									\
--    _dest->_field = _field + _src->_field;				\
--} while (0)
--
- static errcode_t pass1_open_io_channel(ext2_filsys fs,
- 				       const char *io_options,
- 				       io_manager manager, int flags)
-@@ -2511,6 +2506,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	ext2_badblocks_list badblocks;
- 	ext2_dblist dblist;
- 	int flags;
-+	e2fsck_t dest_ctx = dest->priv_data;
+ 	if (ctx->readahead_kb == 0)
+ 		goto out;
  
- 	dest_io = dest->io;
- 	dest_image_io = dest->image_io;
-@@ -2526,6 +2522,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	dest->block_map = block_map;
- 	dest->badblocks = badblocks;
- 	dest->dblist = dblist;
-+	dest->priv_data = dest_ctx;
- 	dest->flags = src->flags | flags;
- 	if (!(src->flags & EXT2_FLAG_VALID) || !(flags & EXT2_FLAG_VALID))
- 		ext2fs_unmark_valid(dest);
-@@ -2990,133 +2987,42 @@ static errcode_t e2fsck_pass1_merge_ea_refcount(e2fsck_t global_ctx,
- 	return retval;
+ 	/* Keep iterating groups until we have enough to readahead */
+ 	inodes_per_block = EXT2_INODES_PER_BLOCK(ctx->fs->super);
+-	for (grp = start; grp < ctx->fs->group_desc_count; grp++) {
++	for (grp = start; grp < grp_end; grp++) {
+ 		if (ext2fs_bg_flags_test(ctx->fs, grp, EXT2_BG_INODE_UNINIT))
+ 			continue;
+ 		inodes_in_group = ctx->fs->super->s_inodes_per_group -
+@@ -1275,6 +1276,38 @@ static int e2fsck_should_abort(e2fsck_t ctx)
+ 	return 0;
  }
  
--static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx)
-+static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
-+					    e2fsck_t thread_ctx)
++/**
++ * Even though we could specify number of threads,
++ * but it might be more than the whole filesystem
++ * block groups, correct it here.
++ */
++static void e2fsck_pass1_set_thread_num(e2fsck_t ctx)
++{
++	unsigned flexbg_size = 1;
++	ext2_filsys fs = ctx->fs;
++	int num_threads = ctx->fs_num_threads;
++	int max_threads;
++
++	if (num_threads < 1)
++		num_threads = 1;
++
++	if (ext2fs_has_feature_flex_bg(fs->super))
++		flexbg_size = 1 << fs->super->s_log_groups_per_flex;
++
++	max_threads = fs->group_desc_count / flexbg_size;
++	if (max_threads == 0)
++		num_threads = 1;
++	else if (max_threads % num_threads) {
++		int times = max_threads / num_threads;
++
++		if (times == 0)
++			num_threads = max_threads;
++		else
++			num_threads = max_threads / times;
++	}
++	ctx->fs_num_threads = num_threads;
++}
++
+ /*
+  * We need call mark_table_blocks() before multiple
+  * thread start, since all known system blocks should be
+@@ -1284,6 +1317,20 @@ static int _e2fsck_pass1_prepare(e2fsck_t ctx)
  {
--	errcode_t	 retval;
--	int		 flags = global_ctx->flags;
--	ext2_filsys	 thread_fs = thread_ctx->fs;
--	ext2_filsys	 global_fs = global_ctx->fs;
--	FILE		*global_logf = global_ctx->logf;
--	FILE		*global_problem_logf = global_ctx->problem_logf;
--	struct dir_info_db *dir_info = global_ctx->dir_info;
--	struct dx_dir_info *dx_dir_info = global_ctx->dx_dir_info;
--	ext2fs_inode_bitmap inode_used_map = global_ctx->inode_used_map;
--	ext2fs_inode_bitmap inode_dir_map = global_ctx->inode_dir_map;
--	ext2fs_inode_bitmap inode_bb_map = global_ctx->inode_bb_map;
--	ext2fs_inode_bitmap inode_imagic_map = global_ctx->inode_imagic_map;
--	ext2fs_inode_bitmap inode_reg_map = global_ctx->inode_reg_map;
--	ext2fs_block_bitmap inodes_to_rebuild = global_ctx->inodes_to_rebuild;
--	ext2fs_inode_bitmap inode_bad_map = global_ctx->inode_bad_map;
--	ext2_icount_t inode_count = global_ctx->inode_count;
--	ext2_icount_t inode_link_info = global_ctx->inode_link_info;
--	__u32	fs_directory_count = global_ctx->fs_directory_count;
--	__u32	fs_regular_count = global_ctx->fs_regular_count;
--	__u32	fs_blockdev_count = global_ctx->fs_blockdev_count;
--	__u32	fs_chardev_count = global_ctx->fs_chardev_count;
--	__u32	fs_links_count = global_ctx->fs_links_count;
--	__u32	fs_symlinks_count = global_ctx->fs_symlinks_count;
--	__u32	fs_fast_symlinks_count = global_ctx->fs_fast_symlinks_count;
--	__u32	fs_fifo_count = global_ctx->fs_fifo_count;
--	__u32	fs_total_count = global_ctx->fs_total_count;
--	__u32	fs_badblocks_count = global_ctx->fs_badblocks_count;
--	__u32	fs_sockets_count = global_ctx->fs_sockets_count;
--	__u32	fs_ind_count = global_ctx->fs_ind_count;
--	__u32	fs_dind_count = global_ctx->fs_dind_count;
--	__u32	fs_tind_count = global_ctx->fs_tind_count;
--	__u32	fs_fragmented = global_ctx->fs_fragmented;
--	__u32	fs_fragmented_dir = global_ctx->fs_fragmented_dir;
--	__u32	large_files = global_ctx->large_files;
--	int dx_dir_info_size = global_ctx->dx_dir_info_size;
--	int dx_dir_info_count = global_ctx->dx_dir_info_count;
--	ext2_u32_list dirs_to_hash = global_ctx->dirs_to_hash;
--	quota_ctx_t qctx = global_ctx->qctx;
--	int *invalid_block_bitmap_flag = global_ctx->invalid_block_bitmap_flag;
--	int *invalid_inode_bitmap_flag = global_ctx->invalid_inode_bitmap_flag;
--	int *invalid_inode_table_flag  = global_ctx->invalid_inode_table_flag;
--	int invalid_bitmaps = global_ctx->invalid_bitmaps;
--	ext2_refcount_t refcount = global_ctx->refcount;
--	ext2_refcount_t refcount_extra = global_ctx->refcount_extra;
--	ext2_refcount_t refcount_orig = global_ctx->refcount_orig;
--	ext2_refcount_t ea_block_quota_blocks = global_ctx->ea_block_quota_blocks;
--	ext2_refcount_t ea_block_quota_inodes = global_ctx->ea_block_quota_inodes;
--	ext2fs_block_bitmap block_ea_map = global_ctx->block_ea_map;
--	ext2_refcount_t ea_inode_refs = global_ctx->ea_inode_refs;
--	ext2fs_block_bitmap  block_found_map = global_ctx->block_found_map;
--	ext2fs_block_bitmap  block_dup_map = global_ctx->block_dup_map;
--	struct encrypted_file_info *dest_info = global_ctx->encrypted_files;
--
--#ifdef HAVE_SETJMP_H
--	jmp_buf		 old_jmp;
--
--	memcpy(old_jmp, global_ctx->abort_loc, sizeof(jmp_buf));
--#endif
--	memcpy(global_ctx, thread_ctx, sizeof(struct e2fsck_struct));
--#ifdef HAVE_SETJMP_H
--	memcpy(global_ctx->abort_loc, old_jmp, sizeof(jmp_buf));
--#endif
-+	errcode_t retval;
+ 	struct problem_context pctx;
+ 	ext2_filsys fs = ctx->fs;
++	unsigned long long readahead_kb;
++
++	e2fsck_pass1_set_thread_num(ctx);
++	/* If we can do readahead, figure out how many groups to pull in. */
++	if (!e2fsck_can_readahead(ctx->fs))
++		ctx->readahead_kb = 0;
++	else if (ctx->readahead_kb == ~0ULL)
++		ctx->readahead_kb = e2fsck_guess_readahead(ctx->fs);
++
++	/* don't use more than 1/10 of memory for threads checking */
++	readahead_kb = get_memory_size() / (10 * ctx->fs_num_threads);
++	/* maybe better disable RA if this is too small? */
++	if (ctx->readahead_kb > readahead_kb)
++		ctx->readahead_kb = readahead_kb;
  
--	global_ctx->inode_used_map = inode_used_map;
--	global_ctx->inode_dir_map = inode_dir_map;
--	global_ctx->inode_bb_map = inode_bb_map;
--	global_ctx->inode_imagic_map = inode_imagic_map;
--	global_ctx->inodes_to_rebuild = inodes_to_rebuild;
--	global_ctx->inode_reg_map = inode_reg_map;
--	global_ctx->block_dup_map = block_dup_map;
--	global_ctx->block_found_map = block_found_map;
--	global_ctx->inode_bad_map = inode_bad_map;
--	global_ctx->dir_info = dir_info;
--	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
--	global_ctx->dx_dir_info = dx_dir_info;
--	global_ctx->dx_dir_info_count = dx_dir_info_count;
--	global_ctx->dx_dir_info_size = dx_dir_info_size;
--	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
--	global_ctx->inode_count = inode_count;
--	global_ctx->inode_link_info = inode_link_info;
--	global_ctx->refcount = refcount;
--	global_ctx->refcount_extra = refcount_extra;
--	global_ctx->refcount_orig = refcount_orig;
--	global_ctx->ea_block_quota_blocks = ea_block_quota_blocks;
--	global_ctx->ea_block_quota_inodes = ea_block_quota_inodes;
--	global_ctx->block_ea_map = block_ea_map;
--	global_ctx->ea_inode_refs = ea_inode_refs;
--	global_ctx->encrypted_files = dest_info;
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_directory_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_regular_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_blockdev_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_chardev_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_links_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_symlinks_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_fast_symlinks_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_fifo_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_total_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_badblocks_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_sockets_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_ind_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_dind_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_tind_count);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_fragmented);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, fs_fragmented_dir);
--	PASS1_MERGE_CTX_COUNT(global_ctx, thread_ctx, large_files);
+ 	clear_problem_context(&pctx);
+ 	if (!(ctx->options & E2F_OPT_PREEN))
+@@ -1467,13 +1514,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 	init_resource_track(&rtrack, ctx->fs->io);
+ 	clear_problem_context(&pctx);
+ 
+-	/* If we can do readahead, figure out how many groups to pull in. */
+-	if (!e2fsck_can_readahead(ctx->fs))
+-		ctx->readahead_kb = 0;
+-	else if (ctx->readahead_kb == ~0ULL)
+-		ctx->readahead_kb = e2fsck_guess_readahead(ctx->fs);
+ 	pass1_readahead(ctx, &ra_group, &ino_threshold);
 -
--	global_ctx->flags |= flags;
--
--	retval = e2fsck_pass1_merge_fs(global_fs, thread_fs);
-+	global_ctx->fs_directory_count += thread_ctx->fs_directory_count;
-+	global_ctx->fs_regular_count += thread_ctx->fs_regular_count;
-+	global_ctx->fs_blockdev_count += thread_ctx->fs_blockdev_count;
-+	global_ctx->fs_chardev_count += thread_ctx->fs_chardev_count;
-+	global_ctx->fs_links_count += thread_ctx->fs_links_count;
-+	global_ctx->fs_symlinks_count += thread_ctx->fs_symlinks_count;
-+	global_ctx->fs_fast_symlinks_count += thread_ctx->fs_fast_symlinks_count;
-+	global_ctx->fs_fifo_count += thread_ctx->fs_fifo_count;
-+	global_ctx->fs_total_count += thread_ctx->fs_total_count;
-+	global_ctx->fs_badblocks_count += thread_ctx->fs_badblocks_count;
-+	global_ctx->fs_sockets_count += thread_ctx->fs_sockets_count;
-+	global_ctx->fs_ind_count += thread_ctx->fs_ind_count;
-+	global_ctx->fs_dind_count += thread_ctx->fs_dind_count;
-+	global_ctx->fs_tind_count += thread_ctx->fs_tind_count;
-+	global_ctx->fs_fragmented += thread_ctx->fs_fragmented;
-+	global_ctx->fs_fragmented_dir += thread_ctx->fs_fragmented_dir;
-+	global_ctx->large_files += thread_ctx->large_files;
-+	global_ctx->flags |= thread_ctx->flags;
-+ 	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
-+ 	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
-+	retval = e2fsck_pass1_merge_fs(global_ctx->fs, thread_ctx->fs);
+ 	if (ext2fs_has_feature_dir_index(fs->super) &&
+ 	    !(ctx->options & E2F_OPT_NO)) {
+ 		if (ext2fs_u32_list_create(&ctx->dirs_to_hash, 50))
+@@ -2997,7 +3038,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ }
+ 
+ static int e2fsck_pass1_threads_join(struct e2fsck_thread_info *infos,
+-				      int num_threads, e2fsck_t global_ctx)
++				     e2fsck_t global_ctx)
+ {
+ 	errcode_t			 rc;
+ 	errcode_t			 ret = 0;
+@@ -3006,7 +3047,7 @@ static int e2fsck_pass1_threads_join(struct e2fsck_thread_info *infos,
+ 
+ 	/* merge invalid bitmaps will recalculate it */
+ 	global_ctx->invalid_bitmaps = 0;
+-	for (i = 0; i < num_threads; i++) {
++	for (i = 0; i < global_ctx->fs_num_threads; i++) {
+ 		pinfo = &infos[i];
+ 
+ 		if (!pinfo->eti_started)
+@@ -3083,7 +3124,7 @@ out:
+ }
+ 
+ static int e2fsck_pass1_threads_start(struct e2fsck_thread_info **pinfo,
+-				      int num_threads, e2fsck_t global_ctx)
++				      e2fsck_t global_ctx)
+ {
+ 	struct e2fsck_thread_info	*infos;
+ 	pthread_attr_t			 attr;
+@@ -3098,6 +3139,7 @@ static int e2fsck_pass1_threads_start(struct e2fsck_thread_info **pinfo,
+ 
+ 	thread_debug.etd_finished_threads = 0;
+ #endif
++	int num_threads = global_ctx->fs_num_threads;
+ 
+ 	retval = pthread_attr_init(&attr);
  	if (retval) {
- 		com_err(global_ctx->program_name, 0, _("while merging fs\n"));
+@@ -3152,7 +3194,7 @@ static int e2fsck_pass1_threads_start(struct e2fsck_thread_info **pinfo,
+ 	}
+ 
+ 	if (retval) {
+-		e2fsck_pass1_threads_join(infos, num_threads, global_ctx);
++		e2fsck_pass1_threads_join(infos, global_ctx);
  		return retval;
  	}
--	global_fs->priv_data = global_ctx;
--	global_ctx->fs = global_fs;
--	global_ctx->logf = global_logf;
--	global_ctx->problem_logf = global_problem_logf;
--	global_ctx->global_ctx = NULL;
- 	retval = e2fsck_pass1_merge_icounts(global_ctx, thread_ctx);
- 	if (retval) {
- 		com_err(global_ctx->program_name, 0,
- 			_("while merging icounts\n"));
- 		return retval;
- 	}
--	global_ctx->dirs_to_hash = dirs_to_hash;
- 	retval = e2fsck_pass1_merge_dirs_to_hash(global_ctx, thread_ctx);
- 	if (retval) {
- 		com_err(global_ctx->program_name, 0, _("while merging dirs to hash\n"));
-@@ -3124,12 +3030,7 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
- 	}
- 	e2fsck_pass1_merge_ea_inode_refs(global_ctx, thread_ctx);
- 	e2fsck_pass1_merge_ea_refcount(global_ctx, thread_ctx);
--	global_ctx->qctx = qctx;
- 	e2fsck_pass1_merge_quota_ctx(global_ctx, thread_ctx);
--	global_ctx->invalid_block_bitmap_flag = invalid_block_bitmap_flag;
--	global_ctx->invalid_inode_bitmap_flag = invalid_inode_bitmap_flag;
--	global_ctx->invalid_inode_table_flag = invalid_inode_table_flag;
--	global_ctx->invalid_bitmaps = invalid_bitmaps;
- 	e2fsck_pass1_merge_invalid_bitmaps(global_ctx, thread_ctx);
- 	retval = merge_two_encrypted_files(thread_ctx, global_ctx);
- 	if (retval) {
-@@ -3172,7 +3073,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ 	*pinfo = infos;
+@@ -3183,13 +3225,7 @@ static void init_ext2_max_sizes()
+ static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
  {
- 	errcode_t	retval;
+ 	struct e2fsck_thread_info	*infos = NULL;
+-	int num_threads = global_ctx->fs_num_threads;
+ 	errcode_t			 retval;
+-	unsigned flexbg_size = 1;
+-	int max_threads;
+-
+-	if (num_threads < 1)
+-		num_threads = 1;
  
--	retval = e2fsck_pass1_thread_join_one(global_ctx, thread_ctx);
-+	retval = e2fsck_pass1_merge_context(global_ctx, thread_ctx);
- 	ext2fs_free_mem(&thread_ctx->fs);
- 	if (thread_ctx->logf)
- 		fclose(thread_ctx->logf);
+ 	retval = _e2fsck_pass1_prepare(global_ctx);
+ 	if (retval)
+@@ -3198,31 +3234,15 @@ static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
+ 	pthread_mutex_init(&global_ctx->fs_fix_mutex, NULL);
+ 	pthread_rwlock_init(&global_ctx->fs_block_map_rwlock, NULL);
+ 	pthread_mutex_init(&global_ctx->fs_ea_mutex, NULL);
+-	if (ext2fs_has_feature_flex_bg(global_ctx->fs->super))
+-		flexbg_size = 1 << global_ctx->fs->super->s_log_groups_per_flex;
+-
+-	max_threads = global_ctx->fs->group_desc_count / flexbg_size;
+-	if (max_threads == 0)
+-		num_threads = 1;
+-	else if (max_threads % num_threads) {
+-		int times = max_threads / num_threads;
+-
+-		if (times == 0)
+-			num_threads = max_threads;
+-		else
+-			num_threads = max_threads / times;
+-	}
+-
+-	global_ctx->fs_num_threads = num_threads;
+ 	init_ext2_max_sizes();
+-	retval = e2fsck_pass1_threads_start(&infos, num_threads, global_ctx);
++	retval = e2fsck_pass1_threads_start(&infos, global_ctx);
+ 	if (retval) {
+ 		com_err(global_ctx->program_name, retval,
+ 			_("while starting pass1 threads\n"));
+ 		goto out_abort;
+ 	}
+ 
+-	retval = e2fsck_pass1_threads_join(infos, num_threads, global_ctx);
++	retval = e2fsck_pass1_threads_join(infos, global_ctx);
+ 	if (retval) {
+ 		com_err(global_ctx->program_name, retval,
+ 			_("while joining pass1 threads\n"));
 -- 
 2.25.4
 
