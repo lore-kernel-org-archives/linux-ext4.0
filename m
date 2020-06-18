@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 259FFC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E37B9C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 05D2720890
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C06F0206E2
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dEFhz7Jg"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JhLX5xPZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731681AbgFRPaK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:30:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36384 "EHLO
+        id S1731682AbgFRPaM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:30:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36398 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731321AbgFRPaA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:00 -0400
-Received: from mail-pj1-x1041.google.com (mail-pj1-x1041.google.com [IPv6:2607:f8b0:4864:20::1041])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D88AC06174E
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:00 -0700 (PDT)
-Received: by mail-pj1-x1041.google.com with SMTP id b7so3495868pju.0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:00 -0700 (PDT)
+        with ESMTP id S1731554AbgFRPaF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:05 -0400
+Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D9DEC0613EE
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:04 -0700 (PDT)
+Received: by mail-pj1-x1043.google.com with SMTP id i12so2695983pju.3
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=mYgHtiD3RT/PF1gpGhPfPw6D2NptmfB338VaCzf/V88=;
-        b=dEFhz7Jgn5pG1R0U3Sk2QTNbq5Q2V6Wj8v1jhRTUNWgpcKZqF3eur7hJsvvZEKm8dX
-         JKqgGMjFVkuBmvdY80IX9FD29D+nbtIStmQie0LzhHJ9vZmCTmaPVggmRq3zQzYPesXb
-         uGfhl3kfUhEryo/I+T8m3h7eSHHQIwLT+aPD/t/iuCWXIxPRFxsO1oQJ6OQGGOiTLIb7
-         blSS7S6jp6tpLnuB+SImr7o06hkVepPfFDGwnXC9UqlkPHpBVqc0Swbgvn0wH5LjPmHd
-         Lj0rF+r2Pzn1RjLcklDruMvDqUF9k41dK20MVZMg4yA4JSZw2f/JoaeeuLuxrfBjO9oo
-         RfFw==
+        bh=YkN6ZBPqnb9wASqKLD9KQHxFSSFjMC+5N69Cq+6Ifw4=;
+        b=JhLX5xPZ83F0T13Sk9dEHuM5/Yh//WO/6ASx1z65VrvPvJ6f71u+K6dMr+29nzWeOH
+         UfDMETunU0Gt2Qu40t5BmfrrBTYIC5Ow5W0el/rpif5iSkqc/Ry6+OFqmalJvKGTgNvl
+         6UbRzbdX7iz+xHsKzWxtHQX8fPhK7D/aPrFlUuT7y6YihhAdEadtMnFFgRnj3N0FTC4X
+         C+KUct4uzu8RrgcmLCJtQ6T88ualLj0oRHccAKiaHGfPARXJT1VaBUNxCVmnTTermspB
+         i6fUO11bMS5NiCX5RLiS8pe9/Gz+4uuO69Y3BygucnTRg2jG498+Yt82zd/qk6kzwgSr
+         wQaA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=mYgHtiD3RT/PF1gpGhPfPw6D2NptmfB338VaCzf/V88=;
-        b=cUPyc99SDfNMxkeJPJqDOBd17O2EgrzeecrMZYEmJdvMiQiw/t7ryf7fDZnH8Dg08u
-         JrFvSUJmd+/FkFhO6U7qaT2Y+LRGJcVQFLmcjpsx6gHpo5RjYtQs78iDd8PScamgHsf4
-         MXrOuaScvCkVdJFX2yeJfvm+iQ8IUrhguFgg+he6Glq9cjlM1DHpiW9Oqt53x8hRUw+l
-         Abc8VPninlDmPJiPZF4p7XJCgOF3lUlUTk1jlx9lqgjoeHbSy5x/K9i3Eqsgz+1rD+62
-         n+yo57g5X14kPPO5aAqY9Quf2ybIcmyEGtL4DfKGoTAjs9tHBnXTSsDqad1pD6rdP6Sc
-         PK/A==
-X-Gm-Message-State: AOAM53123GWdo9ODlZQZX6KQVbHdGB5M0JOSwf2LJE+FMtyoc4NfL2hG
-        Uq3U2dxfFUPiTtkJ2+gUNkkpMA8XYQs=
-X-Google-Smtp-Source: ABdhPJzLfUCf6RadhMwL38FlP3wrGNHN7Yk272PtON+KZyArYVI+kWThbQFG9hjwCVgchwnfy7oHWg==
-X-Received: by 2002:a17:902:e989:: with SMTP id f9mr4384719plb.268.1592494198660;
-        Thu, 18 Jun 2020 08:29:58 -0700 (PDT)
+        bh=YkN6ZBPqnb9wASqKLD9KQHxFSSFjMC+5N69Cq+6Ifw4=;
+        b=Kqzunxs0XExSkgd9HARZEkb68UGLhNhgTrXsmAgUstmHHkXauNS5wy5/B8AuiO1uQY
+         hjtMhRy1xWZDEKXvf02FBv2z4br5UCZL+02YVHKKty3to9EiyYx9lSYMizrOburyb9ZN
+         lYgFAfUMpj7MEMFuKpFJCxn5NjKrGcoYglkvHATgGwFJM8zJNar/YotARp3yEAIxEThx
+         5zIP0hiJQmA2HXqbVhz/NRNC0mg/eQrqIUAHCnlZ61bJf6DQaVEPVzOSLYlAScUvODkv
+         QziJ6oVfr5uoqBNTM0Yc4C0QtAjePatjpIw91KEattTn74DinBVBC++h7zCUfDAYJzZ2
+         zYfQ==
+X-Gm-Message-State: AOAM530VdJizkcHoDyFpnvtm0juhnQuZr3Vi8h42D8Y07xLPEl9ZE14J
+        N5pOADeKAvFR1blUYyhkoaxY/wEUo+8=
+X-Google-Smtp-Source: ABdhPJxS5+l/r3dwRL8XrUQfuS7HRmmTun9Qd0tlWekdB4QA4TT2AfyDEUTzVY+IAboRZ5ZG6b1AMA==
+X-Received: by 2002:a17:90a:9d8b:: with SMTP id k11mr5014771pjp.10.1592494203742;
+        Thu, 18 Jun 2020 08:30:03 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.56
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.01
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:29:58 -0700 (PDT)
+        Thu, 18 Jun 2020 08:30:03 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 44/51] e2fsck: merge options after threads finish
-Date:   Fri, 19 Jun 2020 00:27:47 +0900
-Message-Id: <1592494074-28991-45-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 46/51] LU-8465 e2fsck: merge extent depth count after threads finish
+Date:   Fri, 19 Jun 2020 00:27:49 +0900
+Message-Id: <1592494074-28991-47-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,24 +74,34 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-It will be possible that threads might append E2F_OPT_YES,
-so we need merge options to global, test f_yesall cover this.
+tests covered by f_extent_htree.
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 2 ++
- 1 file changed, 2 insertions(+)
+ e2fsck/pass1.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 7d6e531a..b4adb8fa 100644
+index 3d6af9fb..d56b7128 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -3010,6 +3010,8 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
- 	global_ctx->fs_fragmented_dir += thread_ctx->fs_fragmented_dir;
- 	global_ctx->large_files += thread_ctx->large_files;
- 	global_ctx->flags |= thread_ctx->flags;
-+	/* threads might enable E2F_OPT_YES */
-+	global_ctx->options |= thread_ctx->options;
+@@ -2991,6 +2991,7 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
+ 					    e2fsck_t thread_ctx)
+ {
+ 	errcode_t retval;
++	int i;
+ 
+ 	global_ctx->fs_directory_count += thread_ctx->fs_directory_count;
+ 	global_ctx->fs_regular_count += thread_ctx->fs_regular_count;
+@@ -3018,6 +3019,11 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
+ 	 */
+ 	global_ctx->lost_and_found = 0;
+ 
++	/* merge extent depth count */
++	for (i = 0; i < MAX_EXTENT_DEPTH_COUNT; i++)
++		global_ctx->extent_depth_count[i] +=
++			thread_ctx->extent_depth_count[i];
++
   	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
   	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
  	retval = e2fsck_pass1_merge_fs(global_ctx->fs, thread_ctx->fs);
