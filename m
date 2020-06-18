@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94E4CC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FC12C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 72ED3206E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5BA71206E2
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MTKsPZ8A"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UxGGYyxI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731622AbgFRPaZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:30:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36392 "EHLO
+        id S1731678AbgFRPa0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:30:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36432 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731674AbgFRPaD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:03 -0400
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E721C0613ED
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:02 -0700 (PDT)
-Received: by mail-pf1-x441.google.com with SMTP id 10so2935293pfx.8
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:02 -0700 (PDT)
+        with ESMTP id S1731685AbgFRPaO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:14 -0400
+Received: from mail-pj1-x1044.google.com (mail-pj1-x1044.google.com [IPv6:2607:f8b0:4864:20::1044])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AFC7DC0613ED
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:13 -0700 (PDT)
+Received: by mail-pj1-x1044.google.com with SMTP id ga6so2702679pjb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=N22UmjmGFMtkx2MvI1gvrkMkMJ/2RB2GCj9TAw8GfaQ=;
-        b=MTKsPZ8A9YpZ4LI1R8JHX2xTmK9gACCNgTSKkQGZrrkQXBWvJtZrv2Hl1TqKifQN6H
-         BrG1mez8jh4SfLMNXpQgVOH123WqMAAseH0eGmki9DOFk98d+tRi7OY9oXzYEEW/zvcf
-         jVPc8Kv0mQJjbRu4mlwRzu5Utbym/Rwp4GrtHTdSbONpbO0Oahja0OGTgM0ONLH62vh5
-         6G9eQXEFsanGreEp2XadrYzbILNof8qxL3Fxt6zP1xkaiAwGPCbko4V8cqKqM9rJ5huc
-         WD85hEvaIRNsm4I7+jPp36RXE5qY0LY6Vi/GgcgQwyBU15+pVJ2UnVJdk2930J0w63t6
-         WdRA==
+        bh=kLJATsO6pA5bwy75WwMgMFLWnb9jfylgSQQSYokMOLI=;
+        b=UxGGYyxIcrCiFfC+ZZU/kmo3DrnhxFxmTcJgMljtqN9KBlWcPeJLOhVNgqlubqxo3n
+         u8doG2tgsOIiMFtyrqJmZTyq5UqSwEXE3xoJu8tmOPSL80GpgdZEVR1C0C6M9zcOIX1L
+         1O3K0HUQIuqBhQDqyZ11qCm+2MdfsgTP4OthOMvk1aOYVfHAEwE3kFB/Urf5TIYwWVWj
+         0TZy+ZBkO09pcYmGqVk0zy2VKV0/cgEMpPCAf4ySVp4ZTsMaaoW9Q4D333slBxD6NLna
+         xL+aj+i1xLSHai8KcNOIMo+lJ5/8O1B4i1w/3nldYrDczT5Ung2GzQjTX9hANnpR8XA5
+         wHug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=N22UmjmGFMtkx2MvI1gvrkMkMJ/2RB2GCj9TAw8GfaQ=;
-        b=Iph4IGccYBILDPs31NDN2SAoK6pnexA9hPvEvGY+phmYdXu4x7mid38JuIq1D+33bz
-         mC8NNE4IQGQ7QEUrR5U+O8n3dC9wbBHzruYByQsJQXPUOIVefXNliyUQLzeqvaSfrNG9
-         YUl+UT3MRGQd+Sly8z0aM10HJfsXYKsPz3Q8LsAtRm1boZ0RICrxpXkTN1sq8o13xE4G
-         6NqUFLsYyPl5kkLOlRqyP9VW6UUdKQKxP5vGEHxvSBG4VZbgH5XCL1P4uBsUf4VFBgDQ
-         MTDqYE6RCT0HDn3xbF5oSAbR5H75dhH0EGp1VdcKaWUs+hNJ5j8wXtheIXnm/Tmlghc4
-         IfGg==
-X-Gm-Message-State: AOAM531PhdI2XyS+ZLmdQOtRjnVhNujPwRaZJNWsgTZIwuoC//0FmuKl
-        8Ex/3bjcJItZJzkdLnIPdk6cD/bXcaM=
-X-Google-Smtp-Source: ABdhPJzaydkODg6PsRqd4HeFwhPSvMJyyZ1GAkCSPD65EpztDVoWcZauso5lpYSw6manuIJEuxy/7Q==
-X-Received: by 2002:a63:1a42:: with SMTP id a2mr3800386pgm.269.1592494201261;
-        Thu, 18 Jun 2020 08:30:01 -0700 (PDT)
+        bh=kLJATsO6pA5bwy75WwMgMFLWnb9jfylgSQQSYokMOLI=;
+        b=QcCREOeYm+MNUBl/aWA9suqfUkEK8zDPcLY5is+hpNABmLBOFvyq6i2oqIm1yFe5gI
+         KAwmD2VmRiMQsBpop+lvCtn2tBDJVSrw927w7JCCTzTRbxaOVNEWlyxMZfwpnZVpcdLv
+         tcR+J3/OF0I13ZbLBrD1XsPSgwy230iRUFD0Tgm3SiQxMsfJ9IgYS2X+eY6LqYJx6STW
+         m6a9yDHNqRi6/imnlZl2RDWoQxO4hVIrh2We2/GrV0fNamL3sURS9lFSU2jaJp3Dh8bL
+         b7NJMX6QjRTwqAfxZE4GsnJaRJJj4Cku9I9Csoo4kUjfua+yHt/h1lOEGg8yQUQc6Dts
+         ZSAA==
+X-Gm-Message-State: AOAM533G/bzKeheLkJAK3U+Y+U60yEKCHMhSvRYpI3GVELW2LG5J5Qls
+        U2HYidJtWYnQtYEaSOuguzCOC1EDvyA=
+X-Google-Smtp-Source: ABdhPJxbBu20cB5UcksAH/xIWmoj7Yeq97wunj5hAzF8WpR8SST2VeNdJqtwbDW1ANbujOVV3XqD4A==
+X-Received: by 2002:a17:90a:f184:: with SMTP id bv4mr4863993pjb.57.1592494212850;
+        Thu, 18 Jun 2020 08:30:12 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.59
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.10
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:30:00 -0700 (PDT)
+        Thu, 18 Jun 2020 08:30:12 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 45/51] e2fsck: reset lost_and_found after threads finish
-Date:   Fri, 19 Jun 2020 00:27:48 +0900
-Message-Id: <1592494074-28991-46-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 50/51] e2fsck: fix to free icache leak
+Date:   Fri, 19 Jun 2020 00:27:53 +0900
+Message-Id: <1592494074-28991-51-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,31 +74,76 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-This should not be kept, the reaons is similar to what
-e2fsck_pass1 has done before.
-
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ e2fsck/pass1.c | 22 ++++++++--------------
+ 1 file changed, 8 insertions(+), 14 deletions(-)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index b4adb8fa..3d6af9fb 100644
+index 52af4f13..990e4b04 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -3012,6 +3012,12 @@ static errcode_t e2fsck_pass1_merge_context(e2fsck_t global_ctx,
- 	global_ctx->flags |= thread_ctx->flags;
- 	/* threads might enable E2F_OPT_YES */
- 	global_ctx->options |= thread_ctx->options;
-+	/*
-+	 * The l+f inode may have been cleared, so zap it now and
-+	 * later passes will recalculate it if necessary
-+	 */
-+	global_ctx->lost_and_found = 0;
+@@ -2513,6 +2513,7 @@ static errcode_t e2fsck_pass1_copy_fs(ext2_filsys dest, e2fsck_t src_context,
+ 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
+ 	dest->inode_map = NULL;
+ 	dest->block_map = NULL;
++	dest->icache = NULL;
+ 
+ 	/*
+ 	 * PASS1_COPY_FS_BITMAP might return directly from this function,
+@@ -2521,13 +2522,6 @@ static errcode_t e2fsck_pass1_copy_fs(ext2_filsys dest, e2fsck_t src_context,
+ 	PASS1_COPY_FS_BITMAP(dest, src, inode_map);
+ 	PASS1_COPY_FS_BITMAP(dest, src, block_map);
+ 
+-	/* icache will be rebuilt if needed, so do not copy from @src */
+-	if (src->icache) {
+-		ext2fs_free_inode_cache(src->icache);
+-		src->icache = NULL;
+-	}
+-	dest->icache = NULL;
+-
+ 	if (src->dblist) {
+ 		retval = ext2fs_copy_dblist(src->dblist, &dest->dblist);
+ 		if (retval)
+@@ -2593,6 +2587,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	ext2_dblist dblist;
+ 	int flags;
+ 	e2fsck_t dest_ctx = dest->priv_data;
++	struct ext2_inode_cache *icache = dest->icache;
+ 
+ 	dest_io = dest->io;
+ 	dest_image_io = dest->image_io;
+@@ -2610,6 +2605,7 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	dest->dblist = dblist;
+ 	dest->priv_data = dest_ctx;
+ 	dest->flags = src->flags | flags;
++	dest->icache = icache;
+ 	if (!(src->flags & EXT2_FLAG_VALID) || !(flags & EXT2_FLAG_VALID))
+ 		ext2fs_unmark_valid(dest);
+ 	/*
+@@ -2654,17 +2650,15 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 
+ 	retval = _e2fsck_pass1_merge_fs(dest, src);
+ 
+-	if (src->inode_map)
+-		ext2fs_free_generic_bmap(src->inode_map);
+-	if (src->block_map)
+-		ext2fs_free_generic_bmap(src->block_map);
+-
+-	/* icache will be rebuilt if needed, so do not copy from @src */
+ 	if (src->icache) {
+ 		ext2fs_free_inode_cache(src->icache);
+ 		src->icache = NULL;
+ 	}
+-	dest->icache = NULL;
 +
-  	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
-  	e2fsck_pass1_merge_dx_dir(global_ctx, thread_ctx);
- 	retval = e2fsck_pass1_merge_fs(global_ctx->fs, thread_ctx->fs);
++	if (src->inode_map)
++		ext2fs_free_generic_bmap(src->inode_map);
++	if (src->block_map)
++		ext2fs_free_generic_bmap(src->block_map);
+ 
+ 	if (src->dblist) {
+ 		ext2fs_free_dblist(src->dblist);
 -- 
 2.25.4
 
