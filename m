@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0736DC433DF
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B2DEC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D0F7B2075E
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D8B742075E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:29:48 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nNhgMchn"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OuizNkA9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731624AbgFRP3i (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:29:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36222 "EHLO
+        id S1731638AbgFRP3o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:29:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731554AbgFRP3M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:12 -0400
-Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00351C06174E
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:10 -0700 (PDT)
-Received: by mail-pj1-x1043.google.com with SMTP id ne5so2686568pjb.5
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:10 -0700 (PDT)
+        with ESMTP id S1731622AbgFRP3i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:29:38 -0400
+Received: from mail-pj1-x1044.google.com (mail-pj1-x1044.google.com [IPv6:2607:f8b0:4864:20::1044])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3541EC0613EE
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:37 -0700 (PDT)
+Received: by mail-pj1-x1044.google.com with SMTP id h95so2829644pje.4
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:29:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=yCvNQG2eDte7phry8MD3FQlz8aCNKOB0pw/UKfg9jfU=;
-        b=nNhgMchn1FjvB2ddMfTDeN7bCyUjzKjNPtJc8j6tztEfpWk1n2NGXbQmCtPk+tOywu
-         QMs5kTcrZA+5Lw+9tlwiJcMKoouGzyZT8u2W6KxBgkgJkM5kDxQYb9apdis2lPC4Sh2I
-         i/woDJc7wXPrZNJzxGmKqW6Qw4E10Gp7KmkC7yEQqgtAquyFTk2KlXCG/9Iy1Sqmk14n
-         uFyBiCEgSqMgbqdNEwMdEEf9RunVwVJiaoizy2WyncBleN8j/2+dTBQru2NLZwKLQFuC
-         lSJQKmmoIYO4KSMo5paF0GCvxcGoWwBEc3zzeorGp3FZgBrRpg+UYFkkDEvRPk/1+ekK
-         oo1Q==
+        bh=xLtBnn8aN6zAhANEg1oSYr8w+MgeFKxhRm06i7K6rME=;
+        b=OuizNkA9eDcAJGD3QPWRVNjGCb3vnq467EImPn5oReshFfoJacja8Jt2xbacQJ7ky6
+         jxpgBOAJJly/MntYpl6SIoFURCpNqRQFl/foT1qIulf9iHJXLdu5kX2FDyy9vNHKEDAO
+         0s3+5UDUxzCrSvuBsZdMHjsgjXyoZLpUxDPNBh/dfXvLMUDrWbZ3p9A/F8yJJKMjekTZ
+         rNJNyS887dydOsde41jutPETRETe1on1g1t7Zmwq5ynVTQSykUxUEqJlivyXYkUtOEWN
+         GMKfS8oVgj+5B2fAde3K8zuM7cAAEVrZa5PUvo+aooNlNH87Zk7My22mubbppdDBhJWw
+         xDVA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=yCvNQG2eDte7phry8MD3FQlz8aCNKOB0pw/UKfg9jfU=;
-        b=EfTB2JbkGAXeBz6vMkDI3/fl9KuQgFGAXtG7BCeM4TDH0N2oMxT9Ph9JpYy98+X8PP
-         BXmN7bWt1FoPZxTB/dzGidGj+zMcUeVQAd17dp+UA81mzNwoa2hg59Wg965uVs00wakQ
-         NZlpP1YdAiCUnwvz66iNVBSdwmJS14JiftwZ//DFLJO8daj85IInasveLE7NjcMI9O8l
-         CnX5Exe2Zl+z3cf5hcmEUHcIYwcWVtoc3e48I58ltERPWu/Nd0IzSEvVOgF2p6iAty7B
-         7kSXmN912I/o0jcpTAwJGz9lOwD3aLykiGYi/5edxcas/sma0gwziAOEgpiGeSG3tokW
-         bc9Q==
-X-Gm-Message-State: AOAM53170pzBXblPq79l2IzU3e7/rLzQJq/SsuEP2uGfVDMUa7d/sCLM
-        rSFQA1lTt388+5GbnXTmp7PTp+sbNac=
-X-Google-Smtp-Source: ABdhPJzJbJxYF/s1Waq3ivTl+7sZag/LNea00QBco7L8/FHrnO7npXvOInaeuksiO9jN8b12b+vuCQ==
-X-Received: by 2002:a17:902:8e82:: with SMTP id bg2mr4289752plb.198.1592494150200;
-        Thu, 18 Jun 2020 08:29:10 -0700 (PDT)
+        bh=xLtBnn8aN6zAhANEg1oSYr8w+MgeFKxhRm06i7K6rME=;
+        b=uKBwwdF/awhgstwFEktq/uBFlBLReO1FDZbqJx5GS9aK+eXKWDMdTqHf377rZMKBGr
+         S7nS1aOJwLRH0hDoXigpInktzXlsVE9kGVuCUPvSR92EfieqD38Yi2oWD7EOPzbpwgti
+         Yh0sBb0treFat145tacqH6ReHWIpUjntPtBHEMfpWzUFMm0D6HbF2fBa7tua7AH4iQhw
+         pZiBvwqy7yU6zt5Ln5xzW77DSprK8K98ISUOSVt9ZNiaRBdTWdKDdw2JqT8aZechhR2A
+         zfZg8Ec5xJbnRKPB4nhcVp1nBPxAnyS8w08JFQYXTppxgczUf9+4U1JDu/uD0fnH+y21
+         lr8w==
+X-Gm-Message-State: AOAM533wWekkwKq8ipBJMeRVcRaie7UbSOAsXHEbkJAjAs8RyFWPbARp
+        171RtoFD7NYWU6M3KI/pv4TG5l3lfCs=
+X-Google-Smtp-Source: ABdhPJzb0u7CE1svhqSIKMYhPYFWbVWzdbWF0lENz78M/AwxkcIZGSzbCB7dQL+elEHGIqCIRDJ4Yg==
+X-Received: by 2002:a17:902:aa4c:: with SMTP id c12mr4188758plr.280.1592494176427;
+        Thu, 18 Jun 2020 08:29:36 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.08
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.29.34
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:29:09 -0700 (PDT)
+        Thu, 18 Jun 2020 08:29:35 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 24/51] e2fsck: merge dblist after thread finishes
-Date:   Fri, 19 Jun 2020 00:27:27 +0900
-Message-Id: <1592494074-28991-25-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 35/51] e2fsck: split and merge invalid bitmaps
+Date:   Fri, 19 Jun 2020 00:27:38 +0900
+Message-Id: <1592494074-28991-36-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -72,123 +72,123 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Li Xi <lixi@ddn.com>
+From: Wang Shilong <wshilong@ddn.com>
 
-Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c      | 18 +++++++++++++-----
- lib/ext2fs/dblist.c | 36 ++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2fs.h |  1 +
- 3 files changed, 50 insertions(+), 5 deletions(-)
+ e2fsck/pass1.c | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 71 insertions(+)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 3c04edfd..7accc76c 100644
+index f1bb1fc5..e8c0618b 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2266,18 +2266,21 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	ext2fs_inode_bitmap inode_map;
- 	ext2fs_block_bitmap block_map;
- 	ext2_badblocks_list badblocks;
-+	ext2_dblist dblist;
- 
- 	dest_io = dest->io;
- 	dest_image_io = dest->image_io;
- 	inode_map = dest->inode_map;
- 	block_map = dest->block_map;
- 	badblocks = dest->badblocks;
-+	dblist = dest->dblist;
- 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
- 	dest->io = dest_io;
- 	dest->image_io = dest_image_io;
- 	dest->inode_map = inode_map;
- 	dest->block_map = block_map;
- 	dest->badblocks = badblocks;
-+	dest->dblist = dblist;
- 	/*
- 	 * PASS1_MERGE_FS_BITMAP might return directly from this function,
- 	 * so please do NOT leave any garbage behind after returning.
-@@ -2286,11 +2289,16 @@ static int _e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	PASS1_MERGE_FS_BITMAP(dest, src, block_map);
- 
- 	if (src->dblist) {
--		retval = ext2fs_copy_dblist(src->dblist, &dest->dblist);
--		if (retval)
--			return retval;
--		/* The ext2fs_copy_dblist() uses the src->fs as the fs */
--		dest->dblist->fs = dest;
-+		if (dest->dblist) {
-+			retval = ext2fs_merge_dblist(src->dblist, dest->dblist);
-+			if (retval)
-+				return retval;
-+		} else {
-+			/* The ext2fs_copy_dblist() uses the src->fs as the fs */
-+			dest->dblist = src->dblist;
-+			dest->dblist->fs = dest;
-+			src->dblist = NULL;
-+		}
- 	}
- 
- 	if (src->badblocks) {
-diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
-index bbdb221d..046b1e68 100644
---- a/lib/ext2fs/dblist.c
-+++ b/lib/ext2fs/dblist.c
-@@ -119,6 +119,42 @@ errcode_t ext2fs_copy_dblist(ext2_dblist src, ext2_dblist *dest)
- 	return 0;
+@@ -2508,6 +2508,65 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	return retval;
  }
  
-+/*
-+ * Merge a directory block list @src to @dest
-+ */
-+errcode_t ext2fs_merge_dblist(ext2_dblist src, ext2_dblist dest)
++static void e2fsck_pass1_copy_invalid_bitmaps(e2fsck_t global_ctx,
++					      e2fsck_t thread_ctx)
 +{
-+	int			 src_count = src->count;
-+	int			 dest_count = dest->count;
-+	int			 size = src_count + dest_count;
-+	int			 size_entry = sizeof(struct ext2_db_entry2);
-+	struct ext2_db_entry2	*array, *array2;
-+	errcode_t		 retval;
++	int i, j;
++	int grp_start = thread_ctx->thread_info.et_group_start;
++	int grp_end = thread_ctx->thread_info.et_group_end;
++	int total = grp_end - grp_start;
 +
-+	if (src_count == 0)
-+		return 0;
++	thread_ctx->invalid_inode_bitmap_flag = e2fsck_allocate_memory(global_ctx,
++				sizeof(int) * total, "invalid_inode_bitmap");
++	thread_ctx->invalid_block_bitmap_flag = e2fsck_allocate_memory(global_ctx,
++				sizeof(int) * total, "invalid_block_bitmap");
++	thread_ctx->invalid_inode_table_flag = e2fsck_allocate_memory(global_ctx,
++				sizeof(int) * total, "invalid_inode_table");
++	thread_ctx->invalid_bitmaps = 0;
 +
-+	if (src->sorted || dest->sorted)
-+		return EINVAL;
++	for (i = grp_start, j = 0; i < grp_end; i++, j++) {
++		thread_ctx->invalid_block_bitmap_flag[j] =
++				global_ctx->invalid_block_bitmap_flag[i];
++		thread_ctx->invalid_inode_bitmap_flag[j] =
++				global_ctx->invalid_inode_bitmap_flag[i];
++		thread_ctx->invalid_inode_table_flag[j] =
++				global_ctx->invalid_inode_table_flag[i];
++		if (thread_ctx->invalid_block_bitmap_flag[j])
++			thread_ctx->invalid_bitmaps++;
++		if (thread_ctx->invalid_inode_bitmap_flag[j])
++			thread_ctx->invalid_bitmaps++;
++		if (thread_ctx->invalid_inode_table_flag[j])
++			thread_ctx->invalid_bitmaps++;
 +
-+	retval = ext2fs_get_array(size, size_entry, &array);
-+	if (retval)
-+		return retval;
-+
-+	array2 = array;
-+
-+	memcpy(array, src->list, src_count * size_entry);
-+	array += src_count;
-+	memcpy(array, dest->list, dest_count * size_entry);
-+	ext2fs_free_mem(&dest->list);
-+
-+	dest->list = array2;
-+	dest->count = src_count + dest_count;
-+	dest->size = size;
-+
-+	return 0;
++	}
 +}
 +
- /*
-  * Close a directory block list
-  *
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 5a094da3..37460a31 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1120,6 +1120,7 @@ extern errcode_t ext2fs_add_dir_block(ext2_dblist dblist, ext2_ino_t ino,
- 				      blk_t blk, int blockcnt);
- extern errcode_t ext2fs_add_dir_block2(ext2_dblist dblist, ext2_ino_t ino,
- 				       blk64_t blk, e2_blkcnt_t blockcnt);
-+extern errcode_t ext2fs_merge_dblist(ext2_dblist src, ext2_dblist dest);
- extern void ext2fs_dblist_sort(ext2_dblist dblist,
- 			       EXT2_QSORT_TYPE (*sortfunc)(const void *,
- 							   const void *));
++static void e2fsck_pass1_merge_invalid_bitmaps(e2fsck_t global_ctx,
++					       e2fsck_t thread_ctx)
++{
++	int i, j;
++	int grp_start = thread_ctx->thread_info.et_group_start;
++	int grp_end = thread_ctx->thread_info.et_group_end;
++
++	for (i = grp_start, j = 0; i < grp_end; i++, j++) {
++		global_ctx->invalid_block_bitmap_flag[i] =
++				thread_ctx->invalid_block_bitmap_flag[j];
++		global_ctx->invalid_inode_bitmap_flag[i] =
++				thread_ctx->invalid_inode_bitmap_flag[j];
++		global_ctx->invalid_inode_table_flag[i] =
++				thread_ctx->invalid_inode_table_flag[j];
++		if (thread_ctx->invalid_block_bitmap_flag[j])
++			global_ctx->invalid_bitmaps++;
++		if (thread_ctx->invalid_inode_bitmap_flag[j])
++			global_ctx->invalid_bitmaps++;
++		if (thread_ctx->invalid_inode_table_flag[j])
++			global_ctx->invalid_bitmaps++;
++	}
++	ext2fs_free_mem(&thread_ctx->invalid_block_bitmap_flag);
++	ext2fs_free_mem(&thread_ctx->invalid_inode_bitmap_flag);
++	ext2fs_free_mem(&thread_ctx->invalid_inode_table_flag);
++}
++
+ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx,
+ 					     e2fsck_t *thread_ctx,
+ 					     int thread_index,
+@@ -2584,6 +2643,7 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx,
+ 		goto out_fs;
+ 	}
+ 	*thread_ctx = thread_context;
++	e2fsck_pass1_copy_invalid_bitmaps(global_ctx, thread_context);
+ 	return 0;
+ out_fs:
+ 	ext2fs_free_mem(&thread_fs);
+@@ -2724,6 +2784,10 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	int dx_dir_info_count = global_ctx->dx_dir_info_count;
+ 	ext2_u32_list dirs_to_hash = global_ctx->dirs_to_hash;
+ 	quota_ctx_t qctx = global_ctx->qctx;
++	int *invalid_block_bitmap_flag = global_ctx->invalid_block_bitmap_flag;
++	int *invalid_inode_bitmap_flag = global_ctx->invalid_inode_bitmap_flag;
++	int *invalid_inode_table_flag  = global_ctx->invalid_inode_table_flag;
++	int invalid_bitmaps = global_ctx->invalid_bitmaps;
+ 
+ #ifdef HAVE_SETJMP_H
+ 	jmp_buf		 old_jmp;
+@@ -2795,6 +2859,11 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	}
+ 	global_ctx->qctx = qctx;
+ 	e2fsck_pass1_merge_quota_ctx(global_ctx, thread_ctx);
++	global_ctx->invalid_block_bitmap_flag = invalid_block_bitmap_flag;
++	global_ctx->invalid_inode_bitmap_flag = invalid_inode_bitmap_flag;
++	global_ctx->invalid_inode_table_flag = invalid_inode_table_flag;
++	global_ctx->invalid_bitmaps = invalid_bitmaps;
++	e2fsck_pass1_merge_invalid_bitmaps(global_ctx, thread_ctx);
+ 
+ 	/*
+ 	 * PASS1_COPY_CTX_BITMAP might return directly from this function,
+@@ -2846,6 +2915,8 @@ static int e2fsck_pass1_threads_join(struct e2fsck_thread_info *infos,
+ 	int				 i;
+ 	struct e2fsck_thread_info	*pinfo;
+ 
++	/* merge invalid bitmaps will recalculate it */
++	global_ctx->invalid_bitmaps = 0;
+ 	for (i = 0; i < num_threads; i++) {
+ 		pinfo = &infos[i];
+ 
 -- 
 2.25.4
 
