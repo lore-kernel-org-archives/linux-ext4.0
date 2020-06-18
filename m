@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 239FDC433E1
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:28:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A36CDC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:28:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F32D42075E
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:28:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 842AE2075E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:28:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bZ/lOE38"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IZ5xVjhY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731493AbgFRP2h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:28:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36076 "EHLO
+        id S1731494AbgFRP2i (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:28:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36090 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731477AbgFRP22 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:28:28 -0400
-Received: from mail-pj1-x1044.google.com (mail-pj1-x1044.google.com [IPv6:2607:f8b0:4864:20::1044])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 151C9C0613ED
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:28:28 -0700 (PDT)
-Received: by mail-pj1-x1044.google.com with SMTP id m2so2831698pjv.2
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:28:28 -0700 (PDT)
+        with ESMTP id S1731383AbgFRP2e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:28:34 -0400
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4DD4C06174E
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:28:32 -0700 (PDT)
+Received: by mail-pf1-x443.google.com with SMTP id j12so715544pfn.10
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:28:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=n49Nfoe9y2SSwegC2f3wD+tcXK+p5oMc1LwR0JmDtr0=;
-        b=bZ/lOE38Zy2/68qRQuijiQZdkTzuAXpUF1O7TKd2N1DpSlW/sT1gzeeCorqkUWcM6c
-         n0CSVsI2RZXcsvcrX48Z7uzbExDwj7TI+IKb+xNl5uV3tVqUf7bgBPKfH72AeCLFm2fj
-         TWZmtSwQfZgdYhpe2ZhEhEHmRZiuGGFFkr3MQF9KBRKsZTiFF8/WUfDBb7I6rjdhz65+
-         9WERPPA3zHRyDgd3sQu8Mx13LzQ7tI4cApcqhbfLR0lMUkTe5CxnJUwafmuV3TraZAEp
-         HdWrUg2Y6LZbV096sJpvkko2z1mbaz7oJHUmgvFNmvbzzha9JuMhzLicGyBUKLnXOmA1
-         S7wA==
+        bh=63C2ZUZK0df9U0KREk83RRj976F+VKOdCZr0yUs3Au4=;
+        b=IZ5xVjhY/tw0IeDohMVwg7Nx/RMxcct4VkUUHTdBp1CYpadFxUwlgnxjMMpVoVZpji
+         9Kypkdkqza201sDkQywo15553BMzelzJexcaGNDF0uKgCUJeVHnT932VTEyvWDy0NwQU
+         Z4a27Jtzi0mNIDTnqf127QxWi02u76TnwWDbgQrdFfrJNqgDudUBneWoBBigRJKs1Ztq
+         rLmoKkLzySidIAyJENiG8Sg8rBpziPdE+GGMwM7coWlfs6LDkhEI3tzwQFw6onE6ZgpN
+         veoZ+QIx9JTOOHVwILIp1OI8bueclLZqRbF5kEipcZMU4sKSVag6S0uVNGE2zhDCOAwZ
+         WcxQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=n49Nfoe9y2SSwegC2f3wD+tcXK+p5oMc1LwR0JmDtr0=;
-        b=X0q8dyZIuhfy3dGoLANXjHOwl4DcZJng+/XFippXnusI+P8UCzwoMCxtPYp9PbBnlB
-         QPm+iIpZ4HcFP/Bsin49Xw67tKGYo94L+RWrnEIuZj6RW2lhwRMm6uTJWay185ONftMH
-         yp2oVLpoZK6bYrtMM05RmFGBtjUgnlFasqbOEGVr+r4nn+2KqvJ9bVwvpX+h7Ul8gLiW
-         CZNUbmB7Z1iGc3wSsDb5aTmMP7vjxVXMj8MBDSSSCJ3wUlmuIlT3LBistNzRU9l6SU4z
-         //8jCqunDqId3TiB6nAZkTkHz9DIovgljB2//GG05G+K+oMeXPPPYkSjUtFJmU2xXvBS
-         8xCw==
-X-Gm-Message-State: AOAM531ktUCTpTpVc8fJdzfHK6FCg8xJ2PDATrBnf4RyIPLVDp0O5Xqh
-        zO0PV8dO31zBFbRd2ddSilenlF/C6MM=
-X-Google-Smtp-Source: ABdhPJzhSi8B7BOA07huzcxxabcVQnr1JQs/UGUkaRNk3UmifKZx3xr3G0X+/fLXjlZJx2iR7XCE3A==
-X-Received: by 2002:a17:90a:ac05:: with SMTP id o5mr4956879pjq.228.1592494107180;
-        Thu, 18 Jun 2020 08:28:27 -0700 (PDT)
+        bh=63C2ZUZK0df9U0KREk83RRj976F+VKOdCZr0yUs3Au4=;
+        b=TSBm84woNsIPzIo93wT2kLX0St+bfvOqPGHpJckISE3rzePlAheDVHdYZt+2Yf7fQP
+         Zajn00PCINhklgX243njqfWSjZHPyEN8/CZjXoo1zjJJSPqWpTbbvbf8Ce1dMOWZCevb
+         BSSrKdRtfUTBAMrYEcDs4RkwiH9zJK1kazvP+GdlgWlL+LT/HQsraaCyTOTtcL6rORZS
+         h7WE670P1Lj3MfTW0acEAtGnrtTPRKCGawdPavjTSW3FvTviR67sovM84ByezD3IhX/u
+         gzptKWyjLJavCMZ15hv4NPC3BDmqA0U+VQYVT0zp0K/gjQ+TGc/KmPrS31pmzQJFmu1T
+         V9eQ==
+X-Gm-Message-State: AOAM530Qseh1rMIjQiWcHhu6+yNXYOOz+n2vrBNTWVDZMMKUB68kk53Y
+        aybO+j7btVPTfKuxkooNYnLAaq/Ubss=
+X-Google-Smtp-Source: ABdhPJwIxrZB0qSTH8oG+myJPTw5LOGkU6uth97LiAX/9lzdQ6t1RqFUscTUAnENtqLdWIOQNN0iuw==
+X-Received: by 2002:a63:7a56:: with SMTP id j22mr3624984pgn.194.1592494111919;
+        Thu, 18 Jun 2020 08:28:31 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.28.25
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.28.29
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:28:26 -0700 (PDT)
+        Thu, 18 Jun 2020 08:28:31 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 06/51] e2fsck: copy dblist when using multi-thread fsck
-Date:   Fri, 19 Jun 2020 00:27:09 +0900
-Message-Id: <1592494074-28991-7-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 08/51] e2fsck: add assert when copying context
+Date:   Fri, 19 Jun 2020 00:27:11 +0900
+Message-Id: <1592494074-28991-9-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,79 +74,45 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Li Xi <lixi@ddn.com>
 
-This patch only copy the dblist of the fs to a new one when -m
-is specified.
+Adding the assert would simplify the copying of context.
 
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 33 ++++++++++++++++++++++++++++++---
- 1 file changed, 30 insertions(+), 3 deletions(-)
+ e2fsck/pass1.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index c0df4330..b212cdde 100644
+index 22597b12..1ee6b5bc 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2086,8 +2086,29 @@ endit:
- 		ctx->invalid_bitmaps++;
- }
+@@ -46,6 +46,7 @@
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+ #endif
++#include <assert.h>
  
--static void e2fsck_pass1_copy_fs(ext2_filsys dest, ext2_filsys src)
-+static errcode_t e2fsck_pass1_copy_fs(ext2_filsys dest, ext2_filsys src)
- {
-+	errcode_t	retval;
+ #include "e2fsck.h"
+ #include <ext2fs/ext2_ext_attr.h>
+@@ -2139,6 +2140,18 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thre
+ 	ext2_filsys	thread_fs;
+ 	ext2_filsys	global_fs = global_ctx->fs;
+ 
++	assert(global_ctx->inode_used_map == NULL);
++	assert(global_ctx->inode_dir_map == NULL);
++	assert(global_ctx->inode_bb_map == NULL);
++	assert(global_ctx->inode_imagic_map == NULL);
++	assert(global_ctx->inode_reg_map == NULL);
++	assert(global_ctx->inodes_to_rebuild == NULL);
 +
-+	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
-+	if (dest->dblist) {
-+		retval = ext2fs_copy_dblist(src->dblist, &dest->dblist);
-+		if (retval)
-+			return retval;
-+		/* The ext2fs_copy_dblist() uses the src->fs as the fs */
-+		dest->dblist->fs = dest;
-+	}
-+	if (dest->inode_map)
-+		dest->inode_map->fs = dest;
-+	if (dest->block_map)
-+		dest->block_map->fs = dest;
-+	return 0;
-+}
++	assert(global_ctx->block_found_map == NULL);
++	assert(global_ctx->block_dup_map == NULL);
++	assert(global_ctx->block_ea_map == NULL);
++	assert(global_ctx->block_metadata_map == NULL);
 +
-+static void e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
-+{
-+	if (dest->dblist)
-+		ext2fs_free_dblist(dest->dblist);
- 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
- 	if (dest->dblist)
- 		dest->dblist->fs = dest;
-@@ -2118,12 +2139,18 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thre
- 		goto out_context;
- 	}
- 
--	e2fsck_pass1_copy_fs(thread_fs, global_fs);
-+	retval = e2fsck_pass1_copy_fs(thread_fs, global_fs);
-+	if (retval) {
-+		com_err(global_ctx->program_name, retval, "while copying fs");
-+		goto out_fs;
-+	}
- 	thread_fs->priv_data = thread_context;
- 
- 	thread_context->fs = thread_fs;
- 	*thread_ctx = thread_context;
- 	return 0;
-+out_fs:
-+	ext2fs_free_mem(&thread_fs);
- out_context:
- 	ext2fs_free_mem(&thread_context);
- 	return retval;
-@@ -2147,7 +2174,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
- 	global_ctx->flags |= (flags & E2F_FLAG_SIGNAL_MASK) |
- 			     (global_ctx->flags & E2F_FLAG_SIGNAL_MASK);
- 
--	e2fsck_pass1_copy_fs(global_fs, thread_fs);
-+	e2fsck_pass1_merge_fs(global_fs, thread_fs);
- 	global_fs->priv_data = global_ctx;
- 	global_ctx->fs = global_fs;
- 
+ 	retval = ext2fs_get_mem(sizeof(struct e2fsck_struct), &thread_context);
+ 	if (retval) {
+ 		com_err(global_ctx->program_name, retval, "while allocating memory");
 -- 
 2.25.4
 
