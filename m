@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50D6CC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4492C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2EC2E206E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8294E206E2
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 15:30:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n2Qd55DW"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U7Of552r"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731688AbgFRPaZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Jun 2020 11:30:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36412 "EHLO
+        id S1731689AbgFRPa0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Jun 2020 11:30:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36438 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731678AbgFRPaJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:09 -0400
-Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4634AC0613F0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:09 -0700 (PDT)
-Received: by mail-pf1-x443.google.com with SMTP id x22so2951692pfn.3
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:09 -0700 (PDT)
+        with ESMTP id S1731686AbgFRPaQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2020 11:30:16 -0400
+Received: from mail-pj1-x1042.google.com (mail-pj1-x1042.google.com [IPv6:2607:f8b0:4864:20::1042])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09435C0613EE
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:16 -0700 (PDT)
+Received: by mail-pj1-x1042.google.com with SMTP id i12so2696289pju.3
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2020 08:30:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=R5qkqQliF/IpE5txuH8o0nKwqd2J3n0F5FjhcxM1URc=;
-        b=n2Qd55DWeZMoFy471Jswd77fjDcUicbL+ka6p1DyXhdGTCNzoPoG++mpvWm0tSyyg4
-         nrQtLWTEHNNXHi56ZZzuruig9wC5iyqH8WO+oksN+ZoSemIFhshame3V8mYSxqCUqrtX
-         pp3fdrib7UY4wo5h4IlNKJkK137XDtvKN/GER0M4s3NBoOO7Tdvq7fftHKCxiAeajCgC
-         bANzPa/fHB4q8dQNV0EVzo9iYaF4Qwigo8jW9+/ibTwt26LeRgRJgUpETXmx9ob0R7En
-         Dawd5iluhsL4nuQSax13J3mT2xsUYPQgujFn4KUlVglcQyo85UY0OdkDjYc6IFRscQHS
-         kdrw==
+        bh=eLCJ6I97JiPo/t9HsZdpYZmT0+udGJ9ueal4Vmm5Jng=;
+        b=U7Of552rz80DtX0sH50ol1fsZdwzJTq9OZcYmyVxwXMmMMGQHZ1X7UVPBPk3YjoDVe
+         vH6Tax0LSMynyeTMLgOa6wNeFhcZdJSXObb83trkhfSbvefPWnTfy0sou4jqjwaI5iiw
+         m3A39cwRmfuebUza3heqlhxzuQ6RguQKe5bJcAqMrFek4FHyDqCGks/G2XT0NT/onDCF
+         O6gjd5DdijDC+bK4GuVwfgK0wBMYEA0N+isT70SCMA/IY1FrOw//V3eyb60lCOQxb65N
+         lHQpdVtb/K4kbEIg0HEDs7mOaNj5W4mnXGbTiwtX3MNNss+MEIZrMA7x+zVz+6CcedUn
+         JyKQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=R5qkqQliF/IpE5txuH8o0nKwqd2J3n0F5FjhcxM1URc=;
-        b=SBPm9xjHIMASaPV3YysAp7J1zygIUQ+NGECKuG0JSAyGBcDwQAnEWCjLO8yKyWIHh0
-         WzZFEAsz1nO1d+AZzF3H2DrHTf4anGQwQor/ZkhlLyItGoqZRn6xapAf4CXgSNqszqvc
-         8XgFc7ipug+ANrqIZTRbNKPCGtiIaTyKeL1b50M2UL+Zx/VDN7aojRIGMerRF9jW913i
-         HL3230s+UMeZ96uwk4S5hPOleVLauO+CujrGjwvxl+1eTEX3luHIcBPaW23QyR/4ayxj
-         JIsCpW9MVBv6vSxuG/3lw80I/12Awrm4tSQJxnKOH9BpstiwyqZ0U5ie+4riAqkWkbse
-         kTig==
-X-Gm-Message-State: AOAM532jSfh/IlArklYSmEE+JSYh8NP0xZdyX+5S6Ua/m1MyLDthcgnj
-        SFzPbM4RvA3N9CYxHnwff9p8ME2FJec=
-X-Google-Smtp-Source: ABdhPJxQypOJWNdilrADpYbOdWBmZ6Z6luGtvVF/d+Ow74pepcBJu0vG/WzbZ6JVn4xsDtyDUq0o9Q==
-X-Received: by 2002:a63:5015:: with SMTP id e21mr3762642pgb.54.1592494208257;
-        Thu, 18 Jun 2020 08:30:08 -0700 (PDT)
+        bh=eLCJ6I97JiPo/t9HsZdpYZmT0+udGJ9ueal4Vmm5Jng=;
+        b=hzFVTFym3fD+fzw9CDuCURWGvoSA56j3a7OuJD8PfkCWeP7PJ9f6tT6ABYubvmdqDV
+         1vHhw6G6pDxr8Wrg1Ig+VhnKzCpnQZXBBQ7DiJnkOQLtFOxamFeaqoLF1yaNDCRGE+sg
+         yLPJVIA89VKcMScx55Vqa0eLNHeZIfOiBmjHVxQbTpt154r9w1SgeSmj/Rhpah6FzD8S
+         bKfsy2/S251mm2NdPXPET5Tyw0rf9zBR7iF0yTPHCEV9Yr8xGPl+IouU8XOBVS6tr7LO
+         uVyNFt9LnIUTkxEXRJr8ndBkBbPfJTLg3E646h7GWrYP1YXDrCz50dRLgY2RNUjtnfyM
+         ZYaw==
+X-Gm-Message-State: AOAM531lvUnY3Nheid+prgH8Tou+M0g5MEbYzioVv4ckKjgHKxcDUaER
+        MNBboneXQCDXE/AGZlFWUIfZChtVcok=
+X-Google-Smtp-Source: ABdhPJx4mIM4FXyzdJv0Kq2UTdzx6KtJRA/7zk+T/4llUD25ZbIGZ2XhCMI37svcNy+SisEepb91ew==
+X-Received: by 2002:a17:902:9882:: with SMTP id s2mr4197115plp.112.1592494215248;
+        Thu, 18 Jun 2020 08:30:15 -0700 (PDT)
 Received: from localhost.localdomain (ftp.datadirectnet.jp. [182.171.80.51])
-        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.06
+        by smtp.gmail.com with ESMTPSA id y81sm3306650pfb.33.2020.06.18.08.30.13
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Jun 2020 08:30:07 -0700 (PDT)
+        Thu, 18 Jun 2020 08:30:14 -0700 (PDT)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     lixi@ddn.com, adilger@dilger.ca, wangshilong1991@gmail.com,
         sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-Subject: [RFC PATCH v2 48/51] e2fsck: only setup threads if -m option required
-Date:   Fri, 19 Jun 2020 00:27:51 +0900
-Message-Id: <1592494074-28991-49-git-send-email-wangshilong1991@gmail.com>
+Subject: [RFC PATCH v2 51/51] e2fsck: fix to avoid too much memory allocation for pfsck
+Date:   Fri, 19 Jun 2020 00:27:54 +0900
+Message-Id: <1592494074-28991-52-git-send-email-wangshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
 References: <1592494074-28991-1-git-send-email-wangshilong1991@gmail.com>
@@ -74,128 +74,82 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Wang Shilong <wshilong@ddn.com>
 
-For smaller fs(less than TiB filesystem), it doesn't
-make sense to setup threads, and default behavior will
-be kept as single threads.
+e2fsck init memory according to filesystem inodes/dir numbers
+recorded in the superblock, this should be aware of filesystem
+number of threads, otherwise, oom happen.
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 60 +++++++++++++++++++++++++++-----------------------
- 1 file changed, 32 insertions(+), 28 deletions(-)
+ e2fsck/pass1.c      | 1 +
+ lib/ext2fs/dblist.c | 2 ++
+ lib/ext2fs/ext2fs.h | 3 ++-
+ lib/ext2fs/icount.c | 4 ++++
+ 4 files changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 45e8090b..969475b4 100644
+index 990e4b04..ca8d30c4 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -1293,6 +1293,27 @@ static void e2fsck_pass1_set_thread_num(e2fsck_t ctx)
+@@ -1315,6 +1315,7 @@ static void e2fsck_pass1_set_thread_num(e2fsck_t ctx)
+ 			num_threads = max_threads / times;
+ 	}
  	ctx->fs_num_threads = num_threads;
++	ctx->fs->fs_num_threads = num_threads;
  }
  
-+static void init_ext2_max_sizes()
-+{
-+	int	i;
-+	__u64	max_sizes;
-+
-+	/*
-+	 * Init ext2_max_sizes which will be immutable and shared between
-+	 * threads
-+	 */
-+#define EXT2_BPP(bits) (1ULL << ((bits) - 2))
-+
-+	for (i = EXT2_MIN_BLOCK_LOG_SIZE; i <= EXT2_MAX_BLOCK_LOG_SIZE; i++) {
-+		max_sizes = EXT2_NDIR_BLOCKS + EXT2_BPP(i);
-+		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i);
-+		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i) * EXT2_BPP(i);
-+		max_sizes = (max_sizes * (1UL << i));
-+		ext2_max_sizes[i - EXT2_MIN_BLOCK_LOG_SIZE] = max_sizes;
-+	}
-+#undef EXT2_BPP
-+}
-+
- /*
-  * We need call mark_table_blocks() before multiple
-  * thread start, since all known system blocks should be
-@@ -1304,6 +1325,7 @@ static int _e2fsck_pass1_prepare(e2fsck_t ctx)
- 	ext2_filsys fs = ctx->fs;
- 	unsigned long long readahead_kb;
+ static void init_ext2_max_sizes()
+diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
+index 046b1e68..55e58306 100644
+--- a/lib/ext2fs/dblist.c
++++ b/lib/ext2fs/dblist.c
+@@ -58,6 +58,8 @@ static errcode_t make_dblist(ext2_filsys fs, ext2_ino_t size,
+ 		if (retval)
+ 			goto cleanup;
+ 		dblist->size = (num_dirs * 2) + 12;
++		if (fs->fs_num_threads)
++			dblist->size /= fs->fs_num_threads;
+ 	}
+ 	len = (size_t) sizeof(struct ext2_db_entry2) * dblist->size;
+ 	dblist->count = count;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 44e569e6..9e77f6d1 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -255,10 +255,11 @@ struct struct_ext2_filsys {
+ 	int				cluster_ratio_bits;
+ 	__u16				default_bitmap_type;
+ 	__u16				pad;
++	__u32				fs_num_threads;
+ 	/*
+ 	 * Reserved for future expansion
+ 	 */
+-	__u32				reserved[5];
++	__u32				reserved[4];
  
-+	init_ext2_max_sizes();
- 	e2fsck_pass1_set_thread_num(ctx);
- 	/* If we can do readahead, figure out how many groups to pull in. */
- 	if (!e2fsck_can_readahead(ctx->fs))
-@@ -1944,6 +1966,10 @@ void _e2fsck_pass1(e2fsck_t ctx)
+ 	/*
+ 	 * Reserved for the use of the calling application.
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index 8fe6ff4e..25ec75c2 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -237,6 +237,8 @@ errcode_t ext2fs_create_icount_tdb(ext2_filsys fs EXT2FS_NO_TDB_UNUSED,
+ 	 * value.
+ 	 */
+ 	num_inodes = fs->super->s_inodes_count - fs->super->s_free_inodes_count;
++	if (fs->fs_num_threads)
++		num_inodes /= fs->fs_num_threads;
  
- 		if (ino == EXT2_BAD_INO) {
- 			struct process_block_struct pb;
-+			e2fsck_t global_ctx = ctx;
-+
-+			if (ctx->global_ctx)
-+				global_ctx = ctx->global_ctx;
+ 	icount->tdb = tdb_open(fn, num_inodes, TDB_NOLOCK | TDB_NOSYNC,
+ 			       O_RDWR | O_CREAT | O_TRUNC, 0600);
+@@ -288,6 +290,8 @@ errcode_t ext2fs_create_icount2(ext2_filsys fs, int flags, unsigned int size,
+ 		if (retval)
+ 			goto errout;
+ 		icount->size += fs->super->s_inodes_count / 50;
++		if (fs->fs_num_threads)
++			icount->size /= fs->fs_num_threads;
+ 	}
  
- 			if ((failed_csum || inode->i_mode || inode->i_uid ||
- 			     inode->i_gid || inode->i_links_count ||
-@@ -1959,7 +1985,7 @@ void _e2fsck_pass1(e2fsck_t ctx)
- 			}
- 
- 			e2fsck_pass1_block_map_r_lock(ctx);
--			pctx.errcode = ext2fs_copy_bitmap(ctx->global_ctx->block_found_map,
-+			pctx.errcode = ext2fs_copy_bitmap(global_ctx->block_found_map,
- 							  &pb.fs_meta_blocks);
- 			e2fsck_pass1_block_map_r_unlock(ctx);
- 			if (pctx.errcode) {
-@@ -3297,39 +3323,13 @@ static int e2fsck_pass1_threads_start(struct e2fsck_thread_info **pinfo,
- 	return 0;
- }
- 
--static void init_ext2_max_sizes()
--{
--	int	i;
--	__u64	max_sizes;
--
--	/*
--	 * Init ext2_max_sizes which will be immutable and shared between
--	 * threads
--	 */
--#define EXT2_BPP(bits) (1ULL << ((bits) - 2))
--
--	for (i = EXT2_MIN_BLOCK_LOG_SIZE; i <= EXT2_MAX_BLOCK_LOG_SIZE; i++) {
--		max_sizes = EXT2_NDIR_BLOCKS + EXT2_BPP(i);
--		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i);
--		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i) * EXT2_BPP(i);
--		max_sizes = (max_sizes * (1UL << i));
--		ext2_max_sizes[i - EXT2_MIN_BLOCK_LOG_SIZE] = max_sizes;
--	}
--#undef EXT2_BPP
--}
--
- static void e2fsck_pass1_multithread(e2fsck_t global_ctx)
- {
- 	struct e2fsck_thread_info	*infos = NULL;
- 	errcode_t			 retval;
- 
--	retval = _e2fsck_pass1_prepare(global_ctx);
--	if (retval)
--		goto out_abort;
--
- 	pthread_mutex_init(&global_ctx->fs_fix_mutex, NULL);
- 	pthread_rwlock_init(&global_ctx->fs_block_map_rwlock, NULL);
--	init_ext2_max_sizes();
- 	retval = e2fsck_pass1_threads_start(&infos, global_ctx);
- 	if (retval) {
- 		com_err(global_ctx->program_name, retval,
-@@ -3351,7 +3351,11 @@ out_abort:
- 
- void e2fsck_pass1(e2fsck_t ctx)
- {
--	e2fsck_pass1_multithread(ctx);
-+	_e2fsck_pass1_prepare(ctx);
-+	if (ctx->options & E2F_OPT_MULTITHREAD)
-+		e2fsck_pass1_multithread(ctx);
-+	else
-+		_e2fsck_pass1(ctx);
- 	_e2fsck_pass1_post(ctx);
- }
- 
+ 	bytes = (size_t) (icount->size * sizeof(struct ext2_icount_el));
 -- 
 2.25.4
 
