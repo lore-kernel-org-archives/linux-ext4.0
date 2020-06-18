@@ -2,98 +2,113 @@ Return-Path: <SRS0=1QBP=77=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24D7CC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 01:39:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4721DC433E1
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 01:43:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 05B45221E6
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 01:39:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 273A522201
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Jun 2020 01:43:50 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dDcozoF3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730507AbgFRBjF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 17 Jun 2020 21:39:05 -0400
-Received: from [211.29.132.59] ([211.29.132.59]:40327 "EHLO
-        mail108.syd.optusnet.com.au" rhost-flags-FAIL-FAIL-OK-OK)
-        by vger.kernel.org with ESMTP id S1726920AbgFRBjD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Jun 2020 21:39:03 -0400
-X-Greylist: delayed 1156 seconds by postgrey-1.27 at vger.kernel.org; Wed, 17 Jun 2020 21:39:02 EDT
-Received: from dread.disaster.area (unknown [49.180.124.177])
-        by mail108.syd.optusnet.com.au (Postfix) with ESMTPS id BB9BD1AEAF2;
-        Thu, 18 Jun 2020 11:19:20 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1jljCy-0001gV-Fl; Thu, 18 Jun 2020 11:19:12 +1000
-Date:   Thu, 18 Jun 2020 11:19:12 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Satya Tangirala <satyat@google.com>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/4] fs: introduce SB_INLINECRYPT
-Message-ID: <20200618011912.GA2040@dread.disaster.area>
-References: <20200617075732.213198-1-satyat@google.com>
- <20200617075732.213198-2-satyat@google.com>
+        id S1732790AbgFRBno (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 17 Jun 2020 21:43:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50440 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729997AbgFRBnm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jun 2020 21:43:42 -0400
+Received: from mail-il1-x131.google.com (mail-il1-x131.google.com [IPv6:2607:f8b0:4864:20::131])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E92D2C06174E;
+        Wed, 17 Jun 2020 18:43:41 -0700 (PDT)
+Received: by mail-il1-x131.google.com with SMTP id j19so4243037ilk.9;
+        Wed, 17 Jun 2020 18:43:41 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=/NV0zNhM4fAGBEvR6pS4jubz62WIXqxLs8Qbcn4M8G8=;
+        b=dDcozoF3gjERlnIYD/aopfiDz8+Xk7wB85tQ+JG+fS/wcxWZRWOO9ndR3j6DlLjase
+         pakWhsVPQ1s1RE4tdxVgckkmbgQQmy7KzyUVIgo8XiewLQf5iDAQQHzmV55SqyA3ni0l
+         UhO1lJ4tnxN9yr+l1R5SlEBFs6N7bGO1IezGVFxCOKnzKhYGlAd0C60gF1lzq5zPgtZ5
+         9JgAPTH5CwMDcYYdYBRFRY59OOo2Ufb2xXI6CZ33SNJk34h80UPpZg/jdNoIWaOmSADF
+         HprtPmsk/lgc7E5A+WM5WfU02YavO+ic/3qkx+0n65e7+GL5yWyxbhFZWUcj97Z490uK
+         AJxw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=/NV0zNhM4fAGBEvR6pS4jubz62WIXqxLs8Qbcn4M8G8=;
+        b=rIZaeZTMyB+E9IELLbPTjBPoCCaBgD3xQt1ws8BU4h9XstxN3oZN8RRILpTQ4uXQmv
+         cXVnyuNmNjOsK9YJzEz/33jmCbeqZXOHypH4Zqr6izzZXuj0AtnuKmdNXfuxHbYRF2H6
+         j3eoZTp+6Rsa/iTM6VuJPmhM7cbez1oFBZ4FsG0xI2WpGUSKFKpMt26GsmJ8YRhiRgd1
+         JF7A9z+tUxOQaJ3YJusjuZmowsqkbr8kNn6dsC8UdxUiCTTeFRnXDw3bL3VRTJNzZAJz
+         Qd2ngfmMwYX6ZcerUAuNG5bGYZn83XSt4PEPFvemdEu48FNflsj37H2WGLfe+nnZT5Mk
+         QtOg==
+X-Gm-Message-State: AOAM532Bac1QzSwCth3YFWtbUrdp2SmwUmrp6GQ3dBHgcArhsOSGaf50
+        lIOM/P6Ix+OA6HFX3w6m06pzkFXlG1Jfpy7sikM=
+X-Google-Smtp-Source: ABdhPJy/FeQxzQszfiH33uOWaccj4JEo3pvq0ekiMOC1+TiGVdTADnFmscwMk0igU9qcjJHn9X3GpIIhMlgC28sEOaI=
+X-Received: by 2002:a05:6e02:542:: with SMTP id i2mr1867971ils.203.1592444621188;
+ Wed, 17 Jun 2020 18:43:41 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200617075732.213198-2-satyat@google.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=W5xGqiek c=1 sm=1 tr=0
-        a=k3aV/LVJup6ZGWgigO6cSA==:117 a=k3aV/LVJup6ZGWgigO6cSA==:17
-        a=kj9zAlcOel0A:10 a=nTHF0DUjJn0A:10 a=1XWaLZrsAAAA:8 a=7-415B0cAAAA:8
-        a=Yn2aIsqHhkDqJBDDX5kA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+References: <CA+G9fYsXnwyGetj-vztAKPt8=jXrkY8QWe74u5EEA3XPW7aikQ@mail.gmail.com>
+ <20200520190906.GA558281@chrisdown.name> <20200521095515.GK6462@dhcp22.suse.cz>
+ <20200521163450.GV6462@dhcp22.suse.cz> <CA+G9fYsdsgRmwLtSKJSzB1eWcUQ1z-_aaU+BNcQpker34XT6_w@mail.gmail.com>
+ <20200617135758.GA548179@chrisdown.name> <20200617141155.GQ9499@dhcp22.suse.cz>
+ <CA+G9fYu+FB1PE0AMmE-9MrHpayE9kChwTyc3zfM6V83uQ0zcQA@mail.gmail.com>
+ <20200617160624.GS9499@dhcp22.suse.cz> <CA+G9fYtCXrVGVtRTwxiqgfFNDDf_H4aNH=VpWLhsV4n_mCTLGg@mail.gmail.com>
+ <20200617210935.GA578452@chrisdown.name>
+In-Reply-To: <20200617210935.GA578452@chrisdown.name>
+From:   Yafang Shao <laoar.shao@gmail.com>
+Date:   Thu, 18 Jun 2020 09:43:05 +0800
+Message-ID: <CALOAHbBp7Ytd-Hta9NH-_HJtVTAsR5Pw2RYrVScp7PPezCEv2w@mail.gmail.com>
+Subject: Re: mm: mkfs.ext4 invoked oom-killer on i386 - pagecache_get_page
+To:     Chris Down <chris@chrisdown.name>
+Cc:     Naresh Kamboju <naresh.kamboju@linaro.org>,
+        Michal Hocko <mhocko@kernel.org>,
+        Anders Roxell <anders.roxell@linaro.org>,
+        "Linux F2FS DEV, Mailing List" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-block <linux-block@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        open list <linux-kernel@vger.kernel.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Chao Yu <chao@kernel.org>,
+        Hugh Dickins <hughd@google.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Chao Yu <yuchao0@huawei.com>, lkft-triage@lists.linaro.org,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Roman Gushchin <guro@fb.com>, Cgroups <cgroups@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jun 17, 2020 at 07:57:29AM +0000, Satya Tangirala wrote:
-> Introduce SB_INLINECRYPT, which is set by filesystems that wish to use
-> blk-crypto for file content en/decryption. This flag maps to the
-> '-o inlinecrypt' mount option which multiple filesystems will implement,
-> and code in fs/crypto/ needs to be able to check for this mount option
-> in a filesystem-independent way.
-> 
-> Signed-off-by: Satya Tangirala <satyat@google.com>
-> ---
->  fs/proc_namespace.c | 1 +
->  include/linux/fs.h  | 1 +
->  2 files changed, 2 insertions(+)
-> 
-> diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
-> index 3059a9394c2d..e0ff1f6ac8f1 100644
-> --- a/fs/proc_namespace.c
-> +++ b/fs/proc_namespace.c
-> @@ -49,6 +49,7 @@ static int show_sb_opts(struct seq_file *m, struct super_block *sb)
->  		{ SB_DIRSYNC, ",dirsync" },
->  		{ SB_MANDLOCK, ",mand" },
->  		{ SB_LAZYTIME, ",lazytime" },
-> +		{ SB_INLINECRYPT, ",inlinecrypt" },
->  		{ 0, NULL }
->  	};
->  	const struct proc_fs_opts *fs_infop;
+On Thu, Jun 18, 2020 at 5:09 AM Chris Down <chris@chrisdown.name> wrote:
+>
+> Naresh Kamboju writes:
+> >After this patch applied the reported issue got fixed.
+>
+> Great! Thank you Naresh and Michal for helping to get to the bottom of this :-)
+>
+> I'll send out a new version tomorrow with the fixes applied and both of you
+> credited in the changelog for the detection and fix.
 
-NACK.
+As we have already found that the usage around memory.{emin, elow} has
+many limitations, I think memory.{emin, elow} should be used for
+memcg-tree internally only, that means they can only be used to
+calculate the protection of a memcg in a specified memcg-tree but
+should not be exposed to other MM parts.
 
-SB_* flgs are for functionality enabled on the superblock, not for
-indicating mount options that have been set by the user.
-
-If the mount options are directly parsed by the filesystem option
-parser (as is done later in this patchset), then the mount option
-setting should be emitted by the filesystem's ->show_options
-function, not a generic function.
-
-The option string must match what the filesystem defines, not
-require separate per-filesystem and VFS definitions of the same
-option that people could potentially get wrong (*cough* i_version vs
-iversion *cough*)....
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Thanks
+Yafang
