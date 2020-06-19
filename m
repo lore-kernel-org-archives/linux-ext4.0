@@ -2,121 +2,239 @@ Return-Path: <SRS0=pnrD=AA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F321C433E0
-	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jun 2020 07:31:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7ED1C433DF
+	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jun 2020 09:39:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C22AA207FC
-	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jun 2020 07:31:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8460320786
+	for <linux-ext4@archiver.kernel.org>; Fri, 19 Jun 2020 09:39:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mykernel.net header.i=cgxu519@mykernel.net header.b="Sts9/wLO"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Ct+O4on4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730300AbgFSHbz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 19 Jun 2020 03:31:55 -0400
-Received: from sender2-op-o12.zoho.com.cn ([163.53.93.243]:17120 "EHLO
-        sender2-op-o12.zoho.com.cn" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729740AbgFSHby (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Jun 2020 03:31:54 -0400
-ARC-Seal: i=1; a=rsa-sha256; t=1592551910; cv=none; 
-        d=zoho.com.cn; s=zohoarc; 
-        b=nf+zMZcqVESPKOpyQEgib7tOvI3fFyNeyUDKiZvt8baYNoMg61mOCkISex1Hh/yCcsNs9VHyqqqrHJpMGWtXRxiO937KQ5baUNHbhFgizMP1vKGtTUuJPd4havcDAkEXQ+lrYw3PT5Y8Rdgj4I9OYVPPf+OcSGwoy5DYRLTFqak=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1592551910; h=Content-Type:Content-Transfer-Encoding:Cc:Date:From:MIME-Version:Message-ID:Subject:To; 
-        bh=jEfLXFDKGfBQH3Xvttk1mKgp1xzscpj0Mis0Q37GyHo=; 
-        b=XTDy1Zw31bizbDeX+4k17bZINFMuLNPvIjdpe0H4hhMag2cZupWV9ZD251kyfkPwm3e++owFmu9g0Peeu7eNa4a/vtKJ8VwmwU2NV4Uoe/+q6LFuVxVXm8W2S3aWIwoAUPX3npGxY2/Z0a5X7S+2XGa6nctflcV7vo/rd8IWyUk=
-ARC-Authentication-Results: i=1; mx.zoho.com.cn;
-        dkim=pass  header.i=mykernel.net;
-        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
-        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1592551910;
-        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
-        h=From:To:Cc:Message-ID:Subject:Date:MIME-Version:Content-Transfer-Encoding:Content-Type;
-        bh=jEfLXFDKGfBQH3Xvttk1mKgp1xzscpj0Mis0Q37GyHo=;
-        b=Sts9/wLOOt7sk6CEFvYl3lpqhuJxYNQKM7MmvYcqbQ2gQw1lSX3YuDjWbtwzuSeR
-        TxAW7CzoFmlcILSyMSzfPQE8U/IEfJeNSmmdAqFBu4Rl/0hgSeZFP45f/RpLi0Q4F4N
-        awY+z4Dp8XCC7s7tNGBuOaSL7zf6LihAOIKU6ir4=
-Received: from localhost.localdomain (218.18.229.179 [218.18.229.179]) by mx.zoho.com.cn
-        with SMTPS id 1592551908507269.5307956657608; Fri, 19 Jun 2020 15:31:48 +0800 (CST)
-From:   Chengguang Xu <cgxu519@mykernel.net>
-To:     jack@suse.com
-Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
-Message-ID: <20200619073144.4701-1-cgxu519@mykernel.net>
-Subject: [PATCH] ext2: remove nocheck option
-Date:   Fri, 19 Jun 2020 15:31:44 +0800
-X-Mailer: git-send-email 2.20.1
+        id S1731924AbgFSJjt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 19 Jun 2020 05:39:49 -0400
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:47271 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1731369AbgFSJjs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jun 2020 05:39:48 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1592559586;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=lrk5imypRvlh6Xm/35IKdaRrF7e1DPYFegz850ZqocU=;
+        b=Ct+O4on4TZ8YUaTjf34acZCB0jrgMlFDiwN0/KD16r55wbBTVVsOgw8m3tV5LaYSTLkjHn
+        RNIjcfv+NrW7VlEcqXWsm50So+wFD6gO2u5M/B9CA6DESEGIJPCGL+AULOAgc3TkeTxnG5
+        Uru9hMyLX5rp790drHUAWKtGM4Yd+2s=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-146-jYi5da2QMoKUefxLZ_07RQ-1; Fri, 19 Jun 2020 05:39:43 -0400
+X-MC-Unique: jYi5da2QMoKUefxLZ_07RQ-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C7066107B274;
+        Fri, 19 Jun 2020 09:39:40 +0000 (UTC)
+Received: from max.home.com (unknown [10.40.195.140])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 494C05D9CA;
+        Fri, 19 Jun 2020 09:39:35 +0000 (UTC)
+From:   Andreas Gruenbacher <agruenba@redhat.com>
+To:     Matthew Wilcox <willy@infradead.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     Andreas Gruenbacher <agruenba@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Junxiao Bi <junxiao.bi@oracle.com>,
+        William Kucharski <william.kucharski@oracle.com>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        John Hubbard <jhubbard@nvidia.com>,
+        linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, Christoph Hellwig <hch@lst.de>,
+        linux-btrfs@vger.kernel.org
+Subject: [PATCH 2/2] gfs2: Rework read and page fault locking
+Date:   Fri, 19 Jun 2020 11:39:16 +0200
+Message-Id: <20200619093916.1081129-3-agruenba@redhat.com>
+In-Reply-To: <20200619093916.1081129-1-agruenba@redhat.com>
+References: <20200619093916.1081129-1-agruenba@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-X-ZohoCNMailClient: External
-Content-Type: text/plain; charset=utf8
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove useless nocheck option.
+The cache consistency model of filesystems like gfs2 is such that if
+data is found in the page cache, the data is up to date and can be used
+without taking any filesystem locks.  If a page is not cached,
+filesystem locks must be taken before populating the page cache.
 
-Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
+Thus far,  gfs2 has taken the filesystem locks inside the ->readpage and
+->readpages address space operations.  This was already causing lock
+ordering problems, but commit d4388340ae0b ("fs: convert mpage_readpages
+to mpage_readahead") made things worse: the ->readahead operation is
+called with the pages to readahead locked, so grabbing the inode's glock
+can now deadlock with processes which are holding the inode glock while
+trying to lock the same pages.
+
+Fix this by taking the inode glock in the ->read_iter file and ->fault
+vm operations.  To avoid taking the inode glock when the data is already
+cached, the ->read_iter file operation first tries to read the data with
+the IOCB_CACHED flag set.  If that fails, the inode glock is locked and
+the operation is repeated without the IOCB_CACHED flag.
+
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 ---
- fs/ext2/ext2.h  |  1 -
- fs/ext2/super.c | 10 +---------
- 2 files changed, 1 insertion(+), 10 deletions(-)
+ fs/gfs2/aops.c | 27 ++--------------------
+ fs/gfs2/file.c | 61 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 61 insertions(+), 27 deletions(-)
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 8178bd38a9d6..c7ed9a57791e 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -374,7 +374,6 @@ struct ext2_inode {
- /*
-  * Mount flags
-  */
--#define EXT2_MOUNT_CHECK=09=090x000001  /* Do mount-time checks */
- #define EXT2_MOUNT_OLDALLOC=09=090x000002  /* Don't use the new Orlov allo=
-cator */
- #define EXT2_MOUNT_GRPID=09=090x000004  /* Create files with directory's g=
-roup */
- #define EXT2_MOUNT_DEBUG=09=090x000008  /* Some debugging messages */
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 4a4ab683250d..dda860562ca3 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -431,7 +431,7 @@ static unsigned long get_sb_block(void **data)
- enum {
- =09Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid,
- =09Opt_resgid, Opt_resuid, Opt_sb, Opt_err_cont, Opt_err_panic,
--=09Opt_err_ro, Opt_nouid32, Opt_nocheck, Opt_debug,
-+=09Opt_err_ro, Opt_nouid32, Opt_debug,
- =09Opt_oldalloc, Opt_orlov, Opt_nobh, Opt_user_xattr, Opt_nouser_xattr,
- =09Opt_acl, Opt_noacl, Opt_xip, Opt_dax, Opt_ignore, Opt_err, Opt_quota,
- =09Opt_usrquota, Opt_grpquota, Opt_reservation, Opt_noreservation
-@@ -451,8 +451,6 @@ static const match_table_t tokens =3D {
- =09{Opt_err_panic, "errors=3Dpanic"},
- =09{Opt_err_ro, "errors=3Dremount-ro"},
- =09{Opt_nouid32, "nouid32"},
--=09{Opt_nocheck, "check=3Dnone"},
--=09{Opt_nocheck, "nocheck"},
- =09{Opt_debug, "debug"},
- =09{Opt_oldalloc, "oldalloc"},
- =09{Opt_orlov, "orlov"},
-@@ -546,12 +544,6 @@ static int parse_options(char *options, struct super_b=
-lock *sb,
- =09=09case Opt_nouid32:
- =09=09=09set_opt (opts->s_mount_opt, NO_UID32);
- =09=09=09break;
--=09=09case Opt_nocheck:
--=09=09=09ext2_msg(sb, KERN_WARNING,
--=09=09=09=09"Option nocheck/check=3Dnone is deprecated and"
--=09=09=09=09" will be removed in June 2020.");
--=09=09=09clear_opt (opts->s_mount_opt, CHECK);
--=09=09=09break;
- =09=09case Opt_debug:
- =09=09=09set_opt (opts->s_mount_opt, DEBUG);
- =09=09=09break;
---=20
-2.20.1
-
+diff --git a/fs/gfs2/aops.c b/fs/gfs2/aops.c
+index 72c9560f4467..73c2fe768a3f 100644
+--- a/fs/gfs2/aops.c
++++ b/fs/gfs2/aops.c
+@@ -513,26 +513,10 @@ static int __gfs2_readpage(void *file, struct page *page)
+ 
+ static int gfs2_readpage(struct file *file, struct page *page)
+ {
+-	struct address_space *mapping = page->mapping;
+-	struct gfs2_inode *ip = GFS2_I(mapping->host);
+-	struct gfs2_holder gh;
+ 	int error;
+ 
+-	unlock_page(page);
+-	gfs2_holder_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
+-	error = gfs2_glock_nq(&gh);
+-	if (unlikely(error))
+-		goto out;
+-	error = AOP_TRUNCATED_PAGE;
+-	lock_page(page);
+-	if (page->mapping == mapping && !PageUptodate(page))
+-		error = __gfs2_readpage(file, page);
+-	else
+-		unlock_page(page);
+-	gfs2_glock_dq(&gh);
+-out:
+-	gfs2_holder_uninit(&gh);
+-	if (error && error != AOP_TRUNCATED_PAGE)
++	error = __gfs2_readpage(file, page);
++	if (error)
+ 		lock_page(page);
+ 	return error;
+ }
+@@ -598,16 +582,9 @@ static void gfs2_readahead(struct readahead_control *rac)
+ {
+ 	struct inode *inode = rac->mapping->host;
+ 	struct gfs2_inode *ip = GFS2_I(inode);
+-	struct gfs2_holder gh;
+ 
+-	gfs2_holder_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
+-	if (gfs2_glock_nq(&gh))
+-		goto out_uninit;
+ 	if (!gfs2_is_stuffed(ip))
+ 		mpage_readahead(rac, gfs2_block_map);
+-	gfs2_glock_dq(&gh);
+-out_uninit:
+-	gfs2_holder_uninit(&gh);
+ }
+ 
+ /**
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index fe305e4bfd37..f729b0ff2a3c 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -558,8 +558,29 @@ static vm_fault_t gfs2_page_mkwrite(struct vm_fault *vmf)
+ 	return block_page_mkwrite_return(ret);
+ }
+ 
++static vm_fault_t gfs2_fault(struct vm_fault *vmf)
++{
++	struct inode *inode = file_inode(vmf->vma->vm_file);
++	struct gfs2_inode *ip = GFS2_I(inode);
++	struct gfs2_holder gh;
++	vm_fault_t ret;
++	int err;
++
++	gfs2_holder_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
++	err = gfs2_glock_nq(&gh);
++	if (err) {
++		ret = block_page_mkwrite_return(err);
++		goto out_uninit;
++	}
++	ret = filemap_fault(vmf);
++	gfs2_glock_dq(&gh);
++out_uninit:
++	gfs2_holder_uninit(&gh);
++	return ret;
++}
++
+ static const struct vm_operations_struct gfs2_vm_ops = {
+-	.fault = filemap_fault,
++	.fault = gfs2_fault,
+ 	.map_pages = filemap_map_pages,
+ 	.page_mkwrite = gfs2_page_mkwrite,
+ };
+@@ -824,15 +845,51 @@ static ssize_t gfs2_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 
+ static ssize_t gfs2_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
++	struct gfs2_inode *ip;
++	struct gfs2_holder gh;
++	size_t written = 0;
+ 	ssize_t ret;
+ 
++	gfs2_holder_mark_uninitialized(&gh);
+ 	if (iocb->ki_flags & IOCB_DIRECT) {
+ 		ret = gfs2_file_direct_read(iocb, to);
+ 		if (likely(ret != -ENOTBLK))
+ 			return ret;
+ 		iocb->ki_flags &= ~IOCB_DIRECT;
+ 	}
+-	return generic_file_read_iter(iocb, to);
++	iocb->ki_flags |= IOCB_CACHED;
++	ret = generic_file_read_iter(iocb, to);
++	iocb->ki_flags &= ~IOCB_CACHED;
++	if (ret >= 0) {
++		if (!iov_iter_count(to))
++			return ret;
++		written = ret;
++	} else {
++		switch(ret) {
++		case -EAGAIN:
++			if (iocb->ki_flags & IOCB_NOWAIT)
++				return ret;
++			break;
++		case -ECANCELED:
++			break;
++		default:
++			return ret;
++		}
++	}
++	ip = GFS2_I(iocb->ki_filp->f_mapping->host);
++	gfs2_holder_init(ip->i_gl, LM_ST_SHARED, 0, &gh);
++	ret = gfs2_glock_nq(&gh);
++	if (ret)
++		goto out_uninit;
++	ret = generic_file_read_iter(iocb, to);
++	if (ret > 0)
++		written += ret;
++	if (gfs2_holder_initialized(&gh))
++		gfs2_glock_dq(&gh);
++out_uninit:
++	if (gfs2_holder_initialized(&gh))
++		gfs2_holder_uninit(&gh);
++	return written ? written : ret;
+ }
+ 
+ /**
+-- 
+2.26.2
 
