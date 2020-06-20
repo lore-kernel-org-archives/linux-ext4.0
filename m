@@ -2,36 +2,38 @@ Return-Path: <SRS0=bXs/=AB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEAE6C433DF
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F6FBC433E0
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BCA0522DBF
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 087C622DBF
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732107AbgFTCxa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 19 Jun 2020 22:53:30 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:6294 "EHLO huawei.com"
+        id S1732132AbgFTCxg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 19 Jun 2020 22:53:36 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:54918 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1732006AbgFTCx3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Jun 2020 22:53:29 -0400
-Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 5016D6C9B5FF326A0C16;
-        Sat, 20 Jun 2020 10:53:26 +0800 (CST)
+        id S1732006AbgFTCxf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 Jun 2020 22:53:35 -0400
+Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 866D37C39C1D07AFF78E;
+        Sat, 20 Jun 2020 10:53:33 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS401-HUB.china.huawei.com
  (10.3.19.201) with Microsoft SMTP Server id 14.3.487.0; Sat, 20 Jun 2020
- 10:53:20 +0800
+ 10:53:21 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, <jack@suse.cz>
 CC:     <adilger.kernel@dilger.ca>, <zhangxiaoxu5@huawei.com>,
         <yi.zhang@huawei.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v3 0/5] ext4: fix inconsistency since async write metadata buffer error
-Date:   Sat, 20 Jun 2020 10:54:22 +0800
-Message-ID: <20200620025427.1756360-1-yi.zhang@huawei.com>
+Subject: [PATCH v3 3/5] ext4: remove write io error check before read inode block
+Date:   Sat, 20 Jun 2020 10:54:25 +0800
+Message-ID: <20200620025427.1756360-4-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
+In-Reply-To: <20200620025427.1756360-1-yi.zhang@huawei.com>
+References: <20200620025427.1756360-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -42,73 +44,36 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Changes since v2:
- - Christoph against the solution of adding callback in the block layer
-   that could let ext4 handle write error. So for simplicity, switch to
-   check the bdev mapping->wb_err when ext4 getting journal write access
-   as Jan suggested now. Maybe we could implement the callback through
-   introduce a special inode (e.g. a meta inode) for ext4 in the future.
- - Patch 1: Add mapping->wb_err check and invoke ext4_error_err() in
-   ext4_journal_get_write_access() if wb_err is different from the
-   original one saved at mount time.
- - Patch 2-3: Remove partial fix <7963e5ac90125> and <9c83a923c67d>.
- - Patch 4: Fix another inconsistency problem since we may bypass the
-   journal's checkpoint procedure if we free metadata buffers which
-   were failed to async write out.
- - Patch 5: Just a cleanup patch.
-   
-The above 5 patches are based on linux-5.8-rc1 and have been tested by
-xfstests, no newly increased failures.
+After we add async write error check in ext4_journal_get_write_access(),
+we can remove the partial fix for filesystem inconsistency problem
+caused by reading old data from disk, which in commit <9c83a923c67d>
+"ext4: don't read inode block if the buffer has a write error".
 
-Thanks,
-Yi.
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 9 ---------
+ 1 file changed, 9 deletions(-)
 
------------------------
-
-Original background
-===================
-
-This patch set point to fix the inconsistency problem which has been
-discussed and partial fixed in [1].
-
-Now, the problem is on the unstable storage which has a flaky transport
-(e.g. iSCSI transport may disconnect few seconds and reconnect due to
-the bad network environment), if we failed to async write metadata in
-background, the end write routine in block layer will clear the buffer's
-uptodate flag, but the data in such buffer is actually uptodate. Finally
-we may read "old && inconsistent" metadata from the disk when we get the
-buffer later because not only the uptodate flag was cleared but also we
-do not check the write io error flag, or even worse the buffer has been
-freed due to memory presure.
-
-Fortunately, if the jbd2 do checkpoint after async IO error happens,
-the checkpoint routine will check the write_io_error flag and abort the
-the journal if detect IO error. And in the journal recover case, the
-recover code will invoke sync_blockdev() after recover complete, it will
-also detect IO error and refuse to mount the filesystem.
-
-Current ext4 have already deal with this problem in __ext4_get_inode_loc()
-and commit 7963e5ac90125 ("ext4: treat buffers with write errors as
-containing valid data"), but it's not enough.
-
-[1] https://lore.kernel.org/linux-ext4/20190823030207.GC8130@mit.edu/
-
-
-zhangyi (F) (5):
-  ext4: abort the filesystem if failed to async write metadata buffer
-  ext4: remove ext4_buffer_uptodate()
-  ext4: remove write io error check before read inode block
-  jbd2: abort journal if free a async write error metadata buffer
-  jbd2: remove unused parameter in jbd2_journal_try_to_free_buffers()
-
- fs/ext4/ext4.h        | 16 +++-------------
- fs/ext4/ext4_jbd2.c   | 25 +++++++++++++++++++++++++
- fs/ext4/inode.c       | 15 +++------------
- fs/ext4/super.c       | 23 ++++++++++++++++++++---
- fs/jbd2/transaction.c | 20 ++++++++++++++------
- include/linux/jbd2.h  |  2 +-
- 6 files changed, 66 insertions(+), 35 deletions(-)
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f68afc5c0b2d..79b73a86ef6c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4289,15 +4289,6 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	if (!buffer_uptodate(bh)) {
+ 		lock_buffer(bh);
+ 
+-		/*
+-		 * If the buffer has the write error flag, we have failed
+-		 * to write out another inode in the same block.  In this
+-		 * case, we don't have to read the block because we may
+-		 * read the old inode data successfully.
+-		 */
+-		if (buffer_write_io_error(bh) && !buffer_uptodate(bh))
+-			set_buffer_uptodate(bh);
+-
+ 		if (buffer_uptodate(bh)) {
+ 			/* someone brought it uptodate while we waited */
+ 			unlock_buffer(bh);
 -- 
 2.25.4
 
