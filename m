@@ -6,31 +6,31 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FCBCC433E0
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D616C433E1
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 39E2B22DBF
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CC4722EBE
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732139AbgFTCxl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 19 Jun 2020 22:53:41 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:54910 "EHLO huawei.com"
+        id S1732143AbgFTCxm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 19 Jun 2020 22:53:42 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:54912 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1732119AbgFTCxh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1732117AbgFTCxh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Fri, 19 Jun 2020 22:53:37 -0400
 Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 820CC923E92422E49FE3;
+        by Forcepoint Email with ESMTP id 79084C7360E1DB382C76;
         Sat, 20 Jun 2020 10:53:33 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS401-HUB.china.huawei.com
  (10.3.19.201) with Microsoft SMTP Server id 14.3.487.0; Sat, 20 Jun 2020
- 10:53:21 +0800
+ 10:53:22 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, <jack@suse.cz>
 CC:     <adilger.kernel@dilger.ca>, <zhangxiaoxu5@huawei.com>,
         <yi.zhang@huawei.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v3 2/5] ext4: remove ext4_buffer_uptodate()
-Date:   Sat, 20 Jun 2020 10:54:24 +0800
-Message-ID: <20200620025427.1756360-3-yi.zhang@huawei.com>
+Subject: [PATCH v3 4/5] jbd2: abort journal if free a async write error metadata buffer
+Date:   Sat, 20 Jun 2020 10:54:26 +0800
+Message-ID: <20200620025427.1756360-5-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20200620025427.1756360-1-yi.zhang@huawei.com>
 References: <20200620025427.1756360-1-yi.zhang@huawei.com>
@@ -44,79 +44,57 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After we add async write error check in ext4_journal_get_write_access(),
-we can remove the partial fix for filesystem inconsistency problem
-caused by reading old data from disk, which in commit <7963e5ac9012>
-"ext4: treat buffers with write errors as containing valid data" and
-<cf2834a5ed57> "ext4: treat buffers contining write errors as valid in
-ext4_sb_bread()".
+If we free a metadata buffer which has been failed to async write out
+in the background, the jbd2 checkpoint procedure will not detect this
+failure in jbd2_log_do_checkpoint(), so it may lead to filesystem
+inconsistency after cleanup journal tail. This patch abort the journal
+if free a buffer has write_io_error flag to prevent potential further
+inconsistency.
 
 Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 ---
- fs/ext4/ext4.h  | 13 -------------
- fs/ext4/inode.c |  4 ++--
- fs/ext4/super.c |  2 +-
- 3 files changed, 3 insertions(+), 16 deletions(-)
+ fs/jbd2/transaction.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 60374eda1f51..f22940e5de5a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3501,19 +3501,6 @@ extern const struct iomap_ops ext4_iomap_ops;
- extern const struct iomap_ops ext4_iomap_overwrite_ops;
- extern const struct iomap_ops ext4_iomap_report_ops;
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index e91aad3637a2..a4932e8dcb65 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2117,6 +2117,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+ {
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
++	bool has_write_io_error = false;
+ 	int ret = 0;
  
--static inline int ext4_buffer_uptodate(struct buffer_head *bh)
--{
--	/*
--	 * If the buffer has the write error flag, we have failed
--	 * to write out data in the block.  In this  case, we don't
--	 * have to read the block because we may read the old data
--	 * successfully.
--	 */
--	if (!buffer_uptodate(bh) && buffer_write_io_error(bh))
--		set_buffer_uptodate(bh);
--	return buffer_uptodate(bh);
--}
--
- #endif	/* __KERNEL__ */
+ 	J_ASSERT(PageLocked(page));
+@@ -2141,11 +2142,26 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+ 		jbd2_journal_put_journal_head(jh);
+ 		if (buffer_jbd(bh))
+ 			goto busy;
++
++		/*
++		 * If we free a metadata buffer which has been failed to
++		 * write out, the jbd2 checkpoint procedure will not detect
++		 * this failure and may lead to filesystem inconsistency
++		 * after cleanup journal tail.
++		 */
++		if (buffer_write_io_error(bh)) {
++			pr_err("JBD2: Error while async write back metadata bh %llu.",
++			       (unsigned long long)bh->b_blocknr);
++			has_write_io_error = true;
++		}
+ 	} while ((bh = bh->b_this_page) != head);
  
- #define EFSBADCRC	EBADMSG		/* Bad CRC detected */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 40ec5c7ef0d3..f68afc5c0b2d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -883,7 +883,7 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 	bh = ext4_getblk(handle, inode, block, map_flags);
- 	if (IS_ERR(bh))
- 		return bh;
--	if (!bh || ext4_buffer_uptodate(bh))
-+	if (!bh || buffer_uptodate(bh))
- 		return bh;
- 	ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1, &bh);
- 	wait_on_buffer(bh);
-@@ -910,7 +910,7 @@ int ext4_bread_batch(struct inode *inode, ext4_lblk_t block, int bh_count,
+ 	ret = try_to_free_buffers(page);
  
- 	for (i = 0; i < bh_count; i++)
- 		/* Note that NULL bhs[i] is valid because of holes. */
--		if (bhs[i] && !ext4_buffer_uptodate(bhs[i]))
-+		if (bhs[i] && !buffer_uptodate(bhs[i]))
- 			ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1,
- 				    &bhs[i]);
+ busy:
++	if (has_write_io_error)
++		jbd2_journal_abort(journal, -EIO);
++
+ 	return ret;
+ }
  
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8d3925c31b8a..513d1e270f6d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -154,7 +154,7 @@ ext4_sb_bread(struct super_block *sb, sector_t block, int op_flags)
- 
- 	if (bh == NULL)
- 		return ERR_PTR(-ENOMEM);
--	if (ext4_buffer_uptodate(bh))
-+	if (buffer_uptodate(bh))
- 		return bh;
- 	ll_rw_block(REQ_OP_READ, REQ_META | op_flags, 1, &bh);
- 	wait_on_buffer(bh);
 -- 
 2.25.4
 
