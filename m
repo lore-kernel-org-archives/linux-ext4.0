@@ -6,31 +6,31 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D616C433E1
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A301C433E0
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1CC4722EBE
-	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3121822E02
+	for <linux-ext4@archiver.kernel.org>; Sat, 20 Jun 2020 02:53:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732143AbgFTCxm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 19 Jun 2020 22:53:42 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:54912 "EHLO huawei.com"
+        id S1732146AbgFTCxy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 19 Jun 2020 22:53:54 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:54916 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1732117AbgFTCxh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Jun 2020 22:53:37 -0400
+        id S1732118AbgFTCxf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 Jun 2020 22:53:35 -0400
 Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 79084C7360E1DB382C76;
+        by Forcepoint Email with ESMTP id 8A9974562A62E6CC226F;
         Sat, 20 Jun 2020 10:53:33 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS401-HUB.china.huawei.com
  (10.3.19.201) with Microsoft SMTP Server id 14.3.487.0; Sat, 20 Jun 2020
- 10:53:22 +0800
+ 10:53:20 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>, <jack@suse.cz>
 CC:     <adilger.kernel@dilger.ca>, <zhangxiaoxu5@huawei.com>,
         <yi.zhang@huawei.com>, <linux-fsdevel@vger.kernel.org>
-Subject: [PATCH v3 4/5] jbd2: abort journal if free a async write error metadata buffer
-Date:   Sat, 20 Jun 2020 10:54:26 +0800
-Message-ID: <20200620025427.1756360-5-yi.zhang@huawei.com>
+Subject: [PATCH v3 1/5] ext4: abort the filesystem if failed to async write metadata buffer
+Date:   Sat, 20 Jun 2020 10:54:23 +0800
+Message-ID: <20200620025427.1756360-2-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20200620025427.1756360-1-yi.zhang@huawei.com>
 References: <20200620025427.1756360-1-yi.zhang@huawei.com>
@@ -44,57 +44,122 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If we free a metadata buffer which has been failed to async write out
-in the background, the jbd2 checkpoint procedure will not detect this
-failure in jbd2_log_do_checkpoint(), so it may lead to filesystem
-inconsistency after cleanup journal tail. This patch abort the journal
-if free a buffer has write_io_error flag to prevent potential further
+There is a risk of filesystem inconsistency if we failed to async write
+back metadata buffer in the background. Because of current buffer's end
+io procedure is handled by end_buffer_async_write() in the block layer,
+and it only clear the buffer's uptodate flag and mark the write_io_error
+flag, so ext4 cannot detect such failure immediately. In most cases of
+getting metadata buffer (e.g. ext4_read_inode_bitmap()), although the
+buffer's data is actually uptodate, it may still read data from disk
+because the buffer's uptodate flag has been cleared. Finally, it may
+lead to on-disk filesystem inconsistency if reading old data from the
+disk successfully and write them out again.
+
+This patch detect bdev mapping->wb_err when getting journal's write
+access and mark the filesystem error if bdev's mapping->wb_err was
+increased, this could prevent further writing and potential
 inconsistency.
 
 Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Suggested-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ fs/ext4/ext4.h      |  3 +++
+ fs/ext4/ext4_jbd2.c | 25 +++++++++++++++++++++++++
+ fs/ext4/super.c     | 17 +++++++++++++++++
+ 3 files changed, 45 insertions(+)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index e91aad3637a2..a4932e8dcb65 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2117,6 +2117,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
- {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
-+	bool has_write_io_error = false;
- 	int ret = 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b08841f70b69..60374eda1f51 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1573,6 +1573,9 @@ struct ext4_sb_info {
+ #ifdef CONFIG_EXT4_DEBUG
+ 	unsigned long s_simulate_fail;
+ #endif
++	/* Record the errseq of the backing block device */
++	errseq_t s_bdev_wb_err;
++	spinlock_t s_bdev_wb_lock;
+ };
  
- 	J_ASSERT(PageLocked(page));
-@@ -2141,11 +2142,26 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
- 		jbd2_journal_put_journal_head(jh);
- 		if (buffer_jbd(bh))
- 			goto busy;
-+
-+		/*
-+		 * If we free a metadata buffer which has been failed to
-+		 * write out, the jbd2 checkpoint procedure will not detect
-+		 * this failure and may lead to filesystem inconsistency
-+		 * after cleanup journal tail.
-+		 */
-+		if (buffer_write_io_error(bh)) {
-+			pr_err("JBD2: Error while async write back metadata bh %llu.",
-+			       (unsigned long long)bh->b_blocknr);
-+			has_write_io_error = true;
-+		}
- 	} while ((bh = bh->b_this_page) != head);
- 
- 	ret = try_to_free_buffers(page);
- 
- busy:
-+	if (has_write_io_error)
-+		jbd2_journal_abort(journal, -EIO);
-+
- 	return ret;
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 0c76cdd44d90..760b9ee49dc0 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -195,6 +195,28 @@ static void ext4_journal_abort_handle(const char *caller, unsigned int line,
+ 	jbd2_journal_abort_handle(handle);
  }
  
++static void ext4_check_bdev_write_error(struct super_block *sb)
++{
++	struct address_space *mapping = sb->s_bdev->bd_inode->i_mapping;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int err;
++
++	/*
++	 * If the block device has write error flag, it may have failed to
++	 * async write out metadata buffers in the background. In this case,
++	 * we could read old data from disk and write it out again, which
++	 * may lead to on-disk filesystem inconsistency.
++	 */
++	if (errseq_check(&mapping->wb_err, READ_ONCE(sbi->s_bdev_wb_err))) {
++		spin_lock(&sbi->s_bdev_wb_lock);
++		err = errseq_check_and_advance(&mapping->wb_err, &sbi->s_bdev_wb_err);
++		spin_unlock(&sbi->s_bdev_wb_lock);
++		if (err)
++			ext4_error_err(sb, -err,
++				       "Error while async write back metadata");
++	}
++}
++
+ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 				    handle_t *handle, struct buffer_head *bh)
+ {
+@@ -202,6 +224,9 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 
+ 	might_sleep();
+ 
++	if (bh->b_bdev->bd_super)
++		ext4_check_bdev_write_error(bh->b_bdev->bd_super);
++
+ 	if (ext4_handle_valid(handle)) {
+ 		err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c668f6b42374..8d3925c31b8a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4699,6 +4699,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	}
+ #endif  /* CONFIG_QUOTA */
+ 
++	/*
++	 * Save the original bdev mapping's wb_err value which could be
++	 * used to detect the metadata async write error.
++	 */
++	spin_lock_init(&sbi->s_bdev_wb_lock);
++	if (!sb_rdonly(sb))
++		errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
++					 &sbi->s_bdev_wb_err);
++	sb->s_bdev->bd_super = sb;
+ 	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
+ 	ext4_orphan_cleanup(sb, es);
+ 	EXT4_SB(sb)->s_mount_state &= ~EXT4_ORPHAN_FS;
+@@ -5562,6 +5571,14 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 				goto restore_opts;
+ 			}
+ 
++			/*
++			 * Update the original bdev mapping's wb_err value
++			 * which could be used to detect the metadata async
++			 * write error.
++			 */
++			errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
++						 &sbi->s_bdev_wb_err);
++
+ 			/*
+ 			 * Mounting a RDONLY partition read-write, so reread
+ 			 * and store the current valid flag.  (It may have
 -- 
 2.25.4
 
