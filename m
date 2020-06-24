@@ -1,98 +1,134 @@
-Return-Path: <SRS0=VOlG=AE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Hf1J=AF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3441C433E1
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Jun 2020 10:08:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA579C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 00:55:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D24A120774
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Jun 2020 10:08:49 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=linaro.org header.i=@linaro.org header.b="LrzaNYo+"
+	by mail.kernel.org (Postfix) with ESMTP id 8FA1420738
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 00:55:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732212AbgFWKIs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 Jun 2020 06:08:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42136 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728265AbgFWKIs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2020 06:08:48 -0400
-Received: from mail-oi1-x244.google.com (mail-oi1-x244.google.com [IPv6:2607:f8b0:4864:20::244])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45C03C061573
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2020 03:08:48 -0700 (PDT)
-Received: by mail-oi1-x244.google.com with SMTP id t25so18348166oij.7
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2020 03:08:48 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=M3hW7WRp42UpwG72NKBm3smYKhFioVF4VBZeKMtkEJc=;
-        b=LrzaNYo+jZEMYGt3waUChB440CSSUC6u4cZavtcKxx/K6dN6SwbrIG9FQITGb7LZNm
-         ZWEnKN54ER3iffAr5QHqeF9Fa1i3EL2CfDaiL7Y1LTe9pjwiS3QN14PmKFwuSsx1vzua
-         HG2ZpKYq9CzQ46VREeQkFviUIY2dGv3ZIWo9EbMQkPayU5FTHz/tNKRvtmC9e0axLYug
-         JrdvD7ZFkeJBLy1q2djxnhnE+dNqVueebhU469LTsYhLULakSL3Ek8MhFIeanQt1MLpw
-         Qy9fr8Uv2onoHSbnMX+FOpIiClzKc4vRijjM0aTRrn+BHQvgCXE9XKqwjLbXDn1CJ3WC
-         UXuA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=M3hW7WRp42UpwG72NKBm3smYKhFioVF4VBZeKMtkEJc=;
-        b=AdJGd4FkkkFr2oaN3iBDoxz2lyHLfYE026Ccg6OyuVD0IoYuP8dSNQx09+QeJ7A08S
-         xg463mtDdQo0VhBgzMlW6+xeIo55udpVLq00zkHuaU6LWADETcctCMLLumCQTiEfBtBG
-         ofp7ddXWiRcDtS2EUgdXnsesGKn7XqeAADHzbKD2EP4rUox8VlLemNZ8+G+eWAheVixU
-         FqCdv/UvExaLhLwQPiIYkVf6PDmkFzpCkPt3cKqc/F4lRA/l7pLmLDo8XMHHApfBnNuh
-         0f/GFNwi9c37bYe0Fm/BMQ8Fr7YPig32I9U6+a/U0023M7m2sDA6XkocHwGmI48UhfBH
-         rxIA==
-X-Gm-Message-State: AOAM531ggebcxG66g4pDqs8/3hnyTeZJ4VufDh5TGSxwVFmAJo1Em7Gn
-        T15lWSbiwBmfOjo5Vr7Sy9PIFgI80y+G4WFCaekmDXk2JH4Ciw==
-X-Google-Smtp-Source: ABdhPJwxczce5QAXUzhylJSFNZPf8ftcpea7bapk2/tAqf92ArOw2sPuS7vZvF3Bc1+6aTPr1i3IoMPhAwn5WsRMdJE=
-X-Received: by 2002:aca:1a07:: with SMTP id a7mr15615242oia.163.1592906927646;
- Tue, 23 Jun 2020 03:08:47 -0700 (PDT)
+        id S2388284AbgFXAzP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 23 Jun 2020 20:55:15 -0400
+Received: from mail109.syd.optusnet.com.au ([211.29.132.80]:43045 "EHLO
+        mail109.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2387764AbgFXAzO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 23 Jun 2020 20:55:14 -0400
+Received: from dread.disaster.area (pa49-180-124-177.pa.nsw.optusnet.com.au [49.180.124.177])
+        by mail109.syd.optusnet.com.au (Postfix) with ESMTPS id 3A00CD7B989;
+        Wed, 24 Jun 2020 10:55:10 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1jntgz-0001dO-9M; Wed, 24 Jun 2020 10:55:09 +1000
+Date:   Wed, 24 Jun 2020 10:55:09 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fsdevel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        Satya Tangirala <satyat@google.com>
+Subject: Re: [f2fs-dev] [PATCH 1/4] fs: introduce SB_INLINECRYPT
+Message-ID: <20200624005509.GA5369@dread.disaster.area>
+References: <20200617075732.213198-1-satyat@google.com>
+ <20200617075732.213198-2-satyat@google.com>
+ <20200618011912.GA2040@dread.disaster.area>
+ <20200618031935.GE1138@sol.localdomain>
+ <20200623004636.GE2040@dread.disaster.area>
+ <20200623015017.GA844@sol.localdomain>
 MIME-Version: 1.0
-References: <20200529072017.2906-1-linus.walleij@linaro.org>
-In-Reply-To: <20200529072017.2906-1-linus.walleij@linaro.org>
-From:   Peter Maydell <peter.maydell@linaro.org>
-Date:   Tue, 23 Jun 2020 11:08:36 +0100
-Message-ID: <CAFEAcA-x0y6ufRXebckRdGSLOBzbdBsk=uw+foK4p+HDeVrA9A@mail.gmail.com>
-Subject: Re: [PATCH v2] fcntl: Add 32bit filesystem mode
-To:     Linus Walleij <linus.walleij@linaro.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        QEMU Developers <qemu-devel@nongnu.org>,
-        Florian Weimer <fw@deneb.enyo.de>,
-        Andy Lutomirski <luto@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200623015017.GA844@sol.localdomain>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.3 cv=QIgWuTDL c=1 sm=1 tr=0
+        a=k3aV/LVJup6ZGWgigO6cSA==:117 a=k3aV/LVJup6ZGWgigO6cSA==:17
+        a=kj9zAlcOel0A:10 a=nTHF0DUjJn0A:10 a=VwQbUJbxAAAA:8 a=JfrnYn6hAAAA:8
+        a=7-415B0cAAAA:8 a=_JHsV_7MbDpF1hl6ON4A:9 a=CjuIK1q_8ugA:10
+        a=AjGcO6oz07-iQ99wixmX:22 a=1CNFftbPRP8L7MoqJWF3:22
+        a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, 29 May 2020 at 08:22, Linus Walleij <linus.walleij@linaro.org> wrote:
->
-> It was brought to my attention that this bug from 2018 was
-> still unresolved: 32 bit emulators like QEMU were given
-> 64 bit hashes when running 32 bit emulation on 64 bit systems.
->
-> This adds a flag to the fcntl() F_GETFD and F_SETFD operations
-> to set the underlying filesystem into 32bit mode even if the
-> file handle was opened using 64bit mode without the compat
-> syscalls.
+On Mon, Jun 22, 2020 at 06:50:17PM -0700, Eric Biggers wrote:
+> On Tue, Jun 23, 2020 at 10:46:36AM +1000, Dave Chinner wrote:
+> > On Wed, Jun 17, 2020 at 08:19:35PM -0700, Eric Biggers wrote:
+> > > Are you objecting to the use of a SB_* flag, or just to showing the flag in
+> > > show_sb_opts() instead of in the individual filesystems?  Note that the SB_*
+> > > flag was requested by Christoph
+> > > (https://lkml.kernel.org/r/20191031183217.GF23601@infradead.org/,
+> > > https://lkml.kernel.org/r/20191031212103.GA6244@infradead.org/).  We originally
+> > > used a function fscrypt_operations::inline_crypt_enabled() instead.
+> > 
+> > I'm objecting to the layering violations of having the filesystem
+> > control the mount option parsing and superblock feature flags, but
+> > then having no control over whether features that the filesystem has
+> > indicated to the VFS it is using get emitted as a mount option or
+> > not, and then having the VFS code unconditionally override the
+> > functionality that the filesystem uses because it thinks it's a
+> > mount option the filesystem supports....
+> > 
+> > For example, the current mess that has just come to light:
+> > filesystems like btrfs and XFS v5 which set SB_IVERSION
+> > unconditionally (i.e. it's not a mount option!) end up having that
+> > functionality turned off on remount because the VFS conflates
+> > MS_IVERSION with SB_IVERSION and so unconditionally clears
+> > SB_IVERSION because MS_IVERSION is not set on remount by userspace.
+> > Which userspace will never set be because the filesystems don't put
+> > "iversion" in their mount option strings because -its not a mount
+> > option- for those filesystems.
+> > 
+> > See the problem?  MS_IVERSION should be passed to the filesystem to
+> > deal with as a mount option, not treated as a flag to directly
+> > change SB_IVERSION in the superblock.
+> > 
+> > We really need to stop with the "global mount options for everyone
+> > at the VFS" and instead pass everything down to the filesystems to
+> > parse appropriately. Yes, provide generic helper functions to deal
+> > with the common flags that everything supports, but the filesystems
+> > should be masking off mount options they doesn't support changing
+> > before changing their superblock feature support mask....
+> 
+> I think the MS_* flags are best saved for mount options that are applicable to
+> many/most filesystems and are mostly/entirely implementable at the VFS level.
 
-I somewhat belatedly got round to updating my QEMU patch
-that uses this new fcntl() flag to fix the bug. Sorry for
-the delay getting round to this. You can find the QEMU patch here:
-https://patchew.org/QEMU/20200623100101.6041-1-peter.maydell@linaro.org/
-(it's an RFC because obviously we won't put it into QEMU until
-the kernel side has gone upstream and the API is final.)
+That's the theory, but so far it's caused nothing but pain.
 
-What's the next step for moving this forward?
+In reality, I think ithe only sane way forward if to stop mount
+option parsing in userspace (i.e. no new MS_* flags) for any new
+functionality as it only leads to future pain. i.e. all new mount
+options should be parsed entirely in the kernel by the filesystem
+parsing code....
 
-thanks
--- PMM
+> I don't think "inlinecrypt" qualifies, since while it will be shared by the
+> block device-based filesystems that support fscrypt, that is only 2 filesystems
+> currently; and while some of the code needed to implement it is shared in
+> fs/crypto/, there are still substantial filesystem-specific hooks needed.
+
+Right. I wasn't suggesting this patchset should use an MS_ flag -
+it was pointing out the problem with the VFS code using SB_ flags to
+indicate enabled filesystem functionality unconditionally as a mount
+option that can be changed by userspace.
+
+> Hence this patchset intentionally does *not* allocate an MS_INLINECRYPT flag.
+> 
+> I believe that already addresses half of your concern, as it means
+> SB_INLINECRYPT can only be set/cleared by the filesystem itself, not by the VFS.
+> (But the commit message could use an explanation of this.)
+> 
+> The other half would be addressed by the following change, right?
+
+Yes, it does. Thanks, Eric!
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
