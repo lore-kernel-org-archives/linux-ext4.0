@@ -2,54 +2,119 @@ Return-Path: <SRS0=Hf1J=AF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83F38C433DF
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 12:11:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B44C9C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 16:09:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6D1892088E
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 12:11:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8302E206F7
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Jun 2020 16:09:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1593014970;
+	bh=1HN+aFFydwUDkXhTMITgOH48yWkTMel06ctBR26YTGo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=rZEWv3AewLeNm+h9c3w5KbDytKi0J32qshuhf+0x6i1VKGZrYdajfsorkAC9uQXiL
+	 hwku39AhrzLX0etUkGqm4Jg+VZYSCDdzz/dQspYq6p0IjGvDw+fng+LeVJs1C+OmnH
+	 zORTv+Pq8Bjocz5FN8Wh8eNkIJdnyTcgbzTvVKT8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389827AbgFXMLC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Jun 2020 08:11:02 -0400
-Received: from mx2.suse.de ([195.135.220.15]:54598 "EHLO mx2.suse.de"
+        id S2404601AbgFXQJa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Jun 2020 12:09:30 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36520 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2403782AbgFXMLB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Jun 2020 08:11:01 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 42BECAED7;
-        Wed, 24 Jun 2020 12:11:00 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 359001E12A8; Wed, 24 Jun 2020 14:11:00 +0200 (CEST)
-Date:   Wed, 24 Jun 2020 14:11:00 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Chengguang Xu <cgxu519@mykernel.net>
-Cc:     jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: remove nocheck option
-Message-ID: <20200624121100.GA17788@quack2.suse.cz>
-References: <20200619073144.4701-1-cgxu519@mykernel.net>
+        id S2404531AbgFXQJ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 24 Jun 2020 12:09:28 -0400
+Received: from gmail.com (unknown [104.132.1.76])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id DCA2A206F7;
+        Wed, 24 Jun 2020 16:09:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1593014968;
+        bh=1HN+aFFydwUDkXhTMITgOH48yWkTMel06ctBR26YTGo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Pm03Hm63aOgOvN1SpJ0Apo4gkR95HgkLJr2gv/rspIFOaxEoVyQw3sGRuhoVkuPIc
+         ZFdKIOXOzXLHwM1ok8kkPzynkHR56TsU99jdpPQEw0d+OLh8+LEwmHU5cu0+A3eC8u
+         cgbJcYT3NkYoPfUMhaLXXaf+rDnPyGYwWyoXo3rE=
+Date:   Wed, 24 Jun 2020 09:09:26 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Gwendal Grignou <gwendal@chromium.org>
+Cc:     Sarthak Kukreti <sarthakkukreti@chromium.org>, tytso@mit.edu,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] tune2fs: allow remove VERITY
+Message-ID: <20200624160926.GA200774@gmail.com>
+References: <20200624023107.182118-1-gwendal@chromium.org>
+ <20200624024043.GA844@sol.localdomain>
+ <CAPUE2uv0XXv40quqbKmdktgCD18DnSWh=Ekeiq2tAZOfmGmjGw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200619073144.4701-1-cgxu519@mykernel.net>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <CAPUE2uv0XXv40quqbKmdktgCD18DnSWh=Ekeiq2tAZOfmGmjGw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 19-06-20 15:31:44, Chengguang Xu wrote:
-> Remove useless nocheck option.
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
+On Wed, Jun 24, 2020 at 12:06:22AM -0700, Gwendal Grignou wrote:
+> On Tue, Jun 23, 2020 at 7:40 PM Eric Biggers <ebiggers@kernel.org> wrote:
+> >
+> > On Tue, Jun 23, 2020 at 07:31:07PM -0700, Gwendal Grignou wrote:
+> > > Allow verity flag to be removed from the susperblock:
+> > > Tests:
+> > > - check the signed file is readable by older kernel after flag
+> > > is removed. EXT4_VERITY_FL replaces EXT4_EXT_MIGRATE that has been
+> > > removed in 2009.
+> > > - when a new kernel is reinstalled, check reenabling verity flag
+> > > allow signature to be verified (fsverity measure ...).
+> > >
+> > > Signed-off-by: Gwendal Grignou <gwendal@chromium.org>
+> > > ---
+> > >  misc/tune2fs.c | 3 ++-
+> > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > >
+> > > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> > > index 314cc0d0..724b8014 100644
+> > > --- a/misc/tune2fs.c
+> > > +++ b/misc/tune2fs.c
+> > > @@ -198,7 +198,8 @@ static __u32 clear_ok_features[3] = {
+> > >               EXT4_FEATURE_RO_COMPAT_QUOTA |
+> > >               EXT4_FEATURE_RO_COMPAT_PROJECT |
+> > >               EXT4_FEATURE_RO_COMPAT_METADATA_CSUM |
+> > > -             EXT4_FEATURE_RO_COMPAT_READONLY
+> > > +             EXT4_FEATURE_RO_COMPAT_READONLY |
+> > > +             EXT4_FEATURE_RO_COMPAT_VERITY
+> > >  };
+> > >
+> >
+> > tune2fs doesn't allow removing features like encrypt, casefold, verity, extents,
+> > and ea_inode because it doesn't know whether there are any inodes on the
+> > filesystem that are using these features.  These features can't be removed if
+> > there are any inodes using them.
+>
+> The verity case is slightly different though: beside metadata,
+> encrypted files are useless.
+> In the case of fs-verity, the file is still readable, its size is
+> correct. Using debugfs, I checked the merkel tree blocks appended at
+> the end of the file are still mapped to the file inode, they are
+> marked as free when the file is removed.
+> Are you concerned about filesystem corruption? When I re-enable the
+> features and load a kernel that supports fs-verity, the protected
+> files are signed and read-only as expected.
 
-Thanks. I've added the patch to my tree.
+The problem is that the old, non-verity-aware kernel will allow writing to
+verity files, because it ignores the verity inode flag.  That will get files'
+data out of sync with their Merkle trees, and possibly corrupt their Merkle
+trees.
 
-								Honza
+This is why verity is a RO_COMPAT feature rather than a COMPAT one.  This
+ensures that if the kernel isn't aware of verity, then the filesystem can only
+be mounted read-only.
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+How about making 'tune2fs -O ^verity' remove the verity flag from all files
+that have it and remove their Merkle trees by truncating blocks past i_size?
+Would that work for you, or do you really need the verity-ness of files to be
+preserved over 'tune2fs -O ^verity; tune2fs -O verity'?
+
+- Eric
