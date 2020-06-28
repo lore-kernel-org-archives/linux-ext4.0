@@ -2,132 +2,223 @@ Return-Path: <SRS0=ZuQC=AJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92D7EC433DF
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Jun 2020 12:42:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7D28C433E0
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Jun 2020 22:05:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5E00320674
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Jun 2020 12:42:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6F99F206E9
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Jun 2020 22:05:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=web.de header.i=@web.de header.b="eWBbOYTx"
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="0gtbP7aW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726351AbgF1Mmm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 28 Jun 2020 08:42:42 -0400
-Received: from mout.web.de ([217.72.192.78]:46909 "EHLO mout.web.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726316AbgF1Mmk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 28 Jun 2020 08:42:40 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=web.de;
-        s=dbaedf251592; t=1593348147;
-        bh=npulf07zoEOS6mrZ7kUQr1zyXg++JzWm5MGqz6djhHI=;
-        h=X-UI-Sender-Class:To:Cc:Subject:From:Date;
-        b=eWBbOYTxXxQGhJ/A6LAwtJdwE6LGv0kaE7c6GxyPftIRt1lpTrWkedgIhX+Rs+c18
-         Cyo5l/Fo1UN3/yLW/EgkCGXBIxMrMhqFPrV8+ZlzXcQVU0Ao/nB+kA1NZLHgLjHHza
-         HYc1EfMsCiw4z4QcBo1QFNeuJYGaUKj3rkq0Is6o=
-X-UI-Sender-Class: c548c8c5-30a9-4db5-a2e7-cb6cb037b8f9
-Received: from [192.168.1.2] ([2.244.52.166]) by smtp.web.de (mrweb103
- [213.165.67.124]) with ESMTPSA (Nemesis) id 0MWj2N-1jJRyy2whv-00XsiD; Sun, 28
- Jun 2020 14:42:27 +0200
-To:     jiangying8582@126.com, linux-ext4@vger.kernel.org
-Cc:     kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix direct I/O read error
-From:   Markus Elfring <Markus.Elfring@web.de>
-Autocrypt: addr=Markus.Elfring@web.de; prefer-encrypt=mutual; keydata=
- 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 FEE=
-Message-ID: <f40db056-51de-8332-473a-f020d0976c0a@web.de>
-Date:   Sun, 28 Jun 2020 14:42:26 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.9.0
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-GB
-Content-Transfer-Encoding: quoted-printable
-X-Provags-ID: V03:K1:DWIB516VUkxjxrUPS7ibzg4GoIkmnwlRrNMBdlzcOEWEQXZ6o/Y
- lmtGEu+T2Cok+bFeFjVnZitEm+m2BpIOdB8U9rEAJI3rw5zlIrpVh2gdK8zbfFdJ1PMY7YV
- qNsa1RZ4dlVWctXm7ogAJDri2LbC0tGTkBUSauo78z57adU7syxNXpZQCNQ7qw8a8k4OINE
- R3ynD4fqPKq3A/wyPEvyQ==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:+R3qBd12JO0=:ncEQ7ERAS6GjgRYWiUDLPl
- lk4MZ/zNxvzK2XTVDOGUp2djvPIDZwsa0kCqKgDXO7tkM1s8qjZZrJqo3k2/t7hrV2RAIF0rU
- 1hCZnp5aWv1jvd//drEpQ1uddhnXdXjZ6WHSxpS9zx/VSizAb5uslRLhtXOlZSwZYBuOH6iCT
- 7QUW4gdtc1ECgmdXU03olS9nuQFPFpwaRnHWOGJwNJgws+/QDIzj/VOU82BVWdHZTcUk4pukm
- J/NY0N6wr1HQEtePlxstNE5nh/AKui6pJWPvYJoFYSqhe+Zohpn3NNw7NoOePPUNDZSJeMTNN
- ZUip25mH8gFAM/aYIGAh1SLwnEnRsj1r+aFf26TDrAvwkFHAcj5a00sEDhlC5FN0YS2EqCz1Y
- LmUtpx9roO6fphVAjgx9C6kKlxQUrGgUefkTNTMfCC9OASZBchMhAOux7mum7T0jYLGc0Rdn5
- w5aO2/VYW1SpXfW4XQT7d716mojHtPUyWr5+JMQkl6tnsoPY0h7umy2ZQSjMskCAyx6c1rYa8
- mZS3M1P3zKag8EAFSd3c17aO5DgkXcb6VSU2+UuzPss/1VsVjpzq7jydwVsamB5WrNkV/+ECf
- thXIEImlrq+w9WO1pf628alREovv1fbj9iE0i3rRdY+5jdscUXqwld25I3Z7IEYPB9vvh5pMd
- HG6ZPx5z939S8pCAA7FMq5wIZsXCronZLdrzSRQwhKUyWocrdRcY+Pt4mmz/1Mzh/eFe2eNUc
- xiOpuEnPLNMLu/l89gWdAbckplpZvKiHjWQoNSLzsCwuEVghmPmXkhfU3RJDHPm4vE7/vkZ7E
- UjKsi2ZFtXnqCGBW/yJ4VMXvMW/hHAMKqV5GEik6El9Kjx9cBFrpjXUmFZZ8XY7NxMnqRSyK6
- IWegc90WMinZBwzeIICW8i4vQokHeztA8zQFOjYh6JT4ud938JUuCAK0uVHtYFp3BpPpS3eIA
- Wtq4imWj67/bZ8tR1hfAfQg9qXbxstiawg8cpOuaWYqA0bJEecGvudReskdGFzbLrLcmNxBII
- lhSrA9MRnuUNo6gwTOboIM1EjaN5mFuLmt9Op2lJYYJePjoV42JJ01akNB8/j+8kboC+92ylo
- 3QS8VD0DJnj26JWrCy1ntcFW3bMRN5lDr7AWhkv3kiEH8ryCDIphoDR8nIIJVekkr16fXAeWu
- n21gML1G9LIL3gER4dn1lze2pe1IkuTqzmKNopHmhYViifrEZQhtTzdYvmN5cLYvPtk3MuBuk
- /TUeE0BujhFS32tlM
+        id S1726613AbgF1WFM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Jun 2020 18:05:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44654 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726080AbgF1WFL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Jun 2020 18:05:11 -0400
+Received: from mail-pl1-x643.google.com (mail-pl1-x643.google.com [IPv6:2607:f8b0:4864:20::643])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F56AC03E979
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Jun 2020 15:05:11 -0700 (PDT)
+Received: by mail-pl1-x643.google.com with SMTP id 35so6333947ple.0
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Jun 2020 15:05:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=CpyWnROy0g/owP6uB2Am51D8tqvXotMCgwyTNgqOsoU=;
+        b=0gtbP7aWtciJzqNmoU1y90esl66w1+QokMxLD2SAfOquuoeY8mlKcbM0pYL8CrPkTd
+         ApY0fF30EKobT5XCeHOQme8zpZh0LgZBzS8D73oUtn9ZhQDscMFBYqWCyESIvJVSe0Up
+         bptJK8fhuuVG9K5/Ddp/H5iWAn7jp5N83bmQ6xRqq/jLGTG7sipmZdLoB1lbTKC9OAa2
+         xZcn0BZicr0UpUYE+Vd9Vw2P5LUAyHLIsvZeZWDqzggifOgjJi+fxT3w0KAsiB4t/Y1o
+         zSQVu5rnREkjUwPP8cHjmRYZool0qbI+dN64E69Mb279f+QO6Ljb1jjZzwcodgdAvvSR
+         SRsg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=CpyWnROy0g/owP6uB2Am51D8tqvXotMCgwyTNgqOsoU=;
+        b=RYz7tPYtJAjOoqmMFimytmvrJgVeZABQ8jmOZ7s+61f+036UDG4bHpGbfwwA4n1fu8
+         xFiKlWp8ldWCKivJyeH9HQJb6SEZ6m7E5iwRCssaZ9s6rgjSmgGtN99ymk+7QwWlYBUR
+         tbuYKY68JumcGDPtVohv+S+LxjJNhy5PCPyTjT8hW/4MfvFwIrAmo42T3SI0nseMpNFD
+         zf6stgIBqDTuhKi57nkbXTpFpRb9O1aOIwy/9cBxF6s0qi3rc7ZJojvt4aLlShJN66Qg
+         Ba0odopxjyqPU75hOj/6ZK2Ub4Kx3ZxRJ8noX/im3yWfaiIFGQwkcOWxpKOweiT5Y1Mw
+         FbUA==
+X-Gm-Message-State: AOAM530vJHH509R0QShNbr4YZG6+Hi+4ROZjLjJv7JTBjMuSkW1oOn7R
+        KAz1cTw0DOqsK0UYWRdyIwp9hw==
+X-Google-Smtp-Source: ABdhPJzxd8DmdlkDSdAzyRBS51zhUgUJcqz4GL8QGIdnifGIiV7TwkFUvXsVviOs98B1rCm8A6npHA==
+X-Received: by 2002:a17:902:690b:: with SMTP id j11mr3479290plk.313.1593381911094;
+        Sun, 28 Jun 2020 15:05:11 -0700 (PDT)
+Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id t1sm11154555pje.55.2020.06.28.15.05.09
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 28 Jun 2020 15:05:10 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <100913BE-A164-4904-B2F0-C8558B5A1397@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_5B905246-5202-42EE-A9F1-685E69D300F3";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] ext4: lost matching-pair of trace in ext4_unlink
+Date:   Sun, 28 Jun 2020 16:05:34 -0600
+In-Reply-To: <20200628034852.85502-1-zhuangyi1@huawei.com>
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To:     Yi Zhuang <zhuangyi1@huawei.com>
+References: <20200628034852.85502-1-zhuangyi1@huawei.com>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-> Signed-off-by: jiangying8582 <jiangying8582@126.com>
 
-Please use the real name for your contributions.
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Do=
-cumentation/process/submitting-patches.rst?id=3D719fdd32921fb7e3208db8832d=
-32ae1c2d68900f#n431
+--Apple-Mail=_5B905246-5202-42EE-A9F1-685E69D300F3
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Jun 27, 2020, at 9:48 PM, Yi Zhuang <zhuangyi1@huawei.com> wrote:
+>=20
+> If dquot_initialize() return non-zero and trace of =
+ext4_unlink_enter/exit
+> enabled then the matching-pair of trace_exit will lost in log.
+>=20
+> Signed-off-by: Yi Zhuang <zhuangyi1@huawei.com>
+
+Thank you for the patch.  It definitely looks like this is fixing the
+problem with trace exit, but I would recommend to use a better name
+than "out_unlink:" for the label.  I was looking at the ext4_unlink()
+function, and found it confusing that there is already an "end_unlink:"
+label and these two names would be easily confused.
+
+Please change your new label to be "out_trace:", or similar, which
+makes it more clear that it is undoing the "trace" part of the code.
+
+It looks like there is another similar problem with the error handling
+in this function:
+
+	bh =3D ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	if (IS_ERR(bh))
+		return PTR_ERR(bh);
+	if (!bh)
+		goto end_unlink;
+
+At this point the journal handle has not been started, and the PTR_ERR()
+return is also missing the trace exit, so it would be better to change
+these two cases to use the "out_trace:" label as well, like:
+
+	bh =3D ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+	if (!bh) {
+		retval =3D -ENOENT;
+		goto out_trace;
+	}
+	if (IS_ERR(bh)) {
+		retval =3D PTR_ERR(bh);
+		goto out_trace;
+	}
+
+Could you please resubmit your patch with these small changes.
 
 
-Would you like to add the tag =E2=80=9CFixes=E2=80=9D to the commit messag=
-e?
+There could be a separate small patch to split up the "end_unlink:"
+label to be two separate labels, and then remove the "if (handle)"
+check, and then use out_bh: before the handle is started:
 
-Regards,
-Markus
+        if (le32_to_cpu(de->inode) !=3D inode->i_ino) {
+		retval =3D -EFSCORRUPTED;
+                goto out_bh;
+	}
+
+        handle =3D ext4_journal_start(dir, EXT4_HT_DIR,
+                                    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
+        if (IS_ERR(handle)) {
+                retval =3D PTR_ERR(handle);
+                goto out_bh;
+        }
+	:
+	:
+
+out_handle:
+	ext4_journal_stop(handle);
+out_bh:
+	brelse(bh);
+out_trace:
+        trace_ext4_unlink_exit(dentry, retval);
+        return retval;
+
+Cheers, Andreas
+
+> ---
+> fs/ext4/namei.c | 5 +++--
+> 1 file changed, 3 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 56738b538ddf..5e41d45915c9 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -3193,10 +3193,10 @@ static int ext4_unlink(struct inode *dir, =
+struct dentry *dentry)
+> 	 * in separate transaction */
+> 	retval =3D dquot_initialize(dir);
+> 	if (retval)
+> -		return retval;
+> +		goto out_unlink;
+> 	retval =3D dquot_initialize(d_inode(dentry));
+> 	if (retval)
+> -		return retval;
+> +		goto out_unlink;
+>=20
+> 	retval =3D -ENOENT;
+> 	bh =3D ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+> @@ -3255,6 +3255,7 @@ static int ext4_unlink(struct inode *dir, struct =
+dentry *dentry)
+> 	brelse(bh);
+> 	if (handle)
+> 		ext4_journal_stop(handle);
+> +out_unlink:
+> 	trace_ext4_unlink_exit(dentry, retval);
+> 	return retval;
+> }
+> --
+> 2.26.0.106.g9fadedd
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_5B905246-5202-42EE-A9F1-685E69D300F3
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl75FC8ACgkQcqXauRfM
+H+DJ/w/+I/SAikDjIKcTOr+HPgUpfjCpyFqhxGYg6ectxvrYN/kYReDl7bv1yAza
+ioW+i7dgavUJWirVrCGhrMcH16LUsE1mmlSPyMCv8aKhw09J8kcRBNJr6SIGMe0a
+rfnES/d3sPzGjWVpCcAGAlRjN/0VquLvhwpvS5kEjnR2GaO10iTAXYunCywCbh4J
+wHrwK2JlTUrlQ15XhpasImAjRdsEoU96le4TS7V/TRwQtwt26hciBvB8WvzdbPQ/
++EhkeiBw6FIhWR2mXaqvkYXFZ34dLyZ1lPNeXH48d+Qf7TbkujoC67KxLgS6L/Cf
+zoUW9kf1la+I4zUdZDbCI2oaJ7DHQ6lcl4+wR0IROh19WDgHFbf9BFFknn/eFLD2
+tQOuBJzz6o7MJuFFYEfhj9VGaVq3+YXR73K40D+LqPZkkd4TAVAcNLU15NYwR6qP
+k2Yw4YMBWAPyBWTJk9M71ltiS02Z6rwR//NoXCsIHBkgSC7NbDuuTc03Lg1CM+vV
+IFom7ttAMbT8LdanlrcaBcC9tzA+6w83Xc7a5F1IQRC+WJ3Dv/GIiSsQ4BM8vY8Y
+CG8og8LpLcziwBk+5Sw3WqmcSxAEcMThjtqBLkCsr3sgTYhoRUlBigXgXc30vJZg
+3IiMyRxdPWZAoxcpJteHguEoUArWZIUITgXX3qrJZcwQRc8I+m0=
+=oQ3t
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_5B905246-5202-42EE-A9F1-685E69D300F3--
