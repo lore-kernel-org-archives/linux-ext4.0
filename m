@@ -2,197 +2,240 @@ Return-Path: <SRS0=qWDt=AK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7B2FC433E0
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 19:17:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D36AC433E0
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 19:22:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8E6EE206A5
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 19:17:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F4208206F1
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 19:22:12 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="e8JlbyaN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731895AbgF2TQz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 29 Jun 2020 15:16:55 -0400
-Received: from mga01.intel.com ([192.55.52.88]:63722 "EHLO mga01.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731875AbgF2TQy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 29 Jun 2020 15:16:54 -0400
-IronPort-SDR: 1g8gEhSaaWiUI1v1Uj2zOLNMhhc3kPsTv3XBqhH2vfek7peBzKv0XyXfL6s2+Sg4Gg8HcfV24m
- Ve8VWme8/MnA==
-X-IronPort-AV: E=McAfee;i="6000,8403,9666"; a="164006926"
-X-IronPort-AV: E=Sophos;i="5.75,295,1589266800"; 
-   d="scan'208";a="164006926"
-X-Amp-Result: SKIPPED(no attachment in message)
-X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 29 Jun 2020 08:58:33 -0700
-IronPort-SDR: sRLBBEXcVtjT9ztSBkn97HUnJU4v7w2EpoAjB7RkdorPP1Dv7J6ov4LWKt+waJNKQWCdtFzuhr
- UWEhP3mubGKg==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.75,295,1589266800"; 
-   d="scan'208";a="480838700"
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.147])
-  by fmsmga005.fm.intel.com with ESMTP; 29 Jun 2020 08:58:33 -0700
-Date:   Mon, 29 Jun 2020 08:58:33 -0700
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     =?utf-8?B?5aec6L+O?= <jiangying8582@126.com>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix direct I/O read error
-Message-ID: <20200629155832.GE2454695@iweiny-DESK2.sc.intel.com>
-References: <7925c422.4205.172f9ae864d.Coremail.jiangying8582@126.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <7925c422.4205.172f9ae864d.Coremail.jiangying8582@126.com>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+        id S1730460AbgF2TWL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 29 Jun 2020 15:22:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45002 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730273AbgF2TWL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2020 15:22:11 -0400
+Received: from mail-pj1-x1042.google.com (mail-pj1-x1042.google.com [IPv6:2607:f8b0:4864:20::1042])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04775C061755
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2020 12:22:11 -0700 (PDT)
+Received: by mail-pj1-x1042.google.com with SMTP id l6so5365069pjq.1
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2020 12:22:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=wHDDuPWoKbW77VtBjLqgObYArL7GNI0MYb4LF+pv7qA=;
+        b=e8JlbyaNdgXdOrqFkELe3f2DId8707lzivZEM155LJhzSbEC4bh3a5xHKV2WVGoBIP
+         u8GkUCFUiv0RJh1AwzYj0u0UngRdF/FbiwhMR2Bi2LWPGxGZIv6Gb6P/FgeCStJgf6Rr
+         eOYC2Rox8EQzvcyGlgEqILeUxP9VEMfDTJbNbGTqotbIJ9jOhSHE8wIm7/tjaurwIjaV
+         8V8q/EpxKimz8JWuI5mJ4dxvDb1RagnZ3fpU3VjX177mkZu2x9JGKi5qi65vIy/p73l1
+         CVOZpI4Uwtzk+PQ+4iN2PZ6JprWBfqI4N5LxZCMwtS8ffwPdgjmWEpu70kP9hgRPNDfX
+         OoeA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=wHDDuPWoKbW77VtBjLqgObYArL7GNI0MYb4LF+pv7qA=;
+        b=J1Hi2WnCQWYuUI6Nd1mUd41cyM6lGYKQ8mbT8XeYbJuoKDk3EBBhqxWZQOid8Coapg
+         YEedSsy8BB8irh0cGBThVLPydG5p86/6Wjh0kB1F7PH21puPhRHXRwLhxXwQfVQJhq0L
+         jmkl2rFBn6rf8v8IvzuS5Sv3dIlDmxLGMfTQSAfnj4Gl1+qRarORJ3RVGg8btOTSeveJ
+         2ya2PCC+4VX7W3gpuV0hjlC4xGuklG0WR3xwKcZSiXHfsfvJlnkYaRbhZX9QQixIKujF
+         uqaYtFkcS9rQC1sNyT1MeapOkt5vNpLm7tHt1hNMgzTAgVs2AqytZ93W8Pq/wyGTlCri
+         3rVQ==
+X-Gm-Message-State: AOAM533WKHDfzGCvkT9oaK2naIg6ZkoSs4Sb1waBh1DpgyhXW/tCTOK+
+        BoZENGz8rFKCbYpO0DGUCPEJIw==
+X-Google-Smtp-Source: ABdhPJx1K/SvzJHNbKCgGdqYA3ul83masC+taMtcq5MdR/Q7spKWL9r5kvXp5C/2BGFYw6+KplTR7A==
+X-Received: by 2002:a17:90b:11c7:: with SMTP id gv7mr5856122pjb.175.1593458530479;
+        Mon, 29 Jun 2020 12:22:10 -0700 (PDT)
+Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id k14sm427453pfk.97.2020.06.29.12.22.09
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 29 Jun 2020 12:22:09 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <8006B9E6-D1BD-4F13-AB0F-E060AA3915B8@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_2A947A22-325D-4882-8814-2544006FC92A";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v2] ext4: lost matching-pair of trace in ext4_unlink
+Date:   Mon, 29 Jun 2020 13:22:13 -0600
+In-Reply-To: <20200629122621.129953-1-zhuangyi1@huawei.com>
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To:     Yi Zhuang <zhuangyi1@huawei.com>
+References: <20200629122621.129953-1-zhuangyi1@huawei.com>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Jun 28, 2020 at 02:47:43PM +0800, 姜迎 wrote:
-> From: jiangying8582 <jiangying8582@126.com>
-> Date: Wed, 24 Jun 2020 19:02:34 +0800
-> Subject: [PATCH] ext4: fix direct I/O read error
-> 
-> This patch is used to fix ext4 direct I/O read error when
-> the read size is not alignment with block size. Compare the
-> size between read offset with file size, if read offset is
-> greater than file size, then return 0.
-> 
-> Then, I will use a test to explain the error.
-> (1) Make the file that is not alignment wiht block size:
->         $dd if=/dev/zero of=./test.jar bs=1000 count=3
-> 
-> (2) I wrote a test script named "direct_io_read_file.c" s following:
-> 
->         #include <stdio.h>
->         #include <stdlib.h>
->         #include <unistd.h>
->         #include <sys/file.h>
->         #include <sys/types.h>
->         #include <sys/stat.h>
->         #include <string.h>
->         #define BUF_SIZE 1024
-> 
->         int main()
->         {
->                 int fd;
->                 int ret;
-> 
->                 unsigned char *buf;
->                 ret = posix_memalign((void **)&buf, 512, BUF_SIZE);
->                 if (ret) {
->                         perror("posix_memalign failed");
->                         exit(1);
->                 }
->                 fd = open("./test.jar", O_RDONLY | O_DIRECT, 0755);
->                 if (fd < 0){
->                         perror("open ./test.jar failed");
->                         exit(1);
->                 }
-> 
->                 do {
->                         ret = read(fd, buf, BUF_SIZE);
->                         printf("ret=%d\n",ret);
->                         if (ret < 0) {
->                                 perror("write test.jar failed");
->                         }
-> 
->                 } while (ret > 0);
-> 
->                 free(buf);
->                 close(fd);
->         }
-> 
-> (3) Compiling the script:
->         $gcc direct_io_read_file.c -D_GNU_SOURCE
-> 
-> (4) Exec the script:
->         $./a.out
-> 
->     The result is as following:
->         ret=1024
->         ret=1024
->         ret=952
->         ret=-1
->         write rts-segmenter-0.3.7.2.jar failed: Invalid argument
-> 
-> I have tested this script on XFS filesystem, XFS does not have
-> this problem, because XFS use iomap_dio_rw() to do direct I/O
-> read. And the comparing between read offset and file size is done
-> is iomap_dio_rw(), the code is as following:
->         if (pos < size) {
->                 retval = filemap_write_and_wait_range(mapping, pos,
->                                         pos + iov_length(iov, nr_segs) - 1);
->                 if (!retval) {
->                         retval = mapping->a_ops->direct_IO(READ, iocb,
->                                                 iov, pos, nr_segs);
->                 }
->                 ...
->         }
-> Only when "pos < size", direct I/O can be done, or 0 will be return.
-> 
-> I have tested my fix patch, it is up to the mustard of EINVAL in
-> man2(read) as following:
->         #include <unistd.h>
->         ssize_t read(int fd, void *buf, size_t count);
-> 
->         EINVAL
->                 fd is attached to an object which is unsuitable for reading;
->                 or the file was opened with the O_DIRECT flag, and either the
->                 address specified in buf, the value specified in count, or the
->                 current file offset is not suitably aligned.
-> So I think this patch can be applied to fix ext4 direct I/O problem.
-> 
-> Why this problem can happen? I think
-> commit <9fe55eea7e4b> ("Fix race when checking i_size on direct i/o read")
-> caused.
 
-Looks like you need a 'Fixes' tag added.
+--Apple-Mail=_2A947A22-325D-4882-8814-2544006FC92A
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> 
-> However Ext4 introduces direct I/O read using iomap infrastructure
-> on kernel 5.5, the patch is commit <b1b4705d54ab>
-> ("ext4: introduce direct I/O read using iomap infrastructure"),
-> then Ext4 will be the same as XFS, they all use iomap_dio_rw() to do direct
-> I/O read. So this problem does not exist on kernel 5.5 for Ext4.
-> 
-> From above description, we can see this problem exists on all the kernel
-> versions between kernel 3.14 and kernel 5.4. Please apply this patch
-> on these kernel versions, or please use the method on kernel 5.5 to fix
-> this problem. Thanks.
 
-And looks like you need this marked stable as well.
+> On Jun 29, 2020, at 6:26 AM, Yi Zhuang <zhuangyi1@huawei.com> wrote:
+>=20
+> If dquot_initialize() return non-zero and trace of =
+ext4_unlink_enter/exit
+> enabled then the matching-pair of trace_exit will lost in log.
+>=20
+> v2:
+> Change the new label to be "out_trace:", which makes it more clear =
+that
+> it is undoing the "trace" part of the code. At the same time, fix =
+other
+> similar problems in this function:
+>=20
+> 	bh =3D ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+> 	if (IS_ERR(bh))
+> 		return PTR_ERR(bh);
+> 	if (!bh)
+> 		goto end_unlink;
+>=20
+> According to Andreas' suggestion, split up the "end_unlink:" label =
+becomes
+> two separate labels, and then remove the "if (handle)" check, and then
+> use out_bh: before the handle is started.
+>=20
+> Signed-off-by: Yi Zhuang <zhuangyi1@huawei.com>
 
-Ira
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-> 
-> Signed-off-by: jiangying8582 <jiangying8582@126.com>
 > ---
->  fs/ext4/inode.c | 6 ++++++
->  1 file changed, 6 insertions(+)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 516faa2..d514ff5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3821,6 +3821,12 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
->         struct inode *inode = mapping->host;
->         size_t count = iov_iter_count(iter);
->         ssize_t ret;
-> +       loff_t offset = iocb->ki_pos;
-> +       loff_t size;
-> +
-> +       size = i_size_read(inode);
-> +       if (offset >= size)
-> +               return 0;
-> 
->         /*
->          * Shared inode_lock is enough for us - it protects against concurrent
-> -- 
-> 1.8.3.1
-> 
+> fs/ext4/namei.c | 38 +++++++++++++++++++++-----------------
+> 1 file changed, 21 insertions(+), 17 deletions(-)
+>=20
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 56738b538ddf..941f66f417f0 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -3193,30 +3193,33 @@ static int ext4_unlink(struct inode *dir, =
+struct dentry *dentry)
+> 	 * in separate transaction */
+> 	retval =3D dquot_initialize(dir);
+> 	if (retval)
+> -		return retval;
+> +		goto out_trace;
+> 	retval =3D dquot_initialize(d_inode(dentry));
+> 	if (retval)
+> -		return retval;
+> +		goto out_trace;
+>=20
+> -	retval =3D -ENOENT;
+> 	bh =3D ext4_find_entry(dir, &dentry->d_name, &de, NULL);
+> -	if (IS_ERR(bh))
+> -		return PTR_ERR(bh);
+> -	if (!bh)
+> -		goto end_unlink;
+> +	if (IS_ERR(bh)) {
+> +		retval =3D PTR_ERR(bh);
+> +		goto out_trace;
+> +	}
+> +	if (!bh) {
+> +		retval =3D -ENOENT;
+> +		goto out_trace;
+> +	}
+>=20
+> 	inode =3D d_inode(dentry);
+>=20
+> -	retval =3D -EFSCORRUPTED;
+> -	if (le32_to_cpu(de->inode) !=3D inode->i_ino)
+> -		goto end_unlink;
+> +	if (le32_to_cpu(de->inode) !=3D inode->i_ino) {
+> +		retval =3D -EFSCORRUPTED;
+> +		goto out_bh;
+> +	}
+>=20
+> 	handle =3D ext4_journal_start(dir, EXT4_HT_DIR,
+> 				    EXT4_DATA_TRANS_BLOCKS(dir->i_sb));
+> 	if (IS_ERR(handle)) {
+> 		retval =3D PTR_ERR(handle);
+> -		handle =3D NULL;
+> -		goto end_unlink;
+> +		goto out_bh;
+> 	}
+>=20
+> 	if (IS_DIRSYNC(dir))
+> @@ -3224,12 +3227,12 @@ static int ext4_unlink(struct inode *dir, =
+struct dentry *dentry)
+>=20
+> 	retval =3D ext4_delete_entry(handle, dir, de, bh);
+> 	if (retval)
+> -		goto end_unlink;
+> +		goto out_handle;
+> 	dir->i_ctime =3D dir->i_mtime =3D current_time(dir);
+> 	ext4_update_dx_flag(dir);
+> 	retval =3D ext4_mark_inode_dirty(handle, dir);
+> 	if (retval)
+> -		goto end_unlink;
+> +		goto out_handle;
+> 	if (inode->i_nlink =3D=3D 0)
+> 		ext4_warning_inode(inode, "Deleting file '%.*s' with no =
+links",
+> 				   dentry->d_name.len, =
+dentry->d_name.name);
+> @@ -3251,10 +3254,11 @@ static int ext4_unlink(struct inode *dir, =
+struct dentry *dentry)
+> 		d_invalidate(dentry);
+> #endif
+>=20
+> -end_unlink:
+> +out_handle:
+> +	ext4_journal_stop(handle);
+> +out_bh:
+> 	brelse(bh);
+> -	if (handle)
+> -		ext4_journal_stop(handle);
+> +out_trace:
+> 	trace_ext4_unlink_exit(dentry, retval);
+> 	return retval;
+> }
+> --
+> 2.26.0.106.g9fadedd
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_2A947A22-325D-4882-8814-2544006FC92A
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl76P3EACgkQcqXauRfM
+H+BOwQ/9FrqypDx9+xZsNs9UscvEmBAY1AlY2IzNofk2mvZh99YDHNDXo8/PGkNe
+4PbVnIVroucqAiHUoEtjux4PZVuKVWOznq/76b49fkaoe/YPdfMne73XHaHUm1io
+mvN+g8s2YCOef7YJ4YbvlO3RVJHmmlvSdnjm1kSAndoZ8iaZx8c7QZ9Uxg0TLsh3
+zrWvaEqQ3eOs8Q6zHe5EHlP2wP4+VQN9Mmt+rki7CWJQ7q2NEtVDlAwAcIkUsLVv
+bVThl3vyrSZUlGL1UHSCFxMIIBRy9FIbN2RafO+leTKrVQAeCY1YXcij7DcChYb9
+FcB6aF07LwacjMZ79xJdV+vOX/SOcF7oocu7HGDIjdcdoBYxHID18nqIjb01Qjj6
+JCNmQKG/nJfNBdXMWbP9A+2au8VSTvp2P9qzajvDcv7E7QWD0ZDqL5GI/gIxX6AK
+ouyWQbQQDJz/23h78lb/9S0zkkUz5ONJuKii56EFK4XkSncJ3J6Xj1OtR9vI/vje
+5AXL7yHAbWwdL//2aTSbXXGrXuPdLek5v950R2/3xPOtmuq0Fh2HHqtIIaU2wTpf
+ccnlDhK4Tpk5FSbu9t7i2rbZDRireMBPBx9UMy7/uY3RHyftf8deoMPdFjxoKZ7X
+F5jBoXrNusRf7hoiHfO6p0pyepac9ZyRqjIngbHmRog+7Y5YRvQ=
+=WMeL
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_2A947A22-325D-4882-8814-2544006FC92A--
