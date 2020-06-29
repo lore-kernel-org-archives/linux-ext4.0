@@ -2,193 +2,197 @@ Return-Path: <SRS0=qWDt=AK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED1A6C433DF
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 20:13:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 009CDC433E0
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 20:49:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C812520675
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 20:13:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D40A72065D
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Jun 2020 20:49:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=web.de header.i=@web.de header.b="SaS/sbLk"
+	dkim=pass (1024-bit key) header.d=126.com header.i=@126.com header.b="lj9PiDYY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731009AbgF2UNJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 29 Jun 2020 16:13:09 -0400
-Received: from mout.web.de ([212.227.15.14]:58117 "EHLO mout.web.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730983AbgF2UNG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 29 Jun 2020 16:13:06 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=web.de;
-        s=dbaedf251592; t=1593461583;
-        bh=Q3WSo3iqrFbKXC7DLY/3is3L/ZI6GDoUzruhP1cV/to=;
-        h=X-UI-Sender-Class:Subject:To:Cc:References:From:Date:In-Reply-To;
-        b=SaS/sbLk0BNHnhgxU7MvVPkBupbfR7gkvP6+7UTp/1mOc7lHZyZLgywkSM4pnWHAC
-         cK2+z/uv9pgso7PYPoA3S/pOLF+2onbEJP5JxYNkQKR42haHi4zN67QjlSorJoz5Df
-         m5H5lFqOOI252929tikgCVKHjZ3q0eJzHjJxtYPU=
-X-UI-Sender-Class: c548c8c5-30a9-4db5-a2e7-cb6cb037b8f9
-Received: from [192.168.1.2] ([93.131.123.16]) by smtp.web.de (mrweb001
- [213.165.67.108]) with ESMTPSA (Nemesis) id 0M3jsn-1iyeT42K25-00rJzV; Mon, 29
- Jun 2020 08:26:51 +0200
-Subject: Re: [PATCH v2] ext4: fix direct I/O read error
-To:     Jiang Ying <jiangying8582@126.com>,
-        Wang Long <wanglong19@meituan.com>, linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>
-References: <1593400165-114818-1-git-send-email-jiangying8582@126.com>
-From:   Markus Elfring <Markus.Elfring@web.de>
-Autocrypt: addr=Markus.Elfring@web.de; prefer-encrypt=mutual; keydata=
- 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 FEE=
-Message-ID: <22f650fd-6348-30d8-763a-8e03b0772f10@web.de>
-Date:   Mon, 29 Jun 2020 08:26:27 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.9.0
-MIME-Version: 1.0
-In-Reply-To: <1593400165-114818-1-git-send-email-jiangying8582@126.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-GB
-Content-Transfer-Encoding: quoted-printable
-X-Provags-ID: V03:K1:6DkxKtQCaX1WqVxtxjIC4UtI3gb108ulowLy+O6ULPizOMczSQ8
- QIl3o8HtDNZOXTAv33a7BioAOPjwf6CnT/K51Z016trMu2u0X5E5bgQIdM8O6XGEAfIVFDe
- FRXkN6lQ1y3dgUJvS/VOnOce/Y/8Wbmha/09jbPW3KE1gslmkiJL+BKSfiyJqHi7ULObV1k
- AJtZ50k3KIB1bWn5u6Dqg==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:Q6hm88/EICM=:+o2JQ5iJKVKQP26hXF8s1p
- LZLXY+aUxMpPQRHSVpJrQszqhO4jw73NajznJpHPzXIhSnHwmkPeZxwVYcenKkPEqNtyKcesq
- dFhw30Lkb6rrRGYJQyVMBOP1D7ej5jKKBedo3ybj5ml8qjuzys8I1zyQ/g5BpF4UR9YywNnjJ
- RTkdErAQUYMZJ0VBxvATHd9HB5mxb6fTUJIO7Q2U2VVFySLMsQzdW5hcWRY5MD2Khucezmiux
- iYTFyaLoanWZ6ywz6+XBy10RsVX38wU6SoPhCUk6nWod6LwvsZh+7fPyzWd8TyR2in+W71vNe
- aP+gafLNF7Rg2DIz6Xz7Ap6F+N3iwadkBQPI2npaX2bk9gmxGJeBfnFwS7dylpGO+0qQadNeT
- NB1I9ETQtfjOQ8qvzXD2VC/onNZ+CnnsHubQ4N3c8rT0BTgZqC3b8JY1uap9JYK9THI7gpxkd
- AcZOsutIqHIBCIEp6TOPBLxLie1zoStEu+OmetYIAx3B+Ba8xHoMmieih+H7v3L0dxMb5dXAG
- uh85/1lLdyiXy1se/6snhoZk/zYDbDKZwWL2hGdWllbusTgoD4eNi0MlJNhHigZmqeGhCGPHB
- xHyu2GcpGnbKGBw0VepN7rpFpMPzWKBhyed+/xFmh9+YSzhqa9u0kl1JeH1GVw5TMx2O7S6tj
- l/xoh7Gx9T/HQryvNuy6CEfhVZW49qJK/EkT666ut/pnQPWZMRbAVsdonrOn+Gswp+3BvB/ll
- 0ObkNmlBIuFHHvgT76IcnMbsic3QwMtknRQYu1cjW39PlOjr35f33EkFLWmZER9zHBMZB4d6F
- nZcp2lhAslH6UX0wK8jgsNf/cwVxx4PleBVVJgn8Rjhxa/zUFDkooj6K0cpWHwdx3UhAHoah8
- fSnlUIIfTBT1bFdA5nyOtJo8eMzh9imNw6f4Domtpcj6ijY/HqqAyFPi60dm4URZBMMbpf829
- 4Cp05bJ6fI0RhYt/w3KRC6LcqIqcia1v/U9MTtgEK12Yypl2fxGqAsIHBcW102eIMJB8EXmC7
- W0RBksweVBpTCqGGtUKKJKlE5UFLlEPypfryL7jQ2VDpeZ1q5bn/jITJT7Nvfn6NRxPFgspsK
- RsYsuLiXmtIfwBDwYDtpfMeuXfhvDKR3JGOyC4BxaunzQBj/siDDHScNx+PvcC/r1BCNlhEeF
- qnYTfEwcPOy8aa9yWmh+cvwKe5AxfCatG8TQJeXAtil4Vxzzua8FA7oWjzc1FB4PoNkZ2x5gt
- shmMrCnkkGDyM5Xv9CHedH1iZDY7ybU9tw2LFkA==
+        id S1731545AbgF2Utm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 29 Jun 2020 16:49:42 -0400
+Received: from mail-m964.mail.126.com ([123.126.96.4]:54182 "EHLO
+        mail-m964.mail.126.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731557AbgF2Utk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2020 16:49:40 -0400
+X-Greylist: delayed 5420 seconds by postgrey-1.27 at vger.kernel.org; Mon, 29 Jun 2020 16:49:39 EDT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=126.com;
+        s=s110527; h=From:Subject:Date:Message-Id; bh=dZFXghp2i9BkRXeQIr
+        QISjtevrHQgS0lHVzMWGLDDZI=; b=lj9PiDYYMZOxqGFVGXaCBp+s71xwrYi66o
+        tNIizvnECV5i9rd0sDxGOaFrjeO8jd5GfhEa374YfNLPRbxAhd5Fl9FS59zPG8tO
+        DDPUNDhRhzg8wyXCQeQf7diukTLsSS6TQFGa7dEI7h2WOEjDW6BrsvyGm2SsyKME
+        Lp/tyPGbA=
+Received: from xr-hulk-k8s-node1933.gh.sankuai.com (unknown [101.236.11.2])
+        by smtp9 (Coremail) with SMTP id NeRpCgCHnS07uPlezqHWAg--.1769S2;
+        Mon, 29 Jun 2020 17:45:36 +0800 (CST)
+From:   Jiang Ying <jiangying8582@126.com>
+To:     Markus.Elfring@web.de, tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wanglong19@meituan.com, heguanjun@meituan.com
+Subject: [PATCH v3] ext4: fix direct I/O read error
+Date:   Mon, 29 Jun 2020 17:45:30 +0800
+Message-Id: <1593423930-5576-1-git-send-email-jiangying8582@126.com>
+X-Mailer: git-send-email 1.8.3.1
+X-CM-TRANSID: NeRpCgCHnS07uPlezqHWAg--.1769S2
+X-Coremail-Antispam: 1Uf129KBjvJXoWxAw47WFW8tw4rCr1UZr4xZwb_yoWrGry5pr
+        nxCa15WrZ5Zr4xCanrK3ZrZFyFy3yDGFWUXry5u34UZr4Yg3s5KFWxKF17C3yUGrWF9w4F
+        qFZ8tryfAw1UAFJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07U_cTdUUUUU=
+X-Originating-IP: [101.236.11.2]
+X-CM-SenderInfo: xmld0wp1lqwmqvysqiyswou0bp/1tbiXABSAFpEA7E69AAAss
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-> Fixes: 9fe55eea7e4b ("Fix race when checking i_size on direct i/o read")=
-.
+This patch is used to fix ext4 direct I/O read error when
+the read size is not aligned with block size.
 
-* I suggest to move this tag to the bottom of the commit message.
+Then, I will use a test to explain the error.
 
-* This specification is usually preferred without a dot at the line end.
+(1) Make a file that is not aligned with block size:
+	$dd if=/dev/zero of=./test.jar bs=1000 count=3
 
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Do=
-cumentation/process/submitting-patches.rst?id=3D9ebcfadb0610322ac537dd7aa5=
-d9cbc2b2894c68#n183
+(2) I wrote a source file named "direct_io_read_file.c" as following:
 
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <unistd.h>
+	#include <sys/file.h>
+	#include <sys/types.h>
+	#include <sys/stat.h>
+	#include <string.h>
+	#define BUF_SIZE 1024
 
-> This commit caused ext4 direct I/O read error when the read size is not
-> alignment with block size.
+	int main()
+	{
+		int fd;
+		int ret;
 
-Wording alternative:
-aligned =E2=80=A6
+		unsigned char *buf;
+		ret = posix_memalign((void **)&buf, 512, BUF_SIZE);
+		if (ret) {
+			perror("posix_memalign failed");
+			exit(1);
+		}
+		fd = open("./test.jar", O_RDONLY | O_DIRECT, 0755);
+		if (fd < 0){
+			perror("open ./test.jar failed");
+			exit(1);
+		}
 
+		do {
+			ret = read(fd, buf, BUF_SIZE);
+			printf("ret=%d\n",ret);
+			if (ret < 0) {
+				perror("write test.jar failed");
+			}
+		} while (ret > 0);
 
-> (1) Make the file that is not alignment with block size:
-
-=E2=80=A6 a file =E2=80=A6 aligned =E2=80=A6
-
-
-> (3) Compiling the script:
+		free(buf);
+		close(fd);
+	}
 
 (3) Compile the source file:
-
-
-> (4) Exec the script:
+	$gcc direct_io_read_file.c -D_GNU_SOURCE
 
 (4) Run the test program:
+	$./a.out
 
+	The result is as following:
+	ret=1024
+	ret=1024
+	ret=952
+	ret=-1
+	write test.jar failed: Invalid argument.
 
-> =E2=80=A6 Thanks.
+I have tested this program on XFS filesystem, XFS does not have
+this problem, because XFS use iomap_dio_rw() to do direct I/O
+read. And the comparing between read offset and file size is done
+in iomap_dio_rw(), the code is as following:
 
-I propose to omit this word here.
+	if (pos < size) {
+		retval = filemap_write_and_wait_range(mapping, pos,
+				pos + iov_length(iov, nr_segs) - 1);
 
+		if (!retval) {
+			retval = mapping->a_ops->direct_IO(READ, iocb,
+						iov, pos, nr_segs);
+		}
+		...
+	}
 
-> ---
->  fs/ext4/inode.c | 6 ++++++
+...only when "pos < size", direct I/O can be done, or 0 will be return.
 
-Would you like to add patch version descriptions here?
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Do=
-cumentation/process/submitting-patches.rst?id=3D9ebcfadb0610322ac537dd7aa5=
-d9cbc2b2894c68#n751
+I have tested the fix patch on Ext4, it is up to the mustard of
+EINVAL in man2(read) as following:
+	#include <unistd.h>
+	ssize_t read(int fd, void *buf, size_t count);
 
+	EINVAL
+		fd is attached to an object which is unsuitable for reading;
+		or the file was opened with the O_DIRECT flag, and either the
+		address specified in buf, the value specified in count, or the
+		current file offset is not suitably aligned.
 
-=E2=80=A6
-> @@ -3821,6 +3821,12 @@ static ssize_t ext4_direct_IO_read(struct kiocb *=
-iocb, struct iov_iter *iter)
->  	struct inode *inode =3D mapping->host;
->  	size_t count =3D iov_iter_count(iter);
->  	ssize_t ret;
-> +	loff_t offset =3D iocb->ki_pos;
-> +	loff_t size;
-> +
-> +	size =3D i_size_read(inode);
+So I think this patch can be applied to fix ext4 direct I/O error.
 
-How do you think about to use the following source code variant?
+However Ext4 introduces direct I/O read using iomap infrastructure
+on kernel 5.5, the patch is commit <b1b4705d54ab>
+("ext4: introduce direct I/O read using iomap infrastructure"),
+then Ext4 will be the same as XFS, they all use iomap_dio_rw() to do direct
+I/O read. So this problem does not exist on kernel 5.5 for Ext4.
 
-+	loff_t size =3D i_size_read(inode);
+From above description, we can see this problem exists on all the kernel
+versions between kernel 3.14 and kernel 5.4. Please apply this patch
+on these kernel versions, or please use the method on kernel 5.5 to fix
+this problem.
 
+Fixes: 9fe55eea7e4b ("Fix race when checking i_size on direct i/o read")
+Co-developed-by: Wang Long <wanglong19@meituan.com>
+Signed-off-by: Wang Long <wanglong19@meituan.com>
+Signed-off-by: Jiang Ying <jiangying8582@126.com>
 
-> +	if (offset >=3D size)
-> +		return 0;
+Changes since V2:
+	Optimize the description of the commit message and make a variation for
+	the patch, e.g. with:
 
-Will any further fine-tuning matter for this function implementation?
+		Before:
+			loff_t size;
+			size = i_size_read(inode);
+		After:
+			loff_t size = i_size_read(inode);
 
-Regards,
-Markus
+Changes since V1:
+	Signed-off use real name and add "Fixes:" flag
+
+---
+ fs/ext4/inode.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 516faa2..a66b0ac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3821,6 +3821,11 @@ static ssize_t ext4_direct_IO_read(struct kiocb *iocb, struct iov_iter *iter)
+ 	struct inode *inode = mapping->host;
+ 	size_t count = iov_iter_count(iter);
+ 	ssize_t ret;
++	loff_t offset = iocb->ki_pos;
++	loff_t size = i_size_read(inode);
++
++	if (offset >= size)
++		return 0;
+ 
+ 	/*
+ 	 * Shared inode_lock is enough for us - it protects against concurrent
+-- 
+1.8.3.1
+
