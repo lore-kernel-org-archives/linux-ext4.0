@@ -2,117 +2,91 @@ Return-Path: <SRS0=IASA=AM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.0 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05968C433E1
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jul 2020 07:53:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9685C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jul 2020 15:35:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DA3032078B
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jul 2020 07:53:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A086D20760
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jul 2020 15:35:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728502AbgGAHxO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Jul 2020 03:53:14 -0400
-Received: from verein.lst.de ([213.95.11.211]:39050 "EHLO verein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728485AbgGAHxN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 Jul 2020 03:53:13 -0400
-Received: by verein.lst.de (Postfix, from userid 2407)
-        id 755A968B02; Wed,  1 Jul 2020 09:53:10 +0200 (CEST)
-Date:   Wed, 1 Jul 2020 09:53:10 +0200
-From:   Christoph Hellwig <hch@lst.de>
-To:     Goldwyn Rodrigues <rgoldwyn@suse.de>
-Cc:     linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        fdmanana@gmail.com, dsterba@suse.cz, david@fromorbit.com,
-        darrick.wong@oracle.com, hch@lst.de,
-        Goldwyn Rodrigues <rgoldwyn@suse.com>,
-        cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: always fall back to buffered I/O after invalidation failures, was:
- Re: [PATCH 2/6] iomap: IOMAP_DIO_RWF_NO_STALE_PAGECACHE return if
- page invalidation fails
-Message-ID: <20200701075310.GB29884@lst.de>
-References: <20200629192353.20841-1-rgoldwyn@suse.de> <20200629192353.20841-3-rgoldwyn@suse.de>
+        id S1732072AbgGAPfF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Jul 2020 11:35:05 -0400
+Received: from relay7-d.mail.gandi.net ([217.70.183.200]:42755 "EHLO
+        relay7-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731399AbgGAPfE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jul 2020 11:35:04 -0400
+X-Originating-IP: 90.76.143.236
+Received: from localhost (lfbn-tou-1-1075-236.w90-76.abo.wanadoo.fr [90.76.143.236])
+        (Authenticated sender: antoine.tenart@bootlin.com)
+        by relay7-d.mail.gandi.net (Postfix) with ESMTPSA id BF11E20003;
+        Wed,  1 Jul 2020 15:35:01 +0000 (UTC)
+From:   Antoine Tenart <antoine.tenart@bootlin.com>
+To:     linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc:     Antoine Tenart <antoine.tenart@bootlin.com>,
+        matthew.weber@rockwellcollins.com, thomas.petazzoni@bootlin.com
+Subject: [PATCH] create_inode: set xattrs to the root directory as well
+Date:   Wed,  1 Jul 2020 17:34:04 +0200
+Message-Id: <20200701153404.1647002-1-antoine.tenart@bootlin.com>
+X-Mailer: git-send-email 2.26.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200629192353.20841-3-rgoldwyn@suse.de>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 29, 2020 at 02:23:49PM -0500, Goldwyn Rodrigues wrote:
-> From: Goldwyn Rodrigues <rgoldwyn@suse.com>
-> 
-> For direct I/O, add the flag IOMAP_DIO_RWF_NO_STALE_PAGECACHE to indicate
-> that if the page invalidation fails, return back control to the
-> filesystem so it may fallback to buffered mode.
-> 
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> Signed-off-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+__populate_fs do copy the xattrs for all files and directories, but the
+root directory is skipped and as a result its extended attributes aren't
+set. This is an issue when using mkfs to build a full system image that
+can be used with SElinux in enforcing mode without making any runtime
+fix at first boot.
 
-I'd like to start a discussion of this shouldn't really be the
-default behavior.  If we have page cache that can't be invalidated it
-actually makes a whole lot of sense to not do direct I/O, avoid the
-warnings, etc.
+This patch adds logic to set the root directory's extended attributes.
 
-Adding all the relevant lists.
+Signed-off-by: Antoine Tenart <antoine.tenart@bootlin.com>
+---
+ misc/create_inode.c | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
-> ---
->  fs/iomap/direct-io.c  |  8 +++++++-
->  include/linux/iomap.h | 14 ++++++++++++++
->  2 files changed, 21 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-> index fd22bff61569..2459c76e41ab 100644
-> --- a/fs/iomap/direct-io.c
-> +++ b/fs/iomap/direct-io.c
-> @@ -484,8 +484,14 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
->  	 */
->  	ret = invalidate_inode_pages2_range(mapping,
->  			pos >> PAGE_SHIFT, end >> PAGE_SHIFT);
-> -	if (ret)
-> +	if (ret) {
-> +		if (dio_flags & IOMAP_DIO_RWF_NO_STALE_PAGECACHE) {
-> +			if (ret == -EBUSY)
-> +				ret = 0;
-> +			goto out_free_dio;
-> +		}
->  		dio_warn_stale_pagecache(iocb->ki_filp);
-> +	}
->  	ret = 0;
->  
->  	if (iov_iter_rw(iter) == WRITE && !wait_for_completion &&
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 8a4ba1635202..2ebb8a298cd8 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -262,7 +262,21 @@ struct iomap_dio_ops {
->  /*
->   * Wait for completion of DIO
->   */
-> +
->  #define IOMAP_DIO_RWF_SYNCIO			(1 << 0)
-> +/*
-> + * Direct IO will attempt to keep the page cache coherent by
-> + * invalidating the inode's page cache over the range of the DIO.
-> + * That can fail if something else is actively using the page cache.
-> + * If this happens and the DIO continues, the data in the page
-> + * cache will become stale.
-> + *
-> + * Set this flag if you want the DIO to abort without issuing any IO
-> + * or error if it fails to invalidate the page cache successfully.
-> + * This allows the IO submitter to fallback to buffered IO to resubmit
-> + * IO
-> + */
-> +#define IOMAP_DIO_RWF_NO_STALE_PAGECACHE	(1 << 1)
->  
->  ssize_t iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
->  		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
-> -- 
-> 2.26.2
----end quoted text---
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index e8d1df6b55a5..0a6e4dc23d16 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -820,7 +820,29 @@ static errcode_t __populate_fs(ext2_filsys fs, ext2_ino_t parent_ino,
+ 
+ 	for (i = 0; i < num_dents; free(dent[i]), i++) {
+ 		name = dent[i]->d_name;
+-		if ((!strcmp(name, ".")) || (!strcmp(name, "..")))
++		if (!strcmp(name, ".")) {
++			retval = ext2fs_namei(fs, root, parent_ino, ".", &ino);
++			if (retval) {
++				com_err(name, retval, 0);
++					goto out;
++			}
++
++			/*
++			 * Take special care for the root directory, to copy its
++			 * extended attributes.
++			 */
++			if (ino == root) {
++				retval = set_inode_xattr(fs, ino, ".");
++				if (retval) {
++					com_err(__func__, retval,
++						_("while setting xattrs for ."));
++					goto out;
++				}
++			}
++
++			continue;
++		}
++		if (!strcmp(name, ".."))
+ 			continue;
+ 		if (lstat(name, &st)) {
+ 			retval = errno;
+-- 
+2.26.2
+
