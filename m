@@ -2,101 +2,77 @@ Return-Path: <SRS0=Cq3/=AR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA250C433E1
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:03:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A2BEC433E0
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:53:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B707920675
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:03:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 765CE207D0
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:53:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729816AbgGFTDs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jul 2020 15:03:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41986 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729762AbgGFTDs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2020 15:03:48 -0400
-Received: from smtp.al2klimov.de (smtp.al2klimov.de [IPv6:2a01:4f8:c0c:1465::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B3BBC061755;
-        Mon,  6 Jul 2020 12:03:48 -0700 (PDT)
-Received: from authenticated-user (PRIMARY_HOSTNAME [PUBLIC_IP])
-        by smtp.al2klimov.de (Postfix) with ESMTPA id 7EFABBC07E;
-        Mon,  6 Jul 2020 19:03:45 +0000 (UTC)
-From:   "Alexander A. Klimov" <grandmaster@al2klimov.de>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, corbet@lwn.net,
-        linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc:     "Alexander A. Klimov" <grandmaster@al2klimov.de>
-Subject: [PATCH] Replace HTTP links with HTTPS ones: Ext4
-Date:   Mon,  6 Jul 2020 21:03:39 +0200
-Message-Id: <20200706190339.20709-1-grandmaster@al2klimov.de>
+        id S1725929AbgGFTxy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jul 2020 15:53:54 -0400
+Received: from zulu.geekplace.eu ([5.45.100.158]:35006 "EHLO zulu.geekplace.eu"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725860AbgGFTxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 6 Jul 2020 15:53:54 -0400
+X-Greylist: delayed 347 seconds by postgrey-1.27 at vger.kernel.org; Mon, 06 Jul 2020 15:53:53 EDT
+Received: from neo-pc.sch (55d4bc09.access.ecotel.net [85.212.188.9])
+        by zulu.geekplace.eu (Postfix) with ESMTPA id B377E4A0930;
+        Mon,  6 Jul 2020 21:48:10 +0200 (CEST)
+From:   Florian Schmaus <flo@geekplace.eu>
+To:     linux-ext4@vger.kernel.org
+Cc:     Florian Schmaus <flo@geekplace.eu>
+Subject: [PATCH 2/3] e4crypt: refactor set_policy a little
+Date:   Mon,  6 Jul 2020 21:47:26 +0200
+Message-Id: <20200706194727.12979-2-flo@geekplace.eu>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20200706194727.12979-1-flo@geekplace.eu>
+References: <20200706194727.12979-1-flo@geekplace.eu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Spamd-Bar: +++++
-Authentication-Results: smtp.al2klimov.de;
-        auth=pass smtp.auth=aklimov@al2klimov.de smtp.mailfrom=grandmaster@al2klimov.de
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Rationale:
-Reduces attack surface on kernel devs opening the links for MITM
-as HTTPS traffic is much harder to manipulate.
+Remove the superfluous 'salt' variable and simply use the functions
+parameter instead.
 
-Deterministic algorithm:
-For each file:
-  If not .svg:
-    For each line:
-      If doesn't contain `\bxmlns\b`:
-        For each link, `\bhttp://[^# \t\r\n]*(?:\w|/)`:
-          If both the HTTP and HTTPS versions
-          return 200 OK and serve the same content:
-            Replace HTTP with HTTPS.
-
-Signed-off-by: Alexander A. Klimov <grandmaster@al2klimov.de>
+Signed-off-by: Florian Schmaus <flo@geekplace.eu>
 ---
- Continuing my work started at 93431e0607e5.
+ misc/e4crypt.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
- If there are any URLs to be removed completely or at least not HTTPSified:
- Just clearly say so and I'll *undo my change*.
- See also https://lkml.org/lkml/2020/6/27/64
-
- If there are any valid, but yet not changed URLs:
- See https://lkml.org/lkml/2020/6/26/837
-
- Documentation/filesystems/ext4/about.rst | 2 +-
- fs/ext4/Kconfig                          | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/Documentation/filesystems/ext4/about.rst b/Documentation/filesystems/ext4/about.rst
-index 0aadba052264..cc76b577d2f4 100644
---- a/Documentation/filesystems/ext4/about.rst
-+++ b/Documentation/filesystems/ext4/about.rst
-@@ -39,6 +39,6 @@ entry.
- Other References
- ----------------
+diff --git a/misc/e4crypt.c b/misc/e4crypt.c
+index c82c6f8f..23980073 100644
+--- a/misc/e4crypt.c
++++ b/misc/e4crypt.c
+@@ -344,10 +344,9 @@ static void parse_salt(char *salt_str, int flags)
+ 	add_salt(salt_buf, salt_len);
+ }
  
--Also see http://www.nongnu.org/ext2-doc/ for quite a collection of
-+Also see https://www.nongnu.org/ext2-doc/ for quite a collection of
- information about ext2/3. Here's another old reference:
- http://wiki.osdev.org/Ext2
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 1afa5a4bcb5f..619dd35ddd48 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -110,7 +110,7 @@ config EXT4_KUNIT_TESTS
- 	  This builds the ext4 KUnit tests.
- 
- 	  KUnit tests run during boot and output the results to the debug log
--	  in TAP format (http://testanything.org/). Only useful for kernel devs
-+	  in TAP format (https://testanything.org/). Only useful for kernel devs
- 	  running KUnit test harness and are not for inclusion into a production
- 	  build.
- 
+-static void set_policy(struct salt *set_salt, int pad,
++static void set_policy(struct salt *salt, int pad,
+ 		       int argc, char *argv[], int path_start_index)
+ {
+-	struct salt *salt;
+ 	struct ext4_encryption_policy policy;
+ 	uuid_t	uu;
+ 	int fd;
+@@ -366,9 +365,7 @@ static void set_policy(struct salt *set_salt, int pad,
+ 			perror(argv[x]);
+ 			exit(1);
+ 		}
+-		if (set_salt)
+-			salt = set_salt;
+-		else {
++		if (!salt) {
+ 			if (ioctl(fd, EXT4_IOC_GET_ENCRYPTION_PWSALT,
+ 				  &uu) < 0) {
+ 				perror("EXT4_IOC_GET_ENCRYPTION_PWSALT");
 -- 
-2.27.0
+2.26.2
 
