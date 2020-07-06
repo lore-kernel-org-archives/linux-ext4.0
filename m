@@ -2,32 +2,34 @@ Return-Path: <SRS0=Cq3/=AR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 558EBC433DF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB4A8C433E1
 	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:53:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 36546207D0
+	by mail.kernel.org (Postfix) with ESMTP id BFDE1207D0
 	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jul 2020 19:53:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725941AbgGFTxy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jul 2020 15:53:54 -0400
-Received: from zulu.geekplace.eu ([5.45.100.158]:35010 "EHLO zulu.geekplace.eu"
+        id S1725942AbgGFTxz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jul 2020 15:53:55 -0400
+Received: from zulu.geekplace.eu ([5.45.100.158]:35008 "EHLO zulu.geekplace.eu"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725895AbgGFTxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1725892AbgGFTxy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Mon, 6 Jul 2020 15:53:54 -0400
 Received: from neo-pc.sch (55d4bc09.access.ecotel.net [85.212.188.9])
-        by zulu.geekplace.eu (Postfix) with ESMTPA id 6924C4A0928;
-        Mon,  6 Jul 2020 21:48:05 +0200 (CEST)
+        by zulu.geekplace.eu (Postfix) with ESMTPA id D4ECD4A0DF1;
+        Mon,  6 Jul 2020 21:48:11 +0200 (CEST)
 From:   Florian Schmaus <flo@geekplace.eu>
 To:     linux-ext4@vger.kernel.org
 Cc:     Florian Schmaus <flo@geekplace.eu>
-Subject: [PATCH 1/3] e4crypt: if salt is explicitly provided to add_key, then use it
-Date:   Mon,  6 Jul 2020 21:47:25 +0200
-Message-Id: <20200706194727.12979-1-flo@geekplace.eu>
+Subject: [PATCH 3/3] Clarify in e4crypt man page that -S is an optional argument
+Date:   Mon,  6 Jul 2020 21:47:27 +0200
+Message-Id: <20200706194727.12979-3-flo@geekplace.eu>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20200706194727.12979-1-flo@geekplace.eu>
+References: <20200706194727.12979-1-flo@geekplace.eu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -35,78 +37,38 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Providing -S and a path to 'add_key' previously exhibit an unintuitive
-behavior: instead of using the salt explicitly provided by the user,
-e4crypt would use the salt obtained via EXT4_IOC_GET_ENCRYPTION_PWSALT
-on the path. This was because set_policy() was still called with NULL
-as salt.
+The Backus-Naur Form (BNF) of the synopsis of 'add_key' does currently
+not state that the -S parameter takes an *mandatory* argument, while
+the BNF found in the commands section of the man page does. The square
+brackets around the optional parameter are also missing.
 
-With this change we now remember the explicitly provided salt (if any)
-and use it as argument for set_policy().
+synopsis:
+e4crypt add_key -S [ -k keyring ] [-v] [-q] [ -p pad ] [ path ... ]
 
-Eventually
+commands:
+e4crypt add_key [-vq] [-S salt ] [-k keyring ] [ -p pad ] [ path ... ]
 
-e4crypt add_key -S s:my-spicy-salt /foo
-
-will now actually use 'my-spicy-salt' and not something else as salt
-for the policy set on /foo.
+This simply copies the add_key BNF from he commands section into the
+synopsis.
 
 Signed-off-by: Florian Schmaus <flo@geekplace.eu>
 ---
- misc/e4crypt.8.in | 4 +++-
- misc/e4crypt.c    | 8 +++++++-
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ misc/e4crypt.8.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/misc/e4crypt.8.in b/misc/e4crypt.8.in
-index 75b968a0..32fbd444 100644
+index 32fbd444..d2d6c872 100644
 --- a/misc/e4crypt.8.in
 +++ b/misc/e4crypt.8.in
-@@ -48,7 +48,9 @@ values are 4, 8, 16, and 32.
- If one or more directory paths are specified, e4crypt will try to
- set the policy of those directories to use the key just added by the
- .B add_key
--command.
-+command.  If a salt was explicitly specified, then it will be used
-+by the policy of those directories.  Otherwise a directory-specific
-+default salt will be used.
- .TP
- .B e4crypt get_policy \fIpath\fR ...
- Print the policy for the directories specified on the command line.
-diff --git a/misc/e4crypt.c b/misc/e4crypt.c
-index 2ae6254a..c82c6f8f 100644
---- a/misc/e4crypt.c
-+++ b/misc/e4crypt.c
-@@ -652,6 +652,7 @@ static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
- static void do_add_key(int argc, char **argv, const struct cmd_desc *cmd)
- {
- 	struct salt *salt;
-+	struct salt *explicit_salt = NULL;
- 	char *keyring = NULL;
- 	int i, opt, pad = 4;
- 	unsigned j;
-@@ -666,8 +667,13 @@ static void do_add_key(int argc, char **argv, const struct cmd_desc *cmd)
- 			pad = atoi(optarg);
- 			break;
- 		case 'S':
-+			if (explicit_salt) {
-+				fputs("May only provide -S once\n", stderr);
-+				exit(1);
-+			}
- 			/* Salt value for passphrase. */
- 			parse_salt(optarg, 0);
-+			explicit_salt = salt_list;
- 			break;
- 		case 'v':
- 			options |= OPT_VERBOSE;
-@@ -703,7 +709,7 @@ static void do_add_key(int argc, char **argv, const struct cmd_desc *cmd)
- 		insert_key_into_keyring(keyring, salt);
- 	}
- 	if (optind != argc)
--		set_policy(NULL, pad, argc, argv, optind);
-+		set_policy(explicit_salt, pad, argc, argv, optind);
- 	clear_secrets();
- 	exit(0);
- }
+@@ -2,7 +2,7 @@
+ .SH NAME
+ e4crypt \- ext4 filesystem encryption utility
+ .SH SYNOPSIS
+-.B e4crypt add_key -S \fR[\fB -k \fIkeyring\fR ] [\fB-v\fR] [\fB-q\fR] \fR[\fB -p \fIpad\fR ] [ \fIpath\fR ... ]
++.B e4crypt add_key \fR[\fB-vq\fR] [\fB-S\fI salt\fR ] [\fB-k \fIkeyring\fR ] [\fB -p \fIpad\fR ] [ \fIpath\fR ... ]
+ .br
+ .B e4crypt new_session
+ .br
 -- 
 2.26.2
 
