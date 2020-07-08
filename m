@@ -2,154 +2,134 @@ Return-Path: <SRS0=bEVv=AT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11B5BC433E0
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 03:06:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C482C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 04:12:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E67FF20720
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 03:06:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="cfqa4ZI0"
+	by mail.kernel.org (Postfix) with ESMTP id 2D95B20738
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 04:12:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1594181556;
+	bh=vVo5pFG1bIjLvY9lAeAGfvgg5b4sWEYOCkrdKFS1mXo=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=cYUHh5GIe+G6p3b9c/U4Icp6Te0sbFxgp26mOmNVaa6Xi4V70C1X/t9BLr76bVB2/
+	 LTAJzZiKhM9SEI6ZVq+lQ2RYhEDcya9mUjHkNh30+AYF6GTBSxPmzMkEZ6lWoxoQPY
+	 8LHRj89Cekl2P9cjDPf14M82yBpCnztH9EK2sCPY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729390AbgGHDGB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 7 Jul 2020 23:06:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56730 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728657AbgGHDF7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Jul 2020 23:05:59 -0400
-Received: from mail-pg1-x54a.google.com (mail-pg1-x54a.google.com [IPv6:2607:f8b0:4864:20::54a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F33AC061755
-        for <linux-ext4@vger.kernel.org>; Tue,  7 Jul 2020 20:05:59 -0700 (PDT)
-Received: by mail-pg1-x54a.google.com with SMTP id h2so25274746pgc.19
-        for <linux-ext4@vger.kernel.org>; Tue, 07 Jul 2020 20:05:59 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
-         :cc;
-        bh=wV4Dlp1PtfRWNCEDy3OUVmwFuHR/znQviVm4udIzuj8=;
-        b=cfqa4ZI0uBxj1JWd8dAGqnZFXA438OEfTLCcfqHSddxLMr8U1C1o3sty7pkLZivxV9
-         k2SLkAZmTm86qL76MMu0rWCsjw2KGoVfUpcu2Skz+1RJ2HRxepy9PS+oJHBH6EAIiKT0
-         SriweU9dx43A69vye8MbQ/7x6celwyfbxtDCje7B/pL2YOYpnBZAXmG4R6XlmFBlpzHU
-         zIIB+JCbamdhEvMVnfZqSc8WEq8Ob08h3jKHTybWQtf0DWwoHE/q1x+7PQ4gsYCnSPgg
-         nGLeVC26zVJq9dt0SaFj68BsveNgcD72gE+9VWRDJhJ5LkwFf2660LZxMJDrcdwQGjSi
-         7aVQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=wV4Dlp1PtfRWNCEDy3OUVmwFuHR/znQviVm4udIzuj8=;
-        b=lCKbPp3aoAzFq16QKXcv0kCJQ/Tam03eH5ji0dEXjecQMOrKC+n+SZ6H0ZNAFE7Cu6
-         LUxzDKkfShbqX9GHeH83sFU6S25Hksr4tHrNWZGT/PBJYe8M3uKtpAu6NG4+rNFmAocT
-         eWUia28zJ+JluDLOLzR+NoQHfbvWaAW18+IdRSwu/E0OYbSyRrjQ6tAyJpV+6NrWVmKR
-         piXUwixiqo7N/XnXz3alP4Q+WKmkPGeaNOlYzkDXY8sNXVWTUhCSWe4edJh3rYNsDrJm
-         RgiuXltWGkR6u1sUj8X6+CzlP6Uay9M7RBkLIGDPZefl4jrej71H0LED37soYlG7CvzA
-         wOSQ==
-X-Gm-Message-State: AOAM533V9u0VlL/C3fJwCy1VqSRPCT9GTkM2ZwbJ+W2w/fQdRRm/nOqp
-        Gav+5whIztFIwWWa9A/T6jzZIzqXIUM=
-X-Google-Smtp-Source: ABdhPJzqov5JL3MTCYCUXsgN1WMwA/rTbUQMcSdZ1sJWb3HhqSUyDy2izboLJgJ3fC9ih0rA4dvnY2hb6wM=
-X-Received: by 2002:a17:902:744c:: with SMTP id e12mr39192696plt.337.1594177558861;
- Tue, 07 Jul 2020 20:05:58 -0700 (PDT)
-Date:   Tue,  7 Jul 2020 20:05:49 -0700
-In-Reply-To: <20200708030552.3829094-1-drosen@google.com>
-Message-Id: <20200708030552.3829094-2-drosen@google.com>
-Mime-Version: 1.0
-References: <20200708030552.3829094-1-drosen@google.com>
-X-Mailer: git-send-email 2.27.0.383.g050319c2ae-goog
-Subject: [PATCH v11 1/4] unicode: Add utf8_casefold_hash
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        id S1728851AbgGHEMd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Jul 2020 00:12:33 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37542 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726043AbgGHEMd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 8 Jul 2020 00:12:33 -0400
+Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id F19A6206BE;
+        Wed,  8 Jul 2020 04:12:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1594181552;
+        bh=vVo5pFG1bIjLvY9lAeAGfvgg5b4sWEYOCkrdKFS1mXo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=NSWV4k3cUI0VfYbcLiHz5o0XnCW8TiB2Wg/1SLaul78EN8pmhvRHpRmgVoH6YnT7D
+         N5iKpo3Z5QvG752hE8YITH/HzmSP2BpWdJ/uS94cOWb+jOSs89Ub/i0bwdiDeUY89N
+         cwpUj4+ARwqK6UR8iy1V0w2HiqBTz5/F/K09BnAc=
+Date:   Tue, 7 Jul 2020 21:12:30 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Daniel Rosenberg <drosen@google.com>
+Cc:     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
         linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>,
         linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>,
-        Eric Biggers <ebiggers@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        kernel-team@android.com
+Subject: Re: [PATCH v11 2/4] fs: Add standard casefolding support
+Message-ID: <20200708041230.GL839@sol.localdomain>
+References: <20200708030552.3829094-1-drosen@google.com>
+ <20200708030552.3829094-3-drosen@google.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200708030552.3829094-3-drosen@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a case insensitive hash function to allow taking the hash
-without needing to allocate a casefolded copy of the string.
+On Tue, Jul 07, 2020 at 08:05:50PM -0700, Daniel Rosenberg wrote:
+> +/**
+> + * generic_ci_d_compare - generic d_compare implementation for casefolding filesystems
+> + * @dentry:	dentry whose name we are checking against
+> + * @len:	len of name of dentry
+> + * @str:	str pointer to name of dentry
+> + * @name:	Name to compare against
+> + *
+> + * Return: 0 if names match, 1 if mismatch, or -ERRNO
+> + */
+> +int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
+> +			  const char *str, const struct qstr *name)
+> +{
+> +	const struct dentry *parent = READ_ONCE(dentry->d_parent);
+> +	const struct inode *inode = READ_ONCE(parent->d_inode);
 
-The existing d_hash implementations for casefolding allocate memory
-within rcu-walk, by avoiding it we can be more efficient and avoid
-worrying about a failed allocation.
+How about calling the 'inode' variable 'dir' instead?
 
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
-Reviewed-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Reviewed-by: Eric Biggers <ebiggers@google.com>
----
- fs/unicode/utf8-core.c  | 23 ++++++++++++++++++++++-
- include/linux/unicode.h |  3 +++
- 2 files changed, 25 insertions(+), 1 deletion(-)
+That would help avoid confusion about what is the directory and what is a file
+in the directory.
 
-diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
-index 2a878b739115..dc25823bfed9 100644
---- a/fs/unicode/utf8-core.c
-+++ b/fs/unicode/utf8-core.c
-@@ -6,6 +6,7 @@
- #include <linux/parser.h>
- #include <linux/errno.h>
- #include <linux/unicode.h>
-+#include <linux/stringhash.h>
- 
- #include "utf8n.h"
- 
-@@ -122,9 +123,29 @@ int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
- 	}
- 	return -EINVAL;
- }
--
- EXPORT_SYMBOL(utf8_casefold);
- 
-+int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
-+		       struct qstr *str)
-+{
-+	const struct utf8data *data = utf8nfdicf(um->version);
-+	struct utf8cursor cur;
-+	int c;
-+	unsigned long hash = init_name_hash(salt);
-+
-+	if (utf8ncursor(&cur, data, str->name, str->len) < 0)
-+		return -EINVAL;
-+
-+	while ((c = utf8byte(&cur))) {
-+		if (c < 0)
-+			return -EINVAL;
-+		hash = partial_name_hash((unsigned char)c, hash);
-+	}
-+	str->hash = end_name_hash(hash);
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8_casefold_hash);
-+
- int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
- 		   unsigned char *dest, size_t dlen)
- {
-diff --git a/include/linux/unicode.h b/include/linux/unicode.h
-index 990aa97d8049..74484d44c755 100644
---- a/include/linux/unicode.h
-+++ b/include/linux/unicode.h
-@@ -27,6 +27,9 @@ int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
- int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
- 		  unsigned char *dest, size_t dlen);
- 
-+int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
-+		       struct qstr *str);
-+
- struct unicode_map *utf8_load(const char *version);
- void utf8_unload(struct unicode_map *um);
- 
--- 
-2.27.0.383.g050319c2ae-goog
+Likewise in generic_ci_d_hash().
 
+> +/**
+> + * generic_ci_d_hash - generic d_hash implementation for casefolding filesystems
+> + * @dentry:	dentry whose name we are hashing
+
+This comment for @dentry needs to be updated.
+
+It's the parent dentry, not the dentry whose name we are hashing.
+
+> + * @str:	qstr of name whose hash we should fill in
+> + *
+> + * Return: 0 if hash was successful, or -ERRNO
+
+As I mentioned on v9, this can also return 0 if the hashing was not done because
+it wants to fallback to the standard hashing.  Can you please fix the comment?
+
+> +int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
+> +{
+> +	const struct inode *inode = READ_ONCE(dentry->d_inode);
+> +	struct super_block *sb = dentry->d_sb;
+> +	const struct unicode_map *um = sb->s_encoding;
+> +	int ret = 0;
+> +
+> +	if (!inode || !needs_casefold(inode))
+> +		return 0;
+> +
+> +	ret = utf8_casefold_hash(um, dentry, str);
+> +	if (ret < 0)
+> +		goto err;
+> +
+> +	return 0;
+> +err:
+> +	if (sb_has_strict_encoding(sb))
+> +		ret = -EINVAL;
+> +	else
+> +		ret = 0;
+> +	return ret;
+> +}
+
+On v9, Gabriel suggested simplifying this to:
+
+	ret = utf8_casefold_hash(um, dentry, str);
+	if (ret < 0 && sb_has_enc_strict_mode(sb))
+		return -EINVAL;
+	return 0;
+
+Any reason not to do that?
+
+- Eric
