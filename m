@@ -2,154 +2,154 @@ Return-Path: <SRS0=bEVv=AT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.7 required=3.0 tests=FORGED_MUA_MOZILLA,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CF19C433E2
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 09:13:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE0AFC433E1
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 10:04:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 07B14206E2
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 09:13:13 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="TmfFQqld"
+	by mail.kernel.org (Postfix) with ESMTP id 98C2720772
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jul 2020 10:04:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727869AbgGHJMo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Jul 2020 05:12:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57074 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726634AbgGHJMn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jul 2020 05:12:43 -0400
-Received: from mail-yb1-xb49.google.com (mail-yb1-xb49.google.com [IPv6:2607:f8b0:4864:20::b49])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 936A7C08C5DC
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Jul 2020 02:12:43 -0700 (PDT)
-Received: by mail-yb1-xb49.google.com with SMTP id k127so46146731ybk.11
-        for <linux-ext4@vger.kernel.org>; Wed, 08 Jul 2020 02:12:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
-         :cc;
-        bh=wV4Dlp1PtfRWNCEDy3OUVmwFuHR/znQviVm4udIzuj8=;
-        b=TmfFQqldI6NR71g11ccYeLYb4YMRJ9TbhNQpLgbner44eVMPHA3+K4/r3OVoQRVqiU
-         oNB0e489EVTL8XxXR17WKGxWV7xu+at9ec0oMAxeMgcQ5T9k9n+ssKWhtmWGqmjnLnUM
-         6BeB3sGPZLxW+Crt0D7Jg9uTB3Ou/lbVcbRxBFVNT1U7DJ5xXK91RBF+UxS6r65lKZvH
-         mb0YANeHYaPI2HDI/q5KpLu4zwrnZ/Hd496MiPfyQOJR1nAqzsvRk07T0x7CzCU/v40I
-         9VR02aGQQCuV7etZAmEfaL4xiNC9HANSW/5B2aq3+iMK4Qs+wEkrnXqi/ckFCoDMjrjA
-         I0tQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=wV4Dlp1PtfRWNCEDy3OUVmwFuHR/znQviVm4udIzuj8=;
-        b=r5GXubdHPNWuDYOB9Q4GUHEBRtTiHwdyY3ICV5TVr5fb4QqAoz3+geHrcfpDUtFaG+
-         Qd66PneK/v1WbfU7SFpTIF4HvitkUM2Y5AsnEK5zU/xTO60KAA7N5hJxtKT/Oz1Q5nc2
-         wmH4H5rnbhcLvUKAqG37dFtDefuuH1NGNEAriJDbGS09tIGq9RMJWL5E8gStkiNaemSL
-         NkpzQfyFCjP6O2YicRtu0EGSP8SbIAnR1TlUI9OR3XIVOn4ztr6NvazpMmf72bcrTr1Q
-         +TQgvstu1js6M3N597z5WC7euXG2yB9aZqDtuQNx2UHF4s98ukt2VK/nIkcR4KzwMrDa
-         V2Kw==
-X-Gm-Message-State: AOAM5310KDk8UFvErQV0L9N6rT/cmRiqJVRgX2n1mdfaKTsAdbvgS4k6
-        KZub9SZrfzUJc92Gz5Gb0MKHobnrm68=
-X-Google-Smtp-Source: ABdhPJxT53xSTJPoJDE7zNOjGdUzwbWSLO3iz5TcZnavMsDjJ7aSH9oD27jm9uQKje34VSZMZujf2U3uXyg=
-X-Received: by 2002:a25:9a41:: with SMTP id r1mr1597091ybo.516.1594199562803;
- Wed, 08 Jul 2020 02:12:42 -0700 (PDT)
-Date:   Wed,  8 Jul 2020 02:12:34 -0700
-In-Reply-To: <20200708091237.3922153-1-drosen@google.com>
-Message-Id: <20200708091237.3922153-2-drosen@google.com>
-Mime-Version: 1.0
-References: <20200708091237.3922153-1-drosen@google.com>
-X-Mailer: git-send-email 2.27.0.383.g050319c2ae-goog
-Subject: [PATCH v12 1/4] unicode: Add utf8_casefold_hash
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>,
-        Eric Biggers <ebiggers@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1728642AbgGHKEt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Jul 2020 06:04:49 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:11790 "EHLO
+        mx0b-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726586AbgGHKEs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jul 2020 06:04:48 -0400
+Received: from pps.filterd (m0098421.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 068A2shv043217;
+        Wed, 8 Jul 2020 06:04:39 -0400
+Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3255kdjbq9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 08 Jul 2020 06:04:39 -0400
+Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
+        by ppma02fra.de.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 068A0J3j028949;
+        Wed, 8 Jul 2020 10:04:37 GMT
+Received: from b06avi18626390.portsmouth.uk.ibm.com (b06avi18626390.portsmouth.uk.ibm.com [9.149.26.192])
+        by ppma02fra.de.ibm.com with ESMTP id 322hd84gx4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 08 Jul 2020 10:04:37 +0000
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
+        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 068A1vkw51511586
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 8 Jul 2020 10:01:57 GMT
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 2F061A405B;
+        Wed,  8 Jul 2020 10:03:19 +0000 (GMT)
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 59AD8A406B;
+        Wed,  8 Jul 2020 10:03:18 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.79.222.188])
+        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Wed,  8 Jul 2020 10:03:18 +0000 (GMT)
+Subject: Re: [PATCH v2] ext4: lost matching-pair of trace in ext4_truncate
+To:     zhengliang <zhengliang6@huawei.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org
+References: <20200701083027.45996-1-zhengliang6@huawei.com>
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+Date:   Wed, 8 Jul 2020 15:33:17 +0530
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.8.0
+MIME-Version: 1.0
+In-Reply-To: <20200701083027.45996-1-zhengliang6@huawei.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+Message-Id: <20200708100318.59AD8A406B@b06wcsmtp001.portsmouth.uk.ibm.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
+ definitions=2020-07-08_07:2020-07-08,2020-07-08 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0 phishscore=0
+ mlxscore=0 suspectscore=0 priorityscore=1501 adultscore=0 bulkscore=0
+ impostorscore=0 clxscore=1011 cotscore=-2147483648 spamscore=0
+ mlxlogscore=999 lowpriorityscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.12.0-2004280000 definitions=main-2007080069
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a case insensitive hash function to allow taking the hash
-without needing to allocate a casefolded copy of the string.
 
-The existing d_hash implementations for casefolding allocate memory
-within rcu-walk, by avoiding it we can be more efficient and avoid
-worrying about a failed allocation.
 
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
-Reviewed-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Reviewed-by: Eric Biggers <ebiggers@google.com>
----
- fs/unicode/utf8-core.c  | 23 ++++++++++++++++++++++-
- include/linux/unicode.h |  3 +++
- 2 files changed, 25 insertions(+), 1 deletion(-)
+On 7/1/20 2:00 PM, zhengliang wrote:
+> It should call trace exit in all return path for ext4_truncate.
+> 
+> v2:
+> It shoule call trace exit in all return path, and add "out_trace" label to avoid the
+> multiple copies of the cleanup code in each error case.
 
-diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
-index 2a878b739115..dc25823bfed9 100644
---- a/fs/unicode/utf8-core.c
-+++ b/fs/unicode/utf8-core.c
-@@ -6,6 +6,7 @@
- #include <linux/parser.h>
- #include <linux/errno.h>
- #include <linux/unicode.h>
-+#include <linux/stringhash.h>
- 
- #include "utf8n.h"
- 
-@@ -122,9 +123,29 @@ int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
- 	}
- 	return -EINVAL;
- }
--
- EXPORT_SYMBOL(utf8_casefold);
- 
-+int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
-+		       struct qstr *str)
-+{
-+	const struct utf8data *data = utf8nfdicf(um->version);
-+	struct utf8cursor cur;
-+	int c;
-+	unsigned long hash = init_name_hash(salt);
-+
-+	if (utf8ncursor(&cur, data, str->name, str->len) < 0)
-+		return -EINVAL;
-+
-+	while ((c = utf8byte(&cur))) {
-+		if (c < 0)
-+			return -EINVAL;
-+		hash = partial_name_hash((unsigned char)c, hash);
-+	}
-+	str->hash = end_name_hash(hash);
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8_casefold_hash);
-+
- int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
- 		   unsigned char *dest, size_t dlen)
- {
-diff --git a/include/linux/unicode.h b/include/linux/unicode.h
-index 990aa97d8049..74484d44c755 100644
---- a/include/linux/unicode.h
-+++ b/include/linux/unicode.h
-@@ -27,6 +27,9 @@ int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
- int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
- 		  unsigned char *dest, size_t dlen);
- 
-+int utf8_casefold_hash(const struct unicode_map *um, const void *salt,
-+		       struct qstr *str);
-+
- struct unicode_map *utf8_load(const char *version);
- void utf8_unload(struct unicode_map *um);
- 
--- 
-2.27.0.383.g050319c2ae-goog
+v2 description should generally go below three dashed line so that
+it need not become part of commit msg.
 
+
+> 
+> Signed-off-by: zhengliang <zhengliang6@huawei.com>
+
+LGTM, feel free to add
+Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
+
+
+> ---
+>   fs/ext4/inode.c | 17 +++++++++--------
+>   1 file changed, 9 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 10dd470876b3..6187c8880c02 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4163,7 +4163,7 @@ int ext4_truncate(struct inode *inode)
+>   	trace_ext4_truncate_enter(inode);
+> 
+>   	if (!ext4_can_truncate(inode))
+> -		return 0;
+> +		goto out_trace;
+> 
+>   	if (inode->i_size == 0 && !test_opt(inode->i_sb, NO_AUTO_DA_ALLOC))
+>   		ext4_set_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
+> @@ -4172,16 +4172,14 @@ int ext4_truncate(struct inode *inode)
+>   		int has_inline = 1;
+> 
+>   		err = ext4_inline_data_truncate(inode, &has_inline);
+> -		if (err)
+> -			return err;
+> -		if (has_inline)
+> -			return 0;
+> +		if (err || has_inline)
+> +			goto out_trace;
+>   	}
+> 
+>   	/* If we zero-out tail of the page, we have to create jinode for jbd2 */
+>   	if (inode->i_size & (inode->i_sb->s_blocksize - 1)) {
+>   		if (ext4_inode_attach_jinode(inode) < 0)
+> -			return 0;
+> +			goto out_trace;
+>   	}
+> 
+>   	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+> @@ -4190,8 +4188,10 @@ int ext4_truncate(struct inode *inode)
+>   		credits = ext4_blocks_for_truncate(inode);
+> 
+>   	handle = ext4_journal_start(inode, EXT4_HT_TRUNCATE, credits);
+> -	if (IS_ERR(handle))
+> -		return PTR_ERR(handle);
+> +	if (IS_ERR(handle)) {
+> +		err = PTR_ERR(handle);
+> +		goto out_trace;
+> +	}
+> 
+>   	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
+>   		ext4_block_truncate_page(handle, mapping, inode->i_size);
+> @@ -4242,6 +4242,7 @@ int ext4_truncate(struct inode *inode)
+>   		err = err2;
+>   	ext4_journal_stop(handle);
+> 
+> +out_trace:
+>   	trace_ext4_truncate_exit(inode);
+>   	return err;
+>   }
+> 
