@@ -7,59 +7,59 @@ X-Spam-Status: No, score=-17.4 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
 	USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E11B6C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Jul 2020 19:48:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28016C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Jul 2020 19:48:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BB169206DF
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Jul 2020 19:48:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E9D9C206DF
+	for <linux-ext4@archiver.kernel.org>; Thu,  9 Jul 2020 19:48:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="n/XchN26"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="n/RhV/jx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726228AbgGITsQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Jul 2020 15:48:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39836 "EHLO
+        id S1726299AbgGITsV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Jul 2020 15:48:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39828 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726510AbgGITsB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2020 15:48:01 -0400
-Received: from mail-pg1-x54a.google.com (mail-pg1-x54a.google.com [IPv6:2607:f8b0:4864:20::54a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 48791C08E81E
-        for <linux-ext4@vger.kernel.org>; Thu,  9 Jul 2020 12:48:01 -0700 (PDT)
-Received: by mail-pg1-x54a.google.com with SMTP id 72so2518477pgb.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Jul 2020 12:48:01 -0700 (PDT)
+        with ESMTP id S1726710AbgGITsG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2020 15:48:06 -0400
+Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E4D36C08E6DC
+        for <linux-ext4@vger.kernel.org>; Thu,  9 Jul 2020 12:48:04 -0700 (PDT)
+Received: by mail-yb1-xb4a.google.com with SMTP id 205so4067729yby.19
+        for <linux-ext4@vger.kernel.org>; Thu, 09 Jul 2020 12:48:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=F8Vh+2Oj0e1Bz4p4CaEpLpu89IEB8oilLTMr2JnBHtA=;
-        b=n/XchN266fqGBoCIT70QRrbSKL8BhsIGh3atkfrL+0wfDq/ITuCBBAwQFiwD29zrHo
-         RjO2JizNIiO3Rvwi0LtaaItm6GvUOons1saevQ9aIy9GCDsecu+O5x3aZvIqzhIwt6Ap
-         jwBA+lkwIT8AlS4+zuBI2BDea413RQdLMek8QcT8+eMzDoxlqYty2NGOEtoAgG3ViD5k
-         uLRAbg36Cjuz6m/+QQmmfQPX3S/WRrOaid2M3uJ0/+vad0TZ6VHnsBsCgxr4A4AoOHK0
-         omL+w4IbITj0XhF1IO0CaTO2QXaxuLEqIMNw+IgjiorB+/s2cF9r9dCip0/PmtPIZn/l
-         w6ng==
+        bh=8aV8dCnXtWjQg88XS3xPlXLAc+zOek3bqtseJMfDQ8w=;
+        b=n/RhV/jx+TfIUyZEOgxV3/59HC7DmDgP2fFHs9KJ6uT8Y/c9BmryDZ6OS48cFc2fqs
+         TiR7FFxJ/P7YhcosGFO3tylYEdj+BoEQmRBg8FEQMEky9Rm7jtA+5D0rcALnSVHwXnfK
+         nBDNqzuk3M3zwBj8YcFMlB0fUuQEI44285Bw8Uli43Zzasc8aEe8NzunSZGzlBeidW4X
+         NocTmLAWIDEIUWqIvRzXdCKx/WROIfOofognfNWydIrK2Ct5JqacT5pfx7r7bw4OgLki
+         X2JyldU8RVZfG4NyWJ1tkoQXa1aq8I7zauOqoi5d9wG5qRRu3YK/sO6rc5yYIJFmtmCv
+         48lA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=F8Vh+2Oj0e1Bz4p4CaEpLpu89IEB8oilLTMr2JnBHtA=;
-        b=l3kHBsej8ESj7DZU+9q2VcZjZBVuRAwddFr8rjVIzTj675BzJMh3htiAWGpMoMHJBk
-         bacLaoG1hoJq7aGIuK7mIpHZg8Xc8dHuED6CCBc+P2wQLivaYZzUkHAeK8+WnBCyqJwh
-         Ev86WHS39We3GFs24xWWRyOi9QXD2m975XtxFs3026Y9pcINxN7GOlh/MKa250tm1XID
-         pzZYaLYYcwQiLQ/+/rMo8caKg0BIiAnoaiazghGpPUnApdxncKIz0OXeR93urXvaBNug
-         BW2MM4xGnUIN0j8o6iGRbwjRnNZzfUhMk3STHjn9CJSQLk7VAwELF0cQQmIaiC6KWMsb
-         JcSg==
-X-Gm-Message-State: AOAM532fblaT0TbDtjuecqHNJQLsus2nkSY9VaRsytPZ88nrYDV3LM15
-        9D+Rq2XYquV5xm1CEsJcdCd9tq9e7Zc=
-X-Google-Smtp-Source: ABdhPJwgF0eduoVEqL+5EnB4NT5k175DYmVz+vnVdiaT3ayIkgmltIZBeFIoEPNUTNM+7geNefWVH9TuAAQ=
-X-Received: by 2002:a17:902:a50c:: with SMTP id s12mr41269918plq.119.1594324080790;
- Thu, 09 Jul 2020 12:48:00 -0700 (PDT)
-Date:   Thu,  9 Jul 2020 19:47:49 +0000
+        bh=8aV8dCnXtWjQg88XS3xPlXLAc+zOek3bqtseJMfDQ8w=;
+        b=CXxhTueQptH5ot9fxNK8QxHxmbGnSAioSud8WdCZeq/zNquHAW8dTf/UtI3tgFOaKt
+         F5No5L5Cofo1qIMM8eDOd17vfEsL5a0PPnu9LjoRBiSq1PClnL1oh2EH1E4mIK+T8vL2
+         o9upvG95uMEM9lT2qb7GIk12D4/zHxOhT6/m+KodjxpjiPwUEmUT+A4fUOoWsb6ZkxK1
+         Jb2dpgfXnQgfl0HPS7UlphcS5RdLVxF5FZ90L3YoJSKJ/S862lEAjcigwGJIMoOepSNq
+         jy8vsEKy4apcBZx2mc64lVRtQDK41g2dlc9mEtegNIb5CyDGbyg2B9PrqYGE5u49WaXx
+         PaUA==
+X-Gm-Message-State: AOAM5312Qrn8bDoTawXF0xfhg4ahit6vdk58U6mDX7qdna9t2miF7BWb
+        zMf+vLg6yXb3Bu0gd9VFf1jvW+d7Wk4=
+X-Google-Smtp-Source: ABdhPJzr4fyHtEPxxGa/1oyxhYhm2fG5/oqmJ5MeTeSHxI205PX0i6Oqf4DnZTvfIEvI68X3kJYfz/lkbU0=
+X-Received: by 2002:a5b:2cd:: with SMTP id h13mr57148875ybp.319.1594324084188;
+ Thu, 09 Jul 2020 12:48:04 -0700 (PDT)
+Date:   Thu,  9 Jul 2020 19:47:51 +0000
 In-Reply-To: <20200709194751.2579207-1-satyat@google.com>
-Message-Id: <20200709194751.2579207-4-satyat@google.com>
+Message-Id: <20200709194751.2579207-6-satyat@google.com>
 Mime-Version: 1.0
 References: <20200709194751.2579207-1-satyat@google.com>
 X-Mailer: git-send-email 2.27.0.383.g050319c2ae-goog
-Subject: [PATCH 3/5] iomap: support direct I/O with fscrypt using blk-crypto
+Subject: [PATCH 5/5] f2fs: support direct I/O with fscrypt using blk-crypto
 From:   Satya Tangirala <satyat@google.com>
 To:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
@@ -73,67 +73,29 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Wire up iomap direct I/O with the fscrypt additions for direct I/O,
-and set bio crypt contexts on bios when appropriate.
+Wire up f2fs with fscrypt direct I/O support.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 Signed-off-by: Satya Tangirala <satyat@google.com>
 ---
- fs/iomap/direct-io.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/f2fs/f2fs.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index ec7b78e6feca..1e123d785199 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -6,6 +6,7 @@
- #include <linux/module.h>
- #include <linux/compiler.h>
- #include <linux/fs.h>
-+#include <linux/fscrypt.h>
- #include <linux/iomap.h>
- #include <linux/backing-dev.h>
- #include <linux/uio.h>
-@@ -183,11 +184,14 @@ static void
- iomap_dio_zero(struct iomap_dio *dio, struct iomap *iomap, loff_t pos,
- 		unsigned len)
- {
-+	struct inode *inode = file_inode(dio->iocb->ki_filp);
- 	struct page *page = ZERO_PAGE(0);
- 	int flags = REQ_SYNC | REQ_IDLE;
- 	struct bio *bio;
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index b35a50f4953c..6d662a37b445 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -4082,7 +4082,9 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
+ 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+ 	int rw = iov_iter_rw(iter);
  
- 	bio = bio_alloc(GFP_KERNEL, 1);
-+	fscrypt_set_bio_crypt_ctx(bio, inode, pos >> inode->i_blkbits,
-+				  GFP_KERNEL);
- 	bio_set_dev(bio, iomap->bdev);
- 	bio->bi_iter.bi_sector = iomap_sector(iomap, pos);
- 	bio->bi_private = dio;
-@@ -253,6 +257,7 @@ iomap_dio_bio_actor(struct inode *inode, loff_t pos, loff_t length,
- 		ret = nr_pages;
- 		goto out;
- 	}
-+	nr_pages = fscrypt_limit_dio_pages(inode, pos, nr_pages);
- 
- 	if (need_zeroout) {
- 		/* zero out from the start of the block to the write offset */
-@@ -270,6 +275,8 @@ iomap_dio_bio_actor(struct inode *inode, loff_t pos, loff_t length,
- 		}
- 
- 		bio = bio_alloc(GFP_KERNEL, nr_pages);
-+		fscrypt_set_bio_crypt_ctx(bio, inode, pos >> inode->i_blkbits,
-+					  GFP_KERNEL);
- 		bio_set_dev(bio, iomap->bdev);
- 		bio->bi_iter.bi_sector = iomap_sector(iomap, pos);
- 		bio->bi_write_hint = dio->iocb->ki_hint;
-@@ -307,6 +314,7 @@ iomap_dio_bio_actor(struct inode *inode, loff_t pos, loff_t length,
- 		copied += n;
- 
- 		nr_pages = iov_iter_npages(dio->submit.iter, BIO_MAX_PAGES);
-+		nr_pages = fscrypt_limit_dio_pages(inode, pos, nr_pages);
- 		iomap_dio_submit_bio(dio, iomap, bio, pos);
- 		pos += n;
- 	} while (nr_pages);
+-	if (f2fs_post_read_required(inode))
++	if (!fscrypt_dio_supported(iocb, iter))
++		return true;
++	if (fsverity_active(inode))
+ 		return true;
+ 	if (f2fs_is_multi_device(sbi))
+ 		return true;
 -- 
 2.27.0.383.g050319c2ae-goog
 
