@@ -2,48 +2,150 @@ Return-Path: <SRS0=XcEL=A2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC96CC433E8
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38A1DC433EB
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C282620657
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 243DC20657
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731674AbgGONS2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Jul 2020 09:18:28 -0400
-Received: from [195.135.220.15] ([195.135.220.15]:45956 "EHLO mx2.suse.de"
+        id S1731684AbgGONSa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Jul 2020 09:18:30 -0400
+Received: from [195.135.220.15] ([195.135.220.15]:45978 "EHLO mx2.suse.de"
         rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-        id S1731596AbgGONS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Jul 2020 09:18:28 -0400
+        id S1731673AbgGONS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Jul 2020 09:18:29 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 60D1CB707;
+        by mx2.suse.de (Postfix) with ESMTP id 81BD3B70B;
         Wed, 15 Jul 2020 13:18:30 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id E282A1E12C9; Wed, 15 Jul 2020 15:18:26 +0200 (CEST)
+        id F08871E12D1; Wed, 15 Jul 2020 15:18:26 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Ritesh Harjani <riteshh@linux.ibm.com>,
         Wolfgang Frisch <wolfgang.frisch@suse.com>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/4] ext4: Check journal inode extents more carefully
-Date:   Wed, 15 Jul 2020 15:18:08 +0200
-Message-Id: <20200715131812.7243-1-jack@suse.cz>
+Subject: [PATCH 4/4] ext4: Fold ext4_data_block_valid_rcu() into the caller
+Date:   Wed, 15 Jul 2020 15:18:12 +0200
+Message-Id: <20200715131812.7243-5-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20200715131812.7243-1-jack@suse.cz>
+References: <20200715131812.7243-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello!
+After the previous patch, ext4_data_block_valid_rcu() has a single
+caller. Fold it into it.
 
-This series changes ext4 to properly check extent tree blocks of journal inode.
-Omitting these (which is a limitation of block validity checks) leads to crash
-in ext4_cache_extents() in case the extent tree of the journal inode is
-suitably corrupted. 
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/block_validity.c | 67 ++++++++++++++++++++++--------------------------
+ 1 file changed, 30 insertions(+), 37 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 3602356cbf09..9c40214f31f9 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -144,40 +144,6 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
+ 	printk(KERN_CONT "\n");
+ }
+ 
+-/*
+- * Returns 1 if the passed-in block region (start_blk,
+- * start_blk+count) is valid; 0 if some part of the block region
+- * overlaps with filesystem metadata blocks.
+- */
+-static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
+-				     struct ext4_system_blocks *system_blks,
+-				     ext4_fsblk_t start_blk,
+-				     unsigned int count, ino_t ino)
+-{
+-	struct ext4_system_zone *entry;
+-	struct rb_node *n;
+-
+-	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
+-	    (start_blk + count < start_blk) ||
+-	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
+-		return 0;
+-
+-	if (system_blks == NULL)
+-		return 1;
+-
+-	n = system_blks->root.rb_node;
+-	while (n) {
+-		entry = rb_entry(n, struct ext4_system_zone, node);
+-		if (start_blk + count - 1 < entry->start_blk)
+-			n = n->rb_left;
+-		else if (start_blk >= (entry->start_blk + entry->count))
+-			n = n->rb_right;
+-		else
+-			return entry->ino == ino;
+-	}
+-	return 1;
+-}
+-
+ static int ext4_protect_reserved_inode(struct super_block *sb,
+ 				       struct ext4_system_blocks *system_blks,
+ 				       u32 ino)
+@@ -333,11 +299,24 @@ void ext4_release_system_zone(struct super_block *sb)
+ 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
+ }
+ 
++/*
++ * Returns 1 if the passed-in block region (start_blk,
++ * start_blk+count) is valid; 0 if some part of the block region
++ * overlaps with some other filesystem metadata blocks.
++ */
+ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
+ 			  unsigned int count)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_system_blocks *system_blks;
+-	int ret;
++	struct ext4_system_zone *entry;
++	struct rb_node *n;
++	int ret = 1;
++
++	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
++	    (start_blk + count < start_blk) ||
++	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
++		return 0;
+ 
+ 	/*
+ 	 * Lock the system zone to prevent it being released concurrently
+@@ -346,8 +325,22 @@ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
+ 	 */
+ 	rcu_read_lock();
+ 	system_blks = rcu_dereference(sbi->system_blks);
+-	ret = ext4_data_block_valid_rcu(EXT4_SB(inode->i_sb), system_blks,
+-					start_blk, count, inode->i_ino);
++	if (system_blks == NULL)
++		goto out_rcu;
++
++	n = system_blks->root.rb_node;
++	while (n) {
++		entry = rb_entry(n, struct ext4_system_zone, node);
++		if (start_blk + count - 1 < entry->start_blk)
++			n = n->rb_left;
++		else if (start_blk >= (entry->start_blk + entry->count))
++			n = n->rb_right;
++		else {
++			ret = (entry->ino == inode->i_ino);
++			break;
++		}
++	}
++out_rcu:
+ 	rcu_read_unlock();
+ 	return ret;
+ }
+-- 
+2.16.4
+
