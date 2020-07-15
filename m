@@ -2,345 +2,161 @@ Return-Path: <SRS0=XcEL=A2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 67462C433ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14189C433E3
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 16:13:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4547E20657
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 13:18:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E5CBA206D5
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jul 2020 16:13:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1594829626;
+	bh=IJsMkoevTsx6L9HNxlWZDWP3nwinEoBjxQZqDR3QAYM=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=qYFDgFG3747bH1xrKULT4yChnoNHqypc+CU/TwKZ//Jw13hMs1H4RaIKCRFVsLjJY
+	 NMtDxx9OqIjPaYC8qxEZ7NhjiBae3TAwpJcAdkuWcMmKjuDssdPCKAJlYU7JBSANsT
+	 ejL2QKEnAtLjHVcoPW8HEGAwu5zypgVXSOp/McfI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731686AbgGONSb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Jul 2020 09:18:31 -0400
-Received: from [195.135.220.15] ([195.135.220.15]:45970 "EHLO mx2.suse.de"
-        rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-        id S1731627AbgGONS3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Jul 2020 09:18:29 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 81A8AB70A;
-        Wed, 15 Jul 2020 13:18:30 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id ECEE11E12CF; Wed, 15 Jul 2020 15:18:26 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        Wolfgang Frisch <wolfgang.frisch@suse.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/4] ext4: Check journal inode extents more carefully
-Date:   Wed, 15 Jul 2020 15:18:11 +0200
-Message-Id: <20200715131812.7243-4-jack@suse.cz>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20200715131812.7243-1-jack@suse.cz>
-References: <20200715131812.7243-1-jack@suse.cz>
+        id S1725912AbgGOQNp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Jul 2020 12:13:45 -0400
+Received: from mail.kernel.org ([198.145.29.99]:32850 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725831AbgGOQNp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 15 Jul 2020 12:13:45 -0400
+Received: from sol.localdomain (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5F93120663;
+        Wed, 15 Jul 2020 16:13:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1594829624;
+        bh=IJsMkoevTsx6L9HNxlWZDWP3nwinEoBjxQZqDR3QAYM=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=N0z0tBQotG8LArmmiAePX5kmgXENP4UAKHIg9UhO1qGZPrV8Ilw+LOIpBvIm+VROW
+         AoElmez3OskjYxnq2+b63SuxSI83F+O+C3V4lqsRfNbW0Dqvog97lsMD/99y4sRwB+
+         FhOZI9bPxybyBjGn3THjrB6bMu7VYjNnUaTHySQw=
+Date:   Wed, 15 Jul 2020 09:13:42 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] fs/direct-io: avoid data race on ->s_dio_done_wq
+Message-ID: <20200715161342.GA1167@sol.localdomain>
+References: <20200713033330.205104-1-ebiggers@kernel.org>
+ <20200715013008.GD2005@dread.disaster.area>
+ <20200715023714.GA38091@sol.localdomain>
+ <20200715080144.GF2005@dread.disaster.area>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200715080144.GF2005@dread.disaster.area>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently, system zones just track ranges of block, that are "important"
-fs metadata (bitmaps, group descriptors, journal blocks, etc.). This
-however complicates how extent tree (or indirect blocks) can be checked
-for inodes that actually track such metadata - currently the journal
-inode but arguably we should be treating quota files or resize inode
-similarly. We cannot run __ext4_ext_check() on such metadata inodes when
-loading their extents as that would immediately trigger the validity
-checks and so we just hack around that and special-case the journal
-inode. This however leads to a situation that a journal inode which has
-extent tree of depth at least one can have invalid extent tree that gets
-unnoticed until ext4_cache_extents() crashes.
+On Wed, Jul 15, 2020 at 06:01:44PM +1000, Dave Chinner wrote:
+> > > >  /* direct-io.c: */
+> > > > -int sb_init_dio_done_wq(struct super_block *sb);
+> > > > +int __sb_init_dio_done_wq(struct super_block *sb);
+> > > > +static inline int sb_init_dio_done_wq(struct super_block *sb)
+> > > > +{
+> > > > +	/* pairs with cmpxchg() in __sb_init_dio_done_wq() */
+> > > > +	if (likely(READ_ONCE(sb->s_dio_done_wq)))
+> > > > +		return 0;
+> > > > +	return __sb_init_dio_done_wq(sb);
+> > > > +}
+> > > 
+> > > Ummm, why don't you just add this check in sb_init_dio_done_wq(). I
+> > > don't see any need for adding another level of function call
+> > > abstraction in the source code?
+> > 
+> > This keeps the fast path doing no function calls and one fewer branch, as it was
+> > before.  People care a lot about minimizing direct I/O overhead, so it seems
+> > desirable to keep this simple optimization.  Would you rather it be removed?
+> 
+> No.
+> 
+> What I'm trying to say is that I'd prefer fast path checks don't get
+> hidden away in a static inline function wrappers that require the
+> reader to go look up code in a different file to understand that
+> code in yet another different file is conditionally executed.
+> 
+> Going from obvious, easy to read fast path code to spreading the
+> fast path logic over functions in 3 different files is not an
+> improvement in the code - it is how we turn good code into an
+> unmaintainable mess...
 
-To overcome this limitation, track inode number each system zone belongs
-to (0 is used for zones not belonging to any inode). We can then verify
-inode number matches the expected one when verifying extent tree and
-thus avoid the false errors. With this there's no need to to
-special-case journal inode during extent tree checking anymore so remove
-it.
+The alternative would be to duplicate the READ_ONCE() at all 3 call sites --
+including the explanatory comment.  That seems strictly worse.
 
-Fixes: 0a944e8a6c66 ("ext4: don't perform block validity checks on the journal inode")
-Reported-by: Wolfgang Frisch <wolfgang.frisch@suse.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/block_validity.c | 49 ++++++++++++++++++++++++------------------------
- fs/ext4/ext4.h           |  6 +++---
- fs/ext4/extents.c        | 16 ++++++----------
- fs/ext4/indirect.c       |  6 ++----
- fs/ext4/inode.c          |  5 ++---
- fs/ext4/mballoc.c        |  4 ++--
- 6 files changed, 40 insertions(+), 46 deletions(-)
+And the code before was broken, so I disagree it was "obvious" or "good".
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index b394a50ebbe3..3602356cbf09 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -24,6 +24,7 @@ struct ext4_system_zone {
- 	struct rb_node	node;
- 	ext4_fsblk_t	start_blk;
- 	unsigned int	count;
-+	u32		ino;
- };
- 
- static struct kmem_cache *ext4_system_zone_cachep;
-@@ -45,7 +46,8 @@ void ext4_exit_system_zone(void)
- static inline int can_merge(struct ext4_system_zone *entry1,
- 		     struct ext4_system_zone *entry2)
- {
--	if ((entry1->start_blk + entry1->count) == entry2->start_blk)
-+	if ((entry1->start_blk + entry1->count) == entry2->start_blk &&
-+	    entry1->ino == entry2->ino)
- 		return 1;
- 	return 0;
- }
-@@ -66,7 +68,7 @@ static void release_system_zone(struct ext4_system_blocks *system_blks)
-  */
- static int add_system_zone(struct ext4_system_blocks *system_blks,
- 			   ext4_fsblk_t start_blk,
--			   unsigned int count)
-+			   unsigned int count, u32 ino)
- {
- 	struct ext4_system_zone *new_entry, *entry;
- 	struct rb_node **n = &system_blks->root.rb_node, *node;
-@@ -89,6 +91,7 @@ static int add_system_zone(struct ext4_system_blocks *system_blks,
- 		return -ENOMEM;
- 	new_entry->start_blk = start_blk;
- 	new_entry->count = count;
-+	new_entry->ino = ino;
- 	new_node = &new_entry->node;
- 
- 	rb_link_node(new_node, parent, n);
-@@ -149,7 +152,7 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
- static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
- 				     struct ext4_system_blocks *system_blks,
- 				     ext4_fsblk_t start_blk,
--				     unsigned int count)
-+				     unsigned int count, ino_t ino)
- {
- 	struct ext4_system_zone *entry;
- 	struct rb_node *n;
-@@ -170,7 +173,7 @@ static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
- 		else if (start_blk >= (entry->start_blk + entry->count))
- 			n = n->rb_right;
- 		else
--			return 0;
-+			return entry->ino == ino;
- 	}
- 	return 1;
- }
-@@ -204,19 +207,18 @@ static int ext4_protect_reserved_inode(struct super_block *sb,
- 		if (n == 0) {
- 			i++;
- 		} else {
--			if (!ext4_data_block_valid_rcu(sbi, system_blks,
--						map.m_pblk, n)) {
--				err = -EFSCORRUPTED;
--				__ext4_error(sb, __func__, __LINE__, -err,
--					     map.m_pblk, "blocks %llu-%llu "
--					     "from inode %u overlap system zone",
--					     map.m_pblk,
--					     map.m_pblk + map.m_len - 1, ino);
-+			err = add_system_zone(system_blks, map.m_pblk, n, ino);
-+			if (err < 0) {
-+				if (err == -EFSCORRUPTED) {
-+					__ext4_error(sb, __func__, __LINE__,
-+						     -err, map.m_pblk,
-+						     "blocks %llu-%llu from inode %u overlap system zone",
-+						     map.m_pblk,
-+						     map.m_pblk + map.m_len - 1,
-+						     ino);
-+				}
- 				break;
- 			}
--			err = add_system_zone(system_blks, map.m_pblk, n);
--			if (err < 0)
--				break;
- 			i += n;
- 		}
- 	}
-@@ -270,19 +272,19 @@ int ext4_setup_system_zone(struct super_block *sb)
- 		    ((i < 5) || ((i % flex_size) == 0)))
- 			add_system_zone(system_blks,
- 					ext4_group_first_block_no(sb, i),
--					ext4_bg_num_gdb(sb, i) + 1);
-+					ext4_bg_num_gdb(sb, i) + 1, 0);
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		ret = add_system_zone(system_blks,
--				ext4_block_bitmap(sb, gdp), 1);
-+				ext4_block_bitmap(sb, gdp), 1, 0);
- 		if (ret)
- 			goto err;
- 		ret = add_system_zone(system_blks,
--				ext4_inode_bitmap(sb, gdp), 1);
-+				ext4_inode_bitmap(sb, gdp), 1, 0);
- 		if (ret)
- 			goto err;
- 		ret = add_system_zone(system_blks,
- 				ext4_inode_table(sb, gdp),
--				sbi->s_itb_per_group);
-+				sbi->s_itb_per_group, 0);
- 		if (ret)
- 			goto err;
- 	}
-@@ -331,7 +333,7 @@ void ext4_release_system_zone(struct super_block *sb)
- 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
- }
- 
--int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
-+int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 			  unsigned int count)
- {
- 	struct ext4_system_blocks *system_blks;
-@@ -344,8 +346,8 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 	 */
- 	rcu_read_lock();
- 	system_blks = rcu_dereference(sbi->system_blks);
--	ret = ext4_data_block_valid_rcu(sbi, system_blks, start_blk,
--					count);
-+	ret = ext4_data_block_valid_rcu(EXT4_SB(inode->i_sb), system_blks,
-+					start_blk, count, inode->i_ino);
- 	rcu_read_unlock();
- 	return ret;
- }
-@@ -364,8 +366,7 @@ int ext4_check_blockref(const char *function, unsigned int line,
- 	while (bref < p+max) {
- 		blk = le32_to_cpu(*bref++);
- 		if (blk &&
--		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
--						    blk, 1))) {
-+		    unlikely(!ext4_inode_block_valid(inode, blk, 1))) {
- 			ext4_error_inode(inode, function, line, blk,
- 					 "invalid block");
- 			return -EFSCORRUPTED;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 42f5060f3cdf..42815304902b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3363,9 +3363,9 @@ extern void ext4_release_system_zone(struct super_block *sb);
- extern int ext4_setup_system_zone(struct super_block *sb);
- extern int __init ext4_init_system_zone(void);
- extern void ext4_exit_system_zone(void);
--extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
--				 ext4_fsblk_t start_blk,
--				 unsigned int count);
-+extern int ext4_inode_block_valid(struct inode *inode,
-+				  ext4_fsblk_t start_blk,
-+				  unsigned int count);
- extern int ext4_check_blockref(const char *, unsigned int,
- 			       struct inode *, __le32 *, unsigned int);
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 221f240eae60..d75054570e44 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -340,7 +340,7 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- 	 */
- 	if (lblock + len <= lblock)
- 		return 0;
--	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
-+	return ext4_inode_block_valid(inode, block, len);
- }
- 
- static int ext4_valid_extent_idx(struct inode *inode,
-@@ -348,7 +348,7 @@ static int ext4_valid_extent_idx(struct inode *inode,
- {
- 	ext4_fsblk_t block = ext4_idx_pblock(ext_idx);
- 
--	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, 1);
-+	return ext4_inode_block_valid(inode, block, 1);
- }
- 
- static int ext4_valid_extent_entries(struct inode *inode,
-@@ -507,14 +507,10 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 	}
- 	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
- 		return bh;
--	if (!ext4_has_feature_journal(inode->i_sb) ||
--	    (inode->i_ino !=
--	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum))) {
--		err = __ext4_ext_check(function, line, inode,
--				       ext_block_hdr(bh), depth, pblk);
--		if (err)
--			goto errout;
--	}
-+	err = __ext4_ext_check(function, line, inode,
-+			       ext_block_hdr(bh), depth, pblk);
-+	if (err)
-+		goto errout;
- 	set_buffer_verified(bh);
- 	/*
- 	 * If this is a leaf block, cache all of its entries
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index be2b66eb65f7..402641825712 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -858,8 +858,7 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 	else if (ext4_should_journal_data(inode))
- 		flags |= EXT4_FREE_BLOCKS_FORGET;
- 
--	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
--				   count)) {
-+	if (!ext4_inode_block_valid(inode, block_to_free, count)) {
- 		EXT4_ERROR_INODE(inode, "attempt to clear invalid "
- 				 "blocks %llu len %lu",
- 				 (unsigned long long) block_to_free, count);
-@@ -1004,8 +1003,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			if (!nr)
- 				continue;		/* A hole */
- 
--			if (!ext4_data_block_valid(EXT4_SB(inode->i_sb),
--						   nr, 1)) {
-+			if (!ext4_inode_block_valid(inode, nr, 1)) {
- 				EXT4_ERROR_INODE(inode,
- 						 "invalid indirect mapped "
- 						 "block %lu (level %d)",
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 10dd470876b3..92573f8540ab 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -394,8 +394,7 @@ static int __check_block_validity(struct inode *inode, const char *func,
- 	    (inode->i_ino ==
- 	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
- 		return 0;
--	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
--				   map->m_len)) {
-+	if (!ext4_inode_block_valid(inode, map->m_pblk, map->m_len)) {
- 		ext4_error_inode(inode, func, line, map->m_pblk,
- 				 "lblock %lu mapped to illegal pblock %llu "
- 				 "(length %d)", (unsigned long) map->m_lblk,
-@@ -4760,7 +4759,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 
- 	ret = 0;
- 	if (ei->i_file_acl &&
--	    !ext4_data_block_valid(EXT4_SB(sb), ei->i_file_acl, 1)) {
-+	    !ext4_inode_block_valid(inode, ei->i_file_acl, 1)) {
- 		ext4_error_inode(inode, function, line, 0,
- 				 "iget: bad extended attribute block %llu",
- 				 ei->i_file_acl);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c0a331e2feb0..38719c156573 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3090,7 +3090,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
- 
- 	len = EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
--	if (!ext4_data_block_valid(sbi, block, len)) {
-+	if (!ext4_inode_block_valid(ac->ac_inode, block, len)) {
- 		ext4_error(sb, "Allocating blocks %llu-%llu which overlap "
- 			   "fs metadata", block, block+len);
- 		/* File system mounted not to panic on error
-@@ -4915,7 +4915,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	sbi = EXT4_SB(sb);
- 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
--	    !ext4_data_block_valid(sbi, block, count)) {
-+	    !ext4_inode_block_valid(inode, block, count)) {
- 		ext4_error(sb, "Freeing blocks not in datazone - "
- 			   "block = %llu, count = %lu", block, count);
- 		goto error_return;
--- 
-2.16.4
+> 
+> > > Also, you need to explain the reason for the READ_ONCE() existing
+> > > rather than just saying "it pairs with <some other operation>".
+> > > Knowing what operation it pairs with doesn't explain why the pairing
+> > > is necessary in the first place, and that leads to nobody reading
+> > > the code being able to understand what this is protecting against.
+> > > 
+> > 
+> > How about this?
+> > 
+> > 	/*
+> > 	 * Nothing to do if ->s_dio_done_wq is already set.  But since another
+> > 	 * process may set it concurrently, we need to use READ_ONCE() rather
+> > 	 * than a plain read to avoid a data race (undefined behavior) and to
+> > 	 * ensure we observe the pointed-to struct to be fully initialized.
+> > 	 */
+> > 	if (likely(READ_ONCE(sb->s_dio_done_wq)))
+> > 		return 0;
+> 
+> You still need to document what it pairs with, as "data race" doesn't
+> describe the actual dependency we are synchronising against is.
+> 
+> AFAICT from your description, the data race is not on
+> sb->s_dio_done_wq itself, but on seeing the contents of the
+> structure being pointed to incorrectly. i.e. we need to ensure that
+> writes done before the cmpxchg are ordered correctly against
+> reads done after the pointer can be seen here.
+> 
 
+No, the data race is on ->s_dio_done_wq itself.  How about this:
+
+        /*
+         * Nothing to do if ->s_dio_done_wq is already set.  The READ_ONCE()
+         * here pairs with the cmpxchg() in __sb_init_dio_done_wq().  Since the
+         * cmpxchg() may set ->s_dio_done_wq concurrently, a plain load would be
+         * a data race (undefined behavior), so READ_ONCE() is needed.
+         * READ_ONCE() also includes any needed read data dependency barrier to
+         * ensure that the pointed-to struct is seen to be fully initialized.
+         */
+
+FWIW, long-term we really need to get developers to understand these sorts of
+issues, so that the code is written correctly in the first place and we don't
+need to annotate common patterns like one-time-init with a long essay and have a
+long discussion.  Recently KCSAN was merged upstream
+(https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/dev-tools/kcsan.rst)
+and the memory model documentation was improved
+(https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/tools/memory-model/Documentation/explanation.txt?h=v5.8-rc5#n1922),
+so hopefully that will raise awareness...
+
+> If so, can't we just treat this as a normal
+> store-release/load-acquire ordering pattern and hence use more
+> relaxed memory barriers instead of have to patch up what we have now
+> to specifically make ancient platforms that nobody actually uses
+> with weird and unusual memory models work correctly?
+
+READ_ONCE() is already as relaxed as it can get, as it includes a read data
+dependency barrier only (which is no-op on everything other than Alpha).
+
+If anything it should be upgraded to smp_load_acquire(), which handles control
+dependencies too.  I didn't see anything obvious in the workqueue code that
+would need that (i.e. accesses to some global structure that isn't transitively
+reachable via the workqueue_struct itself).  But we could use it to be safe if
+we're okay with any performance implications of the additional memory barrier it
+would add.
+
+- Eric
