@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-20.6 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1425EC433EB
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 01:35:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F101DC433F2
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 01:35:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E715320578
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 01:35:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF2B420578
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 01:35:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="EcPT5iw6"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ZcYDTvcf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726870AbgGQBfc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Jul 2020 21:35:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37762 "EHLO
+        id S1726936AbgGQBfe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Jul 2020 21:35:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37778 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726858AbgGQBfa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2020 21:35:30 -0400
-Received: from mail-yb1-xb49.google.com (mail-yb1-xb49.google.com [IPv6:2607:f8b0:4864:20::b49])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C5264C061755
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2020 18:35:29 -0700 (PDT)
-Received: by mail-yb1-xb49.google.com with SMTP id 124so9689649ybb.5
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2020 18:35:29 -0700 (PDT)
+        with ESMTP id S1726858AbgGQBfd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2020 21:35:33 -0400
+Received: from mail-pl1-x64a.google.com (mail-pl1-x64a.google.com [IPv6:2607:f8b0:4864:20::64a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2DF50C08C5DB
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2020 18:35:33 -0700 (PDT)
+Received: by mail-pl1-x64a.google.com with SMTP id 65so5613300plf.1
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2020 18:35:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=zp9IyNE/WOqMjmmUo5OQb7An9Jck4EABFW2ZtXIp0J8=;
-        b=EcPT5iw6xeAfEjdlPbda6DoINJs/j9jKP2TGre8RBeZXNcyIRuqos8GS/JPjNxyyMj
-         aARz+rkyGL52RWpzFM5BJ3zkR/4wfsdnrw+1luAFREm/VEQT+l2s5cpIKsr+5uKeFMH4
-         WY51ds7oCW7o+7bxVZeVdvBRNakPa9eZZmcbTSZ4YdYGuLV6Q/SugNCpoAJkT93/jfJb
-         IGJddYgCOXxJUJ+GqNK5dO62cUYyve5r5yM+KtVqyAb2Zs2BUOSmw7Fs3p41vxvgdu5b
-         24MANUxf9LZQryIjThNYfZtFGr6rsTY31QgdC5WUa3iwxTm6vikksUZPQJEA49/6nHBM
-         jWDA==
+        bh=E/vVSGidxRNqfgFvT7W0V9puYBqKI9SZ+5JR8j0m+58=;
+        b=ZcYDTvcfLLpu/jhtpmOZTX1yip7PM/LKW+mqaazTmFRD19tgdynOHn3dvFmYrGW/EU
+         3OGE6491fFJOHWChT38oVFGgJgqcZ1z9qC05QU8JraayXUwgfZmczmipgbR37elMel8Z
+         zNb7TYC+lWvWJJ6SnDNsPiAtosseBQpBY7N1qfVzLHJNWx+JNLHhks/B90rtrKlzTw2Q
+         QdJ4Rgwpk7ZYwleZwGq00b+zq66rjpmtFE10TZhsYG25d9JTk8G6JQVQC1rLY+/3pY2o
+         8blcSeqgKqhLSzrKduWn3JF/DTEgh0C9d7W/d32ySDrix8TvV4yJXo/ftZgek76k0P/c
+         Y1Lw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=zp9IyNE/WOqMjmmUo5OQb7An9Jck4EABFW2ZtXIp0J8=;
-        b=uW9kPrsSlmfOuVZtVtFmDx/zKwv/IWiUsy2OhlI/wpCFycucBBPzGn2dhqV0VRFBb5
-         HSLYoN6MFXiL2wx4Kfqhxm2QRQMvZSSA2FkXa7gor/1wJ3tKKtzhso26txJQ3boxC2KF
-         WT3916TFjXV4I2FGDeTa02RkAcx655id5CUQlX6ouTf/SxoX8jtf1+mtdK439WLeHak7
-         xefU9aIwQMjOEdv3s/b7HWRaCChsWyccNpKZrLvaZmStHWuuR8K2r4ttN1lIg/WuaMVX
-         EjAjFq8XWyfSovNeZCcqjwEYPWDc1A4MnU5FmQaGrBx28478fEvSx2TlMjsYUld3FT1u
-         +bXw==
-X-Gm-Message-State: AOAM530wy4XQTqs9fnXMdE8ocOJ1D/w6hjHCRIZZcy3xw6SmIjbn1OPE
-        0f/91f4naEb8XCyVPgRKJaw/CdYZXco=
-X-Google-Smtp-Source: ABdhPJxs8eFAsth37g1R47hI62Mpm1RAZyjhJ4mmlKAvDAiqG/78AzVwzEyzIKJIVFj3OeeEfj/R+GGoZ6o=
-X-Received: by 2002:a25:e481:: with SMTP id b123mr9697382ybh.126.1594949728932;
- Thu, 16 Jul 2020 18:35:28 -0700 (PDT)
-Date:   Fri, 17 Jul 2020 01:35:13 +0000
+        bh=E/vVSGidxRNqfgFvT7W0V9puYBqKI9SZ+5JR8j0m+58=;
+        b=FIsVZFzYthWIZyDSSZs21eDjOpgv1gdi5B4NIWMpXab87OjQP1A4jXDQhMirKihclg
+         SPkUEbmFqQufGS8TdFtfT+N0aXDv/yzmPtob64T57OZaKMWOSOZ3Z/hgN+5GHIIMCpvi
+         EM+4BD8rGOKyV30O0PI2MxryktHJajmgLMSIfYfjXR+dmiLpI7qYxcMte/lrkg0iDWyn
+         Q47cm8c3mCbL33hTmj39lfmLQjuUtvYcggCmvP51xEp4BXjSFIRuO3g8oRHY6qcnv+o0
+         yMC2RXck41dq3i0TNkvww3BJ+9HFWnTKBNuFc+lOny92CfFQvi1EIORqGmkLaNtwyReQ
+         y4kQ==
+X-Gm-Message-State: AOAM531WUR5d9FHZf9uj4g0+ydkbNHmFleCllYKpvXwBVnc2ii1CIrLL
+        xqD+evug5cInORiB/a857pMPYeay6/M=
+X-Google-Smtp-Source: ABdhPJxblkVinfK9/GjEu/MeJLy/xcw1zo2TEXIQwGlWkq0fWav4MrbEVMKPE2WnLaQ1sWXSffDb1SKbb/Q=
+X-Received: by 2002:a63:225d:: with SMTP id t29mr6933840pgm.374.1594949732647;
+ Thu, 16 Jul 2020 18:35:32 -0700 (PDT)
+Date:   Fri, 17 Jul 2020 01:35:15 +0000
 In-Reply-To: <20200717013518.59219-1-satyat@google.com>
-Message-Id: <20200717013518.59219-3-satyat@google.com>
+Message-Id: <20200717013518.59219-5-satyat@google.com>
 Mime-Version: 1.0
 References: <20200717013518.59219-1-satyat@google.com>
 X-Mailer: git-send-email 2.28.0.rc0.105.gf9edc3c819-goog
-Subject: [PATCH v2 2/7] direct-io: add support for fscrypt using blk-crypto
+Subject: [PATCH v2 4/7] ext4: support direct I/O with fscrypt using blk-crypto
 From:   Satya Tangirala <satyat@google.com>
 To:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
@@ -74,68 +74,58 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Set bio crypt contexts on bios by calling into fscrypt when required,
-and explicitly check for DUN continuity when adding pages to the bio.
-(While DUN continuity is usually implied by logical block contiguity,
-this is not the case when using certain fscrypt IV generation methods
-like IV_INO_LBLK_32).
+Wire up ext4 with fscrypt direct I/O support. direct I/O with fscrypt is
+only supported through blk-crypto (i.e. CONFIG_BLK_INLINE_ENCRYPTION must
+have been enabled, the 'inlinecrypt' mount option must have been specified,
+and either hardware inline encryption support must be present or
+CONFIG_BLK_INLINE_ENCYRPTION_FALLBACK must have been enabled). Further,
+direct I/O on encrypted files is only supported when I/O is aligned
+to the filesystem block size (which is *not* necessarily the same as the
+block device's block size).
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 Co-developed-by: Satya Tangirala <satyat@google.com>
 Signed-off-by: Satya Tangirala <satyat@google.com>
 ---
- fs/direct-io.c | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+ fs/ext4/file.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 6d5370eac2a8..f27f7e3780ee 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -24,6 +24,7 @@
- #include <linux/module.h>
- #include <linux/types.h>
- #include <linux/fs.h>
-+#include <linux/fscrypt.h>
- #include <linux/mm.h>
- #include <linux/slab.h>
- #include <linux/highmem.h>
-@@ -411,6 +412,7 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
- 	      sector_t first_sector, int nr_vecs)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2a01e31a032c..d534f72675d9 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -36,9 +36,11 @@
+ #include "acl.h"
+ #include "truncate.h"
+ 
+-static bool ext4_dio_supported(struct inode *inode)
++static bool ext4_dio_supported(struct kiocb *iocb, struct iov_iter *iter)
  {
- 	struct bio *bio;
-+	struct inode *inode = dio->inode;
- 
- 	/*
- 	 * bio_alloc() is guaranteed to return a bio when allowed to sleep and
-@@ -418,6 +420,9 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
- 	 */
- 	bio = bio_alloc(GFP_KERNEL, nr_vecs);
- 
-+	fscrypt_set_bio_crypt_ctx(bio, inode,
-+				  sdio->cur_page_fs_offset >> inode->i_blkbits,
-+				  GFP_KERNEL);
- 	bio_set_dev(bio, bdev);
- 	bio->bi_iter.bi_sector = first_sector;
- 	bio_set_op_attrs(bio, dio->op, dio->op_flags);
-@@ -782,9 +787,17 @@ static inline int dio_send_cur_page(struct dio *dio, struct dio_submit *sdio,
- 		 * current logical offset in the file does not equal what would
- 		 * be the next logical offset in the bio, submit the bio we
- 		 * have.
-+		 *
-+		 * When fscrypt inline encryption is used, data unit number
-+		 * (DUN) contiguity is also required.  Normally that's implied
-+		 * by logical contiguity.  However, certain IV generation
-+		 * methods (e.g. IV_INO_LBLK_32) don't guarantee it.  So, we
-+		 * must explicitly check fscrypt_mergeable_bio() too.
- 		 */
- 		if (sdio->final_block_in_bio != sdio->cur_page_block ||
--		    cur_offset != bio_next_offset)
-+		    cur_offset != bio_next_offset ||
-+		    !fscrypt_mergeable_bio(sdio->bio, dio->inode,
-+					   cur_offset >> dio->inode->i_blkbits))
- 			dio_bio_submit(dio, sdio);
+-	if (IS_ENABLED(CONFIG_FS_ENCRYPTION) && IS_ENCRYPTED(inode))
++	struct inode *inode = file_inode(iocb->ki_filp);
++
++	if (!fscrypt_dio_supported(iocb, iter))
+ 		return false;
+ 	if (fsverity_active(inode))
+ 		return false;
+@@ -61,7 +63,7 @@ static ssize_t ext4_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 		inode_lock_shared(inode);
  	}
  
+-	if (!ext4_dio_supported(inode)) {
++	if (!ext4_dio_supported(iocb, to)) {
+ 		inode_unlock_shared(inode);
+ 		/*
+ 		 * Fallback to buffered I/O if the operation being performed on
+@@ -490,7 +492,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	}
+ 
+ 	/* Fallback to buffered I/O if the inode does not support direct I/O. */
+-	if (!ext4_dio_supported(inode)) {
++	if (!ext4_dio_supported(iocb, from)) {
+ 		if (ilock_shared)
+ 			inode_unlock_shared(inode);
+ 		else
 -- 
 2.28.0.rc0.105.gf9edc3c819-goog
 
