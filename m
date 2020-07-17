@@ -2,378 +2,219 @@ Return-Path: <SRS0=xKa7=A4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	UNPARSEABLE_RELAY autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94B22C433E1
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5886C433E0
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 21:04:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 75BFA204EA
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C06D42074B
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 21:04:29 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="n4fd1huM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726755AbgGQPyG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Jul 2020 11:54:06 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54477 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726656AbgGQPyF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2020 11:54:05 -0400
-Received: from callcc.thunk.org (pool-96-230-252-158.bstnma.fios.verizon.net [96.230.252.158])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06HFrx2e029541
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 17 Jul 2020 11:53:59 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id C8CED42031E; Fri, 17 Jul 2020 11:53:58 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     Alex Zhuravlev <bzzz@whamcloud.com>,
-        Andreas Dilger <adilger@whamcloud.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 1/4] ext4: add prefetching for block allocation bitmaps
-Date:   Fri, 17 Jul 2020 11:53:49 -0400
-Message-Id: <20200717155352.1053040-2-tytso@mit.edu>
-X-Mailer: git-send-email 2.24.1
-In-Reply-To: <20200717155352.1053040-1-tytso@mit.edu>
-References: <20200717155352.1053040-1-tytso@mit.edu>
+        id S1726759AbgGQVE3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Jul 2020 17:04:29 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:47424 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726393AbgGQVE2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2020 17:04:28 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06HL3IG2013698;
+        Fri, 17 Jul 2020 21:04:26 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2020-01-29;
+ bh=MM7mdGykqks3yBttHdwzGPDw1wP4s4tokF4UONjrXBE=;
+ b=n4fd1huMLf1/ZFaqGiKLnSpsN1AKpxfbcOPLORjsQ1jTnuax6a8kAhM0qenRPHn184XB
+ DUGASgisVnyApaMTNVrY6i1tsnocOzuLC1Uj8xQQrbFr0Az+pV2nEmcRWqkmtrb/CRvS
+ mRRvIRbh4bz/ovWi/V+tnw4DVS6ZFCXmG/NkASGMKDYwMdweDADF+mD1FgoKqP0lYJfV
+ yHA9/jlnBelOUJlMRFAZXd1lVZTPG+BspfOlD55wmJ9zbJr3snWSjX2UvqxUPiUou/D8
+ pr8LNIEaSiTEHwrBB7/oivGhiVg1RZvLXlz+4L83e2dR66fLraWOI1QHhUn/3VL7RiqI uw== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by aserp2120.oracle.com with ESMTP id 3275cmsfnc-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Fri, 17 Jul 2020 21:04:26 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 06HL3tqK025230;
+        Fri, 17 Jul 2020 21:04:25 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3020.oracle.com with ESMTP id 32bj2d3hdx-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 17 Jul 2020 21:04:25 +0000
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 06HL4O0N002782;
+        Fri, 17 Jul 2020 21:04:24 GMT
+Received: from localhost (/10.159.159.76)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 17 Jul 2020 14:04:24 -0700
+Date:   Fri, 17 Jul 2020 14:04:23 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v2] fs/direct-io: fix one-time init of ->s_dio_done_wq
+Message-ID: <20200717210423.GP3151642@magnolia>
+References: <20200717050510.95832-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200717050510.95832-1-ebiggers@kernel.org>
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9685 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 mlxlogscore=999
+ adultscore=0 spamscore=0 bulkscore=0 malwarescore=0 mlxscore=0
+ phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2007170142
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9685 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 priorityscore=1501
+ bulkscore=0 adultscore=0 lowpriorityscore=0 phishscore=0 spamscore=0
+ impostorscore=0 malwarescore=0 mlxlogscore=999 clxscore=1015 mlxscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2007170142
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Alex Zhuravlev <bzzz@whamcloud.com>
+On Thu, Jul 16, 2020 at 10:05:10PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Correctly implement the "one-time" init pattern for ->s_dio_done_wq.
+> This fixes the following issues:
+> 
+> - The LKMM doesn't guarantee that the workqueue will be seen initialized
+>   before being used, if another CPU allocated it.  With regards to
+>   specific CPU architectures, this is true on at least Alpha, but it may
+>   be true on other architectures too if the internal implementation of
+>   workqueues causes use of the workqueue to involve a control
+>   dependency.  (There doesn't appear to be a control dependency
+>   currently, but it's hard to tell and it could change in the future.)
+> 
+> - The preliminary checks for sb->s_dio_done_wq are a data race, since
+>   they do a plain load of a concurrently modified variable.  According
+>   to the C standard, this undefined behavior.  In practice, the kernel
+>   does sometimes makes assumptions about data races might be okay in
+>   practice, but these rules are undocumented and not uniformly agreed
+>   upon, so it's best to avoid cases where they might come into play.
+> 
+> Following the guidance for one-time init I've proposed at
+> https://lkml.kernel.org/r/20200717044427.68747-1-ebiggers@kernel.org,
 
-This should significantly improve bitmap loading, especially for flex
-groups as it tries to load all bitmaps within a flex.group instead of
-one by one synchronously.
+It might be a good idea to combine these two patches into a series so
+that we can leave a breadcrumb in sb_init_dio_done_wq explaining why it
+does what it does.
 
-Prefetching is done in 8 * flex_bg groups, so it should be 8 read-ahead
-reads for a single allocating thread. At the end of allocation the
-thread waits for read-ahead completion and initializes buddy information
-so that read-aheads are not lost in case of memory pressure.
+> replace it with the simplest implementation that is guaranteed to be
+> correct while still achieving the following properties:
+> 
+>     - Doesn't make direct I/O users contend on a mutex in the fast path.
+> 
+>     - Doesn't allocate the workqueue when it will never be used.
+> 
+> Fixes: 7b7a8665edd8 ("direct-io: Implement generic deferred AIO completions")
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+> 
+> v2: new implementation using smp_load_acquire() + smp_store_release()
+>     and a mutex.
+> 
+>  fs/direct-io.c       | 42 ++++++++++++++++++++++++------------------
+>  fs/iomap/direct-io.c |  3 +--
+>  2 files changed, 25 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/direct-io.c b/fs/direct-io.c
+> index 6d5370eac2a8..c03c2204aadf 100644
+> --- a/fs/direct-io.c
+> +++ b/fs/direct-io.c
+> @@ -592,20 +592,28 @@ static inline int dio_bio_reap(struct dio *dio, struct dio_submit *sdio)
+>   */
+>  int sb_init_dio_done_wq(struct super_block *sb)
+>  {
+> -	struct workqueue_struct *old;
+> -	struct workqueue_struct *wq = alloc_workqueue("dio/%s",
+> -						      WQ_MEM_RECLAIM, 0,
+> -						      sb->s_id);
+> -	if (!wq)
+> -		return -ENOMEM;
+> -	/*
+> -	 * This has to be atomic as more DIOs can race to create the workqueue
+> -	 */
+> -	old = cmpxchg(&sb->s_dio_done_wq, NULL, wq);
+> -	/* Someone created workqueue before us? Free ours... */
+> -	if (old)
+> -		destroy_workqueue(wq);
+> -	return 0;
+> +	static DEFINE_MUTEX(sb_init_dio_done_mutex);
+> +	struct workqueue_struct *wq;
+> +	int err = 0;
+> +
+> +	/* Pairs with the smp_store_release() below */
+> +	if (smp_load_acquire(&sb->s_dio_done_wq))
+> +		return 0;
+> +
+> +	mutex_lock(&sb_init_dio_done_mutex);
+> +	if (sb->s_dio_done_wq)
+> +		goto out;
+> +
+> +	wq = alloc_workqueue("dio/%s", WQ_MEM_RECLAIM, 0, sb->s_id);
+> +	if (!wq) {
+> +		err = -ENOMEM;
+> +		goto out;
+> +	}
+> +	/* Pairs with the smp_load_acquire() above */
+> +	smp_store_release(&sb->s_dio_done_wq, wq);
 
-At cr=0 the number of prefetching IOs is limited per allocation context
-to prevent a situation when mballoc loads thousands of bitmaps looking
-for a perfect group and ignoring groups with good chunks.
+Why not use cmpxchg_release here?  Is the mutex actually required here,
+or is this merely following the "don't complicate it up" guidelines in
+the "One-Time Init" recipe that say not to use cmpxchg_release unless
+you have a strong justification for it?
 
-Together with the patch "ext4: limit scanning of uninitialized groups"
-the mount time (which includes few tiny allocations) of a 1PB filesystem
-is reduced significantly:
+The code changes look ok to me, fwiw.
 
-               0% full    50%-full unpatched    patched
-  mount time       33s                9279s       563s
+--D
 
-[ Restructured by tytso; removed the state flags in the allocation
-  context, so it can be used to lazily prefetch the allocation bitmaps
-  immediately after the file system is mounted.  Skip prefetching
-  block groups which are unitialized.  Finally pass in the REQ_RAHEAD
-  flag to the block layer while prefetching. ]
-
-Signed-off-by: Alex Zhuravlev <bzzz@whamcloud.com>
-Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/balloc.c  |  14 +++--
- fs/ext4/ext4.h    |   8 ++-
- fs/ext4/mballoc.c | 132 +++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/sysfs.c   |   4 ++
- 4 files changed, 152 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1ba46d87cdf1..aaa9ec5212c8 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -413,7 +413,8 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
-  * Return buffer_head on success or an ERR_PTR in case of failure.
-  */
- struct buffer_head *
--ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
-+ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group,
-+			      bool ignore_locked)
- {
- 	struct ext4_group_desc *desc;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -441,6 +442,12 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
- 		return ERR_PTR(-ENOMEM);
- 	}
- 
-+	if (ignore_locked && buffer_locked(bh)) {
-+		/* buffer under IO already, return if called for prefetching */
-+		put_bh(bh);
-+		return NULL;
-+	}
-+
- 	if (bitmap_uptodate(bh))
- 		goto verify;
- 
-@@ -490,7 +497,8 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
- 	trace_ext4_read_block_bitmap_load(sb, block_group);
- 	bh->b_end_io = ext4_end_bitmap_read;
- 	get_bh(bh);
--	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO, bh);
-+	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO |
-+		  ignore_locked ? REQ_RAHEAD : 0, bh);
- 	return bh;
- verify:
- 	err = ext4_validate_block_bitmap(sb, desc, block_group, bh);
-@@ -534,7 +542,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	struct buffer_head *bh;
- 	int err;
- 
--	bh = ext4_read_block_bitmap_nowait(sb, block_group);
-+	bh = ext4_read_block_bitmap_nowait(sb, block_group, false);
- 	if (IS_ERR(bh))
- 		return bh;
- 	err = ext4_wait_block_bitmap(sb, block_group, bh);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 42f5060f3cdf..7451662e092a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1505,6 +1505,8 @@ struct ext4_sb_info {
- 	/* where last allocation was done - for stream allocation */
- 	unsigned long s_mb_last_group;
- 	unsigned long s_mb_last_start;
-+	unsigned int s_mb_prefetch;
-+	unsigned int s_mb_prefetch_limit;
- 
- 	/* stats for buddy allocator */
- 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
-@@ -2446,7 +2448,8 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
- 
- extern struct buffer_head *ext4_read_block_bitmap_nowait(struct super_block *sb,
--						ext4_group_t block_group);
-+						ext4_group_t block_group,
-+						bool ignore_locked);
- extern int ext4_wait_block_bitmap(struct super_block *sb,
- 				  ext4_group_t block_group,
- 				  struct buffer_head *bh);
-@@ -3145,6 +3148,7 @@ struct ext4_group_info {
- 	(1 << EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT)
- #define EXT4_GROUP_INFO_IBITMAP_CORRUPT		\
- 	(1 << EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT)
-+#define EXT4_GROUP_INFO_BBITMAP_READ_BIT	4
- 
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
-@@ -3159,6 +3163,8 @@ struct ext4_group_info {
- 	(set_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
- #define EXT4_MB_GRP_CLEAR_TRIMMED(grp)	\
- 	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_TEST_AND_SET_READ(grp)	\
-+	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &((grp)->bb_state)))
- 
- #define EXT4_MAX_CONTENTION		8
- #define EXT4_CONTENTION_THRESHOLD	2
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c0a331e2feb0..8a1e6e03c088 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -922,7 +922,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
- 			bh[i] = NULL;
- 			continue;
- 		}
--		bh[i] = ext4_read_block_bitmap_nowait(sb, group);
-+		bh[i] = ext4_read_block_bitmap_nowait(sb, group, false);
- 		if (IS_ERR(bh[i])) {
- 			err = PTR_ERR(bh[i]);
- 			bh[i] = NULL;
-@@ -2209,12 +2209,93 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 	return ret;
- }
- 
-+/*
-+ * Start prefetching @nr block bitmaps starting at @group.
-+ * Return the next group which needs to be prefetched.
-+ */
-+static ext4_group_t
-+ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
-+		 unsigned int nr, int *cnt)
-+{
-+	ext4_group_t ngroups = ext4_get_groups_count(sb);
-+	struct buffer_head *bh;
-+	struct blk_plug plug;
-+
-+	blk_start_plug(&plug);
-+	while (nr-- > 0) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
-+								  NULL);
-+		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+
-+		/*
-+		 * Prefetch block groups with free blocks; but don't
-+		 * bother if it is marked uninitialized on disk, since
-+		 * it won't require I/O to read.  Also only try to
-+		 * prefetch once, so we avoid getblk() call, which can
-+		 * be expensive.
-+		 */
-+		if (!EXT4_MB_GRP_TEST_AND_SET_READ(grp) &&
-+		    EXT4_MB_GRP_NEED_INIT(grp) &&
-+		    ext4_free_group_clusters(sb, gdp) > 0 &&
-+		    !(ext4_has_group_desc_csum(sb) &&
-+		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
-+			bh = ext4_read_block_bitmap_nowait(sb, group, true);
-+			if (bh && !IS_ERR(bh)) {
-+				if (!buffer_uptodate(bh) && cnt)
-+					(*cnt)++;
-+				brelse(bh);
-+			}
-+		}
-+		if (++group >= ngroups)
-+			group = 0;
-+	}
-+	blk_finish_plug(&plug);
-+	return group;
-+}
-+
-+/*
-+ * Prefetching reads the block bitmap into the buffer cache; but we
-+ * need to make sure that the buddy bitmap in the page cache has been
-+ * initialized.  Note that ext4_mb_init_group() will block if the I/O
-+ * is not yet completed, or indeed if it was not initiated by
-+ * ext4_mb_prefetch did not start the I/O.
-+ *
-+ * TODO: We should actually kick off the buddy bitmap setup in a work
-+ * queue when the buffer I/O is completed, so that we don't block
-+ * waiting for the block allocation bitmap read to finish when
-+ * ext4_mb_prefetch_fini is called from ext4_mb_regular_allocator().
-+ */
-+static void
-+ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
-+		      unsigned int nr)
-+{
-+	while (nr-- > 0) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
-+								  NULL);
-+		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+
-+		if (!group)
-+			group = ext4_get_groups_count(sb);
-+		group--;
-+		grp = ext4_get_group_info(sb, group);
-+
-+		if (EXT4_MB_GRP_NEED_INIT(grp) &&
-+		    ext4_free_group_clusters(sb, gdp) > 0 &&
-+		    !(ext4_has_group_desc_csum(sb) &&
-+		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
-+			if (ext4_mb_init_group(sb, group, GFP_NOFS))
-+				break;
-+		}
-+	}
-+}
-+
- static noinline_for_stack int
- ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- {
--	ext4_group_t ngroups, group, i;
-+	ext4_group_t prefetch_grp = 0, ngroups, group, i;
- 	int cr = -1;
- 	int err = 0, first_err = 0;
-+	unsigned int nr = 0, prefetch_ios = 0;
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	struct ext4_buddy e4b;
-@@ -2282,6 +2363,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 		 * from the goal value specified
- 		 */
- 		group = ac->ac_g_ex.fe_group;
-+		prefetch_grp = group;
- 
- 		for (i = 0; i < ngroups; group++, i++) {
- 			int ret = 0;
-@@ -2293,6 +2375,29 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			if (group >= ngroups)
- 				group = 0;
- 
-+			/*
-+			 * Batch reads of the block allocation bitmaps
-+			 * to get multiple READs in flight; limit
-+			 * prefetching at cr=0/1, otherwise mballoc can
-+			 * spend a lot of time loading imperfect groups
-+			 */
-+			if ((prefetch_grp == group) &&
-+			    (cr > 1 ||
-+			     prefetch_ios < sbi->s_mb_prefetch_limit)) {
-+				unsigned int curr_ios = prefetch_ios;
-+
-+				nr = sbi->s_mb_prefetch;
-+				if (ext4_has_feature_flex_bg(sb)) {
-+					nr = (group / sbi->s_mb_prefetch) *
-+						sbi->s_mb_prefetch;
-+					nr = nr + sbi->s_mb_prefetch - group;
-+				}
-+				prefetch_grp = ext4_mb_prefetch(sb, group,
-+							nr, &prefetch_ios);
-+				if (prefetch_ios == curr_ios)
-+					nr = 0;
-+			}
-+
- 			/* This now checks without needing the buddy page */
- 			ret = ext4_mb_good_group_nolock(ac, group, cr);
- 			if (ret <= 0) {
-@@ -2367,6 +2472,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	mb_debug(sb, "Best len %d, origin len %d, ac_status %u, ac_flags 0x%x, cr %d ret %d\n",
- 		 ac->ac_b_ex.fe_len, ac->ac_o_ex.fe_len, ac->ac_status,
- 		 ac->ac_flags, cr, err);
-+
-+	if (nr)
-+		ext4_mb_prefetch_fini(sb, prefetch_grp, nr);
-+
- 	return err;
- }
- 
-@@ -2613,6 +2722,25 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 			goto err_freebuddy;
- 	}
- 
-+	if (ext4_has_feature_flex_bg(sb)) {
-+		/* a single flex group is supposed to be read by a single IO */
-+		sbi->s_mb_prefetch = 1 << sbi->s_es->s_log_groups_per_flex;
-+		sbi->s_mb_prefetch *= 8; /* 8 prefetch IOs in flight at most */
-+	} else {
-+		sbi->s_mb_prefetch = 32;
-+	}
-+	if (sbi->s_mb_prefetch > ext4_get_groups_count(sb))
-+		sbi->s_mb_prefetch = ext4_get_groups_count(sb);
-+	/* now many real IOs to prefetch within a single allocation at cr=0
-+	 * given cr=0 is an CPU-related optimization we shouldn't try to
-+	 * load too many groups, at some point we should start to use what
-+	 * we've got in memory.
-+	 * with an average random access time 5ms, it'd take a second to get
-+	 * 200 groups (* N with flex_bg), so let's make this limit 4 */
-+	sbi->s_mb_prefetch_limit = sbi->s_mb_prefetch * 4;
-+	if (sbi->s_mb_prefetch_limit > ext4_get_groups_count(sb))
-+		sbi->s_mb_prefetch_limit = ext4_get_groups_count(sb);
-+
- 	return 0;
- 
- err_freebuddy:
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 6c9fc9e21c13..31e0db726d21 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -240,6 +240,8 @@ EXT4_RO_ATTR_ES_STRING(last_error_func, s_last_error_func, 32);
- EXT4_ATTR(first_error_time, 0444, first_error_time);
- EXT4_ATTR(last_error_time, 0444, last_error_time);
- EXT4_ATTR(journal_task, 0444, journal_task);
-+EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
-+EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
- 
- static unsigned int old_bump_val = 128;
- EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
-@@ -283,6 +285,8 @@ static struct attribute *ext4_attrs[] = {
- #ifdef CONFIG_EXT4_DEBUG
- 	ATTR_LIST(simulate_fail),
- #endif
-+	ATTR_LIST(mb_prefetch),
-+	ATTR_LIST(mb_prefetch_limit),
- 	NULL,
- };
- ATTRIBUTE_GROUPS(ext4);
--- 
-2.24.1
-
+> +out:
+> +	mutex_unlock(&sb_init_dio_done_mutex);
+> +	return err;
+>  }
+>  
+>  static int dio_set_defer_completion(struct dio *dio)
+> @@ -615,9 +623,7 @@ static int dio_set_defer_completion(struct dio *dio)
+>  	if (dio->defer_completion)
+>  		return 0;
+>  	dio->defer_completion = true;
+> -	if (!sb->s_dio_done_wq)
+> -		return sb_init_dio_done_wq(sb);
+> -	return 0;
+> +	return sb_init_dio_done_wq(sb);
+>  }
+>  
+>  /*
+> @@ -1250,7 +1256,7 @@ do_blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
+>  		retval = 0;
+>  		if (iocb->ki_flags & IOCB_DSYNC)
+>  			retval = dio_set_defer_completion(dio);
+> -		else if (!dio->inode->i_sb->s_dio_done_wq) {
+> +		else {
+>  			/*
+>  			 * In case of AIO write racing with buffered read we
+>  			 * need to defer completion. We can't decide this now,
+> diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+> index ec7b78e6feca..dc7fe898dab8 100644
+> --- a/fs/iomap/direct-io.c
+> +++ b/fs/iomap/direct-io.c
+> @@ -487,8 +487,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+>  		dio_warn_stale_pagecache(iocb->ki_filp);
+>  	ret = 0;
+>  
+> -	if (iov_iter_rw(iter) == WRITE && !wait_for_completion &&
+> -	    !inode->i_sb->s_dio_done_wq) {
+> +	if (iov_iter_rw(iter) == WRITE && !wait_for_completion) {
+>  		ret = sb_init_dio_done_wq(inode->i_sb);
+>  		if (ret < 0)
+>  			goto out_free_dio;
+> -- 
+> 2.27.0
+> 
