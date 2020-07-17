@@ -2,38 +2,42 @@ Return-Path: <SRS0=xKa7=A4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74732C433E2
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83ACFC433DF
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D916204EA
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5F31B204EA
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Jul 2020 15:54:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726710AbgGQPyD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Jul 2020 11:54:03 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54476 "EHLO
+        id S1726399AbgGQPyB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Jul 2020 11:54:01 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:54463 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726556AbgGQPyC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2020 11:54:02 -0400
+        with ESMTP id S1726344AbgGQPyA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2020 11:54:00 -0400
 Received: from callcc.thunk.org (pool-96-230-252-158.bstnma.fios.verizon.net [96.230.252.158])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06HFrx67029542
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06HFrxBQ029543
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 17 Jul 2020 11:53:59 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id C41AF420304; Fri, 17 Jul 2020 11:53:58 -0400 (EDT)
+        id CD1D2420478; Fri, 17 Jul 2020 11:53:58 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     Alex Zhuravlev <bzzz@whamcloud.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 0/4] ex4 block bitmap prefetching
-Date:   Fri, 17 Jul 2020 11:53:48 -0400
-Message-Id: <20200717155352.1053040-1-tytso@mit.edu>
+        Alex Zhuravlev <azhuravlev@whamcloud.com>,
+        Andreas Dilger <adilger@whamcloud.com>
+Subject: [PATCH 2/4] ext4: skip non-loaded groups at cr=0/1 when scanning for good groups
+Date:   Fri, 17 Jul 2020 11:53:50 -0400
+Message-Id: <20200717155352.1053040-3-tytso@mit.edu>
 X-Mailer: git-send-email 2.24.1
+In-Reply-To: <20200717155352.1053040-1-tytso@mit.edu>
+References: <20200717155352.1053040-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -41,27 +45,53 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I've revised Alex's original block allocation prefetch changes a bit,
-and an option to prefetch all of the block allocation bitmaps when the
-file system is mounted.  Please take a look...
+From: Alex Zhuravlev <azhuravlev@whamcloud.com>
 
+cr=0 is supposed to be an optimization to save CPU cycles, but if
+buddy data (in memory) is not initialized then all this makes no sense
+as we have to do sync IO taking a lot of cycles.  also, at cr=0
+mballoc doesn't store any avaibale chunk. cr=1 also skips groups using
+heuristic based on avg. fragment size. it's more useful to skip such
+groups and switch to cr=2 where groups will be scanned for available
+chunks.
 
-Alex Zhuravlev (2):
-  ext4: add prefetching for block allocation bitmaps
-  ext4: skip non-loaded groups at cr=0/1 when scanning for good groups
+using sparse image and dm-slow virtual device of 120TB was
+simulated. then the image was formatted and filled using debugfs to
+mark ~85% of available space as busy.  mount process w/o the patch
+couldn't complete in half an hour (according to vmstat it would take
+~10-11 hours).  With the patch applied mount took ~20 seconds.
 
-Theodore Ts'o (2):
-  ext4: indicate via a block bitmap read is prefetched via a tracepoint
-  ext4: add prefetch_block_bitmaps mount options
+Lustre-bug-id: https://jira.whamcloud.com/browse/LU-12988
+Signed-off-by: Alex Zhuravlev <bzzz@whamcloud.com>
+Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
+---
+ fs/ext4/mballoc.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
- fs/ext4/balloc.c            |  16 +++-
- fs/ext4/ext4.h              |  21 +++++-
- fs/ext4/mballoc.c           | 143 +++++++++++++++++++++++++++++++++++-
- fs/ext4/super.c             |  51 ++++++++++---
- fs/ext4/sysfs.c             |   4 +
- include/trace/events/ext4.h |  24 +++++-
- 6 files changed, 236 insertions(+), 23 deletions(-)
-
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8a1e6e03c088..172994349bf6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2195,7 +2195,18 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
+ 
+ 	/* We only do this if the grp has never been initialized */
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+-		ret = ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
++		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
++								  NULL);
++		int ret;
++
++		/* cr=0/1 is a very optimistic search to find large
++		 * good chunks almost for free. if buddy data is
++		 * not ready, then this optimization makes no sense */
++		if (cr < 2 &&
++		    !(ext4_has_group_desc_csum(sb) &&
++		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))))
++			return 0;
++		ret = ext4_mb_init_group(sb, group, GFP_NOFS);
+ 		if (ret)
+ 			return ret;
+ 	}
 -- 
 2.24.1
 
