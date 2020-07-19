@@ -1,144 +1,138 @@
-Return-Path: <SRS0=VxRI=A5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=wrse=A6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 862B7C433E0
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jul 2020 14:06:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B23BC433E1
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Jul 2020 11:08:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 66B262074B
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jul 2020 14:06:06 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=126.com header.i=@126.com header.b="a1k3Xi0l"
+	by mail.kernel.org (Postfix) with ESMTP id E645D2065F
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Jul 2020 11:08:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726640AbgGROGD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 18 Jul 2020 10:06:03 -0400
-Received: from m15114.mail.126.com ([220.181.15.114]:58765 "EHLO
-        m15114.mail.126.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726611AbgGROGD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jul 2020 10:06:03 -0400
-X-Greylist: delayed 2067 seconds by postgrey-1.27 at vger.kernel.org; Sat, 18 Jul 2020 10:05:34 EDT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=126.com;
-        s=s110527; h=From:Subject:Date:Message-Id; bh=+amZxSkpaPypl7S/BB
-        uMS43KAmapgCGLbADtQmMNmIU=; b=a1k3Xi0lsO1K2GRFtDo/ic08FjRs9t7nTW
-        DwslJ8eQw91bwFptXF4QO83gJ5Hbn1ENxtjOQ3O5ILoDM6kbMPeVuyFGzX4KfbXP
-        U5hVLZw0dtcBgmg37OTxizb7kZWl85GOW4J1PJ02x0k+i2OU2nDsygo4jyaSoHw0
-        C0tJsRgjs=
-Received: from 192.168.137.249 (unknown [112.10.74.162])
-        by smtp7 (Coremail) with SMTP id DsmowAB3KBDj+BJfSO3mHQ--.56553S3;
-        Sat, 18 Jul 2020 21:28:05 +0800 (CST)
-From:   Xianting Tian <xianting_tian@126.com>
-To:     tytso@mit.edu, jack@suse.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] jbd2: check bh2jh() before accessing it
-Date:   Sat, 18 Jul 2020 09:28:03 -0400
-Message-Id: <1595078883-8647-1-git-send-email-xianting_tian@126.com>
-X-Mailer: git-send-email 1.8.3.1
-X-CM-TRANSID: DsmowAB3KBDj+BJfSO3mHQ--.56553S3
-X-Coremail-Antispam: 1Uf129KBjvJXoWxZrW8ArW7Gw1rWw1fWw18uFg_yoW7JryUpr
-        y5G348urWvvFnxZr1kJF45CrWUXw1FyayUGw1I9r1v9a1UGw1ftFW5JFs8Ga4DZFsxC3W2
-        qr4DXws5Kw1UtaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07j3fHUUUUUU=
-X-Originating-IP: [112.10.74.162]
-X-CM-SenderInfo: h0ld03plqjs3xldqqiyswou0bp/1tbi3AVlpFpD-NvKkAAAs8
+        id S1726284AbgGSLIo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 19 Jul 2020 07:08:44 -0400
+Received: from smtp-out-no.shaw.ca ([64.59.134.12]:34174 "EHLO
+        smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726255AbgGSLIo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jul 2020 07:08:44 -0400
+X-Greylist: delayed 488 seconds by postgrey-1.27 at vger.kernel.org; Sun, 19 Jul 2020 07:08:43 EDT
+Received: from cabot.adilger.int ([70.77.221.9])
+        by shaw.ca with ESMTP
+        id x73Zjyec1ng7Kx73aj5HPV; Sun, 19 Jul 2020 05:00:35 -0600
+X-Authority-Analysis: v=2.3 cv=ecemg4MH c=1 sm=1 tr=0
+ a=2Y6h5+ypAxmHcsumz2f7Og==:117 a=2Y6h5+ypAxmHcsumz2f7Og==:17 a=RPJ6JBhKAAAA:8
+ a=qSHJuj8W1XDaRDDPfbkA:9 a=fa_un-3J20JGBB2Tu-mn:22
+From:   Andreas Dilger <adilger@dilger.ca>
+To:     tytso@mit.edu
+Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] tests: replace perl usage with shell built-in
+Date:   Sun, 19 Jul 2020 05:00:33 -0600
+Message-Id: <20200719110033.78844-1-adilger@dilger.ca>
+X-Mailer: git-send-email 2.14.3 (Apple Git-98)
+X-CMAE-Envelope: MS4wfMndP7t1W/G97Z+bf0tlfLVcE/x91jQpl6Poh5LeCsom5sYxGhlj2vG9evPh0FXYOLMhRQ+yB1JYwgTG75R4lEacfe1ehTsPIFBI6A+CFo07aahK9CBx
+ lVPtoBrcohxfTdpU79Q2u0tvFpD3RMEaZG69lNDWkm3kzhAA/0gBysuvintZcH4nuRmlUaTJt8gHkl5oUTm4q71+fBm69QryBPJGaHFJu2OpAv0oEuqiaD4L
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We met a crash issue when testing nbd device on kernel 4.14.0-115,
-the scenario of the issue is "nbd device disconnected before unmounting
-ext4 filesystem".
-The call trace of the crash as below:
-[346961.426274] block nbd2: Connection timed out
-[346961.426943] EXT4-fs warning (device nbd2): ext4_end_bio:323: I/O error 10 writing to inode 5768758
-			(offset 155926528 size 8192 starting block 8998070)
-[346961.426957] Aborting journal on device nbd2-8.
-[346961.427027] EXT4-fs error (device nbd2) in __ext4_new_inode:927: Readonly filesystem
- ... ...
-[346961.437288] Buffer I/O error on dev nbd2, logical block 13139968, lost sync page write
-[346961.437878] JBD2: Error -5 detected when updating journal superblock for nbd2-8.
-[346961.438478] BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
-[346961.452495] RIP: 0010:jbd2_journal_grab_journal_head+0x1e/0x40 [jbd2]  <== crash code offset is 0x1e(30)
-[346961.453457] RSP: 0018:ffffc9000ffbbca8 EFLAGS: 00010206
-[346961.454414] RAX: 0000000000000000 RBX: ffff881dafe04960 RCX: ffff881aee5b0ac8
-[346961.455378] RDX: ffff881df7768690 RSI: ffff88100a5e9800 RDI: ffff880a22593d40
-[346961.456360] RBP: ffffc9000ffbbca8 R08: ffff881dafe04960 R09: 000000018040001c
-[346961.457332] R10: 000000002fe92601 R11: ffff88202fe90700 R12: ffff88100a5e9800
-[346961.458302] R13: 0000000000000000 R14: ffff880a22593d40 R15: ffff881dafe04960
-[346961.459269] FS:  0000000000000000(0000) GS:ffff88103e5c0000(0000) knlGS:0000000000000000
-[346961.460250] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[346961.461216] CR2: 0000000000000008 CR3: 0000000001c09004 CR4: 00000000007606e0
-[346961.462201] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[346961.463164] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-[346961.465047] Call Trace:
-[346961.465981]  __jbd2_journal_insert_checkpoint+0x28/0x80 [jbd2]
-[346961.466907]  jbd2_journal_commit_transaction+0x1185/0x1a20 [jbd2]
-[346961.467862]  ? lock_timer_base+0x7d/0xa0
-[346961.468794]  kjournald2+0xd2/0x260 [jbd2]
-[346961.469717]  ? remove_wait_queue+0x60/0x60
-[346961.470630]  kthread+0x109/0x140
-[346961.471533]  ? commit_timeout+0x10/0x10 [jbd2]
-[346961.472438]  ? kthread_park+0x60/0x60
-[346961.473521]  ? do_syscall_64+0x182/0x1b0
-[346961.474546]  ret_from_fork+0x25/0x30
+A couple of tests use perl only for generating a string of
+N characters long.  Instead of requiring perl to run a few
+tests, use shell built-in commands and don't repeatedly run
+a separate subshell just to get a string of characters.
 
-Analysis of the crash code as below:
-struct journal_head *jbd2_journal_grab_journal_head(struct buffer_head *bh)
-{
-        struct journal_head *jh = NULL;
-
-        jbd_lock_bh_journal_head(bh);
-        if (buffer_jbd(bh)) {
-                jh = bh2jh(bh); <== jh is NULL (bh->b_private = NULL)
-                jh->b_jcount++; <== crash here!!!
-				    b_jcount offset in 'struct journal_head' is 0x8
-        }
-        jbd_unlock_bh_journal_head(bh);
-        return jh;
-}
-
-crash> dis -l jbd2_journal_grab_journal_head
-0xffffffffa00b6050 <jbd2_journal_grab_journal_head>:    nopl   0x0(%rax,%rax,1) [FTRACE NOP]
-0xffffffffa00b6055 <jbd2_journal_grab_journal_head+5>:  push   %rbp
-0xffffffffa00b6056 <jbd2_journal_grab_journal_head+6>:  mov    %rsp,%rbp
-0xffffffffa00b6059 <jbd2_journal_grab_journal_head+9>:  lock btsl $0x18,(%rdi)
-0xffffffffa00b605e <jbd2_journal_grab_journal_head+14>: jb     0xffffffffa00b6079 <jbd2_journal_grab_journal_head+41>
-0xffffffffa00b6060 <jbd2_journal_grab_journal_head+16>: mov    (%rdi),%rax
-0xffffffffa00b6063 <jbd2_journal_grab_journal_head+19>: test   $0x20000,%eax
-0xffffffffa00b6068 <jbd2_journal_grab_journal_head+24>: je     0xffffffffa00b6087 <jbd2_journal_grab_journal_head+55>
-0xffffffffa00b606a <jbd2_journal_grab_journal_head+26>: mov    0x40(%rdi),%rax  <== jh is NULL(b_private's offset in 'struct buffer_head' is 0x40)
-0xffffffffa00b606e <jbd2_journal_grab_journal_head+30>: addl   $0x1,0x8(%rax)  <== "jh->b_jcount++" crash!!!
-
-According to the logical in above code, buffer_head has an attached
-journal_head("buffer_jbd(bh)" is true), but buffer_head doesn't record
-it(bh->b_private is NULL).
-So testing if "buffer_jbd(bh)" is true can't guarantee "bh->b_private"
-is not NULL under the abnormal test case.
-
-Signed-off-by: Xianting Tian <xianting_tian@126.com>
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/jbd2/journal.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ tests/d_xattr_sorting/script    |  2 +-
+ tests/f_badsymlinks2/mkimage.sh |  4 +++-
+ tests/f_create_symlinks/script  | 12 ++++++------
+ util/gen-sample-fs              |  4 +++-
+ 4 files changed, 13 insertions(+), 9 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e494443..cb661d4 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2535,7 +2535,7 @@ struct journal_head *jbd2_journal_grab_journal_head(struct buffer_head *bh)
- 	struct journal_head *jh = NULL;
+diff --git a/tests/d_xattr_sorting/script b/tests/d_xattr_sorting/script
+index 866611502012..65c74840f517 100644
+--- a/tests/d_xattr_sorting/script
++++ b/tests/d_xattr_sorting/script
+@@ -22,7 +22,7 @@ echo Exit status is $status >> $OUT.new
  
- 	jbd_lock_bh_journal_head(bh);
--	if (buffer_jbd(bh)) {
-+	if (buffer_jbd(bh) && bh2jh(bh)) {
- 		jh = bh2jh(bh);
- 		jh->b_jcount++;
- 	}
+ B=$(mktemp ${TMPDIR:-/tmp}/b.XXXXXX)
+ 
+-perl -e 'print "x" x 256;' > $B
++printf 'x%.0s' {1..256} > $B
+ 
+ echo "ea_set -f /tmp/b / security.SMEG64" >> $OUT.new
+ $DEBUGFS -w -R "ea_set -f $B / security.SMEG64" $TMPFILE >> $OUT.new 2>&1
+diff --git a/tests/f_badsymlinks2/mkimage.sh b/tests/f_badsymlinks2/mkimage.sh
+index 6bbf020de0d7..297633790bee 100755
+--- a/tests/f_badsymlinks2/mkimage.sh
++++ b/tests/f_badsymlinks2/mkimage.sh
+@@ -18,10 +18,12 @@ do_tune2fs() {
+ 	mount image mnt
+ }
+ 
++A=$(printf 'A%.0s' {1..4096})
+ symlink() {
+ 	local len=$1
+ 	local src=$2
+-	local target=$(perl -e 'print "A" x '$len)
++	local target=${A:0:$len}
++
+ 	ln -s $target $src
+ 	stat -c %i $src
+ }
+diff --git a/tests/f_create_symlinks/script b/tests/f_create_symlinks/script
+index 169f58dbed2f..8906f3d65653 100644
+--- a/tests/f_create_symlinks/script
++++ b/tests/f_create_symlinks/script
+@@ -15,22 +15,22 @@ fi
+ dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
+ 
+ echo mke2fs -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 test.img 1024 > $OUT.new
+-$MKE2FS -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 $TMPFILE 1024 >> $OUT 2>&1
++$MKE2FS -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 $TMPFILE 1024 >> $OUT.new 2>&1
+ 
+ $FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
+ status=$?
+ echo Exit status is $status >> $OUT.new
+ 
++B=$(printf 'x%.0s' {1..1500})
+ for i in 30 60 70 500 1023 1024 1500; do
+-	echo "debugfs -R \"symlink /l_$i $(perl -e "print 'x' x $i;")\" test.img" >> $OUT.new
+-	$DEBUGFS -w -R "symlink /l_$i $(perl -e "print 'x' x $i;")" $TMPFILE \
+-		 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT.new
++	echo "debugfs -R \"symlink /l_$i ${B:0:i}\" test.img" >> $OUT.new
++	$DEBUGFS -w -R "symlink /l_$i ${B:0:i}" $TMPFILE >> $OUT.new 2>&1
+ done
++unset B
+ 
+ for i in 30 60 70 500 1023 1024 1500; do
+ 	echo "debugfs -R \"stat /l_$i\" test.img" >> $OUT.new
+-	$DEBUGFS -R "stat /l_$i" $TMPFILE 2>&1 | \
+-		 grep -v "time: " >> $OUT.new
++	$DEBUGFS -R "stat /l_$i" $TMPFILE 2>&1 | grep -v "time: " >> $OUT.new
+ done
+ 
+ $FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
+diff --git a/util/gen-sample-fs b/util/gen-sample-fs
+index 8e139160fd01..290da33f51c3 100755
+--- a/util/gen-sample-fs
++++ b/util/gen-sample-fs
+@@ -7,8 +7,10 @@ cp /dev/null $FS
+ mke2fs -q -t ext4 -O inline_data,^has_journal -I 256 -b 4096 -N 64 $FS 256
+ mount -t ext4 $FS $MNT
+ ln -s symlink_data $MNT/symlink
++
++L=$(printf 'x%.0s' {1..1024})
+ for i in 30 70 500 1023 1024; do
+-	ln -s /$(perl -e "print 'x' x $i;") $MNT/l_$i
++	ln -s /${L:0:$i} $MNT/l_$i
+ done
+ touch $MNT/acl
+ setfacl -m u:daemon:r $MNT/acl
 -- 
-1.8.3.1
+2.14.3 (Apple Git-98)
 
