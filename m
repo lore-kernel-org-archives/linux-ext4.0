@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCC4AC433F1
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 23:01:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E22ADC433F2
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 23:01:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9ABDB20849
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 23:01:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE14F20849
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 23:01:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1595372464;
-	bh=bm/93v1WSvC6J93NR1nVeFT9ERB8Qnq16lzUB1BPqPE=;
+	s=default; t=1595372465;
+	bh=HkY2xoW+5h/KPN4NirPSCI6mZ1dMQTytJsLYKF1i9Kk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=bvdvmS2rPmVuvanUK5eNI2FUm4R0k1JJEnR+ryeUWrLwW5+B5rB421/w6jJa6Mrld
-	 ofdPkUx4aGsfGccJe1PVXwY7LvAnxct2H4ZY7UkGmq+VbsnqnEVFZDr+FXdyLWpVmB
-	 SRnsWNR5teuEQsPj7wXYCgXJq3ER2alFgEwOZUec=
+	b=MSAWiSXBo+1BtBKJWYRrqpbywH+M1ZRO1bmIPSdOgQAryeHzOcOpZp8HQM3BWBrm5
+	 6tJtfV/0S9CWNLBQh+K1U5YilYcF00EXNavu/Zm0IoP56xKoLckHt/V1pOIXHPjV3L
+	 PrcYu+8sHOHZIbyN8ngDZENtaaLZUwOQ+anLco8g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731403AbgGUXBE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1731407AbgGUXBE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 21 Jul 2020 19:01:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48984 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:48990 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731334AbgGUXBA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726555AbgGUXBA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 21 Jul 2020 19:01:00 -0400
 Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 359C42080D;
-        Tue, 21 Jul 2020 23:01:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9616A207BB;
+        Tue, 21 Jul 2020 23:00:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1595372460;
-        bh=bm/93v1WSvC6J93NR1nVeFT9ERB8Qnq16lzUB1BPqPE=;
+        s=default; t=1595372459;
+        bh=HkY2xoW+5h/KPN4NirPSCI6mZ1dMQTytJsLYKF1i9Kk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=yTeekrEWE34bWmgyoc8iAznT5bvWxJDueciA3ij6RH6rLKNuOnEk0MOy7iokq1aFB
-         RuBNvzBsxiqhd7gPu+ZphlSWCK0lXcg6Pxg9KqXbYpGT8njiwXoXfX+quheoo8oXmE
-         bhMmzYGK06j+1a+jUGVTDO7CMxfvYQHgh4nIFytI=
+        b=k3Gk9VGnsqGB5y+WMg5lND+8JiNxzRrc4VjLmUb1EIy9UlP7HqQV7CTx+ehe/RuD1
+         XuaTIIvbwwLc5tFsjkcZoEyxBDu3L+o2yMrmwuMjDcbypkZuUM4Or6eNsG2RGZ5mhI
+         VdEvSYtK16hT7PpUn/1yWdPuPeao//sgvXC/ASxo=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH 5/5] fs-verity: use smp_load_acquire() for ->i_verity_info
-Date:   Tue, 21 Jul 2020 15:59:20 -0700
-Message-Id: <20200721225920.114347-6-ebiggers@kernel.org>
+Subject: [PATCH 3/5] fscrypt: use smp_load_acquire() for ->s_master_keys
+Date:   Tue, 21 Jul 2020 15:59:18 -0700
+Message-Id: <20200721225920.114347-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <20200721225920.114347-1-ebiggers@kernel.org>
 References: <20200721225920.114347-1-ebiggers@kernel.org>
@@ -64,75 +64,54 @@ published memory must only be accessed in a way that involves the
 pointer itself.  This may not be the case if allocating the object also
 involves initializing a static or global variable, for example.
 
-fsverity_info::tree_params.hash_alg->tfm is a crypto_ahash object that's
-internal to and is allocated by the crypto subsystem.  So by using
-READ_ONCE() for ->i_verity_info, we're relying on internal
-implementation details of the crypto subsystem.
+super_block::s_master_keys is a keyring, which is internal to and is
+allocated by the keyrings subsystem.  By using READ_ONCE() for it, we're
+relying on internal implementation details of the keyrings subsystem.
 
 Remove this fragile assumption by using smp_load_acquire() instead.
-
-Also fix the cmpxchg logic to correctly execute an ACQUIRE barrier when
-losing the cmpxchg race, since cmpxchg doesn't guarantee a memory
-barrier on failure.
 
 (Note: I haven't seen any real-world problems here.  This change is just
 fixing the code to be guaranteed correct and less fragile.)
 
-Fixes: fd2d1acfcadf ("fs-verity: add the hook for file ->open()")
+Fixes: 22d94f493bfb ("fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY ioctl")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/verity/open.c         | 15 ++++++++++++---
- include/linux/fsverity.h |  9 +++++++--
- 2 files changed, 19 insertions(+), 5 deletions(-)
+ fs/crypto/keyring.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/fs/verity/open.c b/fs/verity/open.c
-index d007db0c9304..bfe0280c14e4 100644
---- a/fs/verity/open.c
-+++ b/fs/verity/open.c
-@@ -221,11 +221,20 @@ struct fsverity_info *fsverity_create_info(const struct inode *inode,
- void fsverity_set_info(struct inode *inode, struct fsverity_info *vi)
- {
- 	/*
--	 * Multiple processes may race to set ->i_verity_info, so use cmpxchg.
--	 * This pairs with the READ_ONCE() in fsverity_get_info().
-+	 * Multiple tasks may race to set ->i_verity_info, so use
-+	 * cmpxchg_release().  This pairs with the smp_load_acquire() in
-+	 * fsverity_get_info().  I.e., here we publish ->i_verity_info with a
-+	 * RELEASE barrier so that other tasks can ACQUIRE it.
- 	 */
--	if (cmpxchg(&inode->i_verity_info, NULL, vi) != NULL)
-+	if (cmpxchg_release(&inode->i_verity_info, NULL, vi) != NULL) {
-+		/* Lost the race, so free the fsverity_info we allocated. */
- 		fsverity_free_info(vi);
-+		/*
-+		 * Afterwards, the caller may access ->i_verity_info directly,
-+		 * so make sure to ACQUIRE the winning fsverity_info.
-+		 */
-+		(void)fsverity_get_info(inode);
-+	}
- }
+diff --git a/fs/crypto/keyring.c b/fs/crypto/keyring.c
+index 7f8ac61a20d6..71d56f8e2870 100644
+--- a/fs/crypto/keyring.c
++++ b/fs/crypto/keyring.c
+@@ -213,7 +213,11 @@ static int allocate_filesystem_keyring(struct super_block *sb)
+ 	if (IS_ERR(keyring))
+ 		return PTR_ERR(keyring);
  
- void fsverity_free_info(struct fsverity_info *vi)
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 78201a6d35f6..c1144a450392 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -115,8 +115,13 @@ struct fsverity_operations {
- 
- static inline struct fsverity_info *fsverity_get_info(const struct inode *inode)
- {
--	/* pairs with the cmpxchg() in fsverity_set_info() */
--	return READ_ONCE(inode->i_verity_info);
+-	/* Pairs with READ_ONCE() in fscrypt_find_master_key() */
 +	/*
-+	 * Pairs with the cmpxchg_release() in fsverity_set_info().
-+	 * I.e., another task may publish ->i_verity_info concurrently,
++	 * Pairs with the smp_load_acquire() in fscrypt_find_master_key().
++	 * I.e., here we publish ->s_master_keys with a RELEASE barrier so that
++	 * concurrent tasks can ACQUIRE it.
++	 */
+ 	smp_store_release(&sb->s_master_keys, keyring);
+ 	return 0;
+ }
+@@ -234,8 +238,13 @@ struct key *fscrypt_find_master_key(struct super_block *sb,
+ 	struct key *keyring;
+ 	char description[FSCRYPT_MK_DESCRIPTION_SIZE];
+ 
+-	/* pairs with smp_store_release() in allocate_filesystem_keyring() */
+-	keyring = READ_ONCE(sb->s_master_keys);
++	/*
++	 * Pairs with the smp_store_release() in allocate_filesystem_keyring().
++	 * I.e., another task can publish ->s_master_keys concurrently,
 +	 * executing a RELEASE barrier.  We need to use smp_load_acquire() here
 +	 * to safely ACQUIRE the memory the other task published.
 +	 */
-+	return smp_load_acquire(&inode->i_verity_info);
- }
++	keyring = smp_load_acquire(&sb->s_master_keys);
+ 	if (keyring == NULL)
+ 		return ERR_PTR(-ENOKEY); /* No keyring yet, so no keys yet. */
  
- /* enable.c */
 -- 
 2.27.0
 
