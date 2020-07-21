@@ -2,105 +2,164 @@ Return-Path: <SRS0=WQej=BA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AB81C433DF
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 18:11:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5A2FC433DF
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 18:32:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F232207BB
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 18:11:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1595355097;
-	bh=8PmokV2OOLmhOJcGzxltydoC6SNc4ybchJ4kJJykcWM=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=1SXQ5fxF0AhIe11PDUAJ5v4Lsq+8CUZ1kp5mGNAL45MGEwHWDjoAPR7cFWG6+6SSj
-	 ep8vB97V+CN1hDixd2AWOWtOyQBB/4e1supIB5xJhhHYZ7AkANDAqq7b3iHWAWDxqo
-	 /cwKpND7M2bM2AI21OehOYRRXXl/RVSQBq+Lg/dk=
+	by mail.kernel.org (Postfix) with ESMTP id A064D206E9
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jul 2020 18:32:11 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="YZLMGD/R"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726943AbgGUSLh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Jul 2020 14:11:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46760 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726029AbgGUSLg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 21 Jul 2020 14:11:36 -0400
-Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 91CAF20720;
-        Tue, 21 Jul 2020 18:11:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1595355095;
-        bh=8PmokV2OOLmhOJcGzxltydoC6SNc4ybchJ4kJJykcWM=;
-        h=From:To:Cc:Subject:Date:From;
-        b=kO4W9ZhKEjO67C15PxdhGd0mkQ4ex6CD4DjfWXWPsgSgIbHe4fJG7yGUMOTdvC5lF
-         XsRirzo70YHXKkubXVARHQf+brNyq9xgFikJwXiEGCVZ4/C0mB1EIZl9kk4HqOYB9/
-         3SVtABIpfYg/BronmpYSvNUciJR0vU/pTxWHv9eM=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        Paul Crowley <paulcrowley@google.com>,
-        Satya Tangirala <satyat@google.com>
-Subject: [PATCH] fscrypt: restrict IV_INO_LBLK_* to AES-256-XTS
-Date:   Tue, 21 Jul 2020 11:10:12 -0700
-Message-Id: <20200721181012.39308-1-ebiggers@kernel.org>
+        id S1730175AbgGUScL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Jul 2020 14:32:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35778 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729015AbgGUScI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2020 14:32:08 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8FA2FC0619DB;
+        Tue, 21 Jul 2020 11:32:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=xU171t7ztfam8+xnaeFGlyAau2FdqaQtiVon3JxnpSU=; b=YZLMGD/R+ktbdwc4xiH9a29f5h
+        hwNXGvtAxLPO3AL54x641XLSxIz2rAPmoxfMSymEfT/c1ybEz0H+UYEXhlx4jqYLPfZpn9mzRgkmP
+        sOLGJlYpZlLHpzKqDOgKd73jxrcUgi20fcT3wOvb4j5jig1zCdMagouh5WCdWAWS0+AE+KlsR76tR
+        NScrViP2XiQMiVgbjaUsnIaKp6UgUl7/WmwqvYfwxuPp5slvE/cB6izGeumc2S/5u/mgoAJHMfaTJ
+        pNJI/8DhmehoXnCcedyqVLLW52JBBsLcWvvOCvMf9ukounNnrAttEfHX8A4w4YZQyCxIfk55ghgmh
+        KluiZGhQ==;
+Received: from [2001:4bb8:18c:2acc:5b1c:6483:bd6d:e406] (helo=localhost)
+        by casper.infradead.org with esmtpsa (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1jxx3a-00062X-Oq; Tue, 21 Jul 2020 18:32:03 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Dave Chinner <david@fromorbit.com>,
+        Goldwyn Rodrigues <rgoldwyn@suse.de>
+Cc:     Damien Le Moal <damien.lemoal@wdc.com>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        Johannes Thumshirn <jth@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>
+Subject: [PATCH 2/3] iomap: Only invalidate page cache pages on direct IO writes
+Date:   Tue, 21 Jul 2020 20:31:56 +0200
+Message-Id: <20200721183157.202276-3-hch@lst.de>
 X-Mailer: git-send-email 2.27.0
+In-Reply-To: <20200721183157.202276-1-hch@lst.de>
+References: <20200721183157.202276-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Dave Chinner <dchinner@redhat.com>
 
-IV_INO_LBLK_* exist only because of hardware limitations, and currently
-the only known use case for them involves AES-256-XTS.  Therefore, for
-now only allow them in combination with AES-256-XTS.  This way we don't
-have to worry about them being combined with other encryption modes.
+The historic requirement for XFS to invalidate cached pages on
+direct IO reads has been lost in the twisty pages of history - it was
+inherited from Irix, which implemented page cache invalidation on
+read as a method of working around problems synchronising page
+cache state with uncached IO.
 
-(To be clear, combining IV_INO_LBLK_* with other encryption modes
-*should* work just fine.  It's just not being tested, so we can't be
-100% sure it works.  So with no known use case, it's best to disallow it
-for now, just like we don't allow other weird combinations like
-AES-256-XTS contents encryption with Adiantum filenames encryption.)
+XFS has carried this ever since. In the initial linux ports it was
+necessary to get mmap and DIO to play "ok" together and not
+immediately corrupt data. This was the state of play until the linux
+kernel had infrastructure to track unwritten extents and synchronise
+page faults with allocations and unwritten extent conversions
+(->page_mkwrite infrastructure). IOws, the page cache invalidation
+on DIO read was necessary to prevent trivial data corruptions. This
+didn't solve all the problems, though.
 
-This can be relaxed later if a use case for other combinations arises.
+There were peformance problems if we didn't invalidate the entire
+page cache over the file on read - we couldn't easily determine if
+the cached pages were over the range of the IO, and invalidation
+required taking a serialising lock (i_mutex) on the inode. This
+serialising lock was an issue for XFS, as it was the only exclusive
+lock in the direct Io read path.
 
-Fixes: b103fb7653ff ("fscrypt: add support for IV_INO_LBLK_64 policies")
-Fixes: e3b1078bedd3 ("fscrypt: add support for IV_INO_LBLK_32 policies")
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Hence if there were any cached pages, we'd just invalidate the
+entire file in one go so that subsequent IOs didn't need to take the
+serialising lock. This was a problem that prevented ranged
+invalidation from being particularly useful for avoiding the
+remaining coherency issues. This was solved with the conversion of
+i_mutex to i_rwsem and the conversion of the XFS inode IO lock to
+use i_rwsem. Hence we could now just do ranged invalidation and the
+performance problem went away.
+
+However, page cache invalidation was still needed to serialise
+sub-page/sub-block zeroing via direct IO against buffered IO because
+bufferhead state attached to the cached page could get out of whack
+when direct IOs were issued.  We've removed bufferheads from the
+XFS code, and we don't carry any extent state on the cached pages
+anymore, and so this problem has gone away, too.
+
+IOWs, it would appear that we don't have any good reason to be
+invalidating the page cache on DIO reads anymore. Hence remove the
+invalidation on read because it is unnecessary overhead,
+not needed to maintain coherency between mmap/buffered access and
+direct IO anymore, and prevents anyone from using direct IO reads
+from intentionally invalidating the page cache of a file.
+
+Signed-off-by: Dave Chinner <dchinner@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/crypto/policy.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ fs/iomap/direct-io.c | 31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index 8a8ad0e44bb8..8e667aadf271 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -77,6 +77,20 @@ static bool supported_iv_ino_lblk_policy(const struct fscrypt_policy_v2 *policy,
- 	struct super_block *sb = inode->i_sb;
- 	int ino_bits = 64, lblk_bits = 64;
+diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+index ec7b78e6fecaf9..190967e87b69e4 100644
+--- a/fs/iomap/direct-io.c
++++ b/fs/iomap/direct-io.c
+@@ -475,23 +475,22 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	if (ret)
+ 		goto out_free_dio;
  
-+	/*
-+	 * IV_INO_LBLK_* exist only because of hardware limitations, and
-+	 * currently the only known use case for them involves AES-256-XTS.
-+	 * That's also all we test currently.  For these reasons, for now only
-+	 * allow AES-256-XTS here.  This can be relaxed later if a use case for
-+	 * IV_INO_LBLK_* with other encryption modes arises.
-+	 */
-+	if (policy->contents_encryption_mode != FSCRYPT_MODE_AES_256_XTS) {
-+		fscrypt_warn(inode,
-+			     "Can't use %s policy with contents mode other than AES-256-XTS",
-+			     type);
-+		return false;
-+	}
-+
- 	/*
- 	 * It's unsafe to include inode numbers in the IVs if the filesystem can
- 	 * potentially renumber inodes, e.g. via filesystem shrinking.
+-	/*
+-	 * Try to invalidate cache pages for the range we're direct
+-	 * writing.  If this invalidation fails, tough, the write will
+-	 * still work, but racing two incompatible write paths is a
+-	 * pretty crazy thing to do, so we don't support it 100%.
+-	 */
+-	ret = invalidate_inode_pages2_range(mapping,
+-			pos >> PAGE_SHIFT, end >> PAGE_SHIFT);
+-	if (ret)
+-		dio_warn_stale_pagecache(iocb->ki_filp);
+-	ret = 0;
++	if (iov_iter_rw(iter) == WRITE) {
++		/*
++		 * Try to invalidate cache pages for the range we are writing.
++		 * If this invalidation fails, tough, the write will still work,
++		 * but racing two incompatible write paths is a pretty crazy
++		 * thing to do, so we don't support it 100%.
++		 */
++		if (invalidate_inode_pages2_range(mapping, pos >> PAGE_SHIFT,
++				end >> PAGE_SHIFT))
++			dio_warn_stale_pagecache(iocb->ki_filp);
+ 
+-	if (iov_iter_rw(iter) == WRITE && !wait_for_completion &&
+-	    !inode->i_sb->s_dio_done_wq) {
+-		ret = sb_init_dio_done_wq(inode->i_sb);
+-		if (ret < 0)
+-			goto out_free_dio;
++		if (!wait_for_completion && !inode->i_sb->s_dio_done_wq) {
++			ret = sb_init_dio_done_wq(inode->i_sb);
++			if (ret < 0)
++				goto out_free_dio;
++		}
+ 	}
+ 
+ 	inode_dio_begin(inode);
 -- 
 2.27.0
 
