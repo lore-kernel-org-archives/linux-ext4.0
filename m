@@ -2,117 +2,69 @@ Return-Path: <SRS0=Pk4t=BB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FC13C433DF
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 01:25:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05C1CC433E5
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 06:18:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EB6A82065F
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 01:25:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E03BF20771
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 06:18:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731594AbgGVBZc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Jul 2020 21:25:32 -0400
-Received: from mail1.windriver.com ([147.11.146.13]:40179 "EHLO
-        mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728001AbgGVBZc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jul 2020 21:25:32 -0400
-Received: from ALA-HCB.corp.ad.wrs.com (ala-hcb.corp.ad.wrs.com [147.11.189.41])
-        by mail1.windriver.com (8.15.2/8.15.2) with ESMTPS id 06M1PKOp005238
-        (version=TLSv1 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL);
-        Tue, 21 Jul 2020 18:25:20 -0700 (PDT)
-Received: from ala-lpggp7.wrs.com (147.11.105.171) by ALA-HCB.corp.ad.wrs.com
- (147.11.189.41) with Microsoft SMTP Server id 14.3.487.0; Tue, 21 Jul 2020
- 18:25:03 -0700
-From:   Hongxu Jia <hongxu.jia@windriver.com>
-To:     <tytso@mit.edu>, <linux-ext4@vger.kernel.org>, <wshilong@ddn.com>,
-        <adilger@dilger.ca>
-Subject: [PATCH] mke2fs: fix up check for hardlinks always false if inode > 0xFFFFFFFF
-Date:   Tue, 21 Jul 2020 18:25:03 -0700
-Message-ID: <20200722012503.42711-1-hongxu.jia@windriver.com>
-X-Mailer: git-send-email 2.21.0
+        id S1728697AbgGVGSz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Jul 2020 02:18:55 -0400
+Received: from verein.lst.de ([213.95.11.211]:54935 "EHLO verein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727867AbgGVGSz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Jul 2020 02:18:55 -0400
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id E8C1068AFE; Wed, 22 Jul 2020 08:18:50 +0200 (CEST)
+Date:   Wed, 22 Jul 2020 08:18:50 +0200
+From:   Christoph Hellwig <hch@lst.de>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Christoph Hellwig <hch@lst.de>, Dave Chinner <david@fromorbit.com>,
+        Goldwyn Rodrigues <rgoldwyn@suse.de>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        Naohiro Aota <naohiro.aota@wdc.com>,
+        Johannes Thumshirn <jth@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>
+Subject: Re: [PATCH 3/3] iomap: fall back to buffered writes for
+ invalidation failures
+Message-ID: <20200722061850.GA24799@lst.de>
+References: <20200721183157.202276-1-hch@lst.de> <20200721183157.202276-4-hch@lst.de> <20200721203749.GF3151642@magnolia>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200721203749.GF3151642@magnolia>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-While file has a large inode number (> 0xFFFFFFFF), mkfs.ext4 could
-not parse hardlink correctly.
+On Tue, Jul 21, 2020 at 01:37:49PM -0700, Darrick J. Wong wrote:
+> On Tue, Jul 21, 2020 at 08:31:57PM +0200, Christoph Hellwig wrote:
+> > Failing to invalid the page cache means data in incoherent, which is
+> > a very bad state for the system.  Always fall back to buffered I/O
+> > through the page cache if we can't invalidate mappings.
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > Acked-by: Dave Chinner <dchinner@redhat.com>
+> > Reviewed-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+> 
+> For the iomap and xfs parts,
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> But I'd still like acks from Ted, Andreas, and Damien for ext4, gfs2,
+> and zonefs, respectively.
+> 
+> (Particularly if anyone was harboring ideas about trying to get this in
+> before 5.10, though I've not yet heard anyone say that explicitly...)
 
-Prepare three hardlink files for mkfs.ext4
-
-$ ls -il rootfs_ota/a rootfs_ota/boot/b rootfs_ota/boot/c
-11026675846 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 rootfs_ota/a
-11026675846 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 rootfs_ota/boot/b
-11026675846 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 rootfs_ota/boot/c
-
-$ truncate -s 1M rootfs_ota.ext4
-
-$ mkfs.ext4 -F -i 8192 rootfs_ota.ext4 -L otaroot -U fd5f8768-c779-4dc9-adde-165a3d863349 -d rootfs_ota
-
-$ mkdir mnt && sudo mount rootfs_ota.ext4 mnt
-
-$ ls -il mnt/a mnt/boot/b mnt/boot/c
-12 -rw-r--r-- 1 hjia users 0 Jul 20 17:44 mnt/a
-14 -rw-r--r-- 1 hjia users 0 Jul 20 17:44 mnt/boot/b
-15 -rw-r--r-- 1 hjia users 0 Jul 20 17:44 mnt/boot/c
-
-After applying this fix
-$ ls -il mnt/a mnt/boot/b mnt/boot/c
-12 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 mnt/a
-12 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 mnt/boot/b
-12 -rw-r--r-- 3 hjia users 0 Jul 20 17:44 mnt/boot/c
-
-Since commit [382ed4a1 e2fsck: use proper types for variables][1]
-applied, it used ext2_ino_t instead of ino_t for referencing inode
-numbers, but the type of is_hardlink's `ino' should not be instead,
-The ext2_ino_t is 32bit, if inode > 0xFFFFFFFF, its value will be
-truncated.
-
-Add a debug printf to show the value of inode, when it check for hardlink
-files, it will always return false if inode > 0xFFFFFFFF
-|--- a/misc/create_inode.c
-|+++ b/misc/create_inode.c
-|@@ -605,6 +605,7 @@ static int is_hardlink(struct hdlinks_s *hdlinks, dev_t dev, ext2_ino_t ino)
-| {
-|        int i;
-|
-|+       printf("%s %d, %lX, %lX\n", __FUNCTION__, __LINE__, hdlinks->hdl[i].src_ino, ino);
-|        for (i = 0; i < hdlinks->count; i++) {
-|                if (hdlinks->hdl[i].src_dev == dev &&
-|                    hdlinks->hdl[i].src_ino == ino)
-
-Here is debug message:
-is_hardlink 608, 2913DB886, 913DB886
-
-The length of ext2_ino_t is 32bit (typedef __u32 __bitwise ext2_ino_t;),
-and ino_t is 64bit on 64bit system (such as x86-64), recover `ino' to ino_t.
-
-[1] https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git/commit/?id=382ed4a1c2b60acb9db7631e86dda207bde6076e
-
-Signed-off-by: Hongxu Jia <hongxu.jia@windriver.com>
----
- misc/create_inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index e8d1df6b..837f3875 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -601,7 +601,7 @@ out:
- 	return err;
- }
- 
--static int is_hardlink(struct hdlinks_s *hdlinks, dev_t dev, ext2_ino_t ino)
-+static int is_hardlink(struct hdlinks_s *hdlinks, dev_t dev, ino_t ino)
- {
- 	int i;
- 
--- 
-2.21.0
-
+Why would we want to wait another whole merge window?
