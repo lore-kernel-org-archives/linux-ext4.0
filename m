@@ -2,93 +2,118 @@ Return-Path: <SRS0=Pk4t=BB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC457C433DF
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 08:53:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 611D0C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 12:20:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C89412077D
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 08:53:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 346BF20729
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jul 2020 12:20:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="HOVByX27"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NLOKRJDi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730813AbgGVIxP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Jul 2020 04:53:15 -0400
-Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:44279 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726892AbgGVIxO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jul 2020 04:53:14 -0400
+        id S1732014AbgGVMUG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Jul 2020 08:20:06 -0400
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:33366 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726841AbgGVMUG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 22 Jul 2020 08:20:06 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1595407993;
+        s=mimecast20190719; t=1595420404;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=njgR9t8BrIwFryA3CMw6nKzzZ1JJJJbharNMOP2OpHQ=;
-        b=HOVByX27VUp2wyKDsAXCQc3Ab7uV8Q3iu5yhI2SyQ1OZLrQtIVXRmFyrevnrask+KhvkIE
-        hkj1E4Afvy8zgOFssJByr/A56mpbz+SUTtlCUdNWzmvBgyJBguciFplgtCvv7TD79J4fYC
-        KoNvw/0JnIDDn9H3C+RUjCrc4MyPqwk=
+        bh=vCtk9GnBiOAqU3k+W1SQe7KIu+zVdj7N1c33spXO6As=;
+        b=NLOKRJDiHmIDOfYSGu4kMA7sm75Dxry3Hv5r3S5pDmfGg4+VpwhYJ0ff8bKm1MlO+NbC/u
+        emTpF6Y0+sieoRz9hC9iUVRjaSQcmUetN5m/4aaXErbyTonhpBnpSRGXn6SfErqDfJstnq
+        tutOhG5waE5as5OfXnZjp4gMR3n+UnM=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-46-zJDZx9dxNC6ScYqIhCay1w-1; Wed, 22 Jul 2020 04:53:09 -0400
-X-MC-Unique: zJDZx9dxNC6ScYqIhCay1w-1
+ us-mta-258-EWS-2KU8MuGqDl5cYcroPw-1; Wed, 22 Jul 2020 08:20:01 -0400
+X-MC-Unique: EWS-2KU8MuGqDl5cYcroPw-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 7E25B19253C0;
-        Wed, 22 Jul 2020 08:53:08 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-112-32.rdu2.redhat.com [10.10.112.32])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2F5645D9D7;
-        Wed, 22 Jul 2020 08:53:07 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20200721154202.GD848607@magnolia>
-References: <20200721154202.GD848607@magnolia> <20200401151837.GB56931@magnolia> <2461554.1585726747@warthog.procyon.org.uk> <2504712.1587485842@warthog.procyon.org.uk>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9A09980BCAF;
+        Wed, 22 Jul 2020 12:19:59 +0000 (UTC)
+Received: from colo-mx.corp.redhat.com (colo-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 804715D9D3;
+        Wed, 22 Jul 2020 12:19:59 +0000 (UTC)
+Received: from zmail21.collab.prod.int.phx2.redhat.com (zmail21.collab.prod.int.phx2.redhat.com [10.5.83.24])
+        by colo-mx.corp.redhat.com (Postfix) with ESMTP id 5D27E730D3;
+        Wed, 22 Jul 2020 12:19:59 +0000 (UTC)
+Date:   Wed, 22 Jul 2020 08:19:58 -0400 (EDT)
+From:   Bob Peterson <rpeterso@redhat.com>
 To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     dhowells@redhat.com, Eric Biggers <ebiggers@kernel.org>,
-        tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: Re: Exporting ext4-specific information through fsinfo attributes
+Cc:     Christoph Hellwig <hch@lst.de>,
+        Naohiro Aota <naohiro.aota@wdc.com>, linux-xfs@vger.kernel.org,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        linux-ext4@vger.kernel.org, Goldwyn Rodrigues <rgoldwyn@suse.de>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>, cluster-devel@redhat.com,
+        Goldwyn Rodrigues <rgoldwyn@suse.com>,
+        linux-fsdevel@vger.kernel.org, Johannes Thumshirn <jth@kernel.org>,
+        linux-btrfs@vger.kernel.org
+Message-ID: <595939815.7378944.1595420398243.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20200721203749.GF3151642@magnolia>
+References: <20200721183157.202276-1-hch@lst.de> <20200721183157.202276-4-hch@lst.de> <20200721203749.GF3151642@magnolia>
+Subject: Re: [Cluster-devel] [PATCH 3/3] iomap: fall back to buffered writes
+ for invalidation failures
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <701162.1595407986.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: quoted-printable
-Date:   Wed, 22 Jul 2020 09:53:06 +0100
-Message-ID: <701163.1595407986@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.3.112.145, 10.4.195.20]
+Thread-Topic: iomap: fall back to buffered writes for invalidation failures
+Thread-Index: PLuOF8kQrR0wpZuOBcUe+YqC5MOZSw==
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Darrick J. Wong <darrick.wong@oracle.com> wrote:
+----- Original Message -----
+> On Tue, Jul 21, 2020 at 08:31:57PM +0200, Christoph Hellwig wrote:
+> > Failing to invalid the page cache means data in incoherent, which is
+> > a very bad state for the system.  Always fall back to buffered I/O
+> > through the page cache if we can't invalidate mappings.
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > Acked-by: Dave Chinner <dchinner@redhat.com>
+> > Reviewed-by: Goldwyn Rodrigues <rgoldwyn@suse.com>
+> 
+> For the iomap and xfs parts,
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> But I'd still like acks from Ted, Andreas, and Damien for ext4, gfs2,
+> and zonefs, respectively.
+> 
+> (Particularly if anyone was harboring ideas about trying to get this in
+> before 5.10, though I've not yet heard anyone say that explicitly...)
+> 
+> --D
+> 
+> > ---
+> >  fs/ext4/file.c       |  2 ++
+> >  fs/gfs2/file.c       |  3 ++-
+> >  fs/iomap/direct-io.c | 16 +++++++++++-----
+> >  fs/iomap/trace.h     |  1 +
+> >  fs/xfs/xfs_file.c    |  4 ++--
+> >  fs/zonefs/super.c    |  7 +++++--
+> >  6 files changed, 23 insertions(+), 10 deletions(-)
 
-> Where are these FSINFO_FEAT* constants defined, and where are they
-> documented?
-> =
+Hi,
 
-> This generally looks ok to me, but I would like to see documentation
-> first.
+I think Andreas is on holiday this week, but the gfs2 portion looks good to me:
 
-Have a look at this branch:
+For the gfs2 portion:
+Acked-by: Bob Peterson <rpeterso@redhat.com>
 
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log=
-/?h=3Dfsinfo-core
+Regards,
 
-Patch "fsinfo: Provide a bitmap of supported features"
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/com=
-mit/?h=3Dfsinfo-core&id=3D9d7651e966331f18c7bfe053237b3627585c3e79
-
-Documentation:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/com=
-mit/?h=3Dfsinfo-core&id=3D6bb357c42c96c2a5d72ff02d109ce49bd0c455ab
-
-David
+Bob Peterson
 
