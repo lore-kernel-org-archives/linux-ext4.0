@@ -2,105 +2,125 @@ Return-Path: <SRS0=NbOM=BD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.9 required=3.0 tests=BAYES_00,FORGED_MUA_MOZILLA,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB095C433FC
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 02:58:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4AEFC433E1
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 02:58:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B0DF7206C1
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 02:58:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B50CF206C1
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 02:58:25 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ssa7v1dr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726978AbgGXC6a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Jul 2020 22:58:30 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:47480 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726801AbgGXC63 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 23 Jul 2020 22:58:29 -0400
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 06O2Wcfu079630;
-        Thu, 23 Jul 2020 22:58:21 -0400
-Received: from ppma06fra.de.ibm.com (48.49.7a9f.ip4.static.sl-reverse.com [159.122.73.72])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 32faj3vrcy-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 23 Jul 2020 22:58:21 -0400
-Received: from pps.filterd (ppma06fra.de.ibm.com [127.0.0.1])
-        by ppma06fra.de.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 06O2vwBs029161;
-        Fri, 24 Jul 2020 02:58:18 GMT
-Received: from b06avi18878370.portsmouth.uk.ibm.com (b06avi18878370.portsmouth.uk.ibm.com [9.149.26.194])
-        by ppma06fra.de.ibm.com with ESMTP id 32brbgune3-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 24 Jul 2020 02:58:18 +0000
-Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
-        by b06avi18878370.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 06O2wGsg59900232
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 24 Jul 2020 02:58:16 GMT
-Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 3E1EB5204E;
-        Fri, 24 Jul 2020 02:58:16 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.79.220.127])
-        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id 789D952050;
-        Fri, 24 Jul 2020 02:58:15 +0000 (GMT)
-Subject: Re: [PATCH] ext4:remove some redundant function declarations
-To:     Shijie Luo <luoshijie1@huawei.com>, linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, jack@suse.cz
-References: <20200724014747.15924-1-luoshijie1@huawei.com>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Fri, 24 Jul 2020 08:28:14 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.8.0
+        id S1727012AbgGXC6W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Jul 2020 22:58:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52518 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726980AbgGXC6V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Jul 2020 22:58:21 -0400
+Received: from mail-pg1-x543.google.com (mail-pg1-x543.google.com [IPv6:2607:f8b0:4864:20::543])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98134C0619D3;
+        Thu, 23 Jul 2020 19:58:21 -0700 (PDT)
+Received: by mail-pg1-x543.google.com with SMTP id g67so4399867pgc.8;
+        Thu, 23 Jul 2020 19:58:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=to:from:subject:message-id:date:user-agent:mime-version
+         :content-transfer-encoding:content-language;
+        bh=JVe/Nr8YVppEXojByslf4v7Nsfmxy2s/PHY7BapPd8s=;
+        b=ssa7v1drwV0tDj57qR2Nipq/Evi0GvUJQKdWXieVozMShJERcdCRXMCvXMOqcE14PJ
+         2TBdcFzIGjMMgFUg0Yxz3Kt/lRQuMigNWqA7OKJTu3fkRZcf9iJ4WxITX5CqTltcze6y
+         AwBXmDDSKA9Gmxy7/pgKSZ2Srfc3dVZdA/UgTefQjzBPOAShCP1FQtOVK8+9h8u7cc2Z
+         0qilR6pQD77nfl3lUIL7HiDwWfDUBUGVOsgUiRen4wL8ReUOfp/1ldwpHhA2tOCGrF7G
+         MObSfwUztcDtcT14zBBBJ934n4qNbm3eMujT+kth+UH/BTxurUZaQHhvgrnhqjJTZTo8
+         v5wQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:from:subject:message-id:date:user-agent
+         :mime-version:content-transfer-encoding:content-language;
+        bh=JVe/Nr8YVppEXojByslf4v7Nsfmxy2s/PHY7BapPd8s=;
+        b=VokOkyPoE63ZtXS37Ntnlvu5i8CX+gfylbYdkhShgJKcyCcAGvsDUpnkH+a1CxNXT7
+         hQUcMEWIAU6K/xJkR54SDijrxsY0hP+WMqpcJODTOEgSyie3yau9WDvjdH29sE3aWXI0
+         gNq4NujCyZOyNNueebBKCZJgmmot0WliA7/aW0Xn+iXqS6szygCRpEg6H/P7veGOUIKF
+         DmTs2W90oenY4m+Zx7LP6kQr7Trz/+kw+PMkyKSwOJbcNdVjO7lQjTRSmbdyLmdJZwUE
+         et/sAPsCLAySYkho9OLSROJRtZCPujW5q0k0U2UO7C+Oe604RXlJZh+4K5MiR4Ffa7Jb
+         Ecfw==
+X-Gm-Message-State: AOAM532d90o2z/op0cBeHis/lksey2OvcrS/slH6ELUQR0wKSgf21NiE
+        znrvN8nzuJDC8Qu6DvYUuf26WKbaVv0=
+X-Google-Smtp-Source: ABdhPJzGhS7XSjC3UY42FAhDyqufoLak70mWTv89HjYZBN1rrj6ZV5idEsaCKe/QOWk0Wh//FKEtxw==
+X-Received: by 2002:a62:f206:: with SMTP id m6mr6786978pfh.260.1595559500881;
+        Thu, 23 Jul 2020 19:58:20 -0700 (PDT)
+Received: from [10.8.0.10] ([203.205.141.54])
+        by smtp.gmail.com with ESMTPSA id g4sm4552680pgn.64.2020.07.23.19.58.19
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 23 Jul 2020 19:58:20 -0700 (PDT)
+To:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From:   brookxu <brookxu.cn@gmail.com>
+Subject: [PATCH 3/3] ext4: add needed paramter to,
+ ext4_mb_discard_preallocations trace
+Message-ID: <0afd7706-aee2-cc23-7558-a60e39ac96a8@gmail.com>
+Date:   Fri, 24 Jul 2020 10:58:18 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-In-Reply-To: <20200724014747.15924-1-luoshijie1@huawei.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-Message-Id: <20200724025815.789D952050@d06av21.portsmouth.uk.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
- definitions=2020-07-23_20:2020-07-23,2020-07-23 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 suspectscore=0
- phishscore=0 mlxlogscore=750 lowpriorityscore=0 mlxscore=0 clxscore=1011
- spamscore=0 adultscore=0 priorityscore=1501 malwarescore=0 impostorscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2007240012
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Add the needed value to ext4_mb_discard_preallocations trace, so
+we can more easily observe the requested number of trim.
 
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+---
+ include/trace/events/ext4.h | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-On 7/24/20 7:17 AM, Shijie Luo wrote:
-> ext4 update feature functions do not exist now, remove these useless
-> function declarations.
-> 
-> Signed-off-by: Shijie Luo <luoshijie1@huawei.com>
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index cc41d69..61736d8 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -746,24 +746,26 @@
+ );
+ 
+ TRACE_EVENT(ext4_discard_preallocations,
+-    TP_PROTO(struct inode *inode),
++    TP_PROTO(struct inode *inode, unsigned int needed),
+ 
+-    TP_ARGS(inode),
++    TP_ARGS(inode, needed),
+ 
+     TP_STRUCT__entry(
+-        __field(    dev_t,    dev            )
+-        __field(    ino_t,    ino            )
++        __field(    dev_t,        dev        )
++        __field(    ino_t,        ino        )
++        __field(    unsigned int,    needed        )
+ 
+     ),
+ 
+     TP_fast_assign(
+         __entry->dev    = inode->i_sb->s_dev;
+         __entry->ino    = inode->i_ino;
++        __entry->needed    = needed;
+     ),
+ 
+-    TP_printk("dev %d,%d ino %lu",
++    TP_printk("dev %d,%d ino %lu needed %u",
+           MAJOR(__entry->dev), MINOR(__entry->dev),
+-          (unsigned long) __entry->ino)
++          (unsigned long) __entry->ino, __entry->needed)
+ );
+ 
+ TRACE_EVENT(ext4_mb_discard_preallocations,
+-- 
+1.8.3.1
 
-LGTM, feel free to add:
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-
-> ---
->   fs/ext4/ext4.h | 6 ------
->   1 file changed, 6 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 42f5060f3cdf..196b52c75422 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2924,12 +2924,6 @@ do {									\
-> 
->   #endif
-> 
-> -extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
-> -					__u32 compat);
-> -extern int ext4_update_rocompat_feature(handle_t *handle,
-> -					struct super_block *sb,	__u32 rocompat);
-> -extern int ext4_update_incompat_feature(handle_t *handle,
-> -					struct super_block *sb,	__u32 incompat);
->   extern ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
->   				      struct ext4_group_desc *bg);
->   extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
-> 
