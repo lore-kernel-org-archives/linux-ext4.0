@@ -2,70 +2,70 @@ Return-Path: <SRS0=NbOM=BD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.6 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+X-Spam-Status: No, score=-25.6 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2209AC4345F
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 18:45:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BA7AC43465
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 18:45:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 008712065E
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 18:45:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2FCEC206F0
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Jul 2020 18:45:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="WZxif6+6"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ITpDF03z"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726884AbgGXSpT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Jul 2020 14:45:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59038 "EHLO
+        id S1726835AbgGXSpZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Jul 2020 14:45:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59066 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726617AbgGXSpN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jul 2020 14:45:13 -0400
-Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 813D2C0619E4
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2020 11:45:13 -0700 (PDT)
-Received: by mail-yb1-xb4a.google.com with SMTP id v11so4325428ybm.22
-        for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2020 11:45:13 -0700 (PDT)
+        with ESMTP id S1726702AbgGXSpS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Jul 2020 14:45:18 -0400
+Received: from mail-yb1-xb49.google.com (mail-yb1-xb49.google.com [IPv6:2607:f8b0:4864:20::b49])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6F9DC03CA40
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2020 11:45:16 -0700 (PDT)
+Received: by mail-yb1-xb49.google.com with SMTP id w35so11501711ybi.16
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Jul 2020 11:45:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=r8Pg6JmNaFN8fVBskJ954zlZvlkSSoV1f+xmIU4eJ8Y=;
-        b=WZxif6+6SPfu0xTeldRLQ3uzvhiQHHPuJ3wvszADxxQXo+kraJNCkoW2SjaTiCI/fA
-         tjr/RHdHC2utCZI6gqsTf6bi248HQE4FH8OeQ3i5z7Mjm/erk6l9Hs4KAFgiNnGSoJzQ
-         +wFpox/AoKBdgYO6JL/4Pt7vSNaTodsgMpvLea+xlBamKo2Zp7mdiwk8z3K+1O4pvHHT
-         Zn4bWRPvpRwh7o3cHRLAUqjDHP0wki5gObcM3HhSBidRJ187n9QJXUzMC2M7ubEQa66B
-         ltnFBglVcP3vBXxYW+dKa0oTYE+kv+oO/LBgR0e2hn6tgE0m1OcMFNfOm3F+WYqCTZ6H
-         wMlQ==
+        bh=ak9b1MetrNwz8tkXgMNDeTUR8YoZBpQh5jjz0bYRY0M=;
+        b=ITpDF03zh4gAXQ80IgtXYXSVSudg/gU9rVN57XZQKro+oG5FczxsGGWDIk19KaZUlG
+         Hkjz42c4BcWVc7yDHolMXgpncUUqKjalZEP7MuFByMe4pNel/xhE7ghREp4QClDZsKCO
+         Ephfn9OUfGkQ4PQc3FpjFY9Q1OGvIPi/WWbgtYnXgbmI+ypPpmWm4E1cZWktwV5WV/Hk
+         1r6DAzau+34Tj4JZDNQ+kk85DecV+mTqhpQFF3eVxMwgJIAB1/H/e1XTzvZ6sLHGhsNn
+         MhBrQ+GdgjovyQoTISpziTf1X9MqGb/stJUXrK9lxtfQ2BpP77C5c3tsRK5M0QJCJHHC
+         0gLg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=r8Pg6JmNaFN8fVBskJ954zlZvlkSSoV1f+xmIU4eJ8Y=;
-        b=ls/rmvMD3N+Y+q9F52zhlXxqAXuSw6+Fc/cQZ/3+Nx8DYglSa0RCCVPgWwwYDK49F6
-         hjDzvyexJLb17JR3VgKgEoYYHabCwv1/YeAXbeHa2eGcvEYkf0FT1ruNGGdMs9Q8Yb4h
-         ylyr6sCAsuqqxcB60Lhgy+AuoVTh0p/kRF1JpjKkyJwXAs/54C1qK+bCkxVRXVXlT/r9
-         scacASBuVg5Ku+1O47wIwPHAov+aQSaIEW60I9FSW0bVQxkWXyE5BpCG2S+f0/JnXXg5
-         vJ9XpHP1BhOaQe6dAdxNtX7UZGa0q92pGPkqsdc6LREXYOWDj1UK/OEKdcHWVJpDxxEl
-         wReQ==
-X-Gm-Message-State: AOAM533cSQ9Smze5ta2hu9gv3gZUTcpIndE7OZ/qKmKrhsLWXH1dh4nH
-        p/yi2exrjZf1kdBe2pDL3G1prgleGHU=
-X-Google-Smtp-Source: ABdhPJz/pwO4CPr/TwSp+10jXFW4RyYAdzpCUQarKYvxET89Fk5Zhv46IwKHyL9Ir7sI+fKC28k4po0GnP8=
-X-Received: by 2002:a25:6c8a:: with SMTP id h132mr17095635ybc.353.1595616312763;
- Fri, 24 Jul 2020 11:45:12 -0700 (PDT)
-Date:   Fri, 24 Jul 2020 18:44:58 +0000
+        bh=ak9b1MetrNwz8tkXgMNDeTUR8YoZBpQh5jjz0bYRY0M=;
+        b=HlCuzodfCtSaS2VWLy1PMc6bKnPEoFcpsHVDNdUwHuqklq6d8GyzCIIm1LVsN7XF3B
+         paEkKKSxr4AC43/l1dGR08NPMg/Ij3YlFiMgsnSej5HvaGZJNn1DK6wrkSGKg+3Gr3Co
+         ztHdgidqz8MGMj0BsfcL8vElBeN49hoyu7ULOkOsKWriCPL3aCqRtt2pUQhTIOC+Q7zl
+         +XzEyJfBzK4fC/zMNP3rjVH8UeDr5it0tIXXskU4DOd6FHJm+NWpJmnmbihptrTCIdzd
+         cX1rNbRLuhZ70PgaZuOVaOTprCDBtOxzX7NEJKLglYjkqSs5OocDTu8OGSigigLAeQg3
+         Td9g==
+X-Gm-Message-State: AOAM530x00ufyr2ueUwop102Q7vha03FUFu/vuERpG1tjhFQV8o0BD/r
+        fl6gvcUg5scDkNY+uqsnQUnsAUlo2CA=
+X-Google-Smtp-Source: ABdhPJwseKqiZHZW7R0lAN2FfflJ1727vAQQkCjVmAbzoVzFBnjTpAAyolnIjYFGGURfVI9rNc5tdpoHwlY=
+X-Received: by 2002:a25:2b89:: with SMTP id r131mr16541745ybr.131.1595616316063;
+ Fri, 24 Jul 2020 11:45:16 -0700 (PDT)
+Date:   Fri, 24 Jul 2020 18:45:00 +0000
 In-Reply-To: <20200724184501.1651378-1-satyat@google.com>
-Message-Id: <20200724184501.1651378-5-satyat@google.com>
+Message-Id: <20200724184501.1651378-7-satyat@google.com>
 Mime-Version: 1.0
 References: <20200724184501.1651378-1-satyat@google.com>
 X-Mailer: git-send-email 2.28.0.rc0.142.g3c755180ce-goog
-Subject: [PATCH v6 4/7] ext4: support direct I/O with fscrypt using blk-crypto
+Subject: [PATCH v6 6/7] fscrypt: document inline encryption support
 From:   Satya Tangirala <satyat@google.com>
 To:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org
-Cc:     linux-xfs@vger.kernel.org, Eric Biggers <ebiggers@google.com>,
-        Satya Tangirala <satyat@google.com>,
+Cc:     linux-xfs@vger.kernel.org, Satya Tangirala <satyat@google.com>,
+        Eric Biggers <ebiggers@google.com>,
         Jaegeuk Kim <jaegeuk@kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
@@ -73,86 +73,49 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Update the fscrypt documentation file for inline encryption support.
 
-Wire up ext4 with fscrypt direct I/O support. Direct I/O with fscrypt is
-only supported through blk-crypto (i.e. CONFIG_BLK_INLINE_ENCRYPTION must
-have been enabled, the 'inlinecrypt' mount option must have been specified,
-and either hardware inline encryption support must be present or
-CONFIG_BLK_INLINE_ENCYRPTION_FALLBACK must have been enabled). Further,
-direct I/O on encrypted files is only supported when I/O is aligned
-to the filesystem block size (which is *not* necessarily the same as the
-block device's block size).
-
-fscrypt_limit_io_blocks() is called before setting up the iomap to ensure
-that the blocks of each bio that iomap will submit will have contiguous
-DUNs. Note that fscrypt_limit_io_blocks() is normally a no-op, as normally
-the DUNs simply increment along with the logical blocks. But it's needed
-to handle an edge case in one of the fscrypt IV generation methods.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
-Co-developed-by: Satya Tangirala <satyat@google.com>
 Signed-off-by: Satya Tangirala <satyat@google.com>
+Reviewed-by: Eric Biggers <ebiggers@google.com>
 Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
 ---
- fs/ext4/file.c  | 10 ++++++----
- fs/ext4/inode.c |  7 +++++++
- 2 files changed, 13 insertions(+), 4 deletions(-)
+ Documentation/filesystems/fscrypt.rst | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 2a01e31a032c..d534f72675d9 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -36,9 +36,11 @@
- #include "acl.h"
- #include "truncate.h"
+diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
+index 1a6ad6f736b5..423c5a0daf45 100644
+--- a/Documentation/filesystems/fscrypt.rst
++++ b/Documentation/filesystems/fscrypt.rst
+@@ -1204,6 +1204,18 @@ buffer.  Some filesystems, such as UBIFS, already use temporary
+ buffers regardless of encryption.  Other filesystems, such as ext4 and
+ F2FS, have to allocate bounce pages specially for encryption.
  
--static bool ext4_dio_supported(struct inode *inode)
-+static bool ext4_dio_supported(struct kiocb *iocb, struct iov_iter *iter)
- {
--	if (IS_ENABLED(CONFIG_FS_ENCRYPTION) && IS_ENCRYPTED(inode))
-+	struct inode *inode = file_inode(iocb->ki_filp);
++Fscrypt is also able to use inline encryption hardware instead of the
++kernel crypto API for en/decryption of file contents.  When possible,
++and if directed to do so (by specifying the 'inlinecrypt' mount option
++for an ext4/F2FS filesystem), it adds encryption contexts to bios and
++uses blk-crypto to perform the en/decryption instead of making use of
++the above read/write path changes.  Of course, even if directed to
++make use of inline encryption, fscrypt will only be able to do so if
++either hardware inline encryption support is available for the
++selected encryption algorithm or CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK
++is selected.  If neither is the case, fscrypt will fall back to using
++the above mentioned read/write path changes for en/decryption.
 +
-+	if (!fscrypt_dio_supported(iocb, iter))
- 		return false;
- 	if (fsverity_active(inode))
- 		return false;
-@@ -61,7 +63,7 @@ static ssize_t ext4_dio_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 		inode_lock_shared(inode);
- 	}
+ Filename hashing and encoding
+ -----------------------------
  
--	if (!ext4_dio_supported(inode)) {
-+	if (!ext4_dio_supported(iocb, to)) {
- 		inode_unlock_shared(inode);
- 		/*
- 		 * Fallback to buffered I/O if the operation being performed on
-@@ -490,7 +492,7 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	}
+@@ -1250,7 +1262,9 @@ Tests
  
- 	/* Fallback to buffered I/O if the inode does not support direct I/O. */
--	if (!ext4_dio_supported(inode)) {
-+	if (!ext4_dio_supported(iocb, from)) {
- 		if (ilock_shared)
- 			inode_unlock_shared(inode);
- 		else
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 44bad4bb8831..6725116ea348 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3445,6 +3445,13 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	if (ret < 0)
- 		return ret;
+ To test fscrypt, use xfstests, which is Linux's de facto standard
+ filesystem test suite.  First, run all the tests in the "encrypt"
+-group on the relevant filesystem(s).  For example, to test ext4 and
++group on the relevant filesystem(s).  One can also run the tests
++with the 'inlinecrypt' mount option to test the implementation for
++inline encryption support.  For example, to test ext4 and
+ f2fs encryption using `kvm-xfstests
+ <https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md>`_::
  
-+	/*
-+	 * When inline encryption is enabled, sometimes I/O to an encrypted file
-+	 * has to be broken up to guarantee DUN contiguity. Handle this by
-+	 * limiting the length of the mapping returned.
-+	 */
-+	map.m_len = fscrypt_limit_io_blocks(inode, map.m_lblk, map.m_len);
-+
- 	ext4_set_iomap(inode, iomap, &map, offset, length);
- 
- 	return 0;
 -- 
 2.28.0.rc0.142.g3c755180ce-goog
 
