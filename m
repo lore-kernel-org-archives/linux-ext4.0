@@ -2,345 +2,181 @@ Return-Path: <SRS0=temF=BH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF19BC433F4
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 13:04:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A9CEC433E3
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 14:35:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CB86D20663
-	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 13:04:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 16E27206D4
+	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 14:35:24 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=126.com header.i=@126.com header.b="evCfYUge"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729962AbgG1NEu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 28 Jul 2020 09:04:50 -0400
-Received: from mx2.suse.de ([195.135.220.15]:42896 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729977AbgG1NEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 28 Jul 2020 09:04:48 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id A99DAB137;
-        Tue, 28 Jul 2020 13:04:56 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 7A6091E12CD; Tue, 28 Jul 2020 15:04:45 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/6] ext4: Check journal inode extents more carefully
-Date:   Tue, 28 Jul 2020 15:04:34 +0200
-Message-Id: <20200728130437.7804-4-jack@suse.cz>
-X-Mailer: git-send-email 2.16.4
-In-Reply-To: <20200728130437.7804-1-jack@suse.cz>
-References: <20200728130437.7804-1-jack@suse.cz>
+        id S1730424AbgG1OfV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 28 Jul 2020 10:35:21 -0400
+Received: from m15114.mail.126.com ([220.181.15.114]:36171 "EHLO
+        m15114.mail.126.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730392AbgG1OfV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Jul 2020 10:35:21 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=126.com;
+        s=s110527; h=From:Subject:Date:Message-Id; bh=UqT1ceSRxaZJpNsBkd
+        +RC5H0ROXAaLpgilicqUTfRaM=; b=evCfYUgeWgC3RVeFPzhHpZDhXANReEV1za
+        hI2iklNb7FLu98w0F4tSWIpnOLivzwhweDtblIbY5LvBGrhuKyIMmTLrfErsI9fi
+        g5toOOdwpVetx/QJ718cegsb9PENR9mvJ6z7fQuaP/UO/RlxL/bh5foC0013TRaZ
+        cM/RMPzyU=
+Received: from 192.168.137.249 (unknown [112.10.84.202])
+        by smtp7 (Coremail) with SMTP id DsmowAAHhXZQNyBfrooqHw--.29196S3;
+        Tue, 28 Jul 2020 22:33:53 +0800 (CST)
+From:   Xianting Tian <xianting_tian@126.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] ext4: check superblock mapped prior to get write access
+Date:   Tue, 28 Jul 2020 10:33:53 -0400
+Message-Id: <1595946833-13011-1-git-send-email-xianting_tian@126.com>
+X-Mailer: git-send-email 1.8.3.1
+X-CM-TRANSID: DsmowAAHhXZQNyBfrooqHw--.29196S3
+X-Coremail-Antispam: 1Uf129KBjvJXoW3Gw1kCFyrCw17uw4kKFW7Arb_yoW7Gw4xpF
+        y5CryjkFW09F4YvF4UAF4UJrW7GrsrAFW7GryfCryYqa15Gwn5ta4xta1Uuay5JrZ5Xa47
+        JF1UGw10934UtaDanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07jC7KsUUUUU=
+X-Originating-IP: [112.10.84.202]
+X-CM-SenderInfo: h0ld03plqjs3xldqqiyswou0bp/1tbiwRFvpFpD+4nFaQAAsc
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently, system zones just track ranges of block, that are "important"
-fs metadata (bitmaps, group descriptors, journal blocks, etc.). This
-however complicates how extent tree (or indirect blocks) can be checked
-for inodes that actually track such metadata - currently the journal
-inode but arguably we should be treating quota files or resize inode
-similarly. We cannot run __ext4_ext_check() on such metadata inodes when
-loading their extents as that would immediately trigger the validity
-checks and so we just hack around that and special-case the journal
-inode. This however leads to a situation that a journal inode which has
-extent tree of depth at least one can have invalid extent tree that gets
-unnoticed until ext4_cache_extents() crashes.
+One crash issue happened when directly down the network interface,
+which nbd device is connected to. The kernel version is kernel
+4.14.0-115.
+According to the debug log and call trace, the buffer of ext4
+superblock already unmapped after the network of nbd device down.
+But the code continue to run until crash.
+I checked latest kernel code of 5.8-rc7 based on the call trace,
+no function checked if buffer of ext4 superblock unmapped.
+The patch is similar to commit 742b06b, aim to check superblock
+mapped prior to get write access.
 
-To overcome this limitation, track inode number each system zone belongs
-to (0 is used for zones not belonging to any inode). We can then verify
-inode number matches the expected one when verifying extent tree and
-thus avoid the false errors. With this there's no need to to
-special-case journal inode during extent tree checking anymore so remove
-it.
+The crash reason described as below:
+struct journal_head *jbd2_journal_add_journal_head(struct buffer_head *bh)
+{
+        ... ...
+	jbd_lock_bh_journal_head(bh);
+	if (buffer_jbd(bh)) {
+		jh = bh2jh(bh); <<== jh is null!!!
+	} else {
+                ... ...
+	}
+	jh->b_jcount++; <<==crash here!!!!
+	jbd_unlock_bh_journal_head(bh);
+        ... ...
+}
 
-Fixes: 0a944e8a6c66 ("ext4: don't perform block validity checks on the journal inode")
-Reported-by: Wolfgang Frisch <wolfgang.frisch@suse.com>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
+Debug code added to __ext4_journal_get_write_access:
+int __ext4_journal_get_write_access(const char *where, unsigned int line,
+                                handle_t *handle, struct buffer_head *bh)
+{
+        int err = 0;
+
+        might_sleep();
+
+        if (ext4_handle_valid(handle)) {
+                struct super_block *sb;
+                struct buffer_head *sbh;
+
+                sb = handle->h_transaction->t_journal->j_private;
+                if (unlikely(ext4_forced_shutdown(EXT4_SB(sb)))) {
+                        jbd2_journal_abort_handle(handle);
+                        return -EIO;
+                }
+
+                sbh = EXT4_SB(sb)->s_sbh;
+                if (!buffer_mapped(sbh)) {
+                        ext4 sb bh not mapped\n");  <<==debug code
+                }
+
+                err = jbd2_journal_get_write_access(handle, bh);
+                if (err)
+                        ext4_journal_abort_handle(where, line, __func__, bh,
+                                                  handle, err);
+        }
+        return err;
+}
+
+Call trace of crash:
+[ 1715.669527] print_req_error: I/O error, dev nbd3, sector 42211904
+
+[ 1715.674940] ext4 sb bh not mapped   <<== debug log, which is added and printed by the
+                                            function "__ext4_journal_get_write_access"
+
+[ 1715.674946] BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
+[ 1715.674955] IP: jbd2_journal_add_journal_head+0x9d/0x110 [jbd2]
+[ 1715.674956] PGD 2010004067 P4D 2010004067 PUD 201000b067 PMD 0
+[ 1715.674961] Oops: 0002 [#1] SMP
+[ 1715.675020] task: ffff8808a4d3dac0 task.stack: ffffc9002e78c000
+[ 1715.675024] RIP: 0010:jbd2_journal_add_journal_head+0x9d/0x110 [jbd2] <== the crash is caused
+[ 1715.675025] RSP: 0018:ffffc9002e78fb50 EFLAGS: 00010206
+[ 1715.675026] RAX: 0000000000000000 RBX: ffff8816b71cad00 RCX: 0000000000000000
+[ 1715.675026] RDX: 0000000000000000 RSI: ffff8816b71cad00 RDI: ffff8816b71cad00
+[ 1715.675027] RBP: ffffc9002e78fb58 R08: 000000000000001b R09: ffff88207f82fe07
+[ 1715.675028] R10: 000000000000113d R11: 0000000000000000 R12: ffff8820223a5ab0
+[ 1715.675028] R13: 0000000000000000 R14: ffff8816b71cad00 R15: ffff88196053d930
+[ 1715.675029] FS:  00007fc2ce9e9700(0000) GS:ffff88203d740000(0000) knlGS:0000000000000000
+[ 1715.675030] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 1715.675031] CR2: 0000000000000008 CR3: 0000002016d2c004 CR4: 00000000007606e0
+[ 1715.675033] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[ 1715.675034] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+[ 1715.675034] PKRU: 55555554
+[ 1715.675035] Call Trace:
+[ 1715.675041]  jbd2_journal_get_write_access+0x6c/0xc0 [jbd2]
+[ 1715.675057]  __ext4_journal_get_write_access+0x8f/0x120 [ext4]
+[ 1715.675069]  ext4_reserve_inode_write+0x7b/0xb0 [ext4]
+[ 1715.675079]  ? ext4_dirty_inode+0x48/0x70 [ext4]
+[ 1715.675088]  ext4_mark_inode_dirty+0x53/0x1e0 [ext4]
+[ 1715.675096]  ? __ext4_journal_start_sb+0x6d/0xf0 [ext4]
+[ 1715.675104]  ext4_dirty_inode+0x48/0x70 [ext4]
+[ 1715.675111]  __mark_inode_dirty+0x17f/0x350
+[ 1715.675116]  generic_update_time+0x87/0xd0
+[ 1715.675119]  file_update_time+0xbc/0x110
+[ 1715.675122]  ? try_to_wake_up+0x59/0x470
+[ 1715.675125]  __generic_file_write_iter+0x9d/0x1e0
+[ 1715.675134]  ext4_file_write_iter+0xca/0x420 [ext4]
+[ 1715.675136]  __vfs_write+0xf3/0x170
+[ 1715.675138]  vfs_write+0xb2/0x1b0
+[ 1715.675141]  ? syscall_trace_enter+0x1d0/0x2b0
+[ 1715.675142]  SyS_write+0x55/0xc0
+[ 1715.675144]  do_syscall_64+0x67/0x1b0
+[ 1715.675147]  entry_SYSCALL64_slow_path+0x25/0x25
+
+Signed-off-by: Xianting Tian <xianting_tian@126.com>
 ---
- fs/ext4/block_validity.c | 51 ++++++++++++++++++++++++------------------------
- fs/ext4/ext4.h           |  6 +++---
- fs/ext4/extents.c        | 16 ++++++---------
- fs/ext4/indirect.c       |  6 ++----
- fs/ext4/inode.c          |  5 ++---
- fs/ext4/mballoc.c        |  4 ++--
- 6 files changed, 41 insertions(+), 47 deletions(-)
+ fs/ext4/ext4_jbd2.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index b394a50ebbe3..e830a9d4e10d 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -24,6 +24,7 @@ struct ext4_system_zone {
- 	struct rb_node	node;
- 	ext4_fsblk_t	start_blk;
- 	unsigned int	count;
-+	u32		ino;
- };
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 0c76cdd..9a60ca7 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -203,6 +203,15 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
+ 	might_sleep();
  
- static struct kmem_cache *ext4_system_zone_cachep;
-@@ -45,7 +46,8 @@ void ext4_exit_system_zone(void)
- static inline int can_merge(struct ext4_system_zone *entry1,
- 		     struct ext4_system_zone *entry2)
- {
--	if ((entry1->start_blk + entry1->count) == entry2->start_blk)
-+	if ((entry1->start_blk + entry1->count) == entry2->start_blk &&
-+	    entry1->ino == entry2->ino)
- 		return 1;
- 	return 0;
- }
-@@ -66,7 +68,7 @@ static void release_system_zone(struct ext4_system_blocks *system_blks)
-  */
- static int add_system_zone(struct ext4_system_blocks *system_blks,
- 			   ext4_fsblk_t start_blk,
--			   unsigned int count)
-+			   unsigned int count, u32 ino)
- {
- 	struct ext4_system_zone *new_entry, *entry;
- 	struct rb_node **n = &system_blks->root.rb_node, *node;
-@@ -89,6 +91,7 @@ static int add_system_zone(struct ext4_system_blocks *system_blks,
- 		return -ENOMEM;
- 	new_entry->start_blk = start_blk;
- 	new_entry->count = count;
-+	new_entry->ino = ino;
- 	new_node = &new_entry->node;
- 
- 	rb_link_node(new_node, parent, n);
-@@ -149,7 +152,7 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
- static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
- 				     struct ext4_system_blocks *system_blks,
- 				     ext4_fsblk_t start_blk,
--				     unsigned int count)
-+				     unsigned int count, ino_t ino)
- {
- 	struct ext4_system_zone *entry;
- 	struct rb_node *n;
-@@ -170,7 +173,7 @@ static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
- 		else if (start_blk >= (entry->start_blk + entry->count))
- 			n = n->rb_right;
- 		else
--			return 0;
-+			return entry->ino == ino;
- 	}
- 	return 1;
- }
-@@ -204,19 +207,18 @@ static int ext4_protect_reserved_inode(struct super_block *sb,
- 		if (n == 0) {
- 			i++;
- 		} else {
--			if (!ext4_data_block_valid_rcu(sbi, system_blks,
--						map.m_pblk, n)) {
--				err = -EFSCORRUPTED;
--				__ext4_error(sb, __func__, __LINE__, -err,
--					     map.m_pblk, "blocks %llu-%llu "
--					     "from inode %u overlap system zone",
--					     map.m_pblk,
--					     map.m_pblk + map.m_len - 1, ino);
-+			err = add_system_zone(system_blks, map.m_pblk, n, ino);
-+			if (err < 0) {
-+				if (err == -EFSCORRUPTED) {
-+					__ext4_error(sb, __func__, __LINE__,
-+						     -err, map.m_pblk,
-+						     "blocks %llu-%llu from inode %u overlap system zone",
-+						     map.m_pblk,
-+						     map.m_pblk + map.m_len - 1,
-+						     ino);
-+				}
- 				break;
- 			}
--			err = add_system_zone(system_blks, map.m_pblk, n);
--			if (err < 0)
--				break;
- 			i += n;
- 		}
- 	}
-@@ -270,19 +272,19 @@ int ext4_setup_system_zone(struct super_block *sb)
- 		    ((i < 5) || ((i % flex_size) == 0)))
- 			add_system_zone(system_blks,
- 					ext4_group_first_block_no(sb, i),
--					ext4_bg_num_gdb(sb, i) + 1);
-+					ext4_bg_num_gdb(sb, i) + 1, 0);
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		ret = add_system_zone(system_blks,
--				ext4_block_bitmap(sb, gdp), 1);
-+				ext4_block_bitmap(sb, gdp), 1, 0);
- 		if (ret)
- 			goto err;
- 		ret = add_system_zone(system_blks,
--				ext4_inode_bitmap(sb, gdp), 1);
-+				ext4_inode_bitmap(sb, gdp), 1, 0);
- 		if (ret)
- 			goto err;
- 		ret = add_system_zone(system_blks,
- 				ext4_inode_table(sb, gdp),
--				sbi->s_itb_per_group);
-+				sbi->s_itb_per_group, 0);
- 		if (ret)
- 			goto err;
- 	}
-@@ -331,7 +333,7 @@ void ext4_release_system_zone(struct super_block *sb)
- 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
- }
- 
--int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
-+int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 			  unsigned int count)
- {
- 	struct ext4_system_blocks *system_blks;
-@@ -343,9 +345,9 @@ int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
- 	 * mount option.
- 	 */
- 	rcu_read_lock();
--	system_blks = rcu_dereference(sbi->system_blks);
--	ret = ext4_data_block_valid_rcu(sbi, system_blks, start_blk,
--					count);
-+	system_blks = rcu_dereference(EXT4_SB(inode->i_sb)->system_blks);
-+	ret = ext4_data_block_valid_rcu(EXT4_SB(inode->i_sb), system_blks,
-+					start_blk, count, inode->i_ino);
- 	rcu_read_unlock();
- 	return ret;
- }
-@@ -364,8 +366,7 @@ int ext4_check_blockref(const char *function, unsigned int line,
- 	while (bref < p+max) {
- 		blk = le32_to_cpu(*bref++);
- 		if (blk &&
--		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb),
--						    blk, 1))) {
-+		    unlikely(!ext4_inode_block_valid(inode, blk, 1))) {
- 			ext4_error_inode(inode, function, line, blk,
- 					 "invalid block");
- 			return -EFSCORRUPTED;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 42f5060f3cdf..42815304902b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3363,9 +3363,9 @@ extern void ext4_release_system_zone(struct super_block *sb);
- extern int ext4_setup_system_zone(struct super_block *sb);
- extern int __init ext4_init_system_zone(void);
- extern void ext4_exit_system_zone(void);
--extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
--				 ext4_fsblk_t start_blk,
--				 unsigned int count);
-+extern int ext4_inode_block_valid(struct inode *inode,
-+				  ext4_fsblk_t start_blk,
-+				  unsigned int count);
- extern int ext4_check_blockref(const char *, unsigned int,
- 			       struct inode *, __le32 *, unsigned int);
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 221f240eae60..d75054570e44 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -340,7 +340,7 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- 	 */
- 	if (lblock + len <= lblock)
- 		return 0;
--	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
-+	return ext4_inode_block_valid(inode, block, len);
- }
- 
- static int ext4_valid_extent_idx(struct inode *inode,
-@@ -348,7 +348,7 @@ static int ext4_valid_extent_idx(struct inode *inode,
- {
- 	ext4_fsblk_t block = ext4_idx_pblock(ext_idx);
- 
--	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, 1);
-+	return ext4_inode_block_valid(inode, block, 1);
- }
- 
- static int ext4_valid_extent_entries(struct inode *inode,
-@@ -507,14 +507,10 @@ __read_extent_tree_block(const char *function, unsigned int line,
- 	}
- 	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
- 		return bh;
--	if (!ext4_has_feature_journal(inode->i_sb) ||
--	    (inode->i_ino !=
--	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum))) {
--		err = __ext4_ext_check(function, line, inode,
--				       ext_block_hdr(bh), depth, pblk);
--		if (err)
--			goto errout;
--	}
-+	err = __ext4_ext_check(function, line, inode,
-+			       ext_block_hdr(bh), depth, pblk);
-+	if (err)
-+		goto errout;
- 	set_buffer_verified(bh);
- 	/*
- 	 * If this is a leaf block, cache all of its entries
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index be2b66eb65f7..402641825712 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -858,8 +858,7 @@ static int ext4_clear_blocks(handle_t *handle, struct inode *inode,
- 	else if (ext4_should_journal_data(inode))
- 		flags |= EXT4_FREE_BLOCKS_FORGET;
- 
--	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), block_to_free,
--				   count)) {
-+	if (!ext4_inode_block_valid(inode, block_to_free, count)) {
- 		EXT4_ERROR_INODE(inode, "attempt to clear invalid "
- 				 "blocks %llu len %lu",
- 				 (unsigned long long) block_to_free, count);
-@@ -1004,8 +1003,7 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			if (!nr)
- 				continue;		/* A hole */
- 
--			if (!ext4_data_block_valid(EXT4_SB(inode->i_sb),
--						   nr, 1)) {
-+			if (!ext4_inode_block_valid(inode, nr, 1)) {
- 				EXT4_ERROR_INODE(inode,
- 						 "invalid indirect mapped "
- 						 "block %lu (level %d)",
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 10dd470876b3..92573f8540ab 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -394,8 +394,7 @@ static int __check_block_validity(struct inode *inode, const char *func,
- 	    (inode->i_ino ==
- 	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
- 		return 0;
--	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
--				   map->m_len)) {
-+	if (!ext4_inode_block_valid(inode, map->m_pblk, map->m_len)) {
- 		ext4_error_inode(inode, func, line, map->m_pblk,
- 				 "lblock %lu mapped to illegal pblock %llu "
- 				 "(length %d)", (unsigned long) map->m_lblk,
-@@ -4760,7 +4759,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 
- 	ret = 0;
- 	if (ei->i_file_acl &&
--	    !ext4_data_block_valid(EXT4_SB(sb), ei->i_file_acl, 1)) {
-+	    !ext4_inode_block_valid(inode, ei->i_file_acl, 1)) {
- 		ext4_error_inode(inode, function, line, 0,
- 				 "iget: bad extended attribute block %llu",
- 				 ei->i_file_acl);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c0a331e2feb0..38719c156573 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3090,7 +3090,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	block = ext4_grp_offs_to_block(sb, &ac->ac_b_ex);
- 
- 	len = EXT4_C2B(sbi, ac->ac_b_ex.fe_len);
--	if (!ext4_data_block_valid(sbi, block, len)) {
-+	if (!ext4_inode_block_valid(ac->ac_inode, block, len)) {
- 		ext4_error(sb, "Allocating blocks %llu-%llu which overlap "
- 			   "fs metadata", block, block+len);
- 		/* File system mounted not to panic on error
-@@ -4915,7 +4915,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 
- 	sbi = EXT4_SB(sb);
- 	if (!(flags & EXT4_FREE_BLOCKS_VALIDATED) &&
--	    !ext4_data_block_valid(sbi, block, count)) {
-+	    !ext4_inode_block_valid(inode, block, count)) {
- 		ext4_error(sb, "Freeing blocks not in datazone - "
- 			   "block = %llu, count = %lu", block, count);
- 		goto error_return;
+ 	if (ext4_handle_valid(handle)) {
++		struct super_block *sb;
++		struct buffer_head *sbh;
++
++		sb = handle->h_transaction->t_journal->j_private;
++		sbh = EXT4_SB(sb)->s_sbh;
++		if (unlikely(!buffer_mapped(sbh))) {
++			return -EIO;
++		}
++
+ 		err = jbd2_journal_get_write_access(handle, bh);
+ 		if (err)
+ 			ext4_journal_abort_handle(where, line, __func__, bh,
 -- 
-2.16.4
+1.8.3.1
 
