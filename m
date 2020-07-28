@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6F85C433F2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57209C433EC
 	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 13:04:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ABA0820663
+	by mail.kernel.org (Postfix) with ESMTP id 4064A206D8
 	for <linux-ext4@archiver.kernel.org>; Tue, 28 Jul 2020 13:04:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729983AbgG1NEu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1729982AbgG1NEu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 28 Jul 2020 09:04:50 -0400
-Received: from mx2.suse.de ([195.135.220.15]:42890 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:42920 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729962AbgG1NEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 28 Jul 2020 09:04:47 -0400
+        id S1729964AbgG1NEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 28 Jul 2020 09:04:48 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id A9A7DB138;
+        by mx2.suse.de (Postfix) with ESMTP id C72C5B143;
         Tue, 28 Jul 2020 13:04:56 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 7DD901E12CF; Tue, 28 Jul 2020 15:04:45 +0200 (CEST)
+        id 8521A1E12D3; Tue, 28 Jul 2020 15:04:45 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 4/6] ext4: Fold ext4_data_block_valid_rcu() into the caller
-Date:   Tue, 28 Jul 2020 15:04:35 +0200
-Message-Id: <20200728130437.7804-5-jack@suse.cz>
+Subject: [PATCH 6/6] ext4: Correctly restore system zone info when remount fails
+Date:   Tue, 28 Jul 2020 15:04:37 +0200
+Message-Id: <20200728130437.7804-7-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20200728130437.7804-1-jack@suse.cz>
 References: <20200728130437.7804-1-jack@suse.cz>
@@ -39,113 +39,101 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After the previous patch, ext4_data_block_valid_rcu() has a single
-caller. Fold it into it.
+When remounting filesystem fails late during remount handling and
+block_validity mount option is also changed during the remount, we fail
+to restore system zone information to a state matching the mount option.
+This is mostly harmless, just the block validity checking will not match
+the situation described by the mount option. Make sure these two are always
+consistent.
 
+Reported-by: Lukas Czerner <lczerner@redhat.com>
 Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/block_validity.c | 69 ++++++++++++++++++++++--------------------------
- 1 file changed, 31 insertions(+), 38 deletions(-)
+ fs/ext4/block_validity.c |  8 --------
+ fs/ext4/super.c          | 29 +++++++++++++++++++++--------
+ 2 files changed, 21 insertions(+), 16 deletions(-)
 
 diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index e830a9d4e10d..9c40214f31f9 100644
+index 2d008c1b58f2..c54ba52f2dd4 100644
 --- a/fs/ext4/block_validity.c
 +++ b/fs/ext4/block_validity.c
-@@ -144,40 +144,6 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
- 	printk(KERN_CONT "\n");
- }
+@@ -220,14 +220,6 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 	int flex_size = ext4_flex_bg_size(sbi);
+ 	int ret;
  
--/*
-- * Returns 1 if the passed-in block region (start_blk,
-- * start_blk+count) is valid; 0 if some part of the block region
-- * overlaps with filesystem metadata blocks.
-- */
--static int ext4_data_block_valid_rcu(struct ext4_sb_info *sbi,
--				     struct ext4_system_blocks *system_blks,
--				     ext4_fsblk_t start_blk,
--				     unsigned int count, ino_t ino)
--{
--	struct ext4_system_zone *entry;
--	struct rb_node *n;
--
--	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
--	    (start_blk + count < start_blk) ||
--	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
+-	if (!test_opt(sb, BLOCK_VALIDITY)) {
+-		if (sbi->system_blks)
+-			ext4_release_system_zone(sb);
+-		return 0;
+-	}
+-	if (sbi->system_blks)
 -		return 0;
 -
--	if (system_blks == NULL)
--		return 1;
--
--	n = system_blks->root.rb_node;
--	while (n) {
--		entry = rb_entry(n, struct ext4_system_zone, node);
--		if (start_blk + count - 1 < entry->start_blk)
--			n = n->rb_left;
--		else if (start_blk >= (entry->start_blk + entry->count))
--			n = n->rb_right;
--		else
--			return entry->ino == ino;
--	}
--	return 1;
--}
--
- static int ext4_protect_reserved_inode(struct super_block *sb,
- 				       struct ext4_system_blocks *system_blks,
- 				       u32 ino)
-@@ -333,11 +299,24 @@ void ext4_release_system_zone(struct super_block *sb)
- 		call_rcu(&system_blks->rcu, ext4_destroy_system_zone);
- }
+ 	system_blks = kzalloc(sizeof(*system_blks), GFP_KERNEL);
+ 	if (!system_blks)
+ 		return -ENOMEM;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8e055ec57a2c..37f09ecca0df 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4698,11 +4698,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  
-+/*
-+ * Returns 1 if the passed-in block region (start_blk,
-+ * start_blk+count) is valid; 0 if some part of the block region
-+ * overlaps with some other filesystem metadata blocks.
-+ */
- int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 			  unsigned int count)
- {
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	struct ext4_system_blocks *system_blks;
--	int ret;
-+	struct ext4_system_zone *entry;
-+	struct rb_node *n;
-+	int ret = 1;
-+
-+	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
-+	    (start_blk + count < start_blk) ||
-+	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
-+		return 0;
+ 	ext4_set_resv_clusters(sb);
  
- 	/*
- 	 * Lock the system zone to prevent it being released concurrently
-@@ -345,9 +324,23 @@ int ext4_inode_block_valid(struct inode *inode, ext4_fsblk_t start_blk,
- 	 * mount option.
- 	 */
- 	rcu_read_lock();
--	system_blks = rcu_dereference(EXT4_SB(inode->i_sb)->system_blks);
--	ret = ext4_data_block_valid_rcu(EXT4_SB(inode->i_sb), system_blks,
--					start_blk, count, inode->i_ino);
-+	system_blks = rcu_dereference(sbi->system_blks);
-+	if (system_blks == NULL)
-+		goto out_rcu;
-+
-+	n = system_blks->root.rb_node;
-+	while (n) {
-+		entry = rb_entry(n, struct ext4_system_zone, node);
-+		if (start_blk + count - 1 < entry->start_blk)
-+			n = n->rb_left;
-+		else if (start_blk >= (entry->start_blk + entry->count))
-+			n = n->rb_right;
-+		else {
-+			ret = (entry->ino == inode->i_ino);
-+			break;
+-	err = ext4_setup_system_zone(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize system "
+-			 "zone (%d)", err);
+-		goto failed_mount4a;
++	if (test_opt(sb, BLOCK_VALIDITY)) {
++		err = ext4_setup_system_zone(sb);
++		if (err) {
++			ext4_msg(sb, KERN_ERR, "failed to initialize system "
++				 "zone (%d)", err);
++			goto failed_mount4a;
 +		}
+ 	}
+ 
+ 	ext4_ext_init(sb);
+@@ -5653,9 +5655,16 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		ext4_register_li_request(sb, first_not_zeroed);
+ 	}
+ 
+-	err = ext4_setup_system_zone(sb);
+-	if (err)
+-		goto restore_opts;
++	/*
++	 * Handle creation of system zone data early because it can fail.
++	 * Releasing of existing data is done when we are sure remount will
++	 * succeed.
++	 */
++	if (test_opt(sb, BLOCK_VALIDITY) && !sbi->system_blks) {
++		err = ext4_setup_system_zone(sb);
++		if (err)
++			goto restore_opts;
 +	}
-+out_rcu:
- 	rcu_read_unlock();
- 	return ret;
- }
+ 
+ 	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY)) {
+ 		err = ext4_commit_super(sb, 1);
+@@ -5677,6 +5686,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		}
+ 	}
+ #endif
++	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
++		ext4_release_system_zone(sb);
+ 
+ 	*flags = (*flags & ~SB_LAZYTIME) | (sb->s_flags & SB_LAZYTIME);
+ 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
+@@ -5692,6 +5703,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	sbi->s_commit_interval = old_opts.s_commit_interval;
+ 	sbi->s_min_batch_time = old_opts.s_min_batch_time;
+ 	sbi->s_max_batch_time = old_opts.s_max_batch_time;
++	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
++		ext4_release_system_zone(sb);
+ #ifdef CONFIG_QUOTA
+ 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
 -- 
 2.16.4
 
