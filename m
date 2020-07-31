@@ -7,34 +7,32 @@ X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6856DC433DF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8F0CC433E0
 	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 490D621744
+	by mail.kernel.org (Postfix) with ESMTP id B187C21744
 	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730177AbgGaTIf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1730718AbgGaTIf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Fri, 31 Jul 2020 15:08:35 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59742 "EHLO
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59741 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727108AbgGaTIe (ORCPT
+        with ESMTP id S1726964AbgGaTIe (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Jul 2020 15:08:34 -0400
 Received: from callcc.thunk.org (pool-96-230-252-158.bstnma.fios.verizon.net [96.230.252.158])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06VJ8SwH009107
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06VJ8SlU009105
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 31 Jul 2020 15:08:29 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 5693D4202FE; Fri, 31 Jul 2020 15:08:28 -0400 (EDT)
+        id 653CE420C56; Fri, 31 Jul 2020 15:08:28 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     Alex Zhuravlev <bzzz@whamcloud.com>,
-        Andreas Dilger <adilger@whamcloud.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 1/4] ext4: add prefetching for block allocation bitmaps
-Date:   Fri, 31 Jul 2020 15:08:02 -0400
-Message-Id: <20200731190805.181253-2-tytso@mit.edu>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 4/4] ext4: add prefetch_block_bitmaps mount options
+Date:   Fri, 31 Jul 2020 15:08:05 -0400
+Message-Id: <20200731190805.181253-5-tytso@mit.edu>
 X-Mailer: git-send-email 2.24.1
 In-Reply-To: <20200731190805.181253-1-tytso@mit.edu>
 References: <20200731190805.181253-1-tytso@mit.edu>
@@ -45,337 +43,290 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Alex Zhuravlev <bzzz@whamcloud.com>
+For file systems where we can afford to keep the buddy bitmaps cached,
+we can speed up initial writes to large file systems by starting to
+load the block allocation bitmaps as soon as the file system is
+mounted.  This won't work well for _super_ large file systems, or
+memory constrained systems, so we only enable this when it is
+requested via a mount option.
 
-This should significantly improve bitmap loading, especially for flex
-groups as it tries to load all bitmaps within a flex.group instead of
-one by one synchronously.
-
-Prefetching is done in 8 * flex_bg groups, so it should be 8
-read-ahead reads for a single allocating thread. At the end of
-allocation the thread waits for read-ahead completion and initializes
-buddy information so that read-aheads are not lost in case of memory
-pressure.
-
-At cr=0 the number of prefetching IOs is limited per allocation
-context to prevent a situation when mballoc loads thousands of bitmaps
-looking for a perfect group and ignoring groups with good chunks.
-
-Together with the patch "ext4: limit scanning of uninitialized groups"
-the mount time (which includes few tiny allocations) of a 1PB
-filesystem is reduced significantly:
-
-               0% full    50%-full unpatched    patched
-  mount time       33s                9279s       563s
-
-[ Restructured by tytso; removed the state flags in the allocation
-  context, so it can be used to lazily prefetch the allocation bitmaps
-  immediately after the file system is mounted.  Skip prefetching
-  block groups which are uninitialized.  Finally pass in the
-  REQ_RAHEAD flag to the block layer while prefetching. ]
-
-Signed-off-by: Alex Zhuravlev <bzzz@whamcloud.com>
-Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
+Addresses-Google-Bug: 159488342
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |  14 +++--
- fs/ext4/ext4.h    |   8 ++-
- fs/ext4/mballoc.c | 133 +++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/sysfs.c   |   4 ++
- 4 files changed, 153 insertions(+), 6 deletions(-)
+ fs/ext4/ext4.h              | 15 +++++++++-
+ fs/ext4/mballoc.c           | 10 +++----
+ fs/ext4/super.c             | 59 +++++++++++++++++++++++++++----------
+ include/trace/events/ext4.h | 44 +++++++++++++++++++++++++++
+ 4 files changed, 105 insertions(+), 23 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 1ba46d87cdf1..1e2b1b4093aa 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -413,7 +413,8 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
-  * Return buffer_head on success or an ERR_PTR in case of failure.
-  */
- struct buffer_head *
--ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
-+ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group,
-+			      bool ignore_locked)
- {
- 	struct ext4_group_desc *desc;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -441,6 +442,12 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
- 		return ERR_PTR(-ENOMEM);
- 	}
- 
-+	if (ignore_locked && buffer_locked(bh)) {
-+		/* buffer under IO already, return if called for prefetching */
-+		put_bh(bh);
-+		return NULL;
-+	}
-+
- 	if (bitmap_uptodate(bh))
- 		goto verify;
- 
-@@ -490,7 +497,8 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
- 	trace_ext4_read_block_bitmap_load(sb, block_group);
- 	bh->b_end_io = ext4_end_bitmap_read;
- 	get_bh(bh);
--	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO, bh);
-+	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO |
-+		  (ignore_locked ? REQ_RAHEAD : 0), bh);
- 	return bh;
- verify:
- 	err = ext4_validate_block_bitmap(sb, desc, block_group, bh);
-@@ -534,7 +542,7 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 	struct buffer_head *bh;
- 	int err;
- 
--	bh = ext4_read_block_bitmap_nowait(sb, block_group);
-+	bh = ext4_read_block_bitmap_nowait(sb, block_group, false);
- 	if (IS_ERR(bh))
- 		return bh;
- 	err = ext4_wait_block_bitmap(sb, block_group, bh);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 42f5060f3cdf..7451662e092a 100644
+index 7451662e092a..4df6f429de1a 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1505,6 +1505,8 @@ struct ext4_sb_info {
- 	/* where last allocation was done - for stream allocation */
- 	unsigned long s_mb_last_group;
- 	unsigned long s_mb_last_start;
-+	unsigned int s_mb_prefetch;
-+	unsigned int s_mb_prefetch_limit;
+@@ -1172,6 +1172,7 @@ struct ext4_inode_info {
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+ #define EXT4_MOUNT_WARN_ON_ERROR	0x2000000 /* Trigger WARN_ON on error */
++#define EXT4_MOUNT_PREFETCH_BLOCK_BITMAPS 0x4000000
+ #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+ #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
+ #define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
+@@ -2315,9 +2316,15 @@ struct ext4_lazy_init {
+ 	struct mutex		li_list_mtx;
+ };
  
- 	/* stats for buddy allocator */
- 	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
-@@ -2446,7 +2448,8 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
- 
- extern struct buffer_head *ext4_read_block_bitmap_nowait(struct super_block *sb,
--						ext4_group_t block_group);
-+						ext4_group_t block_group,
-+						bool ignore_locked);
- extern int ext4_wait_block_bitmap(struct super_block *sb,
- 				  ext4_group_t block_group,
- 				  struct buffer_head *bh);
-@@ -3145,6 +3148,7 @@ struct ext4_group_info {
- 	(1 << EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT)
- #define EXT4_GROUP_INFO_IBITMAP_CORRUPT		\
- 	(1 << EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT)
-+#define EXT4_GROUP_INFO_BBITMAP_READ_BIT	4
- 
- #define EXT4_MB_GRP_NEED_INIT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
-@@ -3159,6 +3163,8 @@ struct ext4_group_info {
- 	(set_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
- #define EXT4_MB_GRP_CLEAR_TRIMMED(grp)	\
- 	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_TEST_AND_SET_READ(grp)	\
-+	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_READ_BIT, &((grp)->bb_state)))
- 
- #define EXT4_MAX_CONTENTION		8
- #define EXT4_CONTENTION_THRESHOLD	2
++enum ext4_li_mode {
++	EXT4_LI_MODE_PREFETCH_BBITMAP,
++	EXT4_LI_MODE_ITABLE,
++};
++
+ struct ext4_li_request {
+ 	struct super_block	*lr_super;
+-	struct ext4_sb_info	*lr_sbi;
++	enum ext4_li_mode	lr_mode;
++	ext4_group_t		lr_first_not_zeroed;
+ 	ext4_group_t		lr_next_group;
+ 	struct list_head	lr_request;
+ 	unsigned long		lr_next_sched;
+@@ -2657,6 +2664,12 @@ extern int ext4_mb_reserve_blocks(struct super_block *, int);
+ extern void ext4_discard_preallocations(struct inode *);
+ extern int __init ext4_init_mballoc(void);
+ extern void ext4_exit_mballoc(void);
++extern ext4_group_t ext4_mb_prefetch(struct super_block *sb,
++				     ext4_group_t group,
++				     unsigned int nr, int *cnt);
++extern void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
++				  unsigned int nr);
++
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     struct buffer_head *bh, ext4_fsblk_t block,
+ 			     unsigned long count, int flags);
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c0a331e2feb0..fcc702f1ff15 100644
+index b1ef35a9e9f1..47de61e44db2 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -922,7 +922,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
- 			bh[i] = NULL;
- 			continue;
- 		}
--		bh[i] = ext4_read_block_bitmap_nowait(sb, group);
-+		bh[i] = ext4_read_block_bitmap_nowait(sb, group, false);
- 		if (IS_ERR(bh[i])) {
- 			err = PTR_ERR(bh[i]);
- 			bh[i] = NULL;
-@@ -2209,12 +2209,93 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 	return ret;
- }
- 
-+/*
-+ * Start prefetching @nr block bitmaps starting at @group.
-+ * Return the next group which needs to be prefetched.
-+ */
-+static ext4_group_t
-+ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
-+		 unsigned int nr, int *cnt)
-+{
-+	ext4_group_t ngroups = ext4_get_groups_count(sb);
-+	struct buffer_head *bh;
-+	struct blk_plug plug;
-+
-+	blk_start_plug(&plug);
-+	while (nr-- > 0) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
-+								  NULL);
-+		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+
-+		/*
-+		 * Prefetch block groups with free blocks; but don't
-+		 * bother if it is marked uninitialized on disk, since
-+		 * it won't require I/O to read.  Also only try to
-+		 * prefetch once, so we avoid getblk() call, which can
-+		 * be expensive.
-+		 */
-+		if (!EXT4_MB_GRP_TEST_AND_SET_READ(grp) &&
-+		    EXT4_MB_GRP_NEED_INIT(grp) &&
-+		    ext4_free_group_clusters(sb, gdp) > 0 &&
-+		    !(ext4_has_group_desc_csum(sb) &&
-+		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
-+			bh = ext4_read_block_bitmap_nowait(sb, group, true);
-+			if (bh && !IS_ERR(bh)) {
-+				if (!buffer_uptodate(bh) && cnt)
-+					(*cnt)++;
-+				brelse(bh);
-+			}
-+		}
-+		if (++group >= ngroups)
-+			group = 0;
-+	}
-+	blk_finish_plug(&plug);
-+	return group;
-+}
-+
-+/*
-+ * Prefetching reads the block bitmap into the buffer cache; but we
-+ * need to make sure that the buddy bitmap in the page cache has been
-+ * initialized.  Note that ext4_mb_init_group() will block if the I/O
-+ * is not yet completed, or indeed if it was not initiated by
-+ * ext4_mb_prefetch did not start the I/O.
-+ *
-+ * TODO: We should actually kick off the buddy bitmap setup in a work
-+ * queue when the buffer I/O is completed, so that we don't block
-+ * waiting for the block allocation bitmap read to finish when
-+ * ext4_mb_prefetch_fini is called from ext4_mb_regular_allocator().
-+ */
-+static void
-+ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
-+		      unsigned int nr)
-+{
-+	while (nr-- > 0) {
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
-+								  NULL);
-+		struct ext4_group_info *grp = ext4_get_group_info(sb, group);
-+
-+		if (!group)
-+			group = ext4_get_groups_count(sb);
-+		group--;
-+		grp = ext4_get_group_info(sb, group);
-+
-+		if (EXT4_MB_GRP_NEED_INIT(grp) &&
-+		    ext4_free_group_clusters(sb, gdp) > 0 &&
-+		    !(ext4_has_group_desc_csum(sb) &&
-+		      (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))) {
-+			if (ext4_mb_init_group(sb, group, GFP_NOFS))
-+				break;
-+		}
-+	}
-+}
-+
- static noinline_for_stack int
- ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+@@ -2233,9 +2233,8 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
+  * Start prefetching @nr block bitmaps starting at @group.
+  * Return the next group which needs to be prefetched.
+  */
+-static ext4_group_t
+-ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
+-		 unsigned int nr, int *cnt)
++ext4_group_t ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
++			      unsigned int nr, int *cnt)
  {
--	ext4_group_t ngroups, group, i;
-+	ext4_group_t prefetch_grp = 0, ngroups, group, i;
- 	int cr = -1;
- 	int err = 0, first_err = 0;
-+	unsigned int nr = 0, prefetch_ios = 0;
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	struct ext4_buddy e4b;
-@@ -2282,6 +2363,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 		 * from the goal value specified
- 		 */
- 		group = ac->ac_g_ex.fe_group;
-+		prefetch_grp = group;
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+ 	struct buffer_head *bh;
+@@ -2285,9 +2284,8 @@ ext4_mb_prefetch(struct super_block *sb, ext4_group_t group,
+  * waiting for the block allocation bitmap read to finish when
+  * ext4_mb_prefetch_fini is called from ext4_mb_regular_allocator().
+  */
+-static void
+-ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
+-		      unsigned int nr)
++void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
++			   unsigned int nr)
+ {
+ 	while (nr-- > 0) {
+ 		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 330957ed1f05..51e91a220ea9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1521,6 +1521,7 @@ enum {
+ 	Opt_dioread_nolock, Opt_dioread_lock,
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
++	Opt_prefetch_block_bitmaps,
+ };
  
- 		for (i = 0; i < ngroups; group++, i++) {
- 			int ret = 0;
-@@ -2293,6 +2375,29 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			if (group >= ngroups)
- 				group = 0;
+ static const match_table_t tokens = {
+@@ -1612,6 +1613,7 @@ static const match_table_t tokens = {
+ 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
+ 	{Opt_nombcache, "nombcache"},
+ 	{Opt_nombcache, "no_mbcache"},	/* for backward compatibility */
++	{Opt_prefetch_block_bitmaps, "prefetch_block_bitmaps"},
+ 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
+ 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
+@@ -1829,6 +1831,8 @@ static const struct mount_opts {
+ 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
+ 	{Opt_test_dummy_encryption, 0, MOPT_STRING},
+ 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
++	{Opt_prefetch_block_bitmaps, EXT4_MOUNT_PREFETCH_BLOCK_BITMAPS,
++	 MOPT_SET},
+ 	{Opt_err, 0, 0}
+ };
  
-+			/*
-+			 * Batch reads of the block allocation bitmaps
-+			 * to get multiple READs in flight; limit
-+			 * prefetching at cr=0/1, otherwise mballoc can
-+			 * spend a lot of time loading imperfect groups
-+			 */
-+			if ((prefetch_grp == group) &&
-+			    (cr > 1 ||
-+			     prefetch_ios < sbi->s_mb_prefetch_limit)) {
-+				unsigned int curr_ios = prefetch_ios;
-+
-+				nr = sbi->s_mb_prefetch;
-+				if (ext4_has_feature_flex_bg(sb)) {
-+					nr = (group / sbi->s_mb_prefetch) *
-+						sbi->s_mb_prefetch;
-+					nr = nr + sbi->s_mb_prefetch - group;
-+				}
-+				prefetch_grp = ext4_mb_prefetch(sb, group,
-+							nr, &prefetch_ios);
-+				if (prefetch_ios == curr_ios)
-+					nr = 0;
+@@ -3201,15 +3205,34 @@ static void print_daily_error_info(struct timer_list *t)
+ static int ext4_run_li_request(struct ext4_li_request *elr)
+ {
+ 	struct ext4_group_desc *gdp = NULL;
+-	ext4_group_t group, ngroups;
+-	struct super_block *sb;
++	struct super_block *sb = elr->lr_super;
++	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
++	ext4_group_t group = elr->lr_next_group;
+ 	unsigned long timeout = 0;
++	unsigned int prefetch_ios = 0;
+ 	int ret = 0;
+ 
+-	sb = elr->lr_super;
+-	ngroups = EXT4_SB(sb)->s_groups_count;
++	if (elr->lr_mode == EXT4_LI_MODE_PREFETCH_BBITMAP) {
++		elr->lr_next_group = ext4_mb_prefetch(sb, group,
++				EXT4_SB(sb)->s_mb_prefetch, &prefetch_ios);
++		if (prefetch_ios)
++			ext4_mb_prefetch_fini(sb, elr->lr_next_group,
++					      prefetch_ios);
++		trace_ext4_prefetch_bitmaps(sb, group, elr->lr_next_group,
++					    prefetch_ios);
++		if (group >= elr->lr_next_group) {
++			ret = 1;
++			if (elr->lr_first_not_zeroed != ngroups &&
++			    !sb_rdonly(sb) && test_opt(sb, INIT_INODE_TABLE)) {
++				elr->lr_next_group = elr->lr_first_not_zeroed;
++				elr->lr_mode = EXT4_LI_MODE_ITABLE;
++				ret = 0;
 +			}
-+
- 			/* This now checks without needing the buddy page */
- 			ret = ext4_mb_good_group_nolock(ac, group, cr);
- 			if (ret <= 0) {
-@@ -2367,6 +2472,10 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	mb_debug(sb, "Best len %d, origin len %d, ac_status %u, ac_flags 0x%x, cr %d ret %d\n",
- 		 ac->ac_b_ex.fe_len, ac->ac_o_ex.fe_len, ac->ac_status,
- 		 ac->ac_flags, cr, err);
-+
-+	if (nr)
-+		ext4_mb_prefetch_fini(sb, prefetch_grp, nr);
-+
- 	return err;
++		}
++		return ret;
++	}
+ 
+-	for (group = elr->lr_next_group; group < ngroups; group++) {
++	for (; group < ngroups; group++) {
+ 		gdp = ext4_get_group_desc(sb, group, NULL);
+ 		if (!gdp) {
+ 			ret = 1;
+@@ -3227,9 +3250,10 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+ 		timeout = jiffies;
+ 		ret = ext4_init_inode_table(sb, group,
+ 					    elr->lr_timeout ? 0 : 1);
++		trace_ext4_lazy_itable_init(sb, group);
+ 		if (elr->lr_timeout == 0) {
+ 			timeout = (jiffies - timeout) *
+-				  elr->lr_sbi->s_li_wait_mult;
++				EXT4_SB(elr->lr_super)->s_li_wait_mult;
+ 			elr->lr_timeout = timeout;
+ 		}
+ 		elr->lr_next_sched = jiffies + elr->lr_timeout;
+@@ -3244,15 +3268,11 @@ static int ext4_run_li_request(struct ext4_li_request *elr)
+  */
+ static void ext4_remove_li_request(struct ext4_li_request *elr)
+ {
+-	struct ext4_sb_info *sbi;
+-
+ 	if (!elr)
+ 		return;
+ 
+-	sbi = elr->lr_sbi;
+-
+ 	list_del(&elr->lr_request);
+-	sbi->s_li_request = NULL;
++	EXT4_SB(elr->lr_super)->s_li_request = NULL;
+ 	kfree(elr);
  }
  
-@@ -2613,6 +2722,26 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 			goto err_freebuddy;
+@@ -3461,7 +3481,6 @@ static int ext4_li_info_new(void)
+ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
+ 					    ext4_group_t start)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_li_request *elr;
+ 
+ 	elr = kzalloc(sizeof(*elr), GFP_KERNEL);
+@@ -3469,8 +3488,13 @@ static struct ext4_li_request *ext4_li_request_new(struct super_block *sb,
+ 		return NULL;
+ 
+ 	elr->lr_super = sb;
+-	elr->lr_sbi = sbi;
+-	elr->lr_next_group = start;
++	elr->lr_first_not_zeroed = start;
++	if (test_opt(sb, PREFETCH_BLOCK_BITMAPS))
++		elr->lr_mode = EXT4_LI_MODE_PREFETCH_BBITMAP;
++	else {
++		elr->lr_mode = EXT4_LI_MODE_ITABLE;
++		elr->lr_next_group = start;
++	}
+ 
+ 	/*
+ 	 * Randomize first schedule time of the request to
+@@ -3488,6 +3512,7 @@ int ext4_register_li_request(struct super_block *sb,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_li_request *elr = NULL;
+ 	ext4_group_t ngroups = sbi->s_groups_count;
++	enum ext4_li_mode lr_mode = EXT4_LI_MODE_ITABLE;
+ 	int ret = 0;
+ 
+ 	mutex_lock(&ext4_li_mtx);
+@@ -3500,8 +3525,10 @@ int ext4_register_li_request(struct super_block *sb,
+ 		goto out;
  	}
  
-+	if (ext4_has_feature_flex_bg(sb)) {
-+		/* a single flex group is supposed to be read by a single IO */
-+		sbi->s_mb_prefetch = 1 << sbi->s_es->s_log_groups_per_flex;
-+		sbi->s_mb_prefetch *= 8; /* 8 prefetch IOs in flight at most */
-+	} else {
-+		sbi->s_mb_prefetch = 32;
-+	}
-+	if (sbi->s_mb_prefetch > ext4_get_groups_count(sb))
-+		sbi->s_mb_prefetch = ext4_get_groups_count(sb);
-+	/* now many real IOs to prefetch within a single allocation at cr=0
-+	 * given cr=0 is an CPU-related optimization we shouldn't try to
-+	 * load too many groups, at some point we should start to use what
-+	 * we've got in memory.
-+	 * with an average random access time 5ms, it'd take a second to get
-+	 * 200 groups (* N with flex_bg), so let's make this limit 4
-+	 */
-+	sbi->s_mb_prefetch_limit = sbi->s_mb_prefetch * 4;
-+	if (sbi->s_mb_prefetch_limit > ext4_get_groups_count(sb))
-+		sbi->s_mb_prefetch_limit = ext4_get_groups_count(sb);
+-	if (first_not_zeroed == ngroups || sb_rdonly(sb) ||
+-	    !test_opt(sb, INIT_INODE_TABLE))
++	if (test_opt(sb, PREFETCH_BLOCK_BITMAPS)) {
++		lr_mode = EXT4_LI_MODE_PREFETCH_BBITMAP;
++	} else if (first_not_zeroed == ngroups || sb_rdonly(sb) ||
++		   !test_opt(sb, INIT_INODE_TABLE))
+ 		goto out;
+ 
+ 	elr = ext4_li_request_new(sb, first_not_zeroed);
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index cbcd2e1a608d..8008d2e116b9 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2742,6 +2742,50 @@ TRACE_EVENT(ext4_error,
+ 		  __entry->function, __entry->line)
+ );
+ 
++TRACE_EVENT(ext4_prefetch_bitmaps,
++	    TP_PROTO(struct super_block *sb, ext4_group_t group,
++		     ext4_group_t next, unsigned int prefetch_ios),
 +
- 	return 0;
++	TP_ARGS(sb, group, next, prefetch_ios),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	__u32,	group			)
++		__field(	__u32,	next			)
++		__field(	__u32,	ios			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= sb->s_dev;
++		__entry->group	= group;
++		__entry->next	= next;
++		__entry->ios	= prefetch_ios;
++	),
++
++	TP_printk("dev %d,%d group %u next %u ios %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->group, __entry->next, __entry->ios)
++);
++
++TRACE_EVENT(ext4_lazy_itable_init,
++	    TP_PROTO(struct super_block *sb, ext4_group_t group),
++
++	TP_ARGS(sb, group),
++
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	__u32,	group			)
++	),
++
++	TP_fast_assign(
++		__entry->dev	= sb->s_dev;
++		__entry->group	= group;
++	),
++
++	TP_printk("dev %d,%d group %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->group)
++);
++
+ #endif /* _TRACE_EXT4_H */
  
- err_freebuddy:
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 6c9fc9e21c13..31e0db726d21 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -240,6 +240,8 @@ EXT4_RO_ATTR_ES_STRING(last_error_func, s_last_error_func, 32);
- EXT4_ATTR(first_error_time, 0444, first_error_time);
- EXT4_ATTR(last_error_time, 0444, last_error_time);
- EXT4_ATTR(journal_task, 0444, journal_task);
-+EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
-+EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
- 
- static unsigned int old_bump_val = 128;
- EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
-@@ -283,6 +285,8 @@ static struct attribute *ext4_attrs[] = {
- #ifdef CONFIG_EXT4_DEBUG
- 	ATTR_LIST(simulate_fail),
- #endif
-+	ATTR_LIST(mb_prefetch),
-+	ATTR_LIST(mb_prefetch_limit),
- 	NULL,
- };
- ATTRIBUTE_GROUPS(ext4);
+ /* This part must be outside protection */
 -- 
 2.24.1
 
