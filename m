@@ -2,37 +2,41 @@ Return-Path: <SRS0=2N9o=BK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 901BDC433DF
-	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53806C433E0
+	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 72E5D21744
-	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 36C3521744
+	for <linux-ext4@archiver.kernel.org>; Fri, 31 Jul 2020 19:08:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729209AbgGaTIc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 31 Jul 2020 15:08:32 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59739 "EHLO
+        id S1729813AbgGaTId (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 31 Jul 2020 15:08:33 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59745 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
         with ESMTP id S1726726AbgGaTIc (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Jul 2020 15:08:32 -0400
 Received: from callcc.thunk.org (pool-96-230-252-158.bstnma.fios.verizon.net [96.230.252.158])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06VJ8Sk4009104
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 06VJ8S8O009103
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 31 Jul 2020 15:08:29 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 53330420304; Fri, 31 Jul 2020 15:08:28 -0400 (EDT)
+        id 60C04420C55; Fri, 31 Jul 2020 15:08:28 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 0/4] V2- ext4 block bitmap prefetch patches
-Date:   Fri, 31 Jul 2020 15:08:01 -0400
-Message-Id: <20200731190805.181253-1-tytso@mit.edu>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH 3/4] ext4: indicate via a block bitmap read is prefetched via a tracepoint
+Date:   Fri, 31 Jul 2020 15:08:04 -0400
+Message-Id: <20200731190805.181253-4-tytso@mit.edu>
 X-Mailer: git-send-email 2.24.1
+In-Reply-To: <20200731190805.181253-1-tytso@mit.edu>
+References: <20200731190805.181253-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -40,42 +44,72 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This is a second revision of Alex's original block allocation
-prefetch patches.
+Modify the ext4_read_block_bitmap_load tracepoint so that it tells us
+whether a block bitmap is being prefetched.
 
-Changes are from v1:
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ fs/ext4/balloc.c            |  2 +-
+ include/trace/events/ext4.h | 24 ++++++++++++++++++++----
+ 2 files changed, 21 insertions(+), 5 deletions(-)
 
-*) We don't skip reading block bitmaps in the first block group of a
-flex_bg.  This is necessary so that strategy of biasing block
-allocations for metadata blocks (in particular, extent tree
-blocks) can be preserved.
-
-*) The prefetch_block_bitmaps mount option now will prefetch the block
-bitmaps before starting lazy inode table initialization, instead of
-the other way around.  In general, for freshly created file systems,
-prefetching block bitmaps will go very quickly, since most block
-groups have not been used yet, so we don't actually the prefetch those
-block bitmaps.
-
-*) Other minor spelling fixups, cleanups.
-
-
-Alex Zhuravlev (2):
-  ext4: add prefetching for block allocation bitmaps
-  ext4: skip non-loaded groups at cr=0/1 when scanning for good groups
-
-Theodore Ts'o (2):
-  ext4: indicate via a block bitmap read is prefetched via a tracepoint
-  ext4: add prefetch_block_bitmaps mount options
-
- fs/ext4/balloc.c            |  16 +++-
- fs/ext4/ext4.h              |  23 +++++-
- fs/ext4/mballoc.c           | 153 +++++++++++++++++++++++++++++++++++-
- fs/ext4/super.c             |  59 ++++++++++----
- fs/ext4/sysfs.c             |   4 +
- include/trace/events/ext4.h |  68 +++++++++++++++-
- 6 files changed, 294 insertions(+), 29 deletions(-)
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 1e2b1b4093aa..48c3df47748d 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -494,7 +494,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group,
+ 	 * submit the buffer_head for reading
+ 	 */
+ 	set_buffer_new(bh);
+-	trace_ext4_read_block_bitmap_load(sb, block_group);
++	trace_ext4_read_block_bitmap_load(sb, block_group, ignore_locked);
+ 	bh->b_end_io = ext4_end_bitmap_read;
+ 	get_bh(bh);
+ 	submit_bh(REQ_OP_READ, REQ_META | REQ_PRIO |
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index cc41d692ae8e..cbcd2e1a608d 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -1312,18 +1312,34 @@ DEFINE_EVENT(ext4__bitmap_load, ext4_mb_buddy_bitmap_load,
+ 	TP_ARGS(sb, group)
+ );
+ 
+-DEFINE_EVENT(ext4__bitmap_load, ext4_read_block_bitmap_load,
++DEFINE_EVENT(ext4__bitmap_load, ext4_load_inode_bitmap,
+ 
+ 	TP_PROTO(struct super_block *sb, unsigned long group),
+ 
+ 	TP_ARGS(sb, group)
+ );
+ 
+-DEFINE_EVENT(ext4__bitmap_load, ext4_load_inode_bitmap,
++TRACE_EVENT(ext4_read_block_bitmap_load,
++	TP_PROTO(struct super_block *sb, unsigned long group, bool prefetch),
+ 
+-	TP_PROTO(struct super_block *sb, unsigned long group),
++	TP_ARGS(sb, group, prefetch),
+ 
+-	TP_ARGS(sb, group)
++	TP_STRUCT__entry(
++		__field(	dev_t,	dev			)
++		__field(	__u32,	group			)
++		__field(	bool,	prefetch		)
++
++	),
++
++	TP_fast_assign(
++		__entry->dev	= sb->s_dev;
++		__entry->group	= group;
++		__entry->prefetch = prefetch;
++	),
++
++	TP_printk("dev %d,%d group %u prefetch %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->group, __entry->prefetch)
+ );
+ 
+ TRACE_EVENT(ext4_direct_IO_enter,
 -- 
 2.24.1
 
