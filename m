@@ -2,260 +2,121 @@ Return-Path: <SRS0=P/cF=BP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.5 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
+X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 326DEC433E3
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:05:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58229C433E1
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:07:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1A48D22B42
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:05:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3857022B42
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:07:01 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1596658021;
+	bh=EA9UGfVrvbiVPmDZOGPrf0JRFEMVJpI+PydD5PB6PFw=;
+	h=Date:From:To:Cc:Subject:List-ID:From;
+	b=JqQleep+YD8qEkIZcgLlZZ9Mz5gP0I/nHNKspNT5Utoco7VUP+BPxbVPdmmzYk0Zp
+	 woPX69cwIskStw6UQ3b8w8M3Wch9cFPktn4V/ZHWLCRIic8HnTR8Ts1CzWh5bbj/ze
+	 kAgZZut0HtCLZQn1lMfnco3ZDPcI/SZMLzqBaqWA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727884AbgHEUFl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 5 Aug 2020 16:05:41 -0400
-Received: from mx2.suse.de ([195.135.220.15]:58434 "EHLO mx2.suse.de"
+        id S1728381AbgHEUG4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 5 Aug 2020 16:06:56 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50648 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727793AbgHEQf6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Aug 2020 12:35:58 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 3617EB5FD;
-        Wed,  5 Aug 2020 14:16:40 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 54C291E12CB; Wed,  5 Aug 2020 16:16:23 +0200 (CEST)
-Date:   Wed, 5 Aug 2020 16:16:23 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3] ext4: don't BUG on inconsistent journal feature
-Message-ID: <20200805141623.GC16475@quack2.suse.cz>
-References: <20200710140759.18031-1-jack@suse.cz>
+        id S1726961AbgHEQeP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 5 Aug 2020 12:34:15 -0400
+Received: from localhost (c-67-169-218-210.hsd1.or.comcast.net [67.169.218.210])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 517252333F;
+        Wed,  5 Aug 2020 15:32:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1596641535;
+        bh=EA9UGfVrvbiVPmDZOGPrf0JRFEMVJpI+PydD5PB6PFw=;
+        h=Date:From:To:Cc:Subject:From;
+        b=a7onUlKCysNFqUi24LerBJz4ZK8a5CWsAnRZAY8sSG+G6kMIS4sDXZGcX5a1c6oRk
+         6c05X0bAHo84vGahPRRxUqFpKMNpfKcbDuoCilUKWJ337OsMJbLNlDPiPqx83DPIEf
+         QTcX3EuGffXsf+upbBuAh3noAMHYkh+a8bqsg2D8=
+Date:   Wed, 5 Aug 2020 08:32:14 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     "Darrick J. Wong" <djwong@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        david@fromorbit.com, linux-kernel@vger.kernel.org,
+        sandeen@sandeen.net, hch@lst.de,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>, riteshh@linux.ibm.com,
+        rgoldwyn@suse.de, agruenba@redhat.com, linux-btrfs@vger.kernel.org
+Subject: [GIT PULL] iomap: new code for 5.9-rc1
+Message-ID: <20200805153214.GA6090@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200710140759.18031-1-jack@suse.cz>
-User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 10-07-20 16:07:59, Jan Kara wrote:
-> A customer has reported a BUG_ON in ext4_clear_journal_err() hitting
-> during an LTP testing. Either this has been caused by a test setup
-> issue where the filesystem was being overwritten while LTP was mounting
-> it or the journal replay has overwritten the superblock with invalid
-> data. In either case it is preferable we don't take the machine down
-> with a BUG_ON. So handle the situation of unexpectedly missing
-> has_journal feature more gracefully. We issue warning and fail the mount
-> in the cases where the race window is narrow and the failed check is
-> most likely a programming error. In cases where fs corruption is more
-> likely, we do full ext4_error() handling before failing mount / remount.
-> 
-> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+Hi Linus,
 
-Ted, can you please pick up this patch? Thanks!
+Please pull these new changes to the iomap code for 5.9.  The most
+notable changes are:
 
-								Honza
+1) iomap no longer invalidate the page cache when performing a direct
+read, since doing so is unnecessary and the old directio code doesn't do
+that either.
 
-> ---
->  fs/ext4/super.c | 68 +++++++++++++++++++++++++++++++++++++++------------------
->  1 file changed, 47 insertions(+), 21 deletions(-)
-> 
-> Changes since v2:
-> - added Reviewed-by tag
-> - fixup compilation failure without CONFIG_QUOTA
-> 
-> Changes since v1:
-> - handle failures more likely coming from fs corruption as with ext4_error
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 330957ed1f05..9fdad843b30e 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -66,10 +66,10 @@ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
->  			     unsigned long journal_devnum);
->  static int ext4_show_options(struct seq_file *seq, struct dentry *root);
->  static int ext4_commit_super(struct super_block *sb, int sync);
-> -static void ext4_mark_recovery_complete(struct super_block *sb,
-> +static int ext4_mark_recovery_complete(struct super_block *sb,
->  					struct ext4_super_block *es);
-> -static void ext4_clear_journal_err(struct super_block *sb,
-> -				   struct ext4_super_block *es);
-> +static int ext4_clear_journal_err(struct super_block *sb,
-> +				  struct ext4_super_block *es);
->  static int ext4_sync_fs(struct super_block *sb, int wait);
->  static int ext4_remount(struct super_block *sb, int *flags, char *data);
->  static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
-> @@ -4770,7 +4770,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	EXT4_SB(sb)->s_mount_state &= ~EXT4_ORPHAN_FS;
->  	if (needs_recovery) {
->  		ext4_msg(sb, KERN_INFO, "recovery complete");
-> -		ext4_mark_recovery_complete(sb, es);
-> +		err = ext4_mark_recovery_complete(sb, es);
-> +		if (err)
-> +			goto failed_mount8;
->  	}
->  	if (EXT4_SB(sb)->s_journal) {
->  		if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
-> @@ -4813,10 +4815,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
->  	goto failed_mount;
->  
-> -#ifdef CONFIG_QUOTA
->  failed_mount8:
->  	ext4_unregister_sysfs(sb);
-> -#endif
->  failed_mount7:
->  	ext4_unregister_li_request(sb);
->  failed_mount6:
-> @@ -4956,7 +4956,8 @@ static journal_t *ext4_get_journal(struct super_block *sb,
->  	struct inode *journal_inode;
->  	journal_t *journal;
->  
-> -	BUG_ON(!ext4_has_feature_journal(sb));
-> +	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-> +		return NULL;
->  
->  	journal_inode = ext4_get_journal_inode(sb, journal_inum);
->  	if (!journal_inode)
-> @@ -4986,7 +4987,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
->  	struct ext4_super_block *es;
->  	struct block_device *bdev;
->  
-> -	BUG_ON(!ext4_has_feature_journal(sb));
-> +	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-> +		return NULL;
->  
->  	bdev = ext4_blkdev_get(j_dev, sb);
->  	if (bdev == NULL)
-> @@ -5078,7 +5080,8 @@ static int ext4_load_journal(struct super_block *sb,
->  	int err = 0;
->  	int really_read_only;
->  
-> -	BUG_ON(!ext4_has_feature_journal(sb));
-> +	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-> +		return -EFSCORRUPTED;
->  
->  	if (journal_devnum &&
->  	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
-> @@ -5148,7 +5151,12 @@ static int ext4_load_journal(struct super_block *sb,
->  	}
->  
->  	EXT4_SB(sb)->s_journal = journal;
-> -	ext4_clear_journal_err(sb, es);
-> +	err = ext4_clear_journal_err(sb, es);
-> +	if (err) {
-> +		EXT4_SB(sb)->s_journal = NULL;
-> +		jbd2_journal_destroy(journal);
-> +		return err;
-> +	}
->  
->  	if (!really_read_only && journal_devnum &&
->  	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
-> @@ -5244,26 +5252,32 @@ static int ext4_commit_super(struct super_block *sb, int sync)
->   * remounting) the filesystem readonly, then we will end up with a
->   * consistent fs on disk.  Record that fact.
->   */
-> -static void ext4_mark_recovery_complete(struct super_block *sb,
-> -					struct ext4_super_block *es)
-> +static int ext4_mark_recovery_complete(struct super_block *sb,
-> +				       struct ext4_super_block *es)
->  {
-> +	int err;
->  	journal_t *journal = EXT4_SB(sb)->s_journal;
->  
->  	if (!ext4_has_feature_journal(sb)) {
-> -		BUG_ON(journal != NULL);
-> -		return;
-> +		if (journal != NULL) {
-> +			ext4_error(sb, "Journal got removed while the fs was "
-> +				   "mounted!");
-> +			return -EFSCORRUPTED;
-> +		}
-> +		return 0;
->  	}
->  	jbd2_journal_lock_updates(journal);
-> -	if (jbd2_journal_flush(journal) < 0)
-> +	err = jbd2_journal_flush(journal);
-> +	if (err < 0)
->  		goto out;
->  
->  	if (ext4_has_feature_journal_needs_recovery(sb) && sb_rdonly(sb)) {
->  		ext4_clear_feature_journal_needs_recovery(sb);
->  		ext4_commit_super(sb, 1);
->  	}
-> -
->  out:
->  	jbd2_journal_unlock_updates(journal);
-> +	return err;
->  }
->  
->  /*
-> @@ -5271,14 +5285,17 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
->   * has recorded an error from a previous lifetime, move that error to the
->   * main filesystem now.
->   */
-> -static void ext4_clear_journal_err(struct super_block *sb,
-> +static int ext4_clear_journal_err(struct super_block *sb,
->  				   struct ext4_super_block *es)
->  {
->  	journal_t *journal;
->  	int j_errno;
->  	const char *errstr;
->  
-> -	BUG_ON(!ext4_has_feature_journal(sb));
-> +	if (!ext4_has_feature_journal(sb)) {
-> +		ext4_error(sb, "Journal got removed while the fs was mounted!");
-> +		return -EFSCORRUPTED;
-> +	}
->  
->  	journal = EXT4_SB(sb)->s_journal;
->  
-> @@ -5303,6 +5320,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
->  		jbd2_journal_clear_err(journal);
->  		jbd2_journal_update_sb_errno(journal);
->  	}
-> +	return 0;
->  }
->  
->  /*
-> @@ -5573,8 +5591,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  			    (sbi->s_mount_state & EXT4_VALID_FS))
->  				es->s_state = cpu_to_le16(sbi->s_mount_state);
->  
-> -			if (sbi->s_journal)
-> +			if (sbi->s_journal) {
-> +				/*
-> +				 * We let remount-ro finish even if marking fs
-> +				 * as clean failed...
-> +				 */
->  				ext4_mark_recovery_complete(sb, es);
-> +			}
->  			if (sbi->s_mmp_tsk)
->  				kthread_stop(sbi->s_mmp_tsk);
->  		} else {
-> @@ -5622,8 +5645,11 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  			 * been changed by e2fsck since we originally mounted
->  			 * the partition.)
->  			 */
-> -			if (sbi->s_journal)
-> -				ext4_clear_journal_err(sb, es);
-> +			if (sbi->s_journal) {
-> +				err = ext4_clear_journal_err(sb, es);
-> +				if (err)
-> +					goto restore_opts;
-> +			}
->  			sbi->s_mount_state = le16_to_cpu(es->s_state);
->  
->  			err = ext4_setup_super(sb, es, 0);
-> -- 
-> 2.16.4
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2) iomap embraced the use of returning ENOTBLK from a direct write to
+trigger falling back to a buffered write since ext4 already did this and
+btrfs wants it for their port.
+
+3) iomap falls back to buffered writes if we're doing a direct write and
+the page cache invalidation after the flush fails; this was necessary to
+handle a corner case in the btrfs port.
+
+The branch merges cleanly with your HEAD branch as of 15m ago.  Please
+let me know if there are any strange problems.
+
+--D
+
+The following changes since commit dcb7fd82c75ee2d6e6f9d8cc71c52519ed52e258:
+
+  Linux 5.8-rc4 (2020-07-05 16:20:22 -0700)
+
+are available in the Git repository at:
+
+  git://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git tags/iomap-5.9-merge-4
+
+for you to fetch changes up to 66143873c6a0b24242f24f65fde70c643b26b4e7:
+
+  iomap: fall back to buffered writes for invalidation failures (2020-07-23 22:45:59 -0700)
+
+----------------------------------------------------------------
+New code for 5.9:
+- Make sure we call ->iomap_end with a failure code if ->iomap_begin
+  failed in any way; some filesystems need to try to undo things.
+- Don't invalidate the page cache during direct reads since we already
+  sync'd the cache with disk.
+- Make direct writes fall back to the page cache if the pre-write
+  cache invalidation fails.  This avoids a cache coherency problem.
+
+----------------------------------------------------------------
+Andreas Gruenbacher (1):
+      iomap: Make sure iomap_end is called after iomap_begin
+
+Christoph Hellwig (2):
+      xfs: use ENOTBLK for direct I/O to buffered I/O fallback
+      iomap: fall back to buffered writes for invalidation failures
+
+Dave Chinner (1):
+      iomap: Only invalidate page cache pages on direct IO writes
+
+ fs/ext4/file.c       |  2 ++
+ fs/gfs2/file.c       |  3 ++-
+ fs/iomap/apply.c     | 13 +++++++++----
+ fs/iomap/direct-io.c | 37 +++++++++++++++++++++----------------
+ fs/iomap/trace.h     |  1 +
+ fs/xfs/xfs_file.c    |  8 ++++----
+ fs/zonefs/super.c    |  7 +++++--
+ 7 files changed, 44 insertions(+), 27 deletions(-)
