@@ -2,84 +2,94 @@ Return-Path: <SRS0=P/cF=BP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.5 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E847C433DF
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 19:27:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6F48C433E1
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:01:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2C3182075D
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 19:27:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B4EC72076E
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:01:26 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=kroah.com header.i=@kroah.com header.b="qCAPACnq";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Wv4ZOY50"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728268AbgHET0r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 5 Aug 2020 15:26:47 -0400
-Received: from mx2.suse.de ([195.135.220.15]:46820 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728663AbgHERNr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Aug 2020 13:13:47 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id D96E1B5E0;
-        Wed,  5 Aug 2020 14:12:08 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id DFA0C1E12CB; Wed,  5 Aug 2020 16:11:51 +0200 (CEST)
-Date:   Wed, 5 Aug 2020 16:11:51 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Do not block RWF_NOWAIT dio write on unallocated
- space
-Message-ID: <20200805141151.GA16475@quack2.suse.cz>
-References: <20200708153516.9507-1-jack@suse.cz>
+        id S1729834AbgHET77 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 5 Aug 2020 15:59:59 -0400
+Received: from out4-smtp.messagingengine.com ([66.111.4.28]:58675 "EHLO
+        out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727037AbgHEQlR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2020 12:41:17 -0400
+Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
+        by mailout.nyi.internal (Postfix) with ESMTP id 2B1675C0113;
+        Wed,  5 Aug 2020 10:29:32 -0400 (EDT)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute1.internal (MEProxy); Wed, 05 Aug 2020 10:29:32 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kroah.com; h=
+        date:from:to:cc:subject:message-id:references:mime-version
+        :content-type:in-reply-to; s=fm1; bh=WMH703/icl+g+SDICao7QykLwpJ
+        Pkv9C/m00aprnqTU=; b=qCAPACnqHleCkcqeQUN/NDzABpKK1PLK/ErTMdVz2l1
+        NKJWt6Hbgvz33ckRbbE1GfsrxlXCjUUV+ehDFZdWxAAqg87OBZTjUmf3j5PMtR0G
+        bzaioVR36j5CVGvsPZYrvc/MRLgdA+wOpevkFrM9yDmeuPoh1nibXC9Sj+2tByxo
+        uH5aS6rhFcZMUYY/j4G3tHmI+bjkdmKtgoFGi22HAUnyPZrKmIg5bVSirKcoWR6g
+        e54WJdM+A03CW0ODcrW0BAgzmpsd3zDddFLKT/1MjkMLlvr+hWBzdAf6GHUgL4oi
+        NTK24lTaL6LE/v1SpV/al7iaW5DCQXFdXCRGeKYEHIQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-type:date:from:in-reply-to
+        :message-id:mime-version:references:subject:to:x-me-proxy
+        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; bh=WMH703
+        /icl+g+SDICao7QykLwpJPkv9C/m00aprnqTU=; b=Wv4ZOY50oBBsV8leAreoOK
+        tBylc08xH9Wb6L7/hMoseXOwlTpFMTZkqiY+nCsBHK6Fq9CqWxGZh4cmKNkmx/dU
+        0LFXe0OOXXZI9Ez07tH1ZhsVoS21cvkqafm/uLzltammTjWJJX+LpVX+az1z6xlK
+        SluZk5FXlg359pxQtaW5jSEh8t+RRKFh7NuG+3wCL4AyjSk/EGTjL4BdLZiAMIcV
+        /mNQeQPNYH3Fn09MqGEXmcQwDnv1BEUq3LYSINcjBeSIAzKwF+g/ktcESXWudC+l
+        HjKDqBRDBRLznz87sLPuNc+dynjcp6384GQzOo3MrQVl9eY4OOl2R9KDr5uXJDEg
+        ==
+X-ME-Sender: <xms:SsIqX2xt0SrGQeWyzDllMc4bSSnnXEbrNWaYdqGiEIjTSZgZsrr2iA>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduiedrjeekgdejlecutefuodetggdotefrodftvf
+    curfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfghnecu
+    uegrihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenuc
+    fjughrpeffhffvuffkfhggtggujgesthdtredttddtvdenucfhrhhomhepifhrvghgucfm
+    jfcuoehgrhgvgheskhhrohgrhhdrtghomheqnecuggftrfgrthhtvghrnhepveeuheejgf
+    ffgfeivddukedvkedtleelleeghfeljeeiueeggeevueduudekvdetnecukfhppeekfedr
+    keeirdekledruddtjeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrih
+    hlfhhrohhmpehgrhgvgheskhhrohgrhhdrtghomh
+X-ME-Proxy: <xmx:SsIqXyS7ADPEgx8__DHOmato8PdvLpf8oK7Ha1gONgLWPoIZcNjnIQ>
+    <xmx:SsIqX4VeAhTzF2f2DPEyrMBbQ-CnHu9YQQeQcZf9JRO_202Tu3COBQ>
+    <xmx:SsIqX8gobWMYBwz5DqSX8W4vVRr6C-mhfMZSy--QKQvBmq3SPdvw5A>
+    <xmx:TMIqX36_Xl46lmudaQYvGdBLdk2adWvWyx9b327RLX_ui82D84-4Kg>
+Received: from localhost (83-86-89-107.cable.dynamic.v4.ziggo.nl [83.86.89.107])
+        by mail.messagingengine.com (Postfix) with ESMTPA id 471B0306005F;
+        Wed,  5 Aug 2020 10:29:30 -0400 (EDT)
+Date:   Wed, 5 Aug 2020 16:29:46 +0200
+From:   Greg KH <greg@kroah.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     stable@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wanglong19@meituan.com, heguanjun@meituan.com,
+        Jiang Ying <jiangying8582@126.com>
+Subject: Re: [PATCH v4] ext4: fix direct I/O read error
+Message-ID: <20200805142946.GA2154236@kroah.com>
+References: <1596614241-178185-1-git-send-email-jiangying8582@126.com>
+ <20200805085107.GC4117@quack2.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200708153516.9507-1-jack@suse.cz>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20200805085107.GC4117@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 08-07-20 17:35:16, Jan Kara wrote:
-> Since commit 378f32bab371 ("ext4: introduce direct I/O write using iomap
-> infrastructure") we don't properly bail out of RWF_NOWAIT direct IO
-> write if underlying blocks are not allocated. Also
-> ext4_dio_write_checks() does not honor RWF_NOWAIT when re-acquiring
-> i_rwsem. Fix both issues.
-> 
-> Fixes: 378f32bab371 ("ext4: introduce direct I/O write using iomap infrastructure")
-> Reported-by: Filipe Manana <fdmanana@gmail.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+On Wed, Aug 05, 2020 at 10:51:07AM +0200, Jan Kara wrote:
+> Note to stable tree maintainers (summary from the rather long changelog):
+> This is a non-upstream patch. It will not go upstream because the problem
+> there has been fixed by converting ext4 to use iomap infrastructure.
+> However that change is out of scope for stable kernels and this is a
+> minimal fix for the problem that has hit real-world applications so I think
+> it would be worth it to include the fix in stable trees. Thanks.
 
-Ted, can you please merge this patch? Thanks!
+Thanks for the note, I wouldn't have noticed it otherwise :)
 
-								Honza
-
-> ---
->  fs/ext4/file.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 2a01e31a032c..8f742b53f1d4 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -428,6 +428,10 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
->  	 */
->  	if (*ilock_shared && (!IS_NOSEC(inode) || *extend ||
->  	     !ext4_overwrite_io(inode, offset, count))) {
-> +		if (iocb->ki_flags & IOCB_NOWAIT) {
-> +			ret = -EAGAIN;
-> +			goto out;
-> +		}
->  		inode_unlock_shared(inode);
->  		*ilock_shared = false;
->  		inode_lock(inode);
-> -- 
-> 2.16.4
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+greg k-h
