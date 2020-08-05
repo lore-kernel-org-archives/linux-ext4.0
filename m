@@ -2,208 +2,121 @@ Return-Path: <SRS0=P/cF=BP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.5 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
+X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FAD9C433E1
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:07:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 235F7C433E1
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:11:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D6A722CA1
-	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:07:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E07E922B42
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 20:11:26 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="LJmwUcb4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727893AbgHEUHF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 5 Aug 2020 16:07:05 -0400
-Received: from mx2.suse.de ([195.135.220.15]:57638 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726918AbgHEQeG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 5 Aug 2020 12:34:06 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id F1E01AC6E;
-        Wed,  5 Aug 2020 14:15:32 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 011301E12CB; Wed,  5 Aug 2020 16:15:15 +0200 (CEST)
-Date:   Wed, 5 Aug 2020 16:15:15 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] mke2fs: Warn if fs block size is incompatible with DAX
-Message-ID: <20200805141515.GB16475@quack2.suse.cz>
-References: <20200709144057.21333-1-jack@suse.cz>
+        id S1729390AbgHEULZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 5 Aug 2020 16:11:25 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:54964 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727008AbgHEQ1n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Aug 2020 12:27:43 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 075GM4C9038919;
+        Wed, 5 Aug 2020 16:25:56 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2020-01-29;
+ bh=5XP8uLSK11AJnsAEQAxe44/0zKxbW/hwfIcqfufnmeE=;
+ b=LJmwUcb4xXwAz+eZQ4bWBDX8nC3NpFcZDGJz9UsACTT1Buvih6AKdRste9P6dvdnpuz6
+ gAXkAW+1S4jQxY+6OhBDH1RRPEhyttOeaAPeUlTQ2L81MD+5vgMhTwfdn3zaSVpPsONa
+ 8o48vxS1YNJo0ADSpu6hRU99WRTEeIF7hma0EOwE4o98DpxD0OuM4Gv8Ur3b6+TURRYI
+ kGJKI1GW+M7Qnfj4k6HlkJlssx0YR7KmSkpePBVuOY6FkVpoxtU/Kafde+voK3yy/t6x
+ 7q4MMybU4E2EqJmXrvLK+Zo6BoZmq3u+ZgYx0/TsoF1lx3YNQlxL54esBlPSEYAsFni1 7g== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2120.oracle.com with ESMTP id 32n11nb27j-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Wed, 05 Aug 2020 16:25:56 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 075GHjwM074767;
+        Wed, 5 Aug 2020 16:23:56 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3030.oracle.com with ESMTP id 32qyaa39tb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 05 Aug 2020 16:23:56 +0000
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 075GNq50031730;
+        Wed, 5 Aug 2020 16:23:52 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Wed, 05 Aug 2020 09:23:51 -0700
+Date:   Wed, 5 Aug 2020 09:23:49 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Andreas Gruenbacher <agruenba@redhat.com>
+Cc:     "Darrick J. Wong" <djwong@kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Eric Sandeen <sandeen@sandeen.net>,
+        Christoph Hellwig <hch@lst.de>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, riteshh@linux.ibm.com,
+        Goldwyn Rodrigues <rgoldwyn@suse.de>,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [GIT PULL] iomap: new code for 5.9-rc1
+Message-ID: <20200805162349.GB6107@magnolia>
+References: <20200805153214.GA6090@magnolia>
+ <CAHc6FU6yMnuKdVsAXkWgwr2ViMSXJdBXksrQDvHwaaw4p8u0rQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200709144057.21333-1-jack@suse.cz>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <CAHc6FU6yMnuKdVsAXkWgwr2ViMSXJdBXksrQDvHwaaw4p8u0rQ@mail.gmail.com>
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9704 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 mlxscore=0 suspectscore=1
+ spamscore=0 bulkscore=0 phishscore=0 malwarescore=0 mlxlogscore=999
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2008050132
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9704 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1015 priorityscore=1501
+ impostorscore=0 lowpriorityscore=0 malwarescore=0 spamscore=0 mlxscore=0
+ suspectscore=1 mlxlogscore=999 phishscore=0 adultscore=0 bulkscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
+ definitions=main-2008050132
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 09-07-20 16:40:57, Jan Kara wrote:
-> If we are creating filesystem on DAX capable device, warn if set block
-> size is incompatible with DAX to give admin some hint why DAX might not
-> be available.
+On Wed, Aug 05, 2020 at 05:54:31PM +0200, Andreas Gruenbacher wrote:
+> Hi Darrick,
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-
-Ping?
-
-								Honza
-
-> ---
->  configure.ac  |  3 +++
->  misc/mke2fs.c | 81 ++++++++++++++++++++++++++++++++++++++---------------------
->  2 files changed, 55 insertions(+), 29 deletions(-)
+> On Wed, Aug 5, 2020 at 5:40 PM Darrick J. Wong <djwong@kernel.org> wrote:
+> > ----------------------------------------------------------------
+> > Andreas Gruenbacher (1):
+> >       iomap: Make sure iomap_end is called after iomap_begin
 > 
-> diff --git a/configure.ac b/configure.ac
-> index 18e434bc6ebc..7d9210740387 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -1142,6 +1142,9 @@ if test -n "$BLKID_CMT"; then
->    AC_CHECK_LIB(blkid, blkid_probe_get_topology,
->  		      AC_DEFINE(HAVE_BLKID_PROBE_GET_TOPOLOGY, 1,
->  				[Define to 1 if blkid has blkid_probe_get_topology]))
-> +  AC_CHECK_LIB(blkid, blkid_topology_get_dax,
-> +		      AC_DEFINE(HAVE_BLKID_TOPOLOGY_GET_DAX, 1,
-> +				[Define to 1 if blkid has blkid_topology_get_dax]))
->    AC_CHECK_LIB(blkid, blkid_probe_enable_partitions,
->  		      AC_DEFINE(HAVE_BLKID_PROBE_ENABLE_PARTITIONS, 1,
->  				[Define to 1 if blkid has blkid_probe_enable_partitions]))
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index c90dcf0e87c1..8c8f5ea467d3 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1468,23 +1468,30 @@ int get_bool_from_profile(char **types, const char *opt, int def_val)
->  extern const char *mke2fs_default_profile;
->  static const char *default_files[] = { "<default>", 0 };
->  
-> +struct device_param {
-> +	unsigned long min_io;		/* prefered minimum IO size */
-> +	unsigned long opt_io;		/* optimal IO size */
-> +	unsigned long alignment_offset;	/* alignment offset wrt physical block size */
-> +	unsigned int dax:1;		/* supports dax? */
-> +};
-> +
->  #ifdef HAVE_BLKID_PROBE_GET_TOPOLOGY
->  /*
->   * Sets the geometry of a device (stripe/stride), and returns the
->   * device's alignment offset, if any, or a negative error.
->   */
->  static int get_device_geometry(const char *file,
-> -			       struct ext2_super_block *param,
-> -			       unsigned int psector_size)
-> +			       unsigned int blocksize,
-> +			       unsigned int psector_size,
-> +			       struct device_param *dev_param)
->  {
->  	int rc = -1;
-> -	unsigned int blocksize;
->  	blkid_probe pr;
->  	blkid_topology tp;
-> -	unsigned long min_io;
-> -	unsigned long opt_io;
->  	struct stat statbuf;
->  
-> +	memset(dev_param, 0, sizeof(*dev_param));
-> +
->  	/* Nothing to do for a regular file */
->  	if (!stat(file, &statbuf) && S_ISREG(statbuf.st_mode))
->  		return 0;
-> @@ -1497,23 +1504,20 @@ static int get_device_geometry(const char *file,
->  	if (!tp)
->  		goto out;
->  
-> -	min_io = blkid_topology_get_minimum_io_size(tp);
-> -	opt_io = blkid_topology_get_optimal_io_size(tp);
-> -	blocksize = EXT2_BLOCK_SIZE(param);
-> -	if ((min_io == 0) && (psector_size > blocksize))
-> -		min_io = psector_size;
-> -	if ((opt_io == 0) && min_io)
-> -		opt_io = min_io;
-> -	if ((opt_io == 0) && (psector_size > blocksize))
-> -		opt_io = psector_size;
-> -
-> -	/* setting stripe/stride to blocksize is pointless */
-> -	if (min_io > blocksize)
-> -		param->s_raid_stride = min_io / blocksize;
-> -	if (opt_io > blocksize)
-> -		param->s_raid_stripe_width = opt_io / blocksize;
-> -
-> -	rc = blkid_topology_get_alignment_offset(tp);
-> +	dev_param->min_io = blkid_topology_get_minimum_io_size(tp);
-> +	dev_param->opt_io = blkid_topology_get_optimal_io_size(tp);
-> +	if ((dev_param->min_io == 0) && (psector_size > blocksize))
-> +		dev_param->min_io = psector_size;
-> +	if ((dev_param->opt_io == 0) && dev_param->min_io > 0)
-> +		dev_param->opt_io = dev_param->min_io;
-> +	if ((dev_param->opt_io == 0) && (psector_size > blocksize))
-> +		dev_param->opt_io = psector_size;
-> +
-> +	dev_param->alignment_offset = blkid_topology_get_alignment_offset(tp);
-> +#ifdef HAVE_BLKID_TOPOLOGY_GET_DAX
-> +	dev_param->dax = blkid_topology_get_dax(tp);
-> +#endif
-> +	rc = 0;
->  out:
->  	blkid_free_probe(pr);
->  	return rc;
-> @@ -1562,6 +1566,7 @@ static void PRS(int argc, char *argv[])
->  	int		use_bsize;
->  	char		*newpath;
->  	int		pathlen = sizeof(PATH_SET) + 1;
-> +	struct device_param dev_param;
->  
->  	if (oldpath)
->  		pathlen += strlen(oldpath);
-> @@ -2307,17 +2312,35 @@ profile_error:
->  	}
->  
->  #ifdef HAVE_BLKID_PROBE_GET_TOPOLOGY
-> -	retval = get_device_geometry(device_name, &fs_param,
-> -				     (unsigned int) psector_size);
-> +	retval = get_device_geometry(device_name, blocksize,
-> +				     psector_size, &dev_param);
->  	if (retval < 0) {
->  		fprintf(stderr,
->  			_("warning: Unable to get device geometry for %s\n"),
->  			device_name);
-> -	} else if (retval) {
-> -		printf(_("%s alignment is offset by %lu bytes.\n"),
-> -		       device_name, retval);
-> -		printf(_("This may result in very poor performance, "
-> -			  "(re)-partitioning suggested.\n"));
-> +	} else {
-> +		/* setting stripe/stride to blocksize is pointless */
-> +		if (dev_param.min_io > blocksize)
-> +			fs_param.s_raid_stride = dev_param.min_io / blocksize;
-> +		if (dev_param.opt_io > blocksize) {
-> +			fs_param.s_raid_stripe_width =
-> +						dev_param.opt_io / blocksize;
-> +		}
-> +
-> +		if (dev_param.alignment_offset) {
-> +			printf(_("%s alignment is offset by %lu bytes.\n"),
-> +			       device_name, dev_param.alignment_offset);
-> +			printf(_("This may result in very poor performance, "
-> +				  "(re)-partitioning suggested.\n"));
-> +		}
-> +
-> +		if (dev_param.dax && blocksize != sys_page_size) {
-> +			fprintf(stderr,
-> +				_("%s is capable of DAX but current block size "
-> +				  "%u is different from system page size %u so "
-> +				  "filesystem will not support DAX.\n"),
-> +				device_name, blocksize, sys_page_size);
-> +		}
->  	}
->  #endif
->  
-> -- 
-> 2.16.4
+> that commit (d1b4f507d71de) contains the following garbage in the
+> commit message:
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+>     The message from this sender included one or more files
+>     which could not be scanned for virus detection; do not
+>     open these files unless you are certain of the sender's intent.
+> 
+>     ----------------------------------------------------------------------
+> 
+> How did it come to that?
+
+I have no idea.  It's not in the email that I turned into a patch, but
+golly roundtripping git patches through email and back to git sucks.
+
+Oh well, I guess I have to rebase the whole branch now.
+
+Linus: please ignore this pull request.
+
+--D
+
+> 
+> Thanks,
+> Andreas
+> 
