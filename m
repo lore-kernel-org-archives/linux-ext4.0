@@ -1,152 +1,129 @@
-Return-Path: <SRS0=OItV=BO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=P/cF=BP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8365DC433DF
-	for <linux-ext4@archiver.kernel.org>; Tue,  4 Aug 2020 19:18:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD9BDC433E1
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 01:02:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 691202086A
-	for <linux-ext4@archiver.kernel.org>; Tue,  4 Aug 2020 19:18:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C2EB020738
+	for <linux-ext4@archiver.kernel.org>; Wed,  5 Aug 2020 01:02:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="key not found in DNS" (0-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="nQ4grv0/"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MyfayZcj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726961AbgHDTSw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 4 Aug 2020 15:18:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45376 "EHLO
+        id S1726664AbgHEBB7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 4 Aug 2020 21:01:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41616 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726027AbgHDTSv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Aug 2020 15:18:51 -0400
-Received: from mail-ej1-x642.google.com (mail-ej1-x642.google.com [IPv6:2a00:1450:4864:20::642])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67A21C061756
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Aug 2020 12:18:51 -0700 (PDT)
-Received: by mail-ej1-x642.google.com with SMTP id bo3so21065932ejb.11
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Aug 2020 12:18:51 -0700 (PDT)
+        with ESMTP id S1726584AbgHEBB6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Aug 2020 21:01:58 -0400
+Received: from mail-pf1-x442.google.com (mail-pf1-x442.google.com [IPv6:2607:f8b0:4864:20::442])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67F9AC06174A;
+        Tue,  4 Aug 2020 18:01:58 -0700 (PDT)
+Received: by mail-pf1-x442.google.com with SMTP id s26so21713911pfm.4;
+        Tue, 04 Aug 2020 18:01:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=szeredi.hu; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=iECZKbCttisI32R5vOBuQe0LHnglBF7s4axnvjSdNlk=;
-        b=nQ4grv0/FGhjcX/X9Q+kj/w809eT436vH2U+X4EgTlnaRGNA7g8vikX3m+zfSmYRaT
-         i6cmBUlwtVL6LQdpbpBz3ozbnlKtLwkowabhGu0920duv5F6NKDItb0IoNMhvkRdBd2i
-         gIIVodOYdnVzl0Ma8TCtUfhW97EQEZHXDBBfE=
+        d=gmail.com; s=20161025;
+        h=from:subject:to:cc:message-id:date:user-agent:mime-version
+         :content-transfer-encoding:content-language;
+        bh=779GA4ne4hG10vf7ILajmZMSldpFUYldREE8I8fw+1A=;
+        b=MyfayZcjUINiLbATVxujs5llmwbJc8kaM1+B9KNX8iCoLU511ppU+6iVobwe5LZnUL
+         brQtd+CZxgJTGmMnuiBTH+EYWUoK8ylNKmYKaKEnCYDuvOvs6WGJLfVD/gi3PUxlJrnh
+         wla7xZGHgh8MQ8VPPsQhAXffrCamPOEbKnYs/1v3oGm49dtqTlPCwqsCSMJaMq0ZGZPD
+         M4BuNOFVbNPW/aYsecJWQr2oRhmEB1053Vt3RZlkNsSr9BR5oDMaPuR0LaKQPF/crxpa
+         M+SRKqrvVKDamRDA95kxLat6d8MlHULc0bsJ40sMbWYIWzEyZcLSJg6pDujGiTTcdI2M
+         4GEw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=iECZKbCttisI32R5vOBuQe0LHnglBF7s4axnvjSdNlk=;
-        b=nKLJjAyFSjR21VDF1jC+10/2dY1bcW8rVeirXP8I8vfv6KUuTcS8efAuCNtinAIpiY
-         rHDy6GHgYcJvd1VNK/LSiDtS/Epmss9Mc0dJltOffmanS4MfTiVlkuWOKB1hO5qL8Qz1
-         DKxd4Q79CIGRXuaq/N+frN3WHNPUs4WYYvoUMWvYPV36xdqiaGTJBzlkg+IWPq2w5mty
-         nceDjNyHShb1R8RKUNpaAcdaouRtAzNINt4I96xd5aCoP8TgMHJimJVdbkyTkd10yOEF
-         NKHJFjboq15+y1KF4+uooZLay6Amc6htppwaFflg2Gz1yOk1R+8PgHpZEtf0pPuxMyWn
-         zE5Q==
-X-Gm-Message-State: AOAM533tqoqWm0beKhgn9cbn2xZUGKYj1SVj4fG9bJnN4t7LlKZQM++0
-        /MVF4Kakb5DPz3k1RvVCEFLBRjTWILGnPg6XS4wXfw==
-X-Google-Smtp-Source: ABdhPJxzCVu2FMIuLxYbxYX+UMEg7zT277U5zuZN2lWf6qdwT1ZHQkTlmDhsVnKdcF178T6jfpPcrpCd3ySV7qJkuu8=
-X-Received: by 2002:a17:906:4aca:: with SMTP id u10mr20883333ejt.320.1596568729975;
- Tue, 04 Aug 2020 12:18:49 -0700 (PDT)
-MIME-Version: 1.0
-References: <159646178122.1784947.11705396571718464082.stgit@warthog.procyon.org.uk>
- <1596555579.10158.23.camel@HansenPartnership.com>
-In-Reply-To: <1596555579.10158.23.camel@HansenPartnership.com>
-From:   Miklos Szeredi <miklos@szeredi.hu>
-Date:   Tue, 4 Aug 2020 21:18:38 +0200
-Message-ID: <CAJfpegtbX4DZcEuyF1oBatP__jRc_=HFmcJE8XUHjy1rwtqdOg@mail.gmail.com>
-Subject: Re: [PATCH 00/18] VFS: Filesystem information [ver #21]
-To:     James Bottomley <James.Bottomley@hansenpartnership.com>
-Cc:     David Howells <dhowells@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Biggers <ebiggers@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>, linux-ext4@vger.kernel.org,
-        Carlos Maiolino <cmaiolino@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux API <linux-api@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Ian Kent <raven@themaw.net>,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        Christian Brauner <christian@brauner.io>,
-        Jann Horn <jannh@google.com>, Karel Zak <kzak@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
+        h=x-gm-message-state:from:subject:to:cc:message-id:date:user-agent
+         :mime-version:content-transfer-encoding:content-language;
+        bh=779GA4ne4hG10vf7ILajmZMSldpFUYldREE8I8fw+1A=;
+        b=hEJETjPjN7yMAqdvjjNwLYg9Qkl0EvuuARx/dVHDDHviyOWdWKllPgepZg8UtrwTj4
+         k7Ixtw0zoWwuLDygcaBEngfs36Zhs85YltY9AdkWYhmKCo7uE7SorqfBewf4PTQLE0hB
+         HwYIFkZDRFc8hvJAA+Q3bb7jeejwi42or9ZCMpz4rxK8OM2cdsfnbqSnYzHUsvdQikxx
+         mNFc/p5kM4kF55fFWUp2R8azuTK1y2nUnpwLG6rn+O2Z+DbL1clPkTWQUz/XWKa+NmQT
+         6ksCgeH9rQwO/WB6xsEpZfmLD3gmHtW0MFl7sYPn0q+HNTP5AeTxweH5jWadjiNkukH8
+         GfXw==
+X-Gm-Message-State: AOAM532VKaIH8ScJ30sbl3NiTLBnc+0hutWCud/+e3rpLJOi/tod8AY4
+        rbvZLG4c1AqQm9v6eY+soHp6W/EIYB0=
+X-Google-Smtp-Source: ABdhPJwopVXTyrxKr65BisMgIqUzDCAhDLiTJng9CCOc5zPvLdxx3zqy8SwQlTuxDoXM88PsQK0lFQ==
+X-Received: by 2002:aa7:9a4c:: with SMTP id x12mr956350pfj.307.1596589317417;
+        Tue, 04 Aug 2020 18:01:57 -0700 (PDT)
+Received: from [127.0.0.1] ([203.205.141.45])
+        by smtp.gmail.com with ESMTPSA id r185sm489377pfr.8.2020.08.04.18.01.55
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 04 Aug 2020 18:01:57 -0700 (PDT)
+From:   brookxu <brookxu.cn@gmail.com>
+Subject: [PATCH v2 1/3] ext4: reorganize if statement of
+ ext4_mb_release_context()
+To:     tytso@mit.edu, adilger.kernel@dilger.ca,
         linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Cc:     linux-ext4@vger.kernel.org
+Message-ID: <ad1ac152-6d52-13cd-5786-7c888bf9370d@gmail.com>
+Date:   Wed, 5 Aug 2020 09:01:55 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Aug 4, 2020 at 5:40 PM James Bottomley
-<James.Bottomley@hansenpartnership.com> wrote:
->
-> On Mon, 2020-08-03 at 14:36 +0100, David Howells wrote:
-> > Here's a set of patches that adds a system call, fsinfo(), that
-> > allows information about the VFS, mount topology, superblock and
-> > files to be retrieved.
-> >
-> > The patchset is based on top of the notifications patchset and allows
-> > event counters implemented in the latter to be retrieved to allow
-> > overruns to be efficiently managed.
->
-> Could I repeat the question I asked about six months back that never
-> got answered:
->
-> https://lore.kernel.org/linux-api/1582316494.3376.45.camel@HansenPartnership.com/
->
-> It sort of petered out into a long winding thread about why not use
-> sysfs instead, which really doesn't look like a good idea to me.
->
-> I'll repeat the information for those who want to quote it easily on
-> reply without having to use a web interface:
->
-> ---
-> Could I make a suggestion about how this should be done in a way that
-> doesn't actually require the fsinfo syscall at all: it could just be
-> done with fsconfig.  The idea is based on something I've wanted to do
-> for configfd but couldn't because otherwise it wouldn't substitute for
-> fsconfig, but Christian made me think it was actually essential to the
-> ability of the seccomp and other verifier tools in the critique of
-> configfd and I belive the same critique applies here.
->
-> Instead of making fsconfig functionally configure ... as in you pass
-> the attribute name, type and parameters down into the fs specific
-> handler and the handler does a string match and then verifies the
-> parameters and then acts on them, make it table configured, so what
-> each fstype does is register a table of attributes which can be got and
-> optionally set (with each attribute having a get and optional set
-> function).  We'd have multiple tables per fstype, so the generic VFS
-> can register a table of attributes it understands for every fstype
-> (things like name, uuid and the like) and then each fs type would
-> register a table of fs specific attributes following the same pattern.
-> The system would examine the fs specific table before the generic one,
-> allowing overrides.  fsconfig would have the ability to both get and
-> set attributes, permitting retrieval as well as setting (which is how I
-> get rid of the fsinfo syscall), we'd have a global parameter, which
-> would retrieve the entire table by name and type so the whole thing is
-> introspectable because the upper layer knows a-priori all the
-> attributes which can be set for a given fs type and what type they are
-> (so we can make more of the parsing generic).  Any attribute which
-> doesn't have a set routine would be read only and all attributes would
-> have to have a get routine meaning everything is queryable.
+Reorganize the if statement of ext4_mb_release_context(), make it
+easier to read.
 
-fsconfig(2) takes an fd referring to an fs_context, that in turn
-refers to a super_block.
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+---
+ fs/ext4/mballoc.c | 27 +++++++++++++--------------
+ 1 file changed, 13 insertions(+), 14 deletions(-)
 
-So using fsconfig() for retrieving super_block attributes would be
-fine (modulo value being const, and lack of buffer size).
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c0a331e..4f21f34 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4564,20 +4564,19 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+             pa->pa_free -= ac->ac_b_ex.fe_len;
+             pa->pa_len -= ac->ac_b_ex.fe_len;
+             spin_unlock(&pa->pa_lock);
+-        }
+-    }
+-    if (pa) {
+-        /*
+-         * We want to add the pa to the right bucket.
+-         * Remove it from the list and while adding
+-         * make sure the list to which we are adding
+-         * doesn't grow big.
+-         */
+-        if ((pa->pa_type == MB_GROUP_PA) && likely(pa->pa_free)) {
+-            spin_lock(pa->pa_obj_lock);
+-            list_del_rcu(&pa->pa_inode_list);
+-            spin_unlock(pa->pa_obj_lock);
+-            ext4_mb_add_n_trim(ac);
++
++            /*
++             * We want to add the pa to the right bucket.
++             * Remove it from the list and while adding
++             * make sure the list to which we are adding
++             * doesn't grow big.
++             */
++            if (likely(pa->pa_free)) {
++                spin_lock(pa->pa_obj_lock);
++                list_del_rcu(&pa->pa_inode_list);
++                spin_unlock(pa->pa_obj_lock);
++                ext4_mb_add_n_trim(ac);
++            }
+         }
+         ext4_mb_put_pa(ac, ac->ac_sb, pa);
+     }
 
-But what about mount attributes?
+-- 
+1.8.3.1
 
-I don't buy the argument that an API needs to be designed around the
-requirements of seccomp and the like.  It should be the other way
-round.  In that, I think your configfd idea was fine, and would answer
-the above question.
-
-Thanks,
-Miklos
