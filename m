@@ -4,56 +4,55 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F35AC433F8
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Aug 2020 11:01:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D977BC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Aug 2020 11:01:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E34D422D01
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Aug 2020 11:00:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C91052250E
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Aug 2020 11:01:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727880AbgHFFGT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Aug 2020 01:06:19 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45772 "EHLO
+        id S1726073AbgHFFRt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Aug 2020 01:17:49 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:46672 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725271AbgHFFGT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2020 01:06:19 -0400
+        with ESMTP id S1725440AbgHFFRs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Aug 2020 01:17:48 -0400
 Received: from callcc.thunk.org (pool-96-230-252-158.bstnma.fios.verizon.net [96.230.252.158])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 07656A55024162
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0765HfOX026385
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 6 Aug 2020 01:06:10 -0400
+        Thu, 6 Aug 2020 01:17:41 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 23BBB420263; Thu,  6 Aug 2020 01:06:10 -0400 (EDT)
-Date:   Thu, 6 Aug 2020 01:06:10 -0400
+        id 0303D420263; Thu,  6 Aug 2020 01:17:40 -0400 (EDT)
+Date:   Thu, 6 Aug 2020 01:17:40 -0400
 From:   tytso@mit.edu
-To:     Jan Kara <jack@suse.cz>
-Cc:     <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH] ext4: Do not block RWF_NOWAIT dio write on unallocated
- space
-Message-ID: <20200806050610.GG7657@mit.edu>
-References: <20200708153516.9507-1-jack@suse.cz>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: don't hardcode bit values in EXT4_FL_USER_*
+Message-ID: <20200806051740.GI7657@mit.edu>
+References: <20200713031012.192440-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200708153516.9507-1-jack@suse.cz>
+In-Reply-To: <20200713031012.192440-1-ebiggers@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jul 08, 2020 at 05:35:16PM +0200, Jan Kara wrote:
-> Since commit 378f32bab371 ("ext4: introduce direct I/O write using iomap
-> infrastructure") we don't properly bail out of RWF_NOWAIT direct IO
-> write if underlying blocks are not allocated. Also
-> ext4_dio_write_checks() does not honor RWF_NOWAIT when re-acquiring
-> i_rwsem. Fix both issues.
+On Sun, Jul 12, 2020 at 08:10:12PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Fixes: 378f32bab371 ("ext4: introduce direct I/O write using iomap infrastructure")
-> Reported-by: Filipe Manana <fdmanana@gmail.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Define the EXT4_FL_USER_* constants by OR-ing together the appropriate
+> flags, rather than hard-coding a numeric value.  This makes it much
+> easier to see which flags are listed.
+> 
+> No change in the actual values.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
