@@ -2,209 +2,127 @@ Return-Path: <SRS0=FVYV=BR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F102C433DF
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 12:17:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24341C433DF
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:04:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C8F6A221E2
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 12:17:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F097722DCC
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:03:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=exonet.nl header.i=@exonet.nl header.b="Bc7+yuKG"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Rw4JiFbl"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728103AbgHGMRt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 Aug 2020 08:17:49 -0400
-Received: from kerio.exonet.nl ([178.22.62.240]:57582 "EHLO kerio.exonet.nl"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727783AbgHGMRs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 7 Aug 2020 08:17:48 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-        d=exonet.nl; s=mail;
-        h=from:subject:date:message-id:to:mime-version:content-type:
-         content-transfer-encoding;
-        bh=uVXtXHAq5sxOZXcqzMUzPapkM1Z2DSIR+IaeaGVZ5TM=;
-        b=Bc7+yuKGYToBnIlKHv6LWGHJMRMP1L2xe9c8gaNz9gUxhnoyLmNcB8ZAA0+gEKzmPGZ4w061tIcuB
-         5kPwDCmcCGA6jExFNStIzVRldSnyVH4E9/RNrUt/3Qq00lN0tCv9HkOQhGuNHr82sSNRVuB0RUsaL2
-         yv4yg8ZiF+ITyakuGl6oZEyxK//B3jQndL3xii5vEpLqAgPAqk1i7WOQrPiUpYPKwF4xwNvlqLdOX5
-         4W7OxXiPyIFzt/qzQanFWdVN1iRngWn721hFIRSBOjU5sG9MmQ9aJhc0JipdHnwz2gPEdc7jAQDKtm
-         I8vmcPjRqCQn4aatRM+tJtgI5fkr5nQ==
-X-Footer: ZXhvbmV0Lm5s
-Received: from [10.3.12.3] ([185.31.247.5])
-        (authenticated user h.kraal@exonet.nl)
-        by kerio.exonet.nl (Kerio Connect 9.2.11) with ESMTPSA
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256 bits))
-        for linux-ext4@vger.kernel.org;
-        Fri, 7 Aug 2020 14:17:43 +0200
-From:   Henk Kraal <h.kraal@exonet.nl>
-Content-Type: text/plain;
-        charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.80.23.2.2\))
-Subject: [EXT4] orphaned inodes on RO device trigger "unable to handle kernel
- paging request at"
-Message-Id: <E57F2086-629A-40C3-BA75-916CA0E02445@exonet.nl>
-Date:   Fri, 7 Aug 2020 14:17:42 +0200
-To:     linux-ext4@vger.kernel.org
-X-Mailer: Apple Mail (2.3608.80.23.2.2)
+        id S1726386AbgHGODs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 7 Aug 2020 10:03:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41178 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726344AbgHGOBs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2020 10:01:48 -0400
+Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86AC5C061756
+        for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2020 07:01:42 -0700 (PDT)
+Received: by mail-pf1-x441.google.com with SMTP id k18so1041365pfp.7
+        for <linux-ext4@vger.kernel.org>; Fri, 07 Aug 2020 07:01:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:subject:to:message-id:date:user-agent:mime-version
+         :content-language:content-transfer-encoding;
+        bh=RDZK4ePD0f/Jd2tccTa1htlhHUCJxtsS0PFYYGmt+7A=;
+        b=Rw4JiFblk9B2SYat91tmzq8gnudaDz/EO0mPPMt52NHbMbihQxZ16S/XUEWHxex2cp
+         Mxp7BCqYJtvfj2qxORBPFuLvdnvJUWJUhYiaX91YMqyEudS8F/dqbzB0br9kb0yj9yyy
+         tcVyIEYOqkcHH4hjj649gZIE+IGY2d5Lz/ltrkEYTxPYa0ENUmGOsJ9F9KucF8e+6LLG
+         avslblGrwXy0Xw8/gQMp9RyDxcwtew2B9xu2J+usNz48uY6B7fp3CPMYKAe/XCsImB7w
+         PZKhW0Aivs4ZOUuS2jkaC7FO77S3RgFEHEmW+wzT1W0ADQARFeIn19RbGjWbfFD6mDjQ
+         DTJQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:subject:to:message-id:date:user-agent
+         :mime-version:content-language:content-transfer-encoding;
+        bh=RDZK4ePD0f/Jd2tccTa1htlhHUCJxtsS0PFYYGmt+7A=;
+        b=MmWMoksxs35uP15SUFcAf/9dxoUQplyK5El6YvZmWTlbxDSgyiJO0VUPCHPXkci1yo
+         Zlwn4AECmJgKKZrOgPDmWsQNK77Y7Z/CpbCTThraqrWvKieHIbIlXiul494FJdIbPi7u
+         g7NCLrys0+MD1SDh1jJxEWPFtcCtQ0zNzAcQuvaUb/n27HOcUVqfX/cRs/U0oallIaM7
+         O9PuLLTX17N3CZF6Y1QhP3Orrj7VoplnKZ3ESUJUUtFVuANs395MihSlQmiWoK1PQeFA
+         1k6NYCX0R5L0iymf0/NA2gmy2PRP30CzWWF+jyzDz539RCudSsiSNEvJvC2RSD4rIeiv
+         LqEA==
+X-Gm-Message-State: AOAM533UsiMFLoDC1Xhv3WqcKx8/d9h1wmg0TKFUDmSJAlu+8iqwnF5g
+        c8c4KNzTxIfH7bvRhlvBj8Q4vwxh67o=
+X-Google-Smtp-Source: ABdhPJxN2wSpP+d5PvvQbW88XX+IqWq2+u3g93XfK+4v4Yr4TYBEuRy+V6R0aOEiTcVvHN5KHohz0w==
+X-Received: by 2002:aa7:8a0d:: with SMTP id m13mr13050401pfa.13.1596808901402;
+        Fri, 07 Aug 2020 07:01:41 -0700 (PDT)
+Received: from [127.0.0.1] ([203.205.141.44])
+        by smtp.gmail.com with ESMTPSA id b63sm12607403pfg.43.2020.08.07.07.01.40
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 07 Aug 2020 07:01:41 -0700 (PDT)
+From:   brookxu <brookxu.cn@gmail.com>
+Subject: [PATCH] ext4: optimize the implementation of ext4_mb_good_group()
+To:     adilger.kernel@dilger.ca, tytso@mit.edu, linux-ext4@vger.kernel.org
+Message-ID: <e20b2d8f-1154-adb7-3831-a9e11ba842e9@gmail.com>
+Date:   Fri, 7 Aug 2020 22:01:39 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
+It might be better to adjust the code in two places:
+1. Determine whether grp is currupt or not should be placed first.
+2. (cr<=2 && free <ac->ac_g_ex.fe_len)should may belong to the crx
+   strategy, and it may be more appropriate to put it in the
+   subsequent switch statement block. For cr1, cr2, the conditions
+   in switch potentially realize the above judgment. For cr0, we
+   should add (free <ac->ac_g_ex.fe_len) judgment, and then delete
+   (free / fragments) >= ac->ac_g_ex.fe_len), because cr0 returns
+   true by default.
 
-It seems I=E2=80=99ve triggered some kind of bug (based on the log) when =
-trying to mount a device I=E2=80=99m trying to access a EXT4 formatted =
-LVM volume on a read-only PVS but as soon as I try to mount (with: -o =
-ro,noload) I=E2=80=99m getting a kernel oops. The system is running =
-Debian jessie with kernel 3.16.0-11-amd64.
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+---
+ fs/ext4/mballoc.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-Any suggestions how to get around this issue (if at all)?
-
-
-/var/log/kern.log:
-Aug  7 09:37:38 xoa04-ede1 kernel: [  793.269337] EXT4-fs (dm-2): orphan =
-cleanup on readonly fs
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.082158] EXT4-fs error (device =
-dm-2): ext4_read_inode_bitmap:177: comm mount: Corrupt inode bitmap - =
-block_group =3D 193, inode_bitmap =3D 6291473
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.083736] Buffer I/O error on =
-device dm-2, logical block 0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.084784] lost page write due to =
-I/O error on dm-2
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.085747] EXT4-fs error (device =
-dm-2): ext4_orphan_get:1086: comm mount: inode bitmap error for orphan =
-1580546
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.087649] EXT4-fs (dm-2): =
-previous I/O error to superblock detected
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.089161] Buffer I/O error on =
-device dm-2, logical block 0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.090846] lost page write due to =
-I/O error on dm-2
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.092414] BUG: unable to handle =
-kernel paging request at ffffffffffffff98
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.095168] IP: =
-[<ffffffffa01ecbdf>] ext4_fill_super+0x32ef/0x3510 [ext4]
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] PGD 1817067 PUD =
-1819067 PMD 0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Oops: 0002 [#1] SMP
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Modules linked in: =
-loop binfmt_misc xt_tcpudp ip6t_REJECT ip6table_filter nf_nat_ftp =
-xt_REDIRECT xt_conntrack nf_conntrack_ftp xt_LOG xt_limit xt_multiport =
-iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 ip6table_mangle =
-ip6table_raw ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 =
-nf_nat nf_conntrack ip6_tables iptable_mangle iptable_raw ipt_REJECT =
-iptable_filter ip_tables x_tables dm_service_time scsi_dh_rdac xenfs =
-xen_privcmd nfsd auth_rpcgss oid_registry sd_mod nfs_acl crc_t10dif =
-crct10dif_generic nfs lockd fscache sunrpc ib_iser rdma_cm iw_cm ib_cm =
-ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi =
-scsi_transport_iscsi dm_multipath scsi_dh ppdev joydev ttm =
-drm_kms_helper crc32_pclmul parport_pc parport drm evdev aesni_intel =
-aes_x86_64 lrw processor gf128mul glue_helper serio_raw pcspkr =
-thermal_sys ablk_helper cryptd button fuse autofs4 ext4 crc16 mbcache =
-jbd2 dm_mod hid_generic usbhid hid sg sr_mod cdrom ata_generic =
-xen_netfront xen_blkfront crct10dif_pclmul crct10dif_common uhci_hcd =
-crc32c_intel ehci_hcd ata_piix psmouse i2c_piix4 libata i2c_core usbcore =
-scsi_mod usb_common floppy
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] CPU: 1 PID: 2617 Comm: =
-mount Not tainted 3.16.0-11-amd64 #1 Debian 3.16.84-1
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Hardware name: Xen HVM =
-domU, BIOS 4.7.6-6.5.1.xcpng 05/16/2019
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] task: ffff8800ea618980 =
-ti: ffff8800eac70000 task.ti: ffff8800eac70000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RIP: =
-0010:[<ffffffffa01ecbdf>]  [<ffffffffa01ecbdf>] =
-ext4_fill_super+0x32ef/0x3510 [ext4]
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RSP: =
-0018:ffff8800eac73cb8  EFLAGS: 00010207
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RAX: ffff88021585b000 =
-RBX: ffff8800ea98b000 RCX: ffff88021585b200
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RDX: ffffffffffffff98 =
-RSI: ffff880036620e00 RDI: 0000000000000000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RBP: ffff8800d3bb2400 =
-R08: 0000000000000082 R09: 000000000000030a
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] R10: 00000000000000d1 =
-R11: 0000000000000309 R12: 0000000000000000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] R13: 000000000000000f =
-R14: 0000000000000000 R15: ffff88021585b000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] FS:  =
-00007f57224ee840(0000) GS:ffff880219020000(0000) knlGS:0000000000000000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] CS:  0010 DS: 0000 ES: =
-0000 CR0: 0000000080050033
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] CR2: ffffffffffffff98 =
-CR3: 00000000ea778000 CR4: 0000000000360670
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] DR0: 0000000000000000 =
-DR1: 0000000000000000 DR2: 0000000000000000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] DR3: 0000000000000000 =
-DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Stack:
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  ffff880222fad160 =
-ffffffff812cfdf6 ffff8802161cc3c0 0000000010010001
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  ffff8800ea98b2e0 =
-ffff88021585b430 ffff88021585b158 ffff88021585b000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  ffff88021585b130 =
-0000000000000fad 0000003feac73de0 0000000000000000
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Call Trace:
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff812cfdf6>] =
-? string.isra.7+0x36/0xe0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffffa01e98f0>] =
-? ext4_calculate_overhead+0x3f0/0x3f0 [ext4]
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff8115bfd3>] =
-? register_shrinker+0x73/0xb0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffffa01e98f0>] =
-? ext4_calculate_overhead+0x3f0/0x3f0 [ext4]
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811be3db>] =
-? mount_bdev+0x1ab/0x1e0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811bec8b>] =
-? mount_fs+0x3b/0x1c0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811da532>] =
-? vfs_kern_mount+0x62/0x110
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811dd07a>] =
-? do_mount+0x22a/0xc90
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811968d1>] =
-? alloc_pages_current+0x91/0x150
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff811dde03>] =
-? SyS_mount+0xa3/0xf0
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  [<ffffffff815412ac>] =
-? system_call_fast_compare_end+0x1c/0x21
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] Code: a6 fd ff 48 3d =
-00 f0 ff ff 49 89 c6 0f 87 e5 00 00 00 48 8b 83 10 03 00 00 49 8d 56 98 =
-4c 89 f7 48 8b 88 00 02 00 00 48 89 51 08 <49> 89 4e 98 48 8d 88 00 02 =
-00 00 49 89 4e a0 48 89 90 00 02 00
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] RIP  =
-[<ffffffffa01ecbdf>] ext4_fill_super+0x32ef/0x3510 [ext4]
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363]  RSP =
-<ffff8800eac73cb8>
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] CR2: ffffffffffffff98
-Aug  7 09:37:39 xoa04-ede1 kernel: [  794.096363] ---[ end trace =
-d6493d5e4917bc66 ]---
-
-
-I=E2=80=99m not entirely sure how relevant it is but the mount command =
-is part of a procedure to access data stored on a read-only virtual disk =
-(which is part of a backup solution) which boils down to;
-# vhdimount 20200714T234001Z.vhd /mnt/20200714T234001Z
-# losetup -P -r -f /mnt/20200714T234001Z/vhdi1
-# lsblk /dev/loop0
-NAME      MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
-loop0       7:0    0   42G  1 loop
-|-loop0p1 259:0    0  243M  1 part
-|-loop0p2 259:1    0    1K  1 part
-`-loop0p5 259:2    0 41.8G  1 part
-
-In the above output the loop0p5 is the PV containing the VG group =
-=E2=80=9Csystem=E2=80=9D which contains 2 volumes named root & swap. =
-Please note that the procedure example just for illustration, the actual =
-procedure in this case involves multiple .vhd each having it=E2=80=99s =
-own loopback devices as the VG =E2=80=9Csystem=E2=80=9D is extended with =
-multiple disks.
-
-With kind regards,
-
-Henk Kraal
-
-PS: I=E2=80=99m aware of the the age of the OS, I=E2=80=99m fully =
-prepped to switch to buster but that path is blocked at this moment.=
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 28a139f..4304113 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2119,13 +2119,11 @@ static bool ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 
+ 	BUG_ON(cr < 0 || cr >= 4);
+ 
+-	free = grp->bb_free;
+-	if (free == 0)
+-		return false;
+-	if (cr <= 2 && free < ac->ac_g_ex.fe_len)
++	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(grp)))
+ 		return false;
+ 
+-	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(grp)))
++	free = grp->bb_free;
++	if (free == 0)
+ 		return false;
+ 
+ 	fragments = grp->bb_fragments;
+@@ -2142,8 +2140,10 @@ static bool ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 		    ((group % flex_size) == 0))
+ 			return false;
+ 
+-		if ((ac->ac_2order > ac->ac_sb->s_blocksize_bits+1) ||
+-		    (free / fragments) >= ac->ac_g_ex.fe_len)
++		if (free < ac->ac_g_ex.fe_len)
++			return false;
++
++		if (ac->ac_2order > ac->ac_sb->s_blocksize_bits+1)
+ 			return true;
+ 
+ 		if (grp->bb_largest_free_order < ac->ac_2order)
+-- 
+1.8.3.1
 
