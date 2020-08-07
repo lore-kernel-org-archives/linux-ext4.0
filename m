@@ -8,61 +8,61 @@ X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B275BC433DF
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:08:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8744C433E1
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:08:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8D44F2224D
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:08:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BECCD2224D
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 Aug 2020 14:08:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JFfNEMnG"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="H9fGkHbU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726472AbgHGOIT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 Aug 2020 10:08:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41200 "EHLO
+        id S1726530AbgHGOIf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 7 Aug 2020 10:08:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41156 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726350AbgHGOBv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2020 10:01:51 -0400
-Received: from mail-pj1-x1042.google.com (mail-pj1-x1042.google.com [IPv6:2607:f8b0:4864:20::1042])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDB3BC061757
-        for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2020 07:01:49 -0700 (PDT)
-Received: by mail-pj1-x1042.google.com with SMTP id 2so919920pjx.5
-        for <linux-ext4@vger.kernel.org>; Fri, 07 Aug 2020 07:01:49 -0700 (PDT)
+        with ESMTP id S1726256AbgHGOBs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Aug 2020 10:01:48 -0400
+Received: from mail-pg1-x544.google.com (mail-pg1-x544.google.com [IPv6:2607:f8b0:4864:20::544])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E86BC061575
+        for <linux-ext4@vger.kernel.org>; Fri,  7 Aug 2020 07:01:36 -0700 (PDT)
+Received: by mail-pg1-x544.google.com with SMTP id o5so947334pgb.2
+        for <linux-ext4@vger.kernel.org>; Fri, 07 Aug 2020 07:01:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:subject:to:message-id:date:user-agent:mime-version
          :content-language:content-transfer-encoding;
-        bh=1Oh71eiAJL4yMrDM2EFvenrukKcVABQSmk+AJxliWBU=;
-        b=JFfNEMnGCHVyImhqpVmIiyDXslNM2R1S2kkBaq38wNTzZoXe+b3FOdIgrYCfoGfeJ0
-         qPxnJv3ERBffuk6E+4507e2eM7A5OQUj7io4q7TsbeKLDnmvIa2a64L9DD7oyaSBf+4D
-         ZPmMpTeE8UTEX+b0lJjeNhuQRM/62zqP72tWwnIEA+fHLpROSd3+I44lKcmQNFIuPLk/
-         P7Q+zivJK3drHLC5pEs3cIGkGa9oE4JFXaT1ncZKzaKmAf2DS/dgQIlcpAjHDsvdteK6
-         Cev5PFPOUxVx02Q2bis0p4r5jQ5lqO5mekquHjA2zi2qO4kSjGaEVWSoojEXGo6qSEiX
-         u8uA==
+        bh=XIYvs1lVCvaz2DrUG7dC/2GRzmSKS+hhopwMOEdNcfA=;
+        b=H9fGkHbUUVOdIxk5+JNUOG1YquZkA1XgiWRIkZ9VOXZiinM0kg6o3rUwLMQHqIfTqX
+         kvshIoDCSXQvJjPBofSOmHgBPpw6Mtw3pmNAgBqt5F0RPQSbmJQeeAKfwa/93C/8cJqu
+         ywsQ9VZz8xKq6Q4bXZC2MiJcnxfG0JDsZllbckH73H24ll+WUpXyL1TDBJDftCFD6a4H
+         EuU1rpCTA684ow2w+8gTzJhT4uK1rwf5H114F4XQ2dchwk61cJSZKHOtzhvqrsanFEFI
+         2B6+nPVUnl73Xgqg4yNHSDSWCuOHWCT5FvnGc8SMyU+TaVvjtdIwhsTHGulWB0Z8KPGJ
+         I66g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:subject:to:message-id:date:user-agent
          :mime-version:content-language:content-transfer-encoding;
-        bh=1Oh71eiAJL4yMrDM2EFvenrukKcVABQSmk+AJxliWBU=;
-        b=QLeR7AN/G0vTcrP8lBgkTbZJmTFhw3+/fRygd0S+B9WCOSMoO97v5h5HB48wbCflsd
-         uxydtarTmVXI0H6jenY0LTxWwhP3V6crnmjNYTbNKWMHuphRF3whxO78vEQfTf9ZFNjM
-         oAA+ZvaKlSPwZgkRpOywJquKUxrIGL8jO5v0D9yBvEIpGVmHf+Ua4kz/WpX1l6mi9HFF
-         51bx7ISAA9TgjjCe4x52efG26r3Bn3DI/rz1Is9GqsJVj9XrVX4YIKhn4oFSI40v8qaQ
-         LB0mkmPVeFyQL9goNZP3Bjw38GHn/0YEokpVXpXRvPh+nGDb7QLZLiuRjHrrHhqhwkSg
-         muFQ==
-X-Gm-Message-State: AOAM532H3enReUlXCXzZFThO1fQ3v5VNawjQfK0owtdzJ8uxPejVz7/J
-        7BbLFj2pydInEEgvZktyDgILSmX9foU=
-X-Google-Smtp-Source: ABdhPJxzm3rnMlnwz0la2ABmZqYmHSJNCuiU/G+5e2AkL03OW9qZ7C4COXqru8ehuK4SOGUTV4DM+w==
-X-Received: by 2002:a17:90a:1749:: with SMTP id 9mr13842257pjm.127.1596808908745;
-        Fri, 07 Aug 2020 07:01:48 -0700 (PDT)
+        bh=XIYvs1lVCvaz2DrUG7dC/2GRzmSKS+hhopwMOEdNcfA=;
+        b=bx436BW+89OgxSeeS+xKu7cnrcunFzLSqyyefO1J8tFHm17vAdtJ+52ADXXtmS9DKC
+         VMtlbq/cu0EwuQpBcmgkKIUVswn6XGIQ9uH/svLChULi6NNJqydnp3IIuT6NjE7BE60P
+         ScuQlByu6bKBKpwCoLoUHpewpTRrCUu/GapQ1JxQVMzM+gT4zZlgCqjgawfeRUbZSK6z
+         svFtdhxHLbA/3qSh30DMTv7AJpCqkfp2xzLEv4zcaptafJvfOwr+bZjJjyn+DxhlMgW7
+         bazLFvbXuWW7IvAdYUvWlOz41Fbdm8UdGi3uw2F1pOarSsJvID5Z5Z6Jy8r+mygQfn/B
+         R5yA==
+X-Gm-Message-State: AOAM5301VrKjnqHU/QD7Wu6ojCPTH2OHclvc4BlJSaMaLoLtSApvb8Sd
+        tA4sITlnc+LyzLb+adwywM5GKnvIpxM=
+X-Google-Smtp-Source: ABdhPJzkO+dMVoVLa39Uc6nJvIIX51AMUNMqywMFGGcPySO7G5SdFachn/kR8KAt/NBZEMNX9tNT5A==
+X-Received: by 2002:a63:705b:: with SMTP id a27mr10487593pgn.405.1596808895002;
+        Fri, 07 Aug 2020 07:01:35 -0700 (PDT)
 Received: from [127.0.0.1] ([203.205.141.44])
-        by smtp.gmail.com with ESMTPSA id w7sm12510071pfi.164.2020.08.07.07.01.47
+        by smtp.gmail.com with ESMTPSA id q10sm12798469pfs.75.2020.08.07.07.01.33
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 07 Aug 2020 07:01:48 -0700 (PDT)
+        Fri, 07 Aug 2020 07:01:34 -0700 (PDT)
 From:   brookxu <brookxu.cn@gmail.com>
-Subject: [PATCH] ext4: put grp related checks into ext4_mb_good_group()
+Subject: [PATCH] ext4: delete invalid comments near ext4_mb_check_limits()
 To:     adilger.kernel@dilger.ca, tytso@mit.edu, linux-ext4@vger.kernel.org
-Message-ID: <a53fe585-2b31-3a2e-f3eb-edc6f80ad85f@gmail.com>
-Date:   Fri, 7 Aug 2020 22:01:46 +0800
+Message-ID: <c49faf0c-d5d5-9c51-6911-9e0ff57c6bfa@gmail.com>
+Date:   Fri, 7 Aug 2020 22:01:33 +0800
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101
  Thunderbird/68.10.0
 MIME-Version: 1.0
@@ -74,52 +74,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We will make these judgments in ext4_mb_good_group(), maybe there
-is no need to repeat judgments here.
+These comments do not seem to be related to ext4_mb_check_limits(),
+it may be invalid.
 
 Signed-off-by: Chunguang Xu <brookxu@tencent.com>
 ---
- fs/ext4/mballoc.c | 16 ++--------------
- 1 file changed, 2 insertions(+), 14 deletions(-)
+ fs/ext4/mballoc.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4304113..84871f7 100644
+index 577ce98..aaefeb4 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2178,21 +2178,8 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
- 	struct super_block *sb = ac->ac_sb;
- 	bool should_lock = ac->ac_flags & EXT4_MB_STRICT_CHECK;
--	ext4_grpblk_t free;
- 	int ret = 0;
+@@ -1743,10 +1743,6 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
  
--	if (should_lock)
--		ext4_lock_group(sb, group);
--	free = grp->bb_free;
--	if (free == 0)
--		goto out;
--	if (cr <= 2 && free < ac->ac_g_ex.fe_len)
--		goto out;
--	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(grp)))
--		goto out;
--	if (should_lock)
--		ext4_unlock_group(sb, group);
+ }
+ 
+-/*
+- * regular allocator, for general purposes allocation
+- */
 -
- 	/* We only do this if the grp has never been initialized */
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
- 		ret = ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
-@@ -2202,8 +2189,9 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
- 
- 	if (should_lock)
- 		ext4_lock_group(sb, group);
-+
- 	ret = ext4_mb_good_group(ac, group, cr);
--out:
-+
- 	if (should_lock)
- 		ext4_unlock_group(sb, group);
- 	return ret;
+ static void ext4_mb_check_limits(struct ext4_allocation_context *ac,
+ 					struct ext4_buddy *e4b,
+ 					int finish_group)
 -- 
 1.8.3.1
-
-
