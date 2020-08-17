@@ -1,157 +1,102 @@
-Return-Path: <SRS0=Lxoz=B2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=HENx=B3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,FORGED_MUA_MOZILLA,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C798C433DF
-	for <linux-ext4@archiver.kernel.org>; Sun, 16 Aug 2020 05:25:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9284EC433DF
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Aug 2020 03:54:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3F2C820738
-	for <linux-ext4@archiver.kernel.org>; Sun, 16 Aug 2020 05:25:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5763E206DA
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Aug 2020 03:54:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="AWEqLyzE"
+	dkim=pass (2048-bit key) header.d=ime-usp-br.20150623.gappssmtp.com header.i=@ime-usp-br.20150623.gappssmtp.com header.b="Gzs1CnMF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730067AbgHPFZ6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 16 Aug 2020 01:25:58 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:31984 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1730042AbgHPFZ6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 16 Aug 2020 01:25:58 -0400
-Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 07G51VvH143665;
-        Sun, 16 Aug 2020 01:25:54 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=subject : to :
- references : from : date : mime-version : in-reply-to : content-type :
- content-transfer-encoding : message-id; s=pp1;
- bh=6+42SENjtXeP411A1lHI3bOQ7qxYGbOgtVKZPhhsY2M=;
- b=AWEqLyzEMFu/Iz+QuMOYzoxBTGdxZWtBKEUaVf2o+SLuvF4oFLwWYdsXf/1zdW2mDEKD
- jdRCI63jdb4bNxkEWigIbHBwr9H7SDChD5mFpJhPJnW64NegYhwNEA4E644LjNE6Iatc
- J5USnlnn2qHnO9rzLZzT4jnB9i1RR/XNQ38Em76T0sYSa1pM+YX06Xac1uZi0PxrQve3
- 2O65DLtOTNPxztA742l0seG02/xreaHntE3MHt1CMMIWmQ/85aJ1Zx6yRQcuHA6EoFek
- aUc4cfyXb38PeLPiLjDo+3Sgjv4hxrRfotAceoFemFphYVCDEzJrWMCAwSbJO50fmR+1 8Q== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 32xsubdcx5-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 16 Aug 2020 01:25:54 -0400
-Received: from m0098416.ppops.net (m0098416.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 07G51Pr9143214;
-        Sun, 16 Aug 2020 01:25:54 -0400
-Received: from ppma04fra.de.ibm.com (6a.4a.5195.ip4.static.sl-reverse.com [149.81.74.106])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 32xsubdcwu-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 16 Aug 2020 01:25:54 -0400
-Received: from pps.filterd (ppma04fra.de.ibm.com [127.0.0.1])
-        by ppma04fra.de.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 07G5P9wj018455;
-        Sun, 16 Aug 2020 05:25:52 GMT
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
-        by ppma04fra.de.ibm.com with ESMTP id 32x7b7gk2f-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 16 Aug 2020 05:25:52 +0000
-Received: from d06av25.portsmouth.uk.ibm.com (d06av25.portsmouth.uk.ibm.com [9.149.105.61])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 07G5Po3w7864594
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 16 Aug 2020 05:25:50 GMT
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 3A89F11C050;
-        Sun, 16 Aug 2020 05:25:50 +0000 (GMT)
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 6FF6811C04C;
-        Sun, 16 Aug 2020 05:25:49 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.199.33.217])
-        by d06av25.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Sun, 16 Aug 2020 05:25:49 +0000 (GMT)
-Subject: Re: [PATCH v3] ext4: fix log printing of ext4_mb_regular_allocator()
-To:     brookxu <brookxu.cn@gmail.com>, adilger.kernel@dilger.ca,
-        tytso@mit.edu, linux-ext4@vger.kernel.org
-References: <0a165ac0-1912-aebd-8a0d-b42e7cd1aea1@gmail.com>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Sun, 16 Aug 2020 10:55:48 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.8.0
+        id S1726667AbgHQDyo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 16 Aug 2020 23:54:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39176 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726315AbgHQDyn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Aug 2020 23:54:43 -0400
+Received: from mail-wm1-x344.google.com (mail-wm1-x344.google.com [IPv6:2a00:1450:4864:20::344])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 141F9C061388
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2020 20:54:42 -0700 (PDT)
+Received: by mail-wm1-x344.google.com with SMTP id k8so12740869wma.2
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Aug 2020 20:54:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=ime-usp-br.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:from:date:message-id:subject:to
+         :content-transfer-encoding;
+        bh=WzEP0AhyZ6x1IlLUJetI5h1m46d2gV3P5oj8NnH+hhQ=;
+        b=Gzs1CnMF43zJWDBCVRXsRqqM0ch3khcL+UDiPrhlQVB/xPirQ7Pmy01PGJUr/25fLx
+         OBawAeOQc19V6/WSJqL+JW0Doz9iNhtRiCs62i0Ni0Cjobc7PX9s15w5uBzaipp0nUfJ
+         QY4PzXT1KB1FszPDIt74QpYT0VEs+Hkn58zfBn0ayh6gzMz36cKn5B3qAU/mXcpmcSML
+         cl7BlhRLBfWsLvYuNaK1g1Lg0I4hipcm6ayzw7LO8+mfi5gVaFVgD9Dn3eGfFbQ8JYT5
+         1uCmnPHqsLs/tgosMz7mqnaXW1cFfe00DVYncnFDzxpFzcrFuhmCuqH3UE9XjL7s+mzw
+         IoRw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to
+         :content-transfer-encoding;
+        bh=WzEP0AhyZ6x1IlLUJetI5h1m46d2gV3P5oj8NnH+hhQ=;
+        b=AmvzvnB8KX6VpF1Ad5KEqI53Pq+YMxsL7nxCSxCq/pSkzKZFDpesMGrEMbhbv1KUHZ
+         fezBqis4Eokq/qDfHLILAx5/QmWkP89i5vwiZ/S3D4d9lhfL+8oBWmwK/AenLkXMHn7v
+         R4f9PJ0IKGY8Iq/odztvaOOtlcpdRvDp/RqmqG4alPUqZVbv0LWTMMdj60NChutkVT07
+         6Ycap7lCVyLN/9nZr27NbNRL4slfnwvKualYD5UjEk8XgnMI66MDCiK9vmKRiKI5JrZN
+         6XtYXytlqOmJHpKIlvLWaFhGxBc15IlXZKHWaxD6l1S6mX80535UhM9CjMGzbAWYcUz3
+         vkPg==
+X-Gm-Message-State: AOAM532cpN9WChBQr6rkGnBsEbxKMFvDsgQXhxiZisoFnsfg3Q59ioY6
+        Qvte33oKoC4CHlYiIbjtUhMcrrkVlv/rlZKFQtbAWhH5a+g=
+X-Google-Smtp-Source: ABdhPJzp/f/JOtWx9ncbjJnSb0bxPgeEmrff2FLbH0++nEuuON+mMZC1UTXndu44mafRhL3owKW+8o6mh28jUvevoQQ=
+X-Received: by 2002:a7b:c74b:: with SMTP id w11mr12268375wmk.81.1597636481014;
+ Sun, 16 Aug 2020 20:54:41 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <0a165ac0-1912-aebd-8a0d-b42e7cd1aea1@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-Message-Id: <20200816052549.6FF6811C04C@d06av25.portsmouth.uk.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
- definitions=2020-08-16_01:2020-08-14,2020-08-16 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0 phishscore=0
- mlxlogscore=999 clxscore=1015 suspectscore=0 impostorscore=0
- priorityscore=1501 lowpriorityscore=0 malwarescore=0 bulkscore=0
- adultscore=0 mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2006250000 definitions=main-2008160038
+From:   =?UTF-8?Q?Rog=C3=A9rio_Brito?= <rbrito@ime.usp.br>
+Date:   Mon, 17 Aug 2020 03:54:29 +0000
+Message-ID: <CAOtrxKPMpNh7MZ2wX2wxju15rrY9rzrjNAwFneyAwCy2Z7DVMQ@mail.gmail.com>
+Subject: Generic questions about ext4
+To:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Dear developers,
+
+I have been using ext4 for quite some time and I have some ext4
+filesystems that led me to some questions.
+
+I have at least 2 "large" filesystems (with 2TB each, both almost
+full) dating back from 2011 and 2010. I believe that I even converted
+one of them from ext3 to ext4, but my memory is not that clear after
+almost a decade. As such, they were created without some useful
+features that are useful nowadays, like inline files. With that in
+mind, here are some questions:
+
+1 - I know that some features can be enabled with tune2fs, but, in
+particular, inline files don't seem to be. I've seen some people
+indicate that using debugfs, I can mark the superblock as having
+support for it. Would that really work? I don't plan on booting old
+kernels. One of those filesystems is running on an armel device that
+is quite slow and I would really like to avoid copying all the files
+to an external HD, recreating the filesystem and, then, copying back
+the files to the system.
+
+2 - Is there any way to get transparent compression with ext4? That
+would really, really rock and is, perhaps, one of the features that
+some users like me would greatly benefit from.
 
 
-On 8/15/20 5:40 AM, brookxu wrote:
-> Fix log printing of ext4_mb_regular_allocator()，it may be an
-> unintentional behavior.
-> 
-> V3:
-> It may be better to add a comma between start and len, which is
-> convenient for script processing.
-> 
-> V2:
-> Add more valuable information, such as group, start, len, lost.
-> 
-> Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+Thanks for any pointers,
 
-LGTM, please feel free to add:
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Rog=C3=A9rio Brito.
 
-> ---
->   fs/ext4/mballoc.c | 9 ++++++---
->   1 file changed, 6 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index c0a331e..70b110f 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2218,6 +2218,7 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
->   	struct ext4_sb_info *sbi;
->   	struct super_block *sb;
->   	struct ext4_buddy e4b;
-> +	unsigned int lost;
->   
->   	sb = ac->ac_sb;
->   	sbi = EXT4_SB(sb);
-> @@ -2341,22 +2342,24 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
->   		 * We've been searching too long. Let's try to allocate
->   		 * the best chunk we've found so far
->   		 */
-> -
->   		ext4_mb_try_best_found(ac, &e4b);
->   		if (ac->ac_status != AC_STATUS_FOUND) {
->   			/*
->   			 * Someone more lucky has already allocated it.
->   			 * The only thing we can do is just take first
->   			 * found block(s)
-> -			printk(KERN_DEBUG "EXT4-fs: someone won our chunk\n");
->   			 */
-> +			lost = (unsigned int)atomic_inc_return(&sbi->s_mb_lost_chunks);
-> +			mb_debug(sb, "lost chunk, group: %u, start: %d, len: %d, lost: %u\n",
-> +				 ac->ac_b_ex.fe_group, ac->ac_b_ex.fe_start,
-> +				 ac->ac_b_ex.fe_len, lost);
-> +
->   			ac->ac_b_ex.fe_group = 0;
->   			ac->ac_b_ex.fe_start = 0;
->   			ac->ac_b_ex.fe_len = 0;
->   			ac->ac_status = AC_STATUS_CONTINUE;
->   			ac->ac_flags |= EXT4_MB_HINT_FIRST;
->   			cr = 3;
-> -			atomic_inc(&sbi->s_mb_lost_chunks);
->   			goto repeat;
->   		}
->   	}
-> 
+--=20
+Rog=C3=A9rio Brito : rbrito@{ime.usp.br,gmail.com} : GPG key 4096R/BCFCAAAA
+http://cynic.cc/blog/ : github.com/rbrito : profiles.google.com/rbrito
+DebianQA: http://qa.debian.org/developer.php?login=3Drbrito%40ime.usp.br
