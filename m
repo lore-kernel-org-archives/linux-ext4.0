@@ -8,63 +8,63 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5842C433E1
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 07:31:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBA9FC433DF
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 07:31:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 85FD2206B5
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 07:31:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BB25B206B5
+	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 07:31:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bAcMNkAO"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MeGH8Q/G"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727097AbgHSHb0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 19 Aug 2020 03:31:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42046 "EHLO
+        id S1727072AbgHSHbl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 19 Aug 2020 03:31:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726691AbgHSHbT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Aug 2020 03:31:19 -0400
-Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9DA97C061342
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2020 00:31:19 -0700 (PDT)
-Received: by mail-pf1-x444.google.com with SMTP id r11so11224267pfl.11
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2020 00:31:19 -0700 (PDT)
+        with ESMTP id S1727081AbgHSHbZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Aug 2020 03:31:25 -0400
+Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11087C061344
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2020 00:31:25 -0700 (PDT)
+Received: by mail-pg1-x541.google.com with SMTP id m34so10962318pgl.11
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Aug 2020 00:31:25 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=6moglGyrbbQvHUWa3UbkPor8/IRoDYRkAhaqQdhOwsM=;
-        b=bAcMNkAOIH6lYUt98og3209p3PpIYYWRBFi8VmeOmpCxlot1Iwg2VgeLSezPCNg69c
-         Os3pQJh3jbs2HluPXjkV+lYrPKlpCGN0VbWwcVJj3neb+n3ArtOpWWSDW9QfSQGsnemH
-         VNEgw2qhNblGjPpbMbzFeIQ+KOta9WKaefZ4v8h0NZLEy3mTHT8t9Yp5n38KEC1pCyP6
-         gRJpnVS/kPh3x10lvLUIfRvGEg3WqKzYLpIjz8oQbZWIGe5moT6g/pPWhdsCQQCYOEtq
-         u7ACzqxOafG47eqzl2305ByAm//7/XO00vJ7Om+fZ3ih1e8mkna3q0VD4hB5zFs1ZN4w
-         1dTA==
+        bh=jsAzrDLh2Ch9lvlJy7pjfEH46kqJ70uMVgvqmgAKAas=;
+        b=MeGH8Q/G+OPhlhr3ZsVLeRhKFQBN3tdV9FASIz5YlhaLeVF6SZoxWBLRqkR8Y8k7aB
+         EP5o1nVp5x82krcl9DAJF8rUJxJXYhFWjqtdTe/tSUs7n3GEZrTnng//AuoY9e84icJt
+         0JDH77wGdCDBXEShKPoUpOI3lOLfy3TLaUgPXyzoFLltpjyreJhPG1D3Dh3gCRdKg7WC
+         wR1RaBahQUZ6gITvDbd40yd1KbcM7JO/OgqQknFUIGJEb8c1G+KZW3kb/Y+tyOWAOdyy
+         sJ1XkkbRAt6OQmzW/nQXawzCCymeow1jBCXDioz2wQCo7DH0CibXidduBwnVbvug5fS0
+         4y9w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=6moglGyrbbQvHUWa3UbkPor8/IRoDYRkAhaqQdhOwsM=;
-        b=CF7sb2Uyz6nLB+IXkkUMv61CSdvwJwqBjvpJHSwwTnqD11OwerheosaDdh3u/PUJuQ
-         B3kqe9mKx51WHjNERxR9ZNmhN8LnPgWlP5kM/fTRPTQxLS2Uw1lioGD6kRGTXn1eEseS
-         z5l/8K1MSytxwMhAYnqGgQNFT55FGZv72IjTRKOXfwW9Jei3pz15OVj5iM5amolL7wl0
-         e6VXYKi2APpwX2IZhoSi2vywfbkce2Kp4mkO3wJjZBBM1PWY60x0RXS39PGbR7DB7LiE
-         Wh8Z68a0rhWuSrW2dG41P07Oyg5qZ8/C2OzF8JHMDsIJ9KIhbYds0EhlPOPM2inepCiC
-         SRPw==
-X-Gm-Message-State: AOAM532NKb+IlN64R0ANKoYQhA1l+Uf6RUDvxyTend9ccS9LPSF7ng1N
-        CTJbPyIc2U1IyQcVR39etzoe/GFaWak=
-X-Google-Smtp-Source: ABdhPJy2PZYWT1TegFr27pFFQ5ko/JxRihAnneBgfCY5gVXCNcaPxaKIZda7qo9xXYQzDbmcxNxP1A==
-X-Received: by 2002:aa7:97b7:: with SMTP id d23mr17894209pfq.264.1597822278268;
-        Wed, 19 Aug 2020 00:31:18 -0700 (PDT)
+        bh=jsAzrDLh2Ch9lvlJy7pjfEH46kqJ70uMVgvqmgAKAas=;
+        b=JD5uJb52r5fHrsi+xSnBjhhX5AevAsOw8ZG7277g+Ym/EHPPM1qokQyQnaRCPszOcT
+         mbL1MJ2EGzQAlhMeVCUIl0HuFqB6t2eGYyz0hN3vyydPGSy88sisVk24RAlf6OY2+Sk0
+         gcKCYXc7vB0zxeRp3HXyJQs9kIz1zSl1lUAaqU0SfFvBGy8cHSrpaiKkFXVGedopscBj
+         /wFQXO6xI/qo4swOWEVAZHpvg6jH5+KyeLPfsjLUAQwKeB6S8VItCdIaAtQxqZqdyTTE
+         ViNOasAtw+D5g5yJyjiQ8/DbhekiOC2VxvMkaF0kswc9SojBckLkRTWeT6IE7TnLJizn
+         WxoA==
+X-Gm-Message-State: AOAM531VGbe2qiYFkWF/9vh/pcKnp37G+ixpUrsAcGlsCWUO5VYMhcLg
+        S+Z/J4RSs/yAwETkBYSkDWhseSc5CHI=
+X-Google-Smtp-Source: ABdhPJxc7obmz4VcT3ylCxntjp6x+AeD1+JpKhil+DmilP8iQXyCfe3M0uxno0nOZd0FSlWHPSRRBQ==
+X-Received: by 2002:a65:52c2:: with SMTP id z2mr3666805pgp.402.1597822284135;
+        Wed, 19 Aug 2020 00:31:24 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id q6sm2040019pjr.20.2020.08.19.00.31.16
+        by smtp.googlemail.com with ESMTPSA id q6sm2040019pjr.20.2020.08.19.00.31.22
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 19 Aug 2020 00:31:17 -0700 (PDT)
+        Wed, 19 Aug 2020 00:31:22 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, lyx1209@gmail.com,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 2/9] ext4: rename ext4_mb_load_buddy to ext4_mb_load_allocator
-Date:   Wed, 19 Aug 2020 00:30:57 -0700
-Message-Id: <20200819073104.1141705-3-harshadshirwadkar@gmail.com>
+Subject: [PATCH 6/9] ext4: add memory usage tracker for freespace trees
+Date:   Wed, 19 Aug 2020 00:31:01 -0700
+Message-Id: <20200819073104.1141705-7-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.28.0.220.ged08abb693-goog
 In-Reply-To: <20200819073104.1141705-1-harshadshirwadkar@gmail.com>
 References: <20200819073104.1141705-1-harshadshirwadkar@gmail.com>
@@ -75,358 +75,178 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch renames ext4_mb_load_buddy and ext4_mb_unload_buddy to
-ext4_mb_load_allocator and ext4_mb_unload_allocator. Also, we add a
-flag argument to ext4_mb_load_allocator function which is currently
-unused. This patch helps reduce the size of the following patch "ext4:
-add freespace tree allocator" significantly. In the interest of
-keeping this patchset shorter, I have not renamed ext4_buddy structure
-and e4b variable names. But have added that as a TODO item.
+Freespace trees can occupy a lot of memory with as the fragmentation
+increases. This patch adds a sysfs file to monitor the memory usage of
+the freespace tree allocator. Also, added a sysfs config to control
+maximum memory that the allocator can use. If the allocator exceeds
+this threshold, file system enters "FRSP_MEM_CRUNCH" state. The next
+patch in the series performs LRU eviction when this state is reached.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/mballoc.c | 86 ++++++++++++++++++++++++-----------------------
- 1 file changed, 44 insertions(+), 42 deletions(-)
+ fs/ext4/ext4.h    |  8 ++++++++
+ fs/ext4/mballoc.c | 20 ++++++++++++++++++++
+ fs/ext4/mballoc.h |  4 ++++
+ fs/ext4/sysfs.c   | 11 +++++++++++
+ 4 files changed, 43 insertions(+)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8cfe089ebea6..45fc3b230357 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1206,6 +1206,12 @@ struct ext4_inode_info {
+ 						    * allocator off)
+ 						    */
+ 
++#define EXT4_MOUNT2_FRSP_MEM_CRUNCH	0x00000040 /*
++						    * Freespace tree allocator
++						    * is in a tight memory
++						    * situation.
++						    */
++
+ #define clear_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt &= \
+ 						~EXT4_MOUNT_##opt
+ #define set_opt(sb, opt)		EXT4_SB(sb)->s_mount_opt |= \
+@@ -1589,6 +1595,8 @@ struct ext4_sb_info {
+ 	atomic_t s_mb_num_frsp_trees_cached;
+ 	struct list_head s_mb_uncached_trees;
+ 	u32 s_mb_frsp_cache_aggression;
++	atomic_t s_mb_num_fragments;
++	u32 s_mb_frsp_mem_limit;
+ 
+ 	/* workqueue for reserved extent conversions (buffered io) */
+ 	struct workqueue_struct *rsv_conversion_wq;
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 47de61e44db2..2d8d3d9c7918 100644
+index fa027b626abe..aada6838cafd 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -29,6 +29,7 @@
-  *   - don't normalize tails
-  *   - quota
-  *   - reservation for superuser
-+ *   - rename ext4_buddy to ext4_allocator and e4b variables to allocator
-  *
-  * TODO v3:
-  *   - bitmap read-ahead (proposed by Oleg Drokin aka green)
-@@ -92,7 +93,7 @@
-  * mapped to the buddy and bitmap information regarding different
-  * groups. The buddy information is attached to buddy cache inode so that
-  * we can access them through the page cache. The information regarding
-- * each group is loaded via ext4_mb_load_buddy.  The information involve
-+ * each group is loaded via ext4_mb_load_allocator.  The information involve
-  * block bitmap and buddy information. The information are stored in the
-  * inode as:
-  *
-@@ -845,7 +846,7 @@ static void mb_regenerate_buddy(struct ext4_buddy *e4b)
+@@ -869,6 +869,7 @@ void ext4_mb_frsp_print_tree_len(struct super_block *sb,
+ static struct ext4_frsp_node *ext4_mb_frsp_alloc_node(struct super_block *sb)
+ {
+ 	struct ext4_frsp_node *node;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
- /* The buddy information is attached the buddy cache inode
-  * for convenience. The information regarding each group
-- * is loaded via ext4_mb_load_buddy. The information involve
-+ * is loaded via ext4_mb_load_allocator. The information involve
-  * block bitmap and buddy information. The information are
-  * stored in the inode as
+ 	node = kmem_cache_alloc(ext4_freespace_node_cachep, GFP_NOFS);
+ 	if (!node)
+@@ -877,13 +878,31 @@ static struct ext4_frsp_node *ext4_mb_frsp_alloc_node(struct super_block *sb)
+ 	RB_CLEAR_NODE(&node->frsp_node);
+ 	RB_CLEAR_NODE(&node->frsp_len_node);
+ 
++	atomic_inc(&sbi->s_mb_num_fragments);
++
++	if (sbi->s_mb_frsp_mem_limit &&
++		atomic_read(&sbi->s_mb_num_fragments) >
++		EXT4_FRSP_MEM_LIMIT_TO_NUM_NODES(sb))
++		set_opt2(sb, FRSP_MEM_CRUNCH);
++	else
++		clear_opt2(sb, FRSP_MEM_CRUNCH);
++
++
+ 	return node;
+ }
+ 
+ static void ext4_mb_frsp_free_node(struct super_block *sb,
+ 		struct ext4_frsp_node *node)
+ {
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
+ 	kmem_cache_free(ext4_freespace_node_cachep, node);
++	atomic_dec(&sbi->s_mb_num_fragments);
++
++	if (!sbi->s_mb_frsp_mem_limit ||
++		atomic_read(&sbi->s_mb_num_fragments) <
++		EXT4_FRSP_MEM_LIMIT_TO_NUM_NODES(sb))
++		clear_opt2(sb, FRSP_MEM_CRUNCH);
+ }
+ 
+ /* Evict a tree from memory */
+@@ -1607,6 +1626,7 @@ int ext4_mb_init_freespace_trees(struct super_block *sb)
+ 	}
+ 	rwlock_init(&sbi->s_mb_frsp_lock);
+ 	atomic_set(&sbi->s_mb_num_frsp_trees_cached, 0);
++	atomic_set(&sbi->s_mb_num_fragments, 0);
+ 
+ 	return 0;
+ }
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index ac65f7eac611..08cac358324d 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -88,6 +88,10 @@ struct ext4_frsp_node {
+ 	struct rb_node frsp_node;
+ 	struct rb_node frsp_len_node;
+ };
++
++#define EXT4_FRSP_MEM_LIMIT_TO_NUM_NODES(__sb)				\
++	((sbi->s_mb_frsp_mem_limit / sizeof(struct ext4_frsp_node)))
++
+ struct ext4_free_data {
+ 	/* this links the free block information from sb_info */
+ 	struct list_head		efd_list;
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 31e0db726d21..d23cb51635c3 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -8,6 +8,7 @@
   *
-@@ -1105,7 +1106,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
- 	 * This ensures that we don't reinit the buddy cache
- 	 * page which map to the group from which we are already
- 	 * allocating. If we are looking at the buddy cache we would
--	 * have taken a reference using ext4_mb_load_buddy and that
-+	 * have taken a reference using ext4_mb_load_allocator and that
- 	 * would have pinned buddy page to page cache.
- 	 * The call to ext4_mb_get_buddy_page_lock will mark the
- 	 * page accessed.
-@@ -1157,8 +1158,8 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
-  * calling this routine!
   */
- static noinline_for_stack int
--ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
--		       struct ext4_buddy *e4b, gfp_t gfp)
-+ext4_mb_load_allocator_gfp(struct super_block *sb, ext4_group_t group,
-+				struct ext4_buddy *e4b, gfp_t gfp, int flags)
- {
- 	int blocks_per_page;
- 	int block;
-@@ -1296,13 +1297,13 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
- 	return ret;
- }
  
--static int ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
--			      struct ext4_buddy *e4b)
-+static int ext4_mb_load_allocator(struct super_block *sb, ext4_group_t group,
-+			      struct ext4_buddy *e4b, int flags)
- {
--	return ext4_mb_load_buddy_gfp(sb, group, e4b, GFP_NOFS);
-+	return ext4_mb_load_allocator_gfp(sb, group, e4b, GFP_NOFS, flags);
- }
++#include "mballoc.h"
+ #include <linux/time.h>
+ #include <linux/fs.h>
+ #include <linux/seq_file.h>
+@@ -24,6 +25,7 @@ typedef enum {
+ 	attr_session_write_kbytes,
+ 	attr_lifetime_write_kbytes,
+ 	attr_reserved_clusters,
++	attr_frsp_tree_usage,
+ 	attr_inode_readahead,
+ 	attr_trigger_test_error,
+ 	attr_first_error_time,
+@@ -205,6 +207,7 @@ EXT4_ATTR_FUNC(delayed_allocation_blocks, 0444);
+ EXT4_ATTR_FUNC(session_write_kbytes, 0444);
+ EXT4_ATTR_FUNC(lifetime_write_kbytes, 0444);
+ EXT4_ATTR_FUNC(reserved_clusters, 0644);
++EXT4_ATTR_FUNC(frsp_tree_usage, 0444);
  
--static void ext4_mb_unload_buddy(struct ext4_buddy *e4b)
-+static void ext4_mb_unload_allocator(struct ext4_buddy *e4b)
- {
- 	if (e4b->bd_bitmap_page)
- 		put_page(e4b->bd_bitmap_page);
-@@ -1866,7 +1867,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
- 	int err;
+ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, inode_readahead,
+ 		 ext4_sb_info, s_inode_readahead_blks);
+@@ -242,6 +245,7 @@ EXT4_ATTR(last_error_time, 0444, last_error_time);
+ EXT4_ATTR(journal_task, 0444, journal_task);
+ EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
+ EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
++EXT4_RW_ATTR_SBI_UI(mb_frsp_max_mem, s_mb_frsp_mem_limit);
  
- 	BUG_ON(ex.fe_len <= 0);
--	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
-+	err = ext4_mb_load_allocator(ac->ac_sb, group, e4b, 0);
- 	if (err)
- 		return err;
- 
-@@ -1879,7 +1880,7 @@ int ext4_mb_try_best_found(struct ext4_allocation_context *ac,
- 	}
- 
- 	ext4_unlock_group(ac->ac_sb, group);
--	ext4_mb_unload_buddy(e4b);
-+	ext4_mb_unload_allocator(e4b);
- 
- 	return 0;
- }
-@@ -1900,12 +1901,12 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 	if (grp->bb_free == 0)
- 		return 0;
- 
--	err = ext4_mb_load_buddy(ac->ac_sb, group, e4b);
-+	err = ext4_mb_load_allocator(ac->ac_sb, group, e4b, 0);
- 	if (err)
- 		return err;
- 
- 	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))) {
--		ext4_mb_unload_buddy(e4b);
-+		ext4_mb_unload_allocator(e4b);
- 		return 0;
- 	}
- 
-@@ -1943,7 +1944,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
- 		ext4_mb_use_best_found(ac, e4b);
- 	}
- 	ext4_unlock_group(ac->ac_sb, group);
--	ext4_mb_unload_buddy(e4b);
-+	ext4_mb_unload_allocator(e4b);
- 
- 	return 0;
- }
-@@ -2424,7 +2425,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 				continue;
- 			}
- 
--			err = ext4_mb_load_buddy(sb, group, &e4b);
-+			err = ext4_mb_load_allocator(sb, group, &e4b, 0);
- 			if (err)
- 				goto out;
- 
-@@ -2437,7 +2438,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 			ret = ext4_mb_good_group(ac, group, cr);
- 			if (ret == 0) {
- 				ext4_unlock_group(sb, group);
--				ext4_mb_unload_buddy(&e4b);
-+				ext4_mb_unload_allocator(&e4b);
- 				continue;
- 			}
- 
-@@ -2451,7 +2452,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 				ext4_mb_complex_scan_group(ac, &e4b);
- 
- 			ext4_unlock_group(sb, group);
--			ext4_mb_unload_buddy(&e4b);
-+			ext4_mb_unload_allocator(&e4b);
- 
- 			if (ac->ac_status != AC_STATUS_CONTINUE)
- 				break;
-@@ -2548,7 +2549,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
- 	grinfo = ext4_get_group_info(sb, group);
- 	/* Load the group info in memory only if not already loaded. */
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
--		err = ext4_mb_load_buddy(sb, group, &e4b);
-+		err = ext4_mb_load_allocator(sb, group, &e4b, 0);
- 		if (err) {
- 			seq_printf(seq, "#%-5u: I/O error\n", group);
- 			return 0;
-@@ -2559,7 +2560,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
- 	memcpy(&sg, ext4_get_group_info(sb, group), i);
- 
- 	if (buddy_loaded)
--		ext4_mb_unload_buddy(&e4b);
-+		ext4_mb_unload_allocator(&e4b);
- 
- 	seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
- 			sg.info.bb_fragments, sg.info.bb_first_free);
-@@ -3053,7 +3054,7 @@ static void ext4_free_data_in_buddy(struct super_block *sb,
- 	mb_debug(sb, "gonna free %u blocks in group %u (0x%p):",
- 		 entry->efd_count, entry->efd_group, entry);
- 
--	err = ext4_mb_load_buddy(sb, entry->efd_group, &e4b);
-+	err = ext4_mb_load_allocator(sb, entry->efd_group, &e4b, 0);
- 	/* we expect to find existing buddy because it's pinned */
- 	BUG_ON(err != 0);
- 
-@@ -3088,7 +3089,7 @@ static void ext4_free_data_in_buddy(struct super_block *sb,
- 	}
- 	ext4_unlock_group(sb, entry->efd_group);
- 	kmem_cache_free(ext4_free_data_cachep, entry);
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 
- 	mb_debug(sb, "freed %d blocks in %d structures\n", count,
- 		 count2);
-@@ -3562,12 +3563,13 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- 	if (pa == NULL) {
- 		if (ac->ac_f_ex.fe_len == 0)
- 			return;
--		err = ext4_mb_load_buddy(ac->ac_sb, ac->ac_f_ex.fe_group, &e4b);
-+		err = ext4_mb_load_allocator(ac->ac_sb, ac->ac_f_ex.fe_group,
-+						&e4b, 0);
- 		if (err) {
- 			/*
- 			 * This should never happen since we pin the
- 			 * pages in the ext4_allocation_context so
--			 * ext4_mb_load_buddy() should never fail.
-+			 * ext4_mb_load_allocator() should never fail.
- 			 */
- 			WARN(1, "mb_load_buddy failed (%d)", err);
- 			return;
-@@ -3576,7 +3578,7 @@ static void ext4_discard_allocated_blocks(struct ext4_allocation_context *ac)
- 		mb_free_blocks(ac->ac_inode, &e4b, ac->ac_f_ex.fe_start,
- 			       ac->ac_f_ex.fe_len);
- 		ext4_unlock_group(ac->ac_sb, ac->ac_f_ex.fe_group);
--		ext4_mb_unload_buddy(&e4b);
-+		ext4_mb_unload_allocator(&e4b);
- 		return;
- 	}
- 	if (pa->pa_type == MB_INODE_PA)
-@@ -4158,7 +4160,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 		goto out_dbg;
- 	}
- 
--	err = ext4_mb_load_buddy(sb, group, &e4b);
-+	err = ext4_mb_load_allocator(sb, group, &e4b, 0);
- 	if (err) {
- 		ext4_warning(sb, "Error %d loading buddy information for %u",
- 			     err, group);
-@@ -4233,7 +4235,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
- 
- out:
- 	ext4_unlock_group(sb, group);
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 	put_bh(bitmap_bh);
- out_dbg:
- 	mb_debug(sb, "discarded (%d) blocks preallocated for group %u bb_free (%d)\n",
-@@ -4325,8 +4327,8 @@ void ext4_discard_preallocations(struct inode *inode)
- 		BUG_ON(pa->pa_type != MB_INODE_PA);
- 		group = ext4_get_group_number(sb, pa->pa_pstart);
- 
--		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
--					     GFP_NOFS|__GFP_NOFAIL);
-+		err = ext4_mb_load_allocator_gfp(sb, group, &e4b,
-+						GFP_NOFS|__GFP_NOFAIL, 0);
- 		if (err) {
- 			ext4_error_err(sb, -err, "Error %d loading buddy information for %u",
- 				       err, group);
-@@ -4338,7 +4340,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 			err = PTR_ERR(bitmap_bh);
- 			ext4_error_err(sb, -err, "Error %d reading block bitmap for %u",
- 				       err, group);
--			ext4_mb_unload_buddy(&e4b);
-+			ext4_mb_unload_allocator(&e4b);
- 			continue;
- 		}
- 
-@@ -4347,7 +4349,7 @@ void ext4_discard_preallocations(struct inode *inode)
- 		ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa);
- 		ext4_unlock_group(sb, group);
- 
--		ext4_mb_unload_buddy(&e4b);
-+		ext4_mb_unload_allocator(&e4b);
- 		put_bh(bitmap_bh);
- 
- 		list_del(&pa->u.pa_tmp_list);
-@@ -4620,8 +4622,8 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 		int err;
- 
- 		group = ext4_get_group_number(sb, pa->pa_pstart);
--		err = ext4_mb_load_buddy_gfp(sb, group, &e4b,
--					     GFP_NOFS|__GFP_NOFAIL);
-+		err = ext4_mb_load_allocator_gfp(sb, group, &e4b,
-+						GFP_NOFS|__GFP_NOFAIL, 0);
- 		if (err) {
- 			ext4_error_err(sb, -err, "Error %d loading buddy information for %u",
- 				       err, group);
-@@ -4632,7 +4634,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
- 		ext4_mb_release_group_pa(&e4b, pa);
- 		ext4_unlock_group(sb, group);
- 
--		ext4_mb_unload_buddy(&e4b);
-+		ext4_mb_unload_allocator(&e4b);
- 		list_del(&pa->u.pa_tmp_list);
- 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
- 	}
-@@ -5189,8 +5191,8 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	trace_ext4_mballoc_free(sb, inode, block_group, bit, count_clusters);
- 
- 	/* __GFP_NOFAIL: retry infinitely, ignore TIF_MEMDIE and memcg limit. */
--	err = ext4_mb_load_buddy_gfp(sb, block_group, &e4b,
--				     GFP_NOFS|__GFP_NOFAIL);
-+	err = ext4_mb_load_allocator_gfp(sb, block_group, &e4b,
-+					GFP_NOFS|__GFP_NOFAIL, 0);
- 	if (err)
- 		goto error_return;
- 
-@@ -5264,7 +5266,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 				   count_clusters);
- 	}
- 
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-@@ -5382,7 +5384,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 		}
- 	}
- 
--	err = ext4_mb_load_buddy(sb, block_group, &e4b);
-+	err = ext4_mb_load_allocator(sb, block_group, &e4b, 0);
- 	if (err)
- 		goto error_return;
- 
-@@ -5410,7 +5412,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 						  flex_group)->free_clusters);
- 	}
- 
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-@@ -5498,7 +5500,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 
- 	trace_ext4_trim_all_free(sb, group, start, max);
- 
--	ret = ext4_mb_load_buddy(sb, group, &e4b);
-+	ret = ext4_mb_load_allocator(sb, group, &e4b, 0);
- 	if (ret) {
- 		ext4_warning(sb, "Error %d loading buddy information for %u",
- 			     ret, group);
-@@ -5552,7 +5554,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
- 	}
- out:
- 	ext4_unlock_group(sb, group);
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 
- 	ext4_debug("trimmed %d blocks in the group %d\n",
- 		count, group);
-@@ -5666,7 +5668,7 @@ ext4_mballoc_query_range(
- 	struct ext4_buddy		e4b;
- 	int				error;
- 
--	error = ext4_mb_load_buddy(sb, group, &e4b);
-+	error = ext4_mb_load_allocator(sb, group, &e4b, 0);
- 	if (error)
- 		return error;
- 	bitmap = e4b.bd_bitmap;
-@@ -5695,7 +5697,7 @@ ext4_mballoc_query_range(
- 
- 	ext4_unlock_group(sb, group);
- out_unload:
--	ext4_mb_unload_buddy(&e4b);
-+	ext4_mb_unload_allocator(&e4b);
- 
- 	return error;
- }
+ static unsigned int old_bump_val = 128;
+ EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
+@@ -251,6 +255,7 @@ static struct attribute *ext4_attrs[] = {
+ 	ATTR_LIST(session_write_kbytes),
+ 	ATTR_LIST(lifetime_write_kbytes),
+ 	ATTR_LIST(reserved_clusters),
++	ATTR_LIST(frsp_tree_usage),
+ 	ATTR_LIST(inode_readahead_blks),
+ 	ATTR_LIST(inode_goal),
+ 	ATTR_LIST(mb_stats),
+@@ -287,6 +292,7 @@ static struct attribute *ext4_attrs[] = {
+ #endif
+ 	ATTR_LIST(mb_prefetch),
+ 	ATTR_LIST(mb_prefetch_limit),
++	ATTR_LIST(mb_frsp_max_mem),
+ 	NULL,
+ };
+ ATTRIBUTE_GROUPS(ext4);
+@@ -369,6 +375,11 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 		return snprintf(buf, PAGE_SIZE, "%llu\n",
+ 				(unsigned long long)
+ 				atomic64_read(&sbi->s_resv_clusters));
++	case attr_frsp_tree_usage:
++		return snprintf(buf, PAGE_SIZE, "%llu\n",
++				(unsigned long long)
++				atomic_read(&sbi->s_mb_num_fragments) *
++				sizeof(struct ext4_frsp_node));
+ 	case attr_inode_readahead:
+ 	case attr_pointer_ui:
+ 		if (!ptr)
 -- 
 2.28.0.220.ged08abb693-goog
 
