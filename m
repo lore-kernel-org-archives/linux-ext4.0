@@ -1,102 +1,168 @@
-Return-Path: <SRS0=5xRJ=B5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=eB64=B6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D4DA2C433E3
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 23:58:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4C6FC433E1
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Aug 2020 11:37:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A8B1F208DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 19 Aug 2020 23:58:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1597881482;
-	bh=y0Y9dUpsINNbfudEKK3GZSt+xmoBFwG9iWNUT2rZKK8=;
-	h=Date:From:To:To:To:Cc:CC:Cc:Subject:In-Reply-To:References:
-	 List-ID:From;
-	b=1Ves1ijfm1vay61LzqEse6wqGyVcmTXDWsdXBUqtyRduyRMUZ+fOxJuQPNL/URtiB
-	 Ztu5UQKcMmqlhm3q8Hufa55bKvL2Fdt2i2KeWRcOU43PJVYX/FIEEzzPDvmqc5OIk0
-	 TtgKqPPbPpQ8z7cLMwibFySn/CFGMs9GtVfJThjM=
+	by mail.kernel.org (Postfix) with ESMTP id AD93A204EA
+	for <linux-ext4@archiver.kernel.org>; Thu, 20 Aug 2020 11:37:20 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="JPFjhdvW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726870AbgHSX54 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 19 Aug 2020 19:57:56 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53330 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726435AbgHSX4l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Aug 2020 19:56:41 -0400
-Received: from localhost (unknown [70.37.104.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1FF42214F1;
-        Wed, 19 Aug 2020 23:56:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1597881401;
-        bh=y0Y9dUpsINNbfudEKK3GZSt+xmoBFwG9iWNUT2rZKK8=;
-        h=Date:From:To:To:To:Cc:CC:Cc:Subject:In-Reply-To:References:From;
-        b=K7aM1lxnSI+WTErVVg4GHLU2rjZj9JiE5ZSh4GF8/zlOX5P0MNgjcOv0UKI272jGZ
-         NmiADQUa3vXMUg+nsYBej/BK+OFvI3VNMallG/nKoBkINCPNTv4qQhWghmmWiwZ69f
-         D2+ytAXZarvOAoHsMtA3SZyWqmZjNIxya8D7ok8c=
-Date:   Wed, 19 Aug 2020 23:56:40 +0000
-From:   Sasha Levin <sashal@kernel.org>
-To:     Sasha Levin <sashal@kernel.org>
-To:     Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-CC:     stable@vger.kernel.org
-Cc:     stable@vger.kernel.org
-Subject: Re: [PATCH] ext4: Fix checking of entry validity
-In-Reply-To: <20200731162135.8080-1-jack@suse.cz>
-References: <20200731162135.8080-1-jack@suse.cz>
-Message-Id: <20200819235641.1FF42214F1@mail.kernel.org>
+        id S1730719AbgHTLhE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 20 Aug 2020 07:37:04 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:64488 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1730860AbgHTLgu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Aug 2020 07:36:50 -0400
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 07KBYhe3043007;
+        Thu, 20 Aug 2020 07:36:45 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=SH3r8zO0T156Tqbtqgkajzax4aNk7O027h4poQWfte4=;
+ b=JPFjhdvWp5wukbvvzgQRr7fUshAVPCmwhGxg4DymRocChWz4LEgR414YtKI/WRH5q5oN
+ 3yzuWeTxNRI4870nqqaygZvjZeesYoURZxDjVMNa6P8qDEtXxXqC4svvABozcmR9J1aQ
+ I7NzG8vKwp7okL2KDUSqGb3MLJ+kEXHOAZYRsdhMTIejvKUtRTHbOHAhcD1KUtLoI4Wd
+ TRi94BZv4tjYmX0HzDtXWDhVIfZLe5rx071wbn5uKirGZWt9c0rZVWjQlZFQTwJpFGmx
+ YxNc03SxxmcLNq71Z1u/3AzttB+xNwX3MrMZHuKbRaMycEMAbS1v3qkdTYnL+Jw8rkq6 tw== 
+Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3310f0a933-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 20 Aug 2020 07:36:45 -0400
+Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
+        by ppma03ams.nl.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 07KBVJ4D001237;
+        Thu, 20 Aug 2020 11:36:43 GMT
+Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
+        by ppma03ams.nl.ibm.com with ESMTP id 3304um32a6-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 20 Aug 2020 11:36:42 +0000
+Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
+        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 07KBae1E28901764
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 20 Aug 2020 11:36:40 GMT
+Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id B1D07A4040;
+        Thu, 20 Aug 2020 11:36:40 +0000 (GMT)
+Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 5E5A9A404D;
+        Thu, 20 Aug 2020 11:36:39 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.199.33.217])
+        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Thu, 20 Aug 2020 11:36:39 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     jack@suse.cz, tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>,
+        Dan Williams <dan.j.williams@intel.com>
+Subject: [RFC 1/1] ext4: Optimize ext4 DAX overwrites
+Date:   Thu, 20 Aug 2020 17:06:28 +0530
+Message-Id: <696f5386f1c306e769be409c8b1d90a3358bbf8d.1597855360.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.25.4
+In-Reply-To: <cover.1597855360.git.riteshh@linux.ibm.com>
+References: <cover.1597855360.git.riteshh@linux.ibm.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
+ definitions=2020-08-20_03:2020-08-19,2020-08-20 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 clxscore=1015 phishscore=0
+ impostorscore=0 malwarescore=0 adultscore=0 spamscore=0 bulkscore=0
+ priorityscore=1501 mlxlogscore=898 mlxscore=0 suspectscore=1
+ lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2008200096
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi
+Currently in case of DAX, we are starting a transaction
+everytime for IOMAP_WRITE case. This can be optimized
+away in case of an overwrite (where the blocks were already
+allocated). This could give a significant performance boost
+for multi-threaded random writes.
 
-[This is an automated email]
+Reported-by: Dan Williams <dan.j.williams@intel.com>
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ fs/ext4/ext4.h  | 1 +
+ fs/ext4/file.c  | 2 +-
+ fs/ext4/inode.c | 8 +++++++-
+ 3 files changed, 9 insertions(+), 2 deletions(-)
 
-This commit has been processed because it contains a "Fixes:" tag
-fixing commit: 109ba779d6cc ("ext4: check for directory entries too close to block end").
-
-The bot has tested the following trees: v5.8.1, v5.7.15, v5.4.58, v4.19.139, v4.14.193, v4.9.232, v4.4.232.
-
-v5.8.1: Build OK!
-v5.7.15: Build OK!
-v5.4.58: Build OK!
-v4.19.139: Build OK!
-v4.14.193: Build failed! Errors:
-
-v4.9.232: Failed to apply! Possible dependencies:
-    364443cbcfe7 ("ext4: convert DAX reads to iomap infrastructure")
-    39bc88e5e38e ("arm64: Disable TTBR0_EL1 during normal kernel execution")
-    7046ae35329f ("ext4: Add iomap support for inline data")
-    7c0f6ba682b9 ("Replace <asm/uaccess.h> with <linux/uaccess.h> globally")
-    9cf09d68b89a ("arm64: xen: Enable user access before a privcmd hvc call")
-    b886ee3e778e ("ext4: Support case-insensitive file name lookups")
-    bd38967d406f ("arm64: Factor out PAN enabling/disabling into separate uaccess_* macros")
-    ee73f9a52a34 ("ext4: convert to new i_version API")
-    eeca7ea1baa9 ("ext4: use current_time() for inode timestamps")
-
-v4.4.232: Failed to apply! Possible dependencies:
-    12735f881952 ("ext4: pre-zero allocated blocks for DAX IO")
-    2dcba4781fa3 ("ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag")
-    364443cbcfe7 ("ext4: convert DAX reads to iomap infrastructure")
-    7046ae35329f ("ext4: Add iomap support for inline data")
-    705965bd6dfa ("ext4: rename and split get blocks functions")
-    b886ee3e778e ("ext4: Support case-insensitive file name lookups")
-    ba5843f51d46 ("ext4: use pre-zeroed blocks for DAX page faults")
-    c86d8db33a92 ("ext4: implement allocation of pre-zeroed blocks")
-    ee73f9a52a34 ("ext4: convert to new i_version API")
-
-
-NOTE: The patch will not be queued to stable trees until it is upstream.
-
-How should we proceed with this patch?
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 42f5060f3cdf..9a2138afc751 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3232,6 +3232,7 @@ extern const struct dentry_operations ext4_dentry_ops;
+ extern const struct inode_operations ext4_file_inode_operations;
+ extern const struct file_operations ext4_file_operations;
+ extern loff_t ext4_llseek(struct file *file, loff_t offset, int origin);
++extern bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len);
+ 
+ /* inline.c */
+ extern int ext4_get_max_inline_size(struct inode *inode);
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2a01e31a032c..51cd92ac1758 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -188,7 +188,7 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
+ }
+ 
+ /* Is IO overwriting allocated and initialized blocks? */
+-static bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len)
++bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len)
+ {
+ 	struct ext4_map_blocks map;
+ 	unsigned int blkbits = inode->i_blkbits;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 10dd470876b3..f0ac0ee9e991 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3423,6 +3423,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	int ret;
+ 	struct ext4_map_blocks map;
+ 	u8 blkbits = inode->i_blkbits;
++	bool overwrite = false;
+ 
+ 	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
+ 		return -EINVAL;
+@@ -3430,6 +3431,9 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+ 		return -ERANGE;
+ 
++	if (IS_DAX(inode) && (flags & IOMAP_WRITE) &&
++	    ext4_overwrite_io(inode, offset, length))
++		overwrite = true;
+ 	/*
+ 	 * Calculate the first and last logical blocks respectively.
+ 	 */
+@@ -3437,13 +3441,15 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
+ 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
+ 
+-	if (flags & IOMAP_WRITE)
++	if ((flags & IOMAP_WRITE) && !overwrite)
+ 		ret = ext4_iomap_alloc(inode, &map, flags);
+ 	else
+ 		ret = ext4_map_blocks(NULL, inode, &map, 0);
+ 
+ 	if (ret < 0)
+ 		return ret;
++	if (IS_DAX(inode) && overwrite)
++		WARN_ON(!(map.m_flags & EXT4_MAP_MAPPED));
+ 
+ 	ext4_set_iomap(inode, iomap, &map, offset, length);
+ 
 -- 
-Thanks
-Sasha
+2.25.4
+
