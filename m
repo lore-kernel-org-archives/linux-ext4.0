@@ -2,77 +2,162 @@ Return-Path: <SRS0=NbvD=CA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 677ACC433E1
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 09:29:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C28C4C433E1
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 11:35:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4AFAE207C3
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 09:29:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9FFF320738
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 11:35:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="VKtE2fya"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726535AbgHVJ3u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 Aug 2020 05:29:50 -0400
-Received: from szxga07-in.huawei.com ([45.249.212.35]:51238 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725864AbgHVJ3t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 22 Aug 2020 05:29:49 -0400
-Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 9D79BCA4EEA191BB2848;
-        Sat, 22 Aug 2020 17:29:46 +0800 (CST)
-Received: from [127.0.0.1] (10.174.179.86) by DGGEMS402-HUB.china.huawei.com
- (10.3.19.202) with Microsoft SMTP Server id 14.3.487.0; Sat, 22 Aug 2020
- 17:29:43 +0800
-Subject: Re: [PATCH] ext4: Fix unnecessary hold lock when judge jinode in
- ext4_inode_attach_jinode
-To:     <adilger.kernel@dilger.ca>, <tytso@mit.edu>,
-        <linux-ext4@vger.kernel.org>
-References: <20200822092544.2306917-1-yebin10@huawei.com>
-From:   yebin <yebin10@huawei.com>
-Message-ID: <5F40E587.1080002@huawei.com>
-Date:   Sat, 22 Aug 2020 17:29:43 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
- Thunderbird/38.1.0
+        id S1727952AbgHVLfC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 22 Aug 2020 07:35:02 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:62566 "EHLO
+        mx0b-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727113AbgHVLe7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 22 Aug 2020 07:34:59 -0400
+Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 07MBXZBH142775;
+        Sat, 22 Aug 2020 07:34:51 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=sBSrCREw7iV6UUm6KKETVDl0mwpxm3K7fbLURRyVoak=;
+ b=VKtE2fyatc/RLvKLO7oTuCkUsU90QeLxvF6mFkHmuhk3tyL1UkdK63+EjKiSYmLSep5N
+ dr6Z162gLOxbS0vbscV4R8S4XXqnb+LOZwEp9NC4+NORzW+EUx41ycQfF/PjJAkDuBiy
+ lPOA/i7ejOgsNf4G9zU8DYqyi3HuleDYPfn1C4hTnpyKaxmxX4+QAzU2ArUD0XEFdGYB
+ BQ7ZN9U/u5yQVlu16n84/scCVCTcddltSrKvqZ7oRfq700Bh7IdIXs3qcmttw30GnGKK
+ lz2sltPZ+/Qo2Jz+axXxNdQZAW+W+yBlTe8MCsybGiLK0fiCg3Rksm+wWqySeUM/Q37i Mw== 
+Received: from ppma04ams.nl.ibm.com (63.31.33a9.ip4.static.sl-reverse.com [169.51.49.99])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 332x6gc4c0-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 22 Aug 2020 07:34:51 -0400
+Received: from pps.filterd (ppma04ams.nl.ibm.com [127.0.0.1])
+        by ppma04ams.nl.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 07MBXfpt021892;
+        Sat, 22 Aug 2020 11:34:49 GMT
+Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
+        by ppma04ams.nl.ibm.com with ESMTP id 332utsrar9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 22 Aug 2020 11:34:49 +0000
+Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
+        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 07MBYl6O27787744
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 22 Aug 2020 11:34:47 GMT
+Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 13F3952052;
+        Sat, 22 Aug 2020 11:34:47 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.199.33.217])
+        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id A35E75204E;
+        Sat, 22 Aug 2020 11:34:45 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     jack@suse.cz, tytso@mit.edu,
+        Dan Williams <dan.j.williams@intel.com>,
+        Anju T Sudhakar <anju@linux.vnet.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [PATCHv2 1/3] ext4: Refactor ext4_overwrite_io() to take ext4_map_blocks as argument
+Date:   Sat, 22 Aug 2020 17:04:35 +0530
+Message-Id: <057a08972f818c035621a9fd3ff870bedcdf5e83.1598094830.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.25.4
+In-Reply-To: <cover.1598094830.git.riteshh@linux.ibm.com>
+References: <cover.1598094830.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
-In-Reply-To: <20200822092544.2306917-1-yebin10@huawei.com>
-Content-Type: text/plain; charset="windows-1252"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.179.86]
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
+ definitions=2020-08-22_07:2020-08-21,2020-08-22 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 mlxlogscore=834
+ clxscore=1015 malwarescore=0 priorityscore=1501 lowpriorityscore=0
+ phishscore=0 impostorscore=0 suspectscore=1 spamscore=0 bulkscore=0
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2008220125
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Sorry, please  ignore it.
+Refactor ext4_overwrite_io() to take struct ext4_map_blocks
+as it's function argument with m_lblk and m_len filled
+from caller
 
-On 2020/8/22 17:25, Ye Bin wrote:
-> Signed-off-by: Ye Bin <yebin10@huawei.com>
-> ---
->   fs/ext4/inode.c | 7 +++----
->   1 file changed, 3 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3a196d81f594..3504b4cec5b8 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4100,12 +4100,11 @@ int ext4_inode_attach_jinode(struct inode *inode)
->   		return 0;
->   
->   	jinode = jbd2_alloc_inode(GFP_KERNEL);
-> +	if (!jinode)
-> +		return -ENOMEM;
-> +
->   	spin_lock(&inode->i_lock);
->   	if (!ei->jinode) {
-> -		if (!jinode) {
-> -			spin_unlock(&inode->i_lock);
-> -			return -ENOMEM;
-> -		}
->   		ei->jinode = jinode;
->   		jbd2_journal_init_jbd_inode(ei->jinode, inode);
->   		jinode = NULL;
+There should be no functionality change in this patch.
 
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ fs/ext4/file.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 2a01e31a032c..84f73ed91af2 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -188,26 +188,22 @@ ext4_extending_io(struct inode *inode, loff_t offset, size_t len)
+ }
+ 
+ /* Is IO overwriting allocated and initialized blocks? */
+-static bool ext4_overwrite_io(struct inode *inode, loff_t pos, loff_t len)
++static bool ext4_overwrite_io(struct inode *inode, struct ext4_map_blocks *map)
+ {
+-	struct ext4_map_blocks map;
+ 	unsigned int blkbits = inode->i_blkbits;
+-	int err, blklen;
++	loff_t end = (map->m_lblk + map->m_len) << blkbits;
++	int err, blklen = map->m_len;
+ 
+-	if (pos + len > i_size_read(inode))
++	if (end > i_size_read(inode))
+ 		return false;
+ 
+-	map.m_lblk = pos >> blkbits;
+-	map.m_len = EXT4_MAX_BLOCKS(len, pos, blkbits);
+-	blklen = map.m_len;
+-
+-	err = ext4_map_blocks(NULL, inode, &map, 0);
++	err = ext4_map_blocks(NULL, inode, map, 0);
+ 	/*
+ 	 * 'err==len' means that all of the blocks have been preallocated,
+ 	 * regardless of whether they have been initialized or not. To exclude
+ 	 * unwritten extents, we need to check m_flags.
+ 	 */
+-	return err == blklen && (map.m_flags & EXT4_MAP_MAPPED);
++	return err == blklen && (map->m_flags & EXT4_MAP_MAPPED);
+ }
+ 
+ static ssize_t ext4_generic_write_checks(struct kiocb *iocb,
+@@ -407,6 +403,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ {
+ 	struct file *file = iocb->ki_filp;
+ 	struct inode *inode = file_inode(file);
++	struct ext4_map_blocks map;
+ 	loff_t offset;
+ 	size_t count;
+ 	ssize_t ret;
+@@ -420,6 +417,9 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	count = ret;
+ 	if (ext4_extending_io(inode, offset, count))
+ 		*extend = true;
++
++	map.m_lblk = offset >> inode->i_blkbits;
++	map.m_len = EXT4_MAX_BLOCKS(count, offset, inode->i_blkbits);
+ 	/*
+ 	 * Determine whether the IO operation will overwrite allocated
+ 	 * and initialized blocks.
+@@ -427,7 +427,7 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
+ 	 * in file_modified().
+ 	 */
+ 	if (*ilock_shared && (!IS_NOSEC(inode) || *extend ||
+-	     !ext4_overwrite_io(inode, offset, count))) {
++	     !ext4_overwrite_io(inode, &map))) {
+ 		inode_unlock_shared(inode);
+ 		*ilock_shared = false;
+ 		inode_lock(inode);
+-- 
+2.25.4
 
