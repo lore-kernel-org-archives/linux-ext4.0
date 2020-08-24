@@ -4,50 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DB6DCC433E1
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F838C433E1
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:59:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B832F204EA
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:58:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4998A204EA
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:59:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598288335;
-	bh=IcXALHFZUK8dc4IRIzM+yDCtE9/gqUl/eI79c203FXw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=xXzxryb5YSFXRbopwfATcQBr1PkyqtzHVGb2NCjgau4Nfh6Rj6UVRSpR/j/rEfq6s
-	 sPFjhS+c2QOAt1YPZtR4ER9p42IHWECLVL2bcVfdbTVjHvwaUKtS8buHqzyVOCzPV0
-	 mhdY+qp/vAaG3JUBEjUKrvQCr5J8+99HHZppkAvs=
+	s=default; t=1598288365;
+	bh=0T4zPC5JFeMjiOz5QfuMmWoz2MjWto/85jlqA8H2gUo=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=Mmsxy6yToYDeo24sp13ysBcIBZ6y3rVtxO0gcfk6HK173zvzgtPQeBStByXqyBqc0
+	 zCDY23X+PVpDAB69Clz3Tca6tCSA0iE1sJ3f4PNQa+kU8zQqurHGULICb0VQCuoKbb
+	 HzpYhKPF8wj/aaGXug5r2TEtZIKYCLV+h3eymT2Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726828AbgHXQ6x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Aug 2020 12:58:53 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46110 "EHLO mail.kernel.org"
+        id S1726856AbgHXQ7L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 12:59:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40124 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728520AbgHXQiw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Aug 2020 12:38:52 -0400
+        id S1725962AbgHXQis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 12:38:48 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B5F0522D6F;
-        Mon, 24 Aug 2020 16:38:50 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id D2E9622CE3;
+        Mon, 24 Aug 2020 16:38:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598287131;
-        bh=IcXALHFZUK8dc4IRIzM+yDCtE9/gqUl/eI79c203FXw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=HWyyFieo5UxzJyeFvmeJh2vP8mrr5JJh6j3NUPy86lf5bhxXzbKiBL1+AF0Kqg4D7
-         pMNHw2XmWYkIUMjwRqYIjcP31F2LadnQ5jiut/1yK+mjXKGoR9Oe0yKNtUFnhoa1JA
-         nJkS/qc579tNAHazGczgUIU4BMlHlZtgdCo4uMi8=
+        s=default; t=1598287127;
+        bh=0T4zPC5JFeMjiOz5QfuMmWoz2MjWto/85jlqA8H2gUo=;
+        h=From:To:Cc:Subject:Date:From;
+        b=UmDDyAMWU4nATaVSCnHLaaQzArXM4veYnSjnhlzu245R5mjGHG1kFFaSMiPoxz+t5
+         F2nOgvDQeGf6Hq7fN+3xtpjzzFDpg/FDhw3SCAP693Z8Alw/wvG+MmEcHEdPWMqQJe
+         riXNaiUuMlQaCSh3EfVvatY55HblpbfsWKF+1tLg=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 04/21] jbd2: abort journal if free a async write error metadata buffer
-Date:   Mon, 24 Aug 2020 12:38:28 -0400
-Message-Id: <20200824163845.606933-4-sashal@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>, Jan Kara <jack@suse.cz>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 01/21] jbd2: make sure jh have b_transaction set in refile/unfile_buffer
+Date:   Mon, 24 Aug 2020 12:38:25 -0400
+Message-Id: <20200824163845.606933-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200824163845.606933-1-sashal@kernel.org>
-References: <20200824163845.606933-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -57,64 +56,60 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "zhangyi (F)" <yi.zhang@huawei.com>
+From: Lukas Czerner <lczerner@redhat.com>
 
-[ Upstream commit c044f3d8360d2ecf831ba2cc9f08cf9fb2c699fb ]
+[ Upstream commit 24dc9864914eb5813173cfa53313fcd02e4aea7d ]
 
-If we free a metadata buffer which has been failed to async write out
-in the background, the jbd2 checkpoint procedure will not detect this
-failure in jbd2_log_do_checkpoint(), so it may lead to filesystem
-inconsistency after cleanup journal tail. This patch abort the journal
-if free a buffer has write_io_error flag to prevent potential further
-inconsistency.
+Callers of __jbd2_journal_unfile_buffer() and
+__jbd2_journal_refile_buffer() assume that the b_transaction is set. In
+fact if it's not, we can end up with journal_head refcounting errors
+leading to crash much later that might be very hard to track down. Add
+asserts to make sure that is the case.
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Link: https://lore.kernel.org/r/20200620025427.1756360-5-yi.zhang@huawei.com
+We also make sure that b_next_transaction is NULL in
+__jbd2_journal_unfile_buffer() since the callers expect that as well and
+we should not get into that stage in this state anyway, leading to
+problems later on if we do.
+
+Tested with fstests.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20200617092549.6712-1-lczerner@redhat.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/jbd2/transaction.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ fs/jbd2/transaction.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 5a0de78a5d71a..8c305593fb51f 100644
+index 43693b6797105..5a0de78a5d71a 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -2009,6 +2009,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+@@ -1915,6 +1915,9 @@ static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh)
+  */
+ static void __jbd2_journal_unfile_buffer(struct journal_head *jh)
  {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
-+	bool has_write_io_error = false;
- 	int ret = 0;
- 
- 	J_ASSERT(PageLocked(page));
-@@ -2033,11 +2034,26 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
- 		jbd_unlock_bh_state(bh);
- 		if (buffer_jbd(bh))
- 			goto busy;
++	J_ASSERT_JH(jh, jh->b_transaction != NULL);
++	J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
 +
-+		/*
-+		 * If we free a metadata buffer which has been failed to
-+		 * write out, the jbd2 checkpoint procedure will not detect
-+		 * this failure and may lead to filesystem inconsistency
-+		 * after cleanup journal tail.
-+		 */
-+		if (buffer_write_io_error(bh)) {
-+			pr_err("JBD2: Error while async write back metadata bh %llu.",
-+			       (unsigned long long)bh->b_blocknr);
-+			has_write_io_error = true;
-+		}
- 	} while ((bh = bh->b_this_page) != head);
+ 	__jbd2_journal_temp_unlink_buffer(jh);
+ 	jh->b_transaction = NULL;
+ 	jbd2_journal_put_journal_head(jh);
+@@ -2462,6 +2465,13 @@ void __jbd2_journal_refile_buffer(struct journal_head *jh)
  
- 	ret = try_to_free_buffers(page);
- 
- busy:
-+	if (has_write_io_error)
-+		jbd2_journal_abort(journal, -EIO);
+ 	was_dirty = test_clear_buffer_jbddirty(bh);
+ 	__jbd2_journal_temp_unlink_buffer(jh);
 +
- 	return ret;
- }
- 
++	/*
++	 * b_transaction must be set, otherwise the new b_transaction won't
++	 * be holding jh reference
++	 */
++	J_ASSERT_JH(jh, jh->b_transaction != NULL);
++
+ 	/*
+ 	 * We set b_transaction here because b_next_transaction will inherit
+ 	 * our jh reference and thus __jbd2_journal_file_buffer() must not
 -- 
 2.25.1
 
