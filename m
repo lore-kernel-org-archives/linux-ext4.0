@@ -7,49 +7,48 @@ X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D58F7C433DF
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:00:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA02DC433E3
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:06:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B25CA204EA
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:00:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C9D3F206F0
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:06:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598288406;
-	bh=otWkLV9AE7p/mLHlRBKBh6b3nTllnZikxbDu+4RwkJA=;
+	s=default; t=1598288782;
+	bh=yPaioRTnmqK2dwTb0FtvPCcfUxc6Z2ND0GZZr19QrpU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=i5JLUCTaPQKwSE5nJGkiXmRqZ0/5LcUvqlMIvOF15cYoZzdCB/92rjcIFa0GQ/Sia
-	 BDjl+0VVP1QWYLY2xKVOVdaZ0rz810/OfQL3VPGWDcDNWUtmSxG6q+bVoKAsAPutMT
-	 eQFzDcsPhp0oXtq/5RNmBkLWaszZVgqt+ToMEk0M=
+	b=KvbNhD4424c4qqcpPTmOCa3oP9KL3UWCEd565Xr9EByOSunqm3b2GBm52xsoVSFo3
+	 7cJqfsnsbDynomK4KZR9ZPqz6zXHgDTVlUTfJzM5ojwOCqk9XKYSaTSsA1Xbi0S99w
+	 TCeZ2TOD60kmX7ZVxbat9JsnplFiqAQrVWu1j+tw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726798AbgHXQ6w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Aug 2020 12:58:52 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46134 "EHLO mail.kernel.org"
+        id S1727042AbgHXRGL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 13:06:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41064 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728524AbgHXQix (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Aug 2020 12:38:53 -0400
+        id S1728428AbgHXQia (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 12:38:30 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DB9DF22CBB;
-        Mon, 24 Aug 2020 16:38:51 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 21CEA22DCC;
+        Mon, 24 Aug 2020 16:38:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598287132;
-        bh=otWkLV9AE7p/mLHlRBKBh6b3nTllnZikxbDu+4RwkJA=;
+        s=default; t=1598287081;
+        bh=yPaioRTnmqK2dwTb0FtvPCcfUxc6Z2ND0GZZr19QrpU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=A/N+DiI+0P/CHcgPiMQgW+rXhIHFc7MRNWcrU+fJofndDdyZiZUFKkKbjJZBar4Wj
-         hQXhf5QAQSRlXfmj+1a887REfQK1pcJa1H0qN3i3DSO0SE8SM6n6VQ3SjvvjUTfNMe
-         5vY6ktf/BXdVwiUxdvpqyDOZN8ClJ5lf4IVvIQsQ=
+        b=Ki/S+Ra/RFIu2klP5VM4joWLlO+W6G1pltBgbmV4Y/RQj/R0DTlQFDK1Zx01SM1U5
+         5rN0+jWiV3ot46RqiuFbJ3y52G69WaJPZplB3i8Z/+il8OMu90PkJFASe8LRXOQocj
+         45U5v0KwjvTBUpjKC+J/P4+qdTzEqgNixY8895Wk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Lukas Czerner <lczerner@redhat.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
+Cc:     Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 05/21] ext4: handle option set by mount flags correctly
-Date:   Mon, 24 Aug 2020 12:38:29 -0400
-Message-Id: <20200824163845.606933-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 08/38] ext4: correctly restore system zone info when remount fails
+Date:   Mon, 24 Aug 2020 12:37:20 -0400
+Message-Id: <20200824163751.606577-8-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200824163845.606933-1-sashal@kernel.org>
-References: <20200824163845.606933-1-sashal@kernel.org>
+In-Reply-To: <20200824163751.606577-1-sashal@kernel.org>
+References: <20200824163751.606577-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,96 +58,108 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Lukas Czerner <lczerner@redhat.com>
+From: Jan Kara <jack@suse.cz>
 
-[ Upstream commit f25391ebb475d3ffb3aa61bb90e3594c841749ef ]
+[ Upstream commit 0f5bde1db174f6c471f0bd27198575719dabe3e5 ]
 
-Currently there is a problem with mount options that can be both set by
-vfs using mount flags or by a string parsing in ext4.
+When remounting filesystem fails late during remount handling and
+block_validity mount option is also changed during the remount, we fail
+to restore system zone information to a state matching the mount option.
+This is mostly harmless, just the block validity checking will not match
+the situation described by the mount option. Make sure these two are always
+consistent.
 
-i_version/iversion options gets lost after remount, for example
-
-$ mount -o i_version /dev/pmem0 /mnt
-$ grep pmem0 /proc/self/mountinfo | grep i_version
-310 95 259:0 / /mnt rw,relatime shared:163 - ext4 /dev/pmem0 rw,seclabel,i_version
-$ mount -o remount,ro /mnt
-$ grep pmem0 /proc/self/mountinfo | grep i_version
-
-nolazytime gets ignored by ext4 on remount, for example
-
-$ mount -o lazytime /dev/pmem0 /mnt
-$ grep pmem0 /proc/self/mountinfo | grep lazytime
-310 95 259:0 / /mnt rw,relatime shared:163 - ext4 /dev/pmem0 rw,lazytime,seclabel
-$ mount -o remount,nolazytime /mnt
-$ grep pmem0 /proc/self/mountinfo | grep lazytime
-310 95 259:0 / /mnt rw,relatime shared:163 - ext4 /dev/pmem0 rw,lazytime,seclabel
-
-Fix it by applying the SB_LAZYTIME and SB_I_VERSION flags from *flags to
-s_flags before we parse the option and use the resulting state of the
-same flags in *flags at the end of successful remount.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Link: https://lore.kernel.org/r/20200723150526.19931-1-lczerner@redhat.com
+Reported-by: Lukas Czerner <lczerner@redhat.com>
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20200728130437.7804-7-jack@suse.cz
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
+ fs/ext4/block_validity.c |  8 --------
+ fs/ext4/super.c          | 29 +++++++++++++++++++++--------
+ 2 files changed, 21 insertions(+), 16 deletions(-)
 
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index ff8e1205127ee..bbe7773394c4e 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -260,14 +260,6 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 	int flex_size = ext4_flex_bg_size(sbi);
+ 	int ret;
+ 
+-	if (!test_opt(sb, BLOCK_VALIDITY)) {
+-		if (sbi->system_blks)
+-			ext4_release_system_zone(sb);
+-		return 0;
+-	}
+-	if (sbi->system_blks)
+-		return 0;
+-
+ 	system_blks = kzalloc(sizeof(*system_blks), GFP_KERNEL);
+ 	if (!system_blks)
+ 		return -ENOMEM;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 23ef8fbdb582f..03ebb0b385467 100644
+index e8923013accc0..184f2d737efc9 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -5249,7 +5249,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- {
- 	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	unsigned long old_sb_flags;
-+	unsigned long old_sb_flags, vfs_flags;
- 	struct ext4_mount_options old_opts;
- 	int enable_quota = 0;
- 	ext4_group_t g;
-@@ -5292,6 +5292,14 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_journal && sbi->s_journal->j_task->io_context)
- 		journal_ioprio = sbi->s_journal->j_task->io_context->ioprio;
+@@ -4563,11 +4563,13 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
  
-+	/*
-+	 * Some options can be enabled by ext4 and/or by VFS mount flag
-+	 * either way we need to make sure it matches in both *flags and
-+	 * s_flags. Copy those selected flags from *flags to s_flags
-+	 */
-+	vfs_flags = SB_LAZYTIME | SB_I_VERSION;
-+	sb->s_flags = (sb->s_flags & ~vfs_flags) | (*flags & vfs_flags);
-+
- 	if (!parse_options(data, sb, NULL, &journal_ioprio, 1)) {
- 		err = -EINVAL;
- 		goto restore_opts;
-@@ -5345,9 +5353,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
+ 	ext4_set_resv_clusters(sb);
+ 
+-	err = ext4_setup_system_zone(sb);
+-	if (err) {
+-		ext4_msg(sb, KERN_ERR, "failed to initialize system "
+-			 "zone (%d)", err);
+-		goto failed_mount4a;
++	if (test_opt(sb, BLOCK_VALIDITY)) {
++		err = ext4_setup_system_zone(sb);
++		if (err) {
++			ext4_msg(sb, KERN_ERR, "failed to initialize system "
++				 "zone (%d)", err);
++			goto failed_mount4a;
++		}
  	}
  
--	if (*flags & SB_LAZYTIME)
--		sb->s_flags |= SB_LAZYTIME;
--
- 	if ((bool)(*flags & SB_RDONLY) != sb_rdonly(sb)) {
- 		if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED) {
- 			err = -EROFS;
-@@ -5487,7 +5492,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	ext4_ext_init(sb);
+@@ -5563,9 +5565,16 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		ext4_register_li_request(sb, first_not_zeroed);
+ 	}
+ 
+-	err = ext4_setup_system_zone(sb);
+-	if (err)
+-		goto restore_opts;
++	/*
++	 * Handle creation of system zone data early because it can fail.
++	 * Releasing of existing data is done when we are sure remount will
++	 * succeed.
++	 */
++	if (test_opt(sb, BLOCK_VALIDITY) && !sbi->system_blks) {
++		err = ext4_setup_system_zone(sb);
++		if (err)
++			goto restore_opts;
++	}
+ 
+ 	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY)) {
+ 		err = ext4_commit_super(sb, 1);
+@@ -5587,6 +5596,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		}
  	}
  #endif
++	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
++		ext4_release_system_zone(sb);
  
--	*flags = (*flags & ~SB_LAZYTIME) | (sb->s_flags & SB_LAZYTIME);
-+	/*
-+	 * Some options can be enabled by ext4 and/or by VFS mount flag
-+	 * either way we need to make sure it matches in both *flags and
-+	 * s_flags. Copy those selected flags from s_flags to *flags
-+	 */
-+	*flags = (*flags & ~vfs_flags) | (sb->s_flags & vfs_flags);
-+
- 	ext4_msg(sb, KERN_INFO, "re-mounted. Opts: %s", orig_data);
- 	kfree(orig_data);
- 	return 0;
+ 	/*
+ 	 * Some options can be enabled by ext4 and/or by VFS mount flag
+@@ -5608,6 +5619,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	sbi->s_commit_interval = old_opts.s_commit_interval;
+ 	sbi->s_min_batch_time = old_opts.s_min_batch_time;
+ 	sbi->s_max_batch_time = old_opts.s_max_batch_time;
++	if (!test_opt(sb, BLOCK_VALIDITY) && sbi->system_blks)
++		ext4_release_system_zone(sb);
+ #ifdef CONFIG_QUOTA
+ 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
 -- 
 2.25.1
 
