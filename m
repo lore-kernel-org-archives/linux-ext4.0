@@ -2,50 +2,53 @@ Return-Path: <SRS0=b5V9=CC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63344C43461
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73BF1C43464
 	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 06:35:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 76A7620FC3
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 06:18:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E91D52087D
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 06:18:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598249899;
-	bh=5Cg/F/P1MsSIqNAEKm5EcA85tMzmQDFgxtq+BwsOiXY=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=YvFZBjFf8WbLloUeVzVoEYi09ynYmxH8i50iThUvKZktESOVjvW/vULdWIkUkDzkT
-	 z8ZSxF/Ar/CGrd0qwBC4kyYVekMSUJhzN1m4NLyZaAIvSCgYlvm6tryqB1fXuHSkbV
-	 Nf27ovYiS5aksKxi0aeChRLL3xXq8mlI6A9jzlu8=
+	s=default; t=1598249913;
+	bh=QdONhA25GuQQJmapNTQIWWWGH7achN6FFOfpot5lMGg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=Uvr7RVw9k7q0AUX6rCBhqrUC1rzgaX4/+TDLgsbgUpwRLmxc6p/HIJqiDpTofM6OZ
+	 mJMojFNcgKojwC1M0Jixw/XIJgMkkusIco+K8nWINHfGog/u1NiIm+z+0MLzXUcrgE
+	 ZSsVHeYqp7svLxR0xaXuIg69Md7h2UuDC9qiUswk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726026AbgHXGSS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Aug 2020 02:18:18 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49688 "EHLO mail.kernel.org"
+        id S1725976AbgHXGSb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 02:18:31 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49716 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725770AbgHXGSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Aug 2020 02:18:18 -0400
+        id S1726027AbgHXGST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 02:18:19 -0400
 Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CD6CF206B5;
-        Mon, 24 Aug 2020 06:18:17 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 90CA6207D3;
+        Mon, 24 Aug 2020 06:18:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=default; t=1598249898;
-        bh=5Cg/F/P1MsSIqNAEKm5EcA85tMzmQDFgxtq+BwsOiXY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=f893nZOHOk74YywNd+s2c7KM7U+ApkFK+G5wAxPqs247sQ2FcptH0qP9EtwzvEYBf
-         LROjPrF6b7H17wnj5KGsZaPkgvTF6yctFlLpC0zde7Uvt1Qfhq8ilvE8jBprCzObNr
-         jbaGalIhOAIFifcUwA2qyoWoyI0iCcGdq4CofU6w=
+        bh=QdONhA25GuQQJmapNTQIWWWGH7achN6FFOfpot5lMGg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=e2050mad+4BMjzCtGT254bX32Y57ZVPtbWQMoQ32OT3m9nxLEs1AyyyqNgsRbiXRZ
+         QT/l38bY56Ows6Dz77k+6jZZieKpGieGImYQ2x0upL1GsY64XNmbcCCuQTqD6nxcy5
+         EOd44g73ySC7xMwhc5Xioy2YrWtVXRk3pKMU+uk4=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>
-Subject: [RFC PATCH 0/8] fscrypt: avoid GFP_NOFS-unsafe key setup during transaction
-Date:   Sun, 23 Aug 2020 23:17:04 -0700
-Message-Id: <20200824061712.195654-1-ebiggers@kernel.org>
+Subject: [RFC PATCH 2/8] ext4: factor out ext4_xattr_credits_for_new_inode()
+Date:   Sun, 23 Aug 2020 23:17:06 -0700
+Message-Id: <20200824061712.195654-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20200824061712.195654-1-ebiggers@kernel.org>
+References: <20200824061712.195654-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -53,51 +56,130 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This series fixes some deadlocks which are theoretically possible due to
-fscrypt_get_encryption_info() being GFP_NOFS-unsafe, and thus not safe
-to be called from within an ext4 transaction or under f2fs_lock_op().
+From: Eric Biggers <ebiggers@google.com>
 
-The problem is solved by new helper functions which allow setting up the
-key for new inodes earlier.  Patch 1 adds these helper functions.  Also
-see that patch for a more detailed description of this problem.
+To compute a new inode's xattr credits, we need to know whether the
+inode will be encrypted or not.  When we switch to use the new helper
+function fscrypt_prepare_new_inode(), we won't find out whether the
+inode will be encrypted until slightly later than is currently the case,
+which requires moving the code block that computes the xattr credits.
 
-Patches 2-6 then convert ext4, f2fs, and ubifs to use these new helpers.
+To make this easier and reduce the length of __ext4_new_inode(), move
+this code block into a new function ext4_xattr_credits_for_new_inode().
 
-Patch 7-8 then clean up a few things afterwards.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/ialloc.c | 90 +++++++++++++++++++++++++++---------------------
+ 1 file changed, 51 insertions(+), 39 deletions(-)
 
-Coincidentally, this also solves some of the ordering problems that
-ceph fscrypt support will have.  For more details about this, see the
-discussion on Jeff Layton's RFC patchset for ceph fscrypt support
-(https://lkml.kernel.org/linux-fscrypt/20200821182813.52570-1-jlayton@kernel.org/T/#u)
-However, fscrypt_prepare_new_inode() still requires that the new
-'struct inode' exist already, so it might not be enough for ceph yet.
-
-This patchset applies to v5.9-rc2.
-
-Eric Biggers (8):
-  fscrypt: add fscrypt_prepare_new_inode() and fscrypt_set_context()
-  ext4: factor out ext4_xattr_credits_for_new_inode()
-  ext4: remove some #ifdefs in ext4_xattr_credits_for_new_inode()
-  ext4: use fscrypt_prepare_new_inode() and fscrypt_set_context()
-  f2fs: use fscrypt_prepare_new_inode() and fscrypt_set_context()
-  ubifs: use fscrypt_prepare_new_inode() and fscrypt_set_context()
-  fscrypt: remove fscrypt_inherit_context()
-  fscrypt: stop pretending that key setup is nofs-safe
-
- fs/crypto/fscrypt_private.h |   3 +
- fs/crypto/hooks.c           |  10 +-
- fs/crypto/inline_crypt.c    |   7 +-
- fs/crypto/keysetup.c        | 190 ++++++++++++++++++++++++++++--------
- fs/crypto/keysetup_v1.c     |   8 +-
- fs/crypto/policy.c          |  64 +++++++-----
- fs/ext4/ialloc.c            | 118 +++++++++++-----------
- fs/f2fs/dir.c               |   2 +-
- fs/f2fs/f2fs.h              |  16 ---
- fs/f2fs/namei.c             |   7 +-
- fs/ubifs/dir.c              |  26 ++---
- include/linux/fscrypt.h     |  18 +++-
- 12 files changed, 293 insertions(+), 176 deletions(-)
-
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index df25d38d65393..0cc576005a923 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -742,6 +742,53 @@ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
+ 	return 1;
+ }
+ 
++static int ext4_xattr_credits_for_new_inode(struct inode *dir, mode_t mode,
++					    bool encrypt)
++{
++	struct super_block *sb = dir->i_sb;
++	int nblocks = 0;
++#ifdef CONFIG_EXT4_FS_POSIX_ACL
++	struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
++
++	if (IS_ERR(p))
++		return PTR_ERR(p);
++	if (p) {
++		int acl_size = p->a_count * sizeof(ext4_acl_entry);
++
++		nblocks += (S_ISDIR(mode) ? 2 : 1) *
++			__ext4_xattr_set_credits(sb, NULL /* inode */,
++						 NULL /* block_bh */, acl_size,
++						 true /* is_create */);
++		posix_acl_release(p);
++	}
++#endif
++
++#ifdef CONFIG_SECURITY
++	{
++		int num_security_xattrs = 1;
++
++#ifdef CONFIG_INTEGRITY
++		num_security_xattrs++;
++#endif
++		/*
++		 * We assume that security xattrs are never more than 1k.
++		 * In practice they are under 128 bytes.
++		 */
++		nblocks += num_security_xattrs *
++			__ext4_xattr_set_credits(sb, NULL /* inode */,
++						 NULL /* block_bh */, 1024,
++						 true /* is_create */);
++	}
++#endif
++	if (encrypt)
++		nblocks += __ext4_xattr_set_credits(sb,
++						    NULL /* inode */,
++						    NULL /* block_bh */,
++						    FSCRYPT_SET_CONTEXT_MAX_SIZE,
++						    true /* is_create */);
++	return nblocks;
++}
++
+ /*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+@@ -796,45 +843,10 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	}
+ 
+ 	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
+-#ifdef CONFIG_EXT4_FS_POSIX_ACL
+-		struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
+-
+-		if (IS_ERR(p))
+-			return ERR_CAST(p);
+-		if (p) {
+-			int acl_size = p->a_count * sizeof(ext4_acl_entry);
+-
+-			nblocks += (S_ISDIR(mode) ? 2 : 1) *
+-				__ext4_xattr_set_credits(sb, NULL /* inode */,
+-					NULL /* block_bh */, acl_size,
+-					true /* is_create */);
+-			posix_acl_release(p);
+-		}
+-#endif
+-
+-#ifdef CONFIG_SECURITY
+-		{
+-			int num_security_xattrs = 1;
+-
+-#ifdef CONFIG_INTEGRITY
+-			num_security_xattrs++;
+-#endif
+-			/*
+-			 * We assume that security xattrs are never
+-			 * more than 1k.  In practice they are under
+-			 * 128 bytes.
+-			 */
+-			nblocks += num_security_xattrs *
+-				__ext4_xattr_set_credits(sb, NULL /* inode */,
+-					NULL /* block_bh */, 1024,
+-					true /* is_create */);
+-		}
+-#endif
+-		if (encrypt)
+-			nblocks += __ext4_xattr_set_credits(sb,
+-					NULL /* inode */, NULL /* block_bh */,
+-					FSCRYPT_SET_CONTEXT_MAX_SIZE,
+-					true /* is_create */);
++		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
++		if (ret2 < 0)
++			return ERR_PTR(ret2);
++		nblocks += ret2;
+ 	}
+ 
+ 	ngroups = ext4_get_groups_count(sb);
 -- 
 2.28.0
 
