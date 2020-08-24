@@ -1,136 +1,174 @@
-Return-Path: <SRS0=NbvD=CA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=b5V9=CC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D364C433E1
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 15:48:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C686C433E1
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 06:35:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 06BE120714
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 Aug 2020 15:48:48 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel-dk.20150623.gappssmtp.com header.i=@kernel-dk.20150623.gappssmtp.com header.b="0KZ+dqt5"
+	by mail.kernel.org (Postfix) with ESMTP id 1998822B3F
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 06:18:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1598249923;
+	bh=FIdPAQ4uVgqepfVvwpPtlAMJGJ/BCwZf2dDwk5M0shA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=l5SbFUX1ueQgsqaXA1hTBFm/dkYCuUftzbg/78rXpi99F2/FFJgNED5fVlorHqDN3
+	 U4ywNjQkZgLZOW4euYCTSn1MGtXDM7OQzi7Xzivste9/4TvZpSAObTTSdjCSQd4sRA
+	 r/+Da7VI4Se3ejGqqNCSXwmh7dELCCaOfrc/CZPs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728256AbgHVPso (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 Aug 2020 11:48:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52670 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727807AbgHVPsm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Aug 2020 11:48:42 -0400
-Received: from mail-pf1-x442.google.com (mail-pf1-x442.google.com [IPv6:2607:f8b0:4864:20::442])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 39DEAC061574
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2020 08:48:42 -0700 (PDT)
-Received: by mail-pf1-x442.google.com with SMTP id f193so2573774pfa.12
-        for <linux-ext4@vger.kernel.org>; Sat, 22 Aug 2020 08:48:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=kernel-dk.20150623.gappssmtp.com; s=20150623;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=WbL90IDwtnRtnzlD0xDGTdZ6FaQmNJQAGy53EB9XAHk=;
-        b=0KZ+dqt5XN5ztFcChm8+ZeUl+GW8fXsEiliNI5SKcfdWype1tzUD3q0c4KCTXtTOWU
-         jPdbj4EvlAV56xq5aGtoLWg72Lzki+lOYu5f2Dm2iO7hp2ipTTvWMfQ2DzwmGhOVTZmk
-         tCnjKLnK3sU8J0nFYAJFV8EJrXyQuNj8nh9PwJ/h2SZBxKRJOcNaoKmSKlabujAeVLFy
-         R1y+0QXCzY/yaBUIsAqVctnVCzCJ9d1s0ruzhX9nsDJwUd1to8WQXxgHh4AZrIPcR7lB
-         GMY8IIx3nkVE0iyeqWc3ko//t77f0KAmDvW+XD37zLzd7hDX1clRQgikLtsDjrsHFNmP
-         ZCLg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=WbL90IDwtnRtnzlD0xDGTdZ6FaQmNJQAGy53EB9XAHk=;
-        b=MgWqae+Sb1llHB/fqmwh9MctbG4H21s02E60Z9K72u7F1/p5wAahwCbVAFfRUaePNP
-         nuxWRYiHzG/QSiScqUVDN1YbZUBiuVRhmUF5DNTUOFcQIXT6EyblG6oDFtecBzjk8Ru+
-         +NXYEH8VWWWH8EP7DD7LFaeudPsuxCYU0FXg98jLGcj/kgU4S6/b1EfxQbwUF5CRcFMU
-         AEl2fhSe0tFxt1uc3jPBKlV+T1ZpkRgp/B87ZfLFNYaEctM+xeatY4OCRERizl8Afbht
-         05qWpQNETl9DRB0au9Y5tFhBtjq1BSnyP0qu2YsVhxIP6iVqWQ3XMPtQyoymJg01khVq
-         2Jrw==
-X-Gm-Message-State: AOAM530bksJ4AMTuopHc+yKugxL7Bu/hjLQtfO562f1S1uccJLFwnACb
-        9lo3LQYWs08jG13AIg4Dhuk7ggqKR7Cjr+/x
-X-Google-Smtp-Source: ABdhPJzHdhcG1OaTI4+z9SJEQ0YHL8LOWl5oPUh0GXHf9JvYJ0cQemZTDm7DiSpV3t68o+75tLmz2A==
-X-Received: by 2002:aa7:9468:: with SMTP id t8mr6380356pfq.182.1598111320508;
-        Sat, 22 Aug 2020 08:48:40 -0700 (PDT)
-Received: from [192.168.1.182] ([66.219.217.173])
-        by smtp.gmail.com with ESMTPSA id b10sm721269pjd.51.2020.08.22.08.48.38
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 22 Aug 2020 08:48:39 -0700 (PDT)
-Subject: Re: [PATCH] ext4: flag as supporting buffered async reads
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-References: <fb90cc2d-b12c-738f-21a4-dd7a8ae0556a@kernel.dk>
- <20200818181117.GA34125@mit.edu>
- <990cc101-d4a1-f346-fe78-0fb5b963b406@kernel.dk>
- <20c844c8-b649-3250-ff5b-b7420f72ff38@kernel.dk>
- <20200822143326.GC199705@mit.edu>
-From:   Jens Axboe <axboe@kernel.dk>
-Message-ID: <aff250ad-4c31-15c2-fa1d-3f3945cb7aa5@kernel.dk>
-Date:   Sat, 22 Aug 2020 09:48:37 -0600
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.10.0
+        id S1726365AbgHXGSg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 02:18:36 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49986 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726075AbgHXGS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 02:18:28 -0400
+Received: from sol.hsd1.ca.comcast.net (c-107-3-166-239.hsd1.ca.comcast.net [107.3.166.239])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9733422BEA;
+        Mon, 24 Aug 2020 06:18:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1598249900;
+        bh=FIdPAQ4uVgqepfVvwpPtlAMJGJ/BCwZf2dDwk5M0shA=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=aOFOzAVN6aex+LS5Y2deYUb9Qjxp+H46wBD4Q4HDvUhaKg92JKU/CLVURb4LyzBUw
+         2+WvbtU7sO6GQxDGsaEnuYSknW0lS3fpbkqF4Evz/SyGisvOuCd6oEkWg/7aYH/ioI
+         8+eqiG/nQFxpH2RSz/7EstoUxgliPnfNi17KeKtQ=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
+        Jeff Layton <jlayton@kernel.org>
+Subject: [RFC PATCH 8/8] fscrypt: stop pretending that key setup is nofs-safe
+Date:   Sun, 23 Aug 2020 23:17:12 -0700
+Message-Id: <20200824061712.195654-9-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20200824061712.195654-1-ebiggers@kernel.org>
+References: <20200824061712.195654-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20200822143326.GC199705@mit.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 8/22/20 8:33 AM, Theodore Y. Ts'o wrote:
-> On Fri, Aug 21, 2020 at 03:26:35PM -0600, Jens Axboe wrote:
->>>>> Resending this one, as I've been carrying it privately since May. The
->>>>> necessary bits are now upstream (and XFS/btrfs equiv changes as well),
->>>>> please consider this one for 5.9. Thanks!
->>>>
->>>> The necessary commit only hit upstream as of 5.9-rc1, unless I'm
->>>> missing something?  It's on my queue to send to Linus once I get my
->>>> (late) ext4 primary pull request for 5.9.
->>>
->>> Right, it went in at the start of the merge window for 5.9. Thanks Ted!
->>
->> Didn't see it in the queue that just sent in, is it still queued up?
-> 
-> It wasn't in the queue which I queued up because that was based on
-> 5.8-rc4.  Linus was a bit grumpy (fairly so) because it was late, and
-> that's totally on me.
-> 
-> He has said that he's going to start ignoring pull requests that
-> aren't fixes only if this becomes a pattern, so while I can send him
-> another pull request which will just have that one change, there are
-> no guarantees he's going to take it at this late date.
-> 
-> Sorry, when you sent me the commit saying that the changes that were
-> needed were already upstream on August 3rd, I thought that meant that
-> they were aready in Linus's tree.  I should have checked and noticed
-> that that in fact "ext4: flag as supporting buffered async reads"
-> wasn't compiling against Linus's upstream tree, so I didn't realize
-> this needed to be handled as a special case during the merge window.
+From: Eric Biggers <ebiggers@google.com>
 
-Well to be honest, this kind of sucks. I've been posting it since May,
-and the ideal approach would have been to just ack it and I could have
-carried it in my tree. That's what we did for btrfs and XFS, both of
-which have it.
+fscrypt_get_encryption_info() has never actually been safe to call in a
+context that needs GFP_NOFS, since it calls crypto_alloc_skcipher().
 
-The required patches *were* upstreamed on August 3rd, which is why I
-mentioned that. But yes, not in 5.8 or earlier, of course.
+crypto_alloc_skcipher() isn't GFP_NOFS-safe, even if called under
+memalloc_nofs_save().  This is because it may load kernel modules, and
+also because it internally takes crypto_alg_sem.  Other tasks can do
+GFP_KERNEL allocations while holding crypto_alg_sem for write.
 
-So I suggest that you either include it for the next pull request for
-Linus, or that I put it in with your ack. Either is fine with me. I'd
-consider this a "dropping the ball" kind of thing, it's not like the
-patch hasn't been in linux-next or hasn't been ready for months. This
-isn't some "oh I wrote this feature after the merge window" event. It'd
-be a real shame to ship 5.9 and ext4 not have support for the more
-efficient async buffered reads, imho, especially since the two other
-major local file systems already have it.
+The use of fscrypt_init_mutex isn't GFP_NOFS-safe either.
 
-Let me know what you think.
+So, stop pretending that fscrypt_get_encryption_info() is nofs-safe.
+I.e., when it allocates memory, just use GFP_KERNEL instead of GFP_NOFS.
 
+Note, another reason to do this is that GFP_NOFS is deprecated in favor
+of using memalloc_nofs_save() in the proper places.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/inline_crypt.c | 7 ++-----
+ fs/crypto/keysetup.c     | 2 +-
+ fs/crypto/keysetup_v1.c  | 8 ++++----
+ 3 files changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/fs/crypto/inline_crypt.c b/fs/crypto/inline_crypt.c
+index faa25541ccb68..89bffa82ed74a 100644
+--- a/fs/crypto/inline_crypt.c
++++ b/fs/crypto/inline_crypt.c
+@@ -106,7 +106,7 @@ int fscrypt_select_encryption_impl(struct fscrypt_info *ci)
+ 	crypto_cfg.data_unit_size = sb->s_blocksize;
+ 	crypto_cfg.dun_bytes = fscrypt_get_dun_bytes(ci);
+ 	num_devs = fscrypt_get_num_devices(sb);
+-	devs = kmalloc_array(num_devs, sizeof(*devs), GFP_NOFS);
++	devs = kmalloc_array(num_devs, sizeof(*devs), GFP_KERNEL);
+ 	if (!devs)
+ 		return -ENOMEM;
+ 	fscrypt_get_devices(sb, num_devs, devs);
+@@ -135,9 +135,8 @@ int fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
+ 	struct fscrypt_blk_crypto_key *blk_key;
+ 	int err;
+ 	int i;
+-	unsigned int flags;
+ 
+-	blk_key = kzalloc(struct_size(blk_key, devs, num_devs), GFP_NOFS);
++	blk_key = kzalloc(struct_size(blk_key, devs, num_devs), GFP_KERNEL);
+ 	if (!blk_key)
+ 		return -ENOMEM;
+ 
+@@ -166,10 +165,8 @@ int fscrypt_prepare_inline_crypt_key(struct fscrypt_prepared_key *prep_key,
+ 		}
+ 		queue_refs++;
+ 
+-		flags = memalloc_nofs_save();
+ 		err = blk_crypto_start_using_key(&blk_key->base,
+ 						 blk_key->devs[i]);
+-		memalloc_nofs_restore(flags);
+ 		if (err) {
+ 			fscrypt_err(inode,
+ 				    "error %d starting to use blk-crypto", err);
+diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
+index 6ac816d3e8478..ad64525ec6800 100644
+--- a/fs/crypto/keysetup.c
++++ b/fs/crypto/keysetup.c
+@@ -477,7 +477,7 @@ fscrypt_setup_encryption_info(struct inode *inode,
+ 	struct key *master_key = NULL;
+ 	int res;
+ 
+-	crypt_info = kmem_cache_zalloc(fscrypt_info_cachep, GFP_NOFS);
++	crypt_info = kmem_cache_zalloc(fscrypt_info_cachep, GFP_KERNEL);
+ 	if (!crypt_info)
+ 		return -ENOMEM;
+ 
+diff --git a/fs/crypto/keysetup_v1.c b/fs/crypto/keysetup_v1.c
+index a3cb52572b05c..2762c53504323 100644
+--- a/fs/crypto/keysetup_v1.c
++++ b/fs/crypto/keysetup_v1.c
+@@ -60,7 +60,7 @@ static int derive_key_aes(const u8 *master_key,
+ 		goto out;
+ 	}
+ 	crypto_skcipher_set_flags(tfm, CRYPTO_TFM_REQ_FORBID_WEAK_KEYS);
+-	req = skcipher_request_alloc(tfm, GFP_NOFS);
++	req = skcipher_request_alloc(tfm, GFP_KERNEL);
+ 	if (!req) {
+ 		res = -ENOMEM;
+ 		goto out;
+@@ -99,7 +99,7 @@ find_and_lock_process_key(const char *prefix,
+ 	const struct user_key_payload *ukp;
+ 	const struct fscrypt_key *payload;
+ 
+-	description = kasprintf(GFP_NOFS, "%s%*phN", prefix,
++	description = kasprintf(GFP_KERNEL, "%s%*phN", prefix,
+ 				FSCRYPT_KEY_DESCRIPTOR_SIZE, descriptor);
+ 	if (!description)
+ 		return ERR_PTR(-ENOMEM);
+@@ -228,7 +228,7 @@ fscrypt_get_direct_key(const struct fscrypt_info *ci, const u8 *raw_key)
+ 		return dk;
+ 
+ 	/* Nope, allocate one. */
+-	dk = kzalloc(sizeof(*dk), GFP_NOFS);
++	dk = kzalloc(sizeof(*dk), GFP_KERNEL);
+ 	if (!dk)
+ 		return ERR_PTR(-ENOMEM);
+ 	refcount_set(&dk->dk_refcount, 1);
+@@ -272,7 +272,7 @@ static int setup_v1_file_key_derived(struct fscrypt_info *ci,
+ 	 * This cannot be a stack buffer because it will be passed to the
+ 	 * scatterlist crypto API during derive_key_aes().
+ 	 */
+-	derived_key = kmalloc(ci->ci_mode->keysize, GFP_NOFS);
++	derived_key = kmalloc(ci->ci_mode->keysize, GFP_KERNEL);
+ 	if (!derived_key)
+ 		return -ENOMEM;
+ 
 -- 
-Jens Axboe
+2.28.0
 
