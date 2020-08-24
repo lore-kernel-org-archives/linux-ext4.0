@@ -2,266 +2,100 @@ Return-Path: <SRS0=b5V9=CC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A3E39C433E4
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:32:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBE01C433E3
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 18:21:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 801FC2067C
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 17:32:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B378E2075B
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 18:21:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598290351;
-	bh=gCTvQTLPg9c34/+tHTY+I4sVVRrI6y4KuPLF+MFm32o=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=DEyeNbc9CewPaZsWOpawtNRXL1I/URVFi1k1YDGdbJHAYnZaXVGBWN+X1UKKtAoAP
-	 4DumoyIe61vFxnrzqVUTV1CDuYzAmw95Mr11KRAPLdtR9HtcOMiw1hSqmnzmYn6ZB0
-	 pWP1hEbXY3aOnIeUIdyHN/fuvCGyPQ1aHt6c3A+c=
+	s=default; t=1598293278;
+	bh=BPd9FqfRK57acJvZfHNixoCcKstFE02QTmcYRlfCq7s=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=HXWC/GHPv/yzANJ+8GuAy0KAFh2bQSMZ+zmDPPlAa5sjPHozBn7ftQiDMnXpQb+/H
+	 x4CG2pB/zim/+dnFgDYQ39cZsOnOiJfZWYq2kzV3W1N1SawbtMAeD/lrSIkiu73/sr
+	 Sp2or1oY7GS9hsqN276QH8mN7J36ljbPCPiXzxpQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728513AbgHXRbt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Aug 2020 13:31:49 -0400
-Received: from mail.kernel.org ([198.145.29.99]:38976 "EHLO mail.kernel.org"
+        id S1726854AbgHXSVR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 14:21:17 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57756 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727809AbgHXQfJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Aug 2020 12:35:09 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1726222AbgHXSVQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 14:21:16 -0400
+Received: from gmail.com (unknown [104.132.1.76])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id EF30E22B3F;
-        Mon, 24 Aug 2020 16:35:07 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 96FA820738;
+        Mon, 24 Aug 2020 18:21:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598286908;
-        bh=gCTvQTLPg9c34/+tHTY+I4sVVRrI6y4KuPLF+MFm32o=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=tublTO3YEOn2muPQlBkBxFM//lAafwZMdd1ZKMeDdUEpBK0buWfPLJvU+RV8Em58y
-         j5bImMgx+xQiRCyY3KooIH9Mafnyj5s1qwwSfaL0KUKu9DGQoJrFkt/r4alaXGWZU6
-         0S+atR8JY6iAjZbqf3BUct0gyfAAeQWZpRYf1+7E=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Jan Kara <jack@suse.cz>, Lukas Czerner <lczerner@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.8 03/63] ext4: don't BUG on inconsistent journal feature
-Date:   Mon, 24 Aug 2020 12:34:03 -0400
-Message-Id: <20200824163504.605538-3-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200824163504.605538-1-sashal@kernel.org>
-References: <20200824163504.605538-1-sashal@kernel.org>
+        s=default; t=1598293275;
+        bh=BPd9FqfRK57acJvZfHNixoCcKstFE02QTmcYRlfCq7s=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=gSO2JDEBH2du9sVIqRO/ccvceJM7cC9d3CT0/1d7x0lyj5q9qdZRvB77EudGgmLBP
+         DDXy3fjKwWLf31wIq1ym4KVx7/HdPpObHPD4gbEQTGggArK1CPr0EOlxDk/XQs4GGp
+         MxEUAJwlx/5dWcs35/gGQek/09sGDl96J76TPivQ=
+Date:   Mon, 24 Aug 2020 11:21:14 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org
+Subject: Re: [RFC PATCH 1/8] fscrypt: add fscrypt_prepare_new_inode() and
+ fscrypt_set_context()
+Message-ID: <20200824182114.GB1650861@gmail.com>
+References: <20200824061712.195654-1-ebiggers@kernel.org>
+ <20200824061712.195654-2-ebiggers@kernel.org>
+ <0cf5638796e7cddacc38dcd1e967368b99f0069a.camel@kernel.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0cf5638796e7cddacc38dcd1e967368b99f0069a.camel@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+On Mon, Aug 24, 2020 at 12:48:48PM -0400, Jeff Layton wrote:
+> > +void fscrypt_hash_inode_number(struct fscrypt_info *ci,
+> > +			       const struct fscrypt_master_key *mk)
+> > +{
+> > +	WARN_ON(ci->ci_inode->i_ino == 0);
+> > +	WARN_ON(!mk->mk_ino_hash_key_initialized);
+> > +
+> > +	ci->ci_hashed_ino = (u32)siphash_1u64(ci->ci_inode->i_ino,
+> > +					      &mk->mk_ino_hash_key);
+> 
+> i_ino is an unsigned long. Will this produce a consistent results on
+> arches with 32 and 64 bit long values? I think it'd be nice to ensure
+> that we can access an encrypted directory created on a 32-bit host from
+> (e.g.) a 64-bit host.
 
-[ Upstream commit 11215630aada28307ba555a43138db6ac54fa825 ]
+The result is the same regardless of word size and endianness.
+siphash_1u64(v, k) is equivalent to:
 
-A customer has reported a BUG_ON in ext4_clear_journal_err() hitting
-during an LTP testing. Either this has been caused by a test setup
-issue where the filesystem was being overwritten while LTP was mounting
-it or the journal replay has overwritten the superblock with invalid
-data. In either case it is preferable we don't take the machine down
-with a BUG_ON. So handle the situation of unexpectedly missing
-has_journal feature more gracefully. We issue warning and fail the mount
-in the cases where the race window is narrow and the failed check is
-most likely a programming error. In cases where fs corruption is more
-likely, we do full ext4_error() handling before failing mount / remount.
+	__le64 x = cpu_to_le64(v);
+	siphash(&x, 8, k);
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20200710140759.18031-1-jack@suse.cz
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/super.c | 68 ++++++++++++++++++++++++++++++++++---------------
- 1 file changed, 47 insertions(+), 21 deletions(-)
+> It may be better to base this on something besides i_ino
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 330957ed1f05c..9fdad843b30ef 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -66,10 +66,10 @@ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
- static int ext4_show_options(struct seq_file *seq, struct dentry *root);
- static int ext4_commit_super(struct super_block *sb, int sync);
--static void ext4_mark_recovery_complete(struct super_block *sb,
-+static int ext4_mark_recovery_complete(struct super_block *sb,
- 					struct ext4_super_block *es);
--static void ext4_clear_journal_err(struct super_block *sb,
--				   struct ext4_super_block *es);
-+static int ext4_clear_journal_err(struct super_block *sb,
-+				  struct ext4_super_block *es);
- static int ext4_sync_fs(struct super_block *sb, int wait);
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
-@@ -4770,7 +4770,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	EXT4_SB(sb)->s_mount_state &= ~EXT4_ORPHAN_FS;
- 	if (needs_recovery) {
- 		ext4_msg(sb, KERN_INFO, "recovery complete");
--		ext4_mark_recovery_complete(sb, es);
-+		err = ext4_mark_recovery_complete(sb, es);
-+		if (err)
-+			goto failed_mount8;
- 	}
- 	if (EXT4_SB(sb)->s_journal) {
- 		if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA)
-@@ -4813,10 +4815,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		ext4_msg(sb, KERN_ERR, "VFS: Can't find ext4 filesystem");
- 	goto failed_mount;
- 
--#ifdef CONFIG_QUOTA
- failed_mount8:
- 	ext4_unregister_sysfs(sb);
--#endif
- failed_mount7:
- 	ext4_unregister_li_request(sb);
- failed_mount6:
-@@ -4956,7 +4956,8 @@ static journal_t *ext4_get_journal(struct super_block *sb,
- 	struct inode *journal_inode;
- 	journal_t *journal;
- 
--	BUG_ON(!ext4_has_feature_journal(sb));
-+	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-+		return NULL;
- 
- 	journal_inode = ext4_get_journal_inode(sb, journal_inum);
- 	if (!journal_inode)
-@@ -4986,7 +4987,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
- 	struct ext4_super_block *es;
- 	struct block_device *bdev;
- 
--	BUG_ON(!ext4_has_feature_journal(sb));
-+	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-+		return NULL;
- 
- 	bdev = ext4_blkdev_get(j_dev, sb);
- 	if (bdev == NULL)
-@@ -5078,7 +5080,8 @@ static int ext4_load_journal(struct super_block *sb,
- 	int err = 0;
- 	int really_read_only;
- 
--	BUG_ON(!ext4_has_feature_journal(sb));
-+	if (WARN_ON_ONCE(!ext4_has_feature_journal(sb)))
-+		return -EFSCORRUPTED;
- 
- 	if (journal_devnum &&
- 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
-@@ -5148,7 +5151,12 @@ static int ext4_load_journal(struct super_block *sb,
- 	}
- 
- 	EXT4_SB(sb)->s_journal = journal;
--	ext4_clear_journal_err(sb, es);
-+	err = ext4_clear_journal_err(sb, es);
-+	if (err) {
-+		EXT4_SB(sb)->s_journal = NULL;
-+		jbd2_journal_destroy(journal);
-+		return err;
-+	}
- 
- 	if (!really_read_only && journal_devnum &&
- 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
-@@ -5244,26 +5252,32 @@ static int ext4_commit_super(struct super_block *sb, int sync)
-  * remounting) the filesystem readonly, then we will end up with a
-  * consistent fs on disk.  Record that fact.
-  */
--static void ext4_mark_recovery_complete(struct super_block *sb,
--					struct ext4_super_block *es)
-+static int ext4_mark_recovery_complete(struct super_block *sb,
-+				       struct ext4_super_block *es)
- {
-+	int err;
- 	journal_t *journal = EXT4_SB(sb)->s_journal;
- 
- 	if (!ext4_has_feature_journal(sb)) {
--		BUG_ON(journal != NULL);
--		return;
-+		if (journal != NULL) {
-+			ext4_error(sb, "Journal got removed while the fs was "
-+				   "mounted!");
-+			return -EFSCORRUPTED;
-+		}
-+		return 0;
- 	}
- 	jbd2_journal_lock_updates(journal);
--	if (jbd2_journal_flush(journal) < 0)
-+	err = jbd2_journal_flush(journal);
-+	if (err < 0)
- 		goto out;
- 
- 	if (ext4_has_feature_journal_needs_recovery(sb) && sb_rdonly(sb)) {
- 		ext4_clear_feature_journal_needs_recovery(sb);
- 		ext4_commit_super(sb, 1);
- 	}
--
- out:
- 	jbd2_journal_unlock_updates(journal);
-+	return err;
- }
- 
- /*
-@@ -5271,14 +5285,17 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
-  * has recorded an error from a previous lifetime, move that error to the
-  * main filesystem now.
-  */
--static void ext4_clear_journal_err(struct super_block *sb,
-+static int ext4_clear_journal_err(struct super_block *sb,
- 				   struct ext4_super_block *es)
- {
- 	journal_t *journal;
- 	int j_errno;
- 	const char *errstr;
- 
--	BUG_ON(!ext4_has_feature_journal(sb));
-+	if (!ext4_has_feature_journal(sb)) {
-+		ext4_error(sb, "Journal got removed while the fs was mounted!");
-+		return -EFSCORRUPTED;
-+	}
- 
- 	journal = EXT4_SB(sb)->s_journal;
- 
-@@ -5303,6 +5320,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
- 		jbd2_journal_clear_err(journal);
- 		jbd2_journal_update_sb_errno(journal);
- 	}
-+	return 0;
- }
- 
- /*
-@@ -5573,8 +5591,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			    (sbi->s_mount_state & EXT4_VALID_FS))
- 				es->s_state = cpu_to_le16(sbi->s_mount_state);
- 
--			if (sbi->s_journal)
-+			if (sbi->s_journal) {
-+				/*
-+				 * We let remount-ro finish even if marking fs
-+				 * as clean failed...
-+				 */
- 				ext4_mark_recovery_complete(sb, es);
-+			}
- 			if (sbi->s_mmp_tsk)
- 				kthread_stop(sbi->s_mmp_tsk);
- 		} else {
-@@ -5622,8 +5645,11 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			 * been changed by e2fsck since we originally mounted
- 			 * the partition.)
- 			 */
--			if (sbi->s_journal)
--				ext4_clear_journal_err(sb, es);
-+			if (sbi->s_journal) {
-+				err = ext4_clear_journal_err(sb, es);
-+				if (err)
-+					goto restore_opts;
-+			}
- 			sbi->s_mount_state = le16_to_cpu(es->s_state);
- 
- 			err = ext4_setup_super(sb, es, 0);
--- 
-2.25.1
+This code that hashes the inode number is only used when userspace used
+FSCRYPT_POLICY_FLAG_IV_INO_LBLK_32 for the directory.  IV_INO_LBLK_32 modifies
+the encryption to be optimized for eMMC inline encryption hardware.  For more
+details, see commit e3b1078bedd3 which added this feature.
 
+We actually could have hashed the file nonce instead of the inode number.  But I
+wanted to make the eMMC-optimized format similar to IV_INO_LBLK_64, which is the
+format optimized for UFS inline encryption hardware.
+
+Both of these flags have very specific use cases; they make it feasible to use
+inline encryption hardware
+(https://www.kernel.org/doc/html/latest/block/inline-encryption.html)
+that only supports a small number of keyslots and that limits the IV length.
+
+You don't need to worry about these flags at all for ceph, since there won't be
+any use case to use them on ceph, and ceph won't be declaring support for them.
+
+- Eric
