@@ -4,50 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-14.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C770CC433DF
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:42:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 874B2C433DF
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:44:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9E6DD20738
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:42:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6176C2224D
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Aug 2020 16:44:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1598287348;
-	bh=gMeAYgdyneqnGJcK2RTzYfoFk5xEZZSV04P8Z9zbVQY=;
+	s=default; t=1598287459;
+	bh=neGmwzlCamATZeQiJC6qSuGBzd1P7ABgTPsKgPYr8ng=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=2kdxh/Nt394ejND2xs7J9PHzbpiqA8LVonXvRbdR3NXKawxvqK9P9fiJsv6qkRYwJ
-	 Pd4oj4Fl4+x+sJ6dKGhvxTLuDvrqESOCWz08sf4xMvm9J2tNUVCO+OFU2VenxYGAhy
-	 AeXk760m9aE40D02wRmOzNjVU84sEwFvt2TbAwdk=
+	b=deTGEqYnNpi57mP7X53+PWKl7VL04S5eT+JEEyfTPWyub/Fp6tiKb1bkP3upY9jY6
+	 YExKrSwG1QOPB+VdLfBgP6ZnVPYOM+8FI+09lGjDOS83PsngVUh1tUAUi0UZrGJVCc
+	 YpZRKpdtKKa8JEiYC3U55o/Zb8l8z1DkT9GolFDo=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728718AbgHXQmT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Aug 2020 12:42:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47670 "EHLO mail.kernel.org"
+        id S1728760AbgHXQnn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Aug 2020 12:43:43 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47666 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728583AbgHXQjr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Aug 2020 12:39:47 -0400
+        id S1728600AbgHXQjj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Aug 2020 12:39:39 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C912622CE3;
-        Mon, 24 Aug 2020 16:39:45 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id BA67B22D08;
+        Mon, 24 Aug 2020 16:39:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1598287186;
-        bh=gMeAYgdyneqnGJcK2RTzYfoFk5xEZZSV04P8Z9zbVQY=;
+        s=default; t=1598287174;
+        bh=neGmwzlCamATZeQiJC6qSuGBzd1P7ABgTPsKgPYr8ng=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dcG6CYW2GByAMbe0oro3U+wFHzk+0gpSCLVDqhZEjHBjnvIG8ZW4ZUJwfDgAdqcLz
-         g5fkC9ilFAWq+5EfTU5gFiLpYtcjC8WdDqbAF6RPVIP4/Ew2ItTwP+6Yzlf3dVNmxZ
-         TdUcBo9l+S77fnCh8Oz7J4hTA9+07WwXwOuVUP6U=
+        b=V0wdVZENy0QGDK4+igMoN5vdcDKgRCvz9qa5HSD7iVKmYUnHtibkBWOyMI2NR2az2
+         FobyfMGCNPJXwOtGcUjsg18UjetJpXYqxPsLfQrnPmmLWq5KSooU3On/4cNqYO1lbZ
+         1G4B9xgnUiDE1uQayw16WRJ2avEk1iHY4qIaDK9k=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 2/6] jbd2: abort journal if free a async write error metadata buffer
-Date:   Mon, 24 Aug 2020 12:39:39 -0400
-Message-Id: <20200824163943.607406-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.9 2/8] jbd2: abort journal if free a async write error metadata buffer
+Date:   Mon, 24 Aug 2020 12:39:25 -0400
+Message-Id: <20200824163931.607291-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200824163943.607406-1-sashal@kernel.org>
-References: <20200824163943.607406-1-sashal@kernel.org>
+In-Reply-To: <20200824163931.607291-1-sashal@kernel.org>
+References: <20200824163931.607291-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -77,10 +77,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 16 insertions(+)
 
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 622610934c9ad..ce2bf9d74224c 100644
+index 1478512ecab3e..cfbf5474bccab 100644
 --- a/fs/jbd2/transaction.c
 +++ b/fs/jbd2/transaction.c
-@@ -2000,6 +2000,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+@@ -1990,6 +1990,7 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
  {
  	struct buffer_head *head;
  	struct buffer_head *bh;
@@ -88,7 +88,7 @@ index 622610934c9ad..ce2bf9d74224c 100644
  	int ret = 0;
  
  	J_ASSERT(PageLocked(page));
-@@ -2024,11 +2025,26 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+@@ -2014,11 +2015,26 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal,
  		jbd_unlock_bh_state(bh);
  		if (buffer_jbd(bh))
  			goto busy;
