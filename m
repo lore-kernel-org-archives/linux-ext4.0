@@ -1,177 +1,149 @@
-Return-Path: <SRS0=VAvg=CD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=P6sy=CE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,FORGED_MUA_MOZILLA,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64E18C433E1
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Aug 2020 18:01:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BA73C433DF
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Aug 2020 13:07:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 39D33206EB
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Aug 2020 18:01:08 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="qAwe2DLl"
+	by mail.kernel.org (Postfix) with ESMTP id 32C3F20707
+	for <linux-ext4@archiver.kernel.org>; Wed, 26 Aug 2020 13:07:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726475AbgHYSBH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Aug 2020 14:01:07 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:12622 "EHLO
-        mx0b-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726158AbgHYSBB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Aug 2020 14:01:01 -0400
-Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 07PHvvVm041766;
-        Tue, 25 Aug 2020 14:00:53 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=subject : to : cc :
- references : from : date : mime-version : in-reply-to : content-type :
- content-transfer-encoding : message-id; s=pp1;
- bh=QF834FreGkDHcIWyxN1Ql2/p3YIsVDE1LAH3TxBVi6g=;
- b=qAwe2DLl8i8LAakhP4OAXdxPFTzWNmXS80O4R1bbHAzqPa0TBupwJpwhkwvH+1576zUa
- R9b9GaBbquf24iUdhREx9fmN23JdkhvXrN/4jAfXJ2MzpcWQk/2P/7EEBVS/xAH/zZxb
- mMwKVBnsvLCR14UyrxNGBdQRLK7MmUv0F05JAX4++AY8dT/iNMBpXW7nDdzMtjVTeVjv
- eZizf6Od53ZeIFkSVsXKf97oJuBc5TWpQkV/gkvjHR/T+9EfGU5Eg3HKyGASn537mPip
- WfPM39HdzUT6ebNa42itrw6JQb8+RzEi3Ww0MF3RoH7oHS0VGqDjXRMpU0bQ70l+SDkY Zg== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3357grr1d9-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 25 Aug 2020 14:00:53 -0400
-Received: from m0127361.ppops.net (m0127361.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 07PHwf7E042987;
-        Tue, 25 Aug 2020 14:00:53 -0400
-Received: from ppma05fra.de.ibm.com (6c.4a.5195.ip4.static.sl-reverse.com [149.81.74.108])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3357grr1ck-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 25 Aug 2020 14:00:53 -0400
-Received: from pps.filterd (ppma05fra.de.ibm.com [127.0.0.1])
-        by ppma05fra.de.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 07PHvNGp004746;
-        Tue, 25 Aug 2020 18:00:51 GMT
-Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
-        by ppma05fra.de.ibm.com with ESMTP id 332uk8j8n0-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 25 Aug 2020 18:00:51 +0000
-Received: from d06av25.portsmouth.uk.ibm.com (d06av25.portsmouth.uk.ibm.com [9.149.105.61])
-        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 07PI0nJC21627144
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Aug 2020 18:00:49 GMT
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 0F73C11C052;
-        Tue, 25 Aug 2020 18:00:49 +0000 (GMT)
-Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id A3F6011C050;
-        Tue, 25 Aug 2020 18:00:47 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.199.43.157])
-        by d06av25.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Tue, 25 Aug 2020 18:00:47 +0000 (GMT)
-Subject: Re: [PATCH] iomap: iomap_bmap should accept unwritten maps
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Yuxuan Shui <yshuiv7@gmail.com>
-Cc:     viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Anju T Sudhakar <anju@linux.vnet.ibm.com>
-References: <20200505183608.10280-1-yshuiv7@gmail.com>
- <20200505193049.GC5694@magnolia>
- <20200825123650.3AA34AE045@d06av26.portsmouth.uk.ibm.com>
- <20200825154933.GF6090@magnolia>
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-Date:   Tue, 25 Aug 2020 23:30:46 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.8.0
+        id S1730173AbgHZNH4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Aug 2020 09:07:56 -0400
+Received: from mx2.suse.de ([195.135.220.15]:59220 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729334AbgHZNH4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 26 Aug 2020 09:07:56 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 265FDAF22;
+        Wed, 26 Aug 2020 13:08:25 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 68C5A1E12AF; Wed, 26 Aug 2020 15:07:53 +0200 (CEST)
+Date:   Wed, 26 Aug 2020 15:07:53 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Randy Dunlap <rdunlap@infradead.org>
+Cc:     linux-fsdevel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: delete duplicated words + other fixes
+Message-ID: <20200826130753.GC15126@quack2.suse.cz>
+References: <20200805024850.12129-1-rdunlap@infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <20200825154933.GF6090@magnolia>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-Message-Id: <20200825180047.A3F6011C050@d06av25.portsmouth.uk.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
- definitions=2020-08-25_08:2020-08-25,2020-08-25 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
- bulkscore=0 adultscore=0 priorityscore=1501 clxscore=1015 phishscore=0
- impostorscore=0 mlxscore=0 suspectscore=0 mlxlogscore=999 spamscore=0
- malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2006250000 definitions=main-2008250129
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200805024850.12129-1-rdunlap@infradead.org>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-
-On 8/25/20 9:19 PM, Darrick J. Wong wrote:
-> On Tue, Aug 25, 2020 at 06:06:49PM +0530, Ritesh Harjani wrote:
->>
->>
->> On 5/6/20 1:00 AM, Darrick J. Wong wrote:
->>> On Tue, May 05, 2020 at 07:36:08PM +0100, Yuxuan Shui wrote:
->>>> commit ac58e4fb03f9d111d733a4ad379d06eef3a24705 moved ext4_bmap from
->>>> generic_block_bmap to iomap_bmap, this introduced a regression which
->>>> prevents some user from using previously working swapfiles. The kernel
->>>> will complain about holes while there is none.
->>>>
->>>> What is happening here is that the swapfile has unwritten mappings,
->>>> which is rejected by iomap_bmap, but was accepted by ext4_get_block.
->>>
->>> ...which is why ext4 ought to use iomap_swapfile_activate.
->>
->> I tested this patch (diff below), which seems to be working fine for me
->> for straight forward use case of swapon/swapoff on ext4.
->> Could you give it a try?
->>
->> <log showing ext4_iomap_swap_activate path kicking in>
->> swapon  1283 [000]   438.651028:     250000 cpu-clock:pppH:
->> 	ffffffff817f7f56 percpu_counter_add_batch+0x26 (/boot/vmlinux)
->> 	ffffffff813a61d0 ext4_es_lookup_extent+0x1d0 (/boot/vmlinux)
->> 	ffffffff813b8095 ext4_map_blocks+0x65 (/boot/vmlinux)
->> 	ffffffff813b8d4b ext4_iomap_begin_report+0x10b (/boot/vmlinux)
->> 	ffffffff81367f58 iomap_apply+0xa8 (/boot/vmlinux)
->> 	ffffffff8136d1c3 iomap_swapfile_activate+0xb3 (/boot/vmlinux)
->> 	ffffffff813b51a5 ext4_iomap_swap_activate+0x15 (/boot/vmlinux)
->> 	ffffffff812a3a27 __do_sys_swapon+0xb37 (/boot/vmlinux)
->> 	ffffffff812a40f6 __x64_sys_swapon+0x16 (/boot/vmlinux)
->> 	ffffffff820b760a do_syscall_64+0x5a (/boot/vmlinux)
->> 	ffffffff8220007c entry_SYSCALL_64+0x7c (/boot/vmlinux)
->> 	    7ffff7de68bb swapon+0xb (/usr/lib/x86_64-linux-gnu/libc-2.30.so)
->> 	66706177732f756d [unknown] ([unknown])
->>
->> <shows that swapfile(which I setup using fallocate) has some used bytes>
->> $ swapon -s
->> Filename                                Type            Size    Used
->> Priority
->> /home/qemu/swapfile-test                file            2097148 42312   -2
->>
->>
->> @Jan/Ted/Darrick,
->>
->> I am not that familiar with how swap subsystem works.
->> So, is there anything else you feel is required apart from below changes
->> for supporting swap_activate via iomap? I did test both swapon/swapoff
->> and see that swap is getting used up on ext4 with delalloc mount opt.
->>
->> As I see from code, iomap_swapfile_activate is mainly looking for
->> extent mapping information of that file to pass to swap subsystem.
->> And IIUC, "ext4_iomap_report_ops" is meant exactly for that.
->> Same as how we use it in ext4_fiemap().
+On Tue 04-08-20 19:48:50, Randy Dunlap wrote:
+> Delete repeated words in fs/ext4/.
+> {the, this, of, we, after}
 > 
-> <nod> The swap code doesn't even care about the file offsets, it just
-> wants the physical mappings, and it only wants to find real and
-> unwritten mappings (i.e. no holes, delalloc, or shared extents).
+> Also change spelling of "xttr" in inline.c to "xattr" in 2 places.
 > 
-> So ... I think it's ok to use the same iomap ops as fiemap.
-> 
-> FWIW the xfs version uses xfs_read_iomap_ops for reads, readahead,
-> fiemap, and swapfiles, so this is ... probably fine, especially if it
-> passes the swap group fstests. :)
-> 
+> Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+> To: linux-fsdevel@vger.kernel.org
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: linux-ext4@vger.kernel.org
 
-Ohh yes, thanks. :)
-I tested "-g swap" fstests and those were fine.
-For completion sake, I will go through generic_swapfile_activate()
-just to confirm that nothing is missed.
-Will try and spin a formal patch early next week -(in LPC this week)
+The patch looks good to me. You can add:
 
--ritesh
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+Ted, I think this patch fell through the cracks while you were busy...
+
+								Honza
+
+> ---
+>  fs/ext4/extents.c  |    2 +-
+>  fs/ext4/indirect.c |    2 +-
+>  fs/ext4/inline.c   |    4 ++--
+>  fs/ext4/inode.c    |    2 +-
+>  fs/ext4/mballoc.c  |    4 ++--
+>  5 files changed, 7 insertions(+), 7 deletions(-)
+> 
+> --- linux-next-20200804.orig/fs/ext4/extents.c
+> +++ linux-next-20200804/fs/ext4/extents.c
+> @@ -4029,7 +4029,7 @@ static int get_implied_cluster_alloc(str
+>   * down_read(&EXT4_I(inode)->i_data_sem) if not allocating file system block
+>   * (ie, create is zero). Otherwise down_write(&EXT4_I(inode)->i_data_sem)
+>   *
+> - * return > 0, number of of blocks already mapped/allocated
+> + * return > 0, number of blocks already mapped/allocated
+>   *          if create == 0 and these are pre-allocated blocks
+>   *          	buffer head is unmapped
+>   *          otherwise blocks are mapped
+> --- linux-next-20200804.orig/fs/ext4/indirect.c
+> +++ linux-next-20200804/fs/ext4/indirect.c
+> @@ -1035,7 +1035,7 @@ static void ext4_free_branches(handle_t
+>  			brelse(bh);
+>  
+>  			/*
+> -			 * Everything below this this pointer has been
+> +			 * Everything below this pointer has been
+>  			 * released.  Now let this top-of-subtree go.
+>  			 *
+>  			 * We want the freeing of this indirect block to be
+> --- linux-next-20200804.orig/fs/ext4/inline.c
+> +++ linux-next-20200804/fs/ext4/inline.c
+> @@ -276,7 +276,7 @@ static int ext4_create_inline_data(handl
+>  		len = 0;
+>  	}
+>  
+> -	/* Insert the the xttr entry. */
+> +	/* Insert the xattr entry. */
+>  	i.value = value;
+>  	i.value_len = len;
+>  
+> @@ -354,7 +354,7 @@ static int ext4_update_inline_data(handl
+>  	if (error)
+>  		goto out;
+>  
+> -	/* Update the xttr entry. */
+> +	/* Update the xattr entry. */
+>  	i.value = value;
+>  	i.value_len = len;
+>  
+> --- linux-next-20200804.orig/fs/ext4/inode.c
+> +++ linux-next-20200804/fs/ext4/inode.c
+> @@ -2786,7 +2786,7 @@ retry:
+>  		 * ext4_journal_stop() can wait for transaction commit
+>  		 * to finish which may depend on writeback of pages to
+>  		 * complete or on page lock to be released.  In that
+> -		 * case, we have to wait until after after we have
+> +		 * case, we have to wait until after we have
+>  		 * submitted all the IO, released page locks we hold,
+>  		 * and dropped io_end reference (for extent conversion
+>  		 * to be able to complete) before stopping the handle.
+> --- linux-next-20200804.orig/fs/ext4/mballoc.c
+> +++ linux-next-20200804/fs/ext4/mballoc.c
+> @@ -124,7 +124,7 @@
+>   * /sys/fs/ext4/<partition>/mb_group_prealloc. The value is represented in
+>   * terms of number of blocks. If we have mounted the file system with -O
+>   * stripe=<value> option the group prealloc request is normalized to the
+> - * the smallest multiple of the stripe value (sbi->s_stripe) which is
+> + * smallest multiple of the stripe value (sbi->s_stripe) which is
+>   * greater than the default mb_group_prealloc.
+>   *
+>   * The regular allocator (using the buddy cache) supports a few tunables.
+> @@ -2026,7 +2026,7 @@ void ext4_mb_complex_scan_group(struct e
+>  			/*
+>  			 * IF we have corrupt bitmap, we won't find any
+>  			 * free blocks even though group info says we
+> -			 * we have free blocks
+> +			 * have free blocks
+>  			 */
+>  			ext4_grp_locked_error(sb, e4b->bd_group, 0, 0,
+>  					"%d free clusters as per "
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
