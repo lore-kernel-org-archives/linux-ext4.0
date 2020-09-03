@@ -2,122 +2,72 @@ Return-Path: <SRS0=Xbgm=CM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 181BEC43461
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Sep 2020 03:52:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B75CC433E2
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Sep 2020 14:31:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D7D712078E
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Sep 2020 03:52:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D3BE206EB
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Sep 2020 14:31:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="umACb64v"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="V3e5uAFr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728266AbgICDwp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Sep 2020 23:52:45 -0400
-Received: from aserp2120.oracle.com ([141.146.126.78]:47026 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726654AbgICDwn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Sep 2020 23:52:43 -0400
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0833obwd191914;
-        Thu, 3 Sep 2020 03:52:35 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : mime-version : content-type; s=corp-2020-01-29;
- bh=plrQbRO5We9myfM1D8OZxb2JZVOMVYHNu9vACenTQ7o=;
- b=umACb64vTspKV52Xcc2OvTOzfLlTJiWJuHOTs9jzlD6zO3V9a3Xcr/kMBdzVreM+DChF
- 9BKCQK5bYPHT6YHyz/U9aeuNLi4YES3Dq3NuGX/yHXn3+fq96EYCkjeN5JvHkmYjiqtc
- /x8QihfAhutP8U3M7Yki2WOt2sYSelCosgzJtVhoe41p47nEgTb5BB5tOuNCoaR9o5gd
- WSPsXdUbv154rNs8yrdoYmmELgCi50Pl/Z7/cOLWSd/QC4GOBJV4GH1ZzCEeGxgndvfJ
- KudpvhKniH9/J+3E+VWUdcKfafv74WBM/DGcJtFHcY/wTd5FXRUs8/NUpLDNWbbqFW3o Gg== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by aserp2120.oracle.com with ESMTP id 337eyme83a-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Thu, 03 Sep 2020 03:52:35 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0833nlUh078075;
-        Thu, 3 Sep 2020 03:52:35 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by userp3030.oracle.com with ESMTP id 3380y12x5u-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Thu, 03 Sep 2020 03:52:35 +0000
-Received: from userp3030.oracle.com (userp3030.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 0833qYAW084111;
-        Thu, 3 Sep 2020 03:52:34 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userp3030.oracle.com with ESMTP id 3380y12x5j-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 03 Sep 2020 03:52:34 +0000
-Received: from abhmp0005.oracle.com (abhmp0005.oracle.com [141.146.116.11])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 0833qQ8V030386;
-        Thu, 3 Sep 2020 03:52:26 GMT
-Received: from localhost (/67.169.218.210)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 02 Sep 2020 20:52:26 -0700
-Date:   Wed, 2 Sep 2020 20:52:25 -0700
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        id S1729333AbgICOan (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Sep 2020 10:30:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35714 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729348AbgICO1t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Sep 2020 10:27:49 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 70147C061245;
+        Thu,  3 Sep 2020 07:27:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=mNFw25jVlcdo2HOeyRWdNvqHRP3XxNhZ9gh8UR9BP6c=; b=V3e5uAFr2pYrWuAxT18Z6Ya4Mt
+        AbeWXjbfVj6/jUD82K1+56y+g7jOzYnahDWdf04czK+ngUIoEf1Dwymk6RuN634VptJHYaKxPbimj
+        Zc8rwOLhZD01rAPBVOcpOgr5+zad9skPXEfa3fpHiyyF/199sF0MxE+Q5RPs7BbEeDQChAH+elQV6
+        w51gPFqkVNEGqsGO/xrQ2Ywe7Qw+mzCvgnovuF3NrdkDsyDtxJye4oulORgfusPZw1FxQZ4Twubo5
+        Khxy6HJUi5Rkh6fGV3Hw3j/y9v7Z0N2EA/4SyaxDXS9vSXPOcY+hqIOkUk/cAcQ3oLwTEy5mqBrX9
+        lzNEc6Ww==;
+Received: from hch by casper.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1kDqCz-0004uM-1q; Thu, 03 Sep 2020 14:27:25 +0000
+Date:   Thu, 3 Sep 2020 15:27:24 +0100
+From:   Christoph Hellwig <hch@infradead.org>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         xfs <linux-xfs@vger.kernel.org>,
         linux-btrfs <linux-btrfs@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        ocfs2 list <ocfs2-devel@oss.oracle.com>
-Cc:     Christoph Hellwig <hch@infradead.org>,
+        ocfs2 list <ocfs2-devel@oss.oracle.com>,
+        Christoph Hellwig <hch@infradead.org>,
         Dave Chinner <david@fromorbit.com>,
         Eric Sandeen <sandeen@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: Broken O_{D,}SYNC behavior with FICLONE*?
-Message-ID: <20200903035225.GJ6090@magnolia>
+        Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Broken O_{D,}SYNC behavior with FICLONE*?
+Message-ID: <20200903142724.GA18478@infradead.org>
+References: <20200903035225.GJ6090@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9732 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1 adultscore=0
- priorityscore=1501 phishscore=0 mlxlogscore=999 mlxscore=0
- lowpriorityscore=0 clxscore=1015 spamscore=0 bulkscore=0 impostorscore=0
- malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2006250000 definitions=main-2009030035
+In-Reply-To: <20200903035225.GJ6090@magnolia>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+On Wed, Sep 02, 2020 at 08:52:25PM -0700, Darrick J. Wong wrote:
+> Hi,
+> 
+> I have a question for everyone-- do FICLONE and FICLONERANGE count as a
+> "write operation" for the purposes of reasoning about O_SYNC and
+> O_DSYNC?
 
-I have a question for everyone-- do FICLONE and FICLONERANGE count as a
-"write operation" for the purposes of reasoning about O_SYNC and
-O_DSYNC?  In other words, is it supposed to be the case that
-(paraphrasing the open(2) manpage) "By the time ioctl(FICLONE) returns,
-the output data and associated file metadata have been transferred to
-the underlying hardware (i.e., as though each ioctl(FICLONE) was
-followed by a call to fsync(2))."?
-
-If I open a file with O_SYNC, call FICLONE to reflink some data blocks
-into that file, and hit the reset button as soon as the ioctl call
-returns, should I expect that I will always see the new file contents in
-that file after the system comes back up?  Or am I required to fsync()
-the file despite O_SYNC being set?
-
-The reason I ask is that (a) reflinking can definitely change the file
-contents which seems like a write operation; and (b) we wrote a test to
-examine the copy_file_range() semantics wrt O_SYNC and discovered that
-an unaligned c_f_r through the splice code does indeed honor the
-documented O_SYNC semantics, but a block-aligned c_f_r that uses reflink
-does *not* honor this.
-
-So, that's inconsistent behavior and I want to know if remap_file_range
-is broken or if we all just don't care about O_SYNC for these fancy
-IO accelerators?
-
-I tend to think reflink is broken on XFS, but I converted that O_SYNC
-test into a fstest and discovered that none of XFS, btrfs, or ocfs2
-actually force the fs to persist metadata changes after reflinking into
-an O_SYNC file.  The manpages for the clone ioctls and copy_file_range
-don't explicitly declare those calls to be "write operations".
-
-FWIW I repeated the analysis with a file that had FS_XFLAG_SYNC or
-FS_SYNC_FL set on the inode but O_SYNC was not set on the fd, and
-observed the same results.
-
---D
+They aren't really write operations in the traditional sense as they
+only change metadata.  Then again the metadata is all about the file
+content, so we'd probaby err on the safe side by including them in the
+write operations umbrella term.
