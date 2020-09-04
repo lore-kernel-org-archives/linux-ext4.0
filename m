@@ -2,122 +2,217 @@ Return-Path: <SRS0=P9J6=CN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.0 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-13.0 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DEC4C43461
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Sep 2020 08:23:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42C43C43461
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Sep 2020 08:59:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EDEB92074D
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Sep 2020 08:23:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 086552084D
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Sep 2020 08:59:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729822AbgIDIXv convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Sep 2020 04:23:51 -0400
-Received: from relay2-d.mail.gandi.net ([217.70.183.194]:59643 "EHLO
-        relay2-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729731AbgIDIXr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Sep 2020 04:23:47 -0400
-X-Originating-IP: 90.76.143.236
-Received: from localhost (lfbn-tou-1-1075-236.w90-76.abo.wanadoo.fr [90.76.143.236])
-        (Authenticated sender: antoine.tenart@bootlin.com)
-        by relay2-d.mail.gandi.net (Postfix) with ESMTPSA id E0ECA40015;
-        Fri,  4 Sep 2020 08:23:44 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-In-Reply-To: <159609406998.3391.5621985067917886015@kwain>
-References: <20200717100846.497546-1-antoine.tenart@bootlin.com> <B2EE7AC5-BEC0-46A8-8C37-D3085645F94C@dilger.ca> <159609406998.3391.5621985067917886015@kwain>
-Subject: Re: [PATCH v2] create_inode: set xattrs to the root directory as well
-To:     Andreas Dilger <adilger@dilger.ca>, tytso@mit.edu
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        matthew.weber@rockwellcollins.com, thomas.petazzoni@bootlin.com
-From:   Antoine Tenart <antoine.tenart@bootlin.com>
-Message-ID: <159920782384.787733.9857416604675445355@kwain>
-Date:   Fri, 04 Sep 2020 10:23:43 +0200
+        id S1729960AbgIDI7C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Sep 2020 04:59:02 -0400
+Received: from mx2.suse.de ([195.135.220.15]:37372 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729883AbgIDI67 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 4 Sep 2020 04:58:59 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 79CF2AFC6;
+        Fri,  4 Sep 2020 08:58:58 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id C0C6B1E12D9; Fri,  4 Sep 2020 10:58:56 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     <linux-ext4@vger.kernel.org>, <linux-block@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        yebin <yebin10@huawei.com>, Andreas Dilger <adilger@dilger.ca>,
+        Jens Axboe <axboe@kernel.dk>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] block: Do not discard buffers under a mounted filesystem
+Date:   Fri,  4 Sep 2020 10:58:52 +0200
+Message-Id: <20200904085852.5639-3-jack@suse.cz>
+X-Mailer: git-send-email 2.16.4
+In-Reply-To: <20200904085852.5639-1-jack@suse.cz>
+References: <20200904085852.5639-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Discarding blocks and buffers under a mounted filesystem is hardly
+anything admin wants to do. Usually it will confuse the filesystem and
+sometimes the loss of buffer_head state (including b_private field) can
+even cause crashes like:
 
-Quoting Antoine Tenart (2020-07-30 09:27:50)
-> 
-> Gentle ping. What's the status of this patch?
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
+PGD 0 P4D 0
+Oops: 0002 [#1] SMP PTI
+CPU: 4 PID: 203778 Comm: jbd2/dm-3-8 Kdump: loaded Tainted: G O     --------- -  - 4.18.0-147.5.0.5.h126.eulerosv2r9.x86_64 #1
+Hardware name: Huawei RH2288H V3/BC11HGSA0, BIOS 1.57 08/11/2015
+RIP: 0010:jbd2_journal_grab_journal_head+0x1b/0x40 [jbd2]
+...
+Call Trace:
+ __jbd2_journal_insert_checkpoint+0x23/0x70 [jbd2]
+ jbd2_journal_commit_transaction+0x155f/0x1b60 [jbd2]
+ kjournald2+0xbd/0x270 [jbd2]
 
-Do anyone know if anything else is required to get this merged?
+So if we don't have block device open with O_EXCL already, claim the
+block device while we truncate buffer cache. This makes sure any
+exclusive block device user (such as filesystem) cannot operate on the
+device while we are discarding buffer cache.
 
-Thanks!
-Antoine
+Reported-by: Ye Bin <yebin10@huawei.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ block/ioctl.c          | 16 ++++++++++------
+ fs/block_dev.c         | 37 +++++++++++++++++++++++++++++++++----
+ include/linux/blkdev.h |  7 +++++++
+ 3 files changed, 50 insertions(+), 10 deletions(-)
 
-> Quoting Andreas Dilger (2020-07-17 13:17:08)
-> > 
-> > > On Jul 17, 2020, at 4:08 AM, Antoine Tenart <antoine.tenart@bootlin.com> wrote:
-> > > 
-> > > populate_fs do copy the xattrs for all files and directories, but the
-> > > root directory is skipped and as a result its extended attributes aren't
-> > > set. This is an issue when using mkfs to build a full system image that
-> > > can be used with SElinux in enforcing mode without making any runtime
-> > > fix at first boot.
-> > > 
-> > > This patch adds logic to set the root directory's extended attributes.
-> > > 
-> > > Signed-off-by: Antoine Tenart <antoine.tenart@bootlin.com>
-> > 
-> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> > 
-> > > ---
-> > > 
-> > > Since v1:
-> > >  - Moved the set_inode_xattr logic for the root directory
-> > >    from __populate_fs to populate_fs2.
-> > > 
-> > > misc/create_inode.c | 8 ++++++++
-> > > 1 file changed, 8 insertions(+)
-> > > 
-> > > diff --git a/misc/create_inode.c b/misc/create_inode.c
-> > > index e8d1df6b55a5..fe66faf1b53d 100644
-> > > --- a/misc/create_inode.c
-> > > +++ b/misc/create_inode.c
-> > > @@ -1050,9 +1050,17 @@ errcode_t populate_fs2(ext2_filsys fs, ext2_ino_t parent_ino,
-> > >       file_info.path_max_len = 255;
-> > >       file_info.path = calloc(file_info.path_max_len, 1);
-> > > 
-> > > +     retval = set_inode_xattr(fs, root, source_dir);
-> > > +     if (retval) {
-> > > +             com_err(__func__, retval,
-> > > +                     _("while copying xattrs on root directory"));
-> > > +             goto out;
-> > > +     }
-> > > +
-> > >       retval = __populate_fs(fs, parent_ino, source_dir, root, &hdlinks,
-> > >                              &file_info, fs_callbacks);
-> > > 
-> > > +out:
-> > >       free(file_info.path);
-> > >       free(hdlinks.hdl);
-> > >       return retval;
-> > > --
-> > > 2.26.2
-> > > 
-> > 
-> > 
-> > Cheers, Andreas
-> > 
-> > 
-> > 
-> > 
-> > 
-> 
-> -- 
-> Antoine Ténart, Bootlin
-> Embedded Linux and Kernel engineering
-> https://bootlin.com
-
+diff --git a/block/ioctl.c b/block/ioctl.c
+index bdb3bbb253d9..ae74d0409afa 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -112,8 +112,7 @@ static int blk_ioctl_discard(struct block_device *bdev, fmode_t mode,
+ 	uint64_t range[2];
+ 	uint64_t start, len;
+ 	struct request_queue *q = bdev_get_queue(bdev);
+-	struct address_space *mapping = bdev->bd_inode->i_mapping;
+-
++	int err;
+ 
+ 	if (!(mode & FMODE_WRITE))
+ 		return -EBADF;
+@@ -134,7 +133,11 @@ static int blk_ioctl_discard(struct block_device *bdev, fmode_t mode,
+ 
+ 	if (start + len > i_size_read(bdev->bd_inode))
+ 		return -EINVAL;
+-	truncate_inode_pages_range(mapping, start, start + len - 1);
++
++	err = truncate_bdev_range(bdev, mode, start, start + len - 1);
++	if (err)
++		return err;
++
+ 	return blkdev_issue_discard(bdev, start >> 9, len >> 9,
+ 				    GFP_KERNEL, flags);
+ }
+@@ -143,8 +146,8 @@ static int blk_ioctl_zeroout(struct block_device *bdev, fmode_t mode,
+ 		unsigned long arg)
+ {
+ 	uint64_t range[2];
+-	struct address_space *mapping;
+ 	uint64_t start, end, len;
++	int err;
+ 
+ 	if (!(mode & FMODE_WRITE))
+ 		return -EBADF;
+@@ -166,8 +169,9 @@ static int blk_ioctl_zeroout(struct block_device *bdev, fmode_t mode,
+ 		return -EINVAL;
+ 
+ 	/* Invalidate the page cache, including dirty pages */
+-	mapping = bdev->bd_inode->i_mapping;
+-	truncate_inode_pages_range(mapping, start, end);
++	err = truncate_bdev_range(bdev, mode, start, end);
++	if (err)
++		return err;
+ 
+ 	return blkdev_issue_zeroout(bdev, start >> 9, len >> 9, GFP_KERNEL,
+ 			BLKDEV_ZERO_NOUNMAP);
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 8ae833e00443..02a749370717 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -103,6 +103,35 @@ void invalidate_bdev(struct block_device *bdev)
+ }
+ EXPORT_SYMBOL(invalidate_bdev);
+ 
++/*
++ * Drop all buffers & page cache for given bdev range. This function bails
++ * with error if bdev has other exclusive owner (such as filesystem).
++ */
++int truncate_bdev_range(struct block_device *bdev, fmode_t mode,
++			loff_t lstart, loff_t lend)
++{
++	struct block_device *claimed_bdev = NULL;
++	int err;
++
++	/*
++	 * If we don't hold exclusive handle for the device, upgrade to it
++	 * while we discard the buffer cache to avoid discarding buffers
++	 * under live filesystem.
++	 */
++	if (!(mode & FMODE_EXCL)) {
++		claimed_bdev = bdev->bd_contains;
++		err = bd_prepare_to_claim(bdev, claimed_bdev,
++					  truncate_bdev_range);
++		if (err)
++			return err;
++	}
++	truncate_inode_pages_range(bdev->bd_inode->i_mapping, lstart, lend);
++	if (claimed_bdev)
++		bd_abort_claiming(bdev, claimed_bdev, truncate_bdev_range);
++	return 0;
++}
++EXPORT_SYMBOL(truncate_bdev_range);
++
+ static void set_init_blocksize(struct block_device *bdev)
+ {
+ 	bdev->bd_inode->i_blkbits = blksize_bits(bdev_logical_block_size(bdev));
+@@ -1969,7 +1998,6 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 			     loff_t len)
+ {
+ 	struct block_device *bdev = I_BDEV(bdev_file_inode(file));
+-	struct address_space *mapping;
+ 	loff_t end = start + len - 1;
+ 	loff_t isize;
+ 	int error;
+@@ -1997,8 +2025,9 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 		return -EINVAL;
+ 
+ 	/* Invalidate the page cache, including dirty pages. */
+-	mapping = bdev->bd_inode->i_mapping;
+-	truncate_inode_pages_range(mapping, start, end);
++	error = truncate_bdev_range(bdev, file->f_mode, start, end);
++	if (error)
++		return error;
+ 
+ 	switch (mode) {
+ 	case FALLOC_FL_ZERO_RANGE:
+@@ -2025,7 +2054,7 @@ static long blkdev_fallocate(struct file *file, int mode, loff_t start,
+ 	 * the caller will be given -EBUSY.  The third argument is
+ 	 * inclusive, so the rounding here is safe.
+ 	 */
+-	return invalidate_inode_pages2_range(mapping,
++	return invalidate_inode_pages2_range(bdev->bd_inode->i_mapping,
+ 					     start >> PAGE_SHIFT,
+ 					     end >> PAGE_SHIFT);
+ }
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index bb5636cc17b9..91c62bfb2042 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -1984,11 +1984,18 @@ void bdput(struct block_device *);
+ 
+ #ifdef CONFIG_BLOCK
+ void invalidate_bdev(struct block_device *bdev);
++int truncate_bdev_range(struct block_device *bdev, fmode_t mode, loff_t lstart,
++			loff_t lend);
+ int sync_blockdev(struct block_device *bdev);
+ #else
+ static inline void invalidate_bdev(struct block_device *bdev)
+ {
+ }
++int truncate_bdev_range(struct block_device *bdev, fmode_t mode, loff_t lstart,
++			loff_t lend)
++{
++	return 0;
++}
+ static inline int sync_blockdev(struct block_device *bdev)
+ {
+ 	return 0;
 -- 
-Antoine Ténart, Bootlin
-Embedded Linux and Kernel engineering
-https://bootlin.com
+2.16.4
+
