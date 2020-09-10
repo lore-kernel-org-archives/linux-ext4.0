@@ -2,273 +2,261 @@ Return-Path: <SRS0=aak8=CT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0921BC43461
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 18:46:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67690C43461
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 19:33:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A686820855
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 18:46:02 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="a5Szwmku"
+	by mail.kernel.org (Postfix) with ESMTP id 2A27E21D81
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 19:33:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727027AbgIJSqA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Sep 2020 14:46:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39838 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726966AbgIJSpm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2020 14:45:42 -0400
-Received: from mail-pg1-x544.google.com (mail-pg1-x544.google.com [IPv6:2607:f8b0:4864:20::544])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 01DDCC061573
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 11:45:40 -0700 (PDT)
-Received: by mail-pg1-x544.google.com with SMTP id l191so4727478pgd.5
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 11:45:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=Y7iVP72shB1xRZlx25aC+mXAcihSM60gP6RHjqjMJ5o=;
-        b=a5SzwmkuwnmgPE9L0ulvsrNdctlFOJTlcE6yDmOp0H8Uyp1g6lFTn4O4Baely86wvC
-         FRDCchWwhUjHwjdAHvhwJr9Lr5qClZywF93XPF115wT9h4/j51lruwG8IkHUCUb4qa9y
-         uluw/JDTc4LenwAor07pvqB0c7ChAEnEi4ZdCBlvR7o9IX8l9cmZgDVtakNa4O/suaM6
-         /I0R+PorLRAUeElzzd/AL1HRUTDAZQC/q7HqDEZmDi37hHNcjRUJiRclH8otX38G7qsV
-         ITzRS4dyb5cO490YrUehlaODbwnVqkxCwJQIRr/AH4XGj9bnawJzXJP5eUsZPXQEGwLK
-         Ik6Q==
+        id S1727815AbgIJTdl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Sep 2020 15:33:41 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:43016 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727984AbgIJTbn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2020 15:31:43 -0400
+Received: from mail-qv1-f71.google.com ([209.85.219.71])
+        by youngberry.canonical.com with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <mfo@canonical.com>)
+        id 1kGSIF-0000jj-VZ
+        for linux-ext4@vger.kernel.org; Thu, 10 Sep 2020 19:31:40 +0000
+Received: by mail-qv1-f71.google.com with SMTP id p20so3952061qvl.4
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 12:31:39 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=Y7iVP72shB1xRZlx25aC+mXAcihSM60gP6RHjqjMJ5o=;
-        b=PpWAXutFzwnJjl83VwVjSGcRaIMr/SthVrqWZtv5f/ppLmXqA+fEoLV1zGI30eSjux
-         U5bSnKSP5CEjnGoowsZKbfRGKP7TM3g1RzGggHyo7vvQAS2PNfTRvR5BaM+7Lwf0IKW8
-         q72LA+UqUgE/7LGp2QkZ/X3yORSCPHyhuOF4ye5TcE20tkkuz33R4EOMEt9xQ0aN5Ql3
-         OHTWr8e76LUIB1dENgqn5PgJLX1jfp7Pth3x+qomryZ8SjH2WS2BEjYyqdnH8CajE1Ls
-         Soh9lqftpbVYkYNjVnjCoF+vDO/qolldjyKQzoB1ewf2gYJbjf//BFF+zD0Qa+ODc+j/
-         o0/w==
-X-Gm-Message-State: AOAM532D6c2im4KNJBtNH6NtLfRLVuMd5BFv/WvaG9858uiXzKi9hTF5
-        tQ0pdX9cW19825H/kyxs8Jy4fL6oA8x2Aw==
-X-Google-Smtp-Source: ABdhPJwxje7i6eqyWCgEDSlKxf/Y0drJ7bcPKqJYXrqYuV614ljJTDjnEWQHJTllqJuKklylb8eAOw==
-X-Received: by 2002:a17:902:778b:: with SMTP id o11mr6868671pll.127.1599763540333;
-        Thu, 10 Sep 2020 11:45:40 -0700 (PDT)
-Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id z4sm6601671pfr.197.2020.09.10.11.45.37
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 10 Sep 2020 11:45:38 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <FD23DAA4-1CC7-45FB-9AED-9CB3B014B930@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_35463B1B-B6E9-496E-80F9-00265B2319C0";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] jbd2: avoid transaction reuse after reformatting
-Date:   Thu, 10 Sep 2020 12:45:34 -0600
-In-Reply-To: <tencent_2341B065211F204FA07C3ADDA1AE07706405@qq.com>
-Cc:     darrick.wong@oracle.com, jack@suse.com, linux-ext4@vger.kernel.org,
-        tytso@mit.edu, Fengnan Chang <changfengnan@hikvision.com>
-To:     changfengnan <changfengnan@qq.com>
-References: <tencent_2341B065211F204FA07C3ADDA1AE07706405@qq.com>
-X-Mailer: Apple Mail (2.3273)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=G0YwzWk/54GR5D0aP15u02c0dC9pXHYaZ/gVMt6Bajs=;
+        b=qAiDA6qzZh2k2GZsoGYC5o0rdu5odR5mgOS8FV0dj44giuE0oFugvrYi2nCmGHzWoT
+         BkAg19pj8JHDTm20usjxpFOG++iCCpT4q13wKZJklqP7U5m5Ur5XEGr9/ety1lxDw4xa
+         71z2Kslstw3jilAdvzOPd2r0+G3g1Zod+ATPg68PY7mmNVzY2/VHRDQZWJuKreyumNEo
+         v/dN8/KK8ND9o40HDphbXlnmVMK4CFSxFyn5lVG9J8b2CYnk39Yyn8VcLTc+Vfeox4lt
+         dsZGNzGqgDIAXqTdeOWAeDSsbFsI4yMDRj0HWlyIUY+YsgEgqp+iZlNzdWt6heHF8b6u
+         +t3Q==
+X-Gm-Message-State: AOAM5328BO2s6LRvyZRGR9ccgMAZTpjCNEVsWD7he5fYNR6orAU6WZaU
+        gU9j/TldmFBR7Cf0vSvRNyLqKPm3omiTPOw1WOw7Bt/mH9iXzqtgYKJ895YeVkvvzLPB8W89TK1
+        fPJA8nc6ZWGHCKJgubYGDVXGqz/cV99YFZfXgAdI=
+X-Received: by 2002:ad4:53a8:: with SMTP id j8mr10118812qvv.26.1599766299000;
+        Thu, 10 Sep 2020 12:31:39 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJxHgPpvGaGtGfZRsHpdxexUIT7C7s17E87NK/R+hdim871YxH7FgycxfLMP7o77rhCv9WNZ6Q==
+X-Received: by 2002:ad4:53a8:: with SMTP id j8mr10118793qvv.26.1599766298756;
+        Thu, 10 Sep 2020 12:31:38 -0700 (PDT)
+Received: from localhost.localdomain ([201.82.49.101])
+        by smtp.gmail.com with ESMTPSA id u4sm6410391qkk.68.2020.09.10.12.31.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 10 Sep 2020 12:31:38 -0700 (PDT)
+From:   Mauricio Faria de Oliveira <mfo@canonical.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org,
+        dann frazier <dann.frazier@canonical.com>,
+        Mauricio Faria de Oliveira <mauricio.foliveira@gmail.com>
+Subject: [RFC PATCH v3 3/3] ext4: data=journal: write-protect pages on j_submit_inode_data_buffers()
+Date:   Thu, 10 Sep 2020 16:31:27 -0300
+Message-Id: <20200910193127.276214-4-mfo@canonical.com>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200910193127.276214-1-mfo@canonical.com>
+References: <20200910193127.276214-1-mfo@canonical.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+This implements journal callbacks j_submit|finish_inode_data_buffers()
+with different behavior for data=journal: to write-protect pages under
+commit, preventing changes to buffers writeably mapped to userspace.
 
---Apple-Mail=_35463B1B-B6E9-496E-80F9-00265B2319C0
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+If a buffer's content changes between commit's checksum calculation
+and write-out to disk, it can cause journal recovery/mount failures
+upon a kernel crash or power loss.
 
-On Sep 10, 2020, at 5:55 AM, changfengnan <changfengnan@qq.com> wrote:
->=20
-> From: Fengnan Chang <changfengnan@hikvision.com>
->=20
-> When format ext4 with lazy_journal_init=3D1, the previous transaction =
-is
-> still on disk, it is possible that the previous transaction will be
-> used again during jbd2 recovery.Because the seed is changed, the CRC
-> check will fail.
->=20
-> Signed-off-by: Fengnan Chang <changfengnan@hikvision.com>
+    [   27.334874] EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, and O_DIRECT support!
+    [   27.339492] JBD2: Invalid checksum recovering data block 8705 in log
+    [   27.342716] JBD2: recovery failed
+    [   27.343316] EXT4-fs (loop0): error loading journal
+    mount: /ext4: can't read superblock on /dev/loop0.
 
-This version of the patch looks OK, with one trivial indentation problem
-after the "jbd_debug(1, "JBD2: Invalid checksum" line that could be =
-fixed.
+In j_submit_inode_data_buffers() we write-protect the inode's pages
+with write_cache_pages() and redirty w/ writepage callback if needed.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+In j_finish_inode_data_buffers() there is nothing do to.
 
-> ---
-> fs/jbd2/recovery.c | 60 +++++++++++++++++++++++++++++++++++++++++-----
-> 1 file changed, 54 insertions(+), 6 deletions(-)
->=20
-> diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-> index a4967b27ffb6..8a6bc322a06d 100644
-> --- a/fs/jbd2/recovery.c
-> +++ b/fs/jbd2/recovery.c
-> @@ -33,6 +33,8 @@ struct recovery_info
-> 	int		nr_replays;
-> 	int		nr_revokes;
-> 	int		nr_revoke_hits;
-> +	unsigned long  ri_commit_block;
-> +	__be64  last_trans_commit_time;
-> };
->=20
-> enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
-> @@ -412,7 +414,27 @@ static int jbd2_block_tag_csum_verify(journal_t =
-*j, journal_block_tag_t *tag,
-> 	else
-> 		return tag->t_checksum =3D=3D cpu_to_be16(csum32);
-> }
-> +/*
-> + * We check the commit time and compare it with the commit time of
-> + * the previous transaction, if it's smaller than previous,
-> + * We think it's not belong to same journal.
-> + */
-> +static bool is_same_journal(journal_t *journal, struct buffer_head =
-*bh, unsigned long blocknr, __u64 last_commit_sec)
-> +{
-> +	unsigned long commit_block =3D blocknr + count_tags(journal, bh) =
-+ 1;
-> +	struct buffer_head *nbh;
-> +	struct commit_header *cbh;
-> +	__u64	commit_sec;
-> +	int err =3D jread(&nbh, journal, commit_block);
->=20
-> +	if (err)
-> +		return true;
-> +
-> +	cbh =3D (struct commit_header *)nbh->b_data;
-> +	commit_sec =3D be64_to_cpu(cbh->h_commit_sec);
-> +
-> +	return commit_sec >=3D last_commit_sec;
-> +}
-> static int do_one_pass(journal_t *journal,
-> 			struct recovery_info *info, enum passtype pass)
-> {
-> @@ -514,18 +536,29 @@ static int do_one_pass(journal_t *journal,
-> 		switch(blocktype) {
-> 		case JBD2_DESCRIPTOR_BLOCK:
-> 			/* Verify checksum first */
-> +			if (pass =3D=3D PASS_SCAN)
-> +				info->ri_commit_block =3D 0;
-> +
-> 			if (jbd2_journal_has_csum_v2or3(journal))
-> 				descr_csum_size =3D
-> 					sizeof(struct =
-jbd2_journal_block_tail);
-> 			if (descr_csum_size > 0 &&
-> 			    !jbd2_descriptor_block_csum_verify(journal,
-> 							       =
-bh->b_data)) {
-> -				printk(KERN_ERR "JBD2: Invalid checksum =
-"
-> -				       "recovering block %lu in log\n",
-> +				if (is_same_journal(journal, bh, =
-next_log_block-1, info->last_trans_commit_time)) {
-> +					printk(KERN_ERR "JBD2: Invalid =
-checksum recovering block %lu in log\n",
-> 				       next_log_block);
-> -				err =3D -EFSBADCRC;
-> -				brelse(bh);
-> -				goto failed;
-> +					err =3D -EFSBADCRC;
-> +					brelse(bh);
-> +					goto failed;
-> +				} else {
-> +					/*it's not belong to same =
-journal, just end this recovery with success*/
-> +					jbd_debug(1, "JBD2: Invalid =
-checksum found in block %lu in log, but not same journal %d\n",
-> +				       next_log_block, next_commit_ID);
+And in order to use the callbacks, inodes are added to the inode list
+in transaction in __ext4_journalled_writepage() and ext4_page_mkwrite().
 
-The continued line should be indented one more tab.
+In ext4_page_mkwrite() we must make sure that:
 
-> +					err =3D 0;
-> +					brelse(bh);
-> +					goto done;
-> +				}
-> 			}
->=20
-> 			/* If it is a valid descriptor block, replay it
-> @@ -688,6 +721,17 @@ static int do_one_pass(journal_t *journal,
-> 			 * are present verify them in PASS_SCAN; else =
-not
-> 			 * much to do other than move on to the next =
-sequence
-> 			 * number. */
-> +			if (pass =3D=3D PASS_SCAN) {
-> +				struct commit_header *cbh =3D
-> +					(struct commit_header =
-*)bh->b_data;
-> +				if (info->ri_commit_block) {
-> +					jbd_debug(1, "invalid commit =
-block found in %lu, stop here.\n", next_log_block);
-> +					brelse(bh);
-> +					goto done;
-> +				}
-> +				info->ri_commit_block =3D =
-next_log_block;
-> +				info->last_trans_commit_time =3D =
-be64_to_cpu(cbh->h_commit_sec);
-> +			}
-> 			if (pass =3D=3D PASS_SCAN &&
-> 			    jbd2_has_feature_checksum(journal)) {
-> 				int chksum_err, chksum_seen;
-> @@ -761,7 +805,11 @@ static int do_one_pass(journal_t *journal,
-> 				brelse(bh);
-> 				continue;
-> 			}
-> -
-> +			if (pass !=3D PASS_SCAN && =
-info->ri_commit_block) {
-> +				jbd_debug(1, "invalid revoke block found =
-in %lu, stop here.\n", next_log_block);
-> +				brelse(bh);
-> +				goto done;
-> +			}
-> 			err =3D scan_revoke_records(journal, bh,
-> 						  next_commit_ID, info);
-> 			brelse(bh);
-> --
-> 2.27.0.windows.1
->=20
->=20
+1) the inode is always added to the list;
+   thus we skip the 'all buffers mapped' optimization on data=journal;
 
+2) the buffers are attached to transaction as dirty;
+   as already done in __ext4_journalled_writepage().
 
-Cheers, Andreas
+Signed-off-by: Mauricio Faria de Oliveira <mfo@canonical.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+Reported-by: Dann Frazier <dann.frazier@canonical.com>
+---
+ fs/ext4/inode.c | 29 ++++++++++++++------
+ fs/ext4/super.c | 72 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 91 insertions(+), 10 deletions(-)
 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index bf596467c234..fa4109da056c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1910,6 +1910,9 @@ static int __ext4_journalled_writepage(struct page *page,
+ 		err = ext4_walk_page_buffers(handle, page_bufs, 0, len, NULL,
+ 					     write_end_fn);
+ 	}
++	if (ret == 0)
++		ret = err;
++	err = ext4_jbd2_inode_add_write(handle, inode, 0, len);
+ 	if (ret == 0)
+ 		ret = err;
+ 	EXT4_I(inode)->i_datasync_tid = handle->h_transaction->t_tid;
+@@ -6004,9 +6007,12 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 		len = PAGE_SIZE;
+ 	/*
+ 	 * Return if we have all the buffers mapped. This avoids the need to do
+-	 * journal_start/journal_stop which can block and take a long time
++	 * journal_start/journal_stop which can block and take a long time.
++	 *
++	 * This cannot be done for data journalling, as we have to add the
++	 * inode to the transaction's list to writeprotect pages on commit.
+ 	 */
+-	if (page_has_buffers(page)) {
++	if (page_has_buffers(page) && !ext4_should_journal_data(inode)) {
+ 		if (!ext4_walk_page_buffers(NULL, page_buffers(page),
+ 					    0, len, NULL,
+ 					    ext4_bh_unmapped)) {
+@@ -6032,12 +6038,14 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	err = block_page_mkwrite(vma, vmf, get_block);
+ 	if (!err && ext4_should_journal_data(inode)) {
+ 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
+-			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
+-			unlock_page(page);
+-			ret = VM_FAULT_SIGBUS;
+-			ext4_journal_stop(handle);
+-			goto out;
+-		}
++			PAGE_SIZE, NULL, do_journal_get_write_access))
++			goto out_err;
++		/* Make sure buffers are attached to the transaction as dirty */
++		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
++			PAGE_SIZE, NULL, write_end_fn))
++			goto out_err;
++		if (ext4_jbd2_inode_add_write(handle, inode, 0, PAGE_SIZE))
++			goto out_err;
+ 		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ 	}
+ 	ext4_journal_stop(handle);
+@@ -6049,6 +6057,11 @@ vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
++out_err:
++	unlock_page(page);
++	ret = VM_FAULT_SIGBUS;
++	ext4_journal_stop(handle);
++	goto out;
+ }
+ 
+ vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7303839d7ad9..528b5e20b71c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -472,14 +472,82 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+ 	spin_unlock(&sbi->s_md_lock);
+ }
+ 
++/*
++ * This writepage callback for write_cache_pages()
++ * takes care of a few cases after page cleaning.
++ *
++ * write_cache_pages() already checks for dirty pages
++ * and calls clear_page_dirty_for_io(), which we want,
++ * to write protect the pages.
++ *
++ * However, we have to redirty a page in these cases:
++ * 1) some buffer is dirty (needs checkpointing)
++ * 2) some buffer is not part of the committing transaction
++ * 3) some buffer already has b_next_transaction set
++ */
++
++static int ext4_journalled_writepage_callback(struct page *page,
++					      struct writeback_control *wbc,
++					      void *data)
++{
++	transaction_t *transaction = (transaction_t *) data;
++	struct buffer_head *bh, *head;
++	struct journal_head *jh;
++
++	bh = head = page_buffers(page);
++	do {
++		jh = bh2jh(bh);
++		if (buffer_dirty(bh) ||
++			(jh && (jh->b_transaction != transaction ||
++				jh->b_next_transaction))) {
++			redirty_page_for_writepage(wbc, page);
++			goto out;
++		}
++	} while ((bh = bh->b_this_page) != head);
++
++out:
++	return AOP_WRITEPAGE_ACTIVATE;
++}
++
++static int ext4_journalled_submit_inode_data_buffers(struct jbd2_inode *jinode)
++{
++	struct address_space *mapping = jinode->i_vfs_inode->i_mapping;
++	transaction_t *transaction = jinode->i_transaction;
++	loff_t dirty_start = jinode->i_dirty_start;
++	loff_t dirty_end = jinode->i_dirty_end;
++
++	struct writeback_control wbc = {
++		.sync_mode =  WB_SYNC_ALL,
++		.nr_to_write = ~0ULL,
++		.range_start = dirty_start,
++		.range_end = dirty_end,
++        };
++
++	return write_cache_pages(mapping, &wbc,
++				 ext4_journalled_writepage_callback,
++				 transaction);
++}
++
+ static int ext4_journal_submit_inode_data_buffers(struct jbd2_inode *jinode)
+ {
+-	return jbd2_journal_submit_inode_data_buffers(jinode);
++	int ret;
++
++	if (ext4_should_journal_data(jinode->i_vfs_inode))
++		ret = ext4_journalled_submit_inode_data_buffers(jinode);
++	else
++		ret = jbd2_journal_submit_inode_data_buffers(jinode);
++
++	return ret;
+ }
+ 
+ static int ext4_journal_finish_inode_data_buffers(struct jbd2_inode *jinode)
+ {
+-	return jbd2_journal_finish_inode_data_buffers(jinode);
++	int ret = 0;
++
++	if (!ext4_should_journal_data(jinode->i_vfs_inode))
++		ret = jbd2_journal_finish_inode_data_buffers(jinode);
++
++	return ret;
+ }
+ 
+ static bool system_going_down(void)
+-- 
+2.17.1
 
-
-
-
-
---Apple-Mail=_35463B1B-B6E9-496E-80F9-00265B2319C0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl9adE4ACgkQcqXauRfM
-H+CkFQ/+JiDncMtlK6TUvln/x+Pr1mSH3rmI3Jnmlyyj0he9bp74Pti9+TInMO7V
-VJP3UGvVSFWGfB+w9ykXjZAEY9N7wwqN7lMy4ZRD3do/wYaTo3RPD7rEalPVbj4I
-Exos3nKluvTWgh+E1wbWA/Uw01EpxDBOLK4lG5c4vsoWPROQfCg2b0mnwkaBsdFe
-j+d5TxHJ54bBnSQPDkDLEhGUtPJ5F9aOICfYqTrSFc0wrp6gY9/tNc+a1MK31EIZ
-dvBucYMP3hYfPiFA8FQcxlvuMfwVyoJOTDIzlP1NCUutQG2em/a/WD0pVuPExYhl
-kUyUqxtd2KUpZUiRc4nOFPOGHA6au0SAPpTn6ZKM0lL0G1352emyLsDNtB2hmXpd
-2i++ux5nYDHbA1aldKzWJZua5tSCFo0BpysnAUHH/ITWPQZyVIcewAHCRreSuz0D
-FBA9LmhUBtz8B3vkejdkNGDIhVoK0S2W8HiQZDFeuG7DnETqZgRiYJjiHKInK9Vd
-XplXpQVQnxux+SHrvfyscgOYmPhDThsxqrxiRa8JfsbzaEMPfSZIxP0fJjNONTAf
-MWNuDDJS8bFpz1JJmfQRBc7iTauUxUTcEJGuBdcNhs0pDYYkP44e/1tR6Yb0lGfo
-wCEoGqWVi59gHpBgkHk0rMr3xEWmeVwVVcnCHA2PCpVrlrP4yTM=
-=KYMc
------END PGP SIGNATURE-----
-
---Apple-Mail=_35463B1B-B6E9-496E-80F9-00265B2319C0--
