@@ -1,161 +1,227 @@
-Return-Path: <SRS0=aak8=CT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=RTDo=CU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00A07C433E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 19:34:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82B5CC43461
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Sep 2020 00:06:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A6E3D21556
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Sep 2020 19:34:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 42D98208FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Sep 2020 00:06:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1599782784;
+	bh=elALFNtLbOpezMGtdVmVWSTgh8GXmuip+gJPkGRlHNI=;
+	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
+	b=wKFhHsmT+91cxBJ0mJmuJDpyIns8xMNDO5xvgm9dmfIqZkQ1lbTASeCJQxBQ4cSze
+	 PeYs2RT9Tg5csDVPn/NxgRSclYfU0TQZV2A+9erw9/TON1+oESzx2gIVwQ5BgjV5Ct
+	 /zLPtb1ItpHRCWq63r9Gv+3wNQSCcDQtUgTtYR+4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728023AbgIJTd6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Sep 2020 15:33:58 -0400
-Received: from youngberry.canonical.com ([91.189.89.112]:43001 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727938AbgIJTbf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2020 15:31:35 -0400
-Received: from mail-qt1-f197.google.com ([209.85.160.197])
-        by youngberry.canonical.com with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.86_2)
-        (envelope-from <mfo@canonical.com>)
-        id 1kGSI8-0000i6-RI
-        for linux-ext4@vger.kernel.org; Thu, 10 Sep 2020 19:31:33 +0000
-Received: by mail-qt1-f197.google.com with SMTP id m13so4896432qtu.10
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 12:31:32 -0700 (PDT)
+        id S1725440AbgIKAGX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Sep 2020 20:06:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33266 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725280AbgIKAGU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Sep 2020 20:06:20 -0400
+Received: from mail-lj1-x244.google.com (mail-lj1-x244.google.com [IPv6:2a00:1450:4864:20::244])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1790C061573
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 17:06:18 -0700 (PDT)
+Received: by mail-lj1-x244.google.com with SMTP id v23so10527791ljd.1
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 17:06:18 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=yfTJPlFVn2wmTIDxeU/z6D80k4UaPNoiqLlzOJNoBDY=;
+        b=fJzXmuisfL3b2UMU74xdsqxFM9IrmmTVr3UkRCZhsKpmKO24DHQI3Aw3A6CTuTFN0n
+         Dj136xniAYX//Yf30RXzU5yySTnN8PA8QdJmA3QVwM6SqzpVxVlizhLEMpFaUyJtSGYg
+         xjNUwGBuUu/AEGCNu0cBBlr75RsD5k8ksKR4M=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=LuSXWTsin8cF8bzKkoixqrxuBXCzvzGP6uXIxX5Rv+w=;
-        b=n6PLbvTVkl2R3MJiykeo6J7FUX4zDZFFb0EN8MDQ6/moxSZ8T4NO9ZIQ3+47MxtbFb
-         x9/rA6cB03ZLtagoHDryFrEdTvOvG0Etv4fgz64Di18Rlc/djbwszqOoJvmlPtARHlcf
-         HT6z60zKCOul4sYRvUCyIy6c0GTxmFBSR0Iy99ayJko+ZVeat4juCGe2z8Lm3/ZJMzzL
-         4j1OK0z6cc1fOM2uUmmf6PPgNnw8SKs5lOvjjn/dck0lh2qxF0BnCQVRaAedlqV6G4C/
-         KK6yZTNvbXPLSydALJb+ozRv5KGmx9VBsBXpirOympebOmNlUJEPxq/JpFTDeBSwZvWa
-         Pufw==
-X-Gm-Message-State: AOAM530S6k/VMJ1Y6Hqn5Sj4/QhKCDU/OPEHcTBWNtY8V1A9kBvvftuK
-        5BZPSP6I1v7PyZlVrE+3Z023OXV7hzIjRNsas1afb2wO2YxT9pdALLV+cycxxh7DW+j7Tau48fK
-        qVRxzTC0D4zl9BatHhInDY3kGED+yIa8fQwUvrUM=
-X-Received: by 2002:ae9:ef92:: with SMTP id d140mr9232941qkg.73.1599766291852;
-        Thu, 10 Sep 2020 12:31:31 -0700 (PDT)
-X-Google-Smtp-Source: ABdhPJwyZhJeuJAS61vLtuS9a5AHy70InG5CeeZxiVfSoD8pHjtHSd6j77SH54gT/SYXL8Lw4At6bQ==
-X-Received: by 2002:ae9:ef92:: with SMTP id d140mr9232918qkg.73.1599766291557;
-        Thu, 10 Sep 2020 12:31:31 -0700 (PDT)
-Received: from localhost.localdomain ([201.82.49.101])
-        by smtp.gmail.com with ESMTPSA id u4sm6410391qkk.68.2020.09.10.12.31.29
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 10 Sep 2020 12:31:30 -0700 (PDT)
-From:   Mauricio Faria de Oliveira <mfo@canonical.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org,
-        dann frazier <dann.frazier@canonical.com>,
-        Mauricio Faria de Oliveira <mauricio.foliveira@gmail.com>
-Subject: [RFC PATCH v3 0/3] ext4/jbd2: data=journal: write-protect pages on transaction commit
-Date:   Thu, 10 Sep 2020 16:31:24 -0300
-Message-Id: <20200910193127.276214-1-mfo@canonical.com>
-X-Mailer: git-send-email 2.25.1
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=yfTJPlFVn2wmTIDxeU/z6D80k4UaPNoiqLlzOJNoBDY=;
+        b=ZNF6VOrpefh3yA5I1k+6CZ3hERrky83OLukYEAAjC0BgiMl3KcV8i0VNEdu3W+VgSK
+         jQfRYYJno+MJkZswOeY94qe7FhwPZ6+xdq3B5EaKZsVaLOFg6ttoq3Gxu1PipTvq01lO
+         jltFc+6Lgr4BkjXe16n6Euo1GOO0Sk2nElLL9p8VFKzfHnLgHCnnzB5LaqdDgIZknEpB
+         afOvfb5Y9NO6iLDFlRi8LK5heZGLjVoR/m4O1tlPfGLSBev+VRqbEwWChRWb4BO+iQKU
+         Sd99IxWvoVNop8uOylsWfdrP9D8BXAKOLIwfXN/HLUsopAH1kM54PGExASZf6IZJmdeZ
+         w6pw==
+X-Gm-Message-State: AOAM533IT3Xi8k3JMNayWLb7xT+ncd64ew2X7ndJzuJ40od3FQf2zxmA
+        hptMRYL1gwAZH6Eo9bkkzTnrIUp7wTuS6g==
+X-Google-Smtp-Source: ABdhPJwiWP13vBRoNeFlkjjnVbLRrZ6Q3PRSVENcnCmDZgGgQAE/VuIY2UayR2qRr2+b8xEyQZ1mOw==
+X-Received: by 2002:a2e:a588:: with SMTP id m8mr5584553ljp.210.1599782776777;
+        Thu, 10 Sep 2020 17:06:16 -0700 (PDT)
+Received: from mail-lj1-f179.google.com (mail-lj1-f179.google.com. [209.85.208.179])
+        by smtp.gmail.com with ESMTPSA id l1sm118933ljg.113.2020.09.10.17.06.15
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 10 Sep 2020 17:06:15 -0700 (PDT)
+Received: by mail-lj1-f179.google.com with SMTP id c2so10434582ljj.12
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Sep 2020 17:06:15 -0700 (PDT)
+X-Received: by 2002:a05:651c:104c:: with SMTP id x12mr6168022ljm.285.1599782774602;
+ Thu, 10 Sep 2020 17:06:14 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAHk-=wiZnE409WkTOG6fbF_eV1LgrHBvMtyKkpTqM9zT5hpf9A@mail.gmail.com>
+ <4ced9401-de3d-b7c9-9976-2739e837fafc@MichaelLarabel.com> <CAHk-=wj+Qj=wXByMrAx3T8jmw=soUetioRrbz6dQaECx+zjMtg@mail.gmail.com>
+ <CAHk-=wgOPjbJsj-LeLc-JMx9Sz9DjGF66Q+jQFJROt9X9utdBg@mail.gmail.com>
+ <CAHk-=wjjK7PTnDZNi039yBxSHtAqusFoRrZzgMNTiYkJYdNopw@mail.gmail.com>
+ <aa90f272-1186-f9e1-8fdb-eefd332fdae8@MichaelLarabel.com> <CAHk-=wh_31_XBNHbdF7EUJceLpEpwRxVF+_1TONzyBUym6Pw4w@mail.gmail.com>
+ <e24ef34d-7b1d-dd99-082d-28ca285a79ff@MichaelLarabel.com> <CAHk-=wgEE4GuNjcRaaAvaS97tW+239-+tjcPjTq2FGhEuM8HYg@mail.gmail.com>
+ <6e1d8740-2594-c58b-ff02-a04df453d53c@MichaelLarabel.com> <CAHk-=wgJ3-cEkU-5zXFPvRCHKkCCuKxVauYWGphjePEhJJgtgQ@mail.gmail.com>
+ <d2023f4c-ef14-b877-b5bb-e4f8af332abc@MichaelLarabel.com> <CAHk-=wiz=J=8mJ=zRG93nuJ9GtQAm5bSRAbWJbWZuN4Br38+EQ@mail.gmail.com>
+In-Reply-To: <CAHk-=wiz=J=8mJ=zRG93nuJ9GtQAm5bSRAbWJbWZuN4Br38+EQ@mail.gmail.com>
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Thu, 10 Sep 2020 17:05:58 -0700
+X-Gmail-Original-Message-ID: <CAHk-=wimM2kckaYj7spUJwehZkSYxK9RQqu3G392BE=73dyKtg@mail.gmail.com>
+Message-ID: <CAHk-=wimM2kckaYj7spUJwehZkSYxK9RQqu3G392BE=73dyKtg@mail.gmail.com>
+Subject: Re: Kernel Benchmarking
+To:     Michael Larabel <Michael@michaellarabel.com>,
+        "Ted Ts'o" <tytso@google.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed; boundary="0000000000000052d505aefe7474"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hey Jan,
+--0000000000000052d505aefe7474
+Content-Type: text/plain; charset="UTF-8"
 
-This series implements your suggestions for the RFC PATCH v2 set,
-which we mostly talked about in cover letter [1] and PATCH 3 [2].
-(I added Suggested-by: tags, by the way, for due credit.)
+[ Ted / Andreas - Michael bisected a nasty regression to the new fair
+page lock, and I think at least part of the reason is the ext4 page
+locking patterns ]
 
-It looks almost good on fstests: zero regressions on data=ordered,
-and only one regression in data=journal (generic/347); I'll check.
-(That's with ext4; I'll check ocfs2, but it's only a minor change.)
+On Thu, Sep 10, 2020 at 1:57 PM Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+>
+> I can already from a quick look see that one of the major
+> "interesting" paths here is a "writev()" system call that takes a page
+> fault when it copies data from user space.
 
-However, there's an issue I have to check with you about, that we
-exposed from the original kernel. It's described below, but other
-than this I _guess_ this should be close if you don't spot errors.
+I think the page fault is incidental and not important.
 
-Thanks!
-Mauricio
+No, I think the issue is that ext4_write_begin() does some fairly crazy things.
 
-...
+It does
 
-Testing with 'stress-ng --mmap <N> --mmap-file' runs well for days,
-but it occasionally hits:
+        page = grab_cache_page_write_begin(mapping, index, flags);
+        if (!page)
+                return -ENOMEM;
+        unlock_page(page);
 
-  JBD2: Spotted dirty metadata buffer (dev = vdc, blocknr = 74775).
-  There's a risk of filesystem corruption in case of system crash.
+which is all kinds of bad, because where grab_cache_page_write_begin()
+will get the page lock, and wait for it to not be under writeback any
+more.
 
-I added dump_stack() in warn_dirty_buffer(), and it usually comes
-from jbd2_journal_file_buffer(, BJ_Forget) in the commit function.
-When filing from BJ_Shadow to BJ_Forget.. so it possibly happened
-while BH_Shadow was still set!
+And then we unlock it right away.
 
-So I instrumented [test_]set_buffer_dirty() macros to dump_stack()
-if BH_Shadow is set (i.e. buffer being set dirty during write-out.)
+Only to do the journal start, and after that immediately do
 
-This showed that the occasional BH_Dirty setter with BH_Shadow set
-is block_page_mkwrite() in ext4_page_mkwrite(). And it seems right,
-because it's called before do_journal_get_write_access() (where we
-check for/wait on BH_Shadow.)
+        lock_page(page);
+        ... check that the mapping hasn't changed ..
+        /* In case writeback began while the page was unlocked */
+        wait_for_stable_page(page);
 
-ext4_page_mkwrite():
+so it does that again.
 
-        err = block_page_mkwrite(vma, vmf, get_block);
-        if (!err && ext4_should_journal_data(inode)) {
-                if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
-                          PAGE_SIZE, NULL, do_journal_get_write_access)) {
+And I think this is exactly the pattern where the old unfair page
+locking worked very well, because the second "lock_page()" will
+probably happen while the previous "unlock_page()" had kept it
+unlocked. So 99% of the time, the second lock_page() was free.
 
-The patches didn't directly break this, they only allow this code
-to run more often as we disabled an early-return optimization for
-the case 'all buffers mapped' in data=journal (question 2 in [1]):
+But with the new fair page locking, the previous unlock_page() will
+have given the page away to whoever was waiting for it, and now when
+we do the second lock_page(), we'll block and wait for that user - and
+every other possible one. Because that's fair - everybody gets the
+page lock in order.
 
-ext4_page_mkwrite():
+This may not be *the* reason, but it's exactly the kind of pessimal
+pattern where the old unfair model worked very well (where "well"
+means "good average performance, but then occasionally you get
+watchdogs firing because there's no forward progress"), and the new
+fair code will really stutter, because the lock/unlock/lock pattern is
+basically *exactly* the wrong thing to do and only causes a complete
+serialization in case there are other waiters, because fairness means
+that the second lock will always be done after *all* other queued
+waiters have been handled.
 
-         * Return if we have all the buffers mapped.
-	...
--       if (page_has_buffers(page)) {
-+       if (page_has_buffers(page) && !ext4_should_journal_data(inode)) {
+And the sad part is that the code doesn't even *want* the lock for
+that initial case, and immediately drops it.
 
+The main reason the code seems to want to use that
+grab_cache_page_write_begin() that lkocks the page is that it wants to
+create the page if it didn't exist, and that creation creates a locked
+page.
 
-In order to confirm it, I built the unpatched v5.9-rc4 kernel, with
-just the change to disable that optimization in data=journal -- and
-it hit that occasionally too ("JBD2: Spotted dirty metadata buffer".)
+But the code *could* use FGP_FOR_MMAP instead, which only locks that
+initial page case.
 
-I was naive enough to mindlessly try to swap the order of those two
-statements, in hopes that do_journal_get_write_access() should wait
-for BH_Shadow to clear, and then we just call block_page_mkwrite().
-BUT it trips into the BUG() check in page_buffers() in the former.
+So something like this might at least work around this particular
+case. But it's *entirely* untested.
 
-I still have to dig more about it, but if you have something quick
-in mind, I'd appreciate any comments/feedback about it, if it gets
-more complex than I can see.
+Ted, Andreas, comments? The old unfair lock_page() made this a
+non-issue, but we really do have years of reports of odd watchdog
+errors that seem to be due to that almost infinite unfairness under
+bad loads..
 
-Thanks again!
+Michael: it's entirely possible that the two cases in fs/ext4/inode.c
+that I noticed are not that important. But I found them from following
+your profile data down to lock_page() cases, so they seem to be at
+least _part_ of the issue.
 
-[1] https://lore.kernel.org/linux-ext4/20200819092735.GI1902@quack2.suse.cz/
-[2] https://lore.kernel.org/linux-ext4/20200821102625.GB3432@quack2.suse.cz/
+Again: the patch is ENTIRELY untested. It compiles for me, and it
+looks superficially right, but that's all I'm going to say about it..
 
-Mauricio Faria de Oliveira (3):
-  jbd2: introduce/export functions
-    jbd2_journal_submit|finish_inode_data_buffers()
-  jbd2, ext4, ocfs2: introduce/use journal callbacks
-    j_submit|finish_inode_data_buffers()
-  ext4: data=journal: write-protect pages on
-    j_submit_inode_data_buffers()
+                    Linus
 
- fs/ext4/inode.c      | 29 +++++++++++-----
- fs/ext4/super.c      | 82 ++++++++++++++++++++++++++++++++++++++++++++
- fs/jbd2/commit.c     | 58 +++++++++++++++++--------------
- fs/jbd2/journal.c    |  2 ++
- fs/ocfs2/super.c     | 15 ++++++++
- include/linux/jbd2.h | 29 +++++++++++++++-
- 6 files changed, 181 insertions(+), 34 deletions(-)
+--0000000000000052d505aefe7474
+Content-Type: application/octet-stream; name=patch
+Content-Disposition: attachment; filename=patch
+Content-Transfer-Encoding: base64
+Content-ID: <f_kexh96ss0>
+X-Attachment-Id: f_kexh96ss0
 
--- 
-2.17.1
-
+IGZzL2V4dDQvaW5vZGUuYyB8IDMzICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLQog
+MSBmaWxlIGNoYW5nZWQsIDI5IGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0pCgpkaWZmIC0t
+Z2l0IGEvZnMvZXh0NC9pbm9kZS5jIGIvZnMvZXh0NC9pbm9kZS5jCmluZGV4IGJmNTk2NDY3YzIz
+NC4uNjUzNTVlMzNlYWFlIDEwMDY0NAotLS0gYS9mcy9leHQ0L2lub2RlLmMKKysrIGIvZnMvZXh0
+NC9pbm9kZS5jCkBAIC0xMTEyLDYgKzExMTIsMzMgQEAgc3RhdGljIGludCBleHQ0X2Jsb2NrX3dy
+aXRlX2JlZ2luKHN0cnVjdCBwYWdlICpwYWdlLCBsb2ZmX3QgcG9zLCB1bnNpZ25lZCBsZW4sCiB9
+CiAjZW5kaWYKIAorCisvKgorICogVGhpcyBpcyBsaWtlIGdyYWJfY2FjaGVfcGFnZV93cml0ZV9i
+ZWdpbigpLCBidXQgd2l0aG91dAorICogbG9ja2luZyB0aGUgcGFnZSwgYmVjYXVzZSB3ZSB3YW50
+IHRvIGdyYWIgYSBwYWdlIGZpcnN0CisgKiBiZWZvcmUgd2Ugc3RhcnQgYSB0cmFuc2FjdGlvbiBo
+YW5kbGUuCisgKgorICogVGhlIHBhZ2Ugd2lsbCBiZSBsb2NrZWQgbGF0ZXIuCisgKgorICogVGhh
+dCBGR1BfRk9SX01NQVAgaXMgZXhhY3RseSB0aGF0ICJJIGRvbid0IHdhbnQgaXQgbG9ja2VkIgor
+ICogZmxhZywgYW5kIGlzIHJlcXVpcmVkIHRvIHdvcmsgd2l0aCBGR1BfQ1JFQVQuCisgKi8KK3N0
+YXRpYyBzdHJ1Y3QgcGFnZSAqZ3JhYl9jYWNoZV9wYWdlX3dyaXRlX2JlZ2luX3VubG9ja2VkKAor
+CXN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nLCBwZ29mZl90IGluZGV4LCB1bnNpZ25lZCBm
+bGFncykKK3sKKwlzdHJ1Y3QgcGFnZSAqcGFnZTsKKwlpbnQgZmdwX2ZsYWdzID0gRkdQX0ZPUl9N
+TUFQfEZHUF9XUklURXxGR1BfQ1JFQVQ7CisKKwlpZiAoZmxhZ3MgJiBBT1BfRkxBR19OT0ZTKQor
+CQlmZ3BfZmxhZ3MgfD0gRkdQX05PRlM7CisJcGFnZSA9IHBhZ2VjYWNoZV9nZXRfcGFnZShtYXBw
+aW5nLCBpbmRleCwgZmdwX2ZsYWdzLAorCQkJbWFwcGluZ19nZnBfbWFzayhtYXBwaW5nKSk7CisJ
+aWYgKHBhZ2UpCisJCXdhaXRfZm9yX3N0YWJsZV9wYWdlKHBhZ2UpOworCisJcmV0dXJuIHBhZ2U7
+Cit9CisKIHN0YXRpYyBpbnQgZXh0NF93cml0ZV9iZWdpbihzdHJ1Y3QgZmlsZSAqZmlsZSwgc3Ry
+dWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsCiAJCQkgICAgbG9mZl90IHBvcywgdW5zaWduZWQg
+bGVuLCB1bnNpZ25lZCBmbGFncywKIAkJCSAgICBzdHJ1Y3QgcGFnZSAqKnBhZ2VwLCB2b2lkICoq
+ZnNkYXRhKQpAQCAtMTE1NCwxMCArMTE4MSw5IEBAIHN0YXRpYyBpbnQgZXh0NF93cml0ZV9iZWdp
+bihzdHJ1Y3QgZmlsZSAqZmlsZSwgc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsCiAJICog
+dGhlIHBhZ2UgKGlmIG5lZWRlZCkgd2l0aG91dCB1c2luZyBHRlBfTk9GUy4KIAkgKi8KIHJldHJ5
+X2dyYWI6Ci0JcGFnZSA9IGdyYWJfY2FjaGVfcGFnZV93cml0ZV9iZWdpbihtYXBwaW5nLCBpbmRl
+eCwgZmxhZ3MpOworCXBhZ2UgPSBncmFiX2NhY2hlX3BhZ2Vfd3JpdGVfYmVnaW5fdW5sb2NrZWQo
+bWFwcGluZywgaW5kZXgsIGZsYWdzKTsKIAlpZiAoIXBhZ2UpCiAJCXJldHVybiAtRU5PTUVNOwot
+CXVubG9ja19wYWdlKHBhZ2UpOwogCiByZXRyeV9qb3VybmFsOgogCWhhbmRsZSA9IGV4dDRfam91
+cm5hbF9zdGFydChpbm9kZSwgRVhUNF9IVF9XUklURV9QQUdFLCBuZWVkZWRfYmxvY2tzKTsKQEAg
+LTI5NjIsMTAgKzI5ODgsOSBAQCBzdGF0aWMgaW50IGV4dDRfZGFfd3JpdGVfYmVnaW4oc3RydWN0
+IGZpbGUgKmZpbGUsIHN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nLAogCSAqIHRoZSBwYWdl
+IChpZiBuZWVkZWQpIHdpdGhvdXQgdXNpbmcgR0ZQX05PRlMuCiAJICovCiByZXRyeV9ncmFiOgot
+CXBhZ2UgPSBncmFiX2NhY2hlX3BhZ2Vfd3JpdGVfYmVnaW4obWFwcGluZywgaW5kZXgsIGZsYWdz
+KTsKKwlwYWdlID0gZ3JhYl9jYWNoZV9wYWdlX3dyaXRlX2JlZ2luX3VubG9ja2VkKG1hcHBpbmcs
+IGluZGV4LCBmbGFncyk7CiAJaWYgKCFwYWdlKQogCQlyZXR1cm4gLUVOT01FTTsKLQl1bmxvY2tf
+cGFnZShwYWdlKTsKIAogCS8qCiAJICogV2l0aCBkZWxheWVkIGFsbG9jYXRpb24sIHdlIGRvbid0
+IGxvZyB0aGUgaV9kaXNrc2l6ZSB1cGRhdGUK
+--0000000000000052d505aefe7474--
