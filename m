@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE347C433E2
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:38:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0772C2D0E1
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:38:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A17042098B
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:38:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B397C207C3
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:38:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1599986319;
-	bh=SHrYUdtm1g7ntgYtdzixMrvNEz6L5/D07nXI8RMvuM4=;
+	s=default; t=1599986320;
+	bh=zejOgicpkvvmMFhZrMwnmiCb7goGZK7Q97xiTR6JSH8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=vlebj4nlUYfgL4RmiTnZaWDnK4yKS/uKllbTYr0crhKDGaeWPrxc3Jgf21Zj5ep+X
-	 HBfGKXcNlxbScgDYrsk/UV7zGkShsJ0ohTyPSC/WbIFvZf1XrXDCEr4PKaDkGBLzxe
-	 jXlONf0VgRVtnbqzLyEgvyAZmdTux6Ns9dmPUPVc=
+	b=0rSzsymj8atku+8r7F8OnTxrEtjvpSSj8VkDKRtZU6cJx5RP8MwWYcL4QQyMtqxdY
+	 5l4yOxCDP7dwD0EUHYXJLUo+gap18GJesoTNRaFGIPPa5QUfwmFdIGPNKc4ijksex4
+	 sHPPhN74CGFTu46s36X/y33zvbYY5i5UtiUhD9FQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725990AbgIMIi1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 13 Sep 2020 04:38:27 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60912 "EHLO mail.kernel.org"
+        id S1725969AbgIMIiE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 13 Sep 2020 04:38:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60770 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725973AbgIMIiF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Sep 2020 04:38:05 -0400
+        id S1725952AbgIMIiA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 13 Sep 2020 04:38:00 -0400
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 8F613221E8;
-        Sun, 13 Sep 2020 08:38:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CCDDB21655;
+        Sun, 13 Sep 2020 08:37:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1599986280;
-        bh=SHrYUdtm1g7ntgYtdzixMrvNEz6L5/D07nXI8RMvuM4=;
+        s=default; t=1599986279;
+        bh=zejOgicpkvvmMFhZrMwnmiCb7goGZK7Q97xiTR6JSH8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=veKboLnYaZiOTtz2C8eTq+4ZzLtMFia4/2LmiMxvTMRGrBr7KkSQff6AbozrpZCjI
-         r7KZJPqL7OLkVIJp0K7kUKARQmFdsbBKV25xdjuZcfTY+pIznei/mrRSnKdbJUGBoU
-         ODgwD4kGxAx2Jksu0dMPri89adQ4x8OCkHTNGDEE=
+        b=n11IT1hhQb77UCP2bEEcG/beILGMlhRe+fSjff5reIPEWW9kdcATSTO9XHz1V4Chi
+         h4xzhbz1a5sYUiKr6b243U/wP/4X+I4AMc3n+bQXWx/m3bS8jTnUO031AbOxjTg2L7
+         vNC21WM7uk+GO93acsK5nw+857QFhbNttSg0o4uk=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>,
         Daniel Rosenberg <drosen@google.com>
-Subject: [PATCH v2 10/11] fscrypt: move fscrypt_prepare_symlink() out-of-line
-Date:   Sun, 13 Sep 2020 01:36:19 -0700
-Message-Id: <20200913083620.170627-11-ebiggers@kernel.org>
+Subject: [PATCH v2 04/11] f2fs: use fscrypt_prepare_new_inode() and fscrypt_set_context()
+Date:   Sun, 13 Sep 2020 01:36:13 -0700
+Message-Id: <20200913083620.170627-5-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.28.0
 In-Reply-To: <20200913083620.170627-1-ebiggers@kernel.org>
 References: <20200913083620.170627-1-ebiggers@kernel.org>
@@ -59,171 +59,158 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-In preparation for moving the logic for "get the encryption policy
-inherited by new files in this directory" to a single place, make
-fscrypt_prepare_symlink() a regular function rather than an inline
-function that wraps __fscrypt_prepare_symlink().
+Convert f2fs to use the new functions fscrypt_prepare_new_inode() and
+fscrypt_set_context().  This avoids calling
+fscrypt_get_encryption_info() from under f2fs_lock_op(), which can
+deadlock because fscrypt_get_encryption_info() isn't GFP_NOFS-safe.
 
-This way, the new function fscrypt_policy_to_inherit() won't need to be
-exported to filesystems.
+For more details about this problem, see the earlier patch
+"fscrypt: add fscrypt_prepare_new_inode() and fscrypt_set_context()".
 
+This also fixes a f2fs-specific deadlock when the filesystem is mounted
+with '-o test_dummy_encryption' and a file is created in an unencrypted
+directory other than the root directory:
+
+    INFO: task touch:207 blocked for more than 30 seconds.
+          Not tainted 5.9.0-rc4-00099-g729e3d0919844 #2
+    "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+    task:touch           state:D stack:    0 pid:  207 ppid:   167 flags:0x00000000
+    Call Trace:
+     [...]
+     lock_page include/linux/pagemap.h:548 [inline]
+     pagecache_get_page+0x25e/0x310 mm/filemap.c:1682
+     find_or_create_page include/linux/pagemap.h:348 [inline]
+     grab_cache_page include/linux/pagemap.h:424 [inline]
+     f2fs_grab_cache_page fs/f2fs/f2fs.h:2395 [inline]
+     f2fs_grab_cache_page fs/f2fs/f2fs.h:2373 [inline]
+     __get_node_page.part.0+0x39/0x2d0 fs/f2fs/node.c:1350
+     __get_node_page fs/f2fs/node.c:35 [inline]
+     f2fs_get_node_page+0x2e/0x60 fs/f2fs/node.c:1399
+     read_inline_xattr+0x88/0x140 fs/f2fs/xattr.c:288
+     lookup_all_xattrs+0x1f9/0x2c0 fs/f2fs/xattr.c:344
+     f2fs_getxattr+0x9b/0x160 fs/f2fs/xattr.c:532
+     f2fs_get_context+0x1e/0x20 fs/f2fs/super.c:2460
+     fscrypt_get_encryption_info+0x9b/0x450 fs/crypto/keysetup.c:472
+     fscrypt_inherit_context+0x2f/0xb0 fs/crypto/policy.c:640
+     f2fs_init_inode_metadata+0xab/0x340 fs/f2fs/dir.c:540
+     f2fs_add_inline_entry+0x145/0x390 fs/f2fs/inline.c:621
+     f2fs_add_dentry+0x31/0x80 fs/f2fs/dir.c:757
+     f2fs_do_add_link+0xcd/0x130 fs/f2fs/dir.c:798
+     f2fs_add_link fs/f2fs/f2fs.h:3234 [inline]
+     f2fs_create+0x104/0x290 fs/f2fs/namei.c:344
+     lookup_open.isra.0+0x2de/0x500 fs/namei.c:3103
+     open_last_lookups+0xa9/0x340 fs/namei.c:3177
+     path_openat+0x8f/0x1b0 fs/namei.c:3365
+     do_filp_open+0x87/0x130 fs/namei.c:3395
+     do_sys_openat2+0x96/0x150 fs/open.c:1168
+     [...]
+
+That happened because f2fs_add_inline_entry() locks the directory
+inode's page in order to add the dentry, then f2fs_get_context() tries
+to lock it recursively in order to read the encryption xattr.  This
+problem is specific to "test_dummy_encryption" because normally the
+directory's fscrypt_info would be set up prior to
+f2fs_add_inline_entry() in order to encrypt the new filename.
+
+Regardless, the new design fixes this test_dummy_encryption deadlock as
+well as potential deadlocks with fs reclaim, by setting up any needed
+fscrypt_info structs prior to taking so many locks.
+
+The test_dummy_encryption deadlock was reported by Daniel Rosenberg.
+
+Reported-by: Daniel Rosenberg <drosen@google.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/hooks.c       | 39 ++++++++++++++++++++++---
- include/linux/fscrypt.h | 63 ++++++++++-------------------------------
- 2 files changed, 50 insertions(+), 52 deletions(-)
+ fs/f2fs/dir.c   |  2 +-
+ fs/f2fs/f2fs.h  | 23 -----------------------
+ fs/f2fs/namei.c |  7 ++++++-
+ 3 files changed, 7 insertions(+), 25 deletions(-)
 
-diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-index 7748db5092409..a399c54947f28 100644
---- a/fs/crypto/hooks.c
-+++ b/fs/crypto/hooks.c
-@@ -166,12 +166,43 @@ int fscrypt_prepare_setflags(struct inode *inode,
- 	return 0;
- }
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index b2530b9507bd9..414bc94fbd546 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -537,7 +537,7 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
+ 			goto put_error;
  
--int __fscrypt_prepare_symlink(struct inode *dir, unsigned int len,
--			      unsigned int max_len,
--			      struct fscrypt_str *disk_link)
-+/**
-+ * fscrypt_prepare_symlink() - prepare to create a possibly-encrypted symlink
-+ * @dir: directory in which the symlink is being created
-+ * @target: plaintext symlink target
-+ * @len: length of @target excluding null terminator
-+ * @max_len: space the filesystem has available to store the symlink target
-+ * @disk_link: (out) the on-disk symlink target being prepared
-+ *
-+ * This function computes the size the symlink target will require on-disk,
-+ * stores it in @disk_link->len, and validates it against @max_len.  An
-+ * encrypted symlink may be longer than the original.
-+ *
-+ * Additionally, @disk_link->name is set to @target if the symlink will be
-+ * unencrypted, but left NULL if the symlink will be encrypted.  For encrypted
-+ * symlinks, the filesystem must call fscrypt_encrypt_symlink() to create the
-+ * on-disk target later.  (The reason for the two-step process is that some
-+ * filesystems need to know the size of the symlink target before creating the
-+ * inode, e.g. to determine whether it will be a "fast" or "slow" symlink.)
-+ *
-+ * Return: 0 on success, -ENAMETOOLONG if the symlink target is too long,
-+ * -ENOKEY if the encryption key is missing, or another -errno code if a problem
-+ * occurred while setting up the encryption key.
-+ */
-+int fscrypt_prepare_symlink(struct inode *dir, const char *target,
-+			    unsigned int len, unsigned int max_len,
-+			    struct fscrypt_str *disk_link)
- {
- 	int err;
+ 		if (IS_ENCRYPTED(inode)) {
+-			err = fscrypt_inherit_context(dir, inode, page, false);
++			err = fscrypt_set_context(inode, page);
+ 			if (err)
+ 				goto put_error;
+ 		}
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index d9e52a7f3702f..0503371f88ed4 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1315,13 +1315,6 @@ enum fsync_mode {
+ #define IS_IO_TRACED_PAGE(page) (0)
+ #endif
  
-+	if (!IS_ENCRYPTED(dir) && !fscrypt_get_dummy_context(dir->i_sb)) {
-+		disk_link->name = (unsigned char *)target;
-+		disk_link->len = len + 1;
-+		if (disk_link->len > max_len)
-+			return -ENAMETOOLONG;
-+		return 0;
-+	}
-+
- 	/*
- 	 * To calculate the size of the encrypted symlink target we need to know
- 	 * the amount of NUL padding, which is determined by the flags set in
-@@ -207,7 +238,7 @@ int __fscrypt_prepare_symlink(struct inode *dir, unsigned int len,
- 	disk_link->name = NULL;
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(__fscrypt_prepare_symlink);
-+EXPORT_SYMBOL_GPL(fscrypt_prepare_symlink);
- 
- int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
- 			      unsigned int len, struct fscrypt_str *disk_link)
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 81d6ded243288..39e7397a3f103 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -225,9 +225,9 @@ int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry,
- 			     struct fscrypt_name *fname);
- int fscrypt_prepare_setflags(struct inode *inode,
- 			     unsigned int oldflags, unsigned int flags);
--int __fscrypt_prepare_symlink(struct inode *dir, unsigned int len,
--			      unsigned int max_len,
--			      struct fscrypt_str *disk_link);
-+int fscrypt_prepare_symlink(struct inode *dir, const char *target,
-+			    unsigned int len, unsigned int max_len,
-+			    struct fscrypt_str *disk_link);
- int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
- 			      unsigned int len, struct fscrypt_str *disk_link);
- const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
-@@ -520,15 +520,21 @@ static inline int fscrypt_prepare_setflags(struct inode *inode,
- 	return 0;
- }
- 
--static inline int __fscrypt_prepare_symlink(struct inode *dir,
--					    unsigned int len,
--					    unsigned int max_len,
--					    struct fscrypt_str *disk_link)
-+static inline int fscrypt_prepare_symlink(struct inode *dir,
-+					  const char *target,
-+					  unsigned int len,
-+					  unsigned int max_len,
-+					  struct fscrypt_str *disk_link)
- {
--	return -EOPNOTSUPP;
-+	if (IS_ENCRYPTED(dir))
-+		return -EOPNOTSUPP;
-+	disk_link->name = (unsigned char *)target;
-+	disk_link->len = len + 1;
-+	if (disk_link->len > max_len)
-+		return -ENAMETOOLONG;
-+	return 0;
- }
- 
+-#ifdef CONFIG_FS_ENCRYPTION
+-#define DUMMY_ENCRYPTION_ENABLED(sbi) \
+-	(unlikely(F2FS_OPTION(sbi).dummy_enc_ctx.ctx != NULL))
+-#else
+-#define DUMMY_ENCRYPTION_ENABLED(sbi) (0)
+-#endif
 -
- static inline int __fscrypt_encrypt_symlink(struct inode *inode,
- 					    const char *target,
- 					    unsigned int len,
-@@ -793,45 +799,6 @@ static inline int fscrypt_prepare_setattr(struct dentry *dentry,
- 	return 0;
+ /* For compression */
+ enum compress_algorithm_type {
+ 	COMPRESS_LZO,
+@@ -4022,22 +4015,6 @@ static inline bool f2fs_lfs_mode(struct f2fs_sb_info *sbi)
+ 	return F2FS_OPTION(sbi).fs_mode == FS_MODE_LFS;
  }
  
--/**
-- * fscrypt_prepare_symlink() - prepare to create a possibly-encrypted symlink
-- * @dir: directory in which the symlink is being created
-- * @target: plaintext symlink target
-- * @len: length of @target excluding null terminator
-- * @max_len: space the filesystem has available to store the symlink target
-- * @disk_link: (out) the on-disk symlink target being prepared
-- *
-- * This function computes the size the symlink target will require on-disk,
-- * stores it in @disk_link->len, and validates it against @max_len.  An
-- * encrypted symlink may be longer than the original.
-- *
-- * Additionally, @disk_link->name is set to @target if the symlink will be
-- * unencrypted, but left NULL if the symlink will be encrypted.  For encrypted
-- * symlinks, the filesystem must call fscrypt_encrypt_symlink() to create the
-- * on-disk target later.  (The reason for the two-step process is that some
-- * filesystems need to know the size of the symlink target before creating the
-- * inode, e.g. to determine whether it will be a "fast" or "slow" symlink.)
-- *
-- * Return: 0 on success, -ENAMETOOLONG if the symlink target is too long,
-- * -ENOKEY if the encryption key is missing, or another -errno code if a problem
-- * occurred while setting up the encryption key.
-- */
--static inline int fscrypt_prepare_symlink(struct inode *dir,
--					  const char *target,
--					  unsigned int len,
--					  unsigned int max_len,
--					  struct fscrypt_str *disk_link)
+-static inline bool f2fs_may_encrypt(struct inode *dir, struct inode *inode)
 -{
--	if (IS_ENCRYPTED(dir) || fscrypt_get_dummy_context(dir->i_sb) != NULL)
--		return __fscrypt_prepare_symlink(dir, len, max_len, disk_link);
+-#ifdef CONFIG_FS_ENCRYPTION
+-	struct f2fs_sb_info *sbi = F2FS_I_SB(dir);
+-	umode_t mode = inode->i_mode;
 -
--	disk_link->name = (unsigned char *)target;
--	disk_link->len = len + 1;
--	if (disk_link->len > max_len)
--		return -ENAMETOOLONG;
--	return 0;
+-	/*
+-	 * If the directory encrypted or dummy encryption enabled,
+-	 * then we should encrypt the inode.
+-	 */
+-	if (IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi))
+-		return (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode));
+-#endif
+-	return false;
 -}
 -
- /**
-  * fscrypt_encrypt_symlink() - encrypt the symlink target if needed
-  * @inode: symlink inode
+ static inline bool f2fs_may_compress(struct inode *inode)
+ {
+ 	if (IS_SWAPFILE(inode) || f2fs_is_pinned_file(inode) ||
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 84e4bbc1a64de..45f324511a19e 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -28,6 +28,7 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
+ 	nid_t ino;
+ 	struct inode *inode;
+ 	bool nid_free = false;
++	bool encrypt = false;
+ 	int xattr_size = 0;
+ 	int err;
+ 
+@@ -69,13 +70,17 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
+ 		F2FS_I(inode)->i_projid = make_kprojid(&init_user_ns,
+ 							F2FS_DEF_PROJID);
+ 
++	err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
++	if (err)
++		goto fail_drop;
++
+ 	err = dquot_initialize(inode);
+ 	if (err)
+ 		goto fail_drop;
+ 
+ 	set_inode_flag(inode, FI_NEW_INODE);
+ 
+-	if (f2fs_may_encrypt(dir, inode))
++	if (encrypt)
+ 		f2fs_set_encrypted_inode(inode);
+ 
+ 	if (f2fs_sb_has_extra_attr(sbi)) {
 -- 
 2.28.0
 
