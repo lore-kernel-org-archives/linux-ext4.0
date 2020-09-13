@@ -2,185 +2,158 @@ Return-Path: <SRS0=txlG=CW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D150C433E2
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:39:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35FEBC433E2
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 23:45:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 028EF207C3
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 08:39:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1599986387;
-	bh=nVSMprpeSosbO3HIVvYvcbOcUNBMzSOQM0td1dFGCwI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=GQOBpYEx/NklB8KNAF+tSRc2DTluUN41W/46KA+WWKRVXOyqDtagUKvnKnN/J+89l
-	 0G8+fLfwF757CRQhiNABYXk8mbebmV9NABJj1cUeTaIxDNPGbA7KWYpMjV5rDb0VmN
-	 N1jesXZXCTvwSi0a5TcuWIY3e9TgD+7Z9FUweYhg=
+	by mail.kernel.org (Postfix) with ESMTP id F056121D1A
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Sep 2020 23:45:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726054AbgIMIjj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 13 Sep 2020 04:39:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60746 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725957AbgIMIiA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Sep 2020 04:38:00 -0400
-Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3FAA52168B;
-        Sun, 13 Sep 2020 08:37:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1599986278;
-        bh=nVSMprpeSosbO3HIVvYvcbOcUNBMzSOQM0td1dFGCwI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=V00kf5XLm9lY1xt1ty/xgqrsenfsXZ6pzt+SXbnRKQ3e9fVR6We4G0EY8hjqo9Ald
-         7n09iIpMN42vGdntBunQgRVEPLY2cfh/w6QreksAz+rvIEV8FQLnt7JmweobGQXsxw
-         p7XoXPrRGWn4KIukK34qwLiwqe0gAihlc1Aj3XQs=
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
-        Jeff Layton <jlayton@kernel.org>,
-        Daniel Rosenberg <drosen@google.com>
-Subject: [PATCH v2 02/11] ext4: factor out ext4_xattr_credits_for_new_inode()
-Date:   Sun, 13 Sep 2020 01:36:11 -0700
-Message-Id: <20200913083620.170627-3-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20200913083620.170627-1-ebiggers@kernel.org>
-References: <20200913083620.170627-1-ebiggers@kernel.org>
+        id S1725975AbgIMXpS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 13 Sep 2020 19:45:18 -0400
+Received: from mail104.syd.optusnet.com.au ([211.29.132.246]:60273 "EHLO
+        mail104.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725962AbgIMXpQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 13 Sep 2020 19:45:16 -0400
+Received: from dread.disaster.area (pa49-195-191-192.pa.nsw.optusnet.com.au [49.195.191.192])
+        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 28616824433;
+        Mon, 14 Sep 2020 09:45:08 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1kHbg7-00079L-9D; Mon, 14 Sep 2020 09:45:03 +1000
+Date:   Mon, 14 Sep 2020 09:45:03 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     Amir Goldstein <amir73il@gmail.com>,
+        Hugh Dickins <hughd@google.com>,
+        Michael Larabel <Michael@michaellarabel.com>,
+        Ted Ts'o <tytso@google.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: Kernel Benchmarking
+Message-ID: <20200913234503.GS12096@dread.disaster.area>
+References: <8bb582d2-2841-94eb-8862-91d1225d5ebc@MichaelLarabel.com>
+ <CAHk-=wjqE_a6bpZyDQ4DCrvj_Dv2RwQoY7wN91kj8y-tZFRvEA@mail.gmail.com>
+ <0cbc959e-1b8d-8d7e-1dc6-672cf5b3899a@MichaelLarabel.com>
+ <CAHk-=whP-7Uw9WgWgjRgF1mCg+NnkOPpWjVw+a9M3F9C52DrVg@mail.gmail.com>
+ <CAHk-=wjfw3U5eTGWLaisPHg1+jXsCX=xLZgqPx4KJeHhEqRnEQ@mail.gmail.com>
+ <a2369108-7103-278c-9f10-6309a0a9dc3b@MichaelLarabel.com>
+ <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
+ <CAHk-=whjhYa3ig0U_mtpoU5Zok_2Y5zTCw8f-THkf1vHRBDNuA@mail.gmail.com>
+ <20200913004057.GR12096@dread.disaster.area>
+ <CAHk-=wh5Lyr9Tr8wpNDXKeNt=Ngc3jwWaOsN_WbQr+1dAuhJSQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAHk-=wh5Lyr9Tr8wpNDXKeNt=Ngc3jwWaOsN_WbQr+1dAuhJSQ@mail.gmail.com>
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.3 cv=KcmsTjQD c=1 sm=1 tr=0 cx=a_idp_d
+        a=vvDRHhr1aDYKXl+H6jx2TA==:117 a=vvDRHhr1aDYKXl+H6jx2TA==:17
+        a=kj9zAlcOel0A:10 a=reM5J-MqmosA:10 a=7-415B0cAAAA:8
+        a=rQIDHOkk6qEG7OUaQIAA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Sat, Sep 12, 2020 at 07:39:31PM -0700, Linus Torvalds wrote:
+> On Sat, Sep 12, 2020 at 5:41 PM Dave Chinner <david@fromorbit.com> wrote:
+> >
+> > Hmmmm. So this is a typically a truncate race check, but this isn't
+> > sufficient to protect the fault against all page invalidation races
+> > as the page can be re-inserted into the same mapping at a different
+> > page->index now within EOF.
+> 
+> Using some "move" ioctl or similar and using a "invalidate page
+> mapping, then move it to a different point" model?
 
-To compute a new inode's xattr credits, we need to know whether the
-inode will be encrypted or not.  When we switch to use the new helper
-function fscrypt_prepare_new_inode(), we won't find out whether the
-inode will be encrypted until slightly later than is currently the case.
-That will require moving the code block that computes the xattr credits.
+Right, that's the sort of optimisation we could do inside a
+FALLOC_FL_{COLLAPSE,INSERT}_RANGE operation if we wanted to preserve
+the page cache contents instead of invalidating it.
 
-To make this easier and reduce the length of __ext4_new_inode(), move
-this code block into a new function ext4_xattr_credits_for_new_inode().
+> Yeah. I think that ends up being basically an extended special case of
+> the truncate thing (for the invalidate), and would require the
+> filesystem to serialize externally to the page anyway.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/ialloc.c | 90 +++++++++++++++++++++++++++---------------------
- 1 file changed, 51 insertions(+), 39 deletions(-)
+*nod*
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index df25d38d65393..0cc576005a923 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -742,6 +742,53 @@ static int find_inode_bit(struct super_block *sb, ext4_group_t group,
- 	return 1;
- }
- 
-+static int ext4_xattr_credits_for_new_inode(struct inode *dir, mode_t mode,
-+					    bool encrypt)
-+{
-+	struct super_block *sb = dir->i_sb;
-+	int nblocks = 0;
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+	struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
-+
-+	if (IS_ERR(p))
-+		return PTR_ERR(p);
-+	if (p) {
-+		int acl_size = p->a_count * sizeof(ext4_acl_entry);
-+
-+		nblocks += (S_ISDIR(mode) ? 2 : 1) *
-+			__ext4_xattr_set_credits(sb, NULL /* inode */,
-+						 NULL /* block_bh */, acl_size,
-+						 true /* is_create */);
-+		posix_acl_release(p);
-+	}
-+#endif
-+
-+#ifdef CONFIG_SECURITY
-+	{
-+		int num_security_xattrs = 1;
-+
-+#ifdef CONFIG_INTEGRITY
-+		num_security_xattrs++;
-+#endif
-+		/*
-+		 * We assume that security xattrs are never more than 1k.
-+		 * In practice they are under 128 bytes.
-+		 */
-+		nblocks += num_security_xattrs *
-+			__ext4_xattr_set_credits(sb, NULL /* inode */,
-+						 NULL /* block_bh */, 1024,
-+						 true /* is_create */);
-+	}
-+#endif
-+	if (encrypt)
-+		nblocks += __ext4_xattr_set_credits(sb,
-+						    NULL /* inode */,
-+						    NULL /* block_bh */,
-+						    FSCRYPT_SET_CONTEXT_MAX_SIZE,
-+						    true /* is_create */);
-+	return nblocks;
-+}
-+
- /*
-  * There are two policies for allocating an inode.  If the new inode is
-  * a directory, then a forward search is made for a block group with both
-@@ -796,45 +843,10 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	}
- 
- 	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--		struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
--
--		if (IS_ERR(p))
--			return ERR_CAST(p);
--		if (p) {
--			int acl_size = p->a_count * sizeof(ext4_acl_entry);
--
--			nblocks += (S_ISDIR(mode) ? 2 : 1) *
--				__ext4_xattr_set_credits(sb, NULL /* inode */,
--					NULL /* block_bh */, acl_size,
--					true /* is_create */);
--			posix_acl_release(p);
--		}
--#endif
--
--#ifdef CONFIG_SECURITY
--		{
--			int num_security_xattrs = 1;
--
--#ifdef CONFIG_INTEGRITY
--			num_security_xattrs++;
--#endif
--			/*
--			 * We assume that security xattrs are never
--			 * more than 1k.  In practice they are under
--			 * 128 bytes.
--			 */
--			nblocks += num_security_xattrs *
--				__ext4_xattr_set_credits(sb, NULL /* inode */,
--					NULL /* block_bh */, 1024,
--					true /* is_create */);
--		}
--#endif
--		if (encrypt)
--			nblocks += __ext4_xattr_set_credits(sb,
--					NULL /* inode */, NULL /* block_bh */,
--					FSCRYPT_SET_CONTEXT_MAX_SIZE,
--					true /* is_create */);
-+		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
-+		if (ret2 < 0)
-+			return ERR_PTR(ret2);
-+		nblocks += ret2;
- 	}
- 
- 	ngroups = ext4_get_groups_count(sb);
+> Which they would presumably already do with the MMAPLOCK or similar,
+> so I guess that's not a huge deal.
+> 
+> The real worry with (d) is that we are using the page lock for other
+> things too, not *just* the truncate check. Things where the inode lock
+> wouldn't be helping, like locking against throwing pages out of the
+> page cache entirely, or the hugepage splitting/merging etc. It's not
+> being truncated, it's just the VM shrinking the cache or modifying
+> things in other ways.
+
+Yes, that is a problem, and us FS people don't know/see all the
+places this can occur. We generally find out about them when one of
+our regression stress tests trips over a data corruption. :(
+
+I have my doubts that complex page cache manipulation operations
+like ->migrate_page that rely exclusively on page and internal mm
+serialisation are really safe against ->fallocate based invalidation
+races.  I think they probably also need to be wrapped in the
+MMAPLOCK, but I don't understand all the locking and constraints
+that ->migrate_page has and there's been no evidence yet that it's a
+problem so I've kinda left that alone. I suspect that "no evidence"
+thing comes from "filesystem people are largely unable to induce
+page migrations in regression testing" so it has pretty much zero
+test coverage....
+
+Stuff like THP splitting hasn't been an issue for us because the
+file-backed page cache does not support THP (yet!). That's
+something I'll be looking closely at in Willy's upcoming patchset.
+
+> So I do worry a bit about trying to make things per-inode (or even
+> some per-range thing with a smarter lock) for those reasons. We use
+> the page lock not just for synchronizing with filesystem operations,
+> but for other page state synchronization too.
+
+Right, I'm not suggesting the page lock goes away, just saying that
+we actually need two levels of locking for file-backed pages - one
+filesystem, one page level - and that carefully selecting where we
+"aggregate" the locking for complex multi-object operations might
+make the overall locking simpler.
+
+> In many ways I think keeping it as a page-lock, and making the
+> filesystem operations just act on the range of pages would be safer.
+
+Possibly, but that "range of pages" lock still doesn't really solve
+the filesystem level serialisation problem.  We have to prevent page
+faults from running over a range even when there aren't pages in the
+page cache over that range (i.e. after we invalidate the range).
+Hence we cannot rely on anything struct page related - the
+serialisation mechanism has to be external to the cached pages
+themselves, but it also has to integrate cleanly into the existing
+locking and transaction ordering constraints we have.
+
+> But the page locking code does have some extreme downsides, exactly
+> because there are so _many_ pages and we end up having to play some
+> extreme size games due to that (ie the whole external hashing, but
+> also just not being able to use any debug locks etc, because we just
+> don't have the resources to do debugging locks at that kind of
+> granularity).
+
+*nod*
+
+The other issue here is that serialisation via individual cache
+object locking just doesn't scale in any way to the sizes of
+operations that fallocate() can run. fallocate() has 64 bit
+operands, so a user could ask us to lock down a full 8EB range of
+file. Locking that page by page, even using 1GB huge page Xarray
+slot entries, is just not practical... :/
+
+Cheers,
+
+Dave.
 -- 
-2.28.0
-
+Dave Chinner
+david@fromorbit.com
