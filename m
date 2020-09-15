@@ -2,196 +2,191 @@ Return-Path: <SRS0=J/i5=CY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C3E11C433E2
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:57:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1E7EC43461
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 22:46:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7000D20809
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:57:32 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=tessares-net.20150623.gappssmtp.com header.i=@tessares-net.20150623.gappssmtp.com header.b="YZ1qJeWD"
+	by mail.kernel.org (Postfix) with ESMTP id 934E520795
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 22:46:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727842AbgIOT5T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Sep 2020 15:57:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57530 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727825AbgIOT4q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2020 15:56:46 -0400
-Received: from mail-ej1-x629.google.com (mail-ej1-x629.google.com [IPv6:2a00:1450:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 16C79C061788
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:56:46 -0700 (PDT)
-Received: by mail-ej1-x629.google.com with SMTP id e23so6822802eja.3
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:56:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=tessares-net.20150623.gappssmtp.com; s=20150623;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=GpAjogX5KHpPYudErdDqBFNqQR1HiYdRO79ByOxK/1M=;
-        b=YZ1qJeWD42At/4TPPtDp1NiAXhBuWITqr/9SfJi5gJ/aGGCrzamXIsOlxmqXCL7m5+
-         IMDBGZeXSOP3Zr+fc0Eqa5VYV460KI/Lrt5BcRkCtkLLY1iugXf/E4yk85Gr649FVuyW
-         BHSQ8ENiyk9US/p7BCZTf27LmX9B7Ed4hbnoZVBrWCfYVNbvF7nDO9Xx3cK5Eg2zuffg
-         p7IHCOzxxGtocsXOX84JU7k5w1p9UrqH9F/1FjbHuYaTlLqW8HJ94zrw6FL9FIhTE6u7
-         jZ22SQZpEPLKVHx8ZHwryuZxQB1NTc4s5+2Q0ZT7W/4bsGFDUJmNaIMaqcKHwXm3WaKU
-         k0ag==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=GpAjogX5KHpPYudErdDqBFNqQR1HiYdRO79ByOxK/1M=;
-        b=oaBnWptgXOmleXFP/xY2ep1fQeMyw2zfeIE1PUwVYmRij4wUHKW6iK6pdqZFDwuVHP
-         7ImCPouBcqczcHIn8aH0+CPX+VUdPzsSvqnKTsmHfYUFHPOBuzLCCczXbLRvHALhc/Xs
-         QuZU6T57i3LIInrQ7X29oyGF+eQz+kGAgrFYcBC/4/wQpBNAnPuyfmvRcpPXmVqLDVWx
-         FVZJe52ShhpKBLZZscE5mU79KCcjue/u+5JVBHK0PFXQHVZiS2u7Cx3eias0uDSFsX0A
-         7EawuOZzGyQpr4BEPDHKcX092z6FfY9b3cf0u5X2/i1QGGBHLnWSWIZ8JR8kYEbQ3Uza
-         TEPQ==
-X-Gm-Message-State: AOAM533ZDqPO0zS/QWtl5awm7+67Y45tG0JlH5iQq3ys/EvyOmZVXynQ
-        tydpAcO86l6T/grK0JfA49FdTA==
-X-Google-Smtp-Source: ABdhPJyryQLLphSyB8qnI1GpJF4j42P2if4BPsLIss/EPwd2ejE5TgpyVTFXUuEyqwfC76ZKJF0D3A==
-X-Received: by 2002:a17:907:2115:: with SMTP id qn21mr21463544ejb.278.1600199803404;
-        Tue, 15 Sep 2020 12:56:43 -0700 (PDT)
-Received: from tsr-lap-08.nix.tessares.net ([2a02:578:85b0:e00:ec32:668e:7a20:c1cd])
-        by smtp.gmail.com with ESMTPSA id by24sm11059782ejc.100.2020.09.15.12.56.42
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 15 Sep 2020 12:56:42 -0700 (PDT)
-Subject: Re: Kernel Benchmarking
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     Michael Larabel <Michael@michaellarabel.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Amir Goldstein <amir73il@gmail.com>,
-        Ted Ts'o <tytso@google.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-References: <CAHk-=wiz=J=8mJ=zRG93nuJ9GtQAm5bSRAbWJbWZuN4Br38+EQ@mail.gmail.com>
- <CAHk-=wjfw3U5eTGWLaisPHg1+jXsCX=xLZgqPx4KJeHhEqRnEQ@mail.gmail.com>
- <a2369108-7103-278c-9f10-6309a0a9dc3b@MichaelLarabel.com>
- <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
- <0daf6ae6-422c-dd46-f85a-e83f6e1d1113@MichaelLarabel.com>
- <20200912143704.GB6583@casper.infradead.org>
- <658ae026-32d9-0a25-5a59-9c510d6898d5@MichaelLarabel.com>
- <CAHk-=wip0bCNnFK2Sxdn-YCTdKBF2JjF0kcM5mXbRuKKp3zojw@mail.gmail.com>
- <c560a38d-8313-51fb-b1ec-e904bd8836bc@tessares.net>
- <CAHk-=wgZEUoiGoKh92stUh3sBA-7D24i6XqQN2UMm3u4=XkQkg@mail.gmail.com>
- <9550725a-2d3f-fa35-1410-cae912e128b9@tessares.net>
- <CAHk-=wimdSWe+GVBKwB0_=ZKX2ZN5JEqK5yA99toab4MAoYAsg@mail.gmail.com>
- <CAHk-=wimjnAsoDUjkanC2BQTntwK4qtzmPdBbtmgM=MMhR6B2w@mail.gmail.com>
- <a9faedf1-c528-38e9-2ac4-e8847ecda0f2@tessares.net>
- <CAHk-=wiHPE3Q-qARO+vqbN0FSHwQXCYSmKcrjgxqVLJun5DjhA@mail.gmail.com>
-From:   Matthieu Baerts <matthieu.baerts@tessares.net>
-Message-ID: <37989469-f88c-199b-d779-ed41bc65fe56@tessares.net>
-Date:   Tue, 15 Sep 2020 21:56:41 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.2.1
+        id S1727609AbgIOWqR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Sep 2020 18:46:17 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39918 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727582AbgIOWpz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2020 18:45:55 -0400
+Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 08FMjf7x012451
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 15 Sep 2020 18:45:42 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id CE27C42004D; Tue, 15 Sep 2020 18:45:41 -0400 (EDT)
+Date:   Tue, 15 Sep 2020 18:45:41 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Ming Lei <ming.lei@redhat.com>
+Cc:     Jens Axboe <axboe@kernel.dk>, linux-ext4@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-block@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: REGRESSION: 37f4a24c2469: blk-mq: centralise related handling
+ into blk_mq_get_driver_tag
+Message-ID: <20200915224541.GB38283@mit.edu>
+References: <20c844c8-b649-3250-ff5b-b7420f72ff38@kernel.dk>
+ <20200822143326.GC199705@mit.edu>
+ <aff250ad-4c31-15c2-fa1d-3f3945cb7aa5@kernel.dk>
+ <7f0e2d99-5da2-237e-a894-0afddc0ace1e@kernel.dk>
+ <049a97db-c362-bcfb-59e5-4b1d2df59383@kernel.dk>
+ <5140ba6c-779c-2a71-b7f2-3c3220cdf19c@kernel.dk>
+ <68510957-c887-8e26-4a1a-a7a93488586a@kernel.dk>
+ <20200904035528.GE558530@mit.edu>
+ <20200915044519.GA38283@mit.edu>
+ <20200915073303.GA754106@T590>
 MIME-Version: 1.0
-In-Reply-To: <CAHk-=wiHPE3Q-qARO+vqbN0FSHwQXCYSmKcrjgxqVLJun5DjhA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-GB
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200915073303.GA754106@T590>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 15/09/2020 21:32, Linus Torvalds wrote:>
-> Was that an actual UP kernel? It might be good to try that too, just
-> to see if it could be an SMP race in the page locking code.
+On Tue, Sep 15, 2020 at 03:33:03PM +0800, Ming Lei wrote:
+> Hi Theodore,
+> 
+> On Tue, Sep 15, 2020 at 12:45:19AM -0400, Theodore Y. Ts'o wrote:
+> > On Thu, Sep 03, 2020 at 11:55:28PM -0400, Theodore Y. Ts'o wrote:
+> > > Worse, right now, -rc1 and -rc2 is causing random crashes in my
+> > > gce-xfstests framework.  Sometimes it happens before we've run even a
+> > > single xfstests; sometimes it happens after we have successfully
+> > > completed all of the tests, and we're doing a shutdown of the VM under
+> > > test.  Other times it happens in the middle of a test run.  Given that
+> > > I'm seeing this at -rc1, which is before my late ext4 pull request to
+> > > Linus, it's probably not an ext4 related bug.  But it also means that
+> > > I'm partially blind in terms of my kernel testing at the moment.  So I
+> > > can't even tell Linus that I've run lots of tests and I'm 100%
+> > > confident your one-line change is 100% safe.
+> > 
+> > I was finally able to bisect it down to the commit:
+> > 
+> > 37f4a24c2469: blk-mq: centralise related handling into blk_mq_get_driver_tag
+> 
+> 37f4a24c2469 has been reverted in:
+> 
+> 	4e2f62e566b5 Revert "blk-mq: put driver tag when this request is completed"
+> 
+> And later the patch is committed as the following after being fixed:
+> 
+> 	568f27006577 blk-mq: centralise related handling into blk_mq_get_driver_tag
+> 
+> So can you reproduce the issue by running kernel of commit 568f27006577?
 
-I am sorry, I am not sure how to verify this. I guess it was one 
-processor because I removed "-smp 2" option from qemu. So I guess it 
-switched to a uniprocessor mode.
+Yes.  And things work fine if I try 4e2f62e566b5.
 
-Also, when I did the test and to make sure I was using only one CPU, I 
-also printed the output of /proc/cpuinfo:
+> If yes, can the issue be fixed by reverting 568f27006577?
 
+The problem is it's a bit tricky to revert 568f27006577, since there
+is a merge conflict in blk_kick_flush().  I attempted to do the bisect
+manually here, but it's clearly not right since the kernel is not
+booting after the revert:
 
-+ cat /proc/cpuinfo 
+https://github.com/tytso/ext4/commit/1e67516382a33da2c9d483b860ac4ec2ad390870
 
-processor       : 0 
+branch:
 
-vendor_id       : AuthenticAMD 
+https://github.com/tytso/ext4/tree/manual-revert-of-568f27006577
 
-cpu family      : 23 
+Can you send me a patch which correctly reverts 568f27006577?  I can
+try it against -rc1 .. -rc4, whichever is most convenient.
 
-model           : 1 
+> Can you share the exact mount command line for setup the environment?
+> and the exact xfstest item?
 
-model name      : AMD EPYC 7401P 24-Core Processor 
+It's a variety of mount command lines, since I'm using gce-xfstests[1][2]
+using a variety of file system scenarios --- but the basic one, which
+is ext4 using the default 4k block size is failing (they all are failing).
 
-stepping        : 2 
+[1] https://thunk.org/gce-xfstests
+[2] https://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md
 
-microcode       : 0x1000065 
+It's also not one consistent xfstests which is failing, but it does
+tend to be tests which are loading up the storage stack with a lot of
+small random read/writes, especially involving metadata blocks/writes.
+(For example, tests which run fsstress.)
 
-cpu MHz         : 2000.000
-cache size      : 512 KB 
+Since this reliably triggers for me, and other people running
+kvm-xfstests or are running xfstests on their own test environments
+aren't seeing it, I'm assuming it must be some kind of interesting
+interaction between virtio-scsi, perhaps with how Google Persistent
+Disk is behaving (maybe timing related?  who knows?).  Darrick Wong
+did say he saw something like it once using Oracle's Cloud
+infrastructure, but as far as I know it hasn't reproduced since.  On
+Google Compute Engine VM's, it reproduces *extremely* reliably.
 
-physical id     : 0 
- 
- 
+I expect that if you were to set up gce-xfstests, get a free GCE
+account with the initial $300 free credits, you could run
+"gce-xfstests -c ext4/4k -g auto" and it would reproduce within an
+hour or so.  (So under a dollar's worth of VM credits, so long as you
+notice that it's hung and shut down the VM after gathering debugging
+data.)
 
-siblings        : 1 
- 
- 
+The instructions are at [2], and the image xfstests-202008311554 in
+the xfstests-cloud project is a public copy of the VM test appliance I
+was using.
 
-core id         : 0 
-
-cpu cores       : 1 
-
-apicid          : 0 
-
-initial apicid  : 0 
-
-fpu             : yes 
- 
- 
-
-fpu_exception   : yes 
-
-cpuid level     : 13 
-
-wp              : yes 
- 
- 
-
-flags           : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge 
-mca cmov pat pse36 clflush mmx fxsr sse sse2 syscall nx mmxext fxsr_opt 
-pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni 
-pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 x2apic movbe
-popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm 
-cmp_legacy svm cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ssbd 
-ibpb vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 rdseed adx smap 
-clflushopt sha_ni xsaveopt xsavec xgetbv1 virt_ssbd
-arat npt nrip_save arch_capabilities
-bugs            : fxsave_leak sysret_ss_attrs null_seg spectre_v1 
-spectre_v2 spec_store_bypass 
- 
-
-bogomips        : 4000.00
-TLB size        : 1024 4K pages
-clflush size    : 64
-cache_alignment : 64 
-
-address sizes   : 40 bits physical, 48 bits virtual 
-
-power management:
-
-
-Do you want me to try another qemu config?
-
-Sorry, it is getting late for me but I also forgot to mention earlier 
-that with 1 CPU and your new sysctl set to 1, it didn't reproduce my 
-issue for 6 executions.
-
-> After all, one such theoretical race was one reason I started the rewrite.
-
-And that's a good thing, thank you! :)
+% gcloud compute images describe --project xfstests-cloud xfstests-202008311554
+archiveSizeBytes: '1720022528'
+creationTimestamp: '2020-09-15T15:09:30.544-07:00'
+description: Linux Kernel File System Test Appliance
+diskSizeGb: '10'
+family: xfstests
+guestOsFeatures:
+- type: VIRTIO_SCSI_MULTIQUEUE
+- type: UEFI_COMPATIBLE
+id: '1558420969906537845'
+kind: compute#image
+labelFingerprint: V-2Qgcxt2uw=
+labels:
+  blktests: g8a75bed
+  e2fsprogs: v1_45_6
+  fio: fio-3_22
+  fsverity: v1_2
+  ima-evm-utils: v1_3_1
+  nvme-cli: v1_12
+  quota: g13bb8c2
+  util-linux: v2_36
+  xfsprogs: v5_8_0-rc1
+  xfstests: linux-v3_8-2838-geb439bf2
+  xfstests-bld: gb5085ab
+licenseCodes:
+- '5543610867827062957'
+licenses:
+- https://www.googleapis.com/compute/v1/projects/debian-cloud/global/licenses/debian-10-buster
+name: xfstests-202008311554
+selfLink: https://www.googleapis.com/compute/v1/projects/xfstests-cloud/global/images/xfstests-202008311554
+sourceDisk: https://www.googleapis.com/compute/v1/projects/xfstests-cloud/zones/us-east1-d/disks/temp-xfstests-202008311554
+sourceDiskId: '5824762850044577124'
+sourceType: RAW
+status: READY
+storageLocations:
+- us
 
 Cheers,
-Matt
--- 
-Tessares | Belgium | Hybrid Access Solutions
-www.tessares.net
+
+					- Ted
+
+P.S.  As you can see, I can also easily run blktests using this VM
+Test Appliance.  If you think it would be helpful for me to try
+running one or more of the blktests test groups, I can do that.
+
+I've been focusing on using xfstests mainly because this is my primary
+way of running regression tests, and I'm blocked on ext4 testing until
+I can figure out this particular problem.  Which is why a proper
+revert of 568f27006577 would be extremely helpful, if only so I can
+apply that on top of the ext4 git tree temporarily so I can run my
+file system regression tests.
