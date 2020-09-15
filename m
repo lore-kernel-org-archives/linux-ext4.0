@@ -7,66 +7,65 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F996C433E2
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:25:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D49EC433E2
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:33:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EFB66206B2
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:25:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 307882078E
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Sep 2020 19:33:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600197943;
-	bh=8U2un9oG+EJpj3mhibwkKaIL+lkeB5qdQTSeeiJ5bxs=;
+	s=default; t=1600198419;
+	bh=Co1KWW5xnaGLxk6+yq2feYi6sGUIfkB1yNngh4zWroU=;
 	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=rIwl7Nsvu+serOriy5ZFkvT0l8Fwy9VAjVECpzZWTr/6+YY2G0xMmiHQymjJCqa+d
-	 t6f8QxL98ch487BSX2g1FegY+xJy6nld9Q7I3P81MVyzb8DcGY2eeJSxFdQ288NRxM
-	 vyS/3iTaEjTNfw7+7hT7fYVJ3DqhB1rO+K+9s12A=
+	b=gYCnmBq82O8KV/mGmAloUUEDAJYgVH/NqrudX2LeKFfhslRH+FGEqNclW6CG0R+sD
+	 69omcO6aPnrNZ6cUJkkUMIUCWgHZ8PoRPdOSt0M7PxouBRja9FRYVxlE8nqps23b2D
+	 OPCA6pDoGxC5jPJb2jSctubcvuyUCXaOShq34XEE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727821AbgIOTZi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Sep 2020 15:25:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52276 "EHLO
+        id S1727869AbgIOTd1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Sep 2020 15:33:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53548 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727751AbgIOTZN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2020 15:25:13 -0400
-Received: from mail-lf1-x142.google.com (mail-lf1-x142.google.com [IPv6:2a00:1450:4864:20::142])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BDFEDC06178A
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:25:12 -0700 (PDT)
-Received: by mail-lf1-x142.google.com with SMTP id y17so4323747lfa.8
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:25:12 -0700 (PDT)
+        with ESMTP id S1727653AbgIOTdG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Sep 2020 15:33:06 -0400
+Received: from mail-lf1-x144.google.com (mail-lf1-x144.google.com [IPv6:2a00:1450:4864:20::144])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 289FFC06178A
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:33:05 -0700 (PDT)
+Received: by mail-lf1-x144.google.com with SMTP id x69so4375462lff.3
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:33:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=linux-foundation.org; s=google;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=vJ76vB6+4ycMBkD931QgS5Ukqdx5kxOnbEsbkPVkIJY=;
-        b=K/ky+PYuwHYePx6OEBKns0EDkIr8nowBSRrpiET1hezMsa2hv3rsR9+InJ1nA1DgeP
-         0a4AvpQh70LEMzRyqpbSEEzCp2BJhZFW9DEXqX3K41QwfFVydy5j7YOeYzsT7qixL2wL
-         JXBW8/jfZbyeO9l02MHA96BInuP3nsCSINfDw=
+        bh=R4adhV9rWK5fVJfVLfsA1RpAgGhE1SKba3wPMEBwlHQ=;
+        b=RMErlYgJlXkb0Vz5F+GbJlAflS7CDOBEDAnHgQ6XVorvnlASnwLA1/u0rSrYkXuFQM
+         mNgrBeUfGtILyZVOTcMIj+g0bkAfmvZpba3gU5I2q4S9ORj5JefAeBSRKnVWXI5NSMTF
+         vNpL7v5vEzpKJDwkYko3HD1FM2oHMq+fF9Jz0=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=vJ76vB6+4ycMBkD931QgS5Ukqdx5kxOnbEsbkPVkIJY=;
-        b=DR5xn3PCE/pgiLWJ/7z+dX3p2eCIdzmS2sFuWeSNi4qK67ok3On/GTOymbQ6QXLhll
-         09Frc0bXj0HfueMPuAufrf3D1U8MSP+PhWTaQ5D21xYl+HucrC+33Qfh9otmyGEqUABU
-         lIfcR57Extw8FNfbMH0I43oVARB73HoeaQP/KwZak1JrmM1mrnkBBoFLHDHAlfdPreTO
-         HPK+q6d1U6H9DBrUsbViwnsQExC+hmHPViuSZevHn8RMOSb9aRCOq8ltLsEqCxR7qTwW
-         y5anVLL80rpU7l3qAoGsSvh0aihWiZtzBbNrtXmSPY9aT/zFpGEHqZgGvMfwa8yguyMf
-         97Mw==
-X-Gm-Message-State: AOAM5311DNaMq2YKYwiOU4juBQj3LIdpQlbG1bAvFVQ8kGDzqWre2b46
-        rX6jLhVtd+YrdfJWOroL1nshSwCyxoeGUQ==
-X-Google-Smtp-Source: ABdhPJzL1czTY82PNnA89zlrd0i9WJ6H44qB/uLqMJFbgW+T/3mMV/MZNoFRKJEyoUf0ivklStCNZA==
-X-Received: by 2002:a19:a408:: with SMTP id q8mr6319173lfc.419.1600197910849;
-        Tue, 15 Sep 2020 12:25:10 -0700 (PDT)
-Received: from mail-lj1-f175.google.com (mail-lj1-f175.google.com. [209.85.208.175])
-        by smtp.gmail.com with ESMTPSA id q22sm4506115lfp.40.2020.09.15.12.25.09
+        bh=R4adhV9rWK5fVJfVLfsA1RpAgGhE1SKba3wPMEBwlHQ=;
+        b=YoL8QDKFqHduTE4cK5dcMwjfY9wfkJbVqI4QOKmwR128G1/UpU5lLjQmi3hqYeWNzJ
+         IF2raH7L8me+M4lef53LZ1Z8WNK6hEsRskkCHgue0BDzXaR0jHsYkk0BNzk8kvh8LSZ/
+         fRpxuTX4KVbYa5NGObtWx6UCLLEVA+BNZfRKoZgPcWY8jdHBGLgpfyHvanv5du15ixhY
+         5Ormgs/3v/9ReXTtSwfltHDxv2ILYO1eSkvl0clKDe94EJatmGvJmZ4nbiVLvBve5ddA
+         d9iATI5ZozL4U6bZALd7E4gPgm2LjFuWFwTh6jVwL0PA+c8QobvfyFoEr8HHZrBuq5P3
+         FKRw==
+X-Gm-Message-State: AOAM5313LWRM3+RQ2lJaPfud8dy9hRBDB+jDo1HPvvpWStxgMOPdHjzS
+        1cHnt1weyTTannASiNP2f6gOW/uvv1BIgg==
+X-Google-Smtp-Source: ABdhPJyfoIbSd6fCJEG31YPyUIPBGspi11iVTqI+vLQ18j3aR9Z16KI146x0S0I99cA5FTvp+pj6jg==
+X-Received: by 2002:a19:814d:: with SMTP id c74mr6288393lfd.302.1600198383138;
+        Tue, 15 Sep 2020 12:33:03 -0700 (PDT)
+Received: from mail-lj1-f179.google.com (mail-lj1-f179.google.com. [209.85.208.179])
+        by smtp.gmail.com with ESMTPSA id f207sm4533069lfd.47.2020.09.15.12.33.01
         for <linux-ext4@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 15 Sep 2020 12:25:09 -0700 (PDT)
-Received: by mail-lj1-f175.google.com with SMTP id u21so3837906ljl.6
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:25:09 -0700 (PDT)
-X-Received: by 2002:a2e:994a:: with SMTP id r10mr5176148ljj.102.1600197909019;
- Tue, 15 Sep 2020 12:25:09 -0700 (PDT)
+        Tue, 15 Sep 2020 12:33:01 -0700 (PDT)
+Received: by mail-lj1-f179.google.com with SMTP id b19so3826537lji.11
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Sep 2020 12:33:01 -0700 (PDT)
+X-Received: by 2002:a2e:7819:: with SMTP id t25mr6952577ljc.371.1600198380912;
+ Tue, 15 Sep 2020 12:33:00 -0700 (PDT)
 MIME-Version: 1.0
 References: <CAHk-=wiz=J=8mJ=zRG93nuJ9GtQAm5bSRAbWJbWZuN4Br38+EQ@mail.gmail.com>
- <CAHk-=wjqE_a6bpZyDQ4DCrvj_Dv2RwQoY7wN91kj8y-tZFRvEA@mail.gmail.com>
  <0cbc959e-1b8d-8d7e-1dc6-672cf5b3899a@MichaelLarabel.com> <CAHk-=whP-7Uw9WgWgjRgF1mCg+NnkOPpWjVw+a9M3F9C52DrVg@mail.gmail.com>
  <CAHk-=wjfw3U5eTGWLaisPHg1+jXsCX=xLZgqPx4KJeHhEqRnEQ@mail.gmail.com>
  <a2369108-7103-278c-9f10-6309a0a9dc3b@MichaelLarabel.com> <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
@@ -74,12 +73,12 @@ References: <CAHk-=wiz=J=8mJ=zRG93nuJ9GtQAm5bSRAbWJbWZuN4Br38+EQ@mail.gmail.com>
  <658ae026-32d9-0a25-5a59-9c510d6898d5@MichaelLarabel.com> <CAHk-=wip0bCNnFK2Sxdn-YCTdKBF2JjF0kcM5mXbRuKKp3zojw@mail.gmail.com>
  <c560a38d-8313-51fb-b1ec-e904bd8836bc@tessares.net> <CAHk-=wgZEUoiGoKh92stUh3sBA-7D24i6XqQN2UMm3u4=XkQkg@mail.gmail.com>
  <9550725a-2d3f-fa35-1410-cae912e128b9@tessares.net> <CAHk-=wimdSWe+GVBKwB0_=ZKX2ZN5JEqK5yA99toab4MAoYAsg@mail.gmail.com>
- <9a92bf16-02c5-ba38-33c7-f350588ac874@tessares.net>
-In-Reply-To: <9a92bf16-02c5-ba38-33c7-f350588ac874@tessares.net>
+ <CAHk-=wimjnAsoDUjkanC2BQTntwK4qtzmPdBbtmgM=MMhR6B2w@mail.gmail.com> <a9faedf1-c528-38e9-2ac4-e8847ecda0f2@tessares.net>
+In-Reply-To: <a9faedf1-c528-38e9-2ac4-e8847ecda0f2@tessares.net>
 From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue, 15 Sep 2020 12:24:52 -0700
-X-Gmail-Original-Message-ID: <CAHk-=wihcYiKwZQjwGd8eHLqMm=sL23a=fyzJ_u1YiFNsKN2AQ@mail.gmail.com>
-Message-ID: <CAHk-=wihcYiKwZQjwGd8eHLqMm=sL23a=fyzJ_u1YiFNsKN2AQ@mail.gmail.com>
+Date:   Tue, 15 Sep 2020 12:32:44 -0700
+X-Gmail-Original-Message-ID: <CAHk-=wiHPE3Q-qARO+vqbN0FSHwQXCYSmKcrjgxqVLJun5DjhA@mail.gmail.com>
+Message-ID: <CAHk-=wiHPE3Q-qARO+vqbN0FSHwQXCYSmKcrjgxqVLJun5DjhA@mail.gmail.com>
 Subject: Re: Kernel Benchmarking
 To:     Matthieu Baerts <matthieu.baerts@tessares.net>
 Cc:     Michael Larabel <Michael@michaellarabel.com>,
@@ -96,38 +95,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 15, 2020 at 12:01 PM Matthieu Baerts
+On Tue, Sep 15, 2020 at 12:26 PM Matthieu Baerts
 <matthieu.baerts@tessares.net> wrote:
 >
-> Earlier today, I got one trace with 'sysrq-T' but it is more than 1100
-> lines. It is attached to this email also with a version from
-> "decode_stacktrace.sh", I hope that's alright.
+> I don't know if this info is useful but I just checked and I can
+> reproduce the issue with a single CPU.
 
-Yeah, there's nothing interesting there.
+Good thinking.
 
-The only relevant tasks seem to be the packetdrill ones that are
-blocked on the page lock. I don't see anything that looks even
-*remotely* like it could be holding a page lock and be waiting for
-anything else.
+> And the trace is very similar to the previous one:
 
-A couple of pipe readers, a number of parents waiting on their
-children, one futex waiter, one select loop.. Nothing at all
-unexpected or remotely suspicious.
+.. and yes, now there are no messy traces, they all have that
+__lock_page_killable() unambiguously in them (and the only '?' entries
+are just from stale stuff on the stack which is due to stack frames
+that aren't fully initialized and old stack frame data shining
+through).
 
-The packetdrill ones look very similar.
+So it does seem like the previous trace uncertainty was likely just a
+cross-CPU issue.
 
-> I forgot one important thing, I was on top of David Miller's net-next
-> branch by reflex. I can redo the traces on top of linux-next if needed.
+Was that an actual UP kernel? It might be good to try that too, just
+to see if it could be an SMP race in the page locking code.
 
-Not likely an issue.
+After all, one such theoretical race was one reason I started the rewrite.
 
-I'll go stare at the page lock code again to see if I've missed
-anything. I still suspect it's a latent ABBA deadlock that is just
-much *much* easier to trigger with the synchronous lock handoff, but I
-don't see where it is.
-
-I guess this is all fairly theoretical since we apparently need to do
-that hybrid "limited fairness" patch anyway, and it fixes your issue,
-but I hate not understanding the problem.
-
-              Linus
+                       Linus
