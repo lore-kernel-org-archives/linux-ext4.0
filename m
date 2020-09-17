@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E9DEC35269
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61620C433E2
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F31D1206A2
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 28E87206A2
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600316474;
-	bh=b+br3C3cbfnBLBIC6l48f9MznNCXZDVFxP9oBuV6fkI=;
+	s=default; t=1600316480;
+	bh=MedRkQM4S6L0pv+MPP4bqqDFZVyFMtpnCXSEEWcRDY0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=P8dPA7HmeRuxYhMFy9nvco5X+3lOWlZB75QnELcXkioqJp58qRjKwoBeG069I3Q+j
-	 LToPYvFt9VlSoXXQv2R3iqmY8V51qb4foIPpETEztSvcjwV9xa6sb1CqCRpg3JesNw
-	 +vkZcjUgYsFDpaWMD94tRtrr5GhDEKx/59RgZ3gA=
+	b=2Oq4HvWHE28BMckvrtJ27Ht4znaUxL1hrT84OqssdSuG0g/Wu7sqqJ9sk3MP5x+kV
+	 DXHv0qU8vw6cbOEV26GN1YcCN6VZ+VnSk0CQ/yCbZ3US7HLNTEJW568L9Fl9Vop//W
+	 hRhz7v0wbS84BxbKKpGbAU5LTnA6ZnLlXLNwB0Aw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726269AbgIQEUy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 00:20:54 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33844 "EHLO mail.kernel.org"
+        id S1726178AbgIQEVQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Sep 2020 00:21:16 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33850 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726156AbgIQEUv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 17 Sep 2020 00:20:51 -0400
+        id S1726171AbgIQEUw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Sep 2020 00:20:52 -0400
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id BB72121973;
-        Thu, 17 Sep 2020 04:13:08 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 8E959221EE;
+        Thu, 17 Sep 2020 04:13:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600315988;
-        bh=b+br3C3cbfnBLBIC6l48f9MznNCXZDVFxP9oBuV6fkI=;
+        s=default; t=1600315991;
+        bh=MedRkQM4S6L0pv+MPP4bqqDFZVyFMtpnCXSEEWcRDY0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ZU8LAn6Ou/W4N6ND26oun8qG5aZepZ6dTFMZDxiaRflydZRTsHZ35RWxtI5H1+IQl
-         jmabDjvBJmMyQLQLBdXsgOZF4nY7Q7UNVBsq4RqsPzZiP4praeOA9Jzs90s2IcJ8eS
-         +dfaFJXD+as/p7uWPMk6QpIGUokQ9QuvJWYc1YoM=
+        b=lr++qrX77fU11azDYwRHdjmB89MkN+vJsWsCYTA4dAjbWyUJg+qh44OEDffyMmHSK
+         Hnhok4h3gzgLNqlK3jugfTl1CZwhbMvPUQUKwjILjTUICYKTC4k6+ieMEZQOTrJsJN
+         xR//al7xCw7MtWVJ6WYy1tbCrzwXX7nbyDYv6HPg=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>,
         Daniel Rosenberg <drosen@google.com>
-Subject: [PATCH v3 03/13] ext4: use fscrypt_prepare_new_inode() and fscrypt_set_context()
-Date:   Wed, 16 Sep 2020 21:11:26 -0700
-Message-Id: <20200917041136.178600-4-ebiggers@kernel.org>
+Subject: [PATCH v3 13/13] fscrypt: make fscrypt_set_test_dummy_encryption() take a 'const char *'
+Date:   Wed, 16 Sep 2020 21:11:36 -0700
+Message-Id: <20200917041136.178600-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.28.0
 In-Reply-To: <20200917041136.178600-1-ebiggers@kernel.org>
 References: <20200917041136.178600-1-ebiggers@kernel.org>
@@ -58,92 +58,131 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Convert ext4 to use the new functions fscrypt_prepare_new_inode() and
-fscrypt_set_context().  This avoids calling
-fscrypt_get_encryption_info() from within a transaction, which can
-deadlock because fscrypt_get_encryption_info() isn't GFP_NOFS-safe.
+fscrypt_set_test_dummy_encryption() requires that the optional argument
+to the test_dummy_encryption mount option be specified as a substring_t.
+That doesn't work well with filesystems that use the new mount API,
+since the new way of parsing mount options doesn't use substring_t.
 
-For more details about this problem, see the earlier patch
-"fscrypt: add fscrypt_prepare_new_inode() and fscrypt_set_context()".
+Make it take the argument as a 'const char *' instead.
+
+Instead of moving the match_strdup() into the callers in ext4 and f2fs,
+make them just use arg->from directly.  Since the pattern is
+"test_dummy_encryption=%s", the argument will be null-terminated.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/ialloc.c | 37 +++++++++++++++++--------------------
- 1 file changed, 17 insertions(+), 20 deletions(-)
+ fs/crypto/policy.c      | 20 ++++++--------------
+ fs/ext4/super.c         |  2 +-
+ fs/f2fs/super.c         |  2 +-
+ include/linux/fscrypt.h |  5 +----
+ 4 files changed, 9 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 0cc576005a923..698ca4a4db5f7 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -819,7 +819,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	ext4_group_t i;
- 	ext4_group_t flex_group;
- 	struct ext4_group_info *grp;
--	int encrypt = 0;
-+	bool encrypt = false;
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index 97cf07543651f..4441d9944b9ef 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -697,8 +697,7 @@ EXPORT_SYMBOL_GPL(fscrypt_set_context);
+ /**
+  * fscrypt_set_test_dummy_encryption() - handle '-o test_dummy_encryption'
+  * @sb: the filesystem on which test_dummy_encryption is being specified
+- * @arg: the argument to the test_dummy_encryption option.
+- *	 If no argument was specified, then @arg->from == NULL.
++ * @arg: the argument to the test_dummy_encryption option.  May be NULL.
+  * @dummy_policy: the filesystem's current dummy policy (input/output, see
+  *		  below)
+  *
+@@ -712,29 +711,23 @@ EXPORT_SYMBOL_GPL(fscrypt_set_context);
+  *         -EEXIST if a different dummy policy is already set;
+  *         or another -errno value.
+  */
+-int fscrypt_set_test_dummy_encryption(struct super_block *sb,
+-				      const substring_t *arg,
++int fscrypt_set_test_dummy_encryption(struct super_block *sb, const char *arg,
+ 				      struct fscrypt_dummy_policy *dummy_policy)
+ {
+-	const char *argstr = "v2";
+-	const char *argstr_to_free = NULL;
+ 	struct fscrypt_key_specifier key_spec = { 0 };
+ 	int version;
+ 	union fscrypt_policy *policy = NULL;
+ 	int err;
  
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -831,24 +831,6 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	if (unlikely(ext4_forced_shutdown(sbi)))
- 		return ERR_PTR(-EIO);
- 
--	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
--	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) &&
--	    !(i_flags & EXT4_EA_INODE_FL)) {
--		err = fscrypt_get_encryption_info(dir);
--		if (err)
--			return ERR_PTR(err);
--		if (!fscrypt_has_encryption_key(dir))
--			return ERR_PTR(-ENOKEY);
--		encrypt = 1;
+-	if (arg->from) {
+-		argstr = argstr_to_free = match_strdup(arg);
+-		if (!argstr)
+-			return -ENOMEM;
 -	}
--
--	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
--		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
--		if (ret2 < 0)
--			return ERR_PTR(ret2);
--		nblocks += ret2;
--	}
--
- 	ngroups = ext4_get_groups_count(sb);
- 	trace_ext4_request_inode(dir, mode);
- 	inode = new_inode(sb);
-@@ -878,10 +860,25 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	else
- 		ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
++	if (!arg)
++		arg = "v2";
  
-+	if (!(i_flags & EXT4_EA_INODE_FL)) {
-+		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
-+		if (err)
-+			goto out;
-+	}
-+
- 	err = dquot_initialize(inode);
- 	if (err)
- 		goto out;
- 
-+	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
-+		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
-+		if (ret2 < 0) {
-+			err = ret2;
-+			goto out;
-+		}
-+		nblocks += ret2;
-+	}
-+
- 	if (!goal)
- 		goal = sbi->s_inode_goal;
- 
-@@ -1174,7 +1171,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	 * prevent its deduplication.
- 	 */
- 	if (encrypt) {
--		err = fscrypt_inherit_context(dir, inode, handle, true);
-+		err = fscrypt_set_context(inode, handle);
- 		if (err)
- 			goto fail_free_drop;
+-	if (!strcmp(argstr, "v1")) {
++	if (!strcmp(arg, "v1")) {
+ 		version = FSCRYPT_POLICY_V1;
+ 		key_spec.type = FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR;
+ 		memset(key_spec.u.descriptor, 0x42,
+ 		       FSCRYPT_KEY_DESCRIPTOR_SIZE);
+-	} else if (!strcmp(argstr, "v2")) {
++	} else if (!strcmp(arg, "v2")) {
+ 		version = FSCRYPT_POLICY_V2;
+ 		key_spec.type = FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER;
+ 		/* key_spec.u.identifier gets filled in when adding the key */
+@@ -785,7 +778,6 @@ int fscrypt_set_test_dummy_encryption(struct super_block *sb,
+ 	err = 0;
+ out:
+ 	kfree(policy);
+-	kfree(argstr_to_free);
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(fscrypt_set_test_dummy_encryption);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7e77722406e2f..ed5624285a475 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1893,7 +1893,7 @@ static int ext4_set_test_dummy_encryption(struct super_block *sb,
+ 			 "Can't set test_dummy_encryption on remount");
+ 		return -1;
  	}
+-	err = fscrypt_set_test_dummy_encryption(sb, arg,
++	err = fscrypt_set_test_dummy_encryption(sb, arg->from,
+ 						&sbi->s_dummy_enc_policy);
+ 	if (err) {
+ 		if (err == -EEXIST)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index f2b3d1a279fb7..c72d22c0c52e7 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -438,7 +438,7 @@ static int f2fs_set_test_dummy_encryption(struct super_block *sb,
+ 		return -EINVAL;
+ 	}
+ 	err = fscrypt_set_test_dummy_encryption(
+-		sb, arg, &F2FS_OPTION(sbi).dummy_enc_policy);
++		sb, arg->from, &F2FS_OPTION(sbi).dummy_enc_policy);
+ 	if (err) {
+ 		if (err == -EEXIST)
+ 			f2fs_warn(sbi,
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index b3b0c5675c6b1..fc67c4cbaa968 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -15,7 +15,6 @@
+ 
+ #include <linux/fs.h>
+ #include <linux/mm.h>
+-#include <linux/parser.h>
+ #include <linux/slab.h>
+ #include <uapi/linux/fscrypt.h>
+ 
+@@ -153,9 +152,7 @@ struct fscrypt_dummy_policy {
+ 	const union fscrypt_policy *policy;
+ };
+ 
+-int fscrypt_set_test_dummy_encryption(
+-				struct super_block *sb,
+-				const substring_t *arg,
++int fscrypt_set_test_dummy_encryption(struct super_block *sb, const char *arg,
+ 				struct fscrypt_dummy_policy *dummy_policy);
+ void fscrypt_show_test_dummy_encryption(struct seq_file *seq, char sep,
+ 					struct super_block *sb);
 -- 
 2.28.0
 
