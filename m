@@ -2,187 +2,208 @@ Return-Path: <SRS0=jPA9=C2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA66CC433E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 02:28:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F1D40C43461
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 03:35:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6B83E206DB
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 02:28:20 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="BLuP5TDT"
+	by mail.kernel.org (Postfix) with ESMTP id B2034208E4
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 03:35:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726102AbgIQC2P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Sep 2020 22:28:15 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:49260 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726044AbgIQC2L (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Sep 2020 22:28:11 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1600309687;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=589jv5dcEXFCuXf0aJXsqiIdxN7TBSpdb/yY5Un5eFk=;
-        b=BLuP5TDTBiQ1arEPQQnY+HBIwfI3xlLVLcAsmmGPH844wwek4vJkIv6gaIe2GfWm4WfFPI
-        Y0YgApLVXQ/LuZ09whBVbhYHQEPNa9T/E+eQU1HNeHlV4OuGpryiG0sAubOAmfYUTAGteO
-        tGScJ86lLq9hFZi+FZV4+itQLbv4ohM=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-265-CXovhrWkPt2pdtFB99xyIg-1; Wed, 16 Sep 2020 22:21:03 -0400
-X-MC-Unique: CXovhrWkPt2pdtFB99xyIg-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6588D807355;
-        Thu, 17 Sep 2020 02:21:02 +0000 (UTC)
-Received: from T590 (ovpn-12-180.pek2.redhat.com [10.72.12.180])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1E0CB1992F;
-        Thu, 17 Sep 2020 02:20:55 +0000 (UTC)
-Date:   Thu, 17 Sep 2020 10:20:51 +0800
-From:   Ming Lei <ming.lei@redhat.com>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Jens Axboe <axboe@kernel.dk>, linux-ext4@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-block@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: REGRESSION: 37f4a24c2469: blk-mq: centralise related handling
- into blk_mq_get_driver_tag
-Message-ID: <20200917022051.GA1004828@T590>
-References: <7f0e2d99-5da2-237e-a894-0afddc0ace1e@kernel.dk>
- <049a97db-c362-bcfb-59e5-4b1d2df59383@kernel.dk>
- <5140ba6c-779c-2a71-b7f2-3c3220cdf19c@kernel.dk>
- <68510957-c887-8e26-4a1a-a7a93488586a@kernel.dk>
- <20200904035528.GE558530@mit.edu>
- <20200915044519.GA38283@mit.edu>
- <20200915073303.GA754106@T590>
- <20200915224541.GB38283@mit.edu>
- <20200915230941.GA791425@T590>
- <20200916202026.GC38283@mit.edu>
+        id S1725987AbgIQDfT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Sep 2020 23:35:19 -0400
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:26720 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725858AbgIQDfS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Sep 2020 23:35:18 -0400
+X-Greylist: delayed 322 seconds by postgrey-1.27 at vger.kernel.org; Wed, 16 Sep 2020 23:35:14 EDT
+X-IronPort-AV: E=Sophos;i="5.76,434,1592841600"; 
+   d="scan'208";a="99336486"
+Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
+  by heian.cn.fujitsu.com with ESMTP; 17 Sep 2020 11:31:59 +0800
+Received: from G08CNEXMBPEKD06.g08.fujitsu.local (unknown [10.167.33.206])
+        by cn.fujitsu.com (Postfix) with ESMTP id ACAFA48990CB;
+        Thu, 17 Sep 2020 11:31:55 +0800 (CST)
+Received: from [10.167.220.69] (10.167.220.69) by
+ G08CNEXMBPEKD06.g08.fujitsu.local (10.167.33.206) with Microsoft SMTP Server
+ (TLS) id 15.0.1497.2; Thu, 17 Sep 2020 11:31:53 +0800
+Message-ID: <5F62D8A9.7060903@cn.fujitsu.com>
+Date:   Thu, 17 Sep 2020 11:31:53 +0800
+From:   Xiao Yang <yangx.jy@cn.fujitsu.com>
+User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.2; zh-CN; rv:1.9.2.18) Gecko/20110616 Thunderbird/3.1.11
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200916202026.GC38283@mit.edu>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+To:     Theodore Ts'o <tytso@mit.edu>
+CC:     Andreas Dilger <adilger@dilger.ca>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Ira Weiny <ira.weiny@intel.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH v2] chattr/lsattr: Support dax attribute
+References: <20200728053321.12892-1-yangx.jy@cn.fujitsu.com> <9FB1F4E5-7B7C-4E09-A415-3C5C888B321F@dilger.ca> <5F349A82.5080007@cn.fujitsu.com> <5F485ED8.70402@cn.fujitsu.com> <305B253D-9A17-4E42-A0BF-016E278FD3B6@dilger.ca>
+In-Reply-To: <305B253D-9A17-4E42-A0BF-016E278FD3B6@dilger.ca>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.167.220.69]
+X-ClientProxiedBy: G08CNEXCHPEKD06.g08.fujitsu.local (10.167.33.205) To
+ G08CNEXMBPEKD06.g08.fujitsu.local (10.167.33.206)
+X-yoursite-MailScanner-ID: ACAFA48990CB.AADA7
+X-yoursite-MailScanner: Found to be clean
+X-yoursite-MailScanner-From: yangx.jy@cn.fujitsu.com
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Sep 16, 2020 at 04:20:26PM -0400, Theodore Y. Ts'o wrote:
-> On Wed, Sep 16, 2020 at 07:09:41AM +0800, Ming Lei wrote:
-> > > The problem is it's a bit tricky to revert 568f27006577, since there
-> > > is a merge conflict in blk_kick_flush().  I attempted to do the bisect
-> > > manually here, but it's clearly not right since the kernel is not
-> > > booting after the revert:
-> > > 
-> > > https://github.com/tytso/ext4/commit/1e67516382a33da2c9d483b860ac4ec2ad390870
-> > > 
-> > > branch:
-> > > 
-> > > https://github.com/tytso/ext4/tree/manual-revert-of-568f27006577
-> > > 
-> > > Can you send me a patch which correctly reverts 568f27006577?  I can
-> > > try it against -rc1 .. -rc4, whichever is most convenient.
-> > 
-> > Please test the following revert patch against -rc4.
-> 
-> Unfortunately the results of the revert is... wierd.
-> 
-> With -rc4, *all* of the VM's are failing --- reliably.  With rc4 with
-> the revert, *some* of the VM's are able to complete the tests, but
-> over half are still locking up or failing with some kind of oops.  So
-> that seems to imply that there is some kind of timing issue going on,
-> or maybe there are multiple bugs in play?
+Hi,
 
-Obviously there is other more serious issue, since 568f27006577 is
-completely reverted in your test, and you still see list corruption
-issue.
+Ping :-)
 
-So I'd suggest to find the big issue first. Once it is fixed, maybe
-everything becomes fine.
+Best Regards,
+Xiao Yang
+On 2020/8/28 16:22, Andreas Dilger wrote:
+> On Aug 27, 2020, at 7:33 PM, Xiao Yang<yangx.jy@cn.fujitsu.com>  wrote:
+>> Hi,
+>>
+>> Is there any comment on the patch? :-)
+> I don't need a v3 for the Dax vs. DAX case, though I think DAX would be
+> better.  The decision is up to Ted.
+>
+> Cheers, Andreas
+>
+>> Thanks,
+>> Xiao Yang
+>> On 2020/8/13 9:42, Xiao Yang wrote:
+>>> On 2020/8/13 7:29, Andreas Dilger wrote:
+>>>> On Jul 27, 2020, at 11:33 PM, Xiao Yang<yangx.jy@cn.fujitsu.com>   wrote:
+>>>>> Use the letter 'x' to set/get dax attribute on a directory/file.
+>>>>>
+>>>>> Signed-off-by: Xiao Yang<yangx.jy@cn.fujitsu.com>
+>>>> One minor nit below, but otherwise looks OK.
+>>>>
+>>>> Reviewed-by: Andreas Dilger<adilger@dilger.ca>
+>>>>
+>>>>> diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
+>>>>> index 0c6998c4..e59cccff 100644
+>>>>> --- a/lib/e2p/pf.c
+>>>>> +++ b/lib/e2p/pf.c
+>>>>> @@ -44,6 +44,7 @@ static struct flags_name flags_array[] = {
+>>>>>     { EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
+>>>>>     { EXT4_EXTENTS_FL, "e", "Extents" },
+>>>>>     { FS_NOCOW_FL, "C", "No_COW" },
+>>>>> +    { FS_DAX_FL, "x", "Dax" },
+>>>> Should this be "DAX" ?  That is how it is commonly used in the kernel.
+>>> Hi Andreas,
+>>>
+>>> Thanks a lot for your review.
+>>>
+>>> Either 'Dax' or 'DAX' is fine to me because it is just the output of lsattr -v.
+>>> For example, xfs_io shows 'dax' instead of 'DAX':
+>>> # xfs_io -c "lsattr -v" file
+>>> [dax] file
+>>>
+>>> BTW:
+>>> I just used 'Dax' to follow the current format of output(i.e. capitalize the first letter).
+>>>
+>>> Do you want me to send v3 patch with the 'DAX'? :-)
+>>>
+>>> Best Regards,
+>>> Xiao Yang
+>>>>>     { EXT4_CASEFOLD_FL, "F", "Casefold" },
+>>>>>     { EXT4_INLINE_DATA_FL, "N", "Inline_Data" },
+>>>>>     { EXT4_PROJINHERIT_FL, "P", "Project_Hierarchy" },
+>>>>> diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+>>>>> index 6c20ea77..88f510a3 100644
+>>>>> --- a/lib/ext2fs/ext2_fs.h
+>>>>> +++ b/lib/ext2fs/ext2_fs.h
+>>>>> @@ -335,6 +335,7 @@ struct ext2_dx_tail {
+>>>>> /* EXT4_EOFBLOCKS_FL 0x00400000 was here */
+>>>>> #define FS_NOCOW_FL            0x00800000 /* Do not cow file */
+>>>>> #define EXT4_SNAPFILE_FL        0x01000000  /* Inode is a snapshot */
+>>>>> +#define FS_DAX_FL            0x02000000 /* Inode is DAX */
+>>>>> #define EXT4_SNAPFILE_DELETED_FL    0x04000000  /* Snapshot is being deleted */
+>>>>> #define EXT4_SNAPFILE_SHRUNK_FL        0x08000000  /* Snapshot shrink has completed */
+>>>>> #define EXT4_INLINE_DATA_FL        0x10000000 /* Inode has inline data */
+>>>>> diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+>>>>> index ff2fcf00..5a4928a5 100644
+>>>>> --- a/misc/chattr.1.in
+>>>>> +++ b/misc/chattr.1.in
+>>>>> @@ -23,13 +23,13 @@ chattr \- change file attributes on a Linux file system
+>>>>> .B chattr
+>>>>> changes the file attributes on a Linux file system.
+>>>>> .PP
+>>>>> -The format of a symbolic mode is +-=[aAcCdDeFijPsStTu].
+>>>>> +The format of a symbolic mode is +-=[aAcCdDeFijPsStTux].
+>>>>> .PP
+>>>>> The operator '+' causes the selected attributes to be added to the
+>>>>> existing attributes of the files; '-' causes them to be removed; and '='
+>>>>> causes them to be the only attributes that the files have.
+>>>>> .PP
+>>>>> -The letters 'aAcCdDeFijPsStTu' select the new attributes for the files:
+>>>>> +The letters 'aAcCdDeFijPsStTux' select the new attributes for the files:
+>>>>> append only (a),
+>>>>> no atime updates (A),
+>>>>> compressed (c),
+>>>>> @@ -45,7 +45,8 @@ secure deletion (s),
+>>>>> synchronous updates (S),
+>>>>> no tail-merging (t),
+>>>>> top of directory hierarchy (T),
+>>>>> -and undeletable (u).
+>>>>> +undeletable (u),
+>>>>> +and direct access for files (x).
+>>>>> .PP
+>>>>> The following attributes are read-only, and may be listed by
+>>>>> .BR lsattr (1)
+>>>>> @@ -210,6 +211,14 @@ saved.  This allows the user to ask for its undeletion.  Note: please
+>>>>> make sure to read the bugs and limitations section at the end of this
+>>>>> document.
+>>>>> .TP
+>>>>> +.B x
+>>>>> +The 'x' attribute can be set on a directory or file.  If the attribute
+>>>>> +is set on an existing directory, it will be inherited by all files and
+>>>>> +subdirectories that are subsequently created in the directory.  If an
+>>>>> +existing directory has contained some files and subdirectories, modifying
+>>>>> +the attribute on the parent directory doesn't change the attributes on
+>>>>> +these files and subdirectories.
+>>>>> +.TP
+>>>>> .B V
+>>>>> A file with the 'V' attribute set has fs-verity enabled.  It cannot be
+>>>>> written to, and the filesystem will automatically verify all data read
+>>>>> diff --git a/misc/chattr.c b/misc/chattr.c
+>>>>> index a5d60170..c0337f86 100644
+>>>>> --- a/misc/chattr.c
+>>>>> +++ b/misc/chattr.c
+>>>>> @@ -86,7 +86,7 @@ static unsigned long sf;
+>>>>> static void usage(void)
+>>>>> {
+>>>>>     fprintf(stderr,
+>>>>> -        _("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTuF] [-v version] files...\n"),
+>>>>> +        _("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTuFx] [-v version] files...\n"),
+>>>>>         program_name);
+>>>>>     exit(1);
+>>>>> }
+>>>>> @@ -112,6 +112,7 @@ static const struct flags_char flags_array[] = {
+>>>>>     { EXT2_NOTAIL_FL, 't' },
+>>>>>     { EXT2_TOPDIR_FL, 'T' },
+>>>>>     { FS_NOCOW_FL, 'C' },
+>>>>> +    { FS_DAX_FL, 'x' },
+>>>>>     { EXT4_CASEFOLD_FL, 'F' },
+>>>>>     { 0, 0 }
+>>>>> };
+>>>>> --
+>>>>> 2.21.0
+>>>>>
+>>>>>
+>>>>>
+>>>> Cheers, Andreas
+>
+> Cheers, Andreas
+>
+>
+>
+>
+>
 
-......
 
-> 
-> v5.9-rc4 with the revert of 568f27006577: we're seeing a similar
-> 	number of VM failures, but the failure signature is different.
-> 	The most common failure is:
-> 
-> 	[  390.023691] ------------[ cut here ]------------
-> 	[  390.028614] list_del corruption, ffffe1c241b00408->next is LIST_POISON1 (dead000000000100)
-> 	[  390.037040] WARNING: CPU: 1 PID: 5948 at lib/list_debug.c:47 __list_del_entry_valid+0x4e/0x90
-> 	[  390.045684] CPU: 1 PID: 5948 Comm: umount Not tainted 5.9.0-rc4-xfstests-00001-g6fdef015feba #11
-> 	[  390.054581] Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
-> 	[  390.063943] RIP: 0010:__list_del_entry_valid+0x4e/0x90
-> 	[  390.069731] Code: 2e 48 8b 32 48 39 fe 75 3a 48 8b 50 08 48 39 f2 75 48 b8 01 00 00 00 c3 48 89 fe 48 89 c2 48 c7 c7 10 13 12 9b e8 30 2f 8c ff <0f> 0b 31 c0 c3 48 89 fe 48 c7 c7 48 13 12 9b e8 1c 2f 8c ff 0f 0b
-> 	[  390.088615] RSP: 0018:ffffae95c6ddba28 EFLAGS: 00010082
-> 	[  390.094079] RAX: 0000000000000000 RBX: ffffce95bfc007d0 RCX: 0000000000000027
-> 	[  390.101338] RDX: 0000000000000027 RSI: ffffa0c9d93d7dc0 RDI: ffffa0c9d93d7dc8
-> 	[  390.108659] RBP: ffffe1c241b00408 R08: 0000006ba6bff7dc R09: 0000000000000000
-> 	[  390.115925] R10: ffffa0c9d3f444c0 R11: 0000000000000046 R12: ffffa0c9d8041180
-> 	[  390.123186] R13: ffffa0c86c010e00 R14: ffffe1c241b00400 R15: ffffa0c9d8042240
-> 	[  390.130637] FS:  00007fb227580080(0000) GS:ffffa0c9d9200000(0000) knlGS:0000000000000000
-> 	[  390.138860] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> 	[  390.144721] CR2: 00007ff72d2dfe74 CR3: 00000001cdbb8002 CR4: 00000000003706e0
-> 	[  390.152022] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> 	[  390.159314] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-> 	[  390.166569] Call Trace:
-> 	[  390.169148]  free_block+0xec/0x270
-> 	[  390.173100]  ___cache_free+0x488/0x6b0
-> 	[  390.177062]  kfree+0xc9/0x1d0
-> 	[  390.181202]  kmem_freepages+0xa0/0xf0
-> 	[  390.185009]  slab_destroy+0x19/0x50
-> 	[  390.188653]  slabs_destroy+0x6d/0x90
-> 	[  390.192339]  ___cache_free+0x4a3/0x6b0
-> 	[  390.196477]  kfree+0xc9/0x1d0
-> 	[  390.199651]  kmem_freepages+0xa0/0xf0
-> 	[  390.203459]  slab_destroy+0x19/0x50
-> 	[  390.207060]  slabs_destroy+0x6d/0x90
-> 	[  390.210784]  ___cache_free+0x4a3/0x6b0
-> 	[  390.214672]  ? lockdep_hardirqs_on_prepare+0xe7/0x180
-> 	[  390.219845]  kfree+0xc9/0x1d0
-> 	[  390.222928]  put_crypt_info+0xe3/0x100
-> 	[  390.226801]  fscrypt_put_encryption_info+0x15/0x30
-> 	[  390.231721]  ext4_clear_inode+0x80/0x90
-> 	[  390.235774]  ext4_evict_inode+0x6d/0x630
-> 	[  390.239960]  evict+0xd0/0x1a0
-> 	[  390.243049]  dispose_list+0x51/0x80
-> 	[  390.246659]  evict_inodes+0x15b/0x1b0
-> 	[  390.250526]  generic_shutdown_super+0x37/0x100
-> 	[  390.255094]  kill_block_super+0x21/0x50
-> 	[  390.259066]  deactivate_locked_super+0x2f/0x70
-> 	[  390.263638]  cleanup_mnt+0xb8/0x140
-> 	[  390.267248]  task_work_run+0x73/0xc0
-> 	[  390.270953]  exit_to_user_mode_prepare+0x197/0x1a0
-> 	[  390.277333]  syscall_exit_to_user_mode+0x3c/0x210
-> 	[  390.282171]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> 	[  390.287348] RIP: 0033:0x7fb2279a6507
-> 	[  390.291128] Code: 19 0c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 31 f6 e9 09 00 00 00 66 0f 1f 84 00 00 00 00 00 b8 a6 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 59 19 0c 00 f7 d8 64 89 01 48
-> 	[  390.310018] RSP: 002b:00007ffd41391c08 EFLAGS: 00000246 ORIG_RAX: 00000000000000a6
-> 	[  390.317711] RAX: 0000000000000000 RBX: 000055b889e1f970 RCX: 00007fb2279a6507
-> 	[  390.324969] RDX: 0000000000000001 RSI: 0000000000000000 RDI: 000055b889e24f00
-> 	[  390.332300] RBP: 0000000000000000 R08: 000055b889e24f20 R09: 00007fb227a27e80
-> 	[  390.339543] R10: 0000000000000000 R11: 0000000000000246 R12: 000055b889e24f00
-> 	[  390.346818] R13: 00007fb227acc1c4 R14: 000055b889e1fa68 R15: 000055b889e1fb80
-> 	[  390.354075] irq event stamp: 3176310
-> 	[  390.357762] hardirqs last  enabled at (3176309): [<ffffffff9a090df2>] kfree+0x132/0x1d0
-> 	[  390.365891] hardirqs last disabled at (3176310): [<ffffffff9a090df9>] kfree+0x139/0x1d0
-> 	[  390.374021] softirqs last  enabled at (3174992): [<ffffffff9ac00347>] __do_softirq+0x347/0x45f
-> 	[  390.382762] softirqs last disabled at (3174535): [<ffffffff9aa00f72>] asm_call_on_stack+0x12/0x20
-> 	[  390.391742] ---[ end trace 8fb872d4de3e00ed ]---
-
-Looks it is more like a memory corruption issue, is there any helpful log
-dumped when running kernel with kasan?
-
-BTW, I have kvm/qumu auto test which runs blktest/xfstest over virtio-blk/virito-scsi/loop/nvme
-with xfs/ext4 every two days, and not see such failure recently, but the kernel config is based
-rhel8's config.
-
-
-thanks,
-Ming
 
