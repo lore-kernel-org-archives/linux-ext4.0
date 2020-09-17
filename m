@@ -2,121 +2,156 @@ Return-Path: <SRS0=jPA9=C2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=BAYES_00,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27B45C43461
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 19:02:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5574BC43461
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 19:57:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D4E0D20874
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 19:02:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600369366;
-	bh=uybMr8IGmZpsIGPBBuUzkpsDP/RFxnJ9RSty2OTVBeA=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=X+hYFI7MavXZAVgJ6pBMBIKviIEfbLTbXbVQUDc1inUVgEngbxBH0iGoaq6mdwKHQ
-	 kz1J0lkTR9jh35zLKwb4h+IS0/L+MziiAfHb2SFamiPtOoJaF7ynnQRMHdwHb7te8M
-	 sM0IT8xmTzQaWzzM2DgDXhHCG1j7EaAKIJYvSkwQ=
+	by mail.kernel.org (Postfix) with ESMTP id 1B4CC20717
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 19:57:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726325AbgIQTCf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 15:02:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44850 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726677AbgIQTA3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Sep 2020 15:00:29 -0400
-Received: from mail-lf1-x143.google.com (mail-lf1-x143.google.com [IPv6:2a00:1450:4864:20::143])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3E75C06174A
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2020 12:00:28 -0700 (PDT)
-Received: by mail-lf1-x143.google.com with SMTP id b22so3327098lfs.13
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2020 12:00:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=QaNy7skFdocpIi7yXUk0cvyZ61htoWtJGhoFEfuldNs=;
-        b=NbAnzyB2Mzc30Bxhxt2G/fphVVd0HhTHio6XwB2c+aD3xh1gYYDxBMBwfzTwVjgO1y
-         2U/0SPniX5eHV7f8q+a1tgEHnXXLTpFyJIRbU1hQyswRasCEIfdyPNwxrAhx/TtmWgNp
-         D9gNAm/JHCes0tuZjojw2IFaa40CTEvGQa+Q4=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=QaNy7skFdocpIi7yXUk0cvyZ61htoWtJGhoFEfuldNs=;
-        b=KsNyWcMBsEsu/zsKhF/+dzot5J4iYvFvU40c/xKstYxd+aFkNJ6p23Jmdq2NgmXm5X
-         L/ueAKoCpjA0lXbNkgn5wWt8339NQSl28bMDhbnqDEWAUxaYnwKM1+CIvNd5phBvkrVv
-         bW9scFYmfXV7RO8+4aawXkLtlZ/xri0zgptI0BkJOBHgmYqkoacvMYbbZAb3vQwBVEbM
-         IlpUyqTCepKyfSIAN9BpfDBiIRh+Oam80PwRj+CtJ1vCYOoci4Ll/ceB7t3oeqCEFA8A
-         WHz/1spkvfEt6iMvykEDqibWl1ErHF3LjKCofpYKszE7+0RgbRyNLTyzDI5OmfunkQOH
-         pG0w==
-X-Gm-Message-State: AOAM533+fihJYkSpnjrwZzy2Nmkk7NVFzEPZ/LgEk9vVSozdEkKQYDyk
-        QSMq13elQ7R9RJYyB8uNCNxYB3kbNEkZyQ==
-X-Google-Smtp-Source: ABdhPJxwD/771qyuARTrpeAajjLJ/iTHCz98BxyjXFAXglv1LAAU1Fl5DmgPWHb/pQgunzfxlN6WTQ==
-X-Received: by 2002:a19:7b14:: with SMTP id w20mr10556522lfc.563.1600369226729;
-        Thu, 17 Sep 2020 12:00:26 -0700 (PDT)
-Received: from mail-lf1-f54.google.com (mail-lf1-f54.google.com. [209.85.167.54])
-        by smtp.gmail.com with ESMTPSA id c11sm84234lff.3.2020.09.17.12.00.25
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 17 Sep 2020 12:00:25 -0700 (PDT)
-Received: by mail-lf1-f54.google.com with SMTP id y11so3365523lfl.5
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Sep 2020 12:00:25 -0700 (PDT)
-X-Received: by 2002:ac2:5594:: with SMTP id v20mr10423309lfg.344.1600369225145;
- Thu, 17 Sep 2020 12:00:25 -0700 (PDT)
-MIME-Version: 1.0
-References: <CAHk-=wjfw3U5eTGWLaisPHg1+jXsCX=xLZgqPx4KJeHhEqRnEQ@mail.gmail.com>
- <a2369108-7103-278c-9f10-6309a0a9dc3b@MichaelLarabel.com> <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
- <0daf6ae6-422c-dd46-f85a-e83f6e1d1113@MichaelLarabel.com> <20200912143704.GB6583@casper.infradead.org>
- <658ae026-32d9-0a25-5a59-9c510d6898d5@MichaelLarabel.com> <CAHk-=wip0bCNnFK2Sxdn-YCTdKBF2JjF0kcM5mXbRuKKp3zojw@mail.gmail.com>
- <CAHk-=whc5CnTUWoeeCDj640Rng4nH8HdLsHgEdnz3NtPSRqqhQ@mail.gmail.com>
- <20200917182314.GU5449@casper.infradead.org> <CAHk-=wj6g2y2Z3cGzHBMoeLx-mfG0Md_2wMVwx=+g_e-xDNTbw@mail.gmail.com>
- <20200917185049.GV5449@casper.infradead.org>
-In-Reply-To: <20200917185049.GV5449@casper.infradead.org>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu, 17 Sep 2020 12:00:06 -0700
-X-Gmail-Original-Message-ID: <CAHk-=wj6Ha=cNU4kL3z661CV+c2x2=DKzPrfH=XujMa378NhWQ@mail.gmail.com>
-Message-ID: <CAHk-=wj6Ha=cNU4kL3z661CV+c2x2=DKzPrfH=XujMa378NhWQ@mail.gmail.com>
-Subject: Re: Kernel Benchmarking
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Michael Larabel <Michael@michaellarabel.com>,
-        Matthieu Baerts <matthieu.baerts@tessares.net>,
-        Amir Goldstein <amir73il@gmail.com>,
-        "Ted Ts'o" <tytso@google.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+        id S1727697AbgIQOoA convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Sep 2020 10:44:00 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42292 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727650AbgIQOmR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Sep 2020 10:42:17 -0400
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 209275] Graphics freeze after WARNING: CPU: 2 PID: 156207 at
+ fs/ext4/inode.c:3599 ext4_set_page_dirty+0x3e/0x50
+Date:   Thu, 17 Sep 2020 14:42:15 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: rhmcruiser@gmail.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-209275-13602-xcH0a90UhH@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-209275-13602@https.bugzilla.kernel.org/>
+References: <bug-209275-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
+MIME-Version: 1.0
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Sep 17, 2020 at 11:50 AM Matthew Wilcox <willy@infradead.org> wrote:
->
-> Ahh.  Here's a race this doesn't close:
->
-> int truncate_inode_page(struct address_space *mapping, struct page *page)
+https://bugzilla.kernel.org/show_bug.cgi?id=209275
 
-I think this one currently depends on the page lock, doesn't it?
+Monthero (rhmcruiser@gmail.com) changed:
 
-And I think the point would be to get rid of that dependency, and just
-make the rule be that it's done with the i_mmap_rwsem held for
-writing.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |rhmcruiser@gmail.com
 
-But it might be one of those cases where taking it for writing might
-add way too much serialization and might not be acceptable.
+--- Comment #2 from Monthero (rhmcruiser@gmail.com) ---
 
-Again, I do get the feeling that a spinlock would be much better here.
-Generally the areas we want to protect are truly just the trivial
-"check that mapping is valid". That's a spinlock kind of thing, not a
-semaphore kind of thing.
+Checking the log messages file attachment in Comment #1 
 
-Doing a blocking semaphore that might need to serialize IO with page
-faulting for the whole mapping is horrible and completely
-unacceptable. Truncation events might be rare, but they aren't unheard
-of!
+The freeze like slowness that you seem to describe is probably caused by the
+gnome-shell dumping core often as seen in the messages log. 
 
-But doing a spinlock that does the same is likely a complete non-issue.
+I observe that the gnome-shell seems to be dumping core often in your
+environment. 
 
-              Linus
+Sep 15 08:23:46 styx journal[67420]: clutter_actor_has_effects: assertion
+'CLUTTER_IS_ACTOR (self)' failed
+Sep 15 08:23:46 styx journal[67420]: Object .Gjs_GameModeIndicator
+(0x55a8b041c530), has been already deallocated — impossible to set any property
+on it. This might be caused by the object having been destroyed from C code
+using something such as destroy(), dispose(), or remove() vfuncs.
+Sep 15 08:23:46 styx gnome-shell[67420]: == Stack trace for context
+0x55a8ac63e3a0 ==
+Sep 15 08:23:46 styx gnome-shell[67420]: #0   55a8b19fc6d8 i  
+/usr/share/gnome-shell/extensions/gamemode@christian.kellner.me/extension.js:223
+(7fba10824820 @ 164)
+Sep 15 08:23:46 styx gnome-shell[67420]: #1   7ffe62146c90 
+
+...
+...
+
+ep 15 08:23:46 styx gnome-shell[67420]: #9   55a8b19fc420 i  
+resource:///org/gnome/gjs/modules/overrides/Gio.js:169 (7fba6c0d3e50 @ 39)
+Sep 15 08:23:46 styx gnome-shell[67420]: == Stack trace for context
+0x55a8ac63e3a0 ==
+Sep 15 08:23:46 styx gnome-shell[67420]: #0   55a8b19fc6d8 i  
+/usr/share/gnome-shell/extensions/gamemode@christian.kellner.me/extension.js:231
+(7fba10824820 @ 287)
+Sep 15 08:23:46 styx gnome-shell[67420]: #1   7ffe62146c90 b   self-hosted:977
+(7fba45130a60 @ 413)
+Sep 15 08:23:46 styx gnome-shell[67420]: #2   7ffe62146d70 b  
+resource:///org/gnome/gjs/modules/signals.js:135 (7fba6c0c6040 @ 376)
+Sep 15 08:23:46 styx journal[67420]: Object St.Icon (0x55a8ad298110), has been
+already deallocated — impossible to access it. This might be caused by the
+object having been destroyed from C code using something such as destroy(),
+dispose(), or remove() vfuncs.
+
+...
+
+Further on there has been a bad page error as well for the gnome-shell process: 
+
+
+40837 Sep 15 08:51:36 styx kernel: file:(null) fault:0x0 mmap:0x0 readpage:0x0
+40838 Sep 15 08:51:36 styx kernel: CPU: 2 PID: 156207 Comm: gnome-shell
+Tainted: G        W  OE     5.8.6-101.f      c31.x86_64 #1
+40839 Sep 15 08:51:36 styx kernel: Hardware name: System manufacturer System
+Product Name/PRIME B350M-A, BIOS 5      603 07/28/2020
+40840 Sep 15 08:51:36 styx kernel: Call Trace:
+40841 Sep 15 08:51:36 styx kernel: dump_stack+0x6d/0x90
+40842 Sep 15 08:51:36 styx kernel: print_bad_pte.cold+0x6a/0xd2
+40843 Sep 15 08:51:36 styx kernel: unmap_page_range+0x919/0xee0
+40844 Sep 15 08:51:36 styx kernel: unmap_vmas+0x6a/0xd0
+40845 Sep 15 08:51:36 styx kernel: exit_mmap+0x97/0x170
+40846 Sep 15 08:51:36 styx kernel: mmput+0x61/0x140
+40847 Sep 15 08:51:36 styx kernel: begin_new_exec+0x377/0x98c
+40848 Sep 15 08:51:36 styx kernel: load_elf_binary+0x13e/0x16f0
+40849 Sep 15 08:51:36 styx kernel: __do_execve_file.isra.0+0x5d7/0xb90
+40850 Sep 15 08:51:36 styx kernel: __x64_sys_execve+0x35/0x40
+40851 Sep 15 08:51:36 styx kernel: do_syscall_64+0x52/0x90
+40852 Sep 15 08:51:36 styx kernel: entry_SYSCALL_64_after_hwframe+0x44/0xa9
+40853 Sep 15 08:51:36 styx kernel: RIP: 0033:0x7fbaa9d104db
+40854 Sep 15 08:51:36 styx kernel: Code: Bad RIP value.
+.. 
+
+40828 Sep 15 08:51:36 styx kernel: BUG: Bad page map in process gnome-shell 
+pte:80000007e2e09845 pmd:7e54a5067
+40829 Sep 15 08:51:36 styx kernel: page:ffffdf579f8b8240 refcount:1 mapcount:-1
+mapping:000000009b19d3d2 index:      0x61aa
+40830 Sep 15 08:51:36 styx kernel: mapping->aops:ext4_da_aops dentry
+name:"system@afae2c84506c4614bd5df0c7f65c5     
+045-0000000001d0a0ab-0005a448a7d41f69.journal"
+40831 Sep 15 08:51:36 styx kernel: flags:
+0x17ffffc002001e(referenced|uptodate|dirty|lru|mappedtodisk)
+40832 Sep 15 08:51:36 styx kernel: raw: 0017ffffc002001e ffffdf579efb8208
+ffffdf579f907148 ffff9c81ae253178
+40833 Sep 15 08:51:36 styx kernel: raw: 00000000000061aa 0000000000000000
+00000001fffffffe ffff9c81954d4000
+40834 Sep 15 08:51:36 styx kernel: page dumped because: bad pte
+40835 Sep 15 08:51:36 styx kernel: page->mem_cgroup:ffff9c81954d4000
+40836 Sep 15 08:51:36 styx kernel: addr:000055a8b037a000 vm_flags:08100073
+anon_vma:ffff9c8151ad0ec8 mapping:00      00000000000000 index:55a8b037a
+
+
+bash-5.0$ grep -Ri "Bad Page" messages
+Sep 15 08:51:36 styx kernel: BUG: Bad page map in process gnome-shell 
+pte:80000007e2e09845 pmd:7e54a5067
+Sep 15 08:51:36 styx kernel: BUG: Bad page state in process gnome-shell 
+pfn:7e2e09
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
