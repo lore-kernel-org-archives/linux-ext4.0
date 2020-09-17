@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68E5AC433E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E9DEC35269
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 19064206A2
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F31D1206A2
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Sep 2020 04:21:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600316472;
-	bh=kONvZL9ec2SBbE4EAel9mci0YCQN1pZc7hmFt/F6qwY=;
+	s=default; t=1600316474;
+	bh=b+br3C3cbfnBLBIC6l48f9MznNCXZDVFxP9oBuV6fkI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=FYXUqpSMQr0gnOs5DHYoStI8e9F0xu9xyXQiowsroHlMMQy7RM5IcrnelNrK3ul3G
-	 xK55HZBTzCzHMHpcOFZTWGvul2x6Z/ANGiy8V/ZexsdvGb23iwH4BxaPiSCr2QWExm
-	 ekW56mWmSoMlTiLcNP4bliMy9gQYkZQbZeNKOA6s=
+	b=P8dPA7HmeRuxYhMFy9nvco5X+3lOWlZB75QnELcXkioqJp58qRjKwoBeG069I3Q+j
+	 LToPYvFt9VlSoXXQv2R3iqmY8V51qb4foIPpETEztSvcjwV9xa6sb1CqCRpg3JesNw
+	 +vkZcjUgYsFDpaWMD94tRtrr5GhDEKx/59RgZ3gA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725886AbgIQEVB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 00:21:01 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33838 "EHLO mail.kernel.org"
+        id S1726269AbgIQEUy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Sep 2020 00:20:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33844 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726154AbgIQEUv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726156AbgIQEUv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Thu, 17 Sep 2020 00:20:51 -0400
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 53BB021D1B;
-        Thu, 17 Sep 2020 04:13:09 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id BB72121973;
+        Thu, 17 Sep 2020 04:13:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600315989;
-        bh=kONvZL9ec2SBbE4EAel9mci0YCQN1pZc7hmFt/F6qwY=;
+        s=default; t=1600315988;
+        bh=b+br3C3cbfnBLBIC6l48f9MznNCXZDVFxP9oBuV6fkI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=UV/WrbzmMh/m1GcJfVh/IfrXQYzbYI++xzjHNF1UVeIGheoZk8x4jPK18g8sIGotG
-         CbC5PHYju1c79ieBLnAf26mkx6hB5TXPaWBq2uxvQ+NKofgZXvuUg5y5OThKsE4CBu
-         fosUQqDRp3/xsmxSqVSrTDuIO8vQ3CRlBZZ7H3ws=
+        b=ZU8LAn6Ou/W4N6ND26oun8qG5aZepZ6dTFMZDxiaRflydZRTsHZ35RWxtI5H1+IQl
+         jmabDjvBJmMyQLQLBdXsgOZF4nY7Q7UNVBsq4RqsPzZiP4praeOA9Jzs90s2IcJ8eS
+         +dfaFJXD+as/p7uWPMk6QpIGUokQ9QuvJWYc1YoM=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>,
         Daniel Rosenberg <drosen@google.com>
-Subject: [PATCH v3 05/13] ubifs: use fscrypt_prepare_new_inode() and fscrypt_set_context()
-Date:   Wed, 16 Sep 2020 21:11:28 -0700
-Message-Id: <20200917041136.178600-6-ebiggers@kernel.org>
+Subject: [PATCH v3 03/13] ext4: use fscrypt_prepare_new_inode() and fscrypt_set_context()
+Date:   Wed, 16 Sep 2020 21:11:26 -0700
+Message-Id: <20200917041136.178600-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.28.0
 In-Reply-To: <20200917041136.178600-1-ebiggers@kernel.org>
 References: <20200917041136.178600-1-ebiggers@kernel.org>
@@ -58,103 +58,92 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Convert ubifs to use the new functions fscrypt_prepare_new_inode() and
-fscrypt_set_context().
+Convert ext4 to use the new functions fscrypt_prepare_new_inode() and
+fscrypt_set_context().  This avoids calling
+fscrypt_get_encryption_info() from within a transaction, which can
+deadlock because fscrypt_get_encryption_info() isn't GFP_NOFS-safe.
 
-Unlike ext4 and f2fs, this doesn't appear to fix any deadlock bug.  But
-it does shorten the code slightly and get all filesystems using the same
-helper functions, so that fscrypt_inherit_context() can be removed.
-
-It also fixes an incorrect error code where ubifs returned EPERM instead
-of the expected ENOKEY.
+For more details about this problem, see the earlier patch
+"fscrypt: add fscrypt_prepare_new_inode() and fscrypt_set_context()".
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ubifs/dir.c | 38 ++++++++++++++++----------------------
- 1 file changed, 16 insertions(+), 22 deletions(-)
+ fs/ext4/ialloc.c | 37 +++++++++++++++++--------------------
+ 1 file changed, 17 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index a9c1f5a9c9bdd..155521e51ac57 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -81,19 +81,6 @@ struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
- 	struct ubifs_inode *ui;
- 	bool encrypted = false;
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 0cc576005a923..698ca4a4db5f7 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -819,7 +819,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ext4_group_t i;
+ 	ext4_group_t flex_group;
+ 	struct ext4_group_info *grp;
+-	int encrypt = 0;
++	bool encrypt = false;
  
--	if (IS_ENCRYPTED(dir)) {
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+@@ -831,24 +831,6 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	if (unlikely(ext4_forced_shutdown(sbi)))
+ 		return ERR_PTR(-EIO);
+ 
+-	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
+-	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) &&
+-	    !(i_flags & EXT4_EA_INODE_FL)) {
 -		err = fscrypt_get_encryption_info(dir);
--		if (err) {
--			ubifs_err(c, "fscrypt_get_encryption_info failed: %i", err);
+-		if (err)
 -			return ERR_PTR(err);
--		}
--
 -		if (!fscrypt_has_encryption_key(dir))
--			return ERR_PTR(-EPERM);
--
--		encrypted = true;
+-			return ERR_PTR(-ENOKEY);
+-		encrypt = 1;
 -	}
 -
- 	inode = new_inode(c->vfs_sb);
- 	ui = ubifs_inode(inode);
- 	if (!inode)
-@@ -112,6 +99,12 @@ struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
- 			 current_time(inode);
- 	inode->i_mapping->nrpages = 0;
+-	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
+-		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
+-		if (ret2 < 0)
+-			return ERR_PTR(ret2);
+-		nblocks += ret2;
+-	}
+-
+ 	ngroups = ext4_get_groups_count(sb);
+ 	trace_ext4_request_inode(dir, mode);
+ 	inode = new_inode(sb);
+@@ -878,10 +860,25 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	else
+ 		ei->i_projid = make_kprojid(&init_user_ns, EXT4_DEF_PROJID);
  
-+	err = fscrypt_prepare_new_inode(dir, inode, &encrypted);
-+	if (err) {
-+		ubifs_err(c, "fscrypt_prepare_new_inode failed: %i", err);
-+		goto out_iput;
++	if (!(i_flags & EXT4_EA_INODE_FL)) {
++		err = fscrypt_prepare_new_inode(dir, inode, &encrypt);
++		if (err)
++			goto out;
 +	}
 +
- 	switch (mode & S_IFMT) {
- 	case S_IFREG:
- 		inode->i_mapping->a_ops = &ubifs_file_address_operations;
-@@ -131,7 +124,6 @@ struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
- 	case S_IFBLK:
- 	case S_IFCHR:
- 		inode->i_op  = &ubifs_file_inode_operations;
--		encrypted = false;
- 		break;
- 	default:
- 		BUG();
-@@ -151,9 +143,8 @@ struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
- 		if (c->highest_inum >= INUM_WATERMARK) {
- 			spin_unlock(&c->cnt_lock);
- 			ubifs_err(c, "out of inode numbers");
--			make_bad_inode(inode);
--			iput(inode);
--			return ERR_PTR(-EINVAL);
-+			err = -EINVAL;
-+			goto out_iput;
- 		}
- 		ubifs_warn(c, "running out of inode numbers (current %lu, max %u)",
- 			   (unsigned long)c->highest_inum, INUM_WATERMARK);
-@@ -171,16 +162,19 @@ struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
- 	spin_unlock(&c->cnt_lock);
+ 	err = dquot_initialize(inode);
+ 	if (err)
+ 		goto out;
  
- 	if (encrypted) {
--		err = fscrypt_inherit_context(dir, inode, &encrypted, true);
-+		err = fscrypt_set_context(inode, NULL);
- 		if (err) {
--			ubifs_err(c, "fscrypt_inherit_context failed: %i", err);
--			make_bad_inode(inode);
--			iput(inode);
--			return ERR_PTR(err);
-+			ubifs_err(c, "fscrypt_set_context failed: %i", err);
-+			goto out_iput;
- 		}
- 	}
- 
- 	return inode;
++	if (!handle && sbi->s_journal && !(i_flags & EXT4_EA_INODE_FL)) {
++		ret2 = ext4_xattr_credits_for_new_inode(dir, mode, encrypt);
++		if (ret2 < 0) {
++			err = ret2;
++			goto out;
++		}
++		nblocks += ret2;
++	}
 +
-+out_iput:
-+	make_bad_inode(inode);
-+	iput(inode);
-+	return ERR_PTR(err);
- }
+ 	if (!goal)
+ 		goal = sbi->s_inode_goal;
  
- static int dbg_check_name(const struct ubifs_info *c,
+@@ -1174,7 +1171,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	 * prevent its deduplication.
+ 	 */
+ 	if (encrypt) {
+-		err = fscrypt_inherit_context(dir, inode, handle, true);
++		err = fscrypt_set_context(inode, handle);
+ 		if (err)
+ 			goto fail_free_drop;
+ 	}
 -- 
 2.28.0
 
