@@ -2,73 +2,102 @@ Return-Path: <SRS0=ab0F=C3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16FF0C43465
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:59:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA9C0C43465
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 03:04:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D715D20870
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:59:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8C880206B7
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 03:04:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600397959;
-	bh=UxyESt/K75+rUqzJRmabdg0mnMv1VHXCfyIK+f5CqpE=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=tyHz0BHWvhYuMtEzbxzsm+dvzhIg9Ptl8N9S+nbLVwUarnG+9zOcKMjfmj/p6+1rt
-	 +N8arA7c7UKGGonxCtb/WGpOBGLdzC26UNFY71gDb0niBkApte2ZEPIPH6HxBSM0kL
-	 znrHLKuIO2iCDNSwpHK+HOYqtEqhe1UJT08Dw54E=
+	s=default; t=1600398281;
+	bh=aZQ8kblRrgrsA6AI6PIohMYUWXqq5h+dYDdP2IxiZTY=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=BrVyXZfISW8VVEZL+3CgEzkEg4jNQlG8ROX95e8e3CP/EIb0FNrUlQr9n3cJCsQvl
+	 29xKs7zNsYbJU8Ksna4s1+UTvO8urkhjQ5YQMB+f8ePIt4I4QUKbZKmlomtht8KXK1
+	 ghvzKwm83i2DOcPoZp7ShaY5Ihq9elqWgzNKre3M=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728588AbgIRC7O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 22:59:14 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57978 "EHLO mail.kernel.org"
+        id S1727374AbgIRDEh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Sep 2020 23:04:37 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52460 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726156AbgIRC7B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 17 Sep 2020 22:59:01 -0400
-Received: from gmail.com (unknown [104.132.1.76])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1726587AbgIRCEq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Sep 2020 22:04:46 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E4DAB2083B;
-        Fri, 18 Sep 2020 02:59:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 41D952388E;
+        Fri, 18 Sep 2020 02:04:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600397941;
-        bh=UxyESt/K75+rUqzJRmabdg0mnMv1VHXCfyIK+f5CqpE=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=uO19MVTx3NWJ9usXy2oKKEIPkmosZEXtgFGOe6IEnE3qkk4VXDca0g/Z9bOhX3W/9
-         2VfiWBgEYVCbm9UsWLG0XDoHFFvdK4qPQtPCzp3/bbSfQHYaNmfbliTMlnA7lLUN07
-         /P37UsqT9PPJF9YTBQT4K/8fX84LKNaKv2DigGmk=
-Date:   Thu, 17 Sep 2020 19:58:59 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Sasha Levin <sashal@kernel.org>
-Cc:     linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH AUTOSEL 4.19 059/206] ext4: make dioread_nolock the
- default
-Message-ID: <20200918025859.GB3518637@gmail.com>
-References: <20200918020802.2065198-1-sashal@kernel.org>
- <20200918020802.2065198-59-sashal@kernel.org>
+        s=default; t=1600394684;
+        bh=aZQ8kblRrgrsA6AI6PIohMYUWXqq5h+dYDdP2IxiZTY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=a3xAekheiJBkJSIcSyuo1UG1E4WPR81rQIsoxdOxD9AOJvmC1PIbFQoapivpPDRs9
+         hj2kMdESmuitt8MtcGjIS/5bEgjatH/ZIxrra5ZAbkkEB9Bsu3Sq/kIzq7H78gMa5e
+         Mw9EZgG00Qf8qdYiTVid9icW0ikl4+aso0kME+yU=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Dmitry Monakhov <dmonakhov@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 173/330] ext4: mark block bitmap corrupted when found instead of BUGON
+Date:   Thu, 17 Sep 2020 21:58:33 -0400
+Message-Id: <20200918020110.2063155-173-sashal@kernel.org>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20200918020110.2063155-1-sashal@kernel.org>
+References: <20200918020110.2063155-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200918020802.2065198-59-sashal@kernel.org>
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Sep 17, 2020 at 10:05:35PM -0400, Sasha Levin wrote:
-> From: Theodore Ts'o <tytso@mit.edu>
-> 
-> [ Upstream commit 244adf6426ee31a83f397b700d964cff12a247d3 ]
-> 
-> This fixes the direct I/O versus writeback race which can reveal stale
-> data, and it improves the tail latency of commits on slow devices.
-> 
-> Link: https://lore.kernel.org/r/20200125022254.1101588-1-tytso@mit.edu
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Sasha Levin <sashal@kernel.org>
+From: Dmitry Monakhov <dmonakhov@gmail.com>
 
-Any particular reason to be backporting this?  I thought I saw some fixes for
-dioread_nolock go by, after it was made the default.  Are you getting all of
-those fixes too?
+[ Upstream commit eb5760863fc28feab28b567ddcda7e667e638da0 ]
 
-- Eric
+We already has similar code in ext4_mb_complex_scan_group(), but
+ext4_mb_simple_scan_group() still affected.
+
+Other reports: https://www.spinics.net/lists/linux-ext4/msg60231.html
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Dmitry Monakhov <dmonakhov@gmail.com>
+Link: https://lore.kernel.org/r/20200310150156.641-1-dmonakhov@gmail.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/mballoc.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e1782b2e2e2dd..e5d43d2ee474d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1901,8 +1901,15 @@ void ext4_mb_simple_scan_group(struct ext4_allocation_context *ac,
+ 		BUG_ON(buddy == NULL);
+ 
+ 		k = mb_find_next_zero_bit(buddy, max, 0);
+-		BUG_ON(k >= max);
+-
++		if (k >= max) {
++			ext4_grp_locked_error(ac->ac_sb, e4b->bd_group, 0, 0,
++				"%d free clusters of order %d. But found 0",
++				grp->bb_counters[i], i);
++			ext4_mark_group_bitmap_corrupted(ac->ac_sb,
++					 e4b->bd_group,
++					EXT4_GROUP_INFO_BBITMAP_CORRUPT);
++			break;
++		}
+ 		ac->ac_found++;
+ 
+ 		ac->ac_b_ex.fe_len = 1 << i;
+-- 
+2.25.1
+
