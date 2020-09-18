@@ -7,47 +7,47 @@ X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C07BFC43465
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:10:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EC4BC43466
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:22:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 87A7D239E5
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:10:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0304222211
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 02:22:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600395005;
-	bh=+pU0invXC4/YrAgQHq5Xiv0cJU+MIJEVjntsabr4JjU=;
+	s=default; t=1600395766;
+	bh=/3ETK0CJZF2j2HnUIvIYR8GjbyTgnlOglF1HHfQkJow=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=TRrj7hF/9jkoL7qhSPXjA9iXmSawGpj3Lk18X2OW8sSWsS4STU4d9LxdPuhm2Pjig
-	 yuJfsNxil5WvPb8h5oMN+lNf++X6pfReif/imDvgXYuzj9BIArMlIoWeAPOjr3NTxQ
-	 RVlMex0oz3KyI/YalvHy32IfCQbQXxoryhpDrMfQ=
+	b=n5WujRVJN/2hL7FI84NHzctghg5HT3oSogTkiI/agl4IzX0gDgxMqWS/Lcf7f0YLu
+	 +pU/XbYvkg/1hQyuLi/QF4mCSvu3jCfrU0kXRAtU6IK9rkvAFhFltrIr+tcH/p8uhG
+	 dmVXhbfWpeo/HMDV5Xw4CSR7HHDdwycfT0BSLgbw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728395AbgIRCKE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 22:10:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33558 "EHLO mail.kernel.org"
+        id S1729069AbgIRCWp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Sep 2020 22:22:45 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47346 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728382AbgIRCKA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 17 Sep 2020 22:10:00 -0400
+        id S1728381AbgIRCRE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Sep 2020 22:17:04 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DE8CA235F9;
-        Fri, 18 Sep 2020 02:09:58 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7B60923888;
+        Fri, 18 Sep 2020 02:17:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600394999;
-        bh=+pU0invXC4/YrAgQHq5Xiv0cJU+MIJEVjntsabr4JjU=;
+        s=default; t=1600395424;
+        bh=/3ETK0CJZF2j2HnUIvIYR8GjbyTgnlOglF1HHfQkJow=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=cbPHDx2VBBDmQrKhk+l+ruRmvqG7kSgsep75tulNxz5FZrsu9ws1fM4WQypTdJs5e
-         tgLoTBZmYKq5LGwEchkJH6zJkwdv81BE1hQ863mbYSsgKIBNjSw+J78aHxicF75nG4
-         Z+LAIGgo6F5d6y4bsPrDxY+q1i2s1tDrzh0xs9cc=
+        b=HJiHKRdGzGO3Zm4hCURgEU5MOVFrbzLKpze6DqH3a0+6ghKhZu8eVwaIwYLkCby/i
+         Z62FST8gLRN2C+qmfw0JkZHwPUBaao7HG6+1DB57AZGPhe242XO/rDfoA+kRCuACDW
+         zNaPHdgOGwAgCEwTaly7tXZtUNL+d38rfeHkjwSs=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Qiujun Huang <hqjagain@gmail.com>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 097/206] ext4: fix a data race at inode->i_disksize
-Date:   Thu, 17 Sep 2020 22:06:13 -0400
-Message-Id: <20200918020802.2065198-97-sashal@kernel.org>
+Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.4 18/64] ext4: make dioread_nolock the default
+Date:   Thu, 17 Sep 2020 22:15:57 -0400
+Message-Id: <20200918021643.2067895-18-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200918020802.2065198-1-sashal@kernel.org>
-References: <20200918020802.2065198-1-sashal@kernel.org>
+In-Reply-To: <20200918021643.2067895-1-sashal@kernel.org>
+References: <20200918021643.2067895-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -56,70 +56,52 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Qiujun Huang <hqjagain@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
 
-[ Upstream commit dce8e237100f60c28cc66effb526ba65a01d8cb3 ]
+[ Upstream commit 244adf6426ee31a83f397b700d964cff12a247d3 ]
 
-KCSAN find inode->i_disksize could be accessed concurrently.
+This fixes the direct I/O versus writeback race which can reveal stale
+data, and it improves the tail latency of commits on slow devices.
 
-BUG: KCSAN: data-race in ext4_mark_iloc_dirty / ext4_write_end
-
-write (marked) to 0xffff8b8932f40090 of 8 bytes by task 66792 on cpu 0:
- ext4_write_end+0x53f/0x5b0
- ext4_da_write_end+0x237/0x510
- generic_perform_write+0x1c4/0x2a0
- ext4_buffered_write_iter+0x13a/0x210
- ext4_file_write_iter+0xe2/0x9b0
- new_sync_write+0x29c/0x3a0
- __vfs_write+0x92/0xa0
- vfs_write+0xfc/0x2a0
- ksys_write+0xe8/0x140
- __x64_sys_write+0x4c/0x60
- do_syscall_64+0x8a/0x2a0
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-read to 0xffff8b8932f40090 of 8 bytes by task 14414 on cpu 1:
- ext4_mark_iloc_dirty+0x716/0x1190
- ext4_mark_inode_dirty+0xc9/0x360
- ext4_convert_unwritten_extents+0x1bc/0x2a0
- ext4_convert_unwritten_io_end_vec+0xc5/0x150
- ext4_put_io_end+0x82/0x130
- ext4_writepages+0xae7/0x16f0
- do_writepages+0x64/0x120
- __writeback_single_inode+0x7d/0x650
- writeback_sb_inodes+0x3a4/0x860
- __writeback_inodes_wb+0xc4/0x150
- wb_writeback+0x43f/0x510
- wb_workfn+0x3b2/0x8a0
- process_one_work+0x39b/0x7e0
- worker_thread+0x88/0x650
- kthread+0x1d4/0x1f0
- ret_from_fork+0x35/0x40
-
-The plain read is outside of inode->i_data_sem critical section
-which results in a data race. Fix it by adding READ_ONCE().
-
-Signed-off-by: Qiujun Huang <hqjagain@gmail.com>
-Link: https://lore.kernel.org/r/1582556566-3909-1-git-send-email-hqjagain@gmail.com
+Link: https://lore.kernel.org/r/20200125022254.1101588-1-tytso@mit.edu
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/super.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index cd833f4e64ef1..52be4c9650241 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5315,7 +5315,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
--	if (ei->i_disksize != ext4_isize(inode->i_sb, raw_inode)) {
-+	if (READ_ONCE(ei->i_disksize) != ext4_isize(inode->i_sb, raw_inode)) {
- 		ext4_isize_set(raw_inode, ei->i_disksize);
- 		need_datasync = 1;
- 	}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index aca086a25b2ef..5a623ea954882 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1251,6 +1251,7 @@ static const match_table_t tokens = {
+ 	{Opt_auto_da_alloc, "auto_da_alloc"},
+ 	{Opt_noauto_da_alloc, "noauto_da_alloc"},
+ 	{Opt_dioread_nolock, "dioread_nolock"},
++	{Opt_dioread_lock, "nodioread_nolock"},
+ 	{Opt_dioread_lock, "dioread_lock"},
+ 	{Opt_discard, "discard"},
+ 	{Opt_nodiscard, "nodiscard"},
+@@ -3380,6 +3381,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		set_opt(sb, NO_UID32);
+ 	/* xattr user namespace & acls are now defaulted on */
+ 	set_opt(sb, XATTR_USER);
++	set_opt(sb, DIOREAD_NOLOCK);
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 	set_opt(sb, POSIX_ACL);
+ #endif
+@@ -3448,9 +3450,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 
+ 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+-		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
+-			    "with data=journal disables delayed "
+-			    "allocation and O_DIRECT support!\n");
++		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, and O_DIRECT support!\n");
++		clear_opt(sb, DIOREAD_NOLOCK);
+ 		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "both data=journal and delalloc");
 -- 
 2.25.1
 
