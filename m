@@ -2,106 +2,142 @@ Return-Path: <SRS0=ab0F=C3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9936C43465
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 03:08:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 890A6C43463
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 05:06:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 83788206DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 03:08:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600398530;
-	bh=siNmCF0S5qqvQt+t7KK/xo8ewwCEw45lmuUYbpGz3rw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=dBudrvaBaxinWngVGBWVPZ+7DuPiWqJtQO/EmkUE3E54kL++Bsgl9nV3Kgu/sUq1p
-	 Arag4U4Stdl0sLlpiCJAtH8VvqOiYvOWxLTAnVn9qx5fDM0rZ0Z9KMKsNAs65Deh/I
-	 jcsNeJUacyRmnRgO7Qb+ZVw/CHHkfNwHWF7poCtY=
+	by mail.kernel.org (Postfix) with ESMTP id 0A52821974
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 05:06:55 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="rUpM6aUu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727030AbgIRCDS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Sep 2020 22:03:18 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49376 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727021AbgIRCDS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 17 Sep 2020 22:03:18 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 25AC723119;
-        Fri, 18 Sep 2020 02:03:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600394597;
-        bh=siNmCF0S5qqvQt+t7KK/xo8ewwCEw45lmuUYbpGz3rw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=scNIqh2LE63mdGPFGadbtwkVH+JdfiP5t9bgl2bt9uTWe/yGCmU5+aQWJfJ3xFZFk
-         CvgraBOm3xoVxhGYdKl6dPoXS5A4mc9eJPeL5ISrkKCbR7saBSdNwXuC66Med8w+TM
-         Ju0lZwWghNf1YN+OP1z11WORFzJwSM+sFtaHbejk=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 105/330] ext4: make dioread_nolock the default
-Date:   Thu, 17 Sep 2020 21:57:25 -0400
-Message-Id: <20200918020110.2063155-105-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20200918020110.2063155-1-sashal@kernel.org>
-References: <20200918020110.2063155-1-sashal@kernel.org>
+        id S1726303AbgIRFGw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Sep 2020 01:06:52 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:57816 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726265AbgIRFGw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Sep 2020 01:06:52 -0400
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 08I52qrq136666;
+        Fri, 18 Sep 2020 01:06:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=aKg0rRpn9njQPxYxFBecnCKsQMQFOguGyx4Y1/cCL74=;
+ b=rUpM6aUuGV3UKhj/sl3flKUz1qEJc+kvH2+as2RXThLYf9T9oU6srdZOSqsvaQVk6vuL
+ 3hksfZ7UbluL+llDsf7G3YXDs/7vumPjfygeF9pWhg+FQsktvcw6DObJ6SPpvAdhclqb
+ 2lo5U4KwU0DXwV/oXaXCzQeF2tYIteW4Z4cxoZIFbmS/pOgs5aOxwfPdyFG5SG0AQ5s6
+ dI+vg9MYWw23FOUJZTZ0ilHbGDEIUW6Tv4AoYZpSXqjB33FdvnP+JKeAatN+VgELRl6N
+ QLmKUE+7upocs5IRbAs5o48br7iEpQZmhrM6C9akbk+CcTe9oE/n6mH5E3wBmh9WswcV xQ== 
+Received: from ppma06ams.nl.ibm.com (66.31.33a9.ip4.static.sl-reverse.com [169.51.49.102])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 33mp96r87n-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 18 Sep 2020 01:06:46 -0400
+Received: from pps.filterd (ppma06ams.nl.ibm.com [127.0.0.1])
+        by ppma06ams.nl.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 08I4w3V7024700;
+        Fri, 18 Sep 2020 05:06:43 GMT
+Received: from b06avi18626390.portsmouth.uk.ibm.com (b06avi18626390.portsmouth.uk.ibm.com [9.149.26.192])
+        by ppma06ams.nl.ibm.com with ESMTP id 33k9geancy-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 18 Sep 2020 05:06:43 +0000
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
+        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 08I557UD30998972
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 18 Sep 2020 05:05:07 GMT
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 7442BA405C;
+        Fri, 18 Sep 2020 05:06:41 +0000 (GMT)
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 05033A4054;
+        Fri, 18 Sep 2020 05:06:40 +0000 (GMT)
+Received: from riteshh-domain.ibmuc.com (unknown [9.199.45.180])
+        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Fri, 18 Sep 2020 05:06:39 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, jack@suse.cz, dan.j.williams@intel.com,
+        anju@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [PATCHv3 1/1] ext4: Optimize file overwrites
+Date:   Fri, 18 Sep 2020 10:36:35 +0530
+Message-Id: <88e795d8a4d5cd22165c7ebe857ba91d68d8813e.1600401668.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <cover.1600401668.git.riteshh@linux.ibm.com>
+References: <cover.1600401668.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
+ definitions=2020-09-18_02:2020-09-16,2020-09-18 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 spamscore=0 impostorscore=0
+ phishscore=0 mlxlogscore=607 mlxscore=0 lowpriorityscore=0 bulkscore=0
+ suspectscore=1 clxscore=1015 priorityscore=1501 malwarescore=0
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2006250000 definitions=main-2009180037
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+In case if the file already has underlying blocks/extents allocated
+then we don't need to start a journal txn and can directly return
+the underlying mapping. Currently ext4_iomap_begin() is used by
+both DAX & DIO path. We can check if the write request is an
+overwrite & then directly return the mapping information.
 
-[ Upstream commit 244adf6426ee31a83f397b700d964cff12a247d3 ]
+This could give a significant perf boost for multi-threaded writes
+specially random overwrites.
+On PPC64 VM with simulated pmem(DAX) device, ~10x perf improvement
+could be seen in random writes (overwrite). Also bcoz this optimizes
+away the spinlock contention during jbd2 slab cache allocation
+(jbd2_journal_handle). On x86 VM, ~2x perf improvement was observed.
 
-This fixes the direct I/O versus writeback race which can reveal stale
-data, and it improves the tail latency of commits on slow devices.
-
-Link: https://lore.kernel.org/r/20200125022254.1101588-1-tytso@mit.edu
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Reported-by: Dan Williams <dan.j.williams@intel.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 ---
- fs/ext4/super.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4aae7e3e89a12..c32b8161ad3e9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1546,6 +1546,7 @@ static const match_table_t tokens = {
- 	{Opt_auto_da_alloc, "auto_da_alloc"},
- 	{Opt_noauto_da_alloc, "noauto_da_alloc"},
- 	{Opt_dioread_nolock, "dioread_nolock"},
-+	{Opt_dioread_lock, "nodioread_nolock"},
- 	{Opt_dioread_lock, "dioread_lock"},
- 	{Opt_discard, "discard"},
- 	{Opt_nodiscard, "nodiscard"},
-@@ -3750,6 +3751,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
-+	set_opt(sb, DIOREAD_NOLOCK);
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	set_opt(sb, POSIX_ACL);
- #endif
-@@ -3927,9 +3929,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #endif
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 10dd470876b3..6eae17758ece 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3437,14 +3437,26 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
+ 			  EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
  
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
--		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
--			    "with data=journal disables delayed "
--			    "allocation and O_DIRECT support!\n");
-+		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, and O_DIRECT support!\n");
-+		clear_opt(sb, DIOREAD_NOLOCK);
- 		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "both data=journal and delalloc");
+-	if (flags & IOMAP_WRITE)
++	if (flags & IOMAP_WRITE) {
++		/*
++		 * We check here if the blocks are already allocated, then we
++		 * don't need to start a journal txn and we can directly return
++		 * the mapping information. This could boost performance
++		 * especially in multi-threaded overwrite requests.
++		 */
++		if (offset + length <= i_size_read(inode)) {
++			ret = ext4_map_blocks(NULL, inode, &map, 0);
++			if (ret > 0 && (map.m_flags & EXT4_MAP_MAPPED))
++				goto out;
++		}
+ 		ret = ext4_iomap_alloc(inode, &map, flags);
+-	else
++	} else {
+ 		ret = ext4_map_blocks(NULL, inode, &map, 0);
++	}
+ 
+ 	if (ret < 0)
+ 		return ret;
+-
++out:
+ 	ext4_set_iomap(inode, iomap, &map, offset, length);
+ 
+ 	return 0;
 -- 
-2.25.1
+2.26.2
 
