@@ -2,221 +2,150 @@ Return-Path: <SRS0=ab0F=C3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=no autolearn_force=no
+X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7983FC43465
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 05:09:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F263C43464
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 07:52:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0453F21974
-	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 05:09:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 32F7020DD4
+	for <linux-ext4@archiver.kernel.org>; Fri, 18 Sep 2020 07:52:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="dImclmEP"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fO0ZculQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726347AbgIRFJG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 18 Sep 2020 01:09:06 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:63670 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726126AbgIRFJF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 18 Sep 2020 01:09:05 -0400
-Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 08I51mRR135967;
-        Fri, 18 Sep 2020 01:09:00 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : mime-version : content-transfer-encoding; s=pp1;
- bh=kux50PGtBlRry0m2L8U0dh/ano+EFsjjRDmFGJCo9gU=;
- b=dImclmEPrEuTF8dNosE0wSCedfuV6H2/L0dLJXzNVSMGhS0+XPNb5Ix4R3kpFfcwKHQE
- J7PMOGxOWC6Q6NRoO/zazh4i6P6TVAhz5VjBa+znUPqxsif4lWDpPNxbMUSRBuzqyYPd
- 71OzAiqD553HItvT985zZQpH0tjhHNts3SOnJuWsDtdExEe8t3iUhM0rsYLgJ8Vqo2WN
- kXEcdFkgbPl+R/RXmgM7ZaCIBJm1GlyeVhdVbZJYCLGl2a8uzcBnM7z8NYOjFarU+LYQ
- 7vY4fxq884rAhLKky1OoJgwtAYzRbc3Elm7Y2d/aBhHmzYyKY8N7/ne6TschxNrwctQt 4Q== 
-Received: from ppma05fra.de.ibm.com (6c.4a.5195.ip4.static.sl-reverse.com [149.81.74.108])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 33mn791n1h-2
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 18 Sep 2020 01:09:00 -0400
-Received: from pps.filterd (ppma05fra.de.ibm.com [127.0.0.1])
-        by ppma05fra.de.ibm.com (8.16.0.42/8.16.0.42) with SMTP id 08I4vXEx019953;
-        Fri, 18 Sep 2020 05:06:42 GMT
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
-        by ppma05fra.de.ibm.com with ESMTP id 33k6f2hemn-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 18 Sep 2020 05:06:42 +0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 08I56dRh28639632
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 18 Sep 2020 05:06:39 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id B3F85A405F;
-        Fri, 18 Sep 2020 05:06:39 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 447FBA405C;
-        Fri, 18 Sep 2020 05:06:38 +0000 (GMT)
-Received: from riteshh-domain.ibmuc.com (unknown [9.199.45.180])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Fri, 18 Sep 2020 05:06:38 +0000 (GMT)
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, jack@suse.cz, dan.j.williams@intel.com,
-        anju@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv3 0/1] Optimize ext4 file overwrites - perf improvement
-Date:   Fri, 18 Sep 2020 10:36:34 +0530
-Message-Id: <cover.1600401668.git.riteshh@linux.ibm.com>
-X-Mailer: git-send-email 2.26.2
+        id S1726820AbgIRHwb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Sep 2020 03:52:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50800 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726711AbgIRHwa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2020 03:52:30 -0400
+Received: from mail-ot1-x343.google.com (mail-ot1-x343.google.com [IPv6:2607:f8b0:4864:20::343])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C62B1C06174A;
+        Fri, 18 Sep 2020 00:52:30 -0700 (PDT)
+Received: by mail-ot1-x343.google.com with SMTP id o8so4592549otl.4;
+        Fri, 18 Sep 2020 00:52:30 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:reply-to:from:date:message-id
+         :subject:to:cc;
+        bh=S2eNoZYJBbRdDL+9Rn83UkdafaYmPioHl03HTHvdQG0=;
+        b=fO0ZculQNiNNXJ+GZ4XJ+Izjls+aHWlLkPNgFCkYk+T4lrNk7okIWBhRv8aPZ7YnRU
+         yWmecYPz7JpgdFFby2UJOV+G1HX6r9Va6HM9/nOoRxu0+aSY1ZDJzT+KIV+hLlMKIIN1
+         w6WxP82H9u6RYNFrh5Fzt8r9ozMRUZ1ZZCjaHtyEuwLsoI3zyWl+hUh3asYRUOdT0pVn
+         isRpZ3GYvfejEndmnWnnrq7WiQ2WxtgBuhwKo/HbP5kcDNEkirlFKW8syexCFtoRZSqM
+         cxQmDcjHLdDdOgUqnk2PF4PFUuECcVinfxvfalrwXNRmNpMP+qmYjTgCkNI/+ZEZu6PZ
+         6ZDw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:reply-to
+         :from:date:message-id:subject:to:cc;
+        bh=S2eNoZYJBbRdDL+9Rn83UkdafaYmPioHl03HTHvdQG0=;
+        b=sFEd2QlV1XYA3Q7MAgDgX1ZOlLTfl3UteH6UH2eeB1NVpuVukXne3fK/C116UchLaO
+         8vMBAVxKTA9qhjjOGGHBzDeU/oBmoGf5f8qGmVcTjHqJTDxC6Wckm9PUiinoHbnVfoyV
+         d+NohSbEozlcloanb76UXsyg2gPhWPu5YO810V2lbkHQT+yEjXtfuqUWX/3VyM8/vcKi
+         uhrha8bnjBDrj8R24DDJ92bg4MYEL2O+2otRqtBc0tN8HEbSIJpxBy0pIgsKF/1Wu3bD
+         kof70WeGGvBhR/tj5pbAQtNnNw78jwvigawhDQWqLhQk/m2a0a9J+wW33/8Bw7+UyhZs
+         rq8w==
+X-Gm-Message-State: AOAM533ekjx57n85xXc8rlaisTwPDbbT92+IJP+VJX65I7UPxpysNePA
+        m6/86ipLs5bBBLT3HXjifnzUNvRFH2GrQDYHkrs=
+X-Google-Smtp-Source: ABdhPJyuZa4aaOHbJ4KcquqeOW73BYpH7VvGe3VxVVFyF5vKx1u35OqPT0RQOJtMKbnV/Z8+HMnZE6+poiphw4Tj38I=
+X-Received: by 2002:a9d:67c3:: with SMTP id c3mr23645453otn.9.1600415549857;
+ Fri, 18 Sep 2020 00:52:29 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.235,18.0.687
- definitions=2020-09-18_02:2020-09-16,2020-09-18 signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 spamscore=0
- impostorscore=0 lowpriorityscore=0 adultscore=0 mlxscore=0 mlxlogscore=792
- priorityscore=1501 bulkscore=0 clxscore=1015 suspectscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2006250000
- definitions=main-2009180037
+References: <cover.1600401668.git.riteshh@linux.ibm.com> <88e795d8a4d5cd22165c7ebe857ba91d68d8813e.1600401668.git.riteshh@linux.ibm.com>
+In-Reply-To: <88e795d8a4d5cd22165c7ebe857ba91d68d8813e.1600401668.git.riteshh@linux.ibm.com>
+Reply-To: sedat.dilek@gmail.com
+From:   Sedat Dilek <sedat.dilek@gmail.com>
+Date:   Fri, 18 Sep 2020 09:52:18 +0200
+Message-ID: <CA+icZUXvhDR2TFEemfGyt=twxHBcu0_9b0H1j5cwGPG5kGA+TA@mail.gmail.com>
+Subject: Re: [PATCHv3 1/1] ext4: Optimize file overwrites
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
+        dan.j.williams@intel.com, anju@linux.vnet.ibm.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+On Fri, Sep 18, 2020 at 7:09 AM Ritesh Harjani <riteshh@linux.ibm.com> wrote:
+>
+> In case if the file already has underlying blocks/extents allocated
+> then we don't need to start a journal txn and can directly return
+> the underlying mapping. Currently ext4_iomap_begin() is used by
+> both DAX & DIO path. We can check if the write request is an
+> overwrite & then directly return the mapping information.
+>
+> This could give a significant perf boost for multi-threaded writes
+> specially random overwrites.
+> On PPC64 VM with simulated pmem(DAX) device, ~10x perf improvement
+> could be seen in random writes (overwrite). Also bcoz this optimizes
+> away the spinlock contention during jbd2 slab cache allocation
+> (jbd2_journal_handle). On x86 VM, ~2x perf improvement was observed.
+>
+> Reported-by: Dan Williams <dan.j.williams@intel.com>
+> Suggested-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 
-v2 -> v3
-1. Switched to suggested approach from Jan to make the approach general
-for all file writes rather than only for DAX.
-(So as of now both DAX & DIO should benefit from this as both uses the same
-iomap path. Although note that I only tested performance improvement for DAX)
+I have applied your patch on top of recent Linus Git and boot-tested on x86-64.
 
-Gave a run on xfstests with -g quick,dax and didn't observe any new
-issues with this patch.
+Here I have LTP installed.
+If you have a LTP filesystem test-/use-case you know for testing,
+please let me know.
 
-In case of file writes, currently we start a journal txn irrespective of whether
-it's an overwrite or not. In case of an overwrite we don't need to start a
-jbd2 txn since the blocks are already allocated.
-So this patch optimizes away the txn start in case of file (DAX/DIO) overwrites.
-This could significantly boost performance for multi-threaded writes
-specially random writes (overwrite).
-Fio script used to collect perf numbers is mentioned below.
+Yes, I have seen the FIO config in the cover-letter.
+Maybe you have a different FIO config - 16G AFAIK is too big here.
 
-Below numbers were calculated on a QEMU setup on ppc64 box with simulated
-pmem (fsdax) device. 
+Feel free to add...
 
-Didn't observe any new failures with this patch in xfstests "-g quick,dax"
+Tested-by: Sedat Dilek <sedat.dilek@gmail.com> # Compile and boot on
+x86-64 Debian/unstable
 
-Performance numbers with different threads - (~10x improvement)
-==========================================
+Thanks.
 
-vanilla_kernel(kIOPS) (randomwrite)
- 60 +-+------+-------+--------+--------+--------+-------+------+-+   
-     |        +       +        +        +**      +       +        |   
-  55 +-+                                 **                     +-+   
-     |                          **       **                       |   
-     |                          **       **                       |   
-  50 +-+                        **       **                     +-+   
-     |                          **       **                       |   
-  45 +-+                        **       **                     +-+   
-     |                          **       **                       |   
-     |                          **       **                       |   
-  40 +-+                        **       **                     +-+   
-     |                          **       **                       |   
-  35 +-+               **       **       **                     +-+   
-     |                 **       **       **               **      |   
-     |                 **       **       **      **       **      |   
-  30 +-+      **       **       **       **      **       **    +-+   
-     |        **      +**      +**      +**      **      +**      |   
-  25 +-+------**------+**------+**------+**------**------+**----+-+   
-              1       2        4        8       12      16            
-                                     Threads                                   
-patched_kernel(kIOPS) (randomwrite)
-  600 +-+-----+--------+--------+-------+--------+-------+------+-+   
-      |       +        +        +       +        +       +**      |   
-      |                                                   **      |   
-  500 +-+                                                 **    +-+   
-      |                                                   **      |   
-      |                                           **      **      |   
-  400 +-+                                         **      **    +-+   
-      |                                           **      **      |   
-  300 +-+                                **       **      **    +-+   
-      |                                  **       **      **      |   
-      |                                  **       **      **      |   
-  200 +-+                                **       **      **    +-+   
-      |                         **       **       **      **      |   
-      |                         **       **       **      **      |   
-  100 +-+               **      **       **       **      **    +-+   
-      |                 **      **       **       **      **      |   
-      |       +**      +**      **      +**      +**     +**      |   
-    0 +-+-----+**------+**------**------+**------+**-----+**----+-+   
-              1        2        4       8       12      16            
-                                    Threads                                   
-fio script
-==========
-[global]
-rw=randwrite
-norandommap=1
-invalidate=0
-bs=4k
-numjobs=16 		--> changed this for different thread options
-time_based=1
-ramp_time=30
-runtime=60
-group_reporting=1
-ioengine=psync
-direct=1
-size=16G
-filename=file1.0.0:file1.0.1:file1.0.2:file1.0.3:file1.0.4:file1.0.5:file1.0.6:file1.0.7:file1.0.8:file1.0.9:file1.0.10:file1.0.11:file1.0.12:file1.0.13:file1.0.14:file1.0.15:file1.0.16:file1.0.17:file1.0.18:file1.0.19:file1.0.20:file1.0.21:file1.0.22:file1.0.23:file1.0.24:file1.0.25:file1.0.26:file1.0.27:file1.0.28:file1.0.29:file1.0.30:file1.0.31
-file_service_type=random
-nrfiles=32
-directory=/mnt/
+- Sedat -
 
-[name]
-directory=/mnt/
-direct=1
-
-NOTE:
-======
-1. Looking at ~10x perf delta, I probed a bit deeper to understand what's causing
-this scalability problem. It seems when we are starting a jbd2 txn then slab
-alloc code is observing some serious contention around spinlock.
-
-I think that the spinlock contention problem in slab alloc path could be optimized
-on PPC in general, will look into it seperately. But I could still see the
-perf improvement of close to ~2x on QEMU setup on x86 with simulated pmem device
-with the patched_kernel v/s vanilla_kernel with same fio workload.
-
-perf report from vanilla_kernel (this is not seen with patched kernel) (ppc64)
-=======================================================================
-
-  47.86%  fio              [kernel.vmlinux]            [k] do_raw_spin_lock
-             |
-             ---do_raw_spin_lock
-                |
-                |--19.43%--_raw_spin_lock
-                |          |
-                |           --19.31%--0
-                |                     |
-                |                     |--9.77%--deactivate_slab.isra.61
-                |                     |          ___slab_alloc
-                |                     |          __slab_alloc
-                |                     |          kmem_cache_alloc
-                |                     |          jbd2__journal_start
-                |                     |          __ext4_journal_start_sb
-<...>
-
-2. This problem was reported by Dan Williams at [1]
-
-Links
-======
-[1]: https://lore.kernel.org/linux-ext4/20190802144304.GP25064@quack2.suse.cz/T/
-[v2]: https://lkml.org/lkml/2020/8/22/123
-
-Ritesh Harjani (1):
-  ext4: Optimize file overwrites
-
- fs/ext4/inode.c | 18 +++++++++++++++---
- 1 file changed, 15 insertions(+), 3 deletions(-)
-
--- 
-2.26.2
-
+> ---
+>  fs/ext4/inode.c | 18 +++++++++++++++---
+>  1 file changed, 15 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 10dd470876b3..6eae17758ece 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3437,14 +3437,26 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>         map.m_len = min_t(loff_t, (offset + length - 1) >> blkbits,
+>                           EXT4_MAX_LOGICAL_BLOCK) - map.m_lblk + 1;
+>
+> -       if (flags & IOMAP_WRITE)
+> +       if (flags & IOMAP_WRITE) {
+> +               /*
+> +                * We check here if the blocks are already allocated, then we
+> +                * don't need to start a journal txn and we can directly return
+> +                * the mapping information. This could boost performance
+> +                * especially in multi-threaded overwrite requests.
+> +                */
+> +               if (offset + length <= i_size_read(inode)) {
+> +                       ret = ext4_map_blocks(NULL, inode, &map, 0);
+> +                       if (ret > 0 && (map.m_flags & EXT4_MAP_MAPPED))
+> +                               goto out;
+> +               }
+>                 ret = ext4_iomap_alloc(inode, &map, flags);
+> -       else
+> +       } else {
+>                 ret = ext4_map_blocks(NULL, inode, &map, 0);
+> +       }
+>
+>         if (ret < 0)
+>                 return ret;
+> -
+> +out:
+>         ext4_set_iomap(inode, iomap, &map, offset, length);
+>
+>         return 0;
+> --
+> 2.26.2
+>
