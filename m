@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0971C43464
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Sep 2020 00:55:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24F1AC43465
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Sep 2020 00:55:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 854B02072E
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Sep 2020 00:55:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E1E392072E
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Sep 2020 00:55:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KkUCJ2S9"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lJp45zLq"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726185AbgISAzS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 18 Sep 2020 20:55:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39552 "EHLO
+        id S1726221AbgISAzV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 18 Sep 2020 20:55:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39566 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726009AbgISAzQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2020 20:55:16 -0400
-Received: from mail-pg1-x542.google.com (mail-pg1-x542.google.com [IPv6:2607:f8b0:4864:20::542])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4498CC0613CE
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2020 17:55:16 -0700 (PDT)
-Received: by mail-pg1-x542.google.com with SMTP id 7so4420350pgm.11
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2020 17:55:16 -0700 (PDT)
+        with ESMTP id S1726157AbgISAzS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Sep 2020 20:55:18 -0400
+Received: from mail-pj1-x1044.google.com (mail-pj1-x1044.google.com [IPv6:2607:f8b0:4864:20::1044])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A4D7FC0613CE
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2020 17:55:18 -0700 (PDT)
+Received: by mail-pj1-x1044.google.com with SMTP id jw11so3882542pjb.0
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Sep 2020 17:55:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=7K5YtC0JjRBsQRwr9OTdUvML1HR+6ltsn+GL5Apl4S8=;
-        b=KkUCJ2S9pjL1M9tNMGunXoxoOcXdE0+MV1ff307uv06yo1xoQt6ifvNIP6UAi+tRnm
-         mirGJu2Tx0anmUVh3X2xnbj18PX4Oy3o14MAiZhYpe50nLWnmN13XtAZ3xFBg6Tf2w8E
-         DFAUkGqnF8QeNVGog2BJDmodnv+nQmhGhwyoLxv0YedNNLbj34DGrPTVxJDgTt0mQM7T
-         uAyOHepjqHVIij2pS6B+ULGCrViRmMcqA6S0vPlHpsIJ2nhR1OyAPcbHmQ77nbSfrxN7
-         8oC2Eso33z/hN8jg7mlLASHB+MErIn0zi8AGABLUXH24gc2kvm5tJKgohd/kmN8xQ5vC
-         Uyhw==
+        bh=EpTAzNNxTgeih6RTSwewI0RLzYkyjUkYiBqcN/5bSh8=;
+        b=lJp45zLqZuV6LVg0TbzUtaP77w8UV+2Rbb8b74ZarZ57atfxES0fPiJgIfJ8lHCTBM
+         CmFM6KM0cDcrZXkMcoPsNza2sPzrxmiAF1gkberWFcsDX0R2RB26UiRO6i0CYDmZ8YV3
+         3P8WVuv69mFyfxMa25ZhFT618BLvP2k2M/RI9G5PRnP5+j0uNQ/OQpqAWfeMcScwMJHi
+         T8KF+Ne4yHcNJyGLdKI8q13F+UR7IQfq7yI3AKwIUUouufh/oz86umQPrLB3TEls1eOz
+         Y1d0HFNvaHSwtGUvU8hW3tRQ2CcSu73eHDZCtCFsoNgE+U8Ir8ZBRwf0CixCMSiB2+v3
+         eomg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=7K5YtC0JjRBsQRwr9OTdUvML1HR+6ltsn+GL5Apl4S8=;
-        b=ic/JRdRfPKwcS/I16C9uqX4M5E0Jk2oYqQ/RO36/jlTTkacB7vD+6gPX37ZFmK3Myg
-         1euae029iCUslmtePLUKsjW3ZZ46Em+5Nh0pFNevpgZiVlRpBgmjFEe9VcPyQ5CqvJ8x
-         AFGTFPY0cHu6ocePapMSQG4o6cgmmyXoA8+JLqqpD4XoHepkWaWQiF/LFrT0Jj3rUkDs
-         mIBbUagMeAfkfGo6BzRe4ZE/qeGjG4MfaX9bg2r3R69UwEkOrxtRSDFgTzcIBW4VaE93
-         UoSyMGDc6EO3BR/yvxMCSH2QeKsMvB00IYfTMWYWawGzk0FchJrkuPCbHw6MHgZMzsvL
-         6/xQ==
-X-Gm-Message-State: AOAM533MK0D8XCyq1BdrW5Jw/P9RRya9mHqc2vYTSRWxCT0apJ17jnLD
-        3yckcvj5OzmAVR0fQIHV90p7FheKvrw=
-X-Google-Smtp-Source: ABdhPJxHvtwFZIYDdcb7Wsv5NUzwcyHBEXp0yOCbyViuVhrkII6N/wnAgzehSzzQG3QxL5jtvO0iTw==
-X-Received: by 2002:a63:5c5c:: with SMTP id n28mr28628924pgm.198.1600476915333;
-        Fri, 18 Sep 2020 17:55:15 -0700 (PDT)
+        bh=EpTAzNNxTgeih6RTSwewI0RLzYkyjUkYiBqcN/5bSh8=;
+        b=MbxnXDLdldDrUpRnNYkjrl0hIKpGWLc6aNchiqJRvWjA+izYTBGum0AoisogHBdfAg
+         MkStS4lunUiE/7/7KJF+kCLkStrI+RNSlYbrQ2vJXo2LUz/TwtXVaaU/CEWOInR/bMxp
+         dt8oG9449VESqY32VJH1c+83emFT9KGxHLFejmRNHlk5/2Mq8QtNgYiub22SNOOY5sZb
+         SVFwjyq8PbK2Wo8mrulJNWEypUObfgDfKelHgJnAZkCH+KAsN5Ul8wZTJx0Us7HBhRFL
+         d1f2iPZuRHTVSOoskJkWgu30msnPIevmMe6keom5UwbgFNatsjV5x0o4NkgF204tb97p
+         ZPhg==
+X-Gm-Message-State: AOAM532Eo0Cw8yW66e4snCeOUr2JeDWPcvP7ggCS4nYx+0DRuv/r/cPF
+        VeaWOl1lSDg83ls8w5OIKzZ/Oe0clqQ=
+X-Google-Smtp-Source: ABdhPJypANmIEpM8xgaDJjVFb6WsFilt9zHL1c6as+F5Bz/LdFl/yMmSayKLy1nReaPTNj6nmz7W1A==
+X-Received: by 2002:a17:902:a612:b029:d1:ece5:a1ce with SMTP id u18-20020a170902a612b02900d1ece5a1cemr14903894plq.66.1600476917825;
+        Fri, 18 Sep 2020 17:55:17 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id f28sm4621953pfq.191.2020.09.18.17.55.14
+        by smtp.googlemail.com with ESMTPSA id f28sm4621953pfq.191.2020.09.18.17.55.16
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 18 Sep 2020 17:55:14 -0700 (PDT)
+        Fri, 18 Sep 2020 17:55:17 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v9 6/9] jbd2: fast commit recovery path
-Date:   Fri, 18 Sep 2020 17:54:48 -0700
-Message-Id: <20200919005451.3899779-7-harshadshirwadkar@gmail.com>
+Subject: [PATCH v9 8/9] ext4: add a mount opt to forcefully turn fast commits on
+Date:   Fri, 18 Sep 2020 17:54:50 -0700
+Message-Id: <20200919005451.3899779-9-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.28.0.681.g6f77f65b4e-goog
 In-Reply-To: <20200919005451.3899779-1-harshadshirwadkar@gmail.com>
 References: <20200919005451.3899779-1-harshadshirwadkar@gmail.com>
@@ -73,174 +73,46 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch adds fast commit recovery support in JBD2.
+This is a debug only mount option that forcefully turns fast commits
+on at mount time.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/fast_commit.c | 15 +++++++++++
- fs/jbd2/recovery.c    | 59 ++++++++++++++++++++++++++++++++++++++++---
- include/linux/jbd2.h  | 20 +++++++++++++++
- 3 files changed, 90 insertions(+), 4 deletions(-)
+ fs/ext4/super.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 1c3e5f39d643..6e251b5682b4 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -1214,8 +1214,23 @@ static void ext4_fc_cleanup(journal_t *journal, int full)
- 	trace_ext4_fc_stats(sb);
- }
- 
-+/*
-+ * Main recovery path entry point.
-+ */
-+static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
-+				enum passtype pass, int off, tid_t expected_tid)
-+{
-+	return 0;
-+}
-+
- void ext4_fc_init(struct super_block *sb, journal_t *journal)
- {
-+	/*
-+	 * We set replay callback even if fast commit disabled because we may
-+	 * could still have fast commit blocks that need to be replayed even if
-+	 * fast commit has now been turned off.
-+	 */
-+	journal->j_fc_replay_callback = ext4_fc_replay;
- 	if (!test_opt2(sb, JOURNAL_FAST_COMMIT))
- 		return;
- 	journal->j_fc_cleanup_callback = ext4_fc_cleanup;
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index faa97d748474..6c6107c8df96 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -35,7 +35,6 @@ struct recovery_info
- 	int		nr_revoke_hits;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 967c4eac87d2..43ac8c19bf1d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1536,8 +1536,9 @@ enum {
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+ 	Opt_prefetch_block_bitmaps, Opt_no_fc,
+ #ifdef CONFIG_EXT4_DEBUG
+-	Opt_fc_debug_max_replay
++	Opt_fc_debug_max_replay,
+ #endif
++	Opt_fc_debug_force
  };
  
--enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
- static int do_one_pass(journal_t *journal,
- 				struct recovery_info *info, enum passtype pass);
- static int scan_revoke_records(journal_t *, struct buffer_head *,
-@@ -225,10 +224,53 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- /* Make sure we wrap around the log correctly! */
- #define wrap(journal, var)						\
- do {									\
--	if (var >= (journal)->j_last)					\
--		var -= ((journal)->j_last - (journal)->j_first);	\
-+	unsigned long _wrap_last =					\
-+		jbd2_has_feature_fast_commit(journal) ?			\
-+			(journal)->j_last_fc : (journal)->j_last;	\
-+									\
-+	if (var >= _wrap_last)						\
-+		var -= (_wrap_last - (journal)->j_first);		\
- } while (0)
- 
-+static int fc_do_one_pass(journal_t *journal,
-+			  struct recovery_info *info, enum passtype pass)
-+{
-+	unsigned int expected_commit_id = info->end_transaction;
-+	unsigned long next_fc_block;
-+	struct buffer_head *bh;
-+	unsigned int seq;
-+	int err = 0;
-+
-+	next_fc_block = journal->j_first_fc;
-+	if (!journal->j_fc_replay_callback)
-+		return 0;
-+
-+	while (next_fc_block <= journal->j_last_fc) {
-+		jbd_debug(3, "Fast commit replay: next block %ld",
-+			  next_fc_block);
-+		err = jread(&bh, journal, next_fc_block);
-+		if (err) {
-+			jbd_debug(3, "Fast commit replay: read error");
-+			break;
-+		}
-+
-+		jbd_debug(3, "Processing fast commit blk with seq %d",
-+			  seq);
-+		err = journal->j_fc_replay_callback(journal, bh, pass,
-+					next_fc_block - journal->j_first_fc,
-+					expected_commit_id);
-+		next_fc_block++;
-+		if (err < 0 || err == JBD2_FC_REPLAY_STOP)
-+			break;
-+		err = 0;
-+	}
-+
-+	if (err)
-+		jbd_debug(3, "Fast commit replay failed, err = %d\n", err);
-+
-+	return err;
-+}
-+
- /**
-  * jbd2_journal_recover - recovers a on-disk journal
-  * @journal: the journal to recover
-@@ -470,7 +512,9 @@ static int do_one_pass(journal_t *journal,
- 				break;
- 
- 		jbd_debug(2, "Scanning for sequence ID %u at %lu/%lu\n",
--			  next_commit_ID, next_log_block, journal->j_last);
-+			  next_commit_ID, next_log_block,
-+			  jbd2_has_feature_fast_commit(journal) ?
-+			  journal->j_last_fc : journal->j_last);
- 
- 		/* Skip over each chunk of the transaction looking
- 		 * either the next descriptor block or the final commit
-@@ -777,6 +821,13 @@ static int do_one_pass(journal_t *journal,
- 				success = -EIO;
- 		}
- 	}
-+
-+	if (jbd2_has_feature_fast_commit(journal) &&  pass != PASS_REVOKE) {
-+		err = fc_do_one_pass(journal, info, pass);
-+		if (err)
-+			success = err;
-+	}
-+
- 	if (block_error && success == 0)
- 		success = -EIO;
- 	return success;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 11c4ec967662..8e1849d81a7f 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -748,6 +748,11 @@ jbd2_time_diff(unsigned long start, unsigned long end)
- 
- #define JBD2_NR_BATCH	64
- 
-+enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
-+
-+#define JBD2_FC_REPLAY_STOP	0
-+#define JBD2_FC_REPLAY_CONTINUE	1
-+
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-@@ -1224,6 +1229,21 @@ struct journal_s
- 	 */
- 	void (*j_fc_cleanup_callback)(struct journal_s *journal, int);
- 
-+	/*
-+	 * @j_fc_replay_callback:
-+	 *
-+	 * File-system specific function that performs replay of a fast
-+	 * commit. JBD2 calls this function for each fast commit block found in
-+	 * the journal. This function should return JBD2_FC_REPLAY_CONTINUE
-+	 * to indicate that the block was processed correctly and more fast
-+	 * commit replay should continue. Return value of JBD2_FC_REPLAY_STOP
-+	 * indicates the end of replay (no more blocks remaining). A negative
-+	 * return value indicates error.
-+	 */
-+	int (*j_fc_replay_callback)(struct journal_s *journal,
-+				    struct buffer_head *bh,
-+				    enum passtype pass, int off,
-+				    tid_t expected_commit_id);
- };
- 
- #define jbd2_might_wait_for_commit(j) \
+ static const match_table_t tokens = {
+@@ -1625,6 +1626,7 @@ static const match_table_t tokens = {
+ 	{Opt_init_itable, "init_itable"},
+ 	{Opt_noinit_itable, "noinit_itable"},
+ 	{Opt_no_fc, "no_fc"},
++	{Opt_fc_debug_force, "fc_debug_force"},
+ #ifdef CONFIG_EXT4_DEBUG
+ 	{Opt_fc_debug_max_replay, "fc_debug_max_replay=%u"},
+ #endif
+@@ -1856,6 +1858,8 @@ static const struct mount_opts {
+ 	 MOPT_SET},
+ 	{Opt_no_fc, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
+ 	 MOPT_CLEAR | MOPT_2 | MOPT_EXT4_ONLY},
++	{Opt_fc_debug_force, EXT4_MOUNT2_JOURNAL_FAST_COMMIT,
++	 MOPT_SET | MOPT_2 | MOPT_EXT4_ONLY},
+ #ifdef CONFIG_EXT4_DEBUG
+ 	{Opt_fc_debug_max_replay, 0, MOPT_GTE0},
+ #endif
 -- 
 2.28.0.681.g6f77f65b4e-goog
 
