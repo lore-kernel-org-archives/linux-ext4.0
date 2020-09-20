@@ -2,68 +2,57 @@ Return-Path: <SRS0=Fxs1=C5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 450AFC4346B
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 17:40:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7F34C43463
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 18:00:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1355420829
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 17:40:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600623651;
-	bh=eK5W8+BnhjQSoTXjaZnuINE0o2zihtRrxXcCMb9ixzA=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=NK4te89M635wK2zEBgqmNormqvaedf6G8qVyXBn95OZt3cWVMRBEmgIwhGoBVKlFf
-	 IknvohOqpxo7U4PK7CX6nzm7JLerqFwYvb/ho4Qls4pgfbXaACZgY8nAmASYn+Yf7b
-	 b/vcKa7l6o9bD6Kk0RlRYjmwK0nX+a/ZqwBclrFA=
+	by mail.kernel.org (Postfix) with ESMTP id 7222F20719
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 18:00:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IvMBl3CQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726347AbgITRkr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 20 Sep 2020 13:40:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47330 "EHLO
+        id S1726480AbgITSAn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 20 Sep 2020 14:00:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50382 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726325AbgITRkq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Sep 2020 13:40:46 -0400
-Received: from mail-lf1-x144.google.com (mail-lf1-x144.google.com [IPv6:2a00:1450:4864:20::144])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 370CCC0613CE
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 10:40:46 -0700 (PDT)
-Received: by mail-lf1-x144.google.com with SMTP id 77so4195432lfj.0
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 10:40:46 -0700 (PDT)
+        with ESMTP id S1726308AbgITSAn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Sep 2020 14:00:43 -0400
+Received: from mail-oo1-xc41.google.com (mail-oo1-xc41.google.com [IPv6:2607:f8b0:4864:20::c41])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EE57C061755;
+        Sun, 20 Sep 2020 11:00:43 -0700 (PDT)
+Received: by mail-oo1-xc41.google.com with SMTP id k13so2723360oor.2;
+        Sun, 20 Sep 2020 11:00:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=uosIaBfV8EILtqdKcJPwj9HQb4A+VUO2Ewb4BaoQ+yc=;
-        b=GfS5aOwn7LnsYjlq8ck/DWbIdmlsRpcSpOmdiIHC+5vGmwNGjEb7dgIf0616LI+MFq
-         IzQ7ctWVYZSvUI2Oag3HJz7ppBoiq4raHZQ/7jdS5lOz7/UxHgYeuF+yk2+Daig3mZHU
-         uWr8ivc3CGxTUYaPyKfmqP7L+BimX1U7H11g4=
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:reply-to:from:date:message-id
+         :subject:to:cc;
+        bh=M0zggyfFjCAqyNLqtifhyH6zYXreXaBzwic7FAekGto=;
+        b=IvMBl3CQ7YZUWY4496ldrNZa4422339Kk8l6pMiyxYGJr7BiSUNqSIzb6cojqhhrKD
+         1uevcbwmZYabsvmuu3B7nziQ8W+K+BlgpyFQt6qDtfvNtbLDhSfQxnWFhNGlkf320Clc
+         8UkLof7282z+eRy4wztsDPugZgo1rG0mMYftnxtc7Cr04d0GXrZbAzm81ATONn6SuP+A
+         ypErX1WR4c7OT2VMrNvdj+7pmWDboEtvC1U1gZKnUbBafs6j06FeUufXinPGG/WE/Tn8
+         JAl84WkWSqvg9ekK+3ue7Wqdns7hbId3Ki4hH69pUDvasq4qc8KsZfQi/omW22hXUXxm
+         WAcw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=uosIaBfV8EILtqdKcJPwj9HQb4A+VUO2Ewb4BaoQ+yc=;
-        b=r+6aJ9W0ognrpaVL1hFh7StHmUuqMm/UqYN05RozUzgk9GWNSrzhmQq4Zq2Gm0Gqpn
-         flgiYu31twXWECQKODuoaGG3UQ/aBEBMoQclG5v3oTyrfTQvm9uNZgFQdSomUIyCiWR0
-         qt4bTzl4d0yWDeyt3JhA3mvatlrHS+SRINr0us41UbBRCcaj7PwEDrzkjsYxZyr3Htp7
-         JIBu6xSAHoePyvrQnZ+mkSQH+LLO3b2D6zslEULY4nmAxQTxrjhvcuN0zP23TcUUVbRT
-         2cSRhlmXadIyWPc7HZlnIYgz54DHHZGlYqp/Ipuv2j/aScsMoV1nALBMAXUh2aw7PHwH
-         IxzA==
-X-Gm-Message-State: AOAM533LTY1R0X/sCIX9n6N7yqZft5YzMblOcLDBO62BM5nsxilKWXGM
-        mAh70t8qOYp+FA3aqLYYW/+lyPcGWQgpCg==
-X-Google-Smtp-Source: ABdhPJwp9NhAcCeYqs2Au7H8lE2xCes8BTouleeEMneehul+j7A3bpP+xk1i/1Y9XNlCWSjrvIczkw==
-X-Received: by 2002:a19:6147:: with SMTP id m7mr16223312lfk.108.1600623643895;
-        Sun, 20 Sep 2020 10:40:43 -0700 (PDT)
-Received: from mail-lf1-f50.google.com (mail-lf1-f50.google.com. [209.85.167.50])
-        by smtp.gmail.com with ESMTPSA id m13sm1927064lfb.172.2020.09.20.10.40.42
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 20 Sep 2020 10:40:42 -0700 (PDT)
-Received: by mail-lf1-f50.google.com with SMTP id y2so11492757lfy.10
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 10:40:42 -0700 (PDT)
-X-Received: by 2002:ac2:4ec7:: with SMTP id p7mr12576982lfr.352.1600623642270;
- Sun, 20 Sep 2020 10:40:42 -0700 (PDT)
+        h=x-gm-message-state:mime-version:references:in-reply-to:reply-to
+         :from:date:message-id:subject:to:cc;
+        bh=M0zggyfFjCAqyNLqtifhyH6zYXreXaBzwic7FAekGto=;
+        b=mwYIQTaH7hdfvtd5PlavMGTM9Cm9Wdob668gML0AtxW3tvSl7ckvanfKwYeKVvOOYW
+         ioX2ogGLIaGNgSkVEEgPmAiUso1XDtkn05B4HO1FBhA9Gis7bLTFmWdD+p4XhASEOZ+I
+         871nUm18Io5jyHNqVk0gKn3phk8/q8d85WMTaOqyxg9TSIzOokSTDauvq1hcqFGvEoIL
+         GrZ6dSOx9JbWfz/y1Tq4x5AG7CWLG2QmfPXC9kx6vAowPQ+rz87BTWWNVPDQfyGRpir6
+         jLgDQ1WbMFhTN0SJ6qp5OCsfWR3ee1p0pqcUhvK5f1R1LJ+c9ZVsHTbAgnCwCanw+bw4
+         yT1A==
+X-Gm-Message-State: AOAM530a79exvQIKRbCm9Rx/XjdZ/y0RAf9eyGwoQnZuUvSPeyu0EAX1
+        ydnYtn9BrQY8NkLt7qAw18Q7EYKwz3qu0ZOzBbI=
+X-Google-Smtp-Source: ABdhPJwCdWlu4oiXRdcA1xLGP9lA1AxoYUx+S/5QI6gFG2lM2CVvTeu7Vp0Uu9oNE7bk7NG8JU3CWiulnrCt6QDC9A8=
+X-Received: by 2002:a4a:2c02:: with SMTP id o2mr30374645ooo.24.1600624841846;
+ Sun, 20 Sep 2020 11:00:41 -0700 (PDT)
 MIME-Version: 1.0
 References: <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
  <0daf6ae6-422c-dd46-f85a-e83f6e1d1113@MichaelLarabel.com> <20200912143704.GB6583@casper.infradead.org>
@@ -75,14 +64,15 @@ References: <CAOQ4uxhz8prfD5K7dU68yHdz=iBndCXTg5w4BrF-35B+4ziOwA@mail.gmail.com>
  <CA+icZUWVRordvPzJ=pYnQb1HiPFGxL6Acunkjfwx5YtgUw+wuA@mail.gmail.com>
  <CA+icZUUUkuV-sSEtb6F5Gk=yJ0efKUzEfE-_ko_b8BE3C7PTvQ@mail.gmail.com>
  <CA+icZUWoktdNKpdgBiojy=ofXhHP+y6Y4tPWm1Y3n4Yi_adjPQ@mail.gmail.com>
- <CAHk-=wi9x33YvO_=5VOXiNDg7yQU5D5MHReqUNzFrJ9azNx3hg@mail.gmail.com> <CA+icZUW=2aaM1X1dfhEbB74pLXekCULXCkU2s7J=qVHHXjxJdQ@mail.gmail.com>
-In-Reply-To: <CA+icZUW=2aaM1X1dfhEbB74pLXekCULXCkU2s7J=qVHHXjxJdQ@mail.gmail.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Sun, 20 Sep 2020 10:40:26 -0700
-X-Gmail-Original-Message-ID: <CAHk-=wgfWh-b7AHT6TDF2ekq01zFFnzwDUkjNM02hXxN__rTRA@mail.gmail.com>
-Message-ID: <CAHk-=wgfWh-b7AHT6TDF2ekq01zFFnzwDUkjNM02hXxN__rTRA@mail.gmail.com>
+ <CAHk-=wi9x33YvO_=5VOXiNDg7yQU5D5MHReqUNzFrJ9azNx3hg@mail.gmail.com>
+ <CA+icZUW=2aaM1X1dfhEbB74pLXekCULXCkU2s7J=qVHHXjxJdQ@mail.gmail.com> <CAHk-=wgfWh-b7AHT6TDF2ekq01zFFnzwDUkjNM02hXxN__rTRA@mail.gmail.com>
+In-Reply-To: <CAHk-=wgfWh-b7AHT6TDF2ekq01zFFnzwDUkjNM02hXxN__rTRA@mail.gmail.com>
+Reply-To: sedat.dilek@gmail.com
+From:   Sedat Dilek <sedat.dilek@gmail.com>
+Date:   Sun, 20 Sep 2020 20:00:30 +0200
+Message-ID: <CA+icZUWH7pqCXQPM_=OqeGxOyB-m6Ww1D6o2oQ+DYTv_ARaBwg@mail.gmail.com>
 Subject: Re: Kernel Benchmarking
-To:     Sedat Dilek <sedat.dilek@gmail.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
 Cc:     Matthew Wilcox <willy@infradead.org>,
         Michael Larabel <Michael@michaellarabel.com>,
         Matthieu Baerts <matthieu.baerts@tessares.net>,
@@ -97,10 +87,16 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Sep 20, 2020 at 10:14 AM Sedat Dilek <sedat.dilek@gmail.com> wrote:
+On Sun, Sep 20, 2020 at 7:40 PM Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
 >
-> You had the glory of writing the patch :-).
+> On Sun, Sep 20, 2020 at 10:14 AM Sedat Dilek <sedat.dilek@gmail.com> wrote:
+> >
+> > You had the glory of writing the patch :-).
+>
+> Your loss. I know it must hurt to not get the glory of authorship.
+>
 
-Your loss. I know it must hurt to not get the glory of authorship.
+No money. No bitcoins. Yelping for credits.
 
-             Linus
+- Sedat -
