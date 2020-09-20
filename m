@@ -2,121 +2,112 @@ Return-Path: <SRS0=Fxs1=C5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C24BCC43465
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 23:40:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E33D2C43463
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 23:45:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 70904206B5
-	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 23:40:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600645242;
-	bh=fxGo0ahVEwbHqFQj5MyJQS+liGB9QFdwe2oBTsgM9d8=;
-	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
-	b=NKLKjVyfaNd2NeKtIwbJiQdd1Zfdf+tp5JSahJtVy0qivgnkMnlOe/O7KJ4UY6CCB
-	 KzKQnKFTE1pxmL8lz/XkcHhzfrPrNnDqsUQEY1SkFgvKpjMqqR86SkbsCtiw6IKR0M
-	 qvHjAtTMgrJIJKAvZjl3wjzR0HRSHlKx+u8pCyMQ=
+	by mail.kernel.org (Postfix) with ESMTP id A586A206F4
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Sep 2020 23:45:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726236AbgITXkm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 20 Sep 2020 19:40:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45702 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726126AbgITXkl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Sep 2020 19:40:41 -0400
-Received: from mail-lf1-x141.google.com (mail-lf1-x141.google.com [IPv6:2a00:1450:4864:20::141])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 77C8FC061755
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 16:40:41 -0700 (PDT)
-Received: by mail-lf1-x141.google.com with SMTP id d15so12007471lfq.11
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 16:40:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=bDYTO6ZHAocBqDq8dENc7+9/1NYi0FO0+BjnujPaGI8=;
-        b=JhDrBz4VpfnwLwexhSfCra/1ljR+0DDuhhSmlK485+9M4Na6YRzV375YZRt8ot7FoR
-         txVEzV4FjQhUG1H2jkoLuvnO/1KJqe+mlHoMYZtxOQIBTrhesN0I421m31sdB07MvhLV
-         GRmW/3mZz0d3TLrvySNRdpKtqcWatAyZd4SpA=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=bDYTO6ZHAocBqDq8dENc7+9/1NYi0FO0+BjnujPaGI8=;
-        b=ctQmQ2jd1PD3RbvfqR38XtcUq61IMNxCISVb5fhywvayidUE/IRbSd/K4Qqsrw2SKK
-         IejX5jSz2p1SdQ2mIUsB+wlzM8GBRCUnR1fL/pkFV9v9OZcDpzKq9OC54Bc5IVy+2qcc
-         FNI1YOsMwb9dOPmJh82muCtcZhAgQ/fOCvfCAachFesrSdIwxPLDxIPOETvK0jfgn78B
-         s9AFvr/MP89G7tkkAUn0ObZFk2OqIGkjXx+k7VrKh0gnWqZgNmAozFGzSyCP+rFlm4XV
-         Ax/IEoQWIYQ4ECU7kC/YPHUusjrCantIXQgKyF+GiIlB5b6CUk0HwCZ5vCt4Io79GiBE
-         uPxA==
-X-Gm-Message-State: AOAM531fWyXOCv98q0rQDgR8UbsXBmokyLOUBkJZ5BMhjN1Q8D18E+ed
-        puVW64k2PXZ3LSF8I1ze/ZVZGpKyCD/bPA==
-X-Google-Smtp-Source: ABdhPJzpr0LDRmucFrf+r2v9Gkei5GwHyDdLxTyLXmI/jI3U5sTfHhH91lRDBHe95i2jgLgKL9T+Tw==
-X-Received: by 2002:a19:8a55:: with SMTP id m82mr2888215lfd.393.1600645239485;
-        Sun, 20 Sep 2020 16:40:39 -0700 (PDT)
-Received: from mail-lf1-f45.google.com (mail-lf1-f45.google.com. [209.85.167.45])
-        by smtp.gmail.com with ESMTPSA id c198sm2062234lfd.228.2020.09.20.16.40.37
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 20 Sep 2020 16:40:38 -0700 (PDT)
-Received: by mail-lf1-f45.google.com with SMTP id w11so12053017lfn.2
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Sep 2020 16:40:37 -0700 (PDT)
-X-Received: by 2002:ac2:4ec7:: with SMTP id p7mr12864272lfr.352.1600645237669;
- Sun, 20 Sep 2020 16:40:37 -0700 (PDT)
-MIME-Version: 1.0
-References: <20200912143704.GB6583@casper.infradead.org> <658ae026-32d9-0a25-5a59-9c510d6898d5@MichaelLarabel.com>
- <CAHk-=wip0bCNnFK2Sxdn-YCTdKBF2JjF0kcM5mXbRuKKp3zojw@mail.gmail.com>
- <CAHk-=whc5CnTUWoeeCDj640Rng4nH8HdLsHgEdnz3NtPSRqqhQ@mail.gmail.com>
- <20200917182314.GU5449@casper.infradead.org> <CAHk-=wj6g2y2Z3cGzHBMoeLx-mfG0Md_2wMVwx=+g_e-xDNTbw@mail.gmail.com>
- <20200917185049.GV5449@casper.infradead.org> <CAHk-=wj6Ha=cNU4kL3z661CV+c2x2=DKzPrfH=XujMa378NhWQ@mail.gmail.com>
- <20200917192707.GW5449@casper.infradead.org> <CAHk-=wjp+KiZE2EM=f8Z1J_wmZSoq0MVZTJi=bMSXmfZ7Gx76w@mail.gmail.com>
- <20200920232303.GW12096@dread.disaster.area> <CAHk-=wgufDZzm7U38eG4EPvr7ctSFJBhKZpu51wYbgUbmBeECg@mail.gmail.com>
-In-Reply-To: <CAHk-=wgufDZzm7U38eG4EPvr7ctSFJBhKZpu51wYbgUbmBeECg@mail.gmail.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Sun, 20 Sep 2020 16:40:21 -0700
-X-Gmail-Original-Message-ID: <CAHk-=whKR51JXc3LQoZ2qpJSJ9qKx7jDes9yRQgxWbddG0hPLw@mail.gmail.com>
-Message-ID: <CAHk-=whKR51JXc3LQoZ2qpJSJ9qKx7jDes9yRQgxWbddG0hPLw@mail.gmail.com>
-Subject: Re: Kernel Benchmarking
-To:     Dave Chinner <david@fromorbit.com>
+        id S1726333AbgITXpk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 20 Sep 2020 19:45:40 -0400
+Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:46354 "EHLO
+        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726126AbgITXpj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 20 Sep 2020 19:45:39 -0400
+X-Greylist: delayed 1349 seconds by postgrey-1.27 at vger.kernel.org; Sun, 20 Sep 2020 19:45:38 EDT
+Received: from dread.disaster.area (pa49-195-191-192.pa.nsw.optusnet.com.au [49.195.191.192])
+        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 6BDDF3A947F;
+        Mon, 21 Sep 2020 09:23:04 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1kK8ff-0005ho-3p; Mon, 21 Sep 2020 09:23:03 +1000
+Date:   Mon, 21 Sep 2020 09:23:03 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
 Cc:     Matthew Wilcox <willy@infradead.org>,
         Michael Larabel <Michael@michaellarabel.com>,
         Matthieu Baerts <matthieu.baerts@tessares.net>,
         Amir Goldstein <amir73il@gmail.com>,
-        "Ted Ts'o" <tytso@google.com>,
+        Ted Ts'o <tytso@google.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         Jan Kara <jack@suse.cz>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: Kernel Benchmarking
+Message-ID: <20200920232303.GW12096@dread.disaster.area>
+References: <20200912143704.GB6583@casper.infradead.org>
+ <658ae026-32d9-0a25-5a59-9c510d6898d5@MichaelLarabel.com>
+ <CAHk-=wip0bCNnFK2Sxdn-YCTdKBF2JjF0kcM5mXbRuKKp3zojw@mail.gmail.com>
+ <CAHk-=whc5CnTUWoeeCDj640Rng4nH8HdLsHgEdnz3NtPSRqqhQ@mail.gmail.com>
+ <20200917182314.GU5449@casper.infradead.org>
+ <CAHk-=wj6g2y2Z3cGzHBMoeLx-mfG0Md_2wMVwx=+g_e-xDNTbw@mail.gmail.com>
+ <20200917185049.GV5449@casper.infradead.org>
+ <CAHk-=wj6Ha=cNU4kL3z661CV+c2x2=DKzPrfH=XujMa378NhWQ@mail.gmail.com>
+ <20200917192707.GW5449@casper.infradead.org>
+ <CAHk-=wjp+KiZE2EM=f8Z1J_wmZSoq0MVZTJi=bMSXmfZ7Gx76w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAHk-=wjp+KiZE2EM=f8Z1J_wmZSoq0MVZTJi=bMSXmfZ7Gx76w@mail.gmail.com>
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.3 cv=KcmsTjQD c=1 sm=1 tr=0 cx=a_idp_d
+        a=vvDRHhr1aDYKXl+H6jx2TA==:117 a=vvDRHhr1aDYKXl+H6jx2TA==:17
+        a=kj9zAlcOel0A:10 a=reM5J-MqmosA:10 a=JfrnYn6hAAAA:8 a=7-415B0cAAAA:8
+        a=0GeCxqQQhTXT-xwZm_8A:9 a=47p4OUhJTF3BuhQa:21 a=NuZqm7rJd7u_Bnrh:21
+        a=CjuIK1q_8ugA:10 a=1CNFftbPRP8L7MoqJWF3:22 a=biEYGPWJfzWAr4FL6Ov7:22
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Sep 20, 2020 at 4:31 PM Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> And if we do end up doing it at both levels, and end up having some of
-> the locking duplicated, that's still better than "sometimes we don't
-> do it at all", and have odd problems on the less usual (and often less
-> well maintained) filesystems..
+On Thu, Sep 17, 2020 at 12:47:16PM -0700, Linus Torvalds wrote:
+> On Thu, Sep 17, 2020 at 12:27 PM Matthew Wilcox <willy@infradead.org> wrote:
+> >
+> > Ah, I see what you mean.  Hold the i_mmap_rwsem for write across,
+> > basically, the entirety of truncate_inode_pages_range().
+> 
+> I really suspect that will be entirely unacceptable for latency
+> reasons, but who knows. In practice, nobody actually truncates a file
+> _while_ it's mapped, that's just crazy talk.
+> 
+> But almost every time I go "nobody actually does this", I tend to be
+> surprised by just how crazy some loads are, and it turns out that
+> _somebody_ does it, and has a really good reason for doing odd things,
+> and has been doing it for years because it worked really well and
+> solved some odd problem.
+> 
+> So the "hold it for the entirety of truncate_inode_pages_range()"
+> thing seems to be a really simple approach, and nice and clean, but it
+> makes me go "*somebody* is going to do bad things and complain about
+> page fault latencies".
 
-Doing locking at a higher level also often allows for much more easily
-changing and improving semantics.
+I don't think there's a major concern here because that's what we
+are already doing at the filesystem level. In this case, it is
+because some filesystems need to serialise IO to the inode -before-
+calling truncate_setsize(). e.g.
 
-For example, the only reason we have absolutely the best pathname
-lookup in the industry (by a couple of orders of magnitude) is that
-it's done by the VFS layer and the dentry caching has been worked on
-for decades to tune it and do all the lockless lookups.
+- we have to wait for inflight direct IO that may be beyond the new
+  EOF to drain before we start changing where EOF lies.
 
-That would simply not have been possible to do at a filesystem level.
-A filesystem might have some complex and cumbersom code to do multiple
-sequential lookups as long as they stay inside that filesystem, but it
-would be ugly and it would be strictly worse than what the VFS layer
-can and does do.
+- we have data vs metadata ordering requirements that mean we have
+  to ensure dirty data is stable before we change the inode size.
 
-That is a fairly extreme example of course - and pathname resolution
-really is somewhat odd - but I do think there are advantages to having
-locking and access rules that are centralized across filesystems.
+Hence we've already been locking out page faults for the entire
+truncate operation for a few years on both XFS and ext4. We haven't
+heard of any problems result from truncate-related page fault
+latencies....
 
-               Linus
+FWIW, if the fs layer is already providing this level of IO
+exclusion w.r.t. address space access, does it need to be replicated
+at the address space level?
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
