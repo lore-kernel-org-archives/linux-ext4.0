@@ -2,99 +2,90 @@ Return-Path: <SRS0=H0Ep=C7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DED39C4363D
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 16:01:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D829C2D0E2
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 16:25:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9DE9C208A9
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 16:01:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C475423A1E
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 16:25:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1600790503;
-	bh=+JbPuKTQwLYiRtLrv7dRgf3ndqTICplWlXGxANCBloY=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=xZb5qb2e/P5w5Wfo5sGxXhJv6FlW0ZCNfuPYhzj+y8ugexulc/WrGb1KphLij2Dg5
-	 DDfZi2P0pjYegMNOoWyV0mmAWkcEZqpAXpH7zOtFT1O5NytR8TgbAnFzDBBwZ5QkUK
-	 E+HoXY1nd2pWta3oNgnBjD6PmjiHuQLZiEFBxasc=
+	s=default; t=1600791947;
+	bh=TYZYFsETxKQokJa5RQ1ZT+XnfW77zUGnkWfO/996T6c=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=fGoedbLyEFrDG0O4WD1Uy537/XJRcqVJ1olINixw27pqG147CAgboDgsp0aBSbk7p
+	 MJK8gDXg2t46cfQJT6mYWkztV0XotkKo17STr+bZ8dcfoVwW1RTa5PFcHJ5qK7FCxd
+	 b7d+/ANKogxVgtrANBJq7p/EGDcIw7QiYQy1TyCQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726755AbgIVQBk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Sep 2020 12:01:40 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42238 "EHLO mail.kernel.org"
+        id S1726682AbgIVQZq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Sep 2020 12:25:46 -0400
+Received: from mail.kernel.org ([198.145.29.99]:52628 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726666AbgIVQBk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Sep 2020 12:01:40 -0400
-Received: from localhost (unknown [104.132.1.66])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1726566AbgIVQZq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Sep 2020 12:25:46 -0400
+Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B00672399A;
-        Tue, 22 Sep 2020 16:01:39 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0173A23A1B;
+        Tue, 22 Sep 2020 16:25:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1600790499;
-        bh=+JbPuKTQwLYiRtLrv7dRgf3ndqTICplWlXGxANCBloY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=UIYsmBEGgBG28a67cc36efeTmr+VyZEYubJkA1CnDNucRlSPGUUMf82astmsgTQ1B
-         oNOuT+s12Ov2S/HKXGJWAeiuAaMlIRPqbOrYPRIKP1mi3oYwgjJ2ObNlSgaMEDeXVp
-         P6br8rNFA/3F7DPqLISqW6RMXWF8Emrl79vwMOdQ=
-Date:   Tue, 22 Sep 2020 09:01:39 -0700
-From:   Jaegeuk Kim <jaegeuk@kernel.org>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Daniel Rosenberg <drosen@android.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Chao Yu <chao@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com
-Subject: Re: [PATCH 0/5] Add support for Encryption and Casefolding in F2FS
-Message-ID: <20200922160139.GA3718581@google.com>
-References: <20200922104807.912914-1-drosen@android.com>
- <20200922135940.GB5599@sol.localdomain>
+        s=default; t=1600791946;
+        bh=TYZYFsETxKQokJa5RQ1ZT+XnfW77zUGnkWfO/996T6c=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=N6DyX9BvrTxWtntNUaLSrdcUAqIFDIgsKU0dDH2YUBI6/tUe1klJvijggIGn+R6ZV
+         5DAddRWtDHwZbZY5fRAWkMjfWPUL+19EutKm/M4cYj+ll0P7spobZpu+IgikKPbmrZ
+         XP6/Y4Rbt/ahLXyf2uulWDAOMPSITmkAU+qYq8S0=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc:     syzkaller-bugs@googlegroups.com, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org,
+        syzbot+9f864abad79fae7c17e1@syzkaller.appspotmail.com
+Subject: [PATCH] ext4: fix leaking sysfs kobject after failed mount
+Date:   Tue, 22 Sep 2020 09:24:56 -0700
+Message-Id: <20200922162456.93657-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.28.0
+In-Reply-To: <000000000000443d8a05afcff2b5@google.com>
+References: <000000000000443d8a05afcff2b5@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200922135940.GB5599@sol.localdomain>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 09/22, Eric Biggers wrote:
-> On Tue, Sep 22, 2020 at 03:48:02AM -0700, Daniel Rosenberg wrote:
-> > These patches are on top of the f2fs dev branch
-> > 
-> > F2FS currently supports casefolding and encryption, but not at
-> > the same time. These patches aim to rectify that. In a later follow up,
-> > this will be added for Ext4 as well. I've included one ext4 patch from
-> > the previous set since it isn't in the f2fs branch, but is needed for the
-> > fscrypt changes.
-> > 
-> > The f2fs-tools changes have already been applied.
-> > 
-> > Since both fscrypt and casefolding require their own dentry operations,
-> > I've moved the responsibility of setting the dentry operations from fscrypt
-> > to the filesystems and provided helper functions that should work for most
-> > cases.
-> > 
-> > These are a follow-up to the previously sent patch set
-> > "[PATCH v12 0/4] Prepare for upcoming Casefolding/Encryption patches"
-> > 
-> > Daniel Rosenberg (5):
-> >   ext4: Use generic casefolding support
-> >   fscrypt: Export fscrypt_d_revalidate
-> >   libfs: Add generic function for setting dentry_ops
-> >   fscrypt: Have filesystems handle their d_ops
-> >   f2fs: Handle casefolding with Encryption
-> 
-> I only received the cover letter, not the actual patches.  Same for the lore
-> archives; they only have the cover letter.
+From: Eric Biggers <ebiggers@google.com>
 
-Me too. :)
+ext4_unregister_sysfs() only deletes the kobject.  The reference to it
+needs to be put separately, like ext4_put_super() does.
 
-> 
-> - Eric
+This addresses the syzbot report
+"memory leak in kobject_set_name_vargs (3)"
+(https://syzkaller.appspot.com/bug?extid=9f864abad79fae7c17e1).
+
+Reported-by: syzbot+9f864abad79fae7c17e1@syzkaller.appspotmail.com
+Fixes: 72ba74508b28 ("ext4: release sysfs kobject when failing to enable quotas on mount")
+Cc: stable@vger.kernel.org
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/super.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ea425b49b345..41953b86ffe3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4872,6 +4872,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ failed_mount8:
+ 	ext4_unregister_sysfs(sb);
++	kobject_put(&sbi->s_kobj);
+ failed_mount7:
+ 	ext4_unregister_li_request(sb);
+ failed_mount6:
+
+base-commit: ba4f184e126b751d1bffad5897f263108befc780
+-- 
+2.28.0
+
