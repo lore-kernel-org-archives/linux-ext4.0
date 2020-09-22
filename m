@@ -2,86 +2,75 @@ Return-Path: <SRS0=H0Ep=C7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8659C2D0E2
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 12:37:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C69BC2D0E2
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 13:51:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7FAB62395C
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 12:37:23 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OZuftph0"
+	by mail.kernel.org (Postfix) with ESMTP id 5A1CA2395B
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Sep 2020 13:51:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1600782660;
+	bh=ah1oRV9AwF+HOR2QyLQpuVaKZLQO4RCWcJodnzc0oZg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=CvJlxdCiTMAW5aEy9Ivo9U60mNZ5t/tiCsPpznUqdxN6PqzHeKe/LHE+Curxt5MWC
+	 5m9f4UakT6RDv9EqQZcSSAXlsGNgAQdvt2GUz0abMcDyF/RuFGb3e/woFKcYBN+rrv
+	 Ck6IYdofykeW2ZtWfqsITQnNAb8V0guToMifOVLY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726613AbgIVMhX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Sep 2020 08:37:23 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:49404 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726505AbgIVMhW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Sep 2020 08:37:22 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1600778242;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=fbJIeaMcHovwFLiJWIncDJGH5vBRRBCCZzx0OXgoQAs=;
-        b=OZuftph0ZxvHKvcaV6yPTtTfgSxYcAjbD1EPAgBsV2WmkkoukDrxva9hc0EVEqWxqAKcAl
-        7cR4JbT0IAdS+zOfFE3Udr89bYcvnOvC5GnS29ITHhqiL3RMF+loCH4orMOo/s0bx2K+20
-        BfbaahJ7WPvhPLx6wKUNP/aBM/AOxgY=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-369-96NhK09-N8OVXlCXo0bjtA-1; Tue, 22 Sep 2020 08:37:20 -0400
-X-MC-Unique: 96NhK09-N8OVXlCXo0bjtA-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1726597AbgIVNu7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Sep 2020 09:50:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44098 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726473AbgIVNu7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Sep 2020 09:50:59 -0400
+Received: from sol.localdomain (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4D3B4425D9
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2020 12:37:19 +0000 (UTC)
-Received: from work (unknown [10.40.195.105])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id B961B5C1A3
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Sep 2020 12:37:18 +0000 (UTC)
-Date:   Tue, 22 Sep 2020 14:37:14 +0200
-From:   Lukas Czerner <lczerner@redhat.com>
-To:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/4] e2fsck: remove unused variable 'new_array'
-Message-ID: <20200922123714.utoryl2xprw5mqae@work>
-References: <20200605081442.13428-1-lczerner@redhat.com>
+        by mail.kernel.org (Postfix) with ESMTPSA id 9067720936;
+        Tue, 22 Sep 2020 13:50:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1600782658;
+        bh=ah1oRV9AwF+HOR2QyLQpuVaKZLQO4RCWcJodnzc0oZg=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=lFnv75YWIDQtPV1/37RjVPZCmc+w2raAzyDf/lBUX1xGdOF8/y+Of5HNgNyEuZYLq
+         xs9upAb8I7B4MYDl7BdVbpmP9X/DKc9mF/70oyWM03GRglhaS8264ijKmOZchSpuYs
+         fmOc1tLmvl8aKCckC1nqPNCydNFXGW3Um2IiQCWY=
+Date:   Tue, 22 Sep 2020 06:50:57 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org,
+        Daniel Rosenberg <drosen@google.com>,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v3 00/13] fscrypt: improve file creation flow
+Message-ID: <20200922135057.GA5599@sol.localdomain>
+References: <20200917041136.178600-1-ebiggers@kernel.org>
+ <20200921223509.GB844@sol.localdomain>
+ <da7f608e01cd8725d8da668f1c4a847b29b9de68.camel@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200605081442.13428-1-lczerner@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+In-Reply-To: <da7f608e01cd8725d8da668f1c4a847b29b9de68.camel@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jun 05, 2020 at 10:14:39AM +0200, Lukas Czerner wrote:
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> ---
->  e2fsck/rehash.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+On Tue, Sep 22, 2020 at 07:29:45AM -0400, Jeff Layton wrote:
+> > 
+> > All applied to fscrypt.git#master for 5.10.
+> > 
+> > I'd still really appreciate more reviews and acks, though.
+> > 
 > 
-> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-> index 1616d07a..b356b92d 100644
-> --- a/e2fsck/rehash.c
-> +++ b/e2fsck/rehash.c
-> @@ -109,7 +109,7 @@ static int fill_dir_block(ext2_filsys fs,
->  			  void *priv_data)
->  {
->  	struct fill_dir_struct	*fd = (struct fill_dir_struct *) priv_data;
-> -	struct hash_entry 	*new_array, *ent;
-> +	struct hash_entry 	*ent;
->  	struct ext2_dir_entry 	*dirent;
->  	char			*dir;
->  	unsigned int		offset, dir_offset, rec_len, name_len;
-> -- 
-> 2.21.3
+> You can add this to all of the fscrypt: patches. I've tested this under
+> the ceph patchset and it seems to do the right thing:
+> 
+> Acked-by: Jeff Layton <jlayton@kernel.org>
 > 
 
-Ehm, ping ?
+Thanks, added.
 
--Lukas
-
+- Eric
