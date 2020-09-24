@@ -2,36 +2,39 @@ Return-Path: <SRS0=Pl0f=DB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BE9F8C4727D
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7315BC4727F
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 804DD2376F
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 22A1221D91
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727169AbgIXHcy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Sep 2020 03:32:54 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:14225 "EHLO huawei.com"
+        id S1727164AbgIXHcx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Sep 2020 03:32:53 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:14269 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727116AbgIXHcu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Sep 2020 03:32:50 -0400
-Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 6B2E732A820566377812;
+        id S1727120AbgIXHcv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Sep 2020 03:32:51 -0400
+Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id 77E937663FDE5E3C7B15;
         Thu, 24 Sep 2020 15:32:47 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS409-HUB.china.huawei.com
  (10.3.19.209) with Microsoft SMTP Server id 14.3.487.0; Thu, 24 Sep 2020
- 15:32:37 +0800
+ 15:32:38 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
         <yi.zhang@huawei.com>
-Subject: [PATCH v2 0/7] ext4: fix a memory corrupt problem
-Date:   Thu, 24 Sep 2020 15:33:30 +0800
-Message-ID: <20200924073337.861472-1-yi.zhang@huawei.com>
+Subject: [PATCH v2 2/7] ext4: introduce new metadata buffer read helpers
+Date:   Thu, 24 Sep 2020 15:33:32 +0800
+Message-ID: <20200924073337.861472-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
+In-Reply-To: <20200924073337.861472-1-yi.zhang@huawei.com>
+References: <20200924073337.861472-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -41,48 +44,119 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+The previous patch add clear_buffer_verified() before we read metadata
+block from disk again, but it's rather easy to miss clearing of this bit
+because currently we read metadata buffer through different open codes
+(e.g. ll_rw_block(), bh_submit_read() and invoke submit_bh() directly).
+So, it's time to add common helpers to unify in all the places reading
+metadata buffers instead. This patch add 3 helpers:
 
-This patch set fix a memory corruption problem caused by read stale
-extent block from disk in ext4_ext_split()->memset(). The root cause is
-we do not clear buffer's verified bit before read metadata block from
-disk again if it has been failed to write out to disk, if the block is
-mew allocated, we may propably get stale data from disk and lead to
-out-of-bounds access when we use this stale data.
+ - ext4_read_bh_nowait(): async read metadata buffer if it's actually
+   not uptodate, clear buffer_verified bit before read from disk.
+ - ext4_read_bh(): sync version of read metadata buffer, it will wait
+   until the read operation return and check the return status.
+ - ext4_read_bh_lock(): try to lock the buffer before read buffer, it
+   will skip reading if the buffer is already locked.
 
-The first patch is the same to my v1 iteration, just clear buffer
-verified bit before read, this patch can fix this problem.
+After this patch, we need to use these helpers in all the places reading
+metadata buffer instead of different open codes.
 
-The remaining patches remove all open codes that read metadata blocks
-in ext4 and introduce common read helpers as Jan suggested. I have test
-them on my xfstests and there is no degeneration.
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4.h  |  5 ++++
+ fs/ext4/super.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 67 insertions(+)
 
-Thanks,
-Yi.
-
-zhangyi (F) (7):
-  ext4: clear buffer verified flag if read meta block from disk
-  ext4: introduce new metadata buffer read helpers
-  ext4: use common helpers in all places reading metadata buffers
-  ext4: use ext4_buffer_uptodate() in __ext4_get_inode_loc()
-  ext4: introduce ext4_sb_breadahead_unmovable() to replace
-    sb_breadahead_unmovable()
-  ext4: use ext4_sb_bread() instead of sb_bread()
-  ext4: introduce ext4_sb_bread_unmovable() to replace
-    sb_bread_unmovable()
-
- fs/ext4/balloc.c      |   7 +--
- fs/ext4/ext4.h        |   8 +++
- fs/ext4/extents.c     |   2 +-
- fs/ext4/ialloc.c      |   5 +-
- fs/ext4/indirect.c    |   8 +--
- fs/ext4/inode.c       |  43 +++++---------
- fs/ext4/mmp.c         |  10 +---
- fs/ext4/move_extent.c |   2 +-
- fs/ext4/resize.c      |  10 ++--
- fs/ext4/super.c       | 131 ++++++++++++++++++++++++++++++++++++------
- 10 files changed, 153 insertions(+), 73 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 523e00d7b392..75b46300a65c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2824,6 +2824,11 @@ extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
+ /* super.c */
+ extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
+ 					 sector_t block, int op_flags);
++extern void ext4_read_bh_nowait(struct buffer_head *bh, int op_flags,
++				bh_end_io_t *end_io);
++extern int ext4_read_bh(struct buffer_head *bh, int op_flags,
++			bh_end_io_t *end_io);
++extern int ext4_read_bh_lock(struct buffer_head *bh, int op_flags, bool wait);
+ extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
+ extern int ext4_calculate_overhead(struct super_block *sb);
+ extern void ext4_superblock_csum_set(struct super_block *sb);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 9e760bf9e8b1..1b1a4ca00957 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -141,6 +141,68 @@ MODULE_ALIAS_FS("ext3");
+ MODULE_ALIAS("ext3");
+ #define IS_EXT3_SB(sb) ((sb)->s_bdev->bd_holder == &ext3_fs_type)
+ 
++
++static inline void __ext4_read_bh(struct buffer_head *bh, int op_flags,
++				  bh_end_io_t *end_io)
++{
++	/*
++	 * buffer's verified bit is no longer valid after reading from
++	 * disk again due to write out error, clear it to make sure we
++	 * recheck the buffer contents.
++	 */
++	clear_buffer_verified(bh);
++
++	bh->b_end_io = end_io ? end_io : end_buffer_read_sync;
++	get_bh(bh);
++	submit_bh(REQ_OP_READ, op_flags, bh);
++}
++
++void ext4_read_bh_nowait(struct buffer_head *bh, int op_flags,
++			 bh_end_io_t *end_io)
++{
++	BUG_ON(!buffer_locked(bh));
++
++	if (ext4_buffer_uptodate(bh)) {
++		unlock_buffer(bh);
++		return;
++	}
++	__ext4_read_bh(bh, op_flags, end_io);
++}
++
++int ext4_read_bh(struct buffer_head *bh, int op_flags, bh_end_io_t *end_io)
++{
++	BUG_ON(!buffer_locked(bh));
++
++	if (ext4_buffer_uptodate(bh)) {
++		unlock_buffer(bh);
++		return 0;
++	}
++
++	__ext4_read_bh(bh, op_flags, end_io);
++
++	wait_on_buffer(bh);
++	if (buffer_uptodate(bh))
++		return 0;
++	return -EIO;
++}
++
++int ext4_read_bh_lock(struct buffer_head *bh, int op_flags, bool wait)
++{
++	if (trylock_buffer(bh)) {
++		if (wait)
++			return ext4_read_bh(bh, op_flags, NULL);
++		ext4_read_bh_nowait(bh, op_flags, NULL);
++		return 0;
++	}
++	if (wait) {
++		wait_on_buffer(bh);
++		if (buffer_uptodate(bh))
++			return 0;
++		return -EIO;
++	}
++	return 0;
++}
++
+ /*
+  * This works like sb_bread() except it uses ERR_PTR for error
+  * returns.  Currently with sb_bread it's impossible to distinguish
 -- 
 2.25.4
 
