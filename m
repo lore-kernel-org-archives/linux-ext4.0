@@ -2,161 +2,142 @@ Return-Path: <SRS0=Pl0f=DB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7315BC4727F
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87F2EC4363D
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 10:57:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 22A1221D91
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 07:32:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2AF8C23977
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 10:57:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1600945052;
+	bh=ReNUjh2+4CXtsorEynITi+cDn6rHbuOX6gukuZuCGXI=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
+	b=R26gsaP29uSUkN8RGe9J89PJXznW+gkjtcmN0RTZSt4QCufHBisNB9OCsO7kHwQSF
+	 0lf4AQHRvRUAW/4/TWsNmJzsq1lIFf4O1VZ4arG+6kebxbAjPcZhuGuMKFEXnAU9IM
+	 mwzFoIp66SF8ElVPADW+iMvPU5LN9PI4ss1p7SlQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727164AbgIXHcx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Sep 2020 03:32:53 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:14269 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727120AbgIXHcv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Sep 2020 03:32:51 -0400
-Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 77E937663FDE5E3C7B15;
-        Thu, 24 Sep 2020 15:32:47 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by DGGEMS409-HUB.china.huawei.com
- (10.3.19.209) with Microsoft SMTP Server id 14.3.487.0; Thu, 24 Sep 2020
- 15:32:38 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <jack@suse.com>, <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <yi.zhang@huawei.com>
-Subject: [PATCH v2 2/7] ext4: introduce new metadata buffer read helpers
-Date:   Thu, 24 Sep 2020 15:33:32 +0800
-Message-ID: <20200924073337.861472-3-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20200924073337.861472-1-yi.zhang@huawei.com>
-References: <20200924073337.861472-1-yi.zhang@huawei.com>
+        id S1726606AbgIXK5a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Sep 2020 06:57:30 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36262 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726483AbgIXK53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Sep 2020 06:57:29 -0400
+Received: from tleilax.poochiereds.net (68-20-15-154.lightspeed.rlghnc.sbcglobal.net [68.20.15.154])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id D2A732395B;
+        Thu, 24 Sep 2020 10:57:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1600945048;
+        bh=ReNUjh2+4CXtsorEynITi+cDn6rHbuOX6gukuZuCGXI=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=a6rOZfN2v4qDIA7c079QPI66GmKpOEsCWxnxKgw2RbhqSDA1HsVDqgYgAm0I+C+t4
+         QNnLU9xw1Pv7zs5P67nh9IA66wgWrf1jFeumaRWvMFjUhs1FoXqRyIJGQlEtvvI++4
+         iL1I7aGO4aWakAy/iDW73AvJWyQbHpKWwTAjGvF8=
+Message-ID: <ca5f64b6fdfd8ff2dde489d7cc8590e63da7c306.camel@kernel.org>
+Subject: Re: [PATCH] fscrypt: export fscrypt_d_revalidate()
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Eric Biggers <ebiggers@kernel.org>, linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        ceph-devel@vger.kernel.org, Daniel Rosenberg <drosen@google.com>
+Date:   Thu, 24 Sep 2020 06:57:26 -0400
+In-Reply-To: <20200924054721.187797-1-ebiggers@kernel.org>
+References: <20200924054721.187797-1-ebiggers@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.36.5 (3.36.5-1.fc32) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The previous patch add clear_buffer_verified() before we read metadata
-block from disk again, but it's rather easy to miss clearing of this bit
-because currently we read metadata buffer through different open codes
-(e.g. ll_rw_block(), bh_submit_read() and invoke submit_bh() directly).
-So, it's time to add common helpers to unify in all the places reading
-metadata buffers instead. This patch add 3 helpers:
+On Wed, 2020-09-23 at 22:47 -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Dentries that represent no-key names must have a dentry_operations that
+> includes fscrypt_d_revalidate().  Currently, this is handled by
+> fscrypt_prepare_lookup() installing fscrypt_d_ops.
+> 
+> However, ceph support for encryption
+> (https://lore.kernel.org/r/20200914191707.380444-1-jlayton@kernel.org)
+> can't use fscrypt_d_ops, since ceph already has its own
+> dentry_operations.
+> 
+> Similarly, ext4 and f2fs support for directories that are both encrypted
+> and casefolded
+> (https://lore.kernel.org/r/20200923010151.69506-1-drosen@google.com)
+> can't use fscrypt_d_ops either, since casefolding requires some dentry
+> operations too.
+> 
+> To satisfy both users, we need to move the responsibility of installing
+> the dentry_operations to filesystems.
+> 
+> In preparation for this, export fscrypt_d_revalidate() and give it a
+> !CONFIG_FS_ENCRYPTION stub.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+> 
+> Compared to the versions of this patch from Jeff and Daniel, I've
+> improved the commit message and added a !CONFIG_FS_ENCRYPTION stub,
+> which was missing.  I'm planning to apply this for 5.10 in preparation
+> for both the ceph patchset and the encrypt+casefold patchset.
+> 
+> 
+>  fs/crypto/fname.c       | 3 ++-
+>  include/linux/fscrypt.h | 7 +++++++
+>  2 files changed, 9 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+> index c65979452844..1fbe6c24d705 100644
+> --- a/fs/crypto/fname.c
+> +++ b/fs/crypto/fname.c
+> @@ -530,7 +530,7 @@ EXPORT_SYMBOL_GPL(fscrypt_fname_siphash);
+>   * Validate dentries in encrypted directories to make sure we aren't potentially
+>   * caching stale dentries after a key has been added.
+>   */
+> -static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+> +int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+>  {
+>  	struct dentry *dir;
+>  	int err;
+> @@ -569,6 +569,7 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+>  
+>  	return valid;
+>  }
+> +EXPORT_SYMBOL_GPL(fscrypt_d_revalidate);
+>  
+>  const struct dentry_operations fscrypt_d_ops = {
+>  	.d_revalidate = fscrypt_d_revalidate,
+> diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+> index f1757e73162d..a8f7a43f031b 100644
+> --- a/include/linux/fscrypt.h
+> +++ b/include/linux/fscrypt.h
+> @@ -197,6 +197,7 @@ int fscrypt_fname_disk_to_usr(const struct inode *inode,
+>  bool fscrypt_match_name(const struct fscrypt_name *fname,
+>  			const u8 *de_name, u32 de_name_len);
+>  u64 fscrypt_fname_siphash(const struct inode *dir, const struct qstr *name);
+> +int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags);
+>  
+>  /* bio.c */
+>  void fscrypt_decrypt_bio(struct bio *bio);
+> @@ -454,6 +455,12 @@ static inline u64 fscrypt_fname_siphash(const struct inode *dir,
+>  	return 0;
+>  }
+>  
+> +static inline int fscrypt_d_revalidate(struct dentry *dentry,
+> +				       unsigned int flags)
+> +{
+> +	return 1;
+> +}
+> +
+>  /* bio.c */
+>  static inline void fscrypt_decrypt_bio(struct bio *bio)
+>  {
 
- - ext4_read_bh_nowait(): async read metadata buffer if it's actually
-   not uptodate, clear buffer_verified bit before read from disk.
- - ext4_read_bh(): sync version of read metadata buffer, it will wait
-   until the read operation return and check the return status.
- - ext4_read_bh_lock(): try to lock the buffer before read buffer, it
-   will skip reading if the buffer is already locked.
-
-After this patch, we need to use these helpers in all the places reading
-metadata buffer instead of different open codes.
-
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Suggested-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/ext4.h  |  5 ++++
- fs/ext4/super.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 67 insertions(+)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 523e00d7b392..75b46300a65c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2824,6 +2824,11 @@ extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
- /* super.c */
- extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
- 					 sector_t block, int op_flags);
-+extern void ext4_read_bh_nowait(struct buffer_head *bh, int op_flags,
-+				bh_end_io_t *end_io);
-+extern int ext4_read_bh(struct buffer_head *bh, int op_flags,
-+			bh_end_io_t *end_io);
-+extern int ext4_read_bh_lock(struct buffer_head *bh, int op_flags, bool wait);
- extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
- extern int ext4_calculate_overhead(struct super_block *sb);
- extern void ext4_superblock_csum_set(struct super_block *sb);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9e760bf9e8b1..1b1a4ca00957 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -141,6 +141,68 @@ MODULE_ALIAS_FS("ext3");
- MODULE_ALIAS("ext3");
- #define IS_EXT3_SB(sb) ((sb)->s_bdev->bd_holder == &ext3_fs_type)
- 
-+
-+static inline void __ext4_read_bh(struct buffer_head *bh, int op_flags,
-+				  bh_end_io_t *end_io)
-+{
-+	/*
-+	 * buffer's verified bit is no longer valid after reading from
-+	 * disk again due to write out error, clear it to make sure we
-+	 * recheck the buffer contents.
-+	 */
-+	clear_buffer_verified(bh);
-+
-+	bh->b_end_io = end_io ? end_io : end_buffer_read_sync;
-+	get_bh(bh);
-+	submit_bh(REQ_OP_READ, op_flags, bh);
-+}
-+
-+void ext4_read_bh_nowait(struct buffer_head *bh, int op_flags,
-+			 bh_end_io_t *end_io)
-+{
-+	BUG_ON(!buffer_locked(bh));
-+
-+	if (ext4_buffer_uptodate(bh)) {
-+		unlock_buffer(bh);
-+		return;
-+	}
-+	__ext4_read_bh(bh, op_flags, end_io);
-+}
-+
-+int ext4_read_bh(struct buffer_head *bh, int op_flags, bh_end_io_t *end_io)
-+{
-+	BUG_ON(!buffer_locked(bh));
-+
-+	if (ext4_buffer_uptodate(bh)) {
-+		unlock_buffer(bh);
-+		return 0;
-+	}
-+
-+	__ext4_read_bh(bh, op_flags, end_io);
-+
-+	wait_on_buffer(bh);
-+	if (buffer_uptodate(bh))
-+		return 0;
-+	return -EIO;
-+}
-+
-+int ext4_read_bh_lock(struct buffer_head *bh, int op_flags, bool wait)
-+{
-+	if (trylock_buffer(bh)) {
-+		if (wait)
-+			return ext4_read_bh(bh, op_flags, NULL);
-+		ext4_read_bh_nowait(bh, op_flags, NULL);
-+		return 0;
-+	}
-+	if (wait) {
-+		wait_on_buffer(bh);
-+		if (buffer_uptodate(bh))
-+			return 0;
-+		return -EIO;
-+	}
-+	return 0;
-+}
-+
- /*
-  * This works like sb_bread() except it uses ERR_PTR for error
-  * returns.  Currently with sb_bread it's impossible to distinguish
--- 
-2.25.4
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
