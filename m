@@ -1,59 +1,95 @@
-Return-Path: <SRS0=Pl0f=DB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=jUlP=DC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B8AEC4363D
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 17:27:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBF07C4363D
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Sep 2020 01:01:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C750A238A1
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Sep 2020 17:27:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 997012076B
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Sep 2020 01:01:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728676AbgIXR1h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Sep 2020 13:27:37 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:48932 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727988AbgIXR1h (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Sep 2020 13:27:37 -0400
-Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 08OHRTu1014389
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 24 Sep 2020 13:27:29 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 2C7CF42003C; Thu, 24 Sep 2020 13:27:29 -0400 (EDT)
-Date:   Thu, 24 Sep 2020 13:27:29 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Satya Tangirala <satyat@google.com>, linux-fscrypt@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [xfstests-bld PATCH v2] test-appliance: exclude generic/587 from
- the encrypt tests
-Message-ID: <20200924172729.GI482521@mit.edu>
-References: <20200709184145.GA3855682@gmail.com>
- <20200709185832.2568081-1-satyat@google.com>
- <20200709191031.GB3855682@gmail.com>
+        id S1726923AbgIYBBp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Sep 2020 21:01:45 -0400
+Received: from szxga07-in.huawei.com ([45.249.212.35]:52682 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726703AbgIYBBp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Sep 2020 21:01:45 -0400
+Received: from DGGEMS407-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 3C48F31017809A2C5B21;
+        Fri, 25 Sep 2020 09:01:43 +0800 (CST)
+Received: from localhost.localdomain (10.175.101.6) by
+ DGGEMS407-HUB.china.huawei.com (10.3.19.207) with Microsoft SMTP Server id
+ 14.3.487.0; Fri, 25 Sep 2020 09:01:37 +0800
+From:   Zhang Xiaoxu <zhangxiaoxu5@huawei.com>
+To:     <yi.zhang@huawei.com>, <tytso@mit.edu>, <jack@suse.cz>,
+        <linux-ext4@vger.kernel.org>
+CC:     <adilger.kernel@dilger.ca>
+Subject: [PATCH v2] ext4: Fix bdev write error check failed when mount fs with ro
+Date:   Thu, 24 Sep 2020 21:01:42 -0400
+Message-ID: <20200925010142.3711176-1-zhangxiaoxu5@huawei.com>
+X-Mailer: git-send-email 2.25.4
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200709191031.GB3855682@gmail.com>
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.101.6]
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jul 09, 2020 at 12:10:31PM -0700, Eric Biggers wrote:
-> On Thu, Jul 09, 2020 at 06:58:32PM +0000, Satya Tangirala wrote:
-> > The encryption feature doesn't play well with quota, and generic/587
-> > tests quota functionality.
-> > 
-> > Signed-off-by: Satya Tangirala <satyat@google.com>
-> 
-> Reviewed-by: Eric Biggers <ebiggers@google.com>
+If some errors has occurred on the device, and the orphan list not empty,
+then mount the device with 'ro', the bdev write error check will failed:
+  ext4_check_bdev_write_error:193: comm mount: Error while async write back metadata
 
-Applied, thanks
+Since the sbi->s_bdev_wb_err wouldn't be initialized when mount file system
+with 'ro', when clean up the orphan list and access the iloc buffer, bdev
+write error check will failed.
 
-						- Ted
+So we should always initialize the sbi->s_bdev_wb_err even if mount the
+file system with 'ro'.
+
+Fixes: bc71726c7257 ("ext4: abort the filesystem if failed to async write metadata buffer")
+Signed-off-by: Zhang Xiaoxu <zhangxiaoxu5@huawei.com>
+---
+ fs/ext4/super.c | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ea425b49b345..0303e6e17190 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4814,9 +4814,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	 * used to detect the metadata async write error.
+ 	 */
+ 	spin_lock_init(&sbi->s_bdev_wb_lock);
+-	if (!sb_rdonly(sb))
+-		errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
+-					 &sbi->s_bdev_wb_err);
++	errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
++				 &sbi->s_bdev_wb_err);
+ 	sb->s_bdev->bd_super = sb;
+ 	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
+ 	ext4_orphan_cleanup(sb, es);
+@@ -5707,14 +5706,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 				goto restore_opts;
+ 			}
+ 
+-			/*
+-			 * Update the original bdev mapping's wb_err value
+-			 * which could be used to detect the metadata async
+-			 * write error.
+-			 */
+-			errseq_check_and_advance(&sb->s_bdev->bd_inode->i_mapping->wb_err,
+-						 &sbi->s_bdev_wb_err);
+-
+ 			/*
+ 			 * Mounting a RDONLY partition read-write, so reread
+ 			 * and store the current valid flag.  (It may have
+-- 
+2.25.4
+
