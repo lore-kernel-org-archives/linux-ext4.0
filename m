@@ -2,76 +2,82 @@ Return-Path: <SRS0=xlWE=DG=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB5C3C4727C
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Sep 2020 12:14:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FD78C4727C
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Sep 2020 14:37:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7884020759
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Sep 2020 12:14:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D2232074B
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Sep 2020 14:37:22 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CAV031F2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732067AbgI2MNq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Sep 2020 08:13:46 -0400
-Received: from mx2.suse.de ([195.135.220.15]:46496 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730095AbgI2Lh3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Sep 2020 07:37:29 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 71063B208;
-        Tue, 29 Sep 2020 11:37:27 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 238411E12E9; Tue, 29 Sep 2020 13:37:27 +0200 (CEST)
-Date:   Tue, 29 Sep 2020 13:37:27 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Mauricio Faria de Oliveira <mfo@canonical.com>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        dann frazier <dann.frazier@canonical.com>
-Subject: Re: [RFC PATCH v4 0/4] ext4/jbd2: data=journal: write-protect pages
- on transaction commit
-Message-ID: <20200929113727.GK10896@quack2.suse.cz>
-References: <20200928194103.244692-1-mfo@canonical.com>
+        id S1730784AbgI2OhV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Sep 2020 10:37:21 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:31602 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1730131AbgI2OhV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Sep 2020 10:37:21 -0400
+Dkim-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1601390240;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type;
+        bh=fKae7lwlthP7cllRLw7DA0kwji6Lg5GP5n+WM3InQe4=;
+        b=CAV031F2coi5N1nXJzETk9AZ1qMQTu8a/unnZo2CNaDs6EeHauA6x2TUurfsxRM4hpyNKj
+        22wgHl4kO8U8AP/wf1Gr3/hJP2Oto5uQxdJC58zvyWcVkA0AvO1nXQn7nVHnSO7yHRsHbL
+        5gy7Lz58k/0DTeuqAPrJfrLWOz0EwNk=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-539-YHu7V5cgOpyuTfhtV5o6Fw-1; Tue, 29 Sep 2020 10:37:18 -0400
+X-MC-Unique: YHu7V5cgOpyuTfhtV5o6Fw-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2C2A61019625
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2020 14:37:17 +0000 (UTC)
+Received: from work (unknown [10.40.194.24])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 9C4951002C0A
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Sep 2020 14:37:16 +0000 (UTC)
+Date:   Tue, 29 Sep 2020 16:37:13 +0200
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     linux-ext4@vger.kernel.org
+Subject: State of dump utility
+Message-ID: <20200929143713.ttu2vvhq22ulslwf@work>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20200928194103.244692-1-mfo@canonical.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 28-09-20 16:40:59, Mauricio Faria de Oliveira wrote:
-> Hey Jan,
-> 
-> This series implements your suggestions for the RFC PATCH v3 set [1].
-> 
-> That addressed the issue you confirmed with block_page_mkwrite() [2].
-> There's no "JBD2: Spotted dirty metadata buffer" message in over 72h
-> runs across 3 VMs (it used to happen within a few hours.) *Thanks!*
-> 
-> I added Reviewed-by: tags for the patches/changes you mentioned.
-> The only changes from v3 are patch 3 which is new, and contains
-> the 2 fixes to ext4_page_mkwrite(); and patch 4 changed 'struct
-> writeback_control.nr_to_write' from ~0ULL to LONG_MAX, since it
-> is signed long (~0ULL overflows to -1; kudos, kernel test robot!)
-> 
-> It looks almost good on fstests: zero regressions on data=ordered,
-> and two apparently flaky tests data=journal (generic/347 _passed_
-> 1/6 times with the patch, and generic/547 failed 1/6 times.)
+Hello,
 
-Cool. Neither of these tests has anything to do with mmap. The first test
-checks what happens when thin provisioned storage runs out of space (and
-that fs remains consistent), the second tests that fsync flushed properly
-all data and that it can be seen after a crash. So I'm reasonably confident
-that it isn't caused by your patches. It still might be a bug in
-data=journal implementation though but that would be something for another
-patch series :).
+lately we've had couple of bugs against dump utility and a after a quick
+look at the code I realized that it is very much outdated at least on
+the extN side of things and would need some work and attention to make it
+work reliably with modern ext4 features.
 
-I'll have a look at the remaining patches.
+However the code has been neglected for a while and talking to the
+maintainer he is pretty much done with it. At this point I am ready to
+pull the plug on dump/restore in Fedora, but before I do I was wondering
+whether there is any interest in moving dump/restore, or part of it, into
+e2fsprogs ?
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I have not looked at the code close enought to say whether it's worth it
+or whether it would be better to write something from scratch. There is
+also a question about what to do with the tape code - that's not
+something I have any interest in digging into.
+
+In my eyes dump had a good run and I would be happy just dumping it, but
+it is worth asking here on the list. Is there anyone interested in
+maintaining dump/restore, or is there interest in or objections agains
+merging it into e2fsprogs ?
+
+Thanks!
+-Lukas
+
