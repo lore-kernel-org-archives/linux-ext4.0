@@ -2,95 +2,127 @@ Return-Path: <SRS0=QUAp=DH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62548C4727C
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Sep 2020 02:06:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CFC67C4363D
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Sep 2020 21:36:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0A82C20773
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Sep 2020 02:06:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 97B1F20739
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Sep 2020 21:36:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729761AbgI3CGv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Sep 2020 22:06:51 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:46131 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729322AbgI3CGv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Sep 2020 22:06:51 -0400
-Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 08U26kr9004756
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 29 Sep 2020 22:06:47 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 888F442003C; Tue, 29 Sep 2020 22:06:46 -0400 (EDT)
-Date:   Tue, 29 Sep 2020 22:06:46 -0400
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: State of dump utility
-Message-ID: <20200930020646.GD23474@mit.edu>
-References: <20200929143713.ttu2vvhq22ulslwf@work>
+        id S1729996AbgI3Vgo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Sep 2020 17:36:44 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:55326 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725814AbgI3Vgn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Sep 2020 17:36:43 -0400
+Received: from mail-lf1-f72.google.com ([209.85.167.72])
+        by youngberry.canonical.com with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <mauricio.oliveira@canonical.com>)
+        id 1kNjmD-0002IW-B0
+        for linux-ext4@vger.kernel.org; Wed, 30 Sep 2020 21:36:41 +0000
+Received: by mail-lf1-f72.google.com with SMTP id 140so947132lfk.16
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Sep 2020 14:36:41 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=74i9G+KkCuOQuW/zX7/CXbOVb48eZE6jQA+H3tjDusE=;
+        b=PKcsjDVaIo9TeKualoCM6/dxfQQsYcJBs8Jp509/dVBuSrFjaJ5PhIXoLyrAHmPAhc
+         r/tiImxngWiv1HkIFEkuYtk3dBMTubFtUzv7pPcKauAY6Gy5P21QGh3hVJpDSTgrMnaa
+         0ZQVZ+UgmRgY+wgsQv+PW2hU8w3cJq8FR2gFZ24m8hb4nLo2MZObJSsEyvl4lXakXXga
+         OHUqyzeRKPU/FWyURmORjTyNKIsRw5NzdyU2UNredfwT9QRtde66T7T3spjp0pQkL/vH
+         uSHbk3QeVAVqiksnGHADgNyqxZgU254mGESwjOd+Jzwv5YYT2j95Fl6EUaCjnNZDlk9d
+         qEVQ==
+X-Gm-Message-State: AOAM530v9JTymZU3tXz+M4kgfy3RZ1JRsTEzy90QDboGYX06kd+d/uOc
+        kitPrMRQ/USUWpQER5OBn3+LEGkzTYI5ubzprCJ6Z0qXSiuOMYGhxxPCzmfH6t8CEnTT8T95HBE
+        dtU8/ihBhIvdCltTv1iF5yHwRFA15IhqXD/HTSFys9T1yFyaMqcxIRYw=
+X-Received: by 2002:a05:6512:534:: with SMTP id o20mr1398270lfc.397.1601501800355;
+        Wed, 30 Sep 2020 14:36:40 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJwgR4NUYBNgBFggeujKvPidMtF8htttDtg2bV9Y7VSgt8IOdMYpHtHlqtz0Eifpl5XvejZDRBM72heJn2bRu9c=
+X-Received: by 2002:a05:6512:534:: with SMTP id o20mr1398263lfc.397.1601501800138;
+ Wed, 30 Sep 2020 14:36:40 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200929143713.ttu2vvhq22ulslwf@work>
+References: <20200928194103.244692-1-mfo@canonical.com> <20200928194103.244692-2-mfo@canonical.com>
+ <2A963475-D65D-4E58-9EDD-93D6784934B4@dilger.ca>
+In-Reply-To: <2A963475-D65D-4E58-9EDD-93D6784934B4@dilger.ca>
+From:   Mauricio Faria de Oliveira <mfo@canonical.com>
+Date:   Wed, 30 Sep 2020 18:36:28 -0300
+Message-ID: <CAO9xwp1AUy001ejrNBihodUdwAnQ9qceje+=Ko2nPuabDE9voQ@mail.gmail.com>
+Subject: Re: [RFC PATCH v4 1/4] jbd2: introduce/export functions jbd2_journal_submit|finish_inode_data_buffers()
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        dann frazier <dann.frazier@canonical.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 29, 2020 at 04:37:13PM +0200, Lukas Czerner wrote:
-> 
-> lately we've had couple of bugs against dump utility and a after a quick
-> look at the code I realized that it is very much outdated at least on
-> the extN side of things and would need some work and attention to make it
-> work reliably with modern ext4 features.
-> 
-> However the code has been neglected for a while and talking to the
-> maintainer he is pretty much done with it. At this point I am ready to
-> pull the plug on dump/restore in Fedora, but before I do I was wondering
-> whether there is any interest in moving dump/restore, or part of it, into
-> e2fsprogs ?
-> 
-> I have not looked at the code close enought to say whether it's worth it
-> or whether it would be better to write something from scratch. There is
-> also a question about what to do with the tape code - that's not
-> something I have any interest in digging into.
-> 
-> In my eyes dump had a good run and I would be happy just dumping it, but
-> it is worth asking here on the list. Is there anyone interested in
-> maintaining dump/restore, or is there interest in or objections agains
-> merging it into e2fsprogs ?
+On Mon, Sep 28, 2020 at 11:24 PM Andreas Dilger <adilger@dilger.ca> wrote:
+>
+> On Sep 28, 2020, at 1:41 PM, Mauricio Faria de Oliveira <mfo@canonical.com> wrote:
+> >
+> > Export functions that implement the current behavior done
+> > for an inode in journal_submit|finish_inode_data_buffers().
+> >
+> > No functional change.
+> >
+> > Signed-off-by: Mauricio Faria de Oliveira <mfo@canonical.com>
+> > Suggested-by: Jan Kara <jack@suse.cz>
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+>
+> A couple of minor cleanups below, but either way you could add:
+>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+>
 
-One of the interesting questions is how reliable the dump utility
-really is; that's because it works by reading the metadata directly
---- while the file system is mounted.  So it's quite possible for the
-metadata to be changing out from under the dump/restore process.
-Especially with metadata checksums, I suspect dump/restore is going
-much more unreliable in terms of the libext2fs returning checksum
-failures.
+Hey Andreas, thanks for reviewing!
 
-In the future, if we ever try to bypass the use of the buffer cache,
-and instead have jbd2 write out directly to the bio layer so we cant
-get better write error codes.  There was a discussion about this
-recently, and there are two problems.  First, we need to worry about
-programs like tune2fs and e2label that need to be able to read and
-modify the superblock while the file system is modified.  We'd want to
-add ioctl's to set and get the superblock, and update e2fsprogs to try
-to use those system calls first.  And then.... there is dump/restore.i
+These cleanups/style changes do look better -- applied to the two functions
+in patch 1 (submit and finish), and another function in patch 4
+(submit callback).
 
-I could imagine adding ioctl's which allow safe read-only access to
-all metadata blocks, and not just for the superblock.  The question,
-though is... is it worth it, especially if it's only to make
-dump/restore work?
+cheers,
+Mauricio
 
-On the other hand, if we want to try to implement some kind of on-line
-fsck work, then -perhaps safe metadata reading would be part of that
-interface.  So I'd never say never, but I do wonder if it's time to
-pull the plug on dump/restore --- especially if we want to allow it to
-support not just inline files/directories, but also things like
-extended attributes and ACL's.
+> > +int jbd2_journal_finish_inode_data_buffers(struct jbd2_inode *jinode)
+> > +{
+> > +     struct address_space *mapping = jinode->i_vfs_inode->i_mapping;
+> > +     loff_t dirty_start = jinode->i_dirty_start;
+> > +     loff_t dirty_end = jinode->i_dirty_end;
+> > +     int ret;
+> > +
+> > +     ret = filemap_fdatawait_range_keep_errors(mapping, dirty_start, dirty_end);
+> > +     return ret;
+> > +}
+>
+> (style) still prefer to wrap at 80 columns if possible.
+> (style) there isn't any benefit to "dirty_start" and "dirty_end" as locals
+> (style) there also isn't any benefit to "ret = ...; return ret"
+>
+> I thought it might be coded this way because the function is changed in a
+> later patch in the series, but I couldn't find anything like that, so the
+> shorter form is just as readable, IMHO:
+>
+> int jbd2_journal_finish_inode_data_buffers(struct jbd2_inode *jinode)
+> {
+>         struct address_space *mapping = jinode->i_vfs_inode->i_mapping;
+>
+>         return filemap_fdatawait_range_keep_errors(mapping,
+>                                                    jinode->dirty_start,
+>                                                    jinode->dirty_end);
+> }
+>
+> Cheers, Andreas
+>
+>
+>
+>
+>
 
-						- Ted
+
+-- 
+Mauricio Faria de Oliveira
