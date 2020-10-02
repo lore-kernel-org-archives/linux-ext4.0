@@ -2,59 +2,52 @@ Return-Path: <SRS0=U/jV=DJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D7C0C4363C
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Oct 2020 15:17:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E66AC35257
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Oct 2020 20:08:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 58350206CD
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Oct 2020 15:17:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2608E206E3
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Oct 2020 20:08:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388074AbgJBPR3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Oct 2020 11:17:29 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57434 "EHLO
+        id S1725811AbgJBUIs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Oct 2020 16:08:48 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58661 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726017AbgJBPR2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2020 11:17:28 -0400
+        with ESMTP id S1725550AbgJBUIs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Oct 2020 16:08:48 -0400
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 092FHO2B006959
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 092K8jLn032163
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 2 Oct 2020 11:17:24 -0400
+        Fri, 2 Oct 2020 16:08:45 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 2C44E42003C; Fri,  2 Oct 2020 11:17:24 -0400 (EDT)
-Date:   Fri, 2 Oct 2020 11:17:24 -0400
+        id E67AA42003C; Fri,  2 Oct 2020 16:08:44 -0400 (EDT)
+Date:   Fri, 2 Oct 2020 16:08:44 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: State of dump utility
-Message-ID: <20201002151724.GT23474@mit.edu>
-References: <20200929143713.ttu2vvhq22ulslwf@work>
- <20200930020646.GD23474@mit.edu>
- <20201002120158.uyyx3cg5gdeoe665@work>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     linux-ext4@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: flag as supporting buffered async reads
+Message-ID: <20201002200844.GW23474@mit.edu>
+References: <fb90cc2d-b12c-738f-21a4-dd7a8ae0556a@kernel.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20201002120158.uyyx3cg5gdeoe665@work>
+In-Reply-To: <fb90cc2d-b12c-738f-21a4-dd7a8ae0556a@kernel.dk>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 02, 2020 at 02:01:58PM +0200, Lukas Czerner wrote:
+On Mon, Aug 03, 2020 at 05:02:11PM -0600, Jens Axboe wrote:
+> ext4 uses generic_file_read_iter(), which already supports this.
 > 
-> Thanks Ted, you made some good points and while there are some good
-> ideas for the future, there is no place for dump there. I think we're in
-> agreement to pull the plug on dump.
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Jens Axboe <axboe@kernel.dk>
 
-I think the only strong argument for dump/restore is that there might
-be some crazy^H^H^H^H^H^H dedicated hobbiests over at The Unix
-Historical Society who might find a 9-track tape with some 2.10 BSD
-backup on it, and dump/restore is format compatible with it.  So
-_restore_ might be interesting for some of those folks.  Then again,
-they'd probably prefer to actually restore it on their 2.10 BSD system
-running on a PDP-11 emulator.... so we're probably good.  :-)
+Applied, thanks.   (And apologies for the delay.)
 
-	     	    		    	  - Ted
+				- Ted
