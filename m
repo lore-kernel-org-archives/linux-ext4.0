@@ -6,61 +6,48 @@ X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
 	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF636C4727D
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Oct 2020 04:49:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6EA3C4363D
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Oct 2020 04:55:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8B38E2074B
-	for <linux-ext4@archiver.kernel.org>; Sat,  3 Oct 2020 04:49:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A5C42311D
+	for <linux-ext4@archiver.kernel.org>; Sat,  3 Oct 2020 04:55:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725730AbgJCEtT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 3 Oct 2020 00:49:19 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:50776 "EHLO
+        id S1725681AbgJCEzC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 3 Oct 2020 00:55:02 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52330 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725446AbgJCEtS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Oct 2020 00:49:18 -0400
+        with ESMTP id S1725446AbgJCEzC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Oct 2020 00:55:02 -0400
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0934n6HF010588
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0934sebH014742
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 3 Oct 2020 00:49:06 -0400
+        Sat, 3 Oct 2020 00:54:41 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id D29E842003C; Sat,  3 Oct 2020 00:49:05 -0400 (EDT)
-Date:   Sat, 3 Oct 2020 00:49:05 -0400
+        id 5190042003C; Sat,  3 Oct 2020 00:54:40 -0400 (EDT)
+Date:   Sat, 3 Oct 2020 00:54:40 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     linux-ext4@vger.kernel.org, jack@suse.cz, dan.j.williams@intel.com,
-        anju@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCHv3 1/1] ext4: Optimize file overwrites
-Message-ID: <20201003044905.GF23474@mit.edu>
-References: <cover.1600401668.git.riteshh@linux.ibm.com>
- <88e795d8a4d5cd22165c7ebe857ba91d68d8813e.1600401668.git.riteshh@linux.ibm.com>
+To:     Qilong Zhang <zhangqilong3@huawei.com>
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH -next] ext4: add trace exit in exception path.
+Message-ID: <20201003045440.GG23474@mit.edu>
+References: <20200921124738.23352-1-zhangqilong3@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <88e795d8a4d5cd22165c7ebe857ba91d68d8813e.1600401668.git.riteshh@linux.ibm.com>
+In-Reply-To: <20200921124738.23352-1-zhangqilong3@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Sep 18, 2020 at 10:36:35AM +0530, Ritesh Harjani wrote:
-> In case if the file already has underlying blocks/extents allocated
-> then we don't need to start a journal txn and can directly return
-> the underlying mapping. Currently ext4_iomap_begin() is used by
-> both DAX & DIO path. We can check if the write request is an
-> overwrite & then directly return the mapping information.
+On Mon, Sep 21, 2020 at 08:47:38PM +0800, Qilong Zhang wrote:
+> From: Zhang Qilong <zhangqilong3@huawei.com>
 > 
-> This could give a significant perf boost for multi-threaded writes
-> specially random overwrites.
-> On PPC64 VM with simulated pmem(DAX) device, ~10x perf improvement
-> could be seen in random writes (overwrite). Also bcoz this optimizes
-> away the spinlock contention during jbd2 slab cache allocation
-> (jbd2_journal_handle). On x86 VM, ~2x perf improvement was observed.
+> Missing trace exit in exception path of ext4_sync_file and
+> ext4_ind_map_blocks.
 > 
-> Reported-by: Dan Williams <dan.j.williams@intel.com>
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+> Signed-off-by: Zhang Qilong <zhangqilong3@huawei.com>
 
 Thanks, applied.
 
