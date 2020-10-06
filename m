@@ -1,104 +1,116 @@
-Return-Path: <SRS0=6mOA=DM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=j74E=DN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=BAYES_00,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5C3AC4363A
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Oct 2020 20:56:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B718C4727D
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Oct 2020 00:05:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8055721534
-	for <linux-ext4@archiver.kernel.org>; Mon,  5 Oct 2020 20:56:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 328F7206F4
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Oct 2020 00:05:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727032AbgJEU4T convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 5 Oct 2020 16:56:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47242 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725942AbgJEU4T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 5 Oct 2020 16:56:19 -0400
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 102621] Directory name or file name staring with '-' cannot be
- handled through command line,i.e.,terminal
-Date:   Mon, 05 Oct 2020 20:56:18 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext2@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext2
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: dmsfuddid@gmail.com
-X-Bugzilla-Status: RESOLVED
-X-Bugzilla-Resolution: INVALID
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext2@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-102621-13602-EbL468USN2@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-102621-13602@https.bugzilla.kernel.org/>
-References: <bug-102621-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1725946AbgJFAFF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 5 Oct 2020 20:05:05 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:49070 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725865AbgJFAFF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Oct 2020 20:05:05 -0400
+Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 09604k5j009329
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 5 Oct 2020 20:04:47 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id D0627420107; Mon,  5 Oct 2020 20:04:45 -0400 (EDT)
+Date:   Mon, 5 Oct 2020 20:04:45 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Josh Triplett <josh@joshtriplett.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: Re: ext4 regression in v5.9-rc2 from e7bfb5c9bb3d on ro fs with
+ overlapped bitmaps
+Message-ID: <20201006000445.GC4540@mit.edu>
+References: <CAHk-=wj-H5BYCU_kKiOK=B9sN3BtRzL4pnne2AJPyf54nQ+d=w@mail.gmail.com>
+ <20201005081454.GA493107@localhost>
+ <20201005173639.GA2311765@magnolia>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201005173639.GA2311765@magnolia>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=102621
+On Mon, Oct 05, 2020 at 10:36:39AM -0700, Darrick J. Wong wrote:
+> > Commit e7bfb5c9bb3d ("ext4: handle add_system_zone() failure in
+> > ext4_setup_system_zone()") breaks mounting of read-only ext4 filesystems
+> > with intentionally overlapping bitmap blocks.
+> > 
+> > On an always-read-only filesystem explicitly marked with
+> > EXT4_FEATURE_RO_COMPAT_SHARED_BLOCKS, prior to that commit, it's safe to
+> > point all the block and inode bitmaps to a single block
+> 
+> LOL, WHAT?
+> 
+> I didn't know shared blocks applied to fs metadata.  I thought that
+> "shared" only applied to file extent maps being able to share physical
+> bloctks.
+ 
+My understanding matches Darrick's.  I was going to track down the
+Google engineer who has most recently (as far as I know) enhanced
+e2fsprogs's support of the shared block feature (see the commits
+returned by "git log --author dvander@google.com contrib/android") but
+he's apparently out of the office today.  Hopefully I'll be able to
+track him down and ask about this tomorrow.
 
---- Comment #3 from dmsfuddid@gmail.com ---
-unsubscribe linux-ext4
+> Oookay.  So that's not how you create these shared block ext4s,
+> apparently...
 
-2015년 8월 10일 (월) 오후 6:38, <bugzilla-daemon@bugzilla.kernel.org>님이 작성:
+Yeah, they are created by the e2fsdroid program.  See sources in
+contrib/e2fsdroid.  I took a quick look, and I don't see anything
+there which is frobbing with with the bitmaps; but perhaps I'm missing
+something, which is why I'd ask David to see if he knows anything
+about this.
 
-> https://bugzilla.kernel.org/show_bug.cgi?id=102621
->
->             Bug ID: 102621
->            Summary: Directory name or file name staring with '-' cannot be
->                     handled through command line,i.e.,terminal
->            Product: File System
->            Version: 2.5
->     Kernel Version: 3.16.7-21-desktop
->           Hardware: All
->                 OS: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: ext2
->           Assignee: fs_ext2@kernel-bugs.osdl.org
->           Reporter: saptarshinag620@gmail.com
->         Regression: No
->
-> Firstly,one cannot create a directory or a file through command-line with
-> its
-> name starting with '-'. That is one cannot give command like 'mkdir -test'
-> or
-> 'touch -test' where '-test' is the directory name and file name
-> respectively.But in other way,one can easily create or work with such
-> directory
-> or file in GUI,but that file or directory cannot be accessed or handled
-> through
-> command-line.It has been tested in Suse Linux and Ubuntu,maybe it is
-> universal
-> bug for linux
->
-> --
-> You are receiving this mail because:
-> You are watching the assignee of the bug.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+More to the point, if we are have someone who is trying to dedup or
+otherwise frob with bitmaps, I suspect this will break "e2fsck -E
+unshare_blocks /dev/XXX", which is a way that you can take a root file
+system which is using shared_blocks, and turn it into something that
+can actually be mount read/write.  This is something that I believe
+was being used by AOSP "debug" or "userdebug" (I'm a bit fuzzy on the
+details) so that Android developers couldn't actually modify the root
+file system.  (Of course, you have to also disable dm-verity in order
+for this to work....)
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Unfortunately, e2fsdroid is currently not buildable under the standard
+Linux compilation environment.  For the reason why, see:
+
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=928551#75
+
+The first step would be to teach e2fsprogs's configure to check for
+libsparse, and to link against it if it's available.  But before we
+could enable this by default for Linux distribution, we need to link
+against libsparse using dlopen(), since most distro release engineers
+would be.... cranky.... if mke2fs were to drag in some random Android
+libraries that have to be installed as shared libraries in their
+installers.  Which is the point of comment #75 in the above bug.
+
+Since the only use of shared_blocks is for Android, since very few
+other projects want a completely read-only root file system, and where
+dedup is actually significantly helpful, we've never tried to make
+this work outside of the Android context.  At least in theory, though,
+it might be useful if we could create shared_block file systems using
+"mke2fs -O shared_blocks -d /path/to/embedded-root-fs system.img 1G".
+Patches gratefully accepted....
+
+Cheers,
+
+					- Ted
