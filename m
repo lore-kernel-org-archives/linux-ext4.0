@@ -2,80 +2,72 @@ Return-Path: <SRS0=Y+7+=DO=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 678A7C4363C
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Oct 2020 09:38:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A4A8C47095
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Oct 2020 14:32:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E846F20760
-	for <linux-ext4@archiver.kernel.org>; Wed,  7 Oct 2020 09:38:52 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=iastate.edu header.i=@iastate.edu header.b="RqdzF0ku"
+	by mail.kernel.org (Postfix) with ESMTP id 641D2208C7
+	for <linux-ext4@archiver.kernel.org>; Wed,  7 Oct 2020 14:32:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727111AbgJGJiw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 7 Oct 2020 05:38:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43170 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726218AbgJGJiw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Oct 2020 05:38:52 -0400
-Received: from mail-lf1-x131.google.com (mail-lf1-x131.google.com [IPv6:2a00:1450:4864:20::131])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0DC4C061755
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Oct 2020 02:38:51 -0700 (PDT)
-Received: by mail-lf1-x131.google.com with SMTP id d24so1510398lfa.8
-        for <linux-ext4@vger.kernel.org>; Wed, 07 Oct 2020 02:38:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=iastate.edu; s=google20150603;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=vUOkbXK7Vzgcm7KtrOCLHPK8GVHRzrzqej168SESYLU=;
-        b=RqdzF0ku2Mad6hdpHC5Njnaqv2J826nWtEEIONvcQvu4iV5kkPNsB8bcgCwiXsBYBQ
-         a+SSqSuayEH8c/yegOmfQ4M+QWqDqaCsccl9fOo/znkmXxdtMyv+HHLW5yj4DtV8uZ44
-         OV7r6yhOkgWze3dgaOJW61/8bqUC/mc8Swn58=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=vUOkbXK7Vzgcm7KtrOCLHPK8GVHRzrzqej168SESYLU=;
-        b=jy4bPSVKsqzOtUiDWBBKLC27Q0kByqWrpLDRwh0iQc2fceZfgg+BmP7KUGffrrzftX
-         Z8dLL2EMK4IhuovPm+JM33wXgK6kQLdycmGeEEyxGgdwVwedVDVIhR8vNKHvUDNClyaH
-         UvpfcxcTtMgDL3hD8+FCOotWZx1/U8D+217RLuQAUdI+HKRbM19MhjVxLnZsX7zcMWIZ
-         cusdOBv3h9VZDjXkn0lt+L8dWjUCG0nOH1z4e2ZtwYApFIGj9wQzQbLeQGOd7pnbVs0p
-         QvDWTmHqfJY7Po5RMgcj1k2daoUQbHRFMHxVrwPJM/DwE4b3oPnq7zOEZMRREaOMjhW5
-         XrQg==
-X-Gm-Message-State: AOAM531Dh7BWHWjJKa9Tp9FdTm/FCZgYnS9KIgL/RsM1QvkNdPTBVXyF
-        1iff1BSXLNrIBHUwaHUdjggGO+YorqlA1s+xX2zerNJS+Q1/WQ==
-X-Google-Smtp-Source: ABdhPJyAGo8PWzGtoZkrqzAFbWId1LHAV8AGeUYCJl/QEyf0t3oCnQq2ePBa6Oc3LAGPz5EA0ZA6jzQ9x8MdU04QVNs=
-X-Received: by 2002:a19:e45:: with SMTP id 66mr767062lfo.376.1602063529434;
- Wed, 07 Oct 2020 02:38:49 -0700 (PDT)
+        id S1728629AbgJGOcY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 7 Oct 2020 10:32:24 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36758 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728562AbgJGOcY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Oct 2020 10:32:24 -0400
+Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 097EWBGI001492
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 7 Oct 2020 10:32:11 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 1DE34420107; Wed,  7 Oct 2020 10:32:11 -0400 (EDT)
+Date:   Wed, 7 Oct 2020 10:32:11 -0400
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Josh Triplett <josh@joshtriplett.org>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: Re: ext4 regression in v5.9-rc2 from e7bfb5c9bb3d on ro fs with
+ overlapped bitmaps
+Message-ID: <20201007143211.GA235506@mit.edu>
+References: <CAHk-=wj-H5BYCU_kKiOK=B9sN3BtRzL4pnne2AJPyf54nQ+d=w@mail.gmail.com>
+ <20201005081454.GA493107@localhost>
+ <20201005173639.GA2311765@magnolia>
+ <20201006003216.GB6553@localhost>
+ <20201006025110.GJ49559@magnolia>
+ <20201006031834.GA5797@mit.edu>
+ <20201006050306.GA8098@localhost>
+ <20201006133533.GC5797@mit.edu>
+ <20201007080304.GB1112@localhost>
 MIME-Version: 1.0
-From:   Om Gatla <ogatla@iastate.edu>
-Date:   Wed, 7 Oct 2020 04:38:38 -0500
-Message-ID: <CAE0mYSWO0gEUebYXWs2M_4ZnWh6-Pm1U5F21iZCsAiqFjMq1Jg@mail.gmail.com>
-Subject: Redo log for file system checkers
-To:     linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201007080304.GB1112@localhost>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello all,
+On Wed, Oct 07, 2020 at 01:03:04AM -0700, Josh Triplett wrote:
+> > But can we *please* take your custom tool out back and shoot it in the
+> > head?
+> 
+> Nope. As mentioned, this isn't about creating ext4 filesystem images,
+> and it isn't even remotely similar to mke2fs.
 
-Our research group at Iowa State University and Western Digital have
-designed and developed a generic redo log interface for file system
-checkers (fsck). The source code is available at:
-https://git.ece.iastate.edu/data-storage-lab/prototypes/rfsck
+Can you please tell us what your tool is for, then?  Why are you doing
+this?  Why are you inflicting this on us?
 
-The design of our redo log is based on the undo log feature available
-in e2fsck and provides a transaction interface. We identified that the
-existing undo log in e2fsck is not properly implemented and that there
-are issues concerning synchronizing updates across the undo log file
-and the device.
+And if the answer is nope, I can't, it's propietary, sorry....  then I
+think we should treat this the same way we treat proprietary kernel
+modules.
 
-For further details please refer to our paper:
-https://www.usenix.org/system/files/conference/fast18/fast18-gatla.pdf
-
-I request the community to kindly review our work and provide us some feedback.
-
-Regards
-Om Rameshwar Gatla
+       	     	      	        - Ted
+				
