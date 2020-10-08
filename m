@@ -2,159 +2,293 @@ Return-Path: <SRS0=caHj=DP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27FA4C433E7
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Oct 2020 20:13:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4256C433DF
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Oct 2020 22:23:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ACD3022226
-	for <linux-ext4@archiver.kernel.org>; Thu,  8 Oct 2020 20:13:06 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="ZZgBY/7t"
+	by mail.kernel.org (Postfix) with ESMTP id 5AA0F206CA
+	for <linux-ext4@archiver.kernel.org>; Thu,  8 Oct 2020 22:23:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730091AbgJHUNG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 8 Oct 2020 16:13:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53564 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725987AbgJHUNG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2020 16:13:06 -0400
-Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2ED38C0613D2
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Oct 2020 13:13:06 -0700 (PDT)
-Received: by mail-pf1-x443.google.com with SMTP id b26so4904535pff.3
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Oct 2020 13:13:06 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=okbiQiFQWt/1O3IuAnTeexDlQgzCWkXknnLH8yR2DPE=;
-        b=ZZgBY/7tIqMX26BzIGerJHcmm7EyOAgjYUax+R51ulojxFCsTtbfB1UJaj+Rf+GKS8
-         HcPNWCXOmuBbwpuwfjlhTQb6Yp1va4oGOm1bPEvGvl4zijaWYrD5lbVENbtHK0tFBY3Z
-         3jmLV90eNHR/hZ04BpFT49m8Z8xoXwD3jeVoDFFHyZ6JIjIrzprN0qlf7Z6srfhGwd8b
-         99LBRS1aae/X3eyxjKiDeAD3OhWCIl/kXLFx94B/p62A9SORaAvZadQ7yGGzhR5E8F0T
-         ToGTrLl5w4zNb/MqmmG3c6PDVtomENWFR83yX25oURzBx1WrlEzSVFycqVRMRVuTYnjU
-         LoAQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=okbiQiFQWt/1O3IuAnTeexDlQgzCWkXknnLH8yR2DPE=;
-        b=iFtFjCkxun5bCHAogyXSJEAq7LwagiQtw2nMPKbTxlpaND0icdurIDozTIIroS3Tph
-         jKFa5wCjPoYGwzN1zNqU0rm84kMPV+jOuQF814kCS5TcgXzqk8hcbq3tO0rf7GHzTfTX
-         KT1ht45SJ1FK8QvoiP4MFal9y98rzcZyRm9pLtmiEERCHzt1ZRJDv1QAf8qPDGyMEsCl
-         s/WscZszroqn7bLl5/n8LkMWtY1Iwsk7aNyZ2zA6xXz1nvHNKybFgHejxdkX8SDadxJo
-         6CgD8NkA4/2CWm9VLY5ISoVAFI/5SIEU75rfk1t3g2KucSsANbT9OT3xZb/W8VWhqyI7
-         OwBA==
-X-Gm-Message-State: AOAM5310bLVTYi5uEfsOmEkr/QppuHDUu7FflE9cgU5FprzAzgEhBhzg
-        qCP6tW4lnHlUnneR9Ve3Dzd01DJ8/Ord1BZt
-X-Google-Smtp-Source: ABdhPJzsCCMaGdimxrMACS/kbM4auNa4wvooJZAQ/Ln8MHZSI/t2ESFeheuqI/oOJPy9LFPpKJQ0Cw==
-X-Received: by 2002:a17:90a:400e:: with SMTP id u14mr611382pjc.118.1602187985591;
-        Thu, 08 Oct 2020 13:13:05 -0700 (PDT)
-Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id r6sm8020103pfq.11.2020.10.08.13.13.03
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 08 Oct 2020 13:13:04 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <AF239FDD-1550-4D24-B2A4-C015689C9203@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_29227FE5-8379-4A0B-8C19-943775F8563F";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v4] jbd2: avoid transaction reuse after reformatting
-Date:   Thu, 8 Oct 2020 14:13:02 -0600
-In-Reply-To: <20201007081319.16341-1-jack@suse.cz>
-Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Fengnan Chang <changfengnan@hikvision.com>,
-        changfengnan <fengnanchang@foxmail.com>
-To:     Jan Kara <jack@suse.cz>
-References: <20201007081319.16341-1-jack@suse.cz>
-X-Mailer: Apple Mail (2.3273)
+        id S1726530AbgJHWXK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 8 Oct 2020 18:23:10 -0400
+Received: from relay12.mail.gandi.net ([217.70.178.232]:35523 "EHLO
+        relay12.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725941AbgJHWXK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Oct 2020 18:23:10 -0400
+Received: from localhost (unknown [67.5.25.97])
+        (Authenticated sender: josh@joshtriplett.org)
+        by relay12.mail.gandi.net (Postfix) with ESMTPSA id 2E05D200004;
+        Thu,  8 Oct 2020 22:23:02 +0000 (UTC)
+Date:   Thu, 8 Oct 2020 15:22:59 -0700
+From:   Josh Triplett <josh@joshtriplett.org>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: Re: ext4 regression in v5.9-rc2 from e7bfb5c9bb3d on ro fs with
+ overlapped bitmaps
+Message-ID: <20201008222259.GA45658@localhost>
+References: <20201005173639.GA2311765@magnolia>
+ <20201006003216.GB6553@localhost>
+ <20201006025110.GJ49559@magnolia>
+ <20201006031834.GA5797@mit.edu>
+ <20201006050306.GA8098@localhost>
+ <20201006133533.GC5797@mit.edu>
+ <20201007080304.GB1112@localhost>
+ <20201007143211.GA235506@mit.edu>
+ <20201007201424.GB15049@localhost>
+ <20201008021017.GD235506@mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201008021017.GD235506@mit.edu>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
---Apple-Mail=_29227FE5-8379-4A0B-8C19-943775F8563F
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Oct 7, 2020, at 2:13 AM, Jan Kara <jack@suse.cz> wrote:
+On Wed, Oct 07, 2020 at 10:10:17PM -0400, Theodore Y. Ts'o wrote:
+> On Wed, Oct 07, 2020 at 01:14:24PM -0700, Josh Triplett wrote:
+> > That sounds like a conversation that would have been a lot more
+> > interesting and enjoyable if it hadn't started with "can we shoot it in
+> > the head", and continued with the notion that anything other than
+> > e2fsprogs making something to be mounted by mount(2) and handled by
+> > fs/ext4 is being "inflicted", and if the goal didn't still seem to be
+> > "how do we make it go away so that only e2fsprogs and the kernel ever
+> > touch ext4". I started this thread because I'd written some userspace
+> > code, a new version of the kernel made that userspace code stop working,
+> > so I wanted to report that the moment I'd discovered that, along with a
+> > potential way to address it with as little disrupton to ext4 as
+> > possible.
 > 
-> From: changfengnan <fengnanchang@foxmail.com>
+> What is really getting my dander up is your attempt to claim that the
+> on-disk file system format is like the userspace/kernel interface,
+> where if we break any file system that file system that was
+> "previously accepted by an older kernel", this is a bug that must be
+> reverted or otherwise fixed to allow file systems that had previously
+> worked, to continue to work.  And this is true even if the file system
+> is ***invalid***.
 > 
-> When ext4 is formatted with lazy_journal_init=1 and transactions from
-> the previous filesystem are still on disk, it is possible that they are
-> considered during a recovery after a crash. Because the checksum seed
-> has changed, the CRC check will fail, and the journal recovery fails
-> with checksum error although the journal is otherwise perfectly valid.
-> Fix the problem by checking commit block time stamps to determine
-> whether the data in the journal block is just stale or whether it is
-> indeed corrupt.
+> And the problem with this is that there have been any number of
+> commits where file systems which were previously invalid, but which
+> could be caused to trigger a syzbot whine, which was fixed by
+> tightening up the validity tests in the kernel.  In some cases, I had
+> to also had to fix up e2fsck to detect the invalid file system which
+> was generated by the file system fuzzer.  Yes, it's unfortunate that
+> we didn't have these checks earlier, but a file system has a huge
+> amount of state.
 > 
-> Reported-by: kernel test robot <lkp@intel.com>
-> Signed-off-by: Fengnan Chang <changfengnan@hikvision.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> The principle you've articulated would make it impossible for me to
+> fix these bugs, unless I can prove that the failure to check a
+> particular invalid file system corruption could lead to a security
+> vulnerability.  (Would it be OK for me to make the kernel more strict
+> and reject an invalid file system if it triggers a WARN_ON, so I get
+> the syzbot complaint, but it doesn't actually cause a security issue?)
+> 
+> So this conversation would have been a lot more pleasant for *me* if
+> you hadn't tried to elevate your request to a general principle, where
+> if someone is deliberately generating an invalid file system, I'm not
+> allowed to make the kernel more strict to detect said invalidity and
+> to reject the invalid / corrupted / fuzzed file system.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+I appreciate you providing this explanation; this makes the nature and
+severity of your concern *much* more clear. I also now understand why I
+was feeling confused, and why it felt several times like we were talking
+past each other; see below. For my part, I had no desire to have
+generated this level of concern. The restrictions you're describing
+above are far, far past anything I had possibly envisioned or desired. I
+want to clarify a couple of things.
 
-NB: one trivial formatting cleanup if patch is refreshed
+I wasn't trying to make a *new* general principle or policy. I was under
+the impression that this *was* the policy, because it never occurred to
+me that it could be otherwise. It seemed like a natural aspect of the
+kernel/userspace boundary, to the point that the idea of it *not* being
+part of the kernel's stability guarantees didn't cross my mind. Thus,
+when you were suggesting a policy of "only filesystems generated by the
+e2fsprogs userspace tools are acceptable", that seems like you were
+suggesting a massive loosening of existing policy. And when I suggested
+an alternative of "only filesystems that pass e2fsck are acceptable", I
+was also trying to suggest a loosening of the existing policy, just a
+different, milder one. I would have come to this discussion with a very
+different perspective if it had occurred to me that this might not be
+the policy, or at least that it simply hadn't come up in this way
+before.
 
-> @@ -520,12 +522,22 @@ static int do_one_pass(journal_t *journal,
-> 			if (descr_csum_size > 0 &&
-> 			    !jbd2_descriptor_block_csum_verify(journal,
-> 							       bh->b_data)) {
-> -				printk(KERN_ERR "JBD2: Invalid checksum "
-> -				       "recovering block %lu in log\n",
-> -				       next_log_block);
-> -				err = -EFSBADCRC;
-> -				brelse(bh);
-> -				goto failed;
-> +				/*
-> +				 * PASS_SCAN can see stale blocks due to lazy
-> + 				 * journal init. Don't error out on those yet.
-> +				 */
-> +				if (pass != PASS_SCAN) {
-> +					pr_err("JBD2: Invalid checksum "
-> +					       "recovering block %lu in log\n",
+I would be quite happy to have a discussion about where that stability
+boundary should be. I also have no desire to be inflexible about that
+boundary or about the evolution of the software I'm working on; this is
+not some enterprise "thou shalt not touch" workload. On the contrary,
+within reason it's *relatively* straightforward for me to evolve
+filesystem generation code to deal with changes in the kernel or e2fsck.
+I was not looking to push some new general principle on stability; I
+only wished to ensure that it was reasonable to negotiate about the best
+way to solve problems if and when they arise, and I hope they do not
+arise often.  (Most of the time, I'd expect that when they arise I'll
+end up wanting to change my software rather than the kernel.)
 
-(style) should keep console message strings on a single line
+I also don't think that a (milder) stability guarantee would mean that
+the kernel or fsck can never become stricter. On the contrary, they both
+*should* absolutely try to detect more issues over time. Much like other
+instances of the userspace/kernel boundary, changes that could
+hypothetically break some userspace software aren't automatically
+disqualified, only changes that *actually* break userspace in practice.
+I regularly see the kernel making a change that would technically affect
+some userspace software, but either no such software appears to exist
+(and the question could be revisited if it did), or any such software
+that does exist is not affected in a harmful way (e.g. the software
+copes with any error produced), or the software can be relatively easily
+patched to work around the new requirements and the nature of the
+software is such that people won't be running older versions, or any
+number of other practical considerations.
 
+Stability is a practical boundary rather than a theoretical concern.
+It's one that can be discussed and negotiated based on the nature of a
+change, and its practical impact. I suggested a kernel patch because
+that seemed like a straightforward approach with minimal impact to the
+kernel's validity checking. Darrick's suggestion in the next mail is an
+even better approach, and one I'm likely to use, so I'd have no problem
+with the patch that started this thread *not* being applied after all
+(though I appreciate the willingness to consider it).
 
-Cheers, Andreas
+Finally, I think there's also some clarification needed in the role of
+what some of the incompat and ro_compat flags mean. For instance,
+"RO_COMPAT_READONLY" is documented as:
+>     - Read-only filesystem image; the kernel will not mount this image
+>       read-write and most tools will refuse to write to the image.
+Is it reasonable to interpret this as "this can never, ever become
+writable", such that no kernel should ever "understand" that flag in
+ro_compat? I'd assumed so, but this discussion is definitely leading me
+to want to confirm any such assumptions. Is this a flag that e2fsck
+could potentially use to determine that it shouldn't check
+read-write-specific data structures, or should that be a different flag?
 
+> > The short version is that I needed a library to rapidly turn
+> > dynamically-obtained data into a set of disk blocks to be served
+> > on-the-fly as a software-defined disk, and then mounted on the other
+> > side of that interface by the Linux kernel. Turns out that's *many
+> > orders of magnitude* faster than any kind of network filesystem like
+> > NFS. It's slightly similar to a vvfat for ext4. The less blocks it can
+> > generate and account for and cache, the faster it can run, and
+> > microseconds matter.
+> 
+> So are you actually trying to dedup data blocks, or are you just
+> trying to avoid needing to track the block allocation bitmaps?
 
+Both. I do actually dedup some of the data blocks, when it's easy to do
+so. The less data that needs to get generated and go over the wire, the
+better.
 
+> And are you just writing a single file, or multiple files?  Do you
+> know what the maximum size of the file or files will be?  Do you need
+> a complex directory structure, or just a single root directory?
 
+It's an arbitrary filesystem hierarchy, including directories, files of
+various sizes (hence using inline_data), and permissions. The problem
+isn't to get data from point A to point B; the problem is (in part) to
+turn a representation of a filesystem into an actual mounted filesystem
+as efficiently as possible, live-serving individual blocks on demand
+rather than generating the whole image in advance.
 
+> Can the file system be sparse?
 
---Apple-Mail=_29227FE5-8379-4A0B-8C19-943775F8563F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
+Files almost certainly won't be (because in practice, it'd be rare
+enough that it's not worth the time and logic to check). The block
+device is in a way; unused blocks aren't transmitted.
 
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
+> So for example, you can do something like this, which puts all of the
+> metadata at beginning of the file system, and then you could write to
+> contiguous data blocks.  Add the following in mke2fs.conf:
 
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl9/cs4ACgkQcqXauRfM
-H+DS0g//dEl1VvDNDBSu0wZSiCx0r1y4qblGoO7xAEsK7MdtzVmjSFwRyB51MpgX
-ceJqbHGgWX8yetk+IozZI9M3rW1GlcNmKgSvhlocLk6OecRw8j0G3AWLwx4eklOC
-5ErHPrbauki7XGuR2OuzP0lQ3fsVDT8eDfMCh6ZGEhikhOiM4exngBMe6zwu8/Ua
-WEQL16SRdeTvXd3yc0iup7CwXMeyLyk3vygweI+aDKJRz93xNXlaLNu0I9B9/U1J
-mChwWm3v80bMEPabMzaS09nUiYYe+gNdMnmW+J8sw+fATgsDb8QXLJzamAICn7/b
-Vhn/dCb9cZJtQcinFjGGTMPyv8HsqhqyadntCa6/AnYsfTp80wyb/CQyVSYwNbHq
-6h1c9SsCdiCZHK687rNluyloBa0qOLuYmIYgxLxmS/HV+kre04a5rPDDNdCb0w+T
-TAUxw1DYEX1iIsIBrrS+sdWNmSycpLuRxj+bMSPGWy4i2xspVsZugkLzlI7ufodG
-9qx1nSJ+29SsPFk80SbEVWqcdByX23/mmCAb3fc1KQ+drBQDXHYcQs+0xvGshurO
-xtu23LKtBGWc20bJWQfA8Vb7Lg5jsLomMxSWErhspJUkf0pYog+F2RaRA3K9y+mW
-BMfoSjgOtdFEIBn1OBaJkVXluczVoOoeY2oRniMt2FkjlIU/dQs=
-=uzvs
------END PGP SIGNATURE-----
+(Note that the main reason mke2fs wouldn't help is that it generates
+filesystems in advance, rather than on the fly.)
 
---Apple-Mail=_29227FE5-8379-4A0B-8C19-943775F8563F--
+> [fs_types]
+>     hugefile = {
+>         features = extent,huge_file,bigalloc,flex_bg,uninit_bg,dir_nlink,extra_isize,^resize_inode,sparse_super2
+
+Other than uninit_bg, that's pretty much the list of feature flags I'm setting.
+I'm also enabling 64bit, inline_data, largedir, and filetype.
+
+>         cluster_size = 32768
+
+Many files are potentially small, so 4k blocks make sense. (I've even
+considered 1k blocks, but that seemed like a less-well-trodden path and
+I didn't want to be less efficient for larger files. 4k seems to be a
+good balance, and has the advantage of matching the page size.)
+
+> So if you had come to the ext4 list with a set of requirements, it
+> could have been that we could have come up with something which uses
+> the existing file system features, or come up with something which
+> would have been more specific --- and more importantly, we'd know what
+> the semantics were of various on-disk file system formats that people
+> are depending upon.
+
+I've mentioned specific aspects of what I'm doing at least twice: once
+in the thread about 128-bit inodes and inline data (which got a good
+response, and ended up convincing me not to go that route even though
+it'd be theoretically possible), and once in the feature request asking
+for support in e2fsck for shared bitmap blocks (which didn't get any
+further followups after I'd provided additional information).
+
+> > If at some point I'm looking to make ext4 support more than it already
+> > does (e.g. a way to omit bitmaps entirely, or a way to express
+> > contiguous files with smaller extent maps, or other enhancements for
+> > read-only filesystems),
+> 
+> See above for a way to significantly reduce the number of bitmaps.
+> Adding a way to omit bitmaps entirely would require an INCOMPAT flag,
+> so it might not be worth it.
+
+I agree that it'd be of limited value, compared to the amount of change
+required.
+
+> The way to express contiguous files with smaller extent files would be
+> to extend the kernel to allow file systems with block_size > page_size
+> read-only.  This would allow you to create a file system with a block
+> size of 64k, which will reduce the size of the extent maps by a factor
+> of 16, and it wouldn't be all that hard to teach ext4 to support these
+> file systems.  (The reason why it would be hard for us to support file
+> systems with block sizes > page size is dealing with page cache when
+> writing files while allocating blocks, especially when doing random
+> writes into a sparse file.  Read-only would be much easier to
+> support.)
+
+That seems like it would work well for a filesystem that mostly
+contained larger files, but not a mix of small files and occasional
+large files. (Imagine, for one possible instance, a normal Linux
+system's root filesystem with everything on it, plus a single 200GB
+file.) It's more that I'd like to avoid generating and serving (and
+having the kernel parse and recurse through) a full set of extent tree
+blocks; it would be nice if an extent record could represent more than
+32k blocks. It'd be even nicer if *inline* extents could represent an
+arbitrarily long file as long as the file was contiguous.
+
+Would it be reasonable, particularly on a read-only filesystem (to avoid
+the possibility of having to break it into a massive extent tree on the
+fly), to add a way to represent a completely contiguous or mostly
+contiguous file using only the 60-byte in-inode region, and no auxiliary
+extents? Having extents with a 48-bit number of blocks would be helpful,
+and in theory a contiguous file doesn't exactly need ee_block.
+
+> So please, talk to us, and *tell* us what it is you're trying to do
+> before you try to do it.  Don't rely on some implementation detail
+> where we're not being sufficiently strict in checking for an invalid
+> file system, especially without telling us in advance and then trying
+> to hold us to the lack of checking forever because it's "breaking
+> things that used to work".
+
+I'd be happy to start more such conversations in the future. And as
+mentioned above, I am *not* looking for that level of guarantee of never
+checking *anything* that used to be checked; I'm looking to
+collaboratively figure out what the best solution is. I don't want the
+default assumption to be that the kernel needs to remain perfectly
+accepting of everything it did in the past, nor do I want the default
+assumption to be that userspace should always change to meet the new
+kernel requirements.
+
+- Josh Triplett
