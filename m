@@ -4,36 +4,36 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0165C9DC99
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:58:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2759C9DC9D
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:58:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id ACB2C22267
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:58:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CEAC722267
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:58:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391100AbgJITx2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Oct 2020 15:53:28 -0400
-Received: from mga11.intel.com ([192.55.52.93]:40581 "EHLO mga11.intel.com"
+        id S2387785AbgJIT6l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Oct 2020 15:58:41 -0400
+Received: from mga12.intel.com ([192.55.52.136]:29334 "EHLO mga12.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391069AbgJITxV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:53:21 -0400
-IronPort-SDR: fwO/I5DdQY0ZiXv5xzaxY5B2Hn9Yf4xSouziRDHGndFFdQXVy99ZUvdLs9AkGAZ8tn4i39Gq1m
- jIBrPxeeBsJg==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="162068081"
+        id S2391094AbgJITx1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:53:27 -0400
+IronPort-SDR: dNjI/+CbWDQK7qTqW5BqQsQgclEAOq7y/cS1i5jjle6fiDG/78S+D7ApyW4zeTXOr/fIB3FyQB
+ H0HlrqWAKRjQ==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="144851032"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="162068081"
+   d="scan'208";a="144851032"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from orsmga003.jf.intel.com ([10.7.209.27])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:13 -0700
-IronPort-SDR: kHLawvWt7hk0hVI10Fetwn7tOzYF5yIQvhqqrAQq3flxek1V3ypdWT/2gH8vwQndln/BZvc5kH
- kTRjULDVKoGw==
+Received: from orsmga002.jf.intel.com ([10.7.209.21])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:26 -0700
+IronPort-SDR: 2ROrwlCi2HA6jb/vbADUiWNpPA9fz//CxLO3iPg6ChQCY2CkDUKdp2BuOf7Z0K54YjJfUTECcl
+ a5kJtnEVjTKQ==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="312652948"
+   d="scan'208";a="329006788"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by orsmga003-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:12 -0700
+  by orsmga002-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:25 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -41,16 +41,7 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Boris Pismenny <borisp@nvidia.com>,
-        Aviad Yehezkel <aviadye@nvidia.com>,
-        John Fastabend <john.fastabend@gmail.com>,
-        Daniel Borkmann <daniel@iogearbox.net>, x86@kernel.org,
+        Stefano Stabellini <sstabellini@kernel.org>, x86@kernel.org,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
@@ -76,9 +67,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 40/58] net: Utilize new kmap_thread()
-Date:   Fri,  9 Oct 2020 12:50:15 -0700
-Message-Id: <20201009195033.3208459-41-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 44/58] drivers/xen: Utilize new kmap_thread()
+Date:   Fri,  9 Oct 2020 12:50:19 -0700
+Message-Id: <20201009195033.3208459-45-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -90,188 +81,31 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-These kmap() calls in these drivers are localized to a single thread.
-To avoid the over head of global PKRS updates use the new kmap_thread()
-call.
+These kmap() calls are localized to a single thread.  To avoid the over
+head of global PKRS updates use the new kmap_thread() call.
 
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Jakub Kicinski <kuba@kernel.org>
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Boris Pismenny <borisp@nvidia.com>
-Cc: Aviad Yehezkel <aviadye@nvidia.com>
-Cc: John Fastabend <john.fastabend@gmail.com>
-Cc: Daniel Borkmann <daniel@iogearbox.net>
+Cc: Stefano Stabellini <sstabellini@kernel.org>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- net/ceph/messenger.c | 4 ++--
- net/core/datagram.c  | 4 ++--
- net/core/sock.c      | 8 ++++----
- net/ipv4/ip_output.c | 4 ++--
- net/sunrpc/cache.c   | 4 ++--
- net/sunrpc/xdr.c     | 8 ++++----
- net/tls/tls_device.c | 4 ++--
- 7 files changed, 18 insertions(+), 18 deletions(-)
+ drivers/xen/gntalloc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/ceph/messenger.c b/net/ceph/messenger.c
-index d4d7a0e52491..0c49b8e333da 100644
---- a/net/ceph/messenger.c
-+++ b/net/ceph/messenger.c
-@@ -1535,10 +1535,10 @@ static u32 ceph_crc32c_page(u32 crc, struct page *page,
+diff --git a/drivers/xen/gntalloc.c b/drivers/xen/gntalloc.c
+index 3fa40c723e8e..3b78e055feff 100644
+--- a/drivers/xen/gntalloc.c
++++ b/drivers/xen/gntalloc.c
+@@ -184,9 +184,9 @@ static int add_grefs(struct ioctl_gntalloc_alloc_gref *op,
+ static void __del_gref(struct gntalloc_gref *gref)
  {
- 	char *kaddr;
- 
--	kaddr = kmap(page);
-+	kaddr = kmap_thread(page);
- 	BUG_ON(kaddr == NULL);
- 	crc = crc32c(crc, kaddr + page_offset, length);
--	kunmap(page);
-+	kunmap_thread(page);
- 
- 	return crc;
- }
-diff --git a/net/core/datagram.c b/net/core/datagram.c
-index 639745d4f3b9..cbd0a343074a 100644
---- a/net/core/datagram.c
-+++ b/net/core/datagram.c
-@@ -441,14 +441,14 @@ static int __skb_datagram_iter(const struct sk_buff *skb, int offset,
- 		end = start + skb_frag_size(frag);
- 		if ((copy = end - offset) > 0) {
- 			struct page *page = skb_frag_page(frag);
--			u8 *vaddr = kmap(page);
-+			u8 *vaddr = kmap_thread(page);
- 
- 			if (copy > len)
- 				copy = len;
- 			n = INDIRECT_CALL_1(cb, simple_copy_to_iter,
- 					vaddr + skb_frag_off(frag) + offset - start,
- 					copy, data, to);
--			kunmap(page);
-+			kunmap_thread(page);
- 			offset += n;
- 			if (n != copy)
- 				goto short_copy;
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 6c5c6b18eff4..9b46a75cd8c1 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -2846,11 +2846,11 @@ ssize_t sock_no_sendpage(struct socket *sock, struct page *page, int offset, siz
- 	ssize_t res;
- 	struct msghdr msg = {.msg_flags = flags};
- 	struct kvec iov;
--	char *kaddr = kmap(page);
-+	char *kaddr = kmap_thread(page);
- 	iov.iov_base = kaddr + offset;
- 	iov.iov_len = size;
- 	res = kernel_sendmsg(sock, &msg, &iov, 1, size);
--	kunmap(page);
-+	kunmap_thread(page);
- 	return res;
- }
- EXPORT_SYMBOL(sock_no_sendpage);
-@@ -2861,12 +2861,12 @@ ssize_t sock_no_sendpage_locked(struct sock *sk, struct page *page,
- 	ssize_t res;
- 	struct msghdr msg = {.msg_flags = flags};
- 	struct kvec iov;
--	char *kaddr = kmap(page);
-+	char *kaddr = kmap_thread(page);
- 
- 	iov.iov_base = kaddr + offset;
- 	iov.iov_len = size;
- 	res = kernel_sendmsg_locked(sk, &msg, &iov, 1, size);
--	kunmap(page);
-+	kunmap_thread(page);
- 	return res;
- }
- EXPORT_SYMBOL(sock_no_sendpage_locked);
-diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
-index e6f2ada9e7d5..05304fb251a4 100644
---- a/net/ipv4/ip_output.c
-+++ b/net/ipv4/ip_output.c
-@@ -949,9 +949,9 @@ csum_page(struct page *page, int offset, int copy)
- {
- 	char *kaddr;
- 	__wsum csum;
--	kaddr = kmap(page);
-+	kaddr = kmap_thread(page);
- 	csum = csum_partial(kaddr + offset, copy, 0);
--	kunmap(page);
-+	kunmap_thread(page);
- 	return csum;
- }
- 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index baef5ee43dbb..88193f2a8e6f 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -935,9 +935,9 @@ static ssize_t cache_downcall(struct address_space *mapping,
- 	if (!page)
- 		goto out_slow;
- 
--	kaddr = kmap(page);
-+	kaddr = kmap_thread(page);
- 	ret = cache_do_downcall(kaddr, buf, count, cd);
--	kunmap(page);
-+	kunmap_thread(page);
- 	unlock_page(page);
- 	put_page(page);
- 	return ret;
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index be11d672b5b9..00afbb48fb0a 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1353,7 +1353,7 @@ xdr_xcode_array2(struct xdr_buf *buf, unsigned int base,
- 		base &= ~PAGE_MASK;
- 		avail_page = min_t(unsigned int, PAGE_SIZE - base,
- 					avail_here);
--		c = kmap(*ppages) + base;
-+		c = kmap_thread(*ppages) + base;
- 
- 		while (avail_here) {
- 			avail_here -= avail_page;
-@@ -1429,9 +1429,9 @@ xdr_xcode_array2(struct xdr_buf *buf, unsigned int base,
- 				}
- 			}
- 			if (avail_here) {
--				kunmap(*ppages);
-+				kunmap_thread(*ppages);
- 				ppages++;
--				c = kmap(*ppages);
-+				c = kmap_thread(*ppages);
- 			}
- 
- 			avail_page = min(avail_here,
-@@ -1471,7 +1471,7 @@ xdr_xcode_array2(struct xdr_buf *buf, unsigned int base,
- out:
- 	kfree(elem);
- 	if (ppages)
--		kunmap(*ppages);
-+		kunmap_thread(*ppages);
- 	return err;
- }
- 
-diff --git a/net/tls/tls_device.c b/net/tls/tls_device.c
-index b74e2741f74f..ead5b1c485f8 100644
---- a/net/tls/tls_device.c
-+++ b/net/tls/tls_device.c
-@@ -576,13 +576,13 @@ int tls_device_sendpage(struct sock *sk, struct page *page,
- 		goto out;
+ 	if (gref->notify.flags & UNMAP_NOTIFY_CLEAR_BYTE) {
+-		uint8_t *tmp = kmap(gref->page);
++		uint8_t *tmp = kmap_thread(gref->page);
+ 		tmp[gref->notify.pgoff] = 0;
+-		kunmap(gref->page);
++		kunmap_thread(gref->page);
  	}
- 
--	kaddr = kmap(page);
-+	kaddr = kmap_thread(page);
- 	iov.iov_base = kaddr + offset;
- 	iov.iov_len = size;
- 	iov_iter_kvec(&msg_iter, WRITE, &iov, 1, size);
- 	rc = tls_push_data(sk, &msg_iter, size,
- 			   flags, TLS_RECORD_TYPE_DATA);
--	kunmap(page);
-+	kunmap_thread(page);
- 
- out:
- 	release_sock(sk);
+ 	if (gref->notify.flags & UNMAP_NOTIFY_SEND_EVENT) {
+ 		notify_remote_via_evtchn(gref->notify.event);
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
