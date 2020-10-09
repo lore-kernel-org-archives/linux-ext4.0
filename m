@@ -7,33 +7,33 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E656C83016
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:56:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A74E9C8300F
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:56:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 10E9A225A9
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:56:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7DBC5225A9
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Oct 2020 19:56:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391436AbgJITzq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Oct 2020 15:55:46 -0400
-Received: from mga09.intel.com ([134.134.136.24]:28724 "EHLO mga09.intel.com"
+        id S2391492AbgJIT4c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Oct 2020 15:56:32 -0400
+Received: from mga01.intel.com ([192.55.52.88]:3799 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391234AbgJITx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 9 Oct 2020 15:53:59 -0400
-IronPort-SDR: 3iDe5NejxsDh9FOYg6KOLN9iu6KOFOJjJxeE0i5kD8Ld7EF88MErV+Y2f55npStNuALGtPOVmt
- VstioKeBLamQ==
-X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="165643381"
+        id S2391193AbgJITxu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Oct 2020 15:53:50 -0400
+IronPort-SDR: MvNEL5UE1YZMf2FFryOugVO1MjMPvxhOr9+ZaSGMEz70R+AZvmLzfRjcHaH4uHG4JrQCtBf6H0
+ UOe6thpPlnjQ==
+X-IronPort-AV: E=McAfee;i="6000,8403,9769"; a="182976499"
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="165643381"
+   d="scan'208";a="182976499"
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga004.fm.intel.com ([10.253.24.48])
-  by orsmga102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:57 -0700
-IronPort-SDR: I2dap8dqfU4jkUPjfDUEInlXytro00aRpG9kPai7q+149QpAXJ//5ZcvM1PB/3zTdLq6ZFWD0B
- HAucu70KNsIA==
+Received: from orsmga005.jf.intel.com ([10.7.209.41])
+  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:48 -0700
+IronPort-SDR: hSLATPILKZexzU9UbulfkIo/q3wPUuwdHpgGfd67f9RjOUrzIM+GeKhbZtX4gmiSR0zMVEA6Pm
+ bSqmX2bz2skQ==
 X-IronPort-AV: E=Sophos;i="5.77,355,1596524400"; 
-   d="scan'208";a="343972515"
+   d="scan'208";a="529054109"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.147])
-  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:56 -0700
+  by orsmga005-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 09 Oct 2020 12:53:46 -0700
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -41,8 +41,7 @@ To:     Andrew Morton <akpm@linux-foundation.org>,
         Andy Lutomirski <luto@kernel.org>,
         Peter Zijlstra <peterz@infradead.org>
 Cc:     Ira Weiny <ira.weiny@intel.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Paul Mackerras <paulus@samba.org>, x86@kernel.org,
+        Eric Biederman <ebiederm@xmission.com>, x86@kernel.org,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Dan Williams <dan.j.williams@intel.com>,
         Fenghua Yu <fenghua.yu@intel.com>, linux-doc@vger.kernel.org,
@@ -68,9 +67,9 @@ Cc:     Ira Weiny <ira.weiny@intel.com>,
         drbd-dev@lists.linbit.com, linux-block@vger.kernel.org,
         xen-devel@lists.xenproject.org, linux-cachefs@redhat.com,
         samba-technical@lists.samba.org, intel-wired-lan@lists.osuosl.org
-Subject: [PATCH RFC PKS/PMEM 54/58] powerpc: Utilize new kmap_thread()
-Date:   Fri,  9 Oct 2020 12:50:29 -0700
-Message-Id: <20201009195033.3208459-55-ira.weiny@intel.com>
+Subject: [PATCH RFC PKS/PMEM 51/58] kernel: Utilize new kmap_thread()
+Date:   Fri,  9 Oct 2020 12:50:26 -0700
+Message-Id: <20201009195033.3208459-52-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.28.0.rc0.12.gb6a658bd00c9
 In-Reply-To: <20201009195033.3208459-1-ira.weiny@intel.com>
 References: <20201009195033.3208459-1-ira.weiny@intel.com>
@@ -82,32 +81,55 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-These kmap() calls are localized to a single thread.  To avoid the over
+This kmap() call is localized to a single thread.  To avoid the over
 head of global PKRS updates use the new kmap_thread() call.
 
-Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Cc: Paul Mackerras <paulus@samba.org>
+Cc: Eric Biederman <ebiederm@xmission.com>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- arch/powerpc/mm/mem.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ kernel/kexec_core.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/arch/powerpc/mm/mem.c b/arch/powerpc/mm/mem.c
-index 42e25874f5a8..6ef557b8dda6 100644
---- a/arch/powerpc/mm/mem.c
-+++ b/arch/powerpc/mm/mem.c
-@@ -573,9 +573,9 @@ void flush_icache_user_page(struct vm_area_struct *vma, struct page *page,
- {
- 	unsigned long maddr;
+diff --git a/kernel/kexec_core.c b/kernel/kexec_core.c
+index c19c0dad1ebe..272a9920c0d6 100644
+--- a/kernel/kexec_core.c
++++ b/kernel/kexec_core.c
+@@ -815,7 +815,7 @@ static int kimage_load_normal_segment(struct kimage *image,
+ 		if (result < 0)
+ 			goto out;
  
--	maddr = (unsigned long) kmap(page) + (addr & ~PAGE_MASK);
-+	maddr = (unsigned long) kmap_thread(page) + (addr & ~PAGE_MASK);
- 	flush_icache_range(maddr, maddr + len);
--	kunmap(page);
-+	kunmap_thread(page);
- }
- 
- /*
+-		ptr = kmap(page);
++		ptr = kmap_thread(page);
+ 		/* Start with a clear page */
+ 		clear_page(ptr);
+ 		ptr += maddr & ~PAGE_MASK;
+@@ -828,7 +828,7 @@ static int kimage_load_normal_segment(struct kimage *image,
+ 			memcpy(ptr, kbuf, uchunk);
+ 		else
+ 			result = copy_from_user(ptr, buf, uchunk);
+-		kunmap(page);
++		kunmap_thread(page);
+ 		if (result) {
+ 			result = -EFAULT;
+ 			goto out;
+@@ -879,7 +879,7 @@ static int kimage_load_crash_segment(struct kimage *image,
+ 			goto out;
+ 		}
+ 		arch_kexec_post_alloc_pages(page_address(page), 1, 0);
+-		ptr = kmap(page);
++		ptr = kmap_thread(page);
+ 		ptr += maddr & ~PAGE_MASK;
+ 		mchunk = min_t(size_t, mbytes,
+ 				PAGE_SIZE - (maddr & ~PAGE_MASK));
+@@ -895,7 +895,7 @@ static int kimage_load_crash_segment(struct kimage *image,
+ 		else
+ 			result = copy_from_user(ptr, buf, uchunk);
+ 		kexec_flush_icache_page(page);
+-		kunmap(page);
++		kunmap_thread(page);
+ 		arch_kexec_pre_free_pages(page_address(page), 1);
+ 		if (result) {
+ 			result = -EFAULT;
 -- 
 2.28.0.rc0.12.gb6a658bd00c9
 
