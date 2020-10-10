@@ -2,154 +2,111 @@ Return-Path: <SRS0=C6FY=DR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.5 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F48EC433E7
-	for <linux-ext4@archiver.kernel.org>; Sat, 10 Oct 2020 03:29:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4A7BC433E7
+	for <linux-ext4@archiver.kernel.org>; Sat, 10 Oct 2020 03:54:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 513B32222F
-	for <linux-ext4@archiver.kernel.org>; Sat, 10 Oct 2020 03:29:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 477DC2063A
+	for <linux-ext4@archiver.kernel.org>; Sat, 10 Oct 2020 03:54:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="IKFTIVFz";
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=hansenpartnership.com header.i=@hansenpartnership.com header.b="BgjiTham"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MNCmMBh0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730709AbgJJDQc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Oct 2020 23:16:32 -0400
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:40742 "EHLO
-        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730577AbgJJDI0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2020 23:08:26 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by bedivere.hansenpartnership.com (Postfix) with ESMTP id 2492A8EE25D;
-        Fri,  9 Oct 2020 19:43:17 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=hansenpartnership.com;
-        s=20151216; t=1602297797;
-        bh=H8TP93foEqN1ktQ8Zvn50X/i2mF1Mo+G3bAPl3laMS8=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=IKFTIVFzGPRTOXbvF4guFV0idy0d2c5GY0pNpauMNCD265o/8xML504AQiHNNKINI
-         03VTbsdpTlx1IvRxmapAuFqbOyRLRkynjYBLceWgnAFSazyacAGjs/kfFiiin3dxCG
-         9/K3u5C/d7R0kHrIFRdMX77E7sQ6OOI7DSaYWfn4=
-Received: from bedivere.hansenpartnership.com ([127.0.0.1])
-        by localhost (bedivere.hansenpartnership.com [127.0.0.1]) (amavisd-new, port 10024)
-        with ESMTP id 3vw63n_vJBCB; Fri,  9 Oct 2020 19:43:16 -0700 (PDT)
-Received: from jarvis (c-73-35-198-56.hsd1.wa.comcast.net [73.35.198.56])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by bedivere.hansenpartnership.com (Postfix) with ESMTPSA id 0DE4F8EE120;
-        Fri,  9 Oct 2020 19:43:14 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=hansenpartnership.com;
-        s=20151216; t=1602297796;
-        bh=H8TP93foEqN1ktQ8Zvn50X/i2mF1Mo+G3bAPl3laMS8=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=BgjiThamK3sRChTIWem3VqlcTVcZOY3Z2GNJyIwpezgtDJLGW3IszUxOTE+yoCAWv
-         V48K29iXWIdEyZfVjEsU0FSlh3cTrvJt0EqAPo1Ll9Jsfhk5OlUorelNGWOoKpuPOj
-         SS1Y94jSiSEug+8lBRnZGZxsf1hZ1ZG8/+ovIeYw=
-Message-ID: <95d137992900152a0453f7ba37771cb9025121fa.camel@HansenPartnership.com>
-Subject: Re: [PATCH RFC PKS/PMEM 22/58] fs/f2fs: Utilize new kmap_thread()
-From:   James Bottomley <James.Bottomley@HansenPartnership.com>
-To:     Eric Biggers <ebiggers@kernel.org>, ira.weiny@intel.com
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>,
-        Andy Lutomirski <luto@kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>, linux-aio@kvack.org,
-        linux-efi@vger.kernel.org, kvm@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-mmc@vger.kernel.org,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        dri-devel@lists.freedesktop.org, linux-mm@kvack.org,
-        target-devel@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-kselftest@vger.kernel.org, samba-technical@lists.samba.org,
-        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
-        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, linux-scsi@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-rdma@vger.kernel.org,
-        x86@kernel.org, amd-gfx@lists.freedesktop.org,
-        linux-afs@lists.infradead.org, cluster-devel@redhat.com,
-        linux-cachefs@redhat.com, intel-wired-lan@lists.osuosl.org,
-        xen-devel@lists.xenproject.org, linux-ext4@vger.kernel.org,
-        Fenghua Yu <fenghua.yu@intel.com>, ecryptfs@vger.kernel.org,
-        linux-um@lists.infradead.org, intel-gfx@lists.freedesktop.org,
-        linux-erofs@lists.ozlabs.org, reiserfs-devel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-bcache@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        io-uring@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, netdev@vger.kernel.org,
-        kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, bpf@vger.kernel.org,
-        linuxppc-dev@lists.ozlabs.org, linux-btrfs@vger.kernel.org
-Date:   Fri, 09 Oct 2020 19:43:13 -0700
-In-Reply-To: <20201009213434.GA839@sol.localdomain>
-References: <20201009195033.3208459-1-ira.weiny@intel.com>
-         <20201009195033.3208459-23-ira.weiny@intel.com>
-         <20201009213434.GA839@sol.localdomain>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.34.4 
+        id S1730801AbgJJDyU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Oct 2020 23:54:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34264 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730920AbgJJDkH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Oct 2020 23:40:07 -0400
+Received: from mail-il1-x144.google.com (mail-il1-x144.google.com [IPv6:2607:f8b0:4864:20::144])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2755C0613D5;
+        Fri,  9 Oct 2020 20:14:46 -0700 (PDT)
+Received: by mail-il1-x144.google.com with SMTP id b2so11096470ilr.1;
+        Fri, 09 Oct 2020 20:14:46 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:reply-to:from:date:message-id
+         :subject:to:cc;
+        bh=T7Myh5hgefype84ZyMTWFL+NtDFSpEcH4wo+XsH3jtQ=;
+        b=MNCmMBh0nWrAYMKKoAx4eS7NfaPNChxqxhLdAm9sulOeMpf6bkovUeJr0FxJS17RIn
+         4ooyRIZKarHD2Kix/3dyzHO20bgrVpCGjCu9Bmpc2E+sPg1BEv4NeepJACatvCDk3Lhu
+         2vCy5puDd518jf/Crd0i/fFayus4L7Eq1CeUfnv8BNuue2d/ClQyXGJ0LDUSqS+dInBy
+         LLnGyDr8WMjj9mSyrg5Qm7SeB8tEXTv/d+J48g70pHWCaEdvJ363LWCg4UVXUoWpLAoX
+         dmM8MU+4kQlzTtMKdQzhFIIPo04LqkTQHevzTAqCW7os/c+JWJTeVBWNSJrdCLWaNuYa
+         MUnw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:reply-to
+         :from:date:message-id:subject:to:cc;
+        bh=T7Myh5hgefype84ZyMTWFL+NtDFSpEcH4wo+XsH3jtQ=;
+        b=J7jZcGKEd9QfiDDST4ZO4qNm4QyG5bJ8+AeIwndKHlHGEWi5nzNflEfsjhz2iLw25S
+         00uHEiW+ZiORPepFALJd22+Vb6PzDzNPggcBLZAiJp4FBKgQI81zruajfPWp/lCBK2xI
+         cVZMyjQDyRvcm5c4HmETvfeC2gstWvJIY6JCYqNgfTlnQt0zgJRbGK0L/mDpJdJ9LBYP
+         oagtubVxKrGP9DEZbiSBbtfU8aNOE7Tk4tf7oHVydsjReH0ck4a73B8Hd0NNX8b62MCB
+         6uu04iAvUrZXAOH+Uo71urI1ABZysH9v1y4SiignbAYMKFSJ+5gWzIBVJLmdLK+VM+Zs
+         s28g==
+X-Gm-Message-State: AOAM531xPtLT86xBI4XNGr4pNM3M0vMLinxj4NF+egUpCLURMa/Z5tHB
+        EIC37Q2b+i8VeYFCubbccf4IXJ+lXxWJUvFz/8A=
+X-Google-Smtp-Source: ABdhPJyxyYLeir1BqAKEnwMZxKnbPy7MAILD6FH40v7zuua0vIS2AnLIq1apl8bx+B/BezlNy0Mq3YMJeaRWYyUMesA=
+X-Received: by 2002:a92:c986:: with SMTP id y6mr12182206iln.10.1602299686242;
+ Fri, 09 Oct 2020 20:14:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+References: <CA+icZUWkE5CVtGGo88zo9b28JB1rN7=Gpc4hXywUaqjdCcSyOw@mail.gmail.com>
+ <CA+icZUVd6nf-LmoHB18vsZZjprDGW6nVFNKW3b9_cwxWvbTejw@mail.gmail.com>
+ <CA+icZUU+UwKY8jQg9MfbojimepWahFSRU6DUt=468AfAf7uCSA@mail.gmail.com>
+ <20201009154509.GK235506@mit.edu> <CAD+ocbxpop9fFdgqzyObuT5oA=2OpmPj7SeS+ioH6QBvN_Ao6g@mail.gmail.com>
+In-Reply-To: <CAD+ocbxpop9fFdgqzyObuT5oA=2OpmPj7SeS+ioH6QBvN_Ao6g@mail.gmail.com>
+Reply-To: sedat.dilek@gmail.com
+From:   Sedat Dilek <sedat.dilek@gmail.com>
+Date:   Sat, 10 Oct 2020 05:14:31 +0200
+Message-ID: <CA+icZUUp9gXGcDrX1rD2PNJfTTOe6JjfMTYiunjT9WTqCRVKRg@mail.gmail.com>
+Subject: Re: ext4: dev: Broken with CONFIG_JBD2=and CONFIG_EXT4_FS=m
+To:     harshad shirwadkar <harshadshirwadkar@gmail.com>
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, 2020-10-09 at 14:34 -0700, Eric Biggers wrote:
-> On Fri, Oct 09, 2020 at 12:49:57PM -0700, ira.weiny@intel.com wrote:
-> > From: Ira Weiny <ira.weiny@intel.com>
-> > 
-> > The kmap() calls in this FS are localized to a single thread.  To
-> > avoid the over head of global PKRS updates use the new
-> > kmap_thread() call.
-> > 
-> > Cc: Jaegeuk Kim <jaegeuk@kernel.org>
-> > Cc: Chao Yu <chao@kernel.org>
-> > Signed-off-by: Ira Weiny <ira.weiny@intel.com>
-> > ---
-> >  fs/f2fs/f2fs.h | 8 ++++----
-> >  1 file changed, 4 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-> > index d9e52a7f3702..ff72a45a577e 100644
-> > --- a/fs/f2fs/f2fs.h
-> > +++ b/fs/f2fs/f2fs.h
-> > @@ -2410,12 +2410,12 @@ static inline struct page
-> > *f2fs_pagecache_get_page(
-> >  
-> >  static inline void f2fs_copy_page(struct page *src, struct page
-> > *dst)
-> >  {
-> > -	char *src_kaddr = kmap(src);
-> > -	char *dst_kaddr = kmap(dst);
-> > +	char *src_kaddr = kmap_thread(src);
-> > +	char *dst_kaddr = kmap_thread(dst);
-> >  
-> >  	memcpy(dst_kaddr, src_kaddr, PAGE_SIZE);
-> > -	kunmap(dst);
-> > -	kunmap(src);
-> > +	kunmap_thread(dst);
-> > +	kunmap_thread(src);
-> >  }
-> 
-> Wouldn't it make more sense to switch cases like this to
-> kmap_atomic()?
-> The pages are only mapped to do a memcpy(), then they're immediately
-> unmapped.
+On Fri, Oct 9, 2020 at 6:04 PM harshad shirwadkar
+<harshadshirwadkar@gmail.com> wrote:
+>
+> Thanks Sedat for pointing that out and also sending out the fixes.
+> Ted, should I send out another version of fast commits out with
+> Sedat's fixes?
+>
 
-On a VIPT/VIVT architecture, this is horrendously wasteful.  You're
-taking something that was mapped at colour c_src mapping it to a new
-address src_kaddr, which is likely a different colour and necessitates
-flushing the original c_src, then you copy it to dst_kaddr, which is
-also likely a different colour from c_dst, so dst_kaddr has to be
-flushed on kunmap and c_dst has to be invalidated on kmap.  What we
-should have is an architectural primitive for doing this, something
-like kmemcopy_arch(dst, src).  PIPT architectures can implement it as
-the above (possibly losing kmap if they don't need it) but VIPT/VIVT
-architectures can set up a correctly coloured mapping so they can
-simply copy from c_src to c_dst without any need to flush and the data
-arrives cache hot at c_dst.
+Hi Harshad,
 
-James
+when you work on v10, can you look at these warnings, please?
 
+fs/jbd2/recovery.c:241:15: warning: unused variable 'seq' [-Wunused-variable]
+fs/ext4/fast_commit.c:1091:6: warning: variable 'start_time' is used
+uninitialized whenever 'if' condition is true
+[-Wsometimes-uninitialized]
+fs/ext4/fast_commit.c:1091:6: warning: variable 'start_time' is used
+uninitialized whenever '||' condition is true
+[-Wsometimes-uninitialized]
 
+Thanks,
+- Sedat -
+
+P.S.: Now, I see that ext4.git#dev has dropped the hs/fast-commit v9 merge.
+
+>
+>
+> On Fri, Oct 9, 2020 at 8:45 AM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> >
+> > On Fri, Oct 09, 2020 at 04:31:51PM +0200, Sedat Dilek wrote:
+> > > > This fixes it...
+> >
+> > Sedat,
+> >
+> > Thanks for the report and the proposed fixes!
+> >
+> >                                         - Ted
