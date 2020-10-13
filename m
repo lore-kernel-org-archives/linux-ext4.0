@@ -2,104 +2,120 @@ Return-Path: <SRS0=spuD=DU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC4B2C433E7
-	for <linux-ext4@archiver.kernel.org>; Tue, 13 Oct 2020 00:09:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13D30C2D0AE
+	for <linux-ext4@archiver.kernel.org>; Tue, 13 Oct 2020 02:41:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5FAFB20878
-	for <linux-ext4@archiver.kernel.org>; Tue, 13 Oct 2020 00:09:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D84BA221EB
+	for <linux-ext4@archiver.kernel.org>; Tue, 13 Oct 2020 02:40:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ArQzbOgJ"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="owG35M54"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726248AbgJMAJG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Oct 2020 20:09:06 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:32195 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726354AbgJMAJE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Oct 2020 20:09:04 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1602547743;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=LAP1T1JAnG2HJETBGKHtI+zO8NC5NvDJAklkJA95KlI=;
-        b=ArQzbOgJaZA5ABYdXmcW9O2hcHC3XS6KfBQVtYCCzNiuKGJEKSRFKAuIf/h/Wi73u9g3HD
-        iKiUUpxbhFxyjZ69nGvdJW5rOjsbUq0MZPyLNtQrUymkbISKFlHVWqLuhE4boTqm17aWaY
-        YUmXkGPKkBV9ezrmSrxTxMVHaI9c23E=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-499-XEu3x5wSOryDNKrHD3xpGA-1; Mon, 12 Oct 2020 20:08:59 -0400
-X-MC-Unique: XEu3x5wSOryDNKrHD3xpGA-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D4CE71018F63;
-        Tue, 13 Oct 2020 00:08:57 +0000 (UTC)
-Received: from [10.3.114.107] (ovpn-114-107.phx2.redhat.com [10.3.114.107])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5B0B65C269;
-        Tue, 13 Oct 2020 00:08:56 +0000 (UTC)
-Subject: Re: [PATCH v3 RESEND] fcntl: Add 32bit filesystem mode
-To:     Linus Walleij <linus.walleij@linaro.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Cc:     Peter Maydell <peter.maydell@linaro.org>,
-        linux-api@vger.kernel.org, qemu-devel@nongnu.org,
-        Florian Weimer <fw@deneb.enyo.de>,
-        Andy Lutomirski <luto@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-References: <20201012220620.124408-1-linus.walleij@linaro.org>
-From:   Eric Blake <eblake@redhat.com>
-Organization: Red Hat, Inc.
-Message-ID: <e395753a-115c-57d1-4312-b28e5f0d6ebf@redhat.com>
-Date:   Mon, 12 Oct 2020 19:08:55 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.3.1
+        id S1726826AbgJMA1Y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Oct 2020 20:27:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46920 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726564AbgJMA1Y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Oct 2020 20:27:24 -0400
+Received: from mail-ej1-x641.google.com (mail-ej1-x641.google.com [IPv6:2a00:1450:4864:20::641])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1BA8BC0613D0
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2020 17:27:24 -0700 (PDT)
+Received: by mail-ej1-x641.google.com with SMTP id e22so25827456ejr.4
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Oct 2020 17:27:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=FT9vhFtD0b32PwedQ+Aeqzp1ZFHCGQ6JyNtASOi3t8U=;
+        b=owG35M54HrCL3mKE9Pm9KuKY9CbOSiTgDb8eBc0jVAkLzXJUxTs20Jff/zuiVsadvK
+         GYUcku8I5QrkH0GDv7GalgnOMbpkxPE+2r5aJRyCDrlhoB42z0YILKsckqlodXYzyQ33
+         tdBL6lTgBMMtbvUmsudMSnrJ0O6zoJQ48gchpibuW54r2u8PxBxW/bVmb1GL7z+TAV05
+         65xwI80MEEtwS1OOR1jxqKz4CbyCpbZdhfUXJEJpZKlbbqysN2i/xFvjO8XIO5QQbwkY
+         AJACJ6Z6R7Mz6F2TGqtVZc51IOxYgBJxK3+gEL3MP/0qTELJXv+trO7nU2C6IAiu3Ef9
+         1l6A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=FT9vhFtD0b32PwedQ+Aeqzp1ZFHCGQ6JyNtASOi3t8U=;
+        b=NaiyF6AlLcFQy98rXfc+abC5K/xO0il+1UeWy79bUDLV1X1KB4jTUq/siaR/qIWbA/
+         uT8SiYSebWXyCyjUhWPVsArj3pW8hQZK0QaxY/CEy/fi4DpeYn9+UDvNbcdKyI/Km36N
+         SzdfTfYSKqS8hPKjBzbhVQAHer/3Jo+vRKdBm0wOSaKTpVQfqszo9IOcgUZFHn5+4pLj
+         uOYm92gC7tJCLkq1fhqP6J52k/MXH8eweH25Ha1v/3yXGIXjrHpU1UkqaYh8tZAIA3PM
+         pwMxRyOjl7PGyF+RA+YqShU4So+sV/fWf+EzapvX0lMlnPeqK4HEYbBQeX4yIFQuzhdb
+         jMPg==
+X-Gm-Message-State: AOAM5323ML/JzTjX4X1txsZVvoJHD4UlQ4XurbdoDZKR11jHS2wtSBH3
+        pqGiIQeca5reYe7My0PMaCtsm8LtlXETh7wQbh4=
+X-Google-Smtp-Source: ABdhPJzBk0qeDfOblhxBALVR0E7luu03r2Ju5Em2Qu02KICQ1xgPDZPILR3cWNl3iW7kE9XaP9dU+nThZW1STmtBrpo=
+X-Received: by 2002:a17:907:20d6:: with SMTP id qq22mr30246364ejb.187.1602548842667;
+ Mon, 12 Oct 2020 17:27:22 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20201012220620.124408-1-linus.walleij@linaro.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+References: <20200919005451.3899779-1-harshadshirwadkar@gmail.com>
+ <20200919005451.3899779-6-harshadshirwadkar@gmail.com> <20201009191407.GO235506@mit.edu>
+In-Reply-To: <20201009191407.GO235506@mit.edu>
+From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
+Date:   Mon, 12 Oct 2020 17:27:11 -0700
+Message-ID: <CAD+ocbzy_EKUV-m=_GOTKHYXxO_ffJnpem69jFVbmBygv1b5DQ@mail.gmail.com>
+Subject: Re: [PATCH v9 5/9] ext4: main fast-commit commit path
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 10/12/20 5:06 PM, Linus Walleij wrote:
-> It was brought to my attention that this bug from 2018 was
-> still unresolved: 32 bit emulators like QEMU were given
-> 64 bit hashes when running 32 bit emulation on 64 bit systems.
-> 
-> This adds a flag to the fcntl() F_GETFD and F_SETFD operations
-> to set the underlying filesystem into 32bit mode even if the
-> file handle was opened using 64bit mode without the compat
-> syscalls.
-> 
-> Programs that need the 32 bit file system behavior need to
-> issue a fcntl() system call such as in this example:
-> 
->    #define FD_32BIT_MODE 2
-> 
->    int main(int argc, char** argv) {
->      DIR* dir;
->      int err;
->      int fd;
-> 
->      dir = opendir("/boot");
->      fd = dirfd(dir);
->      err = fcntl(fd, F_SETFD, FD_32BIT_MODE);
-
-This is a blind set, and wipes out FD_CLOEXEC. Better would be to do a 
-proper demonstration of the read-modify-write with F_GETFD that portable 
-programs will have to use in practice.
-
--- 
-Eric Blake, Principal Software Engineer
-Red Hat, Inc.           +1-919-301-3226
-Virtualization:  qemu.org | libvirt.org
-
+On Fri, Oct 9, 2020 at 12:14 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> On Fri, Sep 18, 2020 at 05:54:47PM -0700, Harshad Shirwadkar wrote:
+> >  fs/jbd2/commit.c            |   42 ++
+> >  fs/jbd2/journal.c           |  119 +++-
+>
+> Why are these changes here instead of the previous commit (jbd2: add
+> fast commit machinery)?
+Makes sense, Ill move these functions to the previous commit.
+>
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index ba35ecb18616..dadd9994e74b 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -202,6 +202,47 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping,
+> >       return ret;
+> >  }
+> >
+> > +/* Send all the data buffers related to an inode */
+> > +int jbd2_submit_inode_data(journal_t *journal, struct jbd2_inode *jinode)
+> > +{
+> > +     struct address_space *mapping;
+> > +     loff_t dirty_start;
+> > +     loff_t dirty_end;
+> > +     int ret;
+> > +
+> > +     if (!jinode)
+> > +             return 0;
+> > +
+> > +     dirty_start = jinode->i_dirty_start;
+> > +     dirty_end = jinode->i_dirty_end;
+> > +
+> > +     if (!(jinode->i_flags & JI_WRITE_DATA))
+> > +             return 0;
+> > +
+> > +     dirty_start = jinode->i_dirty_start;
+> > +     dirty_end = jinode->i_dirty_end;
+>
+> Why is dirty_start and dirty_end initialized twice?
+Thanks for catching this. I'll fix this in V10.
+>
+> Also, this is going to conflcit with Mauricio's data=journal patches,
+> which you'll notice when you rebase these patches on the current dev branch.
+Thanks for the heads up.
+- Harshad
+>
+> (The dev branch temporarily had your v9 patches merged in, so we could
+> get the test bots to comment on your changes, but I've since pulled
+> the fc patches back out.)
+>
+>                                         - Ted
