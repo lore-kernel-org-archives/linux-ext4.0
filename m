@@ -8,227 +8,102 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8DB1C433E7
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Oct 2020 03:56:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56E41C433E7
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Oct 2020 03:56:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7C40E2074F
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Oct 2020 03:56:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 11A272074F
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Oct 2020 03:56:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nrZ4C663"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Unqo6Ht8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2394316AbgJPD4C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Oct 2020 23:56:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40938 "EHLO
+        id S2394320AbgJPD4F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Oct 2020 23:56:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40946 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2394314AbgJPD4B (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Oct 2020 23:56:01 -0400
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F7FBC061755
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2020 20:56:01 -0700 (PDT)
-Received: by mail-pf1-x441.google.com with SMTP id y14so678837pfp.13
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2020 20:56:01 -0700 (PDT)
+        with ESMTP id S2394317AbgJPD4E (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Oct 2020 23:56:04 -0400
+Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04289C0613CF
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2020 20:56:04 -0700 (PDT)
+Received: by mail-pj1-x1043.google.com with SMTP id j8so676845pjy.5
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Oct 2020 20:56:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=bDvLnZpC7VjIftKIevOdiUqg5b8WOf4ZhcX0frlwzlA=;
-        b=nrZ4C663NZcfbo+5REf4KJkjDJodyY3HbeCPOxcS/hOnwn8Mr5eUPyZ1lAVoy7JIbN
-         zIh8hkbISi6qIHEEjKl2yN4XUFXxzLLOwoShYj+U0pE8bl314+jUjMjRY3yR00kxr5uP
-         3rTC999BMIU/+gySVRy6Yr51YR9XbCK+nb1CcEGTyyE5mM2THgWygTiSa9ySjXVhaNca
-         JI66SO3b4Uddpsoe5DyFw9BCo3LSij0KK+CRL7jsNK/lrFwW9m/iuqVsO39u6bMG+ldh
-         OcWYD/jM+9m/nCliidhxQRI8DILUKf6w/5Yx+s+LTubPsEFSLq9yaXgUPQkBZBLpUi3P
-         UedQ==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=acRwBv3y2+bW/N3+ev7tL2j1uYBkUN9rml//C4A4mhQ=;
+        b=Unqo6Ht80vp0KBzkdXy80vjV17n/uSJ9ZJDGqzzHvHHDDRXwC5lEA1HTI9vvFwpjxP
+         NhV2CdGxV0QA5un27PLhetbOijfAoGWos3BGTXyDVMHSoERkcha2dVP2cLpOriFGfO1l
+         2jUZutQI84oHXVQWoLF5hv3Zr2GiB85oTs3l9nBO9vVHrGAN/eLAcFn7u0k4W2hZhNZq
+         cZwe7sye9Ou6ln9XmNR3DsQwDZw3dKchBrJZ/9RqtnUpBW/uxXRJRelOB25v212ltxJS
+         7boHhat59uipqPmV74qoHOzPNkf54zmSHWPDMEJhaOPQjxl6ftpoXIqw21Mks4Npf8A4
+         1x+Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=bDvLnZpC7VjIftKIevOdiUqg5b8WOf4ZhcX0frlwzlA=;
-        b=qZemo9d81t/DWSbxivCVIuG/E2ASBzfYPyCCNfVXVRGWWy1k8NYBZuxhP4VHeT/lI2
-         RQiOiedmgh9Ao1R9yHDSQt6I70QrsQQa0Tk9SObsHiDY4YeE6glGfcg362gT66yGMUYk
-         LZJaEnYixf1VOmPIKFhLL+Iy9EiW5shx8Z0quc7weM0X7F/ugpHqi0eIpzAcO4V+eHbW
-         nRdJSpaoj/mKV2aFNKQM0ipRyuq9fbUc4bxlfuAiBPmX0y52iYb2DjntiI+Fae90YdSw
-         CocQZnl58hrUNP9o1+Fw6j0b1xyeIMojr55Dks3/W/FYGUP+HKp229oVNY8ODOdSK+OM
-         782Q==
-X-Gm-Message-State: AOAM530zSyh8vf9UDlbeIG4Ow87rcqKcE+Cm7XTjtYelrZTLxKk5la0O
-        gme3ZReZNdLOmubTzHHF2kU=
-X-Google-Smtp-Source: ABdhPJzfQKxDBZ3PF1+8mh/4mLDQPhHVKW5RbeJgV/w2HpFmncqWSW4XBCa9/CLJhuJqGKJO4q5faQ==
-X-Received: by 2002:a62:32c5:0:b029:158:7361:58d3 with SMTP id y188-20020a6232c50000b0290158736158d3mr1776747pfy.75.1602820560819;
-        Thu, 15 Oct 2020 20:56:00 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=acRwBv3y2+bW/N3+ev7tL2j1uYBkUN9rml//C4A4mhQ=;
+        b=eFndKp/b0u07xlWymzv4R61Ob9s2iNgI1XTmRGK7OsYfUWUTgPJgIZxOhELXdAJl1L
+         JvhtUwNZrkAW5cOUjMK3oVHrzfw19uco5jTMiCBbPClF7zn+gIWP2mEfORgurL+SxIRu
+         b0UU/7FXAwukfbOZ2GvilmMBtZjlrZsZHTU7MJbBz8T+D1ntIc+GFpaoh3wTW7dOUJT/
+         9tcUpFXXhrBl96qE6t7cwpx3HZt18OtDaxvHL7eJKF8H01s+8SgCH1nSwwLb2OtLbA2S
+         87S2ys+JJ/hu15br9oisDOH/6IRFjPhanG87dexNfl5zZYFuzwcoVpwUEUuQXQOupPwf
+         dKFg==
+X-Gm-Message-State: AOAM530/s0S3fLNInjz4SwEECwh0CEpVHw5S6BJMCxLdFmuVRRq0RZqM
+        rotHKS8BdO/hFE+9Mx51o4w=
+X-Google-Smtp-Source: ABdhPJyC9Z5ERMJwJbtxgs7VsUauVrW7N/Mg55IolNgvpTLkQQxEK8kkGEQOxSjfYZTqNgVfpA7y8w==
+X-Received: by 2002:a17:90a:450d:: with SMTP id u13mr2005372pjg.148.1602820563605;
+        Thu, 15 Oct 2020 20:56:03 -0700 (PDT)
 Received: from VM-0-6-centos.localdomain ([119.28.90.140])
-        by smtp.gmail.com with ESMTPSA id v12sm861555pgr.4.2020.10.15.20.55.59
+        by smtp.gmail.com with ESMTPSA id v12sm861555pgr.4.2020.10.15.20.56.02
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 15 Oct 2020 20:56:00 -0700 (PDT)
+        Thu, 15 Oct 2020 20:56:03 -0700 (PDT)
 From:   Chunguang Xu <brookxu.cn@gmail.com>
 X-Google-Original-From: Chunguang Xu <brookxu@tencent.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH 1/8] ext4: use ASSERT() to replace J_ASSERT()
-Date:   Fri, 16 Oct 2020 11:55:45 +0800
-Message-Id: <1602820552-4082-1-git-send-email-brookxu@tencent.com>
+Subject: [PATCH 3/8] ext4: use do_div() to calculate block offset
+Date:   Fri, 16 Oct 2020 11:55:47 +0800
+Message-Id: <1602820552-4082-3-git-send-email-brookxu@tencent.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1602820552-4082-1-git-send-email-brookxu@tencent.com>
+References: <1602820552-4082-1-git-send-email-brookxu@tencent.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Chunguang Xu <brookxu@tencent.com>
 
-There are currently multiple forms of assertion, such as J_ASSERT().
-J_ASEERT is provided for the jbd module, which is a public module.
-Maybe we should use custom ASSERT() like other file systems, such as
-xfs, which would be better.
+Use do_div() to calculate the block offset and the offset
+within the block, make the code more concise.
 
 Signed-off-by: Chunguang Xu <brookxu@tencent.com>
 ---
- fs/ext4/balloc.c   |  2 +-
- fs/ext4/ext4.h     | 10 ++++++++++
- fs/ext4/fsync.c    |  2 +-
- fs/ext4/indirect.c |  4 ++--
- fs/ext4/inode.c    |  6 +++---
- fs/ext4/namei.c    | 12 ++++--------
- fs/ext4/super.c    |  2 +-
- 7 files changed, 22 insertions(+), 16 deletions(-)
+ fs/ext4/balloc.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 48c3df4..db7fa3e 100644
+index db7fa3e..4013676 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -185,7 +185,7 @@ static int ext4_init_block_bitmap(struct super_block *sb,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_fsblk_t start, tmp;
+@@ -265,7 +265,7 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
+ 					     ext4_group_t block_group,
+ 					     struct buffer_head **bh)
+ {
+-	unsigned int group_desc;
++	unsigned int group_desc = block_group;
+ 	unsigned int offset;
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+ 	struct ext4_group_desc *desc;
+@@ -279,8 +279,7 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
+ 		return NULL;
+ 	}
  
--	J_ASSERT_BH(bh, buffer_locked(bh));
-+	ASSERT(buffer_locked(bh));
- 
- 	/* If checksum is bad mark all blocks used to prevent allocation
- 	 * essentially implementing a per-group read-only flag. */
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b883a78..85d6900 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -99,6 +99,16 @@
- #define ext_debug(ino, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
- #endif
- 
-+#define ASSERT(assert)							\
-+do {									\
-+	if (unlikely(!(assert))) {					\
-+		printk(KERN_EMERG					\
-+		       "Assertion failure in %s() at %s:%d: \"%s\"\n",	\
-+		       __func__, __FILE__, __LINE__, #assert);		\
-+		BUG();							\
-+	}								\
-+} while (0)
-+
- /* data type for block offset of block group */
- typedef int ext4_grpblk_t;
- 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 1d668c8..b21394d 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -136,7 +136,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 	if (unlikely(ext4_forced_shutdown(sbi)))
- 		return -EIO;
- 
--	J_ASSERT(ext4_journal_current_handle() == NULL);
-+	ASSERT(ext4_journal_current_handle() == NULL);
- 
- 	trace_ext4_sync_file_enter(file, datasync);
- 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index 80c9f33..7442490 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -534,8 +534,8 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 	ext4_fsblk_t first_block = 0;
- 
- 	trace_ext4_ind_map_blocks_enter(inode, map->m_lblk, map->m_len, flags);
--	J_ASSERT(!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)));
--	J_ASSERT(handle != NULL || (flags & EXT4_GET_BLOCKS_CREATE) == 0);
-+	ASSERT(!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)));
-+	ASSERT(handle != NULL || (flags & EXT4_GET_BLOCKS_CREATE) == 0);
- 	depth = ext4_block_to_path(inode, map->m_lblk, offsets,
- 				   &blocks_to_boundary);
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bf59646..6c70d8c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -825,7 +825,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	int create = map_flags & EXT4_GET_BLOCKS_CREATE;
- 	int err;
- 
--	J_ASSERT(handle != NULL || create == 0);
-+	ASSERT(handle != NULL || create == 0);
- 
- 	map.m_lblk = block;
- 	map.m_len = 1;
-@@ -840,8 +840,8 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	if (unlikely(!bh))
- 		return ERR_PTR(-ENOMEM);
- 	if (map.m_flags & EXT4_MAP_NEW) {
--		J_ASSERT(create != 0);
--		J_ASSERT(handle != NULL);
-+		ASSERT(create != 0);
-+		ASSERT(handle != NULL);
- 
- 		/*
- 		 * Now that we do not always journal data, we should
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 153a9fb..f2ca312 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -182,10 +182,6 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 	return bh;
- }
- 
--#ifndef assert
--#define assert(test) J_ASSERT(test)
--#endif
--
- #ifdef DX_DEBUG
- #define dxtrace(command) command
- #else
-@@ -850,7 +846,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 					break;
- 				}
- 			}
--			assert (at == p - 1);
-+			ASSERT(at == p - 1);
- 		}
- 
- 		at = p - 1;
-@@ -1266,8 +1262,8 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- 	struct dx_entry *old = frame->at, *new = old + 1;
- 	int count = dx_get_count(entries);
- 
--	assert(count < dx_get_limit(entries));
--	assert(old < entries + count);
-+	ASSERT(count < dx_get_limit(entries));
-+	ASSERT(old < entries + count);
- 	memmove(new + 1, new, (char *)(entries + count) - (char *)(new));
- 	dx_set_hash(new, hash);
- 	dx_set_block(new, block);
-@@ -2960,7 +2956,7 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * hold i_mutex, or the inode can not be referenced from outside,
- 	 * so i_nlink should not be bumped due to race
- 	 */
--	J_ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+	ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
- 		  S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
- 
- 	BUFFER_TRACE(sbi->s_sbh, "get_write_access");
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ea425b4..12f0b5d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1069,7 +1069,7 @@ static void ext4_put_super(struct super_block *sb)
- 	 * in-memory list had better be clean by this point. */
- 	if (!list_empty(&sbi->s_orphan))
- 		dump_orphan_list(sb, sbi);
--	J_ASSERT(list_empty(&sbi->s_orphan));
-+	ASSERT(list_empty(&sbi->s_orphan));
- 
- 	sync_blockdev(sb->s_bdev);
- 	invalidate_bdev(sb->s_bdev);
+-	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
+-	offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
++	offset = do_div(group_desc, EXT4_DESC_PER_BLOCK(sb));
+ 	bh_p = sbi_array_rcu_deref(sbi, s_group_desc, group_desc);
+ 	/*
+ 	 * sbi_array_rcu_deref returns with rcu unlocked, this is ok since
 -- 
 1.8.3.1
 
