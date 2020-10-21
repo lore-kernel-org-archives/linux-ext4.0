@@ -2,85 +2,124 @@ Return-Path: <SRS0=3jTw=D4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 789F0C4363D
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Oct 2020 01:10:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A35EEC56201
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Oct 2020 09:16:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3CA5420797
-	for <linux-ext4@archiver.kernel.org>; Wed, 21 Oct 2020 01:10:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 45FFB21D6C
+	for <linux-ext4@archiver.kernel.org>; Wed, 21 Oct 2020 09:16:14 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AUFxeApK"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2439817AbgJUBK0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Oct 2020 21:10:26 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:15756 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2439815AbgJUBK0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Oct 2020 21:10:26 -0400
-Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 0B71E445C77972A34D07;
-        Wed, 21 Oct 2020 09:10:23 +0800 (CST)
-Received: from [10.174.176.239] (10.174.176.239) by
- DGGEMS402-HUB.china.huawei.com (10.3.19.202) with Microsoft SMTP Server id
- 14.3.487.0; Wed, 21 Oct 2020 09:10:18 +0800
-Subject: Re: [PATCH] ext4: remove redundant operation that set bh to NULL
-To:     <xiakaixu1987@gmail.com>, <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        Kaixu Xia <kaixuxia@tencent.com>
-References: <1603194069-17557-1-git-send-email-kaixuxia@tencent.com>
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-Message-ID: <2677070f-f994-f20d-115b-55922d172da6@huawei.com>
-Date:   Wed, 21 Oct 2020 09:10:18 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.3.1
-MIME-Version: 1.0
-In-Reply-To: <1603194069-17557-1-git-send-email-kaixuxia@tencent.com>
-Content-Type: text/plain; charset="utf-8"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.176.239]
-X-CFilter-Loop: Reflected
+        id S2437549AbgJUJQO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 21 Oct 2020 05:16:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44930 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2437538AbgJUJQN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Oct 2020 05:16:13 -0400
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 614D5C0613CF
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2020 02:16:13 -0700 (PDT)
+Received: by mail-pf1-x443.google.com with SMTP id 10so1122064pfp.5
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Oct 2020 02:16:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=DYPRUGrJa1UcR6EzKh7Vsiy0NCh65P8azvf+4W9rR10=;
+        b=AUFxeApKqTLVdORbPZwrlbvLJFlbXzTMVh/NzQ/kVoDPp8cHG8n4M3V/jF452wWXiB
+         98SgpcGYZlcfl9/bUaZL89DgCNbKN552XJix9+Rum4mTQ+Db7hQ+/qJltkkux9uQa+5+
+         NAgQW9c1dLh6DnOGkwNi2/itZ/6gk2ux2PNlfanm8E4bvK2+A7xLANKLiO7H8OKrgGMg
+         Sl/AgTTAMylcZ6OLx9BQGhp995FaAmoTi+Vojhbacb5LWks1M4WhKslxxZd7ZjOilrBn
+         8kRjIHXNzRtBe8UpqPbF7x8mZHz5jvUVNX/hwsMxWkRoyPvPKBLWLvFQMWEefU5dMIwf
+         BmRA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=DYPRUGrJa1UcR6EzKh7Vsiy0NCh65P8azvf+4W9rR10=;
+        b=DQ5SCCt8xHQMssvzYm1s480ElHzaksoDa+AChMvE/TqFxKnZlVUn6ClqIig8IlM/Et
+         6lhoutGUulYpJlzPvl9R3IQv96CcITPlftQIze0onpe/ZHw+svXskzjZYOCBA6KFzIRy
+         ZdiBN5II2jEt8sQDYEFhMEt0unwgd5azsZT+lHM1Iy3dPUdXoAZuqr2CLxasKFPIMG8c
+         7C5cMsNIFR0EfIBaQCxQYCDT8f+0Q7G0c69nO886ULVwbf+jrU6SDYxYVcFN/42Sh5CQ
+         EiUqsgXJbQdjvMts2TrM8HlT3V1P0WhWn+nCgnm6n0M9ihuMvq+1+OOTq/RyE4KC2zKb
+         vlwA==
+X-Gm-Message-State: AOAM530hziRcSX1L2uXsU8fY8fv4UqvIWTLknMUE8T5HzeFOTIJ2w019
+        alifncZEcIlH7T60OK1Fz4AzX1GbfTY=
+X-Google-Smtp-Source: ABdhPJxTEFzIul1z3OZVo1Jc6a+h7gZHJFHcRaittJ9cCUQC574Eezzjns3t7VAv7TbSIyN54HGgUg==
+X-Received: by 2002:aa7:9048:0:b029:152:883a:9a94 with SMTP id n8-20020aa790480000b0290152883a9a94mr2496532pfo.24.1603271772992;
+        Wed, 21 Oct 2020 02:16:12 -0700 (PDT)
+Received: from VM-0-6-centos.localdomain ([119.28.90.140])
+        by smtp.gmail.com with ESMTPSA id x16sm1573002pff.14.2020.10.21.02.16.11
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 21 Oct 2020 02:16:12 -0700 (PDT)
+From:   Chunguang Xu <brookxu.cn@gmail.com>
+X-Google-Original-From: Chunguang Xu <brookxu@tencent.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org
+Subject: [PATCH 2/8] ext4: remove redundant mb_regenerate_buddy()
+Date:   Wed, 21 Oct 2020 17:15:22 +0800
+Message-Id: <1603271728-7198-2-git-send-email-brookxu@tencent.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1603271728-7198-1-git-send-email-brookxu@tencent.com>
+References: <1603271728-7198-1-git-send-email-brookxu@tencent.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2020/10/20 19:41, xiakaixu1987@gmail.com wrote:
-> From: Kaixu Xia <kaixuxia@tencent.com>
-> 
-> The out_fail branch path don't release the bh and the second bh is
-> valid only in the for statement, so we don't need to set them to NULL.
-> 
-> Signed-off-by: Kaixu Xia <kaixuxia@tencent.com>
+From: Chunguang Xu <brookxu@tencent.com>
 
-Thanks for the patch. It looks good to me.
-Reviewed-by: zhangyi (F) <yi.zhang@huawei.com>
+After this patch (163a203), if an abnormal bitmap is detected, we
+will mark the group as corrupt, and we will not use this group in
+the future. Therefore, it should be meaningless to regenerate the
+buddy bitmap of this group, It might be better to delete it.
 
-Yi.
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+---
+ fs/ext4/mballoc.c | 19 -------------------
+ 1 file changed, 19 deletions(-)
 
-> ---
->  fs/ext4/super.c | 2 --
->  1 file changed, 2 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 5308f0d5fb5a..3ebfabc6061a 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4093,7 +4093,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (IS_ERR(bh)) {
->  		ext4_msg(sb, KERN_ERR, "unable to read superblock");
->  		ret = PTR_ERR(bh);
-> -		bh = NULL;
->  		goto out_fail;
->  	}
->  	/*
-> @@ -4721,7 +4720,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  			       "can't read group descriptor %d", i);
->  			db_count = i;
->  			ret = PTR_ERR(bh);
-> -			bh = NULL;
->  			goto failed_mount2;
->  		}
->  		rcu_read_lock();
-> 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 85abbfb..22301f3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -822,24 +822,6 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 	spin_unlock(&sbi->s_bal_lock);
+ }
+ 
+-static void mb_regenerate_buddy(struct ext4_buddy *e4b)
+-{
+-	int count;
+-	int order = 1;
+-	void *buddy;
+-
+-	while ((buddy = mb_find_buddy(e4b, order++, &count))) {
+-		ext4_set_bits(buddy, 0, count);
+-	}
+-	e4b->bd_info->bb_fragments = 0;
+-	memset(e4b->bd_info->bb_counters, 0,
+-		sizeof(*e4b->bd_info->bb_counters) *
+-		(e4b->bd_sb->s_blocksize_bits + 2));
+-
+-	ext4_mb_generate_buddy(e4b->bd_sb, e4b->bd_buddy,
+-		e4b->bd_bitmap, e4b->bd_group);
+-}
+-
+ /* The buddy information is attached the buddy cache inode
+  * for convenience. The information regarding each group
+  * is loaded via ext4_mb_load_buddy. The information involve
+@@ -1512,7 +1494,6 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 				sb, e4b->bd_group,
+ 				EXT4_GROUP_INFO_BBITMAP_CORRUPT);
+ 		}
+-		mb_regenerate_buddy(e4b);
+ 		goto done;
+ 	}
+ 
+-- 
+1.8.3.1
+
