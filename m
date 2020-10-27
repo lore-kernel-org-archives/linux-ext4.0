@@ -2,226 +2,214 @@ Return-Path: <SRS0=Q+OU=EC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED1D9C64E69
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:34:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FF6BC388F9
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 05:14:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C05B322283
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:34:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603758869;
-	bh=JioVImbrp2d+nxdJUU6J6DSaUlYENFzCjy/MlR6npKM=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=WxgWpoPya5H7Q4IDV2KeA+tIWUucnsPx65KgR5tXeYS70iupY6usw6JF7mKitkCFo
-	 kGqM/afDfCfJSWd2LMKcH0qMCrgyqYrMz7U4slMxcERM6asTvxU8oAyyzAiyisVcip
-	 8LJSBTxU1/HoDOoLvhzCgORCVAA10yQFn9juLH38=
+	by mail.kernel.org (Postfix) with ESMTP id 0CC6F2080A
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 05:14:18 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QV32QpdF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2443540AbgJ0AbL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Oct 2020 20:31:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52356 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2409434AbgJZXvb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Oct 2020 19:51:31 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1727520B1F;
-        Mon, 26 Oct 2020 23:51:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603756290;
-        bh=JioVImbrp2d+nxdJUU6J6DSaUlYENFzCjy/MlR6npKM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=TD54PydgvELEcg7yBR3avbTDTKbHmN2iJcg+jRTpGwwqiU0yemdwcCjHSvfAFtE0Q
-         D+DS69kDMCmz9bf+YhNBH8ooYtdJ+XP2mepEgMLC1N8YsfHbNFtbPKmqFBqnv+gkhd
-         tvF5OAPLYu+E2vN0viXmg3BuDun5EIBpRBiGEKX0=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     changfengnan <fengnanchang@foxmail.com>,
-        kernel test robot <lkp@intel.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Fengnan Chang <changfengnan@hikvision.com>,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.9 118/147] jbd2: avoid transaction reuse after reformatting
-Date:   Mon, 26 Oct 2020 19:48:36 -0400
-Message-Id: <20201026234905.1022767-118-sashal@kernel.org>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201026234905.1022767-1-sashal@kernel.org>
-References: <20201026234905.1022767-1-sashal@kernel.org>
+        id S2505757AbgJ0FOO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 27 Oct 2020 01:14:14 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:44466 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2410224AbgJ0FOO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2020 01:14:14 -0400
+Received: by mail-pf1-f194.google.com with SMTP id 133so211076pfx.11;
+        Mon, 26 Oct 2020 22:14:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=V6b7HwvvFZ2s1xYsjf24gbEkjeQ0R1jZb5gJGqmof84=;
+        b=QV32QpdFiFdGKP8KIf3ztwU5B2L+kQ1TISGCOSyRr7wqANt+4iKpSWIDz9FXOVJiNY
+         irLnmSzzDG34JYL9ztGPJT7Eu5o9dNRCr+tOE0KqM0LTMF2R1QqmDVmeEQnFLrO+ZweC
+         ha3pZVAxePVmy3GHH67EPgBWSFxuJKrHP+97wFhhBV6yhEdvo3FE2bbeikaYjl3tmVF/
+         mmwIaskRvfZYnHtO+qHXJ8WhB5NYnRpnt5wwgzEyqcPDWKsgDkrCg5fs4W8g/SDqlGi/
+         aYXSL0GyEmyycjfKZOBm5SKJM9vpR9Sx0ZffKH+Pn539f+rUzDYRAOo2ZEPjRTSC9CXn
+         DF7w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=V6b7HwvvFZ2s1xYsjf24gbEkjeQ0R1jZb5gJGqmof84=;
+        b=JUv4B7shyAacOnifvW/OsjcrsKyX5p9SbdW70EyrweELHAa0iZB3XyHnpSR7sVjacm
+         nf1F8qZ/A1Xawnp0kKbt5Nk47TjmOXsPjzicxP+GO1bLvKBX8DiBExz98wy3TqaIet8u
+         8JizuSL/Y+fXnFKDU+3lAkn6ritJjSI+UBRWrVpesH5y7vqkhurxZEycqU8N4+AdVy4P
+         8A3AJIyMdOLO3YoOi8GgITTzMNH1Yta8vCNHRqjfhInp8tWcS64/S7HlFU4UbdRrYHRz
+         Aw3R+uSqo8Za/K4MSu0BJgsRpgKxYYI+9ih1XAFuufQ2mz6efxiP1aIOKoCIHlb/FutK
+         40Ag==
+X-Gm-Message-State: AOAM530Bgvgs4YydoSp2O5ekUTGqChbDOqXhFGy6U3Xlc1gGN68PWRRA
+        MR6sq0sWztnfsrhSEuRCKdY6oKNYET1yIsk6
+X-Google-Smtp-Source: ABdhPJwI7iAg84+0QDG22suSqnWNw8moOpZOVmTy5bWa+NEsj3D7XxDRHLUnPHTYynMmO4JLGk72yg==
+X-Received: by 2002:a63:af08:: with SMTP id w8mr411863pge.419.1603775651104;
+        Mon, 26 Oct 2020 22:14:11 -0700 (PDT)
+Received: from [192.168.86.81] ([106.51.240.100])
+        by smtp.gmail.com with ESMTPSA id 78sm512426pfz.211.2020.10.26.22.14.06
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 26 Oct 2020 22:14:10 -0700 (PDT)
+Subject: Re: [PATCH v3 1/2] kunit: Support for Parameterized Testing
+To:     Marco Elver <elver@google.com>
+Cc:     Brendan Higgins <brendanhiggins@google.com>,
+        skhan@linuxfoundation.org, Iurii Zaikin <yzaikin@google.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "open list:KERNEL SELFTEST FRAMEWORK" 
+        <linux-kselftest@vger.kernel.org>,
+        KUnit Development <kunit-dev@googlegroups.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        linux-kernel-mentees@lists.linuxfoundation.org,
+        linux-ext4@vger.kernel.org
+References: <20201026183523.82749-1-98.arpi@gmail.com>
+ <CANpmjNNQtGC_jDp8TSHRHOMXi7aTQgwjtUiCWE+YqBgq-G2z5Q@mail.gmail.com>
+From:   Arpitha Raghunandan <98.arpi@gmail.com>
+Message-ID: <f25c881d-03f9-e246-d8d4-e985d9662d04@gmail.com>
+Date:   Tue, 27 Oct 2020 10:44:05 +0530
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <CANpmjNNQtGC_jDp8TSHRHOMXi7aTQgwjtUiCWE+YqBgq-G2z5Q@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: changfengnan <fengnanchang@foxmail.com>
+On 27/10/20 4:44 am, Marco Elver wrote:
+> On Mon, 26 Oct 2020 at 19:36, Arpitha Raghunandan <98.arpi@gmail.com> wrote:
+>>
+>> Implementation of support for parameterized testing in KUnit.
+>> This approach requires the creation of a test case using the
+>> KUNIT_CASE_PARAM macro that accepts a generator function as input.
+>> This generator function should return the next parameter given the
+>> previous parameter in parameterized tests. It also provides
+>> a macro to generate common-case generators.
+>>
+>> Signed-off-by: Arpitha Raghunandan <98.arpi@gmail.com>
+>> Co-developed-by: Marco Elver <elver@google.com>
+>> Signed-off-by: Marco Elver <elver@google.com>
+>> ---
+>> Changes v2->v3:
+>> - Modifictaion of generator macro and method
+> 
+> Great to see it worked as expected!
+> 
+>> Changes v1->v2:
+>> - Use of a generator method to access test case parameters
+>>
+>>  include/kunit/test.h | 32 ++++++++++++++++++++++++++++++++
+>>  lib/kunit/test.c     | 20 +++++++++++++++++++-
+>>  2 files changed, 51 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/include/kunit/test.h b/include/kunit/test.h
+>> index a423fffefea0..16bf9f334e2c 100644
+>> --- a/include/kunit/test.h
+>> +++ b/include/kunit/test.h
+>> @@ -142,6 +142,12 @@ struct kunit_case {
+>>         void (*run_case)(struct kunit *test);
+>>         const char *name;
+>>
+>> +       /*
+>> +        * Pointer to test parameter generator function.
+>> +        * Used only for parameterized tests.
+> 
+> What I meant was to give a description of the protocol, so that if
+> somebody wanted, they could (without reading the implementation)
+> implement their own custom generator without the helper macro.
+> 
+> E.g. something like: "The generator function is used to lazily
+> generate a series of arbitrarily typed values that fit into a void*.
+> The argument @prev is the previously returned value, which should be
+> used to derive the next value; @prev is set to NULL on the initial
+> generator call. When no more values are available, the generator must
+> return NULL."
+>
 
-[ Upstream commit fc750a3b44bdccb9fb96d6abbc48a9b8e480ce7b ]
+Oh okay. I am not sure if this is the best place to add documentation for this.
+ 
+>> +        */
+>> +       void* (*generate_params)(void *prev);
+>> +
+>>         /* private: internal use only. */
+>>         bool success;
+>>         char *log;
+>> @@ -162,6 +168,9 @@ static inline char *kunit_status_to_string(bool status)
+>>   * &struct kunit_case for an example on how to use it.
+>>   */
+>>  #define KUNIT_CASE(test_name) { .run_case = test_name, .name = #test_name }
+>> +#define KUNIT_CASE_PARAM(test_name, gen_params)                        \
+>> +               { .run_case = test_name, .name = #test_name,    \
+>> +                 .generate_params = gen_params }
+>>
+>>  /**
+>>   * struct kunit_suite - describes a related collection of &struct kunit_case
+>> @@ -208,6 +217,15 @@ struct kunit {
+>>         const char *name; /* Read only after initialization! */
+>>         char *log; /* Points at case log after initialization */
+>>         struct kunit_try_catch try_catch;
+>> +       /* param_values points to test case parameters in parameterized tests */
+>> +       void *param_values;
+>> +       /*
+>> +        * current_param stores the index of the parameter in
+>> +        * the array of parameters in parameterized tests.
+>> +        * current_param + 1 is printed to indicate the parameter
+>> +        * that causes the test to fail in case of test failure.
+>> +        */
+>> +       int current_param;
+>>         /*
+>>          * success starts as true, and may only be set to false during a
+>>          * test case; thus, it is safe to update this across multiple
+>> @@ -1742,4 +1760,18 @@ do {                                                                            \
+>>                                                 fmt,                           \
+>>                                                 ##__VA_ARGS__)
+>>
+>> +/**
+>> + * KUNIT_PARAM_GENERATOR() - Helper method for test parameter generators
+>> + *                          required in parameterized tests.
+> 
+> This is only for arrays, which is why I suggested KUNIT_ARRAY_PARAM()
+> as the name.
+> 
+> A generator can very well be implemented without an array, so this
+> macro name is confusing. In future somebody might want to provide a
+> macro that takes a start + end value (and maybe a step value) to
+> generate a series of values. That generator could be named
+> KUNIT_RANGE_PARAM(name, start, end, step) and gives us a generator
+> that is also named name##_gen_params. (If you want to try implementing
+> that macro, I'd suggest doing it as a separate patch.)
+> 
+> And I don't think we need to put "GENERATOR" into the name of these
+> macros, because the generators are now the fundamental method with
+> which to get parameterized tests. We don't need to state the obvious,
+> in favor of some brevity.
+>
 
-When ext4 is formatted with lazy_journal_init=1 and transactions from
-the previous filesystem are still on disk, it is possible that they are
-considered during a recovery after a crash. Because the checksum seed
-has changed, the CRC check will fail, and the journal recovery fails
-with checksum error although the journal is otherwise perfectly valid.
-Fix the problem by checking commit block time stamps to determine
-whether the data in the journal block is just stale or whether it is
-indeed corrupt.
+Okay, makes sense. I will change it to KUNIT_ARRAY_PARAM() for the next version.
+ 
+>> + * @name:  prefix of the name for the test parameter generator function.
+>> + * @prev: a pointer to the previous test parameter, NULL for first parameter.
+>> + * @array: a user-supplied pointer to an array of test parameters.
+>> + */
+>> +#define KUNIT_PARAM_GENERATOR(name, array)                                                     \
+>> +       static void *name##_gen_params(void *prev)                                              \
+>> +       {                                                                                       \
+>> +               typeof((array)[0]) * __next = prev ? ((typeof(__next)) prev) + 1 : (array);     \
+>> +               return __next - (array) < ARRAY_SIZE((array)) ? __next : NULL;                  \
+>> +       }
+>> +
+>>  #endif /* _KUNIT_TEST_H */
+> 
+> Thanks,
+> -- Marco
+> 
 
-Reported-by: kernel test robot <lkp@intel.com>
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Signed-off-by: Fengnan Chang <changfengnan@hikvision.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20201012164900.20197-1-jack@suse.cz
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/jbd2/recovery.c | 78 +++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 66 insertions(+), 12 deletions(-)
-
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index faa97d748474d..fb134c7a12c89 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -428,6 +428,8 @@ static int do_one_pass(journal_t *journal,
- 	__u32			crc32_sum = ~0; /* Transactional Checksums */
- 	int			descr_csum_size = 0;
- 	int			block_error = 0;
-+	bool			need_check_commit_time = false;
-+	__u64			last_trans_commit_time = 0, commit_time;
- 
- 	/*
- 	 * First thing is to establish what we expect to find in the log
-@@ -520,12 +522,21 @@ static int do_one_pass(journal_t *journal,
- 			if (descr_csum_size > 0 &&
- 			    !jbd2_descriptor_block_csum_verify(journal,
- 							       bh->b_data)) {
--				printk(KERN_ERR "JBD2: Invalid checksum "
--				       "recovering block %lu in log\n",
--				       next_log_block);
--				err = -EFSBADCRC;
--				brelse(bh);
--				goto failed;
-+				/*
-+				 * PASS_SCAN can see stale blocks due to lazy
-+				 * journal init. Don't error out on those yet.
-+				 */
-+				if (pass != PASS_SCAN) {
-+					pr_err("JBD2: Invalid checksum recovering block %lu in log\n",
-+					       next_log_block);
-+					err = -EFSBADCRC;
-+					brelse(bh);
-+					goto failed;
-+				}
-+				need_check_commit_time = true;
-+				jbd_debug(1,
-+					"invalid descriptor block found in %lu\n",
-+					next_log_block);
- 			}
- 
- 			/* If it is a valid descriptor block, replay it
-@@ -535,6 +546,7 @@ static int do_one_pass(journal_t *journal,
- 			if (pass != PASS_REPLAY) {
- 				if (pass == PASS_SCAN &&
- 				    jbd2_has_feature_checksum(journal) &&
-+				    !need_check_commit_time &&
- 				    !info->end_transaction) {
- 					if (calc_chksums(journal, bh,
- 							&next_log_block,
-@@ -683,11 +695,41 @@ static int do_one_pass(journal_t *journal,
- 			 *	 mentioned conditions. Hence assume
- 			 *	 "Interrupted Commit".)
- 			 */
-+			commit_time = be64_to_cpu(
-+				((struct commit_header *)bh->b_data)->h_commit_sec);
-+			/*
-+			 * If need_check_commit_time is set, it means we are in
-+			 * PASS_SCAN and csum verify failed before. If
-+			 * commit_time is increasing, it's the same journal,
-+			 * otherwise it is stale journal block, just end this
-+			 * recovery.
-+			 */
-+			if (need_check_commit_time) {
-+				if (commit_time >= last_trans_commit_time) {
-+					pr_err("JBD2: Invalid checksum found in transaction %u\n",
-+					       next_commit_ID);
-+					err = -EFSBADCRC;
-+					brelse(bh);
-+					goto failed;
-+				}
-+			ignore_crc_mismatch:
-+				/*
-+				 * It likely does not belong to same journal,
-+				 * just end this recovery with success.
-+				 */
-+				jbd_debug(1, "JBD2: Invalid checksum ignored in transaction %u, likely stale data\n",
-+					  next_commit_ID);
-+				err = 0;
-+				brelse(bh);
-+				goto done;
-+			}
- 
--			/* Found an expected commit block: if checksums
--			 * are present verify them in PASS_SCAN; else not
-+			/*
-+			 * Found an expected commit block: if checksums
-+			 * are present, verify them in PASS_SCAN; else not
- 			 * much to do other than move on to the next sequence
--			 * number. */
-+			 * number.
-+			 */
- 			if (pass == PASS_SCAN &&
- 			    jbd2_has_feature_checksum(journal)) {
- 				struct commit_header *cbh =
-@@ -719,6 +761,8 @@ static int do_one_pass(journal_t *journal,
- 			    !jbd2_commit_block_csum_verify(journal,
- 							   bh->b_data)) {
- 			chksum_error:
-+				if (commit_time < last_trans_commit_time)
-+					goto ignore_crc_mismatch;
- 				info->end_transaction = next_commit_ID;
- 
- 				if (!jbd2_has_feature_async_commit(journal)) {
-@@ -728,11 +772,24 @@ static int do_one_pass(journal_t *journal,
- 					break;
- 				}
- 			}
-+			if (pass == PASS_SCAN)
-+				last_trans_commit_time = commit_time;
- 			brelse(bh);
- 			next_commit_ID++;
- 			continue;
- 
- 		case JBD2_REVOKE_BLOCK:
-+			/*
-+			 * Check revoke block crc in pass_scan, if csum verify
-+			 * failed, check commit block time later.
-+			 */
-+			if (pass == PASS_SCAN &&
-+			    !jbd2_descriptor_block_csum_verify(journal,
-+							       bh->b_data)) {
-+				jbd_debug(1, "JBD2: invalid revoke block found in %lu\n",
-+					  next_log_block);
-+				need_check_commit_time = true;
-+			}
- 			/* If we aren't in the REVOKE pass, then we can
- 			 * just skip over this block. */
- 			if (pass != PASS_REVOKE) {
-@@ -800,9 +857,6 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
- 	offset = sizeof(jbd2_journal_revoke_header_t);
- 	rcount = be32_to_cpu(header->r_count);
- 
--	if (!jbd2_descriptor_block_csum_verify(journal, header))
--		return -EFSBADCRC;
--
- 	if (jbd2_journal_has_csum_v2or3(journal))
- 		csum_size = sizeof(struct jbd2_journal_block_tail);
- 	if (rcount > journal->j_blocksize - csum_size)
--- 
-2.25.1
-
+Thanks!
