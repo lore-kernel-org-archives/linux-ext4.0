@@ -1,4 +1,4 @@
-Return-Path: <SRS0=GcSr=EB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=Q+OU=EC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78741C4363A
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Oct 2020 23:56:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 350ECC63699
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:06:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 36524221FA
-	for <linux-ext4@archiver.kernel.org>; Mon, 26 Oct 2020 23:56:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EF40520791
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:06:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603756600;
-	bh=JKjFI77i7gZoC6zNEMxkzRxcHFE7FTZDCPVf1sy6D2o=;
+	s=default; t=1603757161;
+	bh=jvrQeHg/oQEgAi5597Y8RqY/n70i6FEULjgF1fYF0WU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Ea/e4VsewTNpWGcw3sg/d9YFDVsAHLqFNY5t2C1R+mXQZTZ4v2sdyCQr7ZUjPnrh1
-	 L03gwsnBtw/FrG9dQUA4DKPMNQhKeTDrSZt/3cTT6XLKF82XvMPiLMIpvRgpXXYOZs
-	 V45RfxZlaMbgz3638etUhnyDOANYpcu6/wfPqEYE=
+	b=PdcJju3e2VWPRmVhmuvqwlheXLbXz1bPNnOY7k0luJ24NUfUbR6+BKUf4IhIcf0Fe
+	 WwEC8bPEQ7a+54iLH0XiLjg5GHh9OKqy4HUJDwEQtpBnCNyg5RZdpQYCoPt7j9dqle
+	 7EevU/ALGLfYKby98qw74OPvJvH7b34+88lAwP0M=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2436529AbgJZX4j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Oct 2020 19:56:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36658 "EHLO mail.kernel.org"
+        id S2438646AbgJ0AF7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Oct 2020 20:05:59 -0400
+Received: from mail.kernel.org ([198.145.29.99]:54116 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2436509AbgJZX4i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Oct 2020 19:56:38 -0400
+        id S2438167AbgJ0AFO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Oct 2020 20:05:14 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 35E79221FA;
-        Mon, 26 Oct 2020 23:56:34 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B657E20882;
+        Tue, 27 Oct 2020 00:05:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603756595;
-        bh=JKjFI77i7gZoC6zNEMxkzRxcHFE7FTZDCPVf1sy6D2o=;
+        s=default; t=1603757113;
+        bh=jvrQeHg/oQEgAi5597Y8RqY/n70i6FEULjgF1fYF0WU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=1LtPYQ8I6/LPn/kse7H7Xj5HUCtQVbhmRvPq86Kb0mf6KKLolu1VXjn+iE3WXm43W
-         v3Rd/bzpVCfiZui+dkD2gN31TtQLD/U7V+ih7TJXc+OEStBuISzqu/6Ya9j0FPGJLC
-         c7PcRtbK+2zRD6/ujJ6fXFTNOvJnrCyK4YflvBdM=
+        b=bv5DZY/hL4JNPElJWH2hYgVrTSTbwiTIenZGyNpfX27v9Y3+kxIFWZmbjJdhYT5+G
+         4DOwQ5bLZw/bjnQMipEchIW5LFJuS64hWP78fZ7VQGMZ65V621+8JdpdAVzdl5csl/
+         CU3Ylycc3j+a2pPziQh3SX/z0szxYgx6V5aRx5oY=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
         Ritesh Harjani <riteshh@linux.ibm.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 65/80] ext4: Detect already used quota file early
-Date:   Mon, 26 Oct 2020 19:55:01 -0400
-Message-Id: <20201026235516.1025100-65-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 49/60] ext4: Detect already used quota file early
+Date:   Mon, 26 Oct 2020 20:04:04 -0400
+Message-Id: <20201027000415.1026364-49-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201026235516.1025100-1-sashal@kernel.org>
-References: <20201026235516.1025100-1-sashal@kernel.org>
+In-Reply-To: <20201027000415.1026364-1-sashal@kernel.org>
+References: <20201027000415.1026364-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -83,10 +83,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 5 insertions(+)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4aae7e3e89a12..2603537b1f66b 100644
+index 0c15ff19acbd4..16ea7cfd130c0 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -5856,6 +5856,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+@@ -5752,6 +5752,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
  	/* Quotafile not on the same filesystem? */
  	if (path->dentry->d_sb != sb)
  		return -EXDEV;
