@@ -5,51 +5,51 @@ X-Spam-Level:
 X-Spam-Status: No, score=-13.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 350ECC63699
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:06:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8BDBC4363A
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:13:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EF40520791
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:06:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B4D6E20791
+	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 00:13:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1603757161;
-	bh=jvrQeHg/oQEgAi5597Y8RqY/n70i6FEULjgF1fYF0WU=;
+	s=default; t=1603757598;
+	bh=hwmoqN6+TS2VKt6t+G9Bg+tI0jOfBhLWvIK/Ef5yjEg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=PdcJju3e2VWPRmVhmuvqwlheXLbXz1bPNnOY7k0luJ24NUfUbR6+BKUf4IhIcf0Fe
-	 WwEC8bPEQ7a+54iLH0XiLjg5GHh9OKqy4HUJDwEQtpBnCNyg5RZdpQYCoPt7j9dqle
-	 7EevU/ALGLfYKby98qw74OPvJvH7b34+88lAwP0M=
+	b=s1hfGoev1bInBaCzOuIpSEWFcIQIiOMA5vVd6ksaq35SlRHtWzBjlWL37KqOCXg8s
+	 JYYfiHOLP28E60EuRwcfMxAP5sXeDoy9YAK83LAwOjAXJl4eQxJwM5GY6yFX3rqdv4
+	 OqAxIsYyApOZkCokwcHZ+DBr2mzZrQoZtk9LaWIc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2438646AbgJ0AF7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 26 Oct 2020 20:05:59 -0400
-Received: from mail.kernel.org ([198.145.29.99]:54116 "EHLO mail.kernel.org"
+        id S2439425AbgJ0ANO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 26 Oct 2020 20:13:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33752 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2438167AbgJ0AFO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Oct 2020 20:05:14 -0400
+        id S2411825AbgJ0ALu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Oct 2020 20:11:50 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B657E20882;
-        Tue, 27 Oct 2020 00:05:12 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 734B5217A0;
+        Tue, 27 Oct 2020 00:11:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1603757113;
-        bh=jvrQeHg/oQEgAi5597Y8RqY/n70i6FEULjgF1fYF0WU=;
+        s=default; t=1603757509;
+        bh=hwmoqN6+TS2VKt6t+G9Bg+tI0jOfBhLWvIK/Ef5yjEg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=bv5DZY/hL4JNPElJWH2hYgVrTSTbwiTIenZGyNpfX27v9Y3+kxIFWZmbjJdhYT5+G
-         4DOwQ5bLZw/bjnQMipEchIW5LFJuS64hWP78fZ7VQGMZ65V621+8JdpdAVzdl5csl/
-         CU3Ylycc3j+a2pPziQh3SX/z0szxYgx6V5aRx5oY=
+        b=ZvWVM06jU2TPQtrLpYXTBHl1f2Tb1RHk0y5KgSXr+1OiiD9xDr8dpcqtM90j8AUaS
+         v/y/eWBFLCvpm8z7UE/b5pSscvO0mubebI95WAiK6fOJOfTDG4iEG5CkFoRWzUBlUZ
+         MOtJY2xMQ3ziNkn4E9D07Wbm3HLRPWw5Tehivrds=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, Andreas Dilger <adilger@dilger.ca>,
         Ritesh Harjani <riteshh@linux.ibm.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 49/60] ext4: Detect already used quota file early
-Date:   Mon, 26 Oct 2020 20:04:04 -0400
-Message-Id: <20201027000415.1026364-49-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 20/25] ext4: Detect already used quota file early
+Date:   Mon, 26 Oct 2020 20:11:18 -0400
+Message-Id: <20201027001123.1027642-20-sashal@kernel.org>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20201027000415.1026364-1-sashal@kernel.org>
-References: <20201027000415.1026364-1-sashal@kernel.org>
+In-Reply-To: <20201027001123.1027642-1-sashal@kernel.org>
+References: <20201027001123.1027642-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -83,10 +83,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 5 insertions(+)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0c15ff19acbd4..16ea7cfd130c0 100644
+index aca086a25b2ef..6350971852e19 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -5752,6 +5752,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
+@@ -5185,6 +5185,11 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
  	/* Quotafile not on the same filesystem? */
  	if (path->dentry->d_sb != sb)
  		return -EXDEV;
