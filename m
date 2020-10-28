@@ -1,63 +1,58 @@
-Return-Path: <SRS0=Q+OU=EC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=vE19=ED=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29184C5DF9E
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 21:34:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A08F5C388F7
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 21:33:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EBA9522447
-	for <linux-ext4@archiver.kernel.org>; Tue, 27 Oct 2020 21:34:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5A59524857
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 21:33:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S374150AbgJ0Vet (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 27 Oct 2020 17:34:49 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:41574 "EHLO
+        id S1725837AbgJ1VdA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Oct 2020 17:33:00 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56435 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S374132AbgJ0Ves (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Oct 2020 17:34:48 -0400
+        with ESMTP id S1725827AbgJ1Vcx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 17:32:53 -0400
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 09RLQbBt015134
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 09S3uhbe025303
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 27 Oct 2020 17:26:38 -0400
+        Tue, 27 Oct 2020 23:56:43 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 9F4BB420107; Tue, 27 Oct 2020 17:26:37 -0400 (EDT)
-Date:   Tue, 27 Oct 2020 17:26:37 -0400
+        id 1C10C420107; Tue, 27 Oct 2020 23:56:43 -0400 (EDT)
+Date:   Tue, 27 Oct 2020 23:56:43 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 23/32] jbd2: fix a kernel-doc markup
-Message-ID: <20201027212637.GF5691@mit.edu>
-References: <cover.1603791716.git.mchehab+huawei@kernel.org>
- <6055927ada2015b55b413cdd2670533bdc9a8da2.1603791716.git.mchehab+huawei@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-ext4@vger.kernel.org,
+        Mauricio Faria de Oliveira <mfo@canonical.com>
+Subject: Re: [PATCH] ext4: Fix mmap write protection for data=journal mode
+Message-ID: <20201028035643.GP5691@mit.edu>
+References: <20201027132751.29858-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <6055927ada2015b55b413cdd2670533bdc9a8da2.1603791716.git.mchehab+huawei@kernel.org>
+In-Reply-To: <20201027132751.29858-1-jack@suse.cz>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Oct 27, 2020 at 10:51:27AM +0100, Mauro Carvalho Chehab wrote:
-> The kernel-doc markup that documents _fc_replay_callback is
-> missing an asterisk, causing this warning:
+On Tue, Oct 27, 2020 at 02:27:51PM +0100, Jan Kara wrote:
+> Commit afb585a97f81 "ext4: data=journal: write-protect pages on
+> j_submit_inode_data_buffers()") added calls ext4_jbd2_inode_add_write()
+> to track inode ranges whose mappings need to get write-protected during
+> transaction commits. However the added calls use wrong start of a range
+> (0 instead of page offset) and so write protection is not necessarily
+> effective. Use correct range start to fix the problem.
 > 
-> 	../include/linux/jbd2.h:1271: warning: Function parameter or member 'j_fc_replay_callback' not described in 'journal_s'
-> 
-> When building the docs.
-> 
-> Fixes: 609f928af48f ("jbd2: fast commit recovery path")
-> Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+> Fixes: afb585a97f81 ("ext4: data=journal: write-protect pages on j_submit_inode_data_buffers()")
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks, I'm accomulating some bug fix patches to push to Linus, so
-I'll grab this for the ext4 git tree.
+Thanks, applied.
 
-     	       	       	    	- Ted
+					- Ted
