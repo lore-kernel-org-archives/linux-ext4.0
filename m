@@ -2,82 +2,134 @@ Return-Path: <SRS0=vE19=ED=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DATE_IN_PAST_12_24,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1845FC5DF9E
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 21:54:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22142C388F7
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 22:11:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D297C2473C
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 21:54:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ACCD724724
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Oct 2020 22:11:36 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="cYP454bu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728543AbgJ1Vxq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Oct 2020 17:53:46 -0400
-Received: from mx2.suse.de ([195.135.220.15]:43400 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728434AbgJ1Vxm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Oct 2020 17:53:42 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 0E19EAD46;
-        Wed, 28 Oct 2020 15:55:45 +0000 (UTC)
-Received: from localhost (brahms [local])
-        by brahms (OpenSMTPD) with ESMTPA id b70607d5;
-        Wed, 28 Oct 2020 15:55:52 +0000 (UTC)
-From:   Luis Henriques <lhenriques@suse.de>
-To:     tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org, Luis Henriques <lhenriques@suse.de>
-Subject: [PATCH] filefrag: handle invalid st_dev and blksize cases
-Date:   Wed, 28 Oct 2020 15:55:50 +0000
-Message-Id: <20201028155550.24680-1-lhenriques@suse.de>
+        id S1730695AbgJ1WLe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Oct 2020 18:11:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52428 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730687AbgJ1WLd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 18:11:33 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42B51C0613D1
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Oct 2020 15:11:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=RJipvKeo6bBp4cPWGXHfpRPcW39oO1hr0FF/uzNT9Bc=; b=cYP454buF6rSUDA8DaA4NtBD+i
+        Jkt3a3bodzkYFWwfOdorISSnbba5yG40PcmqIsNgkcUkhJlN1f10UyBQLp7Y2YR9EHaHnRfa9GXuY
+        UaBuqAjxw9u9FSLQZMfTt/Pl7fIfw7HrO4OWAndKZZaMMOb6EaQSPhRO/0esbWE6Y8keHqsI6lxWX
+        pD06lCUHKjZ2REd7Dll9rb0pysHXvD7E/TNfZ08EghrzbVChuHNb7BxpJaLN0bYMygCtphpqKuh9I
+        g5zW54ZQ8omcooloQqdxobWQTzom9CPbsNH//k2s1DBymTm+zR95iqV3SklbxQXyTOoXNEQFH/k1W
+        vbf7D4DA==;
+Received: from hch by casper.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
+        id 1kXg59-0000l6-SR; Wed, 28 Oct 2020 07:41:19 +0000
+Date:   Wed, 28 Oct 2020 07:41:19 +0000
+From:   Christoph Hellwig <hch@infradead.org>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     guaneryu@gmail.com, linux-xfs@vger.kernel.org,
+        fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/9] common: extract rt extent size for
+ _get_file_block_size
+Message-ID: <20201028074119.GA2750@infradead.org>
+References: <160382528936.1202316.2338876126552815991.stgit@magnolia>
+ <160382529579.1202316.931742119756545034.stgit@magnolia>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <160382529579.1202316.931742119756545034.stgit@magnolia>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It is possible to crash filefrag with a "Floating point exception" in
-two different scenarios:
+On Tue, Oct 27, 2020 at 12:01:35PM -0700, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> _get_file_block_size is intended to return the size (in bytes) of the
+> fundamental allocation unit for a file.  This is required for remapping
+> operations like fallocate and reflink, which can only operate on
+> allocation units.  Since the XFS realtime volume can be configure for
+> allocation units larger than 1 fs block, we need to factor that in here.
 
-1. When fstat() returns a device ID set to 0
-2. When FIGETBSZ ioctl returns a blocksize of 0
+Should this also cover the ext4 bigalloc clusters?  Or do they not
+matter for fallocate?
 
-In both scenarios a divide-by-zero will occur in frag_report() because
-variable blksize will be set to zero.
-
-I've managed to trigger this crash with an old CephFS kernel client,
-using xfstest generic/519.  The first scenario has been fixed by kernel
-commit 75c9627efb72 ("ceph: map snapid to anonymous bdev ID").  The
-second scenario is also fixed with commit 8f97d1e99149 ("vfs: fix
-FIGETBSZ ioctl on an overlayfs file").
-
-However, it is desirable to handle these two scenarios gracefully by
-checking these conditions explicitly.
-
-Signed-off-by: Luis Henriques <lhenriques@suse.de>
----
- misc/filefrag.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/misc/filefrag.c b/misc/filefrag.c
-index 6308bc6d1f91..62d583b2ea23 100644
---- a/misc/filefrag.c
-+++ b/misc/filefrag.c
-@@ -438,13 +438,13 @@ static int frag_report(const char *filename)
- 		goto out_close;
- 	}
- 
--	if (last_device != st.st_dev) {
-+	if ((last_device != st.st_dev) || !st.st_dev) {
- 		if (fstatfs(fd, &fsinfo) < 0) {
- 			rc = -errno;
- 			perror("fstatfs");
- 			goto out_close;
- 		}
--		if (ioctl(fd, FIGETBSZ, &blksize) < 0)
-+		if ((ioctl(fd, FIGETBSZ, &blksize) < 0) || !blksize)
- 			blksize = fsinfo.f_bsize;
- 		if (verbose)
- 			printf("Filesystem type is: %lx\n",
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  common/rc  |   13 ++++++++++---
+>  common/xfs |   20 ++++++++++++++++++++
+>  2 files changed, 30 insertions(+), 3 deletions(-)
+> 
+> 
+> diff --git a/common/rc b/common/rc
+> index 27a27ea3..41f93047 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -3974,11 +3974,18 @@ _get_file_block_size()
+>  		echo "Missing mount point argument for _get_file_block_size"
+>  		exit 1
+>  	fi
+> -	if [ "$FSTYP" = "ocfs2" ]; then
+> +
+> +	case "$FSTYP" in
+> +	"ocfs2")
+>  		stat -c '%o' $1
+> -	else
+> +		;;
+> +	"xfs")
+> +		_xfs_get_file_block_size $1
+> +		;;
+> +	*)
+>  		_get_block_size $1
+> -	fi
+> +		;;
+> +	esac
+>  }
+>  
+>  # Get the minimum block size of an fs.
+> diff --git a/common/xfs b/common/xfs
+> index 79dab058..3f5c14ba 100644
+> --- a/common/xfs
+> +++ b/common/xfs
+> @@ -174,6 +174,26 @@ _scratch_mkfs_xfs()
+>  	return $mkfs_status
+>  }
+>  
+> +# Get the size of an allocation unit of a file.  Normally this is just the
+> +# block size of the file, but for realtime files, this is the realtime extent
+> +# size.
+> +_xfs_get_file_block_size()
+> +{
+> +	local path="$1"
+> +
+> +	if ! ($XFS_IO_PROG -c "stat -v" "$path" 2>&1 | egrep -q '(rt-inherit|realtime)'); then
+> +		_get_block_size "$path"
+> +		return
+> +	fi
+> +
+> +	# Otherwise, call xfs_info until we find a mount point or the root.
+> +	path="$(readlink -m "$path")"
+> +	while ! $XFS_INFO_PROG "$path" &>/dev/null && [ "$path" != "/" ]; do
+> +		path="$(dirname "$path")"
+> +	done
+> +	$XFS_INFO_PROG "$path" | grep realtime | sed -e 's/^.*extsz=\([0-9]*\).*$/\1/g'
+> +}
+> +
+>  # xfs_check script is planned to be deprecated. But, we want to
+>  # be able to invoke "xfs_check" behavior in xfstests in order to
+>  # maintain the current verification levels.
+> 
+---end quoted text---
