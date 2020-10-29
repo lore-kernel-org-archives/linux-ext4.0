@@ -2,28 +2,28 @@ Return-Path: <SRS0=4fm1=EE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-11.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 762E8C4363A
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:53:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6A40C56201
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:53:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2A87720724
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:53:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7525620790
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:53:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732181AbgJ2Afg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Oct 2020 20:35:36 -0400
-Received: from youngberry.canonical.com ([91.189.89.112]:60628 "EHLO
+        id S2389266AbgJ2AxW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Oct 2020 20:53:22 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:60629 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729996AbgJ2Afg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 20:35:36 -0400
+        with ESMTP id S1730005AbgJ2Afd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 20:35:33 -0400
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kXvuP-0008Ep-23; Thu, 29 Oct 2020 00:35:17 +0000
+        id 1kXvuJ-0008Ep-Vc; Thu, 29 Oct 2020 00:35:12 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -62,715 +62,471 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         linux-audit@redhat.com, linux-integrity@vger.kernel.org,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>
-Subject: [PATCH 03/34] fs: add mount_setattr()
-Date:   Thu, 29 Oct 2020 01:32:21 +0100
-Message-Id: <20201029003252.2128653-4-christian.brauner@ubuntu.com>
+Subject: [PATCH 00/34] fs: idmapped mounts
+Date:   Thu, 29 Oct 2020 01:32:18 +0100
+Message-Id: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.0
-In-Reply-To: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
-References: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This implements the mount_setattr() syscall. While the new mount api
-allows to change the properties of a superblock there is currently no
-way to change the mount properties of a mount or mount tree using mount
-file descriptors which the new mount api is based on. In addition the
-old mount api has the restriction that mount options cannot be
-applied recursively. This hasn't changed since changing mount options on
-a per-mount basis was implemented in [1] and has been a frequent
-request.
-The legacy mount is currently unable to accommodate this behavior
-without introducing a whole new set of flags because MS_REC | MS_REMOUNT
-| MS_BIND | MS_RDONLY | MS_NOEXEC | [...] only apply the mount option to
-the topmost mount. Changing MS_REC to apply to the whole mount tree
-would mean introducing a significant uapi change and would likely cause
-significant regressions.
+Hey everyone,
 
-The new mount_setattr() syscall allows to recursively clear and set
-mount options in one shot. Multiple calls to change mount options
-requesting the same changes are idempotent:
+I vanished for a little while to focus on this work here so sorry for
+not being available by mail for a while.
 
-int mount_setattr(int dfd, const char *path, unsigned flags,
-                  struct mount_attr *uattr, size_t usize);
+Since quite a long time we have issues with sharing mounts between
+multiple unprivileged containers with different id mappings, sharing a
+rootfs between multiple containers with different id mappings, and also
+sharing regular directories and filesystems between users with different
+uids and gids. The latter use-cases have become even more important with
+the availability and adoption of systemd-homed (cf. [1]) to implement
+portable home directories.
 
-Flags to modify path resolution behavior are specified in the @flags
-argument. Currently, AT_EMPTY_PATH, AT_RECURSIVE, AT_SYMLINK_NOFOLLOW,
-and AT_NO_AUTOMOUNT are supported. If useful, additional lookup flags to
-restrict path resolution as introduced with openat2() might be supported
-in the future.
+The solutions we have tried and proposed so far include the introduction
+of fsid mappings, a tiny overlay based filesystem, and an approach to
+call override creds in the vfs. None of these solutions have covered all
+of the above use-cases.
 
-mount_setattr() can be expected to grow over time and is designed with
-extensibility in mind. It follows the extensible syscall pattern we have
-used with other syscalls such as openat2(), clone3(),
-sched_{set,get}attr(), and others.
-The set of mount options is passed in the uapi struct mount_attr which
-currently has the following layout:
+The solution proposed here has it's origins in multiple discussions
+during Linux Plumbers 2017 during and after the end of the containers
+microconference.
+To the best of my knowledge this involved Aleksa, Stéphane, Eric, David,
+James, and myself. A variant of the solution proposed here has also been
+discussed, again to the best of my knowledge, after a Linux conference
+in St. Petersburg in Russia between Christoph, Tycho, and myself in 2017
+after Linux Plumbers.
+I've taken the time to finally implement a working version of this
+solution over the last weeks to the best of my abilities. Tycho has
+signed up for this sligthly crazy endeavour as well and he has helped
+with the conversion of the xattr codepaths.
 
-struct mount_attr {
-	__u64 attr_set;
-	__u64 attr_clr;
-	__u32 propagation;
-};
+The core idea is to make idmappings a property of struct vfsmount
+instead of tying it to a process being inside of a user namespace which
+has been the case for all other proposed approaches.
+It means that idmappings become a property of bind-mounts, i.e. each
+bind-mount can have a separate idmapping. This has the obvious advantage
+that idmapped mounts can be created inside of the initial user
+namespace, i.e. on the host itself instead of requiring the caller to be
+located inside of a user namespace. This enables such use-cases as e.g.
+making a usb stick available in multiple locations with different
+idmappings (see the vfat port that is part of this patch series).
 
-The @attr_set and @attr_clr members are used to clear and set mount
-options. This way a user can e.g. request that a set of flags is to be
-raised such as turning mounts readonly by raising MOUNT_ATTR_RDONLY in
-@attr_set while at the same time requesting that another set of flags is
-to be lowered such as removing noexec from a mount tree by specifying
-MOUNT_ATTR_NOEXEC in @attr_clr.
-Note, since the MOUNT_ATTR_<atime> values are an enum starting from 0,
-not a bitmap, users wanting to transition to a different atime setting
-cannot simply specify the atime setting in @attr_set, but must also
-specify MOUNT_ATTR__ATIME in the @attr_clr field. So we ensure that
-MOUNT_ATTR__ATIME can't be partially set in @attr_clr and that @attr_set
-can't have any atime bits set if MOUNT_ATTR__ATIME isn't set in
-@attr_clr.
+The vfsmount struct gains a new struct user_namespace member. The
+idmapping of the user namespace becomes the idmapping of the mount. A
+caller that is either privileged with respect to the user namespace of
+the superblock of the underlying filesystem or a caller that is
+privileged with respect to the user namespace a mount has been idmapped
+with can create a new bind-mount and mark it with a user namespace. The
+user namespace the mount will be marked with can be specified by passing
+a file descriptor refering to the user namespace as an argument to the
+new mount_setattr() syscall together with the new MOUNT_ATTR_IDMAP flag.
+By default vfsmounts are marked with the initial user namespace and no
+behavioral or performance changes should be observed. All mapping
+operations are nops for the initial user namespace.
 
-The @propagation field lets callers specify the propagation type of a
-mount tree. Propagation is a single property that has four different
-settings and as such is not really a flag argument but an enum.
-Specifically, it would be unclear what setting and clearing propagation
-settings in combination would amount to. The legacy mount() syscall thus
-forbids the combination of multiple propagation settings too. The goal
-is to keep the semantics of mount propagation somewhat simple as they
-are overly complex as it is.
+When a file/inode is accessed through an idmapped mount the i_uid and
+i_gid of the inode will be remapped according to the user namespace the
+mount has been marked with. When a new object is created based on the
+fsuid and fsgid of the caller they will similarly be remapped according
+to the user namespace of the mount they care created from.
 
-Changing mount option has quite a few moving parts and the locking is
-quite intricate so it is not unlikely that I got subtleties wrong.
+This means the user namespace of the mount needs to be passed down into
+a few relevant inode_operations. This mostly includes inode operations
+that create filesystem objects or change file attributes. Some of them
+such as ->getattr() don't even need to change since they pass down a
+struct path and thus the struct vfsmount is already available. Other
+inode operations need to be adapted to pass down the user namespace the
+vfsmount has been marked with. Al was nice enough to point out that he
+will not tolerate struct vfsmount being passed to filesystems and that I
+should pass down the user namespace directly; which is what I did.
+The inode struct itself is never altered whenever the i_uid and i_gid
+need to be mapped, i.e. i_uid and i_gid are only remapped at the time of
+the check. An inode once initialized (during lookup or object creation)
+is never altered when accessed through an idmapped mount.
 
-[1]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
-Cc: David Howells <dhowells@redhat.com>
-Cc: Aleksa Sarai <cyphar@cyphar.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-api@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
-Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
----
- arch/alpha/kernel/syscalls/syscall.tbl      |   1 +
- arch/arm/tools/syscall.tbl                  |   1 +
- arch/arm64/include/asm/unistd32.h           |   2 +
- arch/ia64/kernel/syscalls/syscall.tbl       |   1 +
- arch/m68k/kernel/syscalls/syscall.tbl       |   1 +
- arch/microblaze/kernel/syscalls/syscall.tbl |   1 +
- arch/mips/kernel/syscalls/syscall_n32.tbl   |   1 +
- arch/mips/kernel/syscalls/syscall_n64.tbl   |   1 +
- arch/mips/kernel/syscalls/syscall_o32.tbl   |   1 +
- arch/parisc/kernel/syscalls/syscall.tbl     |   1 +
- arch/powerpc/kernel/syscalls/syscall.tbl    |   1 +
- arch/s390/kernel/syscalls/syscall.tbl       |   1 +
- arch/sh/kernel/syscalls/syscall.tbl         |   1 +
- arch/sparc/kernel/syscalls/syscall.tbl      |   1 +
- arch/x86/entry/syscalls/syscall_32.tbl      |   1 +
- arch/x86/entry/syscalls/syscall_64.tbl      |   1 +
- arch/xtensa/kernel/syscalls/syscall.tbl     |   1 +
- fs/internal.h                               |   8 +
- fs/namespace.c                              | 286 ++++++++++++++++++--
- include/linux/syscalls.h                    |   3 +
- include/uapi/asm-generic/unistd.h           |   4 +-
- include/uapi/linux/mount.h                  |  22 ++
- tools/include/uapi/asm-generic/unistd.h     |   4 +-
- 23 files changed, 319 insertions(+), 26 deletions(-)
+To limit the amount of noise in this first iteration we have not changed
+the existing inode operations but rather introduced a few new struct
+inode operation methods such as ->mkdir_mapped which pass down the user
+namespace of the mount they have been called from. Should this solution
+be worth pursuing we have no problem adapting the existing inode
+operations instead.
 
-diff --git a/arch/alpha/kernel/syscalls/syscall.tbl b/arch/alpha/kernel/syscalls/syscall.tbl
-index ee7b01bb7346..24d8709624b8 100644
---- a/arch/alpha/kernel/syscalls/syscall.tbl
-+++ b/arch/alpha/kernel/syscalls/syscall.tbl
-@@ -480,3 +480,4 @@
- 548	common	pidfd_getfd			sys_pidfd_getfd
- 549	common	faccessat2			sys_faccessat2
- 550	common	process_madvise			sys_process_madvise
-+551	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/arm/tools/syscall.tbl b/arch/arm/tools/syscall.tbl
-index d056a548358e..e3785513d445 100644
---- a/arch/arm/tools/syscall.tbl
-+++ b/arch/arm/tools/syscall.tbl
-@@ -454,3 +454,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/arm64/include/asm/unistd32.h b/arch/arm64/include/asm/unistd32.h
-index 107f08e03b9f..78af754e070a 100644
---- a/arch/arm64/include/asm/unistd32.h
-+++ b/arch/arm64/include/asm/unistd32.h
-@@ -889,6 +889,8 @@ __SYSCALL(__NR_pidfd_getfd, sys_pidfd_getfd)
- __SYSCALL(__NR_faccessat2, sys_faccessat2)
- #define __NR_process_madvise 440
- __SYSCALL(__NR_process_madvise, sys_process_madvise)
-+#define __NR_mount_setattr 441
-+__SYSCALL(__NR_mount_setattr, sys_mount_setattr)
- 
- /*
-  * Please add new compat syscalls above this comment and update
-diff --git a/arch/ia64/kernel/syscalls/syscall.tbl b/arch/ia64/kernel/syscalls/syscall.tbl
-index b96ed8b8a508..f7d4b1f55be0 100644
---- a/arch/ia64/kernel/syscalls/syscall.tbl
-+++ b/arch/ia64/kernel/syscalls/syscall.tbl
-@@ -361,3 +361,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/m68k/kernel/syscalls/syscall.tbl b/arch/m68k/kernel/syscalls/syscall.tbl
-index 625fb6d32842..e96e9c6a6ffa 100644
---- a/arch/m68k/kernel/syscalls/syscall.tbl
-+++ b/arch/m68k/kernel/syscalls/syscall.tbl
-@@ -440,3 +440,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/microblaze/kernel/syscalls/syscall.tbl b/arch/microblaze/kernel/syscalls/syscall.tbl
-index aae729c95cf9..6538f075a18e 100644
---- a/arch/microblaze/kernel/syscalls/syscall.tbl
-+++ b/arch/microblaze/kernel/syscalls/syscall.tbl
-@@ -446,3 +446,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/mips/kernel/syscalls/syscall_n32.tbl b/arch/mips/kernel/syscalls/syscall_n32.tbl
-index 32817c954435..64d129db1aa7 100644
---- a/arch/mips/kernel/syscalls/syscall_n32.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_n32.tbl
-@@ -379,3 +379,4 @@
- 438	n32	pidfd_getfd			sys_pidfd_getfd
- 439	n32	faccessat2			sys_faccessat2
- 440	n32	process_madvise			sys_process_madvise
-+441	n32	mount_setattr			sys_mount_setattr
-diff --git a/arch/mips/kernel/syscalls/syscall_n64.tbl b/arch/mips/kernel/syscalls/syscall_n64.tbl
-index 9e4ea3c31b1c..94b24e6b2608 100644
---- a/arch/mips/kernel/syscalls/syscall_n64.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_n64.tbl
-@@ -355,3 +355,4 @@
- 438	n64	pidfd_getfd			sys_pidfd_getfd
- 439	n64	faccessat2			sys_faccessat2
- 440	n64	process_madvise			sys_process_madvise
-+441	n64	mount_setattr			sys_mount_setattr
-diff --git a/arch/mips/kernel/syscalls/syscall_o32.tbl b/arch/mips/kernel/syscalls/syscall_o32.tbl
-index 29f5f28cf5ce..eae522306767 100644
---- a/arch/mips/kernel/syscalls/syscall_o32.tbl
-+++ b/arch/mips/kernel/syscalls/syscall_o32.tbl
-@@ -428,3 +428,4 @@
- 438	o32	pidfd_getfd			sys_pidfd_getfd
- 439	o32	faccessat2			sys_faccessat2
- 440	o32	process_madvise			sys_process_madvise
-+441	o32	mount_setattr			sys_mount_setattr
-diff --git a/arch/parisc/kernel/syscalls/syscall.tbl b/arch/parisc/kernel/syscalls/syscall.tbl
-index f375ea528e59..c7e25f1d219f 100644
---- a/arch/parisc/kernel/syscalls/syscall.tbl
-+++ b/arch/parisc/kernel/syscalls/syscall.tbl
-@@ -438,3 +438,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/powerpc/kernel/syscalls/syscall.tbl b/arch/powerpc/kernel/syscalls/syscall.tbl
-index 1275daec7fec..0b309ef64e91 100644
---- a/arch/powerpc/kernel/syscalls/syscall.tbl
-+++ b/arch/powerpc/kernel/syscalls/syscall.tbl
-@@ -530,3 +530,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/s390/kernel/syscalls/syscall.tbl b/arch/s390/kernel/syscalls/syscall.tbl
-index 28c168000483..0b30398fee42 100644
---- a/arch/s390/kernel/syscalls/syscall.tbl
-+++ b/arch/s390/kernel/syscalls/syscall.tbl
-@@ -443,3 +443,4 @@
- 438  common	pidfd_getfd		sys_pidfd_getfd			sys_pidfd_getfd
- 439  common	faccessat2		sys_faccessat2			sys_faccessat2
- 440  common	process_madvise		sys_process_madvise		sys_process_madvise
-+441  common	mount_setattr		sys_mount_setattr		sys_mount_setattr
-diff --git a/arch/sh/kernel/syscalls/syscall.tbl b/arch/sh/kernel/syscalls/syscall.tbl
-index 783738448ff5..8e4949c5b740 100644
---- a/arch/sh/kernel/syscalls/syscall.tbl
-+++ b/arch/sh/kernel/syscalls/syscall.tbl
-@@ -443,3 +443,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/sparc/kernel/syscalls/syscall.tbl b/arch/sparc/kernel/syscalls/syscall.tbl
-index 78160260991b..409f21a650b8 100644
---- a/arch/sparc/kernel/syscalls/syscall.tbl
-+++ b/arch/sparc/kernel/syscalls/syscall.tbl
-@@ -486,3 +486,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 0d0667a9fbd7..2a694420f6cd 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -445,3 +445,4 @@
- 438	i386	pidfd_getfd		sys_pidfd_getfd
- 439	i386	faccessat2		sys_faccessat2
- 440	i386	process_madvise		sys_process_madvise
-+441	i386	mount_setattr		sys_mount_setattr
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 1f47e24fb65c..773058fca7f8 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -362,6 +362,7 @@
- 438	common	pidfd_getfd		sys_pidfd_getfd
- 439	common	faccessat2		sys_faccessat2
- 440	common	process_madvise		sys_process_madvise
-+441	common	mount_setattr		sys_mount_setattr
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/arch/xtensa/kernel/syscalls/syscall.tbl b/arch/xtensa/kernel/syscalls/syscall.tbl
-index b070f272995d..a650dc05593d 100644
---- a/arch/xtensa/kernel/syscalls/syscall.tbl
-+++ b/arch/xtensa/kernel/syscalls/syscall.tbl
-@@ -411,3 +411,4 @@
- 438	common	pidfd_getfd			sys_pidfd_getfd
- 439	common	faccessat2			sys_faccessat2
- 440	common	process_madvise			sys_process_madvise
-+441	common	mount_setattr			sys_mount_setattr
-diff --git a/fs/internal.h b/fs/internal.h
-index a7cd0f64faa4..a5a6c470dc07 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -82,6 +82,14 @@ int may_linkat(struct path *link);
- /*
-  * namespace.c
-  */
-+struct mount_kattr {
-+	unsigned int attr_set;
-+	unsigned int attr_clr;
-+	unsigned int propagation;
-+	unsigned int lookup_flags;
-+	bool recurse;
-+};
-+
- extern struct vfsmount *lookup_mnt(const struct path *);
- extern int finish_automount(struct vfsmount *, struct path *);
- 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 6e0d5bb63197..e9c515b012a4 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -459,10 +459,8 @@ void mnt_drop_write_file(struct file *file)
- }
- EXPORT_SYMBOL(mnt_drop_write_file);
- 
--static int mnt_make_readonly(struct mount *mnt)
-+static inline int mnt_hold_writers(struct mount *mnt)
- {
--	int ret = 0;
--
- 	mnt->mnt.mnt_flags |= MNT_WRITE_HOLD;
- 	/*
- 	 * After storing MNT_WRITE_HOLD, we'll read the counters. This store
-@@ -487,15 +485,29 @@ static int mnt_make_readonly(struct mount *mnt)
- 	 * we're counting up here.
- 	 */
- 	if (mnt_get_writers(mnt) > 0)
--		ret = -EBUSY;
--	else
--		mnt->mnt.mnt_flags |= MNT_READONLY;
-+		return -EBUSY;
-+
-+	return 0;
-+}
-+
-+static inline void mnt_unhold_writers(struct mount *mnt)
-+{
- 	/*
- 	 * MNT_READONLY must become visible before ~MNT_WRITE_HOLD, so writers
- 	 * that become unheld will see MNT_READONLY.
- 	 */
- 	smp_wmb();
- 	mnt->mnt.mnt_flags &= ~MNT_WRITE_HOLD;
-+}
-+
-+static int mnt_make_readonly(struct mount *mnt)
-+{
-+	int ret;
-+
-+	ret = mnt_hold_writers(mnt);
-+	if (!ret)
-+		mnt->mnt.mnt_flags |= MNT_READONLY;
-+	mnt_unhold_writers(mnt);
- 	return ret;
- }
- 
-@@ -3433,6 +3445,33 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
- 	return ret;
- }
- 
-+static int build_attr_flags(unsigned int attr_flags, unsigned int *flags)
-+{
-+	unsigned int aflags = 0;
-+
-+	if (attr_flags & ~(MOUNT_ATTR_RDONLY |
-+			   MOUNT_ATTR_NOSUID |
-+			   MOUNT_ATTR_NODEV |
-+			   MOUNT_ATTR_NOEXEC |
-+			   MOUNT_ATTR__ATIME |
-+			   MOUNT_ATTR_NODIRATIME))
-+		return -EINVAL;
-+
-+	if (attr_flags & MOUNT_ATTR_RDONLY)
-+		aflags |= MNT_READONLY;
-+	if (attr_flags & MOUNT_ATTR_NOSUID)
-+		aflags |= MNT_NOSUID;
-+	if (attr_flags & MOUNT_ATTR_NODEV)
-+		aflags |= MNT_NODEV;
-+	if (attr_flags & MOUNT_ATTR_NOEXEC)
-+		aflags |= MNT_NOEXEC;
-+	if (attr_flags & MOUNT_ATTR_NODIRATIME)
-+		aflags |= MNT_NODIRATIME;
-+
-+	*flags = aflags;
-+	return 0;
-+}
-+
- /*
-  * Create a kernel mount representation for a new, prepared superblock
-  * (specified by fs_fd) and attach to an open_tree-like file descriptor.
-@@ -3455,24 +3494,9 @@ SYSCALL_DEFINE3(fsmount, int, fs_fd, unsigned int, flags,
- 	if ((flags & ~(FSMOUNT_CLOEXEC)) != 0)
- 		return -EINVAL;
- 
--	if (attr_flags & ~(MOUNT_ATTR_RDONLY |
--			   MOUNT_ATTR_NOSUID |
--			   MOUNT_ATTR_NODEV |
--			   MOUNT_ATTR_NOEXEC |
--			   MOUNT_ATTR__ATIME |
--			   MOUNT_ATTR_NODIRATIME))
--		return -EINVAL;
--
--	if (attr_flags & MOUNT_ATTR_RDONLY)
--		mnt_flags |= MNT_READONLY;
--	if (attr_flags & MOUNT_ATTR_NOSUID)
--		mnt_flags |= MNT_NOSUID;
--	if (attr_flags & MOUNT_ATTR_NODEV)
--		mnt_flags |= MNT_NODEV;
--	if (attr_flags & MOUNT_ATTR_NOEXEC)
--		mnt_flags |= MNT_NOEXEC;
--	if (attr_flags & MOUNT_ATTR_NODIRATIME)
--		mnt_flags |= MNT_NODIRATIME;
-+	ret = build_attr_flags(attr_flags, &mnt_flags);
-+	if (ret)
-+		return ret;
- 
- 	switch (attr_flags & MOUNT_ATTR__ATIME) {
- 	case MOUNT_ATTR_STRICTATIME:
-@@ -3780,6 +3804,220 @@ SYSCALL_DEFINE2(pivot_root, const char __user *, new_root,
- 	return error;
- }
- 
-+static int do_mount_setattr(struct path *path, struct mount_kattr *kattr)
-+{
-+	struct mount *mnt = real_mount(path->mnt), *m = mnt, *last = NULL;
-+	unsigned int all_raised = kattr->attr_set | kattr->attr_clr;
-+	bool rdonly_set = kattr->attr_set & MNT_READONLY;
-+	int err = 0;
-+
-+	if (!check_mnt(m))
-+		return -EINVAL;
-+
-+	if (path->dentry != m->mnt.mnt_root)
-+		return -EINVAL;
-+
-+	if (kattr->propagation) {
-+		/* Only take namespace_lock() if we're actually changing propagation. */
-+		namespace_lock();
-+		if (kattr->propagation == MS_SHARED) {
-+			err = invent_group_ids(m, kattr->recurse);
-+			if (err) {
-+				namespace_unlock();
-+				return err;
-+			}
-+		}
-+	}
-+
-+	lock_mount_hash();
-+	/*
-+	 * Get the mount tree in a shape where we can change mount properties
-+	 * without failure.
-+	 */
-+	m = mnt;
-+	do {
-+		last = m;
-+
-+		if (!can_change_locked_flags(m, all_raised)) {
-+			err = -EPERM;
-+			break;
-+		}
-+
-+		if (rdonly_set && !(m->mnt.mnt_flags & MNT_READONLY)) {
-+			err = mnt_hold_writers(m);
-+			if (err)
-+				break;
-+		}
-+	} while (kattr->recurse && (m = next_mnt(m, mnt)));
-+
-+	m = mnt;
-+	do {
-+		if (!err) {
-+			unsigned int new_flags;
-+
-+			new_flags = m->mnt.mnt_flags;
-+			/* Lower flags user wants us to clear. */
-+			new_flags &= ~kattr->attr_clr;
-+			/* Raise flags user wants us to set. */
-+			new_flags |= kattr->attr_set;
-+			WRITE_ONCE(m->mnt.mnt_flags, new_flags);
-+		}
-+
-+		/*
-+		 * We either set MNT_READONLY above so make it visible
-+		 * before ~MNT_WRITE_HOLD or we failed to recursively
-+		 * apply mount options.
-+		 */
-+		if (rdonly_set && (m->mnt.mnt_flags & MNT_WRITE_HOLD))
-+			mnt_unhold_writers(m);
-+
-+		if (!err && kattr->propagation)
-+			change_mnt_propagation(m, kattr->propagation);
-+
-+		/*
-+		 * On failure, only cleanup until we found the first mount we
-+		 * failed to handle.
-+		 */
-+		if (err && m == last)
-+			break;
-+	} while (kattr->recurse && (m = next_mnt(m, mnt)));
-+
-+	if (!err)
-+		touch_mnt_namespace(mnt->mnt_ns);
-+
-+	unlock_mount_hash();
-+
-+	if (kattr->propagation) {
-+		namespace_unlock();
-+		if (err)
-+			cleanup_group_ids(mnt, NULL);
-+	}
-+
-+	return err;
-+}
-+
-+static int build_mount_kattr(const struct mount_attr *attr,
-+			     struct mount_kattr *kattr, unsigned int flags)
-+{
-+	unsigned int lookup_flags = LOOKUP_AUTOMOUNT | LOOKUP_FOLLOW;
-+
-+	if (flags & AT_NO_AUTOMOUNT)
-+		lookup_flags &= ~LOOKUP_AUTOMOUNT;
-+	if (flags & AT_SYMLINK_NOFOLLOW)
-+		lookup_flags &= ~LOOKUP_FOLLOW;
-+	if (flags & AT_EMPTY_PATH)
-+		lookup_flags |= LOOKUP_EMPTY;
-+
-+	*kattr = (struct mount_kattr){
-+		.lookup_flags	= lookup_flags,
-+		.recurse	= !!(flags & AT_RECURSIVE),
-+	};
-+
-+	switch (attr->propagation) {
-+	case MAKE_PROPAGATION_UNCHANGED:
-+		kattr->propagation = 0;
-+		break;
-+	case MAKE_PROPAGATION_UNBINDABLE:
-+		kattr->propagation = MS_UNBINDABLE;
-+		break;
-+	case MAKE_PROPAGATION_PRIVATE:
-+		kattr->propagation = MS_PRIVATE;
-+		break;
-+	case MAKE_PROPAGATION_DEPENDENT:
-+		kattr->propagation = MS_SLAVE;
-+		break;
-+	case MAKE_PROPAGATION_SHARED:
-+		kattr->propagation = MS_SHARED;
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	if (upper_32_bits(attr->attr_set))
-+		return -EINVAL;
-+	if (build_attr_flags(lower_32_bits(attr->attr_set), &kattr->attr_set))
-+		return -EINVAL;
-+
-+	if (upper_32_bits(attr->attr_clr))
-+		return -EINVAL;
-+	if (build_attr_flags(lower_32_bits(attr->attr_clr), &kattr->attr_clr))
-+		return -EINVAL;
-+
-+	/*
-+	 * Since the MOUNT_ATTR_<atime> values are an enum, not a bitmap, users
-+	 * wanting to transition to a different atime setting cannot simply
-+	 * specify the atime setting in @attr_set, but must also specify
-+	 * MOUNT_ATTR__ATIME in the @attr_clr field.
-+	 * So ensure that MOUNT_ATTR__ATIME can't be partially set in
-+	 * @attr_clr and that @attr_set can't have any atime bits set if
-+	 * MOUNT_ATTR__ATIME isn't set in @attr_clr.
-+	 */
-+	if (!(attr->attr_clr & MOUNT_ATTR__ATIME) && (attr->attr_set & MOUNT_ATTR__ATIME))
-+		return -EINVAL;
-+	else if ((attr->attr_clr & MOUNT_ATTR__ATIME) &&
-+		 ((attr->attr_clr & MOUNT_ATTR__ATIME) != MOUNT_ATTR__ATIME))
-+		return -EINVAL;
-+
-+	if (attr->attr_clr & MOUNT_ATTR__ATIME) {
-+		/* Clear all previous time settings as they are mutually exclusive. */
-+		kattr->attr_clr |= MNT_RELATIME | MNT_NOATIME;
-+		switch (attr->attr_set & MOUNT_ATTR__ATIME) {
-+		case MOUNT_ATTR_RELATIME:
-+			kattr->attr_set |= MNT_RELATIME;
-+			break;
-+		case MOUNT_ATTR_NOATIME:
-+			kattr->attr_set |= MNT_NOATIME;
-+			break;
-+		case MOUNT_ATTR_STRICTATIME:
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
-+SYSCALL_DEFINE5(mount_setattr, int, dfd, const char __user *, path, unsigned int, flags,
-+		struct mount_attr __user *, uattr, size_t, usize)
-+{
-+	int err;
-+	struct path target;
-+	struct mount_attr attr;
-+	struct mount_kattr kattr;
-+
-+	BUILD_BUG_ON(sizeof(struct mount_attr) < MOUNT_ATTR_SIZE_VER0);
-+	BUILD_BUG_ON(sizeof(struct mount_attr) != MOUNT_ATTR_SIZE_LATEST);
-+
-+	if (flags & ~(AT_EMPTY_PATH | AT_RECURSIVE | AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT))
-+		return -EINVAL;
-+
-+	if (unlikely(usize < MOUNT_ATTR_SIZE_VER0))
-+		return -EINVAL;
-+
-+	if (!may_mount())
-+		return -EPERM;
-+
-+	err = copy_struct_from_user(&attr, sizeof(attr), uattr, usize);
-+	if (err)
-+		return err;
-+
-+	if (attr.attr_set == 0 && attr.attr_clr == 0 && attr.propagation == 0)
-+		return 0;
-+
-+	err = build_mount_kattr(&attr, &kattr, flags);
-+	if (err)
-+		return err;
-+
-+	err = user_path_at(dfd, path, kattr.lookup_flags, &target);
-+	if (err)
-+		return err;
-+
-+	err = do_mount_setattr(&target, &kattr);
-+	path_put(&target);
-+	return err;
-+}
-+
- static void __init init_mount_tree(void)
- {
- 	struct vfsmount *mnt;
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 37bea07c12f2..a62d5904fb6a 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -68,6 +68,7 @@ union bpf_attr;
- struct io_uring_params;
- struct clone_args;
- struct open_how;
-+struct mount_attr;
- 
- #include <linux/types.h>
- #include <linux/aio_abi.h>
-@@ -999,6 +1000,8 @@ asmlinkage long sys_open_tree(int dfd, const char __user *path, unsigned flags);
- asmlinkage long sys_move_mount(int from_dfd, const char __user *from_path,
- 			       int to_dfd, const char __user *to_path,
- 			       unsigned int ms_flags);
-+asmlinkage long sys_mount_setattr(int dfd, const char __user *path, unsigned int flags,
-+				  struct mount_attr __user *uattr, size_t usize);
- asmlinkage long sys_fsopen(const char __user *fs_name, unsigned int flags);
- asmlinkage long sys_fsconfig(int fs_fd, unsigned int cmd, const char __user *key,
- 			     const void __user *value, int aux);
-diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
-index 2056318988f7..0517f36fe783 100644
---- a/include/uapi/asm-generic/unistd.h
-+++ b/include/uapi/asm-generic/unistd.h
-@@ -859,9 +859,11 @@ __SYSCALL(__NR_pidfd_getfd, sys_pidfd_getfd)
- __SYSCALL(__NR_faccessat2, sys_faccessat2)
- #define __NR_process_madvise 440
- __SYSCALL(__NR_process_madvise, sys_process_madvise)
-+#define __NR_mount_setattr 441
-+__SYSCALL(__NR_mount_setattr, sys_mount_setattr)
- 
- #undef __NR_syscalls
--#define __NR_syscalls 441
-+#define __NR_syscalls 442
- 
- /*
-  * 32 bit systems traditionally used different
-diff --git a/include/uapi/linux/mount.h b/include/uapi/linux/mount.h
-index dd8306ea336c..fb3ad26fdebf 100644
---- a/include/uapi/linux/mount.h
-+++ b/include/uapi/linux/mount.h
-@@ -118,4 +118,26 @@ enum fsconfig_command {
- #define MOUNT_ATTR_STRICTATIME	0x00000020 /* - Always perform atime updates */
- #define MOUNT_ATTR_NODIRATIME	0x00000080 /* Do not update directory access times */
- 
-+/*
-+ * mount_setattr()
-+ */
-+struct mount_attr {
-+	__u64 attr_set;
-+	__u64 attr_clr;
-+	__u64 propagation;
-+};
-+
-+/* Change propagation through mount_setattr(). */
-+enum propagation_type {
-+	MAKE_PROPAGATION_UNCHANGED	= 0, /* Don't change mount propagation (default). */
-+	MAKE_PROPAGATION_UNBINDABLE	= 1, /* Make unbindable. */
-+	MAKE_PROPAGATION_PRIVATE	= 2, /* Do not receive or send mount events. */
-+	MAKE_PROPAGATION_DEPENDENT	= 3, /* Only receive mount events. */
-+	MAKE_PROPAGATION_SHARED		= 4, /* Send and receive mount events. */
-+};
-+
-+/* List of all mount_attr versions. */
-+#define MOUNT_ATTR_SIZE_VER0	24 /* sizeof first published struct */
-+#define MOUNT_ATTR_SIZE_LATEST	MOUNT_ATTR_SIZE_VER0
-+
- #endif /* _UAPI_LINUX_MOUNT_H */
-diff --git a/tools/include/uapi/asm-generic/unistd.h b/tools/include/uapi/asm-generic/unistd.h
-index f2b5d72a46c2..1cbe8bbda5fa 100644
---- a/tools/include/uapi/asm-generic/unistd.h
-+++ b/tools/include/uapi/asm-generic/unistd.h
-@@ -857,9 +857,11 @@ __SYSCALL(__NR_openat2, sys_openat2)
- __SYSCALL(__NR_pidfd_getfd, sys_pidfd_getfd)
- #define __NR_faccessat2 439
- __SYSCALL(__NR_faccessat2, sys_faccessat2)
-+#define __NR_mount_setattr 441
-+__SYSCALL(__NR_mount_setattr, sys_mount_setattr)
- 
- #undef __NR_syscalls
--#define __NR_syscalls 440
-+#define __NR_syscalls 442
- 
- /*
-  * 32 bit systems traditionally used different
+In order to support idmapped mounts, filesystems need to be changed and
+mark themselves with the FS_ALLOW_IDMAP flag in fs_flags. In this first
+iteration I tried to illustrate this by changing three different
+filesystem with different levels of complexity. Of course with some bias
+towards urgent use-cases and filesystems I was at least a little more
+familiar with. However, Tycho and I (and others) have no problem
+converting each filesystem one-by-one. This first iteration includes fat
+(msdos and vfat), ext4, and overlayfs (both with idmapped lower and
+upper directories and idmapped merged directories). I'm sure I haven't
+gotten everything right for all three of them in the first version of
+this patch.
+
+I have written a simple tool that allows to create idmapped mounts so
+people can play with this patch series. Here are a few illustrations:
+
+1. Create a simple idmapped mount of another user's home directory
+
+u1001@f2-vm:/$ sudo ./mount-idmapped --map-mount b:1000:1001:1 /home/ubuntu/ /mnt
+u1001@f2-vm:/$ ls -al /home/ubuntu/
+total 28
+drwxr-xr-x 2 ubuntu ubuntu 4096 Oct 28 22:07 .
+drwxr-xr-x 4 root   root   4096 Oct 28 04:00 ..
+-rw------- 1 ubuntu ubuntu 3154 Oct 28 22:12 .bash_history
+-rw-r--r-- 1 ubuntu ubuntu  220 Feb 25  2020 .bash_logout
+-rw-r--r-- 1 ubuntu ubuntu 3771 Feb 25  2020 .bashrc
+-rw-r--r-- 1 ubuntu ubuntu  807 Feb 25  2020 .profile
+-rw-r--r-- 1 ubuntu ubuntu    0 Oct 16 16:11 .sudo_as_admin_successful
+-rw------- 1 ubuntu ubuntu 1144 Oct 28 00:43 .viminfo
+u1001@f2-vm:/$ ls -al /mnt/
+total 28
+drwxr-xr-x  2 u1001 u1001 4096 Oct 28 22:07 .
+drwxr-xr-x 29 root  root  4096 Oct 28 22:01 ..
+-rw-------  1 u1001 u1001 3154 Oct 28 22:12 .bash_history
+-rw-r--r--  1 u1001 u1001  220 Feb 25  2020 .bash_logout
+-rw-r--r--  1 u1001 u1001 3771 Feb 25  2020 .bashrc
+-rw-r--r--  1 u1001 u1001  807 Feb 25  2020 .profile
+-rw-r--r--  1 u1001 u1001    0 Oct 16 16:11 .sudo_as_admin_successful
+-rw-------  1 u1001 u1001 1144 Oct 28 00:43 .viminfo
+u1001@f2-vm:/$ touch /mnt/my-file
+u1001@f2-vm:/$ setfacl -m u:1001:rwx /mnt/my-file
+u1001@f2-vm:/$ sudo setcap -n 1001 cap_net_raw+ep /mnt/my-file
+u1001@f2-vm:/$ ls -al /mnt/my-file
+-rw-rwxr--+ 1 u1001 u1001 0 Oct 28 22:14 /mnt/my-file
+u1001@f2-vm:/$ ls -al /home/ubuntu/my-file
+-rw-rwxr--+ 1 ubuntu ubuntu 0 Oct 28 22:14 /home/ubuntu/my-file
+u1001@f2-vm:/$ getfacl /mnt/my-file
+getfacl: Removing leading '/' from absolute path names
+# file: mnt/my-file
+# owner: u1001
+# group: u1001
+user::rw-
+user:u1001:rwx
+group::rw-
+mask::rwx
+other::r--
+u1001@f2-vm:/$ getfacl /home/ubuntu/my-file
+getfacl: Removing leading '/' from absolute path names
+# file: home/ubuntu/my-file
+# owner: ubuntu
+# group: ubuntu
+user::rw-
+user:ubuntu:rwx
+group::rw-
+mask::rwx
+other::r--
+
+2. Create mapping of the whole ext4 rootfs without a mapping for uid and gid 0
+
+ubuntu@f2-vm:~$ sudo /mount-idmapped --map-mount b:1:1:65536 / /mnt/
+ubuntu@f2-vm:~$ findmnt | grep mnt
+└─/mnt                                /dev/sda2  ext4       rw,relatime
+  └─/mnt/mnt                          /dev/sda2  ext4       rw,relatime
+ubuntu@f2-vm:~$ sudo mkdir /AS-ROOT-CAN-CREATE
+ubuntu@f2-vm:~$ sudo mkdir /mnt/AS-ROOT-CANT-CREATE
+mkdir: cannot create directory ‘/mnt/AS-ROOT-CANT-CREATE’: Value too large for defined data type
+ubuntu@f2-vm:~$ mkdir /mnt/home/ubuntu/AS-USER-1000-CAN-CREATE
+
+3. Create a vfat usb mount and expose to user 1001 and 5000
+
+ubuntu@f2-vm:/$ sudo mount /dev/sdb /mnt
+ubuntu@f2-vm:/$ findmnt  | grep mnt
+└─/mnt                                /dev/sdb vfat       rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+ubuntu@f2-vm:/$ ls -al /mnt
+total 12
+drwxr-xr-x  2 root root 4096 Jan  1  1970 .
+drwxr-xr-x 34 root root 4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 root root    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 root root    0 Oct 28 01:09 bbb
+ubuntu@f2-vm:/$ sudo /mount-idmapped --map-mount b:0:1001:1 /mnt /mnt-1001/
+ubuntu@f2-vm:/$ ls -al /mnt-1001/
+total 12
+drwxr-xr-x  2 u1001 u1001 4096 Jan  1  1970 .
+drwxr-xr-x 34 root  root  4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 u1001 u1001    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 u1001 u1001    0 Oct 28 01:09 bbb
+ubuntu@f2-vm:/$ sudo /mount-idmapped --map-mount b:0:5000:1 /mnt /mnt-5000/
+ubuntu@f2-vm:/$ ls -al /mnt-5000/
+total 12
+drwxr-xr-x  2 5000 5000 4096 Jan  1  1970 .
+drwxr-xr-x 34 root root 4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 5000 5000    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 5000 5000    0 Oct 28 01:09 bbb
+
+4. Create an idmapped rootfs mount for a container
+
+root@f2-vm:~# ls -al /var/lib/lxc/f2/rootfs/
+total 68
+drwxr-xr-x 17 20000 20000 4096 Sep 24 07:48 .
+drwxrwx---  3 20000 20000 4096 Oct 16 19:26 ..
+lrwxrwxrwx  1 20000 20000    7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 boot
+drwxr-xr-x  3 20000 20000 4096 Oct 16 19:26 dev
+drwxr-xr-x 61 20000 20000 4096 Oct 16 19:26 etc
+drwxr-xr-x  3 20000 20000 4096 Sep 24 07:45 home
+lrwxrwxrwx  1 20000 20000    7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx  1 20000 20000    9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx  1 20000 20000    9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx  1 20000 20000   10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 media
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 mnt
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 opt
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 proc
+drwx------  2 20000 20000 4096 Sep 24 07:43 root
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:45 run
+lrwxrwxrwx  1 20000 20000    8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 srv
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 sys
+drwxrwxrwt  2 20000 20000 4096 Sep 24 07:44 tmp
+drwxr-xr-x 13 20000 20000 4096 Sep 24 07:43 usr
+drwxr-xr-x 12 20000 20000 4096 Sep 24 07:44 var
+root@f2-vm:~# /mount-idmapped --map-mount b:20000:10000:100000 /var/lib/lxc/f2/rootfs/ /mnt
+root@f2-vm:~# ls -al /mnt
+total 68
+drwxr-xr-x 17 10000 10000 4096 Sep 24 07:48 .
+drwxr-xr-x 34 root  root  4096 Oct 28 22:24 ..
+lrwxrwxrwx  1 10000 10000    7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 boot
+drwxr-xr-x  3 10000 10000 4096 Oct 16 19:26 dev
+drwxr-xr-x 61 10000 10000 4096 Oct 16 19:26 etc
+drwxr-xr-x  3 10000 10000 4096 Sep 24 07:45 home
+lrwxrwxrwx  1 10000 10000    7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx  1 10000 10000    9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx  1 10000 10000    9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx  1 10000 10000   10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 media
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 mnt
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 opt
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 proc
+drwx------  2 10000 10000 4096 Sep 24 07:43 root
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:45 run
+lrwxrwxrwx  1 10000 10000    8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 srv
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 sys
+drwxrwxrwt  2 10000 10000 4096 Sep 24 07:44 tmp
+drwxr-xr-x 13 10000 10000 4096 Sep 24 07:43 usr
+drwxr-xr-x 12 10000 10000 4096 Sep 24 07:44 var
+root@f2-vm:~# lxc-start f2 # uses /mnt as rootfs
+root@f2-vm:~# lxc-attach f2 -- cat /proc/1/uid_map
+         0      10000      10000
+root@f2-vm:~# lxc-attach f2 -- cat /proc/1/gid_map
+         0      10000      10000
+root@f2-vm:~# lxc-attach f2 -- ls -al /
+total 52
+drwxr-xr-x  17 root   root    4096 Sep 24 07:48 .
+drwxr-xr-x  17 root   root    4096 Sep 24 07:48 ..
+lrwxrwxrwx   1 root   root       7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x   2 root   root    4096 Apr 15  2020 boot
+drwxr-xr-x   5 root   root     500 Oct 28 23:39 dev
+drwxr-xr-x  61 root   root    4096 Oct 28 23:39 etc
+drwxr-xr-x   3 root   root    4096 Sep 24 07:45 home
+lrwxrwxrwx   1 root   root       7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx   1 root   root       9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx   1 root   root       9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx   1 root   root      10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 media
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 mnt
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 opt
+dr-xr-xr-x 232 nobody nogroup    0 Oct 28 23:39 proc
+drwx------   2 root   root    4096 Oct 28 23:41 root
+drwxr-xr-x  12 root   root     360 Oct 28 23:39 run
+lrwxrwxrwx   1 root   root       8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 srv
+dr-xr-xr-x  13 nobody nogroup    0 Oct 28 23:39 sys
+drwxrwxrwt  11 root   root    4096 Oct 28 23:40 tmp
+drwxr-xr-x  13 root   root    4096 Sep 24 07:43 usr
+drwxr-xr-x  12 root   root    4096 Sep 24 07:44 var
+root@f2-vm:~# lxc-attach f2 -- ls -al /my-file
+-rw-r--r-- 1 root root 0 Oct 28 23:43 /my-file
+root@f2-vm:~# ls -al /var/lib/lxc/f2/rootfs/my-file
+-rw-r--r-- 1 20000 20000 0 Oct 28 23:43 /var/lib/lxc/f2/rootfs/my-file
+
+[1]: https://systemd.io/HOME_DIRECTORY/
+     "If the UID assigned to a user does not match the owner of the home
+      directory in the file system, the home directory is automatically
+      and recursively chown()ed to the correct UID."
+      This has huge performance impact and is also problematic since it
+      chowns all files independent of ownership.
+[2]: https://github.com/brauner/mount-idmapped
+
+In no particular order I'd like to say thanks to:
+Al for pointing me into the direction to avoid inode alias issues during
+lookup. David for various discussions around this. Tycho for helping
+with this series and on future patches if this is in any shape or form
+acceptable. Alban Crequy for pointing out more application container
+use-cases. Stéphane for various valuable input on various use-cases and
+letting me work on this. Amir for explaining and discussing aspects of
+overlayfs with me.
+I'd like to especially thank Seth Forshee because he provided a lot of
+good analysis, suggestions, and participated in short-notice discussions
+in both chat and video.
+
+This series can be found and pulled in three locations:
+https://git.kernel.org/pub/scm/linux/kernel/git/brauner/linux.git/log/?h=idmapped_mounts
+https://github.com/brauner/linux/tree/idmapped_mounts
+https://gitlab.com/brauner/linux/-/commits/idmapped_mounts
+
+Thanks!
+Christian
+
+Christian Brauner (32):
+  namespace: take lock_mount_hash() directly when changing flags
+  namespace: only take read lock in do_reconfigure_mnt()
+  fs: add mount_setattr()
+  tests: add mount_setattr() selftests
+  fs: introduce MOUNT_ATTR_IDMAP
+  fs: add id translation helpers
+  capability: handle idmapped mounts
+  namei: add idmapped mount aware permission helpers
+  inode: add idmapped mount aware init and permission helpers
+  attr: handle idmapped mounts
+  acl: handle idmapped mounts
+  commoncap: handle idmapped mounts
+  stat: add mapped_generic_fillattr()
+  namei: handle idmapped mounts in may_*() helpers
+  namei: introduce struct renamedata
+  namei: prepare for idmapped mounts
+  namei: add lookup helpers with idmapped mounts aware permission
+    checking
+  open: handle idmapped mounts in do_truncate()
+  open: handle idmapped mounts
+  af_unix: handle idmapped mounts
+  utimes: handle idmapped mounts
+  would_dump: handle idmapped mounts
+  exec: handle idmapped mounts
+  fs: add helpers for idmap mounts
+  apparmor: handle idmapped mounts
+  audit: handle idmapped mounts
+  ima: handle idmapped mounts
+  ext4: support idmapped mounts
+  expfs: handle idmapped mounts
+  overlayfs: handle idmapped lower directories
+  overlayfs: handle idmapped merged mounts
+  fat: handle idmapped mounts
+
+Tycho Andersen (2):
+  xattr: handle idmapped mounts
+  selftests: add idmapped mounts xattr selftest
+
+ arch/alpha/kernel/syscalls/syscall.tbl        |   1 +
+ arch/arm/tools/syscall.tbl                    |   1 +
+ arch/arm64/include/asm/unistd32.h             |   2 +
+ arch/ia64/kernel/syscalls/syscall.tbl         |   1 +
+ arch/m68k/kernel/syscalls/syscall.tbl         |   1 +
+ arch/microblaze/kernel/syscalls/syscall.tbl   |   1 +
+ arch/mips/kernel/syscalls/syscall_n32.tbl     |   1 +
+ arch/mips/kernel/syscalls/syscall_n64.tbl     |   1 +
+ arch/mips/kernel/syscalls/syscall_o32.tbl     |   1 +
+ arch/parisc/kernel/syscalls/syscall.tbl       |   1 +
+ arch/powerpc/kernel/syscalls/syscall.tbl      |   1 +
+ arch/s390/kernel/syscalls/syscall.tbl         |   1 +
+ arch/sh/kernel/syscalls/syscall.tbl           |   1 +
+ arch/sparc/kernel/syscalls/syscall.tbl        |   1 +
+ arch/x86/entry/syscalls/syscall_32.tbl        |   1 +
+ arch/x86/entry/syscalls/syscall_64.tbl        |   1 +
+ arch/xtensa/kernel/syscalls/syscall.tbl       |   1 +
+ fs/Kconfig                                    |   6 +
+ fs/attr.c                                     | 142 ++-
+ fs/coredump.c                                 |  12 +-
+ fs/exec.c                                     |  12 +-
+ fs/exportfs/expfs.c                           |   4 +-
+ fs/ext4/acl.c                                 |  11 +-
+ fs/ext4/acl.h                                 |   3 +
+ fs/ext4/ext4.h                                |  14 +-
+ fs/ext4/file.c                                |   4 +
+ fs/ext4/ialloc.c                              |   7 +-
+ fs/ext4/inode.c                               |  27 +-
+ fs/ext4/ioctl.c                               |  18 +-
+ fs/ext4/namei.c                               | 145 ++-
+ fs/ext4/super.c                               |   4 +
+ fs/ext4/symlink.c                             |   9 +
+ fs/ext4/xattr_hurd.c                          |  22 +-
+ fs/ext4/xattr_security.c                      |  18 +-
+ fs/ext4/xattr_trusted.c                       |  18 +-
+ fs/fat/fat.h                                  |   2 +
+ fs/fat/file.c                                 |  27 +-
+ fs/fat/namei_msdos.c                          |   7 +
+ fs/fat/namei_vfat.c                           |   7 +
+ fs/inode.c                                    |  66 +-
+ fs/internal.h                                 |   9 +
+ fs/namei.c                                    | 597 ++++++++----
+ fs/namespace.c                                | 446 ++++++++-
+ fs/open.c                                     |  52 +-
+ fs/overlayfs/copy_up.c                        | 104 +-
+ fs/overlayfs/dir.c                            | 219 +++--
+ fs/overlayfs/export.c                         |   3 +-
+ fs/overlayfs/file.c                           |  23 +-
+ fs/overlayfs/inode.c                          | 121 ++-
+ fs/overlayfs/namei.c                          |  64 +-
+ fs/overlayfs/overlayfs.h                      | 158 +++-
+ fs/overlayfs/ovl_entry.h                      |   1 +
+ fs/overlayfs/readdir.c                        |  34 +-
+ fs/overlayfs/super.c                          | 109 ++-
+ fs/overlayfs/util.c                           |  38 +-
+ fs/posix_acl.c                                | 130 ++-
+ fs/stat.c                                     |  18 +-
+ fs/utimes.c                                   |   4 +-
+ fs/xattr.c                                    | 264 ++++--
+ include/linux/audit.h                         |  10 +-
+ include/linux/capability.h                    |  12 +-
+ include/linux/fs.h                            | 254 ++++-
+ include/linux/ima.h                           |  15 +-
+ include/linux/lsm_hook_defs.h                 |  10 +-
+ include/linux/lsm_hooks.h                     |   1 +
+ include/linux/mount.h                         |  20 +-
+ include/linux/namei.h                         |   6 +
+ include/linux/posix_acl.h                     |  14 +-
+ include/linux/posix_acl_xattr.h               |  12 +-
+ include/linux/security.h                      |  36 +-
+ include/linux/syscalls.h                      |   3 +
+ include/linux/xattr.h                         |  29 +
+ include/uapi/asm-generic/unistd.h             |   4 +-
+ include/uapi/linux/mount.h                    |  26 +
+ ipc/mqueue.c                                  |   8 +-
+ kernel/auditsc.c                              |  29 +-
+ kernel/capability.c                           |  22 +-
+ net/unix/af_unix.c                            |   2 +-
+ security/apparmor/domain.c                    |   9 +-
+ security/apparmor/file.c                      |   5 +-
+ security/apparmor/lsm.c                       |  12 +-
+ security/commoncap.c                          |  50 +-
+ security/integrity/ima/ima.h                  |  19 +-
+ security/integrity/ima/ima_api.c              |  10 +-
+ security/integrity/ima/ima_appraise.c         |  14 +-
+ security/integrity/ima/ima_asymmetric_keys.c  |   2 +-
+ security/integrity/ima/ima_main.c             |  28 +-
+ security/integrity/ima/ima_policy.c           |  17 +-
+ security/integrity/ima/ima_queue_keys.c       |   2 +-
+ security/security.c                           |  18 +-
+ security/selinux/hooks.c                      |  13 +-
+ security/smack/smack_lsm.c                    |  11 +-
+ tools/include/uapi/asm-generic/unistd.h       |   4 +-
+ tools/testing/selftests/Makefile              |   1 +
+ .../testing/selftests/idmap_mounts/.gitignore |   1 +
+ tools/testing/selftests/idmap_mounts/Makefile |   8 +
+ tools/testing/selftests/idmap_mounts/config   |   1 +
+ tools/testing/selftests/idmap_mounts/xattr.c  | 389 ++++++++
+ .../selftests/mount_setattr/.gitignore        |   1 +
+ .../testing/selftests/mount_setattr/Makefile  |   7 +
+ tools/testing/selftests/mount_setattr/config  |   1 +
+ .../mount_setattr/mount_setattr_test.c        | 888 ++++++++++++++++++
+ 102 files changed, 4109 insertions(+), 912 deletions(-)
+ create mode 100644 tools/testing/selftests/idmap_mounts/.gitignore
+ create mode 100644 tools/testing/selftests/idmap_mounts/Makefile
+ create mode 100644 tools/testing/selftests/idmap_mounts/config
+ create mode 100644 tools/testing/selftests/idmap_mounts/xattr.c
+ create mode 100644 tools/testing/selftests/mount_setattr/.gitignore
+ create mode 100644 tools/testing/selftests/mount_setattr/Makefile
+ create mode 100644 tools/testing/selftests/mount_setattr/config
+ create mode 100644 tools/testing/selftests/mount_setattr/mount_setattr_test.c
+
+
+base-commit: 3650b228f83adda7e5ee532e2b90429c03f7b9ec
 -- 
 2.29.0
 
