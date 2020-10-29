@@ -2,57 +2,56 @@ Return-Path: <SRS0=4fm1=EE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,PDS_TONAME_EQ_TOLOCAL_SHORT,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CBA4C55179
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75477C5DF9D
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D2B312223F
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B8FD2224A
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726099AbgJ2HVR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 29 Oct 2020 03:21:17 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37982 "EHLO
+        id S1726113AbgJ2HVT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 29 Oct 2020 03:21:19 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:37991 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725961AbgJ2HUv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2020 03:20:51 -0400
+        with ESMTP id S1725962AbgJ2HUw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Oct 2020 03:20:52 -0400
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 09T4CxoH020931
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 09T4EpDA023037
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 29 Oct 2020 00:12:59 -0400
+        Thu, 29 Oct 2020 00:14:51 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 2CB19420107; Thu, 29 Oct 2020 00:12:59 -0400 (EDT)
-Date:   Thu, 29 Oct 2020 00:12:59 -0400
+        id 36255420107; Thu, 29 Oct 2020 00:14:51 -0400 (EDT)
+Date:   Thu, 29 Oct 2020 00:14:51 -0400
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Daniel Rosenberg <drosen@google.com>
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-team@android.com, Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH] ext4: Use generic casefolding support
-Message-ID: <20201029041259.GS5691@mit.edu>
-References: <20201028050820.1636571-1-drosen@google.com>
+To:     yangerkun <yangerkun@huawei.com>
+Cc:     jack@suse.com, adilger@dilger.ca, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: do not use extent after put_bh
+Message-ID: <20201029041451.GT5691@mit.edu>
+References: <20201028055617.2569255-1-yangerkun@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20201028050820.1636571-1-drosen@google.com>
+In-Reply-To: <20201028055617.2569255-1-yangerkun@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Oct 28, 2020 at 05:08:20AM +0000, Daniel Rosenberg wrote:
-> This switches ext4 over to the generic support provided in libfs.
+On Wed, Oct 28, 2020 at 01:56:17PM +0800, yangerkun wrote:
+> ext4_ext_search_right will read more extent block and call put_bh after
+> we get the information we need. However ret_ex will break this and may
+> cause use-after-free once pagecache has been freed. Fix it by dup the
+> extent we need.
 > 
-> Since casefolded dentries behave the same in ext4 and f2fs, we decrease
-> the maintenance burden by unifying them, and any optimizations will
-> immediately apply to both.
-> 
-> Signed-off-by: Daniel Rosenberg <drosen@google.com>
-> Reviewed-by: Eric Biggers <ebiggers@google.com>
+> Signed-off-by: yangerkun <yangerkun@huawei.com>
 
-Applied, thanks.
+Good catch!
+
+Thanks, applied.
 
 					- Ted
