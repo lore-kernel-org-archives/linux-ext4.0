@@ -4,133 +4,149 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F718C56201
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:34:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8FE0C5DF9D
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2180A20790
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:34:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9CC3820790
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728596AbgJ2AeR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Oct 2020 20:34:17 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:6983 "EHLO
-        szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731713AbgJ1WUo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 18:20:44 -0400
-Received: from DGGEMS414-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4CLd586NyCzhchM;
-        Wed, 28 Oct 2020 13:52:28 +0800 (CST)
-Received: from code-website.localdomain (10.175.127.227) by
- DGGEMS414-HUB.china.huawei.com (10.3.19.214) with Microsoft SMTP Server id
- 14.3.487.0; Wed, 28 Oct 2020 13:52:15 +0800
-From:   yangerkun <yangerkun@huawei.com>
-To:     <tytso@mit.edu>, <jack@suse.com>, <adilger@dilger.ca>
-CC:     <linux-ext4@vger.kernel.org>, <yangerkun@huawei.com>
-Subject: [PATCH] ext4: do not use extent after put_bh
-Date:   Wed, 28 Oct 2020 13:56:17 +0800
-Message-ID: <20201028055617.2569255-1-yangerkun@huawei.com>
-X-Mailer: git-send-email 2.25.4
+        id S1731885AbgJ2Af3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Oct 2020 20:35:29 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:60621 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730334AbgJ2Af0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 20:35:26 -0400
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1kXvuN-0008Ep-Br; Thu, 29 Oct 2020 00:35:15 +0000
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org
+Cc:     John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Jann Horn <jannh@google.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-audit@redhat.com, linux-integrity@vger.kernel.org,
+        selinux@vger.kernel.org,
+        Christian Brauner <christian.brauner@ubuntu.com>
+Subject: [PATCH 02/34] namespace: only take read lock in do_reconfigure_mnt()
+Date:   Thu, 29 Oct 2020 01:32:20 +0100
+Message-Id: <20201029003252.2128653-3-christian.brauner@ubuntu.com>
+X-Mailer: git-send-email 2.29.0
+In-Reply-To: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
+References: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4_ext_search_right will read more extent block and call put_bh after
-we get the information we need. However ret_ex will break this and may
-cause use-after-free once pagecache has been freed. Fix it by dup the
-extent we need.
+do_reconfigure_mnt() used to take the down_write(&sb->s_umount) lock
+which seems unnecessary since we're not changing the superblock. We're
+only checking whether it is already read-only. Setting other mount
+attributes is protected by lock_mount_hash() afaict and not by s_umount.
 
-Signed-off-by: yangerkun <yangerkun@huawei.com>
+So I think the history of down_write(&sb->s_umount) lock being taken
+when setting mount attributes dates back to the introduction of
+MNT_READONLY in [2]. Afaict, this introduced the concept of having
+read-only mounts in contrast to just having a read-only superblock. When
+it got introduced it was simply plumbed into do_remount() which already
+took down_write(&sb->s_umount) because it was only used to actually
+change the superblock before [2]. Afaict, it would've already been
+possible back then to only use down_read(&sb->s_umount) for
+MS_BIND | MS_REMOUNT since actual mount options were protected by
+the vfsmount lock already. But that would've meant special casing the
+locking for MS_BIND | MS_REMOUNT in do_remount() which people might not
+have considered worth it.
+Then in [1] MS_BIND | MS_REMOUNT mount option changes were split out of
+do_remount() into do_reconfigure_mnt() but the down_write(&sb->s_umount)
+lock was simply copied over.
+Now that we have this be a separate helper only take
+the down_read(&sb->s_umount) lock since we're only interested in
+checking whether the super block is currently read-only and blocking any
+writers from changing it. Essentially, checking that the super block is
+read-only has the advantage that we can avoid having to go into the
+slowpath and through MNT_WRITE_HOLD and can simply set the read-only
+flag on the mount in set_mount_attributes().
+
+[1]: commit 43f5e655eff7 ("vfs: Separate changing mount flags full remount")
+[2]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org
+Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
- fs/ext4/extents.c | 30 +++++++++++++++---------------
- 1 file changed, 15 insertions(+), 15 deletions(-)
+ fs/namespace.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 559100f3e23c..4ba8131a5629 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1471,16 +1471,16 @@ static int ext4_ext_search_left(struct inode *inode,
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 20ee291a7af4..6e0d5bb63197 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -2507,10 +2507,6 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
+ 	return __mnt_unmake_readonly(mnt);
  }
  
- /*
-- * search the closest allocated block to the right for *logical
-- * and returns it at @logical + it's physical address at @phys
-- * if *logical is the largest allocated block, the function
-- * returns 0 at @phys
-- * return value contains 0 (success) or error code
-+ * Search the closest allocated block to the right for *logical
-+ * and returns it at @logical + it's physical address at @phys.
-+ * If not exists, return 0 and @phys is set to 0. We will return
-+ * 1 which means we found that and ret_ex may be valid. Or return
-+ * the error code.
-  */
- static int ext4_ext_search_right(struct inode *inode,
- 				 struct ext4_ext_path *path,
- 				 ext4_lblk_t *logical, ext4_fsblk_t *phys,
--				 struct ext4_extent **ret_ex)
-+				 struct ext4_extent *ret_ex)
+-/*
+- * Update the user-settable attributes on a mount.  The caller must hold
+- * sb->s_umount for writing.
+- */
+ static void set_mount_attributes(struct mount *mnt, unsigned int mnt_flags)
  {
- 	struct buffer_head *bh = NULL;
- 	struct ext4_extent_header *eh;
-@@ -1574,10 +1574,11 @@ static int ext4_ext_search_right(struct inode *inode,
- found_extent:
- 	*logical = le32_to_cpu(ex->ee_block);
- 	*phys = ext4_ext_pblock(ex);
--	*ret_ex = ex;
-+	if (ret_ex)
-+		*ret_ex = *ex;
- 	if (bh)
- 		put_bh(bh);
--	return 0;
-+	return 1;
- }
+ 	mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
+@@ -2560,13 +2556,17 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
+ 	if (!can_change_locked_flags(mnt, mnt_flags))
+ 		return -EPERM;
  
- /*
-@@ -2868,8 +2869,8 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 			 */
- 			lblk = ex_end + 1;
- 			err = ext4_ext_search_right(inode, path, &lblk, &pblk,
--						    &ex);
--			if (err)
-+						    NULL);
-+			if (err < 0)
- 				goto out;
- 			if (pblk) {
- 				partial.pclu = EXT4_B2C(sbi, pblk);
-@@ -4039,7 +4040,7 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 			struct ext4_map_blocks *map, int flags)
- {
- 	struct ext4_ext_path *path = NULL;
--	struct ext4_extent newex, *ex, *ex2;
-+	struct ext4_extent newex, *ex, ex2;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	ext4_fsblk_t newblock = 0, pblk;
- 	int err = 0, depth, ret;
-@@ -4175,15 +4176,14 @@ int ext4_ext_map_blocks(handle_t *handle, struct inode *inode,
- 	if (err)
- 		goto out;
- 	ar.lright = map->m_lblk;
--	ex2 = NULL;
- 	err = ext4_ext_search_right(inode, path, &ar.lright, &ar.pright, &ex2);
--	if (err)
-+	if (err < 0)
- 		goto out;
+-	down_write(&sb->s_umount);
++	/*
++	 * We're only checking whether the superblock is read-only not changing
++	 * it, so only take down_read(&sb->s_umount).
++	 */
++	down_read(&sb->s_umount);
+ 	lock_mount_hash();
+ 	ret = change_mount_ro_state(mnt, mnt_flags);
+ 	if (ret == 0)
+ 		set_mount_attributes(mnt, mnt_flags);
+ 	unlock_mount_hash();
+-	up_write(&sb->s_umount);
++	up_read(&sb->s_umount);
  
- 	/* Check if the extent after searching to the right implies a
- 	 * cluster we can use. */
--	if ((sbi->s_cluster_ratio > 1) && ex2 &&
--	    get_implied_cluster_alloc(inode->i_sb, map, ex2, path)) {
-+	if ((sbi->s_cluster_ratio > 1) && err &&
-+	    get_implied_cluster_alloc(inode->i_sb, map, &ex2, path)) {
- 		ar.len = allocated = map->m_len;
- 		newblock = map->m_pblk;
- 		goto got_allocated_blocks;
+ 	mnt_warn_timestamp_expiry(path, &mnt->mnt);
+ 
 -- 
-2.25.4
+2.29.0
 
