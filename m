@@ -4,26 +4,26 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8FE0C5DF9D
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20F84C5DF9E
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9CC3820790
-	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF9C020790
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Oct 2020 00:35:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731885AbgJ2Af3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Oct 2020 20:35:29 -0400
-Received: from youngberry.canonical.com ([91.189.89.112]:60621 "EHLO
+        id S1731948AbgJ2Afc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Oct 2020 20:35:32 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:60632 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730334AbgJ2Af0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 20:35:26 -0400
+        with ESMTP id S1730399AbgJ2Afa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Oct 2020 20:35:30 -0400
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kXvuN-0008Ep-Br; Thu, 29 Oct 2020 00:35:15 +0000
+        id 1kXvuV-0008Ep-OY; Thu, 29 Oct 2020 00:35:23 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -62,9 +62,9 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         linux-audit@redhat.com, linux-integrity@vger.kernel.org,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>
-Subject: [PATCH 02/34] namespace: only take read lock in do_reconfigure_mnt()
-Date:   Thu, 29 Oct 2020 01:32:20 +0100
-Message-Id: <20201029003252.2128653-3-christian.brauner@ubuntu.com>
+Subject: [PATCH 07/34] capability: handle idmapped mounts
+Date:   Thu, 29 Oct 2020 01:32:25 +0100
+Message-Id: <20201029003252.2128653-8-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.0
 In-Reply-To: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
 References: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
@@ -74,78 +74,103 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-do_reconfigure_mnt() used to take the down_write(&sb->s_umount) lock
-which seems unnecessary since we're not changing the superblock. We're
-only checking whether it is already read-only. Setting other mount
-attributes is protected by lock_mount_hash() afaict and not by s_umount.
+In order to determine whether a caller holds privilege over a given
+inode the capability framework exposes the two helpers
+privileged_wrt_inode_uidgid() and capable_wrt_inode_uidgid(). The former
+verifies that the inode has a mapping in the caller's user namespace and
+the latter additionally verifies that the caller has the requested
+capability in their current user namespace. If the inode is accessed
+through an idmapped mount we first need to map it according to the
+mount's user namespace. Afterwards the checks are identical to
+non-idmapped inodes. If the initial user namespace is passed all
+operations are a nop so non-idmapped mounts will not see a change in
+behavior and will also not see any performance impact.
+Since the privileged_wrt_inode_uidgid() helper only has one caller it
+makes more sense to simply add an additional user namespace argument and
+adapt the single callsite it is used in. The capable_wrt_inode_uidgid()
+helper is used in more places so we introduce a new
+capable_wrt_mapped_inode_uidgid() helper which can be used by the vfs.
 
-So I think the history of down_write(&sb->s_umount) lock being taken
-when setting mount attributes dates back to the introduction of
-MNT_READONLY in [2]. Afaict, this introduced the concept of having
-read-only mounts in contrast to just having a read-only superblock. When
-it got introduced it was simply plumbed into do_remount() which already
-took down_write(&sb->s_umount) because it was only used to actually
-change the superblock before [2]. Afaict, it would've already been
-possible back then to only use down_read(&sb->s_umount) for
-MS_BIND | MS_REMOUNT since actual mount options were protected by
-the vfsmount lock already. But that would've meant special casing the
-locking for MS_BIND | MS_REMOUNT in do_remount() which people might not
-have considered worth it.
-Then in [1] MS_BIND | MS_REMOUNT mount option changes were split out of
-do_remount() into do_reconfigure_mnt() but the down_write(&sb->s_umount)
-lock was simply copied over.
-Now that we have this be a separate helper only take
-the down_read(&sb->s_umount) lock since we're only interested in
-checking whether the super block is currently read-only and blocking any
-writers from changing it. Essentially, checking that the super block is
-read-only has the advantage that we can avoid having to go into the
-slowpath and through MNT_WRITE_HOLD and can simply set the read-only
-flag on the mount in set_mount_attributes().
-
-[1]: commit 43f5e655eff7 ("vfs: Separate changing mount flags full remount")
-[2]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: David Howells <dhowells@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
- fs/namespace.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ fs/exec.c                  |  2 +-
+ include/linux/capability.h |  6 +++++-
+ kernel/capability.c        | 22 ++++++++++++++++------
+ 3 files changed, 22 insertions(+), 8 deletions(-)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 20ee291a7af4..6e0d5bb63197 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -2507,10 +2507,6 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
- 	return __mnt_unmake_readonly(mnt);
+diff --git a/fs/exec.c b/fs/exec.c
+index 547a2390baf5..8e75d7a33514 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -1398,7 +1398,7 @@ void would_dump(struct linux_binprm *bprm, struct file *file)
+ 		/* Ensure mm->user_ns contains the executable */
+ 		user_ns = old = bprm->mm->user_ns;
+ 		while ((user_ns != &init_user_ns) &&
+-		       !privileged_wrt_inode_uidgid(user_ns, inode))
++		       !privileged_wrt_inode_uidgid(user_ns, &init_user_ns, inode))
+ 			user_ns = user_ns->parent;
+ 
+ 		if (old != user_ns) {
+diff --git a/include/linux/capability.h b/include/linux/capability.h
+index 1e7fe311cabe..308d88096745 100644
+--- a/include/linux/capability.h
++++ b/include/linux/capability.h
+@@ -247,8 +247,12 @@ static inline bool ns_capable_setid(struct user_namespace *ns, int cap)
+ 	return true;
+ }
+ #endif /* CONFIG_MULTIUSER */
+-extern bool privileged_wrt_inode_uidgid(struct user_namespace *ns, const struct inode *inode);
++extern bool privileged_wrt_inode_uidgid(struct user_namespace *ns,
++					struct user_namespace *mnt_user_ns,
++					const struct inode *inode);
+ extern bool capable_wrt_inode_uidgid(const struct inode *inode, int cap);
++extern bool capable_wrt_mapped_inode_uidgid(struct user_namespace *mnt_user_ns,
++					const struct inode *inode, int cap);
+ extern bool file_ns_capable(const struct file *file, struct user_namespace *ns, int cap);
+ extern bool ptracer_capable(struct task_struct *tsk, struct user_namespace *ns);
+ static inline bool perfmon_capable(void)
+diff --git a/kernel/capability.c b/kernel/capability.c
+index de7eac903a2a..427776414487 100644
+--- a/kernel/capability.c
++++ b/kernel/capability.c
+@@ -484,12 +484,24 @@ EXPORT_SYMBOL(file_ns_capable);
+  *
+  * Return true if the inode uid and gid are within the namespace.
+  */
+-bool privileged_wrt_inode_uidgid(struct user_namespace *ns, const struct inode *inode)
++bool privileged_wrt_inode_uidgid(struct user_namespace *ns,
++				 struct user_namespace *mnt_user_ns,
++				 const struct inode *inode)
+ {
+-	return kuid_has_mapping(ns, inode->i_uid) &&
+-		kgid_has_mapping(ns, inode->i_gid);
++	return kuid_has_mapping(ns, i_uid_into_mnt(mnt_user_ns, inode)) &&
++	       kgid_has_mapping(ns, i_gid_into_mnt(mnt_user_ns, inode));
  }
  
--/*
-- * Update the user-settable attributes on a mount.  The caller must hold
-- * sb->s_umount for writing.
-- */
- static void set_mount_attributes(struct mount *mnt, unsigned int mnt_flags)
++bool capable_wrt_mapped_inode_uidgid(struct user_namespace *mnt_user_ns,
++				 const struct inode *inode, int cap)
++{
++	struct user_namespace *ns = current_user_ns();
++
++	return ns_capable(ns, cap) &&
++	       privileged_wrt_inode_uidgid(ns, mnt_user_ns, inode);
++}
++EXPORT_SYMBOL(capable_wrt_mapped_inode_uidgid);
++
+ /**
+  * capable_wrt_inode_uidgid - Check nsown_capable and uid and gid mapped
+  * @inode: The inode in question
+@@ -501,9 +513,7 @@ bool privileged_wrt_inode_uidgid(struct user_namespace *ns, const struct inode *
+  */
+ bool capable_wrt_inode_uidgid(const struct inode *inode, int cap)
  {
- 	mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
-@@ -2560,13 +2556,17 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
- 	if (!can_change_locked_flags(mnt, mnt_flags))
- 		return -EPERM;
- 
--	down_write(&sb->s_umount);
-+	/*
-+	 * We're only checking whether the superblock is read-only not changing
-+	 * it, so only take down_read(&sb->s_umount).
-+	 */
-+	down_read(&sb->s_umount);
- 	lock_mount_hash();
- 	ret = change_mount_ro_state(mnt, mnt_flags);
- 	if (ret == 0)
- 		set_mount_attributes(mnt, mnt_flags);
- 	unlock_mount_hash();
--	up_write(&sb->s_umount);
-+	up_read(&sb->s_umount);
- 
- 	mnt_warn_timestamp_expiry(path, &mnt->mnt);
+-	struct user_namespace *ns = current_user_ns();
+-
+-	return ns_capable(ns, cap) && privileged_wrt_inode_uidgid(ns, inode);
++	return capable_wrt_mapped_inode_uidgid(&init_user_ns, inode, cap);
+ }
+ EXPORT_SYMBOL(capable_wrt_inode_uidgid);
  
 -- 
 2.29.0
