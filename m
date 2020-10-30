@@ -2,231 +2,140 @@ Return-Path: <SRS0=wvBl=EF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A546C388F9
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Oct 2020 13:19:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 440A0C55178
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Oct 2020 15:09:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 159BD20731
-	for <linux-ext4@archiver.kernel.org>; Fri, 30 Oct 2020 13:19:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="R1a8yjXi"
+	by mail.kernel.org (Postfix) with ESMTP id ECB692071A
+	for <linux-ext4@archiver.kernel.org>; Fri, 30 Oct 2020 15:09:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726610AbgJ3NTS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 30 Oct 2020 09:19:18 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:31906 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726307AbgJ3NTR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Oct 2020 09:19:17 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1604063956;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=MNMgeoRyZngGrsMkBeY+FVhigg852k0h/oZRRCOeEy8=;
-        b=R1a8yjXi1elvrjBMTEg78lryl+K/ugYT5K9zHX42R5q0G0dOv0odfAgJhDe4bBl442XE/8
-        bjc74VRpNZCO/dyuJHabZRWlibSFZhZnAVfC3dfK24Bn5/xtyh48J5LsJjZslRPe0I6gIi
-        iAZpXlNbW8nZyD5u6IVv6a3m2pGbZKw=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-554-_ov3KqdkMGeMFm0L1iR8Pg-1; Fri, 30 Oct 2020 09:19:12 -0400
-X-MC-Unique: _ov3KqdkMGeMFm0L1iR8Pg-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9C21C1030984;
-        Fri, 30 Oct 2020 13:19:10 +0000 (UTC)
-Received: from bfoster (ovpn-113-186.rdu2.redhat.com [10.10.113.186])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id CADDE10023A5;
-        Fri, 30 Oct 2020 13:19:09 +0000 (UTC)
-Date:   Fri, 30 Oct 2020 09:19:08 -0400
-From:   Brian Foster <bfoster@redhat.com>
-To:     Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     fstests@vger.kernel.org, anju@linux.vnet.ibm.com,
-        Eryu Guan <guan@eryu.me>, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] shared/001: Verify swapon on fallocated files for
- supported FS
-Message-ID: <20201030131908.GC1794672@bfoster>
-References: <cover.1604000570.git.riteshh@linux.ibm.com>
- <5750e38bb14440b6357a46470f2cd769cde1a349.1604000570.git.riteshh@linux.ibm.com>
+        id S1726992AbgJ3PJM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 30 Oct 2020 11:09:12 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:44558 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726813AbgJ3PJL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Oct 2020 11:09:11 -0400
+Received: from mail-yb1-f200.google.com ([209.85.219.200])
+        by youngberry.canonical.com with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <seth.forshee@canonical.com>)
+        id 1kYW0Q-0001t1-EQ
+        for linux-ext4@vger.kernel.org; Fri, 30 Oct 2020 15:07:54 +0000
+Received: by mail-yb1-f200.google.com with SMTP id q8so6341161ybk.18
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Oct 2020 08:07:54 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=xa7Ya7WFCD66IO3n4EspVdAVBWL69bn4xyiCQC0MCNc=;
+        b=XL+slcuKEkJDaY4wVU1O5rb02mW7ZWvPxDBBUxGGjbTgwc2Ve6G6hKUDBTCvHER6PJ
+         N3NwbO/bwSDxOOxMWaftC2aq0qFOL7nKYu0d0AxdL+ZmHR58S9KKjY6BgzMjOH2f/Pjd
+         5d0ddcbUASOF4kwtuaVsIqFwWhDZjJjnn5uQ1ocSVgtZC4rBbsn18GLKeKXsNXV7qQFc
+         /OFol/9VclueZjjnBb2zFTM+kw8nB3Ea4SnfjoSRf3uFmdnTVvZ+BD+H9hDmHBO0pKdG
+         sTb7SwfR7NnVQwWMSuc14FdzbTz0WXzLqhY5wcYLpF/QVGB02xxGkMW10NM/fuubJjvu
+         bypg==
+X-Gm-Message-State: AOAM5315vmSCkbb52+3O8FN0nl2KVVdJGoX3KFGOQ+niqzUc3Nunrufb
+        tVimrnX2MFpzMJIB3uYSEp1RQVjbOLALo50tma4kqr/1LmmOd6LFceZY7OO66LhaMW17xx9BDfR
+        X/ALzflWj/XiytzU569ldRGxXxy7Q9R66z8un0HY=
+X-Received: by 2002:a9d:7f90:: with SMTP id t16mr2120437otp.231.1604070472476;
+        Fri, 30 Oct 2020 08:07:52 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJxrwanxbYDDJUUK4/p/rI4RmYyrOvYEAiYYd5ZsrwMuhegPWsvTXQZPd/YkhjdWXy2r86N00Q==
+X-Received: by 2002:a9d:7f90:: with SMTP id t16mr2120406otp.231.1604070472204;
+        Fri, 30 Oct 2020 08:07:52 -0700 (PDT)
+Received: from localhost ([2605:a601:ac0f:820:f03a:863:709:f18c])
+        by smtp.gmail.com with ESMTPSA id d22sm1412368oij.53.2020.10.30.08.07.49
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 30 Oct 2020 08:07:49 -0700 (PDT)
+Date:   Fri, 30 Oct 2020 10:07:48 -0500
+From:   Seth Forshee <seth.forshee@canonical.com>
+To:     "Eric W. Biederman" <ebiederm@xmission.com>
+Cc:     Aleksa Sarai <cyphar@cyphar.com>,
+        Christian Brauner <christian.brauner@ubuntu.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org,
+        John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Jann Horn <jannh@google.com>,
+        =?utf-8?B?U3TDqXBoYW5l?= Graber <stgraber@ubuntu.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        smbarber@chromium.org, Phil Estes <estesp@gmail.com>,
+        Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-audit@redhat.com, linux-integrity@vger.kernel.org,
+        selinux@vger.kernel.org
+Subject: Re: [PATCH 00/34] fs: idmapped mounts
+Message-ID: <20201030150748.GA176340@ubuntu-x1>
+References: <20201029003252.2128653-1-christian.brauner@ubuntu.com>
+ <87pn51ghju.fsf@x220.int.ebiederm.org>
+ <20201029155148.5odu4j2kt62ahcxq@yavin.dot.cyphar.com>
+ <87361xdm4c.fsf@x220.int.ebiederm.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <5750e38bb14440b6357a46470f2cd769cde1a349.1604000570.git.riteshh@linux.ibm.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+In-Reply-To: <87361xdm4c.fsf@x220.int.ebiederm.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 30, 2020 at 01:22:52AM +0530, Ritesh Harjani wrote:
-> Currently generic/496 tests if swapon works with fallocated files or not
-> on the given FS and bails out with _not_run if it doesn't. Due to this
-> 2 of the regressions went unnoticed in ext4.
-> Hence this test is created specifically for FS (ext4, xfs) which does
-> support swap functionality on unwritten extents to report an error
-> if it swapon fails with fallocated fils.
+On Thu, Oct 29, 2020 at 11:37:23AM -0500, Eric W. Biederman wrote:
+> First and foremost: A uid shift on write to a filesystem is a security
+> bug waiting to happen.  This is especially in the context of facilities
+> like iouring, that play very agressive games with how process context
+> makes it to  system calls.
 > 
-> Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-> ---
->  tests/shared/001     | 97 ++++++++++++++++++++++++++++++++++++++++++++
->  tests/shared/001.out |  6 +++
->  tests/shared/group   |  1 +
->  3 files changed, 104 insertions(+)
->  create mode 100755 tests/shared/001
->  create mode 100644 tests/shared/001.out
+> The only reason containers were not immediately exploitable when iouring
+> was introduced is because the mechanisms are built so that even if
+> something escapes containment the security properties still apply.
+> Changes to the uid when writing to the filesystem does not have that
+> property.  The tiniest slip in containment will be a security issue.
 > 
+> This is not even the least bit theoretical.  I have seem reports of how
+> shitfs+overlayfs created a situation where anyone could read
+> /etc/shadow.
 
-I could be mistaken, but I thought we were phasing out shared tests in
-favor of generic tests..?
+This bug was the result of a complex interaction with several
+contributing factors. It's fair to say that one component was overlayfs
+writing through an id-shifted mount, but the primary cause was related
+to how copy-up was done coupled with allowing unprivileged overlayfs
+mounts in a user ns. Checks that the mounter had access to the lower fs
+file were not done before copying data up, and so the file was copied up
+temporarily to the id shifted upperdir. Even though it was immediately
+removed, other factors made it possible for the user to get the file
+contents from the upperdir.
 
-> diff --git a/tests/shared/001 b/tests/shared/001
-> new file mode 100755
-> index 000000000000..ad7285bdb709
-> --- /dev/null
-> +++ b/tests/shared/001
-> @@ -0,0 +1,97 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2018 Oracle.  All Rights Reserved.
-> +#
-> +# FS QA Test 001
-> +#
-> +# This is similar to generic/472 and generic/496.
-> +# Except that generic/496 is modified to focefully verify if
-> +# swap works on fallocate files for given supported filesystems
-> +# or not instead of bailing out with _not_run, if swapon cmd fails.
-> +# Modified by Ritesh Harjani <riteshh@linux.ibm.com>
-> +#
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1	# failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +	cd /
-> +	swapoff $swapfile 2> /dev/null
-> +	rm -f $tmp.*
-> +}
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +# remove previous $seqres.full before test
-> +rm -f $seqres.full
-> +
-> +# Modify as appropriate.
-> +_supported_fs ext4 xfs
-> +_require_scratch_swapfile
-> +_require_test_program mkswap
-> +_require_test_program swapon
-> +_require_xfs_io_command "falloc"
-> +
-> +_scratch_mkfs >>$seqres.full 2>&1
-> +_scratch_mount >>$seqres.full 2>&1
-> +
-> +swapfile=$SCRATCH_MNT/swap
-> +len=$((2 * 1048576))
-> +page_size=$(get_page_size)
-> +
-> +swapfile_cycle() {
-> +	local swapfile="$1"
-> +
-> +	if [ $# -eq 2 ]; then
-> +		local len="$2"
-> +		_pwrite_byte 0x58 0 $len $swapfile >> $seqres.full
-> +	fi
-> +	"$here/src/mkswap" $swapfile >> $seqres.full
-> +	"$here/src/swapon" $swapfile 2>&1 | _filter_scratch
-> +	swapoff $swapfile 2>> $seqres.full
+Regardless, I do think you raise a good point. We need to be wary of any
+place the kernel could open files through a shifted mount, especially
+when the open could be influenced by userspace.
 
-It might be a little more readable to define and use per-cmd variables
-like $MKSWAP, etc., if we don't have those already.
+Perhaps kernel file opens through shifted mounts should to be opt-in.
+I.e. unless a flag is passed, or a different open interface used, the
+open will fail if the dentry being opened is subject to id shifting.
+This way any kernel writes which would be subject to id shifting will
+only happen through code which as been written to take it into account.
 
-> +	rm -f $swapfile
-> +}
-> +
-> +# from here similar to generic/472
-> +touch $swapfile
-> +
-> +# Create a regular swap file
-> +echo "regular swap" | tee -a $seqres.full
-> +swapfile_cycle $swapfile $len
-> +
-> +# Create a swap file with a little too much junk on the end
-> +echo "too long swap" | tee -a $seqres.full
-> +swapfile_cycle $swapfile $((len + 3))
-> +
-> +# Create a ridiculously small swap file.  Each swap file must have at least
-> +# two pages after the header page.
-> +echo "tiny swap" | tee -a $seqres.full
-> +swapfile_cycle $swapfile $(($(get_page_size) * 3))
-> +
-> +# From here similar to generic/496
-> +echo "fallocate swap" | tee -a $seqres.full
-> +$XFS_IO_PROG -f -c "falloc 0 $len" $swapfile >> $seqres.full
-> +"$here/src/mkswap" $swapfile
-> +"$here/src/swapon" $swapfile 2>&1 | _filter_scratch
-> +swapoff $swapfile
-> +
-> +# Create a fallocated swap file and touch every other $PAGE_SIZE to create
-> +# a mess of written/unwritten extent records
-> +echo "mixed swap" | tee -a $seqres.full
-> +$XFS_IO_PROG -f -c "falloc 0 $len" $swapfile >> $seqres.full
-
-We probably want to recreate the file here. It looks like we reuse the
-file from the previous test, since it didn't call swapfile_cycle().
-
-I also wonder whether it's really worth duplicating previous test code
-just to prevent incorrect _notrun cases that should be considered test
-failures. One could argue that's a bug in the original test that could
-be fixed. Could we modify those tests to only filter out the btrfs case?
-
-Brian
-
-> +seq $page_size $((page_size * 2)) $len | while read offset; do
-> +	_pwrite_byte 0x58 $offset 1 $swapfile >> $seqres.full
-> +done
-> +swapfile_cycle $swapfile
-> +
-> +# success, all done
-> +status=0
-> +exit
-> diff --git a/tests/shared/001.out b/tests/shared/001.out
-> new file mode 100644
-> index 000000000000..2d7655e19422
-> --- /dev/null
-> +++ b/tests/shared/001.out
-> @@ -0,0 +1,6 @@
-> +QA output created by 001
-> +regular swap
-> +too long swap
-> +tiny swap
-> +fallocate swap
-> +mixed swap
-> diff --git a/tests/shared/group b/tests/shared/group
-> index a8b926d877d2..5a41b23c7010 100644
-> --- a/tests/shared/group
-> +++ b/tests/shared/group
-> @@ -3,6 +3,7 @@
->  # - do not start group names with a digit
->  # - comment line before each group is "new" description
->  #
-> +001 auto swap quick
->  002 auto metadata quick log
->  032 mkfs auto quick
->  298 auto trim
-> --
-> 2.26.2
-> 
-
+Seth
