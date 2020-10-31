@@ -2,174 +2,92 @@ Return-Path: <SRS0=FyFU=EG=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E91DC55179
-	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39C57C4742C
+	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 22:09:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 03DE1206F7
-	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:56 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ts0Fe2iw"
+	by mail.kernel.org (Postfix) with ESMTP id 0342C207DE
+	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 22:09:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1604182194;
+	bh=S03k1YGXaJQvf3NAsk0rAuPNkYHGojNJSpqWlOKkY6Y=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=XcgR9+OHLunK92oB6tpw84KuwxiPSOafTv7yUspcn+NlslNtF1GnNu4JiZBIkxx5m
+	 s2Nc4xzO6+zeDALvsLEc/VYpmR1IakH/K4STFO/iWJDL42XCi+mpW1rVFiFpEz5OdQ
+	 e7Bh1oxKkJG/52Q5eygxgKotcNr58v3HWnNpU4Fs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728579AbgJaUFz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 31 Oct 2020 16:05:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54684 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728576AbgJaUFw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2020 16:05:52 -0400
-Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 35E5BC061A04
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:52 -0700 (PDT)
-Received: by mail-pf1-x443.google.com with SMTP id y14so7812451pfp.13
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:52 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=DM1Nt8JiNX4RedAVowPM21CL/+A8obYkQKrEr2dY1EM=;
-        b=ts0Fe2iwnmdQNx+R6hvDp6+ezuWQYAvjZw9YLRDZM0NSsL0oH7c7GKRxZsvhUItTz1
-         Y6/2+vh2d4DyAukWaQqhuGbWk/RD5ZBAngPcS1G9Y5nRA5cxFQ0HzRmD4UoP8zVdKiwH
-         ezhsSl75bpG8hIke4VNU0drvqAk3dlpj8diWTVZW6aVBMpIWYrnIreSbKxrPjKw7HxNy
-         w9mNWj0KIRrvVzSayc80Z89c/A/bkbFUWNNwB/WeNTrBZe9BGtQ12u5PUl0LRWPXd0MD
-         LykhyOgbtXKgiA5Blmrzh+M6e10DstHwQDKr4xSqz9q9nJFyEMbeLqE5jS6wPkgPup5b
-         Qchw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=DM1Nt8JiNX4RedAVowPM21CL/+A8obYkQKrEr2dY1EM=;
-        b=hrp85wJrKD7AaaZMa1JtZI4a2X0js4H/SK8nVXdqOlfdMpHx+gAE4zK17Sd7MlEzOu
-         N3W2qnDAzgF2eYdp/Eekko3V2kkG/q5AHlSsPRMzMuXzFoCQ17NwFLQ9zmAKpQNY058x
-         SQXOixrFDOpXeFUimaTBzno94/ZNn1wEK7En52u8vJ8GhT7TqRCxNOK5gBAUaHBOcZts
-         Vb498KY9gFXushTjFfr5Ubct4Cp989SF2vgXZivAAqapxwmGSdycOFy4wPzB81Kh+Ioa
-         p1t0dDHz3tcympv/arxLVqgI6ooDrHfzH8U+CXUZYdclhuXqXNI1t1Hl8anD922qgVuM
-         XCFA==
-X-Gm-Message-State: AOAM531selWQQAvW4cmUa1XsjpQXRKpfpqk9HqcYjzipUGfjoJEErlnL
-        VYLOGlgVntopqRke6oYlLD6IvZt4GSs=
-X-Google-Smtp-Source: ABdhPJwvq6sAi4lJxPAuTpnBl7RWGwEKqXJbVm3K40FmE1d/SRijYPtApnSkP7xP0J2qOvGl6a5Jfg==
-X-Received: by 2002:a63:eb08:: with SMTP id t8mr7247785pgh.8.1604174751324;
-        Sat, 31 Oct 2020 13:05:51 -0700 (PDT)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id t15sm17177102pjq.3.2020.10.31.13.05.49
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 31 Oct 2020 13:05:50 -0700 (PDT)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, jack@suse.cz,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 09/10] ext4: disable fast commit with data journalling
-Date:   Sat, 31 Oct 2020 13:05:17 -0700
-Message-Id: <20201031200518.4178786-10-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.29.1.341.ge80a0c044ae-goog
-In-Reply-To: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
-References: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
+        id S1725971AbgJaWJx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 31 Oct 2020 18:09:53 -0400
+Received: from mail.kernel.org ([198.145.29.99]:39708 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725782AbgJaWJx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 31 Oct 2020 18:09:53 -0400
+Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 96A282072C;
+        Sat, 31 Oct 2020 22:09:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1604182192;
+        bh=S03k1YGXaJQvf3NAsk0rAuPNkYHGojNJSpqWlOKkY6Y=;
+        h=From:To:Cc:Subject:Date:From;
+        b=a8mMgEQtpZ3jNyytBfAA07mZtl+9vbm6YLLv+FzNDnWsLRWKesdnQyD8DGDQ9NlKo
+         NBZjY049c5RkEWrHQHTQiUYaXvEuh5HHjNvlFxn20MOKcGS2hg5wFkYa2cWehnnO0k
+         uwKX3GPe/Eyo28ZG698zXqwWlaIL66HoIPdZkgxU=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     stable@vger.kernel.org
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org
+Subject: [PATCH 4.19 0/5] backport some more fscrypt fixes to 4.19
+Date:   Sat, 31 Oct 2020 15:05:48 -0700
+Message-Id: <20201031220553.1085782-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.29.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fast commits don't work with data journalling. This patch disables the
-fast commit support when data journalling is turned on.
+Backport some fscrypt fixes from upstream 5.2 to 4.19-stable.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- fs/ext4/fast_commit.c       | 7 +++++++
- fs/ext4/fast_commit.h       | 1 +
- fs/ext4/super.c             | 3 ++-
- include/trace/events/ext4.h | 6 ++++--
- 4 files changed, 14 insertions(+), 3 deletions(-)
+This is needed to get 'kvm-xfstests -c ext4,f2fs,ubifs -g encrypt' to
+fully pass on 4.19-stable.  Before, generic/397 and generic/429 failed
+on UBIFS due to missing "fscrypt: fix race where ->lookup() marks
+plaintext dentry as ciphertext".
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 4c0a3e858ea3..9ae8ba213961 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -472,6 +472,12 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
- 	if (S_ISDIR(inode->i_mode))
- 		return;
- 
-+	if (ext4_should_journal_data(inode)) {
-+		ext4_fc_mark_ineligible(inode->i_sb,
-+					EXT4_FC_REASON_INODE_JOURNAL_DATA);
-+		return;
-+	}
-+
- 	ret = ext4_fc_track_template(handle, inode, __track_inode, NULL, 1);
- 	trace_ext4_fc_track_inode(inode, ret);
- }
-@@ -2095,6 +2101,7 @@ const char *fc_ineligible_reasons[] = {
- 	"Resize",
- 	"Dir renamed",
- 	"Falloc range op",
-+	"Data journalling",
- 	"FC Commit Failed"
- };
- 
-diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
-index cde86747faf8..cdb36a10dfd0 100644
---- a/fs/ext4/fast_commit.h
-+++ b/fs/ext4/fast_commit.h
-@@ -105,6 +105,7 @@ enum {
- 	EXT4_FC_REASON_RESIZE,
- 	EXT4_FC_REASON_RENAME_DIR,
- 	EXT4_FC_REASON_FALLOC_RANGE,
-+	EXT4_FC_REASON_INODE_JOURNAL_DATA,
- 	EXT4_FC_COMMIT_FAILED,
- 	EXT4_FC_REASON_MAX
- };
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e67d2fa41a78..9333475737ac 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4340,9 +4340,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #endif
- 
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
--		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, and O_DIRECT support!\n");
-+		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, O_DIRECT and fast_commit support!\n");
- 		/* can't mount with both data=journal and dioread_nolock. */
- 		clear_opt(sb, DIOREAD_NOLOCK);
-+		clear_opt2(sb, JOURNAL_FAST_COMMIT);
- 		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
- 			ext4_msg(sb, KERN_ERR, "can't mount with "
- 				 "both data=journal and delalloc");
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 239e98014f9b..ee7362f31eb6 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -104,7 +104,8 @@ TRACE_DEFINE_ENUM(ES_REFERENCED_B);
- 		{ EXT4_FC_REASON_SWAP_BOOT,	"SWAP_BOOT"},		\
- 		{ EXT4_FC_REASON_RESIZE,	"RESIZE"},		\
- 		{ EXT4_FC_REASON_RENAME_DIR,	"RENAME_DIR"},		\
--		{ EXT4_FC_REASON_FALLOC_RANGE,	"FALLOC_RANGE"})
-+		{ EXT4_FC_REASON_FALLOC_RANGE,	"FALLOC_RANGE"},	\
-+		{ EXT4_FC_REASON_INODE_JOURNAL_DATA,	"INODE_JOURNAL_DATA"})
- 
- TRACE_EVENT(ext4_other_inode_update_time,
- 	TP_PROTO(struct inode *inode, ino_t orig_ino),
-@@ -2917,7 +2918,7 @@ TRACE_EVENT(ext4_fc_stats,
- 		    ),
- 
- 	    TP_printk("dev %d:%d fc ineligible reasons:\n"
--		      "%s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d; "
-+		      "%s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d; "
- 		      "num_commits:%ld, ineligible: %ld, numblks: %ld",
- 		      MAJOR(__entry->dev), MINOR(__entry->dev),
- 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_XATTR),
-@@ -2928,6 +2929,7 @@ TRACE_EVENT(ext4_fc_stats,
- 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_RESIZE),
- 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_RENAME_DIR),
- 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_FALLOC_RANGE),
-+		      FC_REASON_NAME_STAT(EXT4_FC_REASON_INODE_JOURNAL_DATA),
- 		      __entry->sbi->s_fc_stats.fc_num_commits,
- 		      __entry->sbi->s_fc_stats.fc_ineligible_commits,
- 		      __entry->sbi->s_fc_stats.fc_numblks)
+This also fixes some bugs that aren't yet covered by the xfstests.
+E.g., "fs, fscrypt: clear DCACHE_ENCRYPTED_NAME when unaliasing
+directory" fixes a bug that caused real-world problems on Chrome OS.
+
+Some relatively straightforward adjustments were needed to the patches,
+mainly due to the refactoring of fscrypt.h that was done in 5.1.
+
+Eric Biggers (5):
+  fscrypt: clean up and improve dentry revalidation
+  fscrypt: fix race allowing rename() and link() of ciphertext dentries
+  fs, fscrypt: clear DCACHE_ENCRYPTED_NAME when unaliasing directory
+  fscrypt: only set dentry_operations on ciphertext dentries
+  fscrypt: fix race where ->lookup() marks plaintext dentry as
+    ciphertext
+
+ fs/crypto/crypto.c              | 58 +++++++++++++------------
+ fs/crypto/fname.c               |  1 +
+ fs/crypto/hooks.c               | 28 ++++++++----
+ fs/dcache.c                     | 15 +++++++
+ fs/ext4/ext4.h                  | 62 ++++++++++++++++++++-------
+ fs/ext4/namei.c                 | 76 ++++++++++++++++++++++-----------
+ fs/f2fs/namei.c                 | 17 +++++---
+ fs/ubifs/dir.c                  |  8 ++--
+ include/linux/dcache.h          |  2 +-
+ include/linux/fscrypt.h         | 30 +++++++------
+ include/linux/fscrypt_notsupp.h |  9 ++--
+ include/linux/fscrypt_supp.h    |  6 ++-
+ 12 files changed, 205 insertions(+), 107 deletions(-)
+
 -- 
-2.29.1.341.ge80a0c044ae-goog
+2.29.1
 
