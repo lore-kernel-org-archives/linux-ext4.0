@@ -5,66 +5,67 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDDC4C388F9
-	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2511C388F9
+	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE85520706
-	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 68C59206F7
+	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FiTQONPu"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L5tiJ8b8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728563AbgJaUFs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 31 Oct 2020 16:05:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54668 "EHLO
+        id S1728575AbgJaUFz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 31 Oct 2020 16:05:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54680 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728560AbgJaUFr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2020 16:05:47 -0400
-Received: from mail-pl1-x643.google.com (mail-pl1-x643.google.com [IPv6:2607:f8b0:4864:20::643])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3FF2C0617A6
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:47 -0700 (PDT)
-Received: by mail-pl1-x643.google.com with SMTP id w11so4697737pll.8
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:47 -0700 (PDT)
+        with ESMTP id S1728574AbgJaUFu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2020 16:05:50 -0400
+Received: from mail-pg1-x544.google.com (mail-pg1-x544.google.com [IPv6:2607:f8b0:4864:20::544])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6FF4C0617A7
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:50 -0700 (PDT)
+Received: by mail-pg1-x544.google.com with SMTP id x13so7641878pgp.7
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=z37iS3+6ejDUSM4Nfe/6F81otAAFJM+4owduwLhvvU4=;
-        b=FiTQONPuJl632bg9ktIOk5jpoeqqac7P53z6tT15kD1fbXGGIuLeDyt4MtFGuRbE4i
-         +8ocGUKZCn58Ik6+Uv1BNtwRUE3NowpE2X7+nOhRrkdiR3IfIr9HYw6XwQcbTFJogUVi
-         YdvglM302TmN7ba8KuZE8YKUkAmRADsKXH0fuN3l4l62kFOXSsZlH6JDpGx4XS6swX81
-         I3lqKJCujUji5OF8BVv0X1Fcmeq3TjzYaKIy5VKlSV720fGDK7Sri1GEEnF9a9JoBaA/
-         bCK/7Z51X7gRX7LuivquegrbA7/YUsug/sF4uuwBIKWoDnbf02+dTRsZiUhn0P7DxjUc
-         lDbw==
+        bh=dxEat/0LE9d8rSaGyb+4vgvDFg/G5eUmBGJ9C+NdKBM=;
+        b=L5tiJ8b8FV+5sROuVU7g/RR1h9+QbMW9ogMBHdWAj3O9KGHF0Oh4VeP1v6T506P5j5
+         LehJgwwKx5y5mzWoko2li+l2oifUWpxUY2soAa0KUIbCypE7DBhuJdk1YLsj5Tpxefs3
+         PD8kyb90Cf2lfbBwbs3cVK1qLJSlwWClodJFzqwOH3zVDrdtFaZiAkx5FWQLmLyiwHip
+         6DRmcuOaWGg8owNXyNYDOB930IjuTb2bVItOF0NXuHaT65l1c7NDU6vuHp9i7w26ioqz
+         olf6BQju+kes4F/K7oz64CLY8wwlgAnjJwQvH99MSjzYHdZiQaOjboYaISAq2QH/12LT
+         8HsA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=z37iS3+6ejDUSM4Nfe/6F81otAAFJM+4owduwLhvvU4=;
-        b=N9Ms8HNBS+Nlf1tAzrHxnFvO9t1KonL1D9poL+rl8ieao6DDO96D88+O7V92L3Ke/B
-         OTVezaf3bfn4ug8mb3zcZtOGwOpGXv5cjm6XFmMaxoTQTIoLO8pC6JAwUUmJHZGuZADD
-         B4KRL1njpa+KYqcgn5o98VGtoGaGxHfpx0kgjdNWzls39wdDLTN+CfqcjjWJ+T1VVX2Z
-         zXMLblnpSCSMrHzy2+ihrF8eZI6Svher/lSK8r98TgLOLaFVEFb9VtE9jV51YjvfKwyx
-         JSmMy5Q/Y2csgWZQV2tFY/ukxFR2Ohd5vybtxvnr0KLjUOKJV8ssXeAQf+bpj6oGLSq6
-         hhgA==
-X-Gm-Message-State: AOAM532TOcFf5J1FXN9cw1CRLEc6N9mX8WyTeoztfSE6vCt4Nh/tVzpK
-        t77vEw7kJqRPQc0FdM+srbYbjUJ2Xfg=
-X-Google-Smtp-Source: ABdhPJx+6G3gRbN+0ToOx25qG+hgc/dDPWdglN39lKD9OlGqMuuTgbfT7I8fmjNrQ6x1duuK5IMUNg==
-X-Received: by 2002:a17:902:7485:b029:d6:9c14:f376 with SMTP id h5-20020a1709027485b02900d69c14f376mr9409833pll.62.1604174747157;
-        Sat, 31 Oct 2020 13:05:47 -0700 (PDT)
+        bh=dxEat/0LE9d8rSaGyb+4vgvDFg/G5eUmBGJ9C+NdKBM=;
+        b=cJGYQNVbdn6QzvYkDJ/ECqZtt3+IwzfKa5Lo6zOBPptdVXv925FeP9Wj/p/ShTN1fS
+         9sAFYz99PG4i+8mQ9e011PXgr8hHgUhDx6zqhbYSDmJywjChj21Ex6MjBJUfO2EZnOKX
+         keV2wCY3fUdLO5Wn5xabXoUfAJ+yQoD3090yB/58pvnAw4IF4zo+1Tdk1bYJDBeBLPgh
+         xcXbq4ZyhgmdFeSoETjri9LoVsnXjHAB7MfIY/VXCuAgAdTCMagrpr/RI/eXJOp5CoCR
+         oXLGjs4KBJxhOu8XnTTuPWEZmyIQBFBm5evhKBR43ymUovpQwDkcgYD8UN3AGcGJiznp
+         Vpkg==
+X-Gm-Message-State: AOAM533H7ryv5CUULp730+BJEM8IzEmEsxzKoaF24qXu0EZG8FS5tMUH
+        qg/tAD5BLRwy0c4MqpBnOOLbiY8icgM=
+X-Google-Smtp-Source: ABdhPJzHovx4vNOUnHW1vYErBTW/zeQ3hkP2FFixAwtKiy1wtzXJg1rAygqT2wWgMqiZSkhZB6embQ==
+X-Received: by 2002:a63:c40c:: with SMTP id h12mr7333063pgd.28.1604174749853;
+        Sat, 31 Oct 2020 13:05:49 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id t15sm17177102pjq.3.2020.10.31.13.05.45
+        by smtp.googlemail.com with ESMTPSA id t15sm17177102pjq.3.2020.10.31.13.05.48
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 31 Oct 2020 13:05:46 -0700 (PDT)
+        Sat, 31 Oct 2020 13:05:48 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, jack@suse.cz,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 06/10] ext4: dedpulicate the code to wait on inode that's being committed
-Date:   Sat, 31 Oct 2020 13:05:14 -0700
-Message-Id: <20201031200518.4178786-7-harshadshirwadkar@gmail.com>
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andrea Righi <andrea.righi@canonical.com>
+Subject: [PATCH 08/10] ext4: fix inode dirty check in case of fast commits
+Date:   Sat, 31 Oct 2020 13:05:16 -0700
+Message-Id: <20201031200518.4178786-9-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.1.341.ge80a0c044ae-goog
 In-Reply-To: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
 References: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
@@ -74,101 +75,66 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch removes the deduplicates the code that implements waiting
-on inode that's being committed. That code is moved into a new
-function.
+In case of fast commits, determine if the inode is dirty by checking
+if the inode is on fast commit list. This also helps us get rid of
+ext4_inode_info.i_fc_committed_subtid field.
 
-Suggested-by: Jan Kara <jack@suse.cz>
+Reported-by: Andrea Righi <andrea.righi@canonical.com>
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/fast_commit.c | 59 ++++++++++++++++++-------------------------
- 1 file changed, 25 insertions(+), 34 deletions(-)
+ fs/ext4/ext4.h        | 3 ---
+ fs/ext4/fast_commit.c | 3 ---
+ fs/ext4/inode.c       | 3 +--
+ 3 files changed, 1 insertion(+), 8 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 573db158382f..7222a9ba5d66 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1028,9 +1028,6 @@ struct ext4_inode_info {
+ 					 * protected by sbi->s_fc_lock.
+ 					 */
+ 
+-	/* Fast commit subtid when this inode was committed */
+-	unsigned int i_fc_committed_subtid;
+-
+ 	/* Start of lblk range that needs to be committed in this fast commit */
+ 	ext4_lblk_t i_fc_lblk_start;
+ 
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index b1ca55c7d32a..0f2543220d1d 100644
+index b7b1fe6dbb24..4c0a3e858ea3 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -155,6 +155,28 @@ void ext4_fc_init_inode(struct inode *inode)
- 	ei->i_fc_committed_subtid = 0;
+@@ -152,7 +152,6 @@ void ext4_fc_init_inode(struct inode *inode)
+ 	INIT_LIST_HEAD(&ei->i_fc_list);
+ 	init_waitqueue_head(&ei->i_fc_wait);
+ 	atomic_set(&ei->i_fc_updates, 0);
+-	ei->i_fc_committed_subtid = 0;
  }
  
-+static void ext4_fc_wait_committing_inode(struct inode *inode)
-+{
-+	wait_queue_head_t *wq;
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+
-+#if (BITS_PER_LONG < 64)
-+	DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
-+			EXT4_STATE_FC_COMMITTING);
-+	wq = bit_waitqueue(&ei->i_state_flags,
-+				EXT4_STATE_FC_COMMITTING);
-+#else
-+	DEFINE_WAIT_BIT(wait, &ei->i_flags,
-+			EXT4_STATE_FC_COMMITTING);
-+	wq = bit_waitqueue(&ei->i_flags,
-+				EXT4_STATE_FC_COMMITTING);
-+#endif
-+	prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
-+	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
-+	schedule();
-+	finish_wait(wq, &wait.wq_entry);
-+}
-+
- /*
-  * Inform Ext4's fast about start of an inode update
-  *
-@@ -176,22 +198,7 @@ void ext4_fc_start_update(struct inode *inode)
- 		goto out;
+ static void ext4_fc_wait_committing_inode(struct inode *inode)
+@@ -1026,8 +1025,6 @@ static int ext4_fc_perform_commit(journal_t *journal)
+ 		if (ret)
+ 			goto out;
+ 		spin_lock(&sbi->s_fc_lock);
+-		EXT4_I(inode)->i_fc_committed_subtid =
+-			atomic_read(&sbi->s_fc_subtid);
+ 	}
+ 	spin_unlock(&sbi->s_fc_lock);
  
- 	if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
--		wait_queue_head_t *wq;
--#if (BITS_PER_LONG < 64)
--		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
--				EXT4_STATE_FC_COMMITTING);
--		wq = bit_waitqueue(&ei->i_state_flags,
--				   EXT4_STATE_FC_COMMITTING);
--#else
--		DEFINE_WAIT_BIT(wait, &ei->i_flags,
--				EXT4_STATE_FC_COMMITTING);
--		wq = bit_waitqueue(&ei->i_flags,
--				   EXT4_STATE_FC_COMMITTING);
--#endif
--		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
--		spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
--		schedule();
--		finish_wait(wq, &wait.wq_entry);
-+		ext4_fc_wait_committing_inode(inode);
- 		goto restart;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7f6af784e74f..d36c3908272f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3311,8 +3311,7 @@ static bool ext4_inode_datasync_dirty(struct inode *inode)
+ 			EXT4_I(inode)->i_datasync_tid))
+ 			return false;
+ 		if (test_opt2(inode->i_sb, JOURNAL_FAST_COMMIT))
+-			return atomic_read(&EXT4_SB(inode->i_sb)->s_fc_subtid) <
+-				EXT4_I(inode)->i_fc_committed_subtid;
++			return !list_empty(&EXT4_I(inode)->i_fc_list);
+ 		return true;
  	}
- out:
-@@ -234,26 +241,10 @@ void ext4_fc_del(struct inode *inode)
- 	}
- 
- 	if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
--		wait_queue_head_t *wq;
--#if (BITS_PER_LONG < 64)
--		DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
--				EXT4_STATE_FC_COMMITTING);
--		wq = bit_waitqueue(&ei->i_state_flags,
--				   EXT4_STATE_FC_COMMITTING);
--#else
--		DEFINE_WAIT_BIT(wait, &ei->i_flags,
--				EXT4_STATE_FC_COMMITTING);
--		wq = bit_waitqueue(&ei->i_flags,
--				   EXT4_STATE_FC_COMMITTING);
--#endif
--		prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
--		spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
--		schedule();
--		finish_wait(wq, &wait.wq_entry);
-+		ext4_fc_wait_committing_inode(inode);
- 		goto restart;
- 	}
--	if (!list_empty(&ei->i_fc_list))
--		list_del_init(&ei->i_fc_list);
-+	list_del_init(&ei->i_fc_list);
- 	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
- }
  
 -- 
 2.29.1.341.ge80a0c044ae-goog
