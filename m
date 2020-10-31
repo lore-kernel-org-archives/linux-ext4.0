@@ -8,63 +8,63 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 196F8C388F7
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E91DC55179
 	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CF330206F9
+	by mail.kernel.org (Postfix) with ESMTP id 03DE1206F7
 	for <linux-ext4@archiver.kernel.org>; Sat, 31 Oct 2020 20:05:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bfRaWt+d"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ts0Fe2iw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728581AbgJaUFz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1728579AbgJaUFz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 31 Oct 2020 16:05:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54672 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54684 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728561AbgJaUFu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2020 16:05:50 -0400
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 759E4C0617A6
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:49 -0700 (PDT)
-Received: by mail-pf1-x441.google.com with SMTP id a200so7814646pfa.10
-        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:49 -0700 (PDT)
+        with ESMTP id S1728576AbgJaUFw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 31 Oct 2020 16:05:52 -0400
+Received: from mail-pf1-x443.google.com (mail-pf1-x443.google.com [IPv6:2607:f8b0:4864:20::443])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 35E5BC061A04
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:52 -0700 (PDT)
+Received: by mail-pf1-x443.google.com with SMTP id y14so7812451pfp.13
+        for <linux-ext4@vger.kernel.org>; Sat, 31 Oct 2020 13:05:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=n9LrY+vPhhgE3E5YZBPeCoZd6BVmh55jyaQT21g59sQ=;
-        b=bfRaWt+d7m6/+HOq2V4MWpDHrOGc8+cYjcyR92XxAZgx+iZZ6wPULKKyAvYree9hdT
-         LM0X7XcAP+6wlfmaPx8hGreNWmDm+1WAnPazhcBFFl+NGdOii7ANh56vckwReQF0iEy3
-         19cymaNHhuB+gbQBEkAHLS+yKhbbITUQevYKOZ9+jsCGuePx1RHmnOjQG+SJcqDgwL8c
-         RddjGgtXiacN/ma3zTmziYCO0RUuYEHU3lAsaMuLYTmwUyuseGvXt3vcIOeSp4kR1eYX
-         hr7Klr4V9y/5oBpH268Z+sNTwD73D7LCjfzX5tluHhDA0VuoeStzwAWf0VFDSQUi1H87
-         HZpg==
+        bh=DM1Nt8JiNX4RedAVowPM21CL/+A8obYkQKrEr2dY1EM=;
+        b=ts0Fe2iwnmdQNx+R6hvDp6+ezuWQYAvjZw9YLRDZM0NSsL0oH7c7GKRxZsvhUItTz1
+         Y6/2+vh2d4DyAukWaQqhuGbWk/RD5ZBAngPcS1G9Y5nRA5cxFQ0HzRmD4UoP8zVdKiwH
+         ezhsSl75bpG8hIke4VNU0drvqAk3dlpj8diWTVZW6aVBMpIWYrnIreSbKxrPjKw7HxNy
+         w9mNWj0KIRrvVzSayc80Z89c/A/bkbFUWNNwB/WeNTrBZe9BGtQ12u5PUl0LRWPXd0MD
+         LykhyOgbtXKgiA5Blmrzh+M6e10DstHwQDKr4xSqz9q9nJFyEMbeLqE5jS6wPkgPup5b
+         Qchw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=n9LrY+vPhhgE3E5YZBPeCoZd6BVmh55jyaQT21g59sQ=;
-        b=FwM3Iim/8IRV5TUYJJpRmA3RFiYoQyd/aOWbpAAIxJAHTgxSXMg9CfsXn6Hry7vck3
-         1v1c9IJDHaU6CkmcsfBzGm+Lo6NuZrJGcxDl8+WNaTREP/la7pE5A1y6LltgQt9zK3yA
-         OpWtgPA9bEmgg+0cyUtypHAew8hq9HKA7hbvSXF0nsQha4QXIK/Ir4zmgu4l98/qJn9j
-         tFyAW1HlybUhAOkOy5Te0XSQi4rmNsEypH4tHBLK+MVknMEb46Xwmn5ITQFrQ3BmsroL
-         vMp+Jq6S9YfDKO7aQYNNCB9aE0L4DVICBOO9830g5x7PZjA1dmlHKu6e05ZHGc7pJVgU
-         0FgA==
-X-Gm-Message-State: AOAM530oP02+5uUzSyucnG28Yp+EuvMC9b87jzgoW47f4WrC29NIdamz
-        ngN+7UR/nLw9JcI0yIq9xs4jaAs6Jjk=
-X-Google-Smtp-Source: ABdhPJzNPl2onqSRX+g9NlyS2PELr/SwDGPQVOxoJBApOyhuKgQk+6CVSmLjMsq51hAxCNBBxlVujw==
-X-Received: by 2002:a65:6705:: with SMTP id u5mr7730660pgf.9.1604174748547;
-        Sat, 31 Oct 2020 13:05:48 -0700 (PDT)
+        bh=DM1Nt8JiNX4RedAVowPM21CL/+A8obYkQKrEr2dY1EM=;
+        b=hrp85wJrKD7AaaZMa1JtZI4a2X0js4H/SK8nVXdqOlfdMpHx+gAE4zK17Sd7MlEzOu
+         N3W2qnDAzgF2eYdp/Eekko3V2kkG/q5AHlSsPRMzMuXzFoCQ17NwFLQ9zmAKpQNY058x
+         SQXOixrFDOpXeFUimaTBzno94/ZNn1wEK7En52u8vJ8GhT7TqRCxNOK5gBAUaHBOcZts
+         Vb498KY9gFXushTjFfr5Ubct4Cp989SF2vgXZivAAqapxwmGSdycOFy4wPzB81Kh+Ioa
+         p1t0dDHz3tcympv/arxLVqgI6ooDrHfzH8U+CXUZYdclhuXqXNI1t1Hl8anD922qgVuM
+         XCFA==
+X-Gm-Message-State: AOAM531selWQQAvW4cmUa1XsjpQXRKpfpqk9HqcYjzipUGfjoJEErlnL
+        VYLOGlgVntopqRke6oYlLD6IvZt4GSs=
+X-Google-Smtp-Source: ABdhPJwvq6sAi4lJxPAuTpnBl7RWGwEKqXJbVm3K40FmE1d/SRijYPtApnSkP7xP0J2qOvGl6a5Jfg==
+X-Received: by 2002:a63:eb08:: with SMTP id t8mr7247785pgh.8.1604174751324;
+        Sat, 31 Oct 2020 13:05:51 -0700 (PDT)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id t15sm17177102pjq.3.2020.10.31.13.05.47
+        by smtp.googlemail.com with ESMTPSA id t15sm17177102pjq.3.2020.10.31.13.05.49
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 31 Oct 2020 13:05:47 -0700 (PDT)
+        Sat, 31 Oct 2020 13:05:50 -0700 (PDT)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, jack@suse.cz,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 07/10] ext4: misc fast commit fixes
-Date:   Sat, 31 Oct 2020 13:05:15 -0700
-Message-Id: <20201031200518.4178786-8-harshadshirwadkar@gmail.com>
+Subject: [PATCH 09/10] ext4: disable fast commit with data journalling
+Date:   Sat, 31 Oct 2020 13:05:17 -0700
+Message-Id: <20201031200518.4178786-10-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.1.341.ge80a0c044ae-goog
 In-Reply-To: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
 References: <20201031200518.4178786-1-harshadshirwadkar@gmail.com>
@@ -74,83 +74,102 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch adds a small number of misc fast commit fixes. Along with
-functional fixes such as setting the right buffer flags, there also
-typo fixes and comment additions.
+Fast commits don't work with data journalling. This patch disables the
+fast commit support when data journalling is turned on.
 
 Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/ext4_jbd2.h   | 6 +++++-
- fs/ext4/fast_commit.c | 5 +++--
- fs/ext4/file.c        | 2 --
- 3 files changed, 8 insertions(+), 5 deletions(-)
+ fs/ext4/fast_commit.c       | 7 +++++++
+ fs/ext4/fast_commit.h       | 1 +
+ fs/ext4/super.c             | 3 ++-
+ include/trace/events/ext4.h | 6 ++++--
+ 4 files changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-index 00dc668e052b..10855cd230c7 100644
---- a/fs/ext4/ext4_jbd2.h
-+++ b/fs/ext4/ext4_jbd2.h
-@@ -422,9 +422,13 @@ static inline int ext4_journal_force_commit(journal_t *journal)
- static inline int ext4_jbd2_inode_add_write(handle_t *handle,
- 		struct inode *inode, loff_t start_byte, loff_t length)
- {
--	if (ext4_handle_valid(handle))
-+	if (ext4_handle_valid(handle)) {
-+		ext4_fc_track_range(handle, inode,
-+			start_byte >> inode->i_sb->s_blocksize_bits,
-+			(start_byte + length) >> inode->i_sb->s_blocksize_bits);
- 		return jbd2_journal_inode_ranged_write(handle,
- 				EXT4_I(inode)->jinode, start_byte, length);
-+	}
- 	return 0;
- }
- 
 diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0f2543220d1d..b7b1fe6dbb24 100644
+index 4c0a3e858ea3..9ae8ba213961 100644
 --- a/fs/ext4/fast_commit.c
 +++ b/fs/ext4/fast_commit.c
-@@ -83,7 +83,7 @@
-  *
-  * Atomicity of commits
-  * --------------------
-- * In order to gaurantee atomicity during the commit operation, fast commit
-+ * In order to guarantee atomicity during the commit operation, fast commit
-  * uses "EXT4_FC_TAG_TAIL" tag that marks a fast commit as complete. Tail
-  * tag contains CRC of the contents and TID of the transaction after which
-  * this fast commit should be applied. Recovery code replays fast commit
-@@ -531,10 +531,11 @@ static void ext4_fc_submit_bh(struct super_block *sb)
- 	int write_flags = REQ_SYNC;
- 	struct buffer_head *bh = EXT4_SB(sb)->s_fc_bh;
+@@ -472,6 +472,12 @@ void ext4_fc_track_inode(handle_t *handle, struct inode *inode)
+ 	if (S_ISDIR(inode->i_mode))
+ 		return;
  
-+	/* TODO: REQ_FUA | REQ_PREFLUSH is unnecessarily expensive. */
- 	if (test_opt(sb, BARRIER))
- 		write_flags |= REQ_FUA | REQ_PREFLUSH;
- 	lock_buffer(bh);
--	clear_buffer_dirty(bh);
-+	set_buffer_dirty(bh);
- 	set_buffer_uptodate(bh);
- 	bh->b_end_io = ext4_end_buffer_io_sync;
- 	submit_bh(REQ_OP_WRITE, write_flags, bh);
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index d85412d12e3a..80ad5ccc0288 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -761,7 +761,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	if (!daxdev_mapping_supported(vma, dax_dev))
- 		return -EOPNOTSUPP;
- 
--	ext4_fc_start_update(inode);
- 	file_accessed(file);
- 	if (IS_DAX(file_inode(file))) {
- 		vma->vm_ops = &ext4_dax_vm_ops;
-@@ -769,7 +768,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	} else {
- 		vma->vm_ops = &ext4_file_vm_ops;
- 	}
--	ext4_fc_stop_update(inode);
- 	return 0;
++	if (ext4_should_journal_data(inode)) {
++		ext4_fc_mark_ineligible(inode->i_sb,
++					EXT4_FC_REASON_INODE_JOURNAL_DATA);
++		return;
++	}
++
+ 	ret = ext4_fc_track_template(handle, inode, __track_inode, NULL, 1);
+ 	trace_ext4_fc_track_inode(inode, ret);
  }
+@@ -2095,6 +2101,7 @@ const char *fc_ineligible_reasons[] = {
+ 	"Resize",
+ 	"Dir renamed",
+ 	"Falloc range op",
++	"Data journalling",
+ 	"FC Commit Failed"
+ };
  
+diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
+index cde86747faf8..cdb36a10dfd0 100644
+--- a/fs/ext4/fast_commit.h
++++ b/fs/ext4/fast_commit.h
+@@ -105,6 +105,7 @@ enum {
+ 	EXT4_FC_REASON_RESIZE,
+ 	EXT4_FC_REASON_RENAME_DIR,
+ 	EXT4_FC_REASON_FALLOC_RANGE,
++	EXT4_FC_REASON_INODE_JOURNAL_DATA,
+ 	EXT4_FC_COMMIT_FAILED,
+ 	EXT4_FC_REASON_MAX
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e67d2fa41a78..9333475737ac 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4340,9 +4340,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ #endif
+ 
+ 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+-		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, and O_DIRECT support!\n");
++		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting with data=journal disables delayed allocation, dioread_nolock, O_DIRECT and fast_commit support!\n");
+ 		/* can't mount with both data=journal and dioread_nolock. */
+ 		clear_opt(sb, DIOREAD_NOLOCK);
++		clear_opt2(sb, JOURNAL_FAST_COMMIT);
+ 		if (test_opt2(sb, EXPLICIT_DELALLOC)) {
+ 			ext4_msg(sb, KERN_ERR, "can't mount with "
+ 				 "both data=journal and delalloc");
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 239e98014f9b..ee7362f31eb6 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -104,7 +104,8 @@ TRACE_DEFINE_ENUM(ES_REFERENCED_B);
+ 		{ EXT4_FC_REASON_SWAP_BOOT,	"SWAP_BOOT"},		\
+ 		{ EXT4_FC_REASON_RESIZE,	"RESIZE"},		\
+ 		{ EXT4_FC_REASON_RENAME_DIR,	"RENAME_DIR"},		\
+-		{ EXT4_FC_REASON_FALLOC_RANGE,	"FALLOC_RANGE"})
++		{ EXT4_FC_REASON_FALLOC_RANGE,	"FALLOC_RANGE"},	\
++		{ EXT4_FC_REASON_INODE_JOURNAL_DATA,	"INODE_JOURNAL_DATA"})
+ 
+ TRACE_EVENT(ext4_other_inode_update_time,
+ 	TP_PROTO(struct inode *inode, ino_t orig_ino),
+@@ -2917,7 +2918,7 @@ TRACE_EVENT(ext4_fc_stats,
+ 		    ),
+ 
+ 	    TP_printk("dev %d:%d fc ineligible reasons:\n"
+-		      "%s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d; "
++		      "%s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d, %s:%d; "
+ 		      "num_commits:%ld, ineligible: %ld, numblks: %ld",
+ 		      MAJOR(__entry->dev), MINOR(__entry->dev),
+ 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_XATTR),
+@@ -2928,6 +2929,7 @@ TRACE_EVENT(ext4_fc_stats,
+ 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_RESIZE),
+ 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_RENAME_DIR),
+ 		      FC_REASON_NAME_STAT(EXT4_FC_REASON_FALLOC_RANGE),
++		      FC_REASON_NAME_STAT(EXT4_FC_REASON_INODE_JOURNAL_DATA),
+ 		      __entry->sbi->s_fc_stats.fc_num_commits,
+ 		      __entry->sbi->s_fc_stats.fc_ineligible_commits,
+ 		      __entry->sbi->s_fc_stats.fc_numblks)
 -- 
 2.29.1.341.ge80a0c044ae-goog
 
