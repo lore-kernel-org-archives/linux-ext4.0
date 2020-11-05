@@ -7,31 +7,31 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B239C4741F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64C51C55179
 	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D4F2B20739
-	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 18B3920786
+	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731171AbgKEQSL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 5 Nov 2020 11:18:11 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:49728 "EHLO
+        id S1730854AbgKEQSN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 5 Nov 2020 11:18:13 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:49724 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726371AbgKEQR7 (ORCPT
+        with ESMTP id S1725998AbgKEQR7 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Nov 2020 11:17:59 -0500
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:4a7e:bc14:686e:75db])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 5938A1F4611E;
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 0F6561F4611B;
         Thu,  5 Nov 2020 16:17:58 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
         Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH 03/11] ext2fs: Add method to validate casefolded strings
-Date:   Thu,  5 Nov 2020 17:16:35 +0100
-Message-Id: <20201105161642.87488-4-arnaud.ferraris@collabora.com>
+Subject: [PATCH 01/11] tune2fs: Allow enabling casefold feature after fs creation
+Date:   Thu,  5 Nov 2020 17:16:33 +0100
+Message-Id: <20201105161642.87488-2-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.28.0
 In-Reply-To: <20201105161642.87488-1-arnaud.ferraris@collabora.com>
 References: <20201105161642.87488-1-arnaud.ferraris@collabora.com>
@@ -43,88 +43,58 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-This is exported to be used by fsck.
+The main reason we didn't allow this before was because !CASEFOLDED
+directories were expected to be normalized().  Since this is no longer
+the case, and as long as the encrypt feature is not enabled, it should
+be safe to enable this feature.
+
+Disabling the feature is trickier, since we need to make sure there are
+no existing +F directories in the filesystem.  Leave that for a future
+patch.
+
+Also, enabling strict mode requires some filesystem-wide verification,
+so ignore that for now.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
 ---
- lib/ext2fs/ext2fs.h   |  2 ++
- lib/ext2fs/ext2fsP.h  |  2 ++
- lib/ext2fs/nls_utf8.c | 29 +++++++++++++++++++++++++++++
- 3 files changed, 33 insertions(+)
+ misc/tune2fs.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 69c8a3ff..4065cb70 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1613,6 +1613,8 @@ extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index f942c698..0809e565 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -161,7 +161,8 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_64BIT |
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+-		EXT4_FEATURE_INCOMPAT_LARGEDIR,
++		EXT4_FEATURE_INCOMPAT_LARGEDIR |
++		EXT4_FEATURE_INCOMPAT_CASEFOLD,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+@@ -1513,6 +1514,19 @@ mmp_error:
+ 		}
+ 	}
  
- /* nls_utf8.c */
- extern const struct ext2fs_nls_table *ext2fs_load_nls_table(int encoding);
-+extern int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
-+				     char *s, size_t len, char **pos);
- 
- /* mkdir.c */
- extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index ad8b7d52..30564ded 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -104,6 +104,8 @@ struct ext2fs_nls_ops {
- 	int (*casefold)(const struct ext2fs_nls_table *charset,
- 			const unsigned char *str, size_t len,
- 			unsigned char *dest, size_t dlen);
-+	int (*validate)(const struct ext2fs_nls_table *table,
-+			char *s, size_t len, char **pos);
- };
- 
- /* Function prototypes */
-diff --git a/lib/ext2fs/nls_utf8.c b/lib/ext2fs/nls_utf8.c
-index e4c4e7a3..903c65ba 100644
---- a/lib/ext2fs/nls_utf8.c
-+++ b/lib/ext2fs/nls_utf8.c
-@@ -920,8 +920,31 @@ invalid_seq:
- 	return -EINVAL;
- }
- 
-+
-+static int utf8_validate(const struct ext2fs_nls_table *table,
-+			 char *s, size_t len, char **pos)
-+{
-+	const struct utf8data *data = utf8nfdicf(table->version);
-+	utf8leaf_t	*leaf;
-+	unsigned char	hangul[UTF8HANGULLEAF];
-+
-+	if (!data)
-+		return -1;
-+	while (len && *s) {
-+		leaf = utf8nlookup(data, hangul, s, len);
-+		if (!leaf) {
-+			*pos = s;
++	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_CASEFOLD)) {
++		if (ext2fs_has_feature_encrypt(sb)) {
++			fputs(_("Cannot enable casefold feature on filesystems "
++				"with the encrypt feature enabled.\n"),
++			      stderr);
 +			return 1;
 +		}
-+		len -= utf8clen(s);
-+		s += utf8clen(s);
++
++		sb->s_encoding = EXT4_ENC_UTF8_12_1;
++		sb->s_encoding_flags = e2p_get_encoding_flags(sb->s_encoding);
 +	}
-+	return 0;
-+}
 +
- static const struct ext2fs_nls_ops utf8_ops = {
- 	.casefold = utf8_casefold,
-+	.validate = utf8_validate,
- };
- 
- static const struct ext2fs_nls_table nls_utf8 = {
-@@ -936,3 +959,9 @@ const struct ext2fs_nls_table *ext2fs_load_nls_table(int encoding)
- 
- 	return NULL;
- }
 +
-+int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
-+			      char *name, size_t len, char **pos)
-+{
-+	return table->ops->validate(table, name, len, pos);
-+}
+ 	if (sb->s_rev_level == EXT2_GOOD_OLD_REV &&
+ 	    (sb->s_feature_compat || sb->s_feature_ro_compat ||
+ 	     sb->s_feature_incompat))
 -- 
 2.28.0
 
