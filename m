@@ -7,34 +7,31 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED07FC55179
-	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5C8DC55178
+	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8891320739
-	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A45020786
+	for <linux-ext4@archiver.kernel.org>; Thu,  5 Nov 2020 16:18:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729263AbgKEQSA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 5 Nov 2020 11:18:00 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33386 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728999AbgKEQR7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Nov 2020 11:17:59 -0500
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5102AC0613D2
-        for <linux-ext4@vger.kernel.org>; Thu,  5 Nov 2020 08:17:59 -0800 (PST)
+        id S1730504AbgKEQSC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 5 Nov 2020 11:18:02 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:49730 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726557AbgKEQSA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Nov 2020 11:18:00 -0500
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:4a7e:bc14:686e:75db])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 346C21F4611D;
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 7DBFD1F46120;
         Thu,  5 Nov 2020 16:17:58 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
         Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH 02/11] tune2fs: Fix casefold+encrypt error message
-Date:   Thu,  5 Nov 2020 17:16:34 +0100
-Message-Id: <20201105161642.87488-3-arnaud.ferraris@collabora.com>
+Subject: [PATCH 04/11] ext2fs: Implement faster CI comparison of strings
+Date:   Thu,  5 Nov 2020 17:16:36 +0100
+Message-Id: <20201105161642.87488-5-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.28.0
 In-Reply-To: <20201105161642.87488-1-arnaud.ferraris@collabora.com>
 References: <20201105161642.87488-1-arnaud.ferraris@collabora.com>
@@ -46,28 +43,102 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-Refering to EXT4_INCOMPAT_CASEFOLD as encoding is not as meaningful as
-saying casefold.
+Instead of calling casefold two times and memcmp the result, which
+require allocating a temporary buffer for the casefolded version, add a
+strcasecmp-like method to perform the comparison of each code-point
+during the casefold itself.
+
+This method is exposed because it needs to be used directly by fsck.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
 ---
- misc/tune2fs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ lib/ext2fs/ext2fs.h   |  4 ++++
+ lib/ext2fs/ext2fsP.h  |  4 ++++
+ lib/ext2fs/nls_utf8.c | 33 +++++++++++++++++++++++++++++++++
+ 3 files changed, 41 insertions(+)
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 0809e565..c182f4d5 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1470,7 +1470,7 @@ mmp_error:
- 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
- 		if (ext2fs_has_feature_casefold(sb)) {
- 			fputs(_("Cannot enable encrypt feature on filesystems "
--				"with the encoding feature enabled.\n"),
-+				"with the casefold feature enabled.\n"),
- 			      stderr);
- 			return 1;
- 		}
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 4065cb70..9e96ca5c 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1615,6 +1615,10 @@ extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
+ extern const struct ext2fs_nls_table *ext2fs_load_nls_table(int encoding);
+ extern int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
+ 				     char *s, size_t len, char **pos);
++extern int ext2fs_casefold_cmp(const struct ext2fs_nls_table *table,
++			       const unsigned char *str1, size_t len1,
++			       const unsigned char *str2, size_t len2);
++
+ 
+ /* mkdir.c */
+ extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
+diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
+index 30564ded..99239be0 100644
+--- a/lib/ext2fs/ext2fsP.h
++++ b/lib/ext2fs/ext2fsP.h
+@@ -106,6 +106,10 @@ struct ext2fs_nls_ops {
+ 			unsigned char *dest, size_t dlen);
+ 	int (*validate)(const struct ext2fs_nls_table *table,
+ 			char *s, size_t len, char **pos);
++	int (*casefold_cmp)(const struct ext2fs_nls_table *table,
++			    const unsigned char *str1, size_t len1,
++			    const unsigned char *str2, size_t len2);
++
+ };
+ 
+ /* Function prototypes */
+diff --git a/lib/ext2fs/nls_utf8.c b/lib/ext2fs/nls_utf8.c
+index 903c65ba..1c444ca2 100644
+--- a/lib/ext2fs/nls_utf8.c
++++ b/lib/ext2fs/nls_utf8.c
+@@ -942,9 +942,36 @@ static int utf8_validate(const struct ext2fs_nls_table *table,
+ 	return 0;
+ }
+ 
++static int utf8_casefold_cmp(const struct ext2fs_nls_table *table,
++			     const unsigned char *str1, size_t len1,
++			     const unsigned char *str2, size_t len2)
++{
++	const struct utf8data *data = utf8nfdicf(table->version);
++	int c1, c2;
++	struct utf8cursor cur1, cur2;
++
++	if (utf8ncursor(&cur1, data, (const char *) str1, len1) < 0)
++		return -1;
++	if (utf8ncursor(&cur2, data, (const char *) str2, len2) < 0)
++		return -1;
++
++	do {
++		c1 = utf8byte(&cur1);
++		c2 = utf8byte(&cur2);
++
++		if (c1 < 0 || c2 < 0)
++			return -1;
++		if (c1 != c2)
++			return c1 - c2;
++	} while (c1);
++
++	return 0;
++}
++
+ static const struct ext2fs_nls_ops utf8_ops = {
+ 	.casefold = utf8_casefold,
+ 	.validate = utf8_validate,
++	.casefold_cmp = utf8_casefold_cmp,
+ };
+ 
+ static const struct ext2fs_nls_table nls_utf8 = {
+@@ -965,3 +992,9 @@ int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
+ {
+ 	return table->ops->validate(table, name, len, pos);
+ }
++int ext2fs_casefold_cmp(const struct ext2fs_nls_table *table,
++			const unsigned char *str1, size_t len1,
++			const unsigned char *str2, size_t len2)
++{
++	return table->ops->casefold_cmp(table, str1, len1, str2, len2);
++}
 -- 
 2.28.0
 
