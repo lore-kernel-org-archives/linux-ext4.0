@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B6C1C388F9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 778BEC55178
 	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0326720885
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E5F2208E4
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RUdgbl5B"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VwyvrD9b"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728276AbgKGP6v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1728269AbgKGP6v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 7 Nov 2020 10:58:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55414 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55410 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726455AbgKGP6u (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 10:58:50 -0500
-Received: from mail-pl1-x641.google.com (mail-pl1-x641.google.com [IPv6:2607:f8b0:4864:20::641])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3A238C0613D3
-        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 07:58:50 -0800 (PST)
-Received: by mail-pl1-x641.google.com with SMTP id u2so2385327pls.10
-        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 07:58:50 -0800 (PST)
+        with ESMTP id S1726614AbgKGP6t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 10:58:49 -0500
+Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7216FC0613CF
+        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 07:58:47 -0800 (PST)
+Received: by mail-pj1-x1043.google.com with SMTP id oc3so945380pjb.4
+        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 07:58:47 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=yyvd3jwAS4NyqEI8cpEn4CNVrLNCqfQyDPupxbVc788=;
-        b=RUdgbl5BqUqNTnEU6AohlLmbirUbQ6dLdKkb02bTMuETpPWMNKgUfR9t/3aU3/f/KU
-         Cj/XPhkriP3VgWS1Ku+lU2+ln/OxIGGQfvC2lZhSi+C8ZQ7kWhRZzxHZR8w3HTBuOY0P
-         rTdrxIQXvFN8HEBtFp7Rc3nOFuKJGo97xqyrf4HiAKbN4osBRvho4QpJpPdt6cC3wSr5
-         hacKEai8Gw5LaalNQJiqxtNpfqv7p1BRjk3ajH4RNthsCscwLuI9pQo/o5RzoTSXa9et
-         79MpNkqwxqAGBlQGSlVKTRBY0ooGHuW7DGshnEbtobxIK3J2AHAQQQCg8VZKnNfrXg4b
-         u/Jg==
+        bh=SaUx96VUhaTpzSCRpCpRjcp0sUfE4sJlXfupVTrZ5Jg=;
+        b=VwyvrD9bhzm4fBzMUD/ytS9sekUljXtP7EzsZ1e7g+hiz4JpS6f/xDL4GpirziW9H2
+         Ss/3toiEvgcqemsK3luHuQjS80J2MSwSecqudGMD3pZxtHjgSu97g6TbTqZgUhM9oPCc
+         RCDyUwS31xt1VufCeOZPFEj4qzildJQer/aGpgDdGXJ+TxlOzVw7LMu1XCz/zTw5Iug7
+         Iit4hldlem7g3OOEPrrf1qxiL3n/BQiNPcdTVZY62L/F5d9JxEdKKBs6eWgGEkHdKhlk
+         lYEuPa+1X1E9vv0UQRZBk3dVKzWutYfs4b5/MryUs0+M6eqcq/GK6dpYBgd/V4aIBLX8
+         Fszw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=yyvd3jwAS4NyqEI8cpEn4CNVrLNCqfQyDPupxbVc788=;
-        b=fG/PGUy9fYlvKyKv2ceooFrQqnBV60Wcp67bwu54MTP9IrGi614RIgcsvXkdYmvKzo
-         /vVzWjNtmfA0+ATD09hWWW8djEsJ2Z/rBX769Sglc3hdvBaEo+Q8aTHjjECHIFlV6j8v
-         yZnChrYAPQW4dsYu8n0ZhVsjpUutmGdibU7iS5igtV/Kym8JhoWOUVAccY7jCHlF8OYe
-         b3UWpwZoVdI99Du4nEl9QT2i9EpP0sIh1MNEeCtRt16X4qda7er7uClpMkiBCzsaXXfR
-         0GYqWYKgfTMuBBYVzYGpAKQhbNjrCCf+asaK3YCIfskbOEQ98s5wHBJdxk5acSVT7wuN
-         m90Q==
-X-Gm-Message-State: AOAM531AqskEfNtNoADQG2qzlrKcBucY1oB8SpzwhvRwAqj/0XcKj2Wi
-        VVKFDQLxqZODpSXRBz2zBpY=
-X-Google-Smtp-Source: ABdhPJzw7sKie+oYcY+YfWIUxzCF1vh/GNPKXuqaPapcJ1oJbAp0Ecf6ABVIYgUk1ABBGEl70bD6/g==
-X-Received: by 2002:a17:902:788e:b029:d6:9a57:ccab with SMTP id q14-20020a170902788eb02900d69a57ccabmr2897758pll.41.1604764729886;
-        Sat, 07 Nov 2020 07:58:49 -0800 (PST)
+        bh=SaUx96VUhaTpzSCRpCpRjcp0sUfE4sJlXfupVTrZ5Jg=;
+        b=SuhHhGZGAd89ABB7X502SWVSu9WNtv7BnpAYSrEUcOPj1qzZs9Zh6s8gTP2yAX7y6s
+         2ONWWLL2HVOJenBmsdzEZdIK8ySvIlct1LelgQLOJ6TkfJzAW0h2KBMLOwO9uZb8F93E
+         scKlb28917euI2u4pHTeq9llYwVdnVJ+FLARy+gnLsYZ26cidDjym9zfX6IN00jYRoDt
+         BjsOsENEyEi7ibpWnPqpnQNU8MD63o/IKoho/LNY0hSlLw9YgVv/mF5SGiBZDPua+84Z
+         hLHL+ZcFZcL26e52+iknQ30ao/MPpIVD2cf3GD17+GyjBNcpMLovJ2ghOFvaXkk6WPXm
+         BjHw==
+X-Gm-Message-State: AOAM5327ehesQ13Mx8JhtVHop+4ACSQGKYQ08LFM6n+1Gw5l7gLIiOP5
+        MeVjE/LqCpiJwWgWKd+R7mCYoIjKACI=
+X-Google-Smtp-Source: ABdhPJwAfFIN4gSLjqk3JYzIx2Mdk+NQ+xdd+vhJ7t9DA90rEVphOy7A6FpW1fQkHoQedkyXkZlYzg==
+X-Received: by 2002:a17:90a:1b84:: with SMTP id w4mr4718275pjc.65.1604764727114;
+        Sat, 07 Nov 2020 07:58:47 -0800 (PST)
 Received: from VM-0-6-centos.localdomain ([119.28.90.140])
-        by smtp.gmail.com with ESMTPSA id e81sm6049956pfh.104.2020.11.07.07.58.48
+        by smtp.gmail.com with ESMTPSA id e81sm6049956pfh.104.2020.11.07.07.58.45
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Sat, 07 Nov 2020 07:58:49 -0800 (PST)
+        Sat, 07 Nov 2020 07:58:46 -0800 (PST)
 From:   Chunguang Xu <brookxu.cn@gmail.com>
 X-Google-Original-From: Chunguang Xu <brookxu@tencent.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH RESEND 7/8] ext4: delete invalid code inside ext4_xattr_block_set()
-Date:   Sat,  7 Nov 2020 23:58:17 +0800
-Message-Id: <1604764698-4269-7-git-send-email-brookxu@tencent.com>
+Subject: [PATCH RESEND 5/8] ext4: update ext4_data_block_valid related comments
+Date:   Sat,  7 Nov 2020 23:58:15 +0800
+Message-Id: <1604764698-4269-5-git-send-email-brookxu@tencent.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
 References: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
@@ -73,26 +73,46 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Chunguang Xu <brookxu@tencent.com>
 
-Delete invalid code inside ext4_xattr_block_set().
+Since ext4_data_block_valid() has been renamed to ext4_inode_block_valid(),
+the related comments need to be updated.
 
 Signed-off-by: Chunguang Xu <brookxu@tencent.com>
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/ext4/xattr.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/ext4/block_validity.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 6127e94..4e3b1f8 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1927,7 +1927,6 @@ struct ext4_xattr_block_find {
- 	} else {
- 		/* Allocate a buffer where we construct the new block. */
- 		s->base = kzalloc(sb->s_blocksize, GFP_NOFS);
--		/* assert(header == s->base) */
- 		error = -ENOMEM;
- 		if (s->base == NULL)
- 			goto cleanup;
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 37025e3..07e9dc3 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -206,7 +206,7 @@ static void ext4_destroy_system_zone(struct rcu_head *rcu)
+  *
+  * The update of system_blks pointer in this function is protected by
+  * sb->s_umount semaphore. However we have to be careful as we can be
+- * racing with ext4_data_block_valid() calls reading system_blks rbtree
++ * racing with ext4_inode_block_valid() calls reading system_blks rbtree
+  * protected only by RCU. That's why we first build the rbtree and then
+  * swap it in place.
+  */
+@@ -262,7 +262,7 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 
+ 	/*
+ 	 * System blks rbtree complete, announce it once to prevent racing
+-	 * with ext4_data_block_valid() accessing the rbtree at the same
++	 * with ext4_inode_block_valid() accessing the rbtree at the same
+ 	 * time.
+ 	 */
+ 	rcu_assign_pointer(sbi->s_system_blks, system_blks);
+@@ -282,7 +282,7 @@ int ext4_setup_system_zone(struct super_block *sb)
+  *
+  * The update of system_blks pointer in this function is protected by
+  * sb->s_umount semaphore. However we have to be careful as we can be
+- * racing with ext4_data_block_valid() calls reading system_blks rbtree
++ * racing with ext4_inode_block_valid() calls reading system_blks rbtree
+  * protected only by RCU. So we first clear the system_blks pointer and
+  * then free the rbtree only after RCU grace period expires.
+  */
 -- 
 1.8.3.1
 
