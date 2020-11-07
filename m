@@ -2,297 +2,90 @@ Return-Path: <SRS0=5zRl=EN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F21CC55178
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:00:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B91C8C388F7
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:10:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E3E8E20878
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:00:32 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="asNQ1Vij"
+	by mail.kernel.org (Postfix) with ESMTP id 7BBB020872
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:10:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727623AbgKGE6h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Nov 2020 23:58:37 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38488 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726880AbgKGE6g (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2020 23:58:36 -0500
-Received: from mail-lj1-x233.google.com (mail-lj1-x233.google.com [IPv6:2a00:1450:4864:20::233])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3C847C0613D2
-        for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2020 20:58:36 -0800 (PST)
-Received: by mail-lj1-x233.google.com with SMTP id p15so3730666ljj.8
-        for <linux-ext4@vger.kernel.org>; Fri, 06 Nov 2020 20:58:36 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=lrcPOo6i+nOKaGcssjeCtEpFiPKYd6jzH30EXtM+xO0=;
-        b=asNQ1Vijk/0x433pPEUzyiHfiXBCMW/SaEE/XYh5Cr5VyIri1+of7lKMLILYqE2Jcy
-         6HS+GVzQy55zdJ9S0RD6cRv8BTJJdLrvbvsCXqytxB0APRI2NIMYpz8JGQhHM/FE1LbR
-         uHCYjBkugMl751yQ5IvuBpOWvsrBripyjwj9AQ2xfTGqfabtEqsMnpkG68ZlGiHVGqK3
-         mlE8ydyD1+bIwUqWDB6QKST7bGAJiEQfrW2dCs4QOfiDGXSx3iloFqCOZYol0RXeDpAR
-         dR+0f5+pg/Ia/sTBlHw4mrVaglPCqjrNBdbl1LaQCyzzZeGNnU80uDF4DuBTKo2FNZze
-         F+lg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=lrcPOo6i+nOKaGcssjeCtEpFiPKYd6jzH30EXtM+xO0=;
-        b=NRi0wg6u3QvlkKmlZ6miwwki6BFDhbLxYkJ0Se0aeqSsFRSdKhS+sljZlojSav8WLu
-         WSuIHH+YRnB+GncPG+zK36uljWMq+nvsgeY5LqhSJNvAr1VNyaLEiHV/D35c34Br+iDS
-         aPGBnW5R762GB75cKSNT4r5zM7PwBcf/Eyoded8IFTtnydDa/Piao9rNBQrFc9CNW3ZP
-         Zy1Z7ZekiLLaivIUtP8DA/JedF6Iwvzkx1z3WoMKkuHEmzG72Ei7J5CSWui76OxW8hm+
-         FMVDkzLU2VGE6zPeaqD2rRmLJP4yzsVce/1tEgRZcZxZwGLnfsLQ7y9Gk0zCgNT22YnP
-         spUg==
-X-Gm-Message-State: AOAM531QIKney2vFUy3983EWcRzEnM+R61dnsnkKidMc8/xt0F0MWW2L
-        jq6hCZREMhnEGlyM7s5vqjbZmLhINZrh6fbRTjZ9jA==
-X-Google-Smtp-Source: ABdhPJxjIeeHTsuTnNbico0DpKgO1y6BJLYflynAekFx9Ig3uYJ0B/hjIaTw6BRp9Z5i+si9det/23Pe+0kGpBA6yog=
-X-Received: by 2002:a2e:9746:: with SMTP id f6mr2022414ljj.270.1604725113176;
- Fri, 06 Nov 2020 20:58:33 -0800 (PST)
+        id S1727693AbgKGFKR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Nov 2020 00:10:17 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:55207 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726032AbgKGFKQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 00:10:16 -0500
+Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0A75ABXS005961
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 7 Nov 2020 00:10:11 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 02AE5420107; Sat,  7 Nov 2020 00:10:10 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     harshads@google.com, "Theodore Ts'o" <tytso@mit.edu>,
+        stable@kernel.org
+Subject: [PATCH 2/2] jbd2: fix up sparse warnings in checkpoint code
+Date:   Sat,  7 Nov 2020 00:09:59 -0500
+Message-Id: <20201107050959.2561329-2-tytso@mit.edu>
+X-Mailer: git-send-email 2.28.0
+In-Reply-To: <20201107050959.2561329-1-tytso@mit.edu>
+References: <20201107050959.2561329-1-tytso@mit.edu>
 MIME-Version: 1.0
-References: <20201106192154.51514-1-98.arpi@gmail.com>
-In-Reply-To: <20201106192154.51514-1-98.arpi@gmail.com>
-From:   David Gow <davidgow@google.com>
-Date:   Sat, 7 Nov 2020 12:58:21 +0800
-Message-ID: <CABVgOSkQ6+y7OGw2494cJa2b60EkSjncLNAgc9cJDbS=X9J3WA@mail.gmail.com>
-Subject: Re: [PATCH v6 1/2] kunit: Support for Parameterized Testing
-To:     Arpitha Raghunandan <98.arpi@gmail.com>
-Cc:     Brendan Higgins <brendanhiggins@google.com>,
-        Shuah Khan <skhan@linuxfoundation.org>,
-        Marco Elver <elver@google.com>,
-        Iurii Zaikin <yzaikin@google.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "open list:KERNEL SELFTEST FRAMEWORK" 
-        <linux-kselftest@vger.kernel.org>,
-        KUnit Development <kunit-dev@googlegroups.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-kernel-mentees@lists.linuxfoundation.org,
-        linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Nov 7, 2020 at 3:22 AM Arpitha Raghunandan <98.arpi@gmail.com> wrote:
->
-> Implementation of support for parameterized testing in KUnit.
-> This approach requires the creation of a test case using the
-> KUNIT_CASE_PARAM macro that accepts a generator function as input.
-> This generator function should return the next parameter given the
-> previous parameter in parameterized tests. It also provides
-> a macro to generate common-case generators.
->
-> Signed-off-by: Arpitha Raghunandan <98.arpi@gmail.com>
-> Co-developed-by: Marco Elver <elver@google.com>
-> Signed-off-by: Marco Elver <elver@google.com>
-> ---
+Add missing __acquires() and __releases() annotations.  Also, in an
+"this should never happen" WARN_ON check, if it *does* actually
+happen, we need to release j_state_lock since this function is always
+supposed to release that lock.  Otherwise, things will quickly grind
+to a halt after the WARN_ON trips.
 
-This looks good to me! A couple of minor thoughts about the output
-format below, but I'm quite happy to have this as-is regardless.
+Fixes: 96f1e0974575 ("jbd2: avoid long hold times of j_state_lock...")
+Cc: stable@kernel.org
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/jbd2/checkpoint.c  | 2 ++
+ fs/jbd2/transaction.c | 4 +++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-Reviewed-by: David Gow <davidgow@google.com>
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 263f02ad8ebf..472932b9e6bc 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -106,6 +106,8 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
+  * for a checkpoint to free up some space in the log.
+  */
+ void __jbd2_log_wait_for_space(journal_t *journal)
++__acquires(&journal->j_state_lock)
++__releases(&journal->j_state_lock)
+ {
+ 	int nblocks, space_left;
+ 	/* assert_spin_locked(&journal->j_state_lock); */
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 43985738aa86..d54f04674e8e 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -195,8 +195,10 @@ static void wait_transaction_switching(journal_t *journal)
+ 	DEFINE_WAIT(wait);
+ 
+ 	if (WARN_ON(!journal->j_running_transaction ||
+-		    journal->j_running_transaction->t_state != T_SWITCH))
++		    journal->j_running_transaction->t_state != T_SWITCH)) {
++		read_unlock(&journal->j_state_lock);
+ 		return;
++	}
+ 	prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
+ 			TASK_UNINTERRUPTIBLE);
+ 	read_unlock(&journal->j_state_lock);
+-- 
+2.28.0
 
-Cheers,
--- David
-
-> Changes v5->v6:
-> - Fix alignment to maintain consistency
-> Changes v4->v5:
-> - Update kernel-doc comments.
-> - Use const void* for generator return and prev value types.
-> - Add kernel-doc comment for KUNIT_ARRAY_PARAM.
-> - Rework parameterized test case execution strategy: each parameter is executed
->   as if it was its own test case, with its own test initialization and cleanup
->   (init and exit are called, etc.). However, we cannot add new test cases per TAP
->   protocol once we have already started execution. Instead, log the result of
->   each parameter run as a diagnostic comment.
-> Changes v3->v4:
-> - Rename kunit variables
-> - Rename generator function helper macro
-> - Add documentation for generator approach
-> - Display test case name in case of failure along with param index
-> Changes v2->v3:
-> - Modifictaion of generator macro and method
-> Changes v1->v2:
-> - Use of a generator method to access test case parameters
->
->  include/kunit/test.h | 36 ++++++++++++++++++++++++++++++++++
->  lib/kunit/test.c     | 46 +++++++++++++++++++++++++++++++-------------
->  2 files changed, 69 insertions(+), 13 deletions(-)
->
-> diff --git a/include/kunit/test.h b/include/kunit/test.h
-> index db1b0ae666c4..16616d3974f9 100644
-> --- a/include/kunit/test.h
-> +++ b/include/kunit/test.h
-> @@ -107,6 +107,7 @@ struct kunit;
->   *
->   * @run_case: the function representing the actual test case.
->   * @name:     the name of the test case.
-> + * @generate_params: the generator function for parameterized tests.
->   *
->   * A test case is a function with the signature,
->   * ``void (*)(struct kunit *)``
-> @@ -141,6 +142,7 @@ struct kunit;
->  struct kunit_case {
->         void (*run_case)(struct kunit *test);
->         const char *name;
-> +       const void* (*generate_params)(const void *prev);
->
->         /* private: internal use only. */
->         bool success;
-> @@ -163,6 +165,22 @@ static inline char *kunit_status_to_string(bool status)
->   */
->  #define KUNIT_CASE(test_name) { .run_case = test_name, .name = #test_name }
->
-> +/**
-> + * KUNIT_CASE_PARAM - A helper for creation a parameterized &struct kunit_case
-> + *
-> + * @test_name: a reference to a test case function.
-> + * @gen_params: a reference to a parameter generator function.
-> + *
-> + * The generator function ``const void* gen_params(const void *prev)`` is used
-> + * to lazily generate a series of arbitrarily typed values that fit into a
-> + * void*. The argument @prev is the previously returned value, which should be
-> + * used to derive the next value; @prev is set to NULL on the initial generator
-> + * call.  When no more values are available, the generator must return NULL.
-> + */
-> +#define KUNIT_CASE_PARAM(test_name, gen_params)                        \
-> +               { .run_case = test_name, .name = #test_name,    \
-> +                 .generate_params = gen_params }
-> +
->  /**
->   * struct kunit_suite - describes a related collection of &struct kunit_case
->   *
-> @@ -208,6 +226,10 @@ struct kunit {
->         const char *name; /* Read only after initialization! */
->         char *log; /* Points at case log after initialization */
->         struct kunit_try_catch try_catch;
-> +       /* param_value is the current parameter value for a test case. */
-> +       const void *param_value;
-> +       /* param_index stores the index of the parameter in parameterized tests. */
-> +       int param_index;
->         /*
->          * success starts as true, and may only be set to false during a
->          * test case; thus, it is safe to update this across multiple
-> @@ -1742,4 +1764,18 @@ do {                                                                            \
->                                                 fmt,                           \
->                                                 ##__VA_ARGS__)
->
-> +/**
-> + * KUNIT_ARRAY_PARAM() - Define test parameter generator from an array.
-> + * @name:  prefix for the test parameter generator function.
-> + * @array: array of test parameters.
-> + *
-> + * Define function @name_gen_params which uses @array to generate parameters.
-> + */
-> +#define KUNIT_ARRAY_PARAM(name, array)                                                         \
-> +       static const void *name##_gen_params(const void *prev)                                  \
-> +       {                                                                                       \
-> +               typeof((array)[0]) * __next = prev ? ((typeof(__next)) prev) + 1 : (array);     \
-> +               return __next - (array) < ARRAY_SIZE((array)) ? __next : NULL;                  \
-> +       }
-> +
->  #endif /* _KUNIT_TEST_H */
-> diff --git a/lib/kunit/test.c b/lib/kunit/test.c
-> index 750704abe89a..329fee9e0634 100644
-> --- a/lib/kunit/test.c
-> +++ b/lib/kunit/test.c
-> @@ -325,29 +325,25 @@ static void kunit_catch_run_case(void *data)
->   * occur in a test case and reports them as failures.
->   */
->  static void kunit_run_case_catch_errors(struct kunit_suite *suite,
-> -                                       struct kunit_case *test_case)
-> +                                       struct kunit_case *test_case,
-> +                                       struct kunit *test)
->  {
->         struct kunit_try_catch_context context;
->         struct kunit_try_catch *try_catch;
-> -       struct kunit test;
->
-> -       kunit_init_test(&test, test_case->name, test_case->log);
-> -       try_catch = &test.try_catch;
-> +       kunit_init_test(test, test_case->name, test_case->log);
-> +       try_catch = &test->try_catch;
->
->         kunit_try_catch_init(try_catch,
-> -                            &test,
-> +                            test,
->                              kunit_try_run_case,
->                              kunit_catch_run_case);
-> -       context.test = &test;
-> +       context.test = test;
->         context.suite = suite;
->         context.test_case = test_case;
->         kunit_try_catch_run(try_catch, &context);
->
-> -       test_case->success = test.success;
-> -
-> -       kunit_print_ok_not_ok(&test, true, test_case->success,
-> -                             kunit_test_case_num(suite, test_case),
-> -                             test_case->name);
-> +       test_case->success = test->success;
->  }
->
->  int kunit_run_tests(struct kunit_suite *suite)
-> @@ -356,8 +352,32 @@ int kunit_run_tests(struct kunit_suite *suite)
->
->         kunit_print_subtest_start(suite);
->
-> -       kunit_suite_for_each_test_case(suite, test_case)
-> -               kunit_run_case_catch_errors(suite, test_case);
-> +       kunit_suite_for_each_test_case(suite, test_case) {
-> +               struct kunit test = { .param_value = NULL, .param_index = 0 };
-> +               bool test_success = true;
-> +
-> +               if (test_case->generate_params)
-> +                       test.param_value = test_case->generate_params(NULL);
-> +
-> +               do {
-> +                       kunit_run_case_catch_errors(suite, test_case, &test);
-> +                       test_success &= test_case->success;
-> +
-> +                       if (test_case->generate_params) {
-> +                               kunit_log(KERN_INFO, &test,
-> +                                         KUNIT_SUBTEST_INDENT
-> +                                         "# %s: param-%d %s",
-
-Would it make sense to have this imitate the TAP format a bit more?
-So, have "# [ok|not ok] - [name]" as the format? [name] could be
-something like "[test_case->name]:param-[index]" or similar.
-If we keep it commented out and don't indent it further, it won't
-formally be a nested test (though if we wanted to support those later,
-it'd be easy to add), but I think it would be nicer to be consistent
-here.
-
-My other suggestion -- albeit one outside the scope of this initial
-version -- would be to allow the "param-%d" name to be overridden
-somehow by a test. For example, the ext4 inode test has names for all
-its test cases: it'd be nice to be able to display those instead (even
-if they're not formatted as identifiers as-is).
-
-> +                                         test_case->name, test.param_index,
-> +                                         kunit_status_to_string(test.success));
-> +                               test.param_value = test_case->generate_params(test.param_value);
-> +                               test.param_index++;
-> +                       }
-> +               } while (test.param_value);
-> +
-> +               kunit_print_ok_not_ok(&test, true, test_success,
-> +                                     kunit_test_case_num(suite, test_case),
-> +                                     test_case->name);
-> +       }
->
->         kunit_print_subtest_end(suite);
->
-> --
-> 2.25.1
->
-> --
-> You received this message because you are subscribed to the Google Groups "KUnit Development" group.
-> To unsubscribe from this group and stop receiving emails from it, send an email to kunit-dev+unsubscribe@googlegroups.com.
-> To view this discussion on the web visit https://groups.google.com/d/msgid/kunit-dev/20201106192154.51514-1-98.arpi%40gmail.com.
