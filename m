@@ -2,201 +2,125 @@ Return-Path: <SRS0=5zRl=EN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.4 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 989C0C388F9
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 10:06:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7570CC388F7
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4B8DB206A4
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 10:06:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 217BD208C7
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="cFZKFASw"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eDDsEmrY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728106AbgKGKGn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Nov 2020 05:06:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57786 "EHLO
+        id S1727789AbgKGP6n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Nov 2020 10:58:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55388 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727890AbgKGKGm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 05:06:42 -0500
-Received: from mail-oi1-x244.google.com (mail-oi1-x244.google.com [IPv6:2607:f8b0:4864:20::244])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6A0EC0613CF
-        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 02:06:40 -0800 (PST)
-Received: by mail-oi1-x244.google.com with SMTP id k26so4327792oiw.0
-        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 02:06:40 -0800 (PST)
+        with ESMTP id S1726284AbgKGP6n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 10:58:43 -0500
+Received: from mail-pl1-x641.google.com (mail-pl1-x641.google.com [IPv6:2607:f8b0:4864:20::641])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CBCDC0613D2
+        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 07:58:43 -0800 (PST)
+Received: by mail-pl1-x641.google.com with SMTP id t18so2405950plo.0
+        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 07:58:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=TErsauc9tpAzI6S5cYpbCRvl4twcQzw2HKSJ2d2Z+Qg=;
-        b=cFZKFASwAfugNcZhz/FuAFmwgIJgslvWVTlXGObXW4GVaiNx5l+4SITTnhwIes3oiJ
-         reYnqBcoLt6G3wNTxTLRdKwgOg7Ns7cE5FqN5L4rV7tMFTjEp2540lKCJlUvc52aoVKR
-         0YjZ0+zMCT0aW++pNadjtwASHdwbGcnxya4d7uBY6bTaj1NGc6B9kOGdHCcbOMUKZvXf
-         bJd1gYeIAayqwjDTVfshWKIZxHJX7MEwCH3td/atGMHmO6tHjcBdloKYwzPy6HyHIlWy
-         +nIGIc8yTT0VDKRsKtvKA7fit+ZKdqNJdSHlD/fEWKCd9D7kRQN5jIMqPlF0YA+MdZGz
-         t+Ug==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=prCHr1Qm4fANZO9EoAFrXQE5GSwUExCTKLrBWMgi4jg=;
+        b=eDDsEmrYthzmZmOSh02CJhiiRMCC1AiQD+eTzybjWdiInc7BivC8eKkDrhUyPS2z13
+         +/zC6HtukDX5Jc6jc+ND9s2+Mzu3723XzS/Zl4kU669zG/gRslcJ1irduZ3V/yWX+F2l
+         9PqXyfotzEhlYGL8v0rD7mM2dG6m5nChVPTJpMvbH96AmkHVbgbTOQwy+R/8zwe123ZA
+         6ONF0uv3OYgX99MyxtehZ3snDU92ih0i4Lbe43QgG3l/i+eg0FZ2lqUaXIFIH3VJVFLe
+         uT0KnYZ95PtgLY5/EIDvh6E2D9bWohKobzFUiNlbgpmCfiP7bRIrjvfCgBoA15yU0Jwj
+         w4fA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=TErsauc9tpAzI6S5cYpbCRvl4twcQzw2HKSJ2d2Z+Qg=;
-        b=nKk/b+EYTXEqO29FikoNM5alFGknX8Yhsxmt7KHugHO95ST5RvOpc05ZJokHW1PBra
-         YegzrN/qONpwbgHvqGNdHkRAshOQGqp//TBEyhUR8BUW0SsK9uK8THKELj3SBSr6F96U
-         QliywZ37wNu55qLmorF6f4YqKHFAMba2KUL7sVouFfbWkYCc+QimqPSODLMN7DKGlTwA
-         V2/Fxc67i/jpAujaoydzUmHbbPL9JP9m1HO0MEE0Z9XI3o+BEOBGaH8uo8ofpLWBufUx
-         zFdjwYioUzrFUCmmPCPjpyne+QtNV+QGurPO468+v26/I5A2VL0J+RiCpkcNimMPWD+X
-         9cng==
-X-Gm-Message-State: AOAM532giYaZdHSxPmLJKe7UVxXJxb+WVnujb2OWSLK10i6mVxPozwY9
-        5vBviiwC9nympNLtr4z65ujjbyWrV9i81Trh4BW9dg==
-X-Google-Smtp-Source: ABdhPJxb+xfOZ9jVhfWoVlbABCI67vL5rewh1ARjZCLWNyu463apeEQlWxjA1SZroi07HqVGkXthuRthzuku33QQCxw=
-X-Received: by 2002:aca:6206:: with SMTP id w6mr3818129oib.121.1604743599913;
- Sat, 07 Nov 2020 02:06:39 -0800 (PST)
-MIME-Version: 1.0
-References: <20201106192154.51514-1-98.arpi@gmail.com> <CABVgOSkQ6+y7OGw2494cJa2b60EkSjncLNAgc9cJDbS=X9J3WA@mail.gmail.com>
-In-Reply-To: <CABVgOSkQ6+y7OGw2494cJa2b60EkSjncLNAgc9cJDbS=X9J3WA@mail.gmail.com>
-From:   Marco Elver <elver@google.com>
-Date:   Sat, 7 Nov 2020 11:06:28 +0100
-Message-ID: <CANpmjNNp2RUCE_ypp2R4MznikTYRYeCDuF7VMp+Hbh=55KWa3A@mail.gmail.com>
-Subject: Re: [PATCH v6 1/2] kunit: Support for Parameterized Testing
-To:     David Gow <davidgow@google.com>
-Cc:     Arpitha Raghunandan <98.arpi@gmail.com>,
-        Brendan Higgins <brendanhiggins@google.com>,
-        Shuah Khan <skhan@linuxfoundation.org>,
-        Iurii Zaikin <yzaikin@google.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "open list:KERNEL SELFTEST FRAMEWORK" 
-        <linux-kselftest@vger.kernel.org>,
-        KUnit Development <kunit-dev@googlegroups.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-kernel-mentees@lists.linuxfoundation.org,
-        linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=prCHr1Qm4fANZO9EoAFrXQE5GSwUExCTKLrBWMgi4jg=;
+        b=gFRIS3SZ7gC93D/c6jV8QrYyw76JN2CVQi3dHHjJEOx/w6KH75dVHErMEqkz9Zynsy
+         JWSQZB6J/K8wf8rnwDajmlauCVcmfxoQzTJe3uC4I5R/m0fn+IabJcfqA3kQU9TN1s+e
+         8mccURS6/X9ZnUoeJWC7OCy2MWo1303/42lOvKAN4RET8ROTPG9943/mHbXa9cwhf/Hu
+         1ACnE4G7hSES9rfmslGhydU/spzhsyktbYIZHr4iBjHrgkSSLi4GR7udp3508WSeQkrA
+         vH884Q8mE9yVz38HQQyTH95M/FHFYJZ3hHRrZyYBSR6hXYoEH7jCw0n1sgrozqcGN+bc
+         ALdA==
+X-Gm-Message-State: AOAM533SPR7QrYSB4P+7oRmGbtGxcAHOOc6ykjSwZF1f/Dq4G9bS3Ywa
+        bGWSeRbpaLs8TbRxPFB7YdaZBXXEcn4=
+X-Google-Smtp-Source: ABdhPJwO2/7sRwwDj5Djs/yB1qAlqo+yq3uaVO3tD9rNxNeh5vkFdMVia+7xRQi5ITGGXzAfjh/ajw==
+X-Received: by 2002:a17:90a:15c8:: with SMTP id w8mr4856377pjd.66.1604764722867;
+        Sat, 07 Nov 2020 07:58:42 -0800 (PST)
+Received: from VM-0-6-centos.localdomain ([119.28.90.140])
+        by smtp.gmail.com with ESMTPSA id e81sm6049956pfh.104.2020.11.07.07.58.41
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Sat, 07 Nov 2020 07:58:42 -0800 (PST)
+From:   Chunguang Xu <brookxu.cn@gmail.com>
+X-Google-Original-From: Chunguang Xu <brookxu@tencent.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org
+Subject: [PATCH RESEND 2/8] ext4: remove redundant mb_regenerate_buddy()
+Date:   Sat,  7 Nov 2020 23:58:12 +0800
+Message-Id: <1604764698-4269-2-git-send-email-brookxu@tencent.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
+References: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, 7 Nov 2020 at 05:58, David Gow <davidgow@google.com> wrote:
-> On Sat, Nov 7, 2020 at 3:22 AM Arpitha Raghunandan <98.arpi@gmail.com> wrote:
-> >
-> > Implementation of support for parameterized testing in KUnit.
-> > This approach requires the creation of a test case using the
-> > KUNIT_CASE_PARAM macro that accepts a generator function as input.
-> > This generator function should return the next parameter given the
-> > previous parameter in parameterized tests. It also provides
-> > a macro to generate common-case generators.
-> >
-> > Signed-off-by: Arpitha Raghunandan <98.arpi@gmail.com>
-> > Co-developed-by: Marco Elver <elver@google.com>
-> > Signed-off-by: Marco Elver <elver@google.com>
-> > ---
->
-> This looks good to me! A couple of minor thoughts about the output
-> format below, but I'm quite happy to have this as-is regardless.
->
-> Reviewed-by: David Gow <davidgow@google.com>
->
-> Cheers,
-> -- David
->
-> > Changes v5->v6:
-> > - Fix alignment to maintain consistency
-> > Changes v4->v5:
-> > - Update kernel-doc comments.
-> > - Use const void* for generator return and prev value types.
-> > - Add kernel-doc comment for KUNIT_ARRAY_PARAM.
-> > - Rework parameterized test case execution strategy: each parameter is executed
-> >   as if it was its own test case, with its own test initialization and cleanup
-> >   (init and exit are called, etc.). However, we cannot add new test cases per TAP
-> >   protocol once we have already started execution. Instead, log the result of
-> >   each parameter run as a diagnostic comment.
-> > Changes v3->v4:
-> > - Rename kunit variables
-> > - Rename generator function helper macro
-> > - Add documentation for generator approach
-> > - Display test case name in case of failure along with param index
-> > Changes v2->v3:
-> > - Modifictaion of generator macro and method
-> > Changes v1->v2:
-> > - Use of a generator method to access test case parameters
-> >
-> >  include/kunit/test.h | 36 ++++++++++++++++++++++++++++++++++
-> >  lib/kunit/test.c     | 46 +++++++++++++++++++++++++++++++-------------
-> >  2 files changed, 69 insertions(+), 13 deletions(-)
-> >
-> > diff --git a/include/kunit/test.h b/include/kunit/test.h
-> > index db1b0ae666c4..16616d3974f9 100644
-> > --- a/include/kunit/test.h
-> > +++ b/include/kunit/test.h
-> > @@ -107,6 +107,7 @@ struct kunit;
-[...]
-> > -       kunit_suite_for_each_test_case(suite, test_case)
-> > -               kunit_run_case_catch_errors(suite, test_case);
-> > +       kunit_suite_for_each_test_case(suite, test_case) {
-> > +               struct kunit test = { .param_value = NULL, .param_index = 0 };
-> > +               bool test_success = true;
-> > +
-> > +               if (test_case->generate_params)
-> > +                       test.param_value = test_case->generate_params(NULL);
-> > +
-> > +               do {
-> > +                       kunit_run_case_catch_errors(suite, test_case, &test);
-> > +                       test_success &= test_case->success;
-> > +
-> > +                       if (test_case->generate_params) {
-> > +                               kunit_log(KERN_INFO, &test,
-> > +                                         KUNIT_SUBTEST_INDENT
-> > +                                         "# %s: param-%d %s",
->
-> Would it make sense to have this imitate the TAP format a bit more?
-> So, have "# [ok|not ok] - [name]" as the format? [name] could be
-> something like "[test_case->name]:param-[index]" or similar.
-> If we keep it commented out and don't indent it further, it won't
-> formally be a nested test (though if we wanted to support those later,
-> it'd be easy to add), but I think it would be nicer to be consistent
-> here.
+From: Chunguang Xu <brookxu@tencent.com>
 
-The previous attempt [1] at something similar failed because it seems
-we'd need to teach kunit-tool new tricks [2], too.
-[1] https://lkml.kernel.org/r/20201105195503.GA2399621@elver.google.com
-[2] https://lkml.kernel.org/r/20201106123433.GA3563235@elver.google.com
+After this patch (163a203), if an abnormal bitmap is detected, we
+will mark the group as corrupt, and we will not use this group in
+the future. Therefore, it should be meaningless to regenerate the
+buddy bitmap of this group, It might be better to delete it.
 
-So if we go with a different format, we might need a patch before this
-one to make kunit-tool compatible with that type of diagnostic.
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ fs/ext4/mballoc.c | 19 -------------------
+ 1 file changed, 19 deletions(-)
 
-Currently I think we have the following proposals for a format:
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 24af9ed..5b74555 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -822,24 +822,6 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 	spin_unlock(&sbi->s_bal_lock);
+ }
+ 
+-static void mb_regenerate_buddy(struct ext4_buddy *e4b)
+-{
+-	int count;
+-	int order = 1;
+-	void *buddy;
+-
+-	while ((buddy = mb_find_buddy(e4b, order++, &count))) {
+-		ext4_set_bits(buddy, 0, count);
+-	}
+-	e4b->bd_info->bb_fragments = 0;
+-	memset(e4b->bd_info->bb_counters, 0,
+-		sizeof(*e4b->bd_info->bb_counters) *
+-		(e4b->bd_sb->s_blocksize_bits + 2));
+-
+-	ext4_mb_generate_buddy(e4b->bd_sb, e4b->bd_buddy,
+-		e4b->bd_bitmap, e4b->bd_group);
+-}
+-
+ /* The buddy information is attached the buddy cache inode
+  * for convenience. The information regarding each group
+  * is loaded via ext4_mb_load_buddy. The information involve
+@@ -1512,7 +1494,6 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 				sb, e4b->bd_group,
+ 				EXT4_GROUP_INFO_BBITMAP_CORRUPT);
+ 		}
+-		mb_regenerate_buddy(e4b);
+ 		goto done;
+ 	}
+ 
+-- 
+1.8.3.1
 
-1. The current "# [test_case->name]: param-[index] [ok|not ok]" --
-this works well, because no changes to kunit-tool are required, and it
-also picks up the diagnostic context for the case and displays that on
-test failure.
-
-2. Your proposed "# [ok|not ok] - [test_case->name]:param-[index]".
-As-is, this needs a patch for kunit-tool as well. I just checked, and
-if we change it to "# [ok|not ok] - [test_case->name]: param-[index]"
-(note the space after ':') it works without changing kunit-tool. ;-)
-
-3. Something like "# [ok|not ok] param-[index] - [test_case->name]",
-which I had played with earlier but kunit-tool is definitely not yet
-happy with.
-
-So my current preference is (2) with the extra space (no change to
-kunit-tool required). WDYT?
-
-> My other suggestion -- albeit one outside the scope of this initial
-> version -- would be to allow the "param-%d" name to be overridden
-> somehow by a test. For example, the ext4 inode test has names for all
-> its test cases: it'd be nice to be able to display those instead (even
-> if they're not formatted as identifiers as-is).
-
-Right, I was thinking about this, but it'd need a way to optionally
-pass another function that converts const void* params to readable
-strings. But as you say, we should do that as a follow-up patch later
-because it might require a few more iterations.
-
-[...]
-
-Thanks,
--- Marco
