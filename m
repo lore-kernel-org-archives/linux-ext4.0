@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1862AC55179
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56260C388F7
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D033320719
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 164E420885
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 15:58:51 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ugt5zqyg"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CQUHCzSU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728250AbgKGP6q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Nov 2020 10:58:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55398 "EHLO
+        id S1726207AbgKGP6u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Nov 2020 10:58:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728232AbgKGP6q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 10:58:46 -0500
-Received: from mail-pl1-x644.google.com (mail-pl1-x644.google.com [IPv6:2607:f8b0:4864:20::644])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F132C0613CF
-        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 07:58:46 -0800 (PST)
-Received: by mail-pl1-x644.google.com with SMTP id f21so2398569plr.5
-        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 07:58:46 -0800 (PST)
+        with ESMTP id S1726297AbgKGP6t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 10:58:49 -0500
+Received: from mail-pl1-x642.google.com (mail-pl1-x642.google.com [IPv6:2607:f8b0:4864:20::642])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECDBEC0613D2
+        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 07:58:48 -0800 (PST)
+Received: by mail-pl1-x642.google.com with SMTP id g11so2384170pll.13
+        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 07:58:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=AF8FR3F/ClJ6EJNVBH1gLQ9CWvyd1d97y/TI4TUHyk4=;
-        b=Ugt5zqyglxr4wcVRzZRt/n9XmIHABJ69wyWavwqjmS8LAac2O7svUChjucGQ1ZzHAS
-         itko9kRbTuTQIhm4w+ywH5eQ3BryREhrH5HPyAZ3Db6p47EQCUcYhJ8FM1hkLgQrgBBe
-         O89uOhhBo87TFBN4TvbVJkMwawzBEcnene7kBv9U/ezZ1iU+qaroPc1xz3sNaTjtQ4RR
-         P31ufmXaZhQDaM91IoiTZ7Vj4xE6CDnn6m/aHrjXGG4IHOuGFIzuPvbMbkMB37hzJpL+
-         096nzPtTmcMC8KXnbpT8QQ9yLseiKHrCdDlJxSVrZYdSqrwv9z8Y56qLquoAaXcHXcVJ
-         ptOQ==
+        bh=+lZahwwfV9r2OInABAfNirNFAo1rXbypb6sLrp5REfw=;
+        b=CQUHCzSUj+ZhNwrLn9kTJnY3IOW6OqQ3vUOi5/x13kKq7MgkcN4px0PaGhyAu3wEUo
+         hgzQfs6i+jXkIaVUMDtNnrftt4OotYHME/GEBeX8g7FlqjpoPJH47nxWQD9nmEsVdVAi
+         zZPIzERzrUZQBFGXc604cbebfXZPV7oCRMZ4okZ4s9GxSo+O9FWCSiseo6/CDhvTfl2C
+         gAGLsDjqt0OuGbTCcRtl9BsaE1drwpuPm7QAzMCSrY5p1vvxAvIbfBsaKCbey83VzuwP
+         gai9tNcb3oG3Zz4bP4d95LgeCORB7O2dqd66qFEa9SEPHTmjOQ1aTmLAwLkJ0XWa3rmc
+         iTjA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=AF8FR3F/ClJ6EJNVBH1gLQ9CWvyd1d97y/TI4TUHyk4=;
-        b=kPXaXhTNxN1DiQ+9aF+bQitGSHNP0k6dBarRAXl6MhLXH+51iDpvHj3SkA9Q3ucBJs
-         JyMPBPrmox7UiJLWIBcd8/9SoDdWzVf3dYZ4W7SwOvQvU29zzLLxszTVeKNUFfXyLcpZ
-         btSByLAaiFOAJhSXoEK9/rJ4piN03xfz2/5N90mrnspnfDT27GKGmO6AIxvFgPTb8+Zg
-         q/vOY8Bj1uJjdnNPkuqwP0xkoGzeGoAUortkPAr5OOh0Fiij7FKG4b99MaKcVtiI+raP
-         pzYtYi5p3w9nzAD5RtALRVvcg/Du8DTwNN/EAhoK9jhr4Xi8kfXP0+WlcjpguLcsBDds
-         6SHA==
-X-Gm-Message-State: AOAM533HCGzTzwSeSNIu2xQoKGAf/+tBoRAzUx+HcX8KjggDOkwikYbP
-        7MVIq0jshi3kBDdII0xuoBs=
-X-Google-Smtp-Source: ABdhPJxoOWiJID6Byf5QTFXomS07OQbRNiTEht7w22X+ZJvgP4J0woFy37UZ5070IM6puwX/XvOw5A==
-X-Received: by 2002:a17:902:222:b029:d3:b4d2:105e with SMTP id 31-20020a1709020222b02900d3b4d2105emr6159076plc.32.1604764725712;
-        Sat, 07 Nov 2020 07:58:45 -0800 (PST)
+        bh=+lZahwwfV9r2OInABAfNirNFAo1rXbypb6sLrp5REfw=;
+        b=GTdW5rPudcDqlqmRXDeyH/U6WxTzZBc9WKyIy+xnyefbVuPXlB/XHyw79N3TFBvV6Z
+         MU0iVrRo3bIWUmizaNzOted2RnBLty8rKau3PJUHysMrzQH31SVfmb16KSmZE3rDv2he
+         mx+pULi4ddSlkxJ8fHnNYcxuYxcQdbUTH3cOV4oM/OmDSI0HZeX92F2vxfnfkauPRjbR
+         XOxVsgZ8bAnsXvOHVXZYeHGBtIUAhYAi28Xp53EolLUFwBSGnFpDACy2mDkQuV9dUDze
+         DbgiTVLNlJ46ZZJBKjZh/aVok3F0Cv3WYsUbsWzDPNcH5iwQGXUPHHjPA6SonRZVXotu
+         gAoQ==
+X-Gm-Message-State: AOAM5332o3cis/wxWm2DZVvt/DMj9iyqCd5VooQZdtU4fDNY34JegXlI
+        Ln9KPQnXp1qdUR6gXJwkHnSPXMMi7vo=
+X-Google-Smtp-Source: ABdhPJxCXPGCdcIfDepJKgKyzn0cnsSUOfmPNWoSNF5riodvKPX0jlG1nLg4EnagOFFNhgXF0TAz8A==
+X-Received: by 2002:a17:902:8508:b029:d5:af79:8b40 with SMTP id bj8-20020a1709028508b02900d5af798b40mr5890736plb.28.1604764728478;
+        Sat, 07 Nov 2020 07:58:48 -0800 (PST)
 Received: from VM-0-6-centos.localdomain ([119.28.90.140])
-        by smtp.gmail.com with ESMTPSA id e81sm6049956pfh.104.2020.11.07.07.58.44
+        by smtp.gmail.com with ESMTPSA id e81sm6049956pfh.104.2020.11.07.07.58.47
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Sat, 07 Nov 2020 07:58:45 -0800 (PST)
+        Sat, 07 Nov 2020 07:58:48 -0800 (PST)
 From:   Chunguang Xu <brookxu.cn@gmail.com>
 X-Google-Original-From: Chunguang Xu <brookxu@tencent.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca
 Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH RESEND 4/8] ext4: add the gdt block of meta_bg to system_zone
-Date:   Sat,  7 Nov 2020 23:58:14 +0800
-Message-Id: <1604764698-4269-4-git-send-email-brookxu@tencent.com>
+Subject: [PATCH 6/8] ext4: add a helper function to validate metadata block
+Date:   Sat,  7 Nov 2020 23:58:16 +0800
+Message-Id: <1604764698-4269-6-git-send-email-brookxu@tencent.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
 References: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
@@ -73,54 +73,117 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Chunguang Xu <brookxu@tencent.com>
 
-In order to avoid poor search efficiency of system_zone, the
-system only adds metadata of some sparse group to system_zone.
-In the meta_bg scenario, the non-sparse group may contain gdt
-blocks. Perhaps we should add these blocks to system_zone to
-improve fault tolerance without significantly reducing system
-performance.
+There is a need to check whether a block or a segment overlaps
+with metadata, since information of system_zone is incomplete,
+we need a more accurate function. Now we check whether it
+overlaps with block bitmap, inode bitmap, and inode table.
+Perhaps it is better to add a check of super_block and block
+group descriptor and provide a helper function.
 
 Signed-off-by: Chunguang Xu <brookxu@tencent.com>
 ---
- fs/ext4/block_validity.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ fs/ext4/ext4.h    |  5 ++++-
+ fs/ext4/mballoc.c | 57 +++++++++++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 49 insertions(+), 13 deletions(-)
 
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 8e6ca23..37025e3 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -218,6 +218,7 @@ int ext4_setup_system_zone(struct super_block *sb)
- 	struct ext4_group_desc *gdp;
- 	ext4_group_t i;
- 	int flex_size = ext4_flex_bg_size(sbi);
-+	int gd_blks;
- 	int ret;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index bd88b4a..73d59cb 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2801,7 +2801,10 @@ extern ext4_group_t ext4_mb_prefetch(struct super_block *sb,
+ 				     unsigned int nr, int *cnt);
+ extern void ext4_mb_prefetch_fini(struct super_block *sb, ext4_group_t group,
+ 				  unsigned int nr);
+-
++extern int ext4_metadata_block_overlaps(struct super_block *sb,
++					ext4_group_t block_group,
++					ext4_fsblk_t block,
++					unsigned long count);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			     struct buffer_head *bh, ext4_fsblk_t block,
+ 			     unsigned long count, int flags);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 29dfeb04..d8704fe 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -5061,6 +5061,49 @@ static void ext4_try_merge_freed_extent(struct ext4_sb_info *sbi,
+ 	kmem_cache_free(ext4_free_data_cachep, entry);
+ }
  
- 	system_blks = kzalloc(sizeof(*system_blks), GFP_KERNEL);
-@@ -226,13 +227,16 @@ int ext4_setup_system_zone(struct super_block *sb)
++/*
++ * Returns 1 if the passed-in block region (block, block+count)
++ * overlaps with some other filesystem metadata blocks. Others,
++ * return 0.
++ */
++int ext4_metadata_block_overlaps(struct super_block *sb,
++				 ext4_group_t block_group,
++				 ext4_fsblk_t block,
++				 unsigned long count)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_group_desc *gdp;
++	int gd_first = ext4_group_first_block_no(sb, block_group);
++	int itable, gd_blk;
++	int ret = 0;
++
++	gdp = ext4_get_group_desc(sb, block_group, NULL);
++	// check block bitmap and inode bitmap
++	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
++	    in_range(ext4_inode_bitmap(sb, gdp), block, count))
++		ret = 1;
++
++	// check inode table
++	itable = ext4_inode_table(sb, gdp);
++	if (!(block >= itable + sbi->s_itb_per_group ||
++	      block + count - 1  < itable))
++		ret = 1;
++
++	/* check super_block and block group descriptor table, the
++	 * reserved space of the block group descriptor is managed
++	 * by resize_inode, it may not be processed now due to
++	 * performance.
++	 */
++	gd_blk = ext4_bg_has_super(sb, block_group) +
++		ext4_bg_num_gdb(sb, block_group);
++	if (gd_blk) {
++		if (!(block >= gd_first + gd_blk ||
++		      block + count - 1 < gd_first))
++			ret = 1;
++	}
++	return ret;
++}
++
+ static noinline_for_stack int
+ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		      struct ext4_free_data *new_entry)
+@@ -5360,13 +5403,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 		goto error_return;
+ 	}
  
- 	for (i=0; i < ngroups; i++) {
- 		cond_resched();
--		if (ext4_bg_has_super(sb, i) &&
--		    ((i < 5) || ((i % flex_size) == 0))) {
--			ret = add_system_zone(system_blks,
--					ext4_group_first_block_no(sb, i),
--					ext4_bg_num_gdb(sb, i) + 1, 0);
--			if (ret)
--				goto err;
-+		if ((i < 5) || ((i % flex_size) == 0)) {
-+			gd_blks = ext4_bg_has_super(sb, i) +
-+				ext4_bg_num_gdb(sb, i);
-+			if (gd_blks) {
-+				ret = add_system_zone(system_blks,
-+						ext4_group_first_block_no(sb, i),
-+						gd_blks, 0);
-+				if (ret)
-+					goto err;
-+			}
- 		}
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		ret = add_system_zone(system_blks,
+-	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
+-	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
+-	    in_range(block, ext4_inode_table(sb, gdp),
+-		     sbi->s_itb_per_group) ||
+-	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
+-		     sbi->s_itb_per_group)) {
+-
++	if (ext4_metadata_block_overlaps(sb, block_group, block, count)) {
+ 		ext4_error(sb, "Freeing blocks in system zone - "
+ 			   "Block = %llu, count = %lu", block, count);
+ 		/* err = 0. ext4_std_error should be a no op */
+@@ -5552,11 +5589,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+ 		goto error_return;
+ 	}
+ 
+-	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
+-	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
+-	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
+-	    in_range(block + count - 1, ext4_inode_table(sb, desc),
+-		     sbi->s_itb_per_group)) {
++	if (ext4_metadata_block_overlaps(sb, block_group, block, count)) {
+ 		ext4_error(sb, "Adding blocks in system zones - "
+ 			   "Block = %llu, count = %lu",
+ 			   block, count);
 -- 
 1.8.3.1
 
