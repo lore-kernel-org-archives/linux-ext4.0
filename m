@@ -2,69 +2,93 @@ Return-Path: <SRS0=5zRl=EN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.4 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C326C388F7
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 03:53:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 287C0C5517A
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:00:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4276C20715
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 03:53:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C87BD20704
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:00:33 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ozEJnOM2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727394AbgKGDxV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Nov 2020 22:53:21 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42423 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727142AbgKGDxV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Nov 2020 22:53:21 -0500
-Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0A73qDAU010914
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 6 Nov 2020 22:52:14 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 5C07F420107; Fri,  6 Nov 2020 22:52:13 -0500 (EST)
-Date:   Fri, 6 Nov 2020 22:52:13 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     xiakaixu1987@gmail.com
-Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        Kaixu Xia <kaixuxia@tencent.com>
-Subject: Re: [PATCH] ext4: report error message when setting usrjquota or
- grpjquota options failed
-Message-ID: <20201107035213.GC2499342@mit.edu>
-References: <1603986396-28917-1-git-send-email-kaixuxia@tencent.com>
+        id S1727671AbgKGFAc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Nov 2020 00:00:32 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38788 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727676AbgKGFAc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 00:00:32 -0500
+Received: from mail-lj1-x244.google.com (mail-lj1-x244.google.com [IPv6:2a00:1450:4864:20::244])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 94822C0613D3
+        for <linux-ext4@vger.kernel.org>; Fri,  6 Nov 2020 21:00:30 -0800 (PST)
+Received: by mail-lj1-x244.google.com with SMTP id m16so3740618ljo.6
+        for <linux-ext4@vger.kernel.org>; Fri, 06 Nov 2020 21:00:30 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=voEsZPkyjZD18rzLtdDPpUVqOWAqR2u8yHFoISL5tWA=;
+        b=ozEJnOM2IixHrnCPEtGb8FlqnzWcNz+owQfR7J4Eue5meJU/pZItrdTH+v0KHF0cFo
+         3lLpgXRPOSHF6gUusRw2FxmWULcNJa0AV7m/aCcn8kIQWrxpaenHvu4ZfGHc3ZiZiZBW
+         WVFQB3tG8c63Lifd0NAKzG5T8ez3LWkaxc26yiUmwNA314ZHSabqU+PFVT0gGvfiPp6W
+         TZYs2MYDYb1AFpUxW2W+wjZVFeZkYueQs6SaJyl5/oe0ESlReMhwk+xbeJ3Y9Y4s1GXs
+         07Fe+pa4L7AXyhtkqeXfpjSsJGpKXdPXYPYdYX2eifPUuJxWYcbqFN0iESHwomlTY+gt
+         bJGA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=voEsZPkyjZD18rzLtdDPpUVqOWAqR2u8yHFoISL5tWA=;
+        b=PLkcIhMPWqlNsQant+jIYUDruyTGrhQrtTv3yy2tZJteZhBSboQXuw2J1ocRUjAy1g
+         m/1TVcIB7Y9+AELUCJO2L3qAujUdOCXLWx9pP/MAsZQZGqfXXEU77ZWhrH1FwDeqOi7e
+         x4oL5rtHOS2dJ3ie+V1ATxH43MlxnbG9yRcQz+Om5AhsVTPjedTAoDQECjm5aeOSfcsR
+         cxSYN7ecjsDiaDVWDYqcnTDBDW30HgtRR5cScRspHwm5hd9iTnck3USTNUlr6+FijDah
+         yXbSESv8MTSLL5cmeimS7aOPhT+qMf/vxXlIukJ4PJ0nprFlqPWkHcu29vSF/LyDT0gK
+         /Vuw==
+X-Gm-Message-State: AOAM531/HVDQz/JFv4UVtmLyJofJ/GH2536T032iQudrWUsnT0o5eWys
+        GNYX8yLfjlGC4xzOVIO5q62m5rU88sKVbnBa+r3GxQ==
+X-Google-Smtp-Source: ABdhPJxRL+E/FG0jMGqNmEVkiK0JKDx1AmCZa7th6GCMdfj5xVmIDB1v0qf0mRD8QdCKNL5aBnnNUOaJn4UczaqLpNs=
+X-Received: by 2002:a2e:9a89:: with SMTP id p9mr2070693lji.363.1604725228766;
+ Fri, 06 Nov 2020 21:00:28 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1603986396-28917-1-git-send-email-kaixuxia@tencent.com>
+References: <20201106192154.51514-1-98.arpi@gmail.com> <20201106192249.51574-1-98.arpi@gmail.com>
+In-Reply-To: <20201106192249.51574-1-98.arpi@gmail.com>
+From:   David Gow <davidgow@google.com>
+Date:   Sat, 7 Nov 2020 13:00:17 +0800
+Message-ID: <CABVgOSkdwPHLSVQRZX_HoRNokgLFq8ue2gm6zVHWvkD=1-dFyQ@mail.gmail.com>
+Subject: Re: [PATCH v6 2/2] fs: ext4: Modify inode-test.c to use KUnit
+ parameterized testing feature
+To:     Arpitha Raghunandan <98.arpi@gmail.com>
+Cc:     Brendan Higgins <brendanhiggins@google.com>,
+        Shuah Khan <skhan@linuxfoundation.org>,
+        Marco Elver <elver@google.com>,
+        Iurii Zaikin <yzaikin@google.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "open list:KERNEL SELFTEST FRAMEWORK" 
+        <linux-kselftest@vger.kernel.org>,
+        KUnit Development <kunit-dev@googlegroups.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-kernel-mentees@lists.linuxfoundation.org,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Oct 29, 2020 at 11:46:36PM +0800, xiakaixu1987@gmail.com wrote:
-> From: Kaixu Xia <kaixuxia@tencent.com>
-> 
-> The macro MOPT_Q is used to indicates the mount option is quota stuff and
-> would be the same as MOPT_NOSUPPORT when CONFIG_QUOTA is disabled. We want
-> to report NOSUPPORT error message when setting usrjquota or grpjquota
-> options with the CONFIG_QUOTA is disabled, but now it report nothing. So
-> fix it by adding the MOPT_STRING flag.
-> 
-> Signed-off-by: Kaixu Xia <kaixuxia@tencent.com>
+On Sat, Nov 7, 2020 at 3:23 AM Arpitha Raghunandan <98.arpi@gmail.com> wrote:
+>
+> Modify fs/ext4/inode-test.c to use the parameterized testing
+> feature of KUnit.
+>
+> Signed-off-by: Arpitha Raghunandan <98.arpi@gmail.com>
+> ---
 
-Thanks, applied with an improved commit description:
+This looks good to me. Thanks!
 
-    The macro MOPT_Q is used to indicates the mount option is related
-    to quota stuff and is defined to be MOPT_NOSUPPORT when
-    CONFIG_QUOTA is disabled.  Normally the quota options are handled
-    explicitly, so it didn't matter that the MOPT_STRING flag was
-    missing, even though the usrjquota and grpjquota mount options
-    take a string argument.  It's important that's present in the
-    !CONFIG_QUOTA case, since without MOPT_STRING, the mount option
-    matcher will match usrjquota= followed by an integer, and will
-    otherwise skip the table entry, and so "mount option not
-    supported" error message is never reported.
+Reviewed-by: David Gow <davidgow@google.com>
 
-					- Ted
+-- David
