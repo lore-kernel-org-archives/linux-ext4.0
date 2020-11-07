@@ -2,83 +2,201 @@ Return-Path: <SRS0=5zRl=EN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-17.4 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90D29C388F9
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:10:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 989C0C388F9
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 10:06:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F59920872
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 05:10:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4B8DB206A4
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Nov 2020 10:06:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="cFZKFASw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727356AbgKGFKd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Nov 2020 00:10:33 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:55279 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726032AbgKGFKc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 00:10:32 -0500
-Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0A75A5mr005910
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 7 Nov 2020 00:10:06 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id B5801420107; Sat,  7 Nov 2020 00:10:05 -0500 (EST)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     harshads@google.com, "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: fix sparse warnings in fast_commit code
-Date:   Sat,  7 Nov 2020 00:09:58 -0500
-Message-Id: <20201107050959.2561329-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.28.0
+        id S1728106AbgKGKGn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Nov 2020 05:06:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57786 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727890AbgKGKGm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Nov 2020 05:06:42 -0500
+Received: from mail-oi1-x244.google.com (mail-oi1-x244.google.com [IPv6:2607:f8b0:4864:20::244])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6A0EC0613CF
+        for <linux-ext4@vger.kernel.org>; Sat,  7 Nov 2020 02:06:40 -0800 (PST)
+Received: by mail-oi1-x244.google.com with SMTP id k26so4327792oiw.0
+        for <linux-ext4@vger.kernel.org>; Sat, 07 Nov 2020 02:06:40 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=TErsauc9tpAzI6S5cYpbCRvl4twcQzw2HKSJ2d2Z+Qg=;
+        b=cFZKFASwAfugNcZhz/FuAFmwgIJgslvWVTlXGObXW4GVaiNx5l+4SITTnhwIes3oiJ
+         reYnqBcoLt6G3wNTxTLRdKwgOg7Ns7cE5FqN5L4rV7tMFTjEp2540lKCJlUvc52aoVKR
+         0YjZ0+zMCT0aW++pNadjtwASHdwbGcnxya4d7uBY6bTaj1NGc6B9kOGdHCcbOMUKZvXf
+         bJd1gYeIAayqwjDTVfshWKIZxHJX7MEwCH3td/atGMHmO6tHjcBdloKYwzPy6HyHIlWy
+         +nIGIc8yTT0VDKRsKtvKA7fit+ZKdqNJdSHlD/fEWKCd9D7kRQN5jIMqPlF0YA+MdZGz
+         t+Ug==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=TErsauc9tpAzI6S5cYpbCRvl4twcQzw2HKSJ2d2Z+Qg=;
+        b=nKk/b+EYTXEqO29FikoNM5alFGknX8Yhsxmt7KHugHO95ST5RvOpc05ZJokHW1PBra
+         YegzrN/qONpwbgHvqGNdHkRAshOQGqp//TBEyhUR8BUW0SsK9uK8THKELj3SBSr6F96U
+         QliywZ37wNu55qLmorF6f4YqKHFAMba2KUL7sVouFfbWkYCc+QimqPSODLMN7DKGlTwA
+         V2/Fxc67i/jpAujaoydzUmHbbPL9JP9m1HO0MEE0Z9XI3o+BEOBGaH8uo8ofpLWBufUx
+         zFdjwYioUzrFUCmmPCPjpyne+QtNV+QGurPO468+v26/I5A2VL0J+RiCpkcNimMPWD+X
+         9cng==
+X-Gm-Message-State: AOAM532giYaZdHSxPmLJKe7UVxXJxb+WVnujb2OWSLK10i6mVxPozwY9
+        5vBviiwC9nympNLtr4z65ujjbyWrV9i81Trh4BW9dg==
+X-Google-Smtp-Source: ABdhPJxb+xfOZ9jVhfWoVlbABCI67vL5rewh1ARjZCLWNyu463apeEQlWxjA1SZroi07HqVGkXthuRthzuku33QQCxw=
+X-Received: by 2002:aca:6206:: with SMTP id w6mr3818129oib.121.1604743599913;
+ Sat, 07 Nov 2020 02:06:39 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20201106192154.51514-1-98.arpi@gmail.com> <CABVgOSkQ6+y7OGw2494cJa2b60EkSjncLNAgc9cJDbS=X9J3WA@mail.gmail.com>
+In-Reply-To: <CABVgOSkQ6+y7OGw2494cJa2b60EkSjncLNAgc9cJDbS=X9J3WA@mail.gmail.com>
+From:   Marco Elver <elver@google.com>
+Date:   Sat, 7 Nov 2020 11:06:28 +0100
+Message-ID: <CANpmjNNp2RUCE_ypp2R4MznikTYRYeCDuF7VMp+Hbh=55KWa3A@mail.gmail.com>
+Subject: Re: [PATCH v6 1/2] kunit: Support for Parameterized Testing
+To:     David Gow <davidgow@google.com>
+Cc:     Arpitha Raghunandan <98.arpi@gmail.com>,
+        Brendan Higgins <brendanhiggins@google.com>,
+        Shuah Khan <skhan@linuxfoundation.org>,
+        Iurii Zaikin <yzaikin@google.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "open list:KERNEL SELFTEST FRAMEWORK" 
+        <linux-kselftest@vger.kernel.org>,
+        KUnit Development <kunit-dev@googlegroups.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-kernel-mentees@lists.linuxfoundation.org,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add missing __acquire() and __releases() annotations, and make
-fc_ineligible_reasons[] static, as it is not used outside of
-fs/ext4/fast_commit.c.
+On Sat, 7 Nov 2020 at 05:58, David Gow <davidgow@google.com> wrote:
+> On Sat, Nov 7, 2020 at 3:22 AM Arpitha Raghunandan <98.arpi@gmail.com> wrote:
+> >
+> > Implementation of support for parameterized testing in KUnit.
+> > This approach requires the creation of a test case using the
+> > KUNIT_CASE_PARAM macro that accepts a generator function as input.
+> > This generator function should return the next parameter given the
+> > previous parameter in parameterized tests. It also provides
+> > a macro to generate common-case generators.
+> >
+> > Signed-off-by: Arpitha Raghunandan <98.arpi@gmail.com>
+> > Co-developed-by: Marco Elver <elver@google.com>
+> > Signed-off-by: Marco Elver <elver@google.com>
+> > ---
+>
+> This looks good to me! A couple of minor thoughts about the output
+> format below, but I'm quite happy to have this as-is regardless.
+>
+> Reviewed-by: David Gow <davidgow@google.com>
+>
+> Cheers,
+> -- David
+>
+> > Changes v5->v6:
+> > - Fix alignment to maintain consistency
+> > Changes v4->v5:
+> > - Update kernel-doc comments.
+> > - Use const void* for generator return and prev value types.
+> > - Add kernel-doc comment for KUNIT_ARRAY_PARAM.
+> > - Rework parameterized test case execution strategy: each parameter is executed
+> >   as if it was its own test case, with its own test initialization and cleanup
+> >   (init and exit are called, etc.). However, we cannot add new test cases per TAP
+> >   protocol once we have already started execution. Instead, log the result of
+> >   each parameter run as a diagnostic comment.
+> > Changes v3->v4:
+> > - Rename kunit variables
+> > - Rename generator function helper macro
+> > - Add documentation for generator approach
+> > - Display test case name in case of failure along with param index
+> > Changes v2->v3:
+> > - Modifictaion of generator macro and method
+> > Changes v1->v2:
+> > - Use of a generator method to access test case parameters
+> >
+> >  include/kunit/test.h | 36 ++++++++++++++++++++++++++++++++++
+> >  lib/kunit/test.c     | 46 +++++++++++++++++++++++++++++++-------------
+> >  2 files changed, 69 insertions(+), 13 deletions(-)
+> >
+> > diff --git a/include/kunit/test.h b/include/kunit/test.h
+> > index db1b0ae666c4..16616d3974f9 100644
+> > --- a/include/kunit/test.h
+> > +++ b/include/kunit/test.h
+> > @@ -107,6 +107,7 @@ struct kunit;
+[...]
+> > -       kunit_suite_for_each_test_case(suite, test_case)
+> > -               kunit_run_case_catch_errors(suite, test_case);
+> > +       kunit_suite_for_each_test_case(suite, test_case) {
+> > +               struct kunit test = { .param_value = NULL, .param_index = 0 };
+> > +               bool test_success = true;
+> > +
+> > +               if (test_case->generate_params)
+> > +                       test.param_value = test_case->generate_params(NULL);
+> > +
+> > +               do {
+> > +                       kunit_run_case_catch_errors(suite, test_case, &test);
+> > +                       test_success &= test_case->success;
+> > +
+> > +                       if (test_case->generate_params) {
+> > +                               kunit_log(KERN_INFO, &test,
+> > +                                         KUNIT_SUBTEST_INDENT
+> > +                                         "# %s: param-%d %s",
+>
+> Would it make sense to have this imitate the TAP format a bit more?
+> So, have "# [ok|not ok] - [name]" as the format? [name] could be
+> something like "[test_case->name]:param-[index]" or similar.
+> If we keep it commented out and don't indent it further, it won't
+> formally be a nested test (though if we wanted to support those later,
+> it'd be easy to add), but I think it would be nicer to be consistent
+> here.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/fast_commit.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+The previous attempt [1] at something similar failed because it seems
+we'd need to teach kunit-tool new tricks [2], too.
+[1] https://lkml.kernel.org/r/20201105195503.GA2399621@elver.google.com
+[2] https://lkml.kernel.org/r/20201106123433.GA3563235@elver.google.com
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 5cd6630ab1b9..f2033e13a273 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -156,6 +156,7 @@ void ext4_fc_init_inode(struct inode *inode)
- 
- /* This function must be called with sbi->s_fc_lock held. */
- static void ext4_fc_wait_committing_inode(struct inode *inode)
-+__releases(&EXT4_SB(inode->i_sb)->s_fc_lock)
- {
- 	wait_queue_head_t *wq;
- 	struct ext4_inode_info *ei = EXT4_I(inode);
-@@ -911,6 +912,8 @@ static int ext4_fc_wait_inode_data_all(journal_t *journal)
- 
- /* Commit all the directory entry updates */
- static int ext4_fc_commit_dentry_updates(journal_t *journal, u32 *crc)
-+__acquires(&sbi->s_fc_lock)
-+__releases(&sbi->s_fc_lock)
- {
- 	struct super_block *sb = (struct super_block *)(journal->j_private);
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -2106,7 +2109,7 @@ void ext4_fc_init(struct super_block *sb, journal_t *journal)
- 	journal->j_fc_cleanup_callback = ext4_fc_cleanup;
- }
- 
--const char *fc_ineligible_reasons[] = {
-+static const char *fc_ineligible_reasons[] = {
- 	"Extended attributes changed",
- 	"Cross rename",
- 	"Journal flag changed",
--- 
-2.28.0
+So if we go with a different format, we might need a patch before this
+one to make kunit-tool compatible with that type of diagnostic.
 
+Currently I think we have the following proposals for a format:
+
+1. The current "# [test_case->name]: param-[index] [ok|not ok]" --
+this works well, because no changes to kunit-tool are required, and it
+also picks up the diagnostic context for the case and displays that on
+test failure.
+
+2. Your proposed "# [ok|not ok] - [test_case->name]:param-[index]".
+As-is, this needs a patch for kunit-tool as well. I just checked, and
+if we change it to "# [ok|not ok] - [test_case->name]: param-[index]"
+(note the space after ':') it works without changing kunit-tool. ;-)
+
+3. Something like "# [ok|not ok] param-[index] - [test_case->name]",
+which I had played with earlier but kunit-tool is definitely not yet
+happy with.
+
+So my current preference is (2) with the extra space (no change to
+kunit-tool required). WDYT?
+
+> My other suggestion -- albeit one outside the scope of this initial
+> version -- would be to allow the "param-%d" name to be overridden
+> somehow by a test. For example, the ext4 inode test has names for all
+> its test cases: it'd be nice to be able to display those instead (even
+> if they're not formatted as identifiers as-is).
+
+Right, I was thinking about this, but it'd need a way to optionally
+pass another function that converts const void* params to readable
+strings. But as you say, we should do that as a follow-up patch later
+because it might require a few more iterations.
+
+[...]
+
+Thanks,
+-- Marco
