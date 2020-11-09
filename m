@@ -2,126 +2,69 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2013BC2D0A3
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Nov 2020 17:38:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DECA1C2D0A3
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Nov 2020 19:10:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C4C7020578
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 Nov 2020 17:38:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A992206D8
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 Nov 2020 19:10:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732327AbgKIRiO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 Nov 2020 12:38:14 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:33430 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1731430AbgKIRiO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Nov 2020 12:38:14 -0500
-Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0A9Hc9d9019854
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 9 Nov 2020 12:38:10 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 73309420107; Mon,  9 Nov 2020 12:38:09 -0500 (EST)
-Date:   Mon, 9 Nov 2020 12:38:09 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     torvalds@linux-foundation.org
-Cc:     linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [GIT PULL] ext4 cleanups for 5.10-rc4
-Message-ID: <20201109173809.GA2916982@mit.edu>
+        id S1730388AbgKITKV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 Nov 2020 14:10:21 -0500
+Received: from mx2.suse.de ([195.135.220.15]:51158 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730189AbgKITKU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 9 Nov 2020 14:10:20 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 0809AB004;
+        Mon,  9 Nov 2020 19:10:19 +0000 (UTC)
+From:   Michal Suchanek <msuchanek@suse.de>
+To:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc:     Michal Suchanek <msuchanek@suse.de>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 1/2] xfs: show the dax option in mount options.
+Date:   Mon,  9 Nov 2020 20:10:08 +0100
+Message-Id: <f9f7ba25e97dacd92c09eb3ee6a4aca8b4f72b00.1604948373.git.msuchanek@suse.de>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <cover.1604948373.git.msuchanek@suse.de>
+References: <cover.1604948373.git.msuchanek@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-(Resent with missing cc's, sorry.)
+xfs accepts both dax and dax_enum but shows only dax_enum. Show both
+options.
 
-The following changes since commit 3cea11cd5e3b00d91caf0b4730194039b45c5891:
+Fixes: 8d6c3446ec23 ("fs/xfs: Make DAX mount option a tri-state")
+Signed-off-by: Michal Suchanek <msuchanek@suse.de>
+---
+ fs/xfs/xfs_super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-  Linux 5.10-rc2 (2020-11-01 14:43:51 -0800)
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index e3e229e52512..a3b00003840d 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -163,7 +163,7 @@ xfs_fs_show_options(
+ 		{ XFS_MOUNT_GRPID,		",grpid" },
+ 		{ XFS_MOUNT_DISCARD,		",discard" },
+ 		{ XFS_MOUNT_LARGEIO,		",largeio" },
+-		{ XFS_MOUNT_DAX_ALWAYS,		",dax=always" },
++		{ XFS_MOUNT_DAX_ALWAYS,		",dax,dax=always" },
+ 		{ XFS_MOUNT_DAX_NEVER,		",dax=never" },
+ 		{ 0, NULL }
+ 	};
+-- 
+2.26.2
 
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_cleanups
-
-for you to fetch changes up to 05d5233df85e9621597c5838e95235107eb624a2:
-
-  jbd2: fix up sparse warnings in checkpoint code (2020-11-07 00:09:08 -0500)
-
-----------------------------------------------------------------
-More fixes and cleanups for the new fast_commit features, but also a
-few other miscellaneous bug fixes and a cleanup for the MAINTAINERS
-file.
-
-----------------------------------------------------------------
-Chao Yu (1):
-      MAINTAINERS: add missing file in ext4 entry
-
-Dan Carpenter (1):
-      ext4: silence an uninitialized variable warning
-
-Harshad Shirwadkar (22):
-      ext4: describe fast_commit feature flags
-      ext4: mark fc ineligible if inode gets evictied due to mem pressure
-      ext4: drop redundant calls ext4_fc_track_range
-      ext4: fixup ext4_fc_track_* functions' signature
-      jbd2: rename j_maxlen to j_total_len and add jbd2_journal_max_txn_bufs
-      ext4: clean up the JBD2 API that initializes fast commits
-      jbd2: drop jbd2_fc_init documentation
-      jbd2: don't use state lock during commit path
-      jbd2: don't pass tid to jbd2_fc_end_commit_fallback()
-      jbd2: add todo for a fast commit performance optimization
-      jbd2: don't touch buffer state until it is filled
-      jbd2: don't read journal->j_commit_sequence without taking a lock
-      ext4: dedpulicate the code to wait on inode that's being committed
-      ext4: fix code documentatioon
-      ext4: mark buf dirty before submitting fast commit buffer
-      ext4: remove unnecessary fast commit calls from ext4_file_mmap
-      ext4: fix inode dirty check in case of fast commits
-      ext4: disable fast commit with data journalling
-      ext4: issue fsdev cache flush before starting fast commit
-      ext4: make s_mount_flags modifications atomic
-      jbd2: don't start fast commit on aborted journal
-      ext4: cleanup fast commit mount options
-
-Joseph Qi (1):
-      ext4: unlock xattr_sem properly in ext4_inline_data_truncate()
-
-Kaixu Xia (1):
-      ext4: correctly report "not supported" for {usr,grp}jquota when !CONFIG_QUOTA
-
-Theodore Ts'o (2):
-      ext4: fix sparse warnings in fast_commit code
-      jbd2: fix up sparse warnings in checkpoint code
-
- Documentation/filesystems/ext4/journal.rst |   6 ++
- Documentation/filesystems/ext4/super.rst   |   7 +++
- Documentation/filesystems/journalling.rst  |   6 +-
- MAINTAINERS                                |   1 +
- fs/ext4/ext4.h                             |  66 ++++++++++++++------
- fs/ext4/extents.c                          |   7 +--
- fs/ext4/fast_commit.c                      | 174 +++++++++++++++++++++++++++--------------------------
- fs/ext4/fast_commit.h                      |   6 +-
- fs/ext4/file.c                             |   6 +-
- fs/ext4/fsmap.c                            |   2 +-
- fs/ext4/fsync.c                            |   2 +-
- fs/ext4/inline.c                           |   1 +
- fs/ext4/inode.c                            |  19 +++---
- fs/ext4/mballoc.c                          |   6 +-
- fs/ext4/namei.c                            |  61 +++++++++----------
- fs/ext4/super.c                            |  47 ++++++++-------
- fs/jbd2/checkpoint.c                       |   2 +
- fs/jbd2/commit.c                           |  11 +++-
- fs/jbd2/journal.c                          | 138 +++++++++++++++++++++++-------------------
- fs/jbd2/recovery.c                         |   6 +-
- fs/jbd2/transaction.c                      |   4 +-
- fs/ocfs2/journal.c                         |   2 +-
- include/linux/jbd2.h                       |  23 ++++---
- include/trace/events/ext4.h                |  10 +--
- 24 files changed, 342 insertions(+), 271 deletions(-)
