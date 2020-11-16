@@ -2,281 +2,149 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C3AB3C4742C
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Nov 2020 11:11:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D6D5C82672
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Nov 2020 12:37:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 583C420A8B
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 Nov 2020 11:11:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4B69120855
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 Nov 2020 12:37:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="nOYrZpl4"
+	dkim=pass (1024-bit key) header.d=microsoft.com header.i=@microsoft.com header.b="YLzCUNbr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728967AbgKPKS7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Nov 2020 05:18:59 -0500
-Received: from mail.kernel.org ([198.145.29.99]:53204 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728867AbgKPKSc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 16 Nov 2020 05:18:32 -0500
-Received: from mail.kernel.org (ip5f5ad5de.dynamic.kabel-deutschland.de [95.90.213.222])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6C48B2467D;
-        Mon, 16 Nov 2020 10:18:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1605521909;
-        bh=hrYDFejIWKc2Sc1kJcaDxBLFYaPls+fhDdb9MsI3AZg=;
-        h=From:To:Cc:Subject:Date:From;
-        b=nOYrZpl4mWNo4VChMm50rhlZZFPHrNl2Md99UAjXUoT1Rv4ai6qEtKNY48QQHHDZ9
-         HHi0C1trk4izVD71hsF3fVqJ+98gWWf5nNLgENrcQfgxQXQZ2k1Gs3wz9z2aw/LySR
-         l+js1iuF3inRwlmH2DVzaLCAfu7AYgHEXvSB+IiI=
-Received: from mchehab by mail.kernel.org with local (Exim 4.94)
-        (envelope-from <mchehab@kernel.org>)
-        id 1kebab-00FwDo-Pf; Mon, 16 Nov 2020 11:18:25 +0100
-From:   Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-To:     Linux Doc Mailing List <linux-doc@vger.kernel.org>
-Cc:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        "David S. Miller" <davem@davemloft.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexandre Bounine <alex.bou9@gmail.com>,
-        Andrew Lunn <andrew@lunn.ch>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Andy Lutomirski <luto@amacapital.net>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Anton Vorontsov <anton@enomsg.org>,
-        Ben Segall <bsegall@google.com>,
-        Colin Cross <ccross@android.com>,
-        Daniel Bristot de Oliveira <bristot@redhat.com>,
-        Daniel Vetter <daniel@ffwll.ch>,
-        David Airlie <airlied@linux.ie>,
-        Dietmar Eggemann <dietmar.eggemann@arm.com>,
-        Evgeniy Polyakov <zbr@ioremap.net>,
-        Heiner Kallweit <hkallweit1@gmail.com>,
-        Ingo Molnar <mingo@redhat.com>,
-        Jakub Kicinski <kuba@kernel.org>, Jan Kara <jack@suse.com>,
-        Juri Lelli <juri.lelli@redhat.com>,
-        Kees Cook <keescook@chromium.org>,
-        Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
-        Matt Porter <mporter@kernel.crashing.org>,
-        Maxime Ripard <mripard@kernel.org>,
-        Mel Gorman <mgorman@suse.de>, Mike Rapoport <rppt@kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Richard Gong <richard.gong@linux.intel.com>,
-        Russell King <linux@armlinux.org.uk>,
-        Sebastian Reichel <sre@kernel.org>,
-        Shuah Khan <shuah@kernel.org>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Sudip Mukherjee <sudipm.mukherjee@gmail.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Thomas Zimmermann <tzimmermann@suse.de>,
-        Tony Luck <tony.luck@intel.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Vincent Guittot <vincent.guittot@linaro.org>,
-        Will Drewry <wad@chromium.org>,
-        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
-        linux-ext4@vger.kernel.org, linux-fbdev@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kselftest@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
-        netdev@vger.kernel.org, target-devel@vger.kernel.org
-Subject: [PATCH v4 00/27]Fix several bad kernel-doc markups
-Date:   Mon, 16 Nov 2020 11:17:56 +0100
-Message-Id: <cover.1605521731.git.mchehab+huawei@kernel.org>
-X-Mailer: git-send-email 2.28.0
+        id S1729600AbgKPLV3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Nov 2020 06:21:29 -0500
+Received: from mail-vi1eur05on2103.outbound.protection.outlook.com ([40.107.21.103]:4874
+        "EHLO EUR05-VI1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728882AbgKPLV3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 16 Nov 2020 06:21:29 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=oL3UbP9NVfsW0tWtxG1roP+b7+8ZGwl6CF68c424RiA48isOl2THzvvJ9gXbKo9FbMCJi+nyMJD3sgARODkBry07uKA/u6lUexC1/eiJJ2iXGWkaduiNBAGiEUcvQC5xeL3jlCsFkKRDvfck+9F5/x+OPf8orxvYtIsCqGJNNW7yZbCq5frh5ctge4WcafzyeXkztNyN8u8BiBL4hFlvHh6MDbk92Q1GD2WvwX3UkgTJ+fPrI82k9Aih2pNVSJPhLaZIRQq3D1WL/XWQXkdWKHAamnFl3bIKD17PiBwHhzzGVUm9Jx3PFBSqB3t5kdWciCuQf9cvCh7srN9E4F+95A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=gTlsA0XZhijZ1IsaHuQV5M/lcYV4IkO57KkKRo1hvuQ=;
+ b=aUgE4ddpPSp9ktn4CrtrERF3ojfd3BVrSn+2l9jHTfzbykMN8sm/KuyKf254/uoO6pWYvj5sS+o5m9zqjVJdzSk90SxeSrurm5z8SNTS2AGJfGcegUlUzfK4B2FBPoIJDLNhw9Af1YF9VbY0aPO82aL1ozkq59Ehj8JW1wTxICNSpRss8/aQ6BX1t1OpGP1U/sgIYZOxdb1xbCCSqdqPZB8LNd4QB5SdOG4CcG5N14StgnWSlSyyOVHL58RErJHGMUvrmOWSy/eiR55iT331CkxyfQJX96AjsjQ9hULUWKPLlXuumCmI1J6YC05+51YncS7y3MQ20Z+HnwCfUWRQXQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=microsoft.com; dmarc=pass action=none
+ header.from=microsoft.com; dkim=pass header.d=microsoft.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=gTlsA0XZhijZ1IsaHuQV5M/lcYV4IkO57KkKRo1hvuQ=;
+ b=YLzCUNbrg7iF8FpKNtl+S0MlE+WINhMCJc6wT2g3WPN2TUSNov/Sca1MvFuo770pMJPezqUaTRz9oCQrl/sO1D87R3rPKJck8vtfHW4J8iwbz022D+MBwe4o5jKDRDizAieCtf2blhBY2b6hLTOn8vytf2sGwKVrpWwmyze5gVY=
+Received: from AM5PR83MB0178.EURPRD83.prod.outlook.com (2603:10a6:206:25::31)
+ by AM5PR8303MB0084.EURPRD83.prod.outlook.com (2603:10a6:224:6::27) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3611.4; Mon, 16 Nov
+ 2020 11:21:25 +0000
+Received: from AM5PR83MB0178.EURPRD83.prod.outlook.com
+ ([fe80::3983:12a4:4f34:39d]) by AM5PR83MB0178.EURPRD83.prod.outlook.com
+ ([fe80::3983:12a4:4f34:39d%5]) with mapi id 15.20.3611.004; Mon, 16 Nov 2020
+ 11:21:25 +0000
+From:   Luca Boccassi <Luca.Boccassi@microsoft.com>
+To:     "ebiggers@kernel.org" <ebiggers@kernel.org>,
+        "linux-fscrypt@vger.kernel.org" <linux-fscrypt@vger.kernel.org>
+CC:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "victorhsieh@google.com" <victorhsieh@google.com>,
+        "linux-f2fs-devel@lists.sourceforge.net" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        "Jes.Sorensen@gmail.com" <Jes.Sorensen@gmail.com>,
+        "maco@android.com" <maco@android.com>,
+        "paullawrence@google.com" <paullawrence@google.com>
+Subject: Re: [PATCH 1/4] fs-verity: remove filenames from file comments
+Thread-Topic: [PATCH 1/4] fs-verity: remove filenames from file comments
+Thread-Index: AQHWvAqeDGJxGb3sgEW/5Ji+Dr3Tpw==
+Date:   Mon, 16 Nov 2020 11:21:25 +0000
+Message-ID: <b305fda4e0fc0ec57b318629d2f5c9760e5aa259.camel@microsoft.com>
+References: <20201113211918.71883-1-ebiggers@kernel.org>
+         <20201113211918.71883-2-ebiggers@kernel.org>
+In-Reply-To: <20201113211918.71883-2-ebiggers@kernel.org>
+Accept-Language: en-GB, en-US
+Content-Language: en-US
+X-MS-Has-Attach: yes
+X-MS-TNEF-Correlator: 
+user-agent: Evolution 3.30.5-1.1 
+authentication-results: kernel.org; dkim=none (message not signed)
+ header.d=none;kernel.org; dmarc=none action=none header.from=microsoft.com;
+x-originating-ip: [88.98.246.218]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-ht: Tenant
+x-ms-office365-filtering-correlation-id: ace5e832-0c08-409c-5614-08d88a21c140
+x-ms-traffictypediagnostic: AM5PR8303MB0084:
+x-microsoft-antispam-prvs: <AM5PR8303MB008442DA88260406EE6E8477F1E30@AM5PR8303MB0084.EURPRD83.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:2582;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: uSpHuHUUPh37AKm/9a7nQKnf8b2HLHHJ1n56EE+3P827xiIJ3urLFPAR5g1iJiR2/e5mOi+QZbEnElSVZTNhTBbvtBN4qT2oka9wWkgGNOiHatbstb9xkYaVAJvXqbpNzETYLY4KB8etl02W79SsXSraIqqi667otxOCGEK5lzinPir/qKSJ6oWqo2lvAOMqNd3Ux7u0y4nN6r7cmNFoHCbDaMc4TCMfV/Bh32PntT+Tw9M68RV20ujjOaPErodRPnA8Mh41fDabEl7YHf9mOiGD1rlVfcUo8y2+lQqZyhwB+pcpkStpquCUeLWAFAOx+ReYpiUbs6yFY1FPRMK+xQ==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:AM5PR83MB0178.EURPRD83.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(396003)(136003)(346002)(376002)(366004)(39860400002)(82950400001)(82960400001)(99936003)(2906002)(6506007)(186003)(26005)(4001150100001)(4744005)(478600001)(86362001)(2616005)(10290500003)(5660300002)(110136005)(54906003)(4326008)(66476007)(64756008)(36756003)(6512007)(83380400001)(6486002)(8676002)(8936002)(71200400001)(316002)(76116006)(66946007)(66556008)(66616009)(66446008);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata: GIO2uNeyun/jpsGUnsMZ6mlTwCu1gM8URFlCTnlebY9PCnXiL/vdljoHRIb1+EZFIcpGI/iq1nvSSWhaj/0OqNt1aYFHQ/gmPEBvgm57MnQOa5EtJ+tJFRzhcQUrY5j2EMamcPGfDVpXubTlJmqPN25RiiMhUTlCNAIiB+DRhD965vy0un+VqU7jlWaJ09ovBNJ5dRK+erJQ+/sF22ksWvWlb9pOoETLJOGL0hkNwuwBati4tx5P2cSl7p8I4y3tYdGLgR9u0BJ6RoVZX5MTGZZ3JdH4rcFq/WXqboiEy9U9RLk/5ounL5YWh7LmGaKrOroB7wXUH4DEwyZ08vK/jMVH4HMBpFNhXE/rvR7BZvdsM8anrf36PM6DZ3nMJmicu23so2Ew4sxC2X1UFrVQ0+dU2tmyjl/X1UAe1rSPS8YFXIJebjR4HGclmLmueCg4BQ6MLi02Dg7630iZ4KeTCsQMSTk7l5o08GPHprMimS5fn25CQvSL5NvFijLeoVJbjREdjBGcQj9i1+xH9wDtsV7ELxYy8DzzSB57hvMpSUs/JymnnmMOKlUK8/GjucObZrpc0UmM79XzZbKY2ODdwoloNAblCiKeI3gXs9kLtBzp7C36ZWDglrqtP3AmJqEk1qw+6BSEEVkkKk5aoEtdYbYq2UWnS3Kc3hTAeB2QruaiOgUngfx0B6uUH5nWjhH8kMhc5Sucxc4DA6OS6tnTEuEZAmkxZD5qtiz0errKCrWa0x9mx4+azbnAbFKYcK9BwvfcZjKvAn3PeA/qxqdQmdgQdyTHbXPC6ILPfb+igkgurki3+W2dyoUqnJgRCBFdGNXF2RNCILEbg936Dy58P+NBbMB7xHEdYaWYIpEDaphmfEYdq88XIaLB+dLaBgzP+5iHW1pXaPafMapgS0v4Pg==
+x-ms-exchange-transport-forked: True
+Content-Type: multipart/signed; micalg="pgp-sha512";
+        protocol="application/pgp-signature"; boundary="=-eRPqKMtNggsve0NYEOpv"
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Sender: Mauro Carvalho Chehab <mchehab@kernel.org>
+X-OriginatorOrg: microsoft.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: AM5PR83MB0178.EURPRD83.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: ace5e832-0c08-409c-5614-08d88a21c140
+X-MS-Exchange-CrossTenant-originalarrivaltime: 16 Nov 2020 11:21:25.2208
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 72f988bf-86f1-41af-91ab-2d7cd011db47
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: rBO7ZRVazYbmFsKkKa/wU+6WRpyd6EzU/lt8L5kbHKvjUvMc+7HSKreuLHdrEsF955sfITR2Q8Ar/Y6NCsiYYQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM5PR8303MB0084
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Kernel-doc has always be limited to a probably bad documented
-rule:
+--=-eRPqKMtNggsve0NYEOpv
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-The kernel-doc markups should appear *imediatelly before* the
-function or data structure that it documents.
+On Fri, 2020-11-13 at 13:19 -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+>=20
+> Embedding the file path inside kernel source code files isn't
+> particularly useful as often files are moved around and the paths become
+> incorrect.  checkpatch.pl warns about this since v5.10-rc1.
+>=20
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/verity/enable.c    | 2 +-
+>  fs/verity/hash_algs.c | 2 +-
+>  fs/verity/init.c      | 2 +-
+>  fs/verity/measure.c   | 2 +-
+>  fs/verity/open.c      | 2 +-
+>  fs/verity/signature.c | 2 +-
+>  fs/verity/verify.c    | 2 +-
+>  7 files changed, 7 insertions(+), 7 deletions(-)
 
-On other words, if a C file would contain something like this:
+Acked-by: Luca Boccassi <luca.boccassi@microsoft.com>
 
-	/**
-	 * foo - function foo
-	 * @args: foo args
-	 */
-	static inline void bar(int args);
+--=20
+Kind regards,
+Luca Boccassi
 
-	/**
-	 * bar - function bar
-	 * @args: foo args
-	 */
-	static inline void foo(void *args);
+--=-eRPqKMtNggsve0NYEOpv
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
 
+-----BEGIN PGP SIGNATURE-----
 
-The output (in ReST format) will be:
+iQEzBAABCgAdFiEE6g0RLAGYhL9yp9G8SylmgFB4UWIFAl+yYLAACgkQSylmgFB4
+UWKnKwgAsNYE6IDqTrzIjSNFZsbRfzEKud3ncB6s3hQoeexMP1tYz9+jEgAA1h4w
+ADe1KjUPh7rR3u9OblwkWMccAstTdi8oRCbzK1b41jP1f8CkSO8CxZKMP6nja8Cd
+59du5CBXraLlFQtJTGMnRfItgK8xV/d51cOMuTAzLWpePWQcUSpx/E/0GIIv7rRc
+9CvSPpuacfv2xSDM8YfX+X3T6hLENhpdK581RQihg1y9DM1iyfBpV2PGf2PzJF2g
+EuPp4RKAiAeRKpQ8cvHVwraZGGj0NcsJ4QmC3fkWZ5eNdkV4ZLFNwKmgCdVSdizb
+b1KBc0t93H3F4lgRpELJR5aEXJ/8ww==
+=JiJo
+-----END PGP SIGNATURE-----
 
-	.. c:function:: void bar (int args)
-
-	   function foo
-
-	**Parameters**
-
-	``int args``
-	  foo args
-
-
-	.. c:function:: void foo (void *args)
-
-	   function bar
-
-	**Parameters**
-
-	``void *args``
-	  foo args
-
-Which is clearly a wrong result.  Before this changeset, 
-not even a warning is produced on such cases.
-
-As placing such markups just before the documented
-data is a common practice, on most cases this is fine.
-
-However, as patches touch things, identifiers may be
-renamed, and people may forget to update the kernel-doc
-markups to follow such changes.
-
-This has been happening for quite a while, as there are
-lots of files with kernel-doc problems.
-
-This series address those issues and add a file at the
-end that will enforce that the identifier will match the
-kernel-doc markup, avoiding this problem from
-keep happening as time goes by.
-
-This series is based on current upstream tree.
-
-@maintainers: feel free to pick the patches and
-apply them directly on your trees, as all patches on 
-this series are independent from the other ones.
-
---
-
-v4:
-
-  - Patches got rebased and got some acks.
-
-Mauro Carvalho Chehab (27):
-  net: phy: fix kernel-doc markups
-  net: datagram: fix some kernel-doc markups
-  net: core: fix some kernel-doc markups
-  s390: fix kernel-doc markups
-  drm: fix some kernel-doc markups
-  HSI: fix a kernel-doc markup
-  IB: fix kernel-doc markups
-  parport: fix a kernel-doc markup
-  rapidio: fix kernel-doc a markup
-  video: fix some kernel-doc markups
-  fs: fix kernel-doc markups
-  jbd2: fix kernel-doc markups
-  pstore/zone: fix a kernel-doc markup
-  completion: fix kernel-doc markups
-  firmware: stratix10-svc: fix kernel-doc markups
-  connector: fix a kernel-doc markup
-  lib/crc7: fix a kernel-doc markup
-  hrtimer: fix kernel-doc markups
-  genirq: fix kernel-doc markups
-  list: fix a typo at the kernel-doc markup
-  memblock: fix kernel-doc markups
-  w1: fix a kernel-doc markup
-  resource: fix kernel-doc markups
-  shed: fix kernel-doc markup
-  mm: fix kernel-doc markups
-  selftests: kselftest_harness.h: partially fix kernel-doc markups
-  scripts: kernel-doc: validate kernel-doc markup with the actual names
-
- arch/s390/include/asm/ccwdev.h                |  2 +-
- arch/s390/include/asm/cio.h                   |  2 +-
- drivers/gpu/drm/drm_atomic_state_helper.c     |  2 +-
- drivers/gpu/drm/drm_connector.c               |  3 +-
- drivers/gpu/drm/drm_dp_helper.c               |  2 +-
- drivers/gpu/drm/drm_framebuffer.c             |  2 +-
- drivers/gpu/drm/drm_gem.c                     |  4 +-
- drivers/gpu/drm/drm_gem_vram_helper.c         |  2 +-
- drivers/gpu/drm/drm_mode_object.c             |  2 +-
- drivers/gpu/drm/drm_modes.c                   |  4 +-
- drivers/gpu/drm/drm_scdc_helper.c             |  2 +-
- drivers/gpu/drm/i915/display/intel_dpll_mgr.c |  2 +-
- drivers/gpu/drm/i915/i915_gem_evict.c         |  2 +-
- drivers/gpu/drm/i915/i915_perf.c              |  8 ++-
- drivers/gpu/drm/scheduler/sched_main.c        |  2 +-
- drivers/gpu/drm/v3d/v3d_sched.c               |  2 +-
- drivers/gpu/drm/vc4/vc4_bo.c                  |  2 +-
- drivers/hsi/hsi_core.c                        |  2 +-
- drivers/infiniband/core/cm.c                  |  5 +-
- drivers/infiniband/core/cq.c                  |  4 +-
- drivers/infiniband/core/iwpm_util.h           |  2 +-
- drivers/infiniband/core/sa_query.c            |  3 +-
- drivers/infiniband/core/verbs.c               |  4 +-
- drivers/infiniband/sw/rdmavt/ah.c             |  2 +-
- drivers/infiniband/sw/rdmavt/mcast.c          | 12 ++--
- drivers/infiniband/sw/rdmavt/qp.c             |  8 +--
- drivers/infiniband/ulp/iser/iscsi_iser.c      |  2 +-
- .../infiniband/ulp/opa_vnic/opa_vnic_encap.h  |  2 +-
- .../ulp/opa_vnic/opa_vnic_vema_iface.c        |  2 +-
- drivers/infiniband/ulp/srpt/ib_srpt.h         |  2 +-
- drivers/net/phy/mdio_bus.c                    |  2 +-
- drivers/net/phy/phy-c45.c                     |  2 +-
- drivers/net/phy/phy.c                         |  2 +-
- drivers/net/phy/phy_device.c                  |  2 +-
- drivers/net/phy/phylink.c                     |  2 +-
- drivers/parport/share.c                       |  2 +-
- drivers/rapidio/rio.c                         |  2 +-
- drivers/video/fbdev/core/fbcmap.c             |  2 +-
- drivers/video/hdmi.c                          |  3 +-
- fs/dcache.c                                   | 72 +++++++++----------
- fs/inode.c                                    |  4 +-
- fs/jbd2/journal.c                             | 34 ++++-----
- fs/jbd2/transaction.c                         | 31 ++++----
- fs/pstore/zone.c                              |  2 +-
- fs/seq_file.c                                 |  5 +-
- fs/super.c                                    | 12 ++--
- include/drm/drm_atomic_helper.h               |  4 +-
- include/drm/drm_connector.h                   |  2 +-
- include/drm/drm_device.h                      |  2 +-
- include/drm/drm_dsc.h                         |  3 +-
- include/drm/drm_gem_vram_helper.h             |  8 +--
- include/linux/completion.h                    | 10 ++-
- include/linux/connector.h                     |  2 +-
- .../firmware/intel/stratix10-svc-client.h     | 10 +--
- include/linux/hrtimer.h                       |  6 +-
- include/linux/jbd2.h                          |  2 +-
- include/linux/list.h                          |  2 +-
- include/linux/memblock.h                      |  4 +-
- include/linux/netdevice.h                     | 11 ++-
- include/linux/parport.h                       | 31 ++++++++
- include/linux/w1.h                            |  2 +-
- include/rdma/ib_verbs.h                       | 11 +++
- kernel/irq/chip.c                             |  2 +-
- kernel/irq/generic-chip.c                     |  2 +-
- kernel/resource.c                             | 24 ++++---
- kernel/sched/core.c                           | 16 ++---
- kernel/sched/fair.c                           |  2 +-
- kernel/time/hrtimer.c                         |  2 +-
- lib/crc7.c                                    |  2 +-
- mm/gup.c                                      | 24 ++++---
- mm/page_alloc.c                               | 16 ++---
- mm/truncate.c                                 | 10 ++-
- net/core/datagram.c                           |  2 +-
- net/core/dev.c                                |  4 +-
- net/core/skbuff.c                             |  2 +-
- net/ethernet/eth.c                            |  6 +-
- net/sunrpc/rpc_pipe.c                         |  3 +-
- scripts/kernel-doc                            | 62 +++++++++++-----
- tools/testing/selftests/kselftest_harness.h   | 22 +++---
- 79 files changed, 350 insertions(+), 235 deletions(-)
-
--- 
-2.28.0
-
-
+--=-eRPqKMtNggsve0NYEOpv--
