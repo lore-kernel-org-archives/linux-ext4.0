@@ -2,185 +2,154 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.4 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FA15C64E90
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Nov 2020 04:03:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F4C9C63777
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Nov 2020 04:28:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 10A462468F
-	for <linux-ext4@archiver.kernel.org>; Tue, 17 Nov 2020 04:03:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 194B9246B1
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 Nov 2020 04:28:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="shg3+cQ9"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="U5xJI1ZF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727211AbgKQEDX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 Nov 2020 23:03:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58272 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727188AbgKQEDV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Nov 2020 23:03:21 -0500
-Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7C356C0617A6
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2020 20:03:21 -0800 (PST)
-Received: by mail-yb1-xb4a.google.com with SMTP id u37so23555589ybi.15
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Nov 2020 20:03:21 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:in-reply-to:message-id:mime-version:references:subject
-         :from:to:cc;
-        bh=26rm8pP8X1eqyqMFHjed3HgpBJsgTLVuVg1p5M5T4ac=;
-        b=shg3+cQ9HKM0nPNtrMQTh+D5eQYXxiRjQHiCYna15DnDwGSI4q6hNF86FmwmCYrJ09
-         0uszwptNamjvsfa2d+Ebp170YA7jdMrfds4LdsowSETcYPuptonfbiP7v8hpd4Y0MZkg
-         TcH5aai3GlIlPjDRJOutLlBhbMbEKGMg5F5w3kD5/X0fqC2FyU3uSCyFeDu5RIXt/ixa
-         9s2Vzm7JxAfAo2lWEtY1zChL12tD9p7+0mwGYHx+TBdw2Ath0P70x0MCBOufxM8RBgRH
-         D/gZzY+rDOJ3wmUNZ5lYBs7E1V5A8uxoYtCXmruoFljhdbJ8IaBIehg5VrO1VZ4lsbQk
-         6BPw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=26rm8pP8X1eqyqMFHjed3HgpBJsgTLVuVg1p5M5T4ac=;
-        b=NVMmRPqqWRfhQt/W6+Vimb8/++P2jSB/tGmq6i29/QqVqmLG1WpQxqYHfna1aXx9B8
-         m8YQiArdSLyh8DudOxsW3dxEcOUvzAkjYg3MIQLE8vj5cO+OJiUxyyYknJ8/UxlXNqtw
-         rPFeiEMZ7YzYiTGoF4rRasF4zrg+adUcU6lFXVZM5YsniSpjU8DDydS7UvbhIl8KbVRw
-         y7kzSJJjfYclZQvY2Sp3OoB+RlZ0ZgmVUynCOEL+CGnfD9hzTblyGn/AIyFbnZWn83LU
-         KnNJHnLFaEL5fYhfSKnEazGAA/YKmnUhVQQxS5iSGq+WYL6KehZ81a/CHKkGztSr9P30
-         BmkQ==
-X-Gm-Message-State: AOAM531k9orN0u3XFzo7MjZCoRNCM/O2nGqyuXe+Zr1J8rtGlrFHLygJ
-        9BGECBfHWUfOVJ1ZERrDGVEAIcVN0G8=
-X-Google-Smtp-Source: ABdhPJzKALm1EBPTQ18K+cplc9Rj54/XCyTrRJBcCgve7DfHa3FcRADsKoXoWVc+0ELNdGgH6frN1aEubL8=
-Sender: "drosen via sendgmr" <drosen@drosen.c.googlers.com>
-X-Received: from drosen.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:4e6f])
- (user=drosen job=sendgmr) by 2002:a25:88a:: with SMTP id 132mr26330262ybi.215.1605585800711;
- Mon, 16 Nov 2020 20:03:20 -0800 (PST)
-Date:   Tue, 17 Nov 2020 04:03:13 +0000
-In-Reply-To: <20201117040315.28548-1-drosen@google.com>
-Message-Id: <20201117040315.28548-2-drosen@google.com>
-Mime-Version: 1.0
-References: <20201117040315.28548-1-drosen@google.com>
-X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [PATCH v2 1/3] libfs: Add generic function for setting dentry_ops
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Chao Yu <chao@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726524AbgKQE2f (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 Nov 2020 23:28:35 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44800 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725804AbgKQE2f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 16 Nov 2020 23:28:35 -0500
+Received: from sol.localdomain (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 265382463D;
+        Tue, 17 Nov 2020 04:28:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1605587314;
+        bh=9y0exohYjyxk5jiJ93JicBe//G14qZJKLu96RNf8udc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=U5xJI1ZFG6t/NOXZAOAJ2NvidPqX9aLMxtmiiv5K5A4dLKCncWhATDIFCQTEE43Cr
+         qq9uouK7HlGbqzAUCo2eYF65fAG2KPt4xmDUTEtOTfy5sZIp6x9zddPt3RwtieD97q
+         mpj3xzC4hzTf5vIklPjkITGA8jCY7513Xe5rgJKc=
+Date:   Mon, 16 Nov 2020 20:28:32 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix checksum errors with indexed dirs
+Message-ID: <X7NRcBMnsR3w1K7X@sol.localdomain>
+References: <20200205173025.12221-1-jack@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200205173025.12221-1-jack@suse.cz>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a function to set dentry operations at lookup time that will
-work for both encrypted filenames and casefolded filenames.
+Hi Jan,
 
-A filesystem that supports both features simultaneously can use this
-function during lookup preparations to set up its dentry operations once
-fscrypt no longer does that itself.
+On Wed, Feb 05, 2020 at 06:30:25PM +0100, Jan Kara wrote:
+> DIR_INDEX has been introduced as a compat ext4 feature. That means that
+> even kernels / tools that don't understand the feature may modify the
+> filesystem. This works because for kernels not understanding indexed dir
+> format, internal htree nodes appear just as empty directory entries.
+> Index dir aware kernels then check the htree structure is still
+> consistent before using the data. This all worked reasonably well until
+> metadata checksums were introduced. The problem is that these
+> effectively made DIR_INDEX only ro-compatible because internal htree
+> nodes store checksums in a different place than normal directory blocks.
+> Thus any modification ignorant to DIR_INDEX (or just clearing
+> EXT4_INDEX_FL from the inode) will effectively cause checksum mismatch
+> and trigger kernel errors. So we have to be more careful when dealing
+> with indexed directories on filesystems with checksumming enabled.
+> 
+> 1) We just disallow loading and directory inodes with EXT4_INDEX_FL when
+> DIR_INDEX is not enabled. This is harsh but it should be very rare (it
+> means someone disabled DIR_INDEX on existing filesystem and didn't run
+> e2fsck), e2fsck can fix the problem, and we don't want to answer the
+> difficult question: "Should we rather corrupt the directory more or
+> should we ignore that DIR_INDEX feature is not set?"
+> 
+> 2) When we find out htree structure is corrupted (but the filesystem and
+> the directory should in support htrees), we continue just ignoring htree
+> information for reading but we refuse to add new entries to the
+> directory to avoid corrupting it more.
+> 
+> CC: stable@vger.kernel.org
+> Fixes: dbe89444042a ("ext4: Calculate and verify checksums for htree nodes")
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/dir.c   | 14 ++++++++------
+>  fs/ext4/ext4.h  |  5 ++++-
+>  fs/ext4/inode.c | 13 +++++++++++++
+>  fs/ext4/namei.c |  7 +++++++
+>  4 files changed, 32 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index 9f00fc0bf21d..cb9ea593b544 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -129,12 +129,14 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>  		if (err != ERR_BAD_DX_DIR) {
+>  			return err;
+>  		}
+> -		/*
+> -		 * We don't set the inode dirty flag since it's not
+> -		 * critical that it get flushed back to the disk.
+> -		 */
+> -		ext4_clear_inode_flag(file_inode(file),
+> -				      EXT4_INODE_INDEX);
+> +		/* Can we just clear INDEX flag to ignore htree information? */
+> +		if (!ext4_has_metadata_csum(sb)) {
+> +			/*
+> +			 * We don't set the inode dirty flag since it's not
+> +			 * critical that it gets flushed back to the disk.
+> +			 */
+> +			ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+> +		}
+>  	}
+>  
+>  	if (ext4_has_inline_data(inode)) {
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index f8578caba40d..1fd6c1e2ce2a 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2482,8 +2482,11 @@ void ext4_insert_dentry(struct inode *inode,
+>  			struct ext4_filename *fname);
+>  static inline void ext4_update_dx_flag(struct inode *inode)
+>  {
+> -	if (!ext4_has_feature_dir_index(inode->i_sb))
+> +	if (!ext4_has_feature_dir_index(inode->i_sb)) {
+> +		/* ext4_iget() should have caught this... */
+> +		WARN_ON_ONCE(ext4_has_feature_metadata_csum(inode->i_sb));
+>  		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+> +	}
+>  }
 
-Currently the casefolding dentry operation are always set if the
-filesystem defines an encoding because the features is toggleable on
-empty directories. Since we don't know what set of functions we'll
-eventually need, and cannot change them later, we add just add them.
+This new WARN_ON_ONCE() gets triggered by the following commands:
 
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
----
- fs/libfs.c         | 60 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  1 +
- 2 files changed, 61 insertions(+)
+	mkfs.ext4 -O ^dir_index /dev/vdc
+	mount /dev/vdc /vdc
+	mkdir /vdc/dir
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index fc34361c1489..dd8504f3ff5d 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1449,4 +1449,64 @@ int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	return 0;
- }
- EXPORT_SYMBOL(generic_ci_d_hash);
-+
-+static const struct dentry_operations generic_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+};
- #endif
-+
-+#ifdef CONFIG_FS_ENCRYPTION
-+static const struct dentry_operations generic_encrypted_dentry_ops = {
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+#if IS_ENABLED(CONFIG_UNICODE) && IS_ENABLED(CONFIG_FS_ENCRYPTION)
-+static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+/**
-+ * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
-+ * @dentry:	dentry to set ops on
-+ *
-+ * This function sets the dentry ops for the given dentry to handle both
-+ * casefolded and encrypted dentry names.
-+ *
-+ * Encryption requires d_revalidate to remove nokey names once the key is present.
-+ * Casefolding is toggleable on an empty directory. Since we can't change the
-+ * operations later on, we just add the casefolding ops if the filesystem defines an
-+ * encoding.
-+ */
-+void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
-+{
-+#ifdef CONFIG_FS_ENCRYPTION
-+	bool needs_encrypt_ops = dentry->d_flags & DCACHE_NOKEY_NAME;
-+#endif
-+#ifdef CONFIG_UNICODE
-+	bool needs_ci_ops = dentry->d_sb->s_encoding;
-+#endif
-+#if defined(CONFIG_FS_ENCRYPTION) && defined(CONFIG_UNICODE)
-+	if (needs_encrypt_ops && needs_ci_ops) {
-+		d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
-+			return;
-+	}
-+#endif
-+#ifdef CONFIG_FS_ENCRYPTION
-+	if (needs_encrypt_ops) {
-+		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
-+		return;
-+	}
-+#endif
-+#ifdef CONFIG_UNICODE
-+	if (needs_ci_ops) {
-+		d_set_d_op(dentry, &generic_ci_dentry_ops);
-+		return;
-+	}
-+#endif
-+}
-+EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8667d0cdc71e..11345e66353b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3202,6 +3202,7 @@ extern int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str);
- extern int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- 				const char *str, const struct qstr *name);
- #endif
-+extern void generic_set_encrypted_ci_d_ops(struct dentry *dentry);
- 
- #ifdef CONFIG_MIGRATION
- extern int buffer_migrate_page(struct address_space *,
--- 
-2.29.2.299.gdc1121823c-goog
+WARNING: CPU: 1 PID: 305 at fs/ext4/ext4.h:2700 add_dirent_to_buf+0x1d0/0x1e0 fs/ext4/namei.c:2039
+CPU: 1 PID: 305 Comm: mkdir Not tainted 5.10.0-rc4 #14
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS ArchLinux 1.14.0-1 04/01/2014
+RIP: 0010:ext4_update_dx_flag fs/ext4/ext4.h:2700 [inline]
+RIP: 0010:add_dirent_to_buf+0x1d0/0x1e0 fs/ext4/namei.c:2038
+[...]
+Call Trace:
+ ext4_add_entry+0x179/0x4d0 fs/ext4/namei.c:2248
+ ext4_mkdir+0x1c0/0x320 fs/ext4/namei.c:2814
+ vfs_mkdir+0xcc/0x130 fs/namei.c:3650
+ do_mkdirat+0x81/0x120 fs/namei.c:3673
+ __do_sys_mkdir fs/namei.c:3689 [inline]
 
+
+What is intended here?  metadata_csum && ^dir_index is a weird combination,
+but it's technically valid, right?
+
+- Eric
