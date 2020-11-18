@@ -8,113 +8,103 @@ X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0029DC63777
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:42:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FACEC63798
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:42:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 938B220870
+	by mail.kernel.org (Postfix) with ESMTP id D536C24790
 	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:42:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ieWkSbTJ"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="DYfUx3kp"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727635AbgKRPmO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1727634AbgKRPmO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 18 Nov 2020 10:42:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50368 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50382 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727435AbgKRPmG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:42:06 -0500
-Received: from mail-pf1-x449.google.com (mail-pf1-x449.google.com [IPv6:2607:f8b0:4864:20::449])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6C7AC0613D6
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:42:06 -0800 (PST)
-Received: by mail-pf1-x449.google.com with SMTP id 190so1410372pfz.16
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:42:06 -0800 (PST)
+        with ESMTP id S1727626AbgKRPmK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:42:10 -0500
+Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F06CC061A4D
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:42:10 -0800 (PST)
+Received: by mail-yb1-xb4a.google.com with SMTP id h9so2932148ybj.10
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:42:10 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=sender:date:in-reply-to:message-id:mime-version:references:subject
          :from:to:cc;
-        bh=U8cT2QAxIu96iJauReA/Bomb7qYfmerVWdtdZDUXkJc=;
-        b=ieWkSbTJT2eRJ0ussxH4h+s7Q9RzySxvlo/HcKSWQ41JRkrxV8Fzi7GK+3y/fT5Ii0
-         C3A82WjR/130nzSX501okoxhDg4pOVPz7pJlXKrrgsVR+WWpD0BDlMDQSYyJrEVizVuC
-         xlElv+Gd+v95iuJJbOCadJd4R0D6KrtKx277mMYCq2T2Vm0ARt+F/IOKura+nAdmQjiG
-         +NW/HIuj0mfGGtO4KkfkEVZNuvpk5+IDBYijri7HjbKbj7icdj8pXcWa499/d9GBgCeq
-         eN+Zgk3isFkZrgLgD+uHza9mHVHRA876+jl96QQUW6x9yH23kuNdnzeBHpr+b7FC0AZi
-         G5OA==
+        bh=6IeNjD+JbZWYlVnUDIDclFUs22c3oVDKirYNwy4hr2M=;
+        b=DYfUx3kpNmLUUozvKg+jllUuffkVzXz6e3G6nLUHL+uB/3tCfo23jtvrPgq2WUXzi4
+         yRkSTCqZ6zrMkvlINLISX6ue6XgKz6gfzVf3ch0tBBC+fv+eOvJ7rArT1DOqtpH0g5U8
+         bFsII9Lwa7ZUMGdF0CBTeNz9zPTtxPMQekyjuyewFH/D8f1hlxpQRd/IMuShSTXosrzA
+         Kv1zUmyl1FtkY7t7+HfzWrqTwGv2OqipSy+6HrPx7I9XuTZQCFfJj1Gpe1gdDx2fs+2Z
+         HB5BXHE/i7hqDkmpPdMtSNUu9+d4M4ag+36mSL35MoVJLxeW7/Og3Rhm78oW+Cm4oUO2
+         nYJw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=U8cT2QAxIu96iJauReA/Bomb7qYfmerVWdtdZDUXkJc=;
-        b=oPKDRUFwKbWMdCs6q9pKCgGbP5Anrg+Da1NTcSvtG9aJc8aZr8W91cHq+y7yZsIC/7
-         pct3TCOm3m7mJNRtlYSUKCy64lveGfx+qBSAz/C4Z493WaHAqLMO8lEmkoMXC0621hQy
-         WqU1zKi3jsa+QLAXUkPY7d32qqAlJR3SHCSC/9KtYzMLckIEFF6ccp0Q/4kGiFz/yMlt
-         3YzhFiZNtgRsly5IfqPO/ZYo5w1AV22WRtpc48ZHRHaMHzDHK9+qF8HTUdmKW89aj+zu
-         S52NtK1q3LL1how7LxNfSXI5Ne1aWAsAb/UAa7MoSIIAkCIc77mKHjviaYQHp0jgDEna
-         yRTA==
-X-Gm-Message-State: AOAM5325HFflxzGgIpjVfwmSRge6rtwOrH+z5bM8w4iLczT7WMzM6Ain
-        L0jt97ZQaq+Fkl9qui1KinPxJN8eP8MR2iYZO042aiiliRa00NPF6e7Aee4H09lycXkuGQatyRe
-        vyX81dmnH0+nDXLG+T55LqN1iwA18Ty3sEL8fbd+ATncmTlBJMvXze5JVGJUBjMuh5KO7ZmuWy1
-        RfAlArwrI=
-X-Google-Smtp-Source: ABdhPJxJCO87gq/s83j2s7BtGFQSCdze9wgLoP2bZ9yP6jW2UUdL4zCoH0SrX/m7gPblcQxn2ofjIAsth3kneWI1ZSQ=
+        bh=6IeNjD+JbZWYlVnUDIDclFUs22c3oVDKirYNwy4hr2M=;
+        b=tmTZ36M4l7MEqWTsoG+ArqJ5fDaiTqjYa8DoO7C1lFDZjCW25VRK2BSpwlhNegUKa9
+         qRHRuwHUSTm/jpjWDk9pye4lOkjOluKNLeIUZOptDzhhMhXk/68RqJ+0bHRu4JO1seab
+         kusbgTDe+D7M2eWasY11PIx/k3z3KL3rRRoHaah8ZwaapDf/5ORHb9X+cW3dccgl5vES
+         D9g7XLQuKnIHh8lQQyHLAQ4KS2WSR5A0MIk2vBHdWBM6iyap0AW5zTEwmKdOp8NcCMEJ
+         u/RSV6mZbKnjXHbXxh49mqWmll41qCRGWgMKXMH/tYuvzcYHjW1OUnPnwai3z8rBxquK
+         iZqQ==
+X-Gm-Message-State: AOAM533B8vf8c+UPwjFttedcW/Cg0T0vwOnbMaGZGHKboK25nGWSvFB/
+        sKoHjG/Sk5i28UoFUTwhnx63z6yR2a6tyjZXwGgXiciBOiKkwmrAHPk0KLxFwllfY6XlLjvoC6x
+        CML9b7nw8gRJwtIMJ7k9F45wy22CHqj6xam0CpuOF1mRFo7SMvp8fh9IaEyPkfNLLj45rYryMWq
+        ldlE04Ago=
+X-Google-Smtp-Source: ABdhPJwaV+fw9msfxNnip3r/s7hmtYOcPB9NZ5AZr3kW28rV5jmlpr01GboLsvLOBK+wiRlUxE3fb4s0M6IAOSjFnAQ=
 Sender: "saranyamohan via sendgmr" 
         <saranyamohan@saranyamohan.svl.corp.google.com>
 X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a17:902:8c8a:b029:d6:d1e7:e78e with
- SMTP id t10-20020a1709028c8ab02900d6d1e7e78emr4744264plo.39.1605714126081;
- Wed, 18 Nov 2020 07:42:06 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:39:39 -0800
+ (user=saranyamohan job=sendgmr) by 2002:a5b:b45:: with SMTP id
+ b5mr7588636ybr.355.1605714129778; Wed, 18 Nov 2020 07:42:09 -0800 (PST)
+Date:   Wed, 18 Nov 2020 07:39:41 -0800
 In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-54-saranyamohan@google.com>
+Message-Id: <20201118153947.3394530-56-saranyamohan@google.com>
 Mime-Version: 1.0
 References: <20201118153947.3394530-1-saranyamohan@google.com>
 X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 53/61] e2fsck: fix f_multithread_ok test
+Subject: [RFC PATCH v3 55/61] e2fsck: fix readahead for pass1 without pfsck
 From:   Saranya Muruganandam <saranyamohan@google.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc:     adilger.kernel@dilger.ca, Andreas Dilger <adilger@whamcloud.com>,
+Cc:     adilger.kernel@dilger.ca, Wang Shilong <wshilong@ddn.com>,
         Saranya Muruganandam <saranyamohan@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Andreas Dilger <adilger@whamcloud.com>
+From: Wang Shilong <wshilong@ddn.com>
 
-Don't use $OUT for both the input amd output of a pipeline,
-as the output file is truncated befor the input is read.
+If admin try fsck without -m option, codes try old
+behavior, thread information won't be inited either.
+@et_group_end is 0 thus readahead for pass1 will be
+totally disabled.
 
-Fix the handling in the failure case to generate the
-*.failed file, and print the actual $test_name instead
-of "test_name".
+With the patch applied, we could get same performance
+number without pfsck as before.
 
-Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
 ---
- tests/f_multithread_ok/script | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ e2fsck/pass1.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/tests/f_multithread_ok/script b/tests/f_multithread_ok/script
-index 4010881b..c62c93ce 100644
---- a/tests/f_multithread_ok/script
-+++ b/tests/f_multithread_ok/script
-@@ -5,15 +5,15 @@ SKIP_CLEANUP="true"
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 3899d710..70826866 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1100,7 +1100,8 @@ static void pass1_readahead(e2fsck_t ctx, dgrp_t *group, ext2_ino_t *next_ino)
+ 	errcode_t err = EXT2_ET_INVALID_ARGUMENT;
  
- . $cmd_dir/run_e2fsck
- 
--cat $OUT1 | grep -v Thread > $OUT1
--rm -f $test_name.ok $test_name.failed
--cmp -s $OUT1 $EXP1
-+grep -v Thread $OUT1 > $OUT1.tmp
-+cmp -s $OUT1.tmp $EXP1
- status1=$?
- if [ "$status1" -eq 0 ]; then
- 	echo "$test_name: $test_description: ok"
- 	touch $test_name.ok
- else
--	echo "test_name: $test_description: failed"
-+	echo "$test_name: $test_description: failed"
-+	cmp $OUT1.tmp $EXP1 > $test_name.failed
- fi
- 
- unset IMAGE FSCK_OPT SECOND_FSCK_OPT OUT1 OUT2 EXP1 EXP2 
+ #ifdef CONFIG_PFSCK
+-	grp_end = ctx->thread_info.et_group_end;
++	if (ctx->fs->fs_num_threads > 1)
++		grp_end = ctx->thread_info.et_group_end;
+ #endif
+ 	if (ctx->readahead_kb == 0)
+ 		goto out;
 -- 
 2.29.2.299.gdc1121823c-goog
 
