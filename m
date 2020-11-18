@@ -8,300 +8,280 @@ X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4021AC6369E
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2062C64E69
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D5A5C20870
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 940B720870
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="IYGLMcdr"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="B6Pden76"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727387AbgKRPlC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:41:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50132 "EHLO
+        id S1726624AbgKRPlA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 10:41:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50118 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726663AbgKRPlC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:41:02 -0500
-Received: from mail-yb1-xb49.google.com (mail-yb1-xb49.google.com [IPv6:2607:f8b0:4864:20::b49])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 150CAC0613D4
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:02 -0800 (PST)
-Received: by mail-yb1-xb49.google.com with SMTP id w8so2988243ybq.4
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:02 -0800 (PST)
+        with ESMTP id S1725814AbgKRPk7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:40:59 -0500
+Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4ED31C0613D4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:58 -0800 (PST)
+Received: by mail-yb1-xb4a.google.com with SMTP id w8so2921195ybj.14
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=sender:date:in-reply-to:message-id:mime-version:references:subject
          :from:to:cc;
-        bh=10bpX5rRWogqd3Hep7qofcUq6bra1TcXdYCBBOqTGFA=;
-        b=IYGLMcdr82B909aHQUgP1DikCdLzITSkL1Ta6hMij8+TFM5g0Dbbd1ugPKIZiAaccI
-         zeHws99Y5lxxxwIDECcvlNkqPHotRrvduA2RUoBV5jaoKTbfJ/mQFb7jQrzudZSIBnwY
-         gjQBatP66OTVZhjMSqpYiaaxdmnTeM6odGljZkmC/zXFn+Ivacr0dkSW99HYO0AWzEMa
-         1ukDvmrtCAXpMkw+Az9MFU9TtmXdLN3hhrPsHhok5ugVEinjW9xk/VELPInGpvw9gdkb
-         HKCSJGG4T1JeppZXUXJNepHZcirwF2/5qfvBG8YAwgB9Vk7D2vGV93IvNgNDHajCzoB/
-         DHxA==
+        bh=yNDkWH0BXwLvDjF9+mJLlcGy9OjMar14FW9yoJaQjtI=;
+        b=B6Pden76bt2NDqo96OwH2gvB62m6ELLNXRiMHhv77tGDBx/1/pTjBvVugYTSB3o/WX
+         OHFjoKPkCwwZBuB02xDsJJp8BSG36Mc9y5ejaagEiPVthnr5uWXC8wRn0bDRZn6UmIXL
+         J+rk4xWQa5KSfuwuKJQeZjmpCjb/Fz//aryJoG5FjmN7xFlhcOj076TlRdxZlTGPu7Ne
+         FLVuC95oJQV3fuFkehRiQvQPXnYF1yd818iwBMmfgU7pcRnQgyjJ30t95FNxeTIbYl5I
+         EZ8PmYdYhqTTEvpAQ13XPpDYj27Pyw9OnPBVeyP2cWOMQS1gdrQexVtKT5LGiDT6Xc1U
+         74SA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=10bpX5rRWogqd3Hep7qofcUq6bra1TcXdYCBBOqTGFA=;
-        b=JwhLPZped+rhPRGAJG9CsWLR96IZPd+MMd2Ws9rUwLKdW0KShj0MVrli/4mU84F992
-         areAosXy9lKhMJXuYtHmG9A58EtjqcrYPtmfSDgApOKS0LoCd6Sxrv58P9aHtXL7oHMA
-         AI3t1s8jx1RREb8MBK0U2bntGWeJbmuAvm52KCDauGx1OsQVQZYVX7FTmVdMMHnJjAF+
-         qQOP2TO72F2nKWyvJkH2QPAU0lhP42TNFBvsp/U6ux+RfPMKnWjfRSfhoHfJqR9efxea
-         NYTz6gigS540vknBcUxqgUrkkmCdSNVUYdstTZGK7fnvE4WJ8ODXDv+eE2ZZX858Dmn5
-         ttlw==
-X-Gm-Message-State: AOAM532QradKBv1LHdLJjccynqDy4BB+qdnVZgUqKeGzNjI2tO65DxEe
-        +Bfjnh+Mb10gC9i6KgcQmD078cW6jQNh34V5v8B1uLTxR62EU5g/pSQMpmNmRI15ZYRdFkSdJbz
-        Y96e0hNfuQYpScwFQkSB1IOFqy7Dfpy8uR/wBSFXY+iOrR7xH3QdVc+NzrYZCbgPwDfQD/bgAx6
-        SvAdU1ZSg=
-X-Google-Smtp-Source: ABdhPJzR0WcpK43bjdNWjQ/wBO0d14w931pa5w+K+/T0T5pdvPhPLRIp9m6nr/7Wo1VrFCbY9PpeY0+HCdNGAiqFa4c=
+        bh=yNDkWH0BXwLvDjF9+mJLlcGy9OjMar14FW9yoJaQjtI=;
+        b=n0UDxts7Y25Yg2wyv3Vrmc6qdKKFpQr5aNQj+OsTzmJVrr458Y3IN/F52+7bmvA3Ty
+         PPW4o8m54NRZ3j7zpo05AFX0S5WaQdVONJj2xWaR7yYj0/QKOiDQySXmCB683t0av15Y
+         SoniIUhP1GuzRPtXkmesT5CHW2TTftw2UDCFhg7/Nf8TYd0I3oOMgu4tdIKdz6Boiw5E
+         GZAIOm2M6J/ku+1shOlFxOQE2OVzZagE8GU7q4eU0IcqMQ7HR2bXVxyxdsFIFZdgyTSd
+         nzw9+gn10TKaOvn7z4XIJC4efnqsHIX70ILbQxoFD/s80f7KhStUdnXwhTeLCXU6JO/4
+         sKOg==
+X-Gm-Message-State: AOAM531OPUYfgofJdBrusnyScCx/aiJQRzXW82e59hUt7HbnhpirJDTm
+        kuebcIol1AxZ0Tlt7FJMgALazPDO+A7+GWF1l1zKVPGSShmb81adbCIHawDnSdfdpTAdutRwWX+
+        uxk7DCp0VOVj583wm1Nzdhjssz/BDdPzYxjntBaovcLZzUPHPlpRWfyog2N12/vCQrWAtFUMML5
+        ns0ZWB08Q=
+X-Google-Smtp-Source: ABdhPJyipPkd5wVNfZXUDE4hkO9509ktPqqaHuo7GZeAN18Vtnc60rEp1pTLaEGTsAgw2E7ElZkJsOF0mws98vjKvLw=
 Sender: "saranyamohan via sendgmr" 
         <saranyamohan@saranyamohan.svl.corp.google.com>
 X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a25:c782:: with SMTP id
- w124mr8654009ybe.267.1605714061246; Wed, 18 Nov 2020 07:41:01 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:39:05 -0800
+ (user=saranyamohan job=sendgmr) by 2002:a25:b281:: with SMTP id
+ k1mr7780646ybj.303.1605714057409; Wed, 18 Nov 2020 07:40:57 -0800 (PST)
+Date:   Wed, 18 Nov 2020 07:39:03 -0800
 In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-20-saranyamohan@google.com>
+Message-Id: <20201118153947.3394530-18-saranyamohan@google.com>
 Mime-Version: 1.0
 References: <20201118153947.3394530-1-saranyamohan@google.com>
 X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 19/61] e2fsck: merge badblocks after thread finishes
+Subject: [RFC PATCH v3 17/61] e2fsck: merge dir_info after thread finishes
 From:   Saranya Muruganandam <saranyamohan@google.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc:     adilger.kernel@dilger.ca, Wang Shilong <wshilong@ddn.com>,
-        Li Xi <lixi@ddn.com>,
+Cc:     adilger.kernel@dilger.ca, Li Xi <lixi@ddn.com>,
+        Wang Shilong <wshilong@ddn.com>,
         Saranya Muruganandam <saranyamohan@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Wang Shilong <wshilong@ddn.com>
+From: Li Xi <lixi@ddn.com>
 
-Badblocks should be merged properly after threads finish.
+dir_info need be merged after thread finish.
 
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
 ---
- e2fsck/pass1.c         | 19 +++++++---
- lib/ext2fs/badblocks.c | 85 ++++++++++++++++++++++++++++++++++++++----
- lib/ext2fs/ext2fs.h    |  2 +
- lib/ext2fs/ext2fsP.h   |  1 -
- 4 files changed, 94 insertions(+), 13 deletions(-)
+ e2fsck/dirinfo.c | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ e2fsck/e2fsck.h  |  2 ++
+ e2fsck/pass1.c   | 58 +++++++++++++++++++++++++++++++++++++++---
+ 3 files changed, 123 insertions(+), 3 deletions(-)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 2147f64b..da42323d 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2180,6 +2180,7 @@ static errcode_t e2fsck_pass1_copy_fs(ext2_filsys dest, e2fsck_t src_context,
- 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
- 	dest->inode_map = NULL;
- 	dest->block_map = NULL;
-+	dest->badblocks = NULL;
- 	if (dest->dblist)
- 		dest->dblist->fs = dest;
- 	if (src->block_map) {
-@@ -2196,7 +2197,8 @@ static errcode_t e2fsck_pass1_copy_fs(ext2_filsys dest, e2fsck_t src_context,
- 	}
- 
- 	if (src->badblocks) {
--		retval = ext2fs_badblocks_copy(src->badblocks, &dest->badblocks);
-+		retval = ext2fs_badblocks_copy(src->badblocks,
-+					       &dest->badblocks);
- 		if (retval)
- 			return retval;
- 	}
-@@ -2241,11 +2243,13 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	io_channel dest_image_io;
- 	ext2fs_inode_bitmap inode_map;
- 	ext2fs_block_bitmap block_map;
-+	ext2_badblocks_list badblocks;
- 
- 	dest_io = dest->io;
- 	dest_image_io = dest->image_io;
- 	inode_map = dest->inode_map;
- 	block_map = dest->block_map;
-+	badblocks = dest->badblocks;
- 
- 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
- 	dest->io = dest_io;
-@@ -2253,6 +2257,7 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 	dest->icache = icache;
- 	dest->inode_map = inode_map;
- 	dest->block_map = block_map;
-+	dest->badblocks = badblocks;
- 	if (dest->dblist)
- 		dest->dblist->fs = dest;
- 
-@@ -2272,10 +2277,12 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- 		goto out;
- 
- 	if (src->badblocks) {
--		retval = ext2fs_badblocks_copy(src->badblocks, &dest->badblocks);
--
--		ext2fs_badblocks_list_free(src->badblocks);
--		src->badblocks = NULL;
-+		if (dest->badblocks == NULL)
-+			retval = ext2fs_badblocks_copy(src->badblocks,
-+						       &dest->badblocks);
-+		else
-+			retval = ext2fs_badblocks_merge(src->badblocks,
-+							dest->badblocks);
- 	}
- out:
- 	io_channel_close(src->io);
-@@ -2283,6 +2290,8 @@ out:
- 		ext2fs_free_generic_bmap(src->inode_map);
- 	if (src->block_map)
- 		ext2fs_free_generic_bmap(src->block_map);
-+	if (src->badblocks)
-+		ext2fs_badblocks_list_free(src->badblocks);
- 	return retval;
+diff --git a/e2fsck/dirinfo.c b/e2fsck/dirinfo.c
+index 28baaca2..b4adaa6e 100644
+--- a/e2fsck/dirinfo.c
++++ b/e2fsck/dirinfo.c
+@@ -169,6 +169,72 @@ e2fsck_dir_info_min_larger_equal(struct dir_info_db *dir_info,
+ 	return -ENOENT;
  }
  
-diff --git a/lib/ext2fs/badblocks.c b/lib/ext2fs/badblocks.c
-index 0f23983b..3c9a608b 100644
---- a/lib/ext2fs/badblocks.c
-+++ b/lib/ext2fs/badblocks.c
-@@ -11,6 +11,7 @@
- 
- #include "config.h"
- #include <stdio.h>
-+#include <assert.h>
- #include <string.h>
- #if HAVE_UNISTD_H
- #include <unistd.h>
-@@ -56,6 +57,75 @@ static errcode_t make_u32_list(int size, int num, __u32 *list,
- 	return 0;
- }
- 
-+static inline int insert_ok(blk_t *array, int cnt, blk_t new)
-+{
-+	return (cnt == 0 || array[cnt - 1] != new);
-+}
-+
 +/*
-+ * Merge list from src to dest
++ * Merge two sorted dir info to @dest
 + */
-+static errcode_t merge_u32_list(ext2_u32_list src, ext2_u32_list dest)
++void e2fsck_merge_dir_info(e2fsck_t ctx, struct dir_info_db *src,
++			   struct dir_info_db *dest)
 +{
-+	errcode_t	 retval;
-+	int		 src_count = src->num;
-+	int		 dest_count = dest->num;
-+	int		 size = src_count + dest_count;
-+	int		 size_entry = sizeof(blk_t);
-+	blk_t		*array;
-+	blk_t		*src_array = src->list;
-+	blk_t		*dest_array = dest->list;
-+	int		 src_index = 0;
-+	int		 dest_index = 0;
-+	int		 uniq_cnt = 0;
++	size_t		 size_dir_info = sizeof(struct dir_info);
++	ext2_ino_t	 size = dest->size;
++	struct dir_info	 *src_array = src->array;
++	struct dir_info	 *dest_array = dest->array;
++	ext2_ino_t	 src_count = src->count;
++	ext2_ino_t	 dest_count = dest->count;
++	ext2_ino_t	 total_count = src_count + dest_count;
++	struct dir_info	*tmp_array;
++	struct dir_info	*array_ptr;
++	ext2_ino_t	 src_index = 0;
++	ext2_ino_t	 dest_index = 0;
 +
-+	if (src->num == 0)
-+		return 0;
++	if (src->count == 0)
++		return;
 +
-+	retval = ext2fs_get_array(size, size_entry, &array);
-+	if (retval)
-+		return retval;
++	if (size < total_count)
++		size = total_count;
 +
++	if (size < src->size)
++		size = src->size;
++
++	tmp_array = e2fsck_allocate_memory(ctx, size * size_dir_info,
++					    "directory map");
++	array_ptr = tmp_array;
 +	/*
-+	 * It is possible that src list and dest list could be
-+	 * duplicated when merging badblocks.
++	 * This can be improved by binary search and memcpy, but codes
++	 * would be more complex. And if the groups distributed to each
++	 * thread are strided, this implementation won't be too bad
++	 * comparing to the optimiztion.
 +	 */
 +	while (src_index < src_count || dest_index < dest_count) {
 +		if (src_index >= src_count) {
-+			for (; dest_index < dest_count; dest_index++)
-+				if (insert_ok(array, uniq_cnt, dest_array[dest_index]))
-+					array[uniq_cnt++] = dest_array[dest_index];
++			memcpy(array_ptr, &dest_array[dest_index],
++			       (dest_count - dest_index) * size_dir_info);
 +			break;
 +		}
 +		if (dest_index >= dest_count) {
-+			for (; src_index < src_count; src_index++)
-+				if (insert_ok(array, uniq_cnt, src_array[src_index]))
-+					array[uniq_cnt++] = src_array[src_index];
++			memcpy(array_ptr, &src_array[src_index],
++			       (src_count - src_index) * size_dir_info);
 +			break;
 +		}
-+		if (src_array[src_index] < dest_array[dest_index]) {
-+			if (insert_ok(array, uniq_cnt, src_array[src_index]))
-+				array[uniq_cnt++] = src_array[src_index];
++		if (src_array[src_index].ino < dest_array[dest_index].ino) {
++			*array_ptr = src_array[src_index];
 +			src_index++;
-+		} else if (src_array[src_index] > dest_array[dest_index]) {
-+			if (insert_ok(array, uniq_cnt, dest_array[dest_index]))
-+				array[uniq_cnt++] = dest_array[dest_index];
-+			dest_index++;
 +		} else {
-+			if (insert_ok(array, uniq_cnt, dest_array[dest_index]))
-+				array[uniq_cnt++] = dest_array[dest_index];
-+			src_index++;
++			assert(src_array[src_index].ino >
++			       dest_array[dest_index].ino);
++			*array_ptr = dest_array[dest_index];
 +			dest_index++;
 +		}
++		array_ptr++;
 +	}
 +
-+	ext2fs_free_mem(&dest->list);
-+	dest->list = array;
-+	dest->num = uniq_cnt;
++	if (dest->array)
++		ext2fs_free_mem(&dest->array);
++	dest->array = tmp_array;
 +	dest->size = size;
-+	return 0;
-+}
-+
- 
- /*
-  * This procedure creates an empty u32 list.
-@@ -79,13 +149,7 @@ errcode_t ext2fs_badblocks_list_create(ext2_badblocks_list *ret, int size)
-  */
- errcode_t ext2fs_u32_copy(ext2_u32_list src, ext2_u32_list *dest)
- {
--	errcode_t	retval;
--
--	retval = make_u32_list(src->size, src->num, src->list, dest);
--	if (retval)
--		return retval;
--	(*dest)->badblocks_flags = src->badblocks_flags;
--	return 0;
-+	return make_u32_list(src->size, src->num, src->list, dest);
- }
- 
- errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
-@@ -95,6 +159,13 @@ errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
- 			       (ext2_u32_list *) dest);
- }
- 
-+errcode_t ext2fs_badblocks_merge(ext2_badblocks_list src,
-+				 ext2_badblocks_list dest)
-+{
-+	return merge_u32_list((ext2_u32_list) src,
-+			      (ext2_u32_list) dest);
++	dest->count = total_count;
 +}
 +
  /*
-  * This procedure frees a badblocks list.
   *
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 0aa1d94e..ac548311 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -814,6 +814,8 @@ extern int ext2fs_badblocks_list_iterate(ext2_badblocks_iterate iter,
- extern void ext2fs_badblocks_list_iterate_end(ext2_badblocks_iterate iter);
- extern errcode_t ext2fs_badblocks_copy(ext2_badblocks_list src,
- 				       ext2_badblocks_list *dest);
-+extern errcode_t ext2fs_badblocks_merge(ext2_badblocks_list src,
-+					ext2_badblocks_list dest);
- extern int ext2fs_badblocks_equal(ext2_badblocks_list bb1,
- 				  ext2_badblocks_list bb2);
- extern int ext2fs_u32_list_count(ext2_u32_list bb);
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index ad8b7d52..02df759a 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -34,7 +34,6 @@ struct ext2_struct_u32_list {
- 	int	num;
- 	int	size;
- 	__u32	*list;
--	int	badblocks_flags;
- };
+  * Insert an inode into the sorted array. The array should have at least one
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 06893f67..6783ed05 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -507,6 +507,8 @@ extern void read_bad_blocks_file(e2fsck_t ctx, const char *bad_blocks_file,
  
- struct ext2_struct_u32_iterate {
+ /* dirinfo.c */
+ extern void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent);
++void e2fsck_merge_dir_info(e2fsck_t ctx, struct dir_info_db *src,
++                           struct dir_info_db *dest);
+ extern void e2fsck_free_dir_info(e2fsck_t ctx);
+ extern int e2fsck_get_num_dirinfo(e2fsck_t ctx);
+ extern struct dir_info_iter *e2fsck_dir_info_iter_begin(e2fsck_t ctx);
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index d4a2e707..ef6b2d13 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2363,6 +2363,21 @@ out_context:
+ 	return retval;
+ }
+ 
++static void e2fsck_pass1_merge_dir_info(e2fsck_t global_ctx, e2fsck_t thread_ctx)
++{
++	if (thread_ctx->dir_info == NULL)
++		return;
++
++	if (global_ctx->dir_info == NULL) {
++		global_ctx->dir_info = thread_ctx->dir_info;
++		thread_ctx->dir_info = NULL;
++		return;
++	}
++
++	e2fsck_merge_dir_info(global_ctx, thread_ctx->dir_info,
++			      global_ctx->dir_info);
++}
++
+ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ {
+ 	errcode_t	 retval;
+@@ -2372,6 +2387,7 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	FILE		*global_logf = global_ctx->logf;
+ 	FILE		*global_problem_logf = global_ctx->problem_logf;
+ 	ext2fs_inode_bitmap inode_bad_map = global_ctx->inode_bad_map;
++	struct dir_info_db *dir_info = global_ctx->dir_info;
+ 	ext2fs_inode_bitmap inode_used_map = global_ctx->inode_used_map;
+ 	ext2fs_inode_bitmap inode_dir_map = global_ctx->inode_dir_map;
+ 	ext2fs_inode_bitmap inode_bb_map = global_ctx->inode_bb_map;
+@@ -2404,6 +2420,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	global_ctx->block_dup_map = block_dup_map;
+ 	global_ctx->block_ea_map = block_ea_map;
+ 	global_ctx->block_metadata_map = block_metadata_map;
++	global_ctx->dir_info = dir_info;
++	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
+ 
+ 	/* Keep the global singal flags*/
+ 	global_ctx->flags |= (flags & E2F_FLAG_SIGNAL_MASK) |
+@@ -2503,6 +2521,7 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ 	e2fsck_pass1_free_bitmap(&thread_ctx->block_dup_map);
+ 	e2fsck_pass1_free_bitmap(&thread_ctx->block_ea_map);
+ 	e2fsck_pass1_free_bitmap(&thread_ctx->block_metadata_map);
++	e2fsck_free_dir_info(thread_ctx);
+ 	ext2fs_free_mem(&thread_ctx);
+ 
+ 	return retval;
+@@ -2667,15 +2686,48 @@ out_abort:
+ }
+ #endif
+ 
++/* TODO: tdb needs to be handled properly for multiple threads*/
++static int multiple_threads_supported(e2fsck_t ctx)
++{
++#ifdef	CONFIG_TDB
++	unsigned int		threshold;
++	ext2_ino_t		num_dirs;
++	errcode_t		retval;
++	char			*tdb_dir;
++	int			enable;
++
++	profile_get_string(ctx->profile, "scratch_files", "directory", 0, 0,
++			   &tdb_dir);
++	profile_get_uint(ctx->profile, "scratch_files",
++			 "numdirs_threshold", 0, 0, &threshold);
++	profile_get_boolean(ctx->profile, "scratch_files",
++			    "icount", 0, 1, &enable);
++
++	retval = ext2fs_get_num_dirs(ctx->fs, &num_dirs);
++	if (retval)
++		num_dirs = 1024;	/* Guess */
++
++	/* tdb is unsupported now */
++	if (enable && tdb_dir && !access(tdb_dir, W_OK) &&
++	    (!threshold || num_dirs > threshold))
++		return 0;
++ #endif
++	return 1;
++}
++
+ void e2fsck_pass1(e2fsck_t ctx)
+ {
+ 
+ 	init_ext2_max_sizes();
+ #ifdef CONFIG_PFSCK
+-	e2fsck_pass1_multithread(ctx);
+-#else
+-	e2fsck_pass1_run(ctx);
++	if (multiple_threads_supported(ctx)) {
++		e2fsck_pass1_multithread(ctx);
++		return;
++	}
++	fprintf(stderr, "Fall through single thread for pass1 "
++			"because tdb could not handle properly\n");
+ #endif
++	e2fsck_pass1_run(ctx);
+ }
+ 
+ #undef FINISH_INODE_LOOP
 -- 
 2.29.2.299.gdc1121823c-goog
 
