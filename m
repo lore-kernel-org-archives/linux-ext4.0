@@ -8,64 +8,64 @@ X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CCEFC63798
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 91A9DC5519F
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3965220870
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3626724790
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:08 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="Z3erXeuf"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="pXUfNIDW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727495AbgKRPk5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:40:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50108 "EHLO
+        id S1727498AbgKRPlG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 10:41:06 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50148 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727477AbgKRPk4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:40:56 -0500
-Received: from mail-qv1-xf4a.google.com (mail-qv1-xf4a.google.com [IPv6:2607:f8b0:4864:20::f4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC40DC0613D6
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:54 -0800 (PST)
-Received: by mail-qv1-xf4a.google.com with SMTP id q6so1538848qvr.21
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:54 -0800 (PST)
+        with ESMTP id S1727437AbgKRPlG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:41:06 -0500
+Received: from mail-qv1-xf49.google.com (mail-qv1-xf49.google.com [IPv6:2607:f8b0:4864:20::f49])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C2E9AC0613D4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:05 -0800 (PST)
+Received: by mail-qv1-xf49.google.com with SMTP id u19so1573318qvx.4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:05 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=sender:date:in-reply-to:message-id:mime-version:references:subject
          :from:to:cc;
-        bh=s6vvkqtHHiOY9yhMkp1shpLW5N5pECGkPdJxNegvhgM=;
-        b=Z3erXeufjPGDspy5380mXSFMrs7zWT8BofvOdCuuhU0jOObB1S+5XJCPrADth9S5w6
-         0I3qFaqpxxMhonEeANh58gi/rdWCUqzBsc4OBqiUySEyIpyU759hklouko7FXb0m3CCL
-         rGLM83qxlFXhfOfrHkNAvbYpndyp2CX0MDtTDTSL1I1lKhwUmtdjxHkRpRdLQmpqzoLv
-         5nLGuPrrWJQSM4M5sSoKevYjXz/D8zN46yiYAB7hU9EyF4xMmbjmkZf11KwN2biKOfMe
-         SyaT3P1AIHs+jl0h9W4QqJlhZwINIpPMn2IJyKmsUmpsLGXaiPcoQZWF0AK+Kljwyl7I
-         lI5A==
+        bh=ADzWWIbV4bZJ8NdKcONNs35fekjgKDCN5MShyNoNJbQ=;
+        b=pXUfNIDWimaahb1A/Khf6m26p1q6KND3vqTohWbSxwFyHQrMbeQjIV8+0j4AN7j++a
+         sMoDs2twKXt/71Px6OH1ISPVjVZ+qaY+c2laIPzDymXrSWYi+68HL0+jVSAFFUXe2cDU
+         ThXR3H/epxoK6MMj2uOB0IlEkYTKH2sPMT1NkJLwye/K8jCk3x0FWQhMeaqyxfXsxxYl
+         qNWN57qUTBn5K65obREMd8Dx6rmmh29TdblKU3n/pWnAd8GADkUvAz+qXdF7hlrCvz9p
+         i7MFPyYSsIPQD96ItsF/0mQepgji0I4Wx/QUC9qnqHEIAD96ILDGZsVUmDnRgjr68ntj
+         GyhA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=s6vvkqtHHiOY9yhMkp1shpLW5N5pECGkPdJxNegvhgM=;
-        b=Vhfs51HWgCB+G2aWPIdmPjg/rs97qqxv1UC0DzJFk030oML1V+b35qF5b/d1JPMG0F
-         nzFu/hkfXtaLUDdpvxpIy+rrx+hQYp1t0ExHborXV40mFPuvohI8WnjclyIR+PyTRikc
-         ZV08GaZ70iuwep+TjAKAPUiEqCqEi9nbDZBwcDuKFgO+9q0O7UIQ5TjhqgNMAKEWCc2W
-         1P5EP0snyWKh6MaGeu5e2y6nPwv0zrELml2/vyOoTgTCUAN/eH34UGWkI4rsBi+6zGVc
-         IHZnTllq557H2YGaHlspws3lGWZD8xQHRFwYHwgYpyL9Od4D5VtYwku8+40tTRmYcaDL
-         lvVQ==
-X-Gm-Message-State: AOAM533Nu+WzqotF3ytQhNGPQP0gbe7wGTWqYDLVqOrxX3CJXi1g1EnA
-        i6eaR2DpGGS3EoiPNZBrfwJ41jCQBgslZMo+poDmHipM3WNilp+RYm1LhPnwRFdZ9NAZg/8cQV1
-        T3vSe1QNHtX3009t8zVyC8Mmu95KCbx1sp4HoHIh5I2JtGQJpA4rVCflXNYENkW+YEeLIUxGAig
-        8Zd10o1ws=
-X-Google-Smtp-Source: ABdhPJyu/Q0SdGo3aK0P/GJK/oFh0dPRGvfyXJX9dlFzrrh1a2iHBPfS3Vo00ml92qzwcnYbVI90mdf9uNWchhJunXs=
+        bh=ADzWWIbV4bZJ8NdKcONNs35fekjgKDCN5MShyNoNJbQ=;
+        b=gxSVwja/8txwr4oG9jg25tsjo50E3GBN/2G9FiWmKaPcrxbBGqyzXR7B4uePQOo3al
+         qBl44rfnJS22LCiWu1/dARgXhLxy9OCEcHQ4sn0mX0TQyjcrGKi8Kan2/yWUJ0tMgofd
+         BL5CYP6DRKdK8YxxkX9yV/Kh7A9hfYiOW8OXZwGlzD24JvlFNpMfXbgYiq72iB06UEab
+         XTUEO8NEicQhbA50crhQVAg0Rw1VdvrKOBRhrAqkfg/35NGwXN4QgdD2F0dpn/nrNxmg
+         ayOORSAnaHL7ueSCqN2mlnH3ROOCynQQWEexZntCe3mzpiEgtY5k4n7ocys6LAuiNvLH
+         n49Q==
+X-Gm-Message-State: AOAM530jwWhWX0Mj5Dr6MzGj55k378UUFJSUJjGuAjnSnNLlciG4OHDY
+        tZHD3ad0fAswMji16hEv6csLLRdovGwlyzQBOJxQ57LCinoIQbEPeFfbkVHPAQFhYNd8Lc/iqsA
+        UispgOsvnsduubctGjiyp7LMFoah+p7EcLTDPrxeIFYQ2ShW73wOrmXNDTLcPLQzXHVeBQ0G1vq
+        N2rE//tuU=
+X-Google-Smtp-Source: ABdhPJxjffYdN+iwhyvG8Rri3sB8dLnwgkMpGfcO9NHK2pbyUOw7tvCX8o1cNrvMH7pJYG6eNw2K7V6xjVOZTAv9TTs=
 Sender: "saranyamohan via sendgmr" 
         <saranyamohan@saranyamohan.svl.corp.google.com>
 X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a0c:f28d:: with SMTP id
- k13mr5591389qvl.31.1605714053843; Wed, 18 Nov 2020 07:40:53 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:39:01 -0800
+ (user=saranyamohan job=sendgmr) by 2002:ad4:45eb:: with SMTP id
+ q11mr5533170qvu.20.1605714064894; Wed, 18 Nov 2020 07:41:04 -0800 (PST)
+Date:   Wed, 18 Nov 2020 07:39:07 -0800
 In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-16-saranyamohan@google.com>
+Message-Id: <20201118153947.3394530-22-saranyamohan@google.com>
 Mime-Version: 1.0
 References: <20201118153947.3394530-1-saranyamohan@google.com>
 X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 15/61] e2fsck: do not change global variables
+Subject: [RFC PATCH v3 21/61] e2fsck: merge dblist after thread finishes
 From:   Saranya Muruganandam <saranyamohan@google.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
 Cc:     adilger.kernel@dilger.ca, Li Xi <lixi@ddn.com>,
@@ -78,199 +78,133 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Li Xi <lixi@ddn.com>
 
-Global variables used in pass1 check are changed to local variables
-in this patch. This will avoid conflict between threads.
+Merge dblist properly.
 
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
 ---
- e2fsck/pass1.c | 75 +++++++++++++++++++++++++++++++-------------------
- 1 file changed, 47 insertions(+), 28 deletions(-)
+ e2fsck/pass1.c      | 19 +++++++++++++++++++
+ lib/ext2fs/dblist.c | 36 ++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2fs.h |  1 +
+ 3 files changed, 56 insertions(+)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 9e4abad0..d4a2e707 100644
+index cdecd7c2..75298d9d 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -86,7 +86,6 @@ static void alloc_bb_map(e2fsck_t ctx);
- static void alloc_imagic_map(e2fsck_t ctx);
- static void mark_inode_bad(e2fsck_t ctx, ino_t ino);
- static void handle_fs_bad_blocks(e2fsck_t ctx);
--static void process_inodes(e2fsck_t ctx, char *block_buf);
- static EXT2_QSORT_TYPE process_inode_cmp(const void *a, const void *b);
- static errcode_t scan_callback(ext2_filsys fs, ext2_inode_scan scan,
- 				  dgrp_t group, void * priv_data);
-@@ -121,15 +120,15 @@ struct process_inode_block {
- };
+@@ -2244,12 +2244,14 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	ext2fs_inode_bitmap inode_map;
+ 	ext2fs_block_bitmap block_map;
+ 	ext2_badblocks_list badblocks;
++	ext2_dblist dblist;
  
- struct scan_callback_struct {
--	e2fsck_t	ctx;
--	char		*block_buf;
-+	e2fsck_t			 ctx;
-+	char				*block_buf;
-+	struct process_inode_block	*inodes_to_process;
-+	int				*process_inode_count;
- };
+ 	dest_io = dest->io;
+ 	dest_image_io = dest->image_io;
+ 	inode_map = dest->inode_map;
+ 	block_map = dest->block_map;
+ 	badblocks = dest->badblocks;
++	dblist = dest->dblist;
  
--/*
-- * For the inodes to process list.
-- */
--static struct process_inode_block *inodes_to_process;
--static int process_inode_count;
-+static void process_inodes(e2fsck_t ctx, char *block_buf,
-+			   struct process_inode_block *inodes_to_process,
-+			   int *process_inode_count);
+ 	memcpy(dest, src, sizeof(struct struct_ext2_filsys));
+ 	dest->io = dest_io;
+@@ -2258,6 +2260,7 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	dest->inode_map = inode_map;
+ 	dest->block_map = block_map;
+ 	dest->badblocks = badblocks;
++	dest->dblist = dblist;
+ 	if (dest->dblist)
+ 		dest->dblist->fs = dest;
  
- static __u64 ext2_max_sizes[EXT2_MAX_BLOCK_LOG_SIZE -
- 			    EXT2_MIN_BLOCK_LOG_SIZE + 1];
-@@ -1168,7 +1167,6 @@ static int e2fsck_should_abort(e2fsck_t ctx)
- void e2fsck_pass1_run(e2fsck_t ctx)
- {
- 	int	i;
--	__u64	max_sizes;
- 	ext2_filsys fs = ctx->fs;
- 	ext2_ino_t	ino = 0;
- 	struct ext2_inode *inode = NULL;
-@@ -1191,6 +1189,8 @@ void e2fsck_pass1_run(e2fsck_t ctx)
- 	ext2_ino_t	ino_threshold = 0;
- 	dgrp_t		ra_group = 0;
- 	struct ea_quota	ea_ibody_quota;
-+	struct process_inode_block *inodes_to_process;
-+	int		process_inode_count;
+@@ -2276,6 +2279,19 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
+ 	if (retval)
+ 		goto out;
  
- 	init_resource_track(&rtrack, ctx->fs->io);
- 	clear_problem_context(&pctx);
-@@ -1215,17 +1215,6 @@ void e2fsck_pass1_run(e2fsck_t ctx)
- 	mtrace_print("Pass 1");
- #endif
- 
--#define EXT2_BPP(bits) (1ULL << ((bits) - 2))
--
--	for (i = EXT2_MIN_BLOCK_LOG_SIZE; i <= EXT2_MAX_BLOCK_LOG_SIZE; i++) {
--		max_sizes = EXT2_NDIR_BLOCKS + EXT2_BPP(i);
--		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i);
--		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i) * EXT2_BPP(i);
--		max_sizes = (max_sizes * (1UL << i));
--		ext2_max_sizes[i - EXT2_MIN_BLOCK_LOG_SIZE] = max_sizes;
--	}
--#undef EXT2_BPP
--
- 	imagic_fs = ext2fs_has_feature_imagic_inodes(sb);
- 	extent_fs = ext2fs_has_feature_extents(sb);
- 	inlinedata_fs = ext2fs_has_feature_inline_data(sb);
-@@ -1349,6 +1338,8 @@ void e2fsck_pass1_run(e2fsck_t ctx)
- 	ctx->stashed_inode = inode;
- 	scan_struct.ctx = ctx;
- 	scan_struct.block_buf = block_buf;
-+	scan_struct.inodes_to_process = inodes_to_process;
-+	scan_struct.process_inode_count = &process_inode_count;
- 	ext2fs_set_inode_callback(scan, scan_callback, &scan_struct);
- 	if (ctx->progress && ((ctx->progress)(ctx, 1, 0,
- 					      ctx->fs->group_desc_count)))
-@@ -1997,13 +1988,15 @@ void e2fsck_pass1_run(e2fsck_t ctx)
- 			goto endit;
- 
- 		if (process_inode_count >= ctx->process_inode_size) {
--			process_inodes(ctx, block_buf);
-+			process_inodes(ctx, block_buf, inodes_to_process,
-+				       &process_inode_count);
- 
- 			if (e2fsck_should_abort(ctx))
- 				goto endit;
- 		}
- 	}
--	process_inodes(ctx, block_buf);
-+	process_inodes(ctx, block_buf, inodes_to_process,
-+		       &process_inode_count);
- 	ext2fs_close_inode_scan(scan);
- 	scan = NULL;
- 
-@@ -2113,6 +2106,27 @@ endit:
- 		ctx->invalid_bitmaps++;
++	if (src->dblist) {
++		if (dest->dblist) {
++			retval = ext2fs_merge_dblist(src->dblist,
++						     dest->dblist);
++			if (retval)
++				goto out;
++		} else {
++			dest->dblist = src->dblist;
++			dest->dblist->fs = dest;
++			src->dblist = NULL;
++		}
++	}
++
+ 	if (src->badblocks) {
+ 		if (dest->badblocks == NULL)
+ 			retval = ext2fs_badblocks_copy(src->badblocks,
+@@ -2292,6 +2308,9 @@ out:
+ 		ext2fs_free_generic_bmap(src->block_map);
+ 	if (src->badblocks)
+ 		ext2fs_badblocks_list_free(src->badblocks);
++	if (src->dblist)
++		ext2fs_free_dblist(src->dblist);
++
+ 	return retval;
  }
  
-+static void init_ext2_max_sizes()
+diff --git a/lib/ext2fs/dblist.c b/lib/ext2fs/dblist.c
+index bbdb221d..1fdd8f43 100644
+--- a/lib/ext2fs/dblist.c
++++ b/lib/ext2fs/dblist.c
+@@ -119,6 +119,42 @@ errcode_t ext2fs_copy_dblist(ext2_dblist src, ext2_dblist *dest)
+ 	return 0;
+ }
+ 
++/*
++ * Merge a directory block list @src to @dest
++ */
++errcode_t ext2fs_merge_dblist(ext2_dblist src, ext2_dblist dest)
 +{
-+	int	i;
-+	__u64	max_sizes;
++	unsigned long long src_count = src->count;
++	unsigned long long dest_count = dest->count;
++	unsigned long long size = src_count + dest_count;
++	size_t size_entry = sizeof(struct ext2_db_entry2);
++	struct ext2_db_entry2 *array, *array2;
++	errcode_t retval;
 +
-+	/*
-+	 * Init ext2_max_sizes which will be immutable and shared between
-+	 * threads
-+	 */
-+#define EXT2_BPP(bits) (1ULL << ((bits) - 2))
++	if (src_count == 0)
++		return 0;
 +
-+	for (i = EXT2_MIN_BLOCK_LOG_SIZE; i <= EXT2_MAX_BLOCK_LOG_SIZE; i++) {
-+		max_sizes = EXT2_NDIR_BLOCKS + EXT2_BPP(i);
-+		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i);
-+		max_sizes = max_sizes + EXT2_BPP(i) * EXT2_BPP(i) * EXT2_BPP(i);
-+		max_sizes = (max_sizes * (1UL << i));
-+		ext2_max_sizes[i - EXT2_MIN_BLOCK_LOG_SIZE] = max_sizes;
-+	}
-+#undef EXT2_BPP
++	if (src->sorted || (dest->sorted && dest_count != 0))
++		return EINVAL;
++
++	retval = ext2fs_get_array(size, size_entry, &array);
++	if (retval)
++		return retval;
++
++	array2 = array;
++	memcpy(array, src->list, src_count * size_entry);
++	array += src_count;
++	memcpy(array, dest->list, dest_count * size_entry);
++	ext2fs_free_mem(&dest->list);
++
++	dest->list = array2;
++	dest->count = src_count + dest_count;
++	dest->size = size;
++	dest->sorted = 0;
++
++	return 0;
 +}
 +
- #ifdef CONFIG_PFSCK
- static errcode_t e2fsck_pass1_copy_bitmap(ext2_filsys fs, ext2fs_generic_bitmap *src,
- 					  ext2fs_generic_bitmap *dest)
-@@ -2656,6 +2670,7 @@ out_abort:
- void e2fsck_pass1(e2fsck_t ctx)
- {
- 
-+	init_ext2_max_sizes();
- #ifdef CONFIG_PFSCK
- 	e2fsck_pass1_multithread(ctx);
- #else
-@@ -2680,7 +2695,9 @@ static errcode_t scan_callback(ext2_filsys fs,
- 	scan_struct = (struct scan_callback_struct *) priv_data;
- 	ctx = scan_struct->ctx;
- 
--	process_inodes((e2fsck_t) fs->priv_data, scan_struct->block_buf);
-+	process_inodes((e2fsck_t) fs->priv_data, scan_struct->block_buf,
-+		       scan_struct->inodes_to_process,
-+		       scan_struct->process_inode_count);
- 
- 	if (ctx->progress)
- 		if ((ctx->progress)(ctx, 1, group+1,
-@@ -2706,7 +2723,9 @@ static errcode_t scan_callback(ext2_filsys fs,
  /*
-  * Process the inodes in the "inodes to process" list.
-  */
--static void process_inodes(e2fsck_t ctx, char *block_buf)
-+static void process_inodes(e2fsck_t ctx, char *block_buf,
-+			   struct process_inode_block *inodes_to_process,
-+			   int *process_inode_count)
- {
- 	int			i;
- 	struct ext2_inode	*old_stashed_inode;
-@@ -2718,15 +2737,15 @@ static void process_inodes(e2fsck_t ctx, char *block_buf)
- #if 0
- 	printf("begin process_inodes: ");
- #endif
--	if (process_inode_count == 0)
-+	if (*process_inode_count == 0)
- 		return;
- 	old_operation = ehandler_operation(0);
- 	old_stashed_inode = ctx->stashed_inode;
- 	old_stashed_ino = ctx->stashed_ino;
--	qsort(inodes_to_process, process_inode_count,
-+	qsort(inodes_to_process, *process_inode_count,
- 		      sizeof(struct process_inode_block), process_inode_cmp);
- 	clear_problem_context(&pctx);
--	for (i=0; i < process_inode_count; i++) {
-+	for (i=0; i < *process_inode_count; i++) {
- 		pctx.inode = ctx->stashed_inode =
- 			(struct ext2_inode *) &inodes_to_process[i].inode;
- 		pctx.ino = ctx->stashed_ino = inodes_to_process[i].ino;
-@@ -2744,7 +2763,7 @@ static void process_inodes(e2fsck_t ctx, char *block_buf)
- 	}
- 	ctx->stashed_inode = old_stashed_inode;
- 	ctx->stashed_ino = old_stashed_ino;
--	process_inode_count = 0;
-+	*process_inode_count = 0;
- #if 0
- 	printf("end process inodes\n");
- #endif
+  * Close a directory block list
+  *
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 28662d44..0fa0e22f 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1122,6 +1122,7 @@ extern errcode_t ext2fs_add_dir_block(ext2_dblist dblist, ext2_ino_t ino,
+ 				      blk_t blk, int blockcnt);
+ extern errcode_t ext2fs_add_dir_block2(ext2_dblist dblist, ext2_ino_t ino,
+ 				       blk64_t blk, e2_blkcnt_t blockcnt);
++extern errcode_t ext2fs_merge_dblist(ext2_dblist src, ext2_dblist dest);
+ extern void ext2fs_dblist_sort(ext2_dblist dblist,
+ 			       EXT2_QSORT_TYPE (*sortfunc)(const void *,
+ 							   const void *));
 -- 
 2.29.2.299.gdc1121823c-goog
 
