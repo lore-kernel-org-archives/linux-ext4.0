@@ -2,124 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA4DCC5519F
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:42:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FCE2C6379D
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 18:32:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4DB4420870
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:42:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A882C21734
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 18:32:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="AjQEOCJV"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="lMbgFoel"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727554AbgKRPlg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:41:36 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50256 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727438AbgKRPlf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:41:35 -0500
-Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7EDB8C0613D4
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:35 -0800 (PST)
-Received: by mail-yb1-xb4a.google.com with SMTP id z29so2885179ybi.23
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:35 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:in-reply-to:message-id:mime-version:references:subject
-         :from:to:cc;
-        bh=6e3QHpxWYS5pREffVmkDbMng1wHtMagVt6U7jho/w5M=;
-        b=AjQEOCJVRTZHcPDd3WEh0lncuncx1Mngl6692ZuxuZzC2FIocCQnbvVasczjQ9y5P4
-         BMyJbitPUuKWv6Eekzu6+qJhjmPW0u59qrjlRw1OW9rN2vwlcNX4QWcYw+oT2oLF6RDD
-         6obH1sgpnB/Fa7mzQTbbc5CwTOdsCFDXp0cjg86J4nCb38meiT/0QN4rKVeyWcGwA0fg
-         LES7c1wNP3+T34p7OfbeJmL59Z/FL0dou+o+T5o7AB8cwECrf5RMdBtmoHBVxuUzoQDv
-         BCZ1u0vVql9BN4TqxWtNQSwfBR3e/9r9mKeNwboFsQD7mMDP7aSJ0Hj7dDR83EFJmgCl
-         k4Ag==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=6e3QHpxWYS5pREffVmkDbMng1wHtMagVt6U7jho/w5M=;
-        b=pI6e85AvMMM5ONYOkpiv/iDD46g7vRDWbzS+/cScB4MZIYhlGubY7IBqevZzjau03M
-         nU2UvG3Vd/g5WK3wDCJATOSYEHoRPdQBgmkAxcFucKY3HhKrwNVqqLsDPKCEXZKD2qYZ
-         tbE4Yhad5To39VXdmd7GyXxerqsGoGBkDZ8aXNvQNCvY62aFJ5ttyfWaM8P6gTh/eOc1
-         lmmUJvYtdTMZNl9/QWLJRQqy6y55TgOHiVUmR8LZCtffAo1qq7NfkEKGaNKf5j2BYzDg
-         6MqmWSZwNYoenor1ajcxSxp6Lp3rSVbkDp0DBiRNwr6mTwlka4dWCCQZKFC9UhUgi3UL
-         P4VQ==
-X-Gm-Message-State: AOAM533TMaP9MOa2bLJ4muQfkdz4ky3aGIwd0VIoG7KCVbwLKtK57p6w
-        zvH/0cYx23yv18seE/wnitn9Exup6fMIsjL0nl8miRw6zh4td+E1raZ7HJS1dpYZ/PxSt0b1aap
-        D49/VVIh02pDm89hvMezsMvXj8OiAlCoIsUq4ziNkIjTrr41a6EmUPZ3zTk/jAlYKtTuBMBk0jV
-        TtsBEeg/0=
-X-Google-Smtp-Source: ABdhPJxXlzvqgP8nctltuybtGM4MQuKY1GNhWxB9jLm1vEiyypvEzxRAzkhiGiwANGboaS/7j12J/k/o+K2Te68Sdrw=
-Sender: "saranyamohan via sendgmr" 
-        <saranyamohan@saranyamohan.svl.corp.google.com>
-X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a25:7e42:: with SMTP id
- z63mr8602623ybc.63.1605714094707; Wed, 18 Nov 2020 07:41:34 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:39:23 -0800
-In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-38-saranyamohan@google.com>
-Mime-Version: 1.0
-References: <20201118153947.3394530-1-saranyamohan@google.com>
-X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 37/61] e2fsck: merge options after threads finish
-From:   Saranya Muruganandam <saranyamohan@google.com>
-To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc:     adilger.kernel@dilger.ca, Wang Shilong <wshilong@ddn.com>,
-        Saranya Muruganandam <saranyamohan@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726699AbgKRScF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 13:32:05 -0500
+Received: from mail.kernel.org ([198.145.29.99]:49038 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726629AbgKRScF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 18 Nov 2020 13:32:05 -0500
+Received: from sol.localdomain (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id C14482076E;
+        Wed, 18 Nov 2020 18:32:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1605724324;
+        bh=SF6czFyUVoCSbzDlPAUCgmPSS0JKy3lsEIQaFy7Bvvo=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=lMbgFoelI/TNirFp3bkkrWuOteC8rAKh1UcHpWZpjLMHq1i5ckHRjkE+oZlAjYvGC
+         T/CRAZSXjsOjXTXPvrGWFb+PrT8dGRlcIirZsaZf55RaV+bviSwA0v7iYfL7x9tdfR
+         tjIJPtI19BkRgjL0oDtuukfMOhO/99K8DTIP3qv8=
+Date:   Wed, 18 Nov 2020 10:32:02 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Daniel Rosenberg <drosen@google.com>
+Cc:     "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Chao Yu <chao@kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Richard Weinberger <richard@nod.at>,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mtd@lists.infradead.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel-team@android.com
+Subject: Re: [PATCH v3 1/3] libfs: Add generic function for setting dentry_ops
+Message-ID: <X7VooviygzLQoprL@sol.localdomain>
+References: <20201118064245.265117-1-drosen@google.com>
+ <20201118064245.265117-2-drosen@google.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201118064245.265117-2-drosen@google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Wang Shilong <wshilong@ddn.com>
+On Wed, Nov 18, 2020 at 06:42:43AM +0000, Daniel Rosenberg wrote:
+> +#if IS_ENABLED(CONFIG_UNICODE) && IS_ENABLED(CONFIG_FS_ENCRYPTION)
+> +static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
+> +	.d_hash = generic_ci_d_hash,
+> +	.d_compare = generic_ci_d_compare,
+> +	.d_revalidate = fscrypt_d_revalidate,
+> +};
+> +#endif
 
-It will be possible that threads might append E2F_OPT_YES,
-so we need merge options to global, test f_yesall cover this.
+One nit: it would be good to change the #if condition above to:
 
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
-Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
----
- e2fsck/pass1.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+	#if defined(CONFIG_FS_ENCRYPTION) && defined(CONFIG_UNICODE)
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index ad3bd8be..1a68a2fb 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -2935,6 +2935,7 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
- 	ext2_refcount_t ea_inode_refs = global_ctx->ea_inode_refs;
- 	ext2fs_block_bitmap  block_found_map = global_ctx->block_found_map;
- 	ext2fs_block_bitmap  block_dup_map = global_ctx->block_dup_map;
-+	int options = global_ctx->options;
- 
- #ifdef HAVE_SETJMP_H
- 	jmp_buf		 old_jmp;
-@@ -2987,7 +2988,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
- 	global_ctx->fs_fragmented += fs_fragmented;
- 	global_ctx->fs_fragmented_dir += fs_fragmented_dir;
- 	global_ctx->large_files += large_files;
--
-+	/* threads might enable E2F_OPT_YES */
-+	global_ctx->options |= options;
- 	global_ctx->flags |= flags;
- 
- 	retval = e2fsck_pass1_merge_fs(global_fs, thread_fs);
-@@ -3022,10 +3024,7 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
- 					      thread_ctx->qctx);
- 	if (retval)
- 		return retval;
--	global_ctx->invalid_block_bitmap_flag = invalid_block_bitmap_flag;
--	global_ctx->invalid_inode_bitmap_flag = invalid_inode_bitmap_flag;
--	global_ctx->invalid_inode_table_flag = invalid_inode_table_flag;
--	global_ctx->invalid_bitmaps = invalid_bitmaps;
-+
- 	e2fsck_pass1_merge_invalid_bitmaps(global_ctx, thread_ctx);
- 
- 	retval = e2fsck_pass1_merge_bitmap(global_fs,
--- 
-2.29.2.299.gdc1121823c-goog
+... to make it identical to the #if condition later on:
 
+> +#if defined(CONFIG_FS_ENCRYPTION) && defined(CONFIG_UNICODE)
+> +	if (needs_encrypt_ops && needs_ci_ops) {
+> +		d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
+> +		return;
+> +	}
+>  #endif
+
+It doesn't actually matter, but it's nice to keep things consistent.
+
+Otherwise, please feel free to add:
+
+	Reviewed-by: Eric Biggers <ebiggers@google.com>
+
+- Eric
