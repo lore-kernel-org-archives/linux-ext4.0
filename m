@@ -2,134 +2,87 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-21.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 511A5C64E90
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 06:43:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D6B2C6369E
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EB4CE24655
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 06:43:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3D667246B1
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="nEBuvp/4"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="A+6dqvcT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726456AbgKRGmv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 01:42:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51700 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725970AbgKRGmu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 01:42:50 -0500
-Received: from mail-qv1-xf4a.google.com (mail-qv1-xf4a.google.com [IPv6:2607:f8b0:4864:20::f4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A5DFCC0613D4
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2020 22:42:50 -0800 (PST)
-Received: by mail-qv1-xf4a.google.com with SMTP id du18so660651qvb.14
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Nov 2020 22:42:50 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:message-id:mime-version:subject:from:to:cc;
-        bh=u5caVYpjW51UviyAUiIiuabnW39XcM6vjoXzylmjMQQ=;
-        b=nEBuvp/4qXTH4AAIx8Gr2DG2ZKpgZ7YLYjZB4voXYemMwTXptimZcegqwTHgPpPw0I
-         EwVwGOxQa0Aap22fetPS3Lj1KFiJioOyzRYapPZ3sh/IAuvruSKA7NOPaADtyCApdcOZ
-         eAHvd6+arAeAaZ+UyJBdV9j0eelWwDnmi6lZpJl9AxxsRYC6qRxvLZVskUhKpBbGb5qW
-         pV4o4S/wW+/n3D8iLw3TM6UN0E6wiazwRqgTjGZUDhQT6iU9/QB6j3bqBsuOg9PvT/PI
-         dyzTuACoqvvljMcN66fAqWLJpRZe+hY81fFWPiwVJVjTQu1i6Bp5N0pAHXwnA55L1ZPQ
-         JGzA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:message-id:mime-version:subject:from
-         :to:cc;
-        bh=u5caVYpjW51UviyAUiIiuabnW39XcM6vjoXzylmjMQQ=;
-        b=lDN92KXfu2GgpHW+r7UrtFGOnHBmsjBORj/4B/xv3AuBltproYrCNBPbcRURNQbeU7
-         YIHhrBU+mK94rzs6KZjXnGz5tf9fEldaTY2FU7w9WMMIKYDmT7O9MZiC1jCaco4fxifP
-         YcsqwLQKCAmJxEQSg4k7HQmC5lg5DS+sWXpW0PQqsqobAuRnzve3JpseolkedzDue80x
-         NixIXL5AtO+VR/l25obFIKhvZR5It1LqMYe03coSaY1bYjyTQXRatsc4ny4vhswlDSg/
-         jltbwmd3WfO2ELSs6B2964CaboDlv1oErhwRYoJZtSPXhl6+BtdWRSO4sWxDHaHa32he
-         bCdQ==
-X-Gm-Message-State: AOAM530/ZElk0ug9rgnSuzuS0Anc6yApmHuWUG9xvoQkThfMB9Fc6nx/
-        z0JvVzJkKo8WIhgQ22rNpxcMQOfUsxs=
-X-Google-Smtp-Source: ABdhPJxIZ2FilqfFWaJShB2bRFVummoWsUhq+iNGutp/cAxbjC3GBHd8GSqHZEJazc+0X49BH56xSs8BuGU=
-Sender: "drosen via sendgmr" <drosen@drosen.c.googlers.com>
-X-Received: from drosen.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:4e6f])
- (user=drosen job=sendgmr) by 2002:ad4:490d:: with SMTP id bh13mr3584587qvb.14.1605681769641;
- Tue, 17 Nov 2020 22:42:49 -0800 (PST)
-Date:   Wed, 18 Nov 2020 06:42:42 +0000
-Message-Id: <20201118064245.265117-1-drosen@google.com>
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [PATCH v3 0/3] Add support for Encryption and Casefolding in F2FS
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Chao Yu <chao@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1727173AbgKRH5k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 02:57:40 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35612 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726299AbgKRH5k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 18 Nov 2020 02:57:40 -0500
+Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3F55E2080A;
+        Wed, 18 Nov 2020 07:57:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1605686259;
+        bh=RIC5mu+TPEgksMKT+f1TM2ePCUTrxlaadfpm5VMsKc8=;
+        h=From:To:Cc:Subject:Date:From;
+        b=A+6dqvcTRZ0pE0gw4wXXN7TtjV668JBEprEGLRRtaSe1TUym2p46zV8cyYiudUEHp
+         eL2GK9KCkRG7AtMzZZ0NWXHxhG842DV39eUgIk1EyM/F/3uDDg2hd6ex1aLRM+K8DD
+         qaaZ8Xz/2laZctKUbSMDbJkN6K4gTVZZ6U9x2dgo=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH 0/5] fscrypt: prevent creating duplicate encrypted filenames
+Date:   Tue, 17 Nov 2020 23:56:04 -0800
+Message-Id: <20201118075609.120337-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.29.2
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-These patches are on top of the torvalds tree.
+This series fixes a longstanding race condition where a duplicate
+filename can be created in an encrypted directory if a syscall that
+creates a new filename (e.g. open() or mkdir()) races with the
+directory's encryption key being added.
 
-F2FS currently supports casefolding and encryption, but not at
-the same time. These patches aim to rectify that. In a later follow up,
-this will be added for Ext4 as well.
+To close this race, we need to prevent creating files if the dentry is
+still marked as a no-key name.  I.e. we need to fail the ->create() (or
+other operation that creates a new filename) if the key wasn't available
+when doing the dentry lookup earlier in the syscall, even if the key was
+concurrently added between the dentry lookup and ->create().
 
-The f2fs-tools changes have already been applied.
+See patch 1 for a more detailed explanation.
 
-Since both fscrypt and casefolding require their own dentry operations,
-I've moved the responsibility of setting the dentry operations from fscrypt
-to the filesystems and provided helper functions that should work for most
-cases.
+Patch 1 introduces a helper function required for the fix.  Patches 2-4
+fix the bug on ext4, f2fs, and ubifs.  Patch 5 is a cleanup.
 
-These are a follow-up to the previously sent patch set
-"[PATCH v12 0/4] Prepare for upcoming Casefolding/Encryption patches"
+This fixes xfstest generic/595 on ubifs, but that test was hitting this
+bug only accidentally.  I've also written a new xfstest which reproduces
+this bug on both ext4 and ubifs.
 
-v2:
-Simplified generic dentry_op function
-Passed through errors in f2fs_match_ci_name
+Eric Biggers (5):
+  fscrypt: add fscrypt_is_nokey_name()
+  ext4: prevent creating duplicate encrypted filenames
+  f2fs: prevent creating duplicate encrypted filenames
+  ubifs: prevent creating duplicate encrypted filenames
+  fscrypt: remove unnecessary calls to fscrypt_require_key()
 
-v3:
-Split some long lines
-Cleaned up some code
-Made some comments clearer
-Fixed bug in v2 error passing
-
-Daniel Rosenberg (3):
-  libfs: Add generic function for setting dentry_ops
-  fscrypt: Have filesystems handle their d_ops
-  f2fs: Handle casefolding with Encryption
-
- fs/crypto/fname.c       |   4 --
- fs/crypto/hooks.c       |   1 -
- fs/ext4/dir.c           |   7 ---
- fs/ext4/ext4.h          |   4 --
- fs/ext4/namei.c         |   1 +
- fs/ext4/super.c         |   5 --
- fs/f2fs/dir.c           | 105 +++++++++++++++++++++++++++++-----------
- fs/f2fs/f2fs.h          |  11 ++---
- fs/f2fs/hash.c          |  11 ++++-
- fs/f2fs/inline.c        |   4 ++
- fs/f2fs/namei.c         |   1 +
- fs/f2fs/recovery.c      |  12 ++++-
- fs/f2fs/super.c         |   7 ---
- fs/libfs.c              |  70 +++++++++++++++++++++++++++
- fs/ubifs/dir.c          |   1 +
- include/linux/fs.h      |   1 +
- include/linux/fscrypt.h |   7 ++-
- 17 files changed, 185 insertions(+), 67 deletions(-)
+ fs/crypto/hooks.c       | 31 +++++++++++--------------------
+ fs/ext4/namei.c         |  3 +++
+ fs/f2fs/f2fs.h          |  2 ++
+ fs/ubifs/dir.c          | 17 +++++++++++++----
+ include/linux/fscrypt.h | 37 +++++++++++++++++++++++++++++++++++--
+ 5 files changed, 64 insertions(+), 26 deletions(-)
 
 
-base-commit: 0fa8ee0d9ab95c9350b8b84574824d9a384a9f7d
+base-commit: 3ceb6543e9cf6ed87cc1fbc6f23ca2db903564cd
 -- 
-2.29.2.454.gaff20da3a2-goog
+2.29.2
 
