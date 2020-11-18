@@ -2,87 +2,85 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D6B2C6369E
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7EE1C5519F
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3D667246B1
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4D402246B1
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 07:57:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="A+6dqvcT"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="e/HwAPAU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727173AbgKRH5k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 02:57:40 -0500
-Received: from mail.kernel.org ([198.145.29.99]:35612 "EHLO mail.kernel.org"
+        id S1727207AbgKRH5m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 02:57:42 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35644 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726299AbgKRH5k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 18 Nov 2020 02:57:40 -0500
+        id S1727175AbgKRH5l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 18 Nov 2020 02:57:41 -0500
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3F55E2080A;
-        Wed, 18 Nov 2020 07:57:39 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 8E936246AD;
+        Wed, 18 Nov 2020 07:57:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1605686259;
-        bh=RIC5mu+TPEgksMKT+f1TM2ePCUTrxlaadfpm5VMsKc8=;
-        h=From:To:Cc:Subject:Date:From;
-        b=A+6dqvcTRZ0pE0gw4wXXN7TtjV668JBEprEGLRRtaSe1TUym2p46zV8cyYiudUEHp
-         eL2GK9KCkRG7AtMzZZ0NWXHxhG842DV39eUgIk1EyM/F/3uDDg2hd6ex1aLRM+K8DD
-         qaaZ8Xz/2laZctKUbSMDbJkN6K4gTVZZ6U9x2dgo=
+        s=default; t=1605686260;
+        bh=BEN/nXkzCxItOwaUusssDXqaGvS3fLCaGZUERnKW1Rw=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=e/HwAPAUfwWD3CYv6a/mOp2hLJpW5wozpT1BNRIXXvp/OgkMuve+wzODbU6LKp9aY
+         53AJ0gl3dNvpSGTT5HLz5hglv0eYTUKfSUTZjgT1bf7/IFM+q027VDdVfpXVB4/OgZ
+         Xhe6UjkN0HzYPb3P4upnVEXOgIwi61ADoShmv5qM=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/5] fscrypt: prevent creating duplicate encrypted filenames
-Date:   Tue, 17 Nov 2020 23:56:04 -0800
-Message-Id: <20201118075609.120337-1-ebiggers@kernel.org>
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: [PATCH 3/5] f2fs: prevent creating duplicate encrypted filenames
+Date:   Tue, 17 Nov 2020 23:56:07 -0800
+Message-Id: <20201118075609.120337-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201118075609.120337-1-ebiggers@kernel.org>
+References: <20201118075609.120337-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This series fixes a longstanding race condition where a duplicate
-filename can be created in an encrypted directory if a syscall that
-creates a new filename (e.g. open() or mkdir()) races with the
-directory's encryption key being added.
+From: Eric Biggers <ebiggers@google.com>
 
-To close this race, we need to prevent creating files if the dentry is
-still marked as a no-key name.  I.e. we need to fail the ->create() (or
-other operation that creates a new filename) if the key wasn't available
-when doing the dentry lookup earlier in the syscall, even if the key was
-concurrently added between the dentry lookup and ->create().
+As described in "fscrypt: add fscrypt_is_nokey_name()", it's possible to
+create a duplicate filename in an encrypted directory by creating a file
+concurrently with adding the directory's encryption key.
 
-See patch 1 for a more detailed explanation.
+Fix this bug on f2fs by rejecting no-key dentries in f2fs_add_link().
 
-Patch 1 introduces a helper function required for the fix.  Patches 2-4
-fix the bug on ext4, f2fs, and ubifs.  Patch 5 is a cleanup.
+Note that the weird check for the current task in f2fs_do_add_link()
+seems to make this bug difficult to reproduce on f2fs.
 
-This fixes xfstest generic/595 on ubifs, but that test was hitting this
-bug only accidentally.  I've also written a new xfstest which reproduces
-this bug on both ext4 and ubifs.
+Fixes: 9ea97163c6da ("f2fs crypto: add filename encryption for f2fs_add_link")
+Cc: stable@vger.kernel.org
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/f2fs/f2fs.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Eric Biggers (5):
-  fscrypt: add fscrypt_is_nokey_name()
-  ext4: prevent creating duplicate encrypted filenames
-  f2fs: prevent creating duplicate encrypted filenames
-  ubifs: prevent creating duplicate encrypted filenames
-  fscrypt: remove unnecessary calls to fscrypt_require_key()
-
- fs/crypto/hooks.c       | 31 +++++++++++--------------------
- fs/ext4/namei.c         |  3 +++
- fs/f2fs/f2fs.h          |  2 ++
- fs/ubifs/dir.c          | 17 +++++++++++++----
- include/linux/fscrypt.h | 37 +++++++++++++++++++++++++++++++++++--
- 5 files changed, 64 insertions(+), 26 deletions(-)
-
-
-base-commit: 3ceb6543e9cf6ed87cc1fbc6f23ca2db903564cd
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index cb700d797296..9a321c52face 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3251,6 +3251,8 @@ bool f2fs_empty_dir(struct inode *dir);
+ 
+ static inline int f2fs_add_link(struct dentry *dentry, struct inode *inode)
+ {
++	if (fscrypt_is_nokey_name(dentry))
++		return -ENOKEY;
+ 	return f2fs_do_add_link(d_inode(dentry->d_parent), &dentry->d_name,
+ 				inode, inode->i_ino, inode->i_mode);
+ }
 -- 
 2.29.2
 
