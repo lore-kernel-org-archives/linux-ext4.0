@@ -8,65 +8,65 @@ X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 815B1C6379D
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A8E9C64E75
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 199FE20870
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A06F924792
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="P71L2gEd"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="TWWNVsMu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727494AbgKRPk4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:40:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50110 "EHLO
+        id S1727496AbgKRPlE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 10:41:04 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50138 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727487AbgKRPk4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:40:56 -0500
-Received: from mail-pl1-x649.google.com (mail-pl1-x649.google.com [IPv6:2607:f8b0:4864:20::649])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4BC91C0613D4
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:56 -0800 (PST)
-Received: by mail-pl1-x649.google.com with SMTP id j12so1404239plj.20
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:56 -0800 (PST)
+        with ESMTP id S1726663AbgKRPlD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:41:03 -0500
+Received: from mail-pj1-x104a.google.com (mail-pj1-x104a.google.com [IPv6:2607:f8b0:4864:20::104a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C4BF2C0613D4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:03 -0800 (PST)
+Received: by mail-pj1-x104a.google.com with SMTP id v10so1398401pjg.5
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:03 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=sender:date:in-reply-to:message-id:mime-version:references:subject
          :from:to:cc;
-        bh=9jrGCNRsBXFJQqCYwRQBYmUDmSfN/AuYXhamlTnyfhs=;
-        b=P71L2gEdD+BeKAK0HYwSPsRe5/peghmLkSaOHKrVGdMobqvnSTbpqhug68acuM98St
-         cTbgMtJYucpQ4OpOE5XeGXpM5ipeuJNRrLOBoYPoYcBM5AB1Byi2zETv2SzDo2VHpi5+
-         UpiZI9m+/BGiD3bzhXPARF2ArRMnxB74ZwUuYilL+DCPVPYEe06Jt5RMqj/EPu15hyKZ
-         mJouiMzOXecv2DW9CuKC2RQgOp/E8bOm+fo2mAttZuqIk4Kw0idsJgyG7RtepHhiByjb
-         /59p/kEROoTn/IaZ3o3I04L29vhdcTQQVE7vlvxcBn9ynO7w/XPXbEEb8SywY6vmurnr
-         w9BA==
+        bh=bMbtktrsgt2BKEt9MFrYvx/sw2jOEdjl21VAcL40JPE=;
+        b=TWWNVsMu73wQwMedlAkK59gJe4RWuHBF95OJrD4Xw9HKEwxyjAiEVqXFJv63vh6Ogh
+         2OvZGoGBS9tfh66PP+3HOMvAF7unL6DQhz3h2Th1LCC5Br4XPHq20RJved4oJ+dfA6c0
+         PXr2TeCXns34pTzMRHEoT9MAgxuUu6ch+a/g2N/eKA6NZayOD5B+/g4iqYWLIshh+YTk
+         AbSsqtTIRRhmHhsWBWO8A136a40Ngeb1WaHpNJ719gv/slAYRS/8LavvvER0UuCMO17O
+         sgLr78a/HM8G6SM+PgwWSo0/fnlKKPLaK96x1VL4KUFrcPvVBe4mcTQvvgkMW+cCQrEv
+         MTAQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=9jrGCNRsBXFJQqCYwRQBYmUDmSfN/AuYXhamlTnyfhs=;
-        b=IayYsFOYnqcB0WNy4qSiD4Jq1GjzFWHtPu+wBh8kFLiFvOAztT7GHOI0CImhcRTw11
-         P2DsGyJ1Y3CyaLxJiRRppX1F2+CzKTHriBDbuSEUbQrN0hvpY/4RAm8JzX9ATr/67igc
-         pzE5jjpHkHKrXbizIZV9ccF+fDXtiBSjD7kQfdUfc3L/yNS08ZpMO9/A5hSvYtTxpNME
-         UjBqRy5UQKKZupIruIOfUdCpnEP6KsN4Ji5JSLWxaPzKyZi76QP8UYnvTXBuieXLhhGD
-         6L/MZCSMMWBmq3qFqHQ/0cRu8H6YE+tDlC6610V5ofbHCYgSAvcwqAUJst77KLY6J4sm
-         UWHQ==
-X-Gm-Message-State: AOAM533o7a6Q2OmV+2NQqtd0d5FVbQUMoBEzzQXTyxPAld+3RaMGlKsf
-        TiMnE5D6l5mG6ZXauqd4jC00YlnMi46EE9BnUOvzzNPbPTwLTTlfl7Io1MiMiW1v1B0F2T1Szwl
-        gtLbIIJd5kzoHbL1N4gc6yaYK8NMDyfz5CDxVVUhyJ/hso2GVuprCsbIVTAEODfPRxirZUytp+k
-        Od2+uLAF0=
-X-Google-Smtp-Source: ABdhPJxCTR3h6qOXxtdM2gC4J0ZCIC0sJzilBgzL9JE3tEwapyXcKoAhSIaDWVLBNqSSvLZyKUk6F7vWV6LKkDarfBI=
+        bh=bMbtktrsgt2BKEt9MFrYvx/sw2jOEdjl21VAcL40JPE=;
+        b=gR4t89V20q4ImL/ExSpaExZ1rHfk4ndII3AfStEOUMP8/k//Bx89MT6NQyb+2X8ZHW
+         LmrrRehhbhaz/viEUbmmOTZEUtBC/XDp4XC9o9zbHJUUhB6b7WrfDtEuPu8g5PszcMrS
+         fSv6uR1FdDo7O6WILNYuiUD7C/4H4S8IHmtqSimtHCE01u3hv2dmXVTRtezaHzkOcEld
+         5dzsqm+XhxWS4INPRdud58T607WFmeOCUBNrB8F5oCiEU3jvUgBUcRMEUKNt5DWNLoaW
+         gzjcbZfnu3PXzyeBikkwzc+32h1jic6gmn2NhlEVrGlqHV8tNYhpNUyiTrZxVcl+xAmE
+         7QpQ==
+X-Gm-Message-State: AOAM531ectjig5Gp6naWY9om0Bexs6ksHOBNjX03pC+RdFjIQhEnGiXE
+        2aM/1UDEeTcvAV46mI0K02jRh5SydH/R3JXcyHpGlpE9X/ti2foVEwBRC5EftSfZFzDiKHeWFWN
+        HX4BXSmGJf1OTBb6g4/sd3603pNvldbjRPmGGuQDHH+oVO8HzAs6iEiAwriHSOoT4mhRo5ySikx
+        mxnPls2Kg=
+X-Google-Smtp-Source: ABdhPJycJwOOV6dxxuR/pspcZBKIBnhPb/PtjLTMP94fhVyrgguq3Q1butzKj/l5NLsiIAn6j8Masv2B4Ve+2UYMWG8=
 Sender: "saranyamohan via sendgmr" 
         <saranyamohan@saranyamohan.svl.corp.google.com>
 X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a62:5c87:0:b029:197:5f13:b66c with
- SMTP id q129-20020a625c870000b02901975f13b66cmr4857020pfb.73.1605714055709;
- Wed, 18 Nov 2020 07:40:55 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:39:02 -0800
+ (user=saranyamohan job=sendgmr) by 2002:a62:2cc1:0:b029:18c:85f5:864b with
+ SMTP id s184-20020a622cc10000b029018c85f5864bmr4818724pfs.29.1605714063126;
+ Wed, 18 Nov 2020 07:41:03 -0800 (PST)
+Date:   Wed, 18 Nov 2020 07:39:06 -0800
 In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-17-saranyamohan@google.com>
+Message-Id: <20201118153947.3394530-21-saranyamohan@google.com>
 Mime-Version: 1.0
 References: <20201118153947.3394530-1-saranyamohan@google.com>
 X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 16/61] e2fsck: optimize the inserting of dir_info_db
+Subject: [RFC PATCH v3 20/61] e2fsck: merge icounts after thread finishes
 From:   Saranya Muruganandam <saranyamohan@google.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
 Cc:     adilger.kernel@dilger.ca, Li Xi <lixi@ddn.com>,
@@ -79,234 +79,237 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Li Xi <lixi@ddn.com>
 
-Binary search is now used when inserting an dir info to the array.
-Memmove is now used when moving array. Both of them improves
-the performance of inserting.
-
-This patch is also a prepartion for the merging of two dir db
-arrays.
+Merge inode_count and inode_link_info properly after
+threads finish.
 
 Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
 ---
- e2fsck/dirinfo.c | 172 ++++++++++++++++++++++++++++++-----------------
- 1 file changed, 112 insertions(+), 60 deletions(-)
+ e2fsck/pass1.c      |  47 ++++++++++++++++++++
+ lib/ext2fs/ext2fs.h |   1 +
+ lib/ext2fs/icount.c | 103 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 151 insertions(+)
 
-diff --git a/e2fsck/dirinfo.c b/e2fsck/dirinfo.c
-index 49d624c5..28baaca2 100644
---- a/e2fsck/dirinfo.c
-+++ b/e2fsck/dirinfo.c
-@@ -7,6 +7,7 @@
- 
- #undef DIRINFO_DEBUG
- 
-+#include <assert.h>
- #include "config.h"
- #include "e2fsck.h"
- #include <sys/stat.h>
-@@ -122,6 +123,104 @@ static void setup_db(e2fsck_t ctx)
- 				       "directory map");
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index da42323d..cdecd7c2 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -2388,6 +2388,41 @@ static void e2fsck_pass1_merge_dir_info(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 			      global_ctx->dir_info);
  }
  
-+/*
-+ * Return the min index that has ino larger or equal to @ino
-+ * If not found, return -ENOENT
-+ */
-+static int
-+e2fsck_dir_info_min_larger_equal(struct dir_info_db *dir_info,
-+				 ext2_ino_t ino, ext2_ino_t *index)
++static inline errcode_t
++e2fsck_pass1_merge_icount(ext2_icount_t *dest_icount,
++			  ext2_icount_t *src_icount)
 +{
-+	ext2_ino_t low = 0;
-+	ext2_ino_t mid, high;
-+	ext2_ino_t tmp_ino;
-+	int found = 0;
-+
-+	if (dir_info->count == 0)
-+		return -ENOENT;
-+
-+	high = dir_info->count - 1;
-+	while (low <= high) {
-+		/* sum may overflow, but result will fit into mid again */
-+		mid = (unsigned long long)(low + high) / 2;
-+		tmp_ino = dir_info->array[mid].ino;
-+		if (ino == tmp_ino) {
-+			*index = mid;
-+			found = 1;
-+			return 0;
-+		} else if (ino < tmp_ino) {
-+			/*
-+			 * The mid ino is larger than @ino, remember the index
-+			 * here so we won't miss this ino
-+			 */
-+			*index = mid;
-+			found = 1;
-+			if (mid == 0)
-+				break;
-+			high = mid - 1;
++	if (*src_icount) {
++		if (*dest_icount == NULL) {
++			*dest_icount = *src_icount;
++			*src_icount = NULL;
 +		} else {
-+			low = mid + 1;
++			errcode_t ret;
++
++			ret = ext2fs_icount_merge(*src_icount,
++						  *dest_icount);
++			if (ret)
++				return ret;
 +		}
 +	}
 +
-+	if (found)
++	return 0;
++}
++
++static errcode_t e2fsck_pass1_merge_icounts(e2fsck_t global_ctx, e2fsck_t thread_ctx)
++{
++	errcode_t ret;
++
++	ret = e2fsck_pass1_merge_icount(&global_ctx->inode_count,
++					&thread_ctx->inode_count);
++	if (ret)
++		return ret;
++	ret = e2fsck_pass1_merge_icount(&global_ctx->inode_link_info,
++					&thread_ctx->inode_link_info);
++
++	return ret;
++}
++
+ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ {
+ 	errcode_t	 retval;
+@@ -2408,6 +2443,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	ext2fs_block_bitmap block_ea_map = global_ctx->block_ea_map;
+ 	ext2fs_block_bitmap block_metadata_map = global_ctx->block_metadata_map;
+ 	ext2fs_block_bitmap inodes_to_rebuild = global_ctx->inodes_to_rebuild;
++	ext2_icount_t inode_count = global_ctx->inode_count;
++	ext2_icount_t inode_link_info = global_ctx->inode_link_info;
+ 
+ #ifdef HAVE_SETJMP_H
+ 	jmp_buf		 old_jmp;
+@@ -2432,6 +2469,8 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	global_ctx->block_metadata_map = block_metadata_map;
+ 	global_ctx->dir_info = dir_info;
+ 	e2fsck_pass1_merge_dir_info(global_ctx, thread_ctx);
++	global_ctx->inode_count = inode_count;
++	global_ctx->inode_link_info = inode_link_info;
+ 
+ 	/* Keep the global singal flags*/
+ 	global_ctx->flags |= (flags & E2F_FLAG_SIGNAL_MASK) |
+@@ -2447,6 +2486,12 @@ static int e2fsck_pass1_thread_join_one(e2fsck_t global_ctx, e2fsck_t thread_ctx
+ 	global_ctx->logf = global_logf;
+ 	global_ctx->problem_logf = global_problem_logf;
+ 	global_ctx->global_ctx = NULL;
++	retval = e2fsck_pass1_merge_icounts(global_ctx, thread_ctx);
++	if (retval) {
++		com_err(global_ctx->program_name, 0,
++			_("while merging icounts\n"));
++		return retval;
++	}
+ 
+ 	retval = e2fsck_pass1_merge_bitmap(global_fs,
+ 				&thread_ctx->inode_used_map,
+@@ -2532,6 +2577,8 @@ static int e2fsck_pass1_thread_join(e2fsck_t global_ctx, e2fsck_t thread_ctx)
+ 	e2fsck_pass1_free_bitmap(&thread_ctx->block_ea_map);
+ 	e2fsck_pass1_free_bitmap(&thread_ctx->block_metadata_map);
+ 	e2fsck_free_dir_info(thread_ctx);
++	ext2fs_free_icount(thread_ctx->inode_count);
++	ext2fs_free_icount(thread_ctx->inode_link_info);
+ 	ext2fs_free_mem(&thread_ctx);
+ 
+ 	return retval;
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index ac548311..28662d44 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1513,6 +1513,7 @@ extern errcode_t ext2fs_icount_decrement(ext2_icount_t icount, ext2_ino_t ino,
+ 					 __u16 *ret);
+ extern errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
+ 				     __u16 count);
++extern errcode_t ext2fs_icount_merge(ext2_icount_t src, ext2_icount_t dest);
+ extern ext2_ino_t ext2fs_get_icount_size(ext2_icount_t icount);
+ errcode_t ext2fs_icount_validate(ext2_icount_t icount, FILE *);
+ 
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index 888a90b2..766eccca 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -13,6 +13,7 @@
+ #if HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#include <assert.h>
+ #include <string.h>
+ #include <stdio.h>
+ #include <sys/stat.h>
+@@ -701,6 +702,108 @@ errcode_t ext2fs_icount_store(ext2_icount_t icount, ext2_ino_t ino,
+ 	return 0;
+ }
+ 
++errcode_t ext2fs_icount_merge_full_map(ext2_icount_t src, ext2_icount_t dest)
++{
++	/* TODO: add the support for full map */
++	return EOPNOTSUPP;
++}
++
++errcode_t ext2fs_icount_merge_el(ext2_icount_t src, ext2_icount_t dest)
++{
++	int			 src_count = src->count;
++	int			 dest_count = dest->count;
++	int			 size = src_count + dest_count;
++	int			 size_entry = sizeof(struct ext2_icount_el);
++	struct ext2_icount_el	*array;
++	struct ext2_icount_el	*array_ptr;
++	struct ext2_icount_el	*src_array = src->list;
++	struct ext2_icount_el	*dest_array = dest->list;
++	int			 src_index = 0;
++	int			 dest_index = 0;
++	errcode_t		 retval;
++
++	if (src_count == 0)
 +		return 0;
 +
-+	return -ENOENT;
-+}
++	retval = ext2fs_get_array(size, size_entry, &array);
++	if (retval)
++		return retval;
 +
-+/*
-+ *
-+ * Insert an inode into the sorted array. The array should have at least one
-+ * free slot.
-+ *
-+ * Normally, add_dir_info is called with each inode in
-+ * sequential order; but once in a while (like when pass 3
-+ * needs to recreate the root directory or lost+found
-+ * directory) it is called out of order.  In those cases, we
-+ * need to move the dir_info entries down to make room, since
-+ * the dir_info array needs to be sorted by inode number for
-+ * get_dir_info()'s sake.
-+ */
-+static void e2fsck_insert_dir_info(struct dir_info_db *dir_info, ext2_ino_t ino, ext2_ino_t parent)
-+{
-+	ext2_ino_t		index;
-+	struct dir_info		*dir;
-+	size_t			dir_size = sizeof(*dir);
-+	struct dir_info		*array = dir_info->array;
-+	ext2_ino_t		array_count = dir_info->count;
-+	int			err;
-+
++	array_ptr = array;
 +	/*
-+	 * Removing this check won't break anything. But since seqential ino
-+	 * inserting happens a lot, this check avoids binary search.
++	 * This can be improved by binary search and memcpy, but codes
++	 * would be more complex. And if number of bad blocks is small,
++	 * the optimization won't improve performance a lot.
 +	 */
-+	if (array_count == 0 || array[array_count - 1].ino < ino) {
-+		dir = &array[array_count];
-+		dir_info->count++;
-+		goto out;
++	while (src_index < src_count || dest_index < dest_count) {
++		if (src_index >= src_count) {
++			memcpy(array_ptr, &dest_array[dest_index],
++			       (dest_count - dest_index) * size_entry);
++			break;
++		}
++		if (dest_index >= dest_count) {
++			memcpy(array_ptr, &src_array[src_index],
++			       (src_count - src_index) * size_entry);
++			break;
++		}
++		if (src_array[src_index].ino < dest_array[dest_index].ino) {
++			*array_ptr = src_array[src_index];
++			src_index++;
++		} else {
++			assert(src_array[src_index].ino >
++			       dest_array[dest_index].ino);
++			*array_ptr = dest_array[dest_index];
++			dest_index++;
++		}
++		array_ptr++;
 +	}
 +
-+	err = e2fsck_dir_info_min_larger_equal(dir_info, ino, &index);
-+	if (err >= 0 && array[index].ino == ino) {
-+		dir = &array[index];
-+		goto out;
-+	}
-+	if (err < 0) {
-+		dir = &array[array_count];
-+		dir_info->count++;
-+		goto out;
-+	}
-+
-+	dir = &array[index];
-+	memmove((char *)dir + dir_size, dir, dir_size * (array_count - index));
-+	dir_info->count++;
-+out:
-+	dir->ino = ino;
-+	dir->dotdot = parent;
-+	dir->parent = parent;
++	ext2fs_free_mem(&dest->list);
++	dest->list = array;
++	dest->count = src_count + dest_count;
++	dest->size = size;
++	dest->last_lookup = NULL;
++	return 0;
 +}
 +
- /*
-  * This subroutine is called during pass1 to create a directory info
-  * entry.  During pass1, the passed-in parent is 0; it will get filled
-@@ -171,30 +270,7 @@ void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- 	}
- #endif
- 
--	/*
--	 * Normally, add_dir_info is called with each inode in
--	 * sequential order; but once in a while (like when pass 3
--	 * needs to recreate the root directory or lost+found
--	 * directory) it is called out of order.  In those cases, we
--	 * need to move the dir_info entries down to make room, since
--	 * the dir_info array needs to be sorted by inode number for
--	 * get_dir_info()'s sake.
--	 */
--	if (ctx->dir_info->count &&
--	    ctx->dir_info->array[ctx->dir_info->count-1].ino >= ino) {
--		for (i = ctx->dir_info->count-1; i > 0; i--)
--			if (ctx->dir_info->array[i-1].ino < ino)
--				break;
--		dir = &ctx->dir_info->array[i];
--		if (dir->ino != ino)
--			for (j = ctx->dir_info->count++; j > i; j--)
--				ctx->dir_info->array[j] = ctx->dir_info->array[j-1];
--	} else
--		dir = &ctx->dir_info->array[ctx->dir_info->count++];
--
--	dir->ino = ino;
--	dir->dotdot = parent;
--	dir->parent = parent;
-+	e2fsck_insert_dir_info(ctx->dir_info, ino, parent);
- }
- 
- /*
-@@ -204,7 +280,8 @@ void e2fsck_add_dir_info(e2fsck_t ctx, ext2_ino_t ino, ext2_ino_t parent)
- static struct dir_info *e2fsck_get_dir_info(e2fsck_t ctx, ext2_ino_t ino)
++errcode_t ext2fs_icount_merge(ext2_icount_t src, ext2_icount_t dest)
++{
++	errcode_t	retval;
++
++	if (src->fullmap && !dest->fullmap)
++		return EINVAL;
++
++	if (!src->fullmap && dest->fullmap)
++		return EINVAL;
++
++	if (src->multiple && !dest->multiple)
++		return EINVAL;
++
++	if (!src->multiple && dest->multiple)
++		return EINVAL;
++
++	if (src->fullmap)
++		return ext2fs_icount_merge_full_map(src, dest);
++
++	retval = ext2fs_merge_bitmap(src->single, dest->single, NULL,
++				     NULL);
++	if (retval)
++		return retval;
++
++	if (src->multiple) {
++		retval = ext2fs_merge_bitmap(src->multiple, dest->multiple,
++					     NULL, NULL);
++		if (retval)
++			return retval;
++	}
++
++	retval = ext2fs_icount_merge_el(src, dest);
++	if (retval)
++		return retval;
++
++	return 0;
++}
++
+ ext2_ino_t ext2fs_get_icount_size(ext2_icount_t icount)
  {
- 	struct dir_info_db	*db = ctx->dir_info;
--	ext2_ino_t low, high, mid;
-+	ext2_ino_t		index;
-+	int			err;
- 
- 	if (!db)
- 		return 0;
-@@ -245,44 +322,19 @@ static struct dir_info *e2fsck_get_dir_info(e2fsck_t ctx, ext2_ino_t ino)
- 	if (db->last_lookup && db->last_lookup->ino == ino)
- 		return db->last_lookup;
- 
--	low = 0;
--	high = ctx->dir_info->count - 1;
--	if (ino == ctx->dir_info->array[low].ino) {
-+	err = e2fsck_dir_info_min_larger_equal(ctx->dir_info, ino, &index);
-+	if (err < 0)
-+		return NULL;
-+	assert(ino <= ctx->dir_info->array[index].ino);
-+	if (ino == ctx->dir_info->array[index].ino) {
- #ifdef DIRINFO_DEBUG
--		printf("(%u,%u,%u)\n", ino,
--		       ctx->dir_info->array[low].dotdot,
--		       ctx->dir_info->array[low].parent);
-+		printf("(%d,%d,%d)\n", ino,
-+		       ctx->dir_info->array[index].dotdot,
-+		       ctx->dir_info->array[index].parent);
- #endif
--		return &ctx->dir_info->array[low];
-+		return &ctx->dir_info->array[index];
- 	}
--	if (ino == ctx->dir_info->array[high].ino) {
--#ifdef DIRINFO_DEBUG
--		printf("(%u,%u,%u)\n", ino,
--		       ctx->dir_info->array[high].dotdot,
--		       ctx->dir_info->array[high].parent);
--#endif
--		return &ctx->dir_info->array[high];
--	}
--
--	while (low < high) {
--		/* sum may overflow, but result will fit into mid again */
--		mid = (unsigned long long)(low + high) / 2;
--		if (mid == low || mid == high)
--			break;
--		if (ino == ctx->dir_info->array[mid].ino) {
--#ifdef DIRINFO_DEBUG
--			printf("(%u,%u,%u)\n", ino,
--			       ctx->dir_info->array[mid].dotdot,
--			       ctx->dir_info->array[mid].parent);
--#endif
--			return &ctx->dir_info->array[mid];
--		}
--		if (ino < ctx->dir_info->array[mid].ino)
--			high = mid;
--		else
--			low = mid;
--	}
--	return 0;
-+	return NULL;
- }
- 
- static void e2fsck_put_dir_info(e2fsck_t ctx EXT2FS_NO_TDB_UNUSED,
+ 	if (!icount || icount->magic != EXT2_ET_MAGIC_ICOUNT)
 -- 
 2.29.2.299.gdc1121823c-goog
 
