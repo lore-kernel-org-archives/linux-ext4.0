@@ -8,141 +8,96 @@ X-Spam-Status: No, score=-26.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4F48C63777
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75925C6379F
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9FFA920870
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:40:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1067520870
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Nov 2020 15:41:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="afoHOGz7"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="AX0qQQAr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727481AbgKRPkt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Nov 2020 10:40:49 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50084 "EHLO
+        id S1726651AbgKRPlA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Nov 2020 10:41:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50124 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727477AbgKRPkt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:40:49 -0500
-Received: from mail-qt1-x84a.google.com (mail-qt1-x84a.google.com [IPv6:2607:f8b0:4864:20::84a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E6CDC0613D4
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:49 -0800 (PST)
-Received: by mail-qt1-x84a.google.com with SMTP id h26so1677329qtm.2
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:40:49 -0800 (PST)
+        with ESMTP id S1725772AbgKRPlA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Nov 2020 10:41:00 -0500
+Received: from mail-pj1-x1049.google.com (mail-pj1-x1049.google.com [IPv6:2607:f8b0:4864:20::1049])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12D8AC0613D4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:00 -0800 (PST)
+Received: by mail-pj1-x1049.google.com with SMTP id cm17so1327486pjb.2
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 07:41:00 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=sender:date:in-reply-to:message-id:mime-version:references:subject
          :from:to:cc;
-        bh=ZnGtja/sj84oN6FfDg+4r0m87hM6YEhtSifoAfNEgoM=;
-        b=afoHOGz7MaVLAy+GOsejvY11HQGdmyf5+LvejNyyQ5wymuYdcCK2w8TQSu5o8/Gi+V
-         o6/HIYdE+anipOffQpOuKgaHRCdkXzioC9RoZ2yllN3dv6wCWYUM+qqcSw1RUcXHOlyd
-         vYuM7vixkcoJ959ECK3+DrJ4YDVlztC/CLUCD6D5WmCk2Flcyqe/kERUJHSvYakaWuHY
-         UZ5qtJOIH1k5tkWtU7RcGslCKoCgeC737VbDGDwl8CqB4aOi/tfm4ffqkAmHVKohUOgT
-         uR9C9HProSYdr9VMX1e5fCfDcYf7yhVz8zcvRWr0OfDGYw4W0hy5qKSdSREdKWVPcYfe
-         J5xA==
+        bh=1EIZ1iclevf4dCNvp11Qm9wMpxo/rUpjJpT9+13i1Kc=;
+        b=AX0qQQArai5teoJe/vPif3gogB/7nYFxg3ImYAGEgpVO2G52NhP4QHUEdFpnk5ZgEG
+         vS3P98sPG0XArNyPoLM9YbreudWh2ho//D5cujWwJVb2ABWybVSpzTLLDfm+EcDqrHAe
+         BH/z6QygaPu1fwPZKr+8v5++3Ga9VhBir1f3HQh276+UmNrwn8pzDGbxgrnkWY25/VXv
+         kiZcHnOiJEJkYdAjCK92yB7wt4vb7Www9BlxlpueDmVEyPZY5y9A6iTO2VuNyz9FB55I
+         ZpDL7BvIIviHN2Q5hh1NMXbej+VArKB6jLWqkyyBcQNQ4xXvmqs1wKAt4nj1ILPm2wGJ
+         lv1Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=ZnGtja/sj84oN6FfDg+4r0m87hM6YEhtSifoAfNEgoM=;
-        b=fyvhxL7t3gWQ5Rc/AYQx5HqCZ42GHlwyO6VaZCQEZL5KnFstIB1zk+eGSKrLbKQb4H
-         e2emIMzqp9hRDbiRYdcehN+sLU60uTnkR3uhm9ObWcDwg4sfz6wPWeCxcZN9K9VwGijH
-         tlljNB8ns7X+tE8XAyUnr76ZYwhgSP8sm+wrnFH5KZ5HzU4UJY/RkFWB1r6ACYgZA0Yq
-         xGHLVc8bVgk2Q3iflhqteRpZmsGgd46P5kJRCr3j0WN42SMrkB255lLoM+lVLJfAPAf6
-         zXr5nepNUYpxkjLDe4kZwxJbXsHyY883PuyHcJ84kFY0vCMQhknsI2r2bGJWMtMcgffP
-         MfKw==
-X-Gm-Message-State: AOAM533qRboRlIGkBImtEnRWMMyp6jtpTVptmAIVOC1y34NuX7x+D3Ml
-        LQ75hPJsKzqv8AjpfjtUVTBMOM0ZP3z+HeTO+qMqRMv2mk7RIbUp77tnlhPxiSLQ4YSTj/k6jlk
-        xX32t7OM/Y/D6LaxA6FD35gYSeA794Rzo/0zKTairL++PocBtOirAznE04vrAGmLGlRPFloM6vp
-        Auw1pIGk8=
-X-Google-Smtp-Source: ABdhPJyv/UBiUt2jpG+vPOw1wjZ37BDclwGekKpeALVXyXmv99GBYMb1gldHmCLJ2uMEZzbBlhifLf1EeHV2pYlFK+o=
+        bh=1EIZ1iclevf4dCNvp11Qm9wMpxo/rUpjJpT9+13i1Kc=;
+        b=ccmn7B4+mGuIMNq0U9qETwpGRE2pPYxHogipe33IAbCxzW5vscvB7tf3Qw89fya2hP
+         9cbEFN4SEHNnXWXz92UTz6QceJLD89NSMmY09ghVzNIy7jP5bzHbCv5w+FsJl7TUYY3k
+         e/q897EBQ/sH6yth3ufHCcYPYavKtiT9jJEJt3ed5JSARekNlWmx6+LbmB2CNQ/9gLjN
+         l6rBQ0J1Z+WXaJJrZjlOq+TrX6iLGyPx4b6Xoetu7SCcrGL2mJ0kpBscRLh2d0T+PuiU
+         UCWuffKrOfykkN4XIwHAwqjXnmDm0uSTwWyCDLTTQ9OwOHZLHrfMBwREGQSDmdte5R3H
+         U2mA==
+X-Gm-Message-State: AOAM532XkTnG/upSBTKJjjJP3Dt9qe7BG6iZvIO2n/b/mUIluXcTpUaw
+        Vvdc7NDCmvmxlXEDIMpJJP/whqbl+SFpppV5l/TJeaInIaVnLIVo0ILDQhk4Nnqjbi7ibcuw17b
+        pjQ1NqC1xnKHXH2nKy2CfebKNB6xbDuHvDcRHV99R0AspaADG7N779CWQE7TY/CEvwMhOegd/zK
+        A4E272Q0Y=
+X-Google-Smtp-Source: ABdhPJzXixA9EHZtkoCxFcDRIHZMWL7u2wtfcJdzRolHpPHKiKcnCt2w2DYrS6Vuy61JnEkadmDOy/XJQN0WV9q2plY=
 Sender: "saranyamohan via sendgmr" 
         <saranyamohan@saranyamohan.svl.corp.google.com>
 X-Received: from saranyamohan.svl.corp.google.com ([100.116.76.178])
- (user=saranyamohan job=sendgmr) by 2002:a0c:e0c9:: with SMTP id
- x9mr5478809qvk.56.1605714048142; Wed, 18 Nov 2020 07:40:48 -0800 (PST)
-Date:   Wed, 18 Nov 2020 07:38:58 -0800
+ (user=saranyamohan job=sendgmr) by 2002:a17:902:c20a:b029:d6:b2d6:8006 with
+ SMTP id 10-20020a170902c20ab02900d6b2d68006mr5054069pll.31.1605714059448;
+ Wed, 18 Nov 2020 07:40:59 -0800 (PST)
+Date:   Wed, 18 Nov 2020 07:39:04 -0800
 In-Reply-To: <20201118153947.3394530-1-saranyamohan@google.com>
-Message-Id: <20201118153947.3394530-13-saranyamohan@google.com>
+Message-Id: <20201118153947.3394530-19-saranyamohan@google.com>
 Mime-Version: 1.0
 References: <20201118153947.3394530-1-saranyamohan@google.com>
 X-Mailer: git-send-email 2.29.2.299.gdc1121823c-goog
-Subject: [RFC PATCH v3 12/61] e2fsck: split groups to different threads
+Subject: [RFC PATCH v3 18/61] e2fsck: rbtree bitmap for dir
 From:   Saranya Muruganandam <saranyamohan@google.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc:     adilger.kernel@dilger.ca, Li Xi <lixi@ddn.com>,
-        Wang Shilong <wshilong@ddn.com>,
+Cc:     adilger.kernel@dilger.ca, Wang Shilong <wshilong@ddn.com>,
         Saranya Muruganandam <saranyamohan@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Li Xi <lixi@ddn.com>
+From: Wang Shilong <wshilong@ddn.com>
 
-The start/end groups of a thread is calculated according to the
-thread number. But still, only one thread is used to check.
+Only rbtree support merge operation now, use it for bitmaps.
 
-Signed-off-by: Li Xi <lixi@ddn.com>
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
 ---
- e2fsck/pass1.c | 23 +++++++++++++++++------
- 1 file changed, 17 insertions(+), 6 deletions(-)
+ e2fsck/pass1.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index bb32511f..fd354529 100644
+index ef6b2d13..2147f64b 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -2232,13 +2232,14 @@ static int e2fsck_pass1_merge_fs(ext2_filsys dest, ext2_filsys src)
- }
- 
- static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thread_ctx,
--					     int thread_index)
-+					     int thread_index, int num_threads)
- {
- 	errcode_t		retval;
- 	e2fsck_t		thread_context;
- 	ext2_filsys		thread_fs;
- 	ext2_filsys		global_fs = global_ctx->fs;
- 	struct e2fsck_thread	*tinfo;
-+	dgrp_t			average_group;
- 
- 	assert(global_ctx->inode_used_map == NULL);
- 	assert(global_ctx->inode_dir_map == NULL);
-@@ -2278,11 +2279,20 @@ static errcode_t e2fsck_pass1_thread_prepare(e2fsck_t global_ctx, e2fsck_t *thre
- 	thread_context->thread_info.et_thread_index = thread_index;
- 	set_up_logging(thread_context);
- 
--	assert(thread_index == 0);
-+	/*
-+	 * Distribute work to multiple threads:
-+	 * Each thread work on fs->group_desc_count / nthread groups.
-+	 */
- 	tinfo = &thread_context->thread_info;
--	tinfo->et_group_start = 0;
--	tinfo->et_group_next = 0;
--	tinfo->et_group_end = thread_fs->group_desc_count;
-+	average_group = thread_fs->group_desc_count / num_threads;
-+	if (average_group == 0)
-+		average_group = 1;
-+	tinfo->et_group_start = average_group * thread_index;
-+	if (thread_index == num_threads - 1)
-+		tinfo->et_group_end = thread_fs->group_desc_count;
-+	else
-+		tinfo->et_group_end = average_group * (thread_index + 1);
-+	tinfo->et_group_next = tinfo->et_group_start;
- 
- 	thread_context->fs = thread_fs;
- 	*thread_ctx = thread_context;
-@@ -2506,7 +2516,8 @@ static int e2fsck_pass1_threads_start(struct e2fsck_thread_info **pinfo,
- 	for (i = 0; i < num_threads; i++) {
- 		tmp_pinfo = &infos[i];
- 		tmp_pinfo->eti_thread_index = i;
--		retval = e2fsck_pass1_thread_prepare(global_ctx, &thread_ctx, i);
-+		retval = e2fsck_pass1_thread_prepare(global_ctx, &thread_ctx,
-+						     i, num_threads);
- 		if (retval) {
- 			com_err(global_ctx->program_name, retval,
- 				_("while preparing pass1 thread\n"));
+@@ -1235,6 +1235,7 @@ void e2fsck_pass1_run(e2fsck_t ctx)
+ 	}
+ 	pctx.errcode = e2fsck_allocate_inode_bitmap(fs,
+ 			_("directory inode map"),
++			ctx->global_ctx ? EXT2FS_BMAP64_RBTREE :
+ 			EXT2FS_BMAP64_AUTODIR,
+ 			"inode_dir_map", &ctx->inode_dir_map);
+ 	if (pctx.errcode) {
 -- 
 2.29.2.299.gdc1121823c-goog
 
