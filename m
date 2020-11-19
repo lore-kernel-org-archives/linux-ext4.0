@@ -2,203 +2,166 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-26.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84605C63798
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Nov 2020 06:09:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2A60C2D0E4
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Nov 2020 12:26:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 319C024698
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Nov 2020 06:09:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 438CE246E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Nov 2020 12:26:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="UdP4FsE2"
+	dkim=pass (2048-bit key) header.d=hpe.com header.i=@hpe.com header.b="PoJIsyPR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726384AbgKSGJf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 Nov 2020 01:09:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43114 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726249AbgKSGJK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2020 01:09:10 -0500
-Received: from mail-qk1-x749.google.com (mail-qk1-x749.google.com [IPv6:2607:f8b0:4864:20::749])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E7C4C0617A7
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 22:09:10 -0800 (PST)
-Received: by mail-qk1-x749.google.com with SMTP id c18so4259956qkl.15
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Nov 2020 22:09:10 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:in-reply-to:message-id:mime-version:references:subject
-         :from:to:cc;
-        bh=pqAPKMbmNsV52HR4YSyUKpkLgaKSoP3ZrEZXGq4Xu/0=;
-        b=UdP4FsE2zGsI55Kgb/EznglwdoUlp7MKg1jEtYwlhVFENpfj/8/I9ohE9BAL2ok5SW
-         7LgqtKDD3wIFaZhPkypkIZridSnJI2/sFOORkqVJhHxiDVFZfQYtobc0z/NeGKeNjp7a
-         8Ywz9XEZBJpIHnJQetyCPYSVPN6b4Ue7u6CSNyVzNotQA5MaDINRMdi3n2uijg1PWolD
-         7KTinqSAcCMZE+PPmmm4zGpXuTr+BC5rbOh1izgdk3cRqU7hpK0JuOKTt0gS/3RP6t8p
-         fNXDYX0i3U/yDTdywJCCUDm6eZHZgOToG1BPc8KI7hooQ3KATbgwTbzLOVBLV1OX6kOg
-         LZYQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=pqAPKMbmNsV52HR4YSyUKpkLgaKSoP3ZrEZXGq4Xu/0=;
-        b=Y6XcmI5WZBH+J3XRa3SI9S7rvshdrfIr6ZYnwlE8w02I2UXC54bsXSL7/hU4P4cz+T
-         HnoirC766qM5fQkUZNX2nTGkloAmhhNguR6tfx+j7UJ21YQ1o//RidvS+jfQwZkgypbj
-         Qmns6YowtFx3TGI3SO2X+5hgwPWMZ4FHu4bibbftjmeJ0vMGK8f9Qj8LBrfrdT+lYIeN
-         pvLxCUrx9EWl3TInYDGDHbsc2qrN83cE1v2eZpqXtRfs9zpXi4SaKfHdIliMO/OfZHq4
-         JXJLmsaYsfmobnoQkidG1E8m0d3H/qqOjmUVNtuEgFO6murxexkxkDtnnZjGcDUkiR+2
-         7Kqg==
-X-Gm-Message-State: AOAM530p8wPDeIYY9r+S7sDBMmtTxAa6KpJoV7Q/PiD8Y6YbHSLB+sKz
-        pSeAliQA1zc9AAZJA9YkdMPM4I3f0A8=
-X-Google-Smtp-Source: ABdhPJwSZBXfCOhHL8thch2tn2Vt6bs0hCoBOuuaINL7+x5ApwyTNO3KvT5pdGIltwoPqZXkM0FWkysQ8RM=
-Sender: "drosen via sendgmr" <drosen@drosen.c.googlers.com>
-X-Received: from drosen.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:4e6f])
- (user=drosen job=sendgmr) by 2002:a0c:a681:: with SMTP id t1mr9304343qva.16.1605766149235;
- Wed, 18 Nov 2020 22:09:09 -0800 (PST)
-Date:   Thu, 19 Nov 2020 06:09:02 +0000
-In-Reply-To: <20201119060904.463807-1-drosen@google.com>
-Message-Id: <20201119060904.463807-2-drosen@google.com>
-Mime-Version: 1.0
-References: <20201119060904.463807-1-drosen@google.com>
-X-Mailer: git-send-email 2.29.2.454.gaff20da3a2-goog
-Subject: [PATCH v4 1/3] libfs: Add generic function for setting dentry_ops
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Chao Yu <chao@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>,
-        Eric Biggers <ebiggers@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1727049AbgKSM0o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Nov 2020 07:26:44 -0500
+Received: from mx0b-002e3701.pphosted.com ([148.163.143.35]:17156 "EHLO
+        mx0b-002e3701.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726845AbgKSM0o (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 19 Nov 2020 07:26:44 -0500
+Received: from pps.filterd (m0148664.ppops.net [127.0.0.1])
+        by mx0b-002e3701.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 0AJCGvcX008112;
+        Thu, 19 Nov 2020 12:26:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hpe.com; h=from : to : cc : subject
+ : date : message-id : references : in-reply-to : content-type : content-id
+ : content-transfer-encoding : mime-version; s=pps0720;
+ bh=0emI7px4z+u63UZ0ZSvPQgOhuYq/8G1D4bwuFWOwA8s=;
+ b=PoJIsyPRl08AF6yfil9sHJBwQ18DYVlfIyfdbI57l3YUbZNAGoQz0XQabVFoAByjIHBQ
+ D5dYqykD3nW78aZm5pPa82SCYkRlxu900KESl9zOs6mST2RD/Nu/zhoxfzQYyWiz0OB4
+ gwp6DMQUKP7SmlfxZ3XOMJZ0rGv+FbmXnt+hyDZcBlwNgt0/QSU098iMBSMVOZ3I4DHh
+ UU4bH2rBi9lDNNFU+S7u7qdbGSJPD4wR3f8dUbcKQojFHjRP+9XZi/c8eZxkK7Swb6V2
+ 9Rlvgu7JpJMN06XDQi63ehgj7WRCsaoVfr5MjwoH30tkjcHUnJ3arsiPd7E9a+Fw7vHH jw== 
+Received: from g9t5008.houston.hpe.com (g9t5008.houston.hpe.com [15.241.48.72])
+        by mx0b-002e3701.pphosted.com with ESMTP id 34vgcbk0wg-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 19 Nov 2020 12:26:38 +0000
+Received: from G1W8106.americas.hpqcorp.net (g1w8106.austin.hp.com [16.193.72.61])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by g9t5008.houston.hpe.com (Postfix) with ESMTPS id 6985C59;
+        Thu, 19 Nov 2020 12:26:37 +0000 (UTC)
+Received: from G9W9209.americas.hpqcorp.net (16.220.66.156) by
+ G1W8106.americas.hpqcorp.net (16.193.72.61) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Thu, 19 Nov 2020 12:26:35 +0000
+Received: from NAM11-BN8-obe.outbound.protection.outlook.com (15.241.52.11) by
+ G9W9209.americas.hpqcorp.net (16.220.66.156) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2 via Frontend Transport; Thu, 19 Nov 2020 12:26:35 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=HI51BC+cta0F6cIEsGbeyI8KmlURVEYKH/W4KUPWfQFGvAosPVO80rPw/G3zt7lS01HCI8XOYx8Zt24Yrba8DuALxuaVvLI9lnSitc2S84MJKzlnjpoQpOYMbMS5JmT+jFEnstI3md5R/nC3Qq5ElPzEAJRSJyplv681F1yd9FbpIAkxhDDfRGyV/pgC52+1d+TNcWDoGIaeVbz7z7mutBROilJ3a/1499qwdmAhd+4HdC63IIjg0RslDBg9p3hXYYIr9yGds8OGhBEUqkBBnBhzuhN+r4ljyZbsOsSpbvZIRC/bZs4naMLMCielyeYRUYtnkiKnHf9KyXw50KMZWg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=0emI7px4z+u63UZ0ZSvPQgOhuYq/8G1D4bwuFWOwA8s=;
+ b=lAxPHn7Pq4SfKflbfrLXdAmsXkhFdTxdc4ECys+DjNROwpVEkk/7rOtNfYPeI/ML8qVWIle48EpqSWVrCMgx+pwGNdf0f4nt/GLFDGGj+DVU0YzW8eOAdXIPnwLD4HXiHnCXZ8KyGYz2FlAo11RtZ/nkwRyI+VwWpO54HkYABCszxzCJ0jfS0Rdu5WGSjP/8YYtUfwa+TWAMfiIy7tFbhX5O1RwmzjF8wyAeseACHT7vPXQ0yxAGMX4dsuehKl56kjuiuQySLIPegolKYlYdPKyWVjZQE7J3/2zHrxv/uqFokauphA1howc1ssYvyvCax57Uytut8xDoJwv1OV+Ozg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hpe.com; dmarc=pass action=none header.from=hpe.com; dkim=pass
+ header.d=hpe.com; arc=none
+Received: from TU4PR8401MB1181.NAMPRD84.PROD.OUTLOOK.COM
+ (2a01:111:e400:7716::10) by TU4PR8401MB1135.NAMPRD84.PROD.OUTLOOK.COM
+ (2a01:111:e400:7714::22) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.3564.28; Thu, 19 Nov
+ 2020 12:26:34 +0000
+Received: from TU4PR8401MB1181.NAMPRD84.PROD.OUTLOOK.COM
+ ([fe80::fdc8:7994:39c9:b159]) by TU4PR8401MB1181.NAMPRD84.PROD.OUTLOOK.COM
+ ([fe80::fdc8:7994:39c9:b159%7]) with mapi id 15.20.3589.024; Thu, 19 Nov 2020
+ 12:26:34 +0000
+From:   "Lyashkov, Alexey" <alexey.lyashkov@hpe.com>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?= 
+        <artem.blagodarenko@gmail.com>
+CC:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        Theodore Tso <tytso@google.com>
+Subject: Re: [PATCH] libfs: Fix DIO mode aligment
+Thread-Topic: [PATCH] libfs: Fix DIO mode aligment
+Thread-Index: AQHWqS98Ux7JmHKkRkWLHTDBEn/6w6nMmrSAgABAAwCAAuOigA==
+Date:   Thu, 19 Nov 2020 12:26:34 +0000
+Message-ID: <B8DE3834-1B3F-4E1E-B342-51E04E4FD278@hpe.com>
+References: <20201023112659.1559-1-artem.blagodarenko@gmail.com>
+ <19A3D721-93C0-42F3-ACBA-DE15B4685F9F@gmail.com>
+ <20201117191918.GB529216@mit.edu>
+In-Reply-To: <20201117191918.GB529216@mit.edu>
+Accept-Language: en-GB, en-US
+Content-Language: en-GB
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: mit.edu; dkim=none (message not signed)
+ header.d=none;mit.edu; dmarc=none action=none header.from=hpe.com;
+x-originating-ip: [31.28.251.133]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-ht: Tenant
+x-ms-office365-filtering-correlation-id: df58aa70-9c54-45cf-3d91-08d88c865a9a
+x-ms-traffictypediagnostic: TU4PR8401MB1135:
+x-microsoft-antispam-prvs: <TU4PR8401MB1135D866D14EED9384035310F7E00@TU4PR8401MB1135.NAMPRD84.PROD.OUTLOOK.COM>
+x-ms-oob-tlc-oobclassifiers: OLM:4941;
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: PYuEuKg+Y5d9Rgjh/RryiZcxAxgw2GgHdxGl4iBDRkEko5c+JcecEwgNjpLHl0TidyYdFHO1SshW3b0aayKBIO/4zBH75dUSGcEhXLN8tlU7j7+Or9glGV0U+pwGKTEynTwpjOWujz8oVCgZNMjM3g5QHmjRvDlnmEurDTwffj/X3q3lPZhEvzw7/xkYBHJcQtmSXQZW6QuxlAXdBk64fwMqHfJu3uCWyTemq0gZQxODIbT7Z5DsLofpUodCEEmVdNkOg+q6RKHYrD2CcOdIBGC9cMjBmnK0oijPXU903Tkhzw1wKX4cV4PzNBbe6iTLyLoYIKw76Nh0nRqUiMDMZg==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:TU4PR8401MB1181.NAMPRD84.PROD.OUTLOOK.COM;PTR:;CAT:NONE;SFS:(376002)(346002)(396003)(366004)(39860400002)(136003)(71200400001)(6486002)(64756008)(83380400001)(186003)(54906003)(36756003)(4326008)(6512007)(478600001)(2906002)(66946007)(66556008)(33656002)(66446008)(5660300002)(2616005)(110136005)(26005)(76116006)(6506007)(316002)(8676002)(86362001)(8936002)(66476007);DIR:OUT;SFP:1102;
+x-ms-exchange-antispam-messagedata: Xe6x3xterXu0OngsskNZrjikJy3R/pJw+7R2gDb2EtsMEgHE/8LGH5SXuVvqznb4VHI9btkqcrEbwmC3Oo068sMFkrb17h8EwQv4YYhg5MiB57FAQzPwBKYl2OJhGgMmiifoD53rNAQLQwXqq+o+NIcGQv8PsnFtmVoRbFgo7BA68p0SPcUHMMZEQvL6yR6z50tQMUO9anYIER//yfTuo1I4drWiHdJUNwMeam4w1TSFdaCKzlYlFyX5FJ74G7qGVeY0u1MtvA/RPtfbmbN5begjzLPYf9GspYeOOcgLaCNkwiLCZQES7qolllvqBvknghOanNt+bUCIgMQEwST9KZQ4ILzO+sWMbpriwK/2XD+FjRdh8uqEAtwCVAmQrFtCCrv8u6M3+mk3fjjapt9YKnE7QsLtd7pdaxBxYSy3QUk3P5T1+Ry/UH4NSNSoK5nxQI62qeeI1nXzxQqCkFhAl4DNKXYoEIf2vQTCF1Q8v6e7mHLbsszOWaPSp7HNz4WG7hRKZuhETD4nXrVbjFQCu+Bxu5uC8dbE5NNYEveF7EmXzr2xiH2JvKwLZ59hOAxCTefJq7Tf0LgBaDohr8xcYMY65KvJpfkrFG7g65e7PGbcP/Ijm08yzEiigb+jmtRtSNzrxZ3XvL8GEeKnVt/nExbZcWdutA6veO5ruCfF5nCKnFgdBsJGMd0WIf1UioFHWjUwXBSOEsjFEvx0ezhEyEfrD0wr5/rvTAuax92mtfwpzHcYdmEPLCdiuj77jC+kSFX33nFwWhyF1RHvepgq3rhDEX51HcCXQ/P60DGmmSpBKuHB2TZo1dniddgyHdXSujntyXyMsv2DdtHomF0hL+tg3QE4UfJy4LB7qSwkvkAkNbKgQFGnWZ1KB8o5z+VuybchvEZU/kgy3dLLYd4IRw==
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <4F140CFFA110CE448D6F816B553B0791@NAMPRD84.PROD.OUTLOOK.COM>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: TU4PR8401MB1181.NAMPRD84.PROD.OUTLOOK.COM
+X-MS-Exchange-CrossTenant-Network-Message-Id: df58aa70-9c54-45cf-3d91-08d88c865a9a
+X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Nov 2020 12:26:34.5619
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 105b2061-b669-4b31-92ac-24d304d195dc
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: Lb/nS8O7rpRx8/K59CeRF2PEqV3UaOO9MMaC1XN+i3t8jwMcbHUxbL/MoBwI6/i8t/KaY0aISRhd7vwhirGe4A==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: TU4PR8401MB1135
+X-OriginatorOrg: hpe.com
+X-HPE-SCL: -1
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.312,18.0.737
+ definitions=2020-11-19_08:2020-11-19,2020-11-19 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 suspectscore=0 phishscore=0
+ malwarescore=0 mlxlogscore=999 priorityscore=1501 impostorscore=0
+ adultscore=0 clxscore=1011 spamscore=0 lowpriorityscore=0 mlxscore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2011190093
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This adds a function to set dentry operations at lookup time that will
-work for both encrypted filenames and casefolded filenames.
-
-A filesystem that supports both features simultaneously can use this
-function during lookup preparations to set up its dentry operations once
-fscrypt no longer does that itself.
-
-Currently the casefolding dentry operation are always set if the
-filesystem defines an encoding because the features is toggleable on
-empty directories. Unlike in the encryption case, the dentry operations
-used come from the parent. Since we don't know what set of functions
-we'll eventually need, and cannot change them later, we enable the
-casefolding operations if the filesystem supports them at all.
-
-By splitting out the various cases, we support as few dentry operations
-as we can get away with, maximizing compatibility with overlayfs, which
-will not function if a filesystem supports certain dentry_operations.
-
-Signed-off-by: Daniel Rosenberg <drosen@google.com>
-Reviewed-by: Eric Biggers <ebiggers@google.com>
----
- fs/libfs.c         | 70 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h |  1 +
- 2 files changed, 71 insertions(+)
-
-diff --git a/fs/libfs.c b/fs/libfs.c
-index fc34361c1489..bac918699022 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1449,4 +1449,74 @@ int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str)
- 	return 0;
- }
- EXPORT_SYMBOL(generic_ci_d_hash);
-+
-+static const struct dentry_operations generic_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+};
-+#endif
-+
-+#ifdef CONFIG_FS_ENCRYPTION
-+static const struct dentry_operations generic_encrypted_dentry_ops = {
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+#if defined(CONFIG_FS_ENCRYPTION) && defined(CONFIG_UNICODE)
-+static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
-+	.d_hash = generic_ci_d_hash,
-+	.d_compare = generic_ci_d_compare,
-+	.d_revalidate = fscrypt_d_revalidate,
-+};
-+#endif
-+
-+/**
-+ * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
-+ * @dentry:	dentry to set ops on
-+ *
-+ * Casefolded directories need d_hash and d_compare set, so that the dentries
-+ * contained in them are handled case-insensitively.  Note that these operations
-+ * are needed on the parent directory rather than on the dentries in it, and
-+ * while the casefolding flag can be toggled on and off on an empty directory,
-+ * dentry_operations can't be changed later.  As a result, if the filesystem has
-+ * casefolding support enabled at all, we have to give all dentries the
-+ * casefolding operations even if their inode doesn't have the casefolding flag
-+ * currently (and thus the casefolding ops would be no-ops for now).
-+ *
-+ * Encryption works differently in that the only dentry operation it needs is
-+ * d_revalidate, which it only needs on dentries that have the no-key name flag.
-+ * The no-key flag can't be set "later", so we don't have to worry about that.
-+ *
-+ * Finally, to maximize compatibility with overlayfs (which isn't compatible
-+ * with certain dentry operations) and to avoid taking an unnecessary
-+ * performance hit, we use custom dentry_operations for each possible
-+ * combination rather than always installing all operations.
-+ */
-+void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
-+{
-+#ifdef CONFIG_FS_ENCRYPTION
-+	bool needs_encrypt_ops = dentry->d_flags & DCACHE_NOKEY_NAME;
-+#endif
-+#ifdef CONFIG_UNICODE
-+	bool needs_ci_ops = dentry->d_sb->s_encoding;
-+#endif
-+#if defined(CONFIG_FS_ENCRYPTION) && defined(CONFIG_UNICODE)
-+	if (needs_encrypt_ops && needs_ci_ops) {
-+		d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
-+		return;
-+	}
- #endif
-+#ifdef CONFIG_FS_ENCRYPTION
-+	if (needs_encrypt_ops) {
-+		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
-+		return;
-+	}
-+#endif
-+#ifdef CONFIG_UNICODE
-+	if (needs_ci_ops) {
-+		d_set_d_op(dentry, &generic_ci_dentry_ops);
-+		return;
-+	}
-+#endif
-+}
-+EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8667d0cdc71e..11345e66353b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3202,6 +3202,7 @@ extern int generic_ci_d_hash(const struct dentry *dentry, struct qstr *str);
- extern int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- 				const char *str, const struct qstr *name);
- #endif
-+extern void generic_set_encrypted_ci_d_ops(struct dentry *dentry);
- 
- #ifdef CONFIG_MIGRATION
- extern int buffer_migrate_page(struct address_space *,
--- 
-2.29.2.454.gaff20da3a2-goog
-
+VHNvLA0KDQpUaGlzIHNpdHVhdGlvbiBoaXQgd2l0aCBtb2Rlcm4gaGRkIHdpdGggNGsgYmxvY2sg
+c2l6ZSBhbmQgZTJpbWFnZSBjaGFuZ2VkIHRvIHVzZSBESVJFQ1QgSU8gaW5zdGVhZCBvZiBidWZm
+ZXJlZC4NCmUyZnNwcm9ncyB0cmllcyB0byByZWFkIGEgc3VwZXIgbG9jayBvbiBvZmZzZXQgMWsg
+YW5kIGl0IGNhdXNlZCB0byBzZXQgRlMgYmxvY2sgc2l6ZSB0byAxayBhbmQgc2Vjb25kIGJsb2Nr
+IHJlYWRpbmcuDQoobWFueSBvdGhlciBwbGFjZXMgZXhpc3QsIGJ1dCBpdCBzaW1wbGVzdCkuDQo+
+Pg0KICAgICAgICBpZiAoc3VwZXJibG9jaykgew0KICAgICAgICAgICAgICAgIGlmICghYmxvY2tf
+c2l6ZSkgew0KICAgICAgICAgICAgICAgICAgICAgICAgcmV0dmFsID0gRVhUMl9FVF9JTlZBTElE
+X0FSR1VNRU5UOw0KICAgICAgICAgICAgICAgICAgICAgICAgZ290byBjbGVhbnVwOw0KICAgICAg
+ICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICBpb19jaGFubmVsX3NldF9ibGtzaXplKGZzLT5p
+bywgYmxvY2tfc2l6ZSk7DQogICAgICAgICAgICAgICAgZ3JvdXBfYmxvY2sgPSBzdXBlcmJsb2Nr
+Ow0KICAgICAgICAgICAgICAgIGZzLT5vcmlnX3N1cGVyID0gMDsNCiAgICAgICAgfSBlbHNlIHsN
+CiAgICAgICAgICAgICAgICBpb19jaGFubmVsX3NldF9ibGtzaXplKGZzLT5pbywgU1VQRVJCTE9D
+S19PRkZTRVQpOyA8PDw8PCB0aGlzIGlzIHByb2JsZW0NCiAgICAgICAgICAgICAgICBzdXBlcmJs
+b2NrID0gMTsNCiAgICAgICAgICAgICAgICBncm91cF9ibG9jayA9IDA7DQogICAgICAgICAgICAg
+ICAgcmV0dmFsID0gZXh0MmZzX2dldF9tZW0oU1VQRVJCTE9DS19TSVpFLCAmZnMtPm9yaWdfc3Vw
+ZXIpOw0KICAgICAgICAgICAgICAgIGlmIChyZXR2YWwpDQogICAgICAgICAgICAgICAgICAgICAg
+ICBnb3RvIGNsZWFudXA7DQogICAgICAgIH0NCiAgICAgICAgcmV0dmFsID0gaW9fY2hhbm5lbF9y
+ZWFkX2Jsayhmcy0+aW8sIHN1cGVyYmxvY2ssIC1TVVBFUkJMT0NLX1NJWkUsDQogICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgZnMtPnN1cGVyKTsNCj4+DQpJdCBjYXVzZWQgZXJy
+b3JzIGxpa2UNCiMgZTJpbWFnZSAtUSAvZGV2L21kNjUgL3RtcC9ub2RlMDVfaW1hZ2Vfb3V0DQpl
+MmltYWdlIDEuNDUuNi5jcjEgKDE0LUF1Zy0yMDIwKQ0KZTJpbWFnZTogQXR0ZW1wdCB0byByZWFk
+IGJsb2NrIGZyb20gZmlsZXN5c3RlbSByZXN1bHRlZCBpbiBzaG9ydCByZWFkIHdoaWxlIHRyeWlu
+ZyB0byBvcGVuIC9kZXYvbWQ2NQ0KQ291bGRu4oCZdCBmaW5kIHZhbGlkIGZpbGVzeXN0ZW0gc3Vw
+ZXJibG9jay4NCg0KSXQgbG9va3MgbGlrZSBJIGRvbid0IGZpcnN0IHBlcnNvbiB0byBmb3VuZCBh
+IGJ1ZywgYXMgc29tZW9uZSB3YXMgYWRkIA0KDQpBbGV4DQoNCu+7v09uIDE3LzExLzIwMjAsIDIy
+OjE5LCAiVGhlb2RvcmUgWS4gVHMnbyIgPHR5dHNvQG1pdC5lZHU+IHdyb3RlOg0KDQogICAgT24g
+VHVlLCBOb3YgMTcsIDIwMjAgYXQgMDY6MzA6MTFQTSArMDMwMCwg0JHQu9Cw0LPQvtC00LDRgNC1
+0L3QutC+INCQ0YDRgtGR0Lwgd3JvdGU6DQogICAgPiBIZWxsbywNCiAgICA+IA0KICAgID4gQW55
+IHRob3VnaHRzIGFib3V0IHRoaXMgY2hhbmdlPyBUaGFua3MuDQoNCiAgICBJJ20gdHJ5aW5nIHRv
+IHRoaW5rIG9mIHNpdHVhdGlvbnMgd2hlcmUgdGhpcyBjb3VsZCBhY3R1YWxseSB0cmlnZ2VyIGlu
+DQogICAgcmVhbCBsaWZlLiAgVGhlIG9ubHkgb25lIEkgY2FuIHRoaW5rIG9mIGlzIGlmIGEgZmls
+ZSBzeXN0ZW0gd2l0aCBhIDFrDQogICAgYmxvY2sgZmlsZSBzeXN0ZW0gaXMgbG9jYXRlZCBvbiBh
+biBhbiBBZHZhbmNlZCBGb3JtYXREcml2ZSB3aXRoIGEgNGsNCiAgICBzZWN0b3Igc2l6ZS4NCg0K
+ICAgIFdoYXQgd2FzIHRoZSB1c2UgY2FzZSB3aGVyZSB0aGlzIHdhcyBhY3R1YWxseSBhbiBpc3N1
+ZT8NCg0KICAgICAgICAgCSAgICAgCSAgICAgIAkgICAgCSAgICAgLSBUZWQNCg0K
