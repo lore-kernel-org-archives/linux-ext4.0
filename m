@@ -4,61 +4,61 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CEFECC5519F
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 03:39:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF0E7C5519F
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 03:42:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 77CAA2225E
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 03:39:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 916A220728
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 03:42:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726754AbgKTDjN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 Nov 2020 22:39:13 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52895 "EHLO
+        id S1726282AbgKTDmL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Nov 2020 22:42:11 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:53212 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726515AbgKTDjN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2020 22:39:13 -0500
+        with ESMTP id S1726118AbgKTDmL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Nov 2020 22:42:11 -0500
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0AK3cxbU028976
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0AK3fuIX029669
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 19 Nov 2020 22:39:00 -0500
+        Thu, 19 Nov 2020 22:41:56 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id AF20A420107; Thu, 19 Nov 2020 22:38:59 -0500 (EST)
-Date:   Thu, 19 Nov 2020 22:38:59 -0500
+        id 34843420107; Thu, 19 Nov 2020 22:41:56 -0500 (EST)
+Date:   Thu, 19 Nov 2020 22:41:56 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Cc:     Jan Kara <jack@suse.com>, Jonathan Corbet <corbet@lwn.net>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v4 12/27] jbd2: fix kernel-doc markups
-Message-ID: <20201120033859.GB695373@mit.edu>
-References: <cover.1605521731.git.mchehab+huawei@kernel.org>
- <72f5c6628f5f278d67625f60893ffbc2ca28d46e.1605521731.git.mchehab+huawei@kernel.org>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Fix bogus warning in ext4_update_dx_flag()
+Message-ID: <20201120034156.GC695373@mit.edu>
+References: <20201118153032.17281-1-jack@suse.cz>
+ <X7WXxl4gQEuvLxyO@sol.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <72f5c6628f5f278d67625f60893ffbc2ca28d46e.1605521731.git.mchehab+huawei@kernel.org>
+In-Reply-To: <X7WXxl4gQEuvLxyO@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Nov 16, 2020 at 11:18:08AM +0100, Mauro Carvalho Chehab wrote:
-> Kernel-doc markup should use this format:
->         identifier - description
+On Wed, Nov 18, 2020 at 01:53:10PM -0800, Eric Biggers wrote:
+> On Wed, Nov 18, 2020 at 04:30:32PM +0100, Jan Kara wrote:
+> > The idea of the warning in ext4_update_dx_flag() is that we should warn
+> > when we are clearing EXT4_INODE_INDEX on a filesystem with metadata
+> > checksums enabled since after clearing the flag, checksums for internal
+> > htree nodes will become invalid. So there's no need to warn (or actually
+> > do anything) when EXT4_INODE_INDEX is not set.
+> > 
+> > Reported-by: Eric Biggers <ebiggers@kernel.org>
+> > Fixes: 48a34311953d ("ext4: fix checksum errors with indexed dirs")
+> > Signed-off-by: Jan Kara <jack@suse.cz>
 > 
-> They should not have any type before that, as otherwise
-> the parser won't do the right thing.
+> Looks good,
 > 
-> Also, some identifiers have different names between their
-> prototypes and the kernel-doc markup.
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+> Reviewed-by: Eric Biggers <ebiggers@google.com>
 
-Applied to the ext4 tree, thanks!
+Applied, thanks.
 
 					- Ted
