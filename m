@@ -2,262 +2,168 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 330C9C63777
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 20:22:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F177C6379D
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 20:48:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CC1DA24101
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 20:22:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 354D122470
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 20:48:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YAZ6m3CE"
+	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="avd4TaFU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730642AbgKTUWk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Nov 2020 15:22:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58826 "EHLO
+        id S1729985AbgKTUsL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Nov 2020 15:48:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34836 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729277AbgKTUWj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 15:22:39 -0500
-Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A5421C0613CF
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 12:22:39 -0800 (PST)
-Received: by mail-pg1-x541.google.com with SMTP id f18so8253497pgi.8
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 12:22:39 -0800 (PST)
+        with ESMTP id S1729718AbgKTUsG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 15:48:06 -0500
+Received: from mail-pf1-x442.google.com (mail-pf1-x442.google.com [IPv6:2607:f8b0:4864:20::442])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCA55C061A4C
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 12:48:04 -0800 (PST)
+Received: by mail-pf1-x442.google.com with SMTP id q10so9032588pfn.0
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 12:48:04 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=kslKh1rmFWKQlB1G7ipOucC9x/ywRrkhiNBipkE54uQ=;
-        b=YAZ6m3CEHLmRlbUYNvh7oEU9bnyAlzikikTVFhb56s2wUb/ASgoLr96TY3fmelBZGw
-         +0gAC/Qxi6jnDoz9xCX+OzuT7qfdTs/BJ1JuiEU6MlALDdm1hoE0AWC2oLEe0yvro57f
-         exb0XUO1N7zUa0iGTQiiTW+0evKoJCnkU2zEz6gBxNZNwop3SsO3efGyz/6jvtwnGp2G
-         OSiStbQpR+NDpOn2gC2fu+Yzb5xBZ1r6HuVfDGQSLKeAwyUaavNI+uPo9YEMY4T7GWfx
-         xNj9tIe1ZOr5oOU6PQXjlcPlgGwEUuP36EFE1pYskmvh+ngxSGTdKqiJD5rTco5kCDre
-         ClJA==
+        d=chromium.org; s=google;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=v0uQ3+ZvQ790GJbfbb1ESqfRrqQ38XoL7hho1t1Gb0k=;
+        b=avd4TaFUM+Ab56B8iWTc3giej2JyPXQeNqj8Vqwh4pMfYMm6E7ROZ43KbUMGq3c2kN
+         Y7wgImiWtwhH33QCuhXwX5xfYnbd8ZoAoymaiVLMsflRM4OrtMTi7raBVieCeB5e9/kv
+         qCr4nXKui27aGXF6t1ziK2ispJ9UlbNRnpYGc=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=kslKh1rmFWKQlB1G7ipOucC9x/ywRrkhiNBipkE54uQ=;
-        b=BAtuaibgRBX7rm0lZtFnDbbDffCgDKk0UryKedTE5t4ky4CM5/GKwLPPoyZkzCK/62
-         5DV95QjTD2O5NbP/KLQ3A3d/GNBZRzDamPK19q+GlgqdprHWE7XSxvLzUBotlRBC8UXa
-         J1lRFeDfhkgCXcoK2XCS+EkAnWkZujmivD2G7w7Gnq2646hWd7OnnTv1RJRU41cU3UjJ
-         F3Kk6HXqzs6PczEa4NKVHoQtSMG4dWqE3iOq/cdSlzFR9vqM6q4J56ftlkIwX0Cc4fi8
-         vEJh9OY+hGUS3ltglFNGQDz/oDfRO1hD16LfKzlxmfkWMa60gIR87F0+SJ1V69R69ChV
-         CFdg==
-X-Gm-Message-State: AOAM531qMKZ2AhLf57LEf8EASDWm8KVw2CuC11q02kQo9BV+7KmS5yLH
-        e3+lykk9STyEZt6DAYqTnZiQxlBN6DE=
-X-Google-Smtp-Source: ABdhPJxwI4fwW1sEUBd1kn6RAuC4LV0GxnbQUP65P4wdzNrRM/yT+kwaSKqD6pngH3YE5Ns1u7NDhA==
-X-Received: by 2002:a17:90a:c209:: with SMTP id e9mr12646550pjt.87.1605903758712;
-        Fri, 20 Nov 2020 12:22:38 -0800 (PST)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id p4sm4789672pjo.6.2020.11.20.12.22.37
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=v0uQ3+ZvQ790GJbfbb1ESqfRrqQ38XoL7hho1t1Gb0k=;
+        b=BMT9WQS99X9f+wo2MB1IfqcnQ+uVJM4363tpgn2vJYOskT3aG1F4YtZwwvgjyjDFwI
+         nEzkLzuiFxMo4zh5tA6PaKzqQ5KV71HIPoQFwMUd7OljntAAE7eEgsMtPIxR2hcFkS5P
+         dRnOZjdBADpWbrrJr1vSojhd5h+VD2FQ9c7zDEIs+MVte4064AKqQHrG9KgTrOW3O4jJ
+         j6ksJ+3uo1YV/JwNh3EVRrtnSUrX8grryBFDHu7jLj0HZ44jfqoI/wMyYG/5vsINw9j+
+         ADYjOVhUUWnad51Li+MfsD+fSHBvFspvZAtAa71RnyIWxWwvHcYmVWEaUvO3ZB7/ZHAJ
+         7IRA==
+X-Gm-Message-State: AOAM530yhYEv3aPXQkBetc/SgJMWvgdGGwFaJSDp08ll20BB+jbRuMci
+        L1fy0UBG0aTmEzCdcSALY9WfdpALVd+H9MiR
+X-Google-Smtp-Source: ABdhPJzEbaB+IYipfwOUXoCmdplAutZXXBsmC8OBp1xOfb5CPZl7t2eHSBKNbswFZQhoeAMsBYl7Qg==
+X-Received: by 2002:a62:d108:0:b029:163:d3cf:f00e with SMTP id z8-20020a62d1080000b0290163d3cff00emr15313890pfg.43.1605905283088;
+        Fri, 20 Nov 2020 12:48:03 -0800 (PST)
+Received: from www.outflux.net (smtp.outflux.net. [198.145.64.163])
+        by smtp.gmail.com with ESMTPSA id a67sm3215381pfa.77.2020.11.20.12.48.01
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 20 Nov 2020 12:22:37 -0800 (PST)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 1/2] ext4: make fast_commit.h byte identical with e2fsprogs/fast_commit.h
-Date:   Fri, 20 Nov 2020 12:22:31 -0800
-Message-Id: <20201120202232.2240293-1-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.29.2.454.gaff20da3a2-goog
+        Fri, 20 Nov 2020 12:48:02 -0800 (PST)
+Date:   Fri, 20 Nov 2020 12:48:01 -0800
+From:   Kees Cook <keescook@chromium.org>
+To:     Jakub Kicinski <kuba@kernel.org>
+Cc:     "Gustavo A. R. Silva" <gustavoars@kernel.org>,
+        linux-kernel@vger.kernel.org, alsa-devel@alsa-project.org,
+        amd-gfx@lists.freedesktop.org, bridge@lists.linux-foundation.org,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com,
+        coreteam@netfilter.org, devel@driverdev.osuosl.org,
+        dm-devel@redhat.com, drbd-dev@lists.linbit.com,
+        dri-devel@lists.freedesktop.org, GR-everest-linux-l2@marvell.com,
+        GR-Linux-NIC-Dev@marvell.com, intel-gfx@lists.freedesktop.org,
+        intel-wired-lan@lists.osuosl.org, keyrings@vger.kernel.org,
+        linux1394-devel@lists.sourceforge.net, linux-acpi@vger.kernel.org,
+        linux-afs@lists.infradead.org,
+        linux-arm-kernel@lists.infradead.org,
+        linux-arm-msm@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net,
+        linux-block@vger.kernel.org, linux-can@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-crypto@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        linux-ext4@vger.kernel.org, linux-fbdev@vger.kernel.org,
+        linux-geode@lists.infradead.org, linux-gpio@vger.kernel.org,
+        linux-hams@vger.kernel.org, linux-hwmon@vger.kernel.org,
+        linux-i3c@lists.infradead.org, linux-ide@vger.kernel.org,
+        linux-iio@vger.kernel.org, linux-input@vger.kernel.org,
+        linux-integrity@vger.kernel.org,
+        linux-mediatek@lists.infradead.org, linux-media@vger.kernel.org,
+        linux-mmc@vger.kernel.org, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-renesas-soc@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-stm32@st-md-mailman.stormreply.com,
+        linux-usb@vger.kernel.org, linux-watchdog@vger.kernel.org,
+        linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, nouveau@lists.freedesktop.org,
+        op-tee@lists.trustedfirmware.org, oss-drivers@netronome.com,
+        patches@opensource.cirrus.com, rds-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org, samba-technical@lists.samba.org,
+        selinux@vger.kernel.org, target-devel@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net,
+        usb-storage@lists.one-eyed-alien.net,
+        virtualization@lists.linux-foundation.org,
+        wcn36xx@lists.infradead.org, x86@kernel.org,
+        xen-devel@lists.xenproject.org, linux-hardening@vger.kernel.org,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Miguel Ojeda <ojeda@kernel.org>, Joe Perches <joe@perches.com>
+Subject: Re: [PATCH 000/141] Fix fall-through warnings for Clang
+Message-ID: <202011201244.78E002D5@keescook>
+References: <cover.1605896059.git.gustavoars@kernel.org>
+ <20201120105344.4345c14e@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+ <202011201129.B13FDB3C@keescook>
+ <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch makes fast_commit.h byte by byte identical with
-e2fsprogs/fast_commit.h. This will help us ensure that there are no
-on-disk format inconsistencies between e2fsck and kernel ext4.
+On Fri, Nov 20, 2020 at 11:51:42AM -0800, Jakub Kicinski wrote:
+> On Fri, 20 Nov 2020 11:30:40 -0800 Kees Cook wrote:
+> > On Fri, Nov 20, 2020 at 10:53:44AM -0800, Jakub Kicinski wrote:
+> > > On Fri, 20 Nov 2020 12:21:39 -0600 Gustavo A. R. Silva wrote:  
+> > > > This series aims to fix almost all remaining fall-through warnings in
+> > > > order to enable -Wimplicit-fallthrough for Clang.
+> > > > 
+> > > > In preparation to enable -Wimplicit-fallthrough for Clang, explicitly
+> > > > add multiple break/goto/return/fallthrough statements instead of just
+> > > > letting the code fall through to the next case.
+> > > > 
+> > > > Notice that in order to enable -Wimplicit-fallthrough for Clang, this
+> > > > change[1] is meant to be reverted at some point. So, this patch helps
+> > > > to move in that direction.
+> > > > 
+> > > > Something important to mention is that there is currently a discrepancy
+> > > > between GCC and Clang when dealing with switch fall-through to empty case
+> > > > statements or to cases that only contain a break/continue/return
+> > > > statement[2][3][4].  
+> > > 
+> > > Are we sure we want to make this change? Was it discussed before?
+> > > 
+> > > Are there any bugs Clangs puritanical definition of fallthrough helped
+> > > find?
+> > > 
+> > > IMVHO compiler warnings are supposed to warn about issues that could
+> > > be bugs. Falling through to default: break; can hardly be a bug?!  
+> > 
+> > It's certainly a place where the intent is not always clear. I think
+> > this makes all the cases unambiguous, and doesn't impact the machine
+> > code, since the compiler will happily optimize away any behavioral
+> > redundancy.
+> 
+> If none of the 140 patches here fix a real bug, and there is no change
+> to machine code then it sounds to me like a W=2 kind of a warning.
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- fs/ext4/fast_commit.c | 38 ---------------------
- fs/ext4/fast_commit.h | 78 +++++++++++++++++++++++++++++++++----------
- 2 files changed, 61 insertions(+), 55 deletions(-)
+I'd like to avoid splitting common -W options between default and W=2
+just based on the compiler. Getting -Wimplicit-fallthrough enabled found
+plenty of bugs, so making sure it works correctly for both compilers
+feels justified to me. (This is just a subset of the same C language
+short-coming.)
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index c8e17305af65..72335623d2fa 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -1281,18 +1281,6 @@ static void ext4_fc_cleanup(journal_t *journal, int full)
- 
- /* Ext4 Replay Path Routines */
- 
--/* Get length of a particular tlv */
--static inline int ext4_fc_tag_len(struct ext4_fc_tl *tl)
--{
--	return le16_to_cpu(tl->fc_len);
--}
--
--/* Get a pointer to "value" of a tlv */
--static inline u8 *ext4_fc_tag_val(struct ext4_fc_tl *tl)
--{
--	return (u8 *)tl + sizeof(*tl);
--}
--
- /* Helper struct for dentry replay routines */
- struct dentry_info_args {
- 	int parent_ino, dname_len, ino, inode_len;
-@@ -1837,32 +1825,6 @@ ext4_fc_replay_del_range(struct super_block *sb, struct ext4_fc_tl *tl)
- 	return 0;
- }
- 
--static inline const char *tag2str(u16 tag)
--{
--	switch (tag) {
--	case EXT4_FC_TAG_LINK:
--		return "TAG_ADD_ENTRY";
--	case EXT4_FC_TAG_UNLINK:
--		return "TAG_DEL_ENTRY";
--	case EXT4_FC_TAG_ADD_RANGE:
--		return "TAG_ADD_RANGE";
--	case EXT4_FC_TAG_CREAT:
--		return "TAG_CREAT_DENTRY";
--	case EXT4_FC_TAG_DEL_RANGE:
--		return "TAG_DEL_RANGE";
--	case EXT4_FC_TAG_INODE:
--		return "TAG_INODE";
--	case EXT4_FC_TAG_PAD:
--		return "TAG_PAD";
--	case EXT4_FC_TAG_TAIL:
--		return "TAG_TAIL";
--	case EXT4_FC_TAG_HEAD:
--		return "TAG_HEAD";
--	default:
--		return "TAG_ERROR";
--	}
--}
--
- static void ext4_fc_set_bitmaps_and_counters(struct super_block *sb)
- {
- 	struct ext4_fc_replay_state *state;
-diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
-index 3a6e5a1fa1b8..b77f70f55a62 100644
---- a/fs/ext4/fast_commit.h
-+++ b/fs/ext4/fast_commit.h
-@@ -3,6 +3,11 @@
- #ifndef __FAST_COMMIT_H__
- #define __FAST_COMMIT_H__
- 
-+/*
-+ * Note this file is present in e2fsprogs/lib/ext2fs/fast_commit.h and
-+ * linux/fs/ext4/fast_commit.h. These file should always be byte identical.
-+ */
-+
- /* Fast commit tags */
- #define EXT4_FC_TAG_ADD_RANGE		0x0001
- #define EXT4_FC_TAG_DEL_RANGE		0x0002
-@@ -50,7 +55,7 @@ struct ext4_fc_del_range {
- struct ext4_fc_dentry_info {
- 	__le32 fc_parent_ino;
- 	__le32 fc_ino;
--	u8 fc_dname[0];
-+	__u8 fc_dname[0];
- };
- 
- /* Value structure for EXT4_FC_TAG_INODE and EXT4_FC_TAG_INODE_PARTIAL. */
-@@ -65,19 +70,6 @@ struct ext4_fc_tail {
- 	__le32 fc_crc;
- };
- 
--/*
-- * In memory list of dentry updates that are performed on the file
-- * system used by fast commit code.
-- */
--struct ext4_fc_dentry_update {
--	int fcd_op;		/* Type of update create / unlink / link */
--	int fcd_parent;		/* Parent inode number */
--	int fcd_ino;		/* Inode number */
--	struct qstr fcd_name;	/* Dirent name */
--	unsigned char fcd_iname[DNAME_INLINE_LEN];	/* Dirent name string */
--	struct list_head fcd_list;
--};
--
- /*
-  * Fast commit reason codes
-  */
-@@ -107,6 +99,20 @@ enum {
- 	EXT4_FC_REASON_MAX
- };
- 
-+#ifdef __KERNEL__
-+/*
-+ * In memory list of dentry updates that are performed on the file
-+ * system used by fast commit code.
-+ */
-+struct ext4_fc_dentry_update {
-+	int fcd_op;		/* Type of update create / unlink / link */
-+	int fcd_parent;		/* Parent inode number */
-+	int fcd_ino;		/* Inode number */
-+	struct qstr fcd_name;	/* Dirent name */
-+	unsigned char fcd_iname[DNAME_INLINE_LEN];	/* Dirent name string */
-+	struct list_head fcd_list;
-+};
-+
- struct ext4_fc_stats {
- 	unsigned int fc_ineligible_reason_count[EXT4_FC_REASON_MAX];
- 	unsigned long fc_num_commits;
-@@ -145,13 +151,51 @@ struct ext4_fc_replay_state {
- };
- 
- #define region_last(__region) (((__region)->lblk) + ((__region)->len) - 1)
-+#endif
- 
- #define fc_for_each_tl(__start, __end, __tl)				\
--	for (tl = (struct ext4_fc_tl *)start;				\
--		(u8 *)tl < (u8 *)end;					\
--		tl = (struct ext4_fc_tl *)((u8 *)tl +			\
-+	for (tl = (struct ext4_fc_tl *)(__start);			\
-+	     (__u8 *)tl < (__u8 *)(__end);				\
-+		tl = (struct ext4_fc_tl *)((__u8 *)tl +			\
- 					sizeof(struct ext4_fc_tl) +	\
- 					+ le16_to_cpu(tl->fc_len)))
- 
-+static inline const char *tag2str(__u16 tag)
-+{
-+	switch (tag) {
-+	case EXT4_FC_TAG_LINK:
-+		return "ADD_ENTRY";
-+	case EXT4_FC_TAG_UNLINK:
-+		return "DEL_ENTRY";
-+	case EXT4_FC_TAG_ADD_RANGE:
-+		return "ADD_RANGE";
-+	case EXT4_FC_TAG_CREAT:
-+		return "CREAT_DENTRY";
-+	case EXT4_FC_TAG_DEL_RANGE:
-+		return "DEL_RANGE";
-+	case EXT4_FC_TAG_INODE:
-+		return "INODE";
-+	case EXT4_FC_TAG_PAD:
-+		return "PAD";
-+	case EXT4_FC_TAG_TAIL:
-+		return "TAIL";
-+	case EXT4_FC_TAG_HEAD:
-+		return "HEAD";
-+	default:
-+		return "ERROR";
-+	}
-+}
-+
-+/* Get length of a particular tlv */
-+static inline int ext4_fc_tag_len(struct ext4_fc_tl *tl)
-+{
-+	return le16_to_cpu(tl->fc_len);
-+}
-+
-+/* Get a pointer to "value" of a tlv */
-+static inline __u8 *ext4_fc_tag_val(struct ext4_fc_tl *tl)
-+{
-+	return (__u8 *)tl + sizeof(*tl);
-+}
- 
- #endif /* __FAST_COMMIT_H__ */
+> I think clang is just being annoying here, but if I'm the only one who
+> feels this way chances are I'm wrong :)
+
+It's being pretty pedantic, but I don't think it's unreasonable to
+explicitly state how every case ends. GCC's silence for the case of
+"fall through to a break" doesn't really seem justified.
+
 -- 
-2.29.2.454.gaff20da3a2-goog
-
+Kees Cook
