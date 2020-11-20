@@ -2,68 +2,68 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EB38BC6379D
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CDFBC64E7A
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8AE2322254
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3B7CB2240A
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cVNW2fRH"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PR8k1FYS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729454AbgKTTQa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Nov 2020 14:16:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48514 "EHLO
+        id S1732198AbgKTTQf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Nov 2020 14:16:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48530 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729444AbgKTTQa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 14:16:30 -0500
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0360CC0613CF
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:30 -0800 (PST)
-Received: by mail-pf1-x441.google.com with SMTP id t8so8777894pfg.8
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:29 -0800 (PST)
+        with ESMTP id S1729200AbgKTTQf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 14:16:35 -0500
+Received: from mail-pg1-x544.google.com (mail-pg1-x544.google.com [IPv6:2607:f8b0:4864:20::544])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D32B2C0613CF
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:34 -0800 (PST)
+Received: by mail-pg1-x544.google.com with SMTP id 81so8133916pgf.0
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=7sMkFu3WbDnH80Glnn82gYd+1da6NUT/aw21v/s39Mc=;
-        b=cVNW2fRH9HCrImPkadX9huYk8LpaLTVzTe/UzGNK2PHCs84/NizEp0cUhQEtsojI5J
-         iv1Ey5YBc8XTx5VxOco8oGtYQO1GWXtg5RCoQF4AG1tdQOjxRQsL6FgRSZZop0H2ixos
-         EB9jACqW1bN5sqeIL9hEd4GDJpb42LHpLO65dQ++AA/CGn3YwoB3z7hsecEQylsp677v
-         3s9Qnprm+gqAeERDpAQ39NGBcB9F3Q0sE93d0JI+SSTcuLvU7pDHdTLqiLpoWw4/ypPL
-         Ot+fbXSoZ+qbQ7EK0jJqH6j2DB+JmyqzyrGSMocWm+khhiihkNZsGNF4wmGz537u8GCR
-         99Xg==
+        bh=97YwAeoYnnUjwl0pFMK4MUgqEapRbp6EZYxfTuGWjNo=;
+        b=PR8k1FYSVxhS0ESk5VQ4NiVlcoQrjWK6Lbocjfc3rTnVPRInps4G+qIoJo8y8a9Q3o
+         itUdVJ4Xr+lC7dyWqhWd4XvrIPrPYe7E/qgVXAhP0r5HBpZ+P0Q21aQcr0JkNNGnGVwy
+         K6iaihHUZoYRevIFK6m115lMkJwPWRzc5UMFO9dGwS9a21s++YifDFdQMibpmZdJ079S
+         +XhlU4keYe8tDPnrN8gEljl17HUgBVRIKQ1bVDDY6LdUlY14Rp2YH4qU0rMIoCcXWIC6
+         RX4sdUX1DEGNIHPz2divtb2GdlcJcUmWGUO6iuozuUhyG4On048lqmmKZ4JNyxPHOgb4
+         SZzw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=7sMkFu3WbDnH80Glnn82gYd+1da6NUT/aw21v/s39Mc=;
-        b=Ru/VxUrZsLFQ2eP+N+amG4vHEyDMghhKlfJ1ep1qqhQPy6V7IJX5E+JF8teIS5lH5V
-         GnDLXV8+5/eClTo06uZI2YVtaUa+bT7eq9gpuCAWvqCZlM0qwW8DBFvLoGwF1jgliphw
-         bZ//+XqHssEChG5G1ep5dlcxYvFM2ZSvtRd2VLml8AefTlOU+WIH517feteUwYFU/J59
-         teGvV5OlqINL4NxeIL9RlGNScD1Zuk9NMn2zppT0rDuH6rDjkZFnPwVxGX2WiuBiThSx
-         PLEvKB0/ic0J1lSwQW/05dNaiq18q7Q4yxoekTDcOKG9DChU23sdLedhcgLOxXEvZKFG
-         HmUA==
-X-Gm-Message-State: AOAM531eU+ZpgAdW9IvkMCMoE2nNS6nO+emWGRBFe6NkRGC9pJP5WmaI
-        Kt2Pj2tYNqyUm6hrD1HE9a9uu1YkVeg=
-X-Google-Smtp-Source: ABdhPJwJ4m6CyOwUTqLu/xYCWIz2om87Mw+75Hx2QApnfd02w1lV3L5Nvg7UUeTNy9Wu/TTHToia4Q==
-X-Received: by 2002:a17:90b:fd1:: with SMTP id gd17mr7419124pjb.148.1605899789086;
-        Fri, 20 Nov 2020 11:16:29 -0800 (PST)
+        bh=97YwAeoYnnUjwl0pFMK4MUgqEapRbp6EZYxfTuGWjNo=;
+        b=c0W5N7fLGmJRi3cF7lr+HJBCEW2zuMYr874IfkmCHG4+SZjaMWBh1YqWX4Fz25QY3I
+         whqfDWX2nJR4o0n5LzTDtBD4N7xvYA1XZrehOeZFgrHcDVNtCt472qPpBfUgXdjwTejd
+         JtGbiNWhvwVSO8Td6wVpJdrau7nQ4CzHz/cvDCfKq4ovo37ViTRYUV51QwR2yYeXvgvM
+         B53BMF10xRvxMrGd5Lvc8vcvrsR3Ik3+lLuHEZrh08ZBJ2ziRT885rWlXlY0XCxO95ih
+         yQKsR3nDjSKOXmKPrYEc+QsihKQ07Q2NCJyMDeCCtVm5SAlNk4rlyM95+2pbVbQJsc3s
+         pw8w==
+X-Gm-Message-State: AOAM532CSlc3+VOyRBGPcpsLTJ+8IlC7kG7OhN9JW34Ul47XDnS2M0Bg
+        +4xFSakbqdUCCcAONCmdNJtKjIh6tgI=
+X-Google-Smtp-Source: ABdhPJyYqRoqw734x5NM2o8tn3qFSdGioik3xcha7hnMgEMjB5DKVTsHDPjlGWkEca8Bnej54l7cuw==
+X-Received: by 2002:a63:194d:: with SMTP id 13mr18899849pgz.317.1605899793290;
+        Fri, 20 Nov 2020 11:16:33 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id o9sm4370480pjr.2.2020.11.20.11.16.28
+        by smtp.googlemail.com with ESMTPSA id o9sm4370480pjr.2.2020.11.20.11.16.32
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 20 Nov 2020 11:16:28 -0800 (PST)
+        Fri, 20 Nov 2020 11:16:32 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 05/15] mke2fs, tune2fs: update man page with fast commit info
-Date:   Fri, 20 Nov 2020 11:15:56 -0800
-Message-Id: <20201120191606.2224881-6-harshadshirwadkar@gmail.com>
+Subject: [PATCH 08/15] e2fsck: add fast commit setup code
+Date:   Fri, 20 Nov 2020 11:15:59 -0800
+Message-Id: <20201120191606.2224881-9-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.2.454.gaff20da3a2-goog
 In-Reply-To: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
 References: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
@@ -73,90 +73,327 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch adds information about fast commit feature in mke2fs and
-tune2fs man pages.
+Add fast_commit.h that contains the necessary helpers needed for fast
+commit replay. Note that this file is also byte by byte identical with
+kernel's fast_commit.h. Also, we introduce the
+"e2fsck_fc_replay_state" structure which is needed for ext4 fast
+commit replay.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- misc/mke2fs.8.in  | 21 +++++++++++++++++++++
- misc/tune2fs.8.in | 25 +++++++++++++++++++++++++
- 2 files changed, 46 insertions(+)
+ e2fsck/e2fsck.h          |  16 ++++
+ e2fsck/journal.c         |  15 +++
+ lib/ext2fs/ext2_fs.h     |   1 +
+ lib/ext2fs/ext2fs.h      |   3 +
+ lib/ext2fs/fast_commit.h | 201 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 236 insertions(+)
+ create mode 100644 lib/ext2fs/fast_commit.h
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index e6bfc6d6..2833b408 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -521,6 +521,27 @@ The size of the journal must be at least 1024 filesystem blocks
- and may be no more than 10,240,000 filesystem blocks or half the total
- file system size (whichever is smaller)
- .TP
-+.BI fast_commit_size= fast-commit-size
-+Create an additional fast commit journal area of size
-+.I fast-commit-size
-+kilobytes.
-+This option is only valid if
-+.B fast_commit
-+feature is enabled
-+on the file system. If this option is not specified and if
-+.B fast_commit
-+feature is turned on, fast commit area size defaults to
-+.I journal-size
-+/ 64 megabytes. The total size of the journal with
-+.B fast_commit
-+feature set is
-+.I journal-size
-++ (
-+.I fast-commit-size
-+* 1024) megabytes. The total journal size may be no more than
-+10,240,000 filesystem blocks or half the total file system size
-+(whichever is smaller).
-+.TP
- .BI location =journal-location
- Specify the location of the journal.  The argument
- .I journal-location
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index 582d1da5..2114c623 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -357,6 +357,27 @@ and may be no more than 10,240,000 filesystem blocks.
- There must be enough free space in the filesystem to create a journal of
- that size.
- .TP
-+.BI fast_commit_size= fast-commit-size
-+Create an additional fast commit journal area of size
-+.I fast-commit-size
-+kilobytes.
-+This option is only valid if
-+.B fast_commit
-+feature is enabled
-+on the file system. If this option is not specified and if
-+.B fast_commit
-+feature is turned on, fast commit area size defaults to
-+.I journal-size
-+/ 64 megabytes. The total size of the journal with
-+.B fast_commit
-+feature set is
-+.I journal-size
-++ (
-+.I fast-commit-size
-+* 1024) megabytes. The total journal size may be no more than
-+10,240,000 filesystem blocks or half the total file system size
-+(whichever is smaller).
-+.TP
- .BI location =journal-location
- Specify the location of the journal.  The argument
- .I journal-location
-@@ -586,6 +607,10 @@ Setting the filesystem feature is equivalent to using the
- .B \-j
- option.
- .TP
-+.TP
-+.B fast_commit
-+Enable fast commit journaling feature to improve fsync latency.
-+.TP
- .B large_dir
- Increase the limit on the number of files per directory.
- .B Tune2fs
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 3b9c1874..f75cc343 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -68,6 +68,7 @@
+ #endif
+ 
+ #include "support/quotaio.h"
++#include "ext2fs/fast_commit.h"
+ 
+ /*
+  * Exit codes used by fsck-type programs
+@@ -239,6 +240,18 @@ struct extent_list {
+ 	errcode_t retval;
+ 	ext2_ino_t ino;
+ };
++
++/* State structure for fast commit replay */
++struct e2fsck_fc_replay_state {
++	struct extent_list fc_extent_list;
++	int fc_replay_num_tags;
++	int fc_replay_expected_off;
++	int fc_current_pass;
++	int fc_cur_tag;
++	int fc_crc;
++	__u16 fc_super_state;
++};
++
+ struct e2fsck_struct {
+ 	ext2_filsys fs;
+ 	const char *program_name;
+@@ -431,6 +444,9 @@ struct e2fsck_struct {
+ 
+ 	/* Undo file */
+ 	char *undo_file;
++
++	/* Fast commit replay state */
++	struct e2fsck_fc_replay_state fc_replay_state;
+ };
+ 
+ /* Data structures to evaluate whether an extent tree needs rebuilding. */
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 75fefcde..2c8e3441 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -278,6 +278,17 @@ static int process_journal_block(ext2_filsys fs,
+ 	return 0;
+ }
+ 
++/*
++ * Main recovery path entry point. This function returns JBD2_FC_REPLAY_CONTINUE
++ * to indicate that it is expecting more fast commit blocks. It returns
++ * JBD2_FC_REPLAY_STOP to indicate that replay is done.
++ */
++static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
++				enum passtype pass, int off, tid_t expected_tid)
++{
++	return JBD2_FC_REPLAY_STOP;
++}
++
+ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ {
+ 	struct process_block_struct pb;
+@@ -514,6 +525,10 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
+ 
+ 	journal->j_sb_buffer = bh;
+ 	journal->j_superblock = (journal_superblock_t *)bh->b_data;
++	if (ext2fs_has_feature_fast_commit(ctx->fs->super))
++		journal->j_fc_replay_callback = ext4_fc_replay;
++	else
++		journal->j_fc_replay_callback = NULL;
+ 
+ #ifdef USE_INODE_IO
+ 	if (j_inode)
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index bfc30c29..b1e4329c 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -543,6 +543,7 @@ struct ext2_inode *EXT2_INODE(struct ext2_inode_large *large_inode)
+ #define EXT2_VALID_FS			0x0001	/* Unmounted cleanly */
+ #define EXT2_ERROR_FS			0x0002	/* Errors detected */
+ #define EXT3_ORPHAN_FS			0x0004	/* Orphans being recovered */
++#define EXT4_FC_REPLAY			0x0020	/* Ext4 fast commit replay ongoing */
+ 
+ /*
+  * Misc. filesystem flags
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index afa9c5e4..bde369ef 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -2141,4 +2141,7 @@ static inline unsigned int ext2_dir_htree_level(ext2_filsys fs)
+ }
+ #endif
+ 
++/* Commonly used helpers */
++#define max(a, b) ((a) > (b) ? (a) : (b))
++
+ #endif /* _EXT2FS_EXT2FS_H */
+diff --git a/lib/ext2fs/fast_commit.h b/lib/ext2fs/fast_commit.h
+new file mode 100644
+index 00000000..b77f70f5
+--- /dev/null
++++ b/lib/ext2fs/fast_commit.h
+@@ -0,0 +1,201 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++
++#ifndef __FAST_COMMIT_H__
++#define __FAST_COMMIT_H__
++
++/*
++ * Note this file is present in e2fsprogs/lib/ext2fs/fast_commit.h and
++ * linux/fs/ext4/fast_commit.h. These file should always be byte identical.
++ */
++
++/* Fast commit tags */
++#define EXT4_FC_TAG_ADD_RANGE		0x0001
++#define EXT4_FC_TAG_DEL_RANGE		0x0002
++#define EXT4_FC_TAG_CREAT		0x0003
++#define EXT4_FC_TAG_LINK		0x0004
++#define EXT4_FC_TAG_UNLINK		0x0005
++#define EXT4_FC_TAG_INODE		0x0006
++#define EXT4_FC_TAG_PAD			0x0007
++#define EXT4_FC_TAG_TAIL		0x0008
++#define EXT4_FC_TAG_HEAD		0x0009
++
++#define EXT4_FC_SUPPORTED_FEATURES	0x0
++
++/* On disk fast commit tlv value structures */
++
++/* Fast commit on disk tag length structure */
++struct ext4_fc_tl {
++	__le16 fc_tag;
++	__le16 fc_len;
++};
++
++/* Value structure for tag EXT4_FC_TAG_HEAD. */
++struct ext4_fc_head {
++	__le32 fc_features;
++	__le32 fc_tid;
++};
++
++/* Value structure for EXT4_FC_TAG_ADD_RANGE. */
++struct ext4_fc_add_range {
++	__le32 fc_ino;
++	__u8 fc_ex[12];
++};
++
++/* Value structure for tag EXT4_FC_TAG_DEL_RANGE. */
++struct ext4_fc_del_range {
++	__le32 fc_ino;
++	__le32 fc_lblk;
++	__le32 fc_len;
++};
++
++/*
++ * This is the value structure for tags EXT4_FC_TAG_CREAT, EXT4_FC_TAG_LINK
++ * and EXT4_FC_TAG_UNLINK.
++ */
++struct ext4_fc_dentry_info {
++	__le32 fc_parent_ino;
++	__le32 fc_ino;
++	__u8 fc_dname[0];
++};
++
++/* Value structure for EXT4_FC_TAG_INODE and EXT4_FC_TAG_INODE_PARTIAL. */
++struct ext4_fc_inode {
++	__le32 fc_ino;
++	__u8 fc_raw_inode[0];
++};
++
++/* Value structure for tag EXT4_FC_TAG_TAIL. */
++struct ext4_fc_tail {
++	__le32 fc_tid;
++	__le32 fc_crc;
++};
++
++/*
++ * Fast commit reason codes
++ */
++enum {
++	/*
++	 * Commit status codes:
++	 */
++	EXT4_FC_REASON_OK = 0,
++	EXT4_FC_REASON_INELIGIBLE,
++	EXT4_FC_REASON_ALREADY_COMMITTED,
++	EXT4_FC_REASON_FC_START_FAILED,
++	EXT4_FC_REASON_FC_FAILED,
++
++	/*
++	 * Fast commit ineligiblity reasons:
++	 */
++	EXT4_FC_REASON_XATTR = 0,
++	EXT4_FC_REASON_CROSS_RENAME,
++	EXT4_FC_REASON_JOURNAL_FLAG_CHANGE,
++	EXT4_FC_REASON_NOMEM,
++	EXT4_FC_REASON_SWAP_BOOT,
++	EXT4_FC_REASON_RESIZE,
++	EXT4_FC_REASON_RENAME_DIR,
++	EXT4_FC_REASON_FALLOC_RANGE,
++	EXT4_FC_REASON_INODE_JOURNAL_DATA,
++	EXT4_FC_COMMIT_FAILED,
++	EXT4_FC_REASON_MAX
++};
++
++#ifdef __KERNEL__
++/*
++ * In memory list of dentry updates that are performed on the file
++ * system used by fast commit code.
++ */
++struct ext4_fc_dentry_update {
++	int fcd_op;		/* Type of update create / unlink / link */
++	int fcd_parent;		/* Parent inode number */
++	int fcd_ino;		/* Inode number */
++	struct qstr fcd_name;	/* Dirent name */
++	unsigned char fcd_iname[DNAME_INLINE_LEN];	/* Dirent name string */
++	struct list_head fcd_list;
++};
++
++struct ext4_fc_stats {
++	unsigned int fc_ineligible_reason_count[EXT4_FC_REASON_MAX];
++	unsigned long fc_num_commits;
++	unsigned long fc_ineligible_commits;
++	unsigned long fc_numblks;
++};
++
++#define EXT4_FC_REPLAY_REALLOC_INCREMENT	4
++
++/*
++ * Physical block regions added to different inodes due to fast commit
++ * recovery. These are set during the SCAN phase. During the replay phase,
++ * our allocator excludes these from its allocation. This ensures that
++ * we don't accidentally allocating a block that is going to be used by
++ * another inode.
++ */
++struct ext4_fc_alloc_region {
++	ext4_lblk_t lblk;
++	ext4_fsblk_t pblk;
++	int ino, len;
++};
++
++/*
++ * Fast commit replay state.
++ */
++struct ext4_fc_replay_state {
++	int fc_replay_num_tags;
++	int fc_replay_expected_off;
++	int fc_current_pass;
++	int fc_cur_tag;
++	int fc_crc;
++	struct ext4_fc_alloc_region *fc_regions;
++	int fc_regions_size, fc_regions_used, fc_regions_valid;
++	int *fc_modified_inodes;
++	int fc_modified_inodes_used, fc_modified_inodes_size;
++};
++
++#define region_last(__region) (((__region)->lblk) + ((__region)->len) - 1)
++#endif
++
++#define fc_for_each_tl(__start, __end, __tl)				\
++	for (tl = (struct ext4_fc_tl *)(__start);			\
++	     (__u8 *)tl < (__u8 *)(__end);				\
++		tl = (struct ext4_fc_tl *)((__u8 *)tl +			\
++					sizeof(struct ext4_fc_tl) +	\
++					+ le16_to_cpu(tl->fc_len)))
++
++static inline const char *tag2str(__u16 tag)
++{
++	switch (tag) {
++	case EXT4_FC_TAG_LINK:
++		return "ADD_ENTRY";
++	case EXT4_FC_TAG_UNLINK:
++		return "DEL_ENTRY";
++	case EXT4_FC_TAG_ADD_RANGE:
++		return "ADD_RANGE";
++	case EXT4_FC_TAG_CREAT:
++		return "CREAT_DENTRY";
++	case EXT4_FC_TAG_DEL_RANGE:
++		return "DEL_RANGE";
++	case EXT4_FC_TAG_INODE:
++		return "INODE";
++	case EXT4_FC_TAG_PAD:
++		return "PAD";
++	case EXT4_FC_TAG_TAIL:
++		return "TAIL";
++	case EXT4_FC_TAG_HEAD:
++		return "HEAD";
++	default:
++		return "ERROR";
++	}
++}
++
++/* Get length of a particular tlv */
++static inline int ext4_fc_tag_len(struct ext4_fc_tl *tl)
++{
++	return le16_to_cpu(tl->fc_len);
++}
++
++/* Get a pointer to "value" of a tlv */
++static inline __u8 *ext4_fc_tag_val(struct ext4_fc_tl *tl)
++{
++	return (__u8 *)tl + sizeof(*tl);
++}
++
++#endif /* __FAST_COMMIT_H__ */
 -- 
 2.29.2.454.gaff20da3a2-goog
 
