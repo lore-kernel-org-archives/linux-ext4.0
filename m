@@ -2,298 +2,202 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.1 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5416C71155
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02DEDC56201
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:25:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 919712242B
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8D7E322240
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:25:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MTK2Fdxz"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=embeddedor.com header.i=@embeddedor.com header.b="n09KqYny"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732274AbgKTTQn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Nov 2020 14:16:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48554 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732200AbgKTTQm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 14:16:42 -0500
-Received: from mail-pf1-x441.google.com (mail-pf1-x441.google.com [IPv6:2607:f8b0:4864:20::441])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 20ECFC0613CF
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:41 -0800 (PST)
-Received: by mail-pf1-x441.google.com with SMTP id c66so8802688pfa.4
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:41 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=aq+mQbTZB8JdqawelikdF6sYXjAnMc5tHSNbbcALgwo=;
-        b=MTK2FdxzZL6hdjHUyC6cgw5Gf382dyEZ31dbz9aPTlfRg5Kefi+yP+ZMEMh1qjnWwu
-         j3jaUyZVshva0WTPDJS22cZOOinoFHMWwkpzAGvWMjpsO+/b0zKp70dHs5pk8canrnXg
-         n/xo620EtpPnXBDpOUoj4x8X7cGBl/3yssaDT047IWmNQMLBf8PQSa1XHi+4Y9N08wU1
-         7NWTkhesvs9KAjUOnvAWryRFY622AEBQ0XVfrGfBMgE33jvI+KnojwIQhWyKRi2w5EG7
-         N48bqyo1TVs1jurQGCALwJC9ayIEU5N/9S1g0lnKBexk4gIypnJew2dBHATosUfNMMFm
-         XOtw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=aq+mQbTZB8JdqawelikdF6sYXjAnMc5tHSNbbcALgwo=;
-        b=FQV7W1VLNavSP+8QehJnQ9Fu3s7+eh1S/YG0FmDcGZwuIH3txlWdp+7gnf88Xllxlz
-         mEb71zULKyXKKn0Ec8hMQQpMLh42Ccln/vdRDcA3ZWaoQnm7SCGTS3Xwi7cAZIRyrdiY
-         HU+OPJI2fgDKrGEBDFPjulxndzlNmF08MKLs7Gf6Cbpr5iM87lUDcufeDD/XG9GKgN8v
-         JYZPcueNyCZcHBdkQZ5Gv5XTkUE33k8+ZojowyIFpCZvpQxK8qeV+pCkHwcEDM5/Lt5k
-         MQS1OOP6CaSM1u2cPXD2RUOlVhW4N3scxpT9vvXLLKuxk04fqTG9cffghwnRGFFJCnaI
-         dzCg==
-X-Gm-Message-State: AOAM5337RBEvRqcCeK7t+RLj1Pam81hcdW44JGQqVCDl0SO1NoZjg7kN
-        92r9kVl3+SZbw4tv5zv2OcfblQsqYi8=
-X-Google-Smtp-Source: ABdhPJzVFfmZW/066pw28fatgLF42ZjZWZdO73n6/B4xm+xNpSrBrg/ecfqX3v5iWtrQ4n2eQaUUMg==
-X-Received: by 2002:a17:90b:19c4:: with SMTP id nm4mr10441311pjb.222.1605899800167;
-        Fri, 20 Nov 2020 11:16:40 -0800 (PST)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id o9sm4370480pjr.2.2020.11.20.11.16.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 20 Nov 2020 11:16:38 -0800 (PST)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 13/15] debugfs: add fast commit support to logdump
-Date:   Fri, 20 Nov 2020 11:16:04 -0800
-Message-Id: <20201120191606.2224881-14-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.29.2.454.gaff20da3a2-goog
-In-Reply-To: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
-References: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
+        id S1732323AbgKTTZB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Nov 2020 14:25:01 -0500
+Received: from gateway34.websitewelcome.com ([192.185.148.194]:26141 "EHLO
+        gateway34.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1732304AbgKTTZB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Nov 2020 14:25:01 -0500
+Received: from cm14.websitewelcome.com (cm14.websitewelcome.com [100.42.49.7])
+        by gateway34.websitewelcome.com (Postfix) with ESMTP id ECE6D4E9FCD
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 13:02:31 -0600 (CST)
+Received: from gator4166.hostgator.com ([108.167.133.22])
+        by cmsmtp with SMTP
+        id gBfzkKZwgfgo0gBfzkDLzX; Fri, 20 Nov 2020 13:02:31 -0600
+X-Authority-Reason: nr=8
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=embeddedor.com; s=default; h=Content-Transfer-Encoding:Content-Type:
+        In-Reply-To:MIME-Version:Date:Message-ID:From:References:Cc:To:Subject:Sender
+        :Reply-To:Content-ID:Content-Description:Resent-Date:Resent-From:
+        Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=+4VxQ3E1SMf3fqpPxA59SXnFTIYnqNYQQfNHAF4XRGw=; b=n09KqYnyKHrO7dveIUWc55mzig
+        y4HUZZbrqh9oIGiAW16mTaR8pcvnAozTxI+rYVVIt9CxAErudOIqW44giqY0jAAxUq2Az5FkJRw8D
+        DdYM3ceCwzW72Iyh3zFwKX+btf9zXkIFnOla0anfthw4DZBTFFqyoxwOvEOl2OJ26TOTLqWU9obCG
+        intkFNaJRljaeNwR96RWCduzT1c1ht64s9kRw8R+vb7ftuKF/SC10c1DXlPqmQL512w8QCfyvTWtG
+        dzgy+MeNJCgbGq47RynDwYUz9POm4OiFKWoqxvHGtR/GFZ1BW9GSDXleqWC/tOZ433VaTMSGJy7Ut
+        yE2h40Yg==;
+Received: from 187-162-31-110.static.axtel.net ([187.162.31.110]:52198 helo=[192.168.15.4])
+        by gator4166.hostgator.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        (Exim 4.93)
+        (envelope-from <gustavo@embeddedor.com>)
+        id 1kgBfw-0000VH-WA; Fri, 20 Nov 2020 13:02:29 -0600
+Subject: Re: [PATCH 000/141] Fix fall-through warnings for Clang
+To:     Joe Perches <joe@perches.com>,
+        "Gustavo A. R. Silva" <gustavoars@kernel.org>,
+        linux-kernel@vger.kernel.org
+Cc:     alsa-devel@alsa-project.org, amd-gfx@lists.freedesktop.org,
+        bridge@lists.linux-foundation.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coreteam@netfilter.org,
+        devel@driverdev.osuosl.org, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, dri-devel@lists.freedesktop.org,
+        GR-everest-linux-l2@marvell.com, GR-Linux-NIC-Dev@marvell.com,
+        intel-gfx@lists.freedesktop.org, intel-wired-lan@lists.osuosl.org,
+        keyrings@vger.kernel.org, linux1394-devel@lists.sourceforge.net,
+        linux-acpi@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-arm-kernel@lists.infradead.org,
+        linux-arm-msm@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net,
+        linux-block@vger.kernel.org, linux-can@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-crypto@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net,
+        linux-ext4@vger.kernel.org, linux-fbdev@vger.kernel.org,
+        linux-geode@lists.infradead.org, linux-gpio@vger.kernel.org,
+        linux-hams@vger.kernel.org, linux-hwmon@vger.kernel.org,
+        linux-i3c@lists.infradead.org, linux-ide@vger.kernel.org,
+        linux-iio@vger.kernel.org, linux-input@vger.kernel.org,
+        linux-integrity@vger.kernel.org,
+        linux-mediatek@lists.infradead.org, linux-media@vger.kernel.org,
+        linux-mmc@vger.kernel.org, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-renesas-soc@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-sctp@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-stm32@st-md-mailman.stormreply.com,
+        linux-usb@vger.kernel.org, linux-watchdog@vger.kernel.org,
+        linux-wireless@vger.kernel.org, netdev@vger.kernel.org,
+        netfilter-devel@vger.kernel.org, nouveau@lists.freedesktop.org,
+        op-tee@lists.trustedfirmware.org, oss-drivers@netronome.com,
+        patches@opensource.cirrus.com, rds-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org, samba-technical@lists.samba.org,
+        selinux@vger.kernel.org, target-devel@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net,
+        usb-storage@lists.one-eyed-alien.net,
+        virtualization@lists.linux-foundation.org,
+        wcn36xx@lists.infradead.org, x86@kernel.org,
+        xen-devel@lists.xenproject.org, linux-hardening@vger.kernel.org,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Miguel Ojeda <ojeda@kernel.org>,
+        Kees Cook <keescook@chromium.org>
+References: <cover.1605896059.git.gustavoars@kernel.org>
+ <3e0bbb1644fe53d79322c2feb28ccaf3e20c0e94.camel@perches.com>
+From:   "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+Autocrypt: addr=gustavo@embeddedor.com; keydata=
+ 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
+ AP7RWS474w==
+Message-ID: <9f986394-125a-81f7-7696-fe1a9f4eb4f5@embeddedor.com>
+Date:   Fri, 20 Nov 2020 13:02:34 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <3e0bbb1644fe53d79322c2feb28ccaf3e20c0e94.camel@perches.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - gator4166.hostgator.com
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - embeddedor.com
+X-BWhitelist: no
+X-Source-IP: 187.162.31.110
+X-Source-L: No
+X-Exim-ID: 1kgBfw-0000VH-WA
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
+X-Source-Sender: 187-162-31-110.static.axtel.net ([192.168.15.4]) [187.162.31.110]:52198
+X-Source-Auth: gustavo@embeddedor.com
+X-Email-Count: 30
+X-Source-Cap: Z3V6aWRpbmU7Z3V6aWRpbmU7Z2F0b3I0MTY2Lmhvc3RnYXRvci5jb20=
+X-Local-Domain: yes
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add fast commit support for debugfs logdump. The debugfs output looks
-like this:
 
-debugfs 1.46-WIP (20-Mar-2020)
-debugfs:  logdump
-Journal starts at block 1, transaction 2
-Found expected sequence 2, type 1 (descriptor block) at block 1
-Found expected sequence 2, type 2 (commit block) at block 10
-No magic number at block 11: end of journal.
 
-*** Fast Commit Area ***
-tag HEAD, features 0x0, tid 3
-tag INODE, inode 14
-tag ADD_RANGE, inode 14, lblk 0, pblk 1091, len 1
-tag DEL_RANGE, inode 14, lblk 1, len 1
-tag CREAT_DENTRY, parent 12, ino 14, name "new"
-tag DEL_ENTRY, parent 12, ino 13, name "old"
-tag INODE, inode 13
-tag ADD_RANGE, inode 13, lblk 0, pblk 1603, len 16
-tag ADD_RANGE, inode 13, lblk 16, pblk 1092, len 240
-tag CREAT_DENTRY, parent 12, ino 13, name "data"
-tag INODE, inode 14
-tag INODE, inode 13
-tag TAIL, tid 3
+On 11/20/20 12:28, Joe Perches wrote:
+> On Fri, 2020-11-20 at 12:21 -0600, Gustavo A. R. Silva wrote:
+>> Hi all,
+>>
+>> This series aims to fix almost all remaining fall-through warnings in
+>> order to enable -Wimplicit-fallthrough for Clang.
+>>
+>> In preparation to enable -Wimplicit-fallthrough for Clang, explicitly
+>> add multiple break/goto/return/fallthrough statements instead of just
+>> letting the code fall through to the next case.
+>>
+>> Notice that in order to enable -Wimplicit-fallthrough for Clang, this
+>> change[1] is meant to be reverted at some point. So, this patch helps
+>> to move in that direction.
+> 
+> This was a bit hard to parse for a second or three.
+> 
+> Thanks Gustavo.
+> 
+> How was this change done?
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- debugfs/logdump.c | 122 ++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 117 insertions(+), 5 deletions(-)
+I audited case by case in order to determine the best fit for each
+situation. Depending on the surrounding logic, sometimes it makes
+more sense a goto or a fallthrough rather than merely a break.
 
-diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-index 16889954..151be3e2 100644
---- a/debugfs/logdump.c
-+++ b/debugfs/logdump.c
-@@ -33,6 +33,7 @@ extern char *optarg;
- #include "debugfs.h"
- #include "blkid/blkid.h"
- #include "jfs_user.h"
-+#include "ext2fs/fast_commit.h"
- #include <uuid/uuid.h>
- 
- enum journal_location {JOURNAL_IS_INTERNAL, JOURNAL_IS_EXTERNAL};
-@@ -65,6 +66,9 @@ static void dump_metadata_block(FILE *, struct journal_source *,
- 				unsigned int, unsigned int, unsigned int,
- 				int, tid_t);
- 
-+static void dump_fc_block(FILE *out_file, char *buf, int blocksize,
-+			  int transaction, int *fc_done, int dump_old);
-+
- static void do_hexdump (FILE *, char *, int);
- 
- #define WRAP(jsb, blocknr)					\
-@@ -353,6 +357,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 	journal_header_t	*header;
- 	tid_t			transaction;
- 	unsigned int		blocknr = 0;
-+	int			fc_done;
- 
- 	/* First, check to see if there's an ext2 superblock header */
- 	retval = read_journal_block(cmdname, source, 0, buf, 2048);
-@@ -410,7 +415,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 	if (!blocknr) {
- 		/* Empty journal, nothing to do. */
- 		if (!dump_old)
--			return;
-+			goto fc;
- 		else
- 			blocknr = 1;
- 	}
-@@ -420,7 +425,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 				((ext2_loff_t) blocknr) * blocksize,
- 				buf, blocksize);
- 		if (retval)
--			return;
-+			break;
- 
- 		header = (journal_header_t *) buf;
- 
-@@ -431,7 +436,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 		if (magic != JBD2_MAGIC_NUMBER) {
- 			fprintf (out_file, "No magic number at block %u: "
- 				 "end of journal.\n", blocknr);
--			return;
-+			break;
- 		}
- 
- 		if (sequence != transaction) {
-@@ -439,7 +444,7 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 				 "block %u: end of journal.\n",
- 				 sequence, transaction, blocknr);
- 			if (!dump_old)
--				return;
-+				break;
- 		}
- 
- 		if (dump_descriptors) {
-@@ -473,9 +478,25 @@ static void dump_journal(char *cmdname, FILE *out_file,
- 		default:
- 			fprintf (out_file, "Unexpected block type %u at "
- 				 "block %u.\n", blocktype, blocknr);
--			return;
-+			break;
- 		}
- 	}
-+
-+fc:
-+	blocknr = be32_to_cpu(jsb->s_maxlen) - jbd2_journal_get_num_fc_blks(jsb) + 1;
-+	while (blocknr <= be32_to_cpu(jsb->s_maxlen)) {
-+		retval = read_journal_block(cmdname, source,
-+				((ext2_loff_t) blocknr) * blocksize,
-+				buf, blocksize);
-+		if (retval)
-+			return;
-+
-+		dump_fc_block(out_file, buf, blocksize, transaction, &fc_done,
-+			dump_old);
-+		if (!dump_old && fc_done)
-+			break;
-+		blocknr++;
-+	}
- }
- 
- static inline size_t journal_super_tag_bytes(journal_superblock_t *jsb)
-@@ -496,6 +517,97 @@ static inline size_t journal_super_tag_bytes(journal_superblock_t *jsb)
- 	return sz - sizeof(__u32);
- }
- 
-+static void dump_fc_block(FILE *out_file, char *buf, int blocksize,
-+	int transaction, int *fc_done, int dump_old)
-+{
-+	struct ext4_fc_tl	*tl;
-+	struct ext4_fc_head	*head;
-+	struct ext4_fc_add_range	*add_range;
-+	struct ext4_fc_del_range	*del_range;
-+	struct ext4_fc_dentry_info	*dentry_info;
-+	struct ext4_fc_tail		*tail;
-+	struct ext3_extent	*ex;
-+
-+	*fc_done = 0;
-+	fc_for_each_tl(buf, buf + blocksize, tl) {
-+		switch (le16_to_cpu(tl->fc_tag)) {
-+		case EXT4_FC_TAG_ADD_RANGE:
-+			add_range =
-+				(struct ext4_fc_add_range *)ext4_fc_tag_val(tl);
-+			ex = (struct ext3_extent *)add_range->fc_ex;
-+			fprintf(out_file,
-+				"tag %s, inode %d, lblk %d, pblk %ld, len %d\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(add_range->fc_ino),
-+				le32_to_cpu(ex->ee_block),
-+				le32_to_cpu(ex->ee_start) +
-+				(((__u64) le16_to_cpu(ex->ee_start_hi)) << 32),
-+				le16_to_cpu(ex->ee_len) > EXT_INIT_MAX_LEN ?
-+				le16_to_cpu(ex->ee_len) - EXT_INIT_MAX_LEN :
-+				le16_to_cpu(ex->ee_len));
-+			break;
-+		case EXT4_FC_TAG_DEL_RANGE:
-+			del_range =
-+				(struct ext4_fc_del_range *)ext4_fc_tag_val(tl);
-+			fprintf(out_file, "tag %s, inode %d, lblk %d, len %d\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(del_range->fc_ino),
-+				le32_to_cpu(del_range->fc_lblk),
-+				le32_to_cpu(del_range->fc_len));
-+			break;
-+		case EXT4_FC_TAG_LINK:
-+		case EXT4_FC_TAG_UNLINK:
-+		case EXT4_FC_TAG_CREAT:
-+			dentry_info =
-+				(struct ext4_fc_dentry_info *)
-+					ext4_fc_tag_val(tl);
-+			fprintf(out_file,
-+				"tag %s, parent %d, ino %d, name \"%s\"\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(dentry_info->fc_parent_ino),
-+				le32_to_cpu(dentry_info->fc_ino),
-+				dentry_info->fc_dname);
-+			break;
-+		case EXT4_FC_TAG_INODE:
-+			fprintf(out_file, "tag %s, inode %d\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(((struct ext4_fc_inode *)
-+					ext4_fc_tag_val(tl))->fc_ino));
-+			break;
-+		case EXT4_FC_TAG_PAD:
-+			fprintf(out_file, "tag %s\n", tag2str(tl->fc_tag));
-+			break;
-+		case EXT4_FC_TAG_TAIL:
-+			tail = (struct ext4_fc_tail *)ext4_fc_tag_val(tl);
-+			fprintf(out_file, "tag %s, tid %d\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(tail->fc_tid));
-+			if (!dump_old &&
-+				le32_to_cpu(tail->fc_tid) < transaction) {
-+				*fc_done = 1;
-+				return;
-+			}
-+			break;
-+		case EXT4_FC_TAG_HEAD:
-+			fprintf(out_file, "\n*** Fast Commit Area ***\n");
-+			head = (struct ext4_fc_head *)ext4_fc_tag_val(tl);
-+			fprintf(out_file, "tag %s, features 0x%x, tid %d\n",
-+				tag2str(tl->fc_tag),
-+				le32_to_cpu(head->fc_features),
-+				le32_to_cpu(head->fc_tid));
-+			if (!dump_old &&
-+				le32_to_cpu(head->fc_tid) < transaction) {
-+				*fc_done = 1;
-+				return;
-+			}
-+			break;
-+		default:
-+			*fc_done = 1;
-+			break;
-+		}
-+	}
-+}
-+
- static void dump_descriptor_block(FILE *out_file,
- 				  struct journal_source *source,
- 				  char *buf,
--- 
-2.29.2.454.gaff20da3a2-goog
-
+Thanks
+--
+Gustavo
