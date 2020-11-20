@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6848DC2D0E4
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A69DBC64E8A
 	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2BCB52245F
+	by mail.kernel.org (Postfix) with ESMTP id 5C42D2240A
 	for <linux-ext4@archiver.kernel.org>; Fri, 20 Nov 2020 19:16:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Z+qYsOTw"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Tvf3ztuI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732255AbgKTTQk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 20 Nov 2020 14:16:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48552 "EHLO
+        id S1732270AbgKTTQn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 Nov 2020 14:16:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48562 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732200AbgKTTQj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 14:16:39 -0500
-Received: from mail-pg1-x52a.google.com (mail-pg1-x52a.google.com [IPv6:2607:f8b0:4864:20::52a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 92B7EC0613CF
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:39 -0800 (PST)
-Received: by mail-pg1-x52a.google.com with SMTP id t37so8031409pga.7
-        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:39 -0800 (PST)
+        with ESMTP id S1732257AbgKTTQm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Nov 2020 14:16:42 -0500
+Received: from mail-pg1-x52b.google.com (mail-pg1-x52b.google.com [IPv6:2607:f8b0:4864:20::52b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 925CDC061A04
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:42 -0800 (PST)
+Received: by mail-pg1-x52b.google.com with SMTP id r18so8112044pgu.6
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Nov 2020 11:16:42 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=wt3jsceFNkLIQh4mBUjcPZa+ba6zcRcGDtdcaOK1uP0=;
-        b=Z+qYsOTwYIXF2a4v+jDahjBf5GcHACIHJ6zKhQg7LK1eoHRh1RA2FOYlEq+50wkZT6
-         B2KxbUADKMsWPejlofK2jeckE7pej+8x76poHkhVjV7YqXD4iUogD6K7LN499YQk+tro
-         4mFbUbBgM0Bpj3pbVYT6Ee9YRbwyMMn3BAqUR4oFnSiy3dgrYagBoTlMPWOjfqA1ysvC
-         uiA+VDYRQBnzm1LU5pspLFgBybG4HRbu8nUXkJV8kg6WWWly0fSjpLAazVWypR4wDP4e
-         KljDFugaxOSwwPo3J6wEGND3Ok+CM+5dDtM7tMWr98DSRbPPRdtTa+Q61h+LgqRIjWLz
-         SWnA==
+        bh=mGxPJmgwdj47SE+aKI9OYp28RhTZr5pYTnMDSjDyNi0=;
+        b=Tvf3ztuIS8dsXrzNNl1CH/TaPT8q3Q0u3t4IkerGHJy/hubpf0JR8jI/MzY1Q0SPNX
+         KKn0R43bMtFB7K3wxt29KUYuhS5/SuKwO2wtFutZPZ+qEoC3fwkavR9hHoT0mMMb932i
+         8iK2FZMNP0Ae7f54Twz3c4fCLo5IDREehCcun827Isk/cvR7Sl/hYq5op/tjc0NDSwhQ
+         aChZDBt3yauLN7pG631NZbajMzmuVzyZ1rNM5LFiJzvXmQFQ81gk4NLqzhxB48zj2duN
+         JDBismYInhisSkezGEGC6ixE3jdeY5J9ovGo3SEIG++PupN8ffaSPzBEjYhHfIl7vwor
+         7swg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=wt3jsceFNkLIQh4mBUjcPZa+ba6zcRcGDtdcaOK1uP0=;
-        b=YdIrBsu6nbfE31JZdWn7RGEraSxQOuNqxaln0ib4d9h6AYuG+E+axFrESFYfWbzj6Q
-         ah1SZbJMhIgbQVq3MH6d51Y5EEmh67MjoO73za2I9dcFssHe8geKImqOslTEKGKQzPUI
-         SufBVozx29pvM34TVKHvIzrR7qK78Cz/vFpkcwRocMmys9RCI1BNQ7qvVlxS73RaWMvk
-         7WMI8f9N0wzT7g56YgIlsIPBVYIo8PGpCMwCdy0nNl0Ct3b0zzMUgGaXpt1C5kN/91JE
-         /GX5hhRHRVhsNw81puSUdgBfjI0CMurr6YiwBkqH5lpnv7LfW+bI6GhGGe+kAUoHfLVb
-         qvUg==
-X-Gm-Message-State: AOAM532rj+x1L0iHweBc2JOjq1jgbzV3WbM6gBuQtFLz7EYAQHfIyYLY
-        Hd/5MCVPq9xNEdE++YDjuy2lz0EE3jI=
-X-Google-Smtp-Source: ABdhPJxfQTExM4nTdn0J/IzJeUbIt4TJ49hfHMmOPqqjB1jDv+tD7rjyWrRACxyKO+Xr60PGLTBvyw==
-X-Received: by 2002:a63:1918:: with SMTP id z24mr18211314pgl.367.1605899798538;
-        Fri, 20 Nov 2020 11:16:38 -0800 (PST)
+        bh=mGxPJmgwdj47SE+aKI9OYp28RhTZr5pYTnMDSjDyNi0=;
+        b=esejNXV9oUalDRi13NEpeus0ks8dEV71ji6QKt1ah1Qcs5R3BNcMFRvaFHiCAbjeFJ
+         ygfoAEqyOdKoS556JnZrnV0YS5PoWmI+iO60WzAlIX8BgpEd3TvXZLvTEiEmpSP/bkvI
+         a3VXN15W/0m/Xq04xkeZWZNCaZXM5EdIgod/FkNdZOzYy5jFIvyR8IjHnsiaBNPE8v3d
+         /MuXmca/+F3oROiWTGirsy88T7EOj1q781jFFj7Su6fok7SJvgzwOncHa98iZbt1jgo6
+         EYZOtCPOiXppoSHDJcNa+lnqihB+EEqs/5MhdPr8gzC1CLgIzsrCys1N/yuQpEYodfqV
+         XOmQ==
+X-Gm-Message-State: AOAM530zANmRLFy/GK/zJIVpprg9pFv8LnKXhE1zhBhw61m/RqTgFYUE
+        TTM2hGx6y+gvle0UehGgEIkFG7R98yE=
+X-Google-Smtp-Source: ABdhPJz3n04hBRDWcsBKGEc8KFmuGIEHtGbZFplO0250rRhspZFDQHhq49bxqVYEnE3EaiM/f3IBEg==
+X-Received: by 2002:a17:90a:f0f:: with SMTP id 15mr11982476pjy.127.1605899801564;
+        Fri, 20 Nov 2020 11:16:41 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id o9sm4370480pjr.2.2020.11.20.11.16.37
+        by smtp.googlemail.com with ESMTPSA id o9sm4370480pjr.2.2020.11.20.11.16.40
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 20 Nov 2020 11:16:37 -0800 (PST)
+        Fri, 20 Nov 2020 11:16:40 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH 12/15] e2fsck: add replay for add_range, del_range, and inode tags
-Date:   Fri, 20 Nov 2020 11:16:03 -0800
-Message-Id: <20201120191606.2224881-13-harshadshirwadkar@gmail.com>
+Subject: [PATCH 14/15] tests: add fast commit recovery tests
+Date:   Fri, 20 Nov 2020 11:16:05 -0800
+Message-Id: <20201120191606.2224881-15-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.2.454.gaff20da3a2-goog
 In-Reply-To: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
 References: <20201120191606.2224881-1-harshadshirwadkar@gmail.com>
@@ -73,396 +73,134 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add replay for inode's extent trees and inode itself.
+Add j_recover_fast_commit test that ensure that e2fsck is able to
+recover a disk from fast commit log.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- e2fsck/journal.c | 341 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 341 insertions(+)
+ tests/j_recover_fast_commit/commands |   4 ++++
+ tests/j_recover_fast_commit/expect   |  23 +++++++++++++++++++++++
+ tests/j_recover_fast_commit/image.gz | Bin 0 -> 3595 bytes
+ tests/j_recover_fast_commit/script   |  26 ++++++++++++++++++++++++++
+ 4 files changed, 53 insertions(+)
+ create mode 100644 tests/j_recover_fast_commit/commands
+ create mode 100644 tests/j_recover_fast_commit/expect
+ create mode 100644 tests/j_recover_fast_commit/image.gz
+ create mode 100755 tests/j_recover_fast_commit/script
 
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 9f4c4a70..ccd70186 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -378,6 +378,219 @@ static int ext4_fc_replay_scan(journal_t *j, struct buffer_head *bh,
- out_err:
- 	return ret;
- }
+diff --git a/tests/j_recover_fast_commit/commands b/tests/j_recover_fast_commit/commands
+new file mode 100644
+index 00000000..74e20e4e
+--- /dev/null
++++ b/tests/j_recover_fast_commit/commands
+@@ -0,0 +1,4 @@
++ls
++ls a/
++ex a/new
++ex a/data
+diff --git a/tests/j_recover_fast_commit/expect b/tests/j_recover_fast_commit/expect
+new file mode 100644
+index 00000000..2fc1e53f
+--- /dev/null
++++ b/tests/j_recover_fast_commit/expect
+@@ -0,0 +1,23 @@
++test_filesys: recovering journal
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 14/256 files (14.3% non-contiguous), 1365/2048 blocks
++Exit status is 0
++debugfs: ls
++ 2  (12) .    2  (12) ..    11  (20) lost+found    12  (968) a   
++debugfs: ls a/
++ 12  (12) .    2  (12) ..    13  (12) data    14  (976) new   
++debugfs: ex a/new
++Level Entries       Logical      Physical Length Flags
++ 0/ 0   1/  1     0 -     0  1107 -  1107      1 
++debugfs: ex a/data
++Level Entries       Logical      Physical Length Flags
++ 0/ 1   1/  1     0 -   255  1618            256
++ 1/ 1   1/  5     0 -    15  1619 -  1634     16 
++ 1/ 1   2/  5    16 -    31  1601 -  1616     16 
++ 1/ 1   3/  5    32 -    63  1985 -  2016     32 
++ 1/ 1   4/  5    64 -   127  1537 -  1600     64 
++ 1/ 1   5/  5   128 -   255  1793 -  1920    128 
+diff --git a/tests/j_recover_fast_commit/image.gz b/tests/j_recover_fast_commit/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..b7357afc46bec8a0154d5746fa2fce86c2341efc
+GIT binary patch
+literal 3595
+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
+HWGCd`W!a1I
+
+literal 0
+HcmV?d00001
+
+diff --git a/tests/j_recover_fast_commit/script b/tests/j_recover_fast_commit/script
+new file mode 100755
+index 00000000..6bdb8258
+--- /dev/null
++++ b/tests/j_recover_fast_commit/script
+@@ -0,0 +1,26 @@
++#!/bin/bash
 +
-+#define ex_end(__ex) ((__ex)->e_lblk + (__ex)->e_len - 1)
-+#define ex_pend(__ex) ((__ex)->e_pblk + (__ex)->e_len - 1)
++FSCK_OPT=-fy
++IMAGE=$test_dir/image.gz
++CMDS=$test_dir/commands
 +
-+static int make_room(struct extent_list *list, int i)
-+{
-+	int ret;
++gunzip < $IMAGE > $TMPFILE
 +
-+	if (list->count == list->size) {
-+		unsigned int new_size = (list->size + 341) *
-+					sizeof(struct ext2fs_extent);
-+		ret = ext2fs_resize_mem(0, new_size, &list->extents);
-+		if (ret)
-+			return ret;
-+		list->size += 341;
-+	}
++# Run fsck to fix things?
++EXP=$test_dir/expect
++OUT=$test_name.log
 +
-+	memmove(&list->extents[i + 1], &list->extents[i],
-+			sizeof(list->extents[0]) * (list->count - i));
-+	list->count++;
-+	return 0;
-+}
++cp $TMPFILE /tmp/debugthis
++$FSCK $FSCK_OPT -E journal_only -N test_filesys $TMPFILE 2>&1 | head -n 1000 | tail -n +2 > $OUT
++echo "Exit status is $?" >> $OUT
 +
-+static int ex_compar(const void *arg1, const void *arg2)
-+{
-+	struct ext2fs_extent *ex1 = (struct ext2fs_extent *)arg1;
-+	struct ext2fs_extent *ex2 = (struct ext2fs_extent *)arg2;
++$DEBUGFS -f $CMDS $TMPFILE >> $OUT 2>/dev/null
 +
-+	if (ex1->e_lblk < ex2->e_lblk)
-+		return -1;
-+	if (ex1->e_lblk > ex2->e_lblk)
-+		return 1;
-+	return ex1->e_len - ex2->e_len;
-+}
-+
-+static int ex_len_compar(const void *arg1, const void *arg2)
-+{
-+	struct ext2fs_extent *ex1 = (struct ext2fs_extent *)arg1;
-+	struct ext2fs_extent *ex2 = (struct ext2fs_extent *)arg2;
-+
-+	if (ex1->e_len < ex2->e_len)
-+		return 1;
-+
-+	if (ex1->e_lblk > ex2->e_lblk)
-+		return -1;
-+
-+	return 0;
-+}
-+
-+static void ex_sort_and_merge(e2fsck_t ctx, struct extent_list *list)
-+{
-+	blk64_t ex_end;
-+	int i, j;
-+
-+	if (list->count < 2)
-+		return;
-+
-+	/*
-+	 * Reverse sort by length, that way we strip off all the 0 length
-+	 * extents
-+	 */
-+	qsort(list->extents, list->count, sizeof(struct ext2fs_extent),
-+		ex_len_compar);
-+
-+	for (i = 0; i < list->count; i++) {
-+		if (list->extents[i].e_len == 0) {
-+			list->count = i;
-+			break;
-+		}
-+	}
-+
-+	/* Now sort by logical offset */
-+	qsort(list->extents, list->count, sizeof(list->extents[0]),
-+		ex_compar);
-+
-+	/* Merge adjacent extents if they are logically and physically contiguous */
-+	i = 0;
-+	while (i < list->count - 1) {
-+		if (ex_end(&list->extents[i]) + 1 != list->extents[i + 1].e_lblk ||
-+			ex_pend(&list->extents[i]) + 1 != list->extents[i + 1].e_pblk ||
-+			(list->extents[i].e_flags & EXT2_EXTENT_FLAGS_UNINIT) !=
-+				(list->extents[i + 1].e_flags & EXT2_EXTENT_FLAGS_UNINIT)) {
-+			i++;
-+			continue;
-+		}
-+
-+		list->extents[i].e_len += list->extents[i + 1].e_len;
-+		for (j = i + 1; j < list->count - 1; j++)
-+			list->extents[j] = list->extents[j + 1];
-+		list->count--;
-+	}
-+}
-+
-+/* must free blocks that are released */
-+static int ext2fs_modify_extent_list(e2fsck_t ctx, struct extent_list *list,
-+					struct ext2fs_extent *ex, int del)
-+{
-+	int ret;
-+	int i, offset;
-+	struct ext2fs_extent add_ex = *ex, add_ex2;
-+
-+	/* First let's create a hole from ex->e_lblk of length ex->e_len */
-+	for (i = 0; i < list->count; i++) {
-+		if (ex_end(&list->extents[i]) < add_ex.e_lblk)
-+			continue;
-+
-+		/* Case 1: No overlap */
-+		if (list->extents[i].e_lblk > ex_end(&add_ex))
-+			break;
-+		/*
-+		 * Unmark all the blocks in bb now. All the blocks get marked
-+		 * before we exit this function.
-+		 */
-+		ext2fs_unmark_block_bitmap_range2(ctx->fs->block_map,
-+			list->extents[i].e_pblk, list->extents[i].e_len);
-+		/* Case 2: Split */
-+		if (list->extents[i].e_lblk < add_ex.e_lblk &&
-+			ex_end(&list->extents[i]) > ex_end(&add_ex)) {
-+			ret = make_room(list, i + 1);
-+			if (ret)
-+				return ret;
-+			list->extents[i + 1] = list->extents[i];
-+			offset = ex_end(&add_ex) + 1 - list->extents[i].e_lblk;
-+			list->extents[i + 1].e_lblk += offset;
-+			list->extents[i + 1].e_pblk += offset;
-+			list->extents[i + 1].e_len -= offset;
-+			list->extents[i].e_len =
-+				add_ex.e_lblk - list->extents[i].e_lblk;
-+			break;
-+		}
-+
-+		/* Case 3: Exact overlap */
-+		if (add_ex.e_lblk <= list->extents[i].e_lblk  &&
-+			ex_end(&list->extents[i]) <= ex_end(&add_ex)) {
-+
-+			list->extents[i].e_len = 0;
-+			continue;
-+		}
-+
-+		/* Case 4: Partial overlap */
-+		if (ex_end(&list->extents[i]) > ex_end(&add_ex)) {
-+			offset = ex_end(&add_ex) + 1 - list->extents[i].e_lblk;
-+			list->extents[i].e_lblk += offset;
-+			list->extents[i].e_pblk += offset;
-+			list->extents[i].e_len -= offset;
-+			break;
-+		}
-+
-+		if (ex_end(&add_ex) >= ex_end(&list->extents[i])) {
-+			list->extents[i].e_len =
-+				max(add_ex.e_lblk - list->extents[i].e_lblk,
-+					0);
-+		}
-+	}
-+
-+	if (add_ex.e_len && !del) {
-+		make_room(list, list->count);
-+		list->extents[list->count - 1] = add_ex;
-+	}
-+
-+	ex_sort_and_merge(ctx, list);
-+
-+	/* Mark all occupied blocks allocated */
-+	for (i = 0; i < list->count; i++)
-+		ext2fs_mark_block_bitmap_range2(ctx->fs->block_map,
-+			list->extents[i].e_pblk, list->extents[i].e_len);
-+	ext2fs_mark_bb_dirty(ctx->fs);
-+
-+	return 0;
-+}
-+
-+static int ext2fs_add_extent_to_list(e2fsck_t ctx, struct extent_list *list,
-+					struct ext2fs_extent *ex)
-+{
-+	return ext2fs_modify_extent_list(ctx, list, ex, 0 /* add */);
-+}
-+
-+static int ext2fs_del_extent_to_list(e2fsck_t ctx, struct extent_list *list,
-+					struct ext2fs_extent *ex)
-+{
-+	return ext2fs_modify_extent_list(ctx, list, ex, 1 /* delete */);
-+}
-+
-+static int e2fsck_fc_read_extents(e2fsck_t ctx, int ino)
-+{
-+	struct extent_list *extent_list = &ctx->fc_replay_state.fc_extent_list;
-+
-+	if (extent_list->ino == ino)
-+		return 0;
-+
-+	extent_list->ino = ino;
-+	return e2fsck_read_extents(ctx, extent_list);
-+}
-+
-+/*
-+ * Flush extents in replay state on disk. @ino is the inode that is going
-+ * to be processed next. So, we hold back flushing of the extent list
-+ * if the next inode that's going to be processed is same as the one with
-+ * cached extents in our replay state. That allows us to gather multiple extents
-+ * for the inode so that we can flush all of them at once and it also saves us
-+ * from continuously growing and shrinking the extent tree.
-+ */
-+static void e2fsck_fc_flush_extents(e2fsck_t ctx, int ino)
-+{
-+	struct extent_list *extent_list = &ctx->fc_replay_state.fc_extent_list;
-+
-+	if (extent_list->ino == ino || extent_list->ino == 0)
-+		return;
-+	e2fsck_rewrite_extent_tree(ctx, extent_list);
-+	ext2fs_free_mem(&extent_list->extents);
-+	memset(extent_list, 0, sizeof(*extent_list));
-+}
-+
- /* Helper struct for dentry replay routines */
- struct dentry_info_args {
- 	int parent_ino, dname_len, ino, inode_len;
-@@ -414,6 +627,7 @@ static int ext4_fc_handle_unlink(e2fsck_t ctx, struct ext4_fc_tl *tl)
- 	ext2_filsys fs = ctx->fs;
- 
- 	tl_to_darg(&darg, tl);
-+	e2fsck_fc_flush_extents(ctx, darg.ino);
- 	ext2fs_unlink(ctx->fs, darg.parent_ino, darg.dname, darg.ino, 0);
- 	/* It's okay if the above call fails */
- 	free(darg.dname);
-@@ -427,6 +641,8 @@ static int ext4_fc_handle_link_and_create(e2fsck_t ctx, struct ext4_fc_tl *tl)
- 	int ret, filetype, mode;
- 
- 	tl_to_darg(&darg, tl);
-+
-+	e2fsck_fc_flush_extents(ctx, 0);
- 	ret = ext2fs_read_inode(fs, darg.ino,
- 					(struct ext2_inode *)&inode_large);
- 	if (ret)
-@@ -467,6 +683,124 @@ out:
- 	return ret;
- 
- }
-+
-+/* This function fixes the i_blocks field in the replayed indoe */
-+static void ext4_fc_replay_fixup_iblocks(struct ext2_inode_large *ondisk_inode,
-+	struct ext2_inode_large *fc_inode)
-+{
-+	if (le32_to_cpu(ondisk_inode->i_flags) & EXT4_EXTENTS_FL) {
-+		struct ext3_extent_header *eh;
-+
-+		eh = (struct ext3_extent_header *)(&ondisk_inode->i_block[0]);
-+		if (eh->eh_magic != EXT3_EXT_MAGIC) {
-+			memset(eh, 0, sizeof(*eh));
-+			eh->eh_magic = EXT3_EXT_MAGIC;
-+			eh->eh_max = cpu_to_le16(
-+				(sizeof(ondisk_inode->i_block) -
-+					sizeof(struct ext3_extent_header)) /
-+					sizeof(struct ext3_extent));
-+		}
-+	} else if (le32_to_cpu(ondisk_inode->i_flags) & EXT4_INLINE_DATA_FL) {
-+		memcpy(ondisk_inode->i_block, fc_inode->i_block,
-+			sizeof(fc_inode->i_block));
-+	}
-+}
-+
-+static int ext4_fc_handle_inode(e2fsck_t ctx, struct ext4_fc_tl *tl)
-+{
-+	struct ext4_fc_inode *fc_inode;
-+	struct ext2_inode_large *inode = NULL;
-+	int ino, inode_len = EXT2_GOOD_OLD_INODE_SIZE, ret;
-+	struct e2fsck_fc_replay_state *state = &ctx->fc_replay_state;
-+
-+	fc_inode = (struct ext4_fc_inode *)ext4_fc_tag_val(tl);
-+	ino = le32_to_cpu(fc_inode->fc_ino);
-+
-+	if (EXT2_INODE_SIZE(ctx->fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
-+		inode_len += ext2fs_le16_to_cpu(
-+			((struct ext2_inode_large *)fc_inode->fc_raw_inode)
-+				->i_extra_isize);
-+	ret = ext2fs_get_mem(inode_len, &inode);
-+	if (ret)
-+		return ret;
-+	e2fsck_fc_flush_extents(ctx, ino);
-+
-+	ret = ext2fs_read_inode_full(ctx->fs, ino, (struct ext2_inode *)inode,
-+					inode_len);
-+	if (ret)
-+		goto out;
-+	memcpy(inode, fc_inode->fc_raw_inode,
-+		offsetof(struct ext2_inode_large, i_block));
-+	memcpy(&inode->i_generation,
-+		&((struct ext2_inode_large *)(fc_inode->fc_raw_inode))->i_generation,
-+		inode_len - offsetof(struct ext2_inode_large, i_generation));
-+	ext4_fc_replay_fixup_iblocks(inode,
-+		(struct ext2_inode_large *)fc_inode->fc_raw_inode);
-+	ext2fs_iblk_set(ctx->fs, EXT2_INODE(inode),
-+		ext2fs_count_blocks(ctx->fs, ino, EXT2_INODE(inode)));
-+
-+	ext2fs_inode_csum_set(ctx->fs, ino, inode);
-+
-+	ret = ext2fs_write_inode_full(ctx->fs, ino, (struct ext2_inode *)inode,
-+					inode_len);
-+	if (inode->i_links_count)
-+		ext2fs_mark_inode_bitmap2(ctx->fs->inode_map, ino);
-+	else
-+		ext2fs_unmark_inode_bitmap2(ctx->fs->inode_map, ino);
-+	ext2fs_mark_ib_dirty(ctx->fs);
-+
-+out:
-+	ext2fs_free_mem(&inode);
-+	return ret;
-+}
-+
-+/*
-+ * Handle add extent replay tag.
-+ */
-+static int ext4_fc_handle_add_extent(e2fsck_t ctx, struct ext4_fc_tl *tl)
-+{
-+	struct ext2fs_extent extent;
-+	struct ext4_fc_add_range *add_range;
-+	struct ext4_fc_del_range *del_range;
-+	int ret = 0, ino;
-+
-+	add_range = (struct ext4_fc_add_range *)ext4_fc_tag_val(tl);
-+	ino = le32_to_cpu(add_range->fc_ino);
-+	e2fsck_fc_flush_extents(ctx, ino);
-+
-+	ret = e2fsck_fc_read_extents(ctx, ino);
-+	if (ret)
-+		return ret;
-+	memset(&extent, 0, sizeof(extent));
-+	ext2fs_convert_extent(&extent, (struct ext3_extent *)(
-+				add_range->fc_ex));
-+	return ext2fs_add_extent_to_list(ctx,
-+		&ctx->fc_replay_state.fc_extent_list, &extent);
-+}
-+
-+/*
-+ * Handle delete logical range replay tag.
-+ */
-+static int ext4_fc_handle_del_range(e2fsck_t ctx, struct ext4_fc_tl *tl)
-+{
-+	struct ext2fs_extent extent;
-+	struct ext4_fc_del_range *del_range;
-+	int ret, ino;
-+
-+	del_range = (struct ext4_fc_del_range *)ext4_fc_tag_val(tl);
-+	ino = le32_to_cpu(del_range->fc_ino);
-+	e2fsck_fc_flush_extents(ctx, ino);
-+
-+	memset(&extent, 0, sizeof(extent));
-+	extent.e_lblk = ext2fs_le32_to_cpu(del_range->fc_lblk);
-+	extent.e_len = ext2fs_le16_to_cpu(del_range->fc_len);
-+	ret = e2fsck_fc_read_extents(ctx, ino);
-+	if (ret)
-+		return ret;
-+	return ext2fs_del_extent_to_list(ctx,
-+		&ctx->fc_replay_state.fc_extent_list, &extent);
-+}
-+
- /*
-  * Main recovery path entry point. This function returns JBD2_FC_REPLAY_CONTINUE
-  * to indicate that it is expecting more fast commit blocks. It returns
-@@ -530,9 +864,16 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
- 			ret = ext4_fc_handle_unlink(ctx, tl);
- 			break;
- 		case EXT4_FC_TAG_ADD_RANGE:
-+			ret = ext4_fc_handle_add_extent(ctx, tl);
-+			break;
- 		case EXT4_FC_TAG_DEL_RANGE:
-+			ret = ext4_fc_handle_del_range(ctx, tl);
-+			break;
- 		case EXT4_FC_TAG_INODE:
-+			ret = ext4_fc_handle_inode(ctx, tl);
-+			break;
- 		case EXT4_FC_TAG_TAIL:
-+			e2fsck_fc_flush_extents(ctx, 0);
- 		case EXT4_FC_TAG_PAD:
- 		case EXT4_FC_TAG_HEAD:
- 			break;
++# Figure out what happened
++if cmp -s $EXP $OUT; then
++	echo "$test_name: $test_description: ok"
++	touch $test_name.ok
++else
++	echo "$test_name: $test_description: failed"
++	diff -u $EXP $OUT >> $test_name.failed
++fi
 -- 
 2.29.2.454.gaff20da3a2-goog
 
