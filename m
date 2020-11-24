@@ -6,24 +6,24 @@ X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2ECB3C56201
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 12:32:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 540A6C2D0E4
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 13:41:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D0EDB206B5
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 12:32:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 07F532083E
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 13:41:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733265AbgKXMav (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Nov 2020 07:30:51 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:52354 "EHLO
+        id S2388376AbgKXNkv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Nov 2020 08:40:51 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:54109 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733011AbgKXMau (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2020 07:30:50 -0500
+        with ESMTP id S2388372AbgKXNku (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2020 08:40:50 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1khXSv-0004ea-Op; Tue, 24 Nov 2020 12:30:37 +0000
-Date:   Tue, 24 Nov 2020 13:30:35 +0100
+        id 1khYYf-00013C-20; Tue, 24 Nov 2020 13:40:37 +0000
+Date:   Tue, 24 Nov 2020 14:40:35 +0100
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Tycho Andersen <tycho@tycho.pizza>
 Cc:     Andy Lutomirski <luto@kernel.org>,
@@ -57,66 +57,77 @@ Cc:     Andy Lutomirski <luto@kernel.org>,
         Stephen Smalley <stephen.smalley.work@gmail.com>,
         Todd Kjos <tkjos@google.com>
 Subject: Re: [PATCH v2 07/39] mount: attach mappings to mounts
-Message-ID: <20201124123035.hbv4sstyoucht7xp@wittgenstein>
+Message-ID: <20201124134035.2l36avuaqp6gxyum@wittgenstein>
 References: <20201115103718.298186-1-christian.brauner@ubuntu.com>
  <20201115103718.298186-8-christian.brauner@ubuntu.com>
  <20201123154719.GD4025434@cisco>
  <20201123162428.GA24807@cisco>
+ <20201124123035.hbv4sstyoucht7xp@wittgenstein>
+ <20201124133740.GA52954@cisco>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20201123162428.GA24807@cisco>
+In-Reply-To: <20201124133740.GA52954@cisco>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Nov 23, 2020 at 11:24:28AM -0500, Tycho Andersen wrote:
-> On Mon, Nov 23, 2020 at 10:47:19AM -0500, Tycho Andersen wrote:
-> > On Sun, Nov 15, 2020 at 11:36:46AM +0100, Christian Brauner wrote:
-> > > +static inline struct user_namespace *mnt_user_ns(const struct vfsmount *mnt)
-> > > +{
-> > > +	return mnt->mnt_user_ns;
-> > > +}
+On Tue, Nov 24, 2020 at 08:37:40AM -0500, Tycho Andersen wrote:
+> On Tue, Nov 24, 2020 at 01:30:35PM +0100, Christian Brauner wrote:
+> > On Mon, Nov 23, 2020 at 11:24:28AM -0500, Tycho Andersen wrote:
+> > > On Mon, Nov 23, 2020 at 10:47:19AM -0500, Tycho Andersen wrote:
+> > > > On Sun, Nov 15, 2020 at 11:36:46AM +0100, Christian Brauner wrote:
+> > > > > +static inline struct user_namespace *mnt_user_ns(const struct vfsmount *mnt)
+> > > > > +{
+> > > > > +	return mnt->mnt_user_ns;
+> > > > > +}
+> > > > 
+> > > > I think you might want a READ_ONCE() here. Right now it seems ok, since the
+> > > > mnt_user_ns can't change, but if we ever allow it to change (and I see you have
+> > > > a idmapped_mounts_wip_v2_allow_to_change_idmapping branch on your public tree
+> > > > :D), the pattern of,
+> > > > 
+> > > >         user_ns = mnt_user_ns(path->mnt);
+> > > >         if (mnt_idmapped(path->mnt)) {
+> > > >                 uid = kuid_from_mnt(user_ns, uid);
+> > > >                 gid = kgid_from_mnt(user_ns, gid);
+> > > >         }
+> > > > 
+> > > > could race.
+> > > 
+> > > Actually, isn't a race possible now?
+> > > 
+> > > kuid_from_mnt(mnt_user_ns(path->mnt) /* &init_user_ns */);
+> > > WRITE_ONCE(mnt->mnt.mnt_user_ns, user_ns);
+> > > WRITE_ONCE(m->mnt.mnt_flags, flags);
+> > > kgid_from_mnt(mnt_user_ns(path->mnt) /* the right user ns */);
+> > > 
+> > > So maybe it should be:
+> > > 
+> > >          if (mnt_idmapped(path->mnt)) {
+> > >                  barrier();
+> > >                  user_ns = mnt_user_ns(path->mnt);
+> > >                  uid = kuid_from_mnt(user_ns, uid);
+> > >                  gid = kgid_from_mnt(user_ns, gid);
+> > >          }
+> > > 
+> > > since there's no data dependency between mnt_idmapped() and
+> > > mnt_user_ns()?
 > > 
-> > I think you might want a READ_ONCE() here. Right now it seems ok, since the
-> > mnt_user_ns can't change, but if we ever allow it to change (and I see you have
-> > a idmapped_mounts_wip_v2_allow_to_change_idmapping branch on your public tree
-> > :D), the pattern of,
-> > 
-> >         user_ns = mnt_user_ns(path->mnt);
-> >         if (mnt_idmapped(path->mnt)) {
-> >                 uid = kuid_from_mnt(user_ns, uid);
-> >                 gid = kgid_from_mnt(user_ns, gid);
-> >         }
-> > 
-> > could race.
+> > I think I had something to handle this case in another branch of mine.
+> > The READ_ONCE() you mentioned in another patch I had originally dropped
+> > because I wasn't sure whether it works on pointers but after talking to
+> > Jann and David it seems that it handles pointers fine.
+> > Let me take a look and fix it in the next version. I just finished
+> > porting the test suite to xfstests as Christoph requested and I'm
+> > looking at this now.
 > 
-> Actually, isn't a race possible now?
-> 
-> kuid_from_mnt(mnt_user_ns(path->mnt) /* &init_user_ns */);
-> WRITE_ONCE(mnt->mnt.mnt_user_ns, user_ns);
-> WRITE_ONCE(m->mnt.mnt_flags, flags);
-> kgid_from_mnt(mnt_user_ns(path->mnt) /* the right user ns */);
-> 
-> So maybe it should be:
-> 
->          if (mnt_idmapped(path->mnt)) {
->                  barrier();
->                  user_ns = mnt_user_ns(path->mnt);
->                  uid = kuid_from_mnt(user_ns, uid);
->                  gid = kgid_from_mnt(user_ns, gid);
->          }
-> 
-> since there's no data dependency between mnt_idmapped() and
-> mnt_user_ns()?
+> Another way would be to just have mnt_idmapped() test
+> mnt_user_ns() != &init_user_ns instead of the flags; then I think you
+> get the data dependency and thus correct ordering for free.
 
-I think I had something to handle this case in another branch of mine.
-The READ_ONCE() you mentioned in another patch I had originally dropped
-because I wasn't sure whether it works on pointers but after talking to
-Jann and David it seems that it handles pointers fine.
-Let me take a look and fix it in the next version. I just finished
-porting the test suite to xfstests as Christoph requested and I'm
-looking at this now.
+I indeed dropped mnt_idmapped() which is unnecessary. :)
+I think we should still use smp_store_release() in mnt_user_ns() paired
+with smp_load_acquire() in do_idmap_mount() thought.
 
-Thanks!
 Christian
