@@ -2,105 +2,115 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,UNPARSEABLE_RELAY autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B04BC64E75
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 04:31:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03F92C64E7A
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 04:33:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9DE6A20872
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 04:31:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 94D1C20872
+	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 04:33:40 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="Qo/w8pRw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728491AbgKXEbM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 23 Nov 2020 23:31:12 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35096 "EHLO
+        id S1728885AbgKXEd0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 Nov 2020 23:33:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35438 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726039AbgKXEbM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2020 23:31:12 -0500
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B2B9C0613CF;
-        Mon, 23 Nov 2020 20:31:12 -0800 (PST)
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id 0F22D1F44A84
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     Daniel Rosenberg <drosen@google.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Chao Yu <chao@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Richard Weinberger <richard@nod.at>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mtd@lists.infradead.org, kernel-team@android.com
-Subject: Re: [PATCH v4 2/3] fscrypt: Have filesystems handle their d_ops
-Organization: Collabora
-References: <20201119060904.463807-1-drosen@google.com>
-        <20201119060904.463807-3-drosen@google.com>
-        <87y2iuj8y2.fsf@collabora.com> <X7w4C8GAy+P9KNU6@sol.localdomain>
-Date:   Mon, 23 Nov 2020 23:31:05 -0500
-In-Reply-To: <X7w4C8GAy+P9KNU6@sol.localdomain> (Eric Biggers's message of
-        "Mon, 23 Nov 2020 14:30:35 -0800")
-Message-ID: <87blfnpe9i.fsf@collabora.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.1 (gnu/linux)
+        with ESMTP id S1728828AbgKXEdZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Nov 2020 23:33:25 -0500
+Received: from mail-lf1-x131.google.com (mail-lf1-x131.google.com [IPv6:2a00:1450:4864:20::131])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 62211C0613CF
+        for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2020 20:33:25 -0800 (PST)
+Received: by mail-lf1-x131.google.com with SMTP id d17so26952135lfq.10
+        for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2020 20:33:25 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=24cszGpR4ywO4s4bnLwJTzF6tXtNEZ3Sx4FvfUI5fRM=;
+        b=Qo/w8pRweB3KyHg3F/WpjXkumwlz+D/AvIsfhGajTbc5rxWuFX6axMRr2JB4kSL4pA
+         hIBC4OqrP3RwB25oHrD6ZaKBqVFGtNoYL6Y4nSMoCfYeCeQOINqE3jTOyTbnWeWoHLiI
+         UkFQ9R+vhIKbEe6WKzj2zXtFUjc557jUOVygU=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=24cszGpR4ywO4s4bnLwJTzF6tXtNEZ3Sx4FvfUI5fRM=;
+        b=UIAKno/IV4Znas/RKYdyl1GwbqQgYWHn1bwOLKD0hbijdwkHkPd0RNhaV5QxlybVZw
+         mxUt+AGKp69vK3+HiGHePLBMRUPuK5D8VzmdJWaR9dcyks6tzFuqKU9GGgw4nsQvxw3L
+         rV8mVj6Fon/8j2V9Q1io7DAoPNtRRypjrsmsqNpYPThbOX3+KkZllKnsp2rJDoXCyopH
+         DF63MZgFvq8Ab+nRgAIix+Y76dGwAqJvHq2nqBnkB7GRfPxnrHuYCZE08+2mRClqEVo+
+         m/NMnaGy7ZiKqaQHVA5GeNu1DhKPLDBCIEkGXAhziG5+5Y984TYv/wAURWUw6lUIz1Du
+         9MGg==
+X-Gm-Message-State: AOAM532kucA9F29zQplJgBLSTRaq0iEPUTG1dqcy2UnOkvQLCwX3zcQh
+        aaBwljhnIvItZ0+UpdvQpMIyka+Ng2nRsA==
+X-Google-Smtp-Source: ABdhPJycPVFHuw0J9pgftfZRT8Hfz2b1+nyYEC3qVICGTvH5n0gHgsXyGHvqIOeFo9HKCoyOmmkbrg==
+X-Received: by 2002:a19:ccd5:: with SMTP id c204mr1005477lfg.469.1606192403619;
+        Mon, 23 Nov 2020 20:33:23 -0800 (PST)
+Received: from mail-lj1-f180.google.com (mail-lj1-f180.google.com. [209.85.208.180])
+        by smtp.gmail.com with ESMTPSA id f27sm547074lfq.188.2020.11.23.20.33.23
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 23 Nov 2020 20:33:23 -0800 (PST)
+Received: by mail-lj1-f180.google.com with SMTP id r18so5731725ljc.2
+        for <linux-ext4@vger.kernel.org>; Mon, 23 Nov 2020 20:33:23 -0800 (PST)
+X-Received: by 2002:a19:3f55:: with SMTP id m82mr1019862lfa.344.1606192024162;
+ Mon, 23 Nov 2020 20:27:04 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain
+References: <000000000000d3a33205add2f7b2@google.com> <20200828100755.GG7072@quack2.suse.cz>
+ <20200831100340.GA26519@quack2.suse.cz> <CAHk-=wivRS_1uy326sLqKuwerbL0APyKYKwa+vWVGsQg8sxhLw@mail.gmail.com>
+ <alpine.LSU.2.11.2011231928140.4305@eggly.anvils>
+In-Reply-To: <alpine.LSU.2.11.2011231928140.4305@eggly.anvils>
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Mon, 23 Nov 2020 20:26:48 -0800
+X-Gmail-Original-Message-ID: <CAHk-=wjcSFM+aqLnh7ucx3_tHpc1+9sJ+FfhSgVFH316uX2FZQ@mail.gmail.com>
+Message-ID: <CAHk-=wjcSFM+aqLnh7ucx3_tHpc1+9sJ+FfhSgVFH316uX2FZQ@mail.gmail.com>
+Subject: Re: kernel BUG at fs/ext4/inode.c:LINE!
+To:     Hugh Dickins <hughd@google.com>
+Cc:     Jan Kara <jack@suse.cz>,
+        syzbot <syzbot+3622cea378100f45d59f@syzkaller.appspotmail.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Linux-MM <linux-mm@kvack.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Kirill A. Shutemov" <kirill@shutemov.name>,
+        Nicholas Piggin <npiggin@gmail.com>,
+        Alex Shi <alex.shi@linux.alibaba.com>, Qian Cai <cai@lca.pw>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        William Kucharski <william.kucharski@oracle.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Eric Biggers <ebiggers@kernel.org> writes:
-
-> On Sat, Nov 21, 2020 at 11:45:41PM -0500, Gabriel Krisman Bertazi wrote:
->> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> > index 6633b20224d5..0288bedf46e1 100644
->> > --- a/fs/ext4/super.c
->> > +++ b/fs/ext4/super.c
->> > @@ -4968,11 +4968,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->> >  		goto failed_mount4;
->> >  	}
->> >  
->> > -#ifdef CONFIG_UNICODE
->> > -	if (sb->s_encoding)
->> > -		sb->s_d_op = &ext4_dentry_ops;
->> > -#endif
->> 
->> This change has the side-effect of removing the capability of the root
->> directory from being case-insensitive.  It is not a backward
->> incompatible change because there is no way to make the root directory
->> CI at the moment (it is never empty). But this restriction seems
->> artificial. Is there a real reason to prevent the root inode from being
->> case-insensitive?
->> 
+On Mon, Nov 23, 2020 at 8:07 PM Hugh Dickins <hughd@google.com> wrote:
 >
-> The problem is that the "lost+found" directory is special in that e2fsck needs
-> to be able to find it.
->
-> That's the reason why ext4 doesn't allow the root directory to be encrypted.
-> (And encrypting the root directory isn't really useful anyway, since if the goal
-> is to encrypt a whole filesystem with one key, dm-crypt is a better solution.)
->
-> Casefolding is a bit less problematic than encryption.  But it still doesn't
-> entirely work, as e.g. if you name the directory "LOST+FOUND" instead (the
-> directory is casefolded after all...), then e2fsck can't find it.
->
-> Unless there's a real use case for the root directory being casefolded and
-> people are willing to fix e2fsck, I think we should just make ext4 return an
-> error when setting the casefold flag on the root directory, like it does when
-> trying to enable encryption on the root directory.
+> The problem is that PageWriteback is not accompanied by a page reference
+> (as the NOTE at the end of test_clear_page_writeback() acknowledges): as
+> soon as TestClearPageWriteback has been done, that page could be removed
+> from page cache, freed, and reused for something else by the time that
+> wake_up_page() is reached.
 
-I don't have a use case where I need a root directory to be CI.  In
-fact, when I first implemented CI, I did want to block the root directory
-from being made CI, just to prevent people from doing "chattr +F /" and
-complaining afterwards when /usr/lib breaks.
+Ugh.
 
-My concern with the curent patch was whether this side-effect was
-considered, but I'm happy with either semantics.
+Would it be possible to instead just make PageWriteback take the ref?
 
--- 
-Gabriel Krisman Bertazi
+I don't hate your patch per se, but looking at that long explanation,
+and looking at the gyrations end_page_writeback() does, I go "why
+don't we do that?"
+
+IOW, why couldn't we just make the __test_set_page_writeback()
+increment the page count if the writeback flag wasn't already set, and
+then make the end_page_writeback() do a put_page() after it all?
+
+            Linus
