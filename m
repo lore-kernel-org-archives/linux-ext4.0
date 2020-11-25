@@ -2,122 +2,94 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCE92C64E7A
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 23:53:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00654C56202
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A59B22173E
-	for <linux-ext4@archiver.kernel.org>; Tue, 24 Nov 2020 23:53:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ADF6421973
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:47 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="AJl8OkUG"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726810AbgKXXxV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Nov 2020 18:53:21 -0500
-Received: from kvm5.telegraphics.com.au ([98.124.60.144]:43356 "EHLO
-        kvm5.telegraphics.com.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725989AbgKXXxU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Nov 2020 18:53:20 -0500
-Received: from localhost (localhost.localdomain [127.0.0.1])
-        by kvm5.telegraphics.com.au (Postfix) with ESMTP id DCBBC2AA63;
-        Tue, 24 Nov 2020 18:53:13 -0500 (EST)
-Date:   Wed, 25 Nov 2020 10:53:13 +1100 (AEDT)
-From:   Finn Thain <fthain@telegraphics.com.au>
-To:     Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-cc:     Kees Cook <keescook@chromium.org>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        "Gustavo A. R. Silva" <gustavoars@kernel.org>,
-        Joe Perches <joe@perches.com>,
-        Jakub Kicinski <kuba@kernel.org>, alsa-devel@alsa-project.org,
-        linux-atm-general@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org, linux-iio@vger.kernel.org,
-        linux-wireless <linux-wireless@vger.kernel.org>,
-        linux-fbdev@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        linux-ide@vger.kernel.org, dm-devel@redhat.com,
-        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
-        GR-everest-linux-l2@marvell.com, wcn36xx@lists.infradead.org,
-        samba-technical@lists.samba.org, linux-i3c@lists.infradead.org,
-        linux1394-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org,
-        usb-storage@lists.one-eyed-alien.net, drbd-dev@lists.linbit.com,
-        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
-        rds-devel@oss.oracle.com,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
-        oss-drivers@netronome.com, bridge@lists.linux-foundation.org,
-        linux-security-module@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org,
-        linux-stm32@st-md-mailman.stormreply.com, cluster-devel@redhat.com,
-        linux-acpi@vger.kernel.org, coreteam@netfilter.org,
-        intel-wired-lan@lists.osuosl.org,
-        linux-input <linux-input@vger.kernel.org>,
-        Miguel Ojeda <ojeda@kernel.org>,
-        tipc-discussion@lists.sourceforge.net,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Media Mailing List <linux-media@vger.kernel.org>,
-        linux-watchdog@vger.kernel.org, selinux@vger.kernel.org,
-        linux-arm-msm@vger.kernel.org, intel-gfx@lists.freedesktop.org,
-        linux-geode@lists.infradead.org, linux-can@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-gpio@vger.kernel.org,
-        op-tee@lists.trustedfirmware.org,
-        linux-mediatek@lists.infradead.org, xen-devel@lists.xenproject.org,
-        nouveau@lists.freedesktop.org, linux-hams@vger.kernel.org,
-        ceph-devel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        Linux ARM <linux-arm-kernel@lists.infradead.org>,
-        linux-hwmon@vger.kernel.org,
-        "maintainer:X86 ARCHITECTURE (32-BIT AND 64-BIT)" <x86@kernel.org>,
-        linux-nfs@vger.kernel.org, GR-Linux-NIC-Dev@marvell.com,
-        Linux-MM <linux-mm@kvack.org>,
-        Network Development <netdev@vger.kernel.org>,
-        linux-decnet-user@lists.sourceforge.net, linux-mmc@vger.kernel.org,
-        linux-renesas-soc@vger.kernel.org, linux-sctp@vger.kernel.org,
-        linux-usb@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-        patches@opensource.cirrus.com, linux-integrity@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-hardening@vger.kernel.org,
-        Jonathan Cameron <Jonathan.Cameron@huawei.com>,
-        Greg KH <gregkh@linuxfoundation.org>
-Subject: Re: [Intel-wired-lan] [PATCH 000/141] Fix fall-through warnings for
- Clang
-In-Reply-To: <CANiq72nUt57u5DG9rH=DB0DzQH7U6-QbG-2Ou+PyCY=p=_Ggag@mail.gmail.com>
-Message-ID: <alpine.LNX.2.23.453.2011251022550.14@nippy.intranet>
-References: <202011201129.B13FDB3C@keescook> <20201120115142.292999b2@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com> <202011220816.8B6591A@keescook> <9b57fd4914b46f38d54087d75e072d6e947cb56d.camel@HansenPartnership.com> <ca071decb87cc7e905411423c05a48f9fd2f58d7.camel@perches.com>
- <0147972a72bc13f3629de8a32dee6f1f308994b5.camel@HansenPartnership.com> <d8d1e9add08cdd4158405e77762d4946037208f8.camel@perches.com> <dbd2cb703ed9eefa7dde9281ea26ab0f7acc8afe.camel@HansenPartnership.com> <20201123130348.GA3119@embeddedor>
- <8f5611bb015e044fa1c0a48147293923c2d904e4.camel@HansenPartnership.com> <202011241327.BB28F12F6@keescook> <alpine.LNX.2.23.453.2011250859290.15@nippy.intranet> <CANiq72nUt57u5DG9rH=DB0DzQH7U6-QbG-2Ou+PyCY=p=_Ggag@mail.gmail.com>
+        id S1727345AbgKYAYr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Nov 2020 19:24:47 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35406 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727078AbgKYAYq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 24 Nov 2020 19:24:46 -0500
+Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id F2DB02151B;
+        Wed, 25 Nov 2020 00:24:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1606263886;
+        bh=rnYdUr37PtuJdOHsrO7sMu2HuLBhc/5UVpsjNmKp6y8=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=AJl8OkUGDWFwxrxlZqEpgv4PwMCU1rjl5L7p1rg/lZNBS90ofHleDkHoORna07IZH
+         L4PwZP6J+7e4F/HrUuXir6oThE5TGXcT0nQplwrbj/sZESB+7UVh4fPV9Lswxl7DZb
+         3Gx3DfYhqSUtcl/Z9Qd87ORSV1pWNXLhGd1ryKoM=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH 1/9] ext4: remove ext4_dir_open()
+Date:   Tue, 24 Nov 2020 16:23:28 -0800
+Message-Id: <20201125002336.274045-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201125002336.274045-1-ebiggers@kernel.org>
+References: <20201125002336.274045-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+From: Eric Biggers <ebiggers@google.com>
 
-On Wed, 25 Nov 2020, Miguel Ojeda wrote:
+Since encrypted directories can be opened without their encryption key
+being available, and each readdir tries to set up the key, trying to set
+up the key in ->open() too isn't really useful.
 
-> 
-> The C standard has nothing to do with this. We use compiler extensions 
-> of several kinds, for many years. Even discounting those extensions, the 
-> kernel is not even conforming to C due to e.g. strict aliasing. I am not 
-> sure what you are trying to argue here.
-> 
+Just remove it so that directories don't need an ->open() method
+anymore, and so that we eliminate a use of fscrypt_get_encryption_info()
+(which I'd like to stop exporting to filesystems).
 
-I'm saying that supporting the official language spec makes more sense 
-than attempting to support a multitude of divergent interpretations of the 
-spec (i.e. gcc, clang, coverity etc.)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/dir.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-I'm also saying that the reason why we use -std=gnu89 is that existing 
-code was written in that language, not in ad hoc languages comprised of 
-collections of extensions that change with every release.
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index ca50c90adc4c..16bfbdd5007c 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -616,13 +616,6 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
+ 	return 0;
+ }
+ 
+-static int ext4_dir_open(struct inode * inode, struct file * filp)
+-{
+-	if (IS_ENCRYPTED(inode))
+-		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+-	return 0;
+-}
+-
+ static int ext4_release_dir(struct inode *inode, struct file *filp)
+ {
+ 	if (filp->private_data)
+@@ -664,7 +657,6 @@ const struct file_operations ext4_dir_operations = {
+ 	.compat_ioctl	= ext4_compat_ioctl,
+ #endif
+ 	.fsync		= ext4_sync_file,
+-	.open		= ext4_dir_open,
+ 	.release	= ext4_release_dir,
+ };
+ 
+-- 
+2.29.2
 
-> But, since you insist: yes, the `fallthrough` attribute is in the 
-> current C2x draft.
-> 
-
-Thank you for checking. I found a free version that's only 6 weeks old:
-
-http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2583.pdf
-
-It will be interesting to see whether 6.7.11.5 changes once the various 
-implementations reach agreement.
