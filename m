@@ -3,98 +3,123 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB37BC64E8A
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00BB9C64E7B
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 689F121D1A
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B5E5E217A0
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:53 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="jfKG5p5l"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q8Hr4pEJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727285AbgKYAYq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Nov 2020 19:24:46 -0500
-Received: from mail.kernel.org ([198.145.29.99]:35392 "EHLO mail.kernel.org"
+        id S1727425AbgKYAYw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Nov 2020 19:24:52 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35460 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726709AbgKYAYq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Nov 2020 19:24:46 -0500
+        id S1727370AbgKYAYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 24 Nov 2020 19:24:48 -0500
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B3C3D206F7;
-        Wed, 25 Nov 2020 00:24:45 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CB7B221741;
+        Wed, 25 Nov 2020 00:24:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606263885;
-        bh=M+jRhoaXexMV9nGYgDRJMTIlxGlDLMY+dRhqnifs5zA=;
-        h=From:To:Cc:Subject:Date:From;
-        b=jfKG5p5lCJrZohfYetsr7smx0o/PxZnPkiYY4BSgdkLRvpXBClZebe+sVZSD55SOM
-         fQtjkrtWMe5YZw93YlGoVDWhHtT1YgODfqRzxL6WxvjCd0h4i557joki7DDVrp/4Uz
-         eK40i3Jw/3iSNyICbU1tkn/IvXLj3y9CNPMG5egg=
+        s=default; t=1606263887;
+        bh=vkE7h+iUKXjV3iZ6UKyjh74RIw0I8dTdzi+DtGmbbUg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Q8Hr4pEJjWrF853VUCGWht1AfsKT2ByRq7EkZLk3ST0W88Ft8c5g+aDmZlRZkb3Ao
+         pNIpg88N6acanGv9fJUVEenvHI2MW6dEQ5AXU91Uhz9UhD4neBNOsXTE/BilRpwcxk
+         K7nOP0zDryiaAyBWv757MmUD+ZWi+BGM3UeNV0kE=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/9] Allow deleting files with unsupported encryption policy
-Date:   Tue, 24 Nov 2020 16:23:27 -0800
-Message-Id: <20201125002336.274045-1-ebiggers@kernel.org>
+Subject: [PATCH 8/9] fscrypt: unexport fscrypt_get_encryption_info()
+Date:   Tue, 24 Nov 2020 16:23:35 -0800
+Message-Id: <20201125002336.274045-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201125002336.274045-1-ebiggers@kernel.org>
+References: <20201125002336.274045-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently it's impossible to delete files that use an unsupported
-encryption policy, as the kernel will just return an error when
-performing any operation on the top-level encrypted directory, even just
-a path lookup into the directory or opening the directory for readdir.
+From: Eric Biggers <ebiggers@google.com>
 
-It's desirable to return errors for most operations on files that use an
-unsupported encryption policy, but the current behavior is too strict.
-We need to allow enough to delete files, so that people can't be stuck
-with undeletable files when downgrading kernel versions.  That includes
-allowing directories to be listed and allowing dentries to be looked up.
+Now that fscrypt_get_encryption_info() is only called from files in
+fs/crypto/ (due to all key setup now being handled by higher-level
+helper functions instead of directly by filesystems), unexport it and
+move its declaration to fscrypt_private.h.
 
-This series fixes this (on ext4, f2fs, and ubifs) by treating an
-unsupported encryption policy in the same way as "key unavailable" in
-the cases that are required for a recursive delete to work.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/fscrypt_private.h | 2 ++
+ fs/crypto/keysetup.c        | 1 -
+ include/linux/fscrypt.h     | 7 +------
+ 3 files changed, 3 insertions(+), 7 deletions(-)
 
-The actual fix is in patch 9, so see that for more details.
-
-Patches 1-8 are cleanups that prepare for the actual fix by removing
-direct use of fscrypt_get_encryption_info() by filesystems.
-
-This patchset applies to branch "master" (commit 4a4b8721f1a5) of
-https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git.
-
-Eric Biggers (9):
-  ext4: remove ext4_dir_open()
-  f2fs: remove f2fs_dir_open()
-  ubifs: remove ubifs_dir_open()
-  ext4: don't call fscrypt_get_encryption_info() from dx_show_leaf()
-  fscrypt: introduce fscrypt_prepare_readdir()
-  fscrypt: move body of fscrypt_prepare_setattr() out-of-line
-  fscrypt: move fscrypt_require_key() to fscrypt_private.h
-  fscrypt: unexport fscrypt_get_encryption_info()
-  fscrypt: allow deleting files with unsupported encryption policy
-
- fs/crypto/fname.c           |  8 +++-
- fs/crypto/fscrypt_private.h | 28 ++++++++++++++
- fs/crypto/hooks.c           | 16 +++++++-
- fs/crypto/keysetup.c        | 20 ++++++++--
- fs/crypto/policy.c          | 22 +++++++----
- fs/ext4/dir.c               | 16 ++------
- fs/ext4/namei.c             | 10 +----
- fs/f2fs/dir.c               | 10 +----
- fs/ubifs/dir.c              | 11 +-----
- include/linux/fscrypt.h     | 75 +++++++++++++++++++------------------
- 10 files changed, 126 insertions(+), 90 deletions(-)
-
-
-base-commit: 4a4b8721f1a5e4b01e45b3153c68d5a1014b25de
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index 16dd55080127..c1c302656c34 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -571,6 +571,8 @@ int fscrypt_derive_dirhash_key(struct fscrypt_info *ci,
+ void fscrypt_hash_inode_number(struct fscrypt_info *ci,
+ 			       const struct fscrypt_master_key *mk);
+ 
++int fscrypt_get_encryption_info(struct inode *inode);
++
+ /**
+  * fscrypt_require_key() - require an inode's encryption key
+  * @inode: the inode we need the key for
+diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
+index 50675b42d5b7..6339b3069a40 100644
+--- a/fs/crypto/keysetup.c
++++ b/fs/crypto/keysetup.c
+@@ -589,7 +589,6 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 		res = 0;
+ 	return res;
+ }
+-EXPORT_SYMBOL(fscrypt_get_encryption_info);
+ 
+ /**
+  * fscrypt_prepare_new_inode() - prepare to create a new inode in a directory
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index a07610f27926..4b163f5e58e9 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -75,7 +75,7 @@ struct fscrypt_operations {
+ static inline struct fscrypt_info *fscrypt_get_info(const struct inode *inode)
+ {
+ 	/*
+-	 * Pairs with the cmpxchg_release() in fscrypt_get_encryption_info().
++	 * Pairs with the cmpxchg_release() in fscrypt_setup_encryption_info().
+ 	 * I.e., another task may publish ->i_crypt_info concurrently, executing
+ 	 * a RELEASE barrier.  We need to use smp_load_acquire() here to safely
+ 	 * ACQUIRE the memory the other task published.
+@@ -200,7 +200,6 @@ int fscrypt_ioctl_remove_key_all_users(struct file *filp, void __user *arg);
+ int fscrypt_ioctl_get_key_status(struct file *filp, void __user *arg);
+ 
+ /* keysetup.c */
+-int fscrypt_get_encryption_info(struct inode *inode);
+ int fscrypt_prepare_new_inode(struct inode *dir, struct inode *inode,
+ 			      bool *encrypt_ret);
+ void fscrypt_put_encryption_info(struct inode *inode);
+@@ -408,10 +407,6 @@ static inline int fscrypt_ioctl_get_key_status(struct file *filp,
+ }
+ 
+ /* keysetup.c */
+-static inline int fscrypt_get_encryption_info(struct inode *inode)
+-{
+-	return -EOPNOTSUPP;
+-}
+ 
+ static inline int fscrypt_prepare_new_inode(struct inode *dir,
+ 					    struct inode *inode,
 -- 
 2.29.2
 
