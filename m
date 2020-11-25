@@ -7,39 +7,39 @@ X-Spam-Status: No, score=-19.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8E9EC83010
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D21A8C6379D
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6DFC9217A0
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 80C5A21D1A
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 Nov 2020 00:24:51 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="Or7jtegO"
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="s3OE/tak"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727454AbgKYAYz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 Nov 2020 19:24:55 -0500
-Received: from mail.kernel.org ([198.145.29.99]:35420 "EHLO mail.kernel.org"
+        id S1727378AbgKYAYu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 24 Nov 2020 19:24:50 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35416 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727347AbgKYAYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Nov 2020 19:24:48 -0500
+        id S1727081AbgKYAYq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 24 Nov 2020 19:24:46 -0500
 Received: from sol.attlocal.net (172-10-235-113.lightspeed.sntcca.sbcglobal.net [172.10.235.113])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 48A7121734;
-        Wed, 25 Nov 2020 00:24:47 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3E27A21527;
+        Wed, 25 Nov 2020 00:24:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1606263887;
-        bh=GcIDgPOioF2enf4UU7puDpYrUGLkFezb8sSeAZk5UsQ=;
+        s=default; t=1606263886;
+        bh=kpsbU6nvcysiI9/MmbON23qqvHm2MWi7u1vlzska8vY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Or7jtegODYCPin3wnbGFqeaYo4hDY+OxiIiEAowN8CUBQ6bTDLf73iBgbHeyhFqjL
-         NJcr+qxkJUxfy0EFiF5xdWTVIQE7rXw2wp0AnOyphxIZU1Z9HuAxERl6pSDZ4ZBlzu
-         g5BYjw6/bP+k+SA7ND0XOIPbOngJ56i2VNYOop9w=
+        b=s3OE/takovt2yDXfnek5hfdpeePr6vwUSGTHUpP7IDS3ZkqY6FAGheOuo7Yjxb7DP
+         nN15RjbMCAvWsymNtQqS3XE6yjq8XBjtiiK8BPKivoiGjhF6bd6qLlBVjov0wyf33A
+         ldOVssWJJoNEU8DHoQc21MglO+vKlXsUcQloLo/A=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 6/9] fscrypt: move body of fscrypt_prepare_setattr() out-of-line
-Date:   Tue, 24 Nov 2020 16:23:33 -0800
-Message-Id: <20201125002336.274045-7-ebiggers@kernel.org>
+Subject: [PATCH 2/9] f2fs: remove f2fs_dir_open()
+Date:   Tue, 24 Nov 2020 16:23:29 -0800
+Message-Id: <20201125002336.274045-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201125002336.274045-1-ebiggers@kernel.org>
 References: <20201125002336.274045-1-ebiggers@kernel.org>
@@ -51,71 +51,43 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-In preparation for reducing the visibility of fscrypt_require_key() by
-moving it to fscrypt_private.h, move the call to it from
-fscrypt_prepare_setattr() to an out-of-line function.
+Since encrypted directories can be opened without their encryption key
+being available, and each readdir tries to set up the key, trying to set
+up the key in ->open() too isn't really useful.
+
+Just remove it so that directories don't need an ->open() method
+anymore, and so that we eliminate a use of fscrypt_get_encryption_info()
+(which I'd like to stop exporting to filesystems).
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/hooks.c       |  8 ++++++++
- include/linux/fscrypt.h | 11 +++++++++--
- 2 files changed, 17 insertions(+), 2 deletions(-)
+ fs/f2fs/dir.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-index 82f351d3113a..1c16dba222d9 100644
---- a/fs/crypto/hooks.c
-+++ b/fs/crypto/hooks.c
-@@ -120,6 +120,14 @@ int __fscrypt_prepare_readdir(struct inode *dir)
- }
- EXPORT_SYMBOL_GPL(__fscrypt_prepare_readdir);
- 
-+int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr)
-+{
-+	if (attr->ia_valid & ATTR_SIZE)
-+		return fscrypt_require_key(d_inode(dentry));
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(__fscrypt_prepare_setattr);
-+
- /**
-  * fscrypt_prepare_setflags() - prepare to change flags with FS_IOC_SETFLAGS
-  * @inode: the inode on which flags are being changed
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 8cbb26f55695..b20900bb829f 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -243,6 +243,7 @@ int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
- int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry,
- 			     struct fscrypt_name *fname);
- int __fscrypt_prepare_readdir(struct inode *dir);
-+int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- int fscrypt_prepare_setflags(struct inode *inode,
- 			     unsigned int oldflags, unsigned int flags);
- int fscrypt_prepare_symlink(struct inode *dir, const char *target,
-@@ -543,6 +544,12 @@ static inline int __fscrypt_prepare_readdir(struct inode *dir)
- 	return -EOPNOTSUPP;
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index 4b9ef8bbfa4a..47bee953fc8d 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -1081,19 +1081,11 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
+ 	return err < 0 ? err : 0;
  }
  
-+static inline int __fscrypt_prepare_setattr(struct dentry *dentry,
-+					    struct iattr *attr)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
- static inline int fscrypt_prepare_setflags(struct inode *inode,
- 					   unsigned int oldflags,
- 					   unsigned int flags)
-@@ -840,8 +847,8 @@ static inline int fscrypt_prepare_readdir(struct inode *dir)
- static inline int fscrypt_prepare_setattr(struct dentry *dentry,
- 					  struct iattr *attr)
- {
--	if (attr->ia_valid & ATTR_SIZE)
--		return fscrypt_require_key(d_inode(dentry));
-+	if (IS_ENCRYPTED(d_inode(dentry)))
-+		return __fscrypt_prepare_setattr(dentry, attr);
- 	return 0;
- }
- 
+-static int f2fs_dir_open(struct inode *inode, struct file *filp)
+-{
+-	if (IS_ENCRYPTED(inode))
+-		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+-	return 0;
+-}
+-
+ const struct file_operations f2fs_dir_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+ 	.iterate_shared	= f2fs_readdir,
+ 	.fsync		= f2fs_sync_file,
+-	.open		= f2fs_dir_open,
+ 	.unlocked_ioctl	= f2fs_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl   = f2fs_compat_ioctl,
 -- 
 2.29.2
 
