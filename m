@@ -7,23 +7,23 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68CFFC71155
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:09:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45225C83017
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:10:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 29FD622244
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:09:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1B6B72224D
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:10:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730817AbgK1WJ3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 28 Nov 2020 17:09:29 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:55217 "EHLO
+        id S1729113AbgK1WJw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 28 Nov 2020 17:09:52 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:55225 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726122AbgK1WJK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 17:09:10 -0500
+        with ESMTP id S1730847AbgK1WJu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 17:09:50 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kj83S-0002aM-8k; Sat, 28 Nov 2020 21:46:54 +0000
+        id 1kj83e-0002aM-EF; Sat, 28 Nov 2020 21:47:06 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -58,10 +58,11 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-integrity@vger.kernel.org,
         selinux@vger.kernel.org,
-        Christian Brauner <christian.brauner@ubuntu.com>
-Subject: [PATCH v3 30/38] apparmor: handle idmapped mounts
-Date:   Sat, 28 Nov 2020 22:35:19 +0100
-Message-Id: <20201128213527.2669807-31-christian.brauner@ubuntu.com>
+        Christian Brauner <christian.brauner@ubuntu.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v3 35/38] overlayfs: do not mount on top of idmapped mounts
+Date:   Sat, 28 Nov 2020 22:35:24 +0100
+Message-Id: <20201128213527.2669807-36-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
 References: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
@@ -71,145 +72,42 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The i_uid and i_gid are only ever used when logging for AppArmor. This is
-already broken in a bunch of places where the global root id is reported
-instead of the i_uid or i_gid of the file. Nonetheless, be kind and log the
-mapped inode if we're coming from an idmapped mount. If the initial user
-namespace is passed nothing changes so non-idmapped mounts will see identical
-behavior as before.
+Prevent overlayfs from being mounted on top of idmapped mounts until we
+have ported it to handle this case and added proper testing for it.
 
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
 /* v2 */
-unchanged
+patch introduced
 
 /* v3 */
-unchanged
+- Amir Goldstein <amir73il@gmail.com>:
+  - Move check for idmapped lower layers into ovl_mount_dir_noesc().
+- David Howells <dhowells@redhat.com>:
+  - Adapt check after removing mnt_idmapped() helper.
 ---
- security/apparmor/domain.c |  9 ++++++---
- security/apparmor/file.c   |  5 ++++-
- security/apparmor/lsm.c    | 12 ++++++++----
- 3 files changed, 18 insertions(+), 8 deletions(-)
+ fs/overlayfs/super.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/security/apparmor/domain.c b/security/apparmor/domain.c
-index 16f184bc48de..4f997dba4573 100644
---- a/security/apparmor/domain.c
-+++ b/security/apparmor/domain.c
-@@ -10,12 +10,14 @@
- 
- #include <linux/errno.h>
- #include <linux/fdtable.h>
-+#include <linux/fs.h>
- #include <linux/file.h>
- #include <linux/mount.h>
- #include <linux/syscalls.h>
- #include <linux/tracehook.h>
- #include <linux/personality.h>
- #include <linux/xattr.h>
-+#include <linux/user_namespace.h>
- 
- #include "include/audit.h"
- #include "include/apparmorfs.h"
-@@ -858,8 +860,10 @@ int apparmor_bprm_creds_for_exec(struct linux_binprm *bprm)
- 	const char *info = NULL;
- 	int error = 0;
- 	bool unsafe = false;
-+	struct user_namespace *user_ns = mnt_user_ns(bprm->file->f_path.mnt);
-+	kuid_t i_uid = i_uid_into_mnt(user_ns, file_inode(bprm->file));
- 	struct path_cond cond = {
--		file_inode(bprm->file)->i_uid,
-+		i_uid,
- 		file_inode(bprm->file)->i_mode
- 	};
- 
-@@ -967,8 +971,7 @@ int apparmor_bprm_creds_for_exec(struct linux_binprm *bprm)
- 	error = fn_for_each(label, profile,
- 			aa_audit_file(profile, &nullperms, OP_EXEC, MAY_EXEC,
- 				      bprm->filename, NULL, new,
--				      file_inode(bprm->file)->i_uid, info,
--				      error));
-+				      i_uid, info, error));
- 	aa_put_label(new);
- 	goto done;
- }
-diff --git a/security/apparmor/file.c b/security/apparmor/file.c
-index 92acf9a49405..d6d9e71f1900 100644
---- a/security/apparmor/file.c
-+++ b/security/apparmor/file.c
-@@ -11,6 +11,8 @@
- #include <linux/tty.h>
- #include <linux/fdtable.h>
- #include <linux/file.h>
-+#include <linux/fs.h>
-+#include <linux/mount.h>
- 
- #include "include/apparmor.h"
- #include "include/audit.h"
-@@ -508,8 +510,9 @@ static int __file_path_perm(const char *op, struct aa_label *label,
- {
- 	struct aa_profile *profile;
- 	struct aa_perms perms = {};
-+	struct user_namespace *user_ns = mnt_user_ns(file->f_path.mnt);
- 	struct path_cond cond = {
--		.uid = file_inode(file)->i_uid,
-+		.uid = i_uid_into_mnt(user_ns, file_inode(file)),
- 		.mode = file_inode(file)->i_mode
- 	};
- 	char *buffer;
-diff --git a/security/apparmor/lsm.c b/security/apparmor/lsm.c
-index ffeaee5ed968..ece9afc3994f 100644
---- a/security/apparmor/lsm.c
-+++ b/security/apparmor/lsm.c
-@@ -224,7 +224,8 @@ static int common_perm(const char *op, const struct path *path, u32 mask,
-  */
- static int common_perm_cond(const char *op, const struct path *path, u32 mask)
- {
--	struct path_cond cond = { d_backing_inode(path->dentry)->i_uid,
-+	struct user_namespace *user_ns = mnt_user_ns(path->mnt);
-+	struct path_cond cond = { i_uid_into_mnt(user_ns, d_backing_inode(path->dentry)),
- 				  d_backing_inode(path->dentry)->i_mode
- 	};
- 
-@@ -266,12 +267,13 @@ static int common_perm_rm(const char *op, const struct path *dir,
- 			  struct dentry *dentry, u32 mask)
- {
- 	struct inode *inode = d_backing_inode(dentry);
-+	struct user_namespace *user_ns = mnt_user_ns(dir->mnt);
- 	struct path_cond cond = { };
- 
- 	if (!inode || !path_mediated_fs(dentry))
- 		return 0;
- 
--	cond.uid = inode->i_uid;
-+	cond.uid = i_uid_into_mnt(user_ns, inode);
- 	cond.mode = inode->i_mode;
- 
- 	return common_perm_dir_dentry(op, dir, dentry, mask, &cond);
-@@ -361,11 +363,12 @@ static int apparmor_path_rename(const struct path *old_dir, struct dentry *old_d
- 
- 	label = begin_current_label_crit_section();
- 	if (!unconfined(label)) {
-+		struct user_namespace *user_ns = mnt_user_ns(old_dir->mnt);
- 		struct path old_path = { .mnt = old_dir->mnt,
- 					 .dentry = old_dentry };
- 		struct path new_path = { .mnt = new_dir->mnt,
- 					 .dentry = new_dentry };
--		struct path_cond cond = { d_backing_inode(old_dentry)->i_uid,
-+		struct path_cond cond = { i_uid_into_mnt(user_ns, d_backing_inode(old_dentry)),
- 					  d_backing_inode(old_dentry)->i_mode
- 		};
- 
-@@ -420,8 +423,9 @@ static int apparmor_file_open(struct file *file)
- 
- 	label = aa_get_newest_cred_label(file->f_cred);
- 	if (!unconfined(label)) {
-+		struct user_namespace *user_ns = mnt_user_ns(file->f_path.mnt);
- 		struct inode *inode = file_inode(file);
--		struct path_cond cond = { inode->i_uid, inode->i_mode };
-+		struct path_cond cond = { i_uid_into_mnt(user_ns, inode), inode->i_mode };
- 
- 		error = aa_path_perm(OP_OPEN, label, &file->f_path, 0,
- 				     aa_map_file_to_perms(file), &cond);
+diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
+index 0d4f2baf6836..5002f97b01e6 100644
+--- a/fs/overlayfs/super.c
++++ b/fs/overlayfs/super.c
+@@ -811,6 +811,10 @@ static int ovl_mount_dir_noesc(const char *name, struct path *path)
+ 		pr_err("filesystem on '%s' not supported\n", name);
+ 		goto out_put;
+ 	}
++	if (mnt_user_ns(path->mnt) != &init_user_ns) {
++		pr_err("idmapped layers are currently not supported\n");
++		goto out_put;
++	}
+ 	if (!d_is_dir(path->dentry)) {
+ 		pr_err("'%s' not a directory\n", name);
+ 		goto out_put;
 -- 
 2.29.2
 
