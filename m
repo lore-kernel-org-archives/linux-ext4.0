@@ -7,23 +7,23 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEE32C8301B
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:10:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EDAA3C83014
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:11:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8492621D7F
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:10:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C6CD821534
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:11:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390057AbgK1WJy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 28 Nov 2020 17:09:54 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:55226 "EHLO
+        id S1729294AbgK1WKe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 28 Nov 2020 17:10:34 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:55232 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730916AbgK1WJx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 17:09:53 -0500
+        with ESMTP id S1725294AbgK1WKd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 17:10:33 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kj83B-0002aM-L3; Sat, 28 Nov 2020 21:46:37 +0000
+        id 1kj835-0002aM-LK; Sat, 28 Nov 2020 21:46:32 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -60,9 +60,9 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v3 23/38] fcntl: handle idmapped mounts
-Date:   Sat, 28 Nov 2020 22:35:12 +0100
-Message-Id: <20201128213527.2669807-24-christian.brauner@ubuntu.com>
+Subject: [PATCH v3 21/38] af_unix: handle idmapped mounts
+Date:   Sat, 28 Nov 2020 22:35:10 +0100
+Message-Id: <20201128213527.2669807-22-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
 References: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
@@ -72,9 +72,11 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Enable the setfl() helper to handle idmapped mounts by passing down the
-mount's user namespace. If the initial user namespace is passed nothing changes
-so non-idmapped mounts will see identical behavior as before.
+When binding a non-abstract AF_UNIX socket it will gain a representation in the
+filesystem. Enable the socket infrastructure to handle idmapped mounts by
+passing down the user namespace of the mount the socket will be created from. If
+the initial user namespace is passed nothing changes so non-idmapped mounts will
+see identical behavior as before.
 
 Cc: Christoph Hellwig <hch@lst.de>
 Cc: David Howells <dhowells@redhat.com>
@@ -83,35 +85,27 @@ Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
 /* v2 */
-patch introduced
+unchanged
 
 /* v3 */
 unchanged
 ---
- fs/fcntl.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/unix/af_unix.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index df091d435603..ed330fa91438 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -25,6 +25,7 @@
- #include <linux/user_namespace.h>
- #include <linux/memfd.h>
- #include <linux/compat.h>
-+#include <linux/mount.h>
- 
- #include <linux/poll.h>
- #include <asm/siginfo.h>
-@@ -46,7 +47,7 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
- 
- 	/* O_NOATIME can only be set by the owner or superuser */
- 	if ((arg & O_NOATIME) && !(filp->f_flags & O_NOATIME))
--		if (!inode_owner_or_capable(&init_user_ns, inode))
-+		if (!inode_owner_or_capable(mnt_user_ns(filp->f_path.mnt), inode))
- 			return -EPERM;
- 
- 	/* required for strict SunOS emulation */
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index b4987805e5e5..4be33240e9cc 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -996,7 +996,7 @@ static int unix_mknod(const char *sun_path, umode_t mode, struct path *res)
+ 	 */
+ 	err = security_path_mknod(&path, dentry, mode, 0);
+ 	if (!err) {
+-		err = vfs_mknod(&init_user_ns, d_inode(path.dentry), dentry, mode, 0);
++		err = vfs_mknod(mnt_user_ns(path.mnt), d_inode(path.dentry), dentry, mode, 0);
+ 		if (!err) {
+ 			res->mnt = mntget(path.mnt);
+ 			res->dentry = dget(dentry);
 -- 
 2.29.2
 
