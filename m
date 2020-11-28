@@ -7,23 +7,23 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86D91C83039
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:24:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B5F2C84102
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:24:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5C3BF222C2
-	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:24:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1A54C222C2
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:24:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387921AbgK1VtN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2387906AbgK1VtN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 28 Nov 2020 16:49:13 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:53652 "EHLO
+Received: from youngberry.canonical.com ([91.189.89.112]:53653 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387821AbgK1VqV (ORCPT
+        with ESMTP id S2387820AbgK1VqV (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 16:46:21 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kj828-0002aM-Kd; Sat, 28 Nov 2020 21:45:32 +0000
+        id 1kj823-0002aM-3k; Sat, 28 Nov 2020 21:45:27 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -60,9 +60,9 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v3 03/38] namespace: only take read lock in do_reconfigure_mnt()
-Date:   Sat, 28 Nov 2020 22:34:52 +0100
-Message-Id: <20201128213527.2669807-4-christian.brauner@ubuntu.com>
+Subject: [PATCH v3 01/38] namespace: take lock_mount_hash() directly when changing flags
+Date:   Sat, 28 Nov 2020 22:34:50 +0100
+Message-Id: <20201128213527.2669807-2-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
 References: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
@@ -72,36 +72,14 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-do_reconfigure_mnt() used to take the down_write(&sb->s_umount) lock
-which seems unnecessary since we're not changing the superblock. We're
-only checking whether it is already read-only. Setting other mount
-attributes is protected by lock_mount_hash() afaict and not by s_umount.
+Changing mount options always ends up taking lock_mount_hash() but when
+MNT_READONLY is requested and neither the mount nor the superblock are
+MNT_READONLY we end up taking the lock, dropping it, and retaking it to change
+the other mount attributes. Instead, let's acquire the lock once when changing
+the mount attributes. This simplifies the locking in these codepath, makes them
+easier to reason about and avoids having to reacquire the lock right after
+dropping it.
 
-So I think the history of down_write(&sb->s_umount) lock being taken
-when setting mount attributes dates back to the introduction of
-MNT_READONLY in [2]. Afaict, this introduced the concept of having
-read-only mounts in contrast to just having a read-only superblock. When
-it got introduced it was simply plumbed into do_remount() which already
-took down_write(&sb->s_umount) because it was only used to actually
-change the superblock before [2]. Afaict, it would've already been
-possible back then to only use down_read(&sb->s_umount) for
-MS_BIND | MS_REMOUNT since actual mount options were protected by
-the vfsmount lock already. But that would've meant special casing the
-locking for MS_BIND | MS_REMOUNT in do_remount() which people might not
-have considered worth it.
-Then in [1] MS_BIND | MS_REMOUNT mount option changes were split out of
-do_remount() into do_reconfigure_mnt() but the down_write(&sb->s_umount)
-lock was simply copied over.
-Now that we have this be a separate helper only take
-the down_read(&sb->s_umount) lock since we're only interested in
-checking whether the super block is currently read-only and blocking any
-writers from changing it. Essentially, checking that the super block is
-read-only has the advantage that we can avoid having to go into the
-slowpath and through MNT_WRITE_HOLD and can simply set the read-only
-flag on the mount in set_mount_attributes().
-
-[1]: commit 43f5e655eff7 ("vfs: Separate changing mount flags full remount")
-[2]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
 Cc: Christoph Hellwig <hch@lst.de>
 Cc: David Howells <dhowells@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>
@@ -109,49 +87,96 @@ Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
 /* v2 */
-unchanged
+- Christoph Hellwig <hch@lst.de>:
+  - Remove pointless __mnt_unmake_readonly() helper.
+  - Even though Christoph suggested to lockdep_assert_held() into places that
+    require {lock,unlock}_mount_hash() it seems that seqlock's don't support
+    it.
 
 /* v3 */
 unchanged
 ---
- fs/namespace.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ fs/namespace.c | 22 ++++++++--------------
+ 1 file changed, 8 insertions(+), 14 deletions(-)
 
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 798bbf4f48ad..8497d149ecaa 100644
+index cebaa3e81794..f183161833ad 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -2512,10 +2512,6 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
- 	return 0;
+@@ -463,7 +463,6 @@ static int mnt_make_readonly(struct mount *mnt)
+ {
+ 	int ret = 0;
+ 
+-	lock_mount_hash();
+ 	mnt->mnt.mnt_flags |= MNT_WRITE_HOLD;
+ 	/*
+ 	 * After storing MNT_WRITE_HOLD, we'll read the counters. This store
+@@ -497,18 +496,9 @@ static int mnt_make_readonly(struct mount *mnt)
+ 	 */
+ 	smp_wmb();
+ 	mnt->mnt.mnt_flags &= ~MNT_WRITE_HOLD;
+-	unlock_mount_hash();
+ 	return ret;
  }
  
--/*
-- * Update the user-settable attributes on a mount.  The caller must hold
-- * sb->s_umount for writing.
-- */
+-static int __mnt_unmake_readonly(struct mount *mnt)
+-{
+-	lock_mount_hash();
+-	mnt->mnt.mnt_flags &= ~MNT_READONLY;
+-	unlock_mount_hash();
+-	return 0;
+-}
+-
+ int sb_prepare_remount_readonly(struct super_block *sb)
+ {
+ 	struct mount *mnt;
+@@ -2508,7 +2498,8 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
+ 	if (readonly_request)
+ 		return mnt_make_readonly(mnt);
+ 
+-	return __mnt_unmake_readonly(mnt);
++	mnt->mnt.mnt_flags &= ~MNT_READONLY;
++	return 0;
+ }
+ 
+ /*
+@@ -2517,11 +2508,9 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
+  */
  static void set_mount_attributes(struct mount *mnt, unsigned int mnt_flags)
  {
+-	lock_mount_hash();
  	mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
-@@ -2565,13 +2561,17 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
- 	if (!can_change_locked_flags(mnt, mnt_flags))
+ 	mnt->mnt.mnt_flags = mnt_flags;
+ 	touch_mnt_namespace(mnt->mnt_ns);
+-	unlock_mount_hash();
+ }
+ 
+ static void mnt_warn_timestamp_expiry(struct path *mountpoint, struct vfsmount *mnt)
+@@ -2567,9 +2556,11 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
  		return -EPERM;
  
--	down_write(&sb->s_umount);
-+	/*
-+	 * We're only checking whether the superblock is read-only not changing
-+	 * it, so only take down_read(&sb->s_umount).
-+	 */
-+	down_read(&sb->s_umount);
- 	lock_mount_hash();
+ 	down_write(&sb->s_umount);
++	lock_mount_hash();
  	ret = change_mount_ro_state(mnt, mnt_flags);
  	if (ret == 0)
  		set_mount_attributes(mnt, mnt_flags);
- 	unlock_mount_hash();
--	up_write(&sb->s_umount);
-+	up_read(&sb->s_umount);
++	unlock_mount_hash();
+ 	up_write(&sb->s_umount);
  
  	mnt_warn_timestamp_expiry(path, &mnt->mnt);
- 
+@@ -2610,8 +2601,11 @@ static int do_remount(struct path *path, int ms_flags, int sb_flags,
+ 		err = -EPERM;
+ 		if (ns_capable(sb->s_user_ns, CAP_SYS_ADMIN)) {
+ 			err = reconfigure_super(fc);
+-			if (!err)
++			if (!err) {
++				lock_mount_hash();
+ 				set_mount_attributes(mnt, mnt_flags);
++				unlock_mount_hash();
++			}
+ 		}
+ 		up_write(&sb->s_umount);
+ 	}
 -- 
 2.29.2
 
