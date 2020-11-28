@@ -5,221 +5,202 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4190C8300C
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Nov 2020 17:01:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B3B7C8301B
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:07:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8A51A221EB
-	for <linux-ext4@archiver.kernel.org>; Fri, 27 Nov 2020 17:01:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EBF7020706
+	for <linux-ext4@archiver.kernel.org>; Sat, 28 Nov 2020 22:07:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732136AbgK0RBl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 27 Nov 2020 12:01:41 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:57118 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731703AbgK0RBk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Nov 2020 12:01:40 -0500
-Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:5a64:74b8:f3be:d972])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id BA3E91F46502;
-        Fri, 27 Nov 2020 17:01:37 +0000 (GMT)
-From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     Daniel Rosenberg <drosen@google.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH v2 07/12] e2fsck: Support casefold directories when rehashing
-Date:   Fri, 27 Nov 2020 18:01:11 +0100
-Message-Id: <20201127170116.197901-8-arnaud.ferraris@collabora.com>
-X-Mailer: git-send-email 2.28.0
-In-Reply-To: <20201127170116.197901-1-arnaud.ferraris@collabora.com>
-References: <20201127170116.197901-1-arnaud.ferraris@collabora.com>
+        id S1731538AbgK1WGt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 28 Nov 2020 17:06:49 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:55201 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726122AbgK1WGr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Nov 2020 17:06:47 -0500
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1kj83X-0002aM-3g; Sat, 28 Nov 2020 21:46:59 +0000
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org
+Cc:     John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org, fstests@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-integrity@vger.kernel.org,
+        selinux@vger.kernel.org,
+        Christian Brauner <christian.brauner@ubuntu.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v3 32/38] fat: handle idmapped mounts
+Date:   Sat, 28 Nov 2020 22:35:21 +0100
+Message-Id: <20201128213527.2669807-33-christian.brauner@ubuntu.com>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
+References: <20201128213527.2669807-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
+Let fat handle idmapped mounts. This allows to have the same fat mount appear
+in multiple locations with different id mappings. This allows to expose a vfat
+formatted USB stick to multiple user with different ids on the host or in user
+namespaces allowing for dac permissions:
 
-When rehashing a +F directory, the casefold comparison needs to be
-performed, in order to identify duplicated filenames.  Like the -F
-version, This is done in two steps, first adapt the qsort comparison to
-consider casefolded directories, and then iterate over the sorted list
-fixing dups.
+mount -o uid=1000,gid=1000 /dev/sdb /mnt
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
+u1001@f2-vm:/lower1$ ls -ln /mnt/
+total 4
+-rwxr-xr-x 1 1000 1000 4 Oct 28 03:44 aaa
+-rwxr-xr-x 1 1000 1000 0 Oct 28 01:09 bbb
+-rwxr-xr-x 1 1000 1000 0 Oct 28 01:10 ccc
+-rwxr-xr-x 1 1000 1000 0 Oct 28 03:46 ddd
+-rwxr-xr-x 1 1000 1000 0 Oct 28 04:01 eee
+
+mount2 --idmap both:1000:1001:1
+
+u1001@f2-vm:/lower1$ ls -ln /lower1/
+total 4
+-rwxr-xr-x 1 1001 1001 4 Oct 28 03:44 aaa
+-rwxr-xr-x 1 1001 1001 0 Oct 28 01:09 bbb
+-rwxr-xr-x 1 1001 1001 0 Oct 28 01:10 ccc
+-rwxr-xr-x 1 1001 1001 0 Oct 28 03:46 ddd
+-rwxr-xr-x 1 1001 1001 0 Oct 28 04:01 eee
+
+u1001@f2-vm:/lower1$ touch /lower1/fff
+
+u1001@f2-vm:/lower1$ ls -ln /lower1/fff
+-rwxr-xr-x 1 1001 1001 0 Oct 28 04:03 /lower1/fff
+
+u1001@f2-vm:/lower1$ ls -ln /mnt/fff
+-rwxr-xr-x 1 1000 1000 0 Oct 28 04:03 /mnt/fff
+
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
- e2fsck/rehash.c | 88 ++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 72 insertions(+), 16 deletions(-)
+/* v2 */
+unchanged
 
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 30e510a6..14215011 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -214,6 +214,23 @@ static EXT2_QSORT_TYPE ino_cmp(const void *a, const void *b)
- 	return (he_a->ino - he_b->ino);
+/* v3 */
+unchanged
+---
+ fs/fat/file.c        | 15 ++++++++-------
+ fs/fat/namei_msdos.c |  2 +-
+ fs/fat/namei_vfat.c  |  2 +-
+ 3 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index 5b12cf209801..15dc8d27aa72 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -398,7 +398,7 @@ int fat_getattr(const struct path *path, struct kstat *stat,
+ 		u32 request_mask, unsigned int flags)
+ {
+ 	struct inode *inode = d_inode(path->dentry);
+-	generic_fillattr(&init_user_ns, inode, stat);
++	generic_fillattr(mnt_user_ns(path->mnt), inode, stat);
+ 	stat->blksize = MSDOS_SB(inode->i_sb)->cluster_size;
+ 
+ 	if (MSDOS_SB(inode->i_sb)->options.nfs == FAT_NFS_NOSTALE_RO) {
+@@ -447,12 +447,13 @@ static int fat_sanitize_mode(const struct msdos_sb_info *sbi,
+ 	return 0;
  }
  
-+struct name_cmp_ctx
-+{
-+	int casefold;
-+	const struct ext2fs_nls_table *tbl;
-+};
-+
-+
-+static int same_name(const struct name_cmp_ctx *cmp_ctx, char *s1,
-+		     int len1, char *s2, int len2)
-+{
-+	if (!cmp_ctx->casefold)
-+		return (len1 == len2 &&	!memcmp(s1, s2, len1));
-+	else
-+		return !ext2fs_casefold_cmp(cmp_ctx->tbl,
-+					    s1, len1, s2, len2);
-+}
-+
- /* Used for sorting the hash entry */
- static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
+-static int fat_allow_set_time(struct msdos_sb_info *sbi, struct inode *inode)
++static int fat_allow_set_time(struct user_namespace *user_ns,
++			      struct msdos_sb_info *sbi, struct inode *inode)
  {
-@@ -240,9 +257,35 @@ static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
- 	return ret;
- }
+ 	umode_t allow_utime = sbi->options.allow_utime;
  
-+static EXT2_QSORT_TYPE name_cf_cmp(const struct name_cmp_ctx *ctx,
-+				   const void *a, const void *b)
-+{
-+	const struct hash_entry *he_a = (const struct hash_entry *) a;
-+	const struct hash_entry *he_b = (const struct hash_entry *) b;
-+	unsigned int he_a_len, he_b_len, min_len;
-+	int ret;
-+
-+	he_a_len = ext2fs_dirent_name_len(he_a->dir);
-+	he_b_len = ext2fs_dirent_name_len(he_b->dir);
-+
-+	ret = ext2fs_casefold_cmp(ctx->tbl, he_a->dir->name, he_a_len,
-+				  he_b->dir->name, he_b_len);
-+	if (ret == 0) {
-+		if (he_a_len > he_b_len)
-+			ret = 1;
-+		else if (he_a_len < he_b_len)
-+			ret = -1;
-+		else
-+			ret = he_b->dir->inode - he_a->dir->inode;
-+	}
-+	return ret;
-+}
-+
-+
- /* Used for sorting the hash entry */
--static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
-+static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b, void *arg)
- {
-+	const struct name_cmp_ctx *ctx = (struct name_cmp_ctx *) arg;
- 	const struct hash_entry *he_a = (const struct hash_entry *) a;
- 	const struct hash_entry *he_b = (const struct hash_entry *) b;
- 	int	ret;
-@@ -256,8 +299,12 @@ static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
- 			ret = 1;
- 		else if (he_a->minor_hash < he_b->minor_hash)
- 			ret = -1;
--		else
--			ret = name_cmp(a, b);
-+		else {
-+			if (ctx->casefold)
-+				ret = name_cf_cmp(ctx, a, b);
-+			else
-+				ret = name_cmp(a, b);
-+		}
+-	if (!uid_eq(current_fsuid(), inode->i_uid)) {
+-		if (in_group_p(inode->i_gid))
++	if (!uid_eq(current_fsuid(), i_uid_into_mnt(user_ns, inode))) {
++		if (in_group_p(i_gid_into_mnt(user_ns, inode)))
+ 			allow_utime >>= 3;
+ 		if (allow_utime & MAY_WRITE)
+ 			return 1;
+@@ -477,11 +478,11 @@ int fat_setattr(struct user_namespace *user_ns, struct dentry *dentry,
+ 	/* Check for setting the inode time. */
+ 	ia_valid = attr->ia_valid;
+ 	if (ia_valid & TIMES_SET_FLAGS) {
+-		if (fat_allow_set_time(sbi, inode))
++		if (fat_allow_set_time(user_ns, sbi, inode))
+ 			attr->ia_valid &= ~TIMES_SET_FLAGS;
  	}
- 	return ret;
- }
-@@ -380,7 +427,8 @@ static void mutate_name(char *str, unsigned int *len)
  
- static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 				    ext2_ino_t ino,
--				    struct fill_dir_struct *fd)
-+				    struct fill_dir_struct *fd,
-+				    const struct name_cmp_ctx *cmp_ctx)
- {
- 	struct problem_context	pctx;
- 	struct hash_entry	*ent, *prev;
-@@ -403,11 +451,12 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 		ent = fd->harray + i;
- 		prev = ent - 1;
- 		if (!ent->dir->inode ||
--		    (ext2fs_dirent_name_len(ent->dir) !=
--		     ext2fs_dirent_name_len(prev->dir)) ||
--		    memcmp(ent->dir->name, prev->dir->name,
--			     ext2fs_dirent_name_len(ent->dir)))
-+		    !same_name(cmp_ctx, ent->dir->name,
-+			       ext2fs_dirent_name_len(ent->dir),
-+			       prev->dir->name,
-+			       ext2fs_dirent_name_len(prev->dir)))
- 			continue;
-+
- 		pctx.dirent = ent->dir;
- 		if ((ent->dir->inode == prev->dir->inode) &&
- 		    fix_problem(ctx, PR_2_DUPLICATE_DIRENT, &pctx)) {
-@@ -426,10 +475,11 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 		mutate_name(new_name, &new_len);
- 		for (j=0; j < fd->num_array; j++) {
- 			if ((i==j) ||
--			    (new_len !=
--			     (unsigned) ext2fs_dirent_name_len(fd->harray[j].dir)) ||
--			    memcmp(new_name, fd->harray[j].dir->name, new_len))
-+			    !same_name(cmp_ctx, new_name, new_len,
-+				       fd->harray[j].dir->name,
-+				       ext2fs_dirent_name_len(fd->harray[j].dir))) {
- 				continue;
-+			}
- 			mutate_name(new_name, &new_len);
+-	error = setattr_prepare(&init_user_ns, dentry, attr);
++	error = setattr_prepare(user_ns, dentry, attr);
+ 	attr->ia_valid = ia_valid;
+ 	if (error) {
+ 		if (sbi->options.quiet)
+@@ -551,7 +552,7 @@ int fat_setattr(struct user_namespace *user_ns, struct dentry *dentry,
+ 		fat_truncate_time(inode, &attr->ia_mtime, S_MTIME);
+ 	attr->ia_valid &= ~(ATTR_ATIME|ATTR_CTIME|ATTR_MTIME);
  
- 			j = -1;
-@@ -894,6 +944,7 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
- 	struct fill_dir_struct	fd = { NULL, NULL, 0, 0, 0, NULL,
- 				       0, 0, 0, 0, 0, 0 };
- 	struct out_dir		outdir = { 0, 0, 0, 0 };
-+	struct name_cmp_ctx name_cmp_ctx = {0, NULL};
+-	setattr_copy(&init_user_ns, inode, attr);
++	setattr_copy(user_ns, inode, attr);
+ 	mark_inode_dirty(inode);
+ out:
+ 	return error;
+diff --git a/fs/fat/namei_msdos.c b/fs/fat/namei_msdos.c
+index 608b0606f3ca..0f871a1b6620 100644
+--- a/fs/fat/namei_msdos.c
++++ b/fs/fat/namei_msdos.c
+@@ -666,7 +666,7 @@ static struct file_system_type msdos_fs_type = {
+ 	.name		= "msdos",
+ 	.mount		= msdos_mount,
+ 	.kill_sb	= kill_block_super,
+-	.fs_flags	= FS_REQUIRES_DEV,
++	.fs_flags	= FS_REQUIRES_DEV | FS_ALLOW_IDMAP,
+ };
+ MODULE_ALIAS_FS("msdos");
  
- 	e2fsck_read_inode(ctx, ino, &inode, "rehash_dir");
+diff --git a/fs/fat/namei_vfat.c b/fs/fat/namei_vfat.c
+index 34903d14d6a6..177d939b95da 100644
+--- a/fs/fat/namei_vfat.c
++++ b/fs/fat/namei_vfat.c
+@@ -1063,7 +1063,7 @@ static struct file_system_type vfat_fs_type = {
+ 	.name		= "vfat",
+ 	.mount		= vfat_mount,
+ 	.kill_sb	= kill_block_super,
+-	.fs_flags	= FS_REQUIRES_DEV,
++	.fs_flags	= FS_REQUIRES_DEV | FS_ALLOW_IDMAP,
+ };
+ MODULE_ALIAS_FS("vfat");
  
-@@ -921,6 +972,11 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
- 		fd.compress = 1;
- 	fd.parent = 0;
- 
-+	if (fs->encoding && (inode.i_flags & EXT4_CASEFOLD_FL)) {
-+		name_cmp_ctx.casefold = 1;
-+		name_cmp_ctx.tbl = fs->encoding;
-+	}
-+
- retry_nohash:
- 	/* Read in the entire directory into memory */
- 	retval = ext2fs_block_iterate3(fs, ino, 0, 0,
-@@ -949,16 +1005,16 @@ retry_nohash:
- 	/* Sort the list */
- resort:
- 	if (fd.compress && fd.num_array > 1)
--		qsort(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
--		      hash_cmp);
-+		qsort_r(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
-+			hash_cmp, &name_cmp_ctx);
- 	else
--		qsort(fd.harray, fd.num_array, sizeof(struct hash_entry),
--		      hash_cmp);
-+		qsort_r(fd.harray, fd.num_array, sizeof(struct hash_entry),
-+			hash_cmp, &name_cmp_ctx);
- 
- 	/*
- 	 * Look for duplicates
- 	 */
--	if (duplicate_search_and_fix(ctx, fs, ino, &fd))
-+	if (duplicate_search_and_fix(ctx, fs, ino, &fd, &name_cmp_ctx))
- 		goto resort;
- 
- 	if (ctx->options & E2F_OPT_NO) {
 -- 
-2.28.0
+2.29.2
 
