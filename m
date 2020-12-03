@@ -2,127 +2,159 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_IN_DEF_DKIM_WL autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23A4DC4167B
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 23:58:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0169BC197BF
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DC0EA22224
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 23:58:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AB2B8224BD
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731906AbgLCX6K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 18:58:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43732 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731891AbgLCX6J (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 18:58:09 -0500
-Received: from mail-pl1-x644.google.com (mail-pl1-x644.google.com [IPv6:2607:f8b0:4864:20::644])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3FEE8C061A55
-        for <linux-ext4@vger.kernel.org>; Thu,  3 Dec 2020 15:57:24 -0800 (PST)
-Received: by mail-pl1-x644.google.com with SMTP id t18so2101851plo.0
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Dec 2020 15:57:24 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=r3iPhcdxqx2nLoy8M4vQlPfXI0ncDfSnm735uhVf2l4=;
-        b=d/iGiH3bSWJT1Ok5lWKWHJazX8nRtciZ2SkqFh9sl21toJzUW3UCNhveT2aQoj8ogX
-         t8QbwYZcTOMwT9M0ATD7aMBq57xHvZ7nJiVMEg3iEVnQTpCHlkNcA7YXikSh4EnjqcWB
-         stzhhr9yJFM5pdjrLS5OWbEUCKgdH29INZ2zyjE9xeUW1FcIhd4Q4iL/Nw/f2/GACHgg
-         aDvQXBk87ZODzpcpMKE0pHui+1uEyo2klybaJRW6e4JiWbP1cTiTkrjTlZ3NjpWie3B3
-         x/eCp8DtTgOmUW9I+63inDoSSbf7/2l1mfqTeH2KsYFmct06Vi5iCwJMCrjqpL36/MTJ
-         o1tw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=r3iPhcdxqx2nLoy8M4vQlPfXI0ncDfSnm735uhVf2l4=;
-        b=uDhtTX9oYMnSVhFongEfwYP2L8hNsYHD9CrGgbWRpLQdzKxxRGHBhtiA6Hrb7633+r
-         K9Ro4wFnpQwyFTZimN7zEueHK7YYWhqMHJPvh0swfpllKiOchKGISL0+PKG4iaXw0Fhv
-         lOLVB4pztgf+irmO/i5eJmM9pBXFtYMlHSoGMCybRZl5a9Zd09pg+lCTFzruFbsDSjA3
-         VNGeH8751lgEuW3SW5bp4JoM1rvpZjbXirMdvgsiIioHW6+uOYrWTRlzlrW0J6+LcgRa
-         in1BXCEnLJjbCPd9ZLyM5cWxrZqLK52aGYRLN0KcPkeltwmC0cS6/sCzy7evtMJLBGCZ
-         oSLQ==
-X-Gm-Message-State: AOAM530pEe8kwRFFL2lDJTKEr08/6xUCWKdwxVHBFI1e2xQBPHunfN2I
-        IQuZw6Pl6tH13n1uG+7JIdn/fg==
-X-Google-Smtp-Source: ABdhPJzNGZB0k9vwg17W0yzDJC60tNxzVr36GnJUcQmz8GR8UJ0qGwRTf4QVg019AhXRMWmMtQBlhw==
-X-Received: by 2002:a17:90b:4c41:: with SMTP id np1mr1449158pjb.186.1607039843547;
-        Thu, 03 Dec 2020 15:57:23 -0800 (PST)
-Received: from google.com (154.137.233.35.bc.googleusercontent.com. [35.233.137.154])
-        by smtp.gmail.com with ESMTPSA id q23sm2903613pfg.18.2020.12.03.15.57.22
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 03 Dec 2020 15:57:22 -0800 (PST)
-Date:   Thu, 3 Dec 2020 23:57:18 +0000
-From:   Satya Tangirala <satyat@google.com>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v7 0/8] add support for direct I/O with fscrypt using
- blk-crypto
-Message-ID: <X8l7XgWNz5sO/LQ6@google.com>
-References: <20201117140708.1068688-1-satyat@google.com>
- <20201117171526.GD445084@mit.edu>
+        id S2387504AbgLDACK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 19:02:10 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:41694 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731372AbgLDACJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:09 -0500
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1kkyXH-0007ka-Mh; Fri, 04 Dec 2020 00:01:19 +0000
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org
+Cc:     John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-integrity@vger.kernel.org,
+        selinux@vger.kernel.org,
+        Christian Brauner <christian.brauner@ubuntu.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v4 03/40] namespace: only take read lock in do_reconfigure_mnt()
+Date:   Fri,  4 Dec 2020 00:56:59 +0100
+Message-Id: <20201203235736.3528991-4-christian.brauner@ubuntu.com>
+X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
+References: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20201117171526.GD445084@mit.edu>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Nov 17, 2020 at 12:15:26PM -0500, Theodore Y. Ts'o wrote:
-> What is the expected use case for Direct I/O using fscrypt?  This
-> isn't a problem which is unique to fscrypt, but one of the really
-> unfortunate aspects of the DIO interface is the silent fallback to
-> buffered I/O.  We've lived with this because DIO goes back decades,
-> and the original use case was to keep enterprise databases happy, and
-> the rules around what is necessary for DIO to work was relatively well
-> understood.
-> 
-> But with fscrypt, there's going to be some additional requirements
-> (e.g., using inline crypto) required or else DIO silently fall back to
-> buffered I/O for encrypted files.  Depending on the intended use case
-> of DIO with fscrypt, this caveat might or might not be unfortunately
-> surprising for applications.
-> 
-> I wonder if we should have some kind of interface so we can more
-> explicitly allow applications to query exactly what the requirements
-> might be for a particular file vis-a-vis Direct I/O.  What are the
-> memory alignment requirements, what are the file offset alignment
-> requirements, what are the write size requirements, for a particular
-> file.
-> 
-(Credit to Eric for the description of use cases that I'm
-copying/summarizing here).
-The primary motivation for this patch series is Android - some devices use
-zram with cold page writeback enabled to an encrypted swap file, so direct
-I/O is needed to avoid double-caching the data in the swap file. In
-general, this patch is useful for avoiding double caching any time a
-loopback device is created in an encrypted directory. We also expect this
-to be useful for databases that want to use direct I/O but also want to
-encrypt data at the FS level.
+do_reconfigure_mnt() used to take the down_write(&sb->s_umount) lock
+which seems unnecessary since we're not changing the superblock. We're
+only checking whether it is already read-only. Setting other mount
+attributes is protected by lock_mount_hash() afaict and not by s_umount.
 
-I do think having a good way to tell userspace about the DIO requirements
-would be great to have. Userspace does have ways to access to most, but not
-all, of the information it needs to figure out the DIO requirements (I
-don't think userspace has any way of figuring out if inline encryption
-hardware is available right now), so it would be nice if there was a
-good/unified API for getting those requirements.
+So I think the history of down_write(&sb->s_umount) lock being taken
+when setting mount attributes dates back to the introduction of
+MNT_READONLY in [2]. Afaict, this introduced the concept of having
+read-only mounts in contrast to just having a read-only superblock. When
+it got introduced it was simply plumbed into do_remount() which already
+took down_write(&sb->s_umount) because it was only used to actually
+change the superblock before [2]. Afaict, it would've already been
+possible back then to only use down_read(&sb->s_umount) for MS_BIND |
+MS_REMOUNT since actual mount options were protected by the vfsmount
+lock already. But that would've meant special casing the locking for
+MS_BIND | MS_REMOUNT in do_remount() which people might not have
+considered worth it.
+Then in [1] MS_BIND | MS_REMOUNT mount option changes were split out of
+do_remount() into do_reconfigure_mnt() but the down_write(&sb->s_umount)
+lock was simply copied over.
+Now that we have this be a separate helper only take the
+down_read(&sb->s_umount) lock since we're only interested in checking
+whether the super block is currently read-only and blocking any writers
+from changing it. Essentially, checking that the super block is
+read-only has the advantage that we can avoid having to go into the
+slowpath and through MNT_WRITE_HOLD and can simply set the read-only
+flag on the mount in set_mount_attributes().
 
-Do you think we'll need that before these patches can go in though? I do
-think the patches as is are useful for their primary use case even without
-the ability to explicitly query for the DIO requirements, because Android
-devices are predictable w.r.t inline encryption support (devices ship with
-either blk-crypto-fallback or have inline encryption hardware, and the
-patchset's requirements are met in either case). And even when used on
-machines without such predictability, this patch is at worst the same as
-the current situation, and at best an improvement.
-> 						- Ted
+[1]: commit 43f5e655eff7 ("vfs: Separate changing mount flags full remount")
+[2]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+/* v2 */
+unchanged
+
+/* v3 */
+unchanged
+
+/* v4 */
+unchanged
+---
+ fs/namespace.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 798bbf4f48ad..8497d149ecaa 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -2512,10 +2512,6 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
+ 	return 0;
+ }
+ 
+-/*
+- * Update the user-settable attributes on a mount.  The caller must hold
+- * sb->s_umount for writing.
+- */
+ static void set_mount_attributes(struct mount *mnt, unsigned int mnt_flags)
+ {
+ 	mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
+@@ -2565,13 +2561,17 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
+ 	if (!can_change_locked_flags(mnt, mnt_flags))
+ 		return -EPERM;
+ 
+-	down_write(&sb->s_umount);
++	/*
++	 * We're only checking whether the superblock is read-only not changing
++	 * it, so only take down_read(&sb->s_umount).
++	 */
++	down_read(&sb->s_umount);
+ 	lock_mount_hash();
+ 	ret = change_mount_ro_state(mnt, mnt_flags);
+ 	if (ret == 0)
+ 		set_mount_attributes(mnt, mnt_flags);
+ 	unlock_mount_hash();
+-	up_write(&sb->s_umount);
++	up_read(&sb->s_umount);
+ 
+ 	mnt_warn_timestamp_expiry(path, &mnt->mnt);
+ 
+-- 
+2.29.2
+
