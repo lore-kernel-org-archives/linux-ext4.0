@@ -2,58 +2,82 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3B58C4361A
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:51:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C318C47435
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:56:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9BAF422D5A
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:43:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6AAAC207FA
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:30:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387666AbgLCOns (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 09:43:48 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:34599 "EHLO
+        id S1730793AbgLCOaf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 09:30:35 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:60424 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1730980AbgLCOns (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 09:43:48 -0500
+        with ESMTP id S1727772AbgLCOaf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 09:30:35 -0500
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0B3EgwMe004797
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0B3ESYKh031441
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 3 Dec 2020 09:42:59 -0500
+        Thu, 3 Dec 2020 09:28:34 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 5FC86420136; Thu,  3 Dec 2020 09:42:58 -0500 (EST)
-Date:   Thu, 3 Dec 2020 09:42:58 -0500
+        id DF474420136; Thu,  3 Dec 2020 09:28:33 -0500 (EST)
+Date:   Thu, 3 Dec 2020 09:28:33 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Chunguang Xu <brookxu.cn@gmail.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH RESEND 2/8] ext4: remove redundant mb_regenerate_buddy()
-Message-ID: <20201203144258.GK441757@mit.edu>
-References: <1604764698-4269-1-git-send-email-brookxu@tencent.com>
- <1604764698-4269-2-git-send-email-brookxu@tencent.com>
+To:     xiakaixu1987@gmail.com
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        Kaixu Xia <kaixuxia@tencent.com>
+Subject: Re: [PATCH] ext4: do the quotafile name safe check before allocating
+ new string
+Message-ID: <20201203142833.GI441757@mit.edu>
+References: <1603723397-14344-1-git-send-email-kaixuxia@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1604764698-4269-2-git-send-email-brookxu@tencent.com>
+In-Reply-To: <1603723397-14344-1-git-send-email-kaixuxia@tencent.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Nov 07, 2020 at 11:58:12PM +0800, Chunguang Xu wrote:
-> From: Chunguang Xu <brookxu@tencent.com>
+On Mon, Oct 26, 2020 at 10:43:17PM +0800, xiakaixu1987@gmail.com wrote:
+> From: Kaixu Xia <kaixuxia@tencent.com>
 > 
-> After this patch (163a203), if an abnormal bitmap is detected, we
-> will mark the group as corrupt, and we will not use this group in
-> the future. Therefore, it should be meaningless to regenerate the
-> buddy bitmap of this group, It might be better to delete it.
+> Now we do the quotafile name safe check after allocating the new string
+> by using kmalloc(), and have to release the string with kfree() if check
+> fails. Maybe we can check them before allocating memory and directly
+> return error if check fails to avoid the unnecessary kmalloc()/kfree()
+> operations.
 > 
-> Signed-off-by: Chunguang Xu <brookxu@tencent.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Kaixu Xia <kaixuxia@tencent.com>
+> ---
+>  fs/ext4/super.c | 29 +++++++++++++----------------
+>  1 file changed, 13 insertions(+), 16 deletions(-)
 
-Thanks, applied.
+This patch reduces the line count by 3, which is good, but...
+
+(a) It makes the code more complex, harder to read, and harder to be
+    sure things are correct:
+
+compare:
+
+> -		if (strcmp(old_qname, qname) == 0)
+
+with
+
+> +		if (strlen(old_qname) != args->to - args->from ||
+> +		    strncmp(old_qname, args->from, args->to - args->from)) {
+
+(b) This is optimizing the error path, which is uncommon, and saving
+    the allocation and free is not really worth trading off making the code
+    slightly harder to read and maintain.
+
+So I don't think taking this patch is worthwhile.
+
+Cheers,
 
 					- Ted
