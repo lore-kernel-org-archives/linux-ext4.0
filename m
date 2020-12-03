@@ -2,76 +2,63 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7540BC83012
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 13:47:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DF6EC001B1
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:05:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 25485206F9
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 13:47:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49B80206D8
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 14:05:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726826AbgLCNqw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 08:46:52 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52366 "EHLO
+        id S1730844AbgLCOFA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 09:05:00 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:55565 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725966AbgLCNqv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 08:46:51 -0500
+        with ESMTP id S1727930AbgLCOE7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 09:04:59 -0500
 Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0B3DjdIr014834
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0B3E45tu021699
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 3 Dec 2020 08:45:40 -0500
+        Thu, 3 Dec 2020 09:04:05 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 58FF3420136; Thu,  3 Dec 2020 08:45:39 -0500 (EST)
-Date:   Thu, 3 Dec 2020 08:45:39 -0500
+        id 37597420136; Thu,  3 Dec 2020 09:04:05 -0500 (EST)
+Date:   Thu, 3 Dec 2020 09:04:05 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Satya Tangirala <satyat@google.com>
-Cc:     Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>
-Subject: Re: [PATCH v7 6/8] ext4: support direct I/O with fscrypt using
- blk-crypto
-Message-ID: <20201203134539.GB441757@mit.edu>
-References: <20201117140708.1068688-1-satyat@google.com>
- <20201117140708.1068688-7-satyat@google.com>
+To:     Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Cc:     Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3] Updated locking documentation for transaction_t
+Message-ID: <20201203140405.GC441757@mit.edu>
+References: <20190408083500.66759-1-alexander.lochmann@tu-dortmund.de>
+ <10cfbef1-994c-c604-f8a6-b1042fcc622f@tu-dortmund.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20201117140708.1068688-7-satyat@google.com>
+In-Reply-To: <10cfbef1-994c-c604-f8a6-b1042fcc622f@tu-dortmund.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Nov 17, 2020 at 02:07:06PM +0000, Satya Tangirala wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Thu, Oct 15, 2020 at 03:26:28PM +0200, Alexander Lochmann wrote:
+> Hi folks,
 > 
-> Wire up ext4 with fscrypt direct I/O support. Direct I/O with fscrypt is
-> only supported through blk-crypto (i.e. CONFIG_BLK_INLINE_ENCRYPTION must
-> have been enabled, the 'inlinecrypt' mount option must have been specified,
-> and either hardware inline encryption support must be present or
-> CONFIG_BLK_INLINE_ENCYRPTION_FALLBACK must have been enabled). Further,
-> direct I/O on encrypted files is only supported when the *length* of the
-> I/O is aligned to the filesystem block size (which is *not* necessarily the
-> same as the block device's block size).
-> 
-> fscrypt_limit_io_blocks() is called before setting up the iomap to ensure
-> that the blocks of each bio that iomap will submit will have contiguous
-> DUNs. Note that fscrypt_limit_io_blocks() is normally a no-op, as normally
-> the DUNs simply increment along with the logical blocks. But it's needed
-> to handle an edge case in one of the fscrypt IV generation methods.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> Co-developed-by: Satya Tangirala <satyat@google.com>
-> Signed-off-by: Satya Tangirala <satyat@google.com>
-> Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
+> I've updated the lock documentation according to our finding for
+> transaction_t.
+> Does this patch look good to you?
 
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+I updated the annotations to match with the local usage, e.g:
 
+	 * When commit was requested [journal_t.j_state_lock]
+
+became:
+
+	 * When commit was requested [j_state_lock]
+
+Otherwise, looks good.  Thanks for the patch!
+
+	   	 	       	       - Ted
