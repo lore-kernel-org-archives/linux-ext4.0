@@ -5,25 +5,25 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4868C1B0E3
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E511CC2BBCF
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 983A9224DF
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B139D22224
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731489AbgLDACJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 19:02:09 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:41693 "EHLO
+        id S2388313AbgLDACP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 19:02:15 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:41706 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731338AbgLDACI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:08 -0500
+        with ESMTP id S2388003AbgLDACO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:14 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kkyXJ-0007ka-ED; Fri, 04 Dec 2020 00:01:21 +0000
+        id 1kkyXQ-0007ka-Jn; Fri, 04 Dec 2020 00:01:28 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -60,9 +60,9 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v4 04/40] fs: split out functions to hold writers
-Date:   Fri,  4 Dec 2020 00:57:00 +0100
-Message-Id: <20201203235736.3528991-5-christian.brauner@ubuntu.com>
+Subject: [PATCH v4 08/40] fs: add id translation helpers
+Date:   Fri,  4 Dec 2020 00:57:04 +0100
+Message-Id: <20201203235736.3528991-9-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
 References: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
@@ -72,77 +72,102 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When a mount is marked read-only we set MNT_WRITE_HOLD on it if there
-aren't currently any active writers. Split this logic out into simple
-helpers that we can use in follow-up patches.
+Add simple helpers to make it easy to map kuids into and from idmapped
+mounts. We provide simple wrappers that filesystems can use to e.g.
+initialize inodes similar to i_{uid,gid}_read() and i_{uid,gid}_write().
+Accessing an inode through an idmapped mount will require the inode to
+be mapped according to the mount's user namespace. If the fsids are used
+to compare against inodes or to initialize inodes they are required to
+be shifted from the mount's user namespace. Passing the initial user
+namespace to these helpers makes them a nop and so any non-idmapped
+paths will not be impacted.
 
-Suggested-by: Christoph Hellwig <hch@lst.de>
 Cc: David Howells <dhowells@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
 /* v2 */
-patch not present
+- Christoph Hellwig <hch@lst.de>:
+  - Get rid of the ifdefs and the config option that hid idmapped mounts.
 
 /* v3 */
-patch not present
+unchanged
 
 /* v4 */
-patch introduced
+- Serge Hallyn <serge@hallyn.com>:
+  - Use "mnt_userns" to refer to a vfsmount's userns everywhere to make
+    terminology consistent.
 ---
- fs/namespace.c | 24 ++++++++++++++++++------
- 1 file changed, 18 insertions(+), 6 deletions(-)
+ include/linux/fs.h | 47 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 8497d149ecaa..1a756d33c91a 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -469,10 +469,8 @@ void mnt_drop_write_file(struct file *file)
- }
- EXPORT_SYMBOL(mnt_drop_write_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8667d0cdc71e..0c820837d240 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -39,6 +39,7 @@
+ #include <linux/fs_types.h>
+ #include <linux/build_bug.h>
+ #include <linux/stddef.h>
++#include <linux/cred.h>
  
--static int mnt_make_readonly(struct mount *mnt)
-+static inline int mnt_hold_writers(struct mount *mnt)
- {
--	int ret = 0;
--
- 	mnt->mnt.mnt_flags |= MNT_WRITE_HOLD;
- 	/*
- 	 * After storing MNT_WRITE_HOLD, we'll read the counters. This store
-@@ -497,15 +495,29 @@ static int mnt_make_readonly(struct mount *mnt)
- 	 * we're counting up here.
- 	 */
- 	if (mnt_get_writers(mnt) > 0)
--		ret = -EBUSY;
--	else
--		mnt->mnt.mnt_flags |= MNT_READONLY;
-+		return -EBUSY;
-+
-+	return 0;
-+}
-+
-+static inline void mnt_unhold_writers(struct mount *mnt)
-+{
- 	/*
- 	 * MNT_READONLY must become visible before ~MNT_WRITE_HOLD, so writers
- 	 * that become unheld will see MNT_READONLY.
- 	 */
- 	smp_wmb();
- 	mnt->mnt.mnt_flags &= ~MNT_WRITE_HOLD;
-+}
-+
-+static int mnt_make_readonly(struct mount *mnt)
-+{
-+	int ret;
-+
-+	ret = mnt_hold_writers(mnt);
-+	if (!ret)
-+		mnt->mnt.mnt_flags |= MNT_READONLY;
-+	mnt_unhold_writers(mnt);
- 	return ret;
+ #include <asm/byteorder.h>
+ #include <uapi/linux/fs.h>
+@@ -1574,6 +1575,52 @@ static inline void i_gid_write(struct inode *inode, gid_t gid)
+ 	inode->i_gid = make_kgid(inode->i_sb->s_user_ns, gid);
  }
  
++static inline kuid_t kuid_into_mnt(struct user_namespace *mnt_userns,
++				   kuid_t kuid)
++{
++	return make_kuid(mnt_userns, __kuid_val(kuid));
++}
++
++static inline kgid_t kgid_into_mnt(struct user_namespace *mnt_userns,
++				   kgid_t kgid)
++{
++	return make_kgid(mnt_userns, __kgid_val(kgid));
++}
++
++static inline kuid_t i_uid_into_mnt(struct user_namespace *mnt_userns,
++				    const struct inode *inode)
++{
++	return kuid_into_mnt(mnt_userns, inode->i_uid);
++}
++
++static inline kgid_t i_gid_into_mnt(struct user_namespace *mnt_userns,
++				    const struct inode *inode)
++{
++	return kgid_into_mnt(mnt_userns, inode->i_gid);
++}
++
++static inline kuid_t kuid_from_mnt(struct user_namespace *mnt_userns,
++				   kuid_t kuid)
++{
++	return KUIDT_INIT(from_kuid(mnt_userns, kuid));
++}
++
++static inline kgid_t kgid_from_mnt(struct user_namespace *mnt_userns,
++				   kgid_t kgid)
++{
++	return KGIDT_INIT(from_kgid(mnt_userns, kgid));
++}
++
++static inline kuid_t fsuid_into_mnt(struct user_namespace *mnt_userns)
++{
++	return kuid_from_mnt(mnt_userns, current_fsuid());
++}
++
++static inline kgid_t fsgid_into_mnt(struct user_namespace *mnt_userns)
++{
++	return kgid_from_mnt(mnt_userns, current_fsgid());
++}
++
+ extern struct timespec64 current_time(struct inode *inode);
+ 
+ /*
 -- 
 2.29.2
 
