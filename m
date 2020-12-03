@@ -4,29 +4,29 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 980D2C64E7C
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42EF4C83013
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4E8C621D91
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0D63F21D91
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387820AbgLCCXa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Dec 2020 21:23:30 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48690 "EHLO mail.kernel.org"
+        id S2387905AbgLCCXb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Dec 2020 21:23:31 -0500
+Received: from mail.kernel.org ([198.145.29.99]:48664 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387467AbgLCCX3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 2 Dec 2020 21:23:29 -0500
+        id S1729339AbgLCCX2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 2 Dec 2020 21:23:28 -0500
 From:   Eric Biggers <ebiggers@kernel.org>
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v2 4/9] ext4: don't call fscrypt_get_encryption_info() from dx_show_leaf()
-Date:   Wed,  2 Dec 2020 18:20:36 -0800
-Message-Id: <20201203022041.230976-5-ebiggers@kernel.org>
+        Chao Yu <yuchao0@huawei.com>
+Subject: [PATCH v2 2/9] f2fs: remove f2fs_dir_open()
+Date:   Wed,  2 Dec 2020 18:20:34 -0800
+Message-Id: <20201203022041.230976-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201203022041.230976-1-ebiggers@kernel.org>
 References: <20201203022041.230976-1-ebiggers@kernel.org>
@@ -38,44 +38,44 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-The call to fscrypt_get_encryption_info() in dx_show_leaf() is too low
-in the call tree; fscrypt_get_encryption_info() should have already been
-called when starting the directory operation.  And indeed, it already
-is.  Moreover, the encryption key is guaranteed to already be available
-because dx_show_leaf() is only called when adding a new directory entry.
+Since encrypted directories can be opened and searched without their key
+being available, and each readdir and ->lookup() tries to set up the
+key, trying to set up the key in ->open() too isn't really useful.
 
-And even if the key wasn't available, dx_show_leaf() uses
-fscrypt_fname_disk_to_usr() which knows how to create a no-key name.
+Just remove it so that directories don't need an ->open() method
+anymore, and so that we eliminate a use of fscrypt_get_encryption_info()
+(which I'd like to stop exporting to filesystems).
 
-So for the above reasons, and because it would be desirable to stop
-exporting fscrypt_get_encryption_info() directly to filesystems, remove
-the call to fscrypt_get_encryption_info() from dx_show_leaf().
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/namei.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ fs/f2fs/dir.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 793fc7db9d28f..7b31aea3e0253 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -643,13 +643,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index 4b9ef8bbfa4a9..47bee953fc8d8 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -1081,19 +1081,11 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
+ 	return err < 0 ? err : 0;
+ }
  
- 				name  = de->name;
- 				len = de->name_len;
--				if (IS_ENCRYPTED(dir))
--					res = fscrypt_get_encryption_info(dir);
--				if (res) {
--					printk(KERN_WARNING "Error setting up"
--					       " fname crypto: %d\n", res);
--				}
--				if (!fscrypt_has_encryption_key(dir)) {
-+				if (!IS_ENCRYPTED(dir)) {
- 					/* Directory is not encrypted */
- 					ext4fs_dirhash(dir, de->name,
- 						de->name_len, &h);
+-static int f2fs_dir_open(struct inode *inode, struct file *filp)
+-{
+-	if (IS_ENCRYPTED(inode))
+-		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+-	return 0;
+-}
+-
+ const struct file_operations f2fs_dir_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+ 	.iterate_shared	= f2fs_readdir,
+ 	.fsync		= f2fs_sync_file,
+-	.open		= f2fs_dir_open,
+ 	.unlocked_ioctl	= f2fs_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl   = f2fs_compat_ioctl,
 -- 
 2.29.2
 
