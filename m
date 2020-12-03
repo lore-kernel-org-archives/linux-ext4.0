@@ -2,81 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FE73C83017
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F21E6C8301A
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B8FEC22201
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A739622201
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:23:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387892AbgLCCXb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Dec 2020 21:23:31 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48678 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387404AbgLCCX2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1729462AbgLCCX2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 2 Dec 2020 21:23:28 -0500
+Received: from mail.kernel.org ([198.145.29.99]:48644 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725893AbgLCCX1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 2 Dec 2020 21:23:27 -0500
 From:   Eric Biggers <ebiggers@kernel.org>
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 3/9] ubifs: remove ubifs_dir_open()
-Date:   Wed,  2 Dec 2020 18:20:35 -0800
-Message-Id: <20201203022041.230976-4-ebiggers@kernel.org>
+Subject: [PATCH v2 0/9] Allow deleting files with unsupported encryption policy
+Date:   Wed,  2 Dec 2020 18:20:32 -0800
+Message-Id: <20201203022041.230976-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201203022041.230976-1-ebiggers@kernel.org>
-References: <20201203022041.230976-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Currently it's impossible to delete files that use an unsupported
+encryption policy, as the kernel will just return an error when
+performing any operation on the top-level encrypted directory, even just
+a path lookup into the directory or opening the directory for readdir.
 
-Since encrypted directories can be opened and searched without their key
-being available, and each readdir and ->lookup() tries to set up the
-key, trying to set up the key in ->open() too isn't really useful.
+It's desirable to return errors for most operations on files that use an
+unsupported encryption policy, but the current behavior is too strict.
+We need to allow enough to delete files, so that people can't be stuck
+with undeletable files when downgrading kernel versions.  That includes
+allowing directories to be listed and allowing dentries to be looked up.
 
-Just remove it so that directories don't need an ->open() method
-anymore, and so that we eliminate a use of fscrypt_get_encryption_info()
-(which I'd like to stop exporting to filesystems).
+This series fixes this (on ext4, f2fs, and ubifs) by treating an
+unsupported encryption policy in the same way as "key unavailable" in
+the cases that are required for a recursive delete to work.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ubifs/dir.c | 9 ---------
- 1 file changed, 9 deletions(-)
+The actual fix is in patch 9, so see that for more details.
 
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index 08fde777c3247..009fbf844d3e6 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -1619,14 +1619,6 @@ int ubifs_getattr(const struct path *path, struct kstat *stat,
- 	return 0;
- }
- 
--static int ubifs_dir_open(struct inode *dir, struct file *file)
--{
--	if (IS_ENCRYPTED(dir))
--		return fscrypt_get_encryption_info(dir) ? -EACCES : 0;
--
--	return 0;
--}
--
- const struct inode_operations ubifs_dir_inode_operations = {
- 	.lookup      = ubifs_lookup,
- 	.create      = ubifs_create,
-@@ -1653,7 +1645,6 @@ const struct file_operations ubifs_dir_operations = {
- 	.iterate_shared = ubifs_readdir,
- 	.fsync          = ubifs_fsync,
- 	.unlocked_ioctl = ubifs_ioctl,
--	.open		= ubifs_dir_open,
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl   = ubifs_compat_ioctl,
- #endif
+Patches 1-8 are cleanups that prepare for the actual fix by removing
+direct use of fscrypt_get_encryption_info() by filesystems.
+
+This patchset applies to branch "master" (commit 4a4b8721f1a5) of
+https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git.
+
+Changed since v1:
+  - Made some minor updates to commit messages.
+  - Added Reviewed-by tags.
+
+Eric Biggers (9):
+  ext4: remove ext4_dir_open()
+  f2fs: remove f2fs_dir_open()
+  ubifs: remove ubifs_dir_open()
+  ext4: don't call fscrypt_get_encryption_info() from dx_show_leaf()
+  fscrypt: introduce fscrypt_prepare_readdir()
+  fscrypt: move body of fscrypt_prepare_setattr() out-of-line
+  fscrypt: move fscrypt_require_key() to fscrypt_private.h
+  fscrypt: unexport fscrypt_get_encryption_info()
+  fscrypt: allow deleting files with unsupported encryption policy
+
+ fs/crypto/fname.c           |  8 +++-
+ fs/crypto/fscrypt_private.h | 28 ++++++++++++++
+ fs/crypto/hooks.c           | 16 +++++++-
+ fs/crypto/keysetup.c        | 20 ++++++++--
+ fs/crypto/policy.c          | 22 +++++++----
+ fs/ext4/dir.c               | 16 ++------
+ fs/ext4/namei.c             | 10 +----
+ fs/f2fs/dir.c               | 10 +----
+ fs/ubifs/dir.c              | 11 +-----
+ include/linux/fscrypt.h     | 75 +++++++++++++++++++------------------
+ 10 files changed, 126 insertions(+), 90 deletions(-)
+
+
+base-commit: 4a4b8721f1a5e4b01e45b3153c68d5a1014b25de
 -- 
 2.29.2
 
