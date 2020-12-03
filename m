@@ -6,17 +6,17 @@ X-Spam-Status: No, score=-17.0 required=3.0 tests=BAYES_00,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5145AC8300F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4CB6C83014
 	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:24:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 06DE621D91
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:24:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8571222201
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Dec 2020 02:24:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729524AbgLCCYJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S2387818AbgLCCYJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 2 Dec 2020 21:24:09 -0500
-Received: from mail.kernel.org ([198.145.29.99]:49004 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:49000 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728064AbgLCCYI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1727811AbgLCCYI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 2 Dec 2020 21:24:08 -0500
 From:   Eric Biggers <ebiggers@kernel.org>
 Authentication-Results: mail.kernel.org; dkim=permerror (bad message/signature format)
@@ -24,9 +24,9 @@ To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v2 8/9] fscrypt: unexport fscrypt_get_encryption_info()
-Date:   Wed,  2 Dec 2020 18:20:40 -0800
-Message-Id: <20201203022041.230976-9-ebiggers@kernel.org>
+Subject: [PATCH v2 6/9] fscrypt: move body of fscrypt_prepare_setattr() out-of-line
+Date:   Wed,  2 Dec 2020 18:20:38 -0800
+Message-Id: <20201203022041.230976-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201203022041.230976-1-ebiggers@kernel.org>
 References: <20201203022041.230976-1-ebiggers@kernel.org>
@@ -38,76 +38,72 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Now that fscrypt_get_encryption_info() is only called from files in
-fs/crypto/ (due to all key setup now being handled by higher-level
-helper functions instead of directly by filesystems), unexport it and
-move its declaration to fscrypt_private.h.
+In preparation for reducing the visibility of fscrypt_require_key() by
+moving it to fscrypt_private.h, move the call to it from
+fscrypt_prepare_setattr() to an out-of-line function.
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fscrypt_private.h | 2 ++
- fs/crypto/keysetup.c        | 1 -
- include/linux/fscrypt.h     | 7 +------
- 3 files changed, 3 insertions(+), 7 deletions(-)
+ fs/crypto/hooks.c       |  8 ++++++++
+ include/linux/fscrypt.h | 11 +++++++++--
+ 2 files changed, 17 insertions(+), 2 deletions(-)
 
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index 16dd55080127a..c1c302656c345 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -571,6 +571,8 @@ int fscrypt_derive_dirhash_key(struct fscrypt_info *ci,
- void fscrypt_hash_inode_number(struct fscrypt_info *ci,
- 			       const struct fscrypt_master_key *mk);
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+index 82f351d3113ac..1c16dba222d95 100644
+--- a/fs/crypto/hooks.c
++++ b/fs/crypto/hooks.c
+@@ -120,6 +120,14 @@ int __fscrypt_prepare_readdir(struct inode *dir)
+ }
+ EXPORT_SYMBOL_GPL(__fscrypt_prepare_readdir);
  
-+int fscrypt_get_encryption_info(struct inode *inode);
++int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr)
++{
++	if (attr->ia_valid & ATTR_SIZE)
++		return fscrypt_require_key(d_inode(dentry));
++	return 0;
++}
++EXPORT_SYMBOL_GPL(__fscrypt_prepare_setattr);
 +
  /**
-  * fscrypt_require_key() - require an inode's encryption key
-  * @inode: the inode we need the key for
-diff --git a/fs/crypto/keysetup.c b/fs/crypto/keysetup.c
-index 50675b42d5b7c..6339b3069a400 100644
---- a/fs/crypto/keysetup.c
-+++ b/fs/crypto/keysetup.c
-@@ -589,7 +589,6 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 		res = 0;
- 	return res;
- }
--EXPORT_SYMBOL(fscrypt_get_encryption_info);
- 
- /**
-  * fscrypt_prepare_new_inode() - prepare to create a new inode in a directory
+  * fscrypt_prepare_setflags() - prepare to change flags with FS_IOC_SETFLAGS
+  * @inode: the inode on which flags are being changed
 diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index a07610f279266..4b163f5e58e9f 100644
+index 8cbb26f556952..b20900bb829fc 100644
 --- a/include/linux/fscrypt.h
 +++ b/include/linux/fscrypt.h
-@@ -75,7 +75,7 @@ struct fscrypt_operations {
- static inline struct fscrypt_info *fscrypt_get_info(const struct inode *inode)
- {
- 	/*
--	 * Pairs with the cmpxchg_release() in fscrypt_get_encryption_info().
-+	 * Pairs with the cmpxchg_release() in fscrypt_setup_encryption_info().
- 	 * I.e., another task may publish ->i_crypt_info concurrently, executing
- 	 * a RELEASE barrier.  We need to use smp_load_acquire() here to safely
- 	 * ACQUIRE the memory the other task published.
-@@ -200,7 +200,6 @@ int fscrypt_ioctl_remove_key_all_users(struct file *filp, void __user *arg);
- int fscrypt_ioctl_get_key_status(struct file *filp, void __user *arg);
- 
- /* keysetup.c */
--int fscrypt_get_encryption_info(struct inode *inode);
- int fscrypt_prepare_new_inode(struct inode *dir, struct inode *inode,
- 			      bool *encrypt_ret);
- void fscrypt_put_encryption_info(struct inode *inode);
-@@ -408,10 +407,6 @@ static inline int fscrypt_ioctl_get_key_status(struct file *filp,
+@@ -243,6 +243,7 @@ int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
+ int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry,
+ 			     struct fscrypt_name *fname);
+ int __fscrypt_prepare_readdir(struct inode *dir);
++int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr);
+ int fscrypt_prepare_setflags(struct inode *inode,
+ 			     unsigned int oldflags, unsigned int flags);
+ int fscrypt_prepare_symlink(struct inode *dir, const char *target,
+@@ -543,6 +544,12 @@ static inline int __fscrypt_prepare_readdir(struct inode *dir)
+ 	return -EOPNOTSUPP;
  }
  
- /* keysetup.c */
--static inline int fscrypt_get_encryption_info(struct inode *inode)
--{
--	return -EOPNOTSUPP;
--}
++static inline int __fscrypt_prepare_setattr(struct dentry *dentry,
++					    struct iattr *attr)
++{
++	return -EOPNOTSUPP;
++}
++
+ static inline int fscrypt_prepare_setflags(struct inode *inode,
+ 					   unsigned int oldflags,
+ 					   unsigned int flags)
+@@ -840,8 +847,8 @@ static inline int fscrypt_prepare_readdir(struct inode *dir)
+ static inline int fscrypt_prepare_setattr(struct dentry *dentry,
+ 					  struct iattr *attr)
+ {
+-	if (attr->ia_valid & ATTR_SIZE)
+-		return fscrypt_require_key(d_inode(dentry));
++	if (IS_ENCRYPTED(d_inode(dentry)))
++		return __fscrypt_prepare_setattr(dentry, attr);
+ 	return 0;
+ }
  
- static inline int fscrypt_prepare_new_inode(struct inode *dir,
- 					    struct inode *inode,
 -- 
 2.29.2
 
