@@ -3,27 +3,27 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF7CBC4743D
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:03:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5FD4C49ECB
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:03:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C45B722224
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:03:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 97FA322285
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:03:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389335AbgLDACi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 19:02:38 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:41818 "EHLO
+        id S2501887AbgLDACy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 19:02:54 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:41705 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388205AbgLDACf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:35 -0500
+        with ESMTP id S2387921AbgLDACY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:24 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kkyXh-0007ka-Hs; Fri, 04 Dec 2020 00:01:45 +0000
+        id 1kkyXC-0007ka-01; Fri, 04 Dec 2020 00:01:14 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -58,630 +58,770 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-integrity@vger.kernel.org,
         selinux@vger.kernel.org,
-        Christian Brauner <christian.brauner@ubuntu.com>,
-        Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v4 17/40] stat: handle idmapped mounts
-Date:   Fri,  4 Dec 2020 00:57:13 +0100
-Message-Id: <20201203235736.3528991-18-christian.brauner@ubuntu.com>
+        Christian Brauner <christian.brauner@ubuntu.com>
+Subject: [PATCH v4 00/40] idmapped mounts
+Date:   Fri,  4 Dec 2020 00:56:56 +0100
+Message-Id: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
-References: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The generic_fillattr() helper fills in the basic attributes associated
-with an inode. Enable it to handle idmapped mounts. If the inode is
-accessed through an idmapped mount we need to map it according to the
-mount's user namespace before we store the uid and gid.
-If the initial user namespace is passed nothing changes so non-idmapped
-mounts will see identical behavior as before.
-
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: David Howells <dhowells@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
----
-/* v2 */
-- Christoph Hellwig <hch@lst.de>:
-  - Don't pollute the vfs with additional helpers simply extend the existing
-    helpers with an additional argument and switch all callers.
-
-/* v3 */
-unchanged
+Hey everyone,
 
 /* v4 */
-unchanged
----
- fs/9p/vfs_inode.c      |  4 ++--
- fs/9p/vfs_inode_dotl.c |  4 ++--
- fs/afs/inode.c         |  2 +-
- fs/btrfs/inode.c       |  2 +-
- fs/ceph/inode.c        |  2 +-
- fs/cifs/inode.c        |  2 +-
- fs/coda/inode.c        |  2 +-
- fs/ecryptfs/inode.c    |  4 ++--
- fs/erofs/inode.c       |  2 +-
- fs/exfat/file.c        |  2 +-
- fs/ext2/inode.c        |  2 +-
- fs/ext4/inode.c        |  2 +-
- fs/f2fs/file.c         |  2 +-
- fs/fat/file.c          |  2 +-
- fs/fuse/dir.c          |  2 +-
- fs/gfs2/inode.c        |  2 +-
- fs/hfsplus/inode.c     |  2 +-
- fs/kernfs/inode.c      |  2 +-
- fs/libfs.c             |  4 ++--
- fs/minix/inode.c       |  2 +-
- fs/nfs/inode.c         |  2 +-
- fs/nfs/namespace.c     |  2 +-
- fs/ocfs2/file.c        |  2 +-
- fs/orangefs/inode.c    |  2 +-
- fs/proc/base.c         |  4 ++--
- fs/proc/generic.c      |  2 +-
- fs/proc/proc_net.c     |  2 +-
- fs/proc/proc_sysctl.c  |  2 +-
- fs/proc/root.c         |  2 +-
- fs/stat.c              | 20 ++++++++++++++------
- fs/sysv/itree.c        |  2 +-
- fs/ubifs/dir.c         |  2 +-
- fs/udf/symlink.c       |  2 +-
- fs/vboxsf/utils.c      |  2 +-
- include/linux/fs.h     |  2 +-
- mm/shmem.c             |  2 +-
- 36 files changed, 54 insertions(+), 46 deletions(-)
+- Split out several preparatory patches from the initial mount_setattr
+  patch as requested by Christoph.
+- Add new tests for file/directory creation in directories with the
+  setgid bit set. Specifically, verify that the setgid bit is correctly
+  ignored when creating a file with the setgid bit and the parent
+  directory's i_gid isn't in_group_p() and the caller isn't
+  capable_wrt_inode_uidgid() over the parent directory's inode when
+  inode_init_owner() is called.
+  Conversely, verify that the setgid bit is set when creating a file
+  with the setgid bit and the parent's i_gid is either in_group_p() or
+  the caller is capable_wrt_inode_uidgid() over the parent directory's
+  inode. In additiona, verify that the setgid bit is always inherited
+  when creating directories.
+  Test all of this on regular mounts, idmapped mounts, and on idmapped
+  mounts in user namespaces.
+- Add new tests to verify that the i_gid of newly created files or
+  directories is correctly set to the parent directory's i_gid when the
+  parent directory has the setgid bit set.
+- Use "mnt_userns" as the de facto name for a vfsmount's user namespace
+  everywhere as suggested by Serge.
+- Reuse existing propagation flags instead of introducing new ones as
+  suggested by Christoph. (This is in line with Linus request to not
+  introduce too many new flags as evidenced by prior discussions on
+  other patchsets such as openat2().)
+- Add first set of Acked-bys from Serge and Reviewed-bys from Christoph.
+- Fix commit messages to reflect the fact that we modify existing
+  vfs helpers but do not introduce new ones like we did in the first
+  version. Some commit messages still implied we were adding new
+  helpers.
+- Reformat all commit messages to adhere to 73 char length limit and
+  wrap all lines in commits at 80 chars whenever this doesn't hinder
+  legibility.
+- Simplify various codepaths with Christoph's suggestions.
 
-diff --git a/fs/9p/vfs_inode.c b/fs/9p/vfs_inode.c
-index 1b2028be2e08..ca3ac5a8daa8 100644
---- a/fs/9p/vfs_inode.c
-+++ b/fs/9p/vfs_inode.c
-@@ -1006,7 +1006,7 @@ v9fs_vfs_getattr(const struct path *path, struct kstat *stat,
- 	p9_debug(P9_DEBUG_VFS, "dentry: %p\n", dentry);
- 	v9ses = v9fs_dentry2v9ses(dentry);
- 	if (v9ses->cache == CACHE_LOOSE || v9ses->cache == CACHE_FSCACHE) {
--		generic_fillattr(d_inode(dentry), stat);
-+		generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 		return 0;
- 	}
- 	fid = v9fs_fid_lookup(dentry);
-@@ -1018,7 +1018,7 @@ v9fs_vfs_getattr(const struct path *path, struct kstat *stat,
- 		return PTR_ERR(st);
- 
- 	v9fs_stat2inode(st, d_inode(dentry), dentry->d_sb, 0);
--	generic_fillattr(d_inode(dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 
- 	p9stat_free(st);
- 	kfree(st);
-diff --git a/fs/9p/vfs_inode_dotl.c b/fs/9p/vfs_inode_dotl.c
-index 282ec5cb45dc..8f3c1daf72ba 100644
---- a/fs/9p/vfs_inode_dotl.c
-+++ b/fs/9p/vfs_inode_dotl.c
-@@ -466,7 +466,7 @@ v9fs_vfs_getattr_dotl(const struct path *path, struct kstat *stat,
- 	p9_debug(P9_DEBUG_VFS, "dentry: %p\n", dentry);
- 	v9ses = v9fs_dentry2v9ses(dentry);
- 	if (v9ses->cache == CACHE_LOOSE || v9ses->cache == CACHE_FSCACHE) {
--		generic_fillattr(d_inode(dentry), stat);
-+		generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 		return 0;
- 	}
- 	fid = v9fs_fid_lookup(dentry);
-@@ -482,7 +482,7 @@ v9fs_vfs_getattr_dotl(const struct path *path, struct kstat *stat,
- 		return PTR_ERR(st);
- 
- 	v9fs_stat2inode_dotl(st, d_inode(dentry), 0);
--	generic_fillattr(d_inode(dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 	/* Change block size to what the server returned */
- 	stat->blksize = st->st_blksize;
- 
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index b0d7b892090d..795ee5cb3817 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -745,7 +745,7 @@ int afs_getattr(const struct path *path, struct kstat *stat,
- 
- 	do {
- 		read_seqbegin_or_lock(&vnode->cb_lock, &seq);
--		generic_fillattr(inode, stat);
-+		generic_fillattr(&init_user_ns, inode, stat);
- 		if (test_bit(AFS_VNODE_SILLY_DELETED, &vnode->flags) &&
- 		    stat->nlink > 0)
- 			stat->nlink -= 1;
-diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
-index 502b7db93894..694644bbd2d9 100644
---- a/fs/btrfs/inode.c
-+++ b/fs/btrfs/inode.c
-@@ -8841,7 +8841,7 @@ static int btrfs_getattr(const struct path *path, struct kstat *stat,
- 				  STATX_ATTR_IMMUTABLE |
- 				  STATX_ATTR_NODUMP);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->dev = BTRFS_I(inode)->root->anon_dev;
- 
- 	spin_lock(&BTRFS_I(inode)->lock);
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 19ec845ba5ec..decfa5e1ec4c 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -2380,7 +2380,7 @@ int ceph_getattr(const struct path *path, struct kstat *stat,
- 			return err;
- 	}
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->ino = ceph_present_inode(inode);
- 
- 	/*
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index 4d69b786e403..4fb3b6961096 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -2400,7 +2400,7 @@ int cifs_getattr(const struct path *path, struct kstat *stat,
- 			return rc;
- 	}
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->blksize = cifs_sb->bsize;
- 	stat->ino = CIFS_I(inode)->uniqueid;
- 
-diff --git a/fs/coda/inode.c b/fs/coda/inode.c
-index b1c70e2b9b1e..4d113e191cb8 100644
---- a/fs/coda/inode.c
-+++ b/fs/coda/inode.c
-@@ -256,7 +256,7 @@ int coda_getattr(const struct path *path, struct kstat *stat,
- {
- 	int err = coda_revalidate_inode(d_inode(path->dentry));
- 	if (!err)
--		generic_fillattr(d_inode(path->dentry), stat);
-+		generic_fillattr(&init_user_ns, d_inode(path->dentry), stat);
- 	return err;
- }
- 
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index 7de9fda25dad..0a218d7c3023 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -975,7 +975,7 @@ static int ecryptfs_getattr_link(const struct path *path, struct kstat *stat,
- 
- 	mount_crypt_stat = &ecryptfs_superblock_to_private(
- 						dentry->d_sb)->mount_crypt_stat;
--	generic_fillattr(d_inode(dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 	if (mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES) {
- 		char *target;
- 		size_t targetsiz;
-@@ -1003,7 +1003,7 @@ static int ecryptfs_getattr(const struct path *path, struct kstat *stat,
- 	if (!rc) {
- 		fsstack_copy_attr_all(d_inode(dentry),
- 				      ecryptfs_inode_to_lower(d_inode(dentry)));
--		generic_fillattr(d_inode(dentry), stat);
-+		generic_fillattr(&init_user_ns, d_inode(dentry), stat);
- 		stat->blocks = lower_stat.blocks;
- 	}
- 	return rc;
-diff --git a/fs/erofs/inode.c b/fs/erofs/inode.c
-index 3e21c0e8adae..083818063ac6 100644
---- a/fs/erofs/inode.c
-+++ b/fs/erofs/inode.c
-@@ -343,7 +343,7 @@ int erofs_getattr(const struct path *path, struct kstat *stat,
- 	stat->attributes_mask |= (STATX_ATTR_COMPRESSED |
- 				  STATX_ATTR_IMMUTABLE);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/exfat/file.c b/fs/exfat/file.c
-index ace35aa8e64b..e9705b3295d3 100644
---- a/fs/exfat/file.c
-+++ b/fs/exfat/file.c
-@@ -273,7 +273,7 @@ int exfat_getattr(const struct path *path, struct kstat *stat,
- 	struct inode *inode = d_backing_inode(path->dentry);
- 	struct exfat_inode_info *ei = EXFAT_I(inode);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	exfat_truncate_atime(&stat->atime);
- 	stat->result_mask |= STATX_BTIME;
- 	stat->btime.tv_sec = ei->i_crtime.tv_sec;
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 5ff1e5e3c0fe..7fcda76094ff 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1659,7 +1659,7 @@ int ext2_getattr(const struct path *path, struct kstat *stat,
- 			STATX_ATTR_IMMUTABLE |
- 			STATX_ATTR_NODUMP);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f0487795afd1..d992fef2e7c2 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5558,7 +5558,7 @@ int ext4_getattr(const struct path *path, struct kstat *stat,
- 				  STATX_ATTR_NODUMP |
- 				  STATX_ATTR_VERITY);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index e4a13570deff..712e1eaff4d5 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -814,7 +814,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
- 				  STATX_ATTR_NODUMP |
- 				  STATX_ATTR_VERITY);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	/* we need to show initial sectors used for inline_data/dentries */
- 	if ((S_ISREG(inode->i_mode) && f2fs_has_inline_data(inode)) ||
-diff --git a/fs/fat/file.c b/fs/fat/file.c
-index 805b501467e9..f7e04f533d31 100644
---- a/fs/fat/file.c
-+++ b/fs/fat/file.c
-@@ -398,7 +398,7 @@ int fat_getattr(const struct path *path, struct kstat *stat,
- 		u32 request_mask, unsigned int flags)
- {
- 	struct inode *inode = d_inode(path->dentry);
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->blksize = MSDOS_SB(inode->i_sb)->cluster_size;
- 
- 	if (MSDOS_SB(inode->i_sb)->options.nfs == FAT_NFS_NOSTALE_RO) {
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index dc6e8cc565d2..0750755685cd 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -1064,7 +1064,7 @@ static int fuse_update_get_attr(struct inode *inode, struct file *file,
- 		forget_all_cached_acls(inode);
- 		err = fuse_do_getattr(inode, stat, file);
- 	} else if (stat) {
--		generic_fillattr(inode, stat);
-+		generic_fillattr(&init_user_ns, inode, stat);
- 		stat->mode = fi->orig_i_mode;
- 		stat->ino = fi->orig_ino;
- 	}
-diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
-index a29b66116c01..f1841667bcd9 100644
---- a/fs/gfs2/inode.c
-+++ b/fs/gfs2/inode.c
-@@ -2048,7 +2048,7 @@ static int gfs2_getattr(const struct path *path, struct kstat *stat,
- 				  STATX_ATTR_IMMUTABLE |
- 				  STATX_ATTR_NODUMP);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	if (gfs2_holder_initialized(&gh))
- 		gfs2_glock_dq_uninit(&gh);
-diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
-index ffa137f8234e..642e067d8fe8 100644
---- a/fs/hfsplus/inode.c
-+++ b/fs/hfsplus/inode.c
-@@ -286,7 +286,7 @@ int hfsplus_getattr(const struct path *path, struct kstat *stat,
- 	stat->attributes_mask |= STATX_ATTR_APPEND | STATX_ATTR_IMMUTABLE |
- 				 STATX_ATTR_NODUMP;
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/kernfs/inode.c b/fs/kernfs/inode.c
-index 7e44052b42e1..032d3d7546d8 100644
---- a/fs/kernfs/inode.c
-+++ b/fs/kernfs/inode.c
-@@ -193,7 +193,7 @@ int kernfs_iop_getattr(const struct path *path, struct kstat *stat,
- 	kernfs_refresh_inode(kn, inode);
- 	mutex_unlock(&kernfs_mutex);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index a0ca5c9f946d..ea9d53d68ca5 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -31,7 +31,7 @@ int simple_getattr(const struct path *path, struct kstat *stat,
- 		   u32 request_mask, unsigned int query_flags)
- {
- 	struct inode *inode = d_inode(path->dentry);
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->blocks = inode->i_mapping->nrpages << (PAGE_SHIFT - 9);
- 	return 0;
- }
-@@ -1304,7 +1304,7 @@ static int empty_dir_getattr(const struct path *path, struct kstat *stat,
- 			     u32 request_mask, unsigned int query_flags)
- {
- 	struct inode *inode = d_inode(path->dentry);
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/minix/inode.c b/fs/minix/inode.c
-index 34f546404aa1..91c81d2fc90d 100644
---- a/fs/minix/inode.c
-+++ b/fs/minix/inode.c
-@@ -658,7 +658,7 @@ int minix_getattr(const struct path *path, struct kstat *stat,
- 	struct super_block *sb = path->dentry->d_sb;
- 	struct inode *inode = d_inode(path->dentry);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	if (INODE_VERSION(inode) == MINIX_V1)
- 		stat->blocks = (BLOCK_SIZE / 512) * V1_minix_blocks(stat->size, sb);
- 	else
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index aa6493905bbe..8d74974d7992 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -858,7 +858,7 @@ int nfs_getattr(const struct path *path, struct kstat *stat,
- 	/* Only return attributes that were revalidated. */
- 	stat->result_mask &= request_mask;
- out_no_update:
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->ino = nfs_compat_user_ino64(NFS_FILEID(inode));
- 	if (S_ISDIR(inode->i_mode))
- 		stat->blksize = NFS_SERVER(inode)->dtsize;
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 2bcbe38afe2e..55fc711e368b 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -213,7 +213,7 @@ nfs_namespace_getattr(const struct path *path, struct kstat *stat,
- {
- 	if (NFS_FH(d_inode(path->dentry))->size != 0)
- 		return nfs_getattr(path, stat, request_mask, query_flags);
--	generic_fillattr(d_inode(path->dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(path->dentry), stat);
- 	return 0;
- }
- 
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index cabf355b148f..a070d4c9b6ed 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -1313,7 +1313,7 @@ int ocfs2_getattr(const struct path *path, struct kstat *stat,
- 		goto bail;
- 	}
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	/*
- 	 * If there is inline data in the inode, the inode will normally not
- 	 * have data blocks allocated (it may have an external xattr block).
-diff --git a/fs/orangefs/inode.c b/fs/orangefs/inode.c
-index 563fe9ab8eb2..b94032f77e61 100644
---- a/fs/orangefs/inode.c
-+++ b/fs/orangefs/inode.c
-@@ -903,7 +903,7 @@ int orangefs_getattr(const struct path *path, struct kstat *stat,
- 	ret = orangefs_inode_getattr(inode,
- 	    request_mask & STATX_SIZE ? ORANGEFS_GETATTR_SIZE : 0);
- 	if (ret == 0) {
--		generic_fillattr(inode, stat);
-+		generic_fillattr(&init_user_ns, inode, stat);
- 
- 		/* override block size reported to stat */
- 		if (!(request_mask & STATX_SIZE))
-diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 266b54b75c4c..bf4b203103a7 100644
---- a/fs/proc/base.c
-+++ b/fs/proc/base.c
-@@ -1934,7 +1934,7 @@ int pid_getattr(const struct path *path, struct kstat *stat,
- 	struct proc_fs_info *fs_info = proc_sb_info(inode->i_sb);
- 	struct task_struct *task;
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	stat->uid = GLOBAL_ROOT_UID;
- 	stat->gid = GLOBAL_ROOT_GID;
-@@ -3797,7 +3797,7 @@ static int proc_task_getattr(const struct path *path, struct kstat *stat,
- {
- 	struct inode *inode = d_inode(path->dentry);
- 	struct task_struct *p = get_proc_task(inode);
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	if (p) {
- 		stat->nlink += get_nr_threads(p);
-diff --git a/fs/proc/generic.c b/fs/proc/generic.c
-index 896f2ebde75c..5c6345c68fc5 100644
---- a/fs/proc/generic.c
-+++ b/fs/proc/generic.c
-@@ -145,7 +145,7 @@ static int proc_getattr(const struct path *path, struct kstat *stat,
- 		}
- 	}
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	return 0;
- }
- 
-diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
-index ed8a6306990c..bc555b7da6dc 100644
---- a/fs/proc/proc_net.c
-+++ b/fs/proc/proc_net.c
-@@ -313,7 +313,7 @@ static int proc_tgid_net_getattr(const struct path *path, struct kstat *stat,
- 
- 	net = get_proc_task_net(inode);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	if (net != NULL) {
- 		stat->nlink = net->proc_net->nlink;
-diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
-index ec67dbc1f705..87c828348140 100644
---- a/fs/proc/proc_sysctl.c
-+++ b/fs/proc/proc_sysctl.c
-@@ -840,7 +840,7 @@ static int proc_sys_getattr(const struct path *path, struct kstat *stat,
- 	if (IS_ERR(head))
- 		return PTR_ERR(head);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	if (table)
- 		stat->mode = (stat->mode & S_IFMT) | table->mode;
- 
-diff --git a/fs/proc/root.c b/fs/proc/root.c
-index 5e444d4f9717..244e4b6f15ef 100644
---- a/fs/proc/root.c
-+++ b/fs/proc/root.c
-@@ -311,7 +311,7 @@ void __init proc_root_init(void)
- static int proc_root_getattr(const struct path *path, struct kstat *stat,
- 			     u32 request_mask, unsigned int query_flags)
- {
--	generic_fillattr(d_inode(path->dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(path->dentry), stat);
- 	stat->nlink = proc_root.nlink + nr_processes();
- 	return 0;
- }
-diff --git a/fs/stat.c b/fs/stat.c
-index dacecdda2e79..8c58c37ef1ab 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -26,21 +26,29 @@
- 
- /**
-  * generic_fillattr - Fill in the basic attributes from the inode struct
-- * @inode: Inode to use as the source
-- * @stat: Where to fill in the attributes
-+ * @mnt_userns:	user namespace of the mount the inode was found from
-+ * @inode:	Inode to use as the source
-+ * @stat:	Where to fill in the attributes
-  *
-  * Fill in the basic attributes in the kstat structure from data that's to be
-  * found on the VFS inode structure.  This is the default if no getattr inode
-  * operation is supplied.
-+ *
-+ * If the inode has been found through an idmapped mount the user namespace of
-+ * the vfsmount must be passed through @mnt_userns. This function will then take
-+ * care to map the inode according to @mnt_userns before filling in the uid and
-+ * gid filds. On non-idmapped mounts or if permission checking is to be
-+ * performed on the raw inode simply passs init_user_ns.
-  */
--void generic_fillattr(struct inode *inode, struct kstat *stat)
-+void generic_fillattr(struct user_namespace *mnt_userns, struct inode *inode,
-+		      struct kstat *stat)
- {
- 	stat->dev = inode->i_sb->s_dev;
- 	stat->ino = inode->i_ino;
- 	stat->mode = inode->i_mode;
- 	stat->nlink = inode->i_nlink;
--	stat->uid = inode->i_uid;
--	stat->gid = inode->i_gid;
-+	stat->uid = i_uid_into_mnt(mnt_userns, inode);
-+	stat->gid = i_gid_into_mnt(mnt_userns, inode);
- 	stat->rdev = inode->i_rdev;
- 	stat->size = i_size_read(inode);
- 	stat->atime = inode->i_atime;
-@@ -87,7 +95,7 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
- 		return inode->i_op->getattr(path, stat, request_mask,
- 					    query_flags);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(mnt_user_ns(path->mnt), inode, stat);
- 	return 0;
- }
- EXPORT_SYMBOL(vfs_getattr_nosec);
-diff --git a/fs/sysv/itree.c b/fs/sysv/itree.c
-index bcb67b0cabe7..83cffab6955f 100644
---- a/fs/sysv/itree.c
-+++ b/fs/sysv/itree.c
-@@ -445,7 +445,7 @@ int sysv_getattr(const struct path *path, struct kstat *stat,
- 		 u32 request_mask, unsigned int flags)
- {
- 	struct super_block *s = path->dentry->d_sb;
--	generic_fillattr(d_inode(path->dentry), stat);
-+	generic_fillattr(&init_user_ns, d_inode(path->dentry), stat);
- 	stat->blocks = (s->s_blocksize / 512) * sysv_nblocks(s, stat->size);
- 	stat->blksize = s->s_blocksize;
- 	return 0;
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index a2bbd7ed39e9..e61d6fa7ed18 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -1579,7 +1579,7 @@ int ubifs_getattr(const struct path *path, struct kstat *stat,
- 				STATX_ATTR_ENCRYPTED |
- 				STATX_ATTR_IMMUTABLE);
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	stat->blksize = UBIFS_BLOCK_SIZE;
- 	stat->size = ui->ui_size;
- 
-diff --git a/fs/udf/symlink.c b/fs/udf/symlink.c
-index c973db239604..54a44d1f023c 100644
---- a/fs/udf/symlink.c
-+++ b/fs/udf/symlink.c
-@@ -159,7 +159,7 @@ static int udf_symlink_getattr(const struct path *path, struct kstat *stat,
- 	struct inode *inode = d_backing_inode(dentry);
- 	struct page *page;
- 
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 	page = read_mapping_page(inode->i_mapping, 0, NULL);
- 	if (IS_ERR(page))
- 		return PTR_ERR(page);
-diff --git a/fs/vboxsf/utils.c b/fs/vboxsf/utils.c
-index 018057546067..d2cd1c99f48e 100644
---- a/fs/vboxsf/utils.c
-+++ b/fs/vboxsf/utils.c
-@@ -233,7 +233,7 @@ int vboxsf_getattr(const struct path *path, struct kstat *kstat,
- 	if (err)
- 		return err;
- 
--	generic_fillattr(d_inode(dentry), kstat);
-+	generic_fillattr(&init_user_ns, d_inode(dentry), kstat);
- 	return 0;
- }
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index fb634ea3ce05..e4d5a7c82136 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -3143,7 +3143,7 @@ extern int __page_symlink(struct inode *inode, const char *symname, int len,
- extern int page_symlink(struct inode *inode, const char *symname, int len);
- extern const struct inode_operations page_symlink_inode_operations;
- extern void kfree_link(void *);
--extern void generic_fillattr(struct inode *, struct kstat *);
-+extern void generic_fillattr(struct user_namespace *, struct inode *, struct kstat *);
- extern int vfs_getattr_nosec(const struct path *, struct kstat *, u32, unsigned int);
- extern int vfs_getattr(const struct path *, struct kstat *, u32, unsigned int);
- void __inode_add_bytes(struct inode *inode, loff_t bytes);
-diff --git a/mm/shmem.c b/mm/shmem.c
-index da36ac107128..fe43360c5888 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -1072,7 +1072,7 @@ static int shmem_getattr(const struct path *path, struct kstat *stat,
- 		shmem_recalc_inode(inode);
- 		spin_unlock_irq(&info->lock);
- 	}
--	generic_fillattr(inode, stat);
-+	generic_fillattr(&init_user_ns, inode, stat);
- 
- 	if (is_huge_enabled(sb_info))
- 		stat->blksize = HPAGE_PMD_SIZE;
+/* v3 */
+- The major change is the port of the test-suite from the
+  kernel-internal selftests framework to xfstests as requested by
+  Darrick and Christoph. The test-suite for xfstests is patch 38 in this
+  series. It has been kept as part of this series even though it belongs
+  to xfstests so it's easier to see what is tested and to keep it
+  in-sync.
+- Note, the test-suite now has been extended to cover io_uring and
+  idmapped mounts. The IORING_REGISTER_PERSONALITY feature allows to
+  register the caller's credentials with io_uring and returns an id
+  associated with these credentials. This is useful for applications
+  that wish to share a ring between separate users/processes. Callers
+  can pass in the credential id in the sqe personality field. If set,
+  that particular sqe will be issued with these credentials.
+  The test-suite now tests that the openat* operations with different
+  registered credentials work correctly and safely on regular mounts, on
+  regular mounts inside user namespaces, on idmapped mounts, and on
+  idmapped mounts inside user namespaces.
+
+/* v2 */
+- The major change is the rework requested by Christoph and others to
+  adapt all relevant helpers and inode_operations methods to account for
+  idmapped mounts instead of introducing new helpers and methods
+  specific to idmapped mounts like we did before. We've also moved the
+  overlayfs conversion to handle idmapped mounts into a separate
+  patchset that will be sent out separately after the core changes
+  landed. The converted filesytems in this series include fat and ext4.
+  As per Christoph's request the vfs-wide config option to disable
+  idmapped mounts has been removed. Instead the filesystems can decide
+  whether or not they want to allow idmap mounts through a config
+  option. These config options default to off. Having a config option
+  allows us to gain some confidence in the patchset over multiple kernel
+  releases.
+- This version introduces a large test-suite to test current vfs
+  behavior and idmapped mounts behavior. This test-suite is intended to
+  grow over time.
+- While while working on adapting this patchset to the requested
+  changes, the runC and containerd crowd was nice enough to adapt
+  containerd to this patchset to make use of idmapped mounts in one of
+  the most widely used container runtimes:
+  https://github.com/containerd/containerd/pull/4734
+
+With this patchset we make it possible to attach idmappings to mounts.
+This handles several common use-cases. Here are just a few:
+- Shifting of a container rootfs or base image without having to mangle
+  every file (runc, Docker, containerd, k8s, LXD, systemd ...)
+- Sharing of data between host or privileged containers with
+  underprivileged containers (runc, Docker, containerd, k8s, LXD, ...)
+- Shifting of subset of ownership-less filesystems (vfat) for use by
+  multiple users, effectively allowing for DAC on such devices (systemd,
+  Android, ...)
+- Data sharing between multiple user namespaces with incompatible maps
+  (LXD, k8s, ...)
+Making it possible to share directories and mounts between users with
+different uids and gids is itself quite an important use-case in
+distributed systems environments. It's of course especially useful in
+general for portable usb sticks, sharing data between multiple users in
+general, and sharing home directories between multiple users. The last
+example is now elegantly expressed in systemd's homed concept for
+portable home directories. As mentioned above, idmapped mounts also
+allow data from the host to be shared with unprivileged containers,
+between privileged and unprivileged containers simultaneously and in
+addition also between unprivileged containers with different idmappings
+whenever they are used to isolate one container completely from another
+container.
+As can be seen from answers to earlier threads of this patchset and from
+the list of potential users interest in this patchset is widespread.
+
+We have implemented and proposed multiple solutions to this before. This
+included the introduction of fsid mappings, a tiny filesystem that is
+currently carried in Ubuntu that has shown it's limitations, and an
+approach to call override creds in the vfs. None of these solutions have
+covered all of the above use-cases. Some of them have been fairly hacky
+too by e.g. violating how things should be passed down to the individual
+filesystems.
+The solution proposed here has it's origins in multiple discussions
+during Linux Plumbers 2017 during and after the end of the containers
+microconference.
+To the best of my knowledge this involved Aleksa, Stéphane, Eric, David,
+James, and myself. The original idea or a variant thereof has been
+discussed, again to the best of my knowledge, after a Linux conference
+in St. Petersburg in Russia in 2017 between Christoph, Tycho, and
+myself.
+We've taken the time to implement a working version of this solution
+over the last weeks to the best of my abilities. Tycho has signed up
+for this sligthly crazy endeavour as well and he has helped with the
+conversion of the xattr codepaths and will be involved with others in
+converting additional filesystems.
+
+Idmappings become a property of struct vfsmount instead of tying it to a
+process being inside of a user namespace which has been the case for all
+other proposed approaches. It also allows to pass down the user
+namespace into the filesystems which is a clean way instead of violating
+calling conventions by strapping the user namespace information that is
+a property of the mount to the caller's credentials or similar hacks.
+Each mount can have a separate idmapping and idmapped mounts can even be
+created in the initial user namespace unblocking a range of use-cases.
+
+To this end the vfsmount struct gains a new struct user_namespace
+member. The idmapping of the user namespace becomes the idmapping of the
+mount. A caller that is privileged with respect to the user namespace of
+the superblock of the underlying filesystem can create an idmapped
+mount. In the future, we can enable unprivileged use-cases by checking
+whether the caller is privileged wrt to the user namespace than an
+already idmapped mount has been marked with, allowing them to change the
+idmapping. For now, keep things simple until we feel sure enough.
+Note, that with syscall interception it is already possible to intercept
+idmapped mount requests from unprivileged containers and handle them in
+a sufficiently privileged container manager. Support for this is already
+available in LXD and will be available in runC were syscall interception
+is currently in the process of becoming part of the runtime spec:
+https://github.com/opencontainers/runtime-spec/pull/1074.
+
+The user namespace the mount will be marked with can be specified by
+passing a file descriptor refering to the user namespace as an argument
+to the new mount_setattr() syscall together with the new
+MOUNT_ATTR_IDMAP flag. By default vfsmounts are marked with the initial
+user namespace and no behavioral or performance changes should be
+observed. All mapping operations are nops for the initial user
+namespace. When a file/inode is accessed through an idmapped mount the
+i_uid and i_gid of the inode will be remapped according to the user
+namespace the mount has been marked with.
+
+In order to support idmapped mounts, filesystems need to be changed and
+mark themselves with the FS_ALLOW_IDMAP flag in fs_flags. The initial
+version contains fat and ext4 including a list of examples. But patches
+for other filesystems are actively worked on but will be sent out
+separately. We are here to see this through and there are multiple
+people involved in converting filesystems. So filesystem developers are
+not left alone with this.
+
+There is a simple tool available at
+https://github.com/brauner/mount-idmapped that allows to create idmapped
+mounts so people can play with this patch series. Here are a few
+illustrations:
+
+1. Create a simple idmapped mount of another user's home directory
+
+u1001@f2-vm:/$ sudo ./mount-idmapped --map-mount b:1000:1001:1 /home/ubuntu/ /mnt
+u1001@f2-vm:/$ ls -al /home/ubuntu/
+total 28
+drwxr-xr-x 2 ubuntu ubuntu 4096 Oct 28 22:07 .
+drwxr-xr-x 4 root   root   4096 Oct 28 04:00 ..
+-rw------- 1 ubuntu ubuntu 3154 Oct 28 22:12 .bash_history
+-rw-r--r-- 1 ubuntu ubuntu  220 Feb 25  2020 .bash_logout
+-rw-r--r-- 1 ubuntu ubuntu 3771 Feb 25  2020 .bashrc
+-rw-r--r-- 1 ubuntu ubuntu  807 Feb 25  2020 .profile
+-rw-r--r-- 1 ubuntu ubuntu    0 Oct 16 16:11 .sudo_as_admin_successful
+-rw------- 1 ubuntu ubuntu 1144 Oct 28 00:43 .viminfo
+u1001@f2-vm:/$ ls -al /mnt/
+total 28
+drwxr-xr-x  2 u1001 u1001 4096 Oct 28 22:07 .
+drwxr-xr-x 29 root  root  4096 Oct 28 22:01 ..
+-rw-------  1 u1001 u1001 3154 Oct 28 22:12 .bash_history
+-rw-r--r--  1 u1001 u1001  220 Feb 25  2020 .bash_logout
+-rw-r--r--  1 u1001 u1001 3771 Feb 25  2020 .bashrc
+-rw-r--r--  1 u1001 u1001  807 Feb 25  2020 .profile
+-rw-r--r--  1 u1001 u1001    0 Oct 16 16:11 .sudo_as_admin_successful
+-rw-------  1 u1001 u1001 1144 Oct 28 00:43 .viminfo
+u1001@f2-vm:/$ touch /mnt/my-file
+u1001@f2-vm:/$ setfacl -m u:1001:rwx /mnt/my-file
+u1001@f2-vm:/$ sudo setcap -n 1001 cap_net_raw+ep /mnt/my-file
+u1001@f2-vm:/$ ls -al /mnt/my-file
+-rw-rwxr--+ 1 u1001 u1001 0 Oct 28 22:14 /mnt/my-file
+u1001@f2-vm:/$ ls -al /home/ubuntu/my-file
+-rw-rwxr--+ 1 ubuntu ubuntu 0 Oct 28 22:14 /home/ubuntu/my-file
+u1001@f2-vm:/$ getfacl /mnt/my-file
+getfacl: Removing leading '/' from absolute path names
+# file: mnt/my-file
+# owner: u1001
+# group: u1001
+user::rw-
+user:u1001:rwx
+group::rw-
+mask::rwx
+other::r--
+u1001@f2-vm:/$ getfacl /home/ubuntu/my-file
+getfacl: Removing leading '/' from absolute path names
+# file: home/ubuntu/my-file
+# owner: ubuntu
+# group: ubuntu
+user::rw-
+user:ubuntu:rwx
+group::rw-
+mask::rwx
+other::r--
+
+2. Create mapping of the whole ext4 rootfs without a mapping for uid and gid 0
+
+ubuntu@f2-vm:~$ sudo /mount-idmapped --map-mount b:1:1:65536 / /mnt/
+ubuntu@f2-vm:~$ findmnt | grep mnt
+└─/mnt                                /dev/sda2  ext4       rw,relatime
+  └─/mnt/mnt                          /dev/sda2  ext4       rw,relatime
+ubuntu@f2-vm:~$ sudo mkdir /AS-ROOT-CAN-CREATE
+ubuntu@f2-vm:~$ sudo mkdir /mnt/AS-ROOT-CANT-CREATE
+mkdir: cannot create directory ‘/mnt/AS-ROOT-CANT-CREATE’: Value too large for defined data type
+ubuntu@f2-vm:~$ mkdir /mnt/home/ubuntu/AS-USER-1000-CAN-CREATE
+
+3. Create a vfat usb mount and expose to user 1001 and 5000
+
+ubuntu@f2-vm:/$ sudo mount /dev/sdb /mnt
+ubuntu@f2-vm:/$ findmnt  | grep mnt
+└─/mnt                                /dev/sdb vfat       rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=iso8859-1,shortname=mixed,errors=remount-ro
+ubuntu@f2-vm:/$ ls -al /mnt
+total 12
+drwxr-xr-x  2 root root 4096 Jan  1  1970 .
+drwxr-xr-x 34 root root 4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 root root    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 root root    0 Oct 28 01:09 bbb
+ubuntu@f2-vm:/$ sudo /mount-idmapped --map-mount b:0:1001:1 /mnt /mnt-1001/
+ubuntu@f2-vm:/$ ls -al /mnt-1001/
+total 12
+drwxr-xr-x  2 u1001 u1001 4096 Jan  1  1970 .
+drwxr-xr-x 34 root  root  4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 u1001 u1001    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 u1001 u1001    0 Oct 28 01:09 bbb
+ubuntu@f2-vm:/$ sudo /mount-idmapped --map-mount b:0:5000:1 /mnt /mnt-5000/
+ubuntu@f2-vm:/$ ls -al /mnt-5000/
+total 12
+drwxr-xr-x  2 5000 5000 4096 Jan  1  1970 .
+drwxr-xr-x 34 root root 4096 Oct 28 22:24 ..
+-rwxr-xr-x  1 5000 5000    4 Oct 28 03:44 aaa
+-rwxr-xr-x  1 5000 5000    0 Oct 28 01:09 bbb
+
+4. Create an idmapped rootfs mount for a container
+
+root@f2-vm:~# ls -al /var/lib/lxc/f2/rootfs/
+total 68
+drwxr-xr-x 17 20000 20000 4096 Sep 24 07:48 .
+drwxrwx---  3 20000 20000 4096 Oct 16 19:26 ..
+lrwxrwxrwx  1 20000 20000    7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 boot
+drwxr-xr-x  3 20000 20000 4096 Oct 16 19:26 dev
+drwxr-xr-x 61 20000 20000 4096 Oct 16 19:26 etc
+drwxr-xr-x  3 20000 20000 4096 Sep 24 07:45 home
+lrwxrwxrwx  1 20000 20000    7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx  1 20000 20000    9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx  1 20000 20000    9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx  1 20000 20000   10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 media
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 mnt
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 opt
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 proc
+drwx------  2 20000 20000 4096 Sep 24 07:43 root
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:45 run
+lrwxrwxrwx  1 20000 20000    8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x  2 20000 20000 4096 Sep 24 07:43 srv
+drwxr-xr-x  2 20000 20000 4096 Apr 15  2020 sys
+drwxrwxrwt  2 20000 20000 4096 Sep 24 07:44 tmp
+drwxr-xr-x 13 20000 20000 4096 Sep 24 07:43 usr
+drwxr-xr-x 12 20000 20000 4096 Sep 24 07:44 var
+root@f2-vm:~# /mount-idmapped --map-mount b:20000:10000:100000 /var/lib/lxc/f2/rootfs/ /mnt
+root@f2-vm:~# ls -al /mnt
+total 68
+drwxr-xr-x 17 10000 10000 4096 Sep 24 07:48 .
+drwxr-xr-x 34 root  root  4096 Oct 28 22:24 ..
+lrwxrwxrwx  1 10000 10000    7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 boot
+drwxr-xr-x  3 10000 10000 4096 Oct 16 19:26 dev
+drwxr-xr-x 61 10000 10000 4096 Oct 16 19:26 etc
+drwxr-xr-x  3 10000 10000 4096 Sep 24 07:45 home
+lrwxrwxrwx  1 10000 10000    7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx  1 10000 10000    9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx  1 10000 10000    9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx  1 10000 10000   10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 media
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 mnt
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 opt
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 proc
+drwx------  2 10000 10000 4096 Sep 24 07:43 root
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:45 run
+lrwxrwxrwx  1 10000 10000    8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x  2 10000 10000 4096 Sep 24 07:43 srv
+drwxr-xr-x  2 10000 10000 4096 Apr 15  2020 sys
+drwxrwxrwt  2 10000 10000 4096 Sep 24 07:44 tmp
+drwxr-xr-x 13 10000 10000 4096 Sep 24 07:43 usr
+drwxr-xr-x 12 10000 10000 4096 Sep 24 07:44 var
+root@f2-vm:~# lxc-start f2 # uses /mnt as rootfs
+root@f2-vm:~# lxc-attach f2 -- cat /proc/1/uid_map
+         0      10000      10000
+root@f2-vm:~# lxc-attach f2 -- cat /proc/1/gid_map
+         0      10000      10000
+root@f2-vm:~# lxc-attach f2 -- ls -al /
+total 52
+drwxr-xr-x  17 root   root    4096 Sep 24 07:48 .
+drwxr-xr-x  17 root   root    4096 Sep 24 07:48 ..
+lrwxrwxrwx   1 root   root       7 Sep 24 07:43 bin -> usr/bin
+drwxr-xr-x   2 root   root    4096 Apr 15  2020 boot
+drwxr-xr-x   5 root   root     500 Oct 28 23:39 dev
+drwxr-xr-x  61 root   root    4096 Oct 28 23:39 etc
+drwxr-xr-x   3 root   root    4096 Sep 24 07:45 home
+lrwxrwxrwx   1 root   root       7 Sep 24 07:43 lib -> usr/lib
+lrwxrwxrwx   1 root   root       9 Sep 24 07:43 lib32 -> usr/lib32
+lrwxrwxrwx   1 root   root       9 Sep 24 07:43 lib64 -> usr/lib64
+lrwxrwxrwx   1 root   root      10 Sep 24 07:43 libx32 -> usr/libx32
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 media
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 mnt
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 opt
+dr-xr-xr-x 232 nobody nogroup    0 Oct 28 23:39 proc
+drwx------   2 root   root    4096 Oct 28 23:41 root
+drwxr-xr-x  12 root   root     360 Oct 28 23:39 run
+lrwxrwxrwx   1 root   root       8 Sep 24 07:43 sbin -> usr/sbin
+drwxr-xr-x   2 root   root    4096 Sep 24 07:43 srv
+dr-xr-xr-x  13 nobody nogroup    0 Oct 28 23:39 sys
+drwxrwxrwt  11 root   root    4096 Oct 28 23:40 tmp
+drwxr-xr-x  13 root   root    4096 Sep 24 07:43 usr
+drwxr-xr-x  12 root   root    4096 Sep 24 07:44 var
+root@f2-vm:~# lxc-attach f2 -- ls -al /my-file
+-rw-r--r-- 1 root root 0 Oct 28 23:43 /my-file
+root@f2-vm:~# ls -al /var/lib/lxc/f2/rootfs/my-file
+-rw-r--r-- 1 20000 20000 0 Oct 28 23:43 /var/lib/lxc/f2/rootfs/my-file
+
+I'd like to say thanks to:
+Al for pointing me into the direction to avoid inode alias issues during
+lookup. David for various discussions around this. Christoph for proving
+a first proper review and for being involved in the original idea. Tycho
+for helping with this series and on future patches to convert
+filesystems. Alban Crequy and the Kinvolk peeps located just a few
+streets away from me in Berlin for providing use-case discussions and
+writing patches for containerd. Stéphane for his invaluable input on
+many things and level head and enabling me to work on this. Amir for
+explaining and discussing aspects of overlayfs with me. I'd like to
+especially thank Seth Forshee. He provided a lot of good analysis,
+suggestions, and participated in short-notice discussions in both chat
+and video for some nitty-gritty technical details.
+
+This series can be found and pulled from the three usual locations:
+https://git.kernel.org/pub/scm/linux/kernel/git/brauner/linux.git/log/?h=idmapped_mounts
+https://github.com/brauner/linux/tree/idmapped_mounts
+https://gitlab.com/brauner/linux/-/commits/idmapped_mounts
+
+Thanks!
+Christian
+
+Christian Brauner (38):
+  namespace: take lock_mount_hash() directly when changing flags
+  mount: make {lock,unlock}_mount_hash() static
+  namespace: only take read lock in do_reconfigure_mnt()
+  fs: split out functions to hold writers
+  fs: add attr_flags_to_mnt_flags helper
+  fs: add mount_setattr()
+  tests: add mount_setattr() selftests
+  fs: add id translation helpers
+  mount: attach mappings to mounts
+  capability: handle idmapped mounts
+  namei: make permission helpers idmapped mount aware
+  inode: make init and permission helpers idmapped mount aware
+  attr: handle idmapped mounts
+  acl: handle idmapped mounts
+  commoncap: handle idmapped mounts
+  stat: handle idmapped mounts
+  namei: handle idmapped mounts in may_*() helpers
+  namei: introduce struct renamedata
+  namei: prepare for idmapped mounts
+  open: handle idmapped mounts in do_truncate()
+  open: handle idmapped mounts
+  af_unix: handle idmapped mounts
+  utimes: handle idmapped mounts
+  fcntl: handle idmapped mounts
+  notify: handle idmapped mounts
+  init: handle idmapped mounts
+  ioctl: handle idmapped mounts
+  would_dump: handle idmapped mounts
+  exec: handle idmapped mounts
+  fs: make helpers idmap mount aware
+  apparmor: handle idmapped mounts
+  ima: handle idmapped mounts
+  fat: handle idmapped mounts
+  ext4: support idmapped mounts
+  ecryptfs: do not mount on top of idmapped mounts
+  overlayfs: do not mount on top of idmapped mounts
+  fs: introduce MOUNT_ATTR_IDMAP
+  tests: extend mount_setattr tests
+
+Tycho Andersen (1):
+  xattr: handle idmapped mounts
+
+ Documentation/filesystems/locking.rst         |    6 +-
+ Documentation/filesystems/porting.rst         |    2 +
+ Documentation/filesystems/vfs.rst             |   19 +-
+ arch/alpha/kernel/syscalls/syscall.tbl        |    1 +
+ arch/arm/tools/syscall.tbl                    |    1 +
+ arch/arm64/include/asm/unistd32.h             |    2 +
+ arch/ia64/kernel/syscalls/syscall.tbl         |    1 +
+ arch/m68k/kernel/syscalls/syscall.tbl         |    1 +
+ arch/microblaze/kernel/syscalls/syscall.tbl   |    1 +
+ arch/mips/kernel/syscalls/syscall_n32.tbl     |    1 +
+ arch/mips/kernel/syscalls/syscall_n64.tbl     |    1 +
+ arch/mips/kernel/syscalls/syscall_o32.tbl     |    1 +
+ arch/parisc/kernel/syscalls/syscall.tbl       |    1 +
+ arch/powerpc/kernel/syscalls/syscall.tbl      |    1 +
+ arch/powerpc/platforms/cell/spufs/inode.c     |    5 +-
+ arch/s390/kernel/syscalls/syscall.tbl         |    1 +
+ arch/sh/kernel/syscalls/syscall.tbl           |    1 +
+ arch/sparc/kernel/syscalls/syscall.tbl        |    1 +
+ arch/x86/entry/syscalls/syscall_32.tbl        |    1 +
+ arch/x86/entry/syscalls/syscall_64.tbl        |    1 +
+ arch/xtensa/kernel/syscalls/syscall.tbl       |    1 +
+ drivers/android/binderfs.c                    |    6 +-
+ drivers/base/devtmpfs.c                       |   12 +-
+ fs/9p/acl.c                                   |    8 +-
+ fs/9p/v9fs.h                                  |    3 +-
+ fs/9p/v9fs_vfs.h                              |    2 +-
+ fs/9p/vfs_inode.c                             |   36 +-
+ fs/9p/vfs_inode_dotl.c                        |   39 +-
+ fs/9p/xattr.c                                 |    1 +
+ fs/adfs/adfs.h                                |    3 +-
+ fs/adfs/inode.c                               |    5 +-
+ fs/affs/affs.h                                |   10 +-
+ fs/affs/inode.c                               |    7 +-
+ fs/affs/namei.c                               |   15 +-
+ fs/afs/dir.c                                  |   34 +-
+ fs/afs/inode.c                                |    9 +-
+ fs/afs/internal.h                             |    7 +-
+ fs/afs/security.c                             |    2 +-
+ fs/afs/xattr.c                                |    2 +
+ fs/attr.c                                     |  124 +-
+ fs/autofs/root.c                              |   13 +-
+ fs/bad_inode.c                                |   36 +-
+ fs/bfs/dir.c                                  |   12 +-
+ fs/btrfs/acl.c                                |    5 +-
+ fs/btrfs/ctree.h                              |    3 +-
+ fs/btrfs/inode.c                              |   45 +-
+ fs/btrfs/ioctl.c                              |   25 +-
+ fs/btrfs/tests/btrfs-tests.c                  |    2 +-
+ fs/btrfs/xattr.c                              |    2 +
+ fs/cachefiles/interface.c                     |    4 +-
+ fs/cachefiles/namei.c                         |   19 +-
+ fs/cachefiles/xattr.c                         |   16 +-
+ fs/ceph/acl.c                                 |    5 +-
+ fs/ceph/dir.c                                 |   23 +-
+ fs/ceph/inode.c                               |   17 +-
+ fs/ceph/super.h                               |   12 +-
+ fs/ceph/xattr.c                               |    1 +
+ fs/cifs/cifsfs.c                              |    4 +-
+ fs/cifs/cifsfs.h                              |   21 +-
+ fs/cifs/dir.c                                 |    8 +-
+ fs/cifs/inode.c                               |   26 +-
+ fs/cifs/link.c                                |    3 +-
+ fs/cifs/xattr.c                               |    1 +
+ fs/coda/coda_linux.h                          |    6 +-
+ fs/coda/dir.c                                 |   17 +-
+ fs/coda/inode.c                               |    9 +-
+ fs/coda/pioctl.c                              |    6 +-
+ fs/configfs/configfs_internal.h               |    7 +-
+ fs/configfs/dir.c                             |    3 +-
+ fs/configfs/inode.c                           |    5 +-
+ fs/configfs/symlink.c                         |    5 +-
+ fs/coredump.c                                 |   14 +-
+ fs/crypto/policy.c                            |    2 +-
+ fs/debugfs/inode.c                            |    9 +-
+ fs/ecryptfs/crypto.c                          |    4 +-
+ fs/ecryptfs/inode.c                           |   80 +-
+ fs/ecryptfs/main.c                            |    6 +
+ fs/ecryptfs/mmap.c                            |    4 +-
+ fs/efivarfs/file.c                            |    2 +-
+ fs/efivarfs/inode.c                           |    4 +-
+ fs/erofs/inode.c                              |    7 +-
+ fs/erofs/internal.h                           |    5 +-
+ fs/exec.c                                     |   12 +-
+ fs/exfat/exfat_fs.h                           |    8 +-
+ fs/exfat/file.c                               |   14 +-
+ fs/exfat/namei.c                              |   14 +-
+ fs/ext2/acl.c                                 |    5 +-
+ fs/ext2/acl.h                                 |    3 +-
+ fs/ext2/ext2.h                                |    5 +-
+ fs/ext2/ialloc.c                              |    2 +-
+ fs/ext2/inode.c                               |   15 +-
+ fs/ext2/ioctl.c                               |    6 +-
+ fs/ext2/namei.c                               |   22 +-
+ fs/ext2/xattr_security.c                      |    1 +
+ fs/ext2/xattr_trusted.c                       |    1 +
+ fs/ext2/xattr_user.c                          |    1 +
+ fs/ext4/acl.c                                 |    5 +-
+ fs/ext4/acl.h                                 |    3 +-
+ fs/ext4/ext4.h                                |   21 +-
+ fs/ext4/ialloc.c                              |    7 +-
+ fs/ext4/inode.c                               |   21 +-
+ fs/ext4/ioctl.c                               |   19 +-
+ fs/ext4/namei.c                               |   49 +-
+ fs/ext4/super.c                               |    2 +-
+ fs/ext4/xattr_hurd.c                          |    1 +
+ fs/ext4/xattr_security.c                      |    1 +
+ fs/ext4/xattr_trusted.c                       |    1 +
+ fs/ext4/xattr_user.c                          |    1 +
+ fs/f2fs/acl.c                                 |    5 +-
+ fs/f2fs/acl.h                                 |    3 +-
+ fs/f2fs/f2fs.h                                |    7 +-
+ fs/f2fs/file.c                                |   35 +-
+ fs/f2fs/namei.c                               |   23 +-
+ fs/f2fs/xattr.c                               |    4 +-
+ fs/fat/fat.h                                  |    6 +-
+ fs/fat/file.c                                 |   24 +-
+ fs/fat/namei_msdos.c                          |   12 +-
+ fs/fat/namei_vfat.c                           |   15 +-
+ fs/fcntl.c                                    |    3 +-
+ fs/fuse/acl.c                                 |    3 +-
+ fs/fuse/dir.c                                 |   45 +-
+ fs/fuse/fuse_i.h                              |    4 +-
+ fs/fuse/xattr.c                               |    2 +
+ fs/gfs2/acl.c                                 |    5 +-
+ fs/gfs2/acl.h                                 |    3 +-
+ fs/gfs2/file.c                                |    4 +-
+ fs/gfs2/inode.c                               |   59 +-
+ fs/gfs2/inode.h                               |    3 +-
+ fs/gfs2/xattr.c                               |    1 +
+ fs/hfs/attr.c                                 |    1 +
+ fs/hfs/dir.c                                  |   13 +-
+ fs/hfs/hfs_fs.h                               |    2 +-
+ fs/hfs/inode.c                                |    7 +-
+ fs/hfsplus/dir.c                              |   25 +-
+ fs/hfsplus/hfsplus_fs.h                       |    5 +-
+ fs/hfsplus/inode.c                            |   16 +-
+ fs/hfsplus/ioctl.c                            |    2 +-
+ fs/hfsplus/xattr.c                            |    1 +
+ fs/hfsplus/xattr_security.c                   |    1 +
+ fs/hfsplus/xattr_trusted.c                    |    1 +
+ fs/hfsplus/xattr_user.c                       |    1 +
+ fs/hostfs/hostfs_kern.c                       |   29 +-
+ fs/hpfs/hpfs_fn.h                             |    2 +-
+ fs/hpfs/inode.c                               |    7 +-
+ fs/hpfs/namei.c                               |   20 +-
+ fs/hugetlbfs/inode.c                          |   31 +-
+ fs/init.c                                     |   27 +-
+ fs/inode.c                                    |   50 +-
+ fs/internal.h                                 |    2 +-
+ fs/jffs2/acl.c                                |    5 +-
+ fs/jffs2/acl.h                                |    3 +-
+ fs/jffs2/dir.c                                |   32 +-
+ fs/jffs2/fs.c                                 |    7 +-
+ fs/jffs2/os-linux.h                           |    2 +-
+ fs/jffs2/security.c                           |    1 +
+ fs/jffs2/xattr_trusted.c                      |    1 +
+ fs/jffs2/xattr_user.c                         |    1 +
+ fs/jfs/acl.c                                  |    5 +-
+ fs/jfs/file.c                                 |    9 +-
+ fs/jfs/ioctl.c                                |    2 +-
+ fs/jfs/jfs_acl.h                              |    3 +-
+ fs/jfs/jfs_inode.c                            |    2 +-
+ fs/jfs/jfs_inode.h                            |    2 +-
+ fs/jfs/namei.c                                |   21 +-
+ fs/jfs/xattr.c                                |    2 +
+ fs/kernfs/dir.c                               |    7 +-
+ fs/kernfs/inode.c                             |   19 +-
+ fs/kernfs/kernfs-internal.h                   |    9 +-
+ fs/libfs.c                                    |   28 +-
+ fs/minix/bitmap.c                             |    2 +-
+ fs/minix/file.c                               |    7 +-
+ fs/minix/inode.c                              |    6 +-
+ fs/minix/minix.h                              |    3 +-
+ fs/minix/namei.c                              |   24 +-
+ fs/mount.h                                    |   10 -
+ fs/namei.c                                    |  507 ++++--
+ fs/namespace.c                                |  495 +++++-
+ fs/nfs/dir.c                                  |   25 +-
+ fs/nfs/inode.c                                |    9 +-
+ fs/nfs/internal.h                             |   10 +-
+ fs/nfs/namespace.c                            |   14 +-
+ fs/nfs/nfs3_fs.h                              |    3 +-
+ fs/nfs/nfs3acl.c                              |    3 +-
+ fs/nfs/nfs4proc.c                             |    3 +
+ fs/nfsd/nfs2acl.c                             |    4 +-
+ fs/nfsd/nfs3acl.c                             |    4 +-
+ fs/nfsd/nfs4acl.c                             |    4 +-
+ fs/nfsd/nfs4recover.c                         |    6 +-
+ fs/nfsd/nfsfh.c                               |    2 +-
+ fs/nfsd/nfsproc.c                             |    2 +-
+ fs/nfsd/vfs.c                                 |   47 +-
+ fs/nilfs2/inode.c                             |   13 +-
+ fs/nilfs2/ioctl.c                             |    2 +-
+ fs/nilfs2/namei.c                             |   19 +-
+ fs/nilfs2/nilfs.h                             |    4 +-
+ fs/notify/fanotify/fanotify_user.c            |    2 +-
+ fs/notify/inotify/inotify_user.c              |    3 +-
+ fs/ntfs/inode.c                               |    6 +-
+ fs/ntfs/inode.h                               |    3 +-
+ fs/ocfs2/acl.c                                |    5 +-
+ fs/ocfs2/acl.h                                |    3 +-
+ fs/ocfs2/dlmfs/dlmfs.c                        |   17 +-
+ fs/ocfs2/file.c                               |   17 +-
+ fs/ocfs2/file.h                               |   11 +-
+ fs/ocfs2/ioctl.c                              |    2 +-
+ fs/ocfs2/namei.c                              |   21 +-
+ fs/ocfs2/refcounttree.c                       |    4 +-
+ fs/ocfs2/xattr.c                              |    3 +
+ fs/omfs/dir.c                                 |   13 +-
+ fs/omfs/file.c                                |    7 +-
+ fs/omfs/inode.c                               |    2 +-
+ fs/open.c                                     |   50 +-
+ fs/orangefs/acl.c                             |    5 +-
+ fs/orangefs/inode.c                           |   20 +-
+ fs/orangefs/namei.c                           |   12 +-
+ fs/orangefs/orangefs-kernel.h                 |   13 +-
+ fs/orangefs/xattr.c                           |    1 +
+ fs/overlayfs/copy_up.c                        |   20 +-
+ fs/overlayfs/dir.c                            |   31 +-
+ fs/overlayfs/file.c                           |    6 +-
+ fs/overlayfs/inode.c                          |   26 +-
+ fs/overlayfs/overlayfs.h                      |   44 +-
+ fs/overlayfs/super.c                          |   19 +-
+ fs/overlayfs/util.c                           |    4 +-
+ fs/posix_acl.c                                |  101 +-
+ fs/proc/base.c                                |   28 +-
+ fs/proc/fd.c                                  |    5 +-
+ fs/proc/fd.h                                  |    3 +-
+ fs/proc/generic.c                             |   12 +-
+ fs/proc/internal.h                            |    5 +-
+ fs/proc/proc_net.c                            |    5 +-
+ fs/proc/proc_sysctl.c                         |   15 +-
+ fs/proc/root.c                                |    5 +-
+ fs/proc_namespace.c                           |    3 +
+ fs/ramfs/file-nommu.c                         |    9 +-
+ fs/ramfs/inode.c                              |   18 +-
+ fs/reiserfs/acl.h                             |    3 +-
+ fs/reiserfs/inode.c                           |    7 +-
+ fs/reiserfs/ioctl.c                           |    4 +-
+ fs/reiserfs/namei.c                           |   21 +-
+ fs/reiserfs/reiserfs.h                        |    3 +-
+ fs/reiserfs/xattr.c                           |   12 +-
+ fs/reiserfs/xattr.h                           |    3 +-
+ fs/reiserfs/xattr_acl.c                       |    7 +-
+ fs/reiserfs/xattr_security.c                  |    3 +-
+ fs/reiserfs/xattr_trusted.c                   |    3 +-
+ fs/reiserfs/xattr_user.c                      |    3 +-
+ fs/remap_range.c                              |    7 +-
+ fs/stat.c                                     |   26 +-
+ fs/sysv/file.c                                |    7 +-
+ fs/sysv/ialloc.c                              |    2 +-
+ fs/sysv/itree.c                               |    6 +-
+ fs/sysv/namei.c                               |   21 +-
+ fs/sysv/sysv.h                                |    3 +-
+ fs/tracefs/inode.c                            |    4 +-
+ fs/ubifs/dir.c                                |   30 +-
+ fs/ubifs/file.c                               |    5 +-
+ fs/ubifs/ioctl.c                              |    2 +-
+ fs/ubifs/ubifs.h                              |    5 +-
+ fs/ubifs/xattr.c                              |    1 +
+ fs/udf/file.c                                 |    9 +-
+ fs/udf/ialloc.c                               |    2 +-
+ fs/udf/namei.c                                |   24 +-
+ fs/udf/symlink.c                              |    7 +-
+ fs/ufs/ialloc.c                               |    2 +-
+ fs/ufs/inode.c                                |    7 +-
+ fs/ufs/namei.c                                |   19 +-
+ fs/ufs/ufs.h                                  |    3 +-
+ fs/utimes.c                                   |    4 +-
+ fs/vboxsf/dir.c                               |   12 +-
+ fs/vboxsf/utils.c                             |    9 +-
+ fs/vboxsf/vfsmod.h                            |    8 +-
+ fs/verity/enable.c                            |    2 +-
+ fs/xattr.c                                    |  136 +-
+ fs/xfs/xfs_acl.c                              |    5 +-
+ fs/xfs/xfs_acl.h                              |    3 +-
+ fs/xfs/xfs_ioctl.c                            |    4 +-
+ fs/xfs/xfs_iops.c                             |   56 +-
+ fs/xfs/xfs_xattr.c                            |    3 +-
+ fs/zonefs/super.c                             |    9 +-
+ include/linux/capability.h                    |   14 +-
+ include/linux/fs.h                            |  157 +-
+ include/linux/ima.h                           |   17 +-
+ include/linux/lsm_hook_defs.h                 |   15 +-
+ include/linux/lsm_hooks.h                     |    1 +
+ include/linux/mount.h                         |    7 +
+ include/linux/nfs_fs.h                        |    7 +-
+ include/linux/posix_acl.h                     |   15 +-
+ include/linux/posix_acl_xattr.h               |   12 +-
+ include/linux/security.h                      |   44 +-
+ include/linux/syscalls.h                      |    3 +
+ include/linux/xattr.h                         |   30 +-
+ include/uapi/asm-generic/unistd.h             |    4 +-
+ include/uapi/linux/mount.h                    |   17 +
+ ipc/mqueue.c                                  |    8 +-
+ kernel/auditsc.c                              |    5 +-
+ kernel/bpf/inode.c                            |   13 +-
+ kernel/capability.c                           |   14 +-
+ kernel/cgroup/cgroup.c                        |    2 +-
+ kernel/sys.c                                  |    2 +-
+ mm/madvise.c                                  |    4 +-
+ mm/memcontrol.c                               |    2 +-
+ mm/mincore.c                                  |    4 +-
+ mm/shmem.c                                    |   48 +-
+ net/socket.c                                  |    6 +-
+ net/unix/af_unix.c                            |    4 +-
+ security/apparmor/apparmorfs.c                |    3 +-
+ security/apparmor/domain.c                    |   13 +-
+ security/apparmor/file.c                      |    5 +-
+ security/apparmor/lsm.c                       |   12 +-
+ security/commoncap.c                          |  109 +-
+ security/integrity/evm/evm_crypto.c           |   11 +-
+ security/integrity/evm/evm_main.c             |    4 +-
+ security/integrity/evm/evm_secfs.c            |    2 +-
+ security/integrity/ima/ima.h                  |   19 +-
+ security/integrity/ima/ima_api.c              |   10 +-
+ security/integrity/ima/ima_appraise.c         |   22 +-
+ security/integrity/ima/ima_asymmetric_keys.c  |    2 +-
+ security/integrity/ima/ima_main.c             |   29 +-
+ security/integrity/ima/ima_policy.c           |   19 +-
+ security/integrity/ima/ima_queue_keys.c       |    2 +-
+ security/security.c                           |   25 +-
+ security/selinux/hooks.c                      |   22 +-
+ security/smack/smack_lsm.c                    |   18 +-
+ tools/include/uapi/asm-generic/unistd.h       |    4 +-
+ tools/testing/selftests/Makefile              |    1 +
+ .../selftests/mount_setattr/.gitignore        |    1 +
+ .../testing/selftests/mount_setattr/Makefile  |    7 +
+ tools/testing/selftests/mount_setattr/config  |    1 +
+ .../mount_setattr/mount_setattr_test.c        | 1424 +++++++++++++++++
+ 330 files changed, 4641 insertions(+), 1681 deletions(-)
+ create mode 100644 tools/testing/selftests/mount_setattr/.gitignore
+ create mode 100644 tools/testing/selftests/mount_setattr/Makefile
+ create mode 100644 tools/testing/selftests/mount_setattr/config
+ create mode 100644 tools/testing/selftests/mount_setattr/mount_setattr_test.c
+
+
+base-commit: b65054597872ce3aefbc6a666385eabdf9e288da
 -- 
 2.29.2
 
