@@ -5,25 +5,25 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0169BC197BF
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46D67C2BB48
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AB2B8224BD
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F252E22509
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Dec 2020 00:02:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387504AbgLDACK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 3 Dec 2020 19:02:10 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:41694 "EHLO
+        id S2388212AbgLDACN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 3 Dec 2020 19:02:13 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:41698 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731372AbgLDACJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:09 -0500
+        with ESMTP id S1728138AbgLDACL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Dec 2020 19:02:11 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1kkyXH-0007ka-Mh; Fri, 04 Dec 2020 00:01:19 +0000
+        id 1kkyXL-0007ka-79; Fri, 04 Dec 2020 00:01:23 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@infradead.org>,
@@ -60,9 +60,9 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v4 03/40] namespace: only take read lock in do_reconfigure_mnt()
-Date:   Fri,  4 Dec 2020 00:56:59 +0100
-Message-Id: <20201203235736.3528991-4-christian.brauner@ubuntu.com>
+Subject: [PATCH v4 05/40] fs: add attr_flags_to_mnt_flags helper
+Date:   Fri,  4 Dec 2020 00:57:01 +0100
+Message-Id: <20201203235736.3528991-6-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
 References: <20201203235736.3528991-1-christian.brauner@ubuntu.com>
@@ -72,89 +72,87 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-do_reconfigure_mnt() used to take the down_write(&sb->s_umount) lock
-which seems unnecessary since we're not changing the superblock. We're
-only checking whether it is already read-only. Setting other mount
-attributes is protected by lock_mount_hash() afaict and not by s_umount.
+Add a simple helper to translate uapi MOUNT_ATTR_* flags to MNT_* flags
+which we will use in follow-up patches too.
 
-So I think the history of down_write(&sb->s_umount) lock being taken
-when setting mount attributes dates back to the introduction of
-MNT_READONLY in [2]. Afaict, this introduced the concept of having
-read-only mounts in contrast to just having a read-only superblock. When
-it got introduced it was simply plumbed into do_remount() which already
-took down_write(&sb->s_umount) because it was only used to actually
-change the superblock before [2]. Afaict, it would've already been
-possible back then to only use down_read(&sb->s_umount) for MS_BIND |
-MS_REMOUNT since actual mount options were protected by the vfsmount
-lock already. But that would've meant special casing the locking for
-MS_BIND | MS_REMOUNT in do_remount() which people might not have
-considered worth it.
-Then in [1] MS_BIND | MS_REMOUNT mount option changes were split out of
-do_remount() into do_reconfigure_mnt() but the down_write(&sb->s_umount)
-lock was simply copied over.
-Now that we have this be a separate helper only take the
-down_read(&sb->s_umount) lock since we're only interested in checking
-whether the super block is currently read-only and blocking any writers
-from changing it. Essentially, checking that the super block is
-read-only has the advantage that we can avoid having to go into the
-slowpath and through MNT_WRITE_HOLD and can simply set the read-only
-flag on the mount in set_mount_attributes().
-
-[1]: commit 43f5e655eff7 ("vfs: Separate changing mount flags full remount")
-[2]: commit 2e4b7fcd9260 ("[PATCH] r/o bind mounts: honor mount writer counts at remount")
+Suggested-by: Christoph Hellwig <hch@lst.de>
 Cc: David Howells <dhowells@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-fsdevel@vger.kernel.org
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
 /* v2 */
-unchanged
+patch not present
 
 /* v3 */
-unchanged
+patch not present
 
 /* v4 */
-unchanged
+patch introduced
 ---
- fs/namespace.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ fs/namespace.c | 40 ++++++++++++++++++++++++----------------
+ 1 file changed, 24 insertions(+), 16 deletions(-)
 
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 798bbf4f48ad..8497d149ecaa 100644
+index 1a756d33c91a..b2a9eb7b43d3 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -2512,10 +2512,6 @@ static int change_mount_ro_state(struct mount *mnt, unsigned int mnt_flags)
- 	return 0;
+@@ -3450,6 +3450,28 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
+ 	return ret;
  }
  
--/*
-- * Update the user-settable attributes on a mount.  The caller must hold
-- * sb->s_umount for writing.
-- */
- static void set_mount_attributes(struct mount *mnt, unsigned int mnt_flags)
- {
- 	mnt_flags |= mnt->mnt.mnt_flags & ~MNT_USER_SETTABLE_MASK;
-@@ -2565,13 +2561,17 @@ static int do_reconfigure_mnt(struct path *path, unsigned int mnt_flags)
- 	if (!can_change_locked_flags(mnt, mnt_flags))
- 		return -EPERM;
++#define FSMOUNT_VALID_FLAGS                                                    \
++	(MOUNT_ATTR_RDONLY | MOUNT_ATTR_NOSUID | MOUNT_ATTR_NODEV |            \
++	 MOUNT_ATTR_NOEXEC | MOUNT_ATTR__ATIME | MOUNT_ATTR_NODIRATIME)
++
++static unsigned int attr_flags_to_mnt_flags(u64 attr_flags)
++{
++	unsigned int mnt_flags = 0;
++
++	if (attr_flags & MOUNT_ATTR_RDONLY)
++		mnt_flags |= MNT_READONLY;
++	if (attr_flags & MOUNT_ATTR_NOSUID)
++		mnt_flags |= MNT_NOSUID;
++	if (attr_flags & MOUNT_ATTR_NODEV)
++		mnt_flags |= MNT_NODEV;
++	if (attr_flags & MOUNT_ATTR_NOEXEC)
++		mnt_flags |= MNT_NOEXEC;
++	if (attr_flags & MOUNT_ATTR_NODIRATIME)
++		mnt_flags |= MNT_NODIRATIME;
++
++	return mnt_flags;
++}
++
+ /*
+  * Create a kernel mount representation for a new, prepared superblock
+  * (specified by fs_fd) and attach to an open_tree-like file descriptor.
+@@ -3472,24 +3494,10 @@ SYSCALL_DEFINE3(fsmount, int, fs_fd, unsigned int, flags,
+ 	if ((flags & ~(FSMOUNT_CLOEXEC)) != 0)
+ 		return -EINVAL;
  
--	down_write(&sb->s_umount);
-+	/*
-+	 * We're only checking whether the superblock is read-only not changing
-+	 * it, so only take down_read(&sb->s_umount).
-+	 */
-+	down_read(&sb->s_umount);
- 	lock_mount_hash();
- 	ret = change_mount_ro_state(mnt, mnt_flags);
- 	if (ret == 0)
- 		set_mount_attributes(mnt, mnt_flags);
- 	unlock_mount_hash();
--	up_write(&sb->s_umount);
-+	up_read(&sb->s_umount);
+-	if (attr_flags & ~(MOUNT_ATTR_RDONLY |
+-			   MOUNT_ATTR_NOSUID |
+-			   MOUNT_ATTR_NODEV |
+-			   MOUNT_ATTR_NOEXEC |
+-			   MOUNT_ATTR__ATIME |
+-			   MOUNT_ATTR_NODIRATIME))
++	if (attr_flags & ~FSMOUNT_VALID_FLAGS)
+ 		return -EINVAL;
  
- 	mnt_warn_timestamp_expiry(path, &mnt->mnt);
+-	if (attr_flags & MOUNT_ATTR_RDONLY)
+-		mnt_flags |= MNT_READONLY;
+-	if (attr_flags & MOUNT_ATTR_NOSUID)
+-		mnt_flags |= MNT_NOSUID;
+-	if (attr_flags & MOUNT_ATTR_NODEV)
+-		mnt_flags |= MNT_NODEV;
+-	if (attr_flags & MOUNT_ATTR_NOEXEC)
+-		mnt_flags |= MNT_NOEXEC;
+-	if (attr_flags & MOUNT_ATTR_NODIRATIME)
+-		mnt_flags |= MNT_NODIRATIME;
++	mnt_flags = attr_flags_to_mnt_flags(attr_flags);
  
+ 	switch (attr_flags & MOUNT_ATTR__ATIME) {
+ 	case MOUNT_ATTR_STRICTATIME:
 -- 
 2.29.2
 
