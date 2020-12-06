@@ -6,172 +6,111 @@ X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C7ACC433FE
-	for <linux-ext4@archiver.kernel.org>; Sun,  6 Dec 2020 15:24:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C7BC433FE
+	for <linux-ext4@archiver.kernel.org>; Sun,  6 Dec 2020 17:38:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 10E392333C
-	for <linux-ext4@archiver.kernel.org>; Sun,  6 Dec 2020 15:24:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 37F0F230F9
+	for <linux-ext4@archiver.kernel.org>; Sun,  6 Dec 2020 17:38:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726506AbgLFPYZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 6 Dec 2020 10:24:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53378 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726410AbgLFPYZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Dec 2020 10:24:25 -0500
-X-Greylist: delayed 2356 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 06 Dec 2020 07:23:45 PST
-Received: from b-painless.mh.aa.net.uk (b-painless.mh.aa.net.uk [IPv6:2001:8b0:0:30::52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A303C0613D1
-        for <linux-ext4@vger.kernel.org>; Sun,  6 Dec 2020 07:23:45 -0800 (PST)
-Received: from f.b.1.7.2.1.e.f.f.f.a.c.5.0.a.6.4.1.b.e.2.f.f.b.0.b.8.0.1.0.0.2.ip6.arpa ([2001:8b0:bff2:eb14:6a05:caff:fe12:71bf] helo=riva.pelham.vpn.ucam.org)
-        by b-painless.mh.aa.net.uk with esmtps (TLS1.3:ECDHE_RSA_AES_256_GCM_SHA384:256)
-        (Exim 4.92)
-        (envelope-from <cjwatson@debian.org>)
-        id 1klvHE-0002yI-26; Sun, 06 Dec 2020 14:44:40 +0000
+        id S1726828AbgLFRic (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 6 Dec 2020 12:38:32 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:38672 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726043AbgLFRic (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Dec 2020 12:38:32 -0500
+Received: from 139.35.155.90.in-addr.arpa ([90.155.35.139] helo=riva.pelham.vpn.ucam.org)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <cjwatson@ubuntu.com>)
+        id 1klxyl-0006xS-Hi; Sun, 06 Dec 2020 17:37:47 +0000
 Received: from ns1.pelham.vpn.ucam.org ([172.20.153.2] helo=riva.ucam.org)
         by riva.pelham.vpn.ucam.org with esmtp (Exim 4.92)
-        (envelope-from <cjwatson@debian.org>)
-        id 1klvGq-00029w-ET; Sun, 06 Dec 2020 14:44:16 +0000
-Date:   Sun, 6 Dec 2020 14:44:16 +0000
-From:   Colin Watson <cjwatson@debian.org>
-To:     Paul Menzel <pmenzel@molgen.mpg.de>
-Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        (envelope-from <cjwatson@ubuntu.com>)
+        id 1klxyk-0005bT-Pp; Sun, 06 Dec 2020 17:37:46 +0000
+Date:   Sun, 6 Dec 2020 17:37:46 +0000
+From:   Colin Watson <cjwatson@ubuntu.com>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Paul Menzel <pmenzel@molgen.mpg.de>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-ext4@vger.kernel.org, Dimitri John Ledkov <xnox@ubuntu.com>
 Subject: Re: ext4: Funny characters appended to file names
-Message-ID: <20201206144416.GM13361@riva.ucam.org>
+Message-ID: <20201206173746.GN13361@riva.ucam.org>
 References: <fea4dd48-fd8b-823c-0a4b-20ebcd804597@molgen.mpg.de>
  <20201204152802.GQ441757@mit.edu>
  <93fab357-5ed2-403d-3371-6580aedecaf4@molgen.mpg.de>
  <20201204180541.GC577125@mit.edu>
  <51a1939c-2a99-e86a-1799-c31248e21d89@molgen.mpg.de>
+ <20201206144416.GM13361@riva.ucam.org>
+ <20201206151527.GE577125@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <51a1939c-2a99-e86a-1799-c31248e21d89@molgen.mpg.de>
+In-Reply-To: <20201206151527.GE577125@mit.edu>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Dec 05, 2020 at 08:34:34PM +0100, Paul Menzel wrote:
-> [Cc: +Colin]
-
-Also CCing Dimitri, whose GRUB patch this may be related to.  Dimitri,
-see https://marc.info/?l=linux-ext4&m=160719695914303&w=2 for the full
-message I'm replying to.
-
-> Am 04.12.20 um 19:05 schrieb Theodore Y. Ts'o:
-> > On Fri, Dec 04, 2020 at 04:39:12PM +0100, Paul Menzel wrote:
+On Sun, Dec 06, 2020 at 10:15:27AM -0500, Theodore Y. Ts'o wrote:
+> On Sun, Dec 06, 2020 at 02:44:16PM +0000, Colin Watson wrote:
+> > Now that I look at it more closely, some of the changes to
+> > clean_grub_dir_real look suspicious:
+> > 
+> > +         char *srcf = grub_util_path_concat (2, di, de->d_name);
+> > +
+> > +         if (mode == CREATE_BACKUP)
+> > +           {
+> > +             char *dstf = grub_util_path_concat_ext (2, di, de->d_name, "-");
+> > +             if (grub_util_rename (srcf, dstf) < 0)
+> > +               grub_util_error (_("cannot backup `%s': %s"), srcf,
+> > +                                grub_util_fd_strerror ());
+> > +             free (dstf);
+> > +           }
 > 
-> Colin, the modules in `/boot/grub/i386-pc` look funny, and can’t be loaded
-> by GRUB anymore.
+> ... however, if I'm understanding the code correctly, this is the
+> codepath used to create the backup file (e.g., the previous version of
+> boot.img).  So shouldn't there be a "boot.img" file in
+> /boot/grub/i386-pc which would be the newly installed version of that
+> file, and so the system would actually be booting correctly?
+
+Not quite.  What's described here as "backup/restore" thing is used as
+follows:
+
+ * rename old modules aside as a backup
+ * do the rest of the installation (writing to the MBR or similar, as
+   well as copying in new modules)
+ * if installation succeeds, remove the backup files
+ * if installation fails, then:
+  * remove the newly-created modules
+  * move the backup files back into place
+
+But if the restored file names are computed wrongly, then this leaves
+the system in a bad state as Paul described.
+
+I don't know why Dimitri chose to explicitly remove the new files first
+rather than just renaming over the top and then removing any leftovers
+at the end; that seems unnecessarily risky.  Though this is code that's
+apparently supposed to work on Windows as well, and the MoveFile
+function that's used to implement grub_util_rename there requires the
+destination file not to exist (sigh), so maybe it had something to do
+with that.
+
+> Essentially, there are three possibilities:
 > 
-> ```
-> $ ls -lt /boot/grub/i386-pc/
-> insgesamt 2085
-> -rw-r--r-- 1 root root    512 13. Aug 23:00 'boot.img-'$'\205\300''u'$'
-> \023\211''鍓]'$'\206\371\377\211\360\350''f'$'\376\377\377\205
-> \300''ur'$'\203\354\004''V'$'\377''t$'$'\030''j'$'\002''胒'
-> -rw-r--r-- 1 root root  30893 13. Aug 23:00 'core.img-'$'\205\300''u'$'
-> \023\211''鍓]'$'\206\371\377\211\360\350''f'$'\376\377\377\205
-> \300''ur'$'\203\354\004''V'$'\377''t$'$'\030''j'$'\002''胒'
-> […]
-> ```
-[...]
-> > When was the last time the directory was OK?  Do you know when it may
-> > have gotten corrupted?
+> 1)  A hardware corruption which corrupted the directory.
 > 
-> The last reboot before. But I am really confused now though.
+> 2)  A kernel bug which corrupted the directory.
 > 
->     $ ls -ld /boot/grub/i386-pc
->     drwxr-xr-x 2 root root 28672 29. Nov 12:13 /boot/grub/i386-pc
+> 3) The file system isn't actually corrupted, but the filename with the
+> random garbage in the filename was created because a userspace
+> application so requested it.
 > 
-> But the module files in there are all from August 2020.
-> 
->     -rw-r--r-- 1 root root   2400 Aug 13 23:00 'part_gpt.mod-'$'\205\300''u'$'\023\211\351\215\223'']'$'\206\371\377\211\360\350''f'$'\376\377\377\205\300''ur'$'\203\354\004''V'$'\377''t$'$'\030''j'$'\002\350\203\222'
-> 
-> The characters in the file name look like some character encoding. Do you
-> know hat that is? UTF-8? The dumped output viewed in an editor shows a
-> “Asian” looking characters 胒.
+> The fact that all of the filenames have the a similar pattern of
+> corruption to them would tend to rule out #1.  And the fact that
+> e2fsck didn't notice any other corruptions would tend to argue against
+> #1 and #2.  So #3 does seem to be the most likely.
 
-It seems rather more likely to be junk from uninitialised memory.
-
->     2020-11-29 11:38:06 upgrade grub2-common:i386 2.04-9 2.04-10
->     […]
->     2020-11-29 12:04:00 status installed linux-image-5.9.0-4-686-pae:i386
-> 5.9.11-1
->     […]
->     2020-11-29 12:13:24 configure grub-pc:i386 2.04-10 <none>
->     2020-11-29 12:13:24 status unpacked grub-pc:i386 2.04-10
->     2020-11-29 12:13:24 status half-configured grub-pc:i386 2.04-10
->     [Dialog waited for my confirmation: Some GRUB warning regarding block
-> devices, which I always “ignore”, that means tell GRUB to be upgraded]
-
-You need to actually look into this and fix it properly rather than
-ignoring it.  It's probably related to this problem, since a successful
-installation doesn't go down the RESTORE_BACKUP path which I think is
-the suspicious one here.
-
->     2020-11-29 12:43:21 status installed grub-pc:i386 2.04-10
->     […]
-> 
-> So, afterward I was able to reboot without any issues.
-[...]
-> Do you want me to re-install grub to see if it’s a problem introduced in
-> Debian’s GRUB 2.04-10?
-
-Now that I look at it more closely, some of the changes to
-clean_grub_dir_real look suspicious:
-
-+         char *srcf = grub_util_path_concat (2, di, de->d_name);
-+
-+         if (mode == CREATE_BACKUP)
-+           {
-+             char *dstf = grub_util_path_concat_ext (2, di, de->d_name, "-");
-+             if (grub_util_rename (srcf, dstf) < 0)
-+               grub_util_error (_("cannot backup `%s': %s"), srcf,
-+                                grub_util_fd_strerror ());
-+             free (dstf);
-+           }
-+         else if (mode == RESTORE_BACKUP)
-+           {
-+             char *dstf = grub_util_path_concat_ext (2, di, de->d_name);
-+             dstf[strlen (dstf) - 1] = 0;
-+             if (grub_util_rename (srcf, dstf) < 0)
-+               grub_util_error (_("cannot restore `%s': %s"), dstf,
-+                                grub_util_fd_strerror ());
-+             free (dstf);
-+           }
-+         else
-+           {
-+             if (grub_util_unlink (srcf) < 0)
-+               grub_util_error (_("cannot delete `%s': %s"), srcf,
-+                                grub_util_fd_strerror ());
-+           }
-+         free (srcf);
-
-grub_util_path_concat is a helper that joins its arguments with "/";
-grub_util_path_concat_ext does likewise except the last argument is
-appended as an extension without first appending "/".  The first
-argument to both of these functions is "n": grub_util_path_concat
-expects n further argument, while grub_util_path_concat_ext expects n +
-1 further arguments.
-
-So, in the RESTORE_BACKUP case, shouldn't that be:
-
-  char *dstf = grub_util_path_concat (2, di, de->d_name);
-
-... rather than grub_util_path_concat_ext?  Otherwise it seems to me
-that it's going to try to append an additional argument which doesn't
-exist, and may well add random uninitialised stuff from memory.  Running
-grub-install under valgrind would probably show this up (I can't get it
-to do it for me so far, but most likely I just haven't set up quite the
-right initial conditions).
-
-This looks more likely to be a userspace problem rather than filesystem
-corruption.  I think this should likely be refiled as a bug against
-Debian's grub2 package.
+Yep.
 
 -- 
-Colin Watson (he/him)                              [cjwatson@debian.org]
+Colin Watson (he/him)                              [cjwatson@ubuntu.com]
