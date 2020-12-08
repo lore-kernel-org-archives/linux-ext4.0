@@ -2,155 +2,154 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B7ABC4361B
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Dec 2020 20:40:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41DF6C433FE
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Dec 2020 00:32:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0179923428
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Dec 2020 20:40:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0316D239EF
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Dec 2020 00:32:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725972AbgLGUkQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Dec 2020 15:40:16 -0500
-Received: from ssl.serverraum.org ([176.9.125.105]:54701 "EHLO
-        ssl.serverraum.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725814AbgLGUkQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2020 15:40:16 -0500
-Received: from ssl.serverraum.org (web.serverraum.org [172.16.0.2])
+        id S1726252AbgLHAcJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Dec 2020 19:32:09 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:56562 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725853AbgLHAcJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Dec 2020 19:32:09 -0500
+Received: from localhost (unknown [IPv6:2804:14c:132:242d::1001])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ssl.serverraum.org (Postfix) with ESMTPSA id 0BFBF22E0A;
-        Mon,  7 Dec 2020 21:39:33 +0100 (CET)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=walle.cc; s=mail2016061301;
-        t=1607373573;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=99gx2cWANtw7xbgXmiVd706Ja27zb5HI7XI/tfZcAoQ=;
-        b=VjM5ehjWW56mCDj/RZGZ6fgh1Jr0pn/PbdVw4mFG46Ad1ezv8AjKzL8eBOwATYcCgTKbkv
-        6bOVcV/fNP5Y2MzvmhHsxmycff6Xg03odmS8uOzxt5k4keXLHZQI7utj9WR6YwqB8ceGGT
-        KjAaFOJ62GuTI1gOE1WdOOTuHcSAxxM=
+        (Authenticated sender: krisman)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 62A9B1F44AF4;
+        Tue,  8 Dec 2020 00:31:26 +0000 (GMT)
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     dhowells@redhat.com
+Cc:     viro@zeniv.linux.org.uk, tytso@mit.edu, khazhy@google.com,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel@collabora.com
+Subject: [PATCH 0/8] Superblock Notifications
+Date:   Mon,  7 Dec 2020 21:31:09 -0300
+Message-Id: <20201208003117.342047-1-krisman@collabora.com>
+X-Mailer: git-send-email 2.29.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-Date:   Mon, 07 Dec 2020 21:39:32 +0100
-From:   Michael Walle <michael@walle.cc>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-block@vger.kernel.org
-Subject: Re: discard feature, mkfs.ext4 and mmc default fallback to normal
- erase op
-In-Reply-To: <20201207183534.GA52960@mit.edu>
-References: <97c4bb65c8a3e688b191d57e9f06aa5a@walle.cc>
- <20201207183534.GA52960@mit.edu>
-User-Agent: Roundcube Webmail/1.4.9
-Message-ID: <2edcf8e344937b3c5b92a0b87ebd13bd@walle.cc>
-X-Sender: michael@walle.cc
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ted,
+Hi,
 
-Am 2020-12-07 19:35, schrieb Theodore Y. Ts'o:
-> On Mon, Dec 07, 2020 at 04:10:27PM +0100, Michael Walle wrote:
->> Hi,
->> 
->> The problem I'm having is that I'm trying to install debian on
->> an embedded system onto an sdcard. During installation it will
->> format the target filesystem, but the "mkfs.ext4 -F /dev/mmcblk0p2"
->> takes ages.
->> 
->> What I've found out so far:
->>  - mkfs.ext4 tries to discard all blocks on the target device
->>  - with my target device being an sdcard it seems to fallback
->>    to normal erase [1], with erase_arg being set to what the card
->>    is capable of [2]
->> 
->> Now I'm trying to figure out if this behavior is intended. I guess
->> one can reduce it to "blkdiscard /dev/mmcblk0p2". Should this
->> actually fall back to normal erasing or should it return -EOPNOTSUPP?
-> 
-> There are three different MMC commands which are defined:
-> 
-> 1) DISCARD
-> 2) ERASE
-> 3) SECURE ERASE
-> 
-> The first two are expected to be fast, since it only involves clearing
-> some metadata fields in the Flash Translation Layer (FTL), so that the
-> LBA's in the specified range are no longer mapped to a flash page.
+After the two previous RFCs this is an attempt to get the ball spinning
+again.
 
-Mh, where is it specified that the erase command is fast? According
-to the Physical Layer Simplified Specification Version 8.00:
+The problem I'm trying to solve is providing an interface to monitor
+filesystem errors.  This patchset includes an example implementation of
+ext4 error notification.  This goes obviously on top of the watch_queue
+mechanism.
 
-  The actual erase time may be quite long, and the host may issue CMD7
-  to deselect the card or perform card disconnection, as described in
-  the Block Write section, above.
+Regarding the buffer overrun issue that would require fsinfo or another
+method to expose counters, I think they can be added at a later date
+with no change to what this patch series attempts to do, therefore I'm
+proposing we don't wait for fsinfo before getting this merged.
 
-Honest question. Also reading "4.14 Erase Timeout Calculation" doesn't
-sound that it is fast.
+I mostly tested this with the samples program I have published in the
+last patch.  In addition I will be sharing a patchset shortly with
+proper documentation and some selftests for the feature.
 
-Also there is this comment:
-https://elixir.bootlin.com/linux/v5.9.12/source/drivers/mmc/core/core.c#L1495
+David, can you please reply to this patchset? What do you think about
+the watch_queue modifications I'm proposing?  I really don't want to
+waste more time on this code if it doesn't fit the watch_queue API.  Can
+I have some guidance in having this upstreamed?
 
-> The difference between "discard" and "erase" is that "discard" is a
-> hint, so the device is allowed to ignore it whenever it wants (in
-> practice, if it's busy doing a GC, or if it's busy writing back blocks
-> in its writeback cache).  "Erase" is guaranteed to work, in that after
-> an erase, a read from a specified sector MUST return all zeros, but
-> that can easily be done by redirecting a point in the FTL metadata.
-> 
-> "Secure Erase" is the one which can be slow, since it requires
-> physically zeroing all of the flash pages (although if the device is
-> self-encrypting, this in theory could also be fast if you're doing a
-> secure erase at the granularity of the device's encryption keys, so
-> all it needs to do is to regenerate the crypto key).
-> 
-> It sounds like your SD card is implementing the "erase" command in a
-> particularly non-optimal way.  If it's common, perhaps we need some
-> kind of blacklist for drivers with badly implemented erase commands.
-> As a workaround, you can run mke2fs with the command-line option "-E
-> discard=0".
+In addition, I'm carrying "watch_queue: Make watch_sizeof() check record
+size" on this patchset for now, but is it in anyone's tree going to
+Linus any time soon?  I haven't found it.
 
-I've already tested that "mkfs.ext4 -E nodiscard" is fast (or works in
-the same way as before the pre-discard feature).
+I also shared this patchset in a branch at:
 
-But I wouldn't say it is a cheapo card (Toshiba Exceria). Although I
-cannot guarantee that it might be a china clone, but it looks authentic
-;)
+  Repo: https://gitlab.collabora.com/krisman/linux.git -b notifications
 
+Previous RFC submissions can be found at:
 
-> P.S.  If your SD card got "erase" wrong, I'd be a little worried about
-> what else the FTL implementation may have screwed up.  So you want to
-> under simply getting a different SD card --- especially if this is
-> something that you plan to distribute as a product to downstream
-> customers.  In general, low-end flash needs to be very carefully
-> qualified to make sure they are competently implemented if you plan to
-> deploy in large quantities.  An example of what happen if this
-> qualification process is not done:
-> 
-> https://insideevs.com/news/376037/tesla-mcu-emmc-memory-issue/
-> 
-> Tesla is currently under investigation by the National Highway Traffic
-> Safety Administration due to cheaping out on their eMMC flash
-> (probably just a few pennies per unit).  Given that customers are
-> having to pay $1500 to replace their engine controller out of warranty
-> (and the NHTSA is considering whether or not to force Tesla to eat the
-> costs, as opposed to forcing their customers to pay $$$), that's an
-> example of false economy....
+RFC: https://www.spinics.net/lists/linux-ext4/msg74596.html
+RFC v2:
+https://lore.kernel.org/linux-fsdevel/20201111215213.4152354-1-krisman@collabora.com/
 
-Yeah I'm aware of the Tesla eMMC wear-out problem. But I've seen this
-esp. from a user point of view. Like take our product, where the user
-can freely choose its sdcard just to then notice that the installation
-of its distribution is painfully slow. So I'm interested in 
-understanding
-the implications. Like is it really the case that the erase command can
-be assumed fast.
+Original cover letter:
+======================
 
--michael
+Google has been using an out-of-tree mechanism for error notification in
+Ext4 and we decided it is time to push for an upstream solution.  This
+would surely fit on top of David's notification work.
+
+This patchset is an attempt to restart that discussion.  It forward
+ports
+some code from David on top of Linus tree, adds features to
+watch_queue and implements ext4 support.
+
+The new notifications are designed after ext4 messages, so it exposes
+notifications types to fit that filesystem, but it doesn't change much
+to other filesystems, so it should be easily extensible.
+
+I'm aware of the discussion around fsinfo, but I'd like to ask if there
+are other missing pieces and what we could do to help that work go
+upstream.  From a previous mailing list discussion, Linus complained
+about lack of users as a main reason for it to not be merged, so hey! :)
+
+In addition, I'd like to ask for feedback on the current implementation,
+specifically regarding the passing of extra unformatted information at
+the end of the notification and the ext4 support.
+
+The work, as shared on this patchset can be found at:
+
+  https://gitlab.collabora.com/krisman/linux.git -b
+  ext4-error-notifications
+
+And there is an example code at:
+
+  https://gitlab.collabora.com/krisman/ext4-watcher
+
+I'm Cc'ing Khazhismel Kumykov, from Google, who can provide more
+information about their use case, if requested.
+
+David Howells (3):
+  watch_queue: Make watch_sizeof() check record size
+  security: Add hooks to rule on setting a watch for superblock
+  vfs: Add superblock notifications
+
+Gabriel Krisman Bertazi (5):
+  watch_queue: Support a text field at the end of the notification
+  vfs: Include origin of the SB error notification
+  fs: Add more superblock error subtypes
+  ext4: Implement SB error notification through watch_sb
+  samples: watch_queue: Add sample of SB notifications
+
+ arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+ arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+ fs/Kconfig                             |  12 ++
+ fs/ext4/super.c                        |  31 +++--
+ fs/super.c                             | 127 +++++++++++++++++++++
+ include/linux/fs.h                     | 150 +++++++++++++++++++++++++
+ include/linux/lsm_hook_defs.h          |   1 +
+ include/linux/lsm_hooks.h              |   4 +
+ include/linux/security.h               |  13 +++
+ include/linux/syscalls.h               |   2 +
+ include/linux/watch_queue.h            |  21 +++-
+ include/uapi/asm-generic/unistd.h      |   4 +-
+ include/uapi/linux/watch_queue.h       |  54 ++++++++-
+ kernel/sys_ni.c                        |   3 +
+ kernel/watch_queue.c                   |  29 ++++-
+ samples/watch_queue/Makefile           |   2 +-
+ samples/watch_queue/watch_sb.c         | 114 +++++++++++++++++++
+ security/security.c                    |   6 +
+ 18 files changed, 556 insertions(+), 19 deletions(-)
+ create mode 100644 samples/watch_queue/watch_sb.c
+
+-- 
+2.29.2
+
