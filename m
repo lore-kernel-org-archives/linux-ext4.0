@@ -2,39 +2,38 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF455C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:05:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4967CC433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:05:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 540DA23BE5
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:05:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0D4D623B45
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:05:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388948AbgLJPFN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 10:05:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37782 "EHLO
+        id S2388960AbgLJPFX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 10:05:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388867AbgLJPEs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 10:04:48 -0500
+        with ESMTP id S2388977AbgLJPFS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 10:05:18 -0500
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 871E3C061793
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 07:04:04 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BFFF1C0617A7
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 07:04:05 -0800 (PST)
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:1626:c942:e0f1:c77c])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 7D8ED1F458F1;
-        Thu, 10 Dec 2020 15:04:02 +0000 (GMT)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 6FE601F458F9;
+        Thu, 10 Dec 2020 15:04:03 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     drosen@google.com, krisman@collabora.com, ebiggers@kernel.org,
         tytso@mit.edu, Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH RESEND v2 01/12] tune2fs: Allow enabling casefold feature after fs creation
-Date:   Thu, 10 Dec 2020 16:03:42 +0100
-Message-Id: <20201210150353.91843-2-arnaud.ferraris@collabora.com>
+Subject: [PATCH RESEND v2 05/12] e2fsck: add new problem for casefolded name check
+Date:   Thu, 10 Dec 2020 16:03:46 +0100
+Message-Id: <20201210150353.91843-6-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
 References: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
@@ -44,60 +43,44 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-
-The main reason we didn't allow this before was because !CASEFOLDED
-directories were expected to be normalized().  Since this is no longer
-the case, and as long as the encrypt feature is not enabled, it should
-be safe to enable this feature.
-
-Disabling the feature is trickier, since we need to make sure there are
-no existing +F directories in the filesystem.  Leave that for a future
-patch.
-
-Also, enabling strict mode requires some filesystem-wide verification,
-so ignore that for now.
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
 ---
- misc/tune2fs.c | 16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+Changes in v2:
+  - added in this version
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index f942c698..0809e565 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -161,7 +161,8 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_INCOMPAT_64BIT |
- 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
- 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
--		EXT4_FEATURE_INCOMPAT_LARGEDIR,
-+		EXT4_FEATURE_INCOMPAT_LARGEDIR |
-+		EXT4_FEATURE_INCOMPAT_CASEFOLD,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -1513,6 +1514,19 @@ mmp_error:
- 		}
- 	}
+ e2fsck/problem.c | 5 +++++
+ e2fsck/problem.h | 3 +++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index e79c853b..2b596303 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1805,6 +1805,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Encrypted @E references @i %Di, which has a different encryption policy.\n"),
+ 	  PROMPT_CLEAR, 0, 0, 0, 0 },
  
-+	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_CASEFOLD)) {
-+		if (ext2fs_has_feature_encrypt(sb)) {
-+			fputs(_("Cannot enable casefold feature on filesystems "
-+				"with the encrypt feature enabled.\n"),
-+			      stderr);
-+			return 1;
-+		}
++	/* Casefolded directory entry has illegal characters in its name */
++	{ PR_2_BAD_CASEFOLDED_NAME,
++	  N_("@E has illegal UTF-8 characters in its name.\n"),
++	  PROMPT_FIX, 0, 0, 0, 0 },
 +
-+		sb->s_encoding = EXT4_ENC_UTF8_12_1;
-+		sb->s_encoding_flags = e2p_get_encoding_flags(sb->s_encoding);
-+	}
+ 	/* Pass 3 errors */
+ 
+ 	/* Pass 3: Checking directory connectivity */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 4185e517..a8806fd4 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1028,6 +1028,9 @@ struct problem_context {
+ /* Encrypted directory contains file with different encryption policy */
+ #define PR_2_INCONSISTENT_ENCRYPTION_POLICY	0x020052
+ 
++/* Casefolded directory entry has illegal characters in its name */
++#define PR_2_BAD_CASEFOLDED_NAME		0x0200053
 +
-+
- 	if (sb->s_rev_level == EXT2_GOOD_OLD_REV &&
- 	    (sb->s_feature_compat || sb->s_feature_ro_compat ||
- 	     sb->s_feature_incompat))
+ /*
+  * Pass 3 errors
+  */
 -- 
 2.29.2
 
