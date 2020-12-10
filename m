@@ -2,226 +2,115 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81504C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:06:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C244C0018C
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:07:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 314DC23BE5
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:06:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5907723D50
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 15:07:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389974AbgLJPFx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 10:05:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37922 "EHLO
+        id S1728583AbgLJPHn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 10:07:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37780 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389296AbgLJPFe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 10:05:34 -0500
+        with ESMTP id S2388796AbgLJPEs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 10:04:48 -0500
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C17B6C0617B0
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 07:04:05 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 87169C0613D6
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 07:04:04 -0800 (PST)
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:1626:c942:e0f1:c77c])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id E453D1F458FB;
-        Thu, 10 Dec 2020 15:04:03 +0000 (GMT)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 421721F458EF;
+        Thu, 10 Dec 2020 15:04:02 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     drosen@google.com, krisman@collabora.com, ebiggers@kernel.org,
         tytso@mit.edu, Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH RESEND v2 07/12] e2fsck: Support casefold directories when rehashing
-Date:   Thu, 10 Dec 2020 16:03:48 +0100
-Message-Id: <20201210150353.91843-8-arnaud.ferraris@collabora.com>
+Subject: [PATCH RESEND v2 00/12] e2fsprogs: improve case-insensitive fs
+Date:   Thu, 10 Dec 2020 16:03:41 +0100
+Message-Id: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
-References: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
+Hello,
 
-When rehashing a +F directory, the casefold comparison needs to be
-performed, in order to identify duplicated filenames.  Like the -F
-version, This is done in two steps, first adapt the qsort comparison to
-consider casefolded directories, and then iterate over the sorted list
-fixing dups.
+This patch series improves e2fsprogs for case-insensitive filesystems.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
+First, it allows tune2fs to enable the 'casefold' feature on existing
+filesystems.
+
+Then, it improves e2fsck by allowing it to:
+- fix entries containing invalid UTF-8 characters
+- detect duplicated entries
+
+By default, invalid filenames are only checked when strict mode is enabled.
+A new option is therefore added to allow the user to force this verification.
+
+This series has been tested by running xfstests, and by manually corrupting
+the test filesystem using debugfs as well.
+
+Best regards,
+Arnaud
+
 ---
- e2fsck/rehash.c | 88 ++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 72 insertions(+), 16 deletions(-)
 
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 30e510a6..14215011 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -214,6 +214,23 @@ static EXT2_QSORT_TYPE ino_cmp(const void *a, const void *b)
- 	return (he_a->ino - he_b->ino);
- }
- 
-+struct name_cmp_ctx
-+{
-+	int casefold;
-+	const struct ext2fs_nls_table *tbl;
-+};
-+
-+
-+static int same_name(const struct name_cmp_ctx *cmp_ctx, char *s1,
-+		     int len1, char *s2, int len2)
-+{
-+	if (!cmp_ctx->casefold)
-+		return (len1 == len2 &&	!memcmp(s1, s2, len1));
-+	else
-+		return !ext2fs_casefold_cmp(cmp_ctx->tbl,
-+					    s1, len1, s2, len2);
-+}
-+
- /* Used for sorting the hash entry */
- static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
- {
-@@ -240,9 +257,35 @@ static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
- 	return ret;
- }
- 
-+static EXT2_QSORT_TYPE name_cf_cmp(const struct name_cmp_ctx *ctx,
-+				   const void *a, const void *b)
-+{
-+	const struct hash_entry *he_a = (const struct hash_entry *) a;
-+	const struct hash_entry *he_b = (const struct hash_entry *) b;
-+	unsigned int he_a_len, he_b_len, min_len;
-+	int ret;
-+
-+	he_a_len = ext2fs_dirent_name_len(he_a->dir);
-+	he_b_len = ext2fs_dirent_name_len(he_b->dir);
-+
-+	ret = ext2fs_casefold_cmp(ctx->tbl, he_a->dir->name, he_a_len,
-+				  he_b->dir->name, he_b_len);
-+	if (ret == 0) {
-+		if (he_a_len > he_b_len)
-+			ret = 1;
-+		else if (he_a_len < he_b_len)
-+			ret = -1;
-+		else
-+			ret = he_b->dir->inode - he_a->dir->inode;
-+	}
-+	return ret;
-+}
-+
-+
- /* Used for sorting the hash entry */
--static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
-+static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b, void *arg)
- {
-+	const struct name_cmp_ctx *ctx = (struct name_cmp_ctx *) arg;
- 	const struct hash_entry *he_a = (const struct hash_entry *) a;
- 	const struct hash_entry *he_b = (const struct hash_entry *) b;
- 	int	ret;
-@@ -256,8 +299,12 @@ static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
- 			ret = 1;
- 		else if (he_a->minor_hash < he_b->minor_hash)
- 			ret = -1;
--		else
--			ret = name_cmp(a, b);
-+		else {
-+			if (ctx->casefold)
-+				ret = name_cf_cmp(ctx, a, b);
-+			else
-+				ret = name_cmp(a, b);
-+		}
- 	}
- 	return ret;
- }
-@@ -380,7 +427,8 @@ static void mutate_name(char *str, unsigned int *len)
- 
- static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 				    ext2_ino_t ino,
--				    struct fill_dir_struct *fd)
-+				    struct fill_dir_struct *fd,
-+				    const struct name_cmp_ctx *cmp_ctx)
- {
- 	struct problem_context	pctx;
- 	struct hash_entry	*ent, *prev;
-@@ -403,11 +451,12 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 		ent = fd->harray + i;
- 		prev = ent - 1;
- 		if (!ent->dir->inode ||
--		    (ext2fs_dirent_name_len(ent->dir) !=
--		     ext2fs_dirent_name_len(prev->dir)) ||
--		    memcmp(ent->dir->name, prev->dir->name,
--			     ext2fs_dirent_name_len(ent->dir)))
-+		    !same_name(cmp_ctx, ent->dir->name,
-+			       ext2fs_dirent_name_len(ent->dir),
-+			       prev->dir->name,
-+			       ext2fs_dirent_name_len(prev->dir)))
- 			continue;
-+
- 		pctx.dirent = ent->dir;
- 		if ((ent->dir->inode == prev->dir->inode) &&
- 		    fix_problem(ctx, PR_2_DUPLICATE_DIRENT, &pctx)) {
-@@ -426,10 +475,11 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 		mutate_name(new_name, &new_len);
- 		for (j=0; j < fd->num_array; j++) {
- 			if ((i==j) ||
--			    (new_len !=
--			     (unsigned) ext2fs_dirent_name_len(fd->harray[j].dir)) ||
--			    memcmp(new_name, fd->harray[j].dir->name, new_len))
-+			    !same_name(cmp_ctx, new_name, new_len,
-+				       fd->harray[j].dir->name,
-+				       ext2fs_dirent_name_len(fd->harray[j].dir))) {
- 				continue;
-+			}
- 			mutate_name(new_name, &new_len);
- 
- 			j = -1;
-@@ -894,6 +944,7 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
- 	struct fill_dir_struct	fd = { NULL, NULL, 0, 0, 0, NULL,
- 				       0, 0, 0, 0, 0, 0 };
- 	struct out_dir		outdir = { 0, 0, 0, 0 };
-+	struct name_cmp_ctx name_cmp_ctx = {0, NULL};
- 
- 	e2fsck_read_inode(ctx, ino, &inode, "rehash_dir");
- 
-@@ -921,6 +972,11 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
- 		fd.compress = 1;
- 	fd.parent = 0;
- 
-+	if (fs->encoding && (inode.i_flags & EXT4_CASEFOLD_FL)) {
-+		name_cmp_ctx.casefold = 1;
-+		name_cmp_ctx.tbl = fs->encoding;
-+	}
-+
- retry_nohash:
- 	/* Read in the entire directory into memory */
- 	retval = ext2fs_block_iterate3(fs, ino, 0, 0,
-@@ -949,16 +1005,16 @@ retry_nohash:
- 	/* Sort the list */
- resort:
- 	if (fd.compress && fd.num_array > 1)
--		qsort(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
--		      hash_cmp);
-+		qsort_r(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
-+			hash_cmp, &name_cmp_ctx);
- 	else
--		qsort(fd.harray, fd.num_array, sizeof(struct hash_entry),
--		      hash_cmp);
-+		qsort_r(fd.harray, fd.num_array, sizeof(struct hash_entry),
-+			hash_cmp, &name_cmp_ctx);
- 
- 	/*
- 	 * Look for duplicates
- 	 */
--	if (duplicate_search_and_fix(ctx, fs, ino, &fd))
-+	if (duplicate_search_and_fix(ctx, fs, ino, &fd, &name_cmp_ctx))
- 		goto resort;
- 
- 	if (ctx->options & E2F_OPT_NO) {
+Changes in v2:
+  - added missing comment in e2fsck/pass1.c
+  - added a new problem code dedicated to bad encoded file names
+  - reworked a test in e2fsck/pass2.c
+
+Arnaud Ferraris (1):
+  e2fsck: add new problem for casefolded name check
+
+Gabriel Krisman Bertazi (11):
+  tune2fs: Allow enabling casefold feature after fs creation
+  tune2fs: Fix casefold+encrypt error message
+  ext2fs: Add method to validate casefolded strings
+  ext2fs: Implement faster CI comparison of strings
+  e2fsck: Fix entries with invalid encoded characters
+  e2fsck: Support casefold directories when rehashing
+  dict: Support comparison with context
+  e2fsck: Detect duplicated casefolded direntries for rehash
+  e2fsck: Add option to force encoded filename verification
+  e2fsck.8.in: Document check_encoding extended option
+  tests: f_bad_fname: Test fixes of invalid filenames and duplicates
+
+ e2fsck/e2fsck.8.in         |   4 ++
+ e2fsck/e2fsck.c            |   4 ++
+ e2fsck/e2fsck.h            |   2 +
+ e2fsck/pass1.c             |  18 ++++++++
+ e2fsck/pass1b.c            |   2 +-
+ e2fsck/pass2.c             |  76 +++++++++++++++++++++++++++++---
+ e2fsck/problem.c           |   5 +++
+ e2fsck/problem.h           |   3 ++
+ e2fsck/rehash.c            |  88 ++++++++++++++++++++++++++++++-------
+ e2fsck/unix.c              |   4 ++
+ lib/ext2fs/ext2fs.h        |   6 +++
+ lib/ext2fs/ext2fsP.h       |   6 +++
+ lib/ext2fs/nls_utf8.c      |  62 ++++++++++++++++++++++++++
+ lib/support/dict.c         |  22 +++++++---
+ lib/support/dict.h         |   4 +-
+ lib/support/mkquota.c      |   2 +-
+ misc/tune2fs.c             |  18 +++++++-
+ tests/f_bad_fname/expect.1 |  22 ++++++++++
+ tests/f_bad_fname/expect.2 |   7 +++
+ tests/f_bad_fname/image.gz | Bin 0 -> 802 bytes
+ tests/f_bad_fname/name     |   1 +
+ 21 files changed, 322 insertions(+), 34 deletions(-)
+ create mode 100644 tests/f_bad_fname/expect.1
+ create mode 100644 tests/f_bad_fname/expect.2
+ create mode 100644 tests/f_bad_fname/image.gz
+ create mode 100644 tests/f_bad_fname/name
+
 -- 
 2.29.2
 
