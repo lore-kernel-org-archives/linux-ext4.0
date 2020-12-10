@@ -2,237 +2,258 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C22FFC433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 20:54:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9743C4361B
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 23:06:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8F53E23E21
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 20:54:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A44823B85
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 23:06:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404669AbgLJUyx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 15:54:53 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:52450 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2404653AbgLJUyp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 15:54:45 -0500
-Received: from localhost (unknown [IPv6:2804:14c:132:242d::1000])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 685D91F45C5E;
-        Thu, 10 Dec 2020 20:54:03 +0000 (GMT)
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Cc:     linux-ext4@vger.kernel.org, drosen@google.com, ebiggers@kernel.org,
-        tytso@mit.edu
-Subject: Re: [PATCH RESEND v2 07/12] e2fsck: Support casefold directories
- when rehashing
-Organization: Collabora
-References: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
-        <20201210150353.91843-8-arnaud.ferraris@collabora.com>
-Date:   Thu, 10 Dec 2020 17:53:57 -0300
-In-Reply-To: <20201210150353.91843-8-arnaud.ferraris@collabora.com> (Arnaud
-        Ferraris's message of "Thu, 10 Dec 2020 16:03:48 +0100")
-Message-ID: <87y2i51ixm.fsf@collabora.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.1 (gnu/linux)
-MIME-Version: 1.0
-Content-Type: text/plain
+        id S2391346AbgLJWba (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 17:31:30 -0500
+Received: from mail-oi1-f195.google.com ([209.85.167.195]:40952 "EHLO
+        mail-oi1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2405143AbgLJW2Z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 17:28:25 -0500
+Received: by mail-oi1-f195.google.com with SMTP id p126so7581591oif.7
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 14:28:09 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=vlk+AGTP6yghUcwAQtekFD1W+cQuQJGh45l7hjsP3fk=;
+        b=KGky8CK5wtAeJB/+xh/ZHtvwBrY2R6IjGyt9nWdk0JxO5sn6uBJaaUF6s9QfUPyoTe
+         JRE5YpluXBthsRsYdnBIMaRXCh/pJ2er7rH2n0Fff6whmC4VMYdA0jI01mzTb/sejQdV
+         Vvd8jVtvLRDs3GQk3Gvu8WPCRokp9leSgiBA667PEIG7X/NuOwJ7xEmL7GabmeL1Z1Rr
+         1dd+uPZBmTaiG/ngb8ZC+8y7dVdYTBD+3hLdyMona7lCzGBkprLgUN87zw+NfZyNZy6q
+         J6Kn4aTZdhFxBcqIN95CRe+r2Tjh4o7Y8ptaXrc90Fp18pRaGKwcqtfZJLU34sXopu+v
+         IUGA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=vlk+AGTP6yghUcwAQtekFD1W+cQuQJGh45l7hjsP3fk=;
+        b=XMuXPjfYmFh38/CrvEL8i3QL1hBL5GXE7Ca2xiCtQdeFHm2T+2xPu8Wg+QHEZ0CRf7
+         TGwAJhRD21nJmCRM1+b7aMi6oeh7bunftcB2wpKw4Pe/+l2Ki9qHMPamkNi59ZaOnzqM
+         Jegb5mK+5j2MCZxlnHPTDdrEuk9nGlF2dfmr0oAoKeRAN8h4RcbUmmg2J/QoMvBMx8H4
+         ETndTLnTbxIZo2pr3d0TCk4bbayWHg3VroSWqJtuXdCRDofLATxddsF2d4nObu/Q+IKN
+         ju75Q/lR//JJp3KBURw7HvKuyuUa6HiG4pp+7epItCmRDy9U9I7roKMyOXtKanvDgYa2
+         Oaiw==
+X-Gm-Message-State: AOAM532W96J0+5pe20QEAPCFzcJ3XEejntAItCa2rPK9vJ1GGj2Qe/M4
+        GSAN2QLCILrtRF/S48wHJ+g3aYBv33U10J7m
+X-Google-Smtp-Source: ABdhPJyreAjBNBlx7RaCEcK3Kptt0GQptR472gbKUXAWTPN3CzrZ3iiD7d6/hXoKbUsjggzfETKZ7Q==
+X-Received: by 2002:a17:90a:d148:: with SMTP id t8mr9867575pjw.126.1607638694152;
+        Thu, 10 Dec 2020 14:18:14 -0800 (PST)
+Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id d4sm7275794pfo.127.2020.12.10.14.18.12
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 10 Dec 2020 14:18:12 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <434BECC9-8882-4C42-95C9-827C0A53CF68@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_0A429C94-849D-4A67-B36D-B3F1F8E9BAE3";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v2 02/15] e2fsck: add kernel endian-ness conversion macros
+Date:   Thu, 10 Dec 2020 15:18:09 -0700
+In-Reply-To: <20201210175608.3265541-3-harshadshirwadkar@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu
+To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+References: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
+ <20201210175608.3265541-3-harshadshirwadkar@gmail.com>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Arnaud Ferraris <arnaud.ferraris@collabora.com> writes:
 
-> From: Gabriel Krisman Bertazi <krisman@collabora.com>
->
-> When rehashing a +F directory, the casefold comparison needs to be
-> performed, in order to identify duplicated filenames.  Like the -F
-> version, This is done in two steps, first adapt the qsort comparison to
-> consider casefolded directories, and then iterate over the sorted list
-> fixing dups.
->
-> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
+--Apple-Mail=_0A429C94-849D-4A67-B36D-B3F1F8E9BAE3
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Dec 10, 2020, at 10:55 AM, harshadshirwadkar@gmail.com wrote:
+>=20
+> From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+>=20
+> In order to make recovery.c identical with kernel, we need endianness
+> conversion macros (such as cpu_to_be32 and friends) defined in
+> e2fsprogs. This patch defines these macros and also fixes recovery.c
+> to use these. These macros are also needed for fast commit recovery
+> patches later in this series.
+>=20
+> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>'
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
 > ---
->  e2fsck/rehash.c | 88 ++++++++++++++++++++++++++++++++++++++++---------
->  1 file changed, 72 insertions(+), 16 deletions(-)
->
-> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-> index 30e510a6..14215011 100644
-> --- a/e2fsck/rehash.c
-> +++ b/e2fsck/rehash.c
-> @@ -214,6 +214,23 @@ static EXT2_QSORT_TYPE ino_cmp(const void *a, const void *b)
->  	return (he_a->ino - he_b->ino);
->  }
->  
-> +struct name_cmp_ctx
-> +{
-> +	int casefold;
-> +	const struct ext2fs_nls_table *tbl;
-> +};
-> +
-> +
-> +static int same_name(const struct name_cmp_ctx *cmp_ctx, char *s1,
-> +		     int len1, char *s2, int len2)
-> +{
-> +	if (!cmp_ctx->casefold)
-> +		return (len1 == len2 &&	!memcmp(s1, s2, len1));
+> e2fsck/recovery.c       | 42 ++++++++++-------------------------------
+> lib/ext2fs/jfs_compat.h |  6 ++++++
+> 2 files changed, 16 insertions(+), 32 deletions(-)
+>=20
+> diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+> index 5df690ad..6c3b7bb4 100644
+> --- a/e2fsck/recovery.c
+> +++ b/e2fsck/recovery.c
+> @@ -121,27 +121,6 @@ failed:
+>=20
+> #endif /* __KERNEL__ */
+>=20
+> -static inline __u32 get_be32(__be32 *p)
+> -{
+> -	unsigned char *cp =3D (unsigned char *) p;
+> -	__u32 ret;
+> -
+> -	ret =3D *cp++;
+> -	ret =3D (ret << 8) + *cp++;
+> -	ret =3D (ret << 8) + *cp++;
+> -	ret =3D (ret << 8) + *cp++;
+> -	return ret;
+> -}
+> -
+> -static inline __u16 get_be16(__be16 *p)
+> -{
+> -	unsigned char *cp =3D (unsigned char *) p;
+> -	__u16 ret;
+> -
+> -	ret =3D *cp++;
+> -	ret =3D (ret << 8) + *cp++;
+> -	return ret;
+> -}
+>=20
+> /*
+>  * Read a block from the journal
+> @@ -232,10 +211,10 @@ static int count_tags(journal_t *journal, struct =
+buffer_head *bh)
+>=20
+> 		nr++;
+> 		tagp +=3D tag_bytes;
+> -		if (!(get_be16(&tag->t_flags) & JBD2_FLAG_SAME_UUID))
+> +		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
+> 			tagp +=3D 16;
+>=20
+> -		if (get_be16(&tag->t_flags) & JBD2_FLAG_LAST_TAG)
+> +		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
+> 			break;
+> 	}
+>=20
+> @@ -358,9 +337,9 @@ int jbd2_journal_skip_recovery(journal_t *journal)
+> static inline unsigned long long read_tag_block(journal_t *journal,
+> 						journal_block_tag_t =
+*tag)
+> {
+> -	unsigned long long block =3D get_be32(&tag->t_blocknr);
+> +	unsigned long long block =3D be32_to_cpu(tag->t_blocknr);
+> 	if (jbd2_has_feature_64bit(journal))
+> -		block |=3D (u64)get_be32(&tag->t_blocknr_high) << 32;
+> +		block |=3D (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+> 	return block;
+> }
+>=20
+> @@ -429,9 +408,9 @@ static int jbd2_block_tag_csum_verify(journal_t =
+*j, journal_block_tag_t *tag,
+> 	csum32 =3D jbd2_chksum(j, csum32, buf, j->j_blocksize);
+>=20
+> 	if (jbd2_has_feature_csum3(j))
+> -		return get_be32(&tag3->t_checksum) =3D=3D csum32;
+> -
+> -	return get_be16(&tag->t_checksum) =3D=3D (csum32 & 0xFFFF);
+> +		return tag3->t_checksum =3D=3D cpu_to_be32(csum32);
 > +	else
-> +		return !ext2fs_casefold_cmp(cmp_ctx->tbl,
-> +					    s1, len1, s2, len2);
-> +}
-> +
->  /* Used for sorting the hash entry */
->  static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
->  {
-> @@ -240,9 +257,35 @@ static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
->  	return ret;
->  }
->  
-> +static EXT2_QSORT_TYPE name_cf_cmp(const struct name_cmp_ctx *ctx,
-> +				   const void *a, const void *b)
-> +{
-> +	const struct hash_entry *he_a = (const struct hash_entry *) a;
-> +	const struct hash_entry *he_b = (const struct hash_entry *) b;
-> +	unsigned int he_a_len, he_b_len, min_len;
-> +	int ret;
-> +
-> +	he_a_len = ext2fs_dirent_name_len(he_a->dir);
-> +	he_b_len = ext2fs_dirent_name_len(he_b->dir);
-> +
-> +	ret = ext2fs_casefold_cmp(ctx->tbl, he_a->dir->name, he_a_len,
-> +				  he_b->dir->name, he_b_len);
-> +	if (ret == 0) {
-> +		if (he_a_len > he_b_len)
-> +			ret = 1;
-> +		else if (he_a_len < he_b_len)
-> +			ret = -1;
-> +		else
-> +			ret = he_b->dir->inode - he_a->dir->inode;
-> +	}
-> +	return ret;
-> +}
-> +
-> +
+> +		return tag->t_checksum =3D=3D cpu_to_be16(csum32);
+> }
+>=20
+> static int do_one_pass(journal_t *journal,
+> @@ -579,7 +558,7 @@ static int do_one_pass(journal_t *journal,
+> 				unsigned long io_block;
+>=20
+> 				tag =3D (journal_block_tag_t *) tagp;
+> -				flags =3D get_be16(&tag->t_flags);
+> +				flags =3D be16_to_cpu(tag->t_flags);
+>=20
+> 				io_block =3D next_log_block++;
+> 				wrap(journal, next_log_block);
+> @@ -643,9 +622,8 @@ static int do_one_pass(journal_t *journal,
+> 					memcpy(nbh->b_data, obh->b_data,
+> 							=
+journal->j_blocksize);
+> 					if (flags & JBD2_FLAG_ESCAPE) {
+> -						__be32 magic =3D =
+cpu_to_be32(JBD2_MAGIC_NUMBER);
+> -						memcpy(nbh->b_data, =
+&magic,
+> -						       sizeof(magic));
+> +						*((__be32 *)nbh->b_data) =
+=3D
+> +						=
+cpu_to_be32(JBD2_MAGIC_NUMBER);
+> 					}
+>=20
+> 					BUFFER_TRACE(nbh, "marking =
+dirty");
+> diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+> index 2bda521d..63ebef99 100644
+> --- a/lib/ext2fs/jfs_compat.h
+> +++ b/lib/ext2fs/jfs_compat.h
+> @@ -20,12 +20,18 @@
+> #define REQ_OP_READ 0
+> #define REQ_OP_WRITE 1
+>=20
+> +#define cpu_to_le16(x)	ext2fs_cpu_to_le16(x)
+> #define cpu_to_be16(x)	ext2fs_cpu_to_be16(x)
+> +#define cpu_to_le32(x)	ext2fs_cpu_to_le32(x)
+> #define cpu_to_be32(x)	ext2fs_cpu_to_be32(x)
+> +#define cpu_to_le64(x)	ext2fs_cpu_to_le64(x)
+> #define cpu_to_be64(x)	ext2fs_cpu_to_be64(x)
+>=20
+> +#define le16_to_cpu(x)	ext2fs_le16_to_cpu(x)
+> #define be16_to_cpu(x)	ext2fs_be16_to_cpu(x)
+> +#define le32_to_cpu(x)	ext2fs_le32_to_cpu(x)
+> #define be32_to_cpu(x)	ext2fs_be32_to_cpu(x)
+> +#define le64_to_cpu(x)	ext2fs_le64_to_cpu(x)
+> #define be64_to_cpu(x)	ext2fs_be64_to_cpu(x)
+>=20
+> typedef unsigned int tid_t;
+> --
+> 2.29.2.576.ga3fc446d84-goog
+>=20
 
-extra line
 
->  /* Used for sorting the hash entry */
-> -static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
-> +static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b, void *arg)
->  {
-> +	const struct name_cmp_ctx *ctx = (struct name_cmp_ctx *) arg;
->  	const struct hash_entry *he_a = (const struct hash_entry *) a;
->  	const struct hash_entry *he_b = (const struct hash_entry *) b;
->  	int	ret;
-> @@ -256,8 +299,12 @@ static EXT2_QSORT_TYPE hash_cmp(const void *a, const void *b)
->  			ret = 1;
->  		else if (he_a->minor_hash < he_b->minor_hash)
->  			ret = -1;
-> -		else
-> -			ret = name_cmp(a, b);
-> +		else {
-> +			if (ctx->casefold)
-> +				ret = name_cf_cmp(ctx, a, b);
-> +			else
-> +				ret = name_cmp(a, b);
-> +		}
->  	}
->  	return ret;
->  }
-> @@ -380,7 +427,8 @@ static void mutate_name(char *str, unsigned int *len)
->  
->  static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
->  				    ext2_ino_t ino,
-> -				    struct fill_dir_struct *fd)
-> +				    struct fill_dir_struct *fd,
-> +				    const struct name_cmp_ctx *cmp_ctx)
->  {
->  	struct problem_context	pctx;
->  	struct hash_entry	*ent, *prev;
-> @@ -403,11 +451,12 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
->  		ent = fd->harray + i;
->  		prev = ent - 1;
->  		if (!ent->dir->inode ||
-> -		    (ext2fs_dirent_name_len(ent->dir) !=
-> -		     ext2fs_dirent_name_len(prev->dir)) ||
-> -		    memcmp(ent->dir->name, prev->dir->name,
-> -			     ext2fs_dirent_name_len(ent->dir)))
-> +		    !same_name(cmp_ctx, ent->dir->name,
-> +			       ext2fs_dirent_name_len(ent->dir),
-> +			       prev->dir->name,
-> +			       ext2fs_dirent_name_len(prev->dir)))
->  			continue;
-> +
+Cheers, Andreas
 
-noise.
 
-Other than that, I think this is still good.
 
->  		pctx.dirent = ent->dir;
->  		if ((ent->dir->inode == prev->dir->inode) &&
->  		    fix_problem(ctx, PR_2_DUPLICATE_DIRENT, &pctx)) {
-> @@ -426,10 +475,11 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
->  		mutate_name(new_name, &new_len);
->  		for (j=0; j < fd->num_array; j++) {
->  			if ((i==j) ||
-> -			    (new_len !=
-> -			     (unsigned) ext2fs_dirent_name_len(fd->harray[j].dir)) ||
-> -			    memcmp(new_name, fd->harray[j].dir->name, new_len))
-> +			    !same_name(cmp_ctx, new_name, new_len,
-> +				       fd->harray[j].dir->name,
-> +				       ext2fs_dirent_name_len(fd->harray[j].dir))) {
->  				continue;
-> +			}
->  			mutate_name(new_name, &new_len);
->  
->  			j = -1;
-> @@ -894,6 +944,7 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
->  	struct fill_dir_struct	fd = { NULL, NULL, 0, 0, 0, NULL,
->  				       0, 0, 0, 0, 0, 0 };
->  	struct out_dir		outdir = { 0, 0, 0, 0 };
-> +	struct name_cmp_ctx name_cmp_ctx = {0, NULL};
->  
->  	e2fsck_read_inode(ctx, ino, &inode, "rehash_dir");
->  
-> @@ -921,6 +972,11 @@ errcode_t e2fsck_rehash_dir(e2fsck_t ctx, ext2_ino_t ino,
->  		fd.compress = 1;
->  	fd.parent = 0;
->  
-> +	if (fs->encoding && (inode.i_flags & EXT4_CASEFOLD_FL)) {
-> +		name_cmp_ctx.casefold = 1;
-> +		name_cmp_ctx.tbl = fs->encoding;
-> +	}
-> +
->  retry_nohash:
->  	/* Read in the entire directory into memory */
->  	retval = ext2fs_block_iterate3(fs, ino, 0, 0,
-> @@ -949,16 +1005,16 @@ retry_nohash:
->  	/* Sort the list */
->  resort:
->  	if (fd.compress && fd.num_array > 1)
-> -		qsort(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
-> -		      hash_cmp);
-> +		qsort_r(fd.harray+2, fd.num_array-2, sizeof(struct hash_entry),
-> +			hash_cmp, &name_cmp_ctx);
->  	else
-> -		qsort(fd.harray, fd.num_array, sizeof(struct hash_entry),
-> -		      hash_cmp);
-> +		qsort_r(fd.harray, fd.num_array, sizeof(struct hash_entry),
-> +			hash_cmp, &name_cmp_ctx);
->  
->  	/*
->  	 * Look for duplicates
->  	 */
-> -	if (duplicate_search_and_fix(ctx, fs, ino, &fd))
-> +	if (duplicate_search_and_fix(ctx, fs, ino, &fd, &name_cmp_ctx))
->  		goto resort;
->  
->  	if (ctx->options & E2F_OPT_NO) {
 
--- 
-Gabriel Krisman Bertazi
+
+
+--Apple-Mail=_0A429C94-849D-4A67-B36D-B3F1F8E9BAE3
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl/SnqIACgkQcqXauRfM
+H+D7MxAAnFqY19owaNh4AUwywOM78Xkhho8pkVu2QCJ6r0fy+/PaZDU6ixO57Umd
+92GX2wgoPcOGZbkrDDBVrIMHUwK4a4Kwy5pf0S49ZpcopuLdqEA68tbPLkXgSoWJ
+xUdi35xUvnrhkUUIR7pRhTKWs6Ha8hOfAap1JqHkzySaePuy89sfsC2XWRF+4kdX
+O5I34jVEM15SmTZyszCPt0XHA2hn1KCISbtMzlwtYNGQAq8d+s4d7nQLnSBsvx3Z
+9gePSHi/IPAHvUq53oT+f0d4tCujdgc87g1s3JQ2BERBBrfVSrYnqIZ8jMeU1qvc
+8O152gdeggIlkId6GbCHaVtEvhmhng1WhYmI3lB8Z5hfrp92V/bhza8bllSfRY8K
+1mevrwY41HiCG5Av+QuzVn03hKkBMmqO8jmBlfTboVprxc9S0Gb8huNhg8dvIdL0
+72aZ01zQ0dkPEz+FapZpA1+3Ckrv+zigC/qrjHmzXKPJY8E4bhsZS1jnApIhRWeN
+0ncILResiumZl09n+M2lrbW4a7KdxeMwxiI6xLm+6GAI40AXkdfh4L9l+P6rkg0H
+okoxYjU/3ZtuM2h0J8mj22FtSBgJMgqpiQw9srZHQj/k5IGuFZP1KLi3CNVhTkpq
+HBUMWOZE7O0z2y3+6l3oEHZon6C7ys2Vya1gM9Kikkcvk40kDqM=
+=dPqV
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_0A429C94-849D-4A67-B36D-B3F1F8E9BAE3--
