@@ -4,65 +4,67 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D02AC4167B
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:57:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17AB7C4361B
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:57:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 36A8A23E1D
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:57:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CDA7423D57
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:57:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392984AbgLJR5U (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 12:57:20 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36654 "EHLO
+        id S2391636AbgLJR5n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 12:57:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36672 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390050AbgLJR5S (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 12:57:18 -0500
-Received: from mail-pl1-x643.google.com (mail-pl1-x643.google.com [IPv6:2607:f8b0:4864:20::643])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93F14C0617B0
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:37 -0800 (PST)
-Received: by mail-pl1-x643.google.com with SMTP id v3so3148097plz.13
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:37 -0800 (PST)
+        with ESMTP id S2392987AbgLJR5X (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 12:57:23 -0500
+Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CCBF6C0613D6
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:39 -0800 (PST)
+Received: by mail-pf1-x444.google.com with SMTP id 11so4822933pfu.4
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:39 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=/p7EYKwkpHyoCKW4H8fd1m5bjSRrYBhcANCfnf/1pAU=;
-        b=J2yRnQPZgP02Q5W5zJMXKnrZIJEZmLvrSaNetbA5wiRnEcRg6h4uxhfdeZLoMwEcxq
-         QS4Xv5Nv/tipcGokVKgfnKwpQaOklyOV43BGreYa+2RGGOHS1bGIsgnm92GIdkxQ1Uen
-         WBmXc+vAoic8S9Lo0o/9Ddc2my66cLTFUIAeFaTkraczcAl3QlS839Satlm1xpaSOBQs
-         GHW4fPPP22Jj2j09qMBOQh2Ge9nYEGAHp2w55qoEAhUJWUV2rWSpxhC5UU5+E2iq8nLh
-         V2N6A1lDEjzWHYjKNI1FfXw8iBaD2H9hzlvuO0BjiV4Jmqc/UJ+l7N6Okef/zSpOU5BC
-         cy5A==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=/ZiVmqQOrVgEJyWBc4dZ1VPDv6H/5e61lpzqdMyTEXc=;
+        b=nIgdCS/YbYRD1Y5We5goQes/MHjsDzXm4hgJfqsNTRCm7KlI3TCw+TC3/fy81lJqPF
+         XUHRXibZ6nGkU8AcAx/3a7sJU97DUvp0GKuJ+TOHkgtI+pVglpl+o4Qn9updJ/nD11dR
+         DWUHsHKOiHqyJ96Thj7nXVF38TaFker3KCbjjuSNU1D0NNYPhxb5GAiWoMV5u4iqGlIS
+         g1+57AqrMSA2FQHTO+B43d2ieTeQiYoc03vakjXHMKYFbeTkhqxC8In/+EJ4q9UI7/I9
+         qSiPJlTVPtCVoj3gWCIWBy1Z2UsdQd8KiZL8BW6OULIuKb/CiqFQGqL1LqlyD7f54vWT
+         3pVA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=/p7EYKwkpHyoCKW4H8fd1m5bjSRrYBhcANCfnf/1pAU=;
-        b=TWWnh3m8iyUHC8ZQXNhFnLQcg4uoTx5utL8O0SfdOJmDzhw/SKN2haedEW7as1Qf23
-         daHvzSO12WGoWzoUZVl2gmaGoRVRC2MTf95li6L5CWrPwJ44ZKnnL14PRz5eXQH8QTCw
-         /GHAaYL9/v/+XDx0CZO40dmtSYKX/Ojjj2QZCBE9+dEHyJT22c74G/govDM7RsDbOa6d
-         mNP8uGTh7cWEcjoUzq18HjtaILQoAvGBZCJ7yp8LpVPPWODpBU1T4gxo1qNuaPJ4qt2x
-         zZAIkBmRO/gHXWbPKe8kWqkXOyagUFNPhdTNuER0ohKwchSr67aOva0/WW/SyA2zJ78h
-         7yRg==
-X-Gm-Message-State: AOAM530QKUyFmDAoKcHFJR5Z2e2grv42rxlp5al0b5YUrVcPnDmPREr4
-        k2eJxxLV4P2GrlmHMSpl2VJgJhFSu88=
-X-Google-Smtp-Source: ABdhPJxUDNR9eWwjRYU+YJ31P5moajkzy17qBGQWr9FUpVYmXEctXV0T3DnGvPDqXGdL2vG83lL0VA==
-X-Received: by 2002:a17:902:9a49:b029:da:b3b0:94a1 with SMTP id x9-20020a1709029a49b02900dab3b094a1mr7421395plv.11.1607622996372;
-        Thu, 10 Dec 2020 09:56:36 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=/ZiVmqQOrVgEJyWBc4dZ1VPDv6H/5e61lpzqdMyTEXc=;
+        b=d9a/ARQLMtG20RYz4TR7Dv8Sl2X9HVIkiIZpuv77NmC7vi6SLHN0sKIf2W6n7FJAv6
+         lcQhWS8NrcJ566/yV98Sq4V193M6x+t5b29/N5lkVRN7sToJ0i960D1CmCKB1u7hi7rW
+         kRP1134wz4wSGHQIVMLAxMmwTMVuOn19x2WNmswZquZ4zJQcXoDvfVJ3X9qBuAiUhHYr
+         FQ9B5sl5smjoNW3Bx9r4B4+EGOCfAys/ATtvwjf4DrwrLT6io414x2BBd8EUVian0BmW
+         6S0SwbuDkNv4ibwDoGb7LbsN8B5LM8+DqvpuGjIbipU0qNi2KK6cpxdCo1Ded0a2QHRU
+         phOg==
+X-Gm-Message-State: AOAM531fyFudDQFtXs0a7OuQBqAMbt3DEjkREP8f3/GuVickZYDe1AAy
+        xEOeMSa9Gpc3Z3dEq0aKtWuu6nKL61E=
+X-Google-Smtp-Source: ABdhPJx6i81o4j2O5kbCTGErdjgOcqIuZHBCupo6BjPJoZduZqW5jqFK6sszzOAjAy+YXHjNA9TOGQ==
+X-Received: by 2002:a63:484d:: with SMTP id x13mr7743647pgk.301.1607622998963;
+        Thu, 10 Dec 2020 09:56:38 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id u24sm7433517pfm.81.2020.12.10.09.56.35
+        by smtp.googlemail.com with ESMTPSA id u24sm7433517pfm.81.2020.12.10.09.56.37
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 10 Dec 2020 09:56:35 -0800 (PST)
+        Thu, 10 Dec 2020 09:56:37 -0800 (PST)
 From:   harshadshirwadkar@gmail.com
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v2 00/15] Fast commits support for e2fsprogs
-Date:   Thu, 10 Dec 2020 09:55:53 -0800
-Message-Id: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
+Subject: [PATCH v2 02/15] e2fsck: add kernel endian-ness conversion macros
+Date:   Thu, 10 Dec 2020 09:55:55 -0800
+Message-Id: <20201210175608.3265541-3-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.2.576.ga3fc446d84-goog
+In-Reply-To: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
+References: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -71,129 +73,132 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-This patch series adds fast commits support in e2fsprogs. This
-includes fast commit recovery support in e2fsck and fast commit
-configuration support in mke2fs and tune2fs. Along with that this
-patch series also makes e2fsck/recovery.c identical with
-jbd2/recovery.c in kernel. In addition, this patch imports and makes
-fast_commit.h (the file that contains on-disk formats for fast
-commits) byte identical with the kernel.
+In order to make recovery.c identical with kernel, we need endianness
+conversion macros (such as cpu_to_be32 and friends) defined in
+e2fsprogs. This patch defines these macros and also fixes recovery.c
+to use these. These macros are also needed for fast commit recovery
+patches later in this series.
 
-The recovery logic for fast commits follows the same steps as that of
-the recovery logic in kernel. The general guidining principle for the
-fast commit replay is that the individual tags found in fast commit
-area store the result of the operation as their paylod instead of
-storing the procedure itself. The recovery logic enforces this result
-onto the filesystem thereby making the fast commit replay
-idempotent. Unlike kernel, there's no atomic oepration support in
-e2fsprogs yet. So, it's possible that we may crash while we are in the
-middle of replaying of a fast commit tag. The only way to recover from
-that situation would be to run fsck. That's why we mark the file
-system as unclean before the fast commit replay and make it clean at
-the end.
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+---
+ e2fsck/recovery.c       | 42 ++++++++++-------------------------------
+ lib/ext2fs/jfs_compat.h |  6 ++++++
+ 2 files changed, 16 insertions(+), 32 deletions(-)
 
-This series adds new regression test that performs fast commit
-replay. I ensured that all the regressions tests pass.
-
-Verified that all the tests pass:
-367 tests succeeded     0 tests failed
-
-New fast commit recovery test:
-j_recover_fast_commit: ok
-
-The patch series invalidates the initial version of the patch series
-which was sent back in Mar 2020. Since then the fast commit code in
-kernel has evolved a lot (including the on-disk format change). So,
-this patch series is based on the new fast commit kernel code (which
-is available in upstream kernel now). This patch series is a complete
-revamp of the original series.
-
-Github: https://github.com/harshadjs/e2fsprogs/tree/fast-commit-v2
-
-Changes from V1:
----------------
-
-* Cleaned up libext2fs interface - removed max() macro and added new
-  APIs instead of modifying existing ones.
-* Reorganized the fast commit number of block configuration patches to
-  logically separate linext2fs and userspace tool changes.
-
-Harshad Shirwadkar (15):
-  ext2fs: move calculate_summary_stats to ext2fs lib
-  e2fsck: add kernel endian-ness conversion macros
-  e2fsck: port fc changes from kernel's recovery.c to e2fsck
-  libext2fs: provide APIs to configure fast commit blocks
-  e2fsprogs: make userspace tools number of fast commits blocks aware
-  ext2fs: add new APIs needed for fast commits
-  e2fsck: add function to rewrite extent tree
-  e2fsck: add fast commit setup code
-  e2fsck: add fast commit scan pass
-  e2fsck: add fast commit replay skeleton
-  e2fsck: add fc replay for link, unlink, creat tags
-  e2fsck: add replay for add_range, del_range, and inode tags
-  debugfs: add fast commit support to logdump
-  tests: add fast commit recovery tests
-  ext4: fix tests to account for new dumpe2fs output
-
- debugfs/journal.c                       |  10 +-
- debugfs/logdump.c                       | 122 ++++-
- e2fsck/e2fsck.h                         |  32 ++
- e2fsck/extents.c                        | 168 +++---
- e2fsck/journal.c                        | 660 +++++++++++++++++++++++-
- e2fsck/recovery.c                       | 232 ++++++---
- e2fsck/unix.c                           |  26 +-
- lib/e2p/e2p.h                           |   1 +
- lib/e2p/ljs.c                           |  16 +-
- lib/ext2fs/ext2_fs.h                    |   1 +
- lib/ext2fs/ext2fs.h                     |  30 ++
- lib/ext2fs/extent.c                     |  63 +++
- lib/ext2fs/fast_commit.h                | 203 ++++++++
- lib/ext2fs/initialize.c                 |  94 ++++
- lib/ext2fs/jfs_compat.h                 |  25 +-
- lib/ext2fs/kernel-jbd.h                 |  19 +-
- lib/ext2fs/mkjournal.c                  |  96 +++-
- lib/ext2fs/unlink.c                     |   6 +-
- misc/dumpe2fs.c                         |  10 +-
- misc/mke2fs.8.in                        |  21 +
- misc/mke2fs.c                           |  26 +-
- misc/tune2fs.8.in                       |  25 +
- misc/tune2fs.c                          |  67 +--
- misc/util.c                             |  61 ++-
- misc/util.h                             |   4 +-
- resize/resize2fs.c                      |   6 +-
- tests/d_corrupt_journal_nr_users/expect |   6 +-
- tests/f_jnl_errno/expect.0              |   6 +-
- tests/f_opt_extent/expect               |   2 +-
- tests/i_bitmaps/expect                  |   8 +-
- tests/j_ext_dumpe2fs/expect             |   6 +-
- tests/j_recover_fast_commit/commands    |   4 +
- tests/j_recover_fast_commit/expect      |  23 +
- tests/j_recover_fast_commit/image.gz    | Bin 0 -> 3595 bytes
- tests/j_recover_fast_commit/script      |  26 +
- tests/m_bigjournal/expect.1             |   6 +-
- tests/m_extent_journal/expect.1         |   6 +-
- tests/m_resize_inode_meta_bg/expect.1   |   6 +-
- tests/m_rootdir/expect                  |   6 +-
- tests/r_32to64bit/expect                |   6 +-
- tests/r_32to64bit_meta/expect           |   4 +-
- tests/r_32to64bit_move_itable/expect    |   8 +-
- tests/r_64to32bit/expect                |   6 +-
- tests/r_64to32bit_meta/expect           |   4 +-
- tests/r_move_itable_nostride/expect     |   6 +-
- tests/r_move_itable_realloc/expect      |   6 +-
- tests/t_disable_mcsum/expect            |   4 +-
- tests/t_disable_mcsum_noinitbg/expect   |   6 +-
- tests/t_disable_mcsum_yesinitbg/expect  |   4 +-
- tests/t_enable_mcsum/expect             |   6 +-
- tests/t_enable_mcsum_ext3/expect        |  10 +-
- tests/t_enable_mcsum_initbg/expect      |   6 +-
- 52 files changed, 1864 insertions(+), 341 deletions(-)
- create mode 100644 lib/ext2fs/fast_commit.h
- create mode 100644 tests/j_recover_fast_commit/commands
- create mode 100644 tests/j_recover_fast_commit/expect
- create mode 100644 tests/j_recover_fast_commit/image.gz
- create mode 100755 tests/j_recover_fast_commit/script
-
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index 5df690ad..6c3b7bb4 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -121,27 +121,6 @@ failed:
+ 
+ #endif /* __KERNEL__ */
+ 
+-static inline __u32 get_be32(__be32 *p)
+-{
+-	unsigned char *cp = (unsigned char *) p;
+-	__u32 ret;
+-
+-	ret = *cp++;
+-	ret = (ret << 8) + *cp++;
+-	ret = (ret << 8) + *cp++;
+-	ret = (ret << 8) + *cp++;
+-	return ret;
+-}
+-
+-static inline __u16 get_be16(__be16 *p)
+-{
+-	unsigned char *cp = (unsigned char *) p;
+-	__u16 ret;
+-
+-	ret = *cp++;
+-	ret = (ret << 8) + *cp++;
+-	return ret;
+-}
+ 
+ /*
+  * Read a block from the journal
+@@ -232,10 +211,10 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
+ 
+ 		nr++;
+ 		tagp += tag_bytes;
+-		if (!(get_be16(&tag->t_flags) & JBD2_FLAG_SAME_UUID))
++		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
+ 			tagp += 16;
+ 
+-		if (get_be16(&tag->t_flags) & JBD2_FLAG_LAST_TAG)
++		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
+ 			break;
+ 	}
+ 
+@@ -358,9 +337,9 @@ int jbd2_journal_skip_recovery(journal_t *journal)
+ static inline unsigned long long read_tag_block(journal_t *journal,
+ 						journal_block_tag_t *tag)
+ {
+-	unsigned long long block = get_be32(&tag->t_blocknr);
++	unsigned long long block = be32_to_cpu(tag->t_blocknr);
+ 	if (jbd2_has_feature_64bit(journal))
+-		block |= (u64)get_be32(&tag->t_blocknr_high) << 32;
++		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+ 	return block;
+ }
+ 
+@@ -429,9 +408,9 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+ 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+ 
+ 	if (jbd2_has_feature_csum3(j))
+-		return get_be32(&tag3->t_checksum) == csum32;
+-
+-	return get_be16(&tag->t_checksum) == (csum32 & 0xFFFF);
++		return tag3->t_checksum == cpu_to_be32(csum32);
++	else
++		return tag->t_checksum == cpu_to_be16(csum32);
+ }
+ 
+ static int do_one_pass(journal_t *journal,
+@@ -579,7 +558,7 @@ static int do_one_pass(journal_t *journal,
+ 				unsigned long io_block;
+ 
+ 				tag = (journal_block_tag_t *) tagp;
+-				flags = get_be16(&tag->t_flags);
++				flags = be16_to_cpu(tag->t_flags);
+ 
+ 				io_block = next_log_block++;
+ 				wrap(journal, next_log_block);
+@@ -643,9 +622,8 @@ static int do_one_pass(journal_t *journal,
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JBD2_FLAG_ESCAPE) {
+-						__be32 magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-						memcpy(nbh->b_data, &magic,
+-						       sizeof(magic));
++						*((__be32 *)nbh->b_data) =
++						cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 					}
+ 
+ 					BUFFER_TRACE(nbh, "marking dirty");
+diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+index 2bda521d..63ebef99 100644
+--- a/lib/ext2fs/jfs_compat.h
++++ b/lib/ext2fs/jfs_compat.h
+@@ -20,12 +20,18 @@
+ #define REQ_OP_READ 0
+ #define REQ_OP_WRITE 1
+ 
++#define cpu_to_le16(x)	ext2fs_cpu_to_le16(x)
+ #define cpu_to_be16(x)	ext2fs_cpu_to_be16(x)
++#define cpu_to_le32(x)	ext2fs_cpu_to_le32(x)
+ #define cpu_to_be32(x)	ext2fs_cpu_to_be32(x)
++#define cpu_to_le64(x)	ext2fs_cpu_to_le64(x)
+ #define cpu_to_be64(x)	ext2fs_cpu_to_be64(x)
+ 
++#define le16_to_cpu(x)	ext2fs_le16_to_cpu(x)
+ #define be16_to_cpu(x)	ext2fs_be16_to_cpu(x)
++#define le32_to_cpu(x)	ext2fs_le32_to_cpu(x)
+ #define be32_to_cpu(x)	ext2fs_be32_to_cpu(x)
++#define le64_to_cpu(x)	ext2fs_le64_to_cpu(x)
+ #define be64_to_cpu(x)	ext2fs_be64_to_cpu(x)
+ 
+ typedef unsigned int tid_t;
 -- 
 2.29.2.576.ga3fc446d84-goog
 
