@@ -8,60 +8,60 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6894C4361B
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:58:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62F9FC4361B
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:59:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AB48423770
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:58:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 139D423D57
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 17:59:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393018AbgLJR6h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 12:58:37 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36780 "EHLO
+        id S2393011AbgLJR6a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 12:58:30 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36656 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2393002AbgLJR57 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 12:57:59 -0500
-Received: from mail-pf1-x434.google.com (mail-pf1-x434.google.com [IPv6:2607:f8b0:4864:20::434])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98421C0611CF
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:56 -0800 (PST)
-Received: by mail-pf1-x434.google.com with SMTP id s21so4800987pfu.13
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:56 -0800 (PST)
+        with ESMTP id S2392998AbgLJR5f (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 12:57:35 -0500
+Received: from mail-pf1-x436.google.com (mail-pf1-x436.google.com [IPv6:2607:f8b0:4864:20::436])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3648C0611CC
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:52 -0800 (PST)
+Received: by mail-pf1-x436.google.com with SMTP id 11so4823520pfu.4
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 09:56:52 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=lmkY4ogZ/MRXldXiSkAbMm/a9OouqM5dsTSNHV61aDA=;
-        b=U46XQRcsdUDnlDNuQ2y+gfFKSuyohI/H2TGG/uwX/I6BSCB8phBT1jGTJwo5mog25v
-         V0Zj5gjalboHcSbNWp2KsQJo4RCIXyoNgaJhl7mPRrTqvnfNBm0ynU/pGym9Qwyiq06v
-         GfbUwEo/yNe8iPBtw+9cvmwEClMFKYys+mwRz05W77mxqUSLOj58N/NRVTjCfaNKj9j+
-         +7XHv4AbJw+nqR1brSlBL7z2y2dHYJhg+zMK7SrGmQpJol+oibohBbqiK95Fz8mJssD+
-         egujbJMLJrrNtHhkKkNXwUKRKzWgcdRCj/Ffr6PtqYmIHUfH7ChSemuIAryhz4OshYL4
-         9kzA==
+        bh=WWRUBUnJHytFXSDGhaerphF6UwccC+937KSQHAwqYTU=;
+        b=UXT3HUK+ZGmbMjUN/SrDP9o4HiNdCqh3rMx7QkVAH/Nq5H9Z8W9iEsKtY91GF90jfx
+         D/Kk8U5f1gbpRBrQiyHnaivksItEEfPVUho1L06JwqptPdg5JgP3Ws/x3ijOMOLrpr5z
+         rnz7BN1Am70ukzr30FdfBYglJDeIOxpukhqJR6Gnj2jtckwyLs1ede5Z/JpSpaV+3p4u
+         ipw14OOU+NLaO1Qr3S2Q50CtSndFH3GNVcXQH6ylZAWeSwCRq3Mg9Bm83kQNNNRg9vt1
+         1ejT+5o14nBPq4E3uSOGTgeeanN3yIpjwa24SIyekXCI8ETP/KEvFMUn053ZwFNYJCRb
+         JtTA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=lmkY4ogZ/MRXldXiSkAbMm/a9OouqM5dsTSNHV61aDA=;
-        b=eaRu3JP1Jz/IqD9T8tw9VKtmPRc8LWNkHh2Hqh6HIyuDq8krnu/MoEs+ltC5YGnzAK
-         7SUC1HLfnBZe/8Wr82eWoqSD+LyVY+zIZ3MaCoZ806sGQr08QtC6uMPWcL6Vl4m3VZyw
-         WCcskaml1DBIfEbsI9QbEKQOksBqcvqizCDBbyK/MkBzn55uowVwnsI4NuIG+zAp71hS
-         c1F+p9xdwUG31OKYv6i9/sw3OJZXnncGHYv+mMxcum/3M1bYh3rU4GlTu7x/f1XJyyBA
-         XARcGyf02iZEJ9TDRPV37TJeyLCCDB7y9Gt3bm4zjC6NW1FFwzePRS5qIrTDW5TUsnIF
-         h9sw==
-X-Gm-Message-State: AOAM531afZ3XTxilAPrkK6ffEYDy15yl00d/ixrAhl/fvromHzRqdCey
-        jZQ8ehpkFWP4/cnz3UQh3KqyYBEOtq0=
-X-Google-Smtp-Source: ABdhPJyjWy33ZBfJqL2YA1Y5jS9BUBNZVCdM6GbA1q1QYwb7mofqljXOFh7gRVgPSWqTNjx8Dup/0w==
-X-Received: by 2002:a17:90a:ca93:: with SMTP id y19mr8949621pjt.71.1607623015633;
-        Thu, 10 Dec 2020 09:56:55 -0800 (PST)
+        bh=WWRUBUnJHytFXSDGhaerphF6UwccC+937KSQHAwqYTU=;
+        b=pXV7yqtu5+rqfzXJcQCiVCD8hle25wzkDAMR1TYCnlIfjWwpwmGPqTOZNNiWSt9At+
+         NY5Oo+5aNZe0XQNenKsLAstZuQYB8Do6pJ1Z25o7awtNkAyUVzYc4zaGDuQsiZuBsb3j
+         uRyJeGKFepdfdt5NcC/+WqZbo/JPViELEC4l3fIT88a6H+SZdzCdgTx6ap+vUr543Y/E
+         gq0CBWBRrMiIRRiChaDyWIBDUkAnm9qtM1jyoQeInu9vSP0I2jRXPM3JRva2dmOHui+R
+         g9BjB7r+FNXmP7nVypTeCRDIHpGT1zDJEyZZdV913l2JfaN8hyVpxwfGXmIqtG3iU54o
+         G8UQ==
+X-Gm-Message-State: AOAM532CB56oc6SnFQeHlZEfV2M/HQiT7yLID9yLAdSAkH+TcbchGLEs
+        qSZz9KzukZncszYL3CbqoeK0tSkyis0=
+X-Google-Smtp-Source: ABdhPJwmiMuTiFXo+SAbg+iXsFoUIvE1Ty4wqN6xKabC8WAj/lybY9gB+VXWv4Eg47e5kT3e3JGuew==
+X-Received: by 2002:a17:90a:4310:: with SMTP id q16mr4929281pjg.121.1607623011935;
+        Thu, 10 Dec 2020 09:56:51 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id u24sm7433517pfm.81.2020.12.10.09.56.54
+        by smtp.googlemail.com with ESMTPSA id u24sm7433517pfm.81.2020.12.10.09.56.50
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 10 Dec 2020 09:56:54 -0800 (PST)
+        Thu, 10 Dec 2020 09:56:50 -0800 (PST)
 From:   harshadshirwadkar@gmail.com
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v2 15/15] ext4: fix tests to account for new dumpe2fs output
-Date:   Thu, 10 Dec 2020 09:56:08 -0800
-Message-Id: <20201210175608.3265541-16-harshadshirwadkar@gmail.com>
+Subject: [PATCH v2 12/15] e2fsck: add replay for add_range, del_range, and inode tags
+Date:   Thu, 10 Dec 2020 09:56:05 -0800
+Message-Id: <20201210175608.3265541-13-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.29.2.576.ga3fc446d84-goog
 In-Reply-To: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
 References: <20201210175608.3265541-1-harshadshirwadkar@gmail.com>
@@ -73,481 +73,398 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-dumpe2fs tool now is capable of reporting number of fast commit
-blocks. There were slight changes in the output of dumpe2fs outside of
-fast commits. This patch fixes the regression tests to expect the new
-output.
+Add replay for inode's extent trees and inode itself.
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- tests/d_corrupt_journal_nr_users/expect |  6 ++++--
- tests/f_jnl_errno/expect.0              |  6 ++++--
- tests/f_opt_extent/expect               |  2 +-
- tests/i_bitmaps/expect                  |  8 +++++---
- tests/j_ext_dumpe2fs/expect             |  6 ++++--
- tests/m_bigjournal/expect.1             |  6 ++++--
- tests/m_extent_journal/expect.1         |  6 ++++--
- tests/m_resize_inode_meta_bg/expect.1   |  6 ++++--
- tests/m_rootdir/expect                  |  6 ++++--
- tests/r_32to64bit/expect                |  6 +++---
- tests/r_32to64bit_meta/expect           |  4 ++--
- tests/r_32to64bit_move_itable/expect    |  8 ++++----
- tests/r_64to32bit/expect                |  6 +++---
- tests/r_64to32bit_meta/expect           |  4 ++--
- tests/r_move_itable_nostride/expect     |  6 ++++--
- tests/r_move_itable_realloc/expect      |  6 ++++--
- tests/t_disable_mcsum/expect            |  4 ++--
- tests/t_disable_mcsum_noinitbg/expect   |  6 +++---
- tests/t_disable_mcsum_yesinitbg/expect  |  4 ++--
- tests/t_enable_mcsum/expect             |  6 +++---
- tests/t_enable_mcsum_ext3/expect        | 10 +++++-----
- tests/t_enable_mcsum_initbg/expect      |  6 +++---
- 22 files changed, 74 insertions(+), 54 deletions(-)
+ e2fsck/journal.c | 343 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 343 insertions(+)
 
-diff --git a/tests/d_corrupt_journal_nr_users/expect b/tests/d_corrupt_journal_nr_users/expect
-index cdfb49a0..656d35c3 100644
---- a/tests/d_corrupt_journal_nr_users/expect
-+++ b/tests/d_corrupt_journal_nr_users/expect
-@@ -34,8 +34,10 @@ Default directory hash:   half_md4
- Journal backup:           inode blocks
- Checksum type:            crc32c
- Journal features:         (none)
--Journal size:             4096k
--Journal length:           1024
-+Total journal size:       4096k
-+Total journal blocks:     1024
-+Max transaction length:   1024
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
- Journal number of users:  9999
-diff --git a/tests/f_jnl_errno/expect.0 b/tests/f_jnl_errno/expect.0
-index 2a9426d9..96fb01a7 100644
---- a/tests/f_jnl_errno/expect.0
-+++ b/tests/f_jnl_errno/expect.0
-@@ -31,8 +31,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             1024k
--Journal length:           1024
-+Total journal size:       1024k
-+Total journal blocks:     1024
-+Max transaction length:   1024
-+Fast commit length:       0
- Journal sequence:         0x00000005
- Journal start:            0
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 0f601384..ce9194f3 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -380,6 +380,219 @@ static int ext4_fc_replay_scan(journal_t *j, struct buffer_head *bh,
+ out_err:
+ 	return ret;
+ }
++
++#define ex_end(__ex) ((__ex)->e_lblk + (__ex)->e_len - 1)
++#define ex_pend(__ex) ((__ex)->e_pblk + (__ex)->e_len - 1)
++
++static int make_room(struct extent_list *list, int i)
++{
++	int ret;
++
++	if (list->count == list->size) {
++		unsigned int new_size = (list->size + 341) *
++					sizeof(struct ext2fs_extent);
++		ret = ext2fs_resize_mem(0, new_size, &list->extents);
++		if (ret)
++			return ret;
++		list->size += 341;
++	}
++
++	memmove(&list->extents[i + 1], &list->extents[i],
++			sizeof(list->extents[0]) * (list->count - i));
++	list->count++;
++	return 0;
++}
++
++static int ex_compar(const void *arg1, const void *arg2)
++{
++	struct ext2fs_extent *ex1 = (struct ext2fs_extent *)arg1;
++	struct ext2fs_extent *ex2 = (struct ext2fs_extent *)arg2;
++
++	if (ex1->e_lblk < ex2->e_lblk)
++		return -1;
++	if (ex1->e_lblk > ex2->e_lblk)
++		return 1;
++	return ex1->e_len - ex2->e_len;
++}
++
++static int ex_len_compar(const void *arg1, const void *arg2)
++{
++	struct ext2fs_extent *ex1 = (struct ext2fs_extent *)arg1;
++	struct ext2fs_extent *ex2 = (struct ext2fs_extent *)arg2;
++
++	if (ex1->e_len < ex2->e_len)
++		return 1;
++
++	if (ex1->e_lblk > ex2->e_lblk)
++		return -1;
++
++	return 0;
++}
++
++static void ex_sort_and_merge(e2fsck_t ctx, struct extent_list *list)
++{
++	blk64_t ex_end;
++	int i, j;
++
++	if (list->count < 2)
++		return;
++
++	/*
++	 * Reverse sort by length, that way we strip off all the 0 length
++	 * extents
++	 */
++	qsort(list->extents, list->count, sizeof(struct ext2fs_extent),
++		ex_len_compar);
++
++	for (i = 0; i < list->count; i++) {
++		if (list->extents[i].e_len == 0) {
++			list->count = i;
++			break;
++		}
++	}
++
++	/* Now sort by logical offset */
++	qsort(list->extents, list->count, sizeof(list->extents[0]),
++		ex_compar);
++
++	/* Merge adjacent extents if they are logically and physically contiguous */
++	i = 0;
++	while (i < list->count - 1) {
++		if (ex_end(&list->extents[i]) + 1 != list->extents[i + 1].e_lblk ||
++			ex_pend(&list->extents[i]) + 1 != list->extents[i + 1].e_pblk ||
++			(list->extents[i].e_flags & EXT2_EXTENT_FLAGS_UNINIT) !=
++				(list->extents[i + 1].e_flags & EXT2_EXTENT_FLAGS_UNINIT)) {
++			i++;
++			continue;
++		}
++
++		list->extents[i].e_len += list->extents[i + 1].e_len;
++		for (j = i + 1; j < list->count - 1; j++)
++			list->extents[j] = list->extents[j + 1];
++		list->count--;
++	}
++}
++
++/* must free blocks that are released */
++static int ext2fs_modify_extent_list(e2fsck_t ctx, struct extent_list *list,
++					struct ext2fs_extent *ex, int del)
++{
++	int ret;
++	int i, offset;
++	struct ext2fs_extent add_ex = *ex, add_ex2;
++
++	/* First let's create a hole from ex->e_lblk of length ex->e_len */
++	for (i = 0; i < list->count; i++) {
++		if (ex_end(&list->extents[i]) < add_ex.e_lblk)
++			continue;
++
++		/* Case 1: No overlap */
++		if (list->extents[i].e_lblk > ex_end(&add_ex))
++			break;
++		/*
++		 * Unmark all the blocks in bb now. All the blocks get marked
++		 * before we exit this function.
++		 */
++		ext2fs_unmark_block_bitmap_range2(ctx->fs->block_map,
++			list->extents[i].e_pblk, list->extents[i].e_len);
++		/* Case 2: Split */
++		if (list->extents[i].e_lblk < add_ex.e_lblk &&
++			ex_end(&list->extents[i]) > ex_end(&add_ex)) {
++			ret = make_room(list, i + 1);
++			if (ret)
++				return ret;
++			list->extents[i + 1] = list->extents[i];
++			offset = ex_end(&add_ex) + 1 - list->extents[i].e_lblk;
++			list->extents[i + 1].e_lblk += offset;
++			list->extents[i + 1].e_pblk += offset;
++			list->extents[i + 1].e_len -= offset;
++			list->extents[i].e_len =
++				add_ex.e_lblk - list->extents[i].e_lblk;
++			break;
++		}
++
++		/* Case 3: Exact overlap */
++		if (add_ex.e_lblk <= list->extents[i].e_lblk  &&
++			ex_end(&list->extents[i]) <= ex_end(&add_ex)) {
++
++			list->extents[i].e_len = 0;
++			continue;
++		}
++
++		/* Case 4: Partial overlap */
++		if (ex_end(&list->extents[i]) > ex_end(&add_ex)) {
++			offset = ex_end(&add_ex) + 1 - list->extents[i].e_lblk;
++			list->extents[i].e_lblk += offset;
++			list->extents[i].e_pblk += offset;
++			list->extents[i].e_len -= offset;
++			break;
++		}
++
++		if (ex_end(&add_ex) >= ex_end(&list->extents[i])) {
++			list->extents[i].e_len =
++				max(add_ex.e_lblk - list->extents[i].e_lblk,
++					0);
++		}
++	}
++
++	if (add_ex.e_len && !del) {
++		make_room(list, list->count);
++		list->extents[list->count - 1] = add_ex;
++	}
++
++	ex_sort_and_merge(ctx, list);
++
++	/* Mark all occupied blocks allocated */
++	for (i = 0; i < list->count; i++)
++		ext2fs_mark_block_bitmap_range2(ctx->fs->block_map,
++			list->extents[i].e_pblk, list->extents[i].e_len);
++	ext2fs_mark_bb_dirty(ctx->fs);
++
++	return 0;
++}
++
++static int ext2fs_add_extent_to_list(e2fsck_t ctx, struct extent_list *list,
++					struct ext2fs_extent *ex)
++{
++	return ext2fs_modify_extent_list(ctx, list, ex, 0 /* add */);
++}
++
++static int ext2fs_del_extent_to_list(e2fsck_t ctx, struct extent_list *list,
++					struct ext2fs_extent *ex)
++{
++	return ext2fs_modify_extent_list(ctx, list, ex, 1 /* delete */);
++}
++
++static int e2fsck_fc_read_extents(e2fsck_t ctx, int ino)
++{
++	struct extent_list *extent_list = &ctx->fc_replay_state.fc_extent_list;
++
++	if (extent_list->ino == ino)
++		return 0;
++
++	extent_list->ino = ino;
++	return e2fsck_read_extents(ctx, extent_list);
++}
++
++/*
++ * Flush extents in replay state on disk. @ino is the inode that is going
++ * to be processed next. So, we hold back flushing of the extent list
++ * if the next inode that's going to be processed is same as the one with
++ * cached extents in our replay state. That allows us to gather multiple extents
++ * for the inode so that we can flush all of them at once and it also saves us
++ * from continuously growing and shrinking the extent tree.
++ */
++static void e2fsck_fc_flush_extents(e2fsck_t ctx, int ino)
++{
++	struct extent_list *extent_list = &ctx->fc_replay_state.fc_extent_list;
++
++	if (extent_list->ino == ino || extent_list->ino == 0)
++		return;
++	e2fsck_rewrite_extent_tree(ctx, extent_list);
++	ext2fs_free_mem(&extent_list->extents);
++	memset(extent_list, 0, sizeof(*extent_list));
++}
++
+ /* Helper struct for dentry replay routines */
+ struct dentry_info_args {
+ 	int parent_ino, dname_len, ino, inode_len;
+@@ -416,6 +629,7 @@ static int ext4_fc_handle_unlink(e2fsck_t ctx, struct ext4_fc_tl *tl)
+ 	ext2_filsys fs = ctx->fs;
  
-diff --git a/tests/f_opt_extent/expect b/tests/f_opt_extent/expect
-index 6d1f9d11..9d2021e8 100644
---- a/tests/f_opt_extent/expect
-+++ b/tests/f_opt_extent/expect
-@@ -35,7 +35,7 @@ Change in FS metadata:
-  Free inodes:              65047
-  First block:              1
-  Block size:               1024
--@@ -48,8 +48,8 @@
-+@@ -50,8 +50,8 @@
-    Block bitmap at 262 (+261)
-    Inode bitmap at 278 (+277)
-    Inode table at 294-549 (+293)
-diff --git a/tests/i_bitmaps/expect b/tests/i_bitmaps/expect
-index fb9d8f1f..6199bb7c 100644
---- a/tests/i_bitmaps/expect
-+++ b/tests/i_bitmaps/expect
-@@ -1,6 +1,8 @@
--46,50d45
-+46,52d45
- < Journal features:         (none)
--< Journal size:             1024k
--< Journal length:           1024
-+< Total journal size:       1024k
-+< Total journal blocks:     1024
-+< Max transaction length:   1024
-+< Fast commit length:       0
- < Journal sequence:         0x00000001
- < Journal start:            0
-diff --git a/tests/j_ext_dumpe2fs/expect b/tests/j_ext_dumpe2fs/expect
-index db77a36d..2838bbd1 100644
---- a/tests/j_ext_dumpe2fs/expect
-+++ b/tests/j_ext_dumpe2fs/expect
-@@ -43,8 +43,10 @@ Desired extra isize:      28
- Default directory hash:   half_md4
- Checksum type:            crc32c
- Journal features:         journal_64bit journal_checksum_v3
--Journal size:             2048k
--Journal length:           2048
-+Total journal size:       2048k
-+Total journal blocks:     2048
-+Max transaction length:   2048
-+Fast commit length:       0
- Journal first block:      3
- Journal sequence:         0x00000003
- Journal start:            0
-diff --git a/tests/m_bigjournal/expect.1 b/tests/m_bigjournal/expect.1
-index 80f71d1f..eb0e3bc3 100644
---- a/tests/m_bigjournal/expect.1
-+++ b/tests/m_bigjournal/expect.1
-@@ -42,8 +42,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             5000M
--Journal length:           1280000
-+Total journal size:       5000M
-+Total journal blocks:     1280000
-+Max transaction length:   1280000
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
+ 	tl_to_darg(&darg, tl);
++	e2fsck_fc_flush_extents(ctx, darg.ino);
+ 	ext2fs_unlink(ctx->fs, darg.parent_ino, darg.dname, darg.ino, 0);
+ 	/* It's okay if the above call fails */
+ 	free(darg.dname);
+@@ -429,6 +643,8 @@ static int ext4_fc_handle_link_and_create(e2fsck_t ctx, struct ext4_fc_tl *tl)
+ 	int ret, filetype, mode;
  
-diff --git a/tests/m_extent_journal/expect.1 b/tests/m_extent_journal/expect.1
-index cfc052a8..9a9219e9 100644
---- a/tests/m_extent_journal/expect.1
-+++ b/tests/m_extent_journal/expect.1
-@@ -48,8 +48,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             4096k
--Journal length:           4096
-+Total journal size:       4096k
-+Total journal blocks:     4096
-+Max transaction length:   4096
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
+ 	tl_to_darg(&darg, tl);
++
++	e2fsck_fc_flush_extents(ctx, 0);
+ 	ret = ext2fs_read_inode(fs, darg.ino,
+ 					(struct ext2_inode *)&inode_large);
+ 	if (ret)
+@@ -469,6 +685,126 @@ out:
+ 	return ret;
  
-diff --git a/tests/m_resize_inode_meta_bg/expect.1 b/tests/m_resize_inode_meta_bg/expect.1
-index 6a7f3993..7feaed9d 100644
---- a/tests/m_resize_inode_meta_bg/expect.1
-+++ b/tests/m_resize_inode_meta_bg/expect.1
-@@ -51,8 +51,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             4096k
--Journal length:           1024
-+Total journal size:       4096k
-+Total journal blocks:     1024
-+Max transaction length:   1024
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
- 
-diff --git a/tests/m_rootdir/expect b/tests/m_rootdir/expect
-index 113ffc64..dbc79772 100644
---- a/tests/m_rootdir/expect
-+++ b/tests/m_rootdir/expect
-@@ -36,8 +36,10 @@ Default directory hash:   half_md4
- Journal backup:           inode blocks
- Checksum type:            crc32c
- Journal features:         (none)
--Journal size:             1024k
--Journal length:           1024
-+Total journal size:       1024k
-+Total journal blocks:     1024
-+Max transaction length:   1024
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
- 
-diff --git a/tests/r_32to64bit/expect b/tests/r_32to64bit/expect
-index c6816b7f..de573b3e 100644
---- a/tests/r_32to64bit/expect
-+++ b/tests/r_32to64bit/expect
-@@ -47,7 +47,7 @@ Change in FS metadata:
-  Blocks per group:         8192
-  Fragments per group:      8192
-  Inodes per group:         1024
--@@ -41,16 +41,16 @@
-+@@ -43,16 +43,16 @@
-  
-  
-  group:block:super:gdt:bbitmap:ibitmap:itable
-@@ -70,7 +70,7 @@ Change in FS metadata:
-  10:81921:-1:-1:270:286:2852
-  11:90113:-1:-1:271:287:3108
-  12:98305:-1:-1:272:288:3364
--@@ -66,9 +66,9 @@
-+@@ -68,9 +68,9 @@
-  22:180225:-1:-1:131079:131095:132641
-  23:188417:-1:-1:131080:131096:132897
-  24:196609:-1:-1:131081:131097:133153
-@@ -82,7 +82,7 @@ Change in FS metadata:
-  28:229377:-1:-1:131085:131101:134177
-  29:237569:-1:-1:131086:131102:134433
-  30:245761:-1:-1:131087:131103:134689
--@@ -90,7 +90,7 @@
-+@@ -92,7 +92,7 @@
-  46:376833:-1:-1:262159:262175:265761
-  47:385025:-1:-1:262160:262176:266017
-  48:393217:-1:-1:393217:393233:393249
-diff --git a/tests/r_32to64bit_meta/expect b/tests/r_32to64bit_meta/expect
-index c4f39266..70babbd9 100644
---- a/tests/r_32to64bit_meta/expect
-+++ b/tests/r_32to64bit_meta/expect
-@@ -46,7 +46,7 @@ Change in FS metadata:
-  Blocks per group:         8192
-  Fragments per group:      8192
-  Inodes per group:         1024
--@@ -55,9 +55,9 @@
-+@@ -57,9 +57,9 @@
-  12:98305:-1:-1:15:31:3107
-  13:106497:-1:-1:16:32:3363
-  14:114689:-1:-1:17:33:3619
-@@ -59,7 +59,7 @@ Change in FS metadata:
-  18:147457:-1:-1:131075:131091:131617
-  19:155649:-1:-1:131076:131092:131873
-  20:163841:-1:-1:131077:131093:132129
--@@ -87,9 +87,9 @@
-+@@ -89,9 +89,9 @@
-  44:360449:-1:-1:262158:262174:265250
-  45:368641:-1:-1:262159:262175:265506
-  46:376833:-1:-1:262160:262176:265762
-diff --git a/tests/r_32to64bit_move_itable/expect b/tests/r_32to64bit_move_itable/expect
-index 0a3b78e7..a1d2aebc 100644
---- a/tests/r_32to64bit_move_itable/expect
-+++ b/tests/r_32to64bit_move_itable/expect
-@@ -46,7 +46,7 @@ Change in FS metadata:
-  Blocks per group:         8192
-  Fragments per group:      8192
-  Inodes per group:         1024
--@@ -39,16 +39,16 @@
-+@@ -41,16 +41,16 @@
-  
-  
-  group:block:super:gdt:bbitmap:ibitmap:itable
-@@ -69,7 +69,7 @@ Change in FS metadata:
-  10:81921:-1:-1:81921:81922:81923
-  11:90113:-1:-1:90113:90114:90115
-  12:98305:-1:-1:98305:98306:98307
--@@ -64,9 +64,9 @@
-+@@ -66,9 +66,9 @@
-  22:180225:-1:-1:180225:180226:180227
-  23:188417:-1:-1:188417:188418:188419
-  24:196609:-1:-1:196609:196610:196611
-@@ -81,7 +81,7 @@ Change in FS metadata:
-  28:229377:-1:-1:229377:229378:229379
-  29:237569:-1:-1:237569:237570:237571
-  30:245761:-1:-1:245761:245762:245763
--@@ -88,7 +88,7 @@
-+@@ -90,7 +90,7 @@
-  46:376833:-1:-1:376833:376834:376835
-  47:385025:-1:-1:385025:385026:385027
-  48:393217:-1:-1:393217:393218:393219
-@@ -90,7 +90,7 @@ Change in FS metadata:
-  50:409601:-1:-1:409601:409602:409603
-  51:417793:-1:-1:417793:417794:417795
-  52:425985:-1:-1:425985:425986:425987
--@@ -120,7 +120,7 @@
-+@@ -122,7 +122,7 @@
-  78:638977:-1:-1:638977:638978:638979
-  79:647169:-1:-1:647169:647170:647171
-  80:655361:-1:-1:655361:655362:655363
-diff --git a/tests/r_64to32bit/expect b/tests/r_64to32bit/expect
-index 7dff2a05..eb609fbd 100644
---- a/tests/r_64to32bit/expect
-+++ b/tests/r_64to32bit/expect
-@@ -46,7 +46,7 @@ Change in FS metadata:
-  Reserved GDT blocks:      256
-  Blocks per group:         8192
-  Fragments per group:      8192
--@@ -42,16 +40,16 @@
-+@@ -44,16 +42,16 @@
-  
-  
-  group:block:super:gdt:bbitmap:ibitmap:itable
-@@ -69,7 +69,7 @@ Change in FS metadata:
-  10:81921:-1:-1:272:288:2854
-  11:90113:-1:-1:273:289:3110
-  12:98305:-1:-1:274:290:3366
--@@ -67,9 +65,9 @@
-+@@ -69,9 +67,9 @@
-  22:180225:-1:-1:131079:131095:132641
-  23:188417:-1:-1:131080:131096:132897
-  24:196609:-1:-1:131081:131097:133153
-@@ -81,7 +81,7 @@ Change in FS metadata:
-  28:229377:-1:-1:131085:131101:134177
-  29:237569:-1:-1:131086:131102:134433
-  30:245761:-1:-1:131087:131103:134689
--@@ -91,7 +89,7 @@
-+@@ -93,7 +91,7 @@
-  46:376833:-1:-1:262159:262175:265761
-  47:385025:-1:-1:262160:262176:266017
-  48:393217:-1:-1:393217:393233:393249
-diff --git a/tests/r_64to32bit_meta/expect b/tests/r_64to32bit_meta/expect
-index b17a8784..70655909 100644
---- a/tests/r_64to32bit_meta/expect
-+++ b/tests/r_64to32bit_meta/expect
-@@ -46,7 +46,7 @@ Change in FS metadata:
-  Blocks per group:         8192
-  Fragments per group:      8192
-  Inodes per group:         1024
--@@ -56,9 +54,9 @@
-+@@ -58,9 +56,9 @@
-  12:98305:-1:-1:15:31:3107
-  13:106497:-1:-1:16:32:3363
-  14:114689:-1:-1:17:33:3619
-@@ -59,7 +59,7 @@ Change in FS metadata:
-  18:147457:-1:-1:131076:131092:131618
-  19:155649:-1:-1:131077:131093:131874
-  20:163841:-1:-1:131078:131094:132130
--@@ -88,9 +86,9 @@
-+@@ -90,9 +88,9 @@
-  44:360449:-1:-1:262158:262174:265250
-  45:368641:-1:-1:262159:262175:265506
-  46:376833:-1:-1:262160:262176:265762
-diff --git a/tests/r_move_itable_nostride/expect b/tests/r_move_itable_nostride/expect
-index 098cbfc5..74c2cc0a 100644
---- a/tests/r_move_itable_nostride/expect
-+++ b/tests/r_move_itable_nostride/expect
-@@ -52,8 +52,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             16M
--Journal length:           16384
-+Total journal size:       16M
-+Total journal blocks:     16384
-+Max transaction length:   16384
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
- 
-diff --git a/tests/r_move_itable_realloc/expect b/tests/r_move_itable_realloc/expect
-index f9a7f515..67f2fe4a 100644
---- a/tests/r_move_itable_realloc/expect
-+++ b/tests/r_move_itable_realloc/expect
-@@ -51,8 +51,10 @@ Journal inode:            8
- Default directory hash:   half_md4
- Journal backup:           inode blocks
- Journal features:         (none)
--Journal size:             16M
--Journal length:           16384
-+Total journal size:       16M
-+Total journal blocks:     16384
-+Max transaction length:   16384
-+Fast commit length:       0
- Journal sequence:         0x00000001
- Journal start:            0
- 
-diff --git a/tests/t_disable_mcsum/expect b/tests/t_disable_mcsum/expect
-index 3341ad71..bfa21b89 100644
---- a/tests/t_disable_mcsum/expect
-+++ b/tests/t_disable_mcsum/expect
-@@ -34,8 +34,8 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- -Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
-+ Total journal size:       16M
-+ Total journal blocks:     16384
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/t_disable_mcsum_noinitbg/expect b/tests/t_disable_mcsum_noinitbg/expect
-index 62eca4e9..fe61fcbc 100644
---- a/tests/t_disable_mcsum_noinitbg/expect
-+++ b/tests/t_disable_mcsum_noinitbg/expect
-@@ -34,9 +34,9 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- -Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
--@@ -48,18 +47,18 @@
-+ Total journal size:       16M
-+ Total journal blocks:     16384
-+@@ -50,18 +49,18 @@
-    Block bitmap at 262 (+261)
-    Inode bitmap at 278 (+277)
-    Inode table at 294-549 (+293)
-diff --git a/tests/t_disable_mcsum_yesinitbg/expect b/tests/t_disable_mcsum_yesinitbg/expect
-index 7e3485fe..b9062489 100644
---- a/tests/t_disable_mcsum_yesinitbg/expect
-+++ b/tests/t_disable_mcsum_yesinitbg/expect
-@@ -34,8 +34,8 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- -Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
-+ Total journal size:       16M
-+ Total journal blocks:     16384
- Pass 1: Checking inodes, blocks, and sizes
- Pass 2: Checking directory structure
- Pass 3: Checking directory connectivity
-diff --git a/tests/t_enable_mcsum/expect b/tests/t_enable_mcsum/expect
-index cb0aef62..fcb0ed16 100644
---- a/tests/t_enable_mcsum/expect
-+++ b/tests/t_enable_mcsum/expect
-@@ -58,9 +58,9 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- +Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
--@@ -47,8 +48,8 @@
-+ Total journal size:       16M
-+ Total journal blocks:     16384
-+@@ -49,8 +50,8 @@
-    Block bitmap at 262 (+261)
-    Inode bitmap at 278 (+277)
-    Inode table at 294-549 (+293)
-diff --git a/tests/t_enable_mcsum_ext3/expect b/tests/t_enable_mcsum_ext3/expect
-index 11c5a26d..549e60e9 100644
---- a/tests/t_enable_mcsum_ext3/expect
-+++ b/tests/t_enable_mcsum_ext3/expect
-@@ -37,9 +37,9 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- +Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
--@@ -37,7 +38,7 @@
-+ Total journal size:       16M
-+ Total journal blocks:     16384
-+@@ -39,7 +40,7 @@
-  Journal start:            0
-  
-  
-@@ -48,7 +48,7 @@ Change in FS metadata:
-    Primary superblock at 1, Group descriptors at 2-3
-    Reserved GDT blocks at 4-259
-    Block bitmap at 260 (+259)
--@@ -46,7 +47,7 @@
-+@@ -48,7 +49,7 @@
-    0 free blocks, 1013 free inodes, 2 directories
-    Free blocks: 
-    Free inodes: 12-1024
-@@ -57,7 +57,7 @@ Change in FS metadata:
-    Backup superblock at 8193, Group descriptors at 8194-8195
-    Reserved GDT blocks at 8196-8451
-    Block bitmap at 8452 (+259)
--@@ -55,6 +56,6 @@
-+@@ -57,6 +58,6 @@
-    0 free blocks, 1024 free inodes, 0 directories
-    Free blocks: 
-    Free inodes: 1025-2048
-diff --git a/tests/t_enable_mcsum_initbg/expect b/tests/t_enable_mcsum_initbg/expect
-index a37648bf..987141f1 100644
---- a/tests/t_enable_mcsum_initbg/expect
-+++ b/tests/t_enable_mcsum_initbg/expect
-@@ -58,9 +58,9 @@ Change in FS metadata:
-  Journal backup:           inode blocks
- +Checksum type:            crc32c
-  Journal features:         (none)
-- Journal size:             16M
-- Journal length:           16384
--@@ -41,24 +42,24 @@
-+ Total journal size:       16M
-+ Total journal blocks:     16384
-+@@ -43,24 +44,24 @@
-  Journal start:            0
-  
-  
+ }
++
++/* This function fixes the i_blocks field in the replayed indoe */
++static void ext4_fc_replay_fixup_iblocks(struct ext2_inode_large *ondisk_inode,
++	struct ext2_inode_large *fc_inode)
++{
++	if (le32_to_cpu(ondisk_inode->i_flags) & EXT4_EXTENTS_FL) {
++		struct ext3_extent_header *eh;
++
++		eh = (struct ext3_extent_header *)(&ondisk_inode->i_block[0]);
++		if (eh->eh_magic != EXT3_EXT_MAGIC) {
++			memset(eh, 0, sizeof(*eh));
++			eh->eh_magic = EXT3_EXT_MAGIC;
++			eh->eh_max = cpu_to_le16(
++				(sizeof(ondisk_inode->i_block) -
++					sizeof(struct ext3_extent_header)) /
++					sizeof(struct ext3_extent));
++		}
++	} else if (le32_to_cpu(ondisk_inode->i_flags) & EXT4_INLINE_DATA_FL) {
++		memcpy(ondisk_inode->i_block, fc_inode->i_block,
++			sizeof(fc_inode->i_block));
++	}
++}
++
++static int ext4_fc_handle_inode(e2fsck_t ctx, struct ext4_fc_tl *tl)
++{
++	struct ext4_fc_inode *fc_inode;
++	struct ext2_inode_large *inode = NULL;
++	int ino, inode_len = EXT2_GOOD_OLD_INODE_SIZE, ret;
++	struct e2fsck_fc_replay_state *state = &ctx->fc_replay_state;
++
++	fc_inode = (struct ext4_fc_inode *)ext4_fc_tag_val(tl);
++	ino = le32_to_cpu(fc_inode->fc_ino);
++
++	if (EXT2_INODE_SIZE(ctx->fs->super) > EXT2_GOOD_OLD_INODE_SIZE)
++		inode_len += ext2fs_le16_to_cpu(
++			((struct ext2_inode_large *)fc_inode->fc_raw_inode)
++				->i_extra_isize);
++	ret = ext2fs_get_mem(inode_len, &inode);
++	if (ret)
++		return ret;
++	e2fsck_fc_flush_extents(ctx, ino);
++
++	ret = ext2fs_read_inode_full(ctx->fs, ino, (struct ext2_inode *)inode,
++					inode_len);
++	if (ret)
++		goto out;
++	memcpy(inode, fc_inode->fc_raw_inode,
++		offsetof(struct ext2_inode_large, i_block));
++	memcpy(&inode->i_generation,
++		&((struct ext2_inode_large *)(fc_inode->fc_raw_inode))->i_generation,
++		inode_len - offsetof(struct ext2_inode_large, i_generation));
++	ext4_fc_replay_fixup_iblocks(inode,
++		(struct ext2_inode_large *)fc_inode->fc_raw_inode);
++	ext2fs_iblk_set(ctx->fs, EXT2_INODE(inode),
++		ext2fs_count_blocks(ctx->fs, ino, EXT2_INODE(inode)));
++
++	ext2fs_inode_csum_set(ctx->fs, ino, inode);
++
++	ret = ext2fs_write_inode_full(ctx->fs, ino, (struct ext2_inode *)inode,
++					inode_len);
++	if (inode->i_links_count)
++		ext2fs_mark_inode_bitmap2(ctx->fs->inode_map, ino);
++	else
++		ext2fs_unmark_inode_bitmap2(ctx->fs->inode_map, ino);
++	ext2fs_mark_ib_dirty(ctx->fs);
++
++out:
++	ext2fs_free_mem(&inode);
++	return ret;
++}
++
++/*
++ * Handle add extent replay tag.
++ */
++static int ext4_fc_handle_add_extent(e2fsck_t ctx, struct ext4_fc_tl *tl)
++{
++	struct ext2fs_extent extent;
++	struct ext4_fc_add_range *add_range;
++	struct ext4_fc_del_range *del_range;
++	int ret = 0, ino;
++
++	add_range = (struct ext4_fc_add_range *)ext4_fc_tag_val(tl);
++	ino = le32_to_cpu(add_range->fc_ino);
++	e2fsck_fc_flush_extents(ctx, ino);
++
++	ret = e2fsck_fc_read_extents(ctx, ino);
++	if (ret)
++		return ret;
++	memset(&extent, 0, sizeof(extent));
++	ret = ext2fs_decode_extent(&extent, (void *)(add_range->fc_ex),
++				   sizeof(add_range->fc_ex));
++	if (ret)
++		return ret;
++	return ext2fs_add_extent_to_list(ctx,
++		&ctx->fc_replay_state.fc_extent_list, &extent);
++}
++
++/*
++ * Handle delete logical range replay tag.
++ */
++static int ext4_fc_handle_del_range(e2fsck_t ctx, struct ext4_fc_tl *tl)
++{
++	struct ext2fs_extent extent;
++	struct ext4_fc_del_range *del_range;
++	int ret, ino;
++
++	del_range = (struct ext4_fc_del_range *)ext4_fc_tag_val(tl);
++	ino = le32_to_cpu(del_range->fc_ino);
++	e2fsck_fc_flush_extents(ctx, ino);
++
++	memset(&extent, 0, sizeof(extent));
++	extent.e_lblk = ext2fs_le32_to_cpu(del_range->fc_lblk);
++	extent.e_len = ext2fs_le16_to_cpu(del_range->fc_len);
++	ret = e2fsck_fc_read_extents(ctx, ino);
++	if (ret)
++		return ret;
++	return ext2fs_del_extent_to_list(ctx,
++		&ctx->fc_replay_state.fc_extent_list, &extent);
++}
++
+ /*
+  * Main recovery path entry point. This function returns JBD2_FC_REPLAY_CONTINUE
+  * to indicate that it is expecting more fast commit blocks. It returns
+@@ -532,9 +868,16 @@ static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
+ 			ret = ext4_fc_handle_unlink(ctx, tl);
+ 			break;
+ 		case EXT4_FC_TAG_ADD_RANGE:
++			ret = ext4_fc_handle_add_extent(ctx, tl);
++			break;
+ 		case EXT4_FC_TAG_DEL_RANGE:
++			ret = ext4_fc_handle_del_range(ctx, tl);
++			break;
+ 		case EXT4_FC_TAG_INODE:
++			ret = ext4_fc_handle_inode(ctx, tl);
++			break;
+ 		case EXT4_FC_TAG_TAIL:
++			e2fsck_fc_flush_extents(ctx, 0);
+ 		case EXT4_FC_TAG_PAD:
+ 		case EXT4_FC_TAG_HEAD:
+ 			break;
 -- 
 2.29.2.576.ga3fc446d84-goog
 
