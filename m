@@ -2,192 +2,141 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94E9FC433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 21:44:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 490F9C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 23:02:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5D342233A2
-	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 21:44:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1561520DD4
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 23:02:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392551AbgLKU4s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 11 Dec 2020 15:56:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47866 "EHLO
+        id S2405803AbgLKWIT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 11 Dec 2020 17:08:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58848 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731997AbgLKU4e (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Dec 2020 15:56:34 -0500
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5580BC0613CF;
-        Fri, 11 Dec 2020 12:55:54 -0800 (PST)
-Received: from localhost (unknown [IPv6:2804:14c:132:242d::1000])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id A8AE11F46140;
-        Fri, 11 Dec 2020 20:55:50 +0000 (GMT)
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk, tytso@mit.edu,
-        khazhy@google.com, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        kernel@collabora.com
-Subject: Re: [PATCH 4/8] vfs: Add superblock notifications
-Organization: Collabora
-References: <20201208003117.342047-1-krisman@collabora.com>
-        <20201208003117.342047-5-krisman@collabora.com>
-        <20201210220914.GG4170059@dread.disaster.area>
-Date:   Fri, 11 Dec 2020 17:55:32 -0300
-In-Reply-To: <20201210220914.GG4170059@dread.disaster.area> (Dave Chinner's
-        message of "Fri, 11 Dec 2020 09:09:14 +1100")
-Message-ID: <87ft4cukor.fsf@collabora.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.1 (gnu/linux)
+        with ESMTP id S2405427AbgLKWID (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Dec 2020 17:08:03 -0500
+Received: from mail-ej1-x643.google.com (mail-ej1-x643.google.com [IPv6:2a00:1450:4864:20::643])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 22D25C0613CF
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Dec 2020 14:07:23 -0800 (PST)
+Received: by mail-ej1-x643.google.com with SMTP id w1so9734075ejf.11
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Dec 2020 14:07:23 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=JdktN6z2LJffzE8nZjAjtGP4wGDGRZwL0WS3wZGxG9w=;
+        b=RhIyAsHp+XJH3z0G9lKhbAoBc/wPxwXgIY6SQ15/AMk8rUKcumXSJycJf5qrBHfWqc
+         j131KAaeaPvjq4ZVNzUfauVMKSICZ4VYl6jfT1LghxvaU+yvfY6Ic7x34884GOxC7hX5
+         sPHTbwttLU1lMmcZP/pGebJKicVctLRMYgk12/WpjMJTzMpIdVM3g0yOoDhd3Qm2LgQ7
+         +BUgi7pF2Cmp7RaNMg8P8RakyY2ss28XQOPob/PgeIaJkl35LGlbbSwIKFnMn5qPyKJN
+         jfGzqZJICMKU6VluH4wN15jkMcB7AB58uCbIfxC9K4TY29M6QZuYJxy2g6tyKE/2BMsA
+         Ww0Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=JdktN6z2LJffzE8nZjAjtGP4wGDGRZwL0WS3wZGxG9w=;
+        b=oAhdY6ObPbNF7Ac76emMN83YZTkusW29rIrRkXCi9PEfQw/XrQYbhRT2pXFAgRvwcA
+         j4Ws0WHRHQDa0hFUrLtZSvDC+jdCT23KoVe+j2NzC7ORaLcAEsSD7p0Efouti2ZpOa1z
+         AgjSvBjH+EqM13Vhg9zLYCRm3eB9amCgj+3SfcVio05hIS9hjPoEoJPELbcitqRgzZGR
+         tidQkM0I3HcuuBXFb4gmDIRjpb3yfUrTJHCyPxIBgXRRY/869ZOc0u/qFj+t6HpBFi49
+         6KqDNHSt4DzVKM5YBoy+vOwFvZt3EXvvQ6fE7YaaVFVM5itvONzLp5C/m1heW7nKFBtZ
+         tkOg==
+X-Gm-Message-State: AOAM532ovjqko4YX+pEr7F2Oxuj/lfH4dD1B7QoFe3Adj9SUjEnLqbYx
+        X4fXQ38qREgpg9/87snPrt1G8xSlcYIjnaPv8CudN3f+xj60Pw==
+X-Google-Smtp-Source: ABdhPJzkwr/xwqDepHrvQudJR9v9nqWoX7RFdaxabR4WorYOO3qQgAFDRIyMe2fqF5rLbY67BwZVm5MkJsTG4DAuEcI=
+X-Received: by 2002:a17:906:b0c2:: with SMTP id bk2mr12858555ejb.223.1607724441716;
+ Fri, 11 Dec 2020 14:07:21 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain
+References: <1bb3c556-4635-061b-c2dc-df10c15e6398@huawei.com>
+In-Reply-To: <1bb3c556-4635-061b-c2dc-df10c15e6398@huawei.com>
+From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
+Date:   Fri, 11 Dec 2020 14:07:10 -0800
+Message-ID: <CAD+ocbxAyyFqoD6AYQVjQyqFzZde3+QOnUhC-VikAq4A3_t8JA@mail.gmail.com>
+Subject: Re: [PATCH] e2fsck: Avoid changes on recovery flags when
+ jbd2_journal_recover() failed
+To:     Haotian Li <lihaotian9@huawei.com>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "liuzhiqiang (I)" <liuzhiqiang26@huawei.com>,
+        linfeilong <linfeilong@huawei.com>, tytso@alum.mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Hi Haotian,
+
+Thanks for your patch. I noticed that the following test fails:
+
+$ make -j 64
+...
+365 tests succeeded     1 tests failed
+Tests failed: j_corrupt_revoke_rcount
+make: *** [Makefile:397: test_post] Error 1
+
+This test fails because the test expects e2fsck to continue even if
+the journal superblock is corrupt and with your patch e2fsck exits
+immediately. This brings up a higher level question - if we abort on
+errors when recovery fails during fsck, how would that problem get
+fixed if we don't run fsck? In this particular example, the journal
+superblock is corrupt and that is an unrecoverable error. I wonder if
+instead we should check for certain specific transient errors such as
+-ENOMEM and only then exit? I suspect even in those cases we probably
+should ask the user if they would like to continue or not. What do you
+think?
+
+Thanks,
+Harshad
 
 
-Dave,
-
-Thanks a lot for the very detailed review.
-
-> On Mon, Dec 07, 2020 at 09:31:13PM -0300, Gabriel Krisman Bertazi wrote:
->> From: David Howells <dhowells@redhat.com>
->> 
->> Add a superblock event notification facility whereby notifications about
->> superblock events, such as I/O errors (EIO), quota limits being hit
->> (EDQUOT) and running out of space (ENOSPC) can be reported to a monitoring
->> process asynchronously.  Note that this does not cover vfsmount topology
->> changes.  watch_mount() is used for that.
+On Fri, Dec 11, 2020 at 4:19 AM Haotian Li <lihaotian9@huawei.com> wrote:
 >
-> watch_mount() is not in the upstream tree, nor is it defined in this
-> patch set.
-
-
-That is my mistake, not the author's.  I picked this from a longer series that has
-a watch_mount implementation, but didn't include it.  Only the commit message
-is bad, not the patch absence.
-
->> Records are of the following format:
->> 
->> 	struct superblock_notification {
->> 		struct watch_notification watch;
->> 		__u64	sb_id;
->> 	} *n;
->> 
->> Where:
->> 
->> 	n->watch.type will be WATCH_TYPE_SB_NOTIFY.
->> 
->> 	n->watch.subtype will indicate the type of event, such as
->> 	NOTIFY_SUPERBLOCK_READONLY.
->> 
->> 	n->watch.info & WATCH_INFO_LENGTH will indicate the length of the
->> 	record.
->> 
->> 	n->watch.info & WATCH_INFO_ID will be the fifth argument to
->> 	watch_sb(), shifted.
->> 
->> 	n->watch.info & NOTIFY_SUPERBLOCK_IS_NOW_RO will be used for
->> 	NOTIFY_SUPERBLOCK_READONLY, being set if the superblock becomes
->> 	R/O, and being cleared otherwise.
->> 
->> 	n->sb_id will be the ID of the superblock, as can be retrieved with
->> 	the fsinfo() syscall, as part of the fsinfo_sb_notifications
->> 	attribute in the watch_id field.
->> 
->> Note that it is permissible for event records to be of variable length -
->> or, at least, the length may be dependent on the subtype.  Note also that
->> the queue can be shared between multiple notifications of various types.
+> jbd2_journal_revocer() may fail when some error occers
+> such as ENOMEM. However, jsb->s_start is still cleared
+> by func e2fsck_journal_release(). This may break
+> consistency between metadata and data in disk. Sometimes,
+> failure in jbd2_journal_revocer() is temporary but retry
+> e2fsck will skip the journal recovery when the temporary
+> problem is fixed.
 >
-> /me puts on his "We really, really, REALLY suck at APIs" hat.
+> To fix this case, we use "fatal_error" instead "goto errout"
+> when recover journal failed. We think if journal recovery
+> fails, we need send error message to user and reserve the
+> recovery flags to recover the journal when try e2fsck again.
 >
-> This adds a new syscall that has a complex structure associated with
-> in. This needs a full man page specification written for it
-> describing the parameters, the protocol structures, behaviour, etc
-> before we can really review this. It really also needs full test
-> infrastructure for every aspect of the syscall written from the man
-> page (not the implementation) for fstests so that we end up with a
-> consistent implementation for every filesystem that implements these
-> watches.
-
-I see.  I was thinking the other way around, getting a design accepted
-by you all before writing down documentation, but that makes a lot of
-sense. In fact, I'm taking a step back and writing a text proposal,
-without patches, such that we can agree on the main points before I
-start coding.
-
-> Other things:
+> Reported-by: Liangyun <liangyun2@huawei.com>
+> Signed-off-by: Haotian Li <lihaotian9@huawei.com>
+> Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
+> ---
+>  e2fsck/journal.c | 9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
 >
-> - Scoping: inode/block related information is not "superblock"
->   information. What about errors in non-inode related objects?
-
-The previous RFC separated inode error notifications from other types,
-but my idea was to have different notifications types for each object.
-
-
-> - offets into files/devices/objects need to be in bytes, not blocks
-> - errors can span multiple contiguous blocks, so the notification
->   needs to report the -byte range- the error corresponds to.
-> - superblocks can have multiple block devices under them with
->   individual address ranges. Hence we need {object,dev,offset,len}
->   to uniquely identify where an error occurred in a filesystem.
-> - userspace face structures need padding and flags/version/size
->   information so we can tell what shape the structure being passed
->   is. It is guaranteed that we will want to expand the structure
->   definitions in future, maybe even deprecate some...
-> - syscall has no flags field.
-> - syscall is of "at" type (relative path via dfd) so probably shoudl
->   be called "watch..._at()"
-
-will do all the above.
-
+> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> index 7d9f1b40..546beafd 100644
+> --- a/e2fsck/journal.c
+> +++ b/e2fsck/journal.c
+> @@ -952,8 +952,13 @@ static errcode_t recover_ext3_journal(e2fsck_t ctx)
+>                 goto errout;
 >
-> Fundamentally, though, I'm struggling to understand what the
-> difference between watch_mount() and watch_sb() is going to be.
-> "superblock" watches seem like the wrong abstraction for a path
-> based watch interface. Superblocks can be shared across multiple
-> disjoint paths, subvolumes and even filesystems.
-
-As far as I understand the original patchset, watch_mount was designed
-to monitor mountpoint operations (mount, umount,.. ) in a sub-tree,
-while watch_sb monitors filesystem operations and errors.  I'm not
-working with watch_mount, my current interest is in having a
-notifications mechanism for filesystem errors, which seemed to fit
-nicely with the watch_sb patchset for watch_queue.
-
-> The path based user API is really asking to watch a mount, not a
-> superblock. We don't otherwise expose superblocks to userspace at
-> all, so this seems like the API is somewhat exposing internal kernel
-> implementation behind mounts. However, there -is- a watch_mount()
-> syscall floating around somewhere, so it makes me wonder exactly why
-> we need a second syscall and interface protocol to expose
-> essentially the same path-based watch information to userspace.
-
-I think these are indeed different syscalls, but maybe a bit misnamed.
-
-If not by path, how could we uniquely identify an entire filesystem?
-Maybe pointing to a block device that has a valid filesystem and in the
-case of fs spawning through multiple devices, consider all of them?  But
-that would not work for some misc filesystems, like tmpfs.
-
-> Without having that syscall the same patchset, or a reference to
-> that patchset (and man page documenting the interface), I have no
-> idea what it does or why it is different or why it can't be used for
-> these error notifications....
-
-As a short summary, My goal is an error reporting mechanism for ext4
-(preferably that can also be used by other filesystems) that allows a
-userspace application to monitor errors on the filesystem without losing
-information and without having to parse a convoluted dmesg.  The
-watch_queue API seem to expose exactly the infrastructure for this kind
-of thing.  As I said, I'm gonna send a proposal with more details
-because, I'd really like to have something that can be used by several
-filesystems.
-
--- 
-Gabriel Krisman Bertazi
+>         retval = -jbd2_journal_recover(journal);
+> -       if (retval)
+> -               goto errout;
+> +       if (retval && retval != EFSBADCRC && retval != EFSCORRUPTED) {
+> +               ctx->fs->flags &= ~EXT2_FLAG_VALID;
+> +               com_err(ctx->program_name, 0,
+> +                                       _("Journal recovery failed "
+> +                                         "on %s\n"), ctx->device_name);
+> +               fatal_error(ctx, 0);
+> +       }
+>
+>         if (journal->j_failed_commit) {
+>                 pctx.ino = journal->j_failed_commit;
+> --
+> 2.19.1
+>
