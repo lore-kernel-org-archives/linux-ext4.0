@@ -2,171 +2,249 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7810C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 23:29:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACE42C4361B
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 00:13:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5F12823E55
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Dec 2020 23:29:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 715D523D50
+	for <linux-ext4@archiver.kernel.org>; Fri, 11 Dec 2020 00:13:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728885AbgLJX24 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Dec 2020 18:28:56 -0500
-Received: from mail104.syd.optusnet.com.au ([211.29.132.246]:48675 "EHLO
-        mail104.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726119AbgLJX2e (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 10 Dec 2020 18:28:34 -0500
-Received: from dread.disaster.area (pa49-179-6-140.pa.nsw.optusnet.com.au [49.179.6.140])
-        by mail104.syd.optusnet.com.au (Postfix) with ESMTPS id 0307058DE93;
-        Fri, 11 Dec 2020 09:09:15 +1100 (AEDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1knU7f-002d19-0G; Fri, 11 Dec 2020 09:09:15 +1100
-Date:   Fri, 11 Dec 2020 09:09:14 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk, tytso@mit.edu,
-        khazhy@google.com, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        kernel@collabora.com
-Subject: Re: [PATCH 4/8] vfs: Add superblock notifications
-Message-ID: <20201210220914.GG4170059@dread.disaster.area>
-References: <20201208003117.342047-1-krisman@collabora.com>
- <20201208003117.342047-5-krisman@collabora.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20201208003117.342047-5-krisman@collabora.com>
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=Ubgvt5aN c=1 sm=1 tr=0 cx=a_idp_d
-        a=uDU3YIYVKEaHT0eX+MXYOQ==:117 a=uDU3YIYVKEaHT0eX+MXYOQ==:17
-        a=kj9zAlcOel0A:10 a=zTNgK-yGK50A:10 a=20KFwNOVAAAA:8 a=bIklqNNcAAAA:8
-        a=7-415B0cAAAA:8 a=XzQluxY8ozV8i3kBV7QA:9 a=i2Bh8MKloSl-hS_9:21
-        a=cWOelMYJJw8xPhJN:21 a=CjuIK1q_8ugA:10 a=EkVPmbJYC8N8lJNKmfU-:22
-        a=biEYGPWJfzWAr4FL6Ov7:22
+        id S1729992AbgLKANM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Dec 2020 19:13:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54144 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728273AbgLKAMx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Dec 2020 19:12:53 -0500
+Received: from mail-pg1-x542.google.com (mail-pg1-x542.google.com [IPv6:2607:f8b0:4864:20::542])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF699C0613CF
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 16:12:12 -0800 (PST)
+Received: by mail-pg1-x542.google.com with SMTP id w5so5104819pgj.3
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Dec 2020 16:12:12 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=WYDJZVbThdXQfrBzR+eMOGuuygTLyl3ki+j/4nHYbFo=;
+        b=eobUz9Nc2Z5I6Xtg26lvDfhkDY6xK1B2lw5qBzcMuSCB8NbSWLs0+df004OaKqZcWt
+         SXHSsI8hzMGO2lEBp3U9Ujv3u36Z5SZvXlRaW0eOsWMidx+XbWx2YPInESQ/vycy7mqu
+         v0+jRrM1dGmyCju1o5l1U8obsdhAgcEQBmEAgAoO0TmoN5emYBjJCItewXShyRdNl4Sj
+         LIS7wxY5+3PnckZVodb0zBAE0lUGnbFwotcpzUjFuysZeV+IOx+fMawwxxlUjn3soS00
+         xeSC/l4t9Wbre3VvX5rDIeKEXD109JkJlUwbjmqkz0SEa9fr+h+WGZln0yDA0duLcJq+
+         Jkug==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=WYDJZVbThdXQfrBzR+eMOGuuygTLyl3ki+j/4nHYbFo=;
+        b=KT3YSiwIgloaRnbYynQ8WrFXtyDsXE5kO8WZMm4dwT0los4ZgNdObz3jfYlRIn6DOq
+         aNNN79rlpax+jZZPL6ZGpeTYlcy3rj4uRSzKe7Mw2WfqiRL80J+7rfGPiDvAlslDVEbk
+         Yl+iAXtDPhMbTcuDwXe8Ti3v/TyBziZa2vNgUPAWN+OumT+pnzTkVLUuOdh3ByEIPv+R
+         QCcm3MzWgYs/Hsqe7HUv85zHhYsDVRdc8ycYKaCcSLYNahbk3FmicxON1xLJvslQBCX/
+         2NfN2sKMyGAbBaKOUAbnwmxAylN7tlt0N2dy2DpZ4q3A7Ba6OKhV0vl6bcaj/vl3upL4
+         +2QQ==
+X-Gm-Message-State: AOAM531jcFuJ0iKhlOdM6u6Kp0C0gsMwR+DBkV/i/c/VlbsIuqP9bZkX
+        B75soCfwR4VukNFOnYwm4HNpYw==
+X-Google-Smtp-Source: ABdhPJzb08Tz/bVOY7kwEI3Qp9dyj28Q8y9dMY2mMqRfsx3CAlbw6gIbXCmyK2o4pYwIugKZ3yv7ww==
+X-Received: by 2002:a62:1716:0:b029:19d:b78b:ef02 with SMTP id 22-20020a6217160000b029019db78bef02mr8926187pfx.11.1607645532329;
+        Thu, 10 Dec 2020 16:12:12 -0800 (PST)
+Received: from [192.168.10.160] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id mr7sm7222379pjb.31.2020.12.10.16.12.11
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 10 Dec 2020 16:12:11 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <4F169AE8-BFD2-4EE3-8741-7C75B8764583@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_FB2FB66E-266E-4B42-9615-DD34F3568521";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH RFC 4/5] ext2fs: parallel bitmap loading
+Date:   Thu, 10 Dec 2020 17:12:09 -0700
+In-Reply-To: <20201205045856.895342-5-tytso@mit.edu>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Saranya Muruganandam <saranyamohan@google.com>,
+        Wang Shilong <wshilong@ddn.com>
+To:     Theodore Ts'o <tytso@mit.edu>
+References: <20201205045856.895342-1-tytso@mit.edu>
+ <20201205045856.895342-5-tytso@mit.edu>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Dec 07, 2020 at 09:31:13PM -0300, Gabriel Krisman Bertazi wrote:
-> From: David Howells <dhowells@redhat.com>
-> 
-> Add a superblock event notification facility whereby notifications about
-> superblock events, such as I/O errors (EIO), quota limits being hit
-> (EDQUOT) and running out of space (ENOSPC) can be reported to a monitoring
-> process asynchronously.  Note that this does not cover vfsmount topology
-> changes.  watch_mount() is used for that.
 
-watch_mount() is not in the upstream tree, nor is it defined in this
-patch set.
+--Apple-Mail=_FB2FB66E-266E-4B42-9615-DD34F3568521
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> Records are of the following format:
-> 
-> 	struct superblock_notification {
-> 		struct watch_notification watch;
-> 		__u64	sb_id;
-> 	} *n;
-> 
-> Where:
-> 
-> 	n->watch.type will be WATCH_TYPE_SB_NOTIFY.
-> 
-> 	n->watch.subtype will indicate the type of event, such as
-> 	NOTIFY_SUPERBLOCK_READONLY.
-> 
-> 	n->watch.info & WATCH_INFO_LENGTH will indicate the length of the
-> 	record.
-> 
-> 	n->watch.info & WATCH_INFO_ID will be the fifth argument to
-> 	watch_sb(), shifted.
-> 
-> 	n->watch.info & NOTIFY_SUPERBLOCK_IS_NOW_RO will be used for
-> 	NOTIFY_SUPERBLOCK_READONLY, being set if the superblock becomes
-> 	R/O, and being cleared otherwise.
-> 
-> 	n->sb_id will be the ID of the superblock, as can be retrieved with
-> 	the fsinfo() syscall, as part of the fsinfo_sb_notifications
-> 	attribute in the watch_id field.
-> 
-> Note that it is permissible for event records to be of variable length -
-> or, at least, the length may be dependent on the subtype.  Note also that
-> the queue can be shared between multiple notifications of various types.
+On Dec 4, 2020, at 9:58 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+>=20
+> From: Wang Shilong <wshilong@ddn.com>
+>=20
+> In our benchmarking for PiB size filesystem, pass5 takes
+> 10446s to finish and 99.5% of time takes on reading bitmaps.
+>=20
+> It makes sense to reading bitmaps using multiple threads,
+> a quickly benchmark show 10446s to 626s with 64 threads.
+>=20
+> [ This has all of many bug fixes for rw_bitmaps.c from the original
+>  luster patch set collapsed into a single commit.   In addition it has
+>  the new ext2fs_rw_bitmaps() api proposed by Ted. ]
+>=20
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> Signed-off-by: Saranya Muruganandam <saranyamohan@google.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-/me puts on his "We really, really, REALLY suck at APIs" hat.
+The patch looks generally good.  Unfortunately, I don't have a large
+system available to verify the performance at this time, but it looks
+close enough to the original code that I don't think there is much
+risk of breakage.
 
-This adds a new syscall that has a complex structure associated with
-in. This needs a full man page specification written for it
-describing the parameters, the protocol structures, behaviour, etc
-before we can really review this. It really also needs full test
-infrastructure for every aspect of the syscall written from the man
-page (not the implementation) for fstests so that we end up with a
-consistent implementation for every filesystem that implements these
-watches.
+One potential cross-platform build issue below, and some cosmetic
+suggestions, but you could add:
 
-Other things:
+Reviewed-by: Andreas Dilger <adilger@whamcloud.com>
 
-- Scoping: inode/block related information is not "superblock"
-  information. What about errors in non-inode related objects?
-- offets into files/devices/objects need to be in bytes, not blocks
-- errors can span multiple contiguous blocks, so the notification
-  needs to report the -byte range- the error corresponds to.
-- superblocks can have multiple block devices under them with
-  individual address ranges. Hence we need {object,dev,offset,len}
-  to uniquely identify where an error occurred in a filesystem.
-- userspace face structures need padding and flags/version/size
-  information so we can tell what shape the structure being passed
-  is. It is guaranteed that we will want to expand the structure
-  definitions in future, maybe even deprecate some...
-- syscall has no flags field.
-- syscall is of "at" type (relative path via dfd) so probably shoudl
-  be called "watch..._at()"
+> @@ -329,12 +369,20 @@ static errcode_t read_bitmaps(ext2_filsys fs, =
+int do_inode, int do_block)
+> 				}
+> 				if (!bitmap_tail_verify((unsigned char =
+*) block_bitmap,
+> 							block_nbytes, =
+fs->blocksize - 1))
+> -					tail_flags |=3D =
+EXT2_FLAG_BBITMAP_TAIL_PROBLEM;
+> +					*tail_flags |=3D =
+EXT2_FLAG_BBITMAP_TAIL_PROBLEM;
+> 			} else
+> 				memset(block_bitmap, 0, block_nbytes);
+> 			cnt =3D block_nbytes << 3;
+> +#ifdef HAVE_PTHREAD
+> +			if (mutex)
+> +				pthread_mutex_lock(mutex);
+> +#endif
+> 			retval =3D =
+ext2fs_set_block_bitmap_range2(fs->block_map,
+> 					       blk_itr, cnt, =
+block_bitmap);
+> +#ifdef HAVE_PTHREAD
+> +			if (mutex)
+> +				pthread_mutex_unlock(mutex);
+> +#endif
 
-Fundamentally, though, I'm struggling to understand what the
-difference between watch_mount() and watch_sb() is going to be.
-"superblock" watches seem like the wrong abstraction for a path
-based watch interface. Superblocks can be shared across multiple
-disjoint paths, subvolumes and even filesystems.
+(style) It wouldn't be terrible to have wrappers around these functions
+instead of inline #ifdef in the few places they are used, like:
 
-The path based user API is really asking to watch a mount, not a
-superblock. We don't otherwise expose superblocks to userspace at
-all, so this seems like the API is somewhat exposing internal kernel
-implementation behind mounts. However, there -is- a watch_mount()
-syscall floating around somewhere, so it makes me wonder exactly why
-we need a second syscall and interface protocol to expose
-essentially the same path-based watch information to userspace.
-Without having that syscall the same patchset, or a reference to
-that patchset (and man page documenting the interface), I have no
-idea what it does or why it is different or why it can't be used for
-these error notifications....
+#ifdef HAVE_PTHREAD
+static void unix_pthread_mutex_lock(pthread_mutex_t *mutex)
+{
+	if (mutex)
+		pthread_mutex_lock(mutex);
+}
+static void unix_pthread_mutex_unlock(pthread_mutex_t *mutex)
+{
+	if (mutex)
+		pthread_mutex_unlock(mutex);
+}
+#else
+#define unix_pthread_mutex_lock(mutex) do {} while (0)
+#define unix_pthread_mutex_unlock(mutex) do {} while (0)
+#endif
 
-/me wonders what applications are suppose to do if they have a watch
-on a path that then gets over-mounted by a different filesystem and
-so their watch for that path is effectively now stale because
-operations on that path now redirect to a different mount and
-superblock....
 
-> diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-> index f27ac94d5fa7..3e97984bc4c8 100644
-> --- a/kernel/sys_ni.c
-> +++ b/kernel/sys_ni.c
-> @@ -51,6 +51,9 @@ COND_SYSCALL_COMPAT(io_pgetevents);
->  COND_SYSCALL(io_uring_setup);
->  COND_SYSCALL(io_uring_enter);
->  COND_SYSCALL(io_uring_register);
-> +COND_SYSCALL(fsinfo);
-> +COND_SYSCALL(watch_mount);
-> +COND_SYSCALL(watch_sb);
+> @@ -365,63 +413,229 @@ static errcode_t read_bitmaps(ext2_filsys fs, =
+int do_inode,					memset(inode_bitmap, 0, =
+inode_nbytes);
+> 			cnt =3D inode_nbytes << 3;
+> +			if (mutex)
+> +				pthread_mutex_lock(mutex);
+> 			retval =3D =
+ext2fs_set_inode_bitmap_range2(fs->inode_map,
+> 					       ino_itr, cnt, =
+inode_bitmap);
+> +			if (mutex)
+> +				pthread_mutex_unlock(mutex);
 
-I think these need to be in the patches that introduce these
-syscalls, not this one.
+(minor) These two pthread calls need #ifdef HAVE_PTHREAD or use =
+wrappers.
 
-Cheers,
+> +errcode_t ext2fs_rw_bitmaps(ext2_filsys fs, int flags, int =
+num_threads)
+> +{
+> +#ifdef HAVE_PTHREAD
+> +	if (((fs->io->flags & CHANNEL_FLAGS_THREADS) =3D=3D 0) ||
+> +	    (num_threads =3D=3D 1) || (fs->flags & =
+EXT2_FLAG_IMAGE_FILE))
+> +		goto fallback;
+> +
+> +	if (num_threads < 0) {
+> +#if defined(HAVE_SYSCONF) && defined(_SC_NPROCESSORS_CONF)
+> +		num_threads =3D sysconf(_SC_NPROCESSORS_CONF);
+> +#else
+> +		/*
+> +		 * Guess for now; eventually we should probably define
+> +		 * ext2fs_get_num_cpus() and teach it how to get this =
+info on
+> +		 * MacOS, FreeBSD, etc.
+> +		 * ref: https://stackoverflow.com/questions/150355
+> +		 */
+> +		num_threads =3D 4;
+> +#endif
 
-Dave.
+(style) this #endif wouldn't hurt to have a /* HAVE_SYSCONF */ comment,
+but currently isn't too far from the #ifdef though it looks like it may
+become further away and harder to track in the future.
 
--- 
-Dave Chinner
-david@fromorbit.com
+> +		if (num_threads <=3D 1)
+> +			goto fallback;
+> +	}
+
+[snip]
+
+> +	/* XXX should save and restore cache setting */
+> +	io_channel_set_options(fs->io, "cache=3Don");
+> 	return retval;
+> +fallback:
+> +#endif
+
+(style) this would definitely benefit from a /* HAVE_PTHREAD */ comment,
+since it is so far from the original #ifdef.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_FB2FB66E-266E-4B42-9615-DD34F3568521
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl/SuVkACgkQcqXauRfM
+H+BnkRAArPq+YRXBUn6SNbFhNAf3abdbzT6AOednBotzcSwKK6qdqUA12lXS0BH8
+AbN0Nee72UaHJ33LVj9QOtNBtK782LanWm4dpm3x3zoWg63QhcFA8VxZ82yObEGC
+PQDa4/v46qlnV7eXfKc+QhZu3Xc5g9iCSgkIgFKP5Xd1xqZ+CYsAXLd2Mojx8d+V
+x/HTZJSDK4H2IMZQy5W631W2pAZKONcVVbBbGC2C97tVRcFLPFdnvuGmrvhBkh8p
+z2XIcc6ZK9Vn9gk/FstBp4++zN+kvd2Aljk682DI3RgsugfVdkPKGOjzGPjVIYe8
+Z2POrP+22HrOL7d0AY+IIkVIQic322IOcTmsLJcsrknkQHtE3NNfoyi3X9dfpxWE
+auLK4AtYjB+YHAdXBLiojnWF+UPlgVR/oLSpWG35uNza6e3jChzFhR17tyyCH5LP
+aWby5S5rQLNbGuLv9ynclk6iBHulgGeidREgaYOxu1AAx99eaQxjzUrSkIqu5arF
+KzBdJwUuw5K2kri3EzIi6RumkBqvDAV5K1resrD+RakVWGrEFdIPc29inRpTP1Ks
+izpgxDno51elXEOGHZuMqclMJm00TWGufKmzmw3aStg4rWFdDpk/28pb/nPHpwW4
+HErUxGE8DVn0zyUIqO1GTzRJGK8xuojH5c08n9KSMB+zzog08SU=
+=VUFx
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_FB2FB66E-266E-4B42-9615-DD34F3568521--
