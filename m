@@ -2,106 +2,191 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.2 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_IN_DEF_DKIM_WL
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16243C4361B
-	for <linux-ext4@archiver.kernel.org>; Mon, 14 Dec 2020 14:38:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D0EDC4361B
+	for <linux-ext4@archiver.kernel.org>; Mon, 14 Dec 2020 18:45:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C75E7222BB
-	for <linux-ext4@archiver.kernel.org>; Mon, 14 Dec 2020 14:38:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D297722573
+	for <linux-ext4@archiver.kernel.org>; Mon, 14 Dec 2020 18:45:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2408225AbgLNOii (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 14 Dec 2020 09:38:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46356 "EHLO
+        id S2440953AbgLNSpm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 14 Dec 2020 13:45:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56530 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2408227AbgLNOie (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Dec 2020 09:38:34 -0500
-Received: from mail-qt1-x841.google.com (mail-qt1-x841.google.com [IPv6:2607:f8b0:4864:20::841])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3575AC0613D6
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2020 06:37:50 -0800 (PST)
-Received: by mail-qt1-x841.google.com with SMTP id 7so11971203qtp.1
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2020 06:37:50 -0800 (PST)
+        with ESMTP id S2440951AbgLNSpV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Dec 2020 13:45:21 -0500
+Received: from mail-qk1-x742.google.com (mail-qk1-x742.google.com [IPv6:2607:f8b0:4864:20::742])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 893D8C0613D3
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2020 10:44:41 -0800 (PST)
+Received: by mail-qk1-x742.google.com with SMTP id 19so16567044qkm.8
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Dec 2020 10:44:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
+        d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=HunglVjcvBMAm8Vnq5RKFceAB0LUszPBed8/+5881NA=;
-        b=HEpN52kifpE64ZoqKFvmqtw415H2UUKpykICzQf/95P3n6NYbr1D2wfMBFeISonvqU
-         63uoTYYyM21eSDzjLmhM0x8S5ec62HgO1f88RYej0gmrzjcV1RLJ55G/cLQn3SN6Vb99
-         FB8Po6DREKkbhRBbSlLrHoi+3ZHl/UgT3roQ9XZQMXLqpZW69ecabKdSc17ByZFnP2zL
-         boR44VyI7yXpOfVb6Cbh/dfMgPJZPkL1x3Nevu4uoXFeutq4PITVrA8p8xEEgiuU2nJZ
-         mMpdcnXApLbUS7R/VvOlwCl8nJuFcOK5LEX1KhzR+Ea4Xb9GB9mze27wFJlSMFLhiIm1
-         kz/Q==
+         :cc:content-transfer-encoding;
+        bh=Qk4am2aZ/3IfkXb1NDFZYDnIAY7ApZ0zdjpeThZwvkY=;
+        b=feG5xeMS3Y64K+EEDNOf6ETnOIxYP3foNeERtf2IpqNK1lEqluvysPAKXGIwRugt11
+         HDaOz4GHp8H0A52mwQnfk3ezM81hnfntmkcU4wBrdBJXbxyi5idw85eb/D5CaHGlgLbM
+         u9jrAuFuPtI8AqX0kXushcYfjVis/EMyN0iBzePlTviRuKitXJG5l3IZM34K0tfOSrio
+         QIDsT2tOR5FPYFT+Ob0SK+IfBDbm8o0Kx50otdAfashVZIi4Cu6ISOpXiSsiPr5hl3rg
+         Al0btcbGf2I4fDbXOI3PUOL/lAgSjr7fRa0+5VBuLmL3tZ+muagDsExuWuCmQhbUGv61
+         XNWA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=HunglVjcvBMAm8Vnq5RKFceAB0LUszPBed8/+5881NA=;
-        b=JnDWi0mCOmzofr5RFGvqNwVFPezKuqdUQuTni0P9FlszeTJcWyovfRgsAvLupLaGJ6
-         y9UOm/zhN2J4oQlspfVhOMuTqlk8jbztC4C2RDSUMqxEBYCQfwMKcJ51cTkvCtASAIxG
-         8ql6P6OYnAyAZA9mFy2X2HZ3yG32D9vqYDeVKbKFrB3Xv0qqTJ9ZOUfS4PaxlNshryhN
-         F4QEE+Um3B3YHlCdJPf94gRaYvfKmLcoOjewjKHwEcE6UPIi1G1SUTeRtNhZldgNTJgj
-         x7FyGtnGm8/bal6cKZQSvJGQGEaxq0nkinCn0v6ZUwGB5ZQj7btfpg3wDOZIbBepu4ra
-         XgGQ==
-X-Gm-Message-State: AOAM532sIBjozMgcG5RHn3D4ikQD3dUuKN10yJ/jbfWbzXKjkzyxd3ZM
-        12KMyMemfzbGlVIjE+MmuxZUF2cyX0mZlZE2P58bUg==
-X-Google-Smtp-Source: ABdhPJzeIiPc1hYkr4hJt6QGcMzIk0jnXi6Gwhu4Wyy5i30MHSACUVb6cee6+HGIOL8wK9K+sgrxIe5id4ligrAa/pw=
-X-Received: by 2002:ac8:4e1c:: with SMTP id c28mr31562407qtw.67.1607956669043;
- Mon, 14 Dec 2020 06:37:49 -0800 (PST)
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=Qk4am2aZ/3IfkXb1NDFZYDnIAY7ApZ0zdjpeThZwvkY=;
+        b=imopuJrIhxVVzhrNlIahSs7ZEhCYwy2USRDLCtKx4M8rx3FAr13nHhhUUFtODltFE/
+         iAlmjcrctPy+PnpMWILnKLEMcTt3Ou3XomASexwBvNKLLkOvOQwVtkkYBsOGiGckRxLh
+         iFOf9z1zuWlYaG0c0ieBaS4nVtSW0muRjire8UuEBFowUMYsxHOmIjz9yxJE6uj5gpLx
+         CQxTGwe8+cJfLZiafTjzvKBvBKlNyHbELdcjNDoN2GrsKl0JsTt1yU4yDO6qqMSaOorO
+         PQZt5znlbN1f5SaB4KaNj84D6BIr1KD9MZMBDQKKFh4xWXKLI4MVlNG0Gb8iOJrqbTVw
+         7FJQ==
+X-Gm-Message-State: AOAM532ULJw9pw8PCDK7qiN23lu7ZwdhPGo+FO9knw2tBqLVIFEjTdEt
+        h2UEZ3A4mBOj9H+1EhC/qeM44luAr0PhqWv0nGMKBM7MPJZHsg==
+X-Google-Smtp-Source: ABdhPJxnLSk8MQHaU1hUmExFBsGlf7yZxtHuv2NY6rpXbcHOINjO+/NItmshHceKaNnPlpwLwTnfeYPShOFa+Y8sOJY=
+X-Received: by 2002:a37:a0c6:: with SMTP id j189mr34642608qke.142.1607971480720;
+ Mon, 14 Dec 2020 10:44:40 -0800 (PST)
 MIME-Version: 1.0
-References: <20201210023638.GP52960@mit.edu> <00000000000024030c05b61412e6@google.com>
- <CACT4Y+bkaVq1RzONGuPJxu-pSyCSRrEs7xV0sa2n0oLNkicHQQ@mail.gmail.com> <20201210182821.GS52960@mit.edu>
-In-Reply-To: <20201210182821.GS52960@mit.edu>
-From:   Dmitry Vyukov <dvyukov@google.com>
-Date:   Mon, 14 Dec 2020 15:37:37 +0100
-Message-ID: <CACT4Y+bqDdidJpYimvzY5UkrXzw7JuefHndOM0+c6Y8e56vBjQ@mail.gmail.com>
-Subject: Re: UBSAN: shift-out-of-bounds in ext4_fill_super
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     syzbot <syzbot+345b75652b1d24227443@syzkaller.appspotmail.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        clang-built-linux <clang-built-linux@googlegroups.com>,
-        linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        Nathan Chancellor <natechancellor@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        syzkaller-bugs <syzkaller-bugs@googlegroups.com>
+References: <1bb3c556-4635-061b-c2dc-df10c15e6398@huawei.com>
+ <CAD+ocbxAyyFqoD6AYQVjQyqFzZde3+QOnUhC-VikAq4A3_t8JA@mail.gmail.com> <3e3c18f6-9f45-da04-9e81-ebf1ae16747e@huawei.com>
+In-Reply-To: <3e3c18f6-9f45-da04-9e81-ebf1ae16747e@huawei.com>
+From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
+Date:   Mon, 14 Dec 2020 10:44:29 -0800
+Message-ID: <CAD+ocbz=mp8k2Ruqiagq7ZDfhGui29X8Wz-_7698zaghzH4BXA@mail.gmail.com>
+Subject: Re: [PATCH] e2fsck: Avoid changes on recovery flags when
+ jbd2_journal_recover() failed
+To:     Haotian Li <lihaotian9@huawei.com>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "liuzhiqiang (I)" <liuzhiqiang26@huawei.com>,
+        linfeilong <linfeilong@huawei.com>, tytso@alum.mit.edu,
+        liangyun2@huawei.com
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Dec 10, 2020 at 7:28 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+Hi Haotian,
+
+Yeah perhaps these are the only recoverable errors. I also think that
+we can't surely say that these errors are recoverable always. That's
+because in some setups, these errors may still be unrecoverable (for
+example, if the machine is running under low memory). I still feel
+that we should ask the user about whether they want to continue or
+not. The reason is that firstly if we don't allow running e2fsck in
+these cases, I wonder what would the user do with their file system -
+they can't mount / can't run fsck, right? Secondly, not doing that
+would be a regression. I wonder if some setups would have chosen to
+ignore journal recovery if there are errors during journal recovery
+and with this fix they may start seeing that their file systems aren't
+getting repaired.
+
+I'm wondering if you saw any a situation in your setup where exiting
+e2fsck helped? If possible, could you share what kind of errors were
+seen in journal recovery and what was the expected behavior? Maybe
+that would help us decide on the right behavior.
+
+Thanks,
+Harshad
+
+On Sun, Dec 13, 2020 at 5:27 PM Haotian Li <lihaotian9@huawei.com> wrote:
 >
-> On Thu, Dec 10, 2020 at 09:09:51AM +0100, Dmitry Vyukov wrote:
-> > >  * [new tag]                   ext4-for-linus-5.8-rc1-2 -> ext4-for-linus-5.8-rc1-2
-> > >  ! [rejected]                  ext4_for_linus           -> ext4_for_linus  (would clobber existing tag)
+> Hi Harshad,
+>
+> Thanks for your review. I think you are right, so I try to find
+> all the recoverable err_codes in journal recovery. But I have no
+> idea to distinguish all the err_codes. Only the following three
+> err_codes I think may be recoverable. -ENOMEM,EXT2_ET_NO_MEMORY
+> ,-EIO. In these cases, I think we probably don't need ask user if
+> they want to continue or not, only tell them why journal recover
+> failed and exit instead. Because, the reason cause these cases
+> may not disk errors, we need try to avoid the changes on the disk.
+> What do you think?
+>
+> Thanks,
+> Haotian
+>
+> =E5=9C=A8 2020/12/12 6:07, harshad shirwadkar =E5=86=99=E9=81=93:
+> > Hi Haotian,
 > >
-> > Interesting. First time I see this. Should syzkaller use 'git fetch
-> > --tags --force"?...
-> > StackOverflow suggests it should help:
-> > https://stackoverflow.com/questions/58031165/how-to-get-rid-of-would-clobber-existing-tag
->
-> Yeah, sorry, ext4_for_linus is a signed tag which is only used to
-> authenticate my pull request to Linus.  After Linus accepts the pull,
-> the digital signature is going to be upstream, and so I end up
-> deleting and the reusing that tag for the next merge window.
->
-> I guess I could just start always using ext4_for_linus-<VERSION> and
-> just delete the tags once they have been accepted, to keep my list of
-> tags clean.
->
-> It's going to make everyone else's tags who pull from ext4.git messy,
-> though, with gobs of tags that probably won't be of use to them.  It
-> does avoid the need to use git fetch --tags --force, and I guess
-> people are used to the need to GC tags with the linux-repo.  So maybe
-> that's the right thing to do going forward.
-
-Hi Ted,
-
-syzbot is now prepared and won't fail next time, nor on other similar
-trees. Which is good.
-So it's really up to you.
-
-Thanks
+> > Thanks for your patch. I noticed that the following test fails:
+> >
+> > $ make -j 64
+> > ...
+> > 365 tests succeeded     1 tests failed
+> > Tests failed: j_corrupt_revoke_rcount
+> > make: *** [Makefile:397: test_post] Error 1
+> >
+> > This test fails because the test expects e2fsck to continue even if
+> > the journal superblock is corrupt and with your patch e2fsck exits
+> > immediately. This brings up a higher level question - if we abort on
+> > errors when recovery fails during fsck, how would that problem get
+> > fixed if we don't run fsck? In this particular example, the journal
+> > superblock is corrupt and that is an unrecoverable error. I wonder if
+> > instead we should check for certain specific transient errors such as
+> > -ENOMEM and only then exit? I suspect even in those cases we probably
+> > should ask the user if they would like to continue or not. What do you
+> > think?
+> >
+> > Thanks,
+> > Harshad
+> >
+> >
+> > On Fri, Dec 11, 2020 at 4:19 AM Haotian Li <lihaotian9@huawei.com> wrot=
+e:
+> >>
+> >> jbd2_journal_revocer() may fail when some error occers
+> >> such as ENOMEM. However, jsb->s_start is still cleared
+> >> by func e2fsck_journal_release(). This may break
+> >> consistency between metadata and data in disk. Sometimes,
+> >> failure in jbd2_journal_revocer() is temporary but retry
+> >> e2fsck will skip the journal recovery when the temporary
+> >> problem is fixed.
+> >>
+> >> To fix this case, we use "fatal_error" instead "goto errout"
+> >> when recover journal failed. We think if journal recovery
+> >> fails, we need send error message to user and reserve the
+> >> recovery flags to recover the journal when try e2fsck again.
+> >>
+> >> Reported-by: Liangyun <liangyun2@huawei.com>
+> >> Signed-off-by: Haotian Li <lihaotian9@huawei.com>
+> >> Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
+> >> ---
+> >>  e2fsck/journal.c | 9 +++++++--
+> >>  1 file changed, 7 insertions(+), 2 deletions(-)
+> >>
+> >> diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+> >> index 7d9f1b40..546beafd 100644
+> >> --- a/e2fsck/journal.c
+> >> +++ b/e2fsck/journal.c
+> >> @@ -952,8 +952,13 @@ static errcode_t recover_ext3_journal(e2fsck_t ct=
+x)
+> >>                 goto errout;
+> >>
+> >>         retval =3D -jbd2_journal_recover(journal);
+> >> -       if (retval)
+> >> -               goto errout;
+> >> +       if (retval && retval !=3D EFSBADCRC && retval !=3D EFSCORRUPTE=
+D) {
+> >> +               ctx->fs->flags &=3D ~EXT2_FLAG_VALID;
+> >> +               com_err(ctx->program_name, 0,
+> >> +                                       _("Journal recovery failed "
+> >> +                                         "on %s\n"), ctx->device_name=
+);
+> >> +               fatal_error(ctx, 0);
+> >> +       }
+> >>
+> >>         if (journal->j_failed_commit) {
+> >>                 pctx.ino =3D journal->j_failed_commit;
+> >> --
+> >> 2.19.1
+> >>
+> > .
+> >
