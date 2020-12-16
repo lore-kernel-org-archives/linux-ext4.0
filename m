@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D6DEC2BBCD
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:19:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAAA6C4361B
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:20:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E53DF2332A
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:19:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A09F42313B
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:20:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726000AbgLPKTc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Dec 2020 05:19:32 -0500
-Received: from mx2.suse.de ([195.135.220.15]:48356 "EHLO mx2.suse.de"
+        id S1726274AbgLPKUM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Dec 2020 05:20:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:49042 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725942AbgLPKTc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Dec 2020 05:19:32 -0500
+        id S1726224AbgLPKUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 16 Dec 2020 05:20:12 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 572CFAF22;
+        by mx2.suse.de (Postfix) with ESMTP id 7D8AFAF2C;
         Wed, 16 Dec 2020 10:18:50 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id D28601E135C; Wed, 16 Dec 2020 11:18:49 +0100 (CET)
+        id DFEF81E1368; Wed, 16 Dec 2020 11:18:49 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         harshad shirwadkar <harshadshirwadkar@gmail.com>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/8] ext4: Combine ext4_handle_error() and save_error_info()
-Date:   Wed, 16 Dec 2020 11:18:37 +0100
-Message-Id: <20201216101844.22917-2-jack@suse.cz>
+Subject: [PATCH 5/8] ext4: Use sbi instead of EXT4_SB(sb) in ext4_update_super()
+Date:   Wed, 16 Dec 2020 11:18:41 +0100
+Message-Id: <20201216101844.22917-6-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20201216101844.22917-1-jack@suse.cz>
 References: <20201216101844.22917-1-jack@suse.cz>
@@ -40,112 +40,58 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-save_error_info() is always called together with ext4_handle_error().
-Combine them into a single call and move unconditional bits out of
-save_error_info() into ext4_handle_error().
+No behavioral change.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/super.c | 34 +++++++++++++++++-----------------
- 1 file changed, 17 insertions(+), 17 deletions(-)
+ fs/ext4/super.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2d7dc0908cdd..72a21f0abe87 100644
+index 3f6ea48e7b4b..502ae491d07d 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -592,9 +592,6 @@ static void __save_error_info(struct super_block *sb, int error,
+@@ -5470,8 +5470,8 @@ static int ext4_load_journal(struct super_block *sb,
+ static void ext4_update_super(struct super_block *sb)
  {
  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+-	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
++	struct ext4_super_block *es = sbi->s_es;
++	struct buffer_head *sbh = sbi->s_sbh;
  
--	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
--	if (bdev_read_only(sb->s_bdev))
--		return;
- 	/* We default to EFSCORRUPTED error... */
- 	if (error == 0)
- 		error = EFSCORRUPTED;
-@@ -647,13 +644,19 @@ static void save_error_info(struct super_block *sb, int error,
-  * used to deal with unrecoverable failures such as journal IO errors or ENOMEM
-  * at a critical moment in log management.
-  */
--static void ext4_handle_error(struct super_block *sb, bool force_ro)
-+static void ext4_handle_error(struct super_block *sb, bool force_ro, int error,
-+			      __u32 ino, __u64 block,
-+			      const char *func, unsigned int line)
- {
- 	journal_t *journal = EXT4_SB(sb)->s_journal;
- 
-+	EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 	if (test_opt(sb, WARN_ON_ERROR))
- 		WARN_ON_ONCE(1);
- 
-+	if (!bdev_read_only(sb->s_bdev))
-+		save_error_info(sb, error, ino, block, func, line);
-+
- 	if (sb_rdonly(sb) || (!force_ro && test_opt(sb, ERRORS_CONT)))
- 		return;
- 
-@@ -710,8 +713,7 @@ void __ext4_error(struct super_block *sb, const char *function,
- 		       sb->s_id, function, line, current->comm, &vaf);
- 		va_end(args);
- 	}
--	save_error_info(sb, error, 0, block, function, line);
--	ext4_handle_error(sb, force_ro);
-+	ext4_handle_error(sb, force_ro, error, 0, block, function, line);
- }
- 
- void __ext4_error_inode(struct inode *inode, const char *function,
-@@ -741,9 +743,8 @@ void __ext4_error_inode(struct inode *inode, const char *function,
- 			       current->comm, &vaf);
- 		va_end(args);
- 	}
--	save_error_info(inode->i_sb, error, inode->i_ino, block,
--			function, line);
--	ext4_handle_error(inode->i_sb, false);
-+	ext4_handle_error(inode->i_sb, false, error, inode->i_ino, block,
-+			  function, line);
- }
- 
- void __ext4_error_file(struct file *file, const char *function,
-@@ -780,9 +781,8 @@ void __ext4_error_file(struct file *file, const char *function,
- 			       current->comm, path, &vaf);
- 		va_end(args);
- 	}
--	save_error_info(inode->i_sb, EFSCORRUPTED, inode->i_ino, block,
--			function, line);
--	ext4_handle_error(inode->i_sb, false);
-+	ext4_handle_error(inode->i_sb, false, EFSCORRUPTED, inode->i_ino, block,
-+			  function, line);
- }
- 
- const char *ext4_decode_error(struct super_block *sb, int errno,
-@@ -849,8 +849,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
- 		       sb->s_id, function, line, errstr);
- 	}
- 
--	save_error_info(sb, -errno, 0, 0, function, line);
--	ext4_handle_error(sb, false);
-+	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
- }
- 
- void __ext4_msg(struct super_block *sb,
-@@ -944,13 +943,14 @@ __acquires(bitlock)
- 	if (test_opt(sb, ERRORS_CONT)) {
- 		if (test_opt(sb, WARN_ON_ERROR))
- 			WARN_ON_ONCE(1);
-+		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 		__save_error_info(sb, EFSCORRUPTED, ino, block, function, line);
--		schedule_work(&EXT4_SB(sb)->s_error_work);
-+		if (!bdev_read_only(sb->s_bdev))
-+			schedule_work(&EXT4_SB(sb)->s_error_work);
- 		return;
- 	}
- 	ext4_unlock_group(sb, grp);
--	save_error_info(sb, EFSCORRUPTED, ino, block, function, line);
--	ext4_handle_error(sb, false);
-+	ext4_handle_error(sb, false, EFSCORRUPTED, ino, block, function, line);
+ 	lock_buffer(sbh);
  	/*
- 	 * We only get here in the ERRORS_RO case; relocking the group
- 	 * may be dangerous, but nothing bad will happen since the
+@@ -5488,21 +5488,20 @@ static void ext4_update_super(struct super_block *sb)
+ 		ext4_update_tstamp(es, s_wtime);
+ 	if (sb->s_bdev->bd_part)
+ 		es->s_kbytes_written =
+-			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written +
++			cpu_to_le64(sbi->s_kbytes_written +
+ 			    ((part_stat_read(sb->s_bdev->bd_part,
+ 					     sectors[STAT_WRITE]) -
+-			      EXT4_SB(sb)->s_sectors_written_start) >> 1));
++			      sbi->s_sectors_written_start) >> 1));
+ 	else
+-		es->s_kbytes_written =
+-			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
+-	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeclusters_counter))
++		es->s_kbytes_written = cpu_to_le64(sbi->s_kbytes_written);
++	if (percpu_counter_initialized(&sbi->s_freeclusters_counter))
+ 		ext4_free_blocks_count_set(es,
+-			EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
+-				&EXT4_SB(sb)->s_freeclusters_counter)));
+-	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeinodes_counter))
++			EXT4_C2B(sbi, percpu_counter_sum_positive(
++				&sbi->s_freeclusters_counter)));
++	if (percpu_counter_initialized(&sbi->s_freeinodes_counter))
+ 		es->s_free_inodes_count =
+ 			cpu_to_le32(percpu_counter_sum_positive(
+-				&EXT4_SB(sb)->s_freeinodes_counter));
++				&sbi->s_freeinodes_counter));
+ 	/* Copy error information to the on-disk superblock */
+ 	spin_lock(&sbi->s_error_lock);
+ 	if (sbi->s_add_error_count > 0) {
 -- 
 2.16.4
 
