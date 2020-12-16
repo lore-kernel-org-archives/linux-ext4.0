@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAAA6C4361B
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F15AC2BBCA
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:20:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A09F42313B
+	by mail.kernel.org (Postfix) with ESMTP id CB45F2313C
 	for <linux-ext4@archiver.kernel.org>; Wed, 16 Dec 2020 10:20:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726274AbgLPKUM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Dec 2020 05:20:12 -0500
-Received: from mx2.suse.de ([195.135.220.15]:49042 "EHLO mx2.suse.de"
+        id S1726224AbgLPKUN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Dec 2020 05:20:13 -0500
+Received: from mx2.suse.de ([195.135.220.15]:49040 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726224AbgLPKUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1726115AbgLPKUM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 16 Dec 2020 05:20:12 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 7D8AFAF2C;
+        by mx2.suse.de (Postfix) with ESMTP id 8D415AF30;
         Wed, 16 Dec 2020 10:18:50 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id DFEF81E1368; Wed, 16 Dec 2020 11:18:49 +0100 (CET)
+        id E84B31E136C; Wed, 16 Dec 2020 11:18:49 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         harshad shirwadkar <harshadshirwadkar@gmail.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 5/8] ext4: Use sbi instead of EXT4_SB(sb) in ext4_update_super()
-Date:   Wed, 16 Dec 2020 11:18:41 +0100
-Message-Id: <20201216101844.22917-6-jack@suse.cz>
+        Jan Kara <jack@suse.cz>, Michael Halcrow <mhalcrow@google.com>
+Subject: [PATCH 7/8] ext4: Fix superblock checksum failure when setting password salt
+Date:   Wed, 16 Dec 2020 11:18:43 +0100
+Message-Id: <20201216101844.22917-8-jack@suse.cz>
 X-Mailer: git-send-email 2.16.4
 In-Reply-To: <20201216101844.22917-1-jack@suse.cz>
 References: <20201216101844.22917-1-jack@suse.cz>
@@ -40,58 +40,33 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-No behavioral change.
+When setting password salt in the superblock, we forget to recompute the
+superblock checksum so it will not match until the next superblock
+modification which recomputes the checksum. Fix it.
 
+CC: Michael Halcrow <mhalcrow@google.com>
+Reported-by: Andreas Dilger <adilger@dilger.ca>
+Fixes: 9bd8212f981e ("ext4 crypto: add encryption policy and password salt support")
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/super.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+ fs/ext4/ioctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3f6ea48e7b4b..502ae491d07d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5470,8 +5470,8 @@ static int ext4_load_journal(struct super_block *sb,
- static void ext4_update_super(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
-+	struct ext4_super_block *es = sbi->s_es;
-+	struct buffer_head *sbh = sbi->s_sbh;
- 
- 	lock_buffer(sbh);
- 	/*
-@@ -5488,21 +5488,20 @@ static void ext4_update_super(struct super_block *sb)
- 		ext4_update_tstamp(es, s_wtime);
- 	if (sb->s_bdev->bd_part)
- 		es->s_kbytes_written =
--			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written +
-+			cpu_to_le64(sbi->s_kbytes_written +
- 			    ((part_stat_read(sb->s_bdev->bd_part,
- 					     sectors[STAT_WRITE]) -
--			      EXT4_SB(sb)->s_sectors_written_start) >> 1));
-+			      sbi->s_sectors_written_start) >> 1));
- 	else
--		es->s_kbytes_written =
--			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written);
--	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeclusters_counter))
-+		es->s_kbytes_written = cpu_to_le64(sbi->s_kbytes_written);
-+	if (percpu_counter_initialized(&sbi->s_freeclusters_counter))
- 		ext4_free_blocks_count_set(es,
--			EXT4_C2B(EXT4_SB(sb), percpu_counter_sum_positive(
--				&EXT4_SB(sb)->s_freeclusters_counter)));
--	if (percpu_counter_initialized(&EXT4_SB(sb)->s_freeinodes_counter))
-+			EXT4_C2B(sbi, percpu_counter_sum_positive(
-+				&sbi->s_freeclusters_counter)));
-+	if (percpu_counter_initialized(&sbi->s_freeinodes_counter))
- 		es->s_free_inodes_count =
- 			cpu_to_le32(percpu_counter_sum_positive(
--				&EXT4_SB(sb)->s_freeinodes_counter));
-+				&sbi->s_freeinodes_counter));
- 	/* Copy error information to the on-disk superblock */
- 	spin_lock(&sbi->s_error_lock);
- 	if (sbi->s_add_error_count > 0) {
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index f0381876a7e5..106bf149e8ca 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1157,7 +1157,10 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			err = ext4_journal_get_write_access(handle, sbi->s_sbh);
+ 			if (err)
+ 				goto pwsalt_err_journal;
++			lock_buffer(sbi->s_sbh);
+ 			generate_random_uuid(sbi->s_es->s_encrypt_pw_salt);
++			ext4_superblock_csum_set(sb);
++			unlock_buffer(sbi->s_sbh);
+ 			err = ext4_handle_dirty_metadata(handle, NULL,
+ 							 sbi->s_sbh);
+ 		pwsalt_err_journal:
 -- 
 2.16.4
 
