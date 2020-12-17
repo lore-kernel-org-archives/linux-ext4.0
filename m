@@ -7,31 +7,31 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A638FC2BBCF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BAF27C2BBD5
 	for <linux-ext4@archiver.kernel.org>; Thu, 17 Dec 2020 17:36:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7D80223426
+	by mail.kernel.org (Postfix) with ESMTP id 98F14235DD
 	for <linux-ext4@archiver.kernel.org>; Thu, 17 Dec 2020 17:36:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728677AbgLQRgg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Dec 2020 12:36:36 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:54736 "EHLO
+        id S1728704AbgLQRgh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Dec 2020 12:36:37 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:54764 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727260AbgLQRgf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Dec 2020 12:36:35 -0500
+        with ESMTP id S1728161AbgLQRgg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Dec 2020 12:36:36 -0500
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:779a:3a80:1322:d34a])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 029381F45D0F;
-        Thu, 17 Dec 2020 17:35:52 +0000 (GMT)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id EB43B1F45D17;
+        Thu, 17 Dec 2020 17:35:53 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     drosen@google.com, krisman@collabora.com, ebiggers@kernel.org,
         tytso@mit.edu, Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH v3 04/12] ext2fs: Implement faster CI comparison of strings
-Date:   Thu, 17 Dec 2020 18:35:36 +0100
-Message-Id: <20201217173544.52953-5-arnaud.ferraris@collabora.com>
+Subject: [PATCH v3 08/12] dict: Support comparison with context
+Date:   Thu, 17 Dec 2020 18:35:40 +0100
+Message-Id: <20201217173544.52953-9-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.29.2
 In-Reply-To: <20201217173544.52953-1-arnaud.ferraris@collabora.com>
 References: <20201217173544.52953-1-arnaud.ferraris@collabora.com>
@@ -43,104 +43,166 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-Instead of calling casefold two times and memcmp the result, which
-require allocating a temporary buffer for the casefolded version, add a
-strcasecmp-like method to perform the comparison of each code-point
-during the casefold itself.
-
-This method is exposed because it needs to be used directly by fsck.
-
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
 ---
-Changes in v3:
-  - removed extra lines
+ e2fsck/pass1b.c       |  2 +-
+ e2fsck/pass2.c        |  2 +-
+ lib/support/dict.c    | 22 ++++++++++++++++------
+ lib/support/dict.h    |  4 +++-
+ lib/support/mkquota.c |  2 +-
+ 5 files changed, 22 insertions(+), 10 deletions(-)
 
- lib/ext2fs/ext2fs.h   |  3 +++
- lib/ext2fs/ext2fsP.h  |  3 +++
- lib/ext2fs/nls_utf8.c | 34 ++++++++++++++++++++++++++++++++++
- 3 files changed, 40 insertions(+)
-
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 4065cb70..a21c43be 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1615,6 +1615,9 @@ extern errcode_t ext2fs_new_dir_inline_data(ext2_filsys fs, ext2_ino_t dir_ino,
- extern const struct ext2fs_nls_table *ext2fs_load_nls_table(int encoding);
- extern int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
- 				     char *s, size_t len, char **pos);
-+extern int ext2fs_casefold_cmp(const struct ext2fs_nls_table *table,
-+			       const unsigned char *str1, size_t len1,
-+			       const unsigned char *str2, size_t len2);
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 3352f9bd..2f8c14c8 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -104,7 +104,7 @@ static dict_t clstr_dict, ino_dict;
  
- /* mkdir.c */
- extern errcode_t ext2fs_mkdir(ext2_filsys fs, ext2_ino_t parent, ext2_ino_t inum,
-diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
-index 30564ded..a20a0502 100644
---- a/lib/ext2fs/ext2fsP.h
-+++ b/lib/ext2fs/ext2fsP.h
-@@ -106,6 +106,9 @@ struct ext2fs_nls_ops {
- 			unsigned char *dest, size_t dlen);
- 	int (*validate)(const struct ext2fs_nls_table *table,
- 			char *s, size_t len, char **pos);
-+	int (*casefold_cmp)(const struct ext2fs_nls_table *table,
-+			    const unsigned char *str1, size_t len1,
-+			    const unsigned char *str2, size_t len2);
- };
+ static ext2fs_inode_bitmap inode_dup_map;
  
- /* Function prototypes */
-diff --git a/lib/ext2fs/nls_utf8.c b/lib/ext2fs/nls_utf8.c
-index 7d2cf421..43bab9a3 100644
---- a/lib/ext2fs/nls_utf8.c
-+++ b/lib/ext2fs/nls_utf8.c
-@@ -941,9 +941,36 @@ static int utf8_validate(const struct ext2fs_nls_table *table,
- 	return 0;
- }
- 
-+static int utf8_casefold_cmp(const struct ext2fs_nls_table *table,
-+			     const unsigned char *str1, size_t len1,
-+			     const unsigned char *str2, size_t len2)
-+{
-+	const struct utf8data *data = utf8nfdicf(table->version);
-+	int c1, c2;
-+	struct utf8cursor cur1, cur2;
-+
-+	if (utf8ncursor(&cur1, data, (const char *) str1, len1) < 0)
-+		return -1;
-+	if (utf8ncursor(&cur2, data, (const char *) str2, len2) < 0)
-+		return -1;
-+
-+	do {
-+		c1 = utf8byte(&cur1);
-+		c2 = utf8byte(&cur2);
-+
-+		if (c1 < 0 || c2 < 0)
-+			return -1;
-+		if (c1 != c2)
-+			return c1 - c2;
-+	} while (c1);
-+
-+	return 0;
-+}
-+
- static const struct ext2fs_nls_ops utf8_ops = {
- 	.casefold = utf8_casefold,
- 	.validate = utf8_validate,
-+	.casefold_cmp = utf8_casefold_cmp,
- };
- 
- static const struct ext2fs_nls_table nls_utf8 = {
-@@ -964,3 +991,10 @@ int ext2fs_check_encoded_name(const struct ext2fs_nls_table *table,
+-static int dict_int_cmp(const void *a, const void *b)
++static int dict_int_cmp(const void* cmp_ctx, const void *a, const void *b)
  {
- 	return table->ops->validate(table, name, len, pos);
+ 	intptr_t	ia, ib;
+ 
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index 0bcc6f0b..153e05f0 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -328,7 +328,7 @@ static short htree_depth(struct dx_dir_info *dx_dir,
+ 	return depth;
  }
-+
-+int ext2fs_casefold_cmp(const struct ext2fs_nls_table *table,
-+			const unsigned char *str1, size_t len1,
-+			const unsigned char *str2, size_t len2)
+ 
+-static int dict_de_cmp(const void *a, const void *b)
++static int dict_de_cmp(const void *cmp_ctx, const void *a, const void *b)
+ {
+ 	const struct ext2_dir_entry *de_a, *de_b;
+ 	int	a_len, b_len;
+diff --git a/lib/support/dict.c b/lib/support/dict.c
+index 6a5c15ce..f8277c4a 100644
+--- a/lib/support/dict.c
++++ b/lib/support/dict.c
+@@ -267,6 +267,7 @@ dict_t *dict_create(dictcount_t maxcount, dict_comp_t comp)
+ 	new->allocnode = dnode_alloc;
+ 	new->freenode = dnode_free;
+ 	new->context = NULL;
++	new->cmp_ctx = NULL;
+ 	new->nodecount = 0;
+ 	new->maxcount = maxcount;
+ 	new->nilnode.left = &new->nilnode;
+@@ -294,6 +295,14 @@ void dict_set_allocator(dict_t *dict, dnode_alloc_t al,
+     dict->context = context;
+ }
+ 
++void dict_set_cmp_context(dict_t *dict, void *cmp_ctx)
 +{
-+	return table->ops->casefold_cmp(table, str1, len1, str2, len2);
++    dict_assert (!dict->cmp_ctx);
++    dict_assert (dict_count(dict) == 0);
++
++    dict->cmp_ctx = cmp_ctx;
 +}
++
+ #ifdef E2FSCK_NOTUSED
+ /*
+  * Free a dynamically allocated dictionary object. Removing the nodes
+@@ -467,7 +476,7 @@ dnode_t *dict_lookup(dict_t *dict, const void *key)
+     /* simple binary search adapted for trees that contain duplicate keys */
+ 
+     while (root != nil) {
+-	result = dict->compare(key, root->key);
++	result = dict->compare(dict->cmp_ctx, key, root->key);
+ 	if (result < 0)
+ 	    root = root->left;
+ 	else if (result > 0)
+@@ -479,7 +488,8 @@ dnode_t *dict_lookup(dict_t *dict, const void *key)
+ 		do {
+ 		    saved = root;
+ 		    root = root->left;
+-		    while (root != nil && dict->compare(key, root->key))
++		    while (root != nil
++			   && dict->compare(dict->cmp_ctx, key, root->key))
+ 			root = root->right;
+ 		} while (root != nil);
+ 		return saved;
+@@ -503,7 +513,7 @@ dnode_t *dict_lower_bound(dict_t *dict, const void *key)
+     dnode_t *tentative = 0;
+ 
+     while (root != nil) {
+-	int result = dict->compare(key, root->key);
++	int result = dict->compare(dict->cmp_ctx, key, root->key);
+ 
+ 	if (result > 0) {
+ 	    root = root->right;
+@@ -535,7 +545,7 @@ dnode_t *dict_upper_bound(dict_t *dict, const void *key)
+     dnode_t *tentative = 0;
+ 
+     while (root != nil) {
+-	int result = dict->compare(key, root->key);
++	int result = dict->compare(dict->cmp_ctx, key, root->key);
+ 
+ 	if (result < 0) {
+ 	    root = root->left;
+@@ -580,7 +590,7 @@ void dict_insert(dict_t *dict, dnode_t *node, const void *key)
+ 
+     while (where != nil) {
+ 	parent = where;
+-	result = dict->compare(key, where->key);
++	result = dict->compare(dict->cmp_ctx, key, where->key);
+ 	/* trap attempts at duplicate key insertion unless it's explicitly allowed */
+ 	dict_assert (dict->dupes || result != 0);
+ 	if (result < 0)
+@@ -1261,7 +1271,7 @@ static int tokenize(char *string, ...)
+     return tokcount;
+ }
+ 
+-static int comparef(const void *key1, const void *key2)
++static int comparef(const void *cmp_ctx, const void *key1, const void *key2)
+ {
+     return strcmp(key1, key2);
+ }
+diff --git a/lib/support/dict.h b/lib/support/dict.h
+index 838079d6..d9462a33 100644
+--- a/lib/support/dict.h
++++ b/lib/support/dict.h
+@@ -56,7 +56,7 @@ typedef struct dnode_t {
+ #endif
+ } dnode_t;
+ 
+-typedef int (*dict_comp_t)(const void *, const void *);
++typedef int (*dict_comp_t)(const void *, const void *, const void *);
+ typedef dnode_t *(*dnode_alloc_t)(void *);
+ typedef void (*dnode_free_t)(dnode_t *, void *);
+ 
+@@ -69,6 +69,7 @@ typedef struct dict_t {
+     dnode_alloc_t dict_allocnode;
+     dnode_free_t dict_freenode;
+     void *dict_context;
++    void *cmp_ctx;
+     int dict_dupes;
+ #else
+     int dict_dummmy;
+@@ -88,6 +89,7 @@ typedef struct dict_load_t {
+ 
+ extern dict_t *dict_create(dictcount_t, dict_comp_t);
+ extern void dict_set_allocator(dict_t *, dnode_alloc_t, dnode_free_t, void *);
++extern void dict_set_cmp_context(dict_t *, void *);
+ extern void dict_destroy(dict_t *);
+ extern void dict_free_nodes(dict_t *);
+ extern void dict_free(dict_t *);
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index 6f7ae6d6..fbc3833a 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -234,7 +234,7 @@ out:
+ /* Helper functions for computing quota in memory.                */
+ /******************************************************************/
+ 
+-static int dict_uint_cmp(const void *a, const void *b)
++static int dict_uint_cmp(const void *cmp_ctx, const void *a, const void *b)
+ {
+ 	unsigned int	c, d;
+ 
 -- 
 2.29.2
 
