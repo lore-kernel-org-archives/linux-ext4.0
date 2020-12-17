@@ -2,117 +2,86 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.7 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46F82C2BB9A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64C99C2BB48
 	for <linux-ext4@archiver.kernel.org>; Thu, 17 Dec 2020 17:36:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0D6AF235DD
+	by mail.kernel.org (Postfix) with ESMTP id 460E523426
 	for <linux-ext4@archiver.kernel.org>; Thu, 17 Dec 2020 17:36:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728160AbgLQRge (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Dec 2020 12:36:34 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:54702 "EHLO
+        id S1728438AbgLQRgf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Dec 2020 12:36:35 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:54742 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726548AbgLQRge (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Dec 2020 12:36:34 -0500
+        with ESMTP id S1728143AbgLQRgf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Dec 2020 12:36:35 -0500
 Received: from xps.home (unknown [IPv6:2a01:e35:2fb5:1510:779a:3a80:1322:d34a])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
         (Authenticated sender: aferraris)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id B595D1F45CAD;
-        Thu, 17 Dec 2020 17:35:51 +0000 (GMT)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 3C0D41F45D13;
+        Thu, 17 Dec 2020 17:35:53 +0000 (GMT)
 From:   Arnaud Ferraris <arnaud.ferraris@collabora.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     drosen@google.com, krisman@collabora.com, ebiggers@kernel.org,
         tytso@mit.edu, Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Subject: [PATCH v3 00/12] e2fsprogs: improve case-insensitive fs
-Date:   Thu, 17 Dec 2020 18:35:32 +0100
-Message-Id: <20201217173544.52953-1-arnaud.ferraris@collabora.com>
+Subject: [PATCH v3 05/12] e2fsck: Add new problem for encoded name check
+Date:   Thu, 17 Dec 2020 18:35:37 +0100
+Message-Id: <20201217173544.52953-6-arnaud.ferraris@collabora.com>
 X-Mailer: git-send-email 2.29.2
+In-Reply-To: <20201217173544.52953-1-arnaud.ferraris@collabora.com>
+References: <20201217173544.52953-1-arnaud.ferraris@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
-
-This patch series improves e2fsprogs for case-insensitive filesystems.
-
-First, it allows tune2fs to enable the 'casefold' feature on existing
-filesystems.
-
-Then, it improves e2fsck by allowing it to:
-- fix entries containing invalid UTF-8 characters
-- detect duplicated entries
-
-By default, invalid filenames are only checked when strict mode is enabled.
-A new option is therefore added to allow the user to force this verification.
-
-This series has been tested by running xfstests, and by manually corrupting
-the test filesystem using debugfs as well.
-
-Best regards,
-Arnaud
-
 ---
 Changes in v3:
-  - removed extra lines across the whole series
-  - renamed PR_2_BAD_CASEFOLDED_NAME to PR_2_BAD_ENCODED_NAME and fixed
-    its value
+  - renamed problem identifier
+  - fixed problem value
 
 Changes in v2:
-  - added missing comment in e2fsck/pass1.c
-  - added a new problem code dedicated to bad encoded file names
-  - reworked a test in e2fsck/pass2.c
+  - added in this version
 
-Arnaud Ferraris (1):
-  e2fsck: Add new problem for encoded name check
+ e2fsck/problem.c | 5 +++++
+ e2fsck/problem.h | 3 +++
+ 2 files changed, 8 insertions(+)
 
-Gabriel Krisman Bertazi (11):
-  tune2fs: Allow enabling casefold feature after fs creation
-  tune2fs: Fix casefold+encrypt error message
-  ext2fs: Add method to validate casefolded strings
-  ext2fs: Implement faster CI comparison of strings
-  e2fsck: Fix entries with invalid encoded characters
-  e2fsck: Support casefold directories when rehashing
-  dict: Support comparison with context
-  e2fsck: Detect duplicated casefolded direntries for rehash
-  e2fsck: Add option to force encoded filename verification
-  e2fsck.8.in: Document check_encoding extended option
-  tests: f_bad_fname: Test fixes of invalid filenames and duplicates
-
- e2fsck/e2fsck.8.in         |   4 ++
- e2fsck/e2fsck.c            |   4 ++
- e2fsck/e2fsck.h            |   2 +
- e2fsck/pass1.c             |  18 ++++++++
- e2fsck/pass1b.c            |   2 +-
- e2fsck/pass2.c             |  76 ++++++++++++++++++++++++++++++---
- e2fsck/problem.c           |   5 +++
- e2fsck/problem.h           |   3 ++
- e2fsck/rehash.c            |  85 ++++++++++++++++++++++++++++++-------
- e2fsck/unix.c              |   4 ++
- lib/ext2fs/ext2fs.h        |   5 +++
- lib/ext2fs/ext2fsP.h       |   5 +++
- lib/ext2fs/nls_utf8.c      |  62 +++++++++++++++++++++++++++
- lib/support/dict.c         |  22 +++++++---
- lib/support/dict.h         |   4 +-
- lib/support/mkquota.c      |   2 +-
- misc/tune2fs.c             |  17 +++++++-
- tests/f_bad_fname/expect.1 |  22 ++++++++++
- tests/f_bad_fname/expect.2 |   7 +++
- tests/f_bad_fname/image.gz | Bin 0 -> 802 bytes
- tests/f_bad_fname/name     |   1 +
- 21 files changed, 316 insertions(+), 34 deletions(-)
- create mode 100644 tests/f_bad_fname/expect.1
- create mode 100644 tests/f_bad_fname/expect.2
- create mode 100644 tests/f_bad_fname/image.gz
- create mode 100644 tests/f_bad_fname/name
-
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index e79c853b..99522342 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1805,6 +1805,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Encrypted @E references @i %Di, which has a different encryption policy.\n"),
+ 	  PROMPT_CLEAR, 0, 0, 0, 0 },
+ 
++	/* Casefolded directory entry has illegal characters in its name */
++	{ PR_2_BAD_ENCODED_NAME,
++	  N_("@E has illegal UTF-8 characters in its name.\n"),
++	  PROMPT_FIX, 0, 0, 0, 0 },
++
+ 	/* Pass 3 errors */
+ 
+ 	/* Pass 3: Checking directory connectivity */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 4185e517..e2fbb597 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1028,6 +1028,9 @@ struct problem_context {
+ /* Encrypted directory contains file with different encryption policy */
+ #define PR_2_INCONSISTENT_ENCRYPTION_POLICY	0x020052
+ 
++/* Encoded directory entry has illegal characters in its name */
++#define PR_2_BAD_ENCODED_NAME		0x020053
++
+ /*
+  * Pass 3 errors
+  */
 -- 
 2.29.2
 
