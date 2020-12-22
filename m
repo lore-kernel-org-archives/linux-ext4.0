@@ -2,1099 +2,332 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33F5FC433E0
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 18:24:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31447C43217
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 22:25:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E8D6422527
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 18:24:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0E999239A1
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 22:25:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725975AbgLVSYg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Dec 2020 13:24:36 -0500
-Received: from tina.tse.jus.br ([187.4.152.236]:39346 "EHLO tse.jus.br"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725946AbgLVSYg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Dec 2020 13:24:36 -0500
-X-Greylist: delayed 445 seconds by postgrey-1.27 at vger.kernel.org; Tue, 22 Dec 2020 13:24:28 EST
-Received: from EXCH01.tse.gov.br (unknown [10.30.1.221])
-        by Forcepoint Email with ESMTP id 2DC4CCC70CBBB22BCC0D;
-        Tue, 22 Dec 2020 15:16:22 -0300 (-03)
-Received: from tsesevinl73.tse.jus.br (10.30.32.51) by EXCH01.tse.gov.br
- (10.30.1.221) with Microsoft SMTP Server (TLS) id 14.2.347.0; Tue, 22 Dec
- 2020 15:16:21 -0300
-From:   <paulo.alvarez@tse.jus.br>
-To:     <linux-ext4@vger.kernel.org>
-CC:     Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
-Subject: [PATCH 1/3] Add a Windows implementation of the IO manager
-Date:   Tue, 22 Dec 2020 15:15:50 -0300
-Message-ID: <20201222181552.11267-2-paulo.alvarez@tse.jus.br>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20201222181552.11267-1-paulo.alvarez@tse.jus.br>
-References: <20201222181552.11267-1-paulo.alvarez@tse.jus.br>
-MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.30.32.51]
+        id S1728079AbgLVWZN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Dec 2020 17:25:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56362 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726841AbgLVWZN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Dec 2020 17:25:13 -0500
+Received: from mail-pg1-x536.google.com (mail-pg1-x536.google.com [IPv6:2607:f8b0:4864:20::536])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51406C061793
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2020 14:24:33 -0800 (PST)
+Received: by mail-pg1-x536.google.com with SMTP id z21so9298012pgj.4
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2020 14:24:33 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=g6heK/OyqEMPDWZQSKHHTBg8zTvegaPfuv+fBDhTlIA=;
+        b=Y8dg4MNp6eKuCCsICytsW6muIbjkqUI/sBhTM0B2Cp0N73p7RH1mpjqvgsmN65LlxG
+         cj+mil5whfDljDt8XcVIW2wRZDKTKFHqlNtJmqnttjWB38yYU4Gh6f7znbppxfbU4RaM
+         Yz8iAMm+wJGwKENY0TE/bzCDtUgr0BnxBnvwHBUwj+CbcU6p1KZGB6/+//SxlrAHxFca
+         FQI8fZlF5aIuxputVjjHsuiqyzCfS7wdGUU06Ay7aqg0ha6lXDNSa27X1Q5kZQzHA2FG
+         E4ncjbrOXtnuLQ+C71TMuxI+/uAVgFci5TVKWV3ue8FqyIkwikeQTjzbb+FkuNv3Qn9l
+         YmLw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=g6heK/OyqEMPDWZQSKHHTBg8zTvegaPfuv+fBDhTlIA=;
+        b=TDXwPEleAkk3QsckYABbnEvR8o+x7y/ko8FMm4cjh7neAeafSrzW35XDjOqF6Zu8hU
+         Qt+I+LAOPYt7KTDKxnkG4+oblkFyPvPbiG920Pa/s/QZgTP/8l6WfYv70+89sX+r1UNo
+         SV5XIgvRbbXN7hiehGJ1yKP6miYUYEc6b8a/QvSrvd+c0vWy47bQQnOA2IaFtqFoU3pe
+         HCloR0a/GBKi5sIfGqT29XmR2yL+RhJG0r8kBcDbtaxAUyP0qBXhTGyLPQ9E3/WseLPt
+         KCpslwfxGno2oxc9seMcAfeSzCJnkWXdQS6OBBnV5JOC75o30da9mnUsN09ZVvZxWxbE
+         qkkA==
+X-Gm-Message-State: AOAM530+9+3RSR+NMEUWXwiQEJ5CDN4gbdOdvcf5rTofOWUdxxAwD4HZ
+        jQ4C+kLyIlyuj83C6rZkT/Fm3BXFQ2ryYCDj
+X-Google-Smtp-Source: ABdhPJyq/Bl14eFHB1EukMnUZnANVhyxWpmSVw8SIyCCdOWiLi2p56YKry7jA6UyAQEKqlzdO+bcOg==
+X-Received: by 2002:a65:5547:: with SMTP id t7mr21873077pgr.50.1608675872750;
+        Tue, 22 Dec 2020 14:24:32 -0800 (PST)
+Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id b129sm19477988pgc.52.2020.12.22.14.24.31
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 22 Dec 2020 14:24:31 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <0D219223-7CE9-4441-9F14-0125023ED969@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_252EE0FA-539C-4807-BA38-045700D85A1D";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: improved performance in case of data journaling
+Date:   Tue, 22 Dec 2020 15:24:29 -0700
+In-Reply-To: <20201222174729.GD22832@quack2.suse.cz>
+Cc:     Martin Steigerwald <martin@lichtvoll.de>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        Andrew Morton <akpm@linuxfoundation.org>,
+        Mauricio Faria de Oliveira <mfo@canonical.com>
+To:     Jan Kara <jack@suse.cz>,
+        lokesh jaliminche <lokesh.jaliminche@gmail.com>
+References: <CAKJOkCoUGPctXEcJWZFo+d62CSBmYjxFr1D0j74OY2ijynMyUA@mail.gmail.com>
+ <1870131.usQuhbGJ8B@merkaba>
+ <CAKJOkCrBMhLKZjp4=1KJv3uY+xFBN0KEjDx_ix=88xr0oegD+w@mail.gmail.com>
+ <20201222174729.GD22832@quack2.suse.cz>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Paulo Antonio Alvarez <pauloaalvarez@gmail.com>
 
----
- lib/ext2fs/windows_io.c | 1041 +++++++++++++++++++++++++++++++++++++++
- 1 file changed, 1041 insertions(+)
- create mode 100644 lib/ext2fs/windows_io.c
+--Apple-Mail=_252EE0FA-539C-4807-BA38-045700D85A1D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=utf-8
 
-diff --git a/lib/ext2fs/windows_io.c b/lib/ext2fs/windows_io.c
-new file mode 100644
-index 00000000..68b5571b
---- /dev/null
-+++ b/lib/ext2fs/windows_io.c
-@@ -0,0 +1,1041 @@
-+/*
-+ * windows_io.c --- This is the Windows implementation of the I/O manager.
-+ *
-+ * Implements a one-block write-through cache.
-+ *
-+ * Copyright (C) 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
-+ *	2002 by Theodore Ts'o.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include <windows.h>
-+#include <winioctl.h>
-+#include <io.h>
-+
-+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
-+#define _XOPEN_SOURCE 600
-+#define _DARWIN_C_SOURCE
-+#define _FILE_OFFSET_BITS 64
-+#ifndef _LARGEFILE_SOURCE
-+#define _LARGEFILE_SOURCE
-+#endif
-+#ifndef _LARGEFILE64_SOURCE
-+#define _LARGEFILE64_SOURCE
-+#endif
-+#ifndef _GNU_SOURCE
-+#define _GNU_SOURCE
-+#endif
-+#endif
-+
-+#include "config.h"
-+#include <stdio.h>
-+#include <string.h>
-+#if HAVE_UNISTD_H
-+#include <unistd.h>
-+#endif
-+#if HAVE_ERRNO_H
-+#include <errno.h>
-+#endif
-+#include <fcntl.h>
-+#include <time.h>
-+#if HAVE_SYS_TYPES_H
-+#include <sys/types.h>
-+#endif
-+#define PR_GET_DUMPABLE 3
-+#if HAVE_SYS_STAT_H
-+#include <sys/stat.h>
-+#endif
-+#include <fcntl.h>
-+
-+#undef ALIGN_DEBUG
-+
-+//#define DEBUG
-+#ifdef DEBUG
-+#define TRACE(...) {\
-+		    char __log[256];\
-+		    snprintf(__log, sizeof(__log), __VA_ARGS__);\
-+		    __log[sizeof(__log)-1] = 0;\
-+		    OutputDebugString(__log);\
-+		}
-+#else
-+#define TRACE(...) do { } while (0);
-+#endif
-+
-+#include "ext2_fs.h"
-+#include "ext2fs.h"
-+#include "ext2fsP.h"
-+
-+/*
-+ * For checking structure magic numbers...
-+ */
-+
-+#define EXT2_CHECK_MAGIC(struct, code) \
-+	  if ((struct)->magic != (code)) return (code)
-+#define EXT2_CHECK_MAGIC_RETURN(struct, code, ret) \
-+	  if ((struct)->magic != (code)) return (ret)
-+
-+#define EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL  0x10ed
-+
-+struct windows_cache {
-+	char			*buf;
-+	unsigned long long	block;
-+	int			access_time;
-+	unsigned		dirty:1;
-+	unsigned		in_use:1;
-+};
-+
-+#define CACHE_SIZE 8
-+#define WRITE_DIRECT_SIZE 4	/* Must be smaller than CACHE_SIZE */
-+#define READ_DIRECT_SIZE 4	/* Should be smaller than CACHE_SIZE */
-+
-+struct windows_private_data {
-+	int	magic;
-+	char	name[MAX_PATH];
-+	HANDLE	handle;
-+	char	dos_device[MAX_PATH];
-+	char	cf_device[MAX_PATH];
-+	int	dev;
-+	int	flags;
-+	int	align;
-+	int	access_time;
-+	ext2_loff_t offset;
-+	struct windows_cache cache[CACHE_SIZE];
-+	void	*bounce;
-+	struct struct_io_stats io_stats;
-+};
-+
-+#define IS_ALIGNED(n, align) ((((uintptr_t) n) & \
-+			       ((uintptr_t) ((align)-1))) == 0)
-+
-+static int fake_dos_name_for_device(struct windows_private_data *data)
-+{
-+	if (strncmp(data->name, "\\\\", 2) == 0) {
-+		data->dos_device[0] = 0;
-+		strcpy(data->cf_device, data->name);
-+		return 0;
-+	}
-+
-+	_snprintf(data->dos_device, MAX_PATH, "fakedevice%lu", GetCurrentProcessId());
-+
-+	if (!DefineDosDevice(DDD_RAW_TARGET_PATH, data->dos_device, data->name))
-+		return 1;
-+
-+	_snprintf(data->cf_device, MAX_PATH, "\\\\.\\%s", data->dos_device);
-+	TRACE("e2fsprogs::fake_dos_name_for_device::DefineDosDevice(\"%s\")", data->dos_device);
-+
-+	return 0;
-+}
-+
-+static void remove_fake_dos_name(struct windows_private_data *data)
-+{
-+	if (*data->dos_device) {
-+		TRACE("e2fsprogs::remove_fake_dos_name::DefineDosDevice(\"%s\")", data->dos_device);
-+		DefineDosDevice(DDD_RAW_TARGET_PATH | DDD_EXACT_MATCH_ON_REMOVE | DDD_REMOVE_DEFINITION, data->dos_device, data->name);
-+	}
-+}
-+
-+static errcode_t windows_get_stats(io_channel channel, io_stats *stats)
-+{
-+	errcode_t	retval = 0;
-+
-+	struct windows_private_data *data;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+	if (stats)
-+		*stats = &data->io_stats;
-+
-+	return retval;
-+}
-+
-+/*
-+ * Here are the raw I/O functions
-+ */
-+static errcode_t raw_read_blk(io_channel channel,
-+			      struct windows_private_data *data,
-+			      unsigned long long block,
-+			      int count, void *bufv)
-+{
-+	errcode_t	retval;
-+	ssize_t	size;
-+	ext2_loff_t	location;
-+	DWORD		actual = 0;
-+	unsigned char	*buf = bufv;
-+	ssize_t		really_read = 0;
-+
-+	size = (count < 0) ? -count : count * channel->block_size;
-+	data->io_stats.bytes_read += size;
-+	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
-+
-+	if (data->flags & IO_FLAG_FORCE_BOUNCE) {
-+		if (SetFilePointer(data->handle, location, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+		goto bounce_read;
-+	}
-+
-+	if (SetFilePointer(data->handle, location, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-+		retval = GetLastError();
-+		goto error_out;
-+	}
-+	if ((channel->align == 0) || (IS_ALIGNED(buf, channel->align) && IS_ALIGNED(size, channel->align))) {
-+		if (!ReadFile(data->handle, buf, size, &actual, NULL)) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+		if (actual != size) {
-+	short_read:
-+		if (actual < 0) {
-+			retval = GetLastError();
-+			actual = 0;
-+		} else
-+			retval = EXT2_ET_SHORT_READ;
-+		goto error_out;
-+		}
-+	return 0;
-+	}
-+
-+	/*
-+	 * The buffer or size which we're trying to read isn't aligned
-+	 * to the O_DIRECT rules, so we need to do this the hard way...
-+	 */
-+bounce_read:
-+	while (size > 0) {
-+		if (!ReadFile(data->handle, data->bounce, channel->block_size, &actual, NULL)) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+		if (actual != channel->block_size) {
-+			actual = really_read;
-+			buf -= really_read;
-+			size += really_read;
-+			goto short_read;
-+		}
-+		actual = size;
-+		if (size > channel->block_size)
-+			actual = channel->block_size;
-+		memcpy(buf, data->bounce, actual);
-+		really_read += actual;
-+		size -= actual;
-+		buf += actual;
-+	}
-+	return 0;
-+
-+error_out:
-+	if (actual >= 0 && actual < size)
-+		memset((char *) buf+actual, 0, size-actual);
-+	if (channel->read_error)
-+		retval = (channel->read_error)(channel, block, count, buf,
-+					       size, actual, retval);
-+	return retval;
-+}
-+
-+static errcode_t raw_write_blk(io_channel channel,
-+			       struct windows_private_data *data,
-+			       unsigned long long block,
-+			       int count, const void *bufv)
-+{
-+	ssize_t		size;
-+	ext2_loff_t	location;
-+	DWORD		actual = 0;
-+	errcode_t	retval;
-+	const unsigned char *buf = bufv;
-+
-+	if (count == 1)
-+		size = channel->block_size;
-+	else {
-+		if (count < 0)
-+			size = -count;
-+		else
-+			size = count * channel->block_size;
-+	}
-+	data->io_stats.bytes_written += size;
-+
-+	location = ((ext2_loff_t) block * channel->block_size) + data->offset;
-+
-+	if (data->flags & IO_FLAG_FORCE_BOUNCE) {
-+		if (SetFilePointer(data->handle, location, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+	goto bounce_write;
-+	}
-+
-+		if (SetFilePointer(data->handle, location, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-+			retval = GetLastError();
-+		goto error_out;
-+	}
-+
-+	SetLastError(0);
-+
-+	if ((channel->align == 0) || (IS_ALIGNED(buf, channel->align) && IS_ALIGNED(size, channel->align))) {
-+		if (!WriteFile(data->handle, buf, size, &actual, NULL)) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+
-+		if (actual != size) {
-+		short_write:
-+			retval = EXT2_ET_SHORT_WRITE;
-+			goto error_out;
-+		}
-+		return 0;
-+	}
-+
-+	/*
-+	 * The buffer or size which we're trying to write isn't aligned
-+	 * to the O_DIRECT rules, so we need to do this the hard way...
-+	 */
-+bounce_write:
-+	while (size > 0) {
-+		if (size < channel->block_size) {
-+			if (!ReadFile(data->handle, data->bounce, channel->block_size, &actual, NULL)) {
-+				retval = GetLastError();
-+				goto error_out;
-+			}
-+			if (actual != channel->block_size) {
-+				if (actual < 0) {
-+					retval = GetLastError();
-+					goto error_out;
-+				}
-+				memset((char *) data->bounce + actual, 0,
-+				       channel->block_size - actual);
-+			}
-+		}
-+		actual = size;
-+		if (size > channel->block_size)
-+			actual = channel->block_size;
-+		memcpy(data->bounce, buf, actual);
-+		if (SetFilePointer(data->handle, location, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+		if (!WriteFile(data->handle, data->bounce, channel->block_size, &actual, NULL)) {
-+			retval = GetLastError();
-+			goto error_out;
-+		}
-+
-+		if (actual != channel->block_size)
-+			goto short_write;
-+		size -= actual;
-+		buf += actual;
-+		location += actual;
-+	}
-+	return 0;
-+
-+error_out:
-+	if (channel->write_error)
-+		retval = (channel->write_error)(channel, block, count, buf,
-+						size, actual, retval);
-+	return retval;
-+}
-+
-+
-+/*
-+ * Here we implement the cache functions
-+ */
-+
-+/* Allocate the cache buffers */
-+static errcode_t alloc_cache(io_channel channel,
-+			     struct windows_private_data *data)
-+{
-+	errcode_t		retval;
-+	struct windows_cache	*cache;
-+	int			i;
-+
-+	data->access_time = 0;
-+	for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
-+		cache->block = 0;
-+		cache->access_time = 0;
-+		cache->dirty = 0;
-+		cache->in_use = 0;
-+		if (cache->buf)
-+			ext2fs_free_mem(&cache->buf);
-+		retval = io_channel_alloc_buf(channel, 0, &cache->buf);
-+		if (retval)
-+			return retval;
-+	}
-+	if (channel->align || data->flags & IO_FLAG_FORCE_BOUNCE) {
-+		if (data->bounce)
-+			ext2fs_free_mem(&data->bounce);
-+		retval = io_channel_alloc_buf(channel, 0, &data->bounce);
-+	}
-+	return retval;
-+}
-+
-+/* Free the cache buffers */
-+static void free_cache(struct windows_private_data *data)
-+{
-+	struct windows_cache    *cache;
-+	int			i;
-+
-+	data->access_time = 0;
-+	for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
-+		cache->block = 0;
-+		cache->access_time = 0;
-+		cache->dirty = 0;
-+		cache->in_use = 0;
-+		if (cache->buf)
-+			ext2fs_free_mem(&cache->buf);
-+	}
-+	if (data->bounce)
-+		ext2fs_free_mem(&data->bounce);
-+}
-+
-+#ifndef NO_IO_CACHE
-+/*
-+ * Try to find a block in the cache.  If the block is not found, and
-+ * eldest is a non-zero pointer, then fill in eldest with the cache
-+ * entry to that should be reused.
-+ */
-+static struct windows_cache *find_cached_block(struct windows_private_data *data,
-+					    unsigned long long block,
-+					    struct windows_cache **eldest)
-+{
-+	struct windows_cache	*cache, *unused_cache, *oldest_cache;
-+	int			i;
-+
-+	unused_cache = oldest_cache = 0;
-+	for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
-+		if (!cache->in_use) {
-+			if (!unused_cache)
-+				unused_cache = cache;
-+			continue;
-+		}
-+		if (cache->block == block) {
-+			cache->access_time = ++data->access_time;
-+			return cache;
-+		}
-+		if (!oldest_cache ||
-+		   (cache->access_time < oldest_cache->access_time))
-+			oldest_cache = cache;
-+	}
-+	if (eldest)
-+		*eldest = (unused_cache) ? unused_cache : oldest_cache;
-+	return 0;
-+}
-+
-+/*
-+ * Reuse a particular cache entry for another block.
-+ */
-+static void reuse_cache(io_channel channel, struct windows_private_data *data,
-+		 struct windows_cache *cache, unsigned long long block)
-+{
-+	if (cache->dirty && cache->in_use)
-+		raw_write_blk(channel, data, cache->block, 1, cache->buf);
-+
-+	cache->in_use = 1;
-+	cache->dirty = 0;
-+	cache->block = block;
-+	cache->access_time = ++data->access_time;
-+}
-+
-+/*
-+ * Flush all of the blocks in the cache
-+ */
-+static errcode_t flush_cached_blocks(io_channel channel,
-+				     struct windows_private_data *data,
-+				     int invalidate)
-+{
-+	struct windows_cache	*cache;
-+	errcode_t	retval, retval2;
-+	int			i;
-+
-+	retval2 = 0;
-+	for (i=0, cache = data->cache; i < CACHE_SIZE; i++, cache++) {
-+		if (!cache->in_use)
-+			continue;
-+
-+		if (invalidate)
-+			cache->in_use = 0;
-+
-+		if (!cache->dirty)
-+			continue;
-+
-+		retval = raw_write_blk(channel, data,
-+				       cache->block, 1, cache->buf);
-+		if (retval)
-+			retval2 = retval;
-+		else
-+			cache->dirty = 0;
-+	}
-+	return retval2;
-+}
-+#endif /* NO_IO_CACHE */
-+
-+static errcode_t windows_open_channel(struct windows_private_data *data,
-+				   int flags, io_channel *channel,
-+				   io_manager io_mgr)
-+{
-+	io_channel	io = NULL;
-+	errcode_t	retval;
-+	ext2fs_struct_stat st;
-+
-+	retval = ext2fs_get_mem(sizeof(struct struct_io_channel), &io);
-+	if (retval)
-+		goto cleanup;
-+	memset(io, 0, sizeof(struct struct_io_channel));
-+	io->magic = EXT2_ET_MAGIC_IO_CHANNEL;
-+
-+	io->manager = io_mgr;
-+	retval = ext2fs_get_mem(strlen(data->name)+1, &io->name);
-+	if (retval)
-+		goto cleanup;
-+
-+	strcpy(io->name, data->name);
-+	io->private_data = data;
-+	io->block_size = 1024;
-+	io->read_error = 0;
-+	io->write_error = 0;
-+	io->refcount = 1;
-+
-+#if defined(O_DIRECT)
-+	if (flags & IO_FLAG_DIRECT_IO)
-+		io->align = ext2fs_get_dio_alignment(data->dev);
-+#elif defined(F_NOCACHE)
-+	if (flags & IO_FLAG_DIRECT_IO)
-+		io->align = 4096;
-+#endif
-+
-+	/*
-+	 * If the device is really a block device, then set the
-+	 * appropriate flag, otherwise we can set DISCARD_ZEROES flag
-+	 * because we are going to use punch hole instead of discard
-+	 * and if it succeed, subsequent read from sparse area returns
-+	 * zero.
-+	 */
-+	if (ext2fs_fstat(data->dev, &st) == 0) {
-+		if (ext2fsP_is_disk_device(st.st_mode))
-+			io->flags |= CHANNEL_FLAGS_BLOCK_DEVICE;
-+		else
-+			io->flags |= CHANNEL_FLAGS_DISCARD_ZEROES;
-+	}
-+
-+	if ((retval = alloc_cache(io, data)))
-+		goto cleanup;
-+
-+#ifdef BLKROGET
-+	if (flags & IO_FLAG_RW) {
-+		int error;
-+		int readonly = 0;
-+
-+		/* Is the block device actually writable? */
-+		error = ioctl(data->dev, BLKROGET, &readonly);
-+		if (!error && readonly) {
-+			retval = EPERM;
-+			goto cleanup;
-+		}
-+	}
-+#endif
-+
-+	*channel = io;
-+	return 0;
-+
-+cleanup:
-+	if (data) {
-+		if (data->dev >= 0)
-+			close(data->dev);
-+		free_cache(data);
-+		ext2fs_free_mem(&data);
-+	}
-+	if (io) {
-+		if (io->name) {
-+			ext2fs_free_mem(&io->name);
-+		}
-+		ext2fs_free_mem(&io);
-+	}
-+	return retval;
-+}
-+
-+static DWORD windows_open_device(struct windows_private_data *data, int open_flags)
-+{
-+	DWORD ret = 0;
-+
-+	if (*data->name != '\\')
-+		strcpy(data->cf_device, data->name);
-+	else if (fake_dos_name_for_device(data))
-+		return -1;
-+
-+	DWORD desired_access = GENERIC_READ | ((open_flags & O_RDWR) ? GENERIC_WRITE : 0);
-+	DWORD share_mode = (open_flags & O_EXCL) ? 0 : FILE_SHARE_READ | ((open_flags & O_RDWR) ? FILE_SHARE_WRITE : 0);
-+	DWORD flags_and_attributes =
-+#if defined(O_DIRECT)
-+	(open_flags & O_DIRECT) ? (FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH) : FILE_ATTRIBUTE_NORMAL;
-+#else
-+	FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH;
-+#endif
-+
-+	data->handle = CreateFile(data->cf_device, desired_access, share_mode, NULL, OPEN_EXISTING,
-+				  flags_and_attributes, NULL);
-+
-+	if (data->handle == INVALID_HANDLE_VALUE) {
-+		ret = GetLastError();
-+		goto invalid_handle;
-+	}
-+
-+	TRACE("e2fsprogs::windows_open_device::CreateFile(\"%s\") = %p", data->cf_device, data->handle);
-+
-+	data->dev = _open_osfhandle((intptr_t)data->handle, 0);
-+	if (data->dev < 0) {
-+		ret = GetLastError() ? GetLastError() : 9999;
-+		goto osfhandle_error;
-+	}
-+
-+	TRACE("e2fsprogs::windows_open_device::_open_osfhandle(%p) = %d", data->handle, data->dev);
-+
-+	return 0;
-+
-+osfhandle_error:
-+	TRACE("e2fsprogs::windows_open_device::CloseHandle(%p)", data->handle);
-+	CloseHandle(data->handle);
-+invalid_handle:
-+	remove_fake_dos_name(data);
-+	TRACE("e2fsprogs::windows_open_device() = %lu, errno = %d", ret, errno);
-+	return ret;
-+}
-+
-+static struct windows_private_data *init_private_data(const char *name, int flags)
-+{
-+	struct windows_private_data *data = NULL;
-+
-+	if (ext2fs_get_mem(sizeof(struct windows_private_data), &data))
-+		return NULL;
-+
-+	memset(data, 0, sizeof(struct windows_private_data));
-+	strncpy(data->name, name, sizeof(data->name));
-+	data->magic = EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL;
-+	data->io_stats.num_fields = 2;
-+	data->flags = flags;
-+	data->handle = INVALID_HANDLE_VALUE;
-+
-+	return data;
-+}
-+
-+static errcode_t windows_open(const char *name, int flags, io_channel *channel)
-+{
-+	int fd = -1;
-+	int open_flags;
-+	struct windows_private_data *data;
-+
-+	if (name == 0)
-+		return EXT2_ET_BAD_DEVICE_NAME;
-+
-+	data = init_private_data(name, flags);
-+	if (!data)
-+		return EXT2_ET_NO_MEMORY;
-+
-+	open_flags = (flags & IO_FLAG_RW) ? O_RDWR : O_RDONLY;
-+	if (flags & IO_FLAG_EXCLUSIVE)
-+		open_flags |= O_EXCL;
-+#if defined(O_DIRECT)
-+	if (flags & IO_FLAG_DIRECT_IO)
-+		open_flags |= O_DIRECT;
-+#endif
-+
-+	if (windows_open_device(data, open_flags)) {
-+		ext2fs_free_mem(&data);
-+		return EXT2_ET_BAD_DEVICE_NAME;
-+	}
-+
-+#if defined(F_NOCACHE) && !defined(IO_DIRECT)
-+	if (flags & IO_FLAG_DIRECT_IO) {
-+		if (fcntl(fd, F_NOCACHE, 1) < 0)
-+			return errno;
-+	}
-+#endif
-+	return windows_open_channel(data, flags, channel, windows_io_manager);
-+}
-+
-+static errcode_t windows_close(io_channel channel)
-+{
-+	struct windows_private_data *data;
-+	errcode_t	retval = 0;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+	if (--channel->refcount > 0)
-+		return 0;
-+
-+#ifndef NO_IO_CACHE
-+	retval = flush_cached_blocks(channel, data, 0);
-+#endif
-+
-+	remove_fake_dos_name(data);
-+
-+	if (_close(data->dev) != 0)
-+		retval = errno;
-+
-+	TRACE("e2fsprogs::windows_close::_close(%d)", data->dev);
-+
-+	free_cache(data);
-+
-+	ext2fs_free_mem(&channel->private_data);
-+	if (channel->name)
-+		ext2fs_free_mem(&channel->name);
-+	ext2fs_free_mem(&channel);
-+	return retval;
-+}
-+
-+static errcode_t windows_set_blksize(io_channel channel, int blksize)
-+{
-+	struct windows_private_data *data;
-+	errcode_t		retval;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+	if (channel->block_size != blksize) {
-+#ifndef NO_IO_CACHE
-+		if ((retval = flush_cached_blocks(channel, data, 0)))
-+			return retval;
-+#endif
-+
-+		channel->block_size = blksize;
-+		free_cache(data);
-+		if ((retval = alloc_cache(channel, data)))
-+			return retval;
-+	}
-+	return 0;
-+}
-+
-+static errcode_t windows_read_blk64(io_channel channel, unsigned long long block, int count, void *buf)
-+{
-+	struct windows_private_data *data;
-+	struct windows_cache *cache, *reuse[READ_DIRECT_SIZE];
-+	errcode_t	retval;
-+	char		*cp;
-+	int		i, j;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+#ifdef NO_IO_CACHE
-+	return raw_read_blk(channel, data, block, count, buf);
-+#else
-+	/*
-+	 * If we're doing an odd-sized read or a very large read,
-+	 * flush out the cache and then do a direct read.
-+	 */
-+	if (count < 0 || count > WRITE_DIRECT_SIZE) {
-+		if ((retval = flush_cached_blocks(channel, data, 0)))
-+			return retval;
-+		return raw_read_blk(channel, data, block, count, buf);
-+	}
-+
-+	cp = buf;
-+	while (count > 0) {
-+		/* If it's in the cache, use it! */
-+		if ((cache = find_cached_block(data, block, &reuse[0]))) {
-+#ifdef DEBUG
-+			printf("Using cached block %lu\n", block);
-+#endif
-+			memcpy(cp, cache->buf, channel->block_size);
-+			count--;
-+			block++;
-+			cp += channel->block_size;
-+			continue;
-+		}
-+		if (count == 1) {
-+			/*
-+			 * Special case where we read directly into the
-+			 * cache buffer; important in the O_DIRECT case
-+			 */
-+			cache = reuse[0];
-+			reuse_cache(channel, data, cache, block);
-+			if ((retval = raw_read_blk(channel, data, block, 1,
-+						   cache->buf))) {
-+				cache->in_use = 0;
-+				return retval;
-+			}
-+			memcpy(cp, cache->buf, channel->block_size);
-+			return 0;
-+		}
-+
-+		/*
-+		 * Find the number of uncached blocks so we can do a
-+		 * single read request
-+		 */
-+		for (i=1; i < count; i++)
-+			if (find_cached_block(data, block+i, &reuse[i]))
-+				break;
-+#ifdef DEBUG
-+		printf("Reading %d blocks starting at %lu\n", i, block);
-+#endif
-+		if ((retval = raw_read_blk(channel, data, block, i, cp)))
-+			return retval;
-+
-+		/* Save the results in the cache */
-+		for (j=0; j < i; j++) {
-+			count--;
-+			cache = reuse[j];
-+			reuse_cache(channel, data, cache, block++);
-+			memcpy(cache->buf, cp, channel->block_size);
-+			cp += channel->block_size;
-+		}
-+	}
-+	return 0;
-+#endif /* NO_IO_CACHE */
-+}
-+
-+static errcode_t windows_read_blk(io_channel channel, unsigned long block,
-+			       int count, void *buf)
-+{
-+	return windows_read_blk64(channel, block, count, buf);
-+}
-+
-+static errcode_t windows_write_blk64(io_channel channel,
-+				unsigned long long block,
-+				int count, const void *buf)
-+{
-+	struct windows_private_data *data;
-+	struct windows_cache *cache, *reuse;
-+	errcode_t	retval = 0;
-+	const char	*cp;
-+	int		writethrough;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+#ifdef NO_IO_CACHE
-+	return raw_write_blk(channel, data, block, count, buf);
-+#else
-+	/*
-+	 * If we're doing an odd-sized write or a very large write,
-+	 * flush out the cache completely and then do a direct write.
-+	 */
-+	if (count < 0 || count > WRITE_DIRECT_SIZE) {
-+		if ((retval = flush_cached_blocks(channel, data, 1)))
-+			return retval;
-+		return raw_write_blk(channel, data, block, count, buf);
-+	}
-+
-+	/*
-+	 * For a moderate-sized multi-block write, first force a write
-+	 * if we're in write-through cache mode, and then fill the
-+	 * cache with the blocks.
-+	 */
-+	writethrough = channel->flags & CHANNEL_FLAGS_WRITETHROUGH;
-+	if (writethrough)
-+		retval = raw_write_blk(channel, data, block, count, buf);
-+
-+	cp = buf;
-+	while (count > 0) {
-+		cache = find_cached_block(data, block, &reuse);
-+		if (!cache) {
-+			cache = reuse;
-+			reuse_cache(channel, data, cache, block);
-+		}
-+		if (cache->buf != cp)
-+			memcpy(cache->buf, cp, channel->block_size);
-+		cache->dirty = !writethrough;
-+		count--;
-+		block++;
-+		cp += channel->block_size;
-+	}
-+	return retval;
-+#endif /* NO_IO_CACHE */
-+}
-+
-+static errcode_t windows_cache_readahead(io_channel channel,
-+				      unsigned long long block,
-+				      unsigned long long count)
-+{
-+	return EXT2_ET_OP_NOT_SUPPORTED;
-+}
-+
-+static errcode_t windows_write_blk(io_channel channel, unsigned long block,
-+				int count, const void *buf)
-+{
-+	return windows_write_blk64(channel, block, count, buf);
-+}
-+
-+static errcode_t windows_write_byte(io_channel channel, unsigned long offset,
-+				 int size, const void *buf)
-+{
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
-+HANDLE windows_get_handle(io_channel channel)
-+{
-+	struct windows_private_data *data;
-+
-+	EXT2_CHECK_MAGIC_RETURN(channel, EXT2_ET_MAGIC_IO_CHANNEL, INVALID_HANDLE_VALUE);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC_RETURN(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL, INVALID_HANDLE_VALUE);
-+
-+	return data->handle;
-+}
-+
-+/*
-+ * Flush data buffers to disk.
-+ */
-+static errcode_t windows_flush(io_channel channel)
-+{
-+	struct windows_private_data *data;
-+	errcode_t retval = 0;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+#ifndef NO_IO_CACHE
-+	retval = flush_cached_blocks(channel, data, 0);
-+#endif
-+
-+	return retval;
-+}
-+
-+static errcode_t windows_set_option(io_channel channel, const char *option,
-+				 const char *arg)
-+{
-+	struct windows_private_data *data;
-+	unsigned long long tmp;
-+	char *end;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+	if (!strcmp(option, "offset")) {
-+		if (!arg)
-+			return EXT2_ET_INVALID_ARGUMENT;
-+
-+		tmp = strtoull(arg, &end, 0);
-+		if (*end)
-+			return EXT2_ET_INVALID_ARGUMENT;
-+		data->offset = tmp;
-+		if (data->offset < 0)
-+			return EXT2_ET_INVALID_ARGUMENT;
-+		return 0;
-+	}
-+	return EXT2_ET_INVALID_ARGUMENT;
-+}
-+
-+static errcode_t windows_discard(io_channel channel, unsigned long long block,
-+				 unsigned long long count)
-+{
-+	TRACE("e2fsprogs::windows_discard::EXT2_ET_UNIMPLEMENTED");
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
-+/* parameters might not be used if OS doesn't support zeroout */
-+#if __GNUC_PREREQ (4, 6)
-+#pragma GCC diagnostic push
-+#pragma GCC diagnostic ignored "-Wunused-parameter"
-+#endif
-+static errcode_t windows_zeroout(io_channel channel, unsigned long long block,
-+			      unsigned long long count)
-+{
-+	struct windows_private_data *data;
-+	int		ret;
-+
-+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
-+	data = (struct windows_private_data *) channel->private_data;
-+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
-+
-+	if (channel->flags & CHANNEL_FLAGS_BLOCK_DEVICE) {
-+		/* Not implemented until the BLKZEROOUT mess is fixed */
-+		goto unimplemented;
-+	} else {
-+		/* Regular file, try to use truncate/punch/zero. */
-+		struct stat statbuf;
-+
-+		if (count == 0)
-+			return 0;
-+		/*
-+		 * If we're trying to zero a range past the end of the file,
-+		 * extend the file size, then truncate everything.
-+		 */
-+		ret = fstat(data->dev, &statbuf);
-+		if (ret)
-+			goto err;
-+		if ((unsigned long long) statbuf.st_size <
-+			(block + count) * channel->block_size + data->offset) {
-+			ret = ftruncate(data->dev,
-+					(block + count) * channel->block_size + data->offset);
-+			if (ret)
-+				goto err;
-+		}
-+		goto unimplemented;
-+	}
-+err:
-+	if (ret < 0) {
-+		if (errno == EOPNOTSUPP)
-+			goto unimplemented;
-+		return errno;
-+	}
-+	return 0;
-+unimplemented:
-+	return EXT2_ET_UNIMPLEMENTED;
-+}
-+
-+int ext2fs_open_file(const char *pathname, int flags, mode_t mode)
-+{
-+	flags |= O_BINARY;
-+
-+	if (mode)
-+#if defined(HAVE_OPEN64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+		return open64(pathname, flags, mode);
-+	else
-+		return open64(pathname, flags);
-+#else
-+		return open(pathname, flags, mode);
-+	else
-+		return open(pathname, flags);
-+#endif
-+}
-+
-+int ext2fs_stat(const char *path, ext2fs_struct_stat *buf)
-+{
-+#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+	return stat64(path, buf);
-+#else
-+	return stat(path, buf);
-+#endif
-+}
-+
-+int ext2fs_fstat(int fd, ext2fs_struct_stat *buf)
-+{
-+#if defined(HAVE_FSTAT64) && !defined(__OSX_AVAILABLE_BUT_DEPRECATED)
-+	return fstat64(fd, buf);
-+#else
-+	return fstat(fd, buf);
-+#endif
-+}
-+
-+#if __GNUC_PREREQ (4, 6)
-+#pragma GCC diagnostic pop
-+#endif
-+
-+static struct struct_io_manager struct_windows_manager = {
-+	.magic		= EXT2_ET_MAGIC_IO_MANAGER,
-+	.name		= "Windows I/O Manager",
-+	.open		= windows_open,
-+	.close		= windows_close,
-+	.set_blksize	= windows_set_blksize,
-+	.read_blk	= windows_read_blk,
-+	.write_blk	= windows_write_blk,
-+	.flush		= windows_flush,
-+	.write_byte	= windows_write_byte,
-+	.set_option	= windows_set_option,
-+	.get_stats	= windows_get_stats,
-+	.read_blk64	= windows_read_blk64,
-+	.write_blk64	= windows_write_blk64,
-+	.discard	= windows_discard,
-+	.cache_readahead	= windows_cache_readahead,
-+	.zeroout	= windows_zeroout,
-+};
-+
-+io_manager windows_io_manager = &struct_windows_manager;
--- 
-2.17.1
+On Dec 22, 2020, at 10:47 AM, Jan Kara <jack@suse.cz> wrote:
+>=20
+> Hi!
+>=20
+> On Thu 03-12-20 01:07:51, lokesh jaliminche wrote:
+>> Hi Martin,
+>>=20
+>> thanks for the quick response,
+>>=20
+>> Apologies from my side, I should have posted my fio job description
+>> with the fio logs
+>> Anyway here is my fio workload.
+>>=20
+>> [global]
+>> filename=3D/mnt/ext4/test
+>> direct=3D1
+>> runtime=3D30s
+>> time_based
+>> size=3D100G
+>> group_reporting
+>>=20
+>> [writer]
+>> new_group
+>> rate_iops=3D250000
+>> bs=3D4k
+>> iodepth=3D1
+>> ioengine=3Dsync
+>> rw=3Drandomwrite
+>> numjobs=3D1
+>>=20
+>> I am using Intel Optane SSD so it's certainly very fast.
+>>=20
+>> I agree that delayed logging could help to hide the performance
+>> degradation due to actual writes to SSD. However as per the iostat
+>> output data is definitely crossing the block layer and since
+>> data journaling logs both data and metadata I am wondering why
+>> or how IO requests see reduced latencies compared to metadata
+>> journaling or even no journaling.
+>>=20
+>> Also, I am using direct IO mode so ideally, it should not be using =
+any type
+>> of caching. I am not sure if it's applicable to journal writes but =
+the whole
+>> point of journaling is to prevent data loss in case of abrupt =
+failures. So
+>> caching journal writes may result in data loss unless we are using =
+NVRAM.
+>=20
+> Well, first bear in mind that in data=3Djournal mode, ext4 does not =
+support
+> direct IO so all the IO is in fact buffered. So your random-write =
+workload
+> will be transformed to semilinear writeback of the page cache pages. =
+Now
+> I think given your SSD storage this performs much better because the
+> journalling thread commiting data will drive large IOs (IO to the =
+journal
+> will be sequential) and even when the journal is filled and we have to
+> checkpoint, we will run many IOs in parallel which is beneficial for =
+SSDs.
+> Whereas without data journalling your fio job will just run one IO at =
+a
+> time which is far from utilizing full SSD bandwidth.
+>=20
+> So to summarize you see better results with data journalling because =
+you in
+> fact do buffered IO under the hood :).
 
+IMHO that is one of the benefits of data=3Djournal in the first place, =
+regardless
+of whether the journal is NVMe or HDD - that it linearizes what would =
+otherwise
+be a random small-block IO workload to be much friendlier to the =
+storage.  As
+long as it maintains the "written to stable storage" semantic for =
+O_DIRECT, I
+don't think it is a problem that the data is copied or not.  Even =
+without the
+use of data=3Djournal, there are still some code paths that copy =
+O_DIRECT writes.
+
+Ideally, being able to dynamically/automatically change between =
+data=3Djournal
+and data=3Dordered depending on the IO workload (e.g. large writes go =
+straight
+to their allocated blocks, small writes go into the journal) would be =
+the best
+of both worlds.  High "IOPS" for workloads that need it (even on HDD), =
+without
+overwhelming the journal device bandwidth with large streaming writes.
+
+This would tie in well with the proposed SMR patches, which allow a very =
+large
+journal device to (essentially) transform ext4 into a log-structured =
+filesystem
+by allowing journal shadow buffers to be dropped from memory rather than =
+being
+pinned in RAM:
+
+https://github.com/tytso/ext4-patch-queue/blob/master/series
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/jbd2-dont-double-bum=
+p-transaction-number
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/journal-superblock-c=
+hanges
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/add-journal-no-clean=
+up-option
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/add-support-for-log-=
+metadata-block-tracking-in-log
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/add-indirection-to-m=
+etadata-block-read-paths
+https://github.com/tytso/ext4-patch-queue/blob/master/cleaner
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/load-jmap-from-journ=
+al
+https://github.com/tytso/ext4-patch-queue/blob/master/disable-writeback
+=
+https://github.com/tytso/ext4-patch-queue/blob/master/add-ext4-journal-laz=
+y-mount-option
+
+
+Having a 64GB-256GB NVMe device for the journal and handling most of the =
+small
+IO directly to the journal, and only periodically flushing to the =
+filesystem to
+HDD would really make those SMR disks more usable, since they are =
+starting to
+creep into consumer/NAS devices, even when users aren't really aware of =
+it:
+
+=
+https://blocksandfiles.com/2020/04/14/wd-red-nas-drives-shingled-magnetic-=
+recording/
+
+>> So questions come to my mind are
+>> 1. why writes without journaling are having long latencies as =
+compared to
+>>    writes requests with metadata and data journaling?
+>> 2. Since metadata journaling have relatively fewer journal writes =
+than data
+>>    journaling why writes with data journaling is faster than no =
+journaling and
+>>    metadata journaling mode?
+>> 3. If there is an optimization that allows data journaling to be so =
+fast
+>>    without any risk of data loss, why the same optimization is not =
+used in case
+>>    of metadata journaling?
+>>=20
+>> On Thu, Dec 3, 2020 at 12:20 AM Martin Steigerwald =
+<martin@lichtvoll.de> wrote:
+>>>=20
+>>> lokesh jaliminche - 03.12.20, 08:28:49 CET:
+>>>> I have been doing experiments to analyze the impact of data =
+journaling
+>>>> on IO latencies. Theoretically, data journaling should show long
+>>>> latencies as compared to metadata journaling. However, I observed
+>>>> that when I enable data journaling I see improved performance. Is
+>>>> there any specific optimization for data journaling in the write
+>>>> path?
+>>>=20
+>>> This has been discussed before as Andrew Morton found that data
+>>> journalling would be surprisingly fast with interactive write =
+workloads.
+>>> I would need to look it up in my performance training slides or use
+>>> internet search to find the reference to that discussion again.
+>>>=20
+>>> AFAIR even Andrew had no explanation for that. So I thought why =
+would I
+>>> have one? However an idea came to my mind: The journal is a =
+sequential
+>>> area on the disk. This could help with harddisks I thought at least =
+if
+>>> if it I/O mostly to the same not too big location/file =E2=80=93 as =
+you did not
+>>> post it, I don't know exactly what your fio job file is doing. =
+However the
+>>> latencies you posted as well as the device name certainly point to =
+fast
+>>> flash storage :).
+>>>=20
+>>> Another idea that just came to my mind is: AFAIK ext4 uses quite =
+some
+>>> delayed logging and relogging. That means if a block in the journal =
+is
+>>> changed another time within a certain time frame Ext4 changes it in
+>>> memory before the journal block is written out to disk. Thus if the =
+same
+>>> block if overwritten again and again in short time, at least some of =
+the
+>>> updates would only happen in RAM. That might help latencies even =
+with
+>>> NVMe flash as RAM usually still is faster.
+>>>=20
+>>> Of course I bet that Ext4 maintainers have a more accurate or =
+detailed
+>>> explanation than I do. But that was at least my idea about this.
+>>>=20
+>>> Best,
+>>> --
+>>> Martin
+>>>=20
+>>>=20
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_252EE0FA-539C-4807-BA38-045700D85A1D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAl/ich4ACgkQcqXauRfM
+H+A6OxAAnuzXn+erv38wxhJNupub5upcQopUbxPNLGIX+/ocIYyl9oasfTSjxc7s
+maXlbAUCfv2DiRRQTfCEzpbPD/XCpFSVhiH6cwEwvOtR5Xt5G1sHlnz/W+C4Ezvj
+Dx2oejTiLQ3XVkv/5J3ZCuCRY30zbuhLIV3CydBRoU3tJ0DqHaTGb88UvNLMdlmt
+Ub8cAUu4lIJK9pi4CwTpeAParWFOWWgZX7LAWFsUdFpra3HZUHNEPMZ5lo4jY0i5
+iQg3n3uZnjBZSswg1uZbgRXGCkjBEV/FRSNi5bNZ1MmL6RSg6A5VBowUKW9d0pdH
+XoFrQAG8aM7Au/3Ee3dincZfFqZDw+Pp8q+rk6svRdOrdWDvbuo93qK8pUbnqnKQ
+ADscdAae5IcqkxpF5sSFZdoTKp3u1a6rRr7svkbTbsf1W1smyQAFf9PBVN+jzAXj
+HO+cltlCl/vKThdI3XF0InpcNr3j89AktWl7DhVwgkEh9o1l+ApoXzwyURFMg0jH
+eTd3Y/Voo9JJx7PUN1yJ+1xZOFqTNSTroE4uESKOEc3IieFjBI2tiRT52q6eqcHd
+DtshyiWeIQzGFUg/3YASNXPdzDhPV1Ve9TS80N8mzeRwgXB4E1TzEC/dPW40VmK+
+wyZQPlotYXNtA0heAcCT2zlFW2dbYvUY1KYRlaILmhlYjeXEf24=
+=8uQl
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_252EE0FA-539C-4807-BA38-045700D85A1D--
