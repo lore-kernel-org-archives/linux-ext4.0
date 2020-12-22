@@ -2,160 +2,164 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.2 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13139C433E6
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 11:35:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 498CBC433DB
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 15:00:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D2CA42312D
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 11:35:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0E245229CA
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Dec 2020 15:00:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727036AbgLVLfW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Dec 2020 06:35:22 -0500
-Received: from mx2.suse.de ([195.135.220.15]:47948 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726960AbgLVLfV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Dec 2020 06:35:21 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 17CD8ACF1;
-        Tue, 22 Dec 2020 11:34:39 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 1E2B51E1364; Tue, 22 Dec 2020 12:28:53 +0100 (CET)
-Date:   Tue, 22 Dec 2020 12:28:53 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Hillf Danton <hdanton@sina.com>
-Cc:     syzbot <syzbot+9043030c040ce1849a60@syzkaller.appspotmail.com>,
-        jack@suse.cz, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Subject: Re: general protection fault in ext4_commit_super
-Message-ID: <20201222112853.GF13601@quack2.suse.cz>
-References: <0000000000001faff305b709b8ad@google.com>
- <20201222100908.1782-1-hdanton@sina.com>
+        id S1727373AbgLVPAr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Dec 2020 10:00:47 -0500
+Received: from linux.microsoft.com ([13.77.154.182]:36950 "EHLO
+        linux.microsoft.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727193AbgLVPAr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Dec 2020 10:00:47 -0500
+Received: from mail-pj1-f46.google.com (mail-pj1-f46.google.com [209.85.216.46])
+        by linux.microsoft.com (Postfix) with ESMTPSA id 178F320B83F2
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2020 07:00:05 -0800 (PST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com 178F320B83F2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
+        s=default; t=1608649206;
+        bh=g2nqEd4zB/hia2SJ/pN+xDzNDNvXoQaBzRotn2NR0KM=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=f09XEQCav3Dr/yGa4NwdeUYq+OHS6J8zus/uYtCNVLzW+S12LpdGorHUWZZzdk49T
+         Q2bZo4YjoXyGEX587pO7618dYgeRF+DRiBS9F9AAuq7/GAGH3R2mESYG8EGx9GizvV
+         SyeeFIhg7YkE588+B9wNXnhhgTvhJreybmiq/pWo=
+Received: by mail-pj1-f46.google.com with SMTP id m5so1471572pjv.5
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Dec 2020 07:00:05 -0800 (PST)
+X-Gm-Message-State: AOAM533qOb/RdSiHUcwtjxFpyaZUf3txoUAV8ntjEWvgu4uo+dA9Aa9Z
+        +CGx0pxynFy4rtgerVzS3VCtsZsOz97ErClU/JQ=
+X-Google-Smtp-Source: ABdhPJxXTurWCUjnV8uTqbKZrrUcCXpInu0NNhB4mPb9lF26EUIAzYqBWIo0xkHGV9iUexNzaHqDCbn+ik1rOme0z3w=
+X-Received: by 2002:a17:902:7d84:b029:db:feae:425e with SMTP id
+ a4-20020a1709027d84b02900dbfeae425emr21488714plm.43.1608649205620; Tue, 22
+ Dec 2020 07:00:05 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="XMCwj5IQnwKtuyBG"
-Content-Disposition: inline
-In-Reply-To: <20201222100908.1782-1-hdanton@sina.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+References: <CAFnufp2zSthSbrOQ5JE6rKEANeFqvunCR3W5Bx2VgN_Q3NbLVg@mail.gmail.com>
+ <X+AQxkC9MbuxNVRm@mit.edu>
+In-Reply-To: <X+AQxkC9MbuxNVRm@mit.edu>
+From:   Matteo Croce <mcroce@linux.microsoft.com>
+Date:   Tue, 22 Dec 2020 15:59:29 +0100
+X-Gmail-Original-Message-ID: <CAFnufp1N-k+MWWsC0G1EhGvzRjiQn3G8qPw=6uqE1wjwnPgmqA@mail.gmail.com>
+Message-ID: <CAFnufp1N-k+MWWsC0G1EhGvzRjiQn3G8qPw=6uqE1wjwnPgmqA@mail.gmail.com>
+Subject: Re: discard and data=writeback
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Mon, Dec 21, 2020 at 4:04 AM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> So that implies that your experiment may not be repeatable; did you
+> make sure the file system was freshly reformatted before you wrote out
+> the files in the directory you are deleting?  And was the directory
+> written out in exactly the same way?  And did you make sure all of the
+> writes were flushed out to disk before you tried timing the "rm -rf"
+> command?  And did you make sure that there weren't any other processes
+> running that might be issuing other file system operations (either
+> data or metadata heavy) that might be interfering with the "rm -rf"
+> operation?  What kind of storage device were you using?  (An SSD; a
+> USB thumb drive; some kind of Cloud emulated block device?)
+>
 
---XMCwj5IQnwKtuyBG
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+I got another machine with a faster NVME disk. I discarded the whole
+drive before partitioning it, this drive is very fast in discarding
+blocks:
+# time blkdiscard -f /dev/nvme0n1p1
 
-On Tue 22-12-20 18:09:08, Hillf Danton wrote:
-> Tue, 22 Dec 2020 00:54:15 -0800
-> > syzbot found the following issue on:
-> > 
-> > HEAD commit:    0d52778b Add linux-next specific files for 20201218
-> > git tree:       linux-next
-> > console output: https://syzkaller.appspot.com/x/log.txt?x=15b4aecb500000
-> > kernel config:  https://syzkaller.appspot.com/x/.config?x=5c81cc44aa25b5b3
-> > dashboard link: https://syzkaller.appspot.com/bug?extid=9043030c040ce1849a60
-> > compiler:       gcc (GCC) 10.1.0-syz 20200507
-> > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17983487500000
-> > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10c02937500000
-> > 
-> > The issue was bisected to:
-> > 
-> > commit e810c942a325cf749e859d7aa3a43dc219cea299
-> > Author: Jan Kara <jack@suse.cz>
-> > Date:   Wed Dec 16 10:18:40 2020 +0000
-> > 
-> >     ext4: save error info to sb through journal if available
-> > 
-> > bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=1282f137500000
-> > final oops:     https://syzkaller.appspot.com/x/report.txt?x=1182f137500000
-> > console output: https://syzkaller.appspot.com/x/log.txt?x=1682f137500000
-> > 
-> > IMPORTANT: if you fix the issue, please add the following tag to the commit:
-> > Reported-by: syzbot+9043030c040ce1849a60@syzkaller.appspotmail.com
-> > Fixes: e810c942a325 ("ext4: save error info to sb through journal if available")
-> > 
-> > general protection fault, probably for non-canonical address 0xdffffc000000000c: 0000 [#1] PREEMPT SMP KASAN
-> > KASAN: null-ptr-deref in range [0x0000000000000060-0x0000000000000067]
-> > CPU: 0 PID: 7 Comm: kworker/0:1 Not tainted 5.10.0-next-20201218-syzkaller #0
-> > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
-> > Workqueue: events flush_stashed_error_work
-> > RIP: 0010:ext4_commit_super+0x52/0x510 fs/ext4/super.c:5548
-> > Code: 48 c1 ea 03 80 3c 02 00 0f 85 21 04 00 00 48 8b 9d 78 06 00 00 48 b8 00 00 00 00 00 fc ff df 48 8d 7b 60 48 89 fa 48 c1 ea 03 <80> 3c 02 00 0f 85 f1 03 00 00 48 8b 5b 60 48 85 db 0f 84 13 01 00
-> > RSP: 0018:ffffc90000cc7cb8 EFLAGS: 00010206
-> > RAX: dffffc0000000000 RBX: 0000000000000000 RCX: 0000000000000000
-> > RDX: 000000000000000c RSI: ffffffff8217a0db RDI: 0000000000000060
-> > RBP: ffff88802441c000 R08: 0000000000000000 R09: 0000000000000000
-> > R10: ffffffff8217a7fa R11: 0000000000000000 R12: ffff88802441c000
-> > R13: ffff88802441c678 R14: ffff8880109a5a00 R15: ffff8880b9c34440
-> > FS:  0000000000000000(0000) GS:ffff8880b9c00000(0000) knlGS:0000000000000000
-> > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > CR2: 0000000000400200 CR3: 0000000014038000 CR4: 00000000001506f0
-> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-> > Call Trace:
-> >  flush_stashed_error_work+0x1c9/0x2a0 fs/ext4/super.c:727
-> >  process_one_work+0x98d/0x1630 kernel/workqueue.c:2275
-> >  worker_thread+0x64c/0x1120 kernel/workqueue.c:2421
-> >  kthread+0x3b1/0x4a0 kernel/kthread.c:292
-> >  ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:296
-> 
-> Fix e810c942a325 ("ext4: save error info to sb through journal if available")
-> by flushing work as part of rollback.
+real    0m1.356s
+user    0m0.003s
+sys     0m0.000s
 
-Thanks for having a look. I don't think the fix is quite correct though. The
-flush_work() should be at failed_mount3: label. So something like attached
-fixup. Ted, can you please fold it into the buggy commit?
+Also, the drive is pretty big compared to the dataset size, so it's
+unlikely to be fragmented:
 
-								Honza
+# lsblk /dev/nvme0n1
+NAME        MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+nvme0n1     259:0    0  1.7T  0 disk
+=E2=94=94=E2=94=80nvme0n1p1 259:1    0  1.7T  0 part /media
+# df -h /media
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  1.8T  1.2G  1.7T   1% /media
+# du -sh /media/linux-5.10/
+1.1G    /media/linux-5.10/
 
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -5171,6 +5171,7 @@ out_fail:
->  	sb->s_fs_info = NULL;
->  	kfree(sbi->s_blockgroup_lock);
->  out_free_base:
-> +	flush_work(&sbi->s_error_work);
->  	kfree(sbi);
->  	kfree(orig_data);
->  	fs_put_dax(dax_dev);
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I'm issuing sync + sleep(10) after the extraction, so the writes
+should all be flushed.
+Also, I repeated the test three times, with very similar results:
 
---XMCwj5IQnwKtuyBG
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-Fixup-error-handling-on-sb-load.patch"
+# dmesg |grep EXT4-fs
+[12807.847559] EXT4-fs (nvme0n1p1): mounted filesystem with ordered
+data mode. Opts: data=3Dordered,discard
 
-From b3f87141c5944d4dba8e462e1c9ce0c723434fbb Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 22 Dec 2020 12:26:26 +0100
-Subject: [PATCH] Fixup error handling on sb load
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
 
-Reported-by: syzbot+9043030c040ce1849a60@syzkaller.appspotmail.com
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c | 1 +
- 1 file changed, 1 insertion(+)
+real    0m1.607s
+user    0m0.048s
+sys     0m1.559s
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 502ae491d07d..c2311978f9b0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5142,6 +5142,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	ext4_es_unregister_shrinker(sbi);
- failed_mount3:
- 	del_timer_sync(&sbi->s_err_report);
-+	flush_work(&sbi->s_error_work);
- 	if (sbi->s_mmp_tsk)
- 		kthread_stop(sbi->s_mmp_tsk);
- failed_mount2:
--- 
-2.16.4
+real    0m1.634s
+user    0m0.080s
+sys     0m1.553s
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
+
+real    0m1.604s
+user    0m0.052s
+sys     0m1.552s
 
 
---XMCwj5IQnwKtuyBG--
+# dmesg |grep EXT4-fs
+[13133.953978] EXT4-fs (nvme0n1p1): mounted filesystem with writeback
+data mode. Opts: data=3Dwriteback,discard
+
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
+
+real    1m29.443s
+user    0m0.073s
+sys     0m2.520s
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
+
+real    1m29.409s
+user    0m0.081s
+sys     0m2.518s
+# tar xf ~/linux-5.10.tar ; sync ; sleep 10
+# time rm -rf linux-5.10/
+
+real    1m19.283s
+user    0m0.068s
+sys     0m2.505s
+
+> Note that benchmarking the file system operations is *hard*.  When I
+> worked with a graduate student working on a paper describing a
+> prototype of a file system enhancement to ext4 to optimize ext4 for
+> drive-managed SMR drives[1], the graduate student spent *way* more
+> time getting reliable, repeatable benchmarks than making changes to
+> ext4 for the prototype.  (It turns out the SMR GC operations caused
+> variations in write speeds, which meant the writeback throughput
+> measurements would fluctuate wildly, which then influenced the
+> writeback cache ratio, which in turn massively influenced the how
+> aggressively the writeback threads would behave, which in turn
+> massively influenced the filebench and postmark numbers.)
+>
+> [1] https://www.usenix.org/conference/fast17/technical-sessions/presentat=
+ion/aghayev
+>
+
+Interesting!
+
+Cheers,
+--=20
+per aspera ad upstream
