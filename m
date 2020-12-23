@@ -2,72 +2,62 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.9 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0AD75C433E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 23 Dec 2020 14:13:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 709C3C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 23 Dec 2020 18:13:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D82072313C
-	for <linux-ext4@archiver.kernel.org>; Wed, 23 Dec 2020 14:13:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 231EA22286
+	for <linux-ext4@archiver.kernel.org>; Wed, 23 Dec 2020 18:13:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729050AbgLWONP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 23 Dec 2020 09:13:15 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:9915 "EHLO
-        szxga07-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728578AbgLWONO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Dec 2020 09:13:14 -0500
-Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.58])
-        by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4D1FWN4ywDz7K9P;
-        Wed, 23 Dec 2020 22:11:44 +0800 (CST)
-Received: from ubuntu.network (10.175.138.68) by
- DGGEMS403-HUB.china.huawei.com (10.3.19.203) with Microsoft SMTP Server id
- 14.3.498.0; Wed, 23 Dec 2020 22:12:17 +0800
-From:   Zheng Yongjun <zhengyongjun3@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-CC:     Zheng Yongjun <zhengyongjun3@huawei.com>
-Subject: [PATCH -next] ext4: use DEFINE_MUTEX (and mutex_init() had been too late)
-Date:   Wed, 23 Dec 2020 22:12:54 +0800
-Message-ID: <20201223141254.559-1-zhengyongjun3@huawei.com>
-X-Mailer: git-send-email 2.22.0
+        id S1726958AbgLWSNO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 23 Dec 2020 13:13:14 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42248 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725957AbgLWSNO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Dec 2020 13:13:14 -0500
+Received: from callcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 0BNICO40016733
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 23 Dec 2020 13:12:25 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 8D087420280; Wed, 23 Dec 2020 13:12:24 -0500 (EST)
+Date:   Wed, 23 Dec 2020 13:12:24 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Matteo Croce <mcroce@linux.microsoft.com>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: discard and data=writeback
+Message-ID: <X+OIiNOGKmbwITC3@mit.edu>
+References: <CAFnufp2zSthSbrOQ5JE6rKEANeFqvunCR3W5Bx2VgN_Q3NbLVg@mail.gmail.com>
+ <X+AQxkC9MbuxNVRm@mit.edu>
+ <CAFnufp1N-k+MWWsC0G1EhGvzRjiQn3G8qPw=6uqE1wjwnPgmqA@mail.gmail.com>
+ <X+If/kAwiaMdaBtF@mit.edu>
+ <CAFnufp1X1B27Dfr_0DUaBNkKhSGmUjBAvPT+tMoQ8JW6b+q03w@mail.gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.138.68]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAFnufp1X1B27Dfr_0DUaBNkKhSGmUjBAvPT+tMoQ8JW6b+q03w@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Signed-off-by: Zheng Yongjun <zhengyongjun3@huawei.com>
----
- fs/ext4/super.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+On Wed, Dec 23, 2020 at 01:47:33AM +0100, Matteo Croce wrote:
+> As an extra test I extracted the archive with data=ordered, remounted
+> with data=writeback and timed the rm -rf and viceversa.
+> The mount option is the one that counts, the one using during
+> extraction doesn't matter.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 94472044f4c1..8776f06a639d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -59,7 +59,7 @@
- #include <trace/events/ext4.h>
- 
- static struct ext4_lazy_init *ext4_li_info;
--static struct mutex ext4_li_mtx;
-+static DEFINE_MUTEX(ext4_li_mtx);
- static struct ratelimit_state ext4_mount_msg_ratelimit;
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
-@@ -6640,7 +6640,6 @@ static int __init ext4_init_fs(void)
- 
- 	ratelimit_state_init(&ext4_mount_msg_ratelimit, 30 * HZ, 64);
- 	ext4_li_info = NULL;
--	mutex_init(&ext4_li_mtx);
- 
- 	/* Build-time check for flags consistency */
- 	ext4_check_flag_values();
--- 
-2.22.0
+Hmm... that's really surprising.  At this point, the only thing I can
+suggest is to try using blktrace to see what's going on at the block
+layer when the I/O's and discard requests are being submitted.  If
+there are no dirty blocks in the page cache, I don't see how
+data=ordered vs data=writeback would make a difference to how mount -o
+discard processing would take place.
 
+Cheers,
+
+					- Ted
