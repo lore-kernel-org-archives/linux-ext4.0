@@ -2,185 +2,84 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 043F5C433DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Dec 2020 01:50:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CFDEC433DB
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Dec 2020 23:56:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AF22322273
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Dec 2020 01:50:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CA0BD2070E
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Dec 2020 23:56:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729106AbgLYBuS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Dec 2020 20:50:18 -0500
-Received: from szxga04-in.huawei.com ([45.249.212.190]:9649 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726760AbgLYBuS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Dec 2020 20:50:18 -0500
-Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.60])
-        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4D28xH0q1sz15jLQ;
-        Fri, 25 Dec 2020 09:48:51 +0800 (CST)
-Received: from [127.0.0.1] (10.174.176.238) by DGGEMS406-HUB.china.huawei.com
- (10.3.19.206) with Microsoft SMTP Server id 14.3.498.0; Fri, 25 Dec 2020
- 09:49:28 +0800
-Subject: Re: [PATCH] e2fsck: Avoid changes on recovery flags when
- jbd2_journal_recover() failed
-To:     Haotian Li <lihaotian9@huawei.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>,
-        harshad shirwadkar <harshadshirwadkar@gmail.com>
-CC:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linfeilong <linfeilong@huawei.com>, <liangyun2@huawei.com>
-References: <1bb3c556-4635-061b-c2dc-df10c15e6398@huawei.com>
- <CAD+ocbxAyyFqoD6AYQVjQyqFzZde3+QOnUhC-VikAq4A3_t8JA@mail.gmail.com>
- <3e3c18f6-9f45-da04-9e81-ebf1ae16747e@huawei.com>
- <CAD+ocbz=mp8k2Ruqiagq7ZDfhGui29X8Wz-_7698zaghzH4BXA@mail.gmail.com>
- <20201214202701.GI575698@mit.edu>
- <1384512f-9c8b-d8d7-cb38-824a76b742fc@huawei.com>
-From:   Zhiqiang Liu <liuzhiqiang26@huawei.com>
-Message-ID: <52e7ad7b-0411-8b6d-35f9-696f9dd75c31@huawei.com>
-Date:   Fri, 25 Dec 2020 09:49:26 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
- Thunderbird/68.2.2
+        id S1725980AbgLZXzo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Dec 2020 18:55:44 -0500
+Received: from mga18.intel.com ([134.134.136.126]:49842 "EHLO mga18.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725963AbgLZXzn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 26 Dec 2020 18:55:43 -0500
+IronPort-SDR: sEVpXbpmnePxYDD1CViCoP5umSVyihDbOU2wUMpDesLBKA7xsYrIHqwri9YPlxwYkdnAZUrfc7
+ Dxclznhs3eGw==
+X-IronPort-AV: E=McAfee;i="6000,8403,9846"; a="163999153"
+X-IronPort-AV: E=Sophos;i="5.78,451,1599548400"; 
+   d="scan'208";a="163999153"
+Received: from orsmga007.jf.intel.com ([10.7.209.58])
+  by orsmga106.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 26 Dec 2020 15:54:59 -0800
+IronPort-SDR: OzOJCPEV1lW3n4K1xsV9/KWSIH1sUj9JB+0Ix0MVDSCye05nQMAsPAbIbFSgvS0HWGQfygr+Va
+ FfMVjwrJdjMw==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.78,451,1599548400"; 
+   d="scan'208";a="384156911"
+Received: from lkp-server02.sh.intel.com (HELO 4242b19f17ef) ([10.239.97.151])
+  by orsmga007.jf.intel.com with ESMTP; 26 Dec 2020 15:54:58 -0800
+Received: from kbuild by 4242b19f17ef with local (Exim 4.92)
+        (envelope-from <lkp@intel.com>)
+        id 1ktJOj-0002DO-Np; Sat, 26 Dec 2020 23:54:57 +0000
+Date:   Sun, 27 Dec 2020 07:54:02 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Chengguang Xu <cgxu519@mykernel.net>, jack@suse.com
+Cc:     kbuild-all@lists.01.org, linux-ext4@vger.kernel.org,
+        Chengguang Xu <cgxu519@mykernel.net>
+Subject: [RFC PATCH] ext2: ext2_page_mkwrite() can be static
+Message-ID: <20201226235402.GA43122@75b6b98162fe>
+References: <20201218132757.279685-1-cgxu519@mykernel.net>
 MIME-Version: 1.0
-In-Reply-To: <1384512f-9c8b-d8d7-cb38-824a76b742fc@huawei.com>
-Content-Type: text/plain; charset="gbk"
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.174.176.238]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201218132757.279685-1-cgxu519@mykernel.net>
+X-Patchwork-Hint: ignore
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-friendly ping...
 
-On 2020/12/15 15:43, Haotian Li wrote:
-> Thanks for your review. I agree with you that it's more important
-> to understand the errors found by e2fsck. we'll decribe the case
-> below about this problem.
-> 
-> The probelm we find actually in a remote storage case. It means
-> e2fsck's read or write may fail because of the network packet loss.
-> At first time, some packet loss errors happen during e2fsck's journal
-> recovery (using fsck -a), then recover failed. At second time, we
-> fix the network problem and run e2fsck again, but it still has errors
-> when we try to mount. Then we set jsb->s_start journal flags and retry
-> e2fsck, the problem is fixed. So we suspect something wrong on e2fsck's
-> journal recovery, probably the bug we've described on the patch.
-> 
-> Certainly, directly exit is not a good way to fix this problem.
-> just like what Harshad said, we need tell user what happen and listen
-> user's decision, continue e2fsck or not. If we want to safely use
-> e2fsck without human intervention (using fsck -a), I wonder if we need
-> provide a safe mechanism to complate the fast check but avoid changes
-> on journal or something else which may be fixed in feature (such
-> as jsb->s_start flag)?
-> 
-> Thanks
-> Haotian
-> 
-> ÔÚ 2020/12/15 4:27, Theodore Y. Ts'o Ð´µÀ:
->> On Mon, Dec 14, 2020 at 10:44:29AM -0800, harshad shirwadkar wrote:
->>> Hi Haotian,
->>>
->>> Yeah perhaps these are the only recoverable errors. I also think that
->>> we can't surely say that these errors are recoverable always. That's
->>> because in some setups, these errors may still be unrecoverable (for
->>> example, if the machine is running under low memory). I still feel
->>> that we should ask the user about whether they want to continue or
->>> not. The reason is that firstly if we don't allow running e2fsck in
->>> these cases, I wonder what would the user do with their file system -
->>> they can't mount / can't run fsck, right? Secondly, not doing that
->>> would be a regression. I wonder if some setups would have chosen to
->>> ignore journal recovery if there are errors during journal recovery
->>> and with this fix they may start seeing that their file systems aren't
->>> getting repaired.
->>
->> It may very well be that there are corrupted file system structures
->> that could lead to ENOMEM.  If so, I'd consider that someone we should
->> be explicitly checking for in e2fsck, and it's actually relatively
->> unlikely in the jbd2 recovery code, since that's fairly straight
->> forward --- except I'd be concerned about potential cases in your Fast
->> Commit code, since there's quite a bit more complexity when parsing
->> the fast commit journal.
->>
->> This isn't a new concern; we've already talked a about the fact the
->> fast commit needs to have a lot more sanity checks to look for
->> maliciously --- or syzbot generated, which may be the same thing :-)
->> --- inconsistent fields causing the e2fsck reply code to behave in
->> unexpected way, which might include trying to allocate insane amounts
->> of memory, array buffer overruns, etc.
->>
->> But assuming that ENOMEM is always due to operational concerns, as
->> opposed to file system corruption, may not always be a safe
->> assumption.
->>
->> Something else to consider is from the perspective of a naive system
->> administrator, if there is an bad media sector in the journal, simply
->> always aborting the e2fsck run may not allow them an easy way to
->> recover.  Simply ignoring the journal and allowing the next write to
->> occur, at which point the HDD or SSD will redirect the write to a bad
->> sector spare spool, will allow for an automatic recovery.  Simply
->> always causing e2fsck to fail, would actually result in a worse
->> outcome in this particular case.
->>
->> (This is especially true for a mobile device, where the owner is not
->> likely to have access to the serial console to manually run e2fsck,
->> and where if they can't automatically recover, they will have to take
->> their phone to the local cell phone carrier store for repairs ---
->> which is *not* something that a cellular provider will enjoy, and they
->> will tend to choose other cell phone models to feature as
->> supported/featured devices.  So an increased number of failures which
->> cann't be automatically recovered cause the carrier to choose to
->> feature, say, a Xiaomi phone over a ZTE phone.)
->>
->>> I'm wondering if you saw any a situation in your setup where exiting
->>> e2fsck helped? If possible, could you share what kind of errors were
->>> seen in journal recovery and what was the expected behavior? Maybe
->>> that would help us decide on the right behavior.
->>
->> Seconded; I think we should try to understand why it is that e2fsck is
->> failing with these sorts of errors.  It may be that there are better
->> ways of solving the high-level problem.
->>
->> For example, the new libext2fs bitmap backends were something that I
->> added because when running a large number of e2fsck processes in
->> parallel on a server machine with dozens of HDD spindles was causing
->> e2fsck processes to run slowly due to memory contention.  We fixed it
->> by making e2fsck more memory efficient, by improving the bitmap
->> implementations --- but if that hadn't been sufficient, I had also
->> considered adding support to make /sbin/fsck "smarter" by limiting the
->> number of fsck.XXX processes that would get started simultaneously,
->> since that could actually cause the file system check to run faster by
->> reducing memory thrashing.  (The trick would have been how to make
->> fsck smart enough to automatically tune the number of parallel fsck
->> processes to allow, since asking the system administrator to manually
->> tune the max number of processes would be annoying to the sysadmin,
->> and would mean that the feature would never get used outside of $WORK
->> in practice.)
->>
->> So is the actual underlying problem that e2fsck is running out of
->> memory?  If so, is it because there simply isn't enough physical
->> memory available?  Is it being run in a cgroup container which is too
->> small?  Or is it because too many file systems are being checked in
->> parallel at the same time?  
->>
->> Or is it I/O errors that you are concerned with?  And how do you know
->> that they are not permanent errors; is thie caused by something like
->> fibre channel connections being flaky?
->>
->> Or is this a hypotethical worry, as opposed to something which is
->> causing operational problems right now?
->>
->> Cheers,
->>
->> 					- Ted
->> 					
->> .
->>
-> 
-> .
-> 
+Reported-by: kernel test robot <lkp@intel.com>
+Signed-off-by: kernel test robot <lkp@intel.com>
+---
+ file.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index a34119415ef16d..4a5dbf349f6e13 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -30,7 +30,7 @@
+ #include "xattr.h"
+ #include "acl.h"
+ 
+-vm_fault_t ext2_page_mkwrite(struct vm_fault *vmf)
++static vm_fault_t ext2_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	struct inode *inode = file_inode(vma->vm_file);
+@@ -47,7 +47,7 @@ vm_fault_t ext2_page_mkwrite(struct vm_fault *vmf)
+ 	return block_page_mkwrite_return(err);
+ }
+ 
+-const struct vm_operations_struct ext2_vm_ops = {
++static const struct vm_operations_struct ext2_vm_ops = {
+ 	.fault		= filemap_fault,
+ 	.map_pages	= filemap_map_pages,
+ 	.page_mkwrite	= ext2_page_mkwrite,
