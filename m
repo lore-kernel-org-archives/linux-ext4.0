@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-14.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 104E2C43332
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 18:56:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00369C433DB
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 19:13:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D2A65221F8
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 18:56:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CACAE229EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 19:13:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728867AbgL1S4J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Dec 2020 13:56:09 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39472 "EHLO mail.kernel.org"
+        id S1729050AbgL1TN5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Dec 2020 14:13:57 -0500
+Received: from mail.kernel.org ([198.145.29.99]:41780 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728860AbgL1S4I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 28 Dec 2020 13:56:08 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 26B51221F8;
-        Mon, 28 Dec 2020 18:55:28 +0000 (UTC)
+        id S1729000AbgL1TN4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 28 Dec 2020 14:13:56 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 328CF229EF;
+        Mon, 28 Dec 2020 19:13:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609181728;
-        bh=VkM+zALiqlg97TIjo+lgwe+6aK90+NNjU4+Z9i2Ja24=;
+        s=k20201202; t=1609182796;
+        bh=WfRrNEImpr0j+Oo7HcTLI/gAY4EckaLzvRW0Nnzz9QA=;
         h=From:To:Cc:Subject:Date:From;
-        b=ESLnjXJ1nWfg071HzMKi/VfMc46fxKf9sg+yrbZG3jQShKB2zf8GvycxGjG9U0Wq0
-         zxZ/M3JAGElSFaoJ3DvCZhYO8QqQzYTFYSIpwnTG7D4XPRncnVmEjney2iv0O4MWbp
-         5ex621LfQTUa4CnDtpFtITCIexEo2MIA7qCcTD4pZU9S+r+vro3DysR3L7bAYy4jYp
-         Ecn8zRekNnyoQY7zRxZu0drNqbMSKb+cv9C5BQnKrYQdEy/sW1SWWyK4uqDgQtzFNz
-         DDRxrxOGQe6cwRBmMnWrp41pfs8t1krRUDkAWK0xaDYjiWLZXDvWumXu6XsfETJQZ5
-         N+xvAYvaKrGPQ==
+        b=QOEccFRDvvHr/4eKSIAJZC9fjOwN3vBNabeHqiWacoH3tyHdSDbB8u4lpQ+8ivZxl
+         Vj85wtNi/mrufL/iKzCrKR1/nEgU9SrebR++4bzxFl2/Mshw+ScfXbUGolntZpLcZE
+         zR/pJJuYEA50Ka0SdVTXsXN6PD2pSUJF8c7MYQoQhutE/MoeyIxxhKk6gUyxpWeFUi
+         +0bbHBksTbZrbahMx4nfKbVwhjK/ZpuA+wCDeiY7tX1IQ55bIU4t4Mgo21/1nR8+sT
+         8+BUv+NXhmRp7IYFdAl2VBy8p/RCY7xctzJSOrcD5z4ydBVzm8Z0p4lpURPSIy4ONa
+         Ecy4xLRIL/voA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     stable@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org
-Subject: [PATCH 5.4 0/4] fscrypt: prevent creating duplicate encrypted filenames
-Date:   Mon, 28 Dec 2020 10:54:29 -0800
-Message-Id: <20201228185433.61129-1-ebiggers@kernel.org>
+Subject: [PATCH 4.19 0/4] fscrypt: prevent creating duplicate encrypted filenames
+Date:   Mon, 28 Dec 2020 11:12:07 -0800
+Message-Id: <20201228191211.138300-1-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.29.2
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -46,9 +46,8 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Backport four commits from v5.11-rc1.  I resolved a conflict in the
-first one.  The rest are clean cherry-picks which didn't get picked up
-yet because they depend on the first one.
+Backport four commits from v5.11-rc1.  I resolved conflicts in the first
+two.
 
 Eric Biggers (4):
   fscrypt: add fscrypt_is_nokey_name()
@@ -56,12 +55,13 @@ Eric Biggers (4):
   f2fs: prevent creating duplicate encrypted filenames
   ubifs: prevent creating duplicate encrypted filenames
 
- fs/crypto/hooks.c       | 10 +++++-----
- fs/ext4/namei.c         |  3 +++
- fs/f2fs/f2fs.h          |  2 ++
- fs/ubifs/dir.c          | 17 +++++++++++++----
- include/linux/fscrypt.h | 34 ++++++++++++++++++++++++++++++++++
- 5 files changed, 57 insertions(+), 9 deletions(-)
+ fs/crypto/hooks.c               | 10 +++++-----
+ fs/ext4/namei.c                 |  3 +++
+ fs/f2fs/f2fs.h                  |  2 ++
+ fs/ubifs/dir.c                  | 17 +++++++++++++----
+ include/linux/fscrypt_notsupp.h |  5 +++++
+ include/linux/fscrypt_supp.h    | 29 +++++++++++++++++++++++++++++
+ 6 files changed, 57 insertions(+), 9 deletions(-)
 
 -- 
 2.29.2
