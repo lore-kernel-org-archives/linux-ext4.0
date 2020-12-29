@@ -2,86 +2,148 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D66FEC43332
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 19:14:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B1EEC433E0
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Dec 2020 05:42:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A45B5229EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Dec 2020 19:14:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F1D7B208D5
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Dec 2020 05:42:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729090AbgL1TOA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Dec 2020 14:14:00 -0500
-Received: from mail.kernel.org ([198.145.29.99]:41798 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729000AbgL1TN5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 28 Dec 2020 14:13:57 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 3A51022B2C;
-        Mon, 28 Dec 2020 19:13:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609182797;
-        bh=IXmvQye9ZM3vzPLg/kY4jseJxfvpVBcbyPuNjzHTWF4=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jQya9WijPGAu5QKp6aRvs3aDB653D8Hv76AV5phKUMDyWFMiaAg4MHTwjj1RBt+7M
-         iyq/ZgVltry9M+5t2oZs30wMF/G6NKjpDSCP1XT4ZmTnB067VauLZvLoC91sIZm7iw
-         rkxpkiOCBwKY6rs/hwNhLjIlse4VYM8/FyBwuFDsCrFl3caRxhXwwvflQNIoNXRn5N
-         ZDtjg/qlyXGK7W8/kndpbTOxYKbUJvmR7QFeuUdu+YQ1SZCDndIiP2EQkHPrLdN9kJ
-         gfuDSlv09IpTCUmUEzasmBHTocNpQCUBmrVFqWHIx7yE7hUOJk8jOcu73YMA8+60hO
-         KxlKk0BLmhKuA==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     stable@vger.kernel.org
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org
-Subject: [PATCH 4.19 3/4] f2fs: prevent creating duplicate encrypted filenames
-Date:   Mon, 28 Dec 2020 11:12:10 -0800
-Message-Id: <20201228191211.138300-4-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.29.2
-In-Reply-To: <20201228191211.138300-1-ebiggers@kernel.org>
-References: <20201228191211.138300-1-ebiggers@kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1726230AbgL2Fmb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Dec 2020 00:42:31 -0500
+Received: from mailout2.samsung.com ([203.254.224.25]:45631 "EHLO
+        mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726021AbgL2Fma (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Dec 2020 00:42:30 -0500
+Received: from epcas2p2.samsung.com (unknown [182.195.41.54])
+        by mailout2.samsung.com (KnoxPortal) with ESMTP id 20201229054147epoutp02b2048434e4a3ca8421ece7a36fbe78e8~VGYagWBT22148621486epoutp02i
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Dec 2020 05:41:47 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20201229054147epoutp02b2048434e4a3ca8421ece7a36fbe78e8~VGYagWBT22148621486epoutp02i
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+        s=mail20170921; t=1609220507;
+        bh=F60Tan2Ti2JQl/RzJqZjufAhnZmqQ208tHddu5p0upE=;
+        h=Subject:Reply-To:From:To:CC:Date:References:From;
+        b=iXr+M5C5LNwMUu3j2XjopMV/Ft/qaq5EkRLEfrWBg/pC3rTL9HCpSLZ+Q7R16A6nV
+         PfmBwz4N6bI9SDs1czhsV/Wb6Yz34f4uUa2Hy1vVumsRhLGYoc9BkZSUk38ZEjIg8+
+         E51S7jT31uan6UrxB+dKsjNLfBN8aMMcpwpdWPCY=
+Received: from epsnrtp2.localdomain (unknown [182.195.42.163]) by
+        epcas2p3.samsung.com (KnoxPortal) with ESMTP id
+        20201229054147epcas2p39a2b8ec278db867530cbb229919831cd~VGYaVkqXm1979419794epcas2p3U;
+        Tue, 29 Dec 2020 05:41:47 +0000 (GMT)
+Received: from epsmges2p3.samsung.com (unknown [182.195.40.188]) by
+        epsnrtp2.localdomain (Postfix) with ESMTP id 4D4jw940zxz4x9Pp; Tue, 29 Dec
+        2020 05:41:45 +0000 (GMT)
+X-AuditID: b6c32a47-b97ff7000000148e-8a-5feac1979daa
+Received: from epcas2p3.samsung.com ( [182.195.41.55]) by
+        epsmges2p3.samsung.com (Symantec Messaging Gateway) with SMTP id
+        7C.EF.05262.791CAEF5; Tue, 29 Dec 2020 14:41:43 +0900 (KST)
+Mime-Version: 1.0
+Subject: Re: discard and data=writeback
+Reply-To: daejun7.park@samsung.com
+Sender: Daejun Park <daejun7.park@samsung.com>
+From:   Daejun Park <daejun7.park@samsung.com>
+To:     "mcroce@linux.microsoft.com" <mcroce@linux.microsoft.com>,
+        "tytso@mit.edu" <tytso@mit.edu>
+CC:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+X-Priority: 3
+X-Content-Kind-Code: NORMAL
+X-CPGS-Detection: blocking_info_exchange
+X-Drm-Type: N,general
+X-Msg-Generator: Mail
+X-Msg-Type: PERSONAL
+X-Reply-Demand: N
+Message-ID: <20201229054143epcms2p15ae3cce43bb3c503adf94528f354ba78@epcms2p1>
+Date:   Tue, 29 Dec 2020 14:41:43 +0900
+X-CMS-MailID: 20201229054143epcms2p15ae3cce43bb3c503adf94528f354ba78
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+X-Sendblock-Type: AUTO_CONFIDENTIAL
+CMS-TYPE: 102P
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFnrKKsWRmVeSWpSXmKPExsWy7bCmue70g6/iDeZtMLeYOe8Om8XFX/MZ
+        LVp7frI7MHv82n6UyaPpzFFmj8+b5AKYo3JsMlITU1KLFFLzkvNTMvPSbZW8g+Od403NDAx1
+        DS0tzJUU8hJzU22VXHwCdN0yc4AWKSmUJeaUAoUCEouLlfTtbIryS0tSFTLyi0tslVILUnIK
+        DA0L9IoTc4tL89L1kvNzrQwNDIxMgSoTcjJmLS0pOCZU8erwAbYGxnPcXYwcHBICJhIdlyK6
+        GLk4hAR2MEr8OTaZHSTOKyAo8XeHcBcjJ4ewgLrEtfdv2UFsIQElifUXZ7FDxPUkbj1cwwhi
+        swnoSEw/cR8sLiKQIHHn1lawOLOArcT1q5OYQGwJAV6JGe1PWSBsaYntyyFqJAQ0JH4s62WG
+        sEUlbq6G2AVivz82H6pGRKL13lmoGkGJBz93Q8UlJY7t/gA1v15i651fjCC/SAj0MEoc3nmL
+        FSKhL3GtYyPYYl4BX4kru5vBGlgEVCUuvmtig6hxkTja94MF4mh5ie1v5zCDwoFZQFNi/S59
+        SFApSxy5BVXBJ9Fx+C87zFs75j2BOkFNYt3P9UwQ5TISt+YxQpgeEiffRUMCMFBi669TTBMY
+        FWYhgnkWkq2zELYuYGRexSiWWlCcm55abFRgjByvmxjB6U3LfQfjjLcf9A4xMnEwHmKU4GBW
+        EuFNSHgVL8SbklhZlVqUH19UmpNafIjRFOjficxSosn5wASbVxJvaGpkZmZgaWphamZkoSTO
+        W2zwIF5IID2xJDU7NbUgtQimj4mDU6qBSXmRnV2k8DWlu5+iCr+W+/TOl3826/Mbv9V9xZ7y
+        IpddVKcp6CTeVQ/O5lI6esO3XUu8WeDfl/rf9Z7717CpHb1833naY7MO/djC34Et1buUBH7Y
+        hzle2b9ROLoqXHpP/KeivEqDOftuTfwpsvHF1CtCnexd/NoX2bN/MEk9nOf6LfYUzzbdmvex
+        7VZLmPg/1EmlOTnP1wnW4Dja/erhOtMkzrqslJgVh/p/Z34UNbkbuJdv6+1deX4fjj9zvFq0
+        J1XpaYVC9w9Rpuj5e+4/eNGW9dnB8KrZtBXfxFp+Lcwokb3jIZLXrVO+4MjsTR9sdxl4zl/v
+        vDRA+rCJ3+/yLd82NF202pPAd3TphLQ1SizFGYmGWsxFxYkA332+WvgDAAA=
+DLP-Filter: Pass
+X-CFilter-Loop: Reflected
+X-CMS-RootMailID: 20201229054143epcms2p15ae3cce43bb3c503adf94528f354ba78
+References: <CGME20201229054143epcms2p15ae3cce43bb3c503adf94528f354ba78@epcms2p1>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Hi,
 
-commit bfc2b7e8518999003a61f91c1deb5e88ed77b07d upstream.
+> # dmesg |grep EXT4-fs |tail -1
+> [ 1594.829833] EXT4-fs (nvme0n1p1): mounted filesystem with ordered
+> data mode. Opts: data=ordered,discard
+> # blktrace /dev/nvme0n1 & sleep 1 ; time rm -rf /media/linux-5.10/ ; kill $!
+> [1] 3032
+> 
+> real    0m1.328s
+> user    0m0.063s
+> sys     0m1.231s
+> # === nvme0n1 ===
+>   CPU  0:                    0 events,        0 KiB data
+>   CPU  1:                    0 events,        0 KiB data
+>   CPU  2:                    0 events,        0 KiB data
+>   CPU  3:                 1461 events,       69 KiB data
+>   CPU  4:                    1 events,        1 KiB data
+>   CPU  5:                    0 events,        0 KiB data
+>   CPU  6:                    0 events,        0 KiB data
+>   CPU  7:                    0 events,        0 KiB data
+>   Total:                  1462 events (dropped 0),       69 KiB data
+> 
+> 
+> # dmesg |grep EXT4-fs |tail -1
+> [ 1734.837651] EXT4-fs (nvme0n1p1): mounted filesystem with writeback
+> data mode. Opts: data=writeback,discard
+> # blktrace /dev/nvme0n1 & sleep 1 ; time rm -rf /media/linux-5.10/ ; kill $!
+> [1] 3069
+> 
+> real    1m30.273s
+> user    0m0.139s
+> sys     0m3.084s
+> # === nvme0n1 ===
+>   CPU  0:               133830 events,     6274 KiB data
+>   CPU  1:                21878 events,     1026 KiB data
+>   CPU  2:                46365 events,     2174 KiB data
+>   CPU  3:                98116 events,     4600 KiB data
+>   CPU  4:               290902 events,    13637 KiB data
+>   CPU  5:                10926 events,      513 KiB data
+>   CPU  6:                76861 events,     3603 KiB data
+>   CPU  7:                17855 events,      837 KiB data
+>   Total:                696733 events (dropped 0),    32660 KiB data
+> 
 
-As described in "fscrypt: add fscrypt_is_nokey_name()", it's possible to
-create a duplicate filename in an encrypted directory by creating a file
-concurrently with adding the directory's encryption key.
+In this result, there is few IO in ordered mode.
 
-Fix this bug on f2fs by rejecting no-key dentries in f2fs_add_link().
+As I understand (please correct this if I am wrong), with writeback +
+discard, ext4_issue_discard is called immediately at each rm command.
+However, with ordered mode, ext4_issue_discard is called when end of
+committing a transaction to pace with the corresponding transaction.
+It means, they are not discarded yet.
 
-Note that the weird check for the current task in f2fs_do_add_link()
-seems to make this bug difficult to reproduce on f2fs.
+Even with ordered mode, if sync is called after rm command,
+ext4_issue_discard can be called due to transaction commit.
+So, I think you will get similar results form writeback mode with sync
+command.
 
-Fixes: 9ea97163c6da ("f2fs crypto: add filename encryption for f2fs_add_link")
-Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/r/20201118075609.120337-4-ebiggers@kernel.org
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/f2fs/f2fs.h | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index 53ffa6fe207a3..aacd8e11758ca 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -2857,6 +2857,8 @@ bool f2fs_empty_dir(struct inode *dir);
- 
- static inline int f2fs_add_link(struct dentry *dentry, struct inode *inode)
- {
-+	if (fscrypt_is_nokey_name(dentry))
-+		return -ENOKEY;
- 	return f2fs_do_add_link(d_inode(dentry->d_parent), &dentry->d_name,
- 				inode, inode->i_ino, inode->i_mode);
- }
--- 
-2.29.2
-
+Thanks,
+Daejun
