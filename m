@@ -2,76 +2,83 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EFAF0C433E6
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 Jan 2021 10:19:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DC75C433DB
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Jan 2021 14:02:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B022D20866
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 Jan 2021 10:19:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E319422241
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Jan 2021 14:02:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726487AbhABKT2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 2 Jan 2021 05:19:28 -0500
-Received: from sender2-pp-o92.zoho.com.cn ([163.53.93.251]:25364 "EHLO
-        sender2-pp-o92.zoho.com.cn" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726327AbhABKT1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Jan 2021 05:19:27 -0500
-ARC-Seal: i=1; a=rsa-sha256; t=1609582723; cv=none; 
-        d=zoho.com.cn; s=zohoarc; 
-        b=Ha0ZKwGH6eJCa7nwcZ627WsOVwbqO2z7P1oFjRypBjwDEkspq52h3aBvHUOdTGi6fDWgb63YdZU5ZVBu44wXbl/IasKtbgGXfDWw6dN7pU7wdAIW/L8NbxuvoIbdLI73volldcpo0LmX/eYAcUd6dQ+g1lIJyz3T27MvBWe4TxQ=
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zoho.com.cn; s=zohoarc; 
-        t=1609582723; h=Cc:Date:From:Message-ID:Subject:To; 
-        bh=vBQ8Ol2bVfFyBZ+Z7YjllAF9Pv7KoufdmTTzSUVOt78=; 
-        b=hQJBXZWTJTP24EVV1lQ3Ynp8sKXF3XY/WBoQyKrfaAx7AIfG6BkbWUqFtR4m5IdGJtbEvcC+8Da3asy/dJMvF2iIqbx6CbzeOk/LOW/j4jcO0hNnMW1xHRsEqYHyBhlg8O7yKvNa8BbC5Xg9UqmRiItxTaTbU7MQkepY6n1Kusg=
-ARC-Authentication-Results: i=1; mx.zoho.com.cn;
-        dkim=pass  header.i=mykernel.net;
-        spf=pass  smtp.mailfrom=cgxu519@mykernel.net;
-        dmarc=pass header.from=<cgxu519@mykernel.net> header.from=<cgxu519@mykernel.net>
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; t=1609582723;
-        s=zohomail; d=mykernel.net; i=cgxu519@mykernel.net;
-        h=From:To:Cc:Subject:Date:Message-Id;
-        bh=vBQ8Ol2bVfFyBZ+Z7YjllAF9Pv7KoufdmTTzSUVOt78=;
-        b=Pu50XBELpzY1AIqmhTF+OFgVJJhbq9DQBoRG53cv4kcjPtuadGHYimC6FQOLpcul
-        a94/woOO5KOBuC74oeJj/G9xEz0VNKWu3pAP6nsvA8uAMsrucR68hJ2XBrZEFuTaj35
-        tbKJOYrDaK61Byv/piF99JDJ9TRtzPrnQSvaYIQI=
-Received: from localhost.localdomain (81.71.33.115 [81.71.33.115]) by mx.zoho.com.cn
-        with SMTPS id 1609582721210914.4696080792448; Sat, 2 Jan 2021 18:18:41 +0800 (CST)
-From:   Chengguang Xu <cgxu519@mykernel.net>
-To:     jack@suse.com
-Cc:     linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@mykernel.net>
-Subject: [PATCH] ext2: discard block reservation on last writable file release
-Date:   Sat,  2 Jan 2021 18:18:05 +0800
-Message-Id: <20210102101805.355106-1-cgxu519@mykernel.net>
-X-Mailer: git-send-email 2.18.4
-X-ZohoCNMailClient: External
+        id S1726855AbhADOCd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Jan 2021 09:02:33 -0500
+Received: from mx2.suse.de ([195.135.220.15]:44890 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726328AbhADOCd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Jan 2021 09:02:33 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id BB05AAF2C;
+        Mon,  4 Jan 2021 14:01:51 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 33B651E07FD; Mon,  4 Jan 2021 15:01:51 +0100 (CET)
+Date:   Mon, 4 Jan 2021 15:01:51 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Chengguang Xu <cgxu519@mykernel.net>
+Cc:     jack@suse.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext2: discard block reservation on last writable file
+ release
+Message-ID: <20210104140151.GD4018@quack2.suse.cz>
+References: <20210102101805.355106-1-cgxu519@mykernel.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210102101805.355106-1-cgxu519@mykernel.net>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently reserved blocks are discarded on every writable
-file release, it's not efficient for multiple writer case.
+On Sat 02-01-21 18:18:05, Chengguang Xu wrote:
+> Currently reserved blocks are discarded on every writable
+> file release, it's not efficient for multiple writer case.
+> 
+> Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
 
-Signed-off-by: Chengguang Xu <cgxu519@mykernel.net>
----
- fs/ext2/file.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks for the patch. I agree that in principle something like this is
+desirable but there's a small catch. i_writecount is also elevated from
+vfs_truncate() which does not have inode open. So it can happen that
+->release() gets called, sees inode->i_writecount > 1, but never gets
+called again (and thus reservation is not properly released). So I prefer
+to leave ext2 as is until this gets resolved - especially since ext2 fs
+driver isn't really used on any performance sensitive multi-writer
+workloads AFAIK (ext4 driver is usually used in such cases).
 
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 96044f5dbc0e..9a19d8fe7ffd 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -141,7 +141,7 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
-  */
- static int ext2_release_file (struct inode * inode, struct file * filp)
- {
--	if (filp->f_mode & FMODE_WRITE) {
-+	if (filp->f_mode & FMODE_WRITE && (atomic_read(&inode->i_writecount) == 1)) {
- 		mutex_lock(&EXT2_I(inode)->truncate_mutex);
- 		ext2_discard_reservation(inode);
- 		mutex_unlock(&EXT2_I(inode)->truncate_mutex);
+								Honza
+
+> ---
+>  fs/ext2/file.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 96044f5dbc0e..9a19d8fe7ffd 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -141,7 +141,7 @@ static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
+>   */
+>  static int ext2_release_file (struct inode * inode, struct file * filp)
+>  {
+> -	if (filp->f_mode & FMODE_WRITE) {
+> +	if (filp->f_mode & FMODE_WRITE && (atomic_read(&inode->i_writecount) == 1)) {
+>  		mutex_lock(&EXT2_I(inode)->truncate_mutex);
+>  		ext2_discard_reservation(inode);
+>  		mutex_unlock(&EXT2_I(inode)->truncate_mutex);
+> -- 
+> 2.18.4
+> 
 -- 
-2.18.4
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
