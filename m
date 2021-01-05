@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD498C43381
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A94AC4332E
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE3A622582
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1ED672253A
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727647AbhAEA43 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Jan 2021 19:56:29 -0500
-Received: from mail.kernel.org ([198.145.29.99]:38148 "EHLO mail.kernel.org"
+        id S1727698AbhAEA4a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Jan 2021 19:56:30 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38160 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726329AbhAEA42 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 4 Jan 2021 19:56:28 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CD664225AA;
-        Tue,  5 Jan 2021 00:55:08 +0000 (UTC)
+        id S1727514AbhAEA43 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Jan 2021 19:56:29 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BE7C122955;
+        Tue,  5 Jan 2021 00:55:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609808109;
-        bh=H1ms59/bip1WURh53Z2hT3TghGoA+Y1uZAJZTjqPVbA=;
+        s=k20201202; t=1609808110;
+        bh=SwwC2tQmuzx2ECIC/aYAUe8sOHWx78XkiAxTAUcoLvs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=jT5YHwMUgMCR7wlwaRdowKZM9R6gvPc5q8QsYcKqluLVv9qzVzb5ZLYpj+8BJinTA
-         1tYt5wwFZVp0RDAxpBlc63HhVpNF5Rk3zgXbvdiFBSWfIpLrDX8Mmfq1MVoz9YClb1
-         9Gr2aATxyaLdxZqNOHjdmFblPWbRTyzC/RA158eyh4sD8Aa3guZw/r8EudMGbINKUJ
-         w+1wvYWfRCLiPz4E7Qnid8lt7OG7jDwfbEzObQJGnso821wgCnsJYkDVJxNx555AOD
-         74UKgJtYKhCO2Xw93w+7ZABhUKMlAxqRerT5DGy3IKUeXa5hwHmJYWfpjPMb/kOHAy
-         7Gqk1iDUurBeg==
+        b=Srdu4HxF1Bb9lEnR7JzmGw/pdJjgAOcpxaS4Evh8wreQR3/eN7eUek7cPFXHkcOaX
+         lP184SXS2dHBX1l/m6Xd4qXPeYU4JGmMqZHXpHz/62wMMlOf0dL21hMP0mh4xZFYrV
+         9JXvXG7cNpFUn1xaxZHWtAbrVZdWzyWRe2/n4Mz0NBqC0ZpRVkCsF4zucS4Bgq4luo
+         SMClFaef9S/mS8BcRvOz3HVeAsvDIYQWYC6Gbxjt2fQ65CbGPeOopGXTTzKkT9UQTb
+         l9n/P27mrwnTgHDHwtEkxO2GafO5eYYSKRVI3erirNDRVNH1/EGucH2wSlAOpnUTan
+         rUAdXIJZ1qfcw==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 07/13] fs: correctly document the inode dirty flags
-Date:   Mon,  4 Jan 2021 16:54:46 -0800
-Message-Id: <20210105005452.92521-8-ebiggers@kernel.org>
+Subject: [PATCH 13/13] xfs: implement lazytime_expired
+Date:   Mon,  4 Jan 2021 16:54:52 -0800
+Message-Id: <20210105005452.92521-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210105005452.92521-1-ebiggers@kernel.org>
 References: <20210105005452.92521-1-ebiggers@kernel.org>
@@ -50,53 +50,63 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-The documentation for I_DIRTY_SYNC and I_DIRTY_DATASYNC is a bit
-misleading, and I_DIRTY_TIME isn't documented at all.  Fix this.
+Implement the new ->lazytime_expired method to get notified of lazytime
+timestamp expirations, instead of relying on ->dirty_inode(inode,
+I_DIRTY_SYNC) which is potentially ambiguous.
 
+This fixes a bug where XFS didn't write lazytime timestamps to disk upon
+a sync(), or after 24 hours (dirtytime_expire_interval * 2).  This is
+because it only wrote the timestamps if I_DIRTY_TIME was set in i_state.
+But actually when an inode's timestamps expire without the inode being
+marked I_DIRTY_SYNC first, then ->dirty_inode isn't called until
+__writeback_single_inode() has already cleared I_DIRTY_TIME in i_state.
+
+The new ->lazytime_expired method is unambiguous, so it removes any need
+to check for I_DIRTY_TIME, which avoids this bug.
+
+I've written an xfstest which reproduces this bug.
+
+Fixes: c3b1b13190ae ("xfs: implement the lazytime mount option")
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fs.h | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/xfs/xfs_super.c | 12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index fd47deea7c176..45a0303b2aeb6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2084,8 +2084,8 @@ static inline void kiocb_clone(struct kiocb *kiocb, struct kiocb *kiocb_src,
- /*
-  * Inode state bits.  Protected by inode->i_lock
-  *
-- * Three bits determine the dirty state of the inode, I_DIRTY_SYNC,
-- * I_DIRTY_DATASYNC and I_DIRTY_PAGES.
-+ * Four bits determine the dirty state of the inode: I_DIRTY_SYNC,
-+ * I_DIRTY_DATASYNC, I_DIRTY_PAGES, and I_DIRTY_TIME.
-  *
-  * Four bits define the lifetime of an inode.  Initially, inodes are I_NEW,
-  * until that flag is cleared.  I_WILL_FREE, I_FREEING and I_CLEAR are set at
-@@ -2094,12 +2094,20 @@ static inline void kiocb_clone(struct kiocb *kiocb, struct kiocb *kiocb_src,
-  * Two bits are used for locking and completion notification, I_NEW and I_SYNC.
-  *
-  * I_DIRTY_SYNC		Inode is dirty, but doesn't have to be written on
-- *			fdatasync().  i_atime is the usual cause.
-- * I_DIRTY_DATASYNC	Data-related inode changes pending. We keep track of
-+ *			fdatasync() (unless I_DIRTY_DATASYNC is also set).
-+ *			Timestamp updates are the usual cause.
-+ * I_DIRTY_DATASYNC	Data-related inode changes pending.  We keep track of
-  *			these changes separately from I_DIRTY_SYNC so that we
-  *			don't have to write inode on fdatasync() when only
-- *			mtime has changed in it.
-+ *			e.g. the timestamps have changed.
-  * I_DIRTY_PAGES	Inode has dirty pages.  Inode itself may be clean.
-+ * I_DIRTY_TIME		The inode itself only has dirty timestamps, and the
-+ *			lazytime mount option is enabled.  We keep track of this
-+ *			separately from I_DIRTY_SYNC in order to implement
-+ *			lazytime.  This gets cleared if I_DIRTY_INODE
-+ *			(I_DIRTY_SYNC and/or I_DIRTY_DATASYNC) gets set.  I.e.
-+ *			either I_DIRTY_TIME *or* I_DIRTY_INODE can be set in
-+ *			i_state, but not both.  I_DIRTY_PAGES may still be set.
-  * I_NEW		Serves as both a mutex and completion notification.
-  *			New inodes set I_NEW.  If two processes both create
-  *			the same inode, one of them will release its inode and
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index 813be879a5e51..0b7623907b264 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -666,19 +666,13 @@ xfs_fs_destroy_inode(
+ }
+ 
+ static void
+-xfs_fs_dirty_inode(
+-	struct inode			*inode,
+-	int				flag)
++xfs_fs_lazytime_expired(
++	struct inode			*inode)
+ {
+ 	struct xfs_inode		*ip = XFS_I(inode);
+ 	struct xfs_mount		*mp = ip->i_mount;
+ 	struct xfs_trans		*tp;
+ 
+-	if (!(inode->i_sb->s_flags & SB_LAZYTIME))
+-		return;
+-	if (flag != I_DIRTY_SYNC || !(inode->i_state & I_DIRTY_TIME))
+-		return;
+-
+ 	if (xfs_trans_alloc(mp, &M_RES(mp)->tr_fsyncts, 0, 0, 0, &tp))
+ 		return;
+ 	xfs_ilock(ip, XFS_ILOCK_EXCL);
+@@ -1108,7 +1102,7 @@ xfs_fs_free_cached_objects(
+ static const struct super_operations xfs_super_operations = {
+ 	.alloc_inode		= xfs_fs_alloc_inode,
+ 	.destroy_inode		= xfs_fs_destroy_inode,
+-	.dirty_inode		= xfs_fs_dirty_inode,
++	.lazytime_expired	= xfs_fs_lazytime_expired,
+ 	.drop_inode		= xfs_fs_drop_inode,
+ 	.put_super		= xfs_fs_put_super,
+ 	.sync_fs		= xfs_fs_sync_fs,
 -- 
 2.30.0
 
