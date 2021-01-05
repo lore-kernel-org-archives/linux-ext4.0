@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A8BDC4160E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56B0DC072AB
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F3F972253A
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 421F42253A
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Jan 2021 00:56:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727772AbhAEA4j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Jan 2021 19:56:39 -0500
-Received: from mail.kernel.org ([198.145.29.99]:38154 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726397AbhAEA42 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1727486AbhAEA42 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Mon, 4 Jan 2021 19:56:28 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C5ED0225AC;
-        Tue,  5 Jan 2021 00:55:09 +0000 (UTC)
+Received: from mail.kernel.org ([198.145.29.99]:38144 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726163AbhAEA42 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Jan 2021 19:56:28 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3073022583;
+        Tue,  5 Jan 2021 00:55:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1609808110;
-        bh=3+FH0Che1vvUp1b6v2ElJrJMrgmUrdCi08gAUpQUvaM=;
+        s=k20201202; t=1609808108;
+        bh=WAClBs5Ob3X5/nQlX8DZm6OroHf7WCCbiACDxf5M2ho=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vKszdOoUHBXD4lFIk+ly6Zo/bQh1PREYUNt4Btl8oOXy4yCtVIQkPdYgJp5YWRZ8O
-         7ZVZrhZMUUDLrWnM36P2v8D5hJgH4CCNQdqBrybbQs5udOZJTMAaLWnVmjAylr0cXD
-         Mtvagss0HxuRq9jevJnR6blxmewNJWpnzwYsnqWMdio9/TdmAFNpWoQ6E5ZPbWQJLu
-         NEQ9lR8x5T1AuSXIIzc5SpY9ZbEICahdk95u0GuUrpO7hhx5e9bNxuSCEEu7ggVqfj
-         dDnommsWbX4jY4koZ1KfmXM3BtX/IVnlxdoiM7iNExZyRU/xz4LtTsPaRmecwwm8yX
-         AizzRzc68km7Q==
+        b=C0Ghy59D3T6p16o0qRJhp5hBAinTsVREzKCRuF7Jexv31PEsxUz1Fkxdd/Mof9wSK
+         fyfqBNgrAPiRUcsY3ifcjZVXzeinTyrayvQMhWzDvHJiH2r3CfCYhm3KrNTVDTZnBo
+         bUJR6Loxr7pNTO0yjgTEhy1nARTJGZ8vaOjeEfZyRtTh0e//SbJcw1j7GDewwWhsAW
+         2pKs7GeBbCtgUdPQi6M79OUMkgyGH/n1tVqn9mhaFcMZyePjTyPKcgVDLU1ZshD7dp
+         IbJNbhKZau1h/1qm5RFLnnA4oBezHm6HRZmWBOwaXMBkyuprg1GjTaH1+R65Lyez0x
+         2Wi5IaPeb84wg==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
         Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 10/13] fs: clean up __mark_inode_dirty() a bit
-Date:   Mon,  4 Jan 2021 16:54:49 -0800
-Message-Id: <20210105005452.92521-11-ebiggers@kernel.org>
+Subject: [PATCH 05/13] fs: don't call ->dirty_inode for lazytime timestamp updates
+Date:   Mon,  4 Jan 2021 16:54:44 -0800
+Message-Id: <20210105005452.92521-6-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210105005452.92521-1-ebiggers@kernel.org>
 References: <20210105005452.92521-1-ebiggers@kernel.org>
@@ -50,108 +50,107 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Improve some comments, and don't bother checking for the I_DIRTY_TIME
-flag in the case where we just cleared it.
+There is no need to call ->dirty_inode for lazytime timestamp updates
+(i.e. for __mark_inode_dirty(I_DIRTY_TIME)), since by the definition of
+lazytime, filesystems must ignore these updates.  Filesystems only need
+to care about the updated timestamps when they expire.
 
-Also, warn if I_DIRTY_TIME and I_DIRTY_PAGES are passed to
-__mark_inode_dirty() at the same time, as this case isn't handled.
+Therefore, only call ->dirty_inode when I_DIRTY_INODE is set.
+
+Based on a patch from Christoph Hellwig:
+https://lore.kernel.org/r/20200325122825.1086872-4-hch@lst.de
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/fs-writeback.c | 49 +++++++++++++++++++++++++++++------------------
- 1 file changed, 30 insertions(+), 19 deletions(-)
+ fs/ext4/inode.c   | 12 +-----------
+ fs/f2fs/super.c   |  3 ---
+ fs/fs-writeback.c |  6 +++---
+ fs/gfs2/super.c   |  2 --
+ 4 files changed, 4 insertions(+), 19 deletions(-)
 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index 3f5a589399afe..ed76112bd067b 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -2227,23 +2227,24 @@ static noinline void block_dump___mark_inode_dirty(struct inode *inode)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 27946882d4ce4..4cc6c7834312f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5933,26 +5933,16 @@ int __ext4_mark_inode_dirty(handle_t *handle, struct inode *inode,
+  * If the inode is marked synchronous, we don't honour that here - doing
+  * so would cause a commit on atime updates, which we don't bother doing.
+  * We handle synchronous inodes at the highest possible level.
+- *
+- * If only the I_DIRTY_TIME flag is set, we can skip everything.  If
+- * I_DIRTY_TIME and I_DIRTY_SYNC is set, the only inode fields we need
+- * to copy into the on-disk inode structure are the timestamp files.
+  */
+ void ext4_dirty_inode(struct inode *inode, int flags)
+ {
+ 	handle_t *handle;
+ 
+-	if (flags == I_DIRTY_TIME)
+-		return;
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
+ 	if (IS_ERR(handle))
+-		goto out;
+-
++		return;
+ 	ext4_mark_inode_dirty(handle, inode);
+-
+ 	ext4_journal_stop(handle);
+-out:
+-	return;
  }
  
- /**
-- * __mark_inode_dirty -	internal function
-+ * __mark_inode_dirty -	internal function to mark an inode dirty
-  *
-  * @inode: inode to mark
-- * @flags: what kind of dirty (i.e. I_DIRTY_SYNC)
-+ * @flags: what kind of dirty, e.g. I_DIRTY_SYNC.  This can be a combination of
-+ *	   multiple I_DIRTY_* flags, except that I_DIRTY_TIME can't be combined
-+ *	   with I_DIRTY_PAGES.
-  *
-- * Mark an inode as dirty. Callers should use mark_inode_dirty or
-- * mark_inode_dirty_sync.
-+ * Mark an inode as dirty.  We notify the filesystem, then update the inode's
-+ * dirty flags.  Then, if needed we add the inode to the appropriate dirty list.
-  *
-- * Put the inode on the super block's dirty list.
-+ * Most callers should use mark_inode_dirty() or mark_inode_dirty_sync()
-+ * instead of calling this directly.
-  *
-- * CAREFUL! We mark it dirty unconditionally, but move it onto the
-- * dirty list only if it is hashed or if it refers to a blockdev.
-- * If it was not hashed, it will never be added to the dirty list
-- * even if it is later hashed, as it will have been marked dirty already.
-+ * CAREFUL!  We only add the inode to the dirty list if it is hashed or if it
-+ * refers to a blockdev.  Unhashed inodes will never be added to the dirty list
-+ * even if they are later hashed, as they will have been marked dirty already.
-  *
-- * In short, make sure you hash any inodes _before_ you start marking
-- * them dirty.
-+ * In short, ensure you hash any inodes _before_ you start marking them dirty.
-  *
-  * Note that for blockdevs, inode->dirtied_when represents the dirtying time of
-  * the block-special inode (/dev/hda1) itself.  And the ->dirtied_when field of
-@@ -2255,25 +2256,34 @@ static noinline void block_dump___mark_inode_dirty(struct inode *inode)
- void __mark_inode_dirty(struct inode *inode, int flags)
- {
- 	struct super_block *sb = inode->i_sb;
--	int dirtytime;
-+	int dirtytime = 0;
+ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index b4a07fe62d1a5..cc98dc49f4a26 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1196,9 +1196,6 @@ static void f2fs_dirty_inode(struct inode *inode, int flags)
+ 			inode->i_ino == F2FS_META_INO(sbi))
+ 		return;
  
- 	trace_writeback_mark_inode_dirty(inode, flags);
+-	if (flags == I_DIRTY_TIME)
+-		return;
+-
+ 	if (is_inode_flag_set(inode, FI_AUTO_RECOVER))
+ 		clear_inode_flag(inode, FI_AUTO_RECOVER);
  
--	/*
--	 * Don't do this for I_DIRTY_PAGES - that doesn't actually
--	 * dirty the inode itself
--	 */
- 	if (flags & I_DIRTY_INODE) {
-+		/*
-+		 * Notify the filesystem about the inode being dirtied, so that
-+		 * (if needed) it can update on-disk fields and journal the
-+		 * inode.  This is only needed when the inode itself is being
-+		 * dirtied now.  I.e. it's only needed for I_DIRTY_INODE, not
-+		 * for just I_DIRTY_PAGES or I_DIRTY_TIME.
-+		 */
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 081e335cdee47..e3347fd6eb13a 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -2264,16 +2264,16 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+ 	 * Don't do this for I_DIRTY_PAGES - that doesn't actually
+ 	 * dirty the inode itself
+ 	 */
+-	if (flags & (I_DIRTY_INODE | I_DIRTY_TIME)) {
++	if (flags & I_DIRTY_INODE) {
  		trace_writeback_dirty_inode_start(inode, flags);
--
- 		if (sb->s_op->dirty_inode)
- 			sb->s_op->dirty_inode(inode, flags & I_DIRTY_INODE);
--
- 		trace_writeback_dirty_inode(inode, flags);
  
-+		/* I_DIRTY_INODE supersedes I_DIRTY_TIME. */
+ 		if (sb->s_op->dirty_inode)
+ 			sb->s_op->dirty_inode(inode, flags);
+ 
+ 		trace_writeback_dirty_inode(inode, flags);
+-	}
+-	if (flags & I_DIRTY_INODE)
++
  		flags &= ~I_DIRTY_TIME;
-+	} else {
-+		/*
-+		 * Else it's either I_DIRTY_PAGES, I_DIRTY_TIME, or nothing.
-+		 * (We don't support setting both I_DIRTY_PAGES and I_DIRTY_TIME
-+		 * in one call to __mark_inode_dirty().)
-+		 */
-+		dirtytime = flags & I_DIRTY_TIME;
-+		WARN_ON_ONCE(dirtytime && (flags != I_DIRTY_TIME));
- 	}
--	dirtytime = flags & I_DIRTY_TIME;
++	}
+ 	dirtytime = flags & I_DIRTY_TIME;
  
  	/*
- 	 * Paired with smp_mb() in __writeback_single_inode() for the
-@@ -2296,6 +2306,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
+diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
+index 2f56acc41c049..042b94288ff11 100644
+--- a/fs/gfs2/super.c
++++ b/fs/gfs2/super.c
+@@ -562,8 +562,6 @@ static void gfs2_dirty_inode(struct inode *inode, int flags)
+ 	int need_endtrans = 0;
+ 	int ret;
  
- 		inode_attach_wb(inode, NULL);
- 
-+		/* I_DIRTY_INODE supersedes I_DIRTY_TIME. */
- 		if (flags & I_DIRTY_INODE)
- 			inode->i_state &= ~I_DIRTY_TIME;
- 		inode->i_state |= flags;
+-	if (!(flags & I_DIRTY_INODE))
+-		return;
+ 	if (unlikely(gfs2_withdrawn(sdp)))
+ 		return;
+ 	if (!gfs2_glock_is_locked_by_me(ip->i_gl)) {
 -- 
 2.30.0
 
