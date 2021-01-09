@@ -2,112 +2,124 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C84C6C433E0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0CC8C433E9
 	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:00:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9F3BB238E8
+	by mail.kernel.org (Postfix) with ESMTP id B65B323A60
 	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:00:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726463AbhAIIAY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 9 Jan 2021 03:00:24 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40942 "EHLO mail.kernel.org"
+        id S1726671AbhAIIA0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 9 Jan 2021 03:00:26 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40968 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725847AbhAIIAY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 9 Jan 2021 03:00:24 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A4A01238E8;
-        Sat,  9 Jan 2021 07:59:43 +0000 (UTC)
+        id S1725847AbhAIIAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 9 Jan 2021 03:00:25 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id A956023A60;
+        Sat,  9 Jan 2021 07:59:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610179183;
-        bh=ACg45O7fwl+jjbSXOKOgmB8S7GJDMNFMcVb39xwXyqc=;
-        h=From:To:Cc:Subject:Date:From;
-        b=FUWwrKFxWbAldpKEGaeqArDF0GOisvWQyMA+9vwJkP4Bic2Uq485vNk3j8Xmtjzlu
-         4w/JNw6y22kZM6y+CvSS2vYHcsLC/LJ/N3mrIpb2Q0SsiAvgn/0KYmchTVoOf6aJAq
-         8vjVL2EEds2Iu/85xLzmecooyeyTMqUVpiZ/381FY3dgeNMe2M1GbuYGZp6wa0eIx6
-         /e8aOB7P2P1kY2v/z4a32ovGbtqrFPUp1xeZ/NvOuu+tbD6FOvKAC920ny3Z1ky7mV
-         RKnk6udMZy//aHEjWPnP6Lze4YLCscFq1/SlorEcOsou3Pl0TSpc+j2oHB51vPRerl
-         BcgHHVXXR3CVw==
+        s=k20201202; t=1610179184;
+        bh=UAs5pZYbnHEbB32I8gYpVHYl5ps5DskVBX1/zJ7HEQk=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=DoT+M+0x7oiHSACHnRZzbGNiIWW5upkwVfH5++ixOztpM5YOvybegB3g8nXEEicEj
+         hl9mqWdNzhULeIjdHYsBv+IIOy70YPKx+OnBYbIlw3VzIfSrtA9C5muhIc968rY8KL
+         psdI6/oG5oFnHsmSOi3lhhQEnSxSHHuKFZ2BFmrDsb/dQN8dkJXZjy2zvQwHBiyFzs
+         j8DRYBIyioPgHaWnWsWd5nzp8XorZgiGmYdvIabwlvn12r8nXbaYTj/qwxn2S2Hpgd
+         PSWWYIA2IDr1UMOe5W3Z1b80Sp9fXxraUFqynwAjlDyfYatd1Rdx8WS8DbSy+rjXRV
+         jReLDxw0TkFXw==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v2 00/12] lazytime fix and cleanups
-Date:   Fri,  8 Jan 2021 23:58:51 -0800
-Message-Id: <20210109075903.208222-1-ebiggers@kernel.org>
+Subject: [PATCH v2 03/12] fs: only specify I_DIRTY_TIME when needed in generic_update_time()
+Date:   Fri,  8 Jan 2021 23:58:54 -0800
+Message-Id: <20210109075903.208222-4-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20210109075903.208222-1-ebiggers@kernel.org>
+References: <20210109075903.208222-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+From: Eric Biggers <ebiggers@google.com>
 
-Patch 1 fixes a bug in how __writeback_single_inode() handles lazytime
-expirations.  I originally reported this last year
-(https://lore.kernel.org/r/20200306004555.GB225345@gmail.com) because it
-causes the FS_IOC_REMOVE_ENCRYPTION_KEY ioctl to not work properly, as
-the bug causes inodes to remain dirty after a sync.
+generic_update_time() always passes I_DIRTY_TIME to
+__mark_inode_dirty(), which doesn't really make sense because (a)
+generic_update_time() might be asked to do only an i_version update, not
+also a timestamps update; and (b) I_DIRTY_TIME is only supposed to be
+set in i_state if the filesystem has lazytime enabled, so using it
+unconditionally in generic_update_time() is inconsistent.
 
-It also turns out that lazytime on XFS is partially broken because it
-doesn't actually write timestamps to disk after a sync() or after
-dirtytime_expire_interval.  This is fixed by the same fix.
+As a result there is a weird edge case where if only an i_version update
+was requested (not also a timestamps update) but it is no longer needed
+(i.e. inode_maybe_inc_iversion() returns false), then I_DIRTY_TIME will
+be set in i_state even if the filesystem isn't mounted with lazytime.
 
-This supersedes previously proposed fixes, including
-https://lore.kernel.org/r/20200307020043.60118-1-tytso@mit.edu and
-https://lore.kernel.org/r/20200325122825.1086872-3-hch@lst.de from last
-year (which had some issues and didn't fix the XFS bug), and v1 of this
-patchset which took a different approach
-(https://lore.kernel.org/r/20210105005452.92521-1-ebiggers@kernel.org).
+Fix this by only passing I_DIRTY_TIME to __mark_inode_dirty() if the
+timestamps were updated and the filesystem has lazytime enabled.
 
-Patches 2-12 then clean up various things related to lazytime and
-writeback, such as clarifying the semantics of ->dirty_inode() and the
-inode dirty flags, and improving comments.  Most of these patches could
-be applied independently if needed.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/inode.c | 38 ++++++++++++++++++++------------------
+ 1 file changed, 20 insertions(+), 18 deletions(-)
 
-This patchset applies to v5.11-rc2.
-
-Changed since v1:
-  - Switched to the fix suggested by Jan Kara, and dropped the
-    patches which introduced ->lazytime_expired().
-  - Fixed bugs in the fat and ext4 patches.
-  - Added patch "fs: improve comments for writeback_single_inode()".
-  - Reordered the patches a bit.
-  - Added Reviewed-by's.
-
-Eric Biggers (12):
-  fs: fix lazytime expiration handling in __writeback_single_inode()
-  fs: correctly document the inode dirty flags
-  fs: only specify I_DIRTY_TIME when needed in generic_update_time()
-  fat: only specify I_DIRTY_TIME when needed in fat_update_time()
-  fs: don't call ->dirty_inode for lazytime timestamp updates
-  fs: pass only I_DIRTY_INODE flags to ->dirty_inode
-  fs: clean up __mark_inode_dirty() a bit
-  fs: drop redundant check from __writeback_single_inode()
-  fs: improve comments for writeback_single_inode()
-  gfs2: don't worry about I_DIRTY_TIME in gfs2_fsync()
-  ext4: simplify i_state checks in __ext4_update_other_inode_time()
-  xfs: remove a stale comment from xfs_file_aio_write_checks()
-
- Documentation/filesystems/vfs.rst |   5 +-
- fs/ext4/inode.c                   |  20 +----
- fs/f2fs/super.c                   |   3 -
- fs/fat/misc.c                     |  23 +++---
- fs/fs-writeback.c                 | 132 +++++++++++++++++-------------
- fs/gfs2/file.c                    |   4 +-
- fs/gfs2/super.c                   |   2 -
- fs/inode.c                        |  38 +++++----
- fs/xfs/xfs_file.c                 |   6 --
- include/linux/fs.h                |  18 ++--
- 10 files changed, 132 insertions(+), 119 deletions(-)
-
-
-base-commit: e71ba9452f0b5b2e8dc8aa5445198cd9214a6a62
+diff --git a/fs/inode.c b/fs/inode.c
+index 6442d97d9a4ab..d0fa43d8e9d5c 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1743,24 +1743,26 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
+ 
+ int generic_update_time(struct inode *inode, struct timespec64 *time, int flags)
+ {
+-	int iflags = I_DIRTY_TIME;
+-	bool dirty = false;
+-
+-	if (flags & S_ATIME)
+-		inode->i_atime = *time;
+-	if (flags & S_VERSION)
+-		dirty = inode_maybe_inc_iversion(inode, false);
+-	if (flags & S_CTIME)
+-		inode->i_ctime = *time;
+-	if (flags & S_MTIME)
+-		inode->i_mtime = *time;
+-	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
+-	    !(inode->i_sb->s_flags & SB_LAZYTIME))
+-		dirty = true;
+-
+-	if (dirty)
+-		iflags |= I_DIRTY_SYNC;
+-	__mark_inode_dirty(inode, iflags);
++	int dirty_flags = 0;
++
++	if (flags & (S_ATIME | S_CTIME | S_MTIME)) {
++		if (flags & S_ATIME)
++			inode->i_atime = *time;
++		if (flags & S_CTIME)
++			inode->i_ctime = *time;
++		if (flags & S_MTIME)
++			inode->i_mtime = *time;
++
++		if (inode->i_sb->s_flags & SB_LAZYTIME)
++			dirty_flags |= I_DIRTY_TIME;
++		else
++			dirty_flags |= I_DIRTY_SYNC;
++	}
++
++	if ((flags & S_VERSION) && inode_maybe_inc_iversion(inode, false))
++		dirty_flags |= I_DIRTY_SYNC;
++
++	__mark_inode_dirty(inode, dirty_flags);
+ 	return 0;
+ }
+ EXPORT_SYMBOL(generic_update_time);
 -- 
 2.30.0
 
