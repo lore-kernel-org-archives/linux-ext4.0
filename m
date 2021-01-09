@@ -4,41 +4,41 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 232A9C4321A
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:00:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C608EC433E6
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:01:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 037E323A5A
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:00:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A230823A7C
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:01:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726702AbhAIIA3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 9 Jan 2021 03:00:29 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40978 "EHLO mail.kernel.org"
+        id S1726823AbhAIIBG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 9 Jan 2021 03:01:06 -0500
+Received: from mail.kernel.org ([198.145.29.99]:41214 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726593AbhAIIAZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 9 Jan 2021 03:00:25 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 039A823A63;
-        Sat,  9 Jan 2021 07:59:44 +0000 (UTC)
+        id S1726761AbhAIIBF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 9 Jan 2021 03:01:05 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3F47123A81;
+        Sat,  9 Jan 2021 07:59:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610179185;
-        bh=/5CziqsFBf55uwSNubqu4qN4xKuBe9W+HNnHEDG6YgA=;
+        s=k20201202; t=1610179187;
+        bh=7+R8JaCcIjtUaH3VUl8CBoaLeio7VB0jSETcJdih7i0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=kyyBQ5JaPqg7f6gAr0U6h5XPq4Yu0YdR9z02SEkW8Bhy+RlGqWR4BmIpWnzVs7de+
-         wTl/w1EWyIe7Nc22bIFOXpgui7MJ9XplFddYt9QgHD84Wv0iTSenQ2f6l/F3728nyT
-         MHuxxqUG7jNI5tjO1JaGj4GiRjMTdTfqO0NQj5SEojNg7Rf9uvfJoVtY1zXAXK1KuR
-         UgRhWZiuaTsaNlOxMPKFXBcrGoYqCT3pWaxFQZBn14I2afW7TW/1ZF9na/pUewmINZ
-         s5xO7jsfntWdMkTCOCf5siZ5Jt5VoGfglrrYC3f17ywLAORHqzTJful8Uejer2w0wy
-         fdUJhCzLAPOUQ==
+        b=FLQ3V54/YJ3wzqN91RgQa6ijgdV5w1Awcx+Maz19TcjXaSY1fFcKSqhrGgJ83zo4+
+         Z3kgG0QX37rePYQlEOvlTVZSdQB9lIFLRLtzWe46jn9qQlOpizMfEUTje2V2/b51B9
+         vGiq1UoQfxORuSZF7BhCC0nX7hLt5yu2T3SnHfMYrkNXPy9SIF/hicNuUOrgYnI1MB
+         pdxNxRfwP3Nzvyl9aMHAQhS2IvE/m5B9VIm/qEtpJe900C5k9AFhTha6DMlnwOHX52
+         F45ZPSX3b/U4ATdTRcRECV2WPnFWkfrVDOTE05cZGvyQ8b4xuYSi3PsSPEGrCjvn4j
+         y2278dWl8GXdg==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v2 04/12] fat: only specify I_DIRTY_TIME when needed in fat_update_time()
-Date:   Fri,  8 Jan 2021 23:58:55 -0800
-Message-Id: <20210109075903.208222-5-ebiggers@kernel.org>
+Subject: [PATCH v2 11/12] ext4: simplify i_state checks in __ext4_update_other_inode_time()
+Date:   Fri,  8 Jan 2021 23:59:02 -0800
+Message-Id: <20210109075903.208222-12-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210109075903.208222-1-ebiggers@kernel.org>
 References: <20210109075903.208222-1-ebiggers@kernel.org>
@@ -50,55 +50,37 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-As was done for generic_update_time(), only pass I_DIRTY_TIME to
-__mark_inode_dirty() when the inode's timestamps were actually updated
-and lazytime is enabled.  This avoids a weird edge case where
-I_DIRTY_TIME could be set in i_state when lazytime isn't enabled.
+Since I_DIRTY_TIME and I_DIRTY_INODE are mutually exclusive in i_state,
+there's no need to check for I_DIRTY_TIME && !I_DIRTY_INODE.  Just check
+for I_DIRTY_TIME.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/fat/misc.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+ fs/ext4/inode.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/fat/misc.c b/fs/fat/misc.c
-index f1b2a1fc2a6a4..18a50a46b57f8 100644
---- a/fs/fat/misc.c
-+++ b/fs/fat/misc.c
-@@ -329,22 +329,23 @@ EXPORT_SYMBOL_GPL(fat_truncate_time);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4cc6c7834312f..00bca5c18eb65 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4962,14 +4962,12 @@ static void __ext4_update_other_inode_time(struct super_block *sb,
+ 		return;
  
- int fat_update_time(struct inode *inode, struct timespec64 *now, int flags)
- {
--	int iflags = I_DIRTY_TIME;
--	bool dirty = false;
-+	int dirty_flags = 0;
+ 	if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
+-			       I_DIRTY_INODE)) ||
+-	    ((inode->i_state & I_DIRTY_TIME) == 0))
++			       I_DIRTY_TIME)) != I_DIRTY_TIME)
+ 		return;
  
- 	if (inode->i_ino == MSDOS_ROOT_INO)
- 		return 0;
+ 	spin_lock(&inode->i_lock);
+-	if (((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
+-				I_DIRTY_INODE)) == 0) &&
+-	    (inode->i_state & I_DIRTY_TIME)) {
++	if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
++			       I_DIRTY_TIME)) == I_DIRTY_TIME) {
+ 		struct ext4_inode_info	*ei = EXT4_I(inode);
  
--	fat_truncate_time(inode, now, flags);
--	if (flags & S_VERSION)
--		dirty = inode_maybe_inc_iversion(inode, false);
--	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
--	    !(inode->i_sb->s_flags & SB_LAZYTIME))
--		dirty = true;
-+	if (flags & (S_ATIME | S_CTIME | S_MTIME)) {
-+		fat_truncate_time(inode, now, flags);
-+		if (inode->i_sb->s_flags & SB_LAZYTIME)
-+			dirty_flags |= I_DIRTY_TIME;
-+		else
-+			dirty_flags |= I_DIRTY_SYNC;
-+	}
-+
-+	if ((flags & S_VERSION) && inode_maybe_inc_iversion(inode, false))
-+		dirty_flags |= I_DIRTY_SYNC;
- 
--	if (dirty)
--		iflags |= I_DIRTY_SYNC;
--	__mark_inode_dirty(inode, iflags);
-+	__mark_inode_dirty(inode, dirty_flags);
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(fat_update_time);
+ 		inode->i_state &= ~I_DIRTY_TIME;
 -- 
 2.30.0
 
