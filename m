@@ -2,156 +2,82 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0F57C4161F
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:01:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7D05C43381
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 17:12:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8D2FE23A5A
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 08:01:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9D6FE23884
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Jan 2021 17:12:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726897AbhAIIBQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 9 Jan 2021 03:01:16 -0500
-Received: from mail.kernel.org ([198.145.29.99]:41202 "EHLO mail.kernel.org"
+        id S1726642AbhAIRMO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 9 Jan 2021 12:12:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38692 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726427AbhAIIBF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 9 Jan 2021 03:01:05 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 525FD23A68;
-        Sat,  9 Jan 2021 07:59:45 +0000 (UTC)
+        id S1725872AbhAIRMO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 9 Jan 2021 12:12:14 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 52DF32343F;
+        Sat,  9 Jan 2021 17:11:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610179185;
-        bh=xjhBwvsck2xldye/p1ipbKcdL2fe5kn+WPmc3PyBaCM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=MkviwhOnbQtnQ7zRPqJn3r3k0jVP814jRKJF9u7tgP1eaEBZcpAYsV4cQljL2+4TE
-         byJsLl6B5qpofY9e9+OTanUCP6iHIUYxwlT7fMxGxf4qyJPg+XziHNMIMTmuV4lB0E
-         XkPEWJfutVBkJiawphxzrQEvRKvEs5pijr5I4Vg2Njw2KZKHE0jKTh3E5fr4APN+eG
-         iRgQnJWzUzYNMyfR25VD18x/tmSzCyt8vStCy9uPa1KepLScLBFRmqh2/Jrmg9AeZV
-         GnL/Dic0UGvSFDS0Kc0vCb5n2J7lmQ83zRLHtfa8a9YP6zaTj/pNooGOBgbso04+e0
-         ARt1h1TPEaKKA==
+        s=k20201202; t=1610212293;
+        bh=i8Ku1/73rYowfl/ZwVRB3ZZQr3ISV6I1jnO+n26Fujk=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=d4xvqIKvtTClFnLpzv7E3zlN8gpkDmspUC18y8blQE4mEjl6J6DwpUtkg0AsMFn1w
+         ahciPeIFOIkv0TJP21Q5uwxKXvqczOXaqsxkAdxXVwlK56MB8+oMpWb4Nw+NU/RxLy
+         4RN1VQdBnnYwcBHRHIoo4cH8g3cXIMNLklV7weqsNXYImcGPtwbDUg1HEEA2ymKlsX
+         7VcGOa7iZHIzvZSbFwgEOJKArpB7AGolFYsXhzq3Vczv2+9gDwbED9svjGEmxeDOix
+         AdBRfOG7b7GylsjDdJGyv9ZUWnrgrlXqXp0DGM4CA6dhfjb4ciODpHGf0HPh58yrTa
+         6gHyWRrhARYqw==
+Date:   Sat, 9 Jan 2021 09:11:31 -0800
 From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v2 05/12] fs: don't call ->dirty_inode for lazytime timestamp updates
-Date:   Fri,  8 Jan 2021 23:58:56 -0800
-Message-Id: <20210109075903.208222-6-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20210109075903.208222-1-ebiggers@kernel.org>
-References: <20210109075903.208222-1-ebiggers@kernel.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        stable@vger.kernel.org
+Subject: Re: [PATCH 01/13] fs: avoid double-writing inodes on lazytime
+ expiration
+Message-ID: <X/njw9b+qqK3vlMs@sol.localdomain>
+References: <20210105005452.92521-1-ebiggers@kernel.org>
+ <20210105005452.92521-2-ebiggers@kernel.org>
+ <20210107144709.GG12990@quack2.suse.cz>
+ <20210108090133.GD1438@lst.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210108090133.GD1438@lst.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Fri, Jan 08, 2021 at 10:01:33AM +0100, Christoph Hellwig wrote:
+> > +	/*
+> > +	 * If inode has dirty timestamps and we need to write them, call
+> > +	 * mark_inode_dirty_sync() to notify filesystem about it.
+> > +	 */
+> > +	if (inode->i_state & I_DIRTY_TIME &&
+> > +	    (wbc->for_sync || wbc->sync_mode == WB_SYNC_ALL ||
+> > +	     time_after(jiffies, inode->dirtied_time_when +
+> > +			dirtytime_expire_interval * HZ))) {
+> 
+> If we're touching this area, it would be nice to split this condition
+> into a readable helper ala:
+> 
+> static inline bool inode_needs_timestamp_sync(struct writeback_control *wbc,
+> 		struct inode *inode)
+> {
+> 	if (!(inode->i_state & I_DIRTY_TIME))
+> 		return false;
+> 	if (wbc->for_sync || wbc->sync_mode == WB_SYNC_ALL)
+> 		return true;
+> 	return time_after(jiffies, inode->dirtied_time_when +
+> 			  dirtytime_expire_interval * HZ);
+> }
 
-There is no need to call ->dirty_inode for lazytime timestamp updates
-(i.e. for __mark_inode_dirty(I_DIRTY_TIME)), since by the definition of
-lazytime, filesystems must ignore these updates.  Filesystems only need
-to care about the updated timestamps when they expire.
+I didn't end up doing this since it would only be called once, and IMO it's more
+readable to keep it inlined next to the comment that explains what's going on.
+Especially considering the later patch that drops the check for wbc->for_sync.
 
-Therefore, only call ->dirty_inode when I_DIRTY_INODE is set.
-
-Based on a patch from Christoph Hellwig:
-https://lore.kernel.org/r/20200325122825.1086872-4-hch@lst.de
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/inode.c   | 12 +-----------
- fs/f2fs/super.c   |  3 ---
- fs/fs-writeback.c |  6 +++---
- fs/gfs2/super.c   |  2 --
- 4 files changed, 4 insertions(+), 19 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 27946882d4ce4..4cc6c7834312f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5933,26 +5933,16 @@ int __ext4_mark_inode_dirty(handle_t *handle, struct inode *inode,
-  * If the inode is marked synchronous, we don't honour that here - doing
-  * so would cause a commit on atime updates, which we don't bother doing.
-  * We handle synchronous inodes at the highest possible level.
-- *
-- * If only the I_DIRTY_TIME flag is set, we can skip everything.  If
-- * I_DIRTY_TIME and I_DIRTY_SYNC is set, the only inode fields we need
-- * to copy into the on-disk inode structure are the timestamp files.
-  */
- void ext4_dirty_inode(struct inode *inode, int flags)
- {
- 	handle_t *handle;
- 
--	if (flags == I_DIRTY_TIME)
--		return;
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
- 	if (IS_ERR(handle))
--		goto out;
--
-+		return;
- 	ext4_mark_inode_dirty(handle, inode);
--
- 	ext4_journal_stop(handle);
--out:
--	return;
- }
- 
- int ext4_change_inode_journal_flag(struct inode *inode, int val)
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index b4a07fe62d1a5..cc98dc49f4a26 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -1196,9 +1196,6 @@ static void f2fs_dirty_inode(struct inode *inode, int flags)
- 			inode->i_ino == F2FS_META_INO(sbi))
- 		return;
- 
--	if (flags == I_DIRTY_TIME)
--		return;
--
- 	if (is_inode_flag_set(inode, FI_AUTO_RECOVER))
- 		clear_inode_flag(inode, FI_AUTO_RECOVER);
- 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index c41cb887eb7d3..b7616bbd55336 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -2255,16 +2255,16 @@ void __mark_inode_dirty(struct inode *inode, int flags)
- 	 * Don't do this for I_DIRTY_PAGES - that doesn't actually
- 	 * dirty the inode itself
- 	 */
--	if (flags & (I_DIRTY_INODE | I_DIRTY_TIME)) {
-+	if (flags & I_DIRTY_INODE) {
- 		trace_writeback_dirty_inode_start(inode, flags);
- 
- 		if (sb->s_op->dirty_inode)
- 			sb->s_op->dirty_inode(inode, flags);
- 
- 		trace_writeback_dirty_inode(inode, flags);
--	}
--	if (flags & I_DIRTY_INODE)
-+
- 		flags &= ~I_DIRTY_TIME;
-+	}
- 	dirtytime = flags & I_DIRTY_TIME;
- 
- 	/*
-diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
-index 2f56acc41c049..042b94288ff11 100644
---- a/fs/gfs2/super.c
-+++ b/fs/gfs2/super.c
-@@ -562,8 +562,6 @@ static void gfs2_dirty_inode(struct inode *inode, int flags)
- 	int need_endtrans = 0;
- 	int ret;
- 
--	if (!(flags & I_DIRTY_INODE))
--		return;
- 	if (unlikely(gfs2_withdrawn(sdp)))
- 		return;
- 	if (!gfs2_glock_is_locked_by_me(ip->i_gl)) {
--- 
-2.30.0
-
+-  Eric
