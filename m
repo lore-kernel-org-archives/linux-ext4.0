@@ -2,105 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 446EDC4332B
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67A97C433E6
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 21:37:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 00B0623107
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2D33D23121
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 21:37:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406578AbhALTF2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Jan 2021 14:05:28 -0500
-Received: from mail.kernel.org ([198.145.29.99]:42272 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2406212AbhALTF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Jan 2021 14:05:28 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 9B797230F9;
-        Tue, 12 Jan 2021 19:04:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610478249;
-        bh=Zs1h5JfMmZOeqAwdOYUH+AziTqKfcFLZqcUS4NYWVDE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Cm00WACIoNMlTYL0uJSNnHvNdLoQ/ExfQkhIm4IyRnI8Gkzr97lIAe5g6goqw5qN0
-         cFHtPNEBXpDjjIG3ZuJAINbeFIoOUSGDgFvwWs8SsgWdYcdTwxyh1jZZEbDvMGTR4F
-         CCOEuBkUzU9p2J4MWW8m+8nT41oSeAXFbUORKfQIev6Nhk7Ud2VSdrq+DaP1PpHxrd
-         7+DWRCmwpZ8wyIOTh/73J/6MYNpQuUX6NrHhksoznNkr+PAAwPwMj+ttPARWpY4u6U
-         S6lvjbzFA+tJVd9KHBxMZM3p2D1TrH91q2z4cIng/8ZVUQPEhaZt9K+6cq877CKdkR
-         n78IDCLrJB4FQ==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH v3 06/11] fs: pass only I_DIRTY_INODE flags to ->dirty_inode
-Date:   Tue, 12 Jan 2021 11:02:48 -0800
-Message-Id: <20210112190253.64307-7-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.30.0
-In-Reply-To: <20210112190253.64307-1-ebiggers@kernel.org>
-References: <20210112190253.64307-1-ebiggers@kernel.org>
+        id S1732701AbhALVh3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Jan 2021 16:37:29 -0500
+Received: from aserp2120.oracle.com ([141.146.126.78]:56190 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2437141AbhALVRs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2021 16:17:48 -0500
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10CLDwxf169332;
+        Tue, 12 Jan 2021 21:16:53 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2020-01-29;
+ bh=bR1zl62x1crSRLRZaw4N0mjRNUkzoJkEbrwHjcd/Sig=;
+ b=W07FZK1ysQcddYInZReTNoPBDnq9Voc+vPtNoQ5utzKwJHik6NAhjj2ev9QZxboUiCZI
+ 9DyMdd/oh41Etv4D2DAjq7Q9X6iCr8h1xW9zA8a00RbJ4QDZZutxFq/2IV/2VWoF2WwI
+ DiHYufs18UUo8BHpTfaRawegmtorKZYsS4B3wVc06XHVdAapCddXWYOVnUGgD1lxrzIP
+ rJa+JwhcqgK8/MQPr3ridgoga604sbChyKrTXYm7Yv21Agexj1+zf3SXXI7Thlz99I4j
+ 2SBsj1N0eqb6zzn/TBJ9vBuptdQdQLT3EZ3c0HI7xqvi+Ura5p7EwzVTamLMvoAbZrW+ /g== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by aserp2120.oracle.com with ESMTP id 360kcyrhny-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 12 Jan 2021 21:16:53 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 10CL65Ce072883;
+        Tue, 12 Jan 2021 21:14:53 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by aserp3030.oracle.com with ESMTP id 360keye5qr-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 12 Jan 2021 21:14:53 +0000
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 10CLElAE013096;
+        Tue, 12 Jan 2021 21:14:47 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 12 Jan 2021 13:14:47 -0800
+Date:   Tue, 12 Jan 2021 13:14:45 -0800
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Avi Kivity <avi@scylladb.com>,
+        Andres Freund <andres@anarazel.de>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-block@vger.kernel.org
+Subject: Re: fallocate(FALLOC_FL_ZERO_RANGE_BUT_REALLY) to avoid unwritten
+ extents?
+Message-ID: <20210112211445.GC1164248@magnolia>
+References: <20201230062819.yinrrp6uwfegsqo3@alap3.anarazel.de>
+ <20210104181958.GE6908@magnolia>
+ <20210104191058.sryksqjnjjnn5raa@alap3.anarazel.de>
+ <f6f75f11-5d5b-ae63-d584-4b6f09ff401e@scylladb.com>
+ <20210112181600.GA1228497@infradead.org>
+ <C8811877-48A9-4199-9F28-20F5B071AE36@dilger.ca>
+ <20210112184339.GA1238746@infradead.org>
+ <1C33DEE4-8BE9-4BF3-A589-E11532382B36@dilger.ca>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1C33DEE4-8BE9-4BF3-A589-E11532382B36@dilger.ca>
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9862 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 bulkscore=0 malwarescore=0
+ suspectscore=0 adultscore=0 spamscore=0 mlxlogscore=999 mlxscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2009150000
+ definitions=main-2101120126
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9862 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 phishscore=0
+ impostorscore=0 bulkscore=0 adultscore=0 suspectscore=0 malwarescore=0
+ lowpriorityscore=0 clxscore=1011 mlxlogscore=999 mlxscore=0
+ priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2009150000 definitions=main-2101120127
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Tue, Jan 12, 2021 at 11:51:07AM -0700, Andreas Dilger wrote:
+> On Jan 12, 2021, at 11:43 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> > 
+> > On Tue, Jan 12, 2021 at 11:39:58AM -0700, Andreas Dilger wrote:
+> >>> XFS already has a XFS_IOC_ALLOCSP64 that is defined to actually
+> >>> allocate written extents.  It does not currently use
+> >>> blkdev_issue_zeroout, but could be changed pretty trivially to do so.
+> >>> 
+> >>>> But note it will need to be plumbed down to md and dm to be generally
+> >>>> useful.
+> >>> 
+> >>> DM and MD already support mddev_check_write_zeroes, at least for the
+> >>> usual targets.
+> >> 
+> >> Similarly, ext4 also has EXT4_GET_BLOCKS_CREATE_ZERO that can allocate zero
+> >> filled extents rather than unwritten extents (without clobbering existing
+> >> data like FALLOC_FL_ZERO_RANGE does), and just needs a flag from fallocate()
+> >> to trigger it.  This is plumbed down to blkdev_issue_zeroout() as well.
+> > 
+> > XFS_IOC_ALLOCSP64 actually is an ioctl that has been around since 1995
+> > on IRIX (as an fcntl).
+> 
+> I'm not against adding XFS_IOC_ALLOCSP64 to ext4, if applications are actually
+> using that.
 
-->dirty_inode is now only called when I_DIRTY_INODE (I_DIRTY_SYNC and/or
-I_DIRTY_DATASYNC) is set.  However it may still be passed other dirty
-flags at the same time, provided that these other flags happened to be
-passed to __mark_inode_dirty() at the same time as I_DIRTY_INODE.
+<shudder> Some of them are, but--
 
-This doesn't make sense because there is no reason for filesystems to
-care about these extra flags.  Nor are filesystems notified about all
-updates to these other flags.
+ALLOCSP64 can only allocate pre-zeroed blocks as part of extending EOF,
+whereas a new FZERO flag means that we can pre-zero an arbitrary range
+of bytes in a file.  I don't know if Avi or Andres' usecases demand that
+kind of flexibilty but I know I'd rather go for the more powerful
+interface.
 
-Therefore, mask the flags before passing them to ->dirty_inode.
+--D
 
-Also properly document ->dirty_inode in vfs.rst.
+> It also makes sense to me that there also be an fallocate() mode for allocating
+> zeroed blocks (which was the original request), since fallocate() is already
+> doing very similar things and is the central interface for managing block
+> allocation instead of having a filesystem-specific ioctl() to do this.
+> 
+> Cheers, Andreas
+> 
+> 
+> 
+> 
+> 
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- Documentation/filesystems/vfs.rst | 5 ++++-
- fs/fs-writeback.c                 | 2 +-
- 2 files changed, 5 insertions(+), 2 deletions(-)
-
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index ca52c82e5bb54..287b80948a40b 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -270,7 +270,10 @@ or bottom half).
- 	->alloc_inode.
- 
- ``dirty_inode``
--	this method is called by the VFS to mark an inode dirty.
-+	this method is called by the VFS when an inode is marked dirty.
-+	This is specifically for the inode itself being marked dirty,
-+	not its data.  If the update needs to be persisted by fdatasync(),
-+	then I_DIRTY_DATASYNC will be set in the flags argument.
- 
- ``write_inode``
- 	this method is called when the VFS needs to write an inode to
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index b7616bbd55336..2e6064012f7d3 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -2259,7 +2259,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
- 		trace_writeback_dirty_inode_start(inode, flags);
- 
- 		if (sb->s_op->dirty_inode)
--			sb->s_op->dirty_inode(inode, flags);
-+			sb->s_op->dirty_inode(inode, flags & I_DIRTY_INODE);
- 
- 		trace_writeback_dirty_inode(inode, flags);
- 
--- 
-2.30.0
 
