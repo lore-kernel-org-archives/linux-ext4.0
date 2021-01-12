@@ -2,127 +2,150 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F019CC43333
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 21:45:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6AD1C43381
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 22:03:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A5A3923122
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 21:45:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 78E322313B
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 22:03:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388115AbhALVpD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Jan 2021 16:45:03 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42051 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S2388340AbhALVo7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2021 16:44:59 -0500
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10CLhUgC011740
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 12 Jan 2021 16:43:31 -0500
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 8A66015C3453; Tue, 12 Jan 2021 16:43:30 -0500 (EST)
-Date:   Tue, 12 Jan 2021 16:43:30 -0500
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Pavel Machek <pavel@ucw.cz>
-Cc:     Josh Triplett <josh@joshtriplett.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
+        id S2393856AbhALWDf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Jan 2021 17:03:35 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:42903 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2393848AbhALWDe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Jan 2021 17:03:34 -0500
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1kzRkU-0003bd-R2; Tue, 12 Jan 2021 22:02:46 +0000
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org
+Cc:     John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: Re: Malicious fs images was Re: ext4 regression in v5.9-rc2 from
- e7bfb5c9bb3d on ro fs with overlapped bitmaps
-Message-ID: <X/4YArRJMgGjSyZY@mit.edu>
-References: <20201006031834.GA5797@mit.edu>
- <20201006050306.GA8098@localhost>
- <20201006133533.GC5797@mit.edu>
- <20201007080304.GB1112@localhost>
- <20201007143211.GA235506@mit.edu>
- <20201007201424.GB15049@localhost>
- <20201008021017.GD235506@mit.edu>
- <20201008222259.GA45658@localhost>
- <20201009143732.GJ235506@mit.edu>
- <20210110184101.GA4625@amd>
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
+        Christian Brauner <christian.brauner@ubuntu.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v5 02/42] mount: make {lock,unlock}_mount_hash() static
+Date:   Tue, 12 Jan 2021 23:00:44 +0100
+Message-Id: <20210112220124.837960-3-christian.brauner@ubuntu.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20210112220124.837960-1-christian.brauner@ubuntu.com>
+References: <20210112220124.837960-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210110184101.GA4625@amd>
+X-Patch-Hashes: v=1; h=sha256; i=vO6mqD1pvztvOW1otxIX/33XHCNZr+llU/zGWpmgRcU=; m=urR2rAIlQm7B+Wnhux1HQqMBhK+gzFRqnuakSaYsLEw=; p=FzHd8xIvHJqF6DeGhIkxr3GWqyk+wfjD+OZpRToKI4o=; g=a01f7f9b00b67a1698d6ed6ffbed46e285973451
+X-Patch-Sig: m=pgp; i=christian.brauner@ubuntu.com; s=0x0x91C61BC06578DCA2; b=iHUEABYKAB0WIQRAhzRXHqcMeLMyaSiRxhvAZXjcogUCX/4YtQAKCRCRxhvAZXjcorMkAQDuVqe kjayCqPe3qytw6oZ7nOgpZjngGZBcdjtF8EvVmQD/TTQi6iRuXo2TWtRa3j82P+plXgb3Vj3OCV7l LedXkwo=
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Jan 10, 2021 at 07:41:02PM +0100, Pavel Machek wrote:
-> > >From our perspective (and Darrick and I discussed this on this week's
-> > ext4 video conference, so it represents the ext4 and xfs maintainer's
-> > position) is that the file system format is different.  First, the
-> > on-disk format is not an ABI, and it is several orders more complex
-> > than a system call interface.  Second, we make no guarantees about
-> > what the file system created by malicious tools will do.  For example,
-> > XFS developers reject bug reports from file system fuzzers, because
-> > the v5 format has CRC checks, so randomly corrupted file systems won't
-> > crash the kernel.  Yes, this doesn't protect against maliciously
-> > created file systems where the attacker makes sure the checksums are
-> > valid, but only crazy people who think containers are just as secure
-> 
-> Well, it is not just containers. It is also USB sticks. And people who
-> believe secure boot is good idea and try to protect kernel against
-> root. And crazy people who encrypt pointers in dmesg. And...
-> 
-> People want to use USB sticks from time to time. And while I
-> understand XFS is so complex it is unsuitable for such use, I'd still
-> expect bugs to be fixed there.
-> 
-> I hope VFAT to be safe to mount, because that is very common on USB.
-> 
-> I also hope ext2/3/4 is safe in that regard.
+The lock_mount_hash() and unlock_mount_hash() helpers are never called
+outside a single file. Remove them from the header and make them static
+to reflect this fact. There's no need to have them callable from other
+places right now, as Christoph observed.
 
-Ext4 will fix file system fuzzing attack bugs on a best efforts basis.
-That is, when I have time, I've been known to stay up late to bugs
-reported by fuzzers.  I hope ext4 is safe, but I'm not going to make
-any guarantees that it is Bug-Free(tm).  If you want to trust it in
-that way, you do so at your risk.
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
+---
+/* v2 */
+- Christoph Hellwig <hch@lst.de>:
+  - Add a patch to make {lock,unlock)_mount_hash() static.
 
-As far as VFS is concerned, I'm not aware of anyone who has been
-working on fuzz-proofing VFAT, and looking at the Vault 2016 for
-"American Fuzzy Lop"[1] while VFAT wasn't specifically tested, for the
-vast majority of file systems, the "time to first bug" typically
-ranged from seconds to minutes, with the exception of XFS and ext4
-(where it was roughly 2 hours).  The specific bugs which triggered in
-the 2016 AFL presentation have been fixed, at least for the file
-systems which get regular maintainer attention, but this is why I try
-to caution people not to count on file systems being proof against
-maliciously formatted images.
+/* v3 */
+unchanged
 
-[1] https://events.static.linuxfound.org/sites/events/files/slides/AFL%20filesystem%20fuzzing,%20Vault%202016_0.pdf
+/* v4 */
+unchanged
 
-> Anyway it would be nice to have documentation explaining this. If I'm
-> wrong about VFAT being safe, it would be good to know, and I guess
-> many will be surprised that XFS is using different rules.
+/* v5 */
+base-commit: 7c53f6b671f4aba70ff15e1b05148b10d58c2837
+---
+ fs/mount.h     | 10 ----------
+ fs/namespace.c | 10 ++++++++++
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-Using USB sticks is fine, so long as you trust the provenance of the
-drive.  If you take a random USB stick that is handed to you by
-someone whom you don't trust implicitly, or worse, that you picked up
-abandoned on the sidewalk, there have been plenty of articles which
-describe why this is a REALLY BAD IDEA, and even if you ignore
-OS-level vuleranbilities, there are also firwmare and hardware based
-vulerabilities that would put your computer at risk.  See [2] and [3]
-for more details; there's a reason why I've visited at least one
-financial institution where they put epoxy in USB ports to prevent
-clueless workers from potentially compromising the bank's computers.
+diff --git a/fs/mount.h b/fs/mount.h
+index ce6c376e0bc2..0b6e08cf8afb 100644
+--- a/fs/mount.h
++++ b/fs/mount.h
+@@ -124,16 +124,6 @@ static inline void get_mnt_ns(struct mnt_namespace *ns)
+ 
+ extern seqlock_t mount_lock;
+ 
+-static inline void lock_mount_hash(void)
+-{
+-	write_seqlock(&mount_lock);
+-}
+-
+-static inline void unlock_mount_hash(void)
+-{
+-	write_sequnlock(&mount_lock);
+-}
+-
+ struct proc_mounts {
+ 	struct mnt_namespace *ns;
+ 	struct path root;
+diff --git a/fs/namespace.c b/fs/namespace.c
+index dc782ddf603e..8cb2c132525a 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -87,6 +87,16 @@ EXPORT_SYMBOL_GPL(fs_kobj);
+  */
+ __cacheline_aligned_in_smp DEFINE_SEQLOCK(mount_lock);
+ 
++static inline void lock_mount_hash(void)
++{
++	write_seqlock(&mount_lock);
++}
++
++static inline void unlock_mount_hash(void)
++{
++	write_sequnlock(&mount_lock);
++}
++
+ static inline struct hlist_head *m_hash(struct vfsmount *mnt, struct dentry *dentry)
+ {
+ 	unsigned long tmp = ((unsigned long)mnt / L1_CACHE_BYTES);
+-- 
+2.30.0
 
-[2] https://www.redteamsecure.com/blog/usb-drop-attacks-the-danger-of-lost-and-found-thumb-drives/
-[3] https://www.bleepingcomputer.com/news/security/heres-a-list-of-29-different-types-of-usb-attacks/
-
-As far as documentation is concerned, how far should we go?  Should
-there be a warning in the execve(2) system call man page that you
-shouldn't download random binaries from the network and execute them?  :-)
-
-Cheers,
-
-					- Ted
