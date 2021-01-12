@@ -7,39 +7,39 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D4ABC432C3
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37FA6C433E9
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DA14623102
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E9F09230F9
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392924AbhALTEt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Jan 2021 14:04:49 -0500
-Received: from mail.kernel.org ([198.145.29.99]:41948 "EHLO mail.kernel.org"
+        id S2406619AbhALTFa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Jan 2021 14:05:30 -0500
+Received: from mail.kernel.org ([198.145.29.99]:42282 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2392672AbhALTEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Jan 2021 14:04:48 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 209DD23127;
-        Tue, 12 Jan 2021 19:04:08 +0000 (UTC)
+        id S2406212AbhALTF3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Jan 2021 14:05:29 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id BE1EC23133;
+        Tue, 12 Jan 2021 19:04:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610478248;
-        bh=OkenZeNmrZ1GJki2AMafd5LRyBZ6zFM6h6wgu/ypZrk=;
+        s=k20201202; t=1610478252;
+        bh=APAXDrWezK5HVIGjbIEklXvxKBuY3jOk4QoaXXPyPsU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=n0qFYsUAS/y49Ct5Pe7qBJYoD4HQMnYuI55WBMMOHANAblHOsiEY0Q4C1yMPfqn4J
-         D+ZFAVG2ZETW5sVBILsUnHocKOEO0I+1V6bEyFCRr9tEKk792EjLbG1fYQXt6t/G7u
-         hyvQxN6vQOxGrVs+x52agvcxMrVjwKFDj6w0uIPg8Q18HQLlXdG6Y2N3y5nK8qe3mK
-         0MBM6bMpyGsxFY8V9kO8Q/gzrTwOEUqujunjgv9MAXXoGU+mnD/tN2f+EBwhD24c1h
-         JXjX1vifzp3d7JRkbFRx3A+3JuBPj3ByoY2k+bMFYgVr+h9OGcSzJu2FykoCjzXzVc
-         72jRIGVKfcIHw==
+        b=JR7BV63iI5jgPGhz2qNN+JPf5iJrmkunJig27hVsc1kwuLgvJdp4+dgOLu6cMvvFO
+         wshU9koqNENnrej7mbVBZMChiirLpyecMJObe1DnzKBfexuGtnuguZvDktJL8nMorp
+         3Sfggo5INVs5GQnRsFgVkXpxicS2m+h2jXSKPnhDis9/BdX5y6cgjYGm1/lILslham
+         V+ttL7qFmRKTyq2biIaIvwRwfY7r5PzzJm7X5gYGfvDbHmztq4ICemQaQKQc3682FE
+         p7HGwU8nrWCMKTeDXAG3DDd6sOXLq4KJpsxJQSV5BOy+L8cD8w5hKGz4Xi7pbNmAym
+         s6nuriYCc1LWA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH v3 03/11] fs: only specify I_DIRTY_TIME when needed in generic_update_time()
-Date:   Tue, 12 Jan 2021 11:02:45 -0800
-Message-Id: <20210112190253.64307-4-ebiggers@kernel.org>
+Subject: [PATCH v3 10/11] gfs2: don't worry about I_DIRTY_TIME in gfs2_fsync()
+Date:   Tue, 12 Jan 2021 11:02:52 -0800
+Message-Id: <20210112190253.64307-11-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210112190253.64307-1-ebiggers@kernel.org>
 References: <20210112190253.64307-1-ebiggers@kernel.org>
@@ -51,77 +51,43 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-generic_update_time() always passes I_DIRTY_TIME to
-__mark_inode_dirty(), which doesn't really make sense because (a)
-generic_update_time() might be asked to do only an i_version update, not
-also a timestamps update; and (b) I_DIRTY_TIME is only supposed to be
-set in i_state if the filesystem has lazytime enabled, so using it
-unconditionally in generic_update_time() is inconsistent.
+The I_DIRTY_TIME flag is primary used within the VFS, and there's no
+reason for ->fsync() implementations to do anything with it.  This is
+because when !datasync, the VFS will expire dirty timestamps before
+calling ->fsync().  (See vfs_fsync_range().)  This turns I_DIRTY_TIME
+into I_DIRTY_SYNC.
 
-As a result there is a weird edge case where if only an i_version update
-was requested (not also a timestamps update) but it is no longer needed
-(i.e. inode_maybe_inc_iversion() returns false), then I_DIRTY_TIME will
-be set in i_state even if the filesystem isn't mounted with lazytime.
-
-Fix this by only passing I_DIRTY_TIME to __mark_inode_dirty() if the
-timestamps were updated and the filesystem has lazytime enabled.
+Therefore, change gfs2_fsync() to not check for I_DIRTY_TIME.
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/inode.c | 38 ++++++++++++++++++++------------------
- 1 file changed, 20 insertions(+), 18 deletions(-)
+ fs/gfs2/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 6442d97d9a4ab..d0fa43d8e9d5c 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1743,24 +1743,26 @@ static int relatime_need_update(struct vfsmount *mnt, struct inode *inode,
- 
- int generic_update_time(struct inode *inode, struct timespec64 *time, int flags)
+diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+index b39b339feddc9..7fe2497755a37 100644
+--- a/fs/gfs2/file.c
++++ b/fs/gfs2/file.c
+@@ -749,7 +749,7 @@ static int gfs2_fsync(struct file *file, loff_t start, loff_t end,
  {
--	int iflags = I_DIRTY_TIME;
--	bool dirty = false;
--
--	if (flags & S_ATIME)
--		inode->i_atime = *time;
--	if (flags & S_VERSION)
--		dirty = inode_maybe_inc_iversion(inode, false);
--	if (flags & S_CTIME)
--		inode->i_ctime = *time;
--	if (flags & S_MTIME)
--		inode->i_mtime = *time;
--	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
--	    !(inode->i_sb->s_flags & SB_LAZYTIME))
--		dirty = true;
--
--	if (dirty)
--		iflags |= I_DIRTY_SYNC;
--	__mark_inode_dirty(inode, iflags);
-+	int dirty_flags = 0;
-+
-+	if (flags & (S_ATIME | S_CTIME | S_MTIME)) {
-+		if (flags & S_ATIME)
-+			inode->i_atime = *time;
-+		if (flags & S_CTIME)
-+			inode->i_ctime = *time;
-+		if (flags & S_MTIME)
-+			inode->i_mtime = *time;
-+
-+		if (inode->i_sb->s_flags & SB_LAZYTIME)
-+			dirty_flags |= I_DIRTY_TIME;
-+		else
-+			dirty_flags |= I_DIRTY_SYNC;
-+	}
-+
-+	if ((flags & S_VERSION) && inode_maybe_inc_iversion(inode, false))
-+		dirty_flags |= I_DIRTY_SYNC;
-+
-+	__mark_inode_dirty(inode, dirty_flags);
- 	return 0;
- }
- EXPORT_SYMBOL(generic_update_time);
+ 	struct address_space *mapping = file->f_mapping;
+ 	struct inode *inode = mapping->host;
+-	int sync_state = inode->i_state & I_DIRTY_ALL;
++	int sync_state = inode->i_state & I_DIRTY;
+ 	struct gfs2_inode *ip = GFS2_I(inode);
+ 	int ret = 0, ret1 = 0;
+ 
+@@ -762,7 +762,7 @@ static int gfs2_fsync(struct file *file, loff_t start, loff_t end,
+ 	if (!gfs2_is_jdata(ip))
+ 		sync_state &= ~I_DIRTY_PAGES;
+ 	if (datasync)
+-		sync_state &= ~(I_DIRTY_SYNC | I_DIRTY_TIME);
++		sync_state &= ~I_DIRTY_SYNC;
+ 
+ 	if (sync_state) {
+ 		ret = sync_inode_metadata(inode, 1);
 -- 
 2.30.0
 
