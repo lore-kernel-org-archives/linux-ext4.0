@@ -2,43 +2,44 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 411E4C433DB
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7376C433E6
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 07375230F9
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 86407230F9
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Jan 2021 19:05:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406634AbhALTFb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Jan 2021 14:05:31 -0500
-Received: from mail.kernel.org ([198.145.29.99]:42284 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2406589AbhALTF3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2406593AbhALTF3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 12 Jan 2021 14:05:29 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 44D8F23134;
-        Tue, 12 Jan 2021 19:04:12 +0000 (UTC)
+Received: from mail.kernel.org ([198.145.29.99]:42278 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2406471AbhALTF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Jan 2021 14:05:28 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id DB97D2312A;
+        Tue, 12 Jan 2021 19:04:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1610478252;
-        bh=6FqWuQrXV+HGHkzTR42Ape3on4H7NKo1rahsTeQDI4c=;
+        s=k20201202; t=1610478251;
+        bh=iS9NaJbF6WGlfwyaEVylnwoccWtqZ29B1EFuOerPM2c=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=RZNZ7JkkNHWRoE3L2XHIBFGDbwLmXQ+WYmrSQ2HH5mrAH3MtFyOQ0LJ3XzuG+BY4y
-         Ji+rdyAJ/Veytz+4dA94ERGnUigqHy0UnTkMBHX3hMM1lpgpo62tkwB8hq57YCbBS2
-         mSpxDL4QT3QnH5GgvYEHuAvdrKqC/sWHNDwlpy7hlUjEyBW/VUJPoonFZt7omR5ygJ
-         u+3VdJWj6zeBFzD0LHf+ThYBySvpcxA7LHRs2EujZ9L/va74iZnRNhyVvauDdUf+To
-         kefvDtvLXHBcCaVR/JzpiX8n8OVbP6jRDf4CZ8F0mW0jGMkcAqjwaEqOQF2vg/QhvM
-         gWcEr3/JZZHjA==
+        b=R9W+OfB/I0d3D9RbfhDSKnCAhk4DCLkG9op4kyVEfKGUF/Pzpt6RoHWPlcr2V/XHp
+         EV0Y3n+nH1cwsTI1KtLNKJZlgKwWAMTLtH6+/i1rp58AtnGGEQ67lHflffmmwuxk8Z
+         LQr7EsPW9Rgr35YPJBUOTGrdheviC4ThppaXO18jOO2thXuOz0sEDK0TFa5NzA24QS
+         L0GHvTobDXLFPZwcwr+uj/Faq9uFi70PgUrtKsyt4Jyhw5gMyP+bxeetwyIeeHX1b4
+         TzVeL2TBiN0d5qWOrsOcRn1PdWWYAxb6PvZIyGJ1Nr44mH5yUjWdPP6BV0CpsciDVB
+         ZVYG8cM0p0p/A==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v3 11/11] ext4: simplify i_state checks in __ext4_update_other_inode_time()
-Date:   Tue, 12 Jan 2021 11:02:53 -0800
-Message-Id: <20210112190253.64307-12-ebiggers@kernel.org>
+        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH v3 08/11] fs: drop redundant check from __writeback_single_inode()
+Date:   Tue, 12 Jan 2021 11:02:50 -0800
+Message-Id: <20210112190253.64307-9-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210112190253.64307-1-ebiggers@kernel.org>
 References: <20210112190253.64307-1-ebiggers@kernel.org>
@@ -50,66 +51,29 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since I_DIRTY_TIME and I_DIRTY_INODE are mutually exclusive in i_state,
-there's no need to check for I_DIRTY_TIME && !I_DIRTY_INODE.  Just check
-for I_DIRTY_TIME.
+wbc->for_sync implies wbc->sync_mode == WB_SYNC_ALL, so there's no need
+to check for both.  Just check for WB_SYNC_ALL.
 
-Also introduce a helper function in include/linux/fs.h to do this check.
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/inode.c    |  8 ++------
- include/linux/fs.h | 15 +++++++++++++++
- 2 files changed, 17 insertions(+), 6 deletions(-)
+ fs/fs-writeback.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 4cc6c7834312f..d809a06b6ef7f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4961,15 +4961,11 @@ static void __ext4_update_other_inode_time(struct super_block *sb,
- 	if (!inode)
- 		return;
- 
--	if ((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
--			       I_DIRTY_INODE)) ||
--	    ((inode->i_state & I_DIRTY_TIME) == 0))
-+	if (!inode_is_dirtytime_only(inode))
- 		return;
- 
- 	spin_lock(&inode->i_lock);
--	if (((inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW |
--				I_DIRTY_INODE)) == 0) &&
--	    (inode->i_state & I_DIRTY_TIME)) {
-+	if (inode_is_dirtytime_only(inode)) {
- 		struct ext4_inode_info	*ei = EXT4_I(inode);
- 
- 		inode->i_state &= ~I_DIRTY_TIME;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 45a0303b2aeb6..de0c789104c26 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2194,6 +2194,21 @@ static inline void mark_inode_dirty_sync(struct inode *inode)
- 	__mark_inode_dirty(inode, I_DIRTY_SYNC);
- }
- 
-+/*
-+ * Returns true if the given inode itself only has dirty timestamps (its pages
-+ * may still be dirty) and isn't currently being allocated or freed.
-+ * Filesystems should call this if when writing an inode when lazytime is
-+ * enabled, they want to opportunistically write the timestamps of other inodes
-+ * located very nearby on-disk, e.g. in the same inode block.  This returns true
-+ * if the given inode is in need of such an opportunistic update.  Requires
-+ * i_lock, or at least later re-checking under i_lock.
-+ */
-+static inline bool inode_is_dirtytime_only(struct inode *inode)
-+{
-+	return (inode->i_state & (I_DIRTY_TIME | I_NEW |
-+				  I_FREEING | I_WILL_FREE)) == I_DIRTY_TIME;
-+}
-+
- extern void inc_nlink(struct inode *inode);
- extern void drop_nlink(struct inode *inode);
- extern void clear_nlink(struct inode *inode);
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 80ee9816d9df5..cee1df6e3bd43 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -1479,7 +1479,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
+ 	 * change I_DIRTY_TIME into I_DIRTY_SYNC.
+ 	 */
+ 	if ((inode->i_state & I_DIRTY_TIME) &&
+-	    (wbc->sync_mode == WB_SYNC_ALL || wbc->for_sync ||
++	    (wbc->sync_mode == WB_SYNC_ALL ||
+ 	     time_after(jiffies, inode->dirtied_time_when +
+ 			dirtytime_expire_interval * HZ))) {
+ 		trace_writeback_lazytime(inode);
 -- 
 2.30.0
 
