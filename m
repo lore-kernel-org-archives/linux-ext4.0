@@ -2,116 +2,285 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB08BC4332B
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jan 2021 17:53:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88978C433DB
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jan 2021 18:20:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8933023A6C
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jan 2021 17:53:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 607DC23A7C
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Jan 2021 18:20:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726779AbhAORxM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Jan 2021 12:53:12 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:33202 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726402AbhAORxL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Jan 2021 12:53:11 -0500
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10FHpKnV022119
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 15 Jan 2021 12:51:21 -0500
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 3494715C399F; Fri, 15 Jan 2021 12:51:20 -0500 (EST)
-Date:   Fri, 15 Jan 2021 12:51:20 -0500
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Christian Brauner <christian.brauner@ubuntu.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        John Johansen <john.johansen@canonical.com>,
-        James Morris <jmorris@namei.org>,
-        Mimi Zohar <zohar@linux.ibm.com>,
-        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        Arnd Bergmann <arnd@arndb.de>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Geoffrey Thomas <geofft@ldpreload.com>,
-        Mrunal Patel <mpatel@redhat.com>,
-        Josh Triplett <josh@joshtriplett.org>,
-        Andy Lutomirski <luto@kernel.org>,
-        Alban Crequy <alban@kinvolk.io>,
-        Tycho Andersen <tycho@tycho.ws>,
-        David Howells <dhowells@redhat.com>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Seth Forshee <seth.forshee@canonical.com>,
-        St?phane Graber <stgraber@ubuntu.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Aleksa Sarai <cyphar@cyphar.com>,
-        Lennart Poettering <lennart@poettering.net>,
-        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
-        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
-        Kees Cook <keescook@chromium.org>,
-        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
-        Jonathan Corbet <corbet@lwn.net>,
-        containers@lists.linux-foundation.org,
-        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-integrity@vger.kernel.org, selinux@vger.kernel.org
-Subject: Re: [PATCH v5 00/42] idmapped mounts
-Message-ID: <YAHWGMb9rTehRsRz@mit.edu>
-References: <20210112220124.837960-1-christian.brauner@ubuntu.com>
- <20210114171241.GA1164240@magnolia>
- <20210114204334.GK331610@dread.disaster.area>
- <20210115162423.GB2179337@infradead.org>
+        id S2388324AbhAOSUO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Jan 2021 13:20:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:42854 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2388270AbhAOSUO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 Jan 2021 13:20:14 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 9308E23A5E;
+        Fri, 15 Jan 2021 18:19:32 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1610734772;
+        bh=pnSpeOrfVdsQbidSVJ8VQ9KwStcDDpOuhhsM9wOH/nM=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=DOzDaPKRnueyCaOwugViCqx2ufgeTgSyZJuXHoHj+EWmWBeGBSq3rVN9H8KnHmvRT
+         vWX40lG+SD+bCDG7wH5vF2qtiqALPqkwB0KMw2M6g9ChPX3lP27q51zHo7s9EKkDYR
+         fQxjHEnpWRVJYLn1MFma7sCHPto+1/nd1b8+z0uLqTiUVVktoX9+MwLdoqPhP7wFep
+         39ZG4ZpVXDfbaN3EgU+rGvi3WYmJfxsntpc+SLd3zsi/k0VYHCZtObLObIvH5NkaNZ
+         UCOKc2ptZ7mFX3lAXpuS7hfaSuH9edKF6DuKv0w4e4v37ek7fYz2+JTG4OXrDIF9jf
+         xkb/k3jRJp/ag==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-api@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>
+Subject: [PATCH 1/6] fs-verity: factor out fsverity_get_descriptor()
+Date:   Fri, 15 Jan 2021 10:18:14 -0800
+Message-Id: <20210115181819.34732-2-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20210115181819.34732-1-ebiggers@kernel.org>
+References: <20210115181819.34732-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210115162423.GB2179337@infradead.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 15, 2021 at 04:24:23PM +0000, Christoph Hellwig wrote:
-> 
-> That is what the capabilities are designed for and we already check
-> for them.
+From: Eric Biggers <ebiggers@google.com>
 
-So perhaps I'm confused, but my understanding is that in the
-containers world, capabilities are a lot more complicated.  There is:
+The FS_IOC_READ_VERITY_METADATA ioctl will need to return the fs-verity
+descriptor (and signature) to userspace.
 
-1) The initial namespace capability set
+There are a few ways we could implement this:
 
-2) The container's user-namespace capability set
+- Save a copy of the descriptor (and signature) in the fsverity_info
+  struct that hangs off of the in-memory inode.  However, this would
+  waste memory since most of the time it wouldn't be needed.
 
-3) The namespace in which the file system is mounted --- which is
-      "usually, but not necessarily the initial namespace" and
-      presumably could potentially not necessarily be the current
-      container's user name space, is namespaces can be hierarchically
-      arranged.
+- Regenerate the descriptor from the merkle_tree_params in the
+  fsverity_info.  However, this wouldn't work for the signature, nor for
+  the salt which the merkle_tree_params only contains indirectly as part
+  of the 'hashstate'.  It would also be error-prone.
 
-Is that correct?  If so, how does this patch set change things (if
-any), and and how does this interact with quota administration
-operations?
+- Just get them from the filesystem again.  The disadvantage is that in
+  general we can't trust that they haven't been maliciously changed
+  since the file has opened.  However, the use cases for
+  FS_IOC_READ_VERITY_METADATA don't require that it verifies the chain
+  of trust.  So this is okay as long as we do some basic validation.
 
-On a related note, ext4 specifies a "reserved user" or "reserved
-group" which can access the reserved blocks.  If we have a file system
-which is mounted in a namespace running a container which is running
-RHEL or SLES, and in that container, we have a file system mounted (so
-it was not mounted in the initial namespace), with id-mapping --- and
-then there is a further sub-container created with its own user
-sub-namespace further mapping uids/gids --- will the right thing
-happen?  For that matter, how *is* the "right thing" defined?
+In preparation for implementing the third option, factor out a helper
+function fsverity_get_descriptor() which gets the descriptor (and
+appended signature) from the filesystem and does some basic validation.
 
-Sorry if this is a potentially stupid question, but I find user
-namespaces and id and capability mapping to be hopefully confusing for
-my tiny brain.  :-)
+As part of this, start checking the sig_size field for overflow.
+Currently fsverity_verify_signature() does this.  But the new ioctl will
+need this too, so do it earlier.
 
-						- Ted
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/verity/fsverity_private.h |   7 +-
+ fs/verity/open.c             | 130 +++++++++++++++++++++++------------
+ 2 files changed, 91 insertions(+), 46 deletions(-)
+
+diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
+index 6413d28664d6d..6c9caccc06021 100644
+--- a/fs/verity/fsverity_private.h
++++ b/fs/verity/fsverity_private.h
+@@ -122,12 +122,17 @@ int fsverity_init_merkle_tree_params(struct merkle_tree_params *params,
+ 				     const u8 *salt, size_t salt_size);
+ 
+ struct fsverity_info *fsverity_create_info(const struct inode *inode,
+-					   void *desc, size_t desc_size);
++					   struct fsverity_descriptor *desc,
++					   size_t desc_size);
+ 
+ void fsverity_set_info(struct inode *inode, struct fsverity_info *vi);
+ 
+ void fsverity_free_info(struct fsverity_info *vi);
+ 
++int fsverity_get_descriptor(struct inode *inode,
++			    struct fsverity_descriptor **desc_ret,
++			    size_t *desc_size_ret);
++
+ int __init fsverity_init_info_cache(void);
+ void __init fsverity_exit_info_cache(void);
+ 
+diff --git a/fs/verity/open.c b/fs/verity/open.c
+index 228d0eca3e2e5..a987bb785e9b0 100644
+--- a/fs/verity/open.c
++++ b/fs/verity/open.c
+@@ -142,45 +142,17 @@ static int compute_file_digest(struct fsverity_hash_alg *hash_alg,
+ }
+ 
+ /*
+- * Validate the given fsverity_descriptor and create a new fsverity_info from
+- * it.  The signature (if present) is also checked.
++ * Create a new fsverity_info from the given fsverity_descriptor (with optional
++ * appended signature), and check the signature if present.  The
++ * fsverity_descriptor must have already undergone basic validation.
+  */
+ struct fsverity_info *fsverity_create_info(const struct inode *inode,
+-					   void *_desc, size_t desc_size)
++					   struct fsverity_descriptor *desc,
++					   size_t desc_size)
+ {
+-	struct fsverity_descriptor *desc = _desc;
+ 	struct fsverity_info *vi;
+ 	int err;
+ 
+-	if (desc_size < sizeof(*desc)) {
+-		fsverity_err(inode, "Unrecognized descriptor size: %zu bytes",
+-			     desc_size);
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+-	if (desc->version != 1) {
+-		fsverity_err(inode, "Unrecognized descriptor version: %u",
+-			     desc->version);
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+-	if (memchr_inv(desc->__reserved, 0, sizeof(desc->__reserved))) {
+-		fsverity_err(inode, "Reserved bits set in descriptor");
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+-	if (desc->salt_size > sizeof(desc->salt)) {
+-		fsverity_err(inode, "Invalid salt_size: %u", desc->salt_size);
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+-	if (le64_to_cpu(desc->data_size) != inode->i_size) {
+-		fsverity_err(inode,
+-			     "Wrong data_size: %llu (desc) != %lld (inode)",
+-			     le64_to_cpu(desc->data_size), inode->i_size);
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+ 	vi = kmem_cache_zalloc(fsverity_info_cachep, GFP_KERNEL);
+ 	if (!vi)
+ 		return ERR_PTR(-ENOMEM);
+@@ -245,15 +217,57 @@ void fsverity_free_info(struct fsverity_info *vi)
+ 	kmem_cache_free(fsverity_info_cachep, vi);
+ }
+ 
+-/* Ensure the inode has an ->i_verity_info */
+-static int ensure_verity_info(struct inode *inode)
++static bool validate_fsverity_descriptor(struct inode *inode,
++					 const struct fsverity_descriptor *desc,
++					 size_t desc_size)
+ {
+-	struct fsverity_info *vi = fsverity_get_info(inode);
+-	struct fsverity_descriptor *desc;
+-	int res;
++	if (desc_size < sizeof(*desc)) {
++		fsverity_err(inode, "Unrecognized descriptor size: %zu bytes",
++			     desc_size);
++		return false;
++	}
+ 
+-	if (vi)
+-		return 0;
++	if (desc->version != 1) {
++		fsverity_err(inode, "Unrecognized descriptor version: %u",
++			     desc->version);
++		return false;
++	}
++
++	if (memchr_inv(desc->__reserved, 0, sizeof(desc->__reserved))) {
++		fsverity_err(inode, "Reserved bits set in descriptor");
++		return false;
++	}
++
++	if (desc->salt_size > sizeof(desc->salt)) {
++		fsverity_err(inode, "Invalid salt_size: %u", desc->salt_size);
++		return false;
++	}
++
++	if (le64_to_cpu(desc->data_size) != inode->i_size) {
++		fsverity_err(inode,
++			     "Wrong data_size: %llu (desc) != %lld (inode)",
++			     le64_to_cpu(desc->data_size), inode->i_size);
++		return false;
++	}
++
++	if (le32_to_cpu(desc->sig_size) > desc_size - sizeof(*desc)) {
++		fsverity_err(inode, "Signature overflows verity descriptor");
++		return false;
++	}
++
++	return true;
++}
++
++/*
++ * Read the inode's fsverity_descriptor (with optional appended signature) from
++ * the filesystem, and do basic validation of it.
++ */
++int fsverity_get_descriptor(struct inode *inode,
++			    struct fsverity_descriptor **desc_ret,
++			    size_t *desc_size_ret)
++{
++	int res;
++	struct fsverity_descriptor *desc;
+ 
+ 	res = inode->i_sb->s_vop->get_verity_descriptor(inode, NULL, 0);
+ 	if (res < 0) {
+@@ -272,20 +286,46 @@ static int ensure_verity_info(struct inode *inode)
+ 	res = inode->i_sb->s_vop->get_verity_descriptor(inode, desc, res);
+ 	if (res < 0) {
+ 		fsverity_err(inode, "Error %d reading verity descriptor", res);
+-		goto out_free_desc;
++		kfree(desc);
++		return res;
++	}
++
++	if (!validate_fsverity_descriptor(inode, desc, res)) {
++		kfree(desc);
++		return -EINVAL;
+ 	}
+ 
+-	vi = fsverity_create_info(inode, desc, res);
++	*desc_ret = desc;
++	*desc_size_ret = res;
++	return 0;
++}
++
++/* Ensure the inode has an ->i_verity_info */
++static int ensure_verity_info(struct inode *inode)
++{
++	struct fsverity_info *vi = fsverity_get_info(inode);
++	struct fsverity_descriptor *desc;
++	size_t desc_size;
++	int err;
++
++	if (vi)
++		return 0;
++
++	err = fsverity_get_descriptor(inode, &desc, &desc_size);
++	if (err)
++		return err;
++
++	vi = fsverity_create_info(inode, desc, desc_size);
+ 	if (IS_ERR(vi)) {
+-		res = PTR_ERR(vi);
++		err = PTR_ERR(vi);
+ 		goto out_free_desc;
+ 	}
+ 
+ 	fsverity_set_info(inode, vi);
+-	res = 0;
++	err = 0;
+ out_free_desc:
+ 	kfree(desc);
+-	return res;
++	return err;
+ }
+ 
+ /**
+-- 
+2.30.0
+
