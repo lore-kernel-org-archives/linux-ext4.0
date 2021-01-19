@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B2E3C4332E
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 14:29:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E47AC433DB
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 14:29:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 586DA20715
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 14:29:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 01EAA206E5
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 14:29:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404558AbhASO3L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Jan 2021 09:29:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45194 "EHLO
+        id S2405106AbhASO3l (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Jan 2021 09:29:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45978 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387536AbhASJcE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jan 2021 04:32:04 -0500
+        with ESMTP id S2387572AbhASJfk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jan 2021 04:35:40 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7B82C061573;
-        Tue, 19 Jan 2021 01:31:21 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6754BC0613CF;
+        Tue, 19 Jan 2021 01:34:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
         References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
         Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=l2WBiCb5duYJRA9nKpihqrJOH1Qjg6utSrFiu8qAdtc=; b=taq5tzVqr3iEBWWti4pQj7DR4l
-        7cZy9j0PIh3fkDa3n8/8qdyCXkj2WGrt83/vIsHGS5WCm7PvXgo7FyDV1m8MZzbLmVT9xpv0whS28
-        jJsZ5vAFO7v/uQfzIP1zm1tq2jPDfBwVjhwKxMCZKDsC40DqWrBlGQsdVXuE0H5mW704POSbSuUJu
-        nkobKLxB+vf+pRq6div6jATE4CmZwdKLH34k9aFPepI7kb9k2dfFaq9jX4cbgpxkv6eB4L48vd/Ls
-        Lf0Gryfd6h4uwKYvclqPdVOo9DQGZ3Czmr6yXkaJOHwtWWZkkH4Opx+gOP8N1t95nf6VkC4hwu3ji
-        8eVK3Xxw==;
+        bh=l2WBiCb5duYJRA9nKpihqrJOH1Qjg6utSrFiu8qAdtc=; b=ZpKTlIrcK/0FsG17kKej0stuN/
+        ROxXFflxxBOF3en3NVbWbbkekqwpoFS38KTp4jLltuU32CzWVVpWLzijVlsmg92ofF5lUrCxhUDwK
+        rCBD7hdOMca3h2h8pkkEhOTjf1jj46go6jdJ7r0MmVmwkZ4d20U2l+JHQ5R11S4i9FlNrIELjnD2M
+        GDQk9rw4aBv8JQmbO3yEc4StMd/+b6fEBR3xOqBSDgWNXwcmia4iPZ1lKP7aUBcMLzqcyHAqQ8HsG
+        AdjaYjlQh2afljE44FtA1qcYiqFJsRI2aj3gPVFNub/V0QRflD+SX7j0EtPWRwPC3nEOi4SmbKkve
+        bzARH3pA==;
 Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1l1nLu-00E7PQ-Vs; Tue, 19 Jan 2021 09:31:09 +0000
-Date:   Tue, 19 Jan 2021 09:31:06 +0000
+        id 1l1nPB-00E7cI-GT; Tue, 19 Jan 2021 09:34:29 +0000
+Date:   Tue, 19 Jan 2021 09:34:29 +0000
 From:   Christoph Hellwig <hch@infradead.org>
 To:     Christian Brauner <christian.brauner@ubuntu.com>
 Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -71,16 +71,15 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
-        Tycho Andersen <tycho@tycho.pizza>,
         Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v5 16/42] xattr: handle idmapped mounts
-Message-ID: <20210119093106.GA3364550@infradead.org>
+Subject: Re: [PATCH v5 21/42] namei: prepare for idmapped mounts
+Message-ID: <20210119093429.GF3364550@infradead.org>
 References: <20210112220124.837960-1-christian.brauner@ubuntu.com>
- <20210112220124.837960-17-christian.brauner@ubuntu.com>
+ <20210112220124.837960-22-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210112220124.837960-17-christian.brauner@ubuntu.com>
+In-Reply-To: <20210112220124.837960-22-christian.brauner@ubuntu.com>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
