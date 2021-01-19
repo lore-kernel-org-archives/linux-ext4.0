@@ -2,89 +2,104 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F5E9C433DB
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 22:57:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 50DFCC433DB
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 22:58:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2F2EC23104
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 22:57:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 25A9423104
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 22:58:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390241AbhASOZn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Jan 2021 09:25:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42938 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732455AbhASJVg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jan 2021 04:21:36 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AFE28C0613C1;
-        Tue, 19 Jan 2021 01:20:55 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=l2WBiCb5duYJRA9nKpihqrJOH1Qjg6utSrFiu8qAdtc=; b=lQ6gn9YY4/CZeBywLgOZGFMjOq
-        tFOt5FSgfaUKauxwDiqn/DahwYTypGZVYzO9FW2mYd+SqoDO4kMnRoiVOjL4XFWHWEkDPvy1UzDei
-        Vr9TdGGeSWbRTUnQS88gW/+HrIC9icDk/oMNF1Mg0Ino2joqIz3coeluyJkz2vQiV1sYK7aJJ+no6
-        KteXSWYsFTVEw38n8OC/NApICp6tVIZm3yH2rkm6vRJAb5Xx3QJsS8Ltvwxhl2Dt1RIbbB62VhIs5
-        lFZ3MXu/HSVAy4c67WwUHJ0bcDus8ycwZCpruP/lD/n0WCXCWNMGrTJvUS3poiiwhf3CYVNZcXBZK
-        R6LBnYrw==;
-Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1l1nBT-00E6h3-JG; Tue, 19 Jan 2021 09:20:22 +0000
-Date:   Tue, 19 Jan 2021 09:20:19 +0000
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Christian Brauner <christian.brauner@ubuntu.com>
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org,
-        John Johansen <john.johansen@canonical.com>,
-        James Morris <jmorris@namei.org>,
-        Mimi Zohar <zohar@linux.ibm.com>,
-        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        Arnd Bergmann <arnd@arndb.de>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Geoffrey Thomas <geofft@ldpreload.com>,
-        Mrunal Patel <mpatel@redhat.com>,
-        Josh Triplett <josh@joshtriplett.org>,
-        Andy Lutomirski <luto@kernel.org>,
-        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
-        Tycho Andersen <tycho@tycho.ws>,
-        David Howells <dhowells@redhat.com>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Seth Forshee <seth.forshee@canonical.com>,
-        St??phane Graber <stgraber@ubuntu.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Aleksa Sarai <cyphar@cyphar.com>,
-        Lennart Poettering <lennart@poettering.net>,
-        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
-        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
-        Kees Cook <keescook@chromium.org>,
-        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
-        Jonathan Corbet <corbet@lwn.net>,
-        containers@lists.linux-foundation.org,
-        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v5 09/42] mount: attach mappings to mounts
-Message-ID: <20210119092019.GA3361757@infradead.org>
-References: <20210112220124.837960-1-christian.brauner@ubuntu.com>
- <20210112220124.837960-10-christian.brauner@ubuntu.com>
+        id S1727025AbhASW6j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Jan 2021 17:58:39 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:44094 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2404096AbhASOTe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 19 Jan 2021 09:19:34 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1611065887;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=2ycJhE8mXTZkoJTspQiF4eAdjjIOqaHJTzxw51QUBpw=;
+        b=iH91giBXcrvLWkxZafRwzhtnAaqC4UgOyL2/svKS5JpqN4aXD9uZoHjHC1ghixJvzFQFwB
+        wLFBArEfZwc4Z7vEzAYFoEYWqEGfkJemKwWQ+7hEoy/NTkYb2K/87UEluBwNSQI9TmihSg
+        YrK+WSWmMbUsVGj8AVkkO22Ba2gkMuA=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-504-Na2rrFESP2-59Jhvxs6BgA-1; Tue, 19 Jan 2021 09:14:34 -0500
+X-MC-Unique: Na2rrFESP2-59Jhvxs6BgA-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B9A58806661;
+        Tue, 19 Jan 2021 14:14:29 +0000 (UTC)
+Received: from localhost (unknown [10.18.25.174])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 2AA0D19C47;
+        Tue, 19 Jan 2021 14:14:23 +0000 (UTC)
+Date:   Tue, 19 Jan 2021 09:14:22 -0500
+From:   Mike Snitzer <snitzer@redhat.com>
+To:     Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
+Cc:     linux-block@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        drbd-dev@lists.linbit.com, linux-bcache@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-scsi@vger.kernel.org, target-devel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
+        dm-devel@redhat.com, axboe@kernel.dk, philipp.reisner@linbit.com,
+        lars.ellenberg@linbit.com, efremov@linux.com, colyli@suse.de,
+        kent.overstreet@gmail.com, agk@redhat.com, song@kernel.org,
+        hch@lst.de, sagi@grimberg.me, martin.petersen@oracle.com,
+        viro@zeniv.linux.org.uk, clm@fb.com, josef@toxicpanda.com,
+        dsterba@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca,
+        rpeterso@redhat.com, agruenba@redhat.com, darrick.wong@oracle.com,
+        shaggy@kernel.org, damien.lemoal@wdc.com, naohiro.aota@wdc.com,
+        jth@kernel.org, tj@kernel.org, osandov@fb.com, bvanassche@acm.org,
+        gustavo@embeddedor.com, asml.silence@gmail.com,
+        jefflexu@linux.alibaba.com
+Subject: Re: [RFC PATCH 00/37] block: introduce bio_init_fields()
+Message-ID: <20210119141422.GA23758@redhat.com>
+References: <20210119050631.57073-1-chaitanya.kulkarni@wdc.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=iso-8859-1
 Content-Disposition: inline
-In-Reply-To: <20210112220124.837960-10-christian.brauner@ubuntu.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20210119050631.57073-1-chaitanya.kulkarni@wdc.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Looks good,
+On Tue, Jan 19 2021 at 12:05am -0500,
+Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com> wrote:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Hi,
+> 
+> This is a *compile only RFC* which adds a generic helper to initialize
+> the various fields of the bio that is repeated all the places in
+> file-systems, block layer, and drivers.
+> 
+> The new helper allows callers to initialize various members such as
+> bdev, sector, private, end io callback, io priority, and write hints.
+> 
+> The objective of this RFC is to only start a discussion, this it not 
+> completely tested at all.                                                                                                            
+> Following diff shows code level benefits of this helper :-
+>  38 files changed, 124 insertions(+), 236 deletions(-)
+
+
+Please no... this is just obfuscation.
+
+Adding yet another field to set would create a cascade of churn
+throughout kernel (and invariably many callers won't need the new field
+initialized, so you keep passing 0 for more and more fields).
+
+Nacked-by: Mike Snitzer <snitzer@redhat.com>
+
