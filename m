@@ -7,55 +7,55 @@ X-Spam-Status: No, score=-16.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F116C433E6
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 06:53:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5160DC433DB
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 06:54:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 11E6923120
-	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 06:53:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 19BF723120
+	for <linux-ext4@archiver.kernel.org>; Tue, 19 Jan 2021 06:54:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731870AbhASFaQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Jan 2021 00:30:16 -0500
-Received: from esa1.hgst.iphmx.com ([68.232.141.245]:34702 "EHLO
-        esa1.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389469AbhASFLq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jan 2021 00:11:46 -0500
+        id S2390438AbhASFaN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Jan 2021 00:30:13 -0500
+Received: from esa4.hgst.iphmx.com ([216.71.154.42]:51811 "EHLO
+        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389393AbhASFLc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Jan 2021 00:11:32 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
   d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1611033106; x=1642569106;
+  t=1611033092; x=1642569092;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=AAA7t74fBBFYvhmmUXL9ltnfWbGOnWjeqm/UNzN2uR4=;
-  b=rfxiqHo2Il4cuUpS/2Vwyfwnr+h2EYw5neM0L3rZ4PP/tO6QXAHGinW4
-   1E9yyyewXGMZZl6EAFrbEqcI6NYhkMwJ6m6U2O6c15kH4H64IXNnaEp/8
-   TcbyqfJOMlBepojasDcmRTA4iwyJKE2fpwK+1iBXJ2q6GDam69Cs/YHTI
-   NOYc1/y8RdsF4B4s87AxDNIWQ+UwYqFUpMWpoDrSBdYXRj0QzvR9HmKQq
-   TU5or9G3Yq6hki1AIKoaKumEZ7L3b2DKgYGKgXQw63xPXYGkeZMQj45Oy
-   wUftI2qwYakzoSliniYS6jGwDniyrty/2S08slSc+dhksvJChbYRGlltF
-   w==;
-IronPort-SDR: +EeBMaQhit70YY212VnNAf2HBYHVD/39brDoueIcuI2QBCHqQs0R4kZ+c1RaP/Pvk17B3/PZvc
- X1MaIXukuw0WJ9xCVcjAeBJy/HuTrEU7l1NDTzayObdUPMTdIJtjv8KQ5OJ0wQc+qEGO4GU6IT
- /6L43+mXfGICRrxTNk2Z43DHaoTh3rr080ssD4ycVBrxYbD6598TYseg0o6HJ8ihkNcN2gqEEC
- w66YgfM5yotmWp1W+fe8XBwQ/nKfd7wCWe+LH7FeIxx5j33mCNM5SCIZ5iFr5XDSKPFdWUVfY6
- ZB8=
+  bh=qoLn2/rcoIe5Xy1n1hC3Lt6hQmgoOhAQmKsRVXN2pPE=;
+  b=KoF7KWQBPdGWGHFA65SbXnOdhUqaL3slSuZod9pGPHFjUfmAVD3NmS6n
+   1uK3cMo1BqS00wSrxw2aD3H9f0zIM42pQ3HipI80wM84BXnFnxw5T0Jfn
+   m4ZF+36CRCeTfIt8NdlOyGC65OZ2V6p48gNQnNFS16SZLrhLtifUx0Rst
+   lugCPmT/XxFnTV3vyLfVSSmaRuUNiArPc6WJqi2cbHEK8Fumq+xVBwSjs
+   6MoCesfjkTIhEith4mGQMaJzrHDuCevd+8mazJ8Bd0hhbubgTDjUbO2AM
+   4boDZHIMJgwNmKAUzzHWL6ntFOvAwhTWIuQmXGpctLUvvKGFHNjDI/P4/
+   g==;
+IronPort-SDR: Sc1cagcp05wNi2gPdQB66ZrsusaAKJdzIDe8CzUtmgYSVeCWffOGB4WamBfNMqdybt8inn5CFE
+ 4c4eaVNL/mxAhB4VNOta4avTywzNn1LZHVlhQjwF+r5TtB/utQTB/kD+QlEOH3BdF18S1Nb4WS
+ YWHMv0vZxi1o0bBsjOLaEru9HdlhdWPIWW8QMHhuTvPa7TwtfzyPWgSszh1c4DZrUZqOGggoKg
+ Jsxg/mlpDBbAS2i0FBx23xPliBUIcVqCj1c4YNtIomXUOeisByIUhducn7/0CbpMmvHpMnBj9h
+ 7Vs=
 X-IronPort-AV: E=Sophos;i="5.79,357,1602518400"; 
-   d="scan'208";a="268081222"
-Received: from h199-255-45-14.hgst.com (HELO uls-op-cesaep01.wdc.com) ([199.255.45.14])
-  by ob1.hgst.iphmx.com with ESMTP; 19 Jan 2021 13:10:19 +0800
-IronPort-SDR: orMjc/tSb01dXK1HklYi66wWdxLkDv9HBfCcvlkdiiN5n+Hbspp8Uz6u0gyZHJVKpvAzzuGLAT
- h6uFmIljQk3kRywCcg4naDEGogW4/pBvZK6xt5QJEC1B0xJJaMqmOb97+vEYD//h6B0DvtiBH6
- npIM52Ogvb0hxlv5aYvM+zdVBbGF68nkvpn5FOP22Faa38lRqd5QC2u0tQNtdiPIcrqOuofOSA
- 1u0+jeEinED0lhBmoy87IOkU1XoynSas2lHcuhtYnpoR4dWhrOOVK3sQVyzSo26zr5om9ncTEa
- thxeVRcuOH4WOe0vdQUKcdcS
+   d="scan'208";a="157763964"
+Received: from h199-255-45-15.hgst.com (HELO uls-op-cesaep02.wdc.com) ([199.255.45.15])
+  by ob1.hgst.iphmx.com with ESMTP; 19 Jan 2021 13:09:06 +0800
+IronPort-SDR: l0fGcm/mOaOvrk3ufBaX+Z/JgvxI9YqtJPwTy7GsQJFIw+iHk2No+n9cg2xF3/o1kj41JtgFoy
+ KgqJ5FUZvI7zi5KU/Y1P55lf9RcNzP0Ipuh5OQYWlzhIQdbSkO+NBnXNTFsREg+DOVFKYwVPE3
+ 673Y2brb4YkMXNlnLa3fTxM/hxCJrtRJtqk7KclrfCGAQS632iQYaCXGQWK3FDUqqdKyQa3hHL
+ 85lBTtP5HoxeeunvXyGizhknf6hV66hPA/ZmJXnnLBOF781krzjsvPFwrSAt4qSmMt0kosYvZz
+ wVJ5mlUHv3PO8nmWRIAhnwu7
 Received: from uls-op-cesaip02.wdc.com ([10.248.3.37])
-  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 18 Jan 2021 20:54:55 -0800
-IronPort-SDR: cPCtUc/IRHJ6v0mRHjS8V8MFIsoN0oL2wMbe6Ozxyn7u6Jlq2FjrgvACBEr/lheyPR/5wD4N+M
- KEDIu5wE7UWz8Cv9qJDWZum4DMbM7mOvzj/7tfqqgYPHbQ1LhSR/PgR8NGyaDkjJQEt2LBkn32
- 1OZrCSpTxv+AMTCn8V0WZgKvKOAI/tj1Sffo8uYhn7bxkZYYg0/EqRTNAqMwUOaWkw/9SrZbM5
- n6bVFFI/rd2QJwwAKHXPwXh+bmpzJXrCR4jV/u3YAVKTR0Pw0jMhQst/htFOvMCrlOnknkAxQ9
- MSM=
+  by uls-op-cesaep02.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 18 Jan 2021 20:51:42 -0800
+IronPort-SDR: YTx2sPI+S6B3s0zwLxmE9JLYYaAYYdsBlTi/QBtBxd/WH8egWo/s2t318EELWraWDHn4aYbSz+
+ GTI/c0RV1f+ot/Yyog9omiJsfpSR5vK5KT4IJoKlPtJElbAfKckX/OVaF06ki+8DfWwezcFUha
+ cQceDg9EfnRtvtgEBcHMkJqbMz+Hf9lDezVT3gRBkt4FXtAK8F0+3Jw8Dlu3r3MJXdxsm4oEy7
+ lej+XAjPd2ZdZGUr333NTWzmm/vXM3I7gj6chGIMLH1v36uCSVr35WYHxwt+NXTGuosML8y4Lr
+ Cxg=
 WDCIronportException: Internal
 Received: from vm.labspan.wdc.com (HELO vm.sc.wdc.com) ([10.6.137.102])
-  by uls-op-cesaip02.wdc.com with ESMTP; 18 Jan 2021 21:10:18 -0800
+  by uls-op-cesaip02.wdc.com with ESMTP; 18 Jan 2021 21:09:06 -0800
 From:   Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
 To:     linux-block@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -77,9 +77,9 @@ Cc:     jfs-discussion@lists.sourceforge.net, dm-devel@redhat.com,
         osandov@fb.com, bvanassche@acm.org, gustavo@embeddedor.com,
         asml.silence@gmail.com, jefflexu@linux.alibaba.com,
         Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
-Subject: [RFC PATCH 31/37] eros: use bio_init_fields in data
-Date:   Mon, 18 Jan 2021 21:06:25 -0800
-Message-Id: <20210119050631.57073-32-chaitanya.kulkarni@wdc.com>
+Subject: [RFC PATCH 21/37] dm-bufio: use bio_init_fields
+Date:   Mon, 18 Jan 2021 21:06:15 -0800
+Message-Id: <20210119050631.57073-22-chaitanya.kulkarni@wdc.com>
 X-Mailer: git-send-email 2.22.1
 In-Reply-To: <20210119050631.57073-1-chaitanya.kulkarni@wdc.com>
 References: <20210119050631.57073-1-chaitanya.kulkarni@wdc.com>
@@ -91,26 +91,26 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 Signed-off-by: Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
 ---
- fs/erofs/data.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/md/dm-bufio.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/fs/erofs/data.c b/fs/erofs/data.c
-index ea4f693bee22..15f3a3f01fa3 100644
---- a/fs/erofs/data.c
-+++ b/fs/erofs/data.c
-@@ -220,10 +220,8 @@ static inline struct bio *erofs_read_raw_page(struct bio *bio,
- 
- 		bio = bio_alloc(GFP_NOIO, nblocks);
- 
--		bio->bi_end_io = erofs_readendio;
--		bio_set_dev(bio, sb->s_bdev);
--		bio->bi_iter.bi_sector = (sector_t)blknr <<
--			LOG_SECTORS_PER_BLOCK;
-+		bio_init_fields(bio, sb->s_bdev, (sector_t)blknr <<
-+			LOG_SECTORS_PER_BLOCK, NULL, erofs_readendio, 0, 0);
- 		bio->bi_opf = REQ_OP_READ | (ra ? REQ_RAHEAD : 0);
+diff --git a/drivers/md/dm-bufio.c b/drivers/md/dm-bufio.c
+index 9c1a86bde658..1295e7e33e06 100644
+--- a/drivers/md/dm-bufio.c
++++ b/drivers/md/dm-bufio.c
+@@ -633,11 +633,8 @@ static void use_bio(struct dm_buffer *b, int rw, sector_t sector,
+ 		return;
  	}
  
+-	bio->bi_iter.bi_sector = sector;
+-	bio_set_dev(bio, b->c->bdev);
+ 	bio_set_op_attrs(bio, rw, 0);
+-	bio->bi_end_io = bio_complete;
+-	bio->bi_private = b;
++	bio_init_fields(bio, b->c->bdev, sector, b, bio_complete, 0, 0);
+ 
+ 	ptr = (char *)b->data + offset;
+ 	len = n_sectors << SECTOR_SHIFT;
 -- 
 2.22.1
 
