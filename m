@@ -6,58 +6,64 @@ X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
 	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D8BBC433E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:57:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 257B0C433DB
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:36:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CF99423358
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:57:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF14A20705
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:36:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391238AbhATQ4k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 11:56:40 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48882 "EHLO
+        id S1732417AbhATRew (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 12:34:52 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35510 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2403975AbhATQVd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 11:21:33 -0500
+        with ESMTP id S1731826AbhATRaX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 12:30:23 -0500
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8D1D2C061575;
-        Wed, 20 Jan 2021 08:21:18 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 131F4C0613C1;
+        Wed, 20 Jan 2021 09:29:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
         References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
         Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=+TyaprsFFpe4D2IdPtCe/vGt+ZyBDLNGMTqOEUV0Y0Y=; b=ktIh2yT5awX/xT5bRccUykitbs
-        zgufB8WSm9bC+xgIIJPaJjx3/ouKSRW3nr/780xlRnnsuVhmezcnEKPSCnUf6NgrDm1i8C9IyVjoe
-        7oN5VPb5AgfWo7DAV0yXTMSXo83+Chdgpq5voEK9+OvpiytpbBq4cDbpWzYwyPIIfrh8NPIRtcasX
-        IdwcjrCl/q/UWPa2RP/B/Z5UOv0F/Uz7DvSTBayM8ImJyTMLoL/46+7yxjhhEIamoJqbq6PL3l4EE
-        DSyKwogLbgvVPII5ePApUKii8KrZcUepI/RCyxl9cvXpGs0Dvc/qunL0M5/Yo9X99iONsZNQCHSdh
-        QMoIJrwA==;
+        bh=nSCkCp7YbB4uesa+BF93Kdx2zRiFf+kQ6K3+ROxstYk=; b=PjwfNj17vL8C+/os7kashumdUO
+        xfy8+dT1bMxbszF7XBJrgqBjxjICa1Z2VAsW8RQnKvhD74uBVtJPW/HqmuPin+ctk+Jral4+qESit
+        kzXk1voEnafeYgpPyAvxfbK95iGBLt2mAZ0mY4S37VMAXfB21bGCJscMV8YLwsiXqWHd0kCXUrKf1
+        LWcnZlr6uYQlbK2l0QBZ4y2cy87mv5oYBnrUiyWuuQiDSHLCWzxHfM04Py85MEXa+fA4jLyYom42z
+        BJ5bVov4G4MjZG/wKCy2RYQWQ11PY3Zp6G48XLQPrDqP+DI+F2PEl5EtWUz8e66QEcwFAemU+18Z6
+        Ue0FATTQ==;
 Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1l2GDB-00FuBN-2r; Wed, 20 Jan 2021 16:20:12 +0000
-Date:   Wed, 20 Jan 2021 16:20:01 +0000
+        id 1l2HHY-00FzDt-Mo; Wed, 20 Jan 2021 17:28:49 +0000
+Date:   Wed, 20 Jan 2021 17:28:36 +0000
 From:   Christoph Hellwig <hch@infradead.org>
 To:     Jan Kara <jack@suse.cz>
-Cc:     linux-fsdevel@vger.kernel.org,
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org,
         Matthew Wilcox <willy@infradead.org>,
         linux-ext4@vger.kernel.org
 Subject: Re: [PATCH 2/3] mm: Provide address_space operation for filling
  pages for read
-Message-ID: <20210120162001.GB3790454@infradead.org>
+Message-ID: <20210120172836.GA3809508@infradead.org>
 References: <20210120160611.26853-1-jack@suse.cz>
  <20210120160611.26853-3-jack@suse.cz>
+ <20210120162001.GB3790454@infradead.org>
+ <20210120172705.GC24063@quack2.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210120160611.26853-3-jack@suse.cz>
+In-Reply-To: <20210120172705.GC24063@quack2.suse.cz>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 20, 2021 at 05:06:10PM +0100, Jan Kara wrote:
-> Provide an address_space operation for filling pages needed for read
-> into page cache. Filesystems can use this operation to seriealize
-> page cache filling with e.g. hole punching properly.
+On Wed, Jan 20, 2021 at 06:27:05PM +0100, Jan Kara wrote:
+> This would mean pulling i_mmap_sem out from ext4/XFS/F2FS private inode
+> into the VFS inode. Which is fine by me but it would grow struct inode for
+> proc / tmpfs / btrfs (although for btrfs I'm not convinced it isn't
+> actually prone to the race and doesn't need similar protection as xfs /
+> ext4) so some people may object.
 
-Besides the impending rewrite of the area - having another indirection
-here is just horrible for performance.  If we want locking in this area
-it should be in core code and common for multiple file systems.
+The btrfs folks are already looking into lifting it to common code.
+
+Also I have a patch pending to remove a list_head from the inode to
+counter the size increase :)
