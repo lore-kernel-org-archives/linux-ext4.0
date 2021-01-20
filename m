@@ -2,89 +2,57 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2479CC433E9
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:09:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB3F4C433E6
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:20:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F3409233A1
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:09:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B531C233EB
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:20:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391193AbhATQID (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 11:08:03 -0500
-Received: from mx2.suse.de ([195.135.220.15]:42844 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391397AbhATQHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Jan 2021 11:07:01 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id EB8D9AF31;
-        Wed, 20 Jan 2021 16:06:18 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id AA0E91E0802; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-fsdevel@vger.kernel.org>
-Cc:     Matthew Wilcox <willy@infradead.org>, <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/3 RFC] fs: Hole punch vs page cache filling races
-Date:   Wed, 20 Jan 2021 17:06:08 +0100
-Message-Id: <20210120160611.26853-1-jack@suse.cz>
-X-Mailer: git-send-email 2.26.2
+        id S2403815AbhATQTr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 11:19:47 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48524 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731915AbhATQTg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 11:19:36 -0500
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 870A1C061757;
+        Wed, 20 Jan 2021 08:18:56 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=Khj4yZXBU5CVNv5IIshlEh8x3+XWS0+T3H0OXUMdHvA=; b=hRy6Vb6Xs0CYmt9lEK9nkESjac
+        yxRJGc5c3W/c66vZ5VgpK2yDC3ncnMykDIsvMidl1375oR4e78OtWTwxgS6VcfGb1XXnPQrNZdD3w
+        2P6m48/TMWyf/lKusMSmOuUjB2CdwsTaCqmqkFbsPi+B/ww9TSC5AweiqJ6MegsKgwJaysWiHGjg1
+        JP40uyR61vyeLUH+KBjigoi5o7fRAZp5INyu5S1QRclO5ih5tCBslXpVx3KNdFYrdczchG2wZt2uQ
+        m+zOckXDnqPJo8lHyXqqvsV7/trypQCqq285qrW2sko1AA9rve9UEfpr82ZF5kPtuTse+AtinsOo5
+        /LsKSzMw==;
+Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
+        id 1l2GBv-00Fu6m-J3; Wed, 20 Jan 2021 16:18:45 +0000
+Date:   Wed, 20 Jan 2021 16:18:43 +0000
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-fsdevel@vger.kernel.org,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/3] mm: Do not pass iter into
+ generic_file_buffered_read_get_pages()
+Message-ID: <20210120161843.GA3790454@infradead.org>
+References: <20210120160611.26853-1-jack@suse.cz>
+ <20210120160611.26853-2-jack@suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210120160611.26853-2-jack@suse.cz>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
-
-Amir has reported [1] a that ext4 has a potential issues when reads can race
-with hole punching possibly exposing stale data from freed blocks or even
-corrupting filesystem when stale mapping data gets used for writeout. The
-problem is that during hole punching, new page cache pages can get instantiated
-in a punched range after truncate_inode_pages() has run but before the
-filesystem removes blocks from the file.  In principle any filesystem
-implementing hole punching thus needs to implement a mechanism to block
-instantiating page cache pages during hole punching to avoid this race. This is
-further complicated by the fact that there are multiple places that can
-instantiate pages in page cache.  We can have regular read(2) or page fault
-doing this but fadvise(2) or madvise(2) can also result in reading in page
-cache pages through force_page_cache_readahead().
-
-There are couple of ways how to fix this. First way (currently implemented by
-XFS) is to protect read(2) and *advise(2) calls with i_rwsem so that they are
-serialized with hole punching. This is easy to do but as a result all reads
-would then be serialized with writes and thus mixed read-write workloads suffer
-heavily on ext4. Thus for ext4 I want to use EXT4_I(inode)->i_mmap_sem for
-serialization of reads and hole punching. The same serialization that is
-already currently used in ext4 to close this race for page faults. This is
-conceptually simple but lock ordering is troublesome - since
-EXT4_I(inode)->i_mmap_sem is used in page fault path, it ranks below mmap_sem.
-Thus we cannot simply grab EXT4_I(inode)->i_mmap_sem in ext4_file_read_iter()
-as generic_file_buffered_read() copies data to userspace which may require
-grabbing mmap_sem. Also grabbing EXT4_I(inode)->i_mmap_sem in ext4_readpages()
-/ ext4_readpage() is problematic because at that point we already have locked
-pages instantiated in the page cache. So EXT4_I(inode)->i_mmap_sem would
-effectively rank below page lock which is too low in the locking hierarchy.  So
-for ext4 (and other filesystems with similar locking constraints - F2FS, GFS2,
-OCFS2, ...) we'd need another hook in the read path that can wrap around
-insertion of pages into page cache but does not contain copying of data into
-userspace.
-
-This patch set implements one possibility of such hook - we essentially
-abstract generic_file_buffered_read_get_pages() into a hook. I'm not completely
-sold on the naming or the API, or even whether this is the best place for the
-hook. But I wanted to send something out for further discussion. For example
-another workable option for ext4 would be to have an aops hook for adding a
-page into page cache (essentially abstract add_to_page_cache_lru()). There will
-be slight downside that it would mean per-page acquisition of the lock instead
-of a per-batch-of-pages, also if we ever transition to range locking the
-mapping, per-batch locking would be more efficient.
-
-What do people think about this?
-
-								Honza
-
-[1] https://lore.kernel.org/linux-fsdevel/CAOQ4uxjQNmxqmtA_VbYW0Su9rKRk2zobJmahcyeaEVOFKVQ5dw@mail.gmail.com/
+This whole code has a massive refactoring pending that barely didn't
+make it in the last merge window.  willy, do you plan to resend it
+ASAP?
