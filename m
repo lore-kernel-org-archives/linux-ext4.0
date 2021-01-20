@@ -2,149 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7224C433E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:09:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2479CC433E9
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:09:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B1478233A1
+	by mail.kernel.org (Postfix) with ESMTP id F3409233A1
 	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:09:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2403770AbhATQIK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 11:08:10 -0500
-Received: from mx2.suse.de ([195.135.220.15]:42852 "EHLO mx2.suse.de"
+        id S2391193AbhATQID (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 11:08:03 -0500
+Received: from mx2.suse.de ([195.135.220.15]:42844 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391398AbhATQHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S2391397AbhATQHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 20 Jan 2021 11:07:01 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id EA4F7AC85;
+        by mx2.suse.de (Postfix) with ESMTP id EB8D9AF31;
         Wed, 20 Jan 2021 16:06:18 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id B0A311E082A; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
+        id AA0E91E0802; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     Matthew Wilcox <willy@infradead.org>, <linux-ext4@vger.kernel.org>,
         Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] mm: Provide address_space operation for filling pages for read
-Date:   Wed, 20 Jan 2021 17:06:10 +0100
-Message-Id: <20210120160611.26853-3-jack@suse.cz>
+Subject: [PATCH 0/3 RFC] fs: Hole punch vs page cache filling races
+Date:   Wed, 20 Jan 2021 17:06:08 +0100
+Message-Id: <20210120160611.26853-1-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210120160611.26853-1-jack@suse.cz>
-References: <20210120160611.26853-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Provide an address_space operation for filling pages needed for read
-into page cache. Filesystems can use this operation to seriealize
-page cache filling with e.g. hole punching properly.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- include/linux/fs.h |  5 +++++
- mm/filemap.c       | 32 ++++++++++++++++++++++++++------
- 2 files changed, 31 insertions(+), 6 deletions(-)
+Amir has reported [1] a that ext4 has a potential issues when reads can race
+with hole punching possibly exposing stale data from freed blocks or even
+corrupting filesystem when stale mapping data gets used for writeout. The
+problem is that during hole punching, new page cache pages can get instantiated
+in a punched range after truncate_inode_pages() has run but before the
+filesystem removes blocks from the file.  In principle any filesystem
+implementing hole punching thus needs to implement a mechanism to block
+instantiating page cache pages during hole punching to avoid this race. This is
+further complicated by the fact that there are multiple places that can
+instantiate pages in page cache.  We can have regular read(2) or page fault
+doing this but fadvise(2) or madvise(2) can also result in reading in page
+cache pages through force_page_cache_readahead().
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index fd47deea7c17..1d3f963d0d99 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -381,6 +381,9 @@ struct address_space_operations {
- 	int (*readpages)(struct file *filp, struct address_space *mapping,
- 			struct list_head *pages, unsigned nr_pages);
- 	void (*readahead)(struct readahead_control *);
-+	/* Fill in uptodate pages for kiocb into page cache and pagep array */
-+	int (*fill_pages)(struct kiocb *, size_t len, bool partial_page,
-+			  struct page **pagep, unsigned int nr_pages);
- 
- 	int (*write_begin)(struct file *, struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned flags,
-@@ -2962,6 +2965,8 @@ extern ssize_t generic_write_checks(struct kiocb *, struct iov_iter *);
- extern int generic_write_check_limits(struct file *file, loff_t pos,
- 		loff_t *count);
- extern int generic_file_rw_checks(struct file *file_in, struct file *file_out);
-+extern int generic_file_buffered_read_get_pages(struct kiocb *iocb, size_t len,
-+		bool partial_page, struct page **pages, unsigned int nr);
- extern ssize_t generic_file_buffered_read(struct kiocb *iocb,
- 		struct iov_iter *to, ssize_t already_read);
- extern ssize_t generic_file_read_iter(struct kiocb *, struct iov_iter *);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 7029bada8e90..5b594dd245e0 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2333,10 +2333,24 @@ generic_file_buffered_read_no_cached_page(struct kiocb *iocb)
- 	return generic_file_buffered_read_readpage(iocb, filp, mapping, page);
- }
- 
--static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
--						size_t len, bool partial_page,
--						struct page **pages,
--						unsigned int nr)
-+/**
-+ * generic_file_buffered_read_get_pages - generic routine to fill in page cache
-+ *	pages for a read
-+ * @iocb:	the iocb to read
-+ * @len:	number of bytes to read
-+ * @partial_page:	are partially uptodate pages accepted by read?
-+ * @pages:	array where to fill in found pages
-+ * @nr:		number of pages in the @pages array
-+ *
-+ * Fill pages into page cache and @pages array needed for a read of length @len
-+ * described by @iocb.
-+ *
-+ * Return:
-+ * Number of pages filled in the array
-+ */
-+int generic_file_buffered_read_get_pages(struct kiocb *iocb, size_t len,
-+					 bool partial_page,
-+					 struct page **pages, unsigned int nr)
- {
- 	struct file *filp = iocb->ki_filp;
- 	struct address_space *mapping = filp->f_mapping;
-@@ -2419,6 +2433,7 @@ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
- 	 */
- 	goto find_page;
- }
-+EXPORT_SYMBOL(generic_file_buffered_read_get_pages);
- 
- /**
-  * generic_file_buffered_read - generic file read routine
-@@ -2447,6 +2462,8 @@ ssize_t generic_file_buffered_read(struct kiocb *iocb,
- 	unsigned int nr_pages = min_t(unsigned int, 512,
- 			((iocb->ki_pos + iter->count + PAGE_SIZE - 1) >> PAGE_SHIFT) -
- 			(iocb->ki_pos >> PAGE_SHIFT));
-+	int (*fill_pages)(struct kiocb *, size_t, bool, struct page **,
-+			  unsigned int) = mapping->a_ops->fill_pages;
- 	int i, pg_nr, error = 0;
- 	bool writably_mapped;
- 	loff_t isize, end_offset;
-@@ -2456,6 +2473,9 @@ ssize_t generic_file_buffered_read(struct kiocb *iocb,
- 	if (unlikely(!iov_iter_count(iter)))
- 		return 0;
- 
-+	if (!fill_pages)
-+		fill_pages = generic_file_buffered_read_get_pages;
-+
- 	iov_iter_truncate(iter, inode->i_sb->s_maxbytes);
- 
- 	if (nr_pages > ARRAY_SIZE(pages_onstack))
-@@ -2478,8 +2498,8 @@ ssize_t generic_file_buffered_read(struct kiocb *iocb,
- 			iocb->ki_flags |= IOCB_NOWAIT;
- 
- 		i = 0;
--		pg_nr = generic_file_buffered_read_get_pages(iocb, iter->count,
--				!iov_iter_is_pipe(iter), pages, nr_pages);
-+		pg_nr = fill_pages(iocb, iter->count, !iov_iter_is_pipe(iter),
-+				   pages, nr_pages);
- 		if (pg_nr < 0) {
- 			error = pg_nr;
- 			break;
--- 
-2.26.2
+There are couple of ways how to fix this. First way (currently implemented by
+XFS) is to protect read(2) and *advise(2) calls with i_rwsem so that they are
+serialized with hole punching. This is easy to do but as a result all reads
+would then be serialized with writes and thus mixed read-write workloads suffer
+heavily on ext4. Thus for ext4 I want to use EXT4_I(inode)->i_mmap_sem for
+serialization of reads and hole punching. The same serialization that is
+already currently used in ext4 to close this race for page faults. This is
+conceptually simple but lock ordering is troublesome - since
+EXT4_I(inode)->i_mmap_sem is used in page fault path, it ranks below mmap_sem.
+Thus we cannot simply grab EXT4_I(inode)->i_mmap_sem in ext4_file_read_iter()
+as generic_file_buffered_read() copies data to userspace which may require
+grabbing mmap_sem. Also grabbing EXT4_I(inode)->i_mmap_sem in ext4_readpages()
+/ ext4_readpage() is problematic because at that point we already have locked
+pages instantiated in the page cache. So EXT4_I(inode)->i_mmap_sem would
+effectively rank below page lock which is too low in the locking hierarchy.  So
+for ext4 (and other filesystems with similar locking constraints - F2FS, GFS2,
+OCFS2, ...) we'd need another hook in the read path that can wrap around
+insertion of pages into page cache but does not contain copying of data into
+userspace.
 
+This patch set implements one possibility of such hook - we essentially
+abstract generic_file_buffered_read_get_pages() into a hook. I'm not completely
+sold on the naming or the API, or even whether this is the best place for the
+hook. But I wanted to send something out for further discussion. For example
+another workable option for ext4 would be to have an aops hook for adding a
+page into page cache (essentially abstract add_to_page_cache_lru()). There will
+be slight downside that it would mean per-page acquisition of the lock instead
+of a per-batch-of-pages, also if we ever transition to range locking the
+mapping, per-batch locking would be more efficient.
+
+What do people think about this?
+
+								Honza
+
+[1] https://lore.kernel.org/linux-fsdevel/CAOQ4uxjQNmxqmtA_VbYW0Su9rKRk2zobJmahcyeaEVOFKVQ5dw@mail.gmail.com/
