@@ -2,66 +2,103 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C9E3C432C3
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:36:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D121C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:47:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 39225221FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:36:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6423622287
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:47:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731651AbhATRer (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 12:34:47 -0500
-Received: from mx2.suse.de ([195.135.220.15]:36582 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727758AbhATR2B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Jan 2021 12:28:01 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 031EDAC9B;
-        Wed, 20 Jan 2021 17:27:06 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id AE9351E0802; Wed, 20 Jan 2021 18:27:05 +0100 (CET)
-Date:   Wed, 20 Jan 2021 18:27:05 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/3] mm: Provide address_space operation for filling
- pages for read
-Message-ID: <20210120172705.GC24063@quack2.suse.cz>
-References: <20210120160611.26853-1-jack@suse.cz>
- <20210120160611.26853-3-jack@suse.cz>
- <20210120162001.GB3790454@infradead.org>
+        id S1732522AbhATRrI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 12:47:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38502 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390118AbhATRo1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 12:44:27 -0500
+Received: from mail-ej1-x631.google.com (mail-ej1-x631.google.com [IPv6:2a00:1450:4864:20::631])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96A50C0613D6;
+        Wed, 20 Jan 2021 09:43:28 -0800 (PST)
+Received: by mail-ej1-x631.google.com with SMTP id 6so34712292ejz.5;
+        Wed, 20 Jan 2021 09:43:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=8u2YlGjdBiXNxHWMGsZ9iS3g5Vphiu4Bzp3sgjIxUwE=;
+        b=U0P9dEXEM4NoH+BqodC4cEeN4r/GmfP53g5aE4yK0deN5k07b4YOy9j5o1Jb0roGFw
+         CIf+Dn5X/VW5cLy477UM+m1OhWII0ZvKn/6qnINuaa1zsDb4GHTrfuVb7L4FQoiAzPGs
+         nv7WdkMCpzquzQOqRPn2Cg4h4AIZO4uHsW4ocdwsV3EhsTiUAnzB4n83w6nPUXmZXhqW
+         Fy/21p4PQoPkFMk4gwiPuyzRvBnsCTWofgjaObT4puFWPqF286FqBjXC6+o/KzjXM7f5
+         qndEFOA8fllMatsvsZQC8rLmTWPEDjtzWmmhKVQvmg397g/aPE/e3IsTcKfpmUCCyM/7
+         R+eA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=8u2YlGjdBiXNxHWMGsZ9iS3g5Vphiu4Bzp3sgjIxUwE=;
+        b=LHm59uuIWXtVd/RLr15hTF0oPr2f/uZzskLo4AmRz5pVjA82hAkQ5weoUhLeHGwN28
+         CgTKu4TK+uhuresTOvo4achXvWDR5oBCso+f2xHDK4kbCC4AU3j+ZdtOAPoRhqxQ1Uki
+         Tw5OgoaphEzmQUso1a+PjmzCMpgc4WkQ9Pr70FT9g1b5ZffYFsV3WR8dNVBtXpJ2P/as
+         5BAuCFDciBBC+eVfgZ3IBL/0BqS4T8qF226O5U9tUREPX1uhWUpazYYkljVJUgj/UMXP
+         2acY0Z0WwGUheIqjvCWjfvPAH1Amli53ISJZQDh35+kOxRl8mXipk2oxDnVnGntg+yqJ
+         Fv0Q==
+X-Gm-Message-State: AOAM531Wg+iOn6kpWi4pJp0VmqXpLToXum7tvRpkFhubTCzAqLzahKIc
+        9AZy3qS/Fjvj74eYE+OhbQnU7jkATEkwqJVsepA=
+X-Google-Smtp-Source: ABdhPJzqMIq5g8wOuUcoOmqgtdw52RzWdslz8i5l1px8OWut790tQiG6dDoxTbxrnxh1dtCEnouRnXStBxSV9RAo1gU=
+X-Received: by 2002:a17:906:9619:: with SMTP id s25mr6945195ejx.345.1611164607310;
+ Wed, 20 Jan 2021 09:43:27 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210120162001.GB3790454@infradead.org>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+References: <20210119110121.36656-1-bianpan2016@163.com>
+In-Reply-To: <20210119110121.36656-1-bianpan2016@163.com>
+From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
+Date:   Wed, 20 Jan 2021 09:43:16 -0800
+Message-ID: <CAD+ocbz+DKHKGN=G8Vn0pjuAfVRX3UP85ZaeZEEwcNemS1kJ8A@mail.gmail.com>
+Subject: Re: [PATCH] ext4: stop update inode before return
+To:     Pan Bian <bianpan2016@163.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 20-01-21 16:20:01, Christoph Hellwig wrote:
-> On Wed, Jan 20, 2021 at 05:06:10PM +0100, Jan Kara wrote:
-> > Provide an address_space operation for filling pages needed for read
-> > into page cache. Filesystems can use this operation to seriealize
-> > page cache filling with e.g. hole punching properly.
-> 
-> Besides the impending rewrite of the area - having another indirection
-> here is just horrible for performance.  If we want locking in this area
-> it should be in core code and common for multiple file systems.
+Thanks Pan for the fix. Looks good to me.
 
-This would mean pulling i_mmap_sem out from ext4/XFS/F2FS private inode
-into the VFS inode. Which is fine by me but it would grow struct inode for
-proc / tmpfs / btrfs (although for btrfs I'm not convinced it isn't
-actually prone to the race and doesn't need similar protection as xfs /
-ext4) so some people may object.
+Reviewed-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+On Tue, Jan 19, 2021 at 3:04 AM Pan Bian <bianpan2016@163.com> wrote:
+>
+> Stop inode updating before returning the error code.
+>
+> Fixes: aa75f4d3daae ("ext4: main fast-commit commit path")
+> Signed-off-by: Pan Bian <bianpan2016@163.com>
+> ---
+>  fs/ext4/inode.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c173c8405856..64039bbb656d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5389,8 +5389,10 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+>                         inode->i_gid = attr->ia_gid;
+>                 error = ext4_mark_inode_dirty(handle, inode);
+>                 ext4_journal_stop(handle);
+> -               if (unlikely(error))
+> +               if (unlikely(error)) {
+> +                       ext4_fc_stop_update(inode);
+>                         return error;
+> +               }
+>         }
+>
+>         if (attr->ia_valid & ATTR_SIZE) {
+> --
+> 2.17.1
+>
