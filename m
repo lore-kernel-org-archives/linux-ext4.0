@@ -5,34 +5,33 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A955C4332B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FA55C43332
 	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:08:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 116B9233ED
+	by mail.kernel.org (Postfix) with ESMTP id 4235E233A1
 	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:08:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390295AbhATQHv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 11:07:51 -0500
-Received: from mx2.suse.de ([195.135.220.15]:42856 "EHLO mx2.suse.de"
+        id S1731806AbhATQIJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 11:08:09 -0500
+Received: from mx2.suse.de ([195.135.220.15]:42854 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391401AbhATQHA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Jan 2021 11:07:00 -0500
+        id S2391399AbhATQHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Jan 2021 11:07:01 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id EBD0DAF32;
+        by mx2.suse.de (Postfix) with ESMTP id EA3A0AC7B;
         Wed, 20 Jan 2021 16:06:18 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id B4D381E0831; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
+        id ADEC41E07FD; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     Matthew Wilcox <willy@infradead.org>, <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
-        Amir Goldstein <amir73il@gmail.com>
-Subject: [PATCH 3/3] ext4: Fix stale data exposure when read races with hole punch
-Date:   Wed, 20 Jan 2021 17:06:11 +0100
-Message-Id: <20210120160611.26853-4-jack@suse.cz>
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/3] mm: Do not pass iter into generic_file_buffered_read_get_pages()
+Date:   Wed, 20 Jan 2021 17:06:09 +0100
+Message-Id: <20210120160611.26853-2-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210120160611.26853-1-jack@suse.cz>
 References: <20210120160611.26853-1-jack@suse.cz>
@@ -42,117 +41,109 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hole puching currently evicts pages from page cache and then goes on to
-remove blocks from the inode. This happens under both i_mmap_sem and
-i_rwsem held exclusively which provides appropriate serialization with
-racing page faults. However there is currently nothing that prevents
-ordinary read(2) from racing with the hole punch and instantiating page
-cache page after hole punching has evicted page cache but before it has
-removed blocks from the inode. This page cache page will be mapping soon
-to be freed block and that can lead to returning stale data to userspace
-or even filesystem corruption.
+generic_file_buffered_read_get_pages() needs to only know the length we
+want to read and whether partially uptodate pages are accepted. Also
+principially this function just loads pages into page cache so it does
+not need to know about user buffers to copy data to. Pass the length and
+whether partially uptodate pages are acceptable into
+generic_file_buffered_read_get_pages() instead of iter.
 
-Fix the problem by protecting reads as well as readahead requests with
-i_mmap_sem.
-
-CC: stable@vger.kernel.org
-Reported-by: Amir Goldstein <amir73il@gmail.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/file.c  | 16 ++++++++++++++++
- fs/ext4/inode.c | 21 +++++++++++++++++++++
- 2 files changed, 37 insertions(+)
+ mm/filemap.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 349b27f0dda0..d66f7c08b123 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -30,6 +30,7 @@
- #include <linux/uio.h>
- #include <linux/mman.h>
- #include <linux/backing-dev.h>
-+#include <linux/fadvise.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
- #include "xattr.h"
-@@ -131,6 +132,20 @@ static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 	return generic_file_read_iter(iocb, to);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 5c9d564317a5..7029bada8e90 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2235,7 +2235,7 @@ generic_file_buffered_read_readpage(struct kiocb *iocb,
+ static struct page *
+ generic_file_buffered_read_pagenotuptodate(struct kiocb *iocb,
+ 					   struct file *filp,
+-					   struct iov_iter *iter,
++					   bool partial_page,
+ 					   struct page *page,
+ 					   loff_t pos, loff_t count)
+ {
+@@ -2264,8 +2264,8 @@ generic_file_buffered_read_pagenotuptodate(struct kiocb *iocb,
+ 	if (inode->i_blkbits == PAGE_SHIFT ||
+ 			!mapping->a_ops->is_partially_uptodate)
+ 		goto page_not_up_to_date;
+-	/* pipes can't handle partially uptodate pages */
+-	if (unlikely(iov_iter_is_pipe(iter)))
++	/* Some reads (e.g. pipes) don't accept partially uptodate pages */
++	if (unlikely(!partial_page))
+ 		goto page_not_up_to_date;
+ 	if (!trylock_page(page))
+ 		goto page_not_up_to_date;
+@@ -2304,8 +2304,7 @@ generic_file_buffered_read_pagenotuptodate(struct kiocb *iocb,
  }
  
-+static int ext4_fadvise(struct file *filp, loff_t start, loff_t end, int advice)
-+{
-+	struct inode *inode = file_inode(filp);
-+	int ret;
-+
-+	/* Readahead needs protection from hole punching and similar ops */
-+	if (advice == POSIX_FADV_WILLNEED)
-+		down_read(&EXT4_I(inode)->i_mmap_sem);
-+	ret = generic_fadvise(filp, start, end, advice);
-+	if (advice == POSIX_FADV_WILLNEED)
-+		up_read(&EXT4_I(inode)->i_mmap_sem);
-+	return ret;
-+}
-+
- /*
-  * Called when an inode is released. Note that this is different
-  * from ext4_file_open: open gets called at every open, but release
-@@ -911,6 +926,7 @@ const struct file_operations ext4_file_operations = {
- 	.splice_read	= generic_file_splice_read,
- 	.splice_write	= iter_file_splice_write,
- 	.fallocate	= ext4_fallocate,
-+	.fadvise	= ext4_fadvise,
- };
- 
- const struct inode_operations ext4_file_inode_operations = {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c173c8405856..a01569f2fa49 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3646,9 +3646,28 @@ static int ext4_iomap_swap_activate(struct swap_info_struct *sis,
- 				       &ext4_iomap_report_ops);
+ static struct page *
+-generic_file_buffered_read_no_cached_page(struct kiocb *iocb,
+-					  struct iov_iter *iter)
++generic_file_buffered_read_no_cached_page(struct kiocb *iocb)
+ {
+ 	struct file *filp = iocb->ki_filp;
+ 	struct address_space *mapping = filp->f_mapping;
+@@ -2335,7 +2334,7 @@ generic_file_buffered_read_no_cached_page(struct kiocb *iocb,
  }
  
-+static int ext4_fill_pages(struct kiocb *iocb, size_t len, bool partial_page,
-+			   struct page **pagep, unsigned int nr_pages)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(iocb->ki_filp->f_mapping->host);
-+	int ret;
-+
-+	/*
-+	 * Protect adding of pages into page cache against hole punching and
-+	 * other cache manipulation functions so that we don't expose
-+	 * potentially stale user data.
-+	 */
-+	down_read(&ei->i_mmap_sem);
-+	ret = generic_file_buffered_read_get_pages(iocb, len, partial_page,
-+						   pagep, nr_pages);
-+	up_read(&ei->i_mmap_sem);
-+	return ret;
-+}
-+
- static const struct address_space_operations ext4_aops = {
- 	.readpage		= ext4_readpage,
- 	.readahead		= ext4_readahead,
-+	.fill_pages		= ext4_fill_pages,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
-@@ -3667,6 +3686,7 @@ static const struct address_space_operations ext4_aops = {
- static const struct address_space_operations ext4_journalled_aops = {
- 	.readpage		= ext4_readpage,
- 	.readahead		= ext4_readahead,
-+	.fill_pages		= ext4_fill_pages,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_write_begin,
-@@ -3684,6 +3704,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- static const struct address_space_operations ext4_da_aops = {
- 	.readpage		= ext4_readpage,
- 	.readahead		= ext4_readahead,
-+	.fill_pages		= ext4_fill_pages,
- 	.writepage		= ext4_writepage,
- 	.writepages		= ext4_writepages,
- 	.write_begin		= ext4_da_write_begin,
+ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
+-						struct iov_iter *iter,
++						size_t len, bool partial_page,
+ 						struct page **pages,
+ 						unsigned int nr)
+ {
+@@ -2343,7 +2342,7 @@ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
+ 	struct address_space *mapping = filp->f_mapping;
+ 	struct file_ra_state *ra = &filp->f_ra;
+ 	pgoff_t index = iocb->ki_pos >> PAGE_SHIFT;
+-	pgoff_t last_index = (iocb->ki_pos + iter->count + PAGE_SIZE-1) >> PAGE_SHIFT;
++	pgoff_t last_index = (iocb->ki_pos + len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	int i, j, nr_got, err = 0;
+ 
+ 	nr = min_t(unsigned long, last_index - index, nr);
+@@ -2364,7 +2363,7 @@ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
+ 	if (nr_got)
+ 		goto got_pages;
+ 
+-	pages[0] = generic_file_buffered_read_no_cached_page(iocb, iter);
++	pages[0] = generic_file_buffered_read_no_cached_page(iocb);
+ 	err = PTR_ERR_OR_ZERO(pages[0]);
+ 	if (!IS_ERR_OR_NULL(pages[0]))
+ 		nr_got = 1;
+@@ -2374,7 +2373,7 @@ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
+ 		pgoff_t pg_index = index + i;
+ 		loff_t pg_pos = max(iocb->ki_pos,
+ 				    (loff_t) pg_index << PAGE_SHIFT);
+-		loff_t pg_count = iocb->ki_pos + iter->count - pg_pos;
++		loff_t pg_count = iocb->ki_pos + len - pg_pos;
+ 
+ 		if (PageReadahead(page)) {
+ 			if (iocb->ki_flags & IOCB_NOIO) {
+@@ -2399,7 +2398,8 @@ static int generic_file_buffered_read_get_pages(struct kiocb *iocb,
+ 			}
+ 
+ 			page = generic_file_buffered_read_pagenotuptodate(iocb,
+-					filp, iter, page, pg_pos, pg_count);
++					filp, partial_page, page, pg_pos,
++					pg_count);
+ 			if (IS_ERR_OR_NULL(page)) {
+ 				for (j = i + 1; j < nr_got; j++)
+ 					put_page(pages[j]);
+@@ -2478,8 +2478,8 @@ ssize_t generic_file_buffered_read(struct kiocb *iocb,
+ 			iocb->ki_flags |= IOCB_NOWAIT;
+ 
+ 		i = 0;
+-		pg_nr = generic_file_buffered_read_get_pages(iocb, iter,
+-							     pages, nr_pages);
++		pg_nr = generic_file_buffered_read_get_pages(iocb, iter->count,
++				!iov_iter_is_pipe(iter), pages, nr_pages);
+ 		if (pg_nr < 0) {
+ 			error = pg_nr;
+ 			break;
 -- 
 2.26.2
 
