@@ -2,79 +2,206 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10C7BC433DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB432C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 00:30:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BF951223E0
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 17:58:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A51BC23770
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 00:30:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390855AbhATR6e (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 12:58:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41506 "EHLO
+        id S2393184AbhAUA3x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 19:29:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59078 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729050AbhATR6A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 12:58:00 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7962AC061757;
-        Wed, 20 Jan 2021 09:57:15 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=pUnziRy/TcrH98npVbZkez1LzWGAocfrqdjT4NTwcIw=; b=skUQ+xxSKtRRyAldNILOAj5MVs
-        uowju0zOwSmH1OMrQWg/aWfjCTQUmlLzum+Lxg8Ueu+yd8m5xjBF4UP7wtrqTPKAsePZ+E4rpHZK/
-        MLKeJ2J8rHRTyEGxZnT9gtHgVZ7b62DJl01FoxsKcRiLO/lMfjR7xlQ6Q13Wf/Ce8wepxaCtKrISG
-        +I8AAfVArrIa8IPwwF9gg4tJIEkn++CLj8Jl7EE2XxggIaTTMdizW9VxwT0WJqfhGuPKOhGavbIy1
-        AyXRBugLXjFCmNkdRNJQlfw2z9qgH1AiZE02mwVKAOHqgfKSWD4OwenLQnA0CIEwuoLV0t33gNv17
-        uHV9vK9g==;
-Received: from willy by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
-        id 1l2HiS-00G1HZ-K2; Wed, 20 Jan 2021 17:56:26 +0000
-Date:   Wed, 20 Jan 2021 17:56:24 +0000
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/3] mm: Provide address_space operation for filling
- pages for read
-Message-ID: <20210120175624.GL2260413@casper.infradead.org>
-References: <20210120160611.26853-1-jack@suse.cz>
- <20210120160611.26853-3-jack@suse.cz>
- <20210120162001.GB3790454@infradead.org>
- <20210120172705.GC24063@quack2.suse.cz>
- <20210120172836.GA3809508@infradead.org>
+        with ESMTP id S1732729AbhATVbc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 16:31:32 -0500
+Received: from mail-pj1-x1035.google.com (mail-pj1-x1035.google.com [IPv6:2607:f8b0:4864:20::1035])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 82295C0617A4
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:49 -0800 (PST)
+Received: by mail-pj1-x1035.google.com with SMTP id j12so2992553pjy.5
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:49 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=7lNzPm//SZtLeN4eAjYSZAukTjwJcbPKxREuGSCv4z0=;
+        b=bdG6/sxto/vqy2mGN2IZVrFnDdETD+V6BIPUWoSmxaQKOxkfdJAdfWONfPNhcYegbi
+         UIon7YIB905qCDwV5gFOtAoNhHWumq8aEwJSqtjxA39kIdAdWev8HAFk7xM6imSCXPfh
+         bmY0OJ0mCrbj3BdDXe8PhJ9Zw7kTs2iBGy7E8/9R3ztLFpWkfzyGuIsNYyzh8sv2Mkef
+         CtwjzXZhoBoiC74hw8iSrq0ms7nnvHKlu8eivyVs5nhg/bYjqzqfoLLVAO3Y1GMNFYen
+         lKO2blIDnSbR67aKjFeiM+oCUaWErArhICJItPuPsHkd2eYF9P1eVcvNt7IVgvfTlZQ/
+         O6Bw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=7lNzPm//SZtLeN4eAjYSZAukTjwJcbPKxREuGSCv4z0=;
+        b=E3Ia+gepMqUKYewzxUmixyAPyEZHZjP6ql9lAjRHbtqSXlPJzKSCtpexivP4TyJShQ
+         DM6ymgPhkeKhdiJ1njjszBTcoAf7PCT+P5VMZZHnRBgYs73BIQuetJRuoFC0W9Dv43jg
+         BXnZj9DrSfdhn9uhx4dtq4uUgVjJceBDdNLKPAeuBjcDCy3NAqmXhtTlvdGMch0m+zlb
+         nLWmZYFP+XJXDCGNxqExHkEIh60GGkCrFoBRQP+rnAozO7wWTDt63T/4+tinGSzm8syE
+         Goa7XmzGIEvcGiWDMp4BA76z+/wrlptHpXdC+NFeWBn5O909RupRppAzM/lTeHEU3sVT
+         zt+A==
+X-Gm-Message-State: AOAM533/H21Zv1fMBJOG0ABG46GZuiEMK8KMUM+R3tK3tb4jjqOPZW/7
+        +YAfCvlK1LVvkBsXuBPA2uwgZEr6du0=
+X-Google-Smtp-Source: ABdhPJzXryKrW3e9p6oG6mqb7uBy4GhqRL7bPVthiFkMtIOJ60FPKVg/Gtdkl6Qgwoins3sompfp0w==
+X-Received: by 2002:a17:90b:30d4:: with SMTP id hi20mr7599826pjb.41.1611178008606;
+        Wed, 20 Jan 2021 13:26:48 -0800 (PST)
+Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
+        by smtp.googlemail.com with ESMTPSA id w1sm3396758pjt.23.2021.01.20.13.26.47
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 20 Jan 2021 13:26:47 -0800 (PST)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+X-Google-Original-From: Harshad Shirwadkar <--global>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH v3 02/15] e2fsck: add kernel endian-ness conversion macros
+Date:   Wed, 20 Jan 2021 13:26:28 -0800
+Message-Id: <20210120212641.526556-3-user@harshads-520.kir.corp.google.com>
+X-Mailer: git-send-email 2.30.0.284.gd98b1dd5eaa7-goog
+In-Reply-To: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
+References: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210120172836.GA3809508@infradead.org>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 20, 2021 at 05:28:36PM +0000, Christoph Hellwig wrote:
-> On Wed, Jan 20, 2021 at 06:27:05PM +0100, Jan Kara wrote:
-> > This would mean pulling i_mmap_sem out from ext4/XFS/F2FS private inode
-> > into the VFS inode. Which is fine by me but it would grow struct inode for
-> > proc / tmpfs / btrfs (although for btrfs I'm not convinced it isn't
-> > actually prone to the race and doesn't need similar protection as xfs /
-> > ext4) so some people may object.
-> 
-> The btrfs folks are already looking into lifting it to common code.
-> 
-> Also I have a patch pending to remove a list_head from the inode to
-> counter the size increase :)
+From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-We can get rid of nrexceptional as well:
+In order to make recovery.c identical with kernel, we need endianness
+conversion macros (such as cpu_to_be32 and friends) defined in
+e2fsprogs. This patch defines these macros and also fixes recovery.c
+to use these. These macros are also needed for fast commit recovery
+patches later in this series.
 
-https://lore.kernel.org/linux-fsdevel/20201026151849.24232-1-willy@infradead.org/
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ e2fsck/recovery.c       | 42 ++++++++++-------------------------------
+ lib/ext2fs/jfs_compat.h |  6 ++++++
+ 2 files changed, 16 insertions(+), 32 deletions(-)
 
-We can also reduce the size of the rwsem by one word by replacing the list_head with a single pointer.
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index 5df690ad..6c3b7bb4 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -121,27 +121,6 @@ failed:
+ 
+ #endif /* __KERNEL__ */
+ 
+-static inline __u32 get_be32(__be32 *p)
+-{
+-	unsigned char *cp = (unsigned char *) p;
+-	__u32 ret;
+-
+-	ret = *cp++;
+-	ret = (ret << 8) + *cp++;
+-	ret = (ret << 8) + *cp++;
+-	ret = (ret << 8) + *cp++;
+-	return ret;
+-}
+-
+-static inline __u16 get_be16(__be16 *p)
+-{
+-	unsigned char *cp = (unsigned char *) p;
+-	__u16 ret;
+-
+-	ret = *cp++;
+-	ret = (ret << 8) + *cp++;
+-	return ret;
+-}
+ 
+ /*
+  * Read a block from the journal
+@@ -232,10 +211,10 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
+ 
+ 		nr++;
+ 		tagp += tag_bytes;
+-		if (!(get_be16(&tag->t_flags) & JBD2_FLAG_SAME_UUID))
++		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
+ 			tagp += 16;
+ 
+-		if (get_be16(&tag->t_flags) & JBD2_FLAG_LAST_TAG)
++		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
+ 			break;
+ 	}
+ 
+@@ -358,9 +337,9 @@ int jbd2_journal_skip_recovery(journal_t *journal)
+ static inline unsigned long long read_tag_block(journal_t *journal,
+ 						journal_block_tag_t *tag)
+ {
+-	unsigned long long block = get_be32(&tag->t_blocknr);
++	unsigned long long block = be32_to_cpu(tag->t_blocknr);
+ 	if (jbd2_has_feature_64bit(journal))
+-		block |= (u64)get_be32(&tag->t_blocknr_high) << 32;
++		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
+ 	return block;
+ }
+ 
+@@ -429,9 +408,9 @@ static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+ 	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+ 
+ 	if (jbd2_has_feature_csum3(j))
+-		return get_be32(&tag3->t_checksum) == csum32;
+-
+-	return get_be16(&tag->t_checksum) == (csum32 & 0xFFFF);
++		return tag3->t_checksum == cpu_to_be32(csum32);
++	else
++		return tag->t_checksum == cpu_to_be16(csum32);
+ }
+ 
+ static int do_one_pass(journal_t *journal,
+@@ -579,7 +558,7 @@ static int do_one_pass(journal_t *journal,
+ 				unsigned long io_block;
+ 
+ 				tag = (journal_block_tag_t *) tagp;
+-				flags = get_be16(&tag->t_flags);
++				flags = be16_to_cpu(tag->t_flags);
+ 
+ 				io_block = next_log_block++;
+ 				wrap(journal, next_log_block);
+@@ -643,9 +622,8 @@ static int do_one_pass(journal_t *journal,
+ 					memcpy(nbh->b_data, obh->b_data,
+ 							journal->j_blocksize);
+ 					if (flags & JBD2_FLAG_ESCAPE) {
+-						__be32 magic = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-						memcpy(nbh->b_data, &magic,
+-						       sizeof(magic));
++						*((__be32 *)nbh->b_data) =
++						cpu_to_be32(JBD2_MAGIC_NUMBER);
+ 					}
+ 
+ 					BUFFER_TRACE(nbh, "marking dirty");
+diff --git a/lib/ext2fs/jfs_compat.h b/lib/ext2fs/jfs_compat.h
+index 2bda521d..63ebef99 100644
+--- a/lib/ext2fs/jfs_compat.h
++++ b/lib/ext2fs/jfs_compat.h
+@@ -20,12 +20,18 @@
+ #define REQ_OP_READ 0
+ #define REQ_OP_WRITE 1
+ 
++#define cpu_to_le16(x)	ext2fs_cpu_to_le16(x)
+ #define cpu_to_be16(x)	ext2fs_cpu_to_be16(x)
++#define cpu_to_le32(x)	ext2fs_cpu_to_le32(x)
+ #define cpu_to_be32(x)	ext2fs_cpu_to_be32(x)
++#define cpu_to_le64(x)	ext2fs_cpu_to_le64(x)
+ #define cpu_to_be64(x)	ext2fs_cpu_to_be64(x)
+ 
++#define le16_to_cpu(x)	ext2fs_le16_to_cpu(x)
+ #define be16_to_cpu(x)	ext2fs_be16_to_cpu(x)
++#define le32_to_cpu(x)	ext2fs_le32_to_cpu(x)
+ #define be32_to_cpu(x)	ext2fs_be32_to_cpu(x)
++#define le64_to_cpu(x)	ext2fs_le64_to_cpu(x)
+ #define be64_to_cpu(x)	ext2fs_be64_to_cpu(x)
+ 
+ typedef unsigned int tid_t;
+-- 
+2.30.0.284.gd98b1dd5eaa7-goog
 
-https://git.infradead.org/users/willy/pagecache.git/shortlog/refs/heads/wlist
-
-(haven't touched it in almost four years, seemed to have a bug last time
-i looked at it).
