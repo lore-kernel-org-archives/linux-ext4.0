@@ -2,70 +2,68 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1ACAC4332B
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 00:33:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22CB7C4332D
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 00:33:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C6D8E2360D
+	by mail.kernel.org (Postfix) with ESMTP id E69C623884
 	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 00:33:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731915AbhAUAdC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 19:33:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59396 "EHLO
+        id S1732777AbhAUAbk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 19:31:40 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58282 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733122AbhATVb6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 16:31:58 -0500
-Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BCD7AC0617B0
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:57 -0800 (PST)
-Received: by mail-pg1-x52d.google.com with SMTP id c22so16048726pgg.13
-        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:57 -0800 (PST)
+        with ESMTP id S1732446AbhATVbh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 16:31:37 -0500
+Received: from mail-pj1-x1031.google.com (mail-pj1-x1031.google.com [IPv6:2607:f8b0:4864:20::1031])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3740AC061575
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:47 -0800 (PST)
+Received: by mail-pj1-x1031.google.com with SMTP id u4so3041139pjn.4
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Jan 2021 13:26:47 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=3k+x5N3594IvVfqWc3JHgjye0SXsK1QHbI04+5erJM8=;
-        b=mIUNgXKJp4PV2sErvzq95/mM/c8gkKJ2UQKlAkEQw0wj0rA3BXadvT4W4uZeX5Q8VU
-         UAnVpgrA49Uw3DmFvCYmHUs7Zee33EigFGJvjHR3m7yltZGecz2rUXBVvVuUaHsBk+My
-         rkCLMrAHSvVSkCaI9p1XLDKp2yqc67XUAakxyOEGFMUgKY7ptIMw2Bo93AJMQ8ufysor
-         2iaorQW4bnNlGqbm1AuinWuS0gLp8hlKdmBfJhlKeQ5F2ffYh+6Kjs+9rFCNDOmGB3da
-         k8wCZszgGaVUWgzg/JueWDY2C98RmrftDW6428FWUkxw2UFzThL80En1mz1j8KDutk88
-         KBnA==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=0By5KnTzjUw0/0hnFFMnFjGbX48K+iA0XTdwb7koxfE=;
+        b=Nec0lXLcGzGSPhs5BWxYkDeXInDJ0KMCLipHC5jWKQnSyIheZDmyZuyGE3Vfswmq1Z
+         CC2fQnUtPDkj51umy2ZZ1Ek91GkQZBev5aFtruEH20gXazRfYJNyW0e4ns6U39/fRMtO
+         pno9cuz53NFZiBPE4lh0W4oFwqt8E6RrWVibUWZyXHQlytAKjJx0GfAuBIYwPVYAMeo3
+         anzPQloIW41vftUIRPctQy0Hg7AOsCV6NisBbri23XUKRiEwqxoPbph5Ee9KT7reQKRD
+         xd3Auf+qnEXjuQfLig0oteb2586vIjBGaloOhB3X8EXmVczm79oLg89FXj23SMfTmjAw
+         b2lw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=3k+x5N3594IvVfqWc3JHgjye0SXsK1QHbI04+5erJM8=;
-        b=WJKuFs1UGbuc2LNmMkyEenjK41clfOHqV9p4AvHTirWkd/0lkBhavJ4rgDBDfVoETj
-         oPaoqlH130RCyeY/QPuniaOvhiznhfVCPwVfa4KQKDEgmE2Rtb4o3LGF1EixtSNo3pS/
-         a/T1SCSaImq3FqQ6I1TZyjjD0JT+r6FzHpQmGlSF6QWVKSXJwzBNPELG4DRhDIsSAs4D
-         cmxmoMK+k8Yl0V9guu1C7cmya5D2Ic+yNW4yEUozfTwaGtZbiZ7KV1qicePT5J6St/Mq
-         1MuvIOT5LLErL9AxgTivx2fLnulKoAImT2anx8rceeS35MTjKvTDpLlk1TGL6JTqUbeV
-         Gv+Q==
-X-Gm-Message-State: AOAM532rJZnpQaV/UDGdiOGm4c0i02kjMYMoOreqGYZmdocTTz9yHMQA
-        Gmmjy+UfKUPuctn3VWvHs7M7ON73l5c=
-X-Google-Smtp-Source: ABdhPJwY4NXDyQYx0UUk34OkZq79qhwV+2aYeOVya2iLRDOFEb7tBy46GRpCHs+Uf0bZb2gywrRydg==
-X-Received: by 2002:a62:4e47:0:b029:1b6:6197:7b53 with SMTP id c68-20020a624e470000b02901b661977b53mr11117879pfb.65.1611178016819;
-        Wed, 20 Jan 2021 13:26:56 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=0By5KnTzjUw0/0hnFFMnFjGbX48K+iA0XTdwb7koxfE=;
+        b=YpkLrolU3/bhALnRyRPchmzmomKHNa1DzyXa7GuzPA0f7VU9GAK+FH0HQeKFrubLjP
+         Dhqtkgz1kDpcpBGKCaoE+5Zv6JCRhgCjXJBitZEPdzCvENbvlhlF3AsymmDA0ncJ5ehE
+         uBON3JNWMaYOOCrUGGPlPFPXSzT4G8jluj/dn7n+qmoy3FjNtsKqwxetrStG0XLKBSz3
+         8cDU7/h8wUnhqeyK1qz+zYuhdEig7n/jQdB4QCav71bzECOGvtS/8XuRCIvxJioP6p1y
+         2xebvVTKyHhL+Hi6KhY7Zbucu53LFXf1/Dl2nABRnhYRYfbZ+wYckhNml8qOaET7dvTy
+         zo9Q==
+X-Gm-Message-State: AOAM531PkgrQw/9gB7oJN8DOf11sifyv6w4+PBuV+Iq3bydOxWCCjHse
+        bfUy4pOltIrEkfpwvMenYJyrPWR7bYE=
+X-Google-Smtp-Source: ABdhPJwPeGjtxmAYBhvhthxQD9xCWpz+H2T37gzSYr8kiCyMN3l7PZXiJwHu0VnZFCFGH/8/frnS4w==
+X-Received: by 2002:a17:90a:6589:: with SMTP id k9mr7700708pjj.100.1611178006303;
+        Wed, 20 Jan 2021 13:26:46 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:a6ae:11ff:fe11:86a2])
-        by smtp.googlemail.com with ESMTPSA id w1sm3396758pjt.23.2021.01.20.13.26.55
+        by smtp.googlemail.com with ESMTPSA id w1sm3396758pjt.23.2021.01.20.13.26.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 20 Jan 2021 13:26:55 -0800 (PST)
+        Wed, 20 Jan 2021 13:26:45 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 X-Google-Original-From: Harshad Shirwadkar <--global>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v3 09/15] e2fsck: add fast commit scan pass
-Date:   Wed, 20 Jan 2021 13:26:35 -0800
-Message-Id: <20210120212641.526556-10-user@harshads-520.kir.corp.google.com>
+Subject: [PATCH v3 00/15] Fast commit changes for e2fsprogs
+Date:   Wed, 20 Jan 2021 13:26:26 -0800
+Message-Id: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
 X-Mailer: git-send-email 2.30.0.284.gd98b1dd5eaa7-goog
-In-Reply-To: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
-References: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -74,149 +72,126 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 
-Add fast commit scan pass. Scan pass is responsible for following
-things:
+This patch series adds fast commits support in e2fsprogs. This
+includes fast commit recovery support in e2fsck and fast commit
+configuration support in mke2fs and tune2fs. Along with that this
+patch series also makes e2fsck/recovery.c identical with
+jbd2/recovery.c in kernel. In addition, this patch imports and makes
+fast_commit.h (the file that contains on-disk formats for fast
+commits) byte identical with the kernel.
 
-* Count total number of fast commit tags that need to be replayed
-  during the replay phase.
+The recovery logic for fast commits follows the same steps as that of
+the recovery logic in kernel. The general guidining principle for the
+fast commit replay is that the individual tags found in fast commit
+area store the result of the operation as their paylod instead of
+storing the procedure itself. The recovery logic enforces this result
+onto the filesystem thereby making the fast commit replay
+idempotent. Unlike kernel, there's no atomic oepration support in
+e2fsprogs yet. So, it's possible that we may crash while we are in the
+middle of replaying of a fast commit tag. The only way to recover from
+that situation would be to run fsck. That's why we mark the file
+system as unclean before the fast commit replay and make it clean at
+the end.
 
-* Validate whether the fast commit area is valid for a given
-  transaction ID.
+This series adds new regression test that performs fast commit
+replay. I ensured that all the regressions tests pass.
 
-* Verify the CRC of fast commit area.
+Verified that all the tests pass:
+367 tests succeeded     0 tests failed
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- e2fsck/journal.c | 109 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 109 insertions(+)
+New fast commit recovery test:
+j_recover_fast_commit: ok
 
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 56e48385..ba38124e 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -278,6 +278,108 @@ static int process_journal_block(ext2_filsys fs,
- 	return 0;
- }
- 
-+static int ext4_fc_replay_scan(journal_t *j, struct buffer_head *bh,
-+				int off, tid_t expected_tid)
-+{
-+	e2fsck_t ctx = j->j_fs_dev->k_ctx;
-+	struct e2fsck_fc_replay_state *state;
-+	int ret = JBD2_FC_REPLAY_CONTINUE;
-+	struct ext4_fc_add_range *ext;
-+	struct ext4_fc_tl *tl;
-+	struct ext4_fc_tail *tail;
-+	__u8 *start, *end;
-+	struct ext4_fc_head *head;
-+	struct ext2fs_extent ext2fs_ex;
-+
-+	state = &ctx->fc_replay_state;
-+
-+	start = (__u8 *)bh->b_data;
-+	end = (__u8 *)bh->b_data + j->j_blocksize - 1;
-+
-+	jbd_debug(1, "Scan phase starting, expected %d", expected_tid);
-+	if (state->fc_replay_expected_off == 0) {
-+		memset(state, 0, sizeof(*state));
-+		/* Check if we can stop early */
-+		if (le16_to_cpu(((struct ext4_fc_tl *)start)->fc_tag)
-+			!= EXT4_FC_TAG_HEAD) {
-+			jbd_debug(1, "Ending early!, not a head tag");
-+			return 0;
-+		}
-+	}
-+
-+	if (off != state->fc_replay_expected_off) {
-+		ret = -EFSCORRUPTED;
-+		goto out_err;
-+	}
-+
-+	state->fc_replay_expected_off++;
-+	fc_for_each_tl(start, end, tl) {
-+		jbd_debug(3, "Scan phase, tag:%s, blk %lld\n",
-+			  tag2str(le16_to_cpu(tl->fc_tag)), bh->b_blocknr);
-+		switch (le16_to_cpu(tl->fc_tag)) {
-+		case EXT4_FC_TAG_ADD_RANGE:
-+			ext = (struct ext4_fc_add_range *)ext4_fc_tag_val(tl);
-+			ret = ext2fs_decode_extent(&ext2fs_ex, (void *)&ext->fc_ex,
-+						   sizeof(ext->fc_ex));
-+			if (ret)
-+				ret = JBD2_FC_REPLAY_STOP;
-+			else
-+				ret = JBD2_FC_REPLAY_CONTINUE;
-+		case EXT4_FC_TAG_DEL_RANGE:
-+		case EXT4_FC_TAG_LINK:
-+		case EXT4_FC_TAG_UNLINK:
-+		case EXT4_FC_TAG_CREAT:
-+		case EXT4_FC_TAG_INODE:
-+		case EXT4_FC_TAG_PAD:
-+			state->fc_cur_tag++;
-+			state->fc_crc = jbd2_chksum(j, state->fc_crc, tl,
-+					sizeof(*tl) + ext4_fc_tag_len(tl));
-+			break;
-+		case EXT4_FC_TAG_TAIL:
-+			state->fc_cur_tag++;
-+			tail = (struct ext4_fc_tail *)ext4_fc_tag_val(tl);
-+			state->fc_crc = jbd2_chksum(j, state->fc_crc, tl,
-+						sizeof(*tl) +
-+						offsetof(struct ext4_fc_tail,
-+						fc_crc));
-+			jbd_debug(1, "tail tid %d, expected %d\n",
-+					le32_to_cpu(tail->fc_tid),
-+					expected_tid);
-+			if (le32_to_cpu(tail->fc_tid) == expected_tid &&
-+				le32_to_cpu(tail->fc_crc) == state->fc_crc) {
-+				state->fc_replay_num_tags = state->fc_cur_tag;
-+			} else {
-+				ret = state->fc_replay_num_tags ?
-+					JBD2_FC_REPLAY_STOP : -EFSBADCRC;
-+			}
-+			state->fc_crc = 0;
-+			break;
-+		case EXT4_FC_TAG_HEAD:
-+			head = (struct ext4_fc_head *)ext4_fc_tag_val(tl);
-+			if (le32_to_cpu(head->fc_features) &
-+				~EXT4_FC_SUPPORTED_FEATURES) {
-+				ret = -EOPNOTSUPP;
-+				break;
-+			}
-+			if (le32_to_cpu(head->fc_tid) != expected_tid) {
-+				ret = -EINVAL;
-+				break;
-+			}
-+			state->fc_cur_tag++;
-+			state->fc_crc = jbd2_chksum(j, state->fc_crc, tl,
-+					sizeof(*tl) + ext4_fc_tag_len(tl));
-+			break;
-+		default:
-+			ret = state->fc_replay_num_tags ?
-+				JBD2_FC_REPLAY_STOP : -ECANCELED;
-+		}
-+		if (ret < 0 || ret == JBD2_FC_REPLAY_STOP)
-+			break;
-+	}
-+
-+out_err:
-+	return ret;
-+}
- /*
-  * Main recovery path entry point. This function returns JBD2_FC_REPLAY_CONTINUE
-  * to indicate that it is expecting more fast commit blocks. It returns
-@@ -286,6 +388,13 @@ static int process_journal_block(ext2_filsys fs,
- static int ext4_fc_replay(journal_t *journal, struct buffer_head *bh,
- 				enum passtype pass, int off, tid_t expected_tid)
- {
-+	e2fsck_t ctx = journal->j_fs_dev->k_ctx;
-+	struct e2fsck_fc_replay_state *state = &ctx->fc_replay_state;
-+
-+	if (pass == PASS_SCAN) {
-+		state->fc_current_pass = PASS_SCAN;
-+		return ext4_fc_replay_scan(journal, bh, off, expected_tid);
-+	}
- 	return JBD2_FC_REPLAY_STOP;
- }
- 
+The patch series invalidates the initial version of the patch series
+which was sent back in Mar 2020. Since then the fast commit code in
+kernel has evolved a lot (including the on-disk format change). So,
+this patch series is based on the new fast commit kernel code (which
+is available in upstream kernel now). This patch series is a complete
+revamp of the original series.
+
+Changes Since V2:
+----------------
+
+- Fix compilation error by defining jbd2_journal_get_fc_num_blks (also
+  rename it to jbd_get_fc_num_blks) as a preprocessor macro instead of
+  inline function which gets compiled out when "-g" is passed
+
+Harshad Shirwadkar (15):
+  ext2fs: move calculate_summary_stats to ext2fs lib
+  e2fsck: add kernel endian-ness conversion macros
+  e2fsck: port fc changes from kernel's recovery.c to e2fsck
+  libext2fs: provide APIs to configure fast commit blocks
+  e2fsprogs: make userspace tools number of fast commits blocks aware
+  ext2fs: add new APIs needed for fast commits
+  e2fsck: add function to rewrite extent tree
+  e2fsck: add fast commit setup code
+  e2fsck: add fast commit scan pass
+  e2fsck: add fast commit replay skeleton
+  e2fsck: add fc replay for link, unlink, creat tags
+  e2fsck: add replay for add_range, del_range, and inode tags
+  debugfs: add fast commit support to logdump
+  tests: add fast commit recovery tests
+  ext4: fix tests to account for new dumpe2fs output
+
+ debugfs/journal.c                       |  10 +-
+ debugfs/logdump.c                       | 122 ++++-
+ e2fsck/e2fsck.h                         |  32 ++
+ e2fsck/extents.c                        | 168 +++---
+ e2fsck/journal.c                        | 660 +++++++++++++++++++++++-
+ e2fsck/recovery.c                       | 232 ++++++---
+ e2fsck/unix.c                           |  26 +-
+ lib/e2p/e2p.h                           |   1 +
+ lib/e2p/ljs.c                           |  16 +-
+ lib/ext2fs/ext2_fs.h                    |   1 +
+ lib/ext2fs/ext2fs.h                     |  30 ++
+ lib/ext2fs/extent.c                     |  63 +++
+ lib/ext2fs/fast_commit.h                | 203 ++++++++
+ lib/ext2fs/initialize.c                 |  94 ++++
+ lib/ext2fs/jfs_compat.h                 |  25 +-
+ lib/ext2fs/kernel-jbd.h                 |  16 +-
+ lib/ext2fs/mkjournal.c                  |  96 +++-
+ lib/ext2fs/unlink.c                     |   6 +-
+ misc/dumpe2fs.c                         |  10 +-
+ misc/mke2fs.8.in                        |  21 +
+ misc/mke2fs.c                           |  26 +-
+ misc/tune2fs.8.in                       |  25 +
+ misc/tune2fs.c                          |  67 +--
+ misc/util.c                             |  61 ++-
+ misc/util.h                             |   4 +-
+ resize/resize2fs.c                      |   6 +-
+ tests/d_corrupt_journal_nr_users/expect |   6 +-
+ tests/f_jnl_errno/expect.0              |   6 +-
+ tests/f_opt_extent/expect               |   2 +-
+ tests/i_bitmaps/expect                  |   8 +-
+ tests/j_ext_dumpe2fs/expect             |   6 +-
+ tests/j_recover_fast_commit/commands    |   4 +
+ tests/j_recover_fast_commit/expect      |  23 +
+ tests/j_recover_fast_commit/image.gz    | Bin 0 -> 3595 bytes
+ tests/j_recover_fast_commit/script      |  26 +
+ tests/m_bigjournal/expect.1             |   6 +-
+ tests/m_extent_journal/expect.1         |   6 +-
+ tests/m_resize_inode_meta_bg/expect.1   |   6 +-
+ tests/m_rootdir/expect                  |   6 +-
+ tests/r_32to64bit/expect                |   6 +-
+ tests/r_32to64bit_meta/expect           |   4 +-
+ tests/r_32to64bit_move_itable/expect    |   8 +-
+ tests/r_64to32bit/expect                |   6 +-
+ tests/r_64to32bit_meta/expect           |   4 +-
+ tests/r_move_itable_nostride/expect     |   6 +-
+ tests/r_move_itable_realloc/expect      |   6 +-
+ tests/t_disable_mcsum/expect            |   4 +-
+ tests/t_disable_mcsum_noinitbg/expect   |   6 +-
+ tests/t_disable_mcsum_yesinitbg/expect  |   4 +-
+ tests/t_enable_mcsum/expect             |   6 +-
+ tests/t_enable_mcsum_ext3/expect        |  10 +-
+ tests/t_enable_mcsum_initbg/expect      |   6 +-
+ 52 files changed, 1861 insertions(+), 341 deletions(-)
+ create mode 100644 lib/ext2fs/fast_commit.h
+ create mode 100644 tests/j_recover_fast_commit/commands
+ create mode 100644 tests/j_recover_fast_commit/expect
+ create mode 100644 tests/j_recover_fast_commit/image.gz
+ create mode 100755 tests/j_recover_fast_commit/script
+
 -- 
 2.30.0.284.gd98b1dd5eaa7-goog
 
