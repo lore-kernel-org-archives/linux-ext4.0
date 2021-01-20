@@ -2,103 +2,157 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E19ADC433DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 12:59:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A955C4332B
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:08:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8E3D723355
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 12:59:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 116B9233ED
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Jan 2021 16:08:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388812AbhATM64 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Jan 2021 07:58:56 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:43216 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729022AbhATM2v (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Jan 2021 07:28:51 -0500
-Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein)
-        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.86_2)
-        (envelope-from <christian.brauner@ubuntu.com>)
-        id 1l2CCh-0006rZ-My; Wed, 20 Jan 2021 12:03:15 +0000
-Date:   Wed, 20 Jan 2021 13:03:10 +0100
-From:   Christian Brauner <christian.brauner@ubuntu.com>
-To:     Jann Horn <jannh@google.com>
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        John Johansen <john.johansen@canonical.com>,
-        James Morris <jmorris@namei.org>,
-        Mimi Zohar <zohar@linux.ibm.com>,
-        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        Arnd Bergmann <arnd@arndb.de>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Geoffrey Thomas <geofft@ldpreload.com>,
-        Mrunal Patel <mpatel@redhat.com>,
-        Josh Triplett <josh@joshtriplett.org>,
-        Andy Lutomirski <luto@kernel.org>,
-        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
-        Tycho Andersen <tycho@tycho.ws>,
-        David Howells <dhowells@redhat.com>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Seth Forshee <seth.forshee@canonical.com>,
-        =?utf-8?B?U3TDqXBoYW5l?= Graber <stgraber@ubuntu.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Aleksa Sarai <cyphar@cyphar.com>,
-        Lennart Poettering <lennart@poettering.net>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Stephen Barber <smbarber@chromium.org>,
-        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
-        Kees Cook <keescook@chromium.org>,
-        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Linux Containers <containers@lists.linux-foundation.org>,
-        linux-security-module <linux-security-module@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-        SElinux list <selinux@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v5 15/42] fs: add file_user_ns() helper
-Message-ID: <20210120120310.6tczonwl3rdtnyu3@wittgenstein>
-References: <20210112220124.837960-1-christian.brauner@ubuntu.com>
- <20210112220124.837960-16-christian.brauner@ubuntu.com>
- <CAG48ez3Ccr77+zH56YGimESf9jdy_xnQrebypn1TXEP3Q+xw=w@mail.gmail.com>
+        id S2390295AbhATQHv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Jan 2021 11:07:51 -0500
+Received: from mx2.suse.de ([195.135.220.15]:42856 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2391401AbhATQHA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Jan 2021 11:07:00 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id EBD0DAF32;
+        Wed, 20 Jan 2021 16:06:18 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id B4D381E0831; Wed, 20 Jan 2021 17:06:18 +0100 (CET)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     Matthew Wilcox <willy@infradead.org>, <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
+        Amir Goldstein <amir73il@gmail.com>
+Subject: [PATCH 3/3] ext4: Fix stale data exposure when read races with hole punch
+Date:   Wed, 20 Jan 2021 17:06:11 +0100
+Message-Id: <20210120160611.26853-4-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210120160611.26853-1-jack@suse.cz>
+References: <20210120160611.26853-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <CAG48ez3Ccr77+zH56YGimESf9jdy_xnQrebypn1TXEP3Q+xw=w@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jan 19, 2021 at 04:05:00PM +0100, Jann Horn wrote:
-> On Wed, Jan 13, 2021 at 1:52 AM Christian Brauner
-> <christian.brauner@ubuntu.com> wrote:
-> > Add a simple helper to retrieve the user namespace associated with the
-> > vfsmount of a file. Christoph correctly points out that this makes
-> > codepaths (e.g. ioctls) way easier to follow that would otherwise
-> > dereference via mnt_user_ns(file->f_path.mnt).
-> >
-> > In order to make file_user_ns() static inline we'd need to include
-> > mount.h in either file.h or fs.h which seems undesirable so let's simply
-> > not force file_user_ns() to be inline.
-> [...]
-> > +struct user_namespace *file_user_ns(struct file *file)
-> > +{
-> > +       return mnt_user_ns(file->f_path.mnt);
-> > +}
-> 
-> That name is confusing to me, because when I think of "the userns of a
-> file", it's file->f_cred->user_ns. There are a bunch of places that
-> look at that, as you can see from grepping for "f_cred->user_ns".
-> 
-> If you really want this to be a separate helper, can you maybe give it
-> a clearer name? file_mnt_user_ns(), or something like that, idk.
+Hole puching currently evicts pages from page cache and then goes on to
+remove blocks from the inode. This happens under both i_mmap_sem and
+i_rwsem held exclusively which provides appropriate serialization with
+racing page faults. However there is currently nothing that prevents
+ordinary read(2) from racing with the hole punch and instantiating page
+cache page after hole punching has evicted page cache but before it has
+removed blocks from the inode. This page cache page will be mapping soon
+to be freed block and that can lead to returning stale data to userspace
+or even filesystem corruption.
 
-Done.
+Fix the problem by protecting reads as well as readahead requests with
+i_mmap_sem.
+
+CC: stable@vger.kernel.org
+Reported-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/file.c  | 16 ++++++++++++++++
+ fs/ext4/inode.c | 21 +++++++++++++++++++++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 349b27f0dda0..d66f7c08b123 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -30,6 +30,7 @@
+ #include <linux/uio.h>
+ #include <linux/mman.h>
+ #include <linux/backing-dev.h>
++#include <linux/fadvise.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+@@ -131,6 +132,20 @@ static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 	return generic_file_read_iter(iocb, to);
+ }
+ 
++static int ext4_fadvise(struct file *filp, loff_t start, loff_t end, int advice)
++{
++	struct inode *inode = file_inode(filp);
++	int ret;
++
++	/* Readahead needs protection from hole punching and similar ops */
++	if (advice == POSIX_FADV_WILLNEED)
++		down_read(&EXT4_I(inode)->i_mmap_sem);
++	ret = generic_fadvise(filp, start, end, advice);
++	if (advice == POSIX_FADV_WILLNEED)
++		up_read(&EXT4_I(inode)->i_mmap_sem);
++	return ret;
++}
++
+ /*
+  * Called when an inode is released. Note that this is different
+  * from ext4_file_open: open gets called at every open, but release
+@@ -911,6 +926,7 @@ const struct file_operations ext4_file_operations = {
+ 	.splice_read	= generic_file_splice_read,
+ 	.splice_write	= iter_file_splice_write,
+ 	.fallocate	= ext4_fallocate,
++	.fadvise	= ext4_fadvise,
+ };
+ 
+ const struct inode_operations ext4_file_inode_operations = {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c173c8405856..a01569f2fa49 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3646,9 +3646,28 @@ static int ext4_iomap_swap_activate(struct swap_info_struct *sis,
+ 				       &ext4_iomap_report_ops);
+ }
+ 
++static int ext4_fill_pages(struct kiocb *iocb, size_t len, bool partial_page,
++			   struct page **pagep, unsigned int nr_pages)
++{
++	struct ext4_inode_info *ei = EXT4_I(iocb->ki_filp->f_mapping->host);
++	int ret;
++
++	/*
++	 * Protect adding of pages into page cache against hole punching and
++	 * other cache manipulation functions so that we don't expose
++	 * potentially stale user data.
++	 */
++	down_read(&ei->i_mmap_sem);
++	ret = generic_file_buffered_read_get_pages(iocb, len, partial_page,
++						   pagep, nr_pages);
++	up_read(&ei->i_mmap_sem);
++	return ret;
++}
++
+ static const struct address_space_operations ext4_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readahead		= ext4_readahead,
++	.fill_pages		= ext4_fill_pages,
+ 	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+@@ -3667,6 +3686,7 @@ static const struct address_space_operations ext4_aops = {
+ static const struct address_space_operations ext4_journalled_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readahead		= ext4_readahead,
++	.fill_pages		= ext4_fill_pages,
+ 	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_write_begin,
+@@ -3684,6 +3704,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ static const struct address_space_operations ext4_da_aops = {
+ 	.readpage		= ext4_readpage,
+ 	.readahead		= ext4_readahead,
++	.fill_pages		= ext4_fill_pages,
+ 	.writepage		= ext4_writepage,
+ 	.writepages		= ext4_writepages,
+ 	.write_begin		= ext4_da_write_begin,
+-- 
+2.26.2
+
