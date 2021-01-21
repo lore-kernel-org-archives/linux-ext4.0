@@ -2,132 +2,53 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-26.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BC0FC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 970F5C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AAC1120769
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 68A492087E
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726315AbhAUXZw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 18:25:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50758 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726117AbhAUXFs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 18:05:48 -0500
-Received: from mail-yb1-xb4a.google.com (mail-yb1-xb4a.google.com [IPv6:2607:f8b0:4864:20::b4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2107C061222
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 15:03:49 -0800 (PST)
-Received: by mail-yb1-xb4a.google.com with SMTP id 127so3695450ybn.5
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 15:03:49 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:in-reply-to:message-id:mime-version:references:subject
-         :from:to:cc;
-        bh=Dk48xoljaDfKrHrHMhr41MTHc48m5tHc6K5cc6+60c0=;
-        b=AOwqVIYhEfj64Av4uEMJ8dSXxk8ne2BkUsUnz+ACunkTKRrxPpI/6sLcfbRBs7cNfl
-         h5qPnwUs6LddC54j2mpWSWeh77OnP521QsSDsA2EqHU3eTeUqnT+oe4HtfLSjcnqB5V7
-         D9cvChljpRJNuYOjKg9Oyj+cAe/xvu+QkQ1VIJQm6uloPLqIY07SFnMq2UBqecaSUDHp
-         +Ajt62MR8Fp5RrZ7TibPGcZK9kJVvNizT+AUEgltWWilJcA7Fu0O34Tf4Eoqz77HP5X3
-         wtX06Ui8oahF007Y1fWYBzCRcteJTi0Ni09bl5j2Z9rw84yplKdcqpX6r+O7nek4Me+V
-         fvJw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=Dk48xoljaDfKrHrHMhr41MTHc48m5tHc6K5cc6+60c0=;
-        b=W1Zea0W7hjmGIEt4WNUHDzFHvPQsHJiePAj9/WQsNzeSe/LOEXoFuj9BBUieKcEHTJ
-         BSS530zHIqR9vnrlaohbh4MNS8WVoLYxl/dhLJMhO5xrwYKfg7WnwfMfxZ6nMX8k8Oap
-         FfnFgvbqyKtnbENdg2CtterhNR06fW5z9ElW4jGCkq2I+GG/S5ePLSD0AlJ3pCL12vWY
-         wzIbg1pPxcCFn3TsCqkQJnnFVuJV6SIddptk7vNDT5/d02EXGPSmu0y36t+IJxkWJv53
-         sF2piLCiLfIZzUcUPD+ePoPrf31fOO89LVUOJT93lyIM6zkantS0lypyTUNquBwYUUnv
-         si8w==
-X-Gm-Message-State: AOAM532ehXAdASy4hkkz6cyT9fFfyEwbXkM+A3od7OQlKgiXJsc24FPe
-        AHT6zlKDlSGlunvA6cjBpDDt5WqXVY8=
-X-Google-Smtp-Source: ABdhPJyX5dl3YFdc0cGF8/opvXclsHMhLvELrPXG/G+g5KWNEjBlc4t0ZdcLzDJrZ/b4VlIyaHc4NeW9Ir8=
-Sender: "satyat via sendgmr" <satyat@satyaprateek.c.googlers.com>
-X-Received: from satyaprateek.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:1092])
- (user=satyat job=sendgmr) by 2002:a25:cbca:: with SMTP id b193mr2572599ybg.324.1611270229151;
- Thu, 21 Jan 2021 15:03:49 -0800 (PST)
-Date:   Thu, 21 Jan 2021 23:03:33 +0000
-In-Reply-To: <20210121230336.1373726-1-satyat@google.com>
-Message-Id: <20210121230336.1373726-6-satyat@google.com>
-Mime-Version: 1.0
-References: <20210121230336.1373726-1-satyat@google.com>
-X-Mailer: git-send-email 2.30.0.280.ga3ce27912f-goog
-Subject: [PATCH v8 5/8] iomap: support direct I/O with fscrypt using blk-crypto
-From:   Satya Tangirala <satyat@google.com>
-To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>
-Cc:     linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Eric Biggers <ebiggers@google.com>,
-        Satya Tangirala <satyat@google.com>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726541AbhAUX0t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 18:26:49 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40444 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726179AbhAUX0Z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 18:26:25 -0500
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LNPSAr025808
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 21 Jan 2021 18:25:29 -0500
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id ADBEC15C35F5; Thu, 21 Jan 2021 18:25:28 -0500 (EST)
+Date:   Thu, 21 Jan 2021 18:25:28 -0500
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Hauke Mehrtens <hauke@hauke-m.de>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs] build: Add SYSLIBS to e4crypt linking
+Message-ID: <YAoNaGo3jLlXftWD@mit.edu>
+References: <20201215230557.17211-1-hauke@hauke-m.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201215230557.17211-1-hauke@hauke-m.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Wed, Dec 16, 2020 at 12:05:57AM +0100, Hauke Mehrtens wrote:
+> The $(SYSLIBS) was missing when linking the e4crypt application. This is
+> available in the e4crypt.profiled variant, so I assume this was just
+> missing in the normal variant and is not left out intentionally.
 
-Set bio crypt contexts on bios by calling into fscrypt when required.
-No DUN contiguity checks are done - callers are expected to set up the
-iomap correctly to ensure that each bio submitted by iomap will not have
-blocks with incontiguous DUNs by calling fscrypt_limit_io_blocks()
-appropriately.
+Thanks, I've applied.  It was left out unintentionally, although I
+don't see how this is affecting building e2fsprogs with
+-fsanitize=undefined in the global CFLAGS and LDFLAGS.  (Which worked
+for me both before and after applying this change.)
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
-Co-developed-by: Satya Tangirala <satyat@google.com>
-Signed-off-by: Satya Tangirala <satyat@google.com>
----
- fs/iomap/direct-io.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index 933f234d5bec..b4240cc3c9f9 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -6,6 +6,7 @@
- #include <linux/module.h>
- #include <linux/compiler.h>
- #include <linux/fs.h>
-+#include <linux/fscrypt.h>
- #include <linux/iomap.h>
- #include <linux/backing-dev.h>
- #include <linux/uio.h>
-@@ -185,11 +186,14 @@ static void
- iomap_dio_zero(struct iomap_dio *dio, struct iomap *iomap, loff_t pos,
- 		unsigned len)
- {
-+	struct inode *inode = file_inode(dio->iocb->ki_filp);
- 	struct page *page = ZERO_PAGE(0);
- 	int flags = REQ_SYNC | REQ_IDLE;
- 	struct bio *bio;
- 
- 	bio = bio_alloc(GFP_KERNEL, 1);
-+	fscrypt_set_bio_crypt_ctx(bio, inode, pos >> inode->i_blkbits,
-+				  GFP_KERNEL);
- 	bio_set_dev(bio, iomap->bdev);
- 	bio->bi_iter.bi_sector = iomap_sector(iomap, pos);
- 	bio->bi_private = dio;
-@@ -272,6 +276,8 @@ iomap_dio_bio_actor(struct inode *inode, loff_t pos, loff_t length,
- 		}
- 
- 		bio = bio_alloc(GFP_KERNEL, nr_pages);
-+		fscrypt_set_bio_crypt_ctx(bio, inode, pos >> inode->i_blkbits,
-+					  GFP_KERNEL);
- 		bio_set_dev(bio, iomap->bdev);
- 		bio->bi_iter.bi_sector = iomap_sector(iomap, pos);
- 		bio->bi_write_hint = dio->iocb->ki_hint;
--- 
-2.30.0.280.ga3ce27912f-goog
-
+						- Ted
