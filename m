@@ -2,163 +2,751 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48732C433DB
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 10:17:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39C23C433E6
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 13:23:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E82A5221F8
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 10:17:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D40DA20691
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 13:23:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729059AbhAUKRV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 05:17:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54156 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728798AbhAUKQ4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 05:16:56 -0500
-Received: from mail-pl1-x632.google.com (mail-pl1-x632.google.com [IPv6:2607:f8b0:4864:20::632])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E4B5C061575
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 02:15:56 -0800 (PST)
-Received: by mail-pl1-x632.google.com with SMTP id x18so1022676pln.6
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 02:15:56 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition;
-        bh=wYV7R8qR27MnGkec4x2sHqQjzrvRujQL/ANQ0rNLbx0=;
-        b=S3SDdEnMK6DjGXVM0s+9y0VTXRPiXkxORkGJ6QtdogvDBB8hlIRzg/uI1taldhvvcG
-         AMykv2nLZV0FLvVDYh2i5krV8+FT/N3+JAYsLTz7k27gTawHFufdpeQ0vG4oUtXVBDat
-         w4cUa9YJn68DxuP88clCfKOd19ynOJZWUYBmzMslOrsCMcKBQoyuAO01lDcRoiiWOaPt
-         ekTHO9io8Gc/wKdDLpGH3l5AZqDTuxE2Wvuz5n1bcnJIYonexc4hL97RAHx3HHrr8jGD
-         tNGfcLovPMeSzoOtURGZVm51xzxOst7xhnLdq2N71WuOvWQICe2tjZxZ8T+SZCdKKW21
-         LkEg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
-         :content-disposition;
-        bh=wYV7R8qR27MnGkec4x2sHqQjzrvRujQL/ANQ0rNLbx0=;
-        b=KDES9lmrrCWWhgVtjmOth/WpMypkmH1F19NXsVujm5xdyfhGTAIR14sCm73R0jr0dj
-         0j8YgufOJE/U8meaXFBqfsOrYalYBhkIhi0f1SS56+pbVh589tQMwLBGN+i3OhCCjccX
-         +YANIcCBR8WMsfcnxUhcRkWs/kCRtxhThyN1uXuiEOL00HeaX8Lcb2kf9GZufeE83oQT
-         j9KOja2kaPfkTusuWWaQGxVpUTKN7U/IikFwWI/QhOVBLNXtd2qZuzagYtcy91i0FS4I
-         1jGWuk4hZeDLiL6cl/2u1cqecvEt3hReWt/9rAwVvdXDa5HZXv2ebcIOqH9g6lQHHuV+
-         pXHQ==
-X-Gm-Message-State: AOAM531sZLsk0hMK1os2Qj/SVfMW1eKpOlpGIciIz5pgXHY2mt0pvHEH
-        wylj22hPsfgTqg4+3y3zPVY=
-X-Google-Smtp-Source: ABdhPJz4ihwiffvWZpSUniE41njQBqsGAIPXi9I9Uw8G+tfPh9/vgDi4comxuXmIUsm3pUVfLXrPwA==
-X-Received: by 2002:a17:90a:7d08:: with SMTP id g8mr11144219pjl.180.1611224156100;
-        Thu, 21 Jan 2021 02:15:56 -0800 (PST)
-Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id w20sm5746162pga.90.2021.01.21.02.15.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 21 Jan 2021 02:15:55 -0800 (PST)
-Date:   Thu, 21 Jan 2021 18:15:47 +0800
-From:   Murphy Zhou <jencce.kernel@gmail.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Subject: ext4 regression panic
-Message-ID: <20210121101547.fwh35hov3hshogbz@xzhoux.usersys.redhat.com>
+        id S1731997AbhAUNWd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 08:22:33 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:53993 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731678AbhAUNWP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 08:22:15 -0500
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1l2ZtV-0005g7-Qm; Thu, 21 Jan 2021 13:21:02 +0000
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org
+Cc:     John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
+        Christian Brauner <christian.brauner@ubuntu.com>
+Subject: [PATCH v6 10/40] commoncap: handle idmapped mounts
+Date:   Thu, 21 Jan 2021 14:19:29 +0100
+Message-Id: <20210121131959.646623-11-christian.brauner@ubuntu.com>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20210121131959.646623-1-christian.brauner@ubuntu.com>
+References: <20210121131959.646623-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+X-Patch-Hashes: v=1; h=sha256; i=WhZz6dFTkPB9Ac8KF5gDuEo0teg/zF3gmQyHeNGP1bo=; m=abcIhES7PvuOqYQ0OJckhZJQyyzLncSC1mT0n6m5F2M=; p=svtgt5b/hA70WYcfSkw0aBKd6PBeF94qe6Lf/YcffJw=; g=7b8ae673c6ebf81b179f1afda0cadeca7cd77562
+X-Patch-Sig: m=pgp; i=christian.brauner@ubuntu.com; s=0x0x91C61BC06578DCA2; b=iHUEABYKAB0WIQRAhzRXHqcMeLMyaSiRxhvAZXjcogUCYAl9pAAKCRCRxhvAZXjcoqGWAQDikoL K4rutvBTgRrB7W1UFzJsaU75BayeOdYtPggSXGAEAzSyBUO3FDEmPl9WTe7vGBArsiBioBmKJrnNW 9xre1w8=
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Jack,
+When interacting with user namespace and non-user namespace aware
+filesystem capabilities the vfs will perform various security checks to
+determine whether or not the filesystem capabilities can be used by the
+caller, whether they need to be removed and so on. The main
+infrastructure for this resides in the capability codepaths but they are
+called through the LSM security infrastructure even though they are not
+technically an LSM or optional. This extends the existing security hooks
+security_inode_removexattr(), security_inode_killpriv(),
+security_inode_getsecurity() to pass down the mount's user namespace and
+makes them aware of idmapped mounts.
 
-A panic was introduced by this commit. It's easy and reliable to
-reproduce.
+In order to actually get filesystem capabilities from disk the
+capability infrastructure exposes the get_vfs_caps_from_disk() helper.
+For user namespace aware filesystem capabilities a root uid is stored
+alongside the capabilities.
 
-commit 2d01ddc86606564fb08c56e3bc93a0693895f710
-Author: Jan Kara <jack@suse.cz>
-Date:   Wed Dec 16 11:18:40 2020 +0100
+In order to determine whether the caller can make use of the filesystem
+capability or whether it needs to be ignored it is translated according
+to the superblock's user namespace. If it can be translated to uid 0
+according to that id mapping the caller can use the filesystem
+capabilities stored on disk. If we are accessing the inode that holds
+the filesystem capabilities through an idmapped mount we map the root
+uid according to the mount's user namespace. Afterwards the checks are
+identical to non-idmapped mounts: reading filesystem caps from disk
+enforces that the root uid associated with the filesystem capability
+must have a mapping in the superblock's user namespace and that the
+caller is either in the same user namespace or is a descendant of the
+superblock's user namespace. For filesystems that are mountable inside
+user namespace the caller can just mount the filesystem and won't
+usually need to idmap it. If they do want to idmap it they can create an
+idmapped mount and mark it with a user namespace they created and which
+is thus a descendant of s_user_ns. For filesystems that are not
+mountable inside user namespaces the descendant rule is trivially true
+because the s_user_ns will be the initial user namespace.
 
-    ext4: save error info to sb through journal if available
+If the initial user namespace is passed nothing changes so non-idmapped
+mounts will see identical behavior as before.
 
+Link: https://lore.kernel.org/r/20210112220124.837960-18-christian.brauner@ubuntu.com
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
+---
+/* v2 */
+- Christoph Hellwig <hch@lst.de>:
+  - Don't pollute the vfs with additional helpers simply extend the existing
+    helpers with an additional argument and switch all callers.
 
---- Call trace ------------
+/* v3 */
+- Paul Moore <paul@paul-moore.com>:
+  - All audit logging is currently based on init_user_ns and will remain so
+    until other work unrelated to this patchset has landed so always pass
+    &init_user_ns in audit.
 
-[44.391771] EXT4-fs error (device loop0): ext4_fill_super:4943: inode #2: comm mount: iget: root inode unallocated
-[44.401842] BUG: kernel NULL pointer dereference, address: 0000000000000034
-[44.406155] #PF: supervisor read access in kernel mode
-[44.409317] #PF: error_code(0x0000) - not-present page
-[44.412482] PGD 0 P4D 0
-[44.414085] Oops: 0000 [#1] SMP PTI
-[44.416256] CPU: 1 PID: 944 Comm: mount Tainted: G            E     5.11.0-rc4-master-19c329f68089 #46
-[44.422030] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.14.0-1.fc33 04/01/2014
-[44.427323] RIP: 0010:ext4_process_freed_data+0x74/0x590 [ext4]
-[44.431312] Code: 24 a8 02 00 00 49 8d 8c 24 a8 02 00 00 49 39 c8 74 7f 4c 89 c2 4c 89 c0 31 f6 eb 0e 48 8b 00 48 89 d6 48 39 c8 74 08 48 89 c2 <39> 68 34 74 ed 48 85 f6 74 5d 49 8b 84 24 a8 02 00 00 48 39 c8 74
-[44.442810] RSP: 0018:ffffaeaf00b2ba50 EFLAGS: 00010246
-[44.446185] RAX: 0000000000000000 RBX: ffffaeaf00b2ba78 RCX: ffff9390013ca2a8
-[44.450598] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff9390013ca288
-[44.454723] RBP: 0000000000000006 R08: 0000000000000000 R09: ffff93900443c5b0
-[44.458619] R10: 0000000000000002 R11: 0000000000000000 R12: ffff9390013ca000
-[44.462510] R13: ffff9390013ca288 R14: ffff9390013c8000 R15: ffff939016387fd0
-[44.466103] FS:  00007fe3f7b99c40(0000) GS:ffff9390a7040000(0000) knlGS:0000000000000000
-[44.470061] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[44.472896] CR2: 0000000000000034 CR3: 00000003c305a005 CR4: 0000000000020ee0
-[44.476306] Call Trace:
-[44.477494]  ? __mod_timer+0x25c/0x3d0
-[44.479223]  ext4_journal_commit_callback+0x4a/0xd0 [ext4]
-[44.481807]  jbd2_journal_commit_transaction+0x1a3b/0x1cc0 [jbd2]
-[44.484476]  ? jbd2_journal_destroy+0xc3/0x280 [jbd2]
-[44.486445]  jbd2_journal_destroy+0xc3/0x280 [jbd2]
-[44.488355]  ? finish_wait+0x80/0x80
-[44.489758]  ext4_fill_super+0x2250/0x3bc0 [ext4]
-[44.491651]  ? mount_bdev+0x185/0x1b0
-[44.493083]  ? ext4_calculate_overhead+0x4d0/0x4d0 [ext4]
-[44.495112]  mount_bdev+0x185/0x1b0
-[44.496312]  ? ext4_calculate_overhead+0x4d0/0x4d0 [ext4]
-[44.498173]  legacy_get_tree+0x27/0x40
-[44.499599]  vfs_get_tree+0x25/0xb0
-[44.500786]  path_mount+0x423/0xa40
-[44.501974]  __x64_sys_mount+0xe3/0x120
-[44.503275]  do_syscall_64+0x33/0x40
-[44.504512]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-[44.506208] RIP: 0033:0x7fe3f7dcc5de
+/* v4 */
+- Serge Hallyn <serge@hallyn.com>:
+  - Use "mnt_userns" to refer to a vfsmount's userns everywhere to make
+    terminology consistent.
 
---- Call trace End ------------
+/* v5 */
+unchanged
+base-commit: 7c53f6b671f4aba70ff15e1b05148b10d58c2837
 
-# One step Reproducer
+/* v6 */
+base-commit: 19c329f6808995b142b3966301f217c831e7cf31
 
-https://bugzilla.kernel.org/show_bug.cgi?id=199179 (reproducer #1)
-https://bugzilla.kernel.org/show_bug.cgi?id=199275 (reproducer #2)
+- Christoph Hellwig <hch@lst.de>:
+  - Remove "extern" from headers.
+---
+ fs/attr.c                     |  2 +-
+ fs/xattr.c                    | 18 ++++++----
+ include/linux/capability.h    |  4 ++-
+ include/linux/lsm_hook_defs.h | 15 +++++----
+ include/linux/lsm_hooks.h     |  1 +
+ include/linux/security.h      | 54 +++++++++++++++++++-----------
+ kernel/auditsc.c              |  5 +--
+ security/commoncap.c          | 62 +++++++++++++++++++++++++++--------
+ security/security.c           | 25 ++++++++------
+ security/selinux/hooks.c      | 20 ++++++-----
+ security/smack/smack_lsm.c    | 14 ++++----
+ 11 files changed, 146 insertions(+), 74 deletions(-)
 
-  mount -o loop 88.img /mnt
-
-# git bisect log
-
-  git bisect start
-  # good: [235ecd36c7a93e4d6c73ac71137b8f1fa31148dd] MAINTAINERS: Update my email address
-  git bisect good 235ecd36c7a93e4d6c73ac71137b8f1fa31148dd
-  # bad: [19c329f6808995b142b3966301f217c831e7cf31] Linux 5.11-rc4
-  git bisect bad 19c329f6808995b142b3966301f217c831e7cf31
-  # good: [f97844f9c518172f813b7ece18a9956b1f70c1bb] dt-bindings: net: renesas,etheravb: RZ/G2H needs tx-internal-delay-ps
-  git bisect good f97844f9c518172f813b7ece18a9956b1f70c1bb
-  # good: [ea49c88f4071e2bdd55e78987f251ea54aa11004] Merge tag 'mkp-scsi-fixes' of git://git.kernel.org/pub/scm/linux/kernel/git/mkp/scsi
-  git bisect good ea49c88f4071e2bdd55e78987f251ea54aa11004
-  # good: [5ee88057889bbca5f5bb96031b62b3756b33e164] Merge tag 'drm-fixes-2021-01-15' of git://anongit.freedesktop.org/drm/drm
-  git bisect good 5ee88057889bbca5f5bb96031b62b3756b33e164
-  # bad: [b45e2da6e444280f8661dca439c1e377761b2877] Merge branch 'akpm' (patches from Andrew)
-  git bisect bad b45e2da6e444280f8661dca439c1e377761b2877
-  # good: [82821be8a2e14bdf359be577400be88b2f1eb8a7] Merge tag 'arm64-fixes' of git://git.kernel.org/pub/scm/linux/kernel/git/arm64/linux
-  git bisect good 82821be8a2e14bdf359be577400be88b2f1eb8a7
-  # bad: [0bc9bc1d8b2fa0d5a7e2132e89c540099ea63172] Merge tag 'ext4_for_linus_stable' of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4
-  git bisect bad 0bc9bc1d8b2fa0d5a7e2132e89c540099ea63172
-  # bad: [23dd561ad9eae02b4d51bb502fe4e1a0666e9567] ext4: use IS_ERR instead of IS_ERR_OR_NULL and set inode null when IS_ERR
-  git bisect bad 23dd561ad9eae02b4d51bb502fe4e1a0666e9567
-  # bad: [2d01ddc86606564fb08c56e3bc93a0693895f710] ext4: save error info to sb through journal if available
-  git bisect bad 2d01ddc86606564fb08c56e3bc93a0693895f710
-  # good: [4392fbc4bab57db3760f0fb61258cb7089b37665] ext4: drop sync argument of ext4_commit_super()
-  git bisect good 4392fbc4bab57db3760f0fb61258cb7089b37665
-  # good: [05c2c00f3769abb9e323fcaca70d2de0b48af7ba] ext4: protect superblock modifications with a buffer lock
-  git bisect good 05c2c00f3769abb9e323fcaca70d2de0b48af7ba
-  # first bad commit: [2d01ddc86606564fb08c56e3bc93a0693895f710] ext4: save error info to sb through journal if available
-
-Thanks,
+diff --git a/fs/attr.c b/fs/attr.c
+index f4543d2abdfb..c2d3bc0869d4 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -143,7 +143,7 @@ int setattr_prepare(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 	if (ia_valid & ATTR_KILL_PRIV) {
+ 		int error;
+ 
+-		error = security_inode_killpriv(dentry);
++		error = security_inode_killpriv(mnt_userns, dentry);
+ 		if (error)
+ 			return error;
+ 	}
+diff --git a/fs/xattr.c b/fs/xattr.c
+index a49541713b11..79c439d31eaa 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -262,7 +262,8 @@ __vfs_setxattr_locked(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 	if (error)
+ 		return error;
+ 
+-	error = security_inode_setxattr(dentry, name, value, size, flags);
++	error = security_inode_setxattr(mnt_userns, dentry, name, value, size,
++					flags);
+ 	if (error)
+ 		goto out;
+ 
+@@ -313,18 +314,20 @@ vfs_setxattr(struct user_namespace *mnt_userns, struct dentry *dentry,
+ EXPORT_SYMBOL_GPL(vfs_setxattr);
+ 
+ static ssize_t
+-xattr_getsecurity(struct inode *inode, const char *name, void *value,
+-			size_t size)
++xattr_getsecurity(struct user_namespace *mnt_userns, struct inode *inode,
++		  const char *name, void *value, size_t size)
+ {
+ 	void *buffer = NULL;
+ 	ssize_t len;
+ 
+ 	if (!value || !size) {
+-		len = security_inode_getsecurity(inode, name, &buffer, false);
++		len = security_inode_getsecurity(mnt_userns, inode, name,
++						 &buffer, false);
+ 		goto out_noalloc;
+ 	}
+ 
+-	len = security_inode_getsecurity(inode, name, &buffer, true);
++	len = security_inode_getsecurity(mnt_userns, inode, name, &buffer,
++					 true);
+ 	if (len < 0)
+ 		return len;
+ 	if (size < len) {
+@@ -414,7 +417,8 @@ vfs_getxattr(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 	if (!strncmp(name, XATTR_SECURITY_PREFIX,
+ 				XATTR_SECURITY_PREFIX_LEN)) {
+ 		const char *suffix = name + XATTR_SECURITY_PREFIX_LEN;
+-		int ret = xattr_getsecurity(inode, suffix, value, size);
++		int ret = xattr_getsecurity(mnt_userns, inode, suffix, value,
++					    size);
+ 		/*
+ 		 * Only overwrite the return value if a security module
+ 		 * is actually active.
+@@ -486,7 +490,7 @@ __vfs_removexattr_locked(struct user_namespace *mnt_userns,
+ 	if (error)
+ 		return error;
+ 
+-	error = security_inode_removexattr(dentry, name);
++	error = security_inode_removexattr(mnt_userns, dentry, name);
+ 	if (error)
+ 		goto out;
+ 
+diff --git a/include/linux/capability.h b/include/linux/capability.h
+index da21ef118b04..65efb74c3585 100644
+--- a/include/linux/capability.h
++++ b/include/linux/capability.h
+@@ -271,7 +271,9 @@ static inline bool checkpoint_restore_ns_capable(struct user_namespace *ns)
+ }
+ 
+ /* audit system wants to get cap info from files as well */
+-extern int get_vfs_caps_from_disk(const struct dentry *dentry, struct cpu_vfs_cap_data *cpu_caps);
++int get_vfs_caps_from_disk(struct user_namespace *mnt_userns,
++			   const struct dentry *dentry,
++			   struct cpu_vfs_cap_data *cpu_caps);
+ 
+ int cap_convert_nscap(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 		      const void **ivalue, size_t size);
+diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+index 7aaa753b8608..df4cdad6681e 100644
+--- a/include/linux/lsm_hook_defs.h
++++ b/include/linux/lsm_hook_defs.h
+@@ -133,17 +133,20 @@ LSM_HOOK(int, 0, inode_follow_link, struct dentry *dentry, struct inode *inode,
+ LSM_HOOK(int, 0, inode_permission, struct inode *inode, int mask)
+ LSM_HOOK(int, 0, inode_setattr, struct dentry *dentry, struct iattr *attr)
+ LSM_HOOK(int, 0, inode_getattr, const struct path *path)
+-LSM_HOOK(int, 0, inode_setxattr, struct dentry *dentry, const char *name,
+-	 const void *value, size_t size, int flags)
++LSM_HOOK(int, 0, inode_setxattr, struct user_namespace *mnt_userns,
++	 struct dentry *dentry, const char *name, const void *value,
++	 size_t size, int flags)
+ LSM_HOOK(void, LSM_RET_VOID, inode_post_setxattr, struct dentry *dentry,
+ 	 const char *name, const void *value, size_t size, int flags)
+ LSM_HOOK(int, 0, inode_getxattr, struct dentry *dentry, const char *name)
+ LSM_HOOK(int, 0, inode_listxattr, struct dentry *dentry)
+-LSM_HOOK(int, 0, inode_removexattr, struct dentry *dentry, const char *name)
++LSM_HOOK(int, 0, inode_removexattr, struct user_namespace *mnt_userns,
++	 struct dentry *dentry, const char *name)
+ LSM_HOOK(int, 0, inode_need_killpriv, struct dentry *dentry)
+-LSM_HOOK(int, 0, inode_killpriv, struct dentry *dentry)
+-LSM_HOOK(int, -EOPNOTSUPP, inode_getsecurity, struct inode *inode,
+-	 const char *name, void **buffer, bool alloc)
++LSM_HOOK(int, 0, inode_killpriv, struct user_namespace *mnt_userns,
++	 struct dentry *dentry)
++LSM_HOOK(int, -EOPNOTSUPP, inode_getsecurity, struct user_namespace *mnt_userns,
++	 struct inode *inode, const char *name, void **buffer, bool alloc)
+ LSM_HOOK(int, -EOPNOTSUPP, inode_setsecurity, struct inode *inode,
+ 	 const char *name, const void *value, size_t size, int flags)
+ LSM_HOOK(int, 0, inode_listsecurity, struct inode *inode, char *buffer,
+diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
+index a19adef1f088..98a5e263aabb 100644
+--- a/include/linux/lsm_hooks.h
++++ b/include/linux/lsm_hooks.h
+@@ -444,6 +444,7 @@
+  * @inode_killpriv:
+  *	The setuid bit is being removed.  Remove similar security labels.
+  *	Called with the dentry->d_inode->i_mutex held.
++ *	@mnt_userns: user namespace of the mount
+  *	@dentry is the dentry being changed.
+  *	Return 0 on success.  If error is returned, then the operation
+  *	causing setuid bit removal is failed.
+diff --git a/include/linux/security.h b/include/linux/security.h
+index c35ea0ffccd9..4e4f6c31e413 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -145,13 +145,16 @@ extern int cap_capset(struct cred *new, const struct cred *old,
+ 		      const kernel_cap_t *inheritable,
+ 		      const kernel_cap_t *permitted);
+ extern int cap_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file);
+-extern int cap_inode_setxattr(struct dentry *dentry, const char *name,
+-			      const void *value, size_t size, int flags);
+-extern int cap_inode_removexattr(struct dentry *dentry, const char *name);
+-extern int cap_inode_need_killpriv(struct dentry *dentry);
+-extern int cap_inode_killpriv(struct dentry *dentry);
+-extern int cap_inode_getsecurity(struct inode *inode, const char *name,
+-				 void **buffer, bool alloc);
++int cap_inode_setxattr(struct dentry *dentry, const char *name,
++		       const void *value, size_t size, int flags);
++int cap_inode_removexattr(struct user_namespace *mnt_userns,
++			  struct dentry *dentry, const char *name);
++int cap_inode_need_killpriv(struct dentry *dentry);
++int cap_inode_killpriv(struct user_namespace *mnt_userns,
++		       struct dentry *dentry);
++int cap_inode_getsecurity(struct user_namespace *mnt_userns,
++			  struct inode *inode, const char *name, void **buffer,
++			  bool alloc);
+ extern int cap_mmap_addr(unsigned long addr);
+ extern int cap_mmap_file(struct file *file, unsigned long reqprot,
+ 			 unsigned long prot, unsigned long flags);
+@@ -345,16 +348,21 @@ int security_inode_follow_link(struct dentry *dentry, struct inode *inode,
+ int security_inode_permission(struct inode *inode, int mask);
+ int security_inode_setattr(struct dentry *dentry, struct iattr *attr);
+ int security_inode_getattr(const struct path *path);
+-int security_inode_setxattr(struct dentry *dentry, const char *name,
++int security_inode_setxattr(struct user_namespace *mnt_userns,
++			    struct dentry *dentry, const char *name,
+ 			    const void *value, size_t size, int flags);
+ void security_inode_post_setxattr(struct dentry *dentry, const char *name,
+ 				  const void *value, size_t size, int flags);
+ int security_inode_getxattr(struct dentry *dentry, const char *name);
+ int security_inode_listxattr(struct dentry *dentry);
+-int security_inode_removexattr(struct dentry *dentry, const char *name);
++int security_inode_removexattr(struct user_namespace *mnt_userns,
++			       struct dentry *dentry, const char *name);
+ int security_inode_need_killpriv(struct dentry *dentry);
+-int security_inode_killpriv(struct dentry *dentry);
+-int security_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc);
++int security_inode_killpriv(struct user_namespace *mnt_userns,
++			    struct dentry *dentry);
++int security_inode_getsecurity(struct user_namespace *mnt_userns,
++			       struct inode *inode, const char *name,
++			       void **buffer, bool alloc);
+ int security_inode_setsecurity(struct inode *inode, const char *name, const void *value, size_t size, int flags);
+ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer_size);
+ void security_inode_getsecid(struct inode *inode, u32 *secid);
+@@ -831,8 +839,9 @@ static inline int security_inode_getattr(const struct path *path)
+ 	return 0;
+ }
+ 
+-static inline int security_inode_setxattr(struct dentry *dentry,
+-		const char *name, const void *value, size_t size, int flags)
++static inline int security_inode_setxattr(struct user_namespace *mnt_userns,
++		struct dentry *dentry, const char *name, const void *value,
++		size_t size, int flags)
+ {
+ 	return cap_inode_setxattr(dentry, name, value, size, flags);
+ }
+@@ -852,10 +861,11 @@ static inline int security_inode_listxattr(struct dentry *dentry)
+ 	return 0;
+ }
+ 
+-static inline int security_inode_removexattr(struct dentry *dentry,
+-			const char *name)
++static inline int security_inode_removexattr(struct user_namespace *mnt_userns,
++					     struct dentry *dentry,
++					     const char *name)
+ {
+-	return cap_inode_removexattr(dentry, name);
++	return cap_inode_removexattr(mnt_userns, dentry, name);
+ }
+ 
+ static inline int security_inode_need_killpriv(struct dentry *dentry)
+@@ -863,14 +873,18 @@ static inline int security_inode_need_killpriv(struct dentry *dentry)
+ 	return cap_inode_need_killpriv(dentry);
+ }
+ 
+-static inline int security_inode_killpriv(struct dentry *dentry)
++static inline int security_inode_killpriv(struct user_namespace *mnt_userns,
++					  struct dentry *dentry)
+ {
+-	return cap_inode_killpriv(dentry);
++	return cap_inode_killpriv(mnt_userns, dentry);
+ }
+ 
+-static inline int security_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
++static inline int security_inode_getsecurity(struct user_namespace *mnt_userns,
++					     struct inode *inode,
++					     const char *name, void **buffer,
++					     bool alloc)
+ {
+-	return cap_inode_getsecurity(inode, name, buffer, alloc);
++	return cap_inode_getsecurity(mnt_userns, inode, name, buffer, alloc);
+ }
+ 
+ static inline int security_inode_setsecurity(struct inode *inode, const char *name, const void *value, size_t size, int flags)
+diff --git a/kernel/auditsc.c b/kernel/auditsc.c
+index ce8c9e2279ba..fdfdd71405ff 100644
+--- a/kernel/auditsc.c
++++ b/kernel/auditsc.c
+@@ -1930,7 +1930,7 @@ static inline int audit_copy_fcaps(struct audit_names *name,
+ 	if (!dentry)
+ 		return 0;
+ 
+-	rc = get_vfs_caps_from_disk(dentry, &caps);
++	rc = get_vfs_caps_from_disk(&init_user_ns, dentry, &caps);
+ 	if (rc)
+ 		return rc;
+ 
+@@ -2481,7 +2481,8 @@ int __audit_log_bprm_fcaps(struct linux_binprm *bprm,
+ 	ax->d.next = context->aux;
+ 	context->aux = (void *)ax;
+ 
+-	get_vfs_caps_from_disk(bprm->file->f_path.dentry, &vcaps);
++	get_vfs_caps_from_disk(&init_user_ns,
++			       bprm->file->f_path.dentry, &vcaps);
+ 
+ 	ax->fcap.permitted = vcaps.permitted;
+ 	ax->fcap.inheritable = vcaps.inheritable;
+diff --git a/security/commoncap.c b/security/commoncap.c
+index 745dc1f2c97f..234b074c2c58 100644
+--- a/security/commoncap.c
++++ b/security/commoncap.c
+@@ -303,17 +303,25 @@ int cap_inode_need_killpriv(struct dentry *dentry)
+ 
+ /**
+  * cap_inode_killpriv - Erase the security markings on an inode
+- * @dentry: The inode/dentry to alter
++ *
++ * @mnt_userns:	user namespace of the mount the inode was found from
++ * @dentry:	The inode/dentry to alter
+  *
+  * Erase the privilege-enhancing security markings on an inode.
+  *
++ * If the inode has been found through an idmapped mount the user namespace of
++ * the vfsmount must be passed through @mnt_userns. This function will then
++ * take care to map the inode according to @mnt_userns before checking
++ * permissions. On non-idmapped mounts or if permission checking is to be
++ * performed on the raw inode simply passs init_user_ns.
++ *
+  * Returns 0 if successful, -ve on error.
+  */
+-int cap_inode_killpriv(struct dentry *dentry)
++int cap_inode_killpriv(struct user_namespace *mnt_userns, struct dentry *dentry)
+ {
+ 	int error;
+ 
+-	error = __vfs_removexattr(&init_user_ns, dentry, XATTR_NAME_CAPS);
++	error = __vfs_removexattr(mnt_userns, dentry, XATTR_NAME_CAPS);
+ 	if (error == -EOPNOTSUPP)
+ 		error = 0;
+ 	return error;
+@@ -366,7 +374,8 @@ static bool is_v3header(size_t size, const struct vfs_cap_data *cap)
+  * by the integrity subsystem, which really wants the unconverted values -
+  * so that's good.
+  */
+-int cap_inode_getsecurity(struct inode *inode, const char *name, void **buffer,
++int cap_inode_getsecurity(struct user_namespace *mnt_userns,
++			  struct inode *inode, const char *name, void **buffer,
+ 			  bool alloc)
+ {
+ 	int size, ret;
+@@ -386,7 +395,7 @@ int cap_inode_getsecurity(struct inode *inode, const char *name, void **buffer,
+ 		return -EINVAL;
+ 
+ 	size = sizeof(struct vfs_ns_cap_data);
+-	ret = (int)vfs_getxattr_alloc(&init_user_ns, dentry, XATTR_NAME_CAPS,
++	ret = (int)vfs_getxattr_alloc(mnt_userns, dentry, XATTR_NAME_CAPS,
+ 				      &tmpbuf, size, GFP_NOFS);
+ 	dput(dentry);
+ 
+@@ -412,6 +421,9 @@ int cap_inode_getsecurity(struct inode *inode, const char *name, void **buffer,
+ 	root = le32_to_cpu(nscap->rootid);
+ 	kroot = make_kuid(fs_ns, root);
+ 
++	/* If this is an idmapped mount shift the kuid. */
++	kroot = kuid_into_mnt(mnt_userns, kroot);
++
+ 	/* If the root kuid maps to a valid uid in current ns, then return
+ 	 * this as a nscap. */
+ 	mappedroot = from_kuid(current_user_ns(), kroot);
+@@ -595,10 +607,24 @@ static inline int bprm_caps_from_vfs_caps(struct cpu_vfs_cap_data *caps,
+ 	return *effective ? ret : 0;
+ }
+ 
+-/*
++/**
++ * get_vfs_caps_from_disk - retrieve vfs caps from disk
++ *
++ * @mnt_userns:	user namespace of the mount the inode was found from
++ * @dentry:	dentry from which @inode is retrieved
++ * @cpu_caps:	vfs capabilities
++ *
+  * Extract the on-exec-apply capability sets for an executable file.
++ *
++ * If the inode has been found through an idmapped mount the user namespace of
++ * the vfsmount must be passed through @mnt_userns. This function will then
++ * take care to map the inode according to @mnt_userns before checking
++ * permissions. On non-idmapped mounts or if permission checking is to be
++ * performed on the raw inode simply passs init_user_ns.
+  */
+-int get_vfs_caps_from_disk(const struct dentry *dentry, struct cpu_vfs_cap_data *cpu_caps)
++int get_vfs_caps_from_disk(struct user_namespace *mnt_userns,
++			   const struct dentry *dentry,
++			   struct cpu_vfs_cap_data *cpu_caps)
+ {
+ 	struct inode *inode = d_backing_inode(dentry);
+ 	__u32 magic_etc;
+@@ -654,6 +680,7 @@ int get_vfs_caps_from_disk(const struct dentry *dentry, struct cpu_vfs_cap_data
+ 	/* Limit the caps to the mounter of the filesystem
+ 	 * or the more limited uid specified in the xattr.
+ 	 */
++	rootkuid = kuid_into_mnt(mnt_userns, rootkuid);
+ 	if (!rootid_owns_currentns(rootkuid))
+ 		return -ENODATA;
+ 
+@@ -699,7 +726,8 @@ static int get_file_caps(struct linux_binprm *bprm, struct file *file,
+ 	if (!current_in_userns(file->f_path.mnt->mnt_sb->s_user_ns))
+ 		return 0;
+ 
+-	rc = get_vfs_caps_from_disk(file->f_path.dentry, &vcaps);
++	rc = get_vfs_caps_from_disk(file_mnt_user_ns(file),
++				    file->f_path.dentry, &vcaps);
+ 	if (rc < 0) {
+ 		if (rc == -EINVAL)
+ 			printk(KERN_NOTICE "Invalid argument reading file caps for %s\n",
+@@ -964,16 +992,25 @@ int cap_inode_setxattr(struct dentry *dentry, const char *name,
+ 
+ /**
+  * cap_inode_removexattr - Determine whether an xattr may be removed
+- * @dentry: The inode/dentry being altered
+- * @name: The name of the xattr to be changed
++ *
++ * @mnt_userns:	User namespace of the mount the inode was found from
++ * @dentry:	The inode/dentry being altered
++ * @name:	The name of the xattr to be changed
+  *
+  * Determine whether an xattr may be removed from an inode, returning 0 if
+  * permission is granted, -ve if denied.
+  *
++ * If the inode has been found through an idmapped mount the user namespace of
++ * the vfsmount must be passed through @mnt_userns. This function will then
++ * take care to map the inode according to @mnt_userns before checking
++ * permissions. On non-idmapped mounts or if permission checking is to be
++ * performed on the raw inode simply passs init_user_ns.
++ *
+  * This is used to make sure security xattrs don't get removed by those who
+  * aren't privileged to remove them.
+  */
+-int cap_inode_removexattr(struct dentry *dentry, const char *name)
++int cap_inode_removexattr(struct user_namespace *mnt_userns,
++			  struct dentry *dentry, const char *name)
+ {
+ 	struct user_namespace *user_ns = dentry->d_sb->s_user_ns;
+ 
+@@ -987,8 +1024,7 @@ int cap_inode_removexattr(struct dentry *dentry, const char *name)
+ 		struct inode *inode = d_backing_inode(dentry);
+ 		if (!inode)
+ 			return -EINVAL;
+-		if (!capable_wrt_inode_uidgid(&init_user_ns, inode,
+-					      CAP_SETFCAP))
++		if (!capable_wrt_inode_uidgid(mnt_userns, inode, CAP_SETFCAP))
+ 			return -EPERM;
+ 		return 0;
+ 	}
+diff --git a/security/security.c b/security/security.c
+index 7b09cfbae94f..698a9f17bad7 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1280,7 +1280,8 @@ int security_inode_getattr(const struct path *path)
+ 	return call_int_hook(inode_getattr, 0, path);
+ }
+ 
+-int security_inode_setxattr(struct dentry *dentry, const char *name,
++int security_inode_setxattr(struct user_namespace *mnt_userns,
++			    struct dentry *dentry, const char *name,
+ 			    const void *value, size_t size, int flags)
+ {
+ 	int ret;
+@@ -1291,8 +1292,8 @@ int security_inode_setxattr(struct dentry *dentry, const char *name,
+ 	 * SELinux and Smack integrate the cap call,
+ 	 * so assume that all LSMs supplying this call do so.
+ 	 */
+-	ret = call_int_hook(inode_setxattr, 1, dentry, name, value, size,
+-				flags);
++	ret = call_int_hook(inode_setxattr, 1, mnt_userns, dentry, name, value,
++			    size, flags);
+ 
+ 	if (ret == 1)
+ 		ret = cap_inode_setxattr(dentry, name, value, size, flags);
+@@ -1327,7 +1328,8 @@ int security_inode_listxattr(struct dentry *dentry)
+ 	return call_int_hook(inode_listxattr, 0, dentry);
+ }
+ 
+-int security_inode_removexattr(struct dentry *dentry, const char *name)
++int security_inode_removexattr(struct user_namespace *mnt_userns,
++			       struct dentry *dentry, const char *name)
+ {
+ 	int ret;
+ 
+@@ -1337,9 +1339,9 @@ int security_inode_removexattr(struct dentry *dentry, const char *name)
+ 	 * SELinux and Smack integrate the cap call,
+ 	 * so assume that all LSMs supplying this call do so.
+ 	 */
+-	ret = call_int_hook(inode_removexattr, 1, dentry, name);
++	ret = call_int_hook(inode_removexattr, 1, mnt_userns, dentry, name);
+ 	if (ret == 1)
+-		ret = cap_inode_removexattr(dentry, name);
++		ret = cap_inode_removexattr(mnt_userns, dentry, name);
+ 	if (ret)
+ 		return ret;
+ 	ret = ima_inode_removexattr(dentry, name);
+@@ -1353,12 +1355,15 @@ int security_inode_need_killpriv(struct dentry *dentry)
+ 	return call_int_hook(inode_need_killpriv, 0, dentry);
+ }
+ 
+-int security_inode_killpriv(struct dentry *dentry)
++int security_inode_killpriv(struct user_namespace *mnt_userns,
++			    struct dentry *dentry)
+ {
+-	return call_int_hook(inode_killpriv, 0, dentry);
++	return call_int_hook(inode_killpriv, 0, mnt_userns, dentry);
+ }
+ 
+-int security_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
++int security_inode_getsecurity(struct user_namespace *mnt_userns,
++			       struct inode *inode, const char *name,
++			       void **buffer, bool alloc)
+ {
+ 	struct security_hook_list *hp;
+ 	int rc;
+@@ -1369,7 +1374,7 @@ int security_inode_getsecurity(struct inode *inode, const char *name, void **buf
+ 	 * Only one module will provide an attribute with a given name.
+ 	 */
+ 	hlist_for_each_entry(hp, &security_hook_heads.inode_getsecurity, list) {
+-		rc = hp->hook.inode_getsecurity(inode, name, buffer, alloc);
++		rc = hp->hook.inode_getsecurity(mnt_userns, inode, name, buffer, alloc);
+ 		if (rc != LSM_RET_DEFAULT(inode_getsecurity))
+ 			return rc;
+ 	}
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 2efedd7001b2..9719dd124221 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -3119,7 +3119,8 @@ static bool has_cap_mac_admin(bool audit)
+ 	return true;
+ }
+ 
+-static int selinux_inode_setxattr(struct dentry *dentry, const char *name,
++static int selinux_inode_setxattr(struct user_namespace *mnt_userns,
++				  struct dentry *dentry, const char *name,
+ 				  const void *value, size_t size, int flags)
+ {
+ 	struct inode *inode = d_backing_inode(dentry);
+@@ -3140,13 +3141,13 @@ static int selinux_inode_setxattr(struct dentry *dentry, const char *name,
+ 	}
+ 
+ 	if (!selinux_initialized(&selinux_state))
+-		return (inode_owner_or_capable(&init_user_ns, inode) ? 0 : -EPERM);
++		return (inode_owner_or_capable(mnt_userns, inode) ? 0 : -EPERM);
+ 
+ 	sbsec = inode->i_sb->s_security;
+ 	if (!(sbsec->flags & SBLABEL_MNT))
+ 		return -EOPNOTSUPP;
+ 
+-	if (!inode_owner_or_capable(&init_user_ns, inode))
++	if (!inode_owner_or_capable(mnt_userns, inode))
+ 		return -EPERM;
+ 
+ 	ad.type = LSM_AUDIT_DATA_DENTRY;
+@@ -3267,10 +3268,11 @@ static int selinux_inode_listxattr(struct dentry *dentry)
+ 	return dentry_has_perm(cred, dentry, FILE__GETATTR);
+ }
+ 
+-static int selinux_inode_removexattr(struct dentry *dentry, const char *name)
++static int selinux_inode_removexattr(struct user_namespace *mnt_userns,
++				     struct dentry *dentry, const char *name)
+ {
+ 	if (strcmp(name, XATTR_NAME_SELINUX)) {
+-		int rc = cap_inode_removexattr(dentry, name);
++		int rc = cap_inode_removexattr(mnt_userns, dentry, name);
+ 		if (rc)
+ 			return rc;
+ 
+@@ -3336,7 +3338,9 @@ static int selinux_path_notify(const struct path *path, u64 mask,
+  *
+  * Permission check is handled by selinux_inode_getxattr hook.
+  */
+-static int selinux_inode_getsecurity(struct inode *inode, const char *name, void **buffer, bool alloc)
++static int selinux_inode_getsecurity(struct user_namespace *mnt_userns,
++				     struct inode *inode, const char *name,
++				     void **buffer, bool alloc)
+ {
+ 	u32 size;
+ 	int error;
+@@ -6533,8 +6537,8 @@ static int selinux_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
+ static int selinux_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
+ {
+ 	int len = 0;
+-	len = selinux_inode_getsecurity(inode, XATTR_SELINUX_SUFFIX,
+-						ctx, true);
++	len = selinux_inode_getsecurity(&init_user_ns, inode,
++					XATTR_SELINUX_SUFFIX, ctx, true);
+ 	if (len < 0)
+ 		return len;
+ 	*ctxlen = len;
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index 746e5743accc..12a45e61c1a5 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -1240,7 +1240,8 @@ static int smack_inode_getattr(const struct path *path)
+  *
+  * Returns 0 if access is permitted, an error code otherwise
+  */
+-static int smack_inode_setxattr(struct dentry *dentry, const char *name,
++static int smack_inode_setxattr(struct user_namespace *mnt_userns,
++				struct dentry *dentry, const char *name,
+ 				const void *value, size_t size, int flags)
+ {
+ 	struct smk_audit_info ad;
+@@ -1362,7 +1363,8 @@ static int smack_inode_getxattr(struct dentry *dentry, const char *name)
+  *
+  * Returns 0 if access is permitted, an error code otherwise
+  */
+-static int smack_inode_removexattr(struct dentry *dentry, const char *name)
++static int smack_inode_removexattr(struct user_namespace *mnt_userns,
++				   struct dentry *dentry, const char *name)
+ {
+ 	struct inode_smack *isp;
+ 	struct smk_audit_info ad;
+@@ -1377,7 +1379,7 @@ static int smack_inode_removexattr(struct dentry *dentry, const char *name)
+ 		if (!smack_privileged(CAP_MAC_ADMIN))
+ 			rc = -EPERM;
+ 	} else
+-		rc = cap_inode_removexattr(dentry, name);
++		rc = cap_inode_removexattr(mnt_userns, dentry, name);
+ 
+ 	if (rc != 0)
+ 		return rc;
+@@ -1420,9 +1422,9 @@ static int smack_inode_removexattr(struct dentry *dentry, const char *name)
+  *
+  * Returns the size of the attribute or an error code
+  */
+-static int smack_inode_getsecurity(struct inode *inode,
+-				   const char *name, void **buffer,
+-				   bool alloc)
++static int smack_inode_getsecurity(struct user_namespace *mnt_userns,
++				   struct inode *inode, const char *name,
++				   void **buffer, bool alloc)
+ {
+ 	struct socket_smack *ssp;
+ 	struct socket *sock;
 -- 
-Murphy
+2.30.0
+
