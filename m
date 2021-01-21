@@ -3,65 +3,58 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36F3FC433DB
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:54:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7896CC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:56:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E0E6A23A1D
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:54:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3C72522C9F
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:56:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728448AbhAUPy1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 10:54:27 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57794 "EHLO
+        id S1730427AbhAUPzh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 10:55:37 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58312 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729307AbhAUPwz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 10:52:55 -0500
+        with ESMTP id S1729550AbhAUPzK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 10:55:10 -0500
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LFpsox001544
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LFsDcO002812
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 Jan 2021 10:51:54 -0500
+        Thu, 21 Jan 2021 10:54:15 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 2DC3315C35F5; Thu, 21 Jan 2021 10:51:54 -0500 (EST)
-Date:   Thu, 21 Jan 2021 10:51:54 -0500
+        id AC5A215C35F5; Thu, 21 Jan 2021 10:54:13 -0500 (EST)
+Date:   Thu, 21 Jan 2021 10:54:13 -0500
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Saranya Muruganandam <saranyamohan@google.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [RFC PATCH v1 0/5] Add threading support to e2fsprogs
-Message-ID: <YAmjGnSBNBssB1XW@mit.edu>
-References: <20210114002723.643589-1-saranyamohan@google.com>
+To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v3 02/15] e2fsck: add kernel endian-ness conversion macros
+Message-ID: <YAmjpUjrcOgkQ5Ik@mit.edu>
+References: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
+ <20210120212641.526556-3-user@harshads-520.kir.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210114002723.643589-1-saranyamohan@google.com>
+In-Reply-To: <20210120212641.526556-3-user@harshads-520.kir.corp.google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 13, 2021 at 04:27:18PM -0800, Saranya Muruganandam wrote:
-> This patch set adds the infrastructure to support threading to
-> libext2fs.  It makes the unix_io I/O Manager thread-aware.  Wang's
-> parallel bitmap code has been adapted to use the new threading
-> infrastructure.
+On Wed, Jan 20, 2021 at 01:26:28PM -0800, Harshad Shirwadkar wrote:
+> From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 > 
-> The code has been tested with TSAN and ASAN built into gcc 10.2:
+> In order to make recovery.c identical with kernel, we need endianness
+> conversion macros (such as cpu_to_be32 and friends) defined in
+> e2fsprogs. This patch defines these macros and also fixes recovery.c
+> to use these. These macros are also needed for fast commit recovery
+> patches later in this series.
 > 
->     configure 'CFLAGS=-g -fsanitize=thread' 'LDFLAGS=-fsanitize=thread'
->     make clean ; make -j16 ; make -j16 check
->     configure 'CFLAGS=-g -fsanitize=address' 'LDFLAGS=-fsanitize=address'
->     make clean ; make -j16 ; make -j16 check
-> 
-> As I(tytso) needed to excerpt out some of the changes to generated patches in
-> "Add configure and build support for the pthreads", the full patch
-> series can be found in git:
-> 
-> git fetch https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git pthreads
+> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Thanks, I've applied this patch series.  (There were some slight merge
-conflicts due to some other changes from the maint branch so I had to
-regenerate the aclocal.m4 and configure files.)
+Thanks, applied.
 
-							- Ted
+					- Ted
