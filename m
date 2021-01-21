@@ -7,23 +7,23 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 753A0C433E6
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:24:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3242C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:26:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 32BFE23A01
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:24:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F7CA23A04
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 15:26:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732048AbhAUNZM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 08:25:12 -0500
-Received: from youngberry.canonical.com ([91.189.89.112]:54213 "EHLO
+        id S1732886AbhAUP0E (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 10:26:04 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:54575 "EHLO
         youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731979AbhAUNWX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 08:22:23 -0500
+        with ESMTP id S1731852AbhAUNYt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 08:24:49 -0500
 Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein.fritz.box)
         by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
         (Exim 4.86_2)
         (envelope-from <christian.brauner@ubuntu.com>)
-        id 1l2Zu5-0005g7-AG; Thu, 21 Jan 2021 13:21:37 +0000
+        id 1l2Zuu-0005g7-0W; Thu, 21 Jan 2021 13:22:28 +0000
 From:   Christian Brauner <christian.brauner@ubuntu.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org
@@ -59,34 +59,36 @@ Cc:     John Johansen <john.johansen@canonical.com>,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
         Christian Brauner <christian.brauner@ubuntu.com>
-Subject: [PATCH v6 19/40] fcntl: handle idmapped mounts
-Date:   Thu, 21 Jan 2021 14:19:38 +0100
-Message-Id: <20210121131959.646623-20-christian.brauner@ubuntu.com>
+Subject: [PATCH v6 30/40] mount: make {lock,unlock}_mount_hash() static
+Date:   Thu, 21 Jan 2021 14:19:49 +0100
+Message-Id: <20210121131959.646623-31-christian.brauner@ubuntu.com>
 X-Mailer: git-send-email 2.30.0
 In-Reply-To: <20210121131959.646623-1-christian.brauner@ubuntu.com>
 References: <20210121131959.646623-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-X-Patch-Hashes: v=1; h=sha256; i=79BfejdDgH1ldNWwCcl2HPMsbZ+QshNiYeRA/Vyc6bM=; m=detKBSkDkzsCnCPoymMn+7vpAMD0Y3cG0/3eXgQ49io=; p=Dq6/8kTkd489yO0TmXMobUvBDadTtEuojyAYcAIPKb4=; g=fca6e0371a145d55bbbad1474e2a9c625a75a05f
-X-Patch-Sig: m=pgp; i=christian.brauner@ubuntu.com; s=0x0x91C61BC06578DCA2; b=iHUEABYKAB0WIQRAhzRXHqcMeLMyaSiRxhvAZXjcogUCYAl9pQAKCRCRxhvAZXjcontYAP0T3jU 0qn4qmNVbFmqmqVvV+R2Yrdgzzgl83+2rLYGKQQD/QtLiTUddbVANLyE9giR/dq+mNVN4OT3ULUE+ aL0ypAM=
+X-Patch-Hashes: v=1; h=sha256; i=vO6mqD1pvztvOW1otxIX/33XHCNZr+llU/zGWpmgRcU=; m=KhvaMUT1cjYCcf89U9v9dgojtWEDCI7+j8N/vrPJ2d8=; p=m+f5GyiYf302pJENuNE7M1OLXAwtO2DVQ+DZIMIfwu0=; g=a01f7f9b00b67a1698d6ed6ffbed46e285973451
+X-Patch-Sig: m=pgp; i=christian.brauner@ubuntu.com; s=0x0x91C61BC06578DCA2; b=iHUEABYKAB0WIQRAhzRXHqcMeLMyaSiRxhvAZXjcogUCYAl9pgAKCRCRxhvAZXjcov5nAP417zG 11bQQEUJ0ysdrJok04PLyXR+Mhb6D2/2E4h91CgEAijXaDc6Gi6RigHFF4y2Xjov9EzuvRHTYz5It xL3Ybgw=
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Enable the setfl() helper to handle idmapped mounts by passing down the
-mount's user namespace. If the initial user namespace is passed nothing
-changes so non-idmapped mounts will see identical behavior as before.
+The lock_mount_hash() and unlock_mount_hash() helpers are never called
+outside a single file. Remove them from the header and make them static
+to reflect this fact. There's no need to have them callable from other
+places right now, as Christoph observed.
 
-Link: https://lore.kernel.org/r/20210112220124.837960-27-christian.brauner@ubuntu.com
-Cc: Christoph Hellwig <hch@lst.de>
+Link: https://lore.kernel.org/r/20210112220124.837960-3-christian.brauner@ubuntu.com
 Cc: David Howells <dhowells@redhat.com>
 Cc: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-fsdevel@vger.kernel.org
+Suggested-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
 ---
 /* v2 */
-patch introduced
+- Christoph Hellwig <hch@lst.de>:
+  - Add a patch to make {lock,unlock)_mount_hash() static.
 
 /* v3 */
 unchanged
@@ -99,35 +101,55 @@ unchanged
 base-commit: 7c53f6b671f4aba70ff15e1b05148b10d58c2837
 
 /* v6 */
+unchanged
 base-commit: 19c329f6808995b142b3966301f217c831e7cf31
-
-- Christoph Hellwig <hch@lst.de>:
-  - Use file_mnt_user_ns() helper.
 ---
- fs/fcntl.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/mount.h     | 10 ----------
+ fs/namespace.c | 10 ++++++++++
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 74d99731fd43..f6ac5285060d 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -25,6 +25,7 @@
- #include <linux/user_namespace.h>
- #include <linux/memfd.h>
- #include <linux/compat.h>
-+#include <linux/mount.h>
+diff --git a/fs/mount.h b/fs/mount.h
+index ce6c376e0bc2..0b6e08cf8afb 100644
+--- a/fs/mount.h
++++ b/fs/mount.h
+@@ -124,16 +124,6 @@ static inline void get_mnt_ns(struct mnt_namespace *ns)
  
- #include <linux/poll.h>
- #include <asm/siginfo.h>
-@@ -46,7 +47,7 @@ static int setfl(int fd, struct file * filp, unsigned long arg)
+ extern seqlock_t mount_lock;
  
- 	/* O_NOATIME can only be set by the owner or superuser */
- 	if ((arg & O_NOATIME) && !(filp->f_flags & O_NOATIME))
--		if (!inode_owner_or_capable(&init_user_ns, inode))
-+		if (!inode_owner_or_capable(file_mnt_user_ns(filp), inode))
- 			return -EPERM;
+-static inline void lock_mount_hash(void)
+-{
+-	write_seqlock(&mount_lock);
+-}
+-
+-static inline void unlock_mount_hash(void)
+-{
+-	write_sequnlock(&mount_lock);
+-}
+-
+ struct proc_mounts {
+ 	struct mnt_namespace *ns;
+ 	struct path root;
+diff --git a/fs/namespace.c b/fs/namespace.c
+index bdfb130f2c3c..5fceb2854395 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -87,6 +87,16 @@ EXPORT_SYMBOL_GPL(fs_kobj);
+  */
+ __cacheline_aligned_in_smp DEFINE_SEQLOCK(mount_lock);
  
- 	/* required for strict SunOS emulation */
++static inline void lock_mount_hash(void)
++{
++	write_seqlock(&mount_lock);
++}
++
++static inline void unlock_mount_hash(void)
++{
++	write_sequnlock(&mount_lock);
++}
++
+ static inline struct hlist_head *m_hash(struct vfsmount *mnt, struct dentry *dentry)
+ {
+ 	unsigned long tmp = ((unsigned long)mnt / L1_CACHE_BYTES);
 -- 
 2.30.0
 
