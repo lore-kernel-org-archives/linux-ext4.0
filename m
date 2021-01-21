@@ -3,58 +3,68 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BE9E3C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 16:54:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 752A7C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 16:56:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6E45323A57
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 16:54:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1C69523A57
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 16:56:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388185AbhAUQxr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 11:53:47 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58264 "EHLO
+        id S1732045AbhAUQzM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 11:55:12 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42618 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1729088AbhAUPyt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 10:54:49 -0500
+        with ESMTP id S2388216AbhAUQzE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 11:55:04 -0500
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LFs0Ja002686
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LGs6Dr028604
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 Jan 2021 10:54:00 -0500
+        Thu, 21 Jan 2021 11:54:07 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 468F215C35F5; Thu, 21 Jan 2021 10:54:00 -0500 (EST)
-Date:   Thu, 21 Jan 2021 10:54:00 -0500
+        id 9F2A115C35F5; Thu, 21 Jan 2021 11:54:06 -0500 (EST)
+Date:   Thu, 21 Jan 2021 11:54:06 -0500
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v3 01/15] ext2fs: move calculate_summary_stats to ext2fs
- lib
-Message-ID: <YAmjmA1mf1aaFMwg@mit.edu>
+Subject: Re: [PATCH v3 08/15] e2fsck: add fast commit setup code
+Message-ID: <YAmxrkT81IdsSXe4@mit.edu>
 References: <20210120212641.526556-1-user@harshads-520.kir.corp.google.com>
- <20210120212641.526556-2-user@harshads-520.kir.corp.google.com>
+ <20210120212641.526556-9-user@harshads-520.kir.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210120212641.526556-2-user@harshads-520.kir.corp.google.com>
+In-Reply-To: <20210120212641.526556-9-user@harshads-520.kir.corp.google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 20, 2021 at 01:26:27PM -0800, Harshad Shirwadkar wrote:
-> From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-> 
-> The function calculate_summary_stats sets the global metadata of the
-> file system. Tune2fs had this function defined statically in
-> tune2fs.c. Fast commit replay needs this function to set global
-> metadata at the end of the replay phase. So, move this function to
-> libext2fs.
-> 
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-> Reviewed-by: Theodore Ts'o <tytso@mit.edu>
+On Wed, Jan 20, 2021 at 01:26:34PM -0800, Harshad Shirwadkar wrote:
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index fdcb28f6..eb2e6549 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -2148,4 +2148,7 @@ static inline unsigned int ext2_dir_htree_level(ext2_filsys fs)
+>  }
+>  #endif
+>  
+> +/* Commonly used helpers */
+> +#define max(a, b) ((a) > (b) ? (a) : (b))
+> +
+>  #endif /* _EXT2FS_EXT2FS_H */
 
-Thanks, applied.
+It's better not to add this to a publically exported file, such as
+lib/ext2fs/ext2fs.h, since it may conflict with other userspace
+application which may define their own max file.
+
+Something which we might want to do is to add something like
+linux/minmax.h from the kernel sources to libsupport.  This defines a
+max() macro which does paranoid typechecking to make sure we don't
+accidentally compare an unsigned int to an signed int, which can
+potential security problems with maliciously fuzzed file system
+images.  :-)
 
 						- Ted
