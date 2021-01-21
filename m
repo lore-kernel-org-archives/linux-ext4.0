@@ -2,53 +2,146 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-26.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 970F5C433DB
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E565C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 68A492087E
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E6AB12087E
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Jan 2021 23:26:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726541AbhAUX0t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Jan 2021 18:26:49 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40444 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726179AbhAUX0Z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 18:26:25 -0500
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10LNPSAr025808
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 Jan 2021 18:25:29 -0500
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id ADBEC15C35F5; Thu, 21 Jan 2021 18:25:28 -0500 (EST)
-Date:   Thu, 21 Jan 2021 18:25:28 -0500
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Hauke Mehrtens <hauke@hauke-m.de>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH e2fsprogs] build: Add SYSLIBS to e4crypt linking
-Message-ID: <YAoNaGo3jLlXftWD@mit.edu>
-References: <20201215230557.17211-1-hauke@hauke-m.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20201215230557.17211-1-hauke@hauke-m.de>
+        id S1726561AbhAUX0v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Jan 2021 18:26:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50748 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726111AbhAUXFp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Jan 2021 18:05:45 -0500
+Received: from mail-pl1-x64a.google.com (mail-pl1-x64a.google.com [IPv6:2607:f8b0:4864:20::64a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0DAFC0612F2
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 15:03:47 -0800 (PST)
+Received: by mail-pl1-x64a.google.com with SMTP id i2so1974623plt.14
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Jan 2021 15:03:47 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=sender:date:in-reply-to:message-id:mime-version:references:subject
+         :from:to:cc;
+        bh=73jUIQHuj0265QRP8P3oVVOaSevfoFr6R3Pxp4Z8uk0=;
+        b=RpM4qKLA+63xTwFiz255mspkEHNICv4dlhm7EHfnRU0UFN2Ihke5P4zOrKCiazdR7d
+         bXOol4JvqiZOdRVsLQZnm4+9mSTLVh42aPGA5Y4Y5IB+y5B3KInSnmfMLfUe5WfbPlV5
+         VxFwpZ2Vqn0u1sbV9D8cI0VjEg3QNpJhpPWDPwb+anXbPJOiIr/ySdiPWgUfOjgjdgkA
+         IdEjApFDSNmguJFxEjGJY6eDJTmCCZhgIUZiGfP7Ni5urYiytgymML2bkgTyZ9IBfFd0
+         PUCS2z8FThCRQC0kEqTRjWh5yf4h+dirIoOYGRoPF8cFverIpktw4+4nKzBCaAqBcI22
+         stXw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
+         :references:subject:from:to:cc;
+        bh=73jUIQHuj0265QRP8P3oVVOaSevfoFr6R3Pxp4Z8uk0=;
+        b=TOkp6KPAJbvMHZVMJ6A9FD0Bc87WiML4HYf8FW0DajBcmvz/s91YF4FZgFTgzJ0kMw
+         31cmzOPVeQ6ap1ToJ/BjnVUvkngDoheOFaJ0hkAM90TiZ1pwvtSgfk8oOEilj03DnrxD
+         yfBz7axQzHGHHd5LmjDdff9evkGi1tP2PKEvb1i/6isNockoyc9THtfJ8gtYy+ZumAgC
+         hxpVv8e8vFhDzOlhO4QcOUfDwkqtn4XRZ94lzt8g8PCbW6tFOgbQ3xzDbDITquZz/6je
+         ehEzPB/d5/Pu+wRVcZQVrlVT/1egTBmdgdOXc2ZiwzPPLlY1VxCm0kbBQfd9zgzDebbR
+         eIgw==
+X-Gm-Message-State: AOAM532X96MKuX291Lw05cQfaQbQfqxKZ52jduutg3KO3FG0024LDp7A
+        /tw/h3vbxTOnF0VsbOu6YdCMPl7wkyE=
+X-Google-Smtp-Source: ABdhPJwJkQ2FWOp1yUHZk7nzCbAeBUq10CoEvBoJQOw9xo3NYsJVQXsuE+AArFPbdsM6X5/w9fvQdGdj3Ek=
+Sender: "satyat via sendgmr" <satyat@satyaprateek.c.googlers.com>
+X-Received: from satyaprateek.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:1092])
+ (user=satyat job=sendgmr) by 2002:a17:90b:370d:: with SMTP id
+ mg13mr1905409pjb.161.1611270227094; Thu, 21 Jan 2021 15:03:47 -0800 (PST)
+Date:   Thu, 21 Jan 2021 23:03:32 +0000
+In-Reply-To: <20210121230336.1373726-1-satyat@google.com>
+Message-Id: <20210121230336.1373726-5-satyat@google.com>
+Mime-Version: 1.0
+References: <20210121230336.1373726-1-satyat@google.com>
+X-Mailer: git-send-email 2.30.0.280.ga3ce27912f-goog
+Subject: [PATCH v8 4/8] direct-io: add support for fscrypt using blk-crypto
+From:   Satya Tangirala <satyat@google.com>
+To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Eric Biggers <ebiggers@kernel.org>, Chao Yu <chao@kernel.org>,
+        Jens Axboe <axboe@kernel.dk>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>
+Cc:     linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>,
+        Satya Tangirala <satyat@google.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Dec 16, 2020 at 12:05:57AM +0100, Hauke Mehrtens wrote:
-> The $(SYSLIBS) was missing when linking the e4crypt application. This is
-> available in the e4crypt.profiled variant, so I assume this was just
-> missing in the normal variant and is not left out intentionally.
+From: Eric Biggers <ebiggers@google.com>
 
-Thanks, I've applied.  It was left out unintentionally, although I
-don't see how this is affecting building e2fsprogs with
--fsanitize=undefined in the global CFLAGS and LDFLAGS.  (Which worked
-for me both before and after applying this change.)
+Set bio crypt contexts on bios by calling into fscrypt when required,
+and explicitly check for DUN continuity when adding pages to the bio.
+(While DUN continuity is usually implied by logical block contiguity,
+this is not the case when using certain fscrypt IV generation methods
+like IV_INO_LBLK_32).
 
-						- Ted
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Co-developed-by: Satya Tangirala <satyat@google.com>
+Signed-off-by: Satya Tangirala <satyat@google.com>
+Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
+---
+ fs/direct-io.c | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index d53fa92a1ab6..f6672c4030e3 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -24,6 +24,7 @@
+ #include <linux/module.h>
+ #include <linux/types.h>
+ #include <linux/fs.h>
++#include <linux/fscrypt.h>
+ #include <linux/mm.h>
+ #include <linux/slab.h>
+ #include <linux/highmem.h>
+@@ -392,6 +393,7 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
+ 	      sector_t first_sector, int nr_vecs)
+ {
+ 	struct bio *bio;
++	struct inode *inode = dio->inode;
+ 
+ 	/*
+ 	 * bio_alloc() is guaranteed to return a bio when allowed to sleep and
+@@ -399,6 +401,9 @@ dio_bio_alloc(struct dio *dio, struct dio_submit *sdio,
+ 	 */
+ 	bio = bio_alloc(GFP_KERNEL, nr_vecs);
+ 
++	fscrypt_set_bio_crypt_ctx(bio, inode,
++				  sdio->cur_page_fs_offset >> inode->i_blkbits,
++				  GFP_KERNEL);
+ 	bio_set_dev(bio, bdev);
+ 	bio->bi_iter.bi_sector = first_sector;
+ 	bio_set_op_attrs(bio, dio->op, dio->op_flags);
+@@ -763,9 +768,17 @@ static inline int dio_send_cur_page(struct dio *dio, struct dio_submit *sdio,
+ 		 * current logical offset in the file does not equal what would
+ 		 * be the next logical offset in the bio, submit the bio we
+ 		 * have.
++		 *
++		 * When fscrypt inline encryption is used, data unit number
++		 * (DUN) contiguity is also required.  Normally that's implied
++		 * by logical contiguity.  However, certain IV generation
++		 * methods (e.g. IV_INO_LBLK_32) don't guarantee it.  So, we
++		 * must explicitly check fscrypt_mergeable_bio() too.
+ 		 */
+ 		if (sdio->final_block_in_bio != sdio->cur_page_block ||
+-		    cur_offset != bio_next_offset)
++		    cur_offset != bio_next_offset ||
++		    !fscrypt_mergeable_bio(sdio->bio, dio->inode,
++					   cur_offset >> dio->inode->i_blkbits))
+ 			dio_bio_submit(dio, sdio);
+ 	}
+ 
+-- 
+2.30.0.280.ga3ce27912f-goog
+
