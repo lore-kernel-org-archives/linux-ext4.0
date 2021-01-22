@@ -2,26 +2,26 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69BCEC43331
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 17:50:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D659C43332
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 18:36:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 38D9C23AC0
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 17:50:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5E25C23AAC
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 18:36:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729173AbhAVRmD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jan 2021 12:42:03 -0500
-Received: from verein.lst.de ([213.95.11.211]:37533 "EHLO verein.lst.de"
+        id S1729229AbhAVSRR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jan 2021 13:17:17 -0500
+Received: from verein.lst.de ([213.95.11.211]:37445 "EHLO verein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730109AbhAVRe0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 22 Jan 2021 12:34:26 -0500
+        id S1728381AbhAVRWG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 22 Jan 2021 12:22:06 -0500
 Received: by verein.lst.de (Postfix, from userid 2407)
-        id 7138F68B05; Fri, 22 Jan 2021 18:33:40 +0100 (CET)
-Date:   Fri, 22 Jan 2021 18:33:40 +0100
+        id 9E19F68BFE; Fri, 22 Jan 2021 18:21:21 +0100 (CET)
+Date:   Fri, 22 Jan 2021 18:21:21 +0100
 From:   Christoph Hellwig <hch@lst.de>
 To:     Christian Brauner <christian.brauner@ubuntu.com>
 Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -56,32 +56,19 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         containers@lists.linux-foundation.org,
         linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-integrity@vger.kernel.org, selinux@vger.kernel.org,
-        Mauricio =?iso-8859-1?Q?V=E1squez?= Bernal 
-        <mauricio@kinvolk.io>
-Subject: Re: [PATCH v6 35/40] fs: introduce MOUNT_ATTR_IDMAP
-Message-ID: <20210122173340.GA20658@lst.de>
-References: <20210121131959.646623-1-christian.brauner@ubuntu.com> <20210121131959.646623-36-christian.brauner@ubuntu.com>
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org
+Subject: Re: [PATCH v6 16/40] open: handle idmapped mounts
+Message-ID: <20210122172121.GB20347@lst.de>
+References: <20210121131959.646623-1-christian.brauner@ubuntu.com> <20210121131959.646623-17-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210121131959.646623-36-christian.brauner@ubuntu.com>
+In-Reply-To: <20210121131959.646623-17-christian.brauner@ubuntu.com>
 User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
->  /*
->   * mount_setattr()
-> @@ -127,9 +128,10 @@ struct mount_attr {
->  	__u64 attr_set;
->  	__u64 attr_clr;
->  	__u64 propagation;
-> +	__u64 userns_fd;
->  };
->  
->  /* List of all mount_attr versions. */
-> -#define MOUNT_ATTR_SIZE_VER0	24 /* sizeof first published struct */
-> +#define MOUNT_ATTR_SIZE_VER0	32 /* sizeof first published struct */
+Looks good,
 
-I think this hunk needs to go into the patch adding the structure.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
