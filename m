@@ -2,101 +2,107 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02EEAC433DB
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 20:35:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49A7FC433E9
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 22:29:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BD43023B01
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 20:35:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FEBD23B16
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Jan 2021 22:29:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730438AbhAVUfa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Jan 2021 15:35:30 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45946 "EHLO
+        id S1729493AbhAVW2H (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Jan 2021 17:28:07 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42278 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731173AbhAVUdl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jan 2021 15:33:41 -0500
-Received: from mail-io1-xd2d.google.com (mail-io1-xd2d.google.com [IPv6:2607:f8b0:4864:20::d2d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DE468C0613D6;
-        Fri, 22 Jan 2021 12:33:00 -0800 (PST)
-Received: by mail-io1-xd2d.google.com with SMTP id d81so13858713iof.3;
-        Fri, 22 Jan 2021 12:33:00 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=2BF/+WC1bYp0JjVV6KmxdUfvQ/+TryiQiWRjN6NPCsg=;
-        b=a4Rqc5gNXuqXv3OZEdcHe5M5XEF4OPKXq4GWyXZJoyk5kpZXdyTql7wlpohSYpe24k
-         B7/M3v1xmcZPyYarCeKbEc+R/cwbgV2zLjRnwXsyOSGL/7JQk59YwZD4TOttBbSll0bL
-         CWSUyUy98as3tyKxDWrR8trmkgZ/1jnK8yzjU6Guo5I/OGLR9zVItOhYtQpL2GreZa79
-         JqjjbLUGF41DR+VqjVeYWQdkUBL4ZxvcsWAK0Fvc5C78RtLlZpasKg4mZRzsxdXpV5F2
-         dmBha86UwJcppPaxx7JZfb3lqUlNYhQxt8cLqsBYSDahbLHYbYZLdMVFsBgRnxmd4OmA
-         7NvA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=2BF/+WC1bYp0JjVV6KmxdUfvQ/+TryiQiWRjN6NPCsg=;
-        b=TEwbPxIc0rkuvH5Q2XUnJxM5GkbYzzQCoZNMBt/N7gFvBP1nH7a22HRkYcxHBYJBrG
-         O4X/gQPaDcnVuMm1T2ZReYMVDn+3EfLaKBGBzRb8U/WzTfVkM0YXM116pSNkRQsMMorh
-         yuFk6h6clmPFSEGwbTkwtpjDZ4qnljh29XA0C1M5bjHSBFK92QSjZ9xaGaWpO4LutS8v
-         yGKbxQW+OqwIisfdZqJixy9TM37UipceBppT82c1YdmCXf5vI2jQMQao2LKz5GvAO0o+
-         orwpGrDxYbyZSbDNaZjxa9al3c9KPMEzSHlScAS9tVi0rSoGB/llqGMPDTnW3CPKzZLh
-         G+Kw==
-X-Gm-Message-State: AOAM5332hFi1tDyBRA8oN2C1517S6knveD8qsoBXzI4QsZvV/9I+ZPN+
-        bLErNTtyy8dH2cjgYAXn/vzRX6WJ38joGZ9SHZg=
-X-Google-Smtp-Source: ABdhPJyYn8ObdOTN41iMF20fviR6EuLXOPVPOviwV3WyzBfkM/0Mh5zpPxagnsV4Tfv+edbVaCfrDAKEaxJSbTDb0rI=
-X-Received: by 2002:a5d:938f:: with SMTP id c15mr3006042iol.72.1611347580230;
- Fri, 22 Jan 2021 12:33:00 -0800 (PST)
-MIME-Version: 1.0
-References: <20210105062857.3566-1-yangerkun@huawei.com> <X/+/3ui/TQ9LjtNZ@mit.edu>
- <CAOQ4uxh2V6LF_t8ZaAOr=CbDrY3A5d0qSR7XWVX8dStR9mME5w@mail.gmail.com>
- <CAJfpegsVYF2wCiMKfRUzS_MpH9UKPh8g7ucG6w9uOcQodAzRAQ@mail.gmail.com> <CAD+ocbyEyeAbH1vqKieK9ENmM5k3K-WF1jMuqAzRwPfPC2Np8A@mail.gmail.com>
-In-Reply-To: <CAD+ocbyEyeAbH1vqKieK9ENmM5k3K-WF1jMuqAzRwPfPC2Np8A@mail.gmail.com>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Fri, 22 Jan 2021 22:32:48 +0200
-Message-ID: <CAOQ4uxiDk6t+pNwm31L6eoj5+kq1E8-oX1zL9HzQE4fMjPK4yQ@mail.gmail.com>
-Subject: Re: [PATCH v3] ext4: fix bug for rename with RENAME_WHITEOUT
-To:     harshad shirwadkar <harshadshirwadkar@gmail.com>
-Cc:     Miklos Szeredi <miklos@szeredi.hu>,
-        "Theodore Ts'o" <tytso@mit.edu>, yangerkun <yangerkun@huawei.com>,
-        Ext4 <linux-ext4@vger.kernel.org>,
+        with ESMTP id S1728339AbhAVW1P (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Jan 2021 17:27:15 -0500
+Received: from fieldses.org (fieldses.org [IPv6:2600:3c00:e000:2f7::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F28C6C0613D6;
+        Fri, 22 Jan 2021 14:26:33 -0800 (PST)
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 7A21F6E97; Fri, 22 Jan 2021 17:26:32 -0500 (EST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 fieldses.org 7A21F6E97
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fieldses.org;
+        s=default; t=1611354392;
+        bh=tn+w8soQQzYWtoSEcV96aJkWCYx83kxrSGAkTTiabXA=;
+        h=Date:To:Cc:Subject:References:In-Reply-To:From:From;
+        b=X95z07vjZOjjzvjgzPtwDISRZ7bvRExOKROMoiBfzTUzhunQZq5I6fG0Ld2Gva7Mh
+         uhaRbZ9MkPgDEawpF8wGyueWVNQbXPl+6a+P6MAo2vQtm02J9ggMsib5nOD7Na/V0s
+         n9s4jAoDv+n/KWmXQQLflLSFjjV3dqCb/wYkVXv0=
+Date:   Fri, 22 Jan 2021 17:26:32 -0500
+To:     Christian Brauner <christian.brauner@ubuntu.com>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
+        John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>, "zhangyi (F)" <yi.zhang@huawei.com>,
-        lihaotian <lihaotian9@huawei.com>, lutianxiong@huawei.com,
-        linfeilong <linfeilong@huawei.com>,
-        fstests <fstests@vger.kernel.org>,
-        Vijaychidambaram Velayudhan Pillai <vijay@cs.utexas.edu>
-Content-Type: text/plain; charset="UTF-8"
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?utf-8?B?U3TDqXBoYW5l?= Graber <stgraber@ubuntu.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org
+Subject: Re: [PATCH v6 05/39] namei: make permission helpers idmapped mount
+ aware
+Message-ID: <20210122222632.GB25405@fieldses.org>
+References: <20210121131959.646623-1-christian.brauner@ubuntu.com>
+ <20210121131959.646623-6-christian.brauner@ubuntu.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210121131959.646623-6-christian.brauner@ubuntu.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 22, 2021 at 9:21 PM harshad shirwadkar
-<harshadshirwadkar@gmail.com> wrote:
->
-> Thanks Amir for pointing that out. Yes we are missing fast commit
-> tracking in whiteout. I'll send out a fix for that.
->
-> > But I must say it would have been very hard to catch missing ext4_fc_track_*
-> > without specialized fs fuzzer such as the CrashMonkey generated tests.
->
-> I agree, it's been on my to-do list to run CrashMonkey tests with fast
-> commits. I'm curious what kind of CrashMonkey tests you ran that
-> helped you catch this? Were you running Overlayfs on top of Ext4 with
-> fast commits?
->
+If I NFS-exported an idmapped mount, I think I'd expect idmapped clients
+to see the mapped IDs.
 
-Neither. I just guessed RENAME_WHITEOUT might be missed as
-developers are rarely aware of it.
-I never ran CrashMonkey tests myself.
-I found a few crash consistency bugs using xfstest generic/455.
-I suggest that you run it with fast commits
-and try using NUM_OPS and NUM_FILES larger than the test defaults
-to let the test run for a longer time.
+Looks like that means taking the user namespace from the struct
+svc_export everwhere, for example:
 
-Thanks,
-Amir.
+On Thu, Jan 21, 2021 at 02:19:24PM +0100, Christian Brauner wrote:
+> index 66f2ef67792a..8d90796e236a 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -40,7 +40,8 @@ static int nfsd_acceptable(void *expv, struct dentry *dentry)
+>  		/* make sure parents give x permission to user */
+>  		int err;
+>  		parent = dget_parent(tdentry);
+> -		err = inode_permission(d_inode(parent), MAY_EXEC);
+> +		err = inode_permission(&init_user_ns,
+> +				       d_inode(parent), MAY_EXEC);
+
+		err = inode_permission(exp->ex_path.mnt->mnt_userns,
+				      d_inode(parent, MAY_EXEC);
+
+?
+
+--b.
