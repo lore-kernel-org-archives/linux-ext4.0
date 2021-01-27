@@ -2,120 +2,212 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89F9CC433DB
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Jan 2021 19:49:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 21E6BC433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jan 2021 06:10:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5DF9F22B51
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Jan 2021 19:49:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D302A2064B
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jan 2021 06:10:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387783AbhAZFdj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 26 Jan 2021 00:33:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38586 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729219AbhAYOAl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Jan 2021 09:00:41 -0500
-Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ACF63C0617A9;
-        Mon, 25 Jan 2021 05:59:12 -0800 (PST)
-Received: by mail-pj1-x102f.google.com with SMTP id lw17so9148519pjb.0;
-        Mon, 25 Jan 2021 05:59:12 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=YCNxOPt7j32/1EIvyQ0fS2gCRu3WbYw0TNwCSoOVYOQ=;
-        b=U7kddIv9K4+RMbg8YUbJIW5e5lm0/rMWTI6cwWVYOrxXuAds2QBxe+fEAhCG+K43QG
-         e3JtUe9DA2Z1YJLJJ4gsNpcPjH1fwHxG8UXYlzK11CFKPFFuBxBONSeBvyO1e1l1gsT8
-         HxoJKpJRmlnGY+TSmVzyLfHfny1hBX7KFUY02JCfGGSND8K3eLbefYUNeM9hCWHkKcku
-         tbKwEh3oJkclB2BNOUbKQc5ANQbq9ZdWoOX1ZGETcFa/GkBa6JmVg02x19qIM8BEe7Vm
-         OdLb68RodxJPemBqUqcSOBr8j3MOqLxZTDA3Yw9HU7RWCy8XEhQ/VlCqn3ffZ3IkC16m
-         5+Hw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=YCNxOPt7j32/1EIvyQ0fS2gCRu3WbYw0TNwCSoOVYOQ=;
-        b=AyhPRvbgWaZbR4stDA5TQKPT3DV9+DP01tzWnU4myHXlD/6BP/q7W+gWCgiTtZIMWD
-         E3nJidJQfDsHpokL4P5d7+cF0DEJa3XgY+RPH/l1arw6DHATS8792LXWgBWySljVGBOe
-         sXK12hJFOT+gUjgJMXHxGmqocD3VEaTnPcc0YlgJ3LBhMBd6D50Av5cTgDE7uquLtFRb
-         a3IGV2SNIfntG1y8C12mBCv655sapFdMjtS4vRoR9Z1lNY+guKBC1qwL3mxRaUF3Qopr
-         I6/T2mbkwt/UwmK72KqhU27L+SaUU0nRSV633UNi9k4LUqMNr6a0U25chR/5nnn7mvI4
-         Vn7Q==
-X-Gm-Message-State: AOAM530EIJcSgv7wWFurFw02Q0sXm5XZ6nkpWfklwUxmaD/+bI1wV0ak
-        yHPfZGwuyHMXp8FQl/LhGLPa9W4tW0vbIVNj
-X-Google-Smtp-Source: ABdhPJx5FeX8a0GdQzhz6YSGSt3+jDk20i14nc7litXWkyqKlbbO1erv4O2wca+h7GOaUDMcN/xWiA==
-X-Received: by 2002:a17:902:e844:b029:de:5abb:7df1 with SMTP id t4-20020a170902e844b02900de5abb7df1mr529152plg.55.1611583152007;
-        Mon, 25 Jan 2021 05:59:12 -0800 (PST)
-Received: from [127.0.0.1] ([203.205.141.48])
-        by smtp.gmail.com with ESMTPSA id a14sm4587509pfl.169.2021.01.25.05.59.10
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 25 Jan 2021 05:59:11 -0800 (PST)
-Subject: Re: [RFC PATCH 0/4] make jbd2 debug switch per device
-To:     Jan Kara <jack@suse.cz>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <cover.1611287342.git.brookxu@tencent.com>
- <20210125124117.GB1175@quack2.suse.cz>
-From:   brookxu <brookxu.cn@gmail.com>
-Message-ID: <968d9c0f-153e-c187-4bc6-ab3cf7e257ca@gmail.com>
-Date:   Mon, 25 Jan 2021 21:59:09 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.6.1
+        id S232775AbhA0GJw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Jan 2021 01:09:52 -0500
+Received: from mail.hallyn.com ([178.63.66.53]:60128 "EHLO mail.hallyn.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S235793AbhA0Fks (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 27 Jan 2021 00:40:48 -0500
+Received: by mail.hallyn.com (Postfix, from userid 1001)
+        id 93A58864; Tue, 26 Jan 2021 23:40:00 -0600 (CST)
+Date:   Tue, 26 Jan 2021 23:40:00 -0600
+From:   "Serge E. Hallyn" <serge@hallyn.com>
+To:     Christian Brauner <christian.brauner@ubuntu.com>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
+        John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?iso-8859-1?Q?St=E9phane?= Graber <stgraber@ubuntu.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org
+Subject: Re: [PATCH v6 00/40] idmapped mounts
+Message-ID: <20210127054000.GA30832@mail.hallyn.com>
+References: <20210121131959.646623-1-christian.brauner@ubuntu.com>
 MIME-Version: 1.0
-In-Reply-To: <20210125124117.GB1175@quack2.suse.cz>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210121131959.646623-1-christian.brauner@ubuntu.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Thanks for your reply.
+On Thu, Jan 21, 2021 at 02:19:19PM +0100, Christian Brauner wrote:
+> Hey everyone,
+> 
+> The only major change is the updated version of hch's pach to port xfs
+> to support idmapped mounts. Thanks again to Christoph for doing that
+> work.
+> (Otherwise Acked-bys and Reviewed-bys were added and the tree reordered
+>  to decouple filesystem specific conversion from the vfs work so they
+>  can proceed independent.
+>  For a full list of major changes between versions see the end of this
+>  cover letter. Please also note the large xfstests testsuite in patch 42
+>  that has been kept as part of this series. It verifies correct vfs
+>  behavior with and without idmapped mounts including covering newer vfs
+>  features such as io_uring.
+>  I currently still plan to target the v5.12 merge window.)
+> 
+> With this patchset we make it possible to attach idmappings to mounts,
+> i.e. simply put different bind mounts can expose the same file or
+> directory with different ownership.
+> Shifting of ownership on a per-mount basis handles a wide range of
+> long standing use-cases. Here are just a few:
+> - Shifting of a subset of ownership-less filesystems (vfat) for use by
+>   multiple users, effectively allowing for DAC on such devices
+>   (systemd, Android, ...)
+> - Allow remapping uid/gid on external filesystems or paths (USB sticks,
+>   network filesystem, ...) to match the local system's user and groups.
+>   (David Howells intends to port AFS as a first candidate.)
+> - Shifting of a container rootfs or base image without having to mangle
+>   every file (runc, Docker, containerd, k8s, LXD, systemd ...)
+> - Sharing of data between host or privileged containers with
+>   unprivileged containers (runC, Docker, containerd, k8s, LXD, ...)
+> - Data sharing between multiple user namespaces with incompatible maps
+>   (LXD, k8s, ...)
+> 
+> There has been significant interest in this patchset as evidenced by
+> user commenting on previous version of this patchset. They include
+> containerd, ChromeOS, systemd, LXD and a range of others. There is
+> already a patchset up for containerd, the default Kubernetes container
+> runtime https://github.com/containerd/containerd/pull/4734
+> to make use of this. systemd intends to use it in their systemd-homed
+> implementation for portable home directories. ChromeOS wants to make use
+> of it to share data between the host and the Linux containers they run
+> on Chrome- and Pixelbooks. There's also a few talks that of people who
+> are going to make use of this. The most recent one was a CNCF webinar
+> https://www.cncf.io/wp-content/uploads/2020/12/Rootless-Containers-in-Gitpod.pdf
+> and upcoming talk during FOSDEM.
+> (Fwiw, for fun and since I wanted to do this for a long time I've ported
+>  my home directory to be completely portable with a simple service file
+>  that now mounts my home directory on an ext4 formatted usb stick with
+>  an id mapping mapping all files to the random uid I'm assigned at
+>  login.)
+> 
+> Making it possible to share directories and mounts between users with
+> different uids and gids is itself quite an important use-case in
+> distributed systems environments. It's of course especially useful in
+> general for portable usb sticks, sharing data between multiple users in,
+> and sharing home directories between multiple users. The last example is
+> now elegantly expressed in systemd's homed concept for portable home
+> directories. As mentioned above, idmapped mounts also allow data from
+> the host to be shared with unprivileged containers, between privileged
+> and unprivileged containers simultaneously and in addition also between
+> unprivileged containers with different idmappings whenever they are used
+> to isolate one container completely from another container.
+> 
+> We have implemented and proposed multiple solutions to this before. This
+> included the introduction of fsid mappings, a tiny filesystem I've
+> authored with Seth Forshee that is currently carried in Ubuntu that has
+> shown to be the wrong approach, and the conceptual hack of calling
+> override creds directly in the vfs. In addition, to some of these
+> solutions being hacky none of these solutions have covered all of the
+> above use-cases.
+> 
+> Idmappings become a property of struct vfsmount instead of tying it to a
+> process being inside of a user namespace which has been the case for all
+> other proposed approaches. It also allows to pass down the user
+> namespace into the filesystems which is a clean way instead of violating
+> calling conventions by strapping the user namespace information that is
+> a property of the mount to the caller's credentials or similar hacks.
+> Each mount can have a separate idmapping and idmapped mounts can even be
+> created in the initial user namespace unblocking a range of use-cases.
+> 
+> To this end the vfsmount struct gains a new struct user_namespace
+> member. The idmapping of the user namespace becomes the idmapping of the
+> mount. A caller that is privileged with respect to the user namespace of
+> the superblock of the underlying filesystem can create an idmapped
+> mount. In the future, we can enable unprivileged use-cases by checking
+> whether the caller is privileged wrt to the user namespace that an
+> already idmapped mount has been marked with, allowing them to change the
+> idmapping. For now, keep things simple until the need arises.
+> Note, that with syscall interception it is already possible to intercept
+> idmapped mount requests from unprivileged containers and handle them in
+> a sufficiently privileged container manager. Support for this is already
+> available in LXD and will be available in runC where syscall
+> interception is currently in the process of becoming part of the runtime
+> spec: https://github.com/opencontainers/runtime-spec/pull/1074.
+> 
+> The user namespace the mount will be marked with can be specified by
+> passing a file descriptor refering to the user namespace as an argument
+> to the new mount_setattr() syscall together with the new
+> MOUNT_ATTR_IDMAP flag. By default vfsmounts are marked with the initial
+> user namespace and no behavioral or performance changes are observed.
+> All mapping operations are nops for the initial user namespace. When a
+> file/inode is accessed through an idmapped mount the i_uid and i_gid of
+> the inode will be remapped according to the user namespace the mount has
+> been marked with.
+> 
+> In order to support idmapped mounts, filesystems need to be changed and
+> mark themselves with the FS_ALLOW_IDMAP flag in fs_flags. The initial
+> version contains fat, ext4, and xfs including a list of examples.
+> But patches for other filesystems are actively worked on and will be
+> sent out separately. We are here to see this through and there are
+> multiple people involved in converting filesystems. So filesystem
+> developers are not left alone with this and are provided with a large
+> testsuite to verify that their port is correct.
+> 
+> There is a simple tool available at
+> https://github.com/brauner/mount-idmapped that allows to create idmapped
+> mounts so people can play with this patch series. Here are a few
+> illustrations:
+> 
+> 1. Create a simple idmapped mount of another user's home directory
+> 
+> u1001@f2-vm:/$ sudo ./mount-idmapped --map-mount b:1000:1001:1 /home/ubuntu/ /mnt
+> u1001@f2-vm:/$ ls -al /home/ubuntu/
+> total 28
+> drwxr-xr-x 2 ubuntu ubuntu 4096 Oct 28 22:07 .
+> drwxr-xr-x 4 root   root   4096 Oct 28 04:00 ..
+> -rw------- 1 ubuntu ubuntu 3154 Oct 28 22:12 .bash_history
+> -rw-r--r-- 1 ubuntu ubuntu  220 Feb 25  2020 .bash_logout
+> -rw-r--r-- 1 ubuntu ubuntu 3771 Feb 25  2020 .bashrc
+> -rw-r--r-- 1 ubuntu ubuntu  807 Feb 25  2020 .profile
+> -rw-r--r-- 1 ubuntu ubuntu    0 Oct 16 16:11 .sudo_as_admin_successful
+> -rw------- 1 ubuntu ubuntu 1144 Oct 28 00:43 .viminfo
 
-Jan Kara wrote on 2021/1/25 20:41:
-> On Fri 22-01-21 14:43:18, Chunguang Xu wrote:
->> On a multi-disk machine, because jbd2 debugging switch is global, this
->> confuses the logs of multiple disks. It is not easy to distinguish the
->> logs of each disk and the amount of generated logs is very large. Or a
->> separate debugging switch for each disk would be better, so that you
->> can easily distinguish the logs of a certain disk. 
->>
->> We can enable jbd2 debugging of a device in the following ways:
->> echo X > /proc/fs/jbd2/sdX/jbd2_debug
->>
->> But there is a small disadvantage here. Because the debugging switch is
->> placed in the journal_t object, the log before the object is initialized
->> will be lost. However, usually this will not have much impact on
->> debugging.
-> 
-> OK, I didn't look at the series yet but I'm wondering: How are you using
-> jbd2 debugging? I mean obviously it isn't meant for production use but
-> rather for debugging JBD2 bugs so I'm kind of wondering in which case too
-> many messages matter.
-We perform stress testing on machines in the test environment, and use scripts
-to capture journal related logs to analyze problems. There are 12 disks on this
-machine, and each disk runs different jobs. Our test kernel also adds some
-additional function-related logs. If we adjust the log level to a higher level,
-a large number of logs have nothing to do with the disk to be observed. These
-logs are generated by system agents or coordinated tasks. This makes the log
-difficul to analyze.
- 
-> And if the problem is that there's a problem with distinguishing messages
-> from multiple filesystems, then it would be perhaps more useful to add
-> journal identification to each message similarly as we do it with ext4
-> messages (likely by using journal->j_dev) - which is very simple to do
-> after your patches 3 and 4.
-Our test kernel did this. Because it broke the log format, I was not sure whether
-it would break something, so I didn't bring this part. Even if the device information
-is added, when there are more disks and the log level is higher, there will be a
-lot of irrelevant logs, which makes it necessary to consume a lot of CPU to filter
-messages. Therefore, a device-level switch is provided to make everything simpler.
-> 
-> 								Honza
-> 
+So I assume this falls under the buyer beware warning, but it's
+probably important to warn people loudly of the fact that, at this
+point, the user with uid 1001 can chmod u+s any binary under /mnt
+and then run it from /home/ubuntu with euid=1000.  In other words,
+that while this has excellent uses, if you *can* use shared group
+membership, you should :)
+
+Very cool though.
