@@ -2,58 +2,162 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-16.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2B96C433DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jan 2021 22:54:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 637D1C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 01:12:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9EADA64DDE
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Jan 2021 22:54:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 216DA64DDB
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 01:12:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231571AbhA0Wxa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Jan 2021 17:53:30 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58291 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S230526AbhA0WxZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Jan 2021 17:53:25 -0500
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 10RMkEH0030203
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 27 Jan 2021 17:46:14 -0500
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 1CBAB15C344F; Wed, 27 Jan 2021 17:46:14 -0500 (EST)
-Date:   Wed, 27 Jan 2021 17:46:14 -0500
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Arnaud Ferraris <arnaud.ferraris@collabora.com>
-Cc:     linux-ext4@vger.kernel.org, drosen@google.com,
-        krisman@collabora.com, ebiggers@kernel.org
-Subject: Re: [PATCH RESEND v2 02/12] tune2fs: Fix casefold+encrypt error
- message
-Message-ID: <YBHtNmrZ3qKlMsze@mit.edu>
-References: <20201210150353.91843-1-arnaud.ferraris@collabora.com>
- <20201210150353.91843-3-arnaud.ferraris@collabora.com>
+        id S231217AbhA1BMa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Jan 2021 20:12:30 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35442 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231439AbhA1BGu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 27 Jan 2021 20:06:50 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 1C69C64DD1;
+        Thu, 28 Jan 2021 01:04:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1611795857;
+        bh=9u+pX6tITQPni/ZTAGHNlkfJc+eKK2wzAvA+xh2TVPU=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=pCUSbfI7WRD+4txA2pHo3Xrw3oZG+pmpeTwBWaNcegbi36zxBW/ML2+IuDHKMbzHn
+         AVTlavn5uNudzkPHCEf7hOhLjZyJxaX0VqC+vmh0Ax9J0E99UlNwAjDmZT8rxkmXhe
+         W9tkHXGPTWxNhLRsIOiZ63gbCL00Xe4L0F4ttBQWkxnoSOup3VE3LxSDWVoxdaf48/
+         fISbEA7jX+sAUC3svQE6GrupalDXRGVf9ICYNTaONC8eARwMjBA04hUG0OmSmVNpkL
+         mLuVd2lKIw2s/GnYIUz1aajlGgJohdw5ia9o9MmXIjfeSLBbSbO5d/RUmc6QsOUv8/
+         bhT8EDe+EENaw==
+Date:   Wed, 27 Jan 2021 17:04:15 -0800
+From:   Jaegeuk Kim <jaegeuk@kernel.org>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-api@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Victor Hsieh <victorhsieh@google.com>
+Subject: Re: [PATCH 2/6] fs-verity: don't pass whole descriptor to
+ fsverity_verify_signature()
+Message-ID: <YBINj74g4Qhgwr9L@google.com>
+References: <20210115181819.34732-1-ebiggers@kernel.org>
+ <20210115181819.34732-3-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20201210150353.91843-3-arnaud.ferraris@collabora.com>
+In-Reply-To: <20210115181819.34732-3-ebiggers@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Dec 10, 2020 at 04:03:43PM +0100, Arnaud Ferraris wrote:
-> From: Gabriel Krisman Bertazi <krisman@collabora.com>
+On 01/15, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Refering to EXT4_INCOMPAT_CASEFOLD as encoding is not as meaningful as
-> saying casefold.
+> Now that fsverity_get_descriptor() validates the sig_size field,
+> fsverity_verify_signature() doesn't need to do it.
 > 
-> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> Signed-off-by: Arnaud Ferraris <arnaud.ferraris@collabora.com>
+> Just change the prototype of fsverity_verify_signature() to take the
+> signature directly rather than take a fsverity_descriptor.
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Thanks, applied.
+Reviewed-by: Jaegeuk Kim <jaegeuk@kernel.org>
 
-					- Ted
+> ---
+>  fs/verity/fsverity_private.h |  6 ++----
+>  fs/verity/open.c             |  3 ++-
+>  fs/verity/signature.c        | 20 ++++++--------------
+>  3 files changed, 10 insertions(+), 19 deletions(-)
+> 
+> diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
+> index 6c9caccc06021..a7920434bae50 100644
+> --- a/fs/verity/fsverity_private.h
+> +++ b/fs/verity/fsverity_private.h
+> @@ -140,15 +140,13 @@ void __init fsverity_exit_info_cache(void);
+>  
+>  #ifdef CONFIG_FS_VERITY_BUILTIN_SIGNATURES
+>  int fsverity_verify_signature(const struct fsverity_info *vi,
+> -			      const struct fsverity_descriptor *desc,
+> -			      size_t desc_size);
+> +			      const u8 *signature, size_t sig_size);
+>  
+>  int __init fsverity_init_signature(void);
+>  #else /* !CONFIG_FS_VERITY_BUILTIN_SIGNATURES */
+>  static inline int
+>  fsverity_verify_signature(const struct fsverity_info *vi,
+> -			  const struct fsverity_descriptor *desc,
+> -			  size_t desc_size)
+> +			  const u8 *signature, size_t sig_size)
+>  {
+>  	return 0;
+>  }
+> diff --git a/fs/verity/open.c b/fs/verity/open.c
+> index a987bb785e9b0..60ff8af7219fe 100644
+> --- a/fs/verity/open.c
+> +++ b/fs/verity/open.c
+> @@ -181,7 +181,8 @@ struct fsverity_info *fsverity_create_info(const struct inode *inode,
+>  		 vi->tree_params.hash_alg->name,
+>  		 vi->tree_params.digest_size, vi->file_digest);
+>  
+> -	err = fsverity_verify_signature(vi, desc, desc_size);
+> +	err = fsverity_verify_signature(vi, desc->signature,
+> +					le32_to_cpu(desc->sig_size));
+>  out:
+>  	if (err) {
+>  		fsverity_free_info(vi);
+> diff --git a/fs/verity/signature.c b/fs/verity/signature.c
+> index 012468eda2a78..143a530a80088 100644
+> --- a/fs/verity/signature.c
+> +++ b/fs/verity/signature.c
+> @@ -29,21 +29,19 @@ static struct key *fsverity_keyring;
+>  /**
+>   * fsverity_verify_signature() - check a verity file's signature
+>   * @vi: the file's fsverity_info
+> - * @desc: the file's fsverity_descriptor
+> - * @desc_size: size of @desc
+> + * @signature: the file's built-in signature
+> + * @sig_size: size of signature in bytes, or 0 if no signature
+>   *
+> - * If the file's fs-verity descriptor includes a signature of the file digest,
+> - * verify it against the certificates in the fs-verity keyring.
+> + * If the file includes a signature of its fs-verity file digest, verify it
+> + * against the certificates in the fs-verity keyring.
+>   *
+>   * Return: 0 on success (signature valid or not required); -errno on failure
+>   */
+>  int fsverity_verify_signature(const struct fsverity_info *vi,
+> -			      const struct fsverity_descriptor *desc,
+> -			      size_t desc_size)
+> +			      const u8 *signature, size_t sig_size)
+>  {
+>  	const struct inode *inode = vi->inode;
+>  	const struct fsverity_hash_alg *hash_alg = vi->tree_params.hash_alg;
+> -	const u32 sig_size = le32_to_cpu(desc->sig_size);
+>  	struct fsverity_formatted_digest *d;
+>  	int err;
+>  
+> @@ -56,11 +54,6 @@ int fsverity_verify_signature(const struct fsverity_info *vi,
+>  		return 0;
+>  	}
+>  
+> -	if (sig_size > desc_size - sizeof(*desc)) {
+> -		fsverity_err(inode, "Signature overflows verity descriptor");
+> -		return -EBADMSG;
+> -	}
+> -
+>  	d = kzalloc(sizeof(*d) + hash_alg->digest_size, GFP_KERNEL);
+>  	if (!d)
+>  		return -ENOMEM;
+> @@ -70,8 +63,7 @@ int fsverity_verify_signature(const struct fsverity_info *vi,
+>  	memcpy(d->digest, vi->file_digest, hash_alg->digest_size);
+>  
+>  	err = verify_pkcs7_signature(d, sizeof(*d) + hash_alg->digest_size,
+> -				     desc->signature, sig_size,
+> -				     fsverity_keyring,
+> +				     signature, sig_size, fsverity_keyring,
+>  				     VERIFYING_UNSPECIFIED_SIGNATURE,
+>  				     NULL, NULL);
+>  	kfree(d);
+> -- 
+> 2.30.0
