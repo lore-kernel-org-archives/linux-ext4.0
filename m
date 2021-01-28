@@ -2,143 +2,254 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.3 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,INCLUDES_PATCH,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D4F3C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 11:40:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B47B4C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 17:47:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3634364DDB
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 11:40:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7500164E15
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Jan 2021 17:47:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231201AbhA1LkX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 Jan 2021 06:40:23 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34896 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229551AbhA1LkV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Jan 2021 06:40:21 -0500
-Received: from mail-pf1-x42a.google.com (mail-pf1-x42a.google.com [IPv6:2607:f8b0:4864:20::42a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B5BAC061573;
-        Thu, 28 Jan 2021 03:39:41 -0800 (PST)
-Received: by mail-pf1-x42a.google.com with SMTP id q20so3819159pfu.8;
-        Thu, 28 Jan 2021 03:39:41 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=jbwPSRtJGMbpcaJFwCrc5PppUMnPA2n+qmlmfHpLpcY=;
-        b=aDLRNbuR4Lhm4B2P6/RAPOJgXisPSJ5+kPWZ/60HPx6G/r2uHwMbmtRBNNzj/D0Ydk
-         oztzGZF5mOyZzy29JDa2e7Mjh5E+QHWEEkvmRMwsScwja5DlLxWn2M1mhA8NeooE6jLo
-         x0xsqs1SQsY6Er82tU4kldSmbdNq8DZSPOnfRVQ0Kv4sLK9bFZc84tcSYUr8bqM8yL0m
-         LjZIr4nD3BHu6IV34F/iduWUfuJ/AFwbZOff9PzBSYq6Nl7YvDWTj5pxQAQW9FSKlp35
-         4xEjFcClbRpCQ283uvM5yxEzG8oMoyhf86qV8lYWL2rRts8Uls8NAP0JfB8GrpVTZE23
-         663g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=jbwPSRtJGMbpcaJFwCrc5PppUMnPA2n+qmlmfHpLpcY=;
-        b=jBQZM5x9Qf1OfG4XD0WZdq+3at+3zsiHHXG6PKlPjh7LOFSU16pRl3HFL88zkzPT6m
-         lFiCNZb3hfw6Gm63YX53nOq7wLwSzMEtes7MqoQHvLUuNsnjybr8Lernj3BaCk5NZINh
-         VU58ahOGzSnO3jepv/8OCO6kDHevUBoocHFHJ8270ZOoLVXrpMUlg/QZIqj/LnAdYfhK
-         SH9q1IVLIqQZ4RgSayPid4EAx9mnpcXBOopSiT4jzPJdoS4QzsMGrZ/4kWJiBMxxZE+N
-         tLHxONBs7GP95fp5GPAtQJN/WHyqOMy74SV0M8JQaOMnQSZB2x8peQ6z1PyyegMqum2Y
-         9E1w==
-X-Gm-Message-State: AOAM530kfNFoCzZ9+4F6WCnt63BZcMhJsdAIkAgP6buT/xOG4qz9AdnP
-        To5WvqP5QdECwzPC5GMDBQy6Cu20qdiCJw==
-X-Google-Smtp-Source: ABdhPJyFS9OqjDCOqsJKY7BeSsZzeX4E6S28lFaxU7lVCVpVLHp0j/2EeYj00doRHAf2/A3IB6ZZnw==
-X-Received: by 2002:aa7:9736:0:b029:1b9:c4f5:54d5 with SMTP id k22-20020aa797360000b02901b9c4f554d5mr15128904pfg.47.1611833980175;
-        Thu, 28 Jan 2021 03:39:40 -0800 (PST)
-Received: from [127.0.0.1] ([203.205.141.48])
-        by smtp.gmail.com with ESMTPSA id s1sm4891425pjg.17.2021.01.28.03.39.38
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 28 Jan 2021 03:39:39 -0800 (PST)
-Subject: Re: [RFC PATCH v2 0/4] make jbd2 debug switch per device
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     adilger.kernel@dilger.ca, jack@suse.com,
-        harshadshirwadkar@gmail.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <cover.1611402263.git.brookxu@tencent.com>
- <YA89Ov+yuX6BHJpS@mit.edu> <c2bfc960-d86c-b20a-e3eb-7995200a5dd8@gmail.com>
- <YBGS/FJ8boyxyaPn@mit.edu>
-From:   brookxu <brookxu.cn@gmail.com>
-Message-ID: <c18b18d8-75e8-0aa1-d181-e59b5fcce899@gmail.com>
-Date:   Thu, 28 Jan 2021 19:39:37 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.6.1
+        id S231535AbhA1Rr0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 Jan 2021 12:47:26 -0500
+Received: from mail.kernel.org ([198.145.29.99]:59180 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231920AbhA1RqM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 Jan 2021 12:46:12 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPS id 46F8A64DD8
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Jan 2021 17:45:29 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1611855929;
+        bh=wC0u0xX8j57buomNTbdhoSJ5I5lqjZq9aRQZdI1aqRk=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=GQTX0qpPDXUAUVqmvg+w85sazOBmea0Y/Kq8U79PuhkBkg8UQXsx4Nub1RYmy1F+k
+         SnZqaJEe9X/4AdBN1IKdFBUEu4atOvlS0HgB+onM+CaUUD2OODGEPcROaPXq6mBwIE
+         AeaYARnYQhmlyAQs30pU9sOeaC2o0h51YlIbT/mlhrBh15knpHDCxD8g7BpUoLQ0rY
+         gq2A433m/80lBbEr3heWg/eSfjpqBd+VIZX9OgdtD181kElREhsivk9LSXPuMFeI4C
+         gXp8ouwG5jTe4hpf/jDyDgYEwIcmenCUvGmAWbdWd3RJsn5KKXijjkTzKq7U1mlWIk
+         J+cOzAYBLXZiA==
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 211315] [aarch64][xfstests/ext3 generic/472] swapon: Invalid
+ argument
+Date:   Thu, 28 Jan 2021 17:45:28 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext3@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext3
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: riteshh@linux.ibm.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext3@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-211315-13602-xj1YrRS03X@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-211315-13602@https.bugzilla.kernel.org/>
+References: <bug-211315-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-In-Reply-To: <YBGS/FJ8boyxyaPn@mit.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+https://bugzilla.kernel.org/show_bug.cgi?id=3D211315
+
+--- Comment #1 from riteshh@linux.ibm.com ---
+Hello,
+
+Thanks for reporting this.
+Ok, so earlier I thought I tested this on Power (pagesize=3D64K).
+But it seems I had only tested with 1K blocksize but not with 2K.
+On retrying it again with ext3 with 2K blocksize, I see it could be=20
+reproduced on latest kernel on Power as well (where pagesize is 64K).
+(gcc version 8.4.0)
+
+I will look more into what is causing this, but it seems it may be
+coming from below path :-
+
+static int setup_swap_map_and_extents()
+<...>
+
+        if (!nr_good_pages) {
+                pr_warn("Empty swap-file\n");
+                return -EINVAL;
+        }
+<...>
 
 
-Theodore Ts'o wrote on 2021/1/28 0:21:
-> On Tue, Jan 26, 2021 at 08:50:02AM +0800, brookxu wrote:
->>
->> trace point, eBPF and other hook technologies are better for production
->> environments. But for pure debugging work, adding hook points feels a bit
->> heavy. However, your suggestion is very valuable, thank you very much.
-> 
-> What feels heavy?  The act of adding a new jbd_debug() statement to
-> the sources, versus adding a new tracepoint?  Or how to enable a set
-> of tracepoints versus setting a jbd_debug level (either globally, or
-> per mount point)?  Or something else?
+BTW, is ext3 with 2K bs some default configuration you use often on=20
+arch64. Or was it mostly for testing purpose only?
 
-Sorry, I didn't make it clear here. I mean the amount of code modification
-and data analysis. Since we mainly do some process confirmation, if it is
-to add trace points, the amount of code is relatively large, if it is to
-add log, it is relatively simple. Secondly, the modification of the kernel
-and analysis scripts is relatively simple.
-
-> If it's the latter (which is what I think it is), how often are you
-> needing to add a new jbd_debug() statement *and* needing to run in a
-> test environment where you have multiple disks?  How often is it
-> useful to have multiple disks when doing your debugging?
+-ritesh
 
 
-We don't use JBD2_DEBUG much in our work. In most cases, we tend to add
-hook points and analyze data from hook points. But here because it is a
-process confirmation, if the hook point method is adopted, there are more
-hook points and the workload is relatively large. Secondly, these hook
-points are not needed in the production environment, maybe it is a waste
-of time.
+On 1/22/21 4:19 PM, bugzilla-daemon@bugzilla.kernel.org wrote:
+> https://bugzilla.kernel.org/show_bug.cgi?id=3D211315
+>=20
+>              Bug ID: 211315
+>             Summary: [aarch64][xfstests/ext3 generic/472] swapon: Invalid
+>                      argument
+>             Product: File System
+>             Version: 2.5
+>      Kernel Version: 5.11.0-0.rc4.20210120git45dfb8a5659a.131.eln108.aarc=
+h6
+>                      4
+>            Hardware: ARM
+>                  OS: Linux
+>                Tree: Mainline
+>              Status: NEW
+>            Severity: normal
+>            Priority: P1
+>           Component: ext3
+>            Assignee: fs_ext3@kernel-bugs.osdl.org
+>            Reporter: neolorry+bugzilla.kernel.org@googlemail.com
+>          Regression: No
+>=20
+> xfstests generic/472 fails on ext3 on the latest kernel
+> (kernel-5.11.0-0.rc4.20210120git45dfb8a5659a.131.eln108.aarch64 from
+> https://koji.fedoraproject.org/koji/buildinfo?buildID=3D1671933). This on=
+ly
+> happens on aarch64 and ext3 with 2048 block size. I can reproduce it on
+> kernel-4.18 based RHEL-8 kernel as well.
+>=20
+> log
+> ```
+> # ./check -d -T generic/472
+> FSTYP         -- ext3
+> PLATFORM      -- Linux/aarch64 15-vm-16
+> 5.11.0-0.rc4.20210120git45dfb8a5659a.131.eln108.aarch64 #1 SMP Wed Jan 20
+> 23:39:54 UTC 2021
+> MKFS_OPTIONS  -- -b 2048 /dev/vda3
+> MOUNT_OPTIONS -- -o rw,relatime,seclabel -o
+> context=3Dsystem_u:object_r:root_t:s0
+> /dev/vda3 /scratch
+>=20
+> generic/472 103s ...    [05:31:22]QA output created by 472
+> regular swap
+> too long swap
+> tiny swap
+> swapon: Invalid argument
+>   [05:32:15]- output mismatch (see
+> /tmp/tmp.6xoJizCZKc/repo_xfstests/results//generic/472.out.bad)
+>      --- tests/generic/472.out   2021-01-22 01:31:23.045484313 -0500
+>      +++ /tmp/tmp.6xoJizCZKc/repo_xfstests/results//generic/472.out.bad
+> 2021-01-22 05:32:15.217684365 -0500
+>      @@ -2,3 +2,4 @@
+>       regular swap
+>       too long swap
+>       tiny swap
+>      +swapon: Invalid argument
+>      ...
+>      (Run 'diff -u /tmp/tmp.6xoJizCZKc/repo_xfstests/tests/generic/472.out
+> /tmp/tmp.6xoJizCZKc/repo_xfstests/results//generic/472.out.bad'  to see t=
+he
+> entire diff)
+> Ran: generic/472
+> Failures: generic/472
+> Failed 1 of 1 tests
+> ```
+>=20
+> 472.full
+> ```
+> # cat /tmp/tmp.6xoJizCZKc/repo_xfstests/results//generic/472.full
+> Creating filesystem with 5767168 2k blocks and 720896 inodes
+> Filesystem UUID: 97619060-f6ec-4ed0-8984-01b4aefe86f8
+> Superblock backups stored on blocks:
+>          16384, 49152, 81920, 114688, 147456, 409600, 442368, 802816,
+>          1327104,
+>          2048000, 3981312, 5619712
+>=20
+> Allocating group tables: done
+> Writing inode tables: done
+> Creating journal (32768 blocks): done
+> Writing superblocks and filesystem accounting information: done
+>=20
+> regular swap
+> /usr/bin/chattr: Operation not supported while setting flags on /scratch/=
+swap
+> wrote 2097152/2097152 bytes at offset 0
+> 2 MiB, 512 ops; 0.1898 sec (10.534 MiB/sec and 2696.7097 ops/sec)
+> too long swap
+> /usr/bin/chattr: Operation not supported while setting flags on /scratch/=
+swap
+> wrote 2097155/2097155 bytes at offset 0
+> 2 MiB, 513 ops; 0.1231 sec (16.241 MiB/sec and 4165.7531 ops/sec)
+> tiny swap
+> /usr/bin/chattr: Operation not supported while setting flags on /scratch/=
+swap
+> wrote 196608/196608 bytes at offset 0
+> 192 KiB, 48 ops; 0.0130 sec (14.338 MiB/sec and 3670.5666 ops/sec)
+> swapoff: /scratch/swap: swapoff failed: Invalid argument
+> ```
+>=20
+> xfstests local.config
+> ```
+> FSTYP=3D"ext3"
+> TEST_DIR=3D"/test"
+> TEST_DEV=3D"/dev/vda4"
+> SCRATCH_MNT=3D"/scratch"
+> SCRATCH_DEV=3D"/dev/vda3"
+> LOGWRITES_MNT=3D"/logwrites"
+> LOGWRITES_DEV=3D"/dev/vda6"
+> MKFS_OPTIONS=3D"-b 2048"
+> MOUNT_OPTIONS=3D"-o rw,relatime,seclabel"
+> TEST_FS_MOUNT_OPTS=3D"-o rw,relatime,seclabel"
+> ```
+>=20
+> 64k page size
+> ```
+> # getconf PAGESIZE
+> 65536
+> ```
+>=20
+> fdisk -l
+> ```
+> # fdisk -l /dev/vda
+> Disk /dev/vda: 100 GiB, 107374182400 bytes, 209715200 sectors
+> Units: sectors of 1 * 512 =3D 512 bytes
+> Sector size (logical/physical): 512 bytes / 512 bytes
+> I/O size (minimum/optimal): 512 bytes / 512 bytes
+> Disklabel type: gpt
+> ```
+>=20
+> xfstests version
+> ```
+> # git rev-parse HEAD
+> 4767884aff19e042ee3be51c88cf2c27a111707e
+> # cat .git/config
+> [core]
+>          repositoryformatversion =3D 0
+>          filemode =3D true
+>          bare =3D false
+>          logallrefupdates =3D true
+> [remote "origin"]
+>          url =3D git://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
+>          fetch =3D +refs/heads/*:refs/remotes/origin/*
+> [branch "master"]
+>          remote =3D origin
+>          merge =3D refs/heads/master
+> ```
+>=20
+> e2fsprogs version
+> ```
+> # rpm -q e2fsprogs
+> e2fsprogs-1.45.6-1.el8.aarch64
+> ```
+>
 
-> I'm trying to understand why this has been useful to you, since that
-> generally doesn't match with my development, testing, or debugging
-> experience.  In general I try to test with one file system at a time,
-> since I'm trying to find something reproducible.  Do you have cases
-> where you need multiple file systems in your test environment in order
-> to do your testing?  Why is that?  Is it because you're trying to use
-> your production server code as your test reproducers?  And if so, I
-> would have thought adding the jbd_debug() statements and sending lots
-> of console print messages would distort the timing enough to make it
-> hard to reproduce a problem in found in your production environment.
+--=20
+You may reply to this email to add a comment.
 
-
-In our mixed deployment production environment, we occasionally find that
-containers will have priority inversion problems, that is, low-priority
-containers will affect the Qos of high-priority containers. We try to do
-something to make ext4 work better in the container scene. After a basic
-test, we will use the business program to test, because the IO behavior
-of the business program is relatively more complicated. It is worth noting
-that here we are mainly concerned with the correctness of the process, not
-particularly concerned with performance.
-
-> It sounds like you have a very different set of test practices than
-> what I'm used to, and I'm trying to understand it better.
-
-:), Perhaps my verification method is not optimal, but I found that jbd2
-has a similar framework, and tried to use it, and then found that some
-things can be optimized.
-> Cheers,
-> 
-> 						- Ted
-> 
+You are receiving this mail because:
+You are watching the assignee of the bug.=
