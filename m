@@ -2,109 +2,126 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F207EC433E0
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 11:44:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38ADBC433E6
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 13:44:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AC85764F6A
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 11:44:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E499F64F78
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 13:44:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234231AbhBCLoN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Feb 2021 06:44:13 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47570 "EHLO
+        id S231772AbhBCNol (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Feb 2021 08:44:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45444 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234463AbhBCLnn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2021 06:43:43 -0500
-Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF07AC061573
-        for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2021 03:43:02 -0800 (PST)
-Received: by mail-pj1-x102f.google.com with SMTP id my11so3301907pjb.1
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2021 03:43:02 -0800 (PST)
+        with ESMTP id S231624AbhBCNog (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2021 08:44:36 -0500
+Received: from mail-lf1-x12e.google.com (mail-lf1-x12e.google.com [IPv6:2a00:1450:4864:20::12e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 117E2C0613D6;
+        Wed,  3 Feb 2021 05:43:56 -0800 (PST)
+Received: by mail-lf1-x12e.google.com with SMTP id v24so33380788lfr.7;
+        Wed, 03 Feb 2021 05:43:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=content-transfer-encoding:from:mime-version:subject:date:message-id
-         :references:cc:in-reply-to:to;
-        bh=0fZRXtXxDmQ/PG8ZhbNTsY9wLwgVOXyHP1wEYobYlhw=;
-        b=2HUmN8tYQ6CqHpvL8MoXQbNiYfPxpMrgi69NqB8d361hkPl4yfXZIjpOgakeJSQVCs
-         3MnvOJoAxS6sb8hYihyQe705hzQ9viI2dSqi97gbMLO2Min7t6vTCewGYuhrOeSWUrb/
-         vkC8clsAm5lCr8Q7DDnJ8VQyCcD71D3VMQD/3BtJNWe7+Fbziv8GL+S7cgzAMWTZAbMY
-         tK5iPs4bvP1gwzzzmOXN6efbKmxYq3e2u2hUKiQuaRauy4Fz1+ROPnE8l0vF+JB2aRTt
-         PauSIt0A8RmQYvnJuxCP3Gpi9J5v66b0QmbuR9lGWKuFTQ07RYwNeEE6nKJL3h8QljHS
-         EiPw==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=sQe27HJA3SKQ/BJnULM2ot5ob2yy3uy3UEjOcwGN3a8=;
+        b=seDQHK72t1flgxVqKrug/jRCVZBoDe42wc4rnVSIBqaBHZh7A5fAs+3VeBxI0t0Iz4
+         Oaxjj3NTPHGe5XkQirAfK7VKb58RXbgVG0Ls1lc6H1yCYDWn8BXJFlORgxQO5Rlt/VCh
+         1lGHuOddOQTXrVsI0zJSk4VO81SKu5I3EcmZp7VG+x2UXBIBgnqsYVsS7F7H1GnodPAd
+         4Or5Kotbq08uLBkJVGrKRrf+g5rfmptoOK0nRWQEvLTKuS5Nfp3eAhZB4L0+leEuTITU
+         o3NXFbGicqAUxBTEZW+pCvEHXBRmLWen1kq0TB+uTm1HZ/CLM48G/IewGisTVIgrtqPd
+         VRLw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:content-transfer-encoding:from:mime-version
-         :subject:date:message-id:references:cc:in-reply-to:to;
-        bh=0fZRXtXxDmQ/PG8ZhbNTsY9wLwgVOXyHP1wEYobYlhw=;
-        b=rTAPu9kLh6dcUFo910AdFF2G752FAs9WJrKRLltE/7KPX5FqQC5jLQfxOof2/+mfr4
-         qTzmR/SrSIy+9gQIz8NtftTDrJo01apWhGX3UPpTXwxQGb9lkmXYMiS98MLq/8ZXDBLl
-         feJqozoILQGCCl0B2jGh+gp4ZEJq6oi8hzpO8TnsAWpWd5T+qUgG3V7OBsS8CSdln3z0
-         cqSjxpkFmO+bV+fnnFbk9/YUEPr4qC/6Jso45XUHnaesFioCfczEQ1SVIrDMWuzfLgyT
-         DE0WkKkH7P/mOZayvdJBnmEDUHaiOpJg7YoJIP91UeVw8jCMXD9e/mayNucvp3uX/GJA
-         mopA==
-X-Gm-Message-State: AOAM5313Q/5JqVfBK2ElvTmXWajwal+4HZQCemeWHHN3vEx+2kJ4tHGe
-        4qfmci179oFxuJw2WKD/Fv6VRc+JYl4Nnc1y
-X-Google-Smtp-Source: ABdhPJxNeEqoCgmL5BXZJKKGk6lYxmE4uQ+iL/fQ4g23RYvk8eUULBVeDep6VfML5I/CIwonzZzpyw==
-X-Received: by 2002:a17:90a:1a01:: with SMTP id 1mr2754434pjk.21.1612352582444;
-        Wed, 03 Feb 2021 03:43:02 -0800 (PST)
-Received: from [192.168.10.175] (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id n17sm1804725pjv.20.2021.02.03.03.43.01
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 03 Feb 2021 03:43:01 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-From:   Andreas Dilger <adilger@dilger.ca>
-Mime-Version: 1.0 (1.0)
-Subject: Re: [ANNOUNCE] e2fsprogs v1.46.0
-Date:   Wed, 3 Feb 2021 04:43:00 -0700
-Message-Id: <C19684EF-B868-4FDB-9145-F02844F8DB5C@dilger.ca>
-References: <YBmMlwBaoC58CARb@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-In-Reply-To: <YBmMlwBaoC58CARb@mit.edu>
-To:     Theodore Ts'o <tytso@mit.edu>
-X-Mailer: iPhone Mail (18B92)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=sQe27HJA3SKQ/BJnULM2ot5ob2yy3uy3UEjOcwGN3a8=;
+        b=YPRGWjS2SObCcnUfq9f75RzK36QqZcnnUS4N3UCYVSW+aP+fE+R6HCT0K//LjZsjBD
+         NDu4BcUiEzcJ6MRS+S61pw0fyKcR3SAWMaGK+iuTj/5iUarsS1BZGkAl/gEm57ejDWXK
+         F3r6PLaZeB1ZTztYwmKfAecKwS0GGEkYmMc0cLA6cYwHM3EGXmwI8ImdDcYkiy7pW3M1
+         C0SVxUwVAqfSBM6pjcUX9Tt2x/7/Gqki+Ux475/B1la1oySpv3RcJCCFJNCblxxDCmvy
+         Xo82XxsS2OYuAFkiPjdl8eaPf0pqqY01p7Laqk9hi4H9xuxrq3helFv8H5mGxBEfoKqt
+         FiMw==
+X-Gm-Message-State: AOAM531DvFzIK9+edFzS1vLVlfOtwUcwKBtKQ+1U6pVihKqMoldPkYf+
+        ipocVOz4DrUy9f8zMqWmvCbsiHzXZx3FTmJL
+X-Google-Smtp-Source: ABdhPJxf18draKWPxbuCjIpuGIBYIUfo52UzzGOa0rEBmPqW7d/ZX8iX5myFO3Yz1cdEmUWTvhl3Kw==
+X-Received: by 2002:ac2:5d69:: with SMTP id h9mr1707491lft.576.1612359834585;
+        Wed, 03 Feb 2021 05:43:54 -0800 (PST)
+Received: from localhost.localdomain ([146.158.65.228])
+        by smtp.googlemail.com with ESMTPSA id z23sm259875ljj.25.2021.02.03.05.43.52
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 03 Feb 2021 05:43:53 -0800 (PST)
+From:   Sabyrzhan Tasbolatov <snovitoll@gmail.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        syzbot+a8b4b0c60155e87e9484@syzkaller.appspotmail.com
+Subject: [PATCH] fs/ext4: fix integer overflow in s_log_groups_per_flex
+Date:   Wed,  3 Feb 2021 19:43:51 +0600
+Message-Id: <20210203134351.1697508-1-snovitoll@gmail.com>
+X-Mailer: git-send-email 2.25.1
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Feb 2, 2021, at 10:36, Theodore Ts'o <tytso@mit.edu> wrote:
->=20
-> =EF=BB=BFI've released e2fsprogs 1.46.0 in all of the usual places;=20
->=20
-> E2fsprogs now supports file systems which have both file system
-> encryption and the casefold feature enabled.  This requires Linux
-> version 5.10.
+syzbot found UBSAN: shift-out-of-bounds in ext4_mb_init [1], when
+1 << sbi->s_es->s_log_groups_per_flex is bigger than UINT_MAX,
+where sbi->s_mb_prefetch is unsigned integer type.
 
-Gah!  I just noticed these patches being submitted to the kernel, but
-they break the dirdata format in an incompatible manner. I hadn't been
-paying close attention to casefold + encryption since I thought it was
-only changing the hashing function and not the actual dirent format,
-and I didn't see these patches to e2fsprogs being submitted to the
-list (I couldn't find them in patchworks either).
+32 is the maximum allowed power of s_log_groups_per_flex. Following if
+check will also trigger UBSAN shift-out-of-bound:
 
-Since this hasn't been landed to the kernel yet, and 1.46.0 was *just*
-released, can we roll this back and instead make the extra hash stored
-in a dirdata field? Preferably #3, since #1 is the Lustre FID, and #2 was
-proposed for the high 32 bits of the 64-bit inode number (though it was
-never landed and I don't think it is in use anywhere).
+if (1 << sbi->s_es->s_log_groups_per_flex > UINT_MAX) {
 
-Having just looked at these patches for the first time, I can't say for sure=
-,
-but it looks like only a small on-disk format change would be needed to
-make both features compatible with each other.=20
+So I'm checking it against the raw number, perhaps there is another way
+to calculate UINT_MAX max power. Also use min_t as to make sure it's
+uint type.
 
-There would need to be a bit set in the dirent type field to indicate that
-there is a hash stored after the name:
+[1] UBSAN: shift-out-of-bounds in fs/ext4/mballoc.c:2713:24
+shift exponent 60 is too large for 32-bit type 'int'
+Call Trace:
+ __dump_stack lib/dump_stack.c:79 [inline]
+ dump_stack+0x137/0x1be lib/dump_stack.c:120
+ ubsan_epilogue lib/ubsan.c:148 [inline]
+ __ubsan_handle_shift_out_of_bounds+0x432/0x4d0 lib/ubsan.c:395
+ ext4_mb_init_backend fs/ext4/mballoc.c:2713 [inline]
+ ext4_mb_init+0x19bc/0x19f0 fs/ext4/mballoc.c:2898
+ ext4_fill_super+0xc2ec/0xfbe0 fs/ext4/super.c:4983
 
-#define EXT2_DIRENT_HASH     0x40
+Reported-by: syzbot+a8b4b0c60155e87e9484@syzkaller.appspotmail.com
+Signed-off-by: Sabyrzhan Tasbolatov <snovitoll@gmail.com>
+---
+ fs/ext4/mballoc.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-and the length of the hash field would be stored as the first byte. Since th=
-e
-hash is stored aligned on a 4-byte boundary, the length is variable
-(8+alignment), but storing the length at the start would not add any more
-space for 3/4 of the names due to the existing padding for alignment.=20
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 99bf091fee10..e1e7ffbba1a6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2709,8 +2709,15 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 	}
+ 
+ 	if (ext4_has_feature_flex_bg(sb)) {
+-		/* a single flex group is supposed to be read by a single IO */
+-		sbi->s_mb_prefetch = min(1 << sbi->s_es->s_log_groups_per_flex,
++		/* a single flex group is supposed to be read by a single IO.
++		 * 2 ^ s_log_groups_per_flex != UINT_MAX as s_mb_prefetch is
++		 * unsigned integer, so the maximum shift is 32.
++		 */
++		if (sbi->s_es->s_log_groups_per_flex > 32) {
++			ext4_msg(sb, KERN_ERR, "too many log groups per flexible block group");
++			goto err_freesgi;
++		}
++		sbi->s_mb_prefetch = min_t(uint, 1 << sbi->s_es->s_log_groups_per_flex,
+ 			BLK_MAX_SEGMENT_SIZE >> (sb->s_blocksize_bits - 9));
+ 		sbi->s_mb_prefetch *= 8; /* 8 prefetch IOs in flight at most */
+ 	} else {
+-- 
+2.25.1
 
-Cheers, Andreas=
