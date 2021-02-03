@@ -2,279 +2,265 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no
+X-Spam-Status: No, score=-26.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B30CC433DB
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 08:20:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31686C433E6
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:11:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2F0F964F50
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 08:20:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E3DF664F78
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:11:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232492AbhBCIU0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Feb 2021 03:20:26 -0500
-Received: from mail.kernel.org ([198.145.29.99]:39970 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232242AbhBCIUZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Feb 2021 03:20:25 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPS id EB1E164F68
-        for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2021 08:19:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1612340384;
-        bh=OMhALt6rk2nWecJl5lDTURYT1F5pjSwdhPkWF2VRKWk=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=V59e82sP0oHoI9ImkbeIv69s6bzcaCBmyvXtVZwRbrqMILIWyl5j9IaJeSRDWFoy/
-         dQzrmg5XH3nfSQZfr1FxU9OcyZ6XJbY4/2XYEeaxxoXSLH+L/0btuOIzK+FlGtmL1x
-         sGUw57IMV1CLuLaakAZ54Yw5xq1mmOwpmT28yjcOVDkcofs/9p2Ws3NXn4I7VdTnP5
-         uZj/gbB548jPBNzQANo+7GDZhd0cSLbIRJdvXNVKLc4SvSJQwBhZsP12hphwBSJio1
-         HpIyqZDwP0hNXWHnONIGC7jhgbf/JSd/DxPU7uT1ikZuFUVwyUw/rN6BM5EPdjO6IA
-         Ruh3zc4nAuj4A==
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 210185] kernel BUG at fs/ext4/page-io.c:126!
-Date:   Wed, 03 Feb 2021 08:19:43 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: gernot.poerner@web.de
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-210185-13602-RXKtJJk3FS@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-210185-13602@https.bugzilla.kernel.org/>
-References: <bug-210185-13602@https.bugzilla.kernel.org/>
+        id S233232AbhBCJKl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Feb 2021 04:10:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42412 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233263AbhBCJJH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2021 04:09:07 -0500
+Received: from mail-pf1-x449.google.com (mail-pf1-x449.google.com [IPv6:2607:f8b0:4864:20::449])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A69B3C06178C
+        for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2021 01:07:53 -0800 (PST)
+Received: by mail-pf1-x449.google.com with SMTP id x206so15696398pfc.16
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2021 01:07:53 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=sender:date:in-reply-to:message-id:mime-version:references:subject
+         :from:to:cc;
+        bh=aacYYvBrsO89246VG7kwqo+UEXeIJ89FcRhL6OJu++c=;
+        b=pN/zjW9WW+TyD9lbKiOtFxDGJFcLXOUEk8mf4j4LL2nKVCYXWHgvcFMAIDORtfvxjR
+         ab3D51qsSlSJFu8gkhH1ug3grudzV/43vairsH8wHF9Ox8zgf/d4SiVVCBN+3PrNqV0R
+         YB2rujh4TnKXkkIiaDcAWTKoE4FtaH3x9IUUceBso37WVLyA+Rm4352hhfTAcvmLwxil
+         xxmxtYhk/nI96yrAAvcZKKm5Kw7YJWrKOe7oYYPugQEROAh512qFLoJIWgW24rtDPOvL
+         hdiNl7bLuddHHdxG+IQfcVfFT3bO2DKY2gKKdC6Rmc4zWzecF2ZeCFuHP9yYkjLckSk5
+         CFQA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:date:in-reply-to:message-id:mime-version
+         :references:subject:from:to:cc;
+        bh=aacYYvBrsO89246VG7kwqo+UEXeIJ89FcRhL6OJu++c=;
+        b=a4qIl+eNPe71DQkN/8TukjW0PXampT5ASYzTd05hkchjPfduSlvSe51jl9g6azJoKH
+         5x0JdJVLX67gE5mswaH9aDXbKuluH5EkUSB4WTTMXn+Rtp3D0PcPywiEU9dKHkkKunap
+         KlJ4c6xo8gnOUk+K/bg0pJR8G1pEn2mDiA+yk/L3skCz+iAQdILAao889myLlOCg59uR
+         j8jq5WamP2mcOg4uzGozBDZLpP7ny4oxQjGNs2vfaOmRBPYH/XrZrFuue5sTe8TuFPL9
+         6oVrxH+/SCx1yPUjex707OFvQnRoY7c2fadPhot8NtQUoXKqMWPVCerHfe5MIOCiUD1d
+         +upA==
+X-Gm-Message-State: AOAM531T5JNA2HQQ+L0KssBJ2V0VCbS8M1eKELIcxUk93frv7yI96bF4
+        4bCrxsOL3yCCiPXLG2rS8snwRmpfqfE=
+X-Google-Smtp-Source: ABdhPJw5vmAJE95kY1WlsgmFy7c+dcSAbpT0DRm2voYp9n6Cnu4XTnhuwz73/Pa5zmYCrpk77Md1S67BpU8=
+Sender: "drosen via sendgmr" <drosen@drosen.c.googlers.com>
+X-Received: from drosen.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:4e6f])
+ (user=drosen job=sendgmr) by 2002:a17:90a:3b44:: with SMTP id
+ t4mr87542pjf.1.1612343272973; Wed, 03 Feb 2021 01:07:52 -0800 (PST)
+Date:   Wed,  3 Feb 2021 09:07:45 +0000
+In-Reply-To: <20210203090745.4103054-1-drosen@google.com>
+Message-Id: <20210203090745.4103054-3-drosen@google.com>
+Mime-Version: 1.0
+References: <20210203090745.4103054-1-drosen@google.com>
+X-Mailer: git-send-email 2.30.0.365.g02bc693789-goog
+Subject: [PATCH 2/2] ext4: Optimize match for casefolded encrypted dirs
+From:   Daniel Rosenberg <drosen@google.com>
+To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Eric Biggers <ebiggers@kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>,
+        Paul Lawrence <paullawrence@google.com>
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
-MIME-Version: 1.0
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D210185
+Matching names with casefolded encrypting directories requires
+decrypting entries to confirm case since we are case preserving. We can
+avoid needing to decrypt if our hash values don't match.
+
+Signed-off-by: Daniel Rosenberg <drosen@google.com>
+Signed-off-by: Paul Lawrence <paullawrence@google.com>
+---
+ fs/ext4/ext4.h  | 17 ++++++++-------
+ fs/ext4/namei.c | 55 ++++++++++++++++++++++++++-----------------------
+ 2 files changed, 38 insertions(+), 34 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 90a2c182e4d7..997f80cfe5df 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2637,9 +2637,9 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
+ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ 
+ #ifdef CONFIG_UNICODE
+-extern void ext4_fname_setup_ci_filename(struct inode *dir,
++extern int ext4_fname_setup_ci_filename(struct inode *dir,
+ 					 const struct qstr *iname,
+-					 struct fscrypt_str *fname);
++					 struct ext4_filename *fname);
+ #endif
+ 
+ #ifdef CONFIG_FS_ENCRYPTION
+@@ -2670,9 +2670,9 @@ static inline int ext4_fname_setup_filename(struct inode *dir,
+ 	ext4_fname_from_fscrypt_name(fname, &name);
+ 
+ #ifdef CONFIG_UNICODE
+-	ext4_fname_setup_ci_filename(dir, iname, &fname->cf_name);
++	err = ext4_fname_setup_ci_filename(dir, iname, fname);
+ #endif
+-	return 0;
++	return err;
+ }
+ 
+ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+@@ -2689,9 +2689,9 @@ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+ 	ext4_fname_from_fscrypt_name(fname, &name);
+ 
+ #ifdef CONFIG_UNICODE
+-	ext4_fname_setup_ci_filename(dir, &dentry->d_name, &fname->cf_name);
++	err = ext4_fname_setup_ci_filename(dir, &dentry->d_name, fname);
+ #endif
+-	return 0;
++	return err;
+ }
+ 
+ static inline void ext4_fname_free_filename(struct ext4_filename *fname)
+@@ -2716,15 +2716,16 @@ static inline int ext4_fname_setup_filename(struct inode *dir,
+ 					    int lookup,
+ 					    struct ext4_filename *fname)
+ {
++	int err = 0;
+ 	fname->usr_fname = iname;
+ 	fname->disk_name.name = (unsigned char *) iname->name;
+ 	fname->disk_name.len = iname->len;
+ 
+ #ifdef CONFIG_UNICODE
+-	ext4_fname_setup_ci_filename(dir, iname, &fname->cf_name);
++	err = ext4_fname_setup_ci_filename(dir, iname, fname);
+ #endif
+ 
+-	return 0;
++	return err;
+ }
+ 
+ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 00b0b0cb4600..ff024bb613c0 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -799,7 +799,9 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
+ 	if (hinfo->hash_version <= DX_HASH_TEA)
+ 		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+-	if (fname && fname_name(fname))
++	/* hash is already computed for encrypted casefolded directory */
++	if (fname && fname_name(fname) &&
++				!(IS_ENCRYPTED(dir) && IS_CASEFOLDED(dir)))
+ 		ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), hinfo);
+ 	hash = hinfo->hash;
+ 
+@@ -1364,19 +1366,21 @@ static int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
+ 	return ret;
+ }
+ 
+-void ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+-				  struct fscrypt_str *cf_name)
++int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
++				  struct ext4_filename *name)
+ {
++	struct fscrypt_str *cf_name = &name->cf_name;
++	struct dx_hash_info *hinfo = &name->hinfo;
+ 	int len;
+ 
+ 	if (!IS_CASEFOLDED(dir) || !dir->i_sb->s_encoding) {
+ 		cf_name->name = NULL;
+-		return;
++		return 0;
+ 	}
+ 
+ 	cf_name->name = kmalloc(EXT4_NAME_LEN, GFP_NOFS);
+ 	if (!cf_name->name)
+-		return;
++		return -ENOMEM;
+ 
+ 	len = utf8_casefold(dir->i_sb->s_encoding,
+ 			    iname, cf_name->name,
+@@ -1384,10 +1388,18 @@ void ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 	if (len <= 0) {
+ 		kfree(cf_name->name);
+ 		cf_name->name = NULL;
+-		return;
+ 	}
+ 	cf_name->len = (unsigned) len;
++	if (!IS_ENCRYPTED(dir))
++		return 0;
+ 
++	hinfo->hash_version = DX_HASH_SIPHASH;
++	hinfo->seed = NULL;
++	if (cf_name->name)
++		ext4fs_dirhash(dir, cf_name->name, cf_name->len, hinfo);
++	else
++		ext4fs_dirhash(dir, iname->name, iname->len, hinfo);
++	return 0;
+ }
+ #endif
+ 
+@@ -1417,16 +1429,12 @@ static bool ext4_match(struct inode *parent,
+ 			struct qstr cf = {.name = fname->cf_name.name,
+ 					  .len = fname->cf_name.len};
+ 			if (IS_ENCRYPTED(parent)) {
+-				struct dx_hash_info hinfo;
+-
+-				hinfo.hash_version = DX_HASH_SIPHASH;
+-				hinfo.seed = NULL;
+-				ext4fs_dirhash(parent, fname->cf_name.name,
+-						fname_len(fname), &hinfo);
+-				if (hinfo.hash != EXT4_DIRENT_HASH(de) ||
+-						hinfo.minor_hash !=
+-						    EXT4_DIRENT_MINOR_HASH(de))
++				if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
++					fname->hinfo.minor_hash !=
++						EXT4_DIRENT_MINOR_HASH(de)) {
++
+ 					return 0;
++				}
+ 			}
+ 			return !ext4_ci_compare(parent, &cf, de->name,
+ 							de->name_len, true);
+@@ -2061,15 +2069,11 @@ void ext4_insert_dentry(struct inode *dir,
+ 	de->name_len = fname_len(fname);
+ 	memcpy(de->name, fname_name(fname), fname_len(fname));
+ 	if (ext4_hash_in_dirent(dir)) {
+-		struct dx_hash_info hinfo;
++		struct dx_hash_info *hinfo = &fname->hinfo;
+ 
+-		hinfo.hash_version = DX_HASH_SIPHASH;
+-		hinfo.seed = NULL;
+-		ext4fs_dirhash(dir, fname_usr_name(fname),
+-				fname_len(fname), &hinfo);
+-		EXT4_DIRENT_HASHES(de)->hash = cpu_to_le32(hinfo.hash);
++		EXT4_DIRENT_HASHES(de)->hash = cpu_to_le32(hinfo->hash);
+ 		EXT4_DIRENT_HASHES(de)->minor_hash =
+-				cpu_to_le32(hinfo.minor_hash);
++						cpu_to_le32(hinfo->minor_hash);
+ 	}
+ }
+ 
+@@ -2220,10 +2224,9 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 	if (fname->hinfo.hash_version <= DX_HASH_TEA)
+ 		fname->hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	fname->hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+-	if (ext4_hash_in_dirent(dir))
+-		ext4fs_dirhash(dir, fname_usr_name(fname),
+-				fname_len(fname), &fname->hinfo);
+-	else
++
++	/* casefolded encrypted hashes are computed on fname setup */
++	if (!ext4_hash_in_dirent(dir))
+ 		ext4fs_dirhash(dir, fname_name(fname),
+ 				fname_len(fname), &fname->hinfo);
+ 
+-- 
+2.30.0.365.g02bc693789-goog
 
---- Comment #14 from gpo (gernot.poerner@web.de) ---
-This is on Debian Buster running 5.x kernels from backports. These are VMs =
-(on
-kvm) with 4 cores/32G Ram each. They are running as kubernetes workers.
-
-When we set those up with Debian which in our image comes with kernel 5.9 t=
-hey
-constantly crashed after a while with:
-
-[58832.748868] ------------[ cut here ]------------
-
-[58832.749391] kernel BUG at fs/ext4/page-io.c:126!
-
-[58832.749797] invalid opcode: 0000 [#1] SMP PTI
-
-[58832.750166] CPU: 3 PID: 4233 Comm: kworker/u8:4 Not tainted
-5.9.0-0.bpo.2-amd64 #1 Debian 5.9.6-1~bpo10+1
-
-[58832.750903] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
-
-[58832.751468] Workqueue: ext4-rsv-conversion ext4_end_io_rsv_work [ext4]
-
-[58832.752001] RIP: 0010:ext4_finish_bio+0x248/0x250 [ext4]
-
-[58832.752434] Code: c7 a0 d0 66 c0 e8 d8 a0 03 f3 85 c0 0f 84 4c ff ff ff =
-e9
-f8 37 02 00 49 8b 44 24 28 4c 89 64 24 28 48 89 04 24 e9 51 fe ff ff <0f> 0=
-b 66
-0f 1f 44 00 00 66 66 66 66 90 41 57 41 56 41 55 41 54 55
-
-[58832.753829] RSP: 0018:ffffb7b603637dc0 EFLAGS: 00010246
-
-[58832.754264] RAX: 0000000000000081 RBX: ffff8c042706ae40 RCX:
-0000000000000001
-
-[58832.754822] RDX: 0000000000000000 RSI: 0000000000001000 RDI:
-ffff8c042706ae40
-
-[58832.755378] RBP: 0000000000001000 R08: 0000000000000000 R09:
-ffffffffc0682b50
-
-[58832.755943] R10: ffff8c0262c7f9d8 R11: 0000000000000001 R12:
-ffffefbd1c982cc0
-
-[58832.756510] R13: ffff8c042706ae40 R14: 0000000000000001 R15:
-0000000000000000
-
-[58832.757055] FS:  0000000000000000(0000) GS:ffff8c045fd80000(0000)
-knlGS:0000000000000000
-
-[58832.757677] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-
-[58832.758138] CR2: 00007fd4543d2d80 CR3: 0000000609c48004 CR4:
-00000000000606e0
-
-[58832.758703] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-0000000000000000
-
-[58832.759252] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-0000000000000400
-
-[58832.759801] Call Trace:
-
-[58832.760048]  ext4_release_io_end+0x48/0xf0 [ext4]
-
-[58832.760422]  ext4_end_io_rsv_work+0x92/0x180 [ext4]
-
-[58832.760824]  process_one_work+0x1ad/0x370
-
-[58832.761191]  worker_thread+0x30/0x390
-
-[58832.761505]  ? create_worker+0x1a0/0x1a0
-
-[58832.761843]  kthread+0x116/0x130
-
-[58832.762115]  ? kthread_park+0x80/0x80
-
-[58832.762426]  ret_from_fork+0x22/0x30
-
-[58832.762719] Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4
-dns_resolver nfs lockd grace nfs_ssc fscache iptable_filter xt_CT xt_multip=
-ort
-xt_nat xt_tcpudp veth dm_mod xt_set ip_set_hash_ipport ip_set_bitmap_port
-ip_set_hash_ipportnet ip_set_hash_ipportip ip_set dummy ip_vs_sh ip_vs_wrr
-ip_vs_rr ip_vs xt_comment xt_mark xt_conntrack xt_MASQUERADE
-nf_conntrack_netlink xfrm_user xfrm_algo nft_counter xt_addrtype nft_compat
-nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 libcrc32c
-nf_tables nfnetlink br_netfilter bridge stp llc overlay intel_rapl_msr
-intel_rapl_common crc32_pclmul ghash_clmulni_intel aesni_intel libaes
-crypto_simd cryptd glue_helper hid_generic usbhid hid virtio_balloon joydev
-evdev pcspkr serio_raw qemu_fw_cfg button sunrpc tcp_bbr ip_tables x_tables
-autofs4 ext4 crc16 mbcache jbd2 crc32c_generic ata_generic virtio_net
-net_failover virtio_blk failover uhci_hcd ata_piix ehci_hcd libata usbcore
-scsi_mod crct10dif_pclmul crct10dif_common psmouse usb_common
-
-[58832.762748]  crc32c_intel virtio_pci virtio_ring virtio i2c_piix4
-
-[58832.769326] ---[ end trace 22c803ae565a2f8c ]---
-
-[58832.769746] RIP: 0010:ext4_finish_bio+0x248/0x250 [ext4]
-
-[58832.770183] Code: c7 a0 d0 66 c0 e8 d8 a0 03 f3 85 c0 0f 84 4c ff ff ff =
-e9
-f8 37 02 00 49 8b 44 24 28 4c 89 64 24 28 48 89 04 24 e9 51 fe ff ff <0f> 0=
-b 66
-0f 1f 44 00 00 66 66 66 66 90 41 57 41 56 41 55 41 54 55
-
-[58832.771522] RSP: 0018:ffffb7b603637dc0 EFLAGS: 00010246
-
-[58832.771927] RAX: 0000000000000081 RBX: ffff8c042706ae40 RCX:
-0000000000000001
-
-[58832.772454] RDX: 0000000000000000 RSI: 0000000000001000 RDI:
-ffff8c042706ae40
-
-[58832.772984] RBP: 0000000000001000 R08: 0000000000000000 R09:
-ffffffffc0682b50
-
-[58832.773521] R10: ffff8c0262c7f9d8 R11: 0000000000000001 R12:
-ffffefbd1c982cc0
-
-[58832.774045] R13: ffff8c042706ae40 R14: 0000000000000001 R15:
-0000000000000000
-
-[58832.774566] FS:  0000000000000000(0000) GS:ffff8c045fd80000(0000)
-knlGS:0000000000000000
-
-[58832.775157] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-
-[58832.775604] CR2: 00007fd4543d2d80 CR3: 0000000609c48004 CR4:
-00000000000606e0
-
-[58832.776122] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-0000000000000000
-
-[58832.776636] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-0000000000000400
-
-[58832.777195] Kernel panic - not syncing: Fatal exception
-
-[58832.777840] Kernel Offset: 0x32200000 from 0xffffffff81000000 (relocation
-range: 0xffffffff80000000-0xffffffffbfffffff)
-
-[58832.778610] Rebooting in 1 seconds..
-
-Loading Linux 5.9.0-0.bpo.2-amd64 ...
-
-Loading initial ramdisk ...
-
-[    0.000000] Linux version 5.9.0-0.bpo.2-amd64
-(debian-kernel@lists.debian.org) (gcc-8 (Debian 8.3.0-6) 8.3.0, GNU ld (GNU
-Binutils for Debian) 2.31.1) #1 SMP Debian 5.9.6-1~bpo10+1 (2020-11-19)
-
-[    0.000000] Command line: BOOT_IMAGE=3D/vmlinuz-5.9.0-0.bpo.2-amd64
-root=3DUUID=3Db722221a-e6a3-4609-a545-19454bd4f53c ro console=3Dtty0
-console=3DttyS0,115200n8 noplymouth elevator=3Dnoop nomodeset net.ifnames=
-=3D0
-biosdevname=3D0
-
-[    0.000000] x86/fpu: Supporting XSAVE feature 0x001: 'x87 floating point
-registers'
-
-[    0.000000] x86/fpu: Supporting XSAVE feature 0x002: 'SSE registers'
-
-[    0.000000] x86/fpu: Supporting XSAVE feature 0x004: 'AVX registers'
-
-[    0.000000] x86/fpu: xstate_offset[2]:  576, xstate_sizes[2]:  256
-
-[    0.000000] x86/fpu: Enabled xstate features 0x7, context size is 832 by=
-tes,
-using 'standard' format.
-
-[    0.000000] BIOS-provided physical RAM map:
-
-[    0.000000] BIOS-e820: [mem 0x0000000000000000-0x000000000009fbff] usable
-
-[    0.000000] BIOS-e820: [mem 0x000000000009fc00-0x000000000009ffff] reser=
-ved
-
-[    0.000000] BIOS-e820: [mem 0x00000000000f0000-0x00000000000fffff] reser=
-ved
-
-[    0.000000] BIOS-e820: [mem 0x0000000000100000-0x00000000bffdbfff] usable
-
-[    0.000000] BIOS-e820: [mem 0x00000000bffdc000-0x00000000bfffffff] reser=
-ved
-
-[    0.000000] BIOS-e820: [mem 0x00000000feffc000-0x00000000feffffff] reser=
-ved
-
-[    0.000000] BIOS-e820: [mem 0x00000000fffc0000-0x00000000ffffffff] reser=
-ved
-
-[    0.000000] BIOS-e820: [mem 0x0000000100000000-0x000000083fffffff] usable
-
-This is also how I came upon this bug report.
-
-Downgrading to the latest 5.8 (5.8.0-0.bpo.2-amd64 #1 SMP Debian
-5.8.10-1~bpo10+1 (2020-09-26) x86_64 GNU/Linux) stopped the constant crashi=
-ng.
-
-The problem here is that we could not identify for sure what really causes =
-the
-crash, these nodes are running differing workloads since they are kubernete=
-s.
-
-I would go ahead and test a later kernel (5.10) on one of these to see if t=
-he
-problem is fixed in upstream already.
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
