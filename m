@@ -2,97 +2,131 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-21.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2088DC433E0
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:13:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D0B1C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:52:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D157464F6C
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:13:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5388C64E93
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Feb 2021 09:52:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233188AbhBCJKI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Feb 2021 04:10:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42268 "EHLO
+        id S233152AbhBCJwY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Feb 2021 04:52:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51750 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233264AbhBCJI3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2021 04:08:29 -0500
-Received: from mail-pj1-x1049.google.com (mail-pj1-x1049.google.com [IPv6:2607:f8b0:4864:20::1049])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 538B4C0613D6
-        for <linux-ext4@vger.kernel.org>; Wed,  3 Feb 2021 01:07:49 -0800 (PST)
-Received: by mail-pj1-x1049.google.com with SMTP id ds13so4363671pjb.4
-        for <linux-ext4@vger.kernel.org>; Wed, 03 Feb 2021 01:07:49 -0800 (PST)
+        with ESMTP id S233344AbhBCJwV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Feb 2021 04:52:21 -0500
+Received: from mail-wr1-x430.google.com (mail-wr1-x430.google.com [IPv6:2a00:1450:4864:20::430])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B666BC061788;
+        Wed,  3 Feb 2021 01:51:38 -0800 (PST)
+Received: by mail-wr1-x430.google.com with SMTP id 7so23437359wrz.0;
+        Wed, 03 Feb 2021 01:51:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=sender:date:message-id:mime-version:subject:from:to:cc;
-        bh=sVf7O3WLOu6dhuTCecFldXIW4PzO5RIlEM8KMgTZtuE=;
-        b=k9rT4tPGoNn+chkAvyxonhEGVZrgZH/l4ElwINC05PI1JlY6fwWfUBfSH1PVrwolT8
-         v2uxaD0ZexjF4hULvEIAS4Kqzpz6+HJFdxTg0znW++pMx9pTy4voqfJPgwtcklUXk0pc
-         ChT8/m22vNB5J2C7daqMYjtun7fcZ22RS9ZL3066n43JhYu0mSb3k+6eSH4UG4edtPf5
-         GTyWNJvY/mvbhqSJN1aYJnPtzm8qh7Twe5P2bUw5k/ZhRbFozYQVCotb5vlRm/qePdzO
-         zxilmgEWAjoAYBIzhRE0kjoFdGPFwELXLYUwfyZhDaf/XrLAzNzeSPfSdBStYMupA7hF
-         72mA==
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=CWjEkbuWLlblTtjuIWif0x7AzX7GeK00PJG/7+QyP+g=;
+        b=AidCjKbLKSnA/0Mc3oxvE3ZZOkhleknUJCYl2tYBiAxKjpE8JD7Bh8g2fwAlDJvvtn
+         E03CpGOgrAKtEoCuUXqwP+PRLLLNWTbLWKDPuRENY3xxOAq8rvK55a1XyLr429KhU+c7
+         6kFQ7Q2xVTeE5H45M/41V+nDs7jvJHsxwWd0P2xO6KDtyyiGqqN2w368HHbqPh+f9Z4x
+         uRC/S+M9J5tMJfsw2KsPV8w6b9p2xOeC8rdHZXZliD8gyLA+3WTu2YTa2I1e/1tpWcg+
+         MQAZHlA59gZuJt5jN1RjoBC3UML7Qqy8NpWOapU3XjmjsklqHoYHCM+bRp88shomHCEB
+         gbUw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:date:message-id:mime-version:subject:from
-         :to:cc;
-        bh=sVf7O3WLOu6dhuTCecFldXIW4PzO5RIlEM8KMgTZtuE=;
-        b=AHBuWXYWCyKKx1K13YZ8Hh/Zvb4Rq8iiGY+hRHQhC3aZLDGUFUPIx56fTqjbuOipJS
-         TBQs7fc5Fnb7aLRnwWhup0AsiHy41jRK5FomXAdNrVtyUL+F8C9RYEQt2OErrPQoJar3
-         EhW0d6VJ0+r48ixx1TNSXzM8fIsg+r4vWsm81OevnSD6jXNiAAZaPYdpGl5PUNokLgBi
-         cfINLux6xX5lmNkzW12Bwi1qO0AJHV99yO8mLmn80SnSGJ2R3K/fCnJiHBjeCmnUSKoo
-         PxK+u3CcX+w4M9SOsq3IAAdgg/FcAwi9CVkpq7MuPd9k7TpHA4yluofzP0EWDI1G0RP/
-         6Y/g==
-X-Gm-Message-State: AOAM5301edCXu5IXuqnokJX/tGVD3jOtVpGgEsZg0bQRLdBlhsO1P5wx
-        cn9LtIPezsh2myyaO8SowP0Rqwv+t04=
-X-Google-Smtp-Source: ABdhPJx7NJUAkcuwh363+5Hq9XXaxc6cA9F+B8VY/3yeXsi5IFRlD4N/OPeo71uDmDTMFTyS3MeoZscuvwk=
-Sender: "drosen via sendgmr" <drosen@drosen.c.googlers.com>
-X-Received: from drosen.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:4e6f])
- (user=drosen job=sendgmr) by 2002:a17:90a:d0c4:: with SMTP id
- y4mr2260364pjw.212.1612343268852; Wed, 03 Feb 2021 01:07:48 -0800 (PST)
-Date:   Wed,  3 Feb 2021 09:07:43 +0000
-Message-Id: <20210203090745.4103054-1-drosen@google.com>
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.30.0.365.g02bc693789-goog
-Subject: [PATCH 0/2] Reconcile Encryption and Casefolding in Ext4
-From:   Daniel Rosenberg <drosen@google.com>
-To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@kernel.org>,
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=CWjEkbuWLlblTtjuIWif0x7AzX7GeK00PJG/7+QyP+g=;
+        b=ByFUxk1eJX3psdoplVU31rY4PT8unNm4rzVP7O2bBswvx7jU4Yxu4aqh64tZOBSP+S
+         +S8QmgCZAuYW7J2gs2VJeoUqqoIfBWFvChkWR/xxYp9Phgr00iLRCSi+51x1kx/eKE3l
+         i/xnXAarsGrEA9YLUwVKm6M5jMEPINMUIgd8qDSA+IZ8qHgGyKIZElD/p4nC2Jz/R1LL
+         uIF18irfbnSZCUtmq8xXGogZaP/h829Jwn5KHBFAfaPM9dZEpYAQ9uHQeiPPM92yX2UW
+         /rCrUz6tgOrGaswHTsU406MVuBKTc4GJUppR2yYrWmgUvD62yvxp8UheHPZjV3mkxdkN
+         2eEQ==
+X-Gm-Message-State: AOAM533HqqbAPCPy092zER+AD5HeVnlvOk0eotisO61xLWbYxZxMA3Y3
+        DSDbJ9ATI26CuUT4ZZSMrQnRvrEaZTWhI8yy9wE=
+X-Google-Smtp-Source: ABdhPJyMqE6Wc+e5vmqeI4Xt0k2hIzTgXucEC4AiLGmtIm/SKbqM7oMhZuoRipbkFcpW4wF+H6JpCaKJbsigqfaOwwk=
+X-Received: by 2002:a05:6000:188b:: with SMTP id a11mr2459195wri.151.1612345897392;
+ Wed, 03 Feb 2021 01:51:37 -0800 (PST)
+MIME-Version: 1.0
+References: <20210202080508.GA3550351@infradead.org> <20210202162837.129631-1-viniciustinti@gmail.com>
+ <YBo29/SdgCkZZinT@mit.edu>
+In-Reply-To: <YBo29/SdgCkZZinT@mit.edu>
+From:   Vinicius Tinti <viniciustinti@gmail.com>
+Date:   Wed, 3 Feb 2021 06:51:26 -0300
+Message-ID: <CALD9WKz-Jgmz7inOghv37ZwzD_8sVPT_-YZUX5FpQE5aKrDJJg@mail.gmail.com>
+Subject: Re: [PATCH v3] ext4: Enable code path when DX_DEBUG is set
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     Christoph Hellwig <hch@infradead.org>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel-team@android.com, Daniel Rosenberg <drosen@google.com>
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        clang-built-linux <clang-built-linux@googlegroups.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-These patches add support for ext4 encryption and casefolding at the same time.
-Since the hash for encrypted casefolded directory names cannot be computed
-without the key, we need to store the hash on disk. We only do so for encrypted
-and casefolded directories to avoid on disk format changes.
+On Wed, Feb 3, 2021 at 2:39 AM Theodore Ts'o <tytso@mit.edu> wrote:
+>
+> On Tue, Feb 02, 2021 at 04:28:37PM +0000, Vinicius Tinti wrote:
+> > Clang with -Wunreachable-code-aggressive is being used to try to find
+> > unreachable code that could cause potential bugs. There is no plan to
+> > enable it by default.
+> >
+> > The following code was detected as unreachable:
+> >
+> > fs/ext4/namei.c:831:17: warning: code will never be executed
+> > [-Wunreachable-code]
+> >                         unsigned n = count - 1;
+> >                                      ^~~~~
+> > fs/ext4/namei.c:830:7: note: silence by adding parentheses to mark code as
+> > explicitly dead
+> >                 if (0) { // linear search cross check
+> >                     ^
+> >                     /* DISABLES CODE */ ( )
+> >
+> > This has been present since commit ac27a0ec112a ("[PATCH] ext4: initial
+> > copy of files from ext3") and fs/ext3 had it present at the beginning of
+> > git history. It has not been changed since.
+> >
+> > This patch moves the code to a new function `htree_rep_invariant_check`
+> > which only performs the check when DX_DEBUG is set. This allows the
+> > function to be used in other parts of the code.
+> >
+> > Suggestions from: Andreas, Christoph, Nathan, Nick and Ted.
+> >
+> > Signed-off-by: Vinicius Tinti <viniciustinti@gmail.com>
+>
+> Thanks, applied, although I rewrote the commit description:
+>
+>     ext4: factor out htree rep invariant check
+>
+>     This patch moves some debugging code which is used to validate the
+>     hash tree node when doing a binary search of an htree node into a
+>     separate function, which is disabled by default (since it is only used
+>     by developers when they are modifying the htree code paths).
+>
+>     In addition to cleaning up the code to make it more maintainable, it
+>     silences a Clang compiler warning when -Wunreachable-code-aggressive
+>     is enabled.  (There is no plan to enable this warning by default, since
+>     there it has far too many false positives; nevertheless, this commit
+>     reduces one of the many false positives by one.)
+>
+> The original description buried the lede, in terms of the primary
+> reason why I think the change was worthwhile (although I know you have
+> different priorities than mine :-).
+>
+> Thanks for working to find a way to improve the code in a way that
+> makes both of us happy!
 
-e2fsprogs has already been updated with support for casefolding and encryption.
+Thanks for the feedback.
 
-Daniel Rosenberg (2):
-  ext4: Handle casefolding with encryption
-  ext4: Optimize match for casefolded encrypted dirs
+And thanks for all the ones who reviewed.
 
- Documentation/filesystems/ext4/directory.rst |  27 ++
- fs/ext4/dir.c                                |  46 ++-
- fs/ext4/ext4.h                               |  79 +++--
- fs/ext4/hash.c                               |  25 +-
- fs/ext4/ialloc.c                             |   5 +-
- fs/ext4/inline.c                             |  41 +--
- fs/ext4/namei.c                              | 323 +++++++++++++------
- fs/ext4/super.c                              |   6 -
- 8 files changed, 391 insertions(+), 161 deletions(-)
-
-
-base-commit: e9f53353e166a67dfe4f8295100f8ac39d6cf10b
--- 
-2.30.0.365.g02bc693789-goog
-
+>                                         - Ted
