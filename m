@@ -7,55 +7,55 @@ X-Spam-Status: No, score=-16.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9469BC433DB
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:07:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B36F7C433E9
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:07:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6D2FB64E32
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:07:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8EDF464E2F
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:07:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229742AbhBGTG4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Feb 2021 14:06:56 -0500
-Received: from esa3.hgst.iphmx.com ([216.71.153.141]:24872 "EHLO
-        esa3.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229717AbhBGTGt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2021 14:06:49 -0500
+        id S229766AbhBGTHA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Feb 2021 14:07:00 -0500
+Received: from esa2.hgst.iphmx.com ([68.232.143.124]:40046 "EHLO
+        esa2.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229734AbhBGTGz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2021 14:06:55 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
   d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1612724809; x=1644260809;
+  t=1612725733; x=1644261733;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version:content-transfer-encoding;
-  bh=dehfSSqAC1aZX9IJSa3h7Royg46gKKUc/ViSk1Qqt4w=;
-  b=WZwpNOty3BPUFHcDBJiSB3D7FUX6a3v1mkptWtGQyTzAICp7VgBWjhfN
-   utkYiZosb6BOnAp2GpEaUa9piZ67gdcJ/h+TupEEiAREiM9ogXn/Usu8i
-   vEMtfFKy8A0w04mKX4ZjQ4PGQEluBgWJg3+HEmH/C3Q+OBwLVrG8GFP3U
-   oai1Umg50GFrXLfp3ULPCaufyiIfJ8vcar0qmlzzQTlnBBDZZdQryk9iu
-   w1tGjNYGZxZr9xZmKkpY5Q5slnQG0hpu6dEzhDw2nxHH7/LrhvSinS/St
-   /Kz6CqwdK3tvFdVmpK7yKljsECdWjwfLPalKd+QTD972Tnlyfka4j/Tmr
-   A==;
-IronPort-SDR: F8gL0u8taR9K/hBBZq1ALYAkFd436qU+4N3isSJ64+pIGmiwg5Qhvix6w23kK7J6cHwvDcu2Wf
- nP4VJrAcC23uQpGxNOCUbmyRc4IsOPv/JRUnmqGM67lTJJpHw0CPU3a56SPhFtMre5AizvAbj1
- 5RNCHdfbPq7BQgSxjFMfKfWQAZGUXNfMSkUOfuSc6u1I8zyq48HssnSYqg8ZKpUbAZ5D/pbdlT
- cobpbyC5NuCOC6Fmp2NrV0WqYxGS/iK1cstutOcS215B6GUjv7iIZvJzWiHrN1qw9LJnqCIWjb
- 7Nc=
+  bh=e4vze4agz5qI/6i5moaf/fwbfxYs65n7gouRgw41U/E=;
+  b=DlQ0j0HOrgUAJh8BkLfusxY8/Maf3SU/RYNUNnoy+IzXc+QfxVUQKSHl
+   8gXtZaWKL8qvo6Y6JqIc+VNq6HM58pRPEhjl61BaI2pL8FhZonBrxZpCQ
+   HQGcux6+RJqevV8VCDT4WS8I4u9ixTJjyraVg5dX/zrZv2eRPYca+zVen
+   sxQb3KP+PZKY2faEdi9tKFelHdRHg8shjGB1X3fQJIS6dfRVZmMMyKB7w
+   9kzk5W6Hm2//nh3nCWvYkaWh5Q66iyv64w3zk1xv8cNWOGUY7NuXwE/gS
+   Y0+Z5ssd5Lbin5CRql1DsnU4kcvpi/ZEIrOnX7iW7sQ+JBI9Jqr8Wcb/0
+   Q==;
+IronPort-SDR: U30CByVFb5OHGcMW2JkcskUggPjOS4+c57wsDPFAWwbVw4k8NlAFFk3k+lrCxusmj2PG1U57dw
+ gZ4ENYwmW+9PgBXq66L+Q2fu5GX4Ctd9FMnKZ1H3Hrk1qrwaxEYSsk8AnoaAEz9k6Y4znT25c0
+ VkobfG9hYu0g20HIe6xhXFqY8qLCGhLit0NyJeTRwV2P8BwkT6eC9ljxOu9MBmsTKFarV3X3fz
+ Qks1LOrMF3D7Ka6J/RCmTIc1ftE/EKCuJN/2N9DZZw1vSPmbuDgJHQ2RvCocdub7vFRSVZlH2K
+ txU=
 X-IronPort-AV: E=Sophos;i="5.81,160,1610380800"; 
-   d="scan'208";a="163856632"
-Received: from uls-op-cesaip02.wdc.com (HELO uls-op-cesaep02.wdc.com) ([199.255.45.15])
-  by ob1.hgst.iphmx.com with ESMTP; 08 Feb 2021 03:05:18 +0800
-IronPort-SDR: JhBGXGoCZTzrn2Hizeh1WT8BzOAmVixm+E4wE/KvnoefdXvEneGeitJbnUzk6LgFnV/i9sbDvc
- hmz4t26N3l55owuiFiRAb04cA2NNb+c6Mi5wTr8nr9O7zyE3w/UcNHEVrmhNxE/armoteTghXZ
- GA+jJd9u65vyTreWeIwESro4rrSQXWnN19iC784F7R1qUoKjT79NfHT8CMUSpy180aVT7W47dQ
- M7Yx69ibBgFakyyOJ7vLt2vOXNnTq6zD4m3SWoeJR6U1jEMCADwwR6yVYThjQ3IRjORatgNOwr
- wzMJT62loEnjYS+52+ePjbVx
+   d="scan'208";a="263497385"
+Received: from h199-255-45-14.hgst.com (HELO uls-op-cesaep01.wdc.com) ([199.255.45.14])
+  by ob1.hgst.iphmx.com with ESMTP; 08 Feb 2021 03:20:34 +0800
+IronPort-SDR: UpQXkqJ1ixAs5/BGHBnXZklTe8fLP5vV0g/vGLCGGTpYI/040rSUtP//bZf4o3rzZLsfwOZcXX
+ XNai8I07MSLN524ZVPbn71uhi2EJn5Fp2b767lT2iAknnfkJwIpaP3X0R/Vin3X/HHx3CTGjP1
+ E+PFPdIp+qFb/E8OrFscmDZWLS/uQUMc2JneLvSNYlNKqmv8o7JZADpgrsC3mcejixtcwz7X3p
+ yhEoahBJERU03UAFeRwAPIcwExUwjNatrlPJBd+QzWu/EFeW+s+vMAHzLO6ugKZjtSoimOBkT6
+ hh0MoVejfUGyBWW3kIGowMT8
 Received: from uls-op-cesaip02.wdc.com ([10.248.3.37])
-  by uls-op-cesaep02.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Feb 2021 10:47:13 -0800
-IronPort-SDR: /NXkTLt/6qjduDdq2JFD7H6ZU+2oB0Rep9ax9+DK8GZwj+QwFm5xGHo/lvt8Jhf3VxkmGz9WKT
- ozZQT+ilXxLz9H78tNiiEyGRBVVQePcWqrOyWOs7rre3+lFVAGrVsUvOX5xKbv0BNnkxYqCDo6
- lcfJ0FnspF3wCcBsGYidK8L/jGC7u9NuvCYsuTVkTuxmgmuxeG/bdTYhdVz/T5bsstD10Aa/nN
- IJw8c3dJ5LpA9hTAS8X5AegS9FKMJ7cCnR8aKsp4kZvUGwJoa3LEMV3Fa3PQRHONuomK97B3SY
- j1k=
+  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Feb 2021 10:49:43 -0800
+IronPort-SDR: 43sJyMm+E8HHgPMk2LqQoOndsIqMY2uxtZc9Zo3NeUktByX5cUc+e7r1vsPvEqvYJHKVJ3Or86
+ BuXhCpv7P+wcwaPweZ7VodIlEaWUlqrDMhvfVz8SFeQ3Has/3V7k9knr6HZcWkazEioNxOtfai
+ 8hgEan6PoOi7NG1nMyP9jcXGC5ycxVtppZHe9HkTB5axK67Hbr3QSjYHfNv0ADwQ5FPYBEchp3
+ kydAR4oGU5ktepD0fHi4lz5EhxbrcYGVM1q/wuv/rWZ4YmLA9nHQTC2SyNZ/YZTuUVDqYbhNGb
+ Dl4=
 WDCIronportException: Internal
 Received: from vm.labspan.wdc.com (HELO vm.sc.wdc.com) ([10.6.137.102])
-  by uls-op-cesaip02.wdc.com with ESMTP; 07 Feb 2021 11:05:18 -0800
+  by uls-op-cesaip02.wdc.com with ESMTP; 07 Feb 2021 11:05:50 -0800
 From:   Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
 To:     linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -66,9 +66,9 @@ Cc:     axboe@kernel.dk, tytso@mit.edu, adilger.kernel@dilger.ca,
         chaitanya.kulkarni@wdc.com, dongli.zhang@oracle.com, clm@fb.com,
         ira.weiny@intel.com, dsterba@suse.com, ebiggers@kernel.org,
         hch@infradead.org, dave.hansen@intel.com
-Subject: [RFC PATCH 4/8] null_blk: use memcpy_page() in copy_from_nullb()
-Date:   Sun,  7 Feb 2021 11:04:21 -0800
-Message-Id: <20210207190425.38107-5-chaitanya.kulkarni@wdc.com>
+Subject: [RFC PATCH 6/8] ext4: use memcpy_to_page() in pagecache_write()
+Date:   Sun,  7 Feb 2021 11:04:23 -0800
+Message-Id: <20210207190425.38107-7-chaitanya.kulkarni@wdc.com>
 X-Mailer: git-send-email 2.22.1
 In-Reply-To: <20210207190425.38107-1-chaitanya.kulkarni@wdc.com>
 References: <20210207190425.38107-1-chaitanya.kulkarni@wdc.com>
@@ -80,43 +80,32 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 Signed-off-by: Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
 ---
- drivers/block/null_blk/main.c | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
+ fs/ext4/verity.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/drivers/block/null_blk/main.c b/drivers/block/null_blk/main.c
-index c9b6db82b07c..1c0e1a295e90 100644
---- a/drivers/block/null_blk/main.c
-+++ b/drivers/block/null_blk/main.c
-@@ -1042,7 +1042,6 @@ static int copy_from_nullb(struct nullb *nullb, struct page *dest,
- 	size_t temp, count = 0;
- 	unsigned int offset;
- 	struct nullb_page *t_page;
--	void *dst, *src;
+diff --git a/fs/ext4/verity.c b/fs/ext4/verity.c
+index c8e07f8a792d..cc4b046490b0 100644
+--- a/fs/ext4/verity.c
++++ b/fs/ext4/verity.c
+@@ -77,7 +77,6 @@ static int pagecache_write(struct inode *inode, const void *buf, size_t count,
+ 				 PAGE_SIZE - offset_in_page(pos));
+ 		struct page *page;
+ 		void *fsdata;
+-		void *addr;
+ 		int res;
  
- 	while (count < n) {
- 		temp = min_t(size_t, nullb->dev->blocksize, n - count);
-@@ -1051,16 +1050,11 @@ static int copy_from_nullb(struct nullb *nullb, struct page *dest,
- 		t_page = null_lookup_page(nullb, sector, false,
- 			!null_cache_active(nullb));
+ 		res = pagecache_write_begin(NULL, inode->i_mapping, pos, n, 0,
+@@ -85,9 +84,7 @@ static int pagecache_write(struct inode *inode, const void *buf, size_t count,
+ 		if (res)
+ 			return res;
  
--		dst = kmap_atomic(dest);
--		if (!t_page) {
--			memset(dst + off + count, 0, temp);
--			goto next;
--		}
--		src = kmap_atomic(t_page->page);
--		memcpy(dst + off + count, src + offset, temp);
--		kunmap_atomic(src);
--next:
--		kunmap_atomic(dst);
-+		if (t_page)
-+			memcpy_page(dest, off + count, t_page->page, offset,
-+				    temp);
-+		else
-+			zero_user(dest, off + count, temp);
+-		addr = kmap_atomic(page);
+-		memcpy(addr + offset_in_page(pos), buf, n);
+-		kunmap_atomic(addr);
++		memcpy_to_page(page, offset_in_page(pos), buf, n);
  
- 		count += temp;
- 		sector += temp >> SECTOR_SHIFT;
+ 		res = pagecache_write_end(NULL, inode->i_mapping, pos, n, n,
+ 					  page, fsdata);
 -- 
 2.22.1
 
