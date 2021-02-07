@@ -2,60 +2,60 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
-	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.6 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78D2CC433E9
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:05:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D936EC433E0
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:06:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 52F4B64E2A
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:05:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA94464E35
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Feb 2021 19:06:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229636AbhBGTFi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Feb 2021 14:05:38 -0500
-Received: from esa2.hgst.iphmx.com ([68.232.143.124]:38248 "EHLO
-        esa2.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229565AbhBGTFe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2021 14:05:34 -0500
+        id S229683AbhBGTGI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Feb 2021 14:06:08 -0500
+Received: from esa3.hgst.iphmx.com ([216.71.153.141]:24872 "EHLO
+        esa3.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229537AbhBGTGG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Feb 2021 14:06:06 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
   d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1612725610; x=1644261610;
-  h=from:to:cc:subject:date:message-id:mime-version:
-   content-transfer-encoding;
-  bh=w6zlqoB4qKT1nXBrbOhQGOcEIB8ZlcLodmo+qNAVwo8=;
-  b=o+37OtkrKRVa5bxJiQ87njX57fSJYvT/6ZP8mKa5QnwjcOK90zMixs1e
-   m4HrxIYf3iRH7D4RoP280KXONEPH7bXy/IODxRRR03i5jGgwmBzcdEaZ8
-   s2V88ye1uVcCx1bCVa7AqkT14Ul1AyYra9qNrKM7E9wrre5GMfKsaHO34
-   y0n5Ar76LaHAhBNiKzNCsIxPIR19mUbstwLXZqdKN8R+T7zDdBfAWEfC2
-   neEIiwDRCH7sPr+iaEJGQ04fzDOPp1JQQqIGKm8n8uaHLJrEi2tDn4aMp
-   Pw9ulvzGQxAY3lnUxDAQMln5wKcPPspXkCEWPJnoUiAc4TblhwXLLtlly
-   A==;
-IronPort-SDR: d5EScVApKXNDCq/9I3Mq9wGHfo/OLkUEVparbqej4wCwVNUuq9sEvXD12cy0koLfItg6KyYfBN
- KThsCSO1h1tQ6NO4QPM3PJpnMOa96e9IdQ3QXMkiiaESYTGfwdGr25KkhApWlM/3QcH3U1I15U
- nIyBXma9XpXGCMERkMMtXNK/tpFStKJx6ef5sIlanzxUtjpKXLkQ/n7riyKWD85+RrlrPZyYRo
- uJiwXfbWvPulcWFf9j8Mfe321g6i0+12472JRBj0SIRB94m3N0SZICTG2KHZQYmCNJXMZMapUV
- 7nc=
+  t=1612724766; x=1644260766;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=bUHJh7WdO4b/toeg0AHLw0ztouu30XNNBjvj4mVAqXU=;
+  b=MEGOBD0SUxSMma78+0AWH2c3ZlzZOiJSuuUCS1doO4+wr74a/n4zY3AZ
+   08Bl0VTpKxODg8bTYJAh/7onO0hpSyfQwLIBNZPMg6kJ/+NG7RaNJuJjn
+   LjwO4FQqOE8o9eCFm4wRulaAN6v8H3XmeCkYp/+zZjKtt/Xo7q4/WTy8G
+   OulswRKRlogjJ5HvUK50Le31vPQ1waN8SXAZY0HvpBWBIeWasvmzTd9vE
+   3/Rpd2eKHy2zOLvtvh58DwlmMo9X5pUcmQ7kEd/xDSl8Feuni7aZObnT1
+   8wKLJ7A48/JwBGSHsP/FKOjvi8ujJC2w7fwfNau7r/Re8CTHEj37qtxwC
+   w==;
+IronPort-SDR: fuC609NQHBv4sVwfaP8nv/TaILqX5q7fvyUTHggPlee4x/t/LO7GkNbcXHp+2V2404pz1iJH2p
+ Mefwxnxl0qMEyquFLejbk78ybegFR60ATtiutNnKEzw7FMaiv1sQeh0wWTl9Dx8w6N31lD33kt
+ 766gFrqqAzRLtuODFr9N5fVGITEelY3QsltsGsw3QvMvPmvYGnRUb2EfMH8SVj6KmSxMYFP+LF
+ OLuBGRlwLSVsBeP9J6BHrTNI2rCTWaco0ubeM9ehIq+94UPW1Y1QSzrddocvb9pfbomEUxJtvH
+ zTU=
 X-IronPort-AV: E=Sophos;i="5.81,160,1610380800"; 
-   d="scan'208";a="263497349"
+   d="scan'208";a="163856618"
 Received: from h199-255-45-14.hgst.com (HELO uls-op-cesaep01.wdc.com) ([199.255.45.14])
-  by ob1.hgst.iphmx.com with ESMTP; 08 Feb 2021 03:18:30 +0800
-IronPort-SDR: LE0IRDX7sLF2oxSnyUgA80MuzBxgVWZH4VYL7IIQATUiC07U9UyIq5OrcscwraV1AmgtEHeKF9
- SNVK9jvoXRb+6tjev9pzwB78Es09R2fWNxV/N7VKcyG1vOq5uqKZidWPKZESmvxm8NXj164f0g
- YBOumcTQZHHP5akeu84IuyEoR1WwDA/z3AHsKqd/F2OZF+CbkaXpgzPlWjfQyWW5dWm658zBEI
- NySdWWdtTmYyTTAvs5JzLaPXbo1wrEiGgC6WkbaYLvBIdE8E2jwGlPOIqOFU7wTEOyoxwuPgB6
- 19F1Q3cM9zkfV8D2QP2DXApx
+  by ob1.hgst.iphmx.com with ESMTP; 08 Feb 2021 03:05:01 +0800
+IronPort-SDR: dmQc6zWHhlp1Kuo4d6RnAamUi/SO9d/n+KohGH2iyxGndllBfGZ36Jocs56ClcKJFD1zTt0kfS
+ IlxaH54+MKitkkgn4tV5wFDW1wNfR+4a6zu4SMOsMK2jgeEyRVMHXpK64TeejRTyTrxA4lxfdf
+ wNNdkUqqJ14VjvDzYlcA6FU48fPfNSxRKZylD0wRiGQo7Ecjksa+8eufIiKNA3Rhq/BiRbyL9U
+ KLqeRff40qqcDOq1/Cnx0t2pRp2QjeVFX0IZ1RgDqamQhIAa+MkjDkgTmP2X5enQfYkevXL0Vg
+ m8RuPADHo3gLeJx5AztQaG+n
 Received: from uls-op-cesaip02.wdc.com ([10.248.3.37])
-  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Feb 2021 10:48:22 -0800
-IronPort-SDR: G5UkKRJXYnZF6S2td3KTLC+tstktMSOx5USrJ/8vqHVbIEJIIqHE54GblQXzzWDKDkJYqqMIm8
- /grFclx6OokLW8XLT0EahhHRmjldgbrOtSVmPY2iDCY5Jwp+My9e1mLwkFllm9yHbk9+aju3il
- 15LQnCcS+ED+Ppe8kNeaBlIGJhrSuXnC4oBjsWuwx0fM688vkAbf9ysIyG2UljqmNHOexojEFr
- /H6RbprJtDTtcF2llfZVRwZ4x57vttCqniYZ/8MvLzgQIKhpwqYUiaZvOJJ8ufVCYjb+mvKwd7
- 3Os=
+  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Feb 2021 10:48:54 -0800
+IronPort-SDR: TvntBeAolPC47uEpAHveeRKqEAmQL1bLDsoSWx9UpeX47q4cyQVQy0/0wIpmXUs9xAT7lHssFB
+ L57BvqnFnKJXULcHqEPvzUOsd8dD+lK3twgfLVgzhBoeVPuQ4CwxXf6ijN+9cS23SbxJwwC1ca
+ OiM7KkSy/vLyrwoKEiE0ZKxRIxUziNbioNV1M/OyOdDwMEiYT1CCLSrTb6O8b05Bfrul78hTkm
+ 1+OzN7Zu9sty6jW/ftaKVNTes1sB5dbW9tkCcjLxoqLUiryAVTdKBf9m197WEQaorT4hlklXpH
+ B3I=
 WDCIronportException: Internal
 Received: from vm.labspan.wdc.com (HELO vm.sc.wdc.com) ([10.6.137.102])
-  by uls-op-cesaip02.wdc.com with ESMTP; 07 Feb 2021 11:04:28 -0800
+  by uls-op-cesaip02.wdc.com with ESMTP; 07 Feb 2021 11:05:01 -0800
 From:   Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
 To:     linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -66,43 +66,48 @@ Cc:     axboe@kernel.dk, tytso@mit.edu, adilger.kernel@dilger.ca,
         chaitanya.kulkarni@wdc.com, dongli.zhang@oracle.com, clm@fb.com,
         ira.weiny@intel.com, dsterba@suse.com, ebiggers@kernel.org,
         hch@infradead.org, dave.hansen@intel.com
-Subject: [RFC PATCH 0/8] use core page calls instead of kmaps
-Date:   Sun,  7 Feb 2021 11:04:17 -0800
-Message-Id: <20210207190425.38107-1-chaitanya.kulkarni@wdc.com>
+Subject: [RFC PATCH 3/8] null_blk: use memcpy_page() in copy_to_nullb()
+Date:   Sun,  7 Feb 2021 11:04:20 -0800
+Message-Id: <20210207190425.38107-4-chaitanya.kulkarni@wdc.com>
 X-Mailer: git-send-email 2.22.1
+In-Reply-To: <20210207190425.38107-1-chaitanya.kulkarni@wdc.com>
+References: <20210207190425.38107-1-chaitanya.kulkarni@wdc.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This RFC is based on the discussion going on the linux-fsdevel [1].
+Signed-off-by: Chaitanya Kulkarni <chaitanya.kulkarni@wdc.com>
+---
+ drivers/block/null_blk/main.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
 
-I've tested this on the brd and null_blk. The fio verify job seems to
-run without any error on the top of the original series applied [1].
-
-Any feedback is welcome to move this forward.
-
--ck
-
-[1] https://lore.kernel.org/linux-fsdevel/20210205232304.1670522-1-ira.weiny@intel.com/T/#m53145c155fa3631595594877da96a3a75b71e909
-
-Chaitanya Kulkarni (8):
-  brd: use memcpy_from_page() in copy_from_brd()
-  brd: use memcpy_from_page() in copy_from_brd()
-  null_blk: use memcpy_page() in copy_to_nullb()
-  null_blk: use memcpy_page() in copy_from_nullb()
-  ext4: use memcpy_from_page() in pagecache_read()
-  ext4: use memcpy_to_page() in pagecache_write()
-  f2fs: use memcpy_from_page() in pagecache_read()
-  f2fs: use memcpy_to_page() in pagecache_write()
-
- drivers/block/brd.c           | 17 ++++++-----------
- drivers/block/null_blk/main.c | 23 ++++++-----------------
- fs/ext4/verity.c              | 10 ++--------
- fs/f2fs/verity.c              | 10 ++--------
- 4 files changed, 16 insertions(+), 44 deletions(-)
-
+diff --git a/drivers/block/null_blk/main.c b/drivers/block/null_blk/main.c
+index d6c821d48090..c9b6db82b07c 100644
+--- a/drivers/block/null_blk/main.c
++++ b/drivers/block/null_blk/main.c
+@@ -1010,7 +1010,6 @@ static int copy_to_nullb(struct nullb *nullb, struct page *source,
+ 	size_t temp, count = 0;
+ 	unsigned int offset;
+ 	struct nullb_page *t_page;
+-	void *dst, *src;
+ 
+ 	while (count < n) {
+ 		temp = min_t(size_t, nullb->dev->blocksize, n - count);
+@@ -1024,11 +1023,7 @@ static int copy_to_nullb(struct nullb *nullb, struct page *source,
+ 		if (!t_page)
+ 			return -ENOSPC;
+ 
+-		src = kmap_atomic(source);
+-		dst = kmap_atomic(t_page->page);
+-		memcpy(dst + offset, src + off + count, temp);
+-		kunmap_atomic(dst);
+-		kunmap_atomic(src);
++		memcpy_page(t_page->page, offset, source, off + count, temp);
+ 
+ 		__set_bit(sector & SECTOR_MASK, t_page->bitmap);
+ 
 -- 
 2.22.1
 
