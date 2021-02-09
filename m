@@ -2,204 +2,82 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCA36C433E9
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Feb 2021 21:44:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 561FFC433E0
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Feb 2021 21:44:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8196864EE5
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Feb 2021 21:44:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 151F064EE0
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Feb 2021 21:44:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233626AbhBIVoC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Feb 2021 16:44:02 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36178 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233799AbhBIUj1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Feb 2021 15:39:27 -0500
-Received: from mail-pg1-x52e.google.com (mail-pg1-x52e.google.com [IPv6:2607:f8b0:4864:20::52e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8C1CC0698D3
-        for <linux-ext4@vger.kernel.org>; Tue,  9 Feb 2021 12:29:05 -0800 (PST)
-Received: by mail-pg1-x52e.google.com with SMTP id b21so13217261pgk.7
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Feb 2021 12:29:05 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=gTsL/2weVaUp6jySO4swmTp0wqJQoJ4eNiOPaKp9ecE=;
-        b=geHIyIZHvCw5TRC9zbbzEmErUNfmfbfpE+X5Seg0Ly+cKo+yy2neqDlhKA3KaIPXZk
-         lfFoqfCNqsdAvDRoo1HvN0XXpfijskFpgUfK/+n8vIQDL1MCgk4I/dIK6pux8DgeLNO5
-         gdbkUszcp72/z0LsMXUTFowEzRa9q13dUJEf8uj+GDr8npKB2omJNf8QfQuPDH9BxPsC
-         xZYwYsks+PkvPzzvEDH0LuYv7JevSe26YAB7ANhgQbVfAJCLSjWoJJDAHMBtWZ0n68sF
-         DwoBnxvlBEZDRqlNRFgLsCZ6hoiH9GShI4aRueRyUafDTmQZLINABVI0Znt7wiK/Up1l
-         52KA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=gTsL/2weVaUp6jySO4swmTp0wqJQoJ4eNiOPaKp9ecE=;
-        b=C8hxxDef/saQ9zOQfVqvXF1iso+j+8i2rnDdb3rrAw65DZYA7yHuUoPnmbboWClOhw
-         Wa577xF+yBmJd11R5bs6OPse85C6sGo/5qas9jksctShwyGzXgojFmeeKMrjSUDEc1zL
-         zXVVuL/GsxM7m9I4DZzV8yBU0IZrUhbyskfD7TwC4pMl4mutexYrUY9itCETTl/PEfrP
-         4qQDsHpKdD7q2G/bKZDrGoddBFc2x1Gi58hVGdmv9yG5G0xymzboLufWj+XWiNp/6Mr2
-         nZ5kiEO70KjdcoT9Kxrj4Glr/7PRHCkc3q9uEuJThjIILpgOkQUtLR3llwiP+IulJmRq
-         pJ7A==
-X-Gm-Message-State: AOAM533dx6MOG2FlnUWmBFCZnqfXMaqjN2CfC8mEbrYwQg5lVqyomYf9
-        j4D6hvgETzkA6Ksmt2R/m1ZPklIQVG0=
-X-Google-Smtp-Source: ABdhPJxZqWY+52XZFDhD4OZtLcECkJeotH0tsEF0uAaA27WDxRDsTG90ZIb3XAfOZuT2xEoo79zStQ==
-X-Received: by 2002:a63:1f54:: with SMTP id q20mr23576823pgm.135.1612902544816;
-        Tue, 09 Feb 2021 12:29:04 -0800 (PST)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:1d7c:b2d9:c196:949c])
-        by smtp.googlemail.com with ESMTPSA id p12sm3325827pju.35.2021.02.09.12.29.03
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 09 Feb 2021 12:29:03 -0800 (PST)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+        id S233614AbhBIVoO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Feb 2021 16:44:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:43594 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233956AbhBIU4y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 Feb 2021 15:56:54 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPS id 0AC0B64DB2
+        for <linux-ext4@vger.kernel.org>; Tue,  9 Feb 2021 20:56:13 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1612904173;
+        bh=mLqw0COmLL7JggXN1H4MDOCe4w3FjbJ5yPXLW0ALmbY=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=uVFFtHRJY8p/ejUTqqMIOr+LHer9xdXFA+cFwGxC7oMH0DL6EQpC9O56lgZhf62c2
+         JJsJ+n9mu18BpFDHSS/8y5/GgwpSvQdgtUTDKpZ7WgfFAbE1o/lz4cwWMzrFPgymod
+         aPACY1KYLqxEYG2lXlFnsIu5c7lAR/6YeltNkwgWONUkA8jbcCOAVdIZKzw145y7SE
+         5/MF7NoLRFve90I3nCfFQEbKEoQe69FwTYDDWEZ5aRVoZn5jX2zeNkqE1VUfF7gpix
+         qzT5i+q3avvWfjKeKnOcXV1zIJTw8odoKDrxyNpUn/VXr4ZbC+L8crpSgcv3mJQXDH
+         4e8PcqryryCDQ==
+From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, bzzz@whamcloud.com, artem.blagodarenko@gmail.com,
-        sihara@ddn.com, adilger@dilger.ca,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: Improve group scanning in mballoc
-Date:   Tue,  9 Feb 2021 12:28:52 -0800
-Message-Id: <20210209202857.4185846-1-harshadshirwadkar@gmail.com>
-X-Mailer: git-send-email 2.30.0.478.g8a0d178c01-goog
+Subject: [Bug 63471] Please add a "quit" command to the e2fsck interactive
+ mode
+Date:   Tue, 09 Feb 2021 20:56:12 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: enhancement
+X-Bugzilla-Who: unforgettableid@gmail.com
+X-Bugzilla-Status: CLOSED
+X-Bugzilla-Resolution: MOVED
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: resolution
+Message-ID: <bug-63471-13602-rqhfAy1jGh@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-63471-13602@https.bugzilla.kernel.org/>
+References: <bug-63471-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch series improves cr 0 and cr 1 passes of the allocator
-signficantly. Currently, at cr 0 and 1, we perform linear lookups to
-find the matching groups. That's very inefficient for large file
-systems where there are millions of block groups. At cr 0, we only
-care about the groups that have the largest free order >= the
-request's order and at cr 1 we only care about groups where average
-fragment size > the request size. so, this patchset introduces new
-data structures that allow us to perform cr 0 lookup in constant time
-and cr 1 lookup in log (number of groups) time instead of linear.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D63471
 
-For cr 0, we add a list for each order and all the groups are enqueued
-to the appropriate list based on the largest free order in its buddy
-bitmap. This allows us to lookup a match at cr 0 in constant time.
+unforgettableid@gmail.com changed:
 
-For cr 1, we add a new rb tree of groups sorted by largest fragment
-size. This allows us to lookup a match for cr 1 in log (num groups)
-time.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+         Resolution|INVALID                     |MOVED
 
-These optimizations can be enabled by passing "mb_optimize_scan" mount
-option.
+--- Comment #4 from unforgettableid@gmail.com ---
+My mistake.  Resubmitted at:  https://github.com/tytso/e2fsprogs/issues/59
 
-These changes may result in allocations to be spread across the block
-device. While that would not matter some block devices (such as flash)
-it may be a cause of concern for other block devices that benefit from
-storing related content togetther such as disk. However, it can be
-argued that in high fragmentation scenrio, especially for large disks,
-it's still worth optimizing the scanning since in such cases, we get
-cpu bound on group scanning instead of getting IO bound. Perhaps, in
-future, we could dynamically turn this new optimization on based on
-fragmentation levels for such devices.
+I appreciate your comment.  Also, I thank you for all your kernel-related w=
+ork!
 
-Verified that there are no regressions in smoke tests (-g quick -c 4k).
+--=20
+You may reply to this email to add a comment.
 
-Also, to demonstrate the effectiveness for the patch series, following
-experiment was performed:
-
-Created a highly fragmented disk of size 65TB. The disk had no
-contiguous 2M regions. Following command was run consecutively for 3
-times:
-
-time dd if=/dev/urandom of=file bs=2M count=10
-
-Here are the results with and without cr 0/1 optimizations:
-
-|---------+------------------------------+---------------------------|
-|         | Without CR 0/1 Optimizations | With CR 0/1 Optimizations |
-|---------+------------------------------+---------------------------|
-| 1st run | 5m1.871s                     | 2m47.642s                 |
-| 2nd run | 2m28.390s                    | 0m0.611s                  |
-| 3rd run | 2m26.530s                    | 0m1.255s                  |
-|---------+------------------------------+---------------------------|
-
-The patch [2/5] "ext4: add mballoc stats proc file" is a modified
-version of the patch originally written by Artem Blagodarenko
-(artem.blagodarenko@gmail.com). With that patch, I ran following
-command with and without optimizations.
-
-dd if=/dev/zero of=/mnt/file bs=2M count=2 conv=fsync
-
-Without optimizations:
-mballoc:
-        reqs: 41
-        success: 1
-        groups_scanned: 63
-        groups_considered: 20643620
-        extents_scanned: 7851
-                goal_hits: 0
-                2^n_hits: 1
-                breaks: 39
-                lost: 0
-        useless_c0_loops: 3
-        useless_c1_loops: 39
-        useless_c2_loops: 0
-        useless_c3_loops: 0
-        buddies_generated: 491561/491520
-        buddies_time_used: 13078539152
-        preallocated: 0
-        discarded: 0
-
-With optimizations:
-mballoc:
-        reqs: 42
-        success: 1
-        groups_scanned: 62
-        groups_considered: 1011
-        extents_scanned: 8062
-                goal_hits: 0
-                2^n_hits: 0
-                breaks: 40
-                lost: 0
-        useless_c0_loops: 0
-        useless_c1_loops: 0
-        useless_c2_loops: 0
-        useless_c3_loops: 0
-        buddies_generated: 491561/491520
-        buddies_time_used: 13165943648
-        preallocated: 0
-        discarded: 0
-
-This shows that CR0 and CR1 optimizations get rid of useless CR0 and
-CR1 loops altogether thereby significantly reducing the number of
-groups that get considered.
-
-Changes from V1:
----------------
-- Incorporated Artem's patch that adds a few useful statistics for
-  mballoc performace
-- Added more fine grained locking for CR0 lists and CR1 tree
-- Broke up ext4_mb_choose_next_group function to make code more
-  readable
-- Added a new mount option to provide a switch for these changes
-
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-
-Harshad Shirwadkar (5):
-  ext4: drop s_mb_bal_lock and convert protected fields to atomic
-  ext4: add mballoc stats proc file
-  ext4: add MB_NUM_ORDERS macro
-  ext4: improve cr 0 / cr 1 group scanning
-  ext4: add proc files to monitor new structures
-
- fs/ext4/ext4.h    |  23 ++-
- fs/ext4/mballoc.c | 477 +++++++++++++++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.h |   7 +
- fs/ext4/super.c   |   6 +-
- fs/ext4/sysfs.c   |   4 +
- 5 files changed, 485 insertions(+), 32 deletions(-)
-
--- 
-2.30.0.478.g8a0d178c01-goog
-
+You are receiving this mail because:
+You are watching the assignee of the bug.=
