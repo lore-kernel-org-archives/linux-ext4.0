@@ -2,121 +2,79 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08DA5C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Feb 2021 11:45:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C28CC433E6
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Feb 2021 16:35:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AA2BE64E6F
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Feb 2021 11:45:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E86E64EB1
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Feb 2021 16:35:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230021AbhBRLeZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Feb 2021 06:34:25 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([63.128.21.124]:43866 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232235AbhBRJ5c (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Feb 2021 04:57:32 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1613642161;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=G5MCTqwxlDAIBHaWmzekDNBT1EMATuiYIyXz2ggAznI=;
-        b=P1VZi6l7cZNexBZFnAKiehzsiTVmJwgn10KNh/rfTIdMGN3ZQcNExBuMjfuqbL+miw8BFR
-        vqGdkgn+A5AAy3hMwdfa1yTXZguEdtaYFgXAkvmh0MK3C6pKCASM/KJvbvaaTMzEdMRA9x
-        UCCSDIXr0WVPXqySQbv8rRgpt0XJ/qc=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-57-oq9zX6GnOFKQlTRBgcqMIg-1; Thu, 18 Feb 2021 04:51:52 -0500
-X-MC-Unique: oq9zX6GnOFKQlTRBgcqMIg-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id A67B180364C
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Feb 2021 09:51:51 +0000 (UTC)
-Received: from localhost.localdomain (unknown [10.40.195.70])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1750B7046C;
-        Thu, 18 Feb 2021 09:51:47 +0000 (UTC)
-From:   Lukas Czerner <lczerner@redhat.com>
+        id S232655AbhBRQfN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Feb 2021 11:35:13 -0500
+Received: from mail.kernel.org ([198.145.29.99]:53964 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233061AbhBRM6L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Feb 2021 07:58:11 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPS id ADC3364ED0
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Feb 2021 12:57:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1613653040;
+        bh=qgmtcDjZc8vUq+jpvaesDWxlBuSX8g76jdKgm5E3MPg=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=JO5p0VOdsRZChbERNHPxQBvDA44TsA7txBp79WaSBnggPHcFKuLn0o++GeLKPGFoX
+         Cizz6fMWztfn9WDJ8Lu4tKcaQBzrlKj2acDHS6blP7G+JLb9yhQH0Rmnasnk7oa9I1
+         3VFjDfQuzApn4MGV6KQNWpBlDC7S15PkinIpiyePPc+Eea5locaaBo9DRS3hBEg///
+         i+z7vJqZRMGO2O0yygdwU64KZ0xKfb5l2euXJMUyu7b1m9AEnaBngm8eC3Tfup7qBq
+         x3gDNxy5pkvLICaleIsEzo/QA2L8TaK0qrXCCUfMeZyQ1qvUfP47JOQZSFYEllsIO5
+         iF+2GfEp7OmTg==
+From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Cc:     Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH v2] mmp: do not use O_DIRECT when working with regular file
-Date:   Thu, 18 Feb 2021 10:51:46 +0100
-Message-Id: <20210218095146.265302-1-lczerner@redhat.com>
-In-Reply-To: <20210212093719.162065-1-lczerner@redhat.com>
-References: <20210212093719.162065-1-lczerner@redhat.com>
+Subject: [Bug 210185] kernel BUG at fs/ext4/page-io.c:126!
+Date:   Thu, 18 Feb 2021 12:57:20 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: gernot.poerner@web.de
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-210185-13602-3c3hwTLqdB@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-210185-13602@https.bugzilla.kernel.org/>
+References: <bug-210185-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently the mmp block is read using O_DIRECT to avoid any caching that
-may be done by the VM. However when working with regular files this
-creates alignment issues when the device of the host file system has
-sector size larger than the blocksize of the file system in the file
-we're working with.
+https://bugzilla.kernel.org/show_bug.cgi?id=3D210185
 
-This can be reproduced with t_mmp_fail test when run on the device with
-4k sector size because the mke2fs fails when trying to read the mmp
-block.
+--- Comment #15 from gpo (gernot.poerner@web.de) ---
+Ok, quick update here, we built a vanilla 5.10.16 and ran that for a couple=
+ of
+days and it didn't occur again, so it seems to be fixed, at least for our
+problem.
 
-Fix it by disabling O_DIRECT when working with regular files. I don't
-think there is any risk of doing so since the file system layer, unlike
-shared block device, should guarantee cache consistency.
+We will test with the official Debian 5.10 which now also was released but =
+I'm
+very optimistic it's fixed.
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
----
-v2: Fix comment - it avoids problems when the sector size is larger not
-    smaller than blocksize
+--=20
+You may reply to this email to add a comment.
 
- lib/ext2fs/mmp.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
-
-diff --git a/lib/ext2fs/mmp.c b/lib/ext2fs/mmp.c
-index c21ae272..cca2873b 100644
---- a/lib/ext2fs/mmp.c
-+++ b/lib/ext2fs/mmp.c
-@@ -57,21 +57,21 @@ errcode_t ext2fs_mmp_read(ext2_filsys fs, blk64_t mmp_blk, void *buf)
- 	 * regardless of how the io_manager is doing reads, to avoid caching of
- 	 * the MMP block by the io_manager or the VM.  It needs to be fresh. */
- 	if (fs->mmp_fd <= 0) {
-+		struct stat st;
- 		int flags = O_RDWR | O_DIRECT;
- 
--retry:
-+		/*
-+		 * There is no reason for using O_DIRECT if we're working with
-+		 * regular file. Disabling it also avoids problems with
-+		 * alignment when the device of the host file system has sector
-+		 * size larger than blocksize of the fs we're working with.
-+		 */
-+		if (stat(fs->device_name, &st) == 0 &&
-+		    S_ISREG(st.st_mode))
-+			flags &= ~O_DIRECT;
-+
- 		fs->mmp_fd = open(fs->device_name, flags);
- 		if (fs->mmp_fd < 0) {
--			struct stat st;
--
--			/* Avoid O_DIRECT for filesystem image files if open
--			 * fails, since it breaks when running on tmpfs. */
--			if (errno == EINVAL && (flags & O_DIRECT) &&
--			    stat(fs->device_name, &st) == 0 &&
--			    S_ISREG(st.st_mode)) {
--				flags &= ~O_DIRECT;
--				goto retry;
--			}
- 			retval = EXT2_ET_MMP_OPEN_DIRECT;
- 			goto out;
- 		}
--- 
-2.26.2
-
+You are receiving this mail because:
+You are watching the assignee of the bug.=
