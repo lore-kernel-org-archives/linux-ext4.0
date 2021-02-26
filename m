@@ -2,209 +2,237 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-17.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8792AC433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2D7CC433E6
 	for <linux-ext4@archiver.kernel.org>; Fri, 26 Feb 2021 19:37:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2814A64F1F
+	by mail.kernel.org (Postfix) with ESMTP id 81F4E64F2D
 	for <linux-ext4@archiver.kernel.org>; Fri, 26 Feb 2021 19:37:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230194AbhBZThJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Feb 2021 14:37:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60880 "EHLO
+        id S230264AbhBZThN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Feb 2021 14:37:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60890 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229949AbhBZThG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2021 14:37:06 -0500
-Received: from mail-pf1-x429.google.com (mail-pf1-x429.google.com [IPv6:2607:f8b0:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D2173C061574
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Feb 2021 11:36:25 -0800 (PST)
-Received: by mail-pf1-x429.google.com with SMTP id q204so5878418pfq.10
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Feb 2021 11:36:25 -0800 (PST)
+        with ESMTP id S230177AbhBZThH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2021 14:37:07 -0500
+Received: from mail-pl1-x62c.google.com (mail-pl1-x62c.google.com [IPv6:2607:f8b0:4864:20::62c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6CA0FC061756
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Feb 2021 11:36:27 -0800 (PST)
+Received: by mail-pl1-x62c.google.com with SMTP id ba1so5851909plb.1
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Feb 2021 11:36:27 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=hvUbrKBLZESMWSFGr9nCS7XUBmQQoaeWoZeV8VwbhD8=;
-        b=YFQ4hKjPAmq9S0gj7fFfOXlVSVl/taOgwkOAoe1y/tX2BPv8LsL9O0U/e3Xcn7o7LV
-         59hwQPtQcUjEMOKDsViBwFZDNgbcE0xzBwHV1TA5sWxUgVptqvS5AEDNYpnMaxL0g00o
-         JYBugH3QoWHM6M+vWsASy3zzbYRyF5vkYxzyv/7qbzv8kFgXL88MVD6LzIa2xK99C+mU
-         i0palnV6CsAf2m22U1bZV7ZxOSGFyW0bCtuxv31dTjPAIVeqRcvmuvFpt2L6+aioiJth
-         KCOJRIjybL09o6B3Zj+aEUjwK6irkT8IAADHSEzalq3IXRTXbOH7AHYpS4yyb3JsEe2G
-         0asA==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=v99MoK5XowtjdD0DtRdQ+7VFESrzX5fu3SIr5OwKGvc=;
+        b=FwsyEZDUGW14w89w42DbWBVUyKIbocUQ3Z1MbOiFkhSOkYlo0Exc4JB5LVOo97HfaG
+         nDW27PGqiQIQzGvBYqci0eUTMPFg887QfojOG4mqEYPPgTz4hCCLIZv0W7WPY7frEVbK
+         l4ua3uk2KnUPrkbXn2YqdUVnXQHc/VPT7emnfGnjNF6cnlooLMWpX2BfPH0KkHMkYK1I
+         /0nNJUkhx6QVGhgIT7CnJVeTtM1Bmgt+GsZXLkNu/CxiId9CVPxrTTAKDKfujJ7cAmuh
+         Kwqb5kbk6HBjJmX8cNcFx5JQzlcAEuEqB6N4VlTJT+Kamh2wwGHq7WCHa27xkyLm1KZ5
+         H0Sg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=hvUbrKBLZESMWSFGr9nCS7XUBmQQoaeWoZeV8VwbhD8=;
-        b=oGxApazt6gd7RoN/uPF2buEwygrInUD2TvaeG7SSu+q03pdMtzWAVxUOfnRAmcx2pE
-         uvejxm6tTcux4k3PSrtkOeUfVz8r0q4fivV9BzrH/5c6V+bDg1SchQ2vEKx57UNDLJug
-         /GZi9PYVzK7IaBfaJpNxUjt3BgbLTejXs0aFhFlHlr/CDcfdZduvbI5ccmW9nfUpFnFE
-         DGLtF5F8WU1GAQDqe+ZzkXgRc+xqETFA3BLZaefEmCWGuLzxHpOvrDo0tdfy4bS6c64o
-         HTRC9dyUsyFhfNNf0VbaI0YkwAG0+XHpVY4NH4/H2Nv2CyRRo7hJKV0rmSB9YLyRqCSK
-         QFgg==
-X-Gm-Message-State: AOAM531IuxWZhNn/+vTj5/PpZ6y8Ve+YlvQ+tBwpw5s9JwYvmoFzo1fh
-        758T2vAs0aQJ7XpcOtnlseNOSNN0foU=
-X-Google-Smtp-Source: ABdhPJwJw5Alo6eia3+O96JdvfvTQks5OVvE94/fkwvF/RiSMPJr6xUu4e1tVJz999GPP8M3Ru8Gkg==
-X-Received: by 2002:a63:5703:: with SMTP id l3mr4287065pgb.344.1614368184427;
-        Fri, 26 Feb 2021 11:36:24 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=v99MoK5XowtjdD0DtRdQ+7VFESrzX5fu3SIr5OwKGvc=;
+        b=QerrxzOk/sMYBsR6wncpzwTWU1NkQxhYcm9Nz5DIiJ+VIP/uhv0oH+vrOEiAcoWiOi
+         YerINgSLZX+kwPq06HeBQr/bSmoUSLosv2XFB7OWuW+ERssjc2Jye2UnLfCmv9FQk18w
+         6TP8FmL7FFnqi7CBwvX3cWsVGi/BXFYxrAQuTRZ8jmTINXsXTj1yKuV2Zxvjna6muvc1
+         0Ty6oPmO8XJTDzaox6vp/Xv1/Q9biqnL65AtORnZUMpeczF1Bm3L5O5HGbXPFuBAp61H
+         UMcAChInI4kZZgTKH5wvDeg9nTku29WEW9KPID1p8XaSzm2N1S7QzKk6bOn4Fzn2CsN2
+         DT4Q==
+X-Gm-Message-State: AOAM533AmC0V3FfKbQzd44KUSfY4TjqFh3TRUZvNDHe5EXWiSi+HodFl
+        HTLohN/0f4krH2blUJsZHOnt7NpyVCU=
+X-Google-Smtp-Source: ABdhPJxyCbpZzIxINmbcON8c5d7P7cwCluFLVn8uZY/cfMkOX23XQOP3k8A2Us/B88/m8RjEZ4PhJw==
+X-Received: by 2002:a17:90b:244:: with SMTP id fz4mr1903622pjb.137.1614368186444;
+        Fri, 26 Feb 2021 11:36:26 -0800 (PST)
 Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:e88c:d103:27dc:612d])
-        by smtp.googlemail.com with ESMTPSA id x129sm2935041pfc.96.2021.02.26.11.36.23
+        by smtp.googlemail.com with ESMTPSA id x129sm2935041pfc.96.2021.02.26.11.36.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 26 Feb 2021 11:36:23 -0800 (PST)
+        Fri, 26 Feb 2021 11:36:25 -0800 (PST)
 From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     tytso@mit.edu, adilger@dilger.ca,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v3 0/5] Improve group scanning in CR 0 and CR 1 passes
-Date:   Fri, 26 Feb 2021 11:36:07 -0800
-Message-Id: <20210226193612.1199321-1-harshadshirwadkar@gmail.com>
+Subject: [PATCH v3 2/5] ext4: add mballoc stats proc file
+Date:   Fri, 26 Feb 2021 11:36:09 -0800
+Message-Id: <20210226193612.1199321-3-harshadshirwadkar@gmail.com>
 X-Mailer: git-send-email 2.30.1.766.gb4fecdf3b7-goog
+In-Reply-To: <20210226193612.1199321-1-harshadshirwadkar@gmail.com>
+References: <20210226193612.1199321-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ext4: improve cr 0 and cr 1 passes
+Add new stats for measuring the performance of mballoc. This patch is
+forked from Artem Blagodarenko's work that can be found here:
 
-This patch series improves cr 0 and cr 1 passes of the allocator
-signficantly. Currently, at cr 0 and 1, we perform linear lookups to
-find the matching groups. That's very inefficient for large file
-systems where there are millions of block groups. At cr 0, we only
-care about the groups that have the largest free order >= the
-request's order and at cr 1 we only care about groups where average
-fragment size > the request size. so, this patchset introduces new
-data structures that allow us to perform cr 0 lookup in constant time
-and cr 1 lookup in log (number of groups) time instead of linear.
-
-For cr 0, we add a list for each order and all the groups are enqueued
-to the appropriate list based on the largest free order in its buddy
-bitmap. This allows us to lookup a match at cr 0 in constant time.
-
-For cr 1, we add a new rb tree of groups sorted by largest fragment
-size. This allows us to lookup a match for cr 1 in log (num groups)
-time.
-
-These optimizations can be enabled by passing "mb_optimize_scan" mount
-option.
-
-These changes may result in allocations to be spread across the block
-device. While that would not matter some block devices (such as flash)
-it may be a cause of concern for other block devices that benefit from
-storing related content togetther such as disk. However, it can be
-argued that in high fragmentation scenrio, especially for large disks,
-it's still worth optimizing the scanning since in such cases, we get
-cpu bound on group scanning instead of getting IO bound. Perhaps, in
-future, we could dynamically turn this new optimization on based on
-fragmentation levels for such devices.
-
-Verified that there are no regressions in smoke tests (-g quick -c 4k).
-
-Also, to demonstrate the effectiveness for the patch series, following
-experiment was performed:
-
-Created a highly fragmented disk of size 65TB. The disk had no
-contiguous 2M regions. Following command was run consecutively for 3
-times:
-
-time dd if=/dev/urandom of=file bs=2M count=10
-
-Here are the results with and without cr 0/1 optimizations:
-
-|---------+------------------------------+---------------------------|
-|         | Without CR 0/1 Optimizations | With CR 0/1 Optimizations |
-|---------+------------------------------+---------------------------|
-| 1st run | 5m1.871s                     | 2m47.642s                 |
-| 2nd run | 2m28.390s                    | 0m0.611s                  |
-| 3rd run | 2m26.530s                    | 0m1.255s                  |
-|---------+------------------------------+---------------------------|
-
-The patch [2/5] "ext4: add mballoc stats proc file" is a modified
-version of the patch originally written by Artem Blagodarenko
-(artem.blagodarenko@gmail.com). With that patch, I ran following
-command with and without optimizations.
-
-dd if=/dev/zero of=/mnt/file bs=2M count=2 conv=fsync
-
-Without optimizations:
-mballoc:
-        reqs: 41
-        success: 1
-        groups_scanned: 63
-        groups_considered: 20643620
-        extents_scanned: 7851
-                goal_hits: 0
-                2^n_hits: 1
-                breaks: 39
-                lost: 0
-        useless_c0_loops: 3
-        useless_c1_loops: 39
-        useless_c2_loops: 0
-        useless_c3_loops: 0
-        buddies_generated: 491561/491520
-        buddies_time_used: 13078539152
-        preallocated: 0
-        discarded: 0
-
-With optimizations:
-mballoc:
-        reqs: 42
-        success: 1
-        groups_scanned: 62
-        groups_considered: 1011
-        extents_scanned: 8062
-                goal_hits: 0
-                2^n_hits: 0
-                breaks: 40
-                lost: 0
-        useless_c0_loops: 0
-        useless_c1_loops: 0
-        useless_c2_loops: 0
-        useless_c3_loops: 0
-        buddies_generated: 491561/491520
-        buddies_time_used: 13165943648
-        preallocated: 0
-        discarded: 0
-
-This shows that CR0 and CR1 optimizations get rid of useless CR0 and
-CR1 loops altogether thereby significantly reducing the number of
-groups that get considered.
-
-Changes from V2:
-----------------
-- Added mb_linear_limit sysfs tunable that controls how many groups
-  should the allocator search in linear fashion before consulting the
-  the new data structures.
-- Added following optimizations:
-  * Full groups are not added to either structures
-  * MB_OPTIMIZE_SCAN is disabled for small file systems
-- Updated documentation in the code
-- Made output of mb_structs_summary output file to be YAML compatible
-- Small fixes to change location of increment ac_groups_considered
-  variable and added missed MB_NUM_ORDERS macro
+https://github.com/lustre/lustre-release/blob/master/ldiskfs/kernel_patches/patches/rhel8/ext4-simple-blockalloc.patch
 
 Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ fs/ext4/ext4.h    |  4 ++++
+ fs/ext4/mballoc.c | 51 ++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/mballoc.h |  1 +
+ fs/ext4/sysfs.c   |  2 ++
+ 4 files changed, 57 insertions(+), 1 deletion(-)
 
-Harshad Shirwadkar (5):
-  ext4: drop s_mb_bal_lock and convert protected fields to atomic
-  ext4: add mballoc stats proc file
-  ext4: add MB_NUM_ORDERS macro
-  ext4: improve cr 0 / cr 1 group scanning
-  ext4: add proc files to monitor new structures
-
- fs/ext4/ext4.h    |  24 +-
- fs/ext4/mballoc.c | 541 +++++++++++++++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.h |  20 ++
- fs/ext4/super.c   |   6 +-
- fs/ext4/sysfs.c   |   6 +
- 5 files changed, 564 insertions(+), 33 deletions(-)
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cb0724b87d54..3e906a3d553a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1549,6 +1549,8 @@ struct ext4_sb_info {
+ 	atomic_t s_bal_success;	/* we found long enough chunks */
+ 	atomic_t s_bal_allocated;	/* in blocks */
+ 	atomic_t s_bal_ex_scanned;	/* total extents scanned */
++	atomic_t s_bal_groups_considered;	/* number of groups considered */
++	atomic_t s_bal_groups_scanned;	/* number of groups scanned */
+ 	atomic_t s_bal_goals;	/* goal hits */
+ 	atomic_t s_bal_breaks;	/* too long searches */
+ 	atomic_t s_bal_2orders;	/* 2^order hits */
+@@ -1558,6 +1560,7 @@ struct ext4_sb_info {
+ 	atomic_t s_mb_preallocated;
+ 	atomic_t s_mb_discarded;
+ 	atomic_t s_lock_busy;
++	atomic64_t s_bal_cX_failed[4];		/* cX loop didn't find blocks */
+ 
+ 	/* locality groups */
+ 	struct ext4_locality_group __percpu *s_locality_groups;
+@@ -2808,6 +2811,7 @@ int __init ext4_fc_init_dentry_cache(void);
+ extern const struct seq_operations ext4_mb_seq_groups_ops;
+ extern long ext4_mb_stats;
+ extern long ext4_mb_max_to_scan;
++extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
+ extern int ext4_mb_init(struct super_block *);
+ extern int ext4_mb_release(struct super_block *);
+ extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 07b78a3cc421..92c4edaa1afc 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2146,6 +2146,7 @@ static int ext4_mb_good_group_nolock(struct ext4_allocation_context *ac,
+ 	ext4_grpblk_t free;
+ 	int ret = 0;
+ 
++	ac->ac_groups_considered++;
+ 	if (should_lock)
+ 		ext4_lock_group(sb, group);
+ 	free = grp->bb_free;
+@@ -2420,6 +2421,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 			if (ac->ac_status != AC_STATUS_CONTINUE)
+ 				break;
+ 		}
++		/* Processed all groups and haven't found blocks */
++		if (sbi->s_mb_stats && i == ngroups)
++			atomic64_inc(&sbi->s_bal_cX_failed[cr]);
+ 	}
+ 
+ 	if (ac->ac_b_ex.fe_len > 0 && ac->ac_status != AC_STATUS_FOUND &&
+@@ -2548,6 +2552,48 @@ const struct seq_operations ext4_mb_seq_groups_ops = {
+ 	.show   = ext4_mb_seq_groups_show,
+ };
+ 
++int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset)
++{
++	struct super_block *sb = (struct super_block *)seq->private;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	seq_puts(seq, "mballoc:\n");
++	if (!sbi->s_mb_stats) {
++		seq_puts(seq, "\tmb stats collection turned off.\n");
++		seq_puts(seq, "\tTo enable, please write \"1\" to sysfs file mb_stats.\n");
++		return 0;
++	}
++	seq_printf(seq, "\treqs: %u\n", atomic_read(&sbi->s_bal_reqs));
++	seq_printf(seq, "\tsuccess: %u\n", atomic_read(&sbi->s_bal_success));
++
++	seq_printf(seq, "\tgroups_scanned: %u\n",  atomic_read(&sbi->s_bal_groups_scanned));
++	seq_printf(seq, "\tgroups_considered: %u\n",  atomic_read(&sbi->s_bal_groups_considered));
++	seq_printf(seq, "\textents_scanned: %u\n", atomic_read(&sbi->s_bal_ex_scanned));
++	seq_printf(seq, "\t\tgoal_hits: %u\n", atomic_read(&sbi->s_bal_goals));
++	seq_printf(seq, "\t\t2^n_hits: %u\n", atomic_read(&sbi->s_bal_2orders));
++	seq_printf(seq, "\t\tbreaks: %u\n", atomic_read(&sbi->s_bal_breaks));
++	seq_printf(seq, "\t\tlost: %u\n", atomic_read(&sbi->s_mb_lost_chunks));
++
++	seq_printf(seq, "\tuseless_c0_loops: %llu\n",
++		   (unsigned long long)atomic64_read(&sbi->s_bal_cX_failed[0]));
++	seq_printf(seq, "\tuseless_c1_loops: %llu\n",
++		   (unsigned long long)atomic64_read(&sbi->s_bal_cX_failed[1]));
++	seq_printf(seq, "\tuseless_c2_loops: %llu\n",
++		   (unsigned long long)atomic64_read(&sbi->s_bal_cX_failed[2]));
++	seq_printf(seq, "\tuseless_c3_loops: %llu\n",
++		   (unsigned long long)atomic64_read(&sbi->s_bal_cX_failed[3]));
++	seq_printf(seq, "\tbuddies_generated: %u/%u\n",
++		   atomic_read(&sbi->s_mb_buddies_generated),
++		   ext4_get_groups_count(sb));
++	seq_printf(seq, "\tbuddies_time_used: %llu\n",
++		   atomic64_read(&sbi->s_mb_generation_time));
++	seq_printf(seq, "\tpreallocated: %u\n",
++		   atomic_read(&sbi->s_mb_preallocated));
++	seq_printf(seq, "\tdiscarded: %u\n",
++		   atomic_read(&sbi->s_mb_discarded));
++	return 0;
++}
++
+ static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
+ {
+ 	int cache_index = blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
+@@ -2968,9 +3014,10 @@ int ext4_mb_release(struct super_block *sb)
+ 				atomic_read(&sbi->s_bal_reqs),
+ 				atomic_read(&sbi->s_bal_success));
+ 		ext4_msg(sb, KERN_INFO,
+-		      "mballoc: %u extents scanned, %u goal hits, "
++		      "mballoc: %u extents scanned, %u groups scanned, %u goal hits, "
+ 				"%u 2^N hits, %u breaks, %u lost",
+ 				atomic_read(&sbi->s_bal_ex_scanned),
++				atomic_read(&sbi->s_bal_groups_scanned),
+ 				atomic_read(&sbi->s_bal_goals),
+ 				atomic_read(&sbi->s_bal_2orders),
+ 				atomic_read(&sbi->s_bal_breaks),
+@@ -3579,6 +3626,8 @@ static void ext4_mb_collect_stats(struct ext4_allocation_context *ac)
+ 		if (ac->ac_b_ex.fe_len >= ac->ac_o_ex.fe_len)
+ 			atomic_inc(&sbi->s_bal_success);
+ 		atomic_add(ac->ac_found, &sbi->s_bal_ex_scanned);
++		atomic_add(ac->ac_groups_scanned, &sbi->s_bal_groups_scanned);
++		atomic_add(ac->ac_groups_considered, &sbi->s_bal_groups_considered);
+ 		if (ac->ac_g_ex.fe_start == ac->ac_b_ex.fe_start &&
+ 				ac->ac_g_ex.fe_group == ac->ac_b_ex.fe_group)
+ 			atomic_inc(&sbi->s_bal_goals);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index e75b4749aa1c..7597330dbdf8 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -161,6 +161,7 @@ struct ext4_allocation_context {
+ 	/* copy of the best found extent taken before preallocation efforts */
+ 	struct ext4_free_extent ac_f_ex;
+ 
++	__u32 ac_groups_considered;
+ 	__u16 ac_groups_scanned;
+ 	__u16 ac_found;
+ 	__u16 ac_tail;
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 075aa3a19ff5..59ca9d73b42f 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -521,6 +521,8 @@ int ext4_register_sysfs(struct super_block *sb)
+ 					ext4_fc_info_show, sb);
+ 		proc_create_seq_data("mb_groups", S_IRUGO, sbi->s_proc,
+ 				&ext4_mb_seq_groups_ops, sb);
++		proc_create_single_data("mb_stats", 0444, sbi->s_proc,
++				ext4_seq_mb_stats_show, sb);
+ 	}
+ 	return 0;
+ }
 -- 
 2.30.1.766.gb4fecdf3b7-goog
 
