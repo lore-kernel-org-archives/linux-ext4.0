@@ -2,68 +2,48 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A824C433DB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC742C433E0
 	for <linux-ext4@archiver.kernel.org>; Sat, 27 Feb 2021 01:30:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 50E2264EE7
+	by mail.kernel.org (Postfix) with ESMTP id 68E5C64EF0
 	for <linux-ext4@archiver.kernel.org>; Sat, 27 Feb 2021 01:30:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229953AbhB0Bac (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Feb 2021 20:30:32 -0500
-Received: from mail.kernel.org ([198.145.29.99]:40942 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229618AbhB0Baa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 26 Feb 2021 20:30:30 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPS id 116EF64EDB
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Feb 2021 01:29:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1614389390;
-        bh=zQ8A4qe8TBcy/HViy7nPjvYA/xdlsP4rvUKRVF46tJU=;
-        h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=NFgt8mLojOyvt0CoQlsrW9gde6yuluJYog2nmxfZC4Di35F5SsmK3hZZRYVQiE2+t
-         83L1mV38C4AUzKrc7HvJRlf3gDIWDVfmpFlYDYr7YUDTzrKBYy8b397OLchy7LhRKt
-         LsGLG+s9uoybDliWtGwdmmXm6NtMXY1111t2eolUngOC+yomeVCGJIxDt8JgbSReK0
-         hun6mxGRI7O27qLj1T20JE3RIfNQU+tlGEE3BrcPePypeKCZGAjDyi2aehv1Fgx+Lg
-         1gUbQuaLaCS3FHtxc0bfqIqkCX+ci2NYfV+YO4BbVjsRrh/XfM5wKpLf1B2jfaXlk3
-         id5GypY9AtPpQ==
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 211971] Incorrect fix by e2fsck for blocks_count corruption
-Date:   Sat, 27 Feb 2021 01:29:49 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-211971-13602-gbjhQYQXM1@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-211971-13602@https.bugzilla.kernel.org/>
+        id S230063AbhB0Bah (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Feb 2021 20:30:37 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57861 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S229999AbhB0Bag (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2021 20:30:36 -0500
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 11R1Tj2H003419
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 26 Feb 2021 20:29:45 -0500
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 20FCB15C39D2; Fri, 26 Feb 2021 20:29:45 -0500 (EST)
+Date:   Fri, 26 Feb 2021 20:29:45 -0500
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Amy Parker <enbyamy@gmail.com>
+Cc:     bugzilla-daemon@bugzilla.kernel.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [Bug 211971] New: Incorrect fix by e2fsck for blocks_count
+ corruption
+Message-ID: <YDmgiV+IMF7SLtrW@mit.edu>
 References: <bug-211971-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+ <CAE1WUT6NueggML9Kf+JxB-dX=fyKrOhDszAnbt7UvFhQqwm3Gg@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAE1WUT6NueggML9Kf+JxB-dX=fyKrOhDszAnbt7UvFhQqwm3Gg@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D211971
-
---- Comment #2 from Theodore Tso (tytso@mit.edu) ---
 On Fri, Feb 26, 2021 at 04:58:23PM -0800, Amy Parker wrote:
 > Can you replicate this on modern 5.4 from kernel.org? -generic kernels
 > are from Canonical and are sometimes broken compared to upstream. If
@@ -113,10 +93,5 @@ So this is a case of e2fsck is working as intended.
 
 Cheers,
 
-                                        - Ted
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+					- Ted
+					
