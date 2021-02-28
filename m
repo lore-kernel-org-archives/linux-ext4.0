@@ -2,170 +2,164 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25E49C43381
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 11:22:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2B5BC43603
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Feb 2021 17:13:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E6D2F64E2E
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 11:22:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D087F64EE1
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Feb 2021 17:13:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232615AbhCALVz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Mar 2021 06:21:55 -0500
-Received: from mx2.suse.de ([195.135.220.15]:39720 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232584AbhCALVq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Mar 2021 06:21:46 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 0788FADE5;
-        Mon,  1 Mar 2021 11:21:04 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id B27F71E0871; Mon,  1 Mar 2021 12:21:02 +0100 (CET)
-Date:   Mon, 1 Mar 2021 12:21:02 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     "zhangyi (F)" <yi.zhang@huawei.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        tytso@mit.edu, jack@suse.cz, viro@zeniv.linux.org.uk
-Subject: Re: [PATCH] block_dump: don't put the last refcount when marking
- inode dirty
-Message-ID: <20210301112102.GD25026@quack2.suse.cz>
-References: <20210226103103.3048803-1-yi.zhang@huawei.com>
+        id S231313AbhB1RMp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Feb 2021 12:12:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49154 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230461AbhB1RMj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Feb 2021 12:12:39 -0500
+Received: from mail-ej1-x635.google.com (mail-ej1-x635.google.com [IPv6:2a00:1450:4864:20::635])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 10048C06174A;
+        Sun, 28 Feb 2021 09:11:58 -0800 (PST)
+Received: by mail-ej1-x635.google.com with SMTP id g5so23843438ejt.2;
+        Sun, 28 Feb 2021 09:11:57 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=dfQ46OGWItLgoKPUR/Czwfd0qqTUSj25+jf5yrElG/4=;
+        b=GzeA/aDB2UBhnNVhm++I/Jk3Up7Sjll8FWko6UUVrR8GbwUj6tdWvj7U7T3p1JnaWE
+         tuDT5n8KyfWwgonEFcDAlbP9Wnm/lzI5ynLZd5zXrmZLcqy0e5qJFV+Ury6tgPUdhcIC
+         ZnUpySrUVv3A0oExsLsVOkNej6wDTO/NVed1e1lRxfeovoJIixufVCuML3LKRgEXHaK6
+         AQIpA41ncR2vIctG/YIpRBR7PPh4Vs9caRlig7rCLuPUPKUXlteysI6kNYwN/3Yc//ci
+         tD2NQsug/MYd9mQ+dWSVvw0ZV+w1YK/V6hQL8df04yN35+nWGaht76tutf0kiQ1Fxgq5
+         E6Vw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=dfQ46OGWItLgoKPUR/Czwfd0qqTUSj25+jf5yrElG/4=;
+        b=DFk3PQk4Tg5+x/JyUn1GIB9WRKbs4ZjvCjYZr9JKO8621MT6/JMbxVEVcdDoUwHVL+
+         For3KnKO03QZ25kxJo4JrfZHSkIeuz8ttxAxFkjgF2q6WYdlaegFsyL7pwebxMCJOuh/
+         NrMre9pjnYhb6I4oOeQe6UNOpaC6IPz2m13QnfLeVZ2YZGlmr1DYxmPi+bvVPkKasB7e
+         u9RBjICZzwxg7kg714yWmesb+O+Rtbcpc99VRzJxNj+AhqwCvcU1kFYQqrqosKdGeMu3
+         qv1KRTCKEbd/EDeY1ITs68EsyfQGwPqrqB4AdfJhZ2zoof+PofoZAtTFpktFx3ZcE2nA
+         XTjg==
+X-Gm-Message-State: AOAM5304vRkhWj/qH8naxa3syBxpk1crx5yAp/FsV3b7mRkxQxwuuOcN
+        4SYwXjH8z05UBhk34i8rBvOfdoP18tGg
+X-Google-Smtp-Source: ABdhPJw5sLbCUCcgxkhNvC6IgO3vmNaTgOeasYPBEho60Poa4WNRXoZ/cPiXNkLCHgbgyBJUziViqw==
+X-Received: by 2002:a17:906:acb:: with SMTP id z11mr3855755ejf.193.1614532316774;
+        Sun, 28 Feb 2021 09:11:56 -0800 (PST)
+Received: from localhost.localdomain ([46.53.249.223])
+        by smtp.gmail.com with ESMTPSA id fw3sm6654338ejb.82.2021.02.28.09.11.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 28 Feb 2021 09:11:56 -0800 (PST)
+Date:   Sun, 28 Feb 2021 20:11:54 +0300
+From:   Alexey Dobriyan <adobriyan@gmail.com>
+To:     torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org, linux-arch@vger.kernel.org
+Subject: [PATCH 12/11] pragma once: scripted treewide conversion
+Message-ID: <YDvO2kmidKZaK26j@localhost.localdomain>
+References: <YDvLYzsGu+l1pQ2y@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20210226103103.3048803-1-yi.zhang@huawei.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <YDvLYzsGu+l1pQ2y@localhost.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 26-02-21 18:31:03, zhangyi (F) wrote:
-> There is an AA deadlock problem when using block_dump on ext4 file
-> system with data=journal mode.
-> 
->   watchdog: BUG: soft lockup - CPU#19 stuck for 22s! [jbd2/pmem0-8:1002]
->   CPU: 19 PID: 1002 Comm: jbd2/pmem0-8
->   RIP: 0010:queued_spin_lock_slowpath+0x60/0x3b0
->   ...
->   Call Trace:
->    _raw_spin_lock+0x57/0x70
->    jbd2_journal_invalidatepage+0x166/0x680
->    __ext4_journalled_invalidatepage+0x8c/0x120
->    ext4_journalled_invalidatepage+0x12/0x40
->    truncate_cleanup_page+0x10e/0x1c0
->    truncate_inode_pages_range+0x2c8/0xec0
->    truncate_inode_pages_final+0x41/0x90
->    ext4_evict_inode+0x254/0xac0
->    evict+0x11c/0x2f0
->    iput+0x20e/0x3a0
->    dentry_unlink_inode+0x1bf/0x1d0
->    __dentry_kill+0x14c/0x2c0
->    dput+0x2bc/0x630
->    block_dump___mark_inode_dirty.cold+0x5c/0x111
->    __mark_inode_dirty+0x678/0x6b0
->    mark_buffer_dirty+0x16e/0x1d0
->    __jbd2_journal_temp_unlink_buffer+0x127/0x1f0
->    __jbd2_journal_unfile_buffer+0x24/0x80
->    __jbd2_journal_refile_buffer+0x12f/0x1b0
->    jbd2_journal_commit_transaction+0x244b/0x3030
-> 
-> The problem is a race between jbd2 committing data buffer and user
-> unlink the file concurrently. The jbd2 will get jh->b_state_lock and
-> redirty the inode's data buffer and inode itself. If block_dump is
-> enabled, it will try to find inode's dentry and invoke the last dput()
-> after the inode was unlinked. Then the evict procedure will unmap
-> buffer and get jh->b_state_lock again in journal_unmap_buffer(), and
-> finally lead to deadlock. It works fine if block_dump is not enabled
-> because the last evict procedure is not invoked in jbd2 progress and
-> the jh->b_state_lock will also prevent inode use after free.
-> 
-> jbd2                                xxx
->                                     vfs_unlink
->                                      ext4_unlink
-> jbd2_journal_commit_transaction
-> **get jh->b_state_lock**
-> jbd2_journal_refile_buffer
->  mark_buffer_dirty
->   __mark_inode_dirty
->    block_dump___mark_inode_dirty
->     d_find_alias
->                                      d_delete
->                                       unhash
->     dput  //put the last refcount
->      evict
->       journal_unmap_buffer
->        **get jh->b_state_lock again**
-> 
-> In most cases of where invoking mark_inode_dirty() will get inode's
-> refcount and the last iput may not happen, but it's not safe. After
-> checking the block_dump code, it only want to dump the file name of the
-> dirty inode, so there is no need to get and put denrty, and dump an
-> unhashed dentry is also fine. This patch remove the dget() && dput(),
-> print the dentry name directly.
-> 
-> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-> Signed-off-by: yebin (H) <yebin10@huawei.com>
+[  Bcc a lot of lists so that people understand what's this is all         ]
+[  about without creating uber-cc-thread.                                  ]
+[  Apologies if I missed your subsystem                                    ]
+[  Please see [PATCH 11/11: pragma once: conversion script (in Python 2)]  ]
 
-Hrm, ok. Honestly, I wanted to just delete that code for a long time. IMO
-tracepoints (and we have one in __mark_inode_dirty) are much more useful
-for tracing anyway. This code exists only because it was there much before
-tracepoints existed... Do you have a strong reason why are you using
-block_dump instead of tracepoint trace_writeback_mark_inode_dirty() for
-your monitoring?
+Hi, Linus.
 
-								Honza
+Please run the script below from top-level directory, it will convert
+most kernel headers to #pragma once directive advancing them into
+21-st century.
 
-> ---
->  fs/fs-writeback.c | 20 ++++++++++++++------
->  1 file changed, 14 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index c41cb887eb7d..e9b0952fe236 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -2199,21 +2199,29 @@ int dirtytime_interval_handler(struct ctl_table *table, int write,
->  static noinline void block_dump___mark_inode_dirty(struct inode *inode)
->  {
->  	if (inode->i_ino || strcmp(inode->i_sb->s_id, "bdev")) {
-> -		struct dentry *dentry;
-> +		struct dentry *dentry = NULL;
->  		const char *name = "?";
->  
-> -		dentry = d_find_alias(inode);
-> -		if (dentry) {
-> -			spin_lock(&dentry->d_lock);
-> -			name = (const char *) dentry->d_name.name;
-> +		if (!hlist_empty(&inode->i_dentry)) {
-> +			spin_lock(&inode->i_lock);
-> +			if (!hlist_empty(&inode->i_dentry)) {
-> +				dentry = hlist_entry(inode->i_dentry.first,
-> +						     struct dentry, d_u.d_alias);
-> +				spin_lock(&dentry->d_lock);
-> +				name = (const char *) dentry->d_name.name;
-> +			} else {
-> +				spin_unlock(&inode->i_lock);
-> +			}
->  		}
-> +
->  		printk(KERN_DEBUG
->  		       "%s(%d): dirtied inode %lu (%s) on %s\n",
->  		       current->comm, task_pid_nr(current), inode->i_ino,
->  		       name, inode->i_sb->s_id);
-> +
->  		if (dentry) {
->  			spin_unlock(&dentry->d_lock);
-> -			dput(dentry);
-> +			spin_unlock(&inode->i_lock);
->  		}
->  	}
->  }
-> -- 
-> 2.25.4
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+The advantages are:
+
+* less LOC
+
+	18087 files changed, 18878 insertions(+), 99804 deletions(-)
+	= -81 kLOC (give or take)
+
+* less mental tax on developers forced to name things which aren't even
+  real code
+
+* less junk in preprocessor hashtables and editors/IDEs autocompletion
+  lists
+
+There are two bit exceptions: UAPI headers and ACPICA.
+Given ubiquity of #pragma once, I personally think even these subsystems
+should be converted in the future.
+
+Compile tested on alpha, arc, arm, arm64, h8300, ia64, m68k, microblaze,
+mips, nios2, parisc, powerpc, riscv, s390, sh, sparc, um-i386, um-x86_64,
+i386, x86_64, xtensa (allnoconfig, all defconfigs, allmodconfig with or
+without SMP/DEBUG_KERNEL + misc stuff).
+
+Not compile tested on csky, hexagon, nds32, openrisc. 
+
+Love,
+	Alexey
+
+Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+
+
+
+#!/bin/sh -x
+find . -type f -name '*.h' -print	|\
+LC_ALL=C sort				|\
+sed -e 's#^./##g'			|\
+xargs ./scripts/pragma-once.py
+
+find . -type d -name 'uapi' | xargs git checkout -f
+git checkout -f arch/alpha/include/asm/cmpxchg.h
+git checkout -f arch/arm/mach-imx/hardware.h
+git checkout -f arch/arm/mach-ixp4xx/include/mach/hardware.h
+git checkout -f arch/arm/mach-sa1100/include/mach/hardware.h
+git checkout -f arch/mips/include/asm/mips-cps.h
+git checkout -f arch/x86/boot/boot.h
+git checkout -f arch/x86/boot/ctype.h
+git checkout -f arch/x86/include/asm/cpufeatures.h
+git checkout -f arch/x86/include/asm/disabled-features.h
+git checkout -f arch/x86/include/asm/required-features.h
+git checkout -f arch/x86/include/asm/vmxfeatures.h
+git checkout -f arch/x86/include/asm/vvar.h
+git checkout -f drivers/acpi/acpica/
+git checkout -f drivers/gpu/drm/amd/pm/inc/vega10_ppsmc.h
+git checkout -f drivers/gpu/drm/amd/pm/powerplay/ppsmc.h
+git checkout -f drivers/input/misc/yealink.h
+git checkout -f drivers/media/usb/dvb-usb-v2/mxl111sf-demod.h
+git checkout -f drivers/media/usb/dvb-usb-v2/mxl111sf-tuner.h
+git checkout -f drivers/pcmcia/yenta_socket.h
+git checkout -f drivers/staging/rtl8723bs/include/hal_com_h2c.h
+git checkout -f include/linux/acpi.h
+git checkout -f include/linux/bitops.h
+git checkout -f include/linux/compiler_types.h
+git checkout -f include/linux/device.h
+git checkout -f include/linux/kbuild.h
+git checkout -f include/linux/libfdt_env.h
+git checkout -f include/linux/local_lock.h
+git checkout -f include/linux/spinlock.h
+git checkout -f include/linux/spinlock_api_smp.h
+git checkout -f include/linux/spinlock_types.h
+git checkout -f include/linux/tracepoint.h
+git checkout -f mm/gup_test.h
+git checkout -f net/batman-adv/main.h
+git checkout -f scripts/dtc/
+git checkout -f tools/include/linux/bitops.h
+git checkout -f tools/include/linux/compiler.h
+git checkout -f tools/testing/selftests/clone3/clone3_selftests.h
+git checkout -f tools/testing/selftests/futex/include/atomic.h
+git checkout -f tools/testing/selftests/futex/include/futextest.h
+git checkout -f tools/testing/selftests/futex/include/logging.h
+git checkout -f tools/testing/selftests/kselftest.h
+git checkout -f tools/testing/selftests/kselftest_harness.h
+git checkout -f tools/testing/selftests/pidfd/pidfd.h
+git checkout -f tools/testing/selftests/x86/helpers.h
