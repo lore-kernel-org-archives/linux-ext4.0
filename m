@@ -2,292 +2,209 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E08D0C433E0
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 19:47:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C9CCC433DB
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 20:50:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 808BB64DB2
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 19:47:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5455B600EF
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 20:50:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241273AbhCATqi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Mar 2021 14:46:38 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50492 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235846AbhCATor (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Mar 2021 14:44:47 -0500
-Received: from mail-pf1-x434.google.com (mail-pf1-x434.google.com [IPv6:2607:f8b0:4864:20::434])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 26303C061756
-        for <linux-ext4@vger.kernel.org>; Mon,  1 Mar 2021 11:43:57 -0800 (PST)
-Received: by mail-pf1-x434.google.com with SMTP id i10so3051310pfk.4
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Mar 2021 11:43:57 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=gzyU35y7Bs6cMSpambovie7QtY9rov8HiW77aa1zY2A=;
-        b=MASzkdFelfMuz+I9AK/f9zBXXBywRkg0XtWGmqya+Pbaux+ZK6IaPA224uqg6meblR
-         BGhspiZiJMBDluh0FnKW9WqzrQuvM8jD5bksT6b3+g0YOvVCqjcbp2/twPRdCwtieSgM
-         Dm7G/oVjwIRP/2tKhJFjs9FYcXtmPX16RjEfMCTVM87YY3jCg+dqqNWAnCdcGF9scCFL
-         qrS2i4XuQEo/YAQu1B9knweiU3HIB716uniqddL1f0vc6dcZX9w7bPAdErQXE8eW1asH
-         k0YU/K5H7j6iuYbanoL940kzNk+SZT5MwfN9FGy4zI6XIYDU40Fw1r5IDhR3xiYGaLa+
-         F+yg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=gzyU35y7Bs6cMSpambovie7QtY9rov8HiW77aa1zY2A=;
-        b=M1qdgbyepO4kJjp92slgVqQjA9rvlRLChXH+4z2CJ13NAhrCvj3Ko79blXFuUS8+ow
-         HYkNz9LYpSZdNE52sy5cHQJkQ/B9GkXvVpGUJR/e2pgZMLwT6zMqIkiOPp/5Y7iIKjZw
-         vEudEBvpTjXE8qNWGCLfiUObwYYBtPWvnn7u+yCS217NbAEolWsUZI1bjIFWmCjrJ84a
-         X0CIrXSoWS623c/fi7ua5dWiMQB30CP3oudQE297nh1XH+ICATZFaB6CZ2LGrtnyYWCJ
-         YzEcu8igqFbCsE5fMEd9UlpnNdEMQqj+Xx6BnOE5rQUvld5YW1yHhvhmhgUfXICuDmZW
-         NEUg==
-X-Gm-Message-State: AOAM531hx7ocCceTlMu3aEmsHs9Q5zIMyLg/7yW3Emd/8w4jBlI3fEs+
-        Y8qNaHrdzCNtbnftMtx6jxTXww==
-X-Google-Smtp-Source: ABdhPJyNm1eFxthBKtsB5AYDutRhFlkFDGzBfCJ2fMO0A4hRQf7ED2FOXjyv0ZotlYKKggqdIFMtow==
-X-Received: by 2002:a63:7885:: with SMTP id t127mr344053pgc.237.1614627836608;
-        Mon, 01 Mar 2021 11:43:56 -0800 (PST)
-Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
-        by smtp.gmail.com with ESMTPSA id x190sm18648267pfx.166.2021.03.01.11.43.55
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 01 Mar 2021 11:43:55 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <C7CB3E07-5CAE-4E31-8456-137710B16C25@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_F677A744-15ED-4B16-8903-0C355A93AAC7";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v3 5/5] ext4: add proc files to monitor new structures
-Date:   Mon, 1 Mar 2021 12:43:51 -0700
-In-Reply-To: <20210226193612.1199321-6-harshadshirwadkar@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu
-To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-References: <20210226193612.1199321-1-harshadshirwadkar@gmail.com>
- <20210226193612.1199321-6-harshadshirwadkar@gmail.com>
-X-Mailer: Apple Mail (2.3273)
+        id S242872AbhCAUt3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Mar 2021 15:49:29 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:56669 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S243656AbhCAUrZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Mar 2021 15:47:25 -0500
+Received: from ip5f5af0a0.dynamic.kabel-deutschland.de ([95.90.240.160] helo=wittgenstein)
+        by youngberry.canonical.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
+        (Exim 4.86_2)
+        (envelope-from <christian.brauner@ubuntu.com>)
+        id 1lGpQg-000669-3l; Mon, 01 Mar 2021 20:46:10 +0000
+Date:   Mon, 1 Mar 2021 21:46:08 +0100
+From:   Christian Brauner <christian.brauner@ubuntu.com>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
+        John Johansen <john.johansen@canonical.com>,
+        James Morris <jmorris@namei.org>,
+        Mimi Zohar <zohar@linux.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Geoffrey Thomas <geofft@ldpreload.com>,
+        Mrunal Patel <mpatel@redhat.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Theodore Tso <tytso@mit.edu>, Alban Crequy <alban@kinvolk.io>,
+        Tycho Andersen <tycho@tycho.ws>,
+        David Howells <dhowells@redhat.com>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Seth Forshee <seth.forshee@canonical.com>,
+        =?utf-8?B?U3TDqXBoYW5l?= Graber <stgraber@ubuntu.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Aleksa Sarai <cyphar@cyphar.com>,
+        Lennart Poettering <lennart@poettering.net>,
+        "Eric W. Biederman" <ebiederm@xmission.com>, smbarber@chromium.org,
+        Phil Estes <estesp@gmail.com>, Serge Hallyn <serge@hallyn.com>,
+        Kees Cook <keescook@chromium.org>,
+        Todd Kjos <tkjos@google.com>, Paul Moore <paul@paul-moore.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        containers@lists.linux-foundation.org,
+        linux-security-module@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-integrity@vger.kernel.org, selinux@vger.kernel.org
+Subject: Re: [PATCH v6 39/40] xfs: support idmapped mounts
+Message-ID: <20210301204608.ip7nowqh6fpztkhr@wittgenstein>
+References: <20210121131959.646623-1-christian.brauner@ubuntu.com>
+ <20210121131959.646623-40-christian.brauner@ubuntu.com>
+ <20210301200520.GK7272@magnolia>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20210301200520.GK7272@magnolia>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Mon, Mar 01, 2021 at 12:05:20PM -0800, Darrick J. Wong wrote:
+> On Thu, Jan 21, 2021 at 02:19:58PM +0100, Christian Brauner wrote:
+> > From: Christoph Hellwig <hch@lst.de>
+> > 
+> > Enable idmapped mounts for xfs. This basically just means passing down
+> > the user_namespace argument from the VFS methods down to where it is
+> > passed to the relevant helpers.
+> > 
+> > Note that full-filesystem bulkstat is not supported from inside idmapped
+> > mounts as it is an administrative operation that acts on the whole file
+> > system. The limitation is not applied to the bulkstat single operation
+> > that just operates on a single inode.
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > Signed-off-by: Christian Brauner <christian.brauner@ubuntu.com>
+> > ---
+> > /* v2 */
+> > 
+> > /* v3 */
+> > 
+> > /* v4 */
+> > 
+> > /* v5 */
+> > base-commit: 7c53f6b671f4aba70ff15e1b05148b10d58c2837
+> > 
+> > /* v6 */
+> > unchanged
+> > base-commit: 19c329f6808995b142b3966301f217c831e7cf31
+> > ---
+> >  fs/xfs/xfs_acl.c     |  3 +--
+> >  fs/xfs/xfs_file.c    |  4 +++-
+> >  fs/xfs/xfs_inode.c   | 26 +++++++++++++++--------
+> >  fs/xfs/xfs_inode.h   | 16 +++++++++------
+> >  fs/xfs/xfs_ioctl.c   | 35 ++++++++++++++++++-------------
+> >  fs/xfs/xfs_ioctl32.c |  6 ++++--
+> >  fs/xfs/xfs_iops.c    | 49 +++++++++++++++++++++++++-------------------
+> >  fs/xfs/xfs_iops.h    |  3 ++-
+> >  fs/xfs/xfs_itable.c  | 17 +++++++++++----
+> >  fs/xfs/xfs_itable.h  |  1 +
+> >  fs/xfs/xfs_qm.c      |  3 ++-
+> >  fs/xfs/xfs_super.c   |  2 +-
+> >  fs/xfs/xfs_symlink.c |  5 +++--
+> >  fs/xfs/xfs_symlink.h |  5 +++--
+> >  14 files changed, 110 insertions(+), 65 deletions(-)
+> 
+> <snip> Sorry for not noticing until after this went upstream, but...
 
---Apple-Mail=_F677A744-15ED-4B16-8903-0C355A93AAC7
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+No problem at all.
 
-On Feb 26, 2021, at 12:36 PM, Harshad Shirwadkar =
-<harshadshirwadkar@gmail.com> wrote:
->=20
-> This patch adds a new file "mb_structs_summary" which allows us to see
-> the summary of the new allocator structures added in this
-> series. Here's the sample output of file:
->=20
-> optimize_scan: 1
-> max_free_order_lists:
->        list_order_0_groups: 0
->        list_order_1_groups: 0
->        list_order_2_groups: 0
->        list_order_3_groups: 0
->        list_order_4_groups: 0
->        list_order_5_groups: 0
->        list_order_6_groups: 0
->        list_order_7_groups: 0
->        list_order_8_groups: 0
->        list_order_9_groups: 0
->        list_order_10_groups: 0
->        list_order_11_groups: 0
->        list_order_12_groups: 0
->        list_order_13_groups: 40
-> fragment_size_tree:
->        tree_min: 16384
->        tree_max: 32768
->        tree_nodes: 40
->=20
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+> 
+> > diff --git a/fs/xfs/xfs_itable.c b/fs/xfs/xfs_itable.c
+> > index 16ca97a7ff00..ca310a125d1e 100644
+> > --- a/fs/xfs/xfs_itable.c
+> > +++ b/fs/xfs/xfs_itable.c
+> > @@ -54,10 +54,12 @@ struct xfs_bstat_chunk {
+> >  STATIC int
+> >  xfs_bulkstat_one_int(
+> >  	struct xfs_mount	*mp,
+> > +	struct user_namespace	*mnt_userns,
+> >  	struct xfs_trans	*tp,
+> >  	xfs_ino_t		ino,
+> >  	struct xfs_bstat_chunk	*bc)
+> >  {
+> > +	struct user_namespace	*sb_userns = mp->m_super->s_user_ns;
+> >  	struct xfs_icdinode	*dic;		/* dinode core info pointer */
+> >  	struct xfs_inode	*ip;		/* incore inode pointer */
+> >  	struct inode		*inode;
+> > @@ -86,8 +88,8 @@ xfs_bulkstat_one_int(
+> >  	 */
+> >  	buf->bs_projectid = ip->i_d.di_projid;
+> >  	buf->bs_ino = ino;
+> > -	buf->bs_uid = i_uid_read(inode);
+> > -	buf->bs_gid = i_gid_read(inode);
+> > +	buf->bs_uid = from_kuid(sb_userns, i_uid_into_mnt(mnt_userns, inode));
+> > +	buf->bs_gid = from_kgid(sb_userns, i_gid_into_mnt(mnt_userns, inode));
+> >  	buf->bs_size = dic->di_size;
+> >  
+> >  	buf->bs_nlink = inode->i_nlink;
+> > @@ -173,7 +175,8 @@ xfs_bulkstat_one(
+> >  	if (!bc.buf)
+> >  		return -ENOMEM;
+> >  
+> > -	error = xfs_bulkstat_one_int(breq->mp, NULL, breq->startino, &bc);
+> > +	error = xfs_bulkstat_one_int(breq->mp, breq->mnt_userns, NULL,
+> > +				     breq->startino, &bc);
+> >  
+> >  	kmem_free(bc.buf);
+> >  
+> > @@ -194,9 +197,10 @@ xfs_bulkstat_iwalk(
+> >  	xfs_ino_t		ino,
+> >  	void			*data)
+> >  {
+> > +	struct xfs_bstat_chunk	*bc = data;
+> >  	int			error;
+> >  
+> > -	error = xfs_bulkstat_one_int(mp, tp, ino, data);
+> > +	error = xfs_bulkstat_one_int(mp, bc->breq->mnt_userns, tp, ino, data);
+> >  	/* bulkstat just skips over missing inodes */
+> >  	if (error == -ENOENT || error == -EINVAL)
+> >  		return 0;
+> > @@ -239,6 +243,11 @@ xfs_bulkstat(
+> >  	};
+> >  	int			error;
+> >  
+> > +	if (breq->mnt_userns != &init_user_ns) {
+> > +		xfs_warn_ratelimited(breq->mp,
+> > +			"bulkstat not supported inside of idmapped mounts.");
+> > +		return -EINVAL;
+> 
+> Shouldn't this be -EPERM?
+> 
+> Or -EOPNOTSUPP?
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+EOPNOTSUPP seems a good choice. Whether or not it's better than EINVAL I
+don't know. With my userspace maintainer hat on I would probably say
+that EOPNOTSUPP feels a bit more natural and might have the advantage
+that it is less overloaded then EINVAL.
 
-> ---
-> fs/ext4/ext4.h    |  1 +
-> fs/ext4/mballoc.c | 86 +++++++++++++++++++++++++++++++++++++++++++++++
-> fs/ext4/sysfs.c   |  2 ++
-> 3 files changed, 89 insertions(+)
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index d792418c39ca..81209a749e75 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2818,6 +2818,7 @@ int __init ext4_fc_init_dentry_cache(void);
->=20
-> /* mballoc.c */
-> extern const struct seq_operations ext4_mb_seq_groups_ops;
-> +extern const struct seq_operations ext4_mb_seq_structs_summary_ops;
-> extern long ext4_mb_stats;
-> extern long ext4_mb_max_to_scan;
-> extern int ext4_seq_mb_stats_show(struct seq_file *seq, void *offset);
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index bcfd849bc61e..4378b36be8b9 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2910,6 +2910,92 @@ int ext4_seq_mb_stats_show(struct seq_file =
-*seq, void *offset)
-> 	return 0;
-> }
->=20
-> +static void *ext4_mb_seq_structs_summary_start(struct seq_file *seq, =
-loff_t *pos)
-> +{
-> +	struct super_block *sb =3D PDE_DATA(file_inode(seq->file));
-> +	unsigned long position;
-> +
-> +	read_lock(&EXT4_SB(sb)->s_mb_rb_lock);
-> +
-> +	if (*pos < 0 || *pos >=3D MB_NUM_ORDERS(sb) + 1)
-> +		return NULL;
-> +	position =3D *pos + 1;
-> +	return (void *) ((unsigned long) position);
-> +}
-> +
-> +static void *ext4_mb_seq_structs_summary_next(struct seq_file *seq, =
-void *v, loff_t *pos)
-> +{
-> +	struct super_block *sb =3D PDE_DATA(file_inode(seq->file));
-> +	unsigned long position;
-> +
-> +	++*pos;
-> +	if (*pos < 0 || *pos >=3D MB_NUM_ORDERS(sb) + 1)
-> +		return NULL;
-> +	position =3D *pos + 1;
-> +	return (void *) ((unsigned long) position);
-> +}
-> +
-> +static int ext4_mb_seq_structs_summary_show(struct seq_file *seq, =
-void *v)
-> +{
-> +	struct super_block *sb =3D PDE_DATA(file_inode(seq->file));
-> +	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
-> +	unsigned long position =3D ((unsigned long) v);
-> +	struct ext4_group_info *grp;
-> +	struct rb_node *n;
-> +	unsigned int count, min, max;
-> +
-> +	position--;
-> +	if (position >=3D MB_NUM_ORDERS(sb)) {
-> +		seq_puts(seq, "fragment_size_tree:\n");
-> +		n =3D rb_first(&sbi->s_mb_avg_fragment_size_root);
-> +		if (!n) {
-> +			seq_puts(seq, "\ttree_min: 0\n\ttree_max: =
-0\n\ttree_nodes: 0\n");
-> +			return 0;
-> +		}
-> +		grp =3D rb_entry(n, struct ext4_group_info, =
-bb_avg_fragment_size_rb);
-> +		min =3D grp->bb_fragments ? grp->bb_free / =
-grp->bb_fragments : 0;
-> +		count =3D 1;
-> +		while (rb_next(n)) {
-> +			count++;
-> +			n =3D rb_next(n);
-> +		}
-> +		grp =3D rb_entry(n, struct ext4_group_info, =
-bb_avg_fragment_size_rb);
-> +		max =3D grp->bb_fragments ? grp->bb_free / =
-grp->bb_fragments : 0;
-> +
-> +		seq_printf(seq, "\ttree_min: %u\n\ttree_max: =
-%u\n\ttree_nodes: %u\n",
-> +			   min, max, count);
-> +		return 0;
-> +	}
-> +
-> +	if (position =3D=3D 0) {
-> +		seq_printf(seq, "optimize_scan: %d\n",
-> +			   test_opt2(sb, MB_OPTIMIZE_SCAN) ? 1 : 0);
-> +		seq_puts(seq, "max_free_order_lists:\n");
-> +	}
-> +	count =3D 0;
-> +	list_for_each_entry(grp, =
-&sbi->s_mb_largest_free_orders[position],
-> +			    bb_largest_free_order_node)
-> +		count++;
-> +	seq_printf(seq, "\tlist_order_%u_groups: %u\n",
-> +		   (unsigned int)position, count);
-> +
-> +	return 0;
-> +}
-> +
-> +static void ext4_mb_seq_structs_summary_stop(struct seq_file *seq, =
-void *v)
-> +{
-> +	struct super_block *sb =3D PDE_DATA(file_inode(seq->file));
-> +
-> +	read_unlock(&EXT4_SB(sb)->s_mb_rb_lock);
-> +}
-> +
-> +const struct seq_operations ext4_mb_seq_structs_summary_ops =3D {
-> +	.start  =3D ext4_mb_seq_structs_summary_start,
-> +	.next   =3D ext4_mb_seq_structs_summary_next,
-> +	.stop   =3D ext4_mb_seq_structs_summary_stop,
-> +	.show   =3D ext4_mb_seq_structs_summary_show,
-> +};
-> +
-> static struct kmem_cache *get_groupinfo_cache(int blocksize_bits)
-> {
-> 	int cache_index =3D blocksize_bits - EXT4_MIN_BLOCK_LOG_SIZE;
-> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-> index 16b8a838f631..4a3b78684f83 100644
-> --- a/fs/ext4/sysfs.c
-> +++ b/fs/ext4/sysfs.c
-> @@ -525,6 +525,8 @@ int ext4_register_sysfs(struct super_block *sb)
-> 				&ext4_mb_seq_groups_ops, sb);
-> 		proc_create_single_data("mb_stats", 0444, sbi->s_proc,
-> 				ext4_seq_mb_stats_show, sb);
-> +		proc_create_seq_data("mb_structs_summary", 0444, =
-sbi->s_proc,
-> +				&ext4_mb_seq_structs_summary_ops, sb);
-> 	}
-> 	return 0;
-> }
-> --
-> 2.30.1.766.gb4fecdf3b7-goog
->=20
+> 
+> Also, I'm not sure why bulkstat won't work in an idmapped mount but
+> bulkstat_single does?  You can use the singleton version to stat inodes
+> that aren't inside the submount.
 
+Christoph will very likely have a better informed opinion than I have
+but as long as bulkstat is able to discern inodes that need to be
+reported idmapped and inodes that don't then I see no reason why this
+shouldn't work (at least for privileged users on the host which I think
+is the case already).
 
-Cheers, Andreas
+In any case these changes, if any, aren't vfs changes and so you can
+just take them as bugfixes through the xfs tree anyway. So no harm done
+in you not spotting it earlier. :)
 
-
-
-
-
-
---Apple-Mail=_F677A744-15ED-4B16-8903-0C355A93AAC7
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmA9Q/cACgkQcqXauRfM
-H+DRhw//Z7N1/0WfRCuXaG2d8q1uYYC1kg/ut2Rp8kQw0hVYziZ2/1vDGezB8k7l
-ZV/1PHtHlif1x075izNNZspfgdh/TafNbM/Kluc5LmP19xAZKltqzMMS/kPTjaNy
-EnnH57Tdkf6uxdtA50GwtufEBNV1C/cxxvvT5ZpiQEMsKCN4L0XgEkADt/ut5Q0F
-BwPnL/7aVZ1JSz6WpneY3mZkVLqXwl7Zs3vsPoxqwUrl6cYXpnZwoqh35hNcIZMe
-jFmKAoRbTNc1EhWk+eeq/SRDsBxdggkVNQRf2A/P528KNdUZVjEY7g82WpvhJd6w
-g8BBsl4HZ107WR1lJm6jolaNv3bSS9cSrlnMHECPPJF35bye9uIlNmTa3/qq7QDU
-QyPF3NT9yV7+2mCBtSKaccXmaG9qdh0JR4Rq+ea1Vw1kSEDgSdaX3Y6d4sZLH81p
-2TdCuF6YhRarI/u2p5nkEBDMQE6hIb4l4f13TaAi4R3mL2S2kMVYAypBka332/3+
-2yHasER0ToL7nnE+kVXqNGO0/hsAg8a0uljSvgoSvB9IJtUSmMsvzG+wOfryLp7a
-JCAniKXFDiutG6JguxJdjGjLUUVIIMlQtBkjzMzlZpp5WkZh7W+lIGjihF5hdoTj
-4sdCd6cV0MHETInWyNNmMC0eIeKBG3PIA4d/NcWErcwNLK6eMPY=
-=R6th
------END PGP SIGNATURE-----
-
---Apple-Mail=_F677A744-15ED-4B16-8903-0C355A93AAC7--
+Thanks for taking another look!
+Christian
