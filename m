@@ -2,96 +2,119 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC742C433E0
-	for <linux-ext4@archiver.kernel.org>; Sat, 27 Feb 2021 01:30:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D121C433E0
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 03:52:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 68E5C64EF0
-	for <linux-ext4@archiver.kernel.org>; Sat, 27 Feb 2021 01:30:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D5ACD60232
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Mar 2021 03:52:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230063AbhB0Bah (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Feb 2021 20:30:37 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57861 "EHLO
+        id S231853AbhCADwQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Feb 2021 22:52:16 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:41028 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S229999AbhB0Bag (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Feb 2021 20:30:36 -0500
+        with ESMTP id S231411AbhCADwP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Feb 2021 22:52:15 -0500
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 11R1Tj2H003419
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1213pQLl030893
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 26 Feb 2021 20:29:45 -0500
+        Sun, 28 Feb 2021 22:51:27 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 20FCB15C39D2; Fri, 26 Feb 2021 20:29:45 -0500 (EST)
-Date:   Fri, 26 Feb 2021 20:29:45 -0500
+        id 64B6015C3428; Sun, 28 Feb 2021 22:51:26 -0500 (EST)
+Date:   Sun, 28 Feb 2021 22:51:26 -0500
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Amy Parker <enbyamy@gmail.com>
-Cc:     bugzilla-daemon@bugzilla.kernel.org,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [Bug 211971] New: Incorrect fix by e2fsck for blocks_count
- corruption
-Message-ID: <YDmgiV+IMF7SLtrW@mit.edu>
-References: <bug-211971-13602@https.bugzilla.kernel.org/>
- <CAE1WUT6NueggML9Kf+JxB-dX=fyKrOhDszAnbt7UvFhQqwm3Gg@mail.gmail.com>
+To:     linux-ext4@vger.kernel.org
+Subject: [ANNOUNCE] e2fsprogs v1.46.2
+Message-ID: <YDxkvpmXBqrDGmz2@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAE1WUT6NueggML9Kf+JxB-dX=fyKrOhDszAnbt7UvFhQqwm3Gg@mail.gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Feb 26, 2021 at 04:58:23PM -0800, Amy Parker wrote:
-> Can you replicate this on modern 5.4 from kernel.org? -generic kernels
-> are from Canonical and are sometimes broken compared to upstream. If
-> you can't replicate this on mainline, you'll need to contact
-> Canonical. We can't do anything if the problem only persists on
-> distribution kernels.
+I've released e2fsprogs 1.46.2 in all of the usual places; it's tagged
+in the git trees on git.kernel.org, github, and sourceforge, and
+available for download at:
 
-This has nothing to do with the kernel.  What the user is complaining
-about is that e2fsck trusts the blocks count field in the superblock
-as to be a source of truth.  If that field is artificially changed to
-be a smaller value, e2fsck will assume the file system size indicated
-by that changed size.
+http://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.46.2
 
-That's an intentional design choice of e2fsck.  Given that with modern
-ext4 file systems, we have metadata checksums, if the superblock has
-been accidentally corrupted, the checksum will fail, and then e2fsck
-will try using the backup superblock instead.
+and
 
-For older file systems that don't have metadata checksums enabled, we
-could check to see if certain "fundamental constants" in the primary
-superblock is different from the secondary superblock, but...
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.46.2.tar.gz
 
-> > debugfs -w image
-> > debugfs:  ssv blocks_count 4000
-> > debugfs:  q
-
-This will update the blocks_count in the primary and all secondary
-backups.  So that's not going to really help the user.  Effectively,
-the complaint is "I pointed the gun at my foot, and pulled the
-triggered, and now my foot hurts!"
-
-> > # Expected that e2fsck would fix the blocks count corruption instead of
-> > changing other fields (e.g.,free blocks_count)
-
-The problem is that e2fsck can't really determine that the blocks
-count field has been corrupted.  We could warn the user if the
-blocks_count is smaller than the reported size of the device,
-but.... that's actually something that can happen in real life, and
-it's not necessarily a file system "corruption", but rather an
-intentional choice by the system administrator.  If we were to give a
-warning, or worse, assume that blocks count should be adjusted to be
-the size of the deivce, we'd be getting complaints from users who
-deliberately chose to set the file system size to be something smaller
-than the block device.
-
-So this is a case of e2fsck is working as intended.
+The release notes for 1.46.2 can be found below.
 
 Cheers,
 
-					- Ted
-					
+                                        - Ted
+
+E2fsprogs 1.46.2 (February 28, 2021)
+===================================
+
+Updates/Fixes since v1.46.1:
+
+UI and Features
+---------------
+
+Teach the tune2fs program to support "random" as an argument to the -c
+option, which sets the maximum mount count.  (Addresses Debian Bug:
+#926293)
+
+Add support for the FS_NOCOMP_FL flag to chattr and lsattr.
+
+
+Fixes
+-----
+
+When resizing a small file systems to a super-large file system size,
+avoid issuing some scary bitmap operation warnings.  (Addresses Github
+issue https://github.com/tytso/e2fsprogs/issues/60)
+
+Fix the debugfs rdump and ls commands so they will work correctly for
+uid's and gid's => 65536.  (Addresses Github issue issue
+https://github.com/tytso/e2fsprogs/issues/63)
+
+Fix the debugfs write and symlink commands so they support targets which
+contain a pathname (instead of only working when writing a file or
+creating a symlink in the current directory).  (Addresses Github issue
+https://github.com/tytso/e2fsprogs/issues/61)
+
+Fix Direct I/O support on block devices where the logical block size is
+greater 1k.  (This includes Advanced Format HDD's, where the sector size
+is 4k, and IBM Mainframe DASD's, where the sector size is 2k.)
+
+Fix debugfs's logdump so it works on file systems whose block size is
+greater than 8k.
+
+Fix a where e2fsck could a crash when there is error while e2fsck is
+trying to open the file system, and e2fsck calls ext2fs_mmp_stop()
+before MMP has been initialized.  (Addresses Debian Bug: #696609)
+
+Improved error checking in the fast commit replay code in e2fsck.
+
+Updated and clarified the chattr man page.
+
+
+Performance, Internal Implementation, Development Support etc.
+--------------------------------------------------------------
+
+Fix various compiler and Coverity warnings.
+
+Update the Spanish translation from the translation project.
+
+Update the e2fsck/iscan.c test program so that it builds again.
+
+Fix an environmental dependency bug for the m_rootdir_acl regression
+test.
+
+Avoid the use of loff_t, which is not available for all compilers /
+system include files.
+
+Fix failure of the t_mmp_fail test when running on a device with a 4k
+logical sector size.
