@@ -2,195 +2,231 @@ Return-Path: <SRS0=zjD4=IF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C193C433E0
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Mar 2021 14:40:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 860B4C433E6
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Mar 2021 14:50:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4EB23600CD
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Mar 2021 14:40:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E54C650FC
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Mar 2021 14:50:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231398AbhCGOiD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Mar 2021 09:38:03 -0500
-Received: from mga14.intel.com ([192.55.52.115]:38543 "EHLO mga14.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230177AbhCGOhx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 7 Mar 2021 09:37:53 -0500
-IronPort-SDR: jgN5S22Ian+IKsYz95VC4WybL5x6gTnmm9QKasxLsXwGWnre/0mlivzNBZk9cEXrl8agA3ewKy
- 3HBpqctP5GvQ==
-X-IronPort-AV: E=McAfee;i="6000,8403,9916"; a="187263524"
-X-IronPort-AV: E=Sophos;i="5.81,230,1610438400"; 
-   d="scan'208";a="187263524"
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 07 Mar 2021 06:37:53 -0800
-IronPort-SDR: NYW6mTHH7Hzm5OeOid2uryVa18UYwmwMriMNSNOS7dIuY12sF/P6d2Qw90LhBOB8mS8yUf2Psu
- 0f/heMo10wiA==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.81,230,1610438400"; 
-   d="scan'208";a="402506978"
-Received: from lkp-server01.sh.intel.com (HELO 3e992a48ca98) ([10.239.97.150])
-  by fmsmga008.fm.intel.com with ESMTP; 07 Mar 2021 06:37:51 -0800
-Received: from kbuild by 3e992a48ca98 with local (Exim 4.92)
-        (envelope-from <lkp@intel.com>)
-        id 1lIuXX-0000Sr-6o; Sun, 07 Mar 2021 14:37:51 +0000
-Date:   Sun, 07 Mar 2021 22:37:00 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-Subject: [ext4:dev] BUILD SUCCESS 73648622c60a7bd556d84a6cecd3b225eb39c1f8
-Message-ID: <6044e50c.7Pw66WHfGbUBUDLk%lkp@intel.com>
-User-Agent: Heirloom mailx 12.5 6/20/10
+        id S231312AbhCGOuN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Mar 2021 09:50:13 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:46875 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S231263AbhCGOuM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Mar 2021 09:50:12 -0500
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 127Eo4T0011831
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sun, 7 Mar 2021 09:50:04 -0500
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id D78A115C3A97; Sun,  7 Mar 2021 09:50:03 -0500 (EST)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     984472@bugs.debian.org, nabijaczleweli@nabijaczleweli.xyz,
+        "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 2/2] resize2fs: close the file system on errors or early exits
+Date:   Sun,  7 Mar 2021 09:49:50 -0500
+Message-Id: <20210307144950.197569-2-tytso@mit.edu>
+X-Mailer: git-send-email 2.30.0
+In-Reply-To: <20210307144950.197569-1-tytso@mit.edu>
+References: <20210307144950.197569-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: 73648622c60a7bd556d84a6cecd3b225eb39c1f8  ext4: fix bh ref count on error paths
+When resize2fs exits early, perhaps because of an error, we should
+free the file system so that if MMP is in use, the MMP block is reset.
+This also releases the memory to avoid memory leak reports.
 
-elapsed time: 731m
-
-configs tested: 127
-configs skipped: 2
-
-The following configs have been built successfully.
-More configs may be tested in the coming days.
-
-gcc tested configs:
-arm                                 defconfig
-arm64                            allyesconfig
-arm64                               defconfig
-arm                              allyesconfig
-arm                              allmodconfig
-sh                        sh7763rdp_defconfig
-powerpc                          g5_defconfig
-xtensa                    smp_lx200_defconfig
-csky                             alldefconfig
-arm                         orion5x_defconfig
-powerpc                      pasemi_defconfig
-arc                              allyesconfig
-powerpc                    klondike_defconfig
-sh                            titan_defconfig
-arm                       aspeed_g4_defconfig
-mips                      malta_kvm_defconfig
-arm                         lubbock_defconfig
-mips                            e55_defconfig
-powerpc                      ppc44x_defconfig
-sh                          rsk7264_defconfig
-arm                         bcm2835_defconfig
-mips                     decstation_defconfig
-powerpc                 mpc8560_ads_defconfig
-arm                          pcm027_defconfig
-arm                          lpd270_defconfig
-riscv                    nommu_k210_defconfig
-sparc                            allyesconfig
-mips                        maltaup_defconfig
-sh                        sh7785lcr_defconfig
-mips                  maltasmvp_eva_defconfig
-powerpc                     ep8248e_defconfig
-powerpc                      arches_defconfig
-powerpc                     sbc8548_defconfig
-parisc                generic-32bit_defconfig
-powerpc                     tqm8555_defconfig
-sh                          r7780mp_defconfig
-arc                 nsimosci_hs_smp_defconfig
-parisc                generic-64bit_defconfig
-powerpc                      bamboo_defconfig
-arc                           tb10x_defconfig
-sh                           se7705_defconfig
-nios2                            alldefconfig
-sh                   sh7724_generic_defconfig
-xtensa                    xip_kc705_defconfig
-m68k                            q40_defconfig
-mips                           rs90_defconfig
-arm                          pxa3xx_defconfig
-arc                      axs103_smp_defconfig
-mips                  decstation_64_defconfig
-powerpc                     tqm8560_defconfig
-microblaze                          defconfig
-mips                         tb0287_defconfig
-powerpc                     tqm8541_defconfig
-sh                          landisk_defconfig
-mips                       rbtx49xx_defconfig
-nds32                            alldefconfig
-mips                      pistachio_defconfig
-sh                        dreamcast_defconfig
-arc                     nsimosci_hs_defconfig
-arm                        trizeps4_defconfig
-ia64                             allyesconfig
-ia64                             allmodconfig
-ia64                                defconfig
-m68k                             allmodconfig
-m68k                                defconfig
-m68k                             allyesconfig
-nios2                               defconfig
-nds32                             allnoconfig
-nds32                               defconfig
-nios2                            allyesconfig
-csky                                defconfig
-alpha                               defconfig
-alpha                            allyesconfig
-xtensa                           allyesconfig
-h8300                            allyesconfig
-arc                                 defconfig
-sh                               allmodconfig
-parisc                              defconfig
-s390                             allyesconfig
-s390                             allmodconfig
-parisc                           allyesconfig
-s390                                defconfig
-i386                             allyesconfig
-sparc                               defconfig
-i386                               tinyconfig
-i386                                defconfig
-mips                             allyesconfig
-mips                             allmodconfig
-powerpc                          allyesconfig
-powerpc                          allmodconfig
-powerpc                           allnoconfig
-i386                 randconfig-a003-20210307
-i386                 randconfig-a002-20210307
-i386                 randconfig-a004-20210307
-i386                 randconfig-a006-20210307
-i386                 randconfig-a005-20210307
-i386                 randconfig-a001-20210307
-x86_64               randconfig-a013-20210307
-x86_64               randconfig-a016-20210307
-x86_64               randconfig-a015-20210307
-x86_64               randconfig-a014-20210307
-x86_64               randconfig-a012-20210307
-x86_64               randconfig-a011-20210307
-i386                 randconfig-a016-20210307
-i386                 randconfig-a012-20210307
-i386                 randconfig-a013-20210307
-i386                 randconfig-a011-20210307
-i386                 randconfig-a015-20210307
-i386                 randconfig-a014-20210307
-riscv                            allyesconfig
-riscv                    nommu_virt_defconfig
-riscv                             allnoconfig
-riscv                               defconfig
-riscv                          rv32_defconfig
-riscv                            allmodconfig
-x86_64                           allyesconfig
-x86_64                    rhel-7.6-kselftests
-x86_64                              defconfig
-x86_64                               rhel-8.3
-x86_64                      rhel-8.3-kbuiltin
-x86_64                                  kexec
-
-clang tested configs:
-x86_64               randconfig-a006-20210307
-x86_64               randconfig-a001-20210307
-x86_64               randconfig-a004-20210307
-x86_64               randconfig-a005-20210307
-x86_64               randconfig-a002-20210307
-x86_64               randconfig-a003-20210307
-
+Addresses-Debian-Bug: #984472
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
-0-DAY CI Kernel Test Service, Intel Corporation
-https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
+ resize/main.c | 50 ++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 30 insertions(+), 20 deletions(-)
+
+diff --git a/resize/main.c b/resize/main.c
+index ccfd2896..8621d101 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -448,11 +448,15 @@ int main (int argc, char ** argv)
+ 		    (fs->super->s_free_inodes_count > fs->super->s_inodes_count))
+ 			checkit = 1;
+ 
++		if ((fs->super->s_last_orphan != 0) ||
++		    ext2fs_has_feature_journal_needs_recovery(fs->super))
++			checkit = 1;
++
+ 		if (checkit) {
+ 			fprintf(stderr,
+ 				_("Please run 'e2fsck -f %s' first.\n\n"),
+ 				device_name);
+-			exit(1);
++			goto errout;
+ 		}
+ 	}
+ 
+@@ -463,7 +467,7 @@ int main (int argc, char ** argv)
+ 	if (fs->super->s_feature_compat & ~EXT2_LIB_FEATURE_COMPAT_SUPP) {
+ 		com_err(program_name, EXT2_ET_UNSUPP_FEATURE,
+ 			"(%s)", device_name);
+-		exit(1);
++		goto errout;
+ 	}
+ 
+ 	min_size = calculate_minimum_resize_size(fs, flags);
+@@ -471,6 +475,9 @@ int main (int argc, char ** argv)
+ 	if (print_min_size) {
+ 		printf(_("Estimated minimum size of the filesystem: %llu\n"),
+ 		       (unsigned long long) min_size);
++	success_exit:
++		(void) ext2fs_close_free(&fs);
++		remove_error_table(&et_ext2_error_table);
+ 		exit(0);
+ 	}
+ 
+@@ -497,7 +504,7 @@ int main (int argc, char ** argv)
+ 	if (retval) {
+ 		com_err(program_name, retval, "%s",
+ 			_("while trying to determine filesystem size"));
+-		exit(1);
++		goto errout;
+ 	}
+ 	if (force_min_size)
+ 		new_size = min_size;
+@@ -507,7 +514,7 @@ int main (int argc, char ** argv)
+ 		if (new_size == 0) {
+ 			com_err(program_name, 0,
+ 				_("Invalid new size: %s\n"), new_size_str);
+-			exit(1);
++			goto errout;
+ 		}
+ 	} else {
+ 		new_size = max_size;
+@@ -527,7 +534,7 @@ int main (int argc, char ** argv)
+ 			com_err(program_name, 0, "%s",
+ 				_("New size too large to be "
+ 				  "expressed in 32 bits\n"));
+-			exit(1);
++			goto errout;
+ 		}
+ 	}
+ 	new_group_desc_count = ext2fs_div64_ceil(new_size -
+@@ -540,20 +547,20 @@ int main (int argc, char ** argv)
+ 		com_err(program_name, 0,
+ 			_("New size results in too many block group "
+ 			  "descriptors.\n"));
+-		exit(1);
++		goto errout;
+ 	}
+ 
+ 	if (!force && new_size < min_size) {
+ 		com_err(program_name, 0,
+ 			_("New size smaller than minimum (%llu)\n"),
+ 			(unsigned long long) min_size);
+-		exit(1);
++		goto errout;
+ 	}
+ 	if (use_stride >= 0) {
+ 		if (use_stride >= (int) fs->super->s_blocks_per_group) {
+ 			com_err(program_name, 0, "%s",
+ 				_("Invalid stride length"));
+-			exit(1);
++			goto errout;
+ 		}
+ 		fs->stride = fs->super->s_raid_stride = use_stride;
+ 		ext2fs_mark_super_dirty(fs);
+@@ -580,52 +587,52 @@ int main (int argc, char ** argv)
+ 			" is only %llu (%dk) blocks.\nYou requested a new size"
+ 			" of %llu blocks.\n\n"), (unsigned long long) max_size,
+ 			blocksize / 1024, (unsigned long long) new_size);
+-		exit(1);
++		goto errout;
+ 	}
+ 	if ((flags & RESIZE_DISABLE_64BIT) && (flags & RESIZE_ENABLE_64BIT)) {
+ 		fprintf(stderr, _("Cannot set and unset 64bit feature.\n"));
+-		exit(1);
++		goto errout;
+ 	} else if (flags & (RESIZE_DISABLE_64BIT | RESIZE_ENABLE_64BIT)) {
+ 		if (new_size >= (1ULL << 32)) {
+ 			fprintf(stderr, _("Cannot change the 64bit feature "
+ 				"on a filesystem that is larger than "
+ 				"2^32 blocks.\n"));
+-			exit(1);
++			goto errout;
+ 		}
+ 		if (mount_flags & EXT2_MF_MOUNTED) {
+ 			fprintf(stderr, _("Cannot change the 64bit feature "
+ 				"while the filesystem is mounted.\n"));
+-			exit(1);
++			goto errout;
+ 		}
+ 		if (flags & RESIZE_ENABLE_64BIT &&
+ 		    !ext2fs_has_feature_extents(fs->super)) {
+ 			fprintf(stderr, _("Please enable the extents feature "
+ 				"with tune2fs before enabling the 64bit "
+ 				"feature.\n"));
+-			exit(1);
++			goto errout;
+ 		}
+ 	} else if (new_size == ext2fs_blocks_count(fs->super)) {
+ 		fprintf(stderr, _("The filesystem is already %llu (%dk) "
+ 			"blocks long.  Nothing to do!\n\n"),
+ 			(unsigned long long) new_size,
+ 			blocksize / 1024);
+-		exit(0);
++		goto success_exit;
+ 	}
+ 	if ((flags & RESIZE_ENABLE_64BIT) &&
+ 	    ext2fs_has_feature_64bit(fs->super)) {
+ 		fprintf(stderr, _("The filesystem is already 64-bit.\n"));
+-		exit(0);
++		goto success_exit;
+ 	}
+ 	if ((flags & RESIZE_DISABLE_64BIT) &&
+ 	    !ext2fs_has_feature_64bit(fs->super)) {
+ 		fprintf(stderr, _("The filesystem is already 32-bit.\n"));
+-		exit(0);
++		goto success_exit;
+ 	}
+ 	if (new_size < ext2fs_blocks_count(fs->super) &&
+ 	    ext2fs_has_feature_stable_inodes(fs->super)) {
+ 		fprintf(stderr, _("Cannot shrink this filesystem "
+ 			"because it has the stable_inodes feature flag.\n"));
+-		exit(1);
++		goto errout;
+ 	}
+ 	if (mount_flags & EXT2_MF_MOUNTED) {
+ 		retval = online_resize_fs(fs, mtpt, &new_size, flags);
+@@ -652,8 +659,7 @@ int main (int argc, char ** argv)
+ 			_("Please run 'e2fsck -fy %s' to fix the filesystem\n"
+ 			  "after the aborted resize operation.\n"),
+ 			device_name);
+-		ext2fs_close_free(&fs);
+-		exit(1);
++		goto errout;
+ 	}
+ 	printf(_("The filesystem on %s is now %llu (%dk) blocks long.\n\n"),
+ 	       device_name, (unsigned long long) new_size, blocksize / 1024);
+@@ -676,5 +682,9 @@ int main (int argc, char ** argv)
+ 	if (fd > 0)
+ 		close(fd);
+ 	remove_error_table(&et_ext2_error_table);
+-	return (0);
++	return 0;
++errout:
++	(void) ext2fs_close_free(&fs);
++	remove_error_table(&et_ext2_error_table);
++	return 1;
+ }
+-- 
+2.30.0
+
