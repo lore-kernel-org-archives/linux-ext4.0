@@ -2,133 +2,95 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E53EBC43333
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 02:56:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E08FC433E6
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 03:38:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CD0AA64FB9
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 02:56:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D075064F5B
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 03:38:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232933AbhCMCzl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 Mar 2021 21:55:41 -0500
-Received: from szxga04-in.huawei.com ([45.249.212.190]:13159 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232311AbhCMCzH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2021 21:55:07 -0500
-Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4Dy6g32JjTzmWG4;
-        Sat, 13 Mar 2021 10:52:47 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by DGGEMS413-HUB.china.huawei.com
- (10.3.19.213) with Microsoft SMTP Server id 14.3.498.0; Sat, 13 Mar 2021
- 10:54:57 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-        <linux-block@vger.kernel.org>, <jack@suse.cz>
-CC:     <tytso@mit.edu>, <viro@zeniv.linux.org.uk>, <hch@infradead.org>,
-        <axboe@kernel.dk>, <mcgrof@kernel.org>, <keescook@chromium.org>,
-        <yzaikin@google.com>, <yi.zhang@huawei.com>
-Subject: [RFC PATCH 2/3] block_dump: remove block_dump feature
-Date:   Sat, 13 Mar 2021 11:01:45 +0800
-Message-ID: <20210313030146.2882027-3-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20210313030146.2882027-1-yi.zhang@huawei.com>
+        id S233235AbhCMDhu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 Mar 2021 22:37:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59472 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233233AbhCMDhb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2021 22:37:31 -0500
+Received: from mail-pj1-x1036.google.com (mail-pj1-x1036.google.com [IPv6:2607:f8b0:4864:20::1036])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 534ADC061574
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Mar 2021 19:37:20 -0800 (PST)
+Received: by mail-pj1-x1036.google.com with SMTP id lr10-20020a17090b4b8ab02900dd61b95c5eso9400044pjb.4
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Mar 2021 19:37:20 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20150623.gappssmtp.com; s=20150623;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=CBNgQRKeBzdDifSEOgKTaiLunUuYSZ8882u6ppXU5+U=;
+        b=eSqXv0ctfLqgigrMQ8PF9EWZOhecpDPODocztQkLMOQ9YOXCKxb6aGcV0SRFdGr9O/
+         SXAjhD1m4PZ2QeA9AwCL6vq4XZQZmY51dZDRKQwIU6B5X1V8i43Wcr1eTiYFEy5GkbB7
+         kxv7AI1W4IvaKAO8GXohAheVSCtalgLMdOlZUIIK4moC9F2R653fNXf0U4PRnDoC84HG
+         JZRfjM1tgk/7SSX1LoxK7Sd6fP+7xCV3b9JRSbzKaM6zIHvtBfN2+OpqOGLfmNCv8hwp
+         Z34rYUhez5+AFzOFoTMVxrKfhPizb9woR1sPWIEa5uCOST00D5h/UDN89crL5p23cZI1
+         hfTA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=CBNgQRKeBzdDifSEOgKTaiLunUuYSZ8882u6ppXU5+U=;
+        b=RNqiwF9zZG0aeV0KelHloMmuH7E5YpGdlocglCskZxAI8TQnqyGhS/957tQ4kFDnum
+         o9lA4LQ5bwKiYJ0RBLQh1CevsEX4bWOXBhtm8bJuiDoVgmUWbQZLeFhsQAhqmUfKREDS
+         oiUbnrmt9g34eeqjk+ybJJiUKyrE27qFQOKvEFeyYQb75SJQQnzBjyQttrHeN7fhzJll
+         Vl8A+fXNW/RFsf0su7Mq4kOcdAklbOLljBiUMNA9Rh9AjCf4U2uoRPSVVu2F/MrAfaXf
+         f22E99ykqAeCQqSXwH+zMXl2JqbUZW+pflwKzS6N0EdIqxh7G1MTIm/hIbAXDrKT/x+/
+         W6vQ==
+X-Gm-Message-State: AOAM530daEif/DC4/pKAP0iDTj8X2QcmKZe4lqMVLqIwXVGJgQCOSRHV
+        dDX/DQRHS2OGggSCns27ym8pxg==
+X-Google-Smtp-Source: ABdhPJwMgcLJD1SGGsLHCeRLzP10AkhbPEX9/l2NI2H9kx1l/lAMuKameOG8HK5rfGwY4CWLZuEjuA==
+X-Received: by 2002:a17:90b:1213:: with SMTP id gl19mr1513866pjb.55.1615606639689;
+        Fri, 12 Mar 2021 19:37:19 -0800 (PST)
+Received: from [192.168.1.134] ([66.219.217.173])
+        by smtp.gmail.com with ESMTPSA id j23sm6881761pfn.94.2021.03.12.19.37.18
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 12 Mar 2021 19:37:19 -0800 (PST)
+Subject: Re: [RFC PATCH 0/3] block_dump: remove block dump
+To:     "zhangyi (F)" <yi.zhang@huawei.com>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-block@vger.kernel.org,
+        jack@suse.cz
+Cc:     tytso@mit.edu, viro@zeniv.linux.org.uk, hch@infradead.org,
+        mcgrof@kernel.org, keescook@chromium.org, yzaikin@google.com
 References: <20210313030146.2882027-1-yi.zhang@huawei.com>
+From:   Jens Axboe <axboe@kernel.dk>
+Message-ID: <15f9c6ce-f22a-59cd-8ce7-eb908f663826@kernel.dk>
+Date:   Fri, 12 Mar 2021 20:37:17 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.10.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+In-Reply-To: <20210313030146.2882027-1-yi.zhang@huawei.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We have already delete block_dump feature in mark_inode_dirty() because
-it can be replaced by tracepoints, now we also remove the part in
-submit_bio() for the same reason. The part of block dump feature in
-submit_bio() dump the write process, write region and sectors on the
-target disk into kernel message. it can be replaced by
-block_bio_queue tracepoint in submit_bio_checks(), so we do not need
-block_dump anymore, remove the whole block_dump feature.
+On 3/12/21 8:01 PM, zhangyi (F) wrote:
+> Hi,
+> 
+> block_dump is an old debugging interface and can be replaced by
+> tracepoints, and we also found a deadlock issue relate to it[1]. As Jan
+> suggested, this patch set delete the whole block_dump feature, we can
+> use tracepoints to get the similar information. If someone still using
+> this feature cannot switch to use tracepoints or any other suggestions,
+> please let us know.
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- block/blk-core.c          | 9 ---------
- include/linux/writeback.h | 1 -
- kernel/sysctl.c           | 8 --------
- mm/page-writeback.c       | 5 -----
- 4 files changed, 23 deletions(-)
+Totally agree, that's long overdue. The feature is no longer useful
+and has been deprecated by much better methods. Unless anyone objects,
+I'll queue this up for 5.13.
 
-diff --git a/block/blk-core.c b/block/blk-core.c
-index fc60ff208497..9731b0ca8166 100644
---- a/block/blk-core.c
-+++ b/block/blk-core.c
-@@ -1086,15 +1086,6 @@ blk_qc_t submit_bio(struct bio *bio)
- 			task_io_account_read(bio->bi_iter.bi_size);
- 			count_vm_events(PGPGIN, count);
- 		}
--
--		if (unlikely(block_dump)) {
--			char b[BDEVNAME_SIZE];
--			printk(KERN_DEBUG "%s(%d): %s block %Lu on %s (%u sectors)\n",
--			current->comm, task_pid_nr(current),
--				op_is_write(bio_op(bio)) ? "WRITE" : "READ",
--				(unsigned long long)bio->bi_iter.bi_sector,
--				bio_devname(bio, b), count);
--		}
- 	}
- 
- 	/*
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 8e5c5bb16e2d..9ef50176f3a1 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -360,7 +360,6 @@ extern unsigned int dirty_writeback_interval;
- extern unsigned int dirty_expire_interval;
- extern unsigned int dirtytime_expire_interval;
- extern int vm_highmem_is_dirtyable;
--extern int block_dump;
- extern int laptop_mode;
- 
- int dirty_background_ratio_handler(struct ctl_table *table, int write,
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 62fbd09b5dc1..35fce9a8402f 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -2957,14 +2957,6 @@ static struct ctl_table vm_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_jiffies,
- 	},
--	{
--		.procname	= "block_dump",
--		.data		= &block_dump,
--		.maxlen		= sizeof(block_dump),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--	},
- 	{
- 		.procname	= "vfs_cache_pressure",
- 		.data		= &sysctl_vfs_cache_pressure,
-diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index eb34d204d4ee..b72da123f242 100644
---- a/mm/page-writeback.c
-+++ b/mm/page-writeback.c
-@@ -108,11 +108,6 @@ EXPORT_SYMBOL_GPL(dirty_writeback_interval);
-  */
- unsigned int dirty_expire_interval = 30 * 100; /* centiseconds */
- 
--/*
-- * Flag that makes the machine dump writes/reads and block dirtyings.
-- */
--int block_dump;
--
- /*
-  * Flag that puts the machine in "laptop mode". Doubles as a timeout in jiffies:
-  * a full sync is triggered after this time elapses without any disk activity.
 -- 
-2.25.4
+Jens Axboe
 
