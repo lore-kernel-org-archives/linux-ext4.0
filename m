@@ -2,41 +2,38 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23BEDC433E6
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FA6AC4332B
 	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 02:56:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DD65464F89
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 02:56:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3607164F9F
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Mar 2021 02:56:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232904AbhCMCzk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 Mar 2021 21:55:40 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:14324 "EHLO
-        szxga07-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232468AbhCMCzI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2021 21:55:08 -0500
-Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.60])
-        by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4Dy6gc1L4gz8xFC;
-        Sat, 13 Mar 2021 10:53:16 +0800 (CST)
+        id S232709AbhCMCzl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 Mar 2021 21:55:41 -0500
+Received: from szxga04-in.huawei.com ([45.249.212.190]:13160 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232487AbhCMCzH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Mar 2021 21:55:07 -0500
+Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.59])
+        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4Dy6g31yjrzlTnk;
+        Sat, 13 Mar 2021 10:52:47 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS413-HUB.china.huawei.com
  (10.3.19.213) with Microsoft SMTP Server id 14.3.498.0; Sat, 13 Mar 2021
- 10:54:58 +0800
+ 10:54:56 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-fsdevel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
         <linux-block@vger.kernel.org>, <jack@suse.cz>
 CC:     <tytso@mit.edu>, <viro@zeniv.linux.org.uk>, <hch@infradead.org>,
         <axboe@kernel.dk>, <mcgrof@kernel.org>, <keescook@chromium.org>,
         <yzaikin@google.com>, <yi.zhang@huawei.com>
-Subject: [RFC PATCH 3/3] block_dump: remove comments in docs
-Date:   Sat, 13 Mar 2021 11:01:46 +0800
-Message-ID: <20210313030146.2882027-4-yi.zhang@huawei.com>
+Subject: [RFC PATCH 0/3] block_dump: remove block dump
+Date:   Sat, 13 Mar 2021 11:01:43 +0800
+Message-ID: <20210313030146.2882027-1-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20210313030146.2882027-1-yi.zhang@huawei.com>
-References: <20210313030146.2882027-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -46,62 +43,34 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now block_dump feature is gone, remove all comments in docs.
+Hi,
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- Documentation/admin-guide/laptops/laptop-mode.rst | 11 -----------
- Documentation/admin-guide/sysctl/vm.rst           |  8 --------
- 2 files changed, 19 deletions(-)
+block_dump is an old debugging interface and can be replaced by
+tracepoints, and we also found a deadlock issue relate to it[1]. As Jan
+suggested, this patch set delete the whole block_dump feature, we can
+use tracepoints to get the similar information. If someone still using
+this feature cannot switch to use tracepoints or any other suggestions,
+please let us know.
 
-diff --git a/Documentation/admin-guide/laptops/laptop-mode.rst b/Documentation/admin-guide/laptops/laptop-mode.rst
-index c984c4262f2e..b61cc601d298 100644
---- a/Documentation/admin-guide/laptops/laptop-mode.rst
-+++ b/Documentation/admin-guide/laptops/laptop-mode.rst
-@@ -101,17 +101,6 @@ this results in concentration of disk activity in a small time interval which
- occurs only once every 10 minutes, or whenever the disk is forced to spin up by
- a cache miss. The disk can then be spun down in the periods of inactivity.
- 
--If you want to find out which process caused the disk to spin up, you can
--gather information by setting the flag /proc/sys/vm/block_dump. When this flag
--is set, Linux reports all disk read and write operations that take place, and
--all block dirtyings done to files. This makes it possible to debug why a disk
--needs to spin up, and to increase battery life even more. The output of
--block_dump is written to the kernel output, and it can be retrieved using
--"dmesg". When you use block_dump and your kernel logging level also includes
--kernel debugging messages, you probably want to turn off klogd, otherwise
--the output of block_dump will be logged, causing disk activity that is not
--normally there.
--
- 
- Configuration
- -------------
-diff --git a/Documentation/admin-guide/sysctl/vm.rst b/Documentation/admin-guide/sysctl/vm.rst
-index 586cd4b86428..3ca6679f16ea 100644
---- a/Documentation/admin-guide/sysctl/vm.rst
-+++ b/Documentation/admin-guide/sysctl/vm.rst
-@@ -25,7 +25,6 @@ files can be found in mm/swap.c.
- Currently, these files are in /proc/sys/vm:
- 
- - admin_reserve_kbytes
--- block_dump
- - compact_memory
- - compaction_proactiveness
- - compact_unevictable_allowed
-@@ -106,13 +105,6 @@ On x86_64 this is about 128MB.
- Changing this takes effect whenever an application requests memory.
- 
- 
--block_dump
--==========
--
--block_dump enables block I/O debugging when set to a nonzero value. More
--information on block I/O debugging is in Documentation/admin-guide/laptops/laptop-mode.rst.
--
--
- compact_memory
- ==============
- 
+Thanks,
+Yi.
+
+[1]. https://lore.kernel.org/linux-fsdevel/20210305132442.GA2801131@infradead.org/T/#m385b0f84bc381d3089740e33d94f6e1b67dd06d2
+
+zhangyi (F) (3):
+  block_dump: remove block_dump feature in mark_inode_dirty()
+  block_dump: remove block_dump feature
+  block_dump: remove comments in docs
+
+ .../admin-guide/laptops/laptop-mode.rst       | 11 --------
+ Documentation/admin-guide/sysctl/vm.rst       |  8 ------
+ block/blk-core.c                              |  9 -------
+ fs/fs-writeback.c                             | 25 -------------------
+ include/linux/writeback.h                     |  1 -
+ kernel/sysctl.c                               |  8 ------
+ mm/page-writeback.c                           |  5 ----
+ 7 files changed, 67 deletions(-)
+
 -- 
 2.25.4
 
