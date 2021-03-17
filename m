@@ -7,123 +7,104 @@ X-Spam-Status: No, score=-15.1 required=3.0 tests=BAYES_00,DKIM_INVALID,
 	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E080DC433DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Mar 2021 20:58:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E430C433E6
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Mar 2021 20:59:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 84A1F64DDF
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Mar 2021 20:58:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7B2864F2B
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Mar 2021 20:59:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233406AbhCQU6J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 17 Mar 2021 16:58:09 -0400
-Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:60615 "EHLO
+        id S233460AbhCQU6n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 17 Mar 2021 16:58:43 -0400
+Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:33881 "EHLO
         unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233606AbhCQU5t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Mar 2021 16:57:49 -0400
+        with ESMTP id S233516AbhCQU6U (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Mar 2021 16:58:20 -0400
 Received: from [192.168.111.103] (p4fd975c2.dip0.t-ipconnect.de [79.217.117.194])
         (authenticated bits=0)
-        by unimail.uni-dortmund.de (8.16.1/8.16.1) with ESMTPSA id 12HKvbBE011213
+        by unimail.uni-dortmund.de (8.16.1/8.16.1) with ESMTPSA id 12HKwC80011602
         (version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT);
-        Wed, 17 Mar 2021 21:57:38 +0100 (CET)
+        Wed, 17 Mar 2021 21:58:12 +0100 (CET)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tu-dortmund.de;
-        s=unimail; t=1616014658;
-        bh=K+a8c+n3uYKrcQ4YEDKq+ACmy6NKdSX55u22gqzFhPI=;
-        h=Subject:From:To:Cc:References:Date:In-Reply-To;
-        b=ePom3An5c9eK8eBQpMBfg+tFpPiofj1xUOasOYIBstTTS1yIP+E9dIPXWeoKgtxhq
-         QoG5/5Eb+gBEf0TN3rsYj72bnqEJrQwE5RzT1ZFMmt1EyxNsrh98YEsYaPxHfXiyAU
-         gFYgA/1aDkBIfBzLxCl+wwdFdum3+eL4nyHiDgJw=
-Subject: Re: [PATCH v2] Updated locking documentation for journal_t
-From:   Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
-To:     Jan Kara <jack@suse.cz>
+        s=unimail; t=1616014692;
+        bh=3HNa2+WqZpFC4qf3gJ4PGfw6tm9BCKyr+RH5gsmRmqU=;
+        h=Subject:Cc:References:From:Date:In-Reply-To;
+        b=hwjka0Vg//0SHZ9HoOpgkDI5EMpeLvV0tl4RglTFV++67mSkzT8eVwghi8zVQSYo+
+         QShNcEpONvsBOb6tZ7tKuCYu/77QtsBfWLR9ziaJD/pSUVdrcpwc5cRSdUDYxxNtb0
+         KBq/kuHAnXvm3dD5RnNxJZaAfzwJrphyu+YGKwjU=
+Subject: Re: [PATCH v3] Updated locking documentation for transaction_t
 Cc:     Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20210210095740.54881-1-alexander.lochmann@tu-dortmund.de>
- <20210211093754.GJ19070@quack2.suse.cz>
- <ad82c7a9-a624-4ed5-5ada-a6410c44c0b3@tu-dortmund.de>
-Message-ID: <31c3e70b-c513-a9ac-8d94-211d80221942@tu-dortmund.de>
-Date:   Wed, 17 Mar 2021 21:57:37 +0100
+        Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+References: <20210211171410.17984-1-alexander.lochmann@tu-dortmund.de>
+From:   Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Message-ID: <c309db05-bca5-7bcd-cf86-a85637d49407@tu-dortmund.de>
+Date:   Wed, 17 Mar 2021 21:58:12 +0100
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
  Thunderbird/78.7.1
 MIME-Version: 1.0
-In-Reply-To: <ad82c7a9-a624-4ed5-5ada-a6410c44c0b3@tu-dortmund.de>
+In-Reply-To: <20210211171410.17984-1-alexander.lochmann@tu-dortmund.de>
 Content-Type: text/plain; charset=utf-8
 Content-Language: de-DE
 Content-Transfer-Encoding: 8bit
+To:     unlisted-recipients:; (no To-header on input)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Does this patch look good to you?
-Might it be ready to be merged?
+Does this patch look good to you either?
 
 - Alex
 
-On 11.02.21 10:51, Alexander Lochmann wrote:
+On 11.02.21 18:14, Alexander Lochmann wrote:
 > Some members of transaction_t are allowed to be read without
-> any lock being held if consistency doesn't matter.
-> Based on LockDoc's findings, we extended the locking
-> documentation of those members.
-> Each one of them is marked with a short comment:
-> "no lock for quick racy checks".
+> any lock being held if accessed from the correct context.
+> We used LockDoc's findings to determine those members.
+> Each member of them is marked with a short comment:
+> "no lock needed for jbd2 thread".
 > 
 > Signed-off-by: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
 > Signed-off-by: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
 > Reviewed-by: Jan Kara <jack@suse.cz>
 > ---
->  include/linux/jbd2.h | 10 +++++-----
->  1 file changed, 5 insertions(+), 5 deletions(-)
+>  include/linux/jbd2.h | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
 > 
 > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index 18f77d9b1745..4dca33a063dd 100644
+> index 99d3cd051ac3..1f19d19f6435 100644
 > --- a/include/linux/jbd2.h
 > +++ b/include/linux/jbd2.h
-> @@ -768,7 +768,7 @@ enum passtype {PASS_SCAN, PASS_REVOKE, PASS_REPLAY};
->  struct journal_s
->  {
->      /**
-> -     * @j_flags: General journaling state flags [j_state_lock]
-> +     * @j_flags: General journaling state flags [j_state_lock, no lock
-> for quick racy checks]
->       */
->      unsigned long        j_flags;
-> 
-> @@ -808,7 +808,7 @@ struct journal_s
->      /**
->       * @j_barrier_count:
->       *
-> -     * Number of processes waiting to create a barrier lock [j_state_lock]
-> +     * Number of processes waiting to create a barrier lock
-> [j_state_lock, no lock for quick racy checks]
->       */
->      int            j_barrier_count;
-> 
-> @@ -821,7 +821,7 @@ struct journal_s
->       * @j_running_transaction:
->       *
->       * Transactions: The current running transaction...
-> -     * [j_state_lock] [caller holding open handle]
-> +     * [j_state_lock, no lock for quick racy checks] [caller holding
-> open handle]
->       */
->      transaction_t        *j_running_transaction;
-> 
-> @@ -1033,7 +1033,7 @@ struct journal_s
->       * @j_commit_sequence:
->       *
->       * Sequence number of the most recently committed transaction
-> -     * [j_state_lock].
-> +     * [j_state_lock, no lock for quick racy checks].
->       */
->      tid_t            j_commit_sequence;
-> 
-> @@ -1041,7 +1041,7 @@ struct journal_s
->       * @j_commit_request:
->       *
->       * Sequence number of the most recent transaction wanting commit
-> -     * [j_state_lock]
-> +     * [j_state_lock, no lock for quick racy checks]
->       */
->      tid_t            j_commit_request;
+> @@ -594,18 +594,18 @@ struct transaction_s
+>  	 */
+>  	unsigned long		t_log_start;
+>  
+> -	/* Number of buffers on the t_buffers list [j_list_lock] */
+> +	/* Number of buffers on the t_buffers list [j_list_lock, no locks needed for jbd2 thread] */
+>  	int			t_nr_buffers;
+>  
+>  	/*
+>  	 * Doubly-linked circular list of all buffers reserved but not yet
+> -	 * modified by this transaction [j_list_lock]
+> +	 * modified by this transaction [j_list_lock, no locks needed for jbd2 thread]
+>  	 */
+>  	struct journal_head	*t_reserved_list;
+>  
+>  	/*
+>  	 * Doubly-linked circular list of all metadata buffers owned by this
+> -	 * transaction [j_list_lock]
+> +	 * transaction [j_list_lock, no locks needed for jbd2 thread]
+>  	 */
+>  	struct journal_head	*t_buffers;
+>  
+> @@ -631,7 +631,7 @@ struct transaction_s
+>  	/*
+>  	 * Doubly-linked circular list of metadata buffers being shadowed by log
+>  	 * IO.  The IO buffers on the iobuf list and the shadow buffers on this
+> -	 * list match each other one for one at all times. [j_list_lock]
+> +	 * list match each other one for one at all times. [j_list_lock, no locks needed for jbd2 thread]
+>  	 */
+>  	struct journal_head	*t_shadow_list;
+>  
 > 
 
 -- 
