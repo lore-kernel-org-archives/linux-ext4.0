@@ -2,152 +2,146 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E59FAC433E2
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Mar 2021 22:19:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5315C433E0
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Mar 2021 23:20:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B001C619DA
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Mar 2021 22:19:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 851FA61A21
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Mar 2021 23:20:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234007AbhCWWTZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 Mar 2021 18:19:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37968 "EHLO
+        id S239029AbhCXXTg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Mar 2021 19:19:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233930AbhCWWSa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Mar 2021 18:18:30 -0400
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E020C061574;
-        Tue, 23 Mar 2021 15:18:20 -0700 (PDT)
-Received: from [IPv6:2401:4900:5170:240f:f606:c194:2a1c:c147] (unknown [IPv6:2401:4900:5170:240f:f606:c194:2a1c:c147])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        (Authenticated sender: shreeya)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 2208F1F454D0;
-        Tue, 23 Mar 2021 22:18:14 +0000 (GMT)
-Subject: Re: [PATCH v3 5/5] fs: unicode: Add utf8 module and a unicode layer
-To:     Eric Biggers <ebiggers@kernel.org>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
-        chao@kernel.org, drosen@google.com, yuchao0@huawei.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        andre.almeida@collabora.com
-References: <20210323183201.812944-1-shreeya.patel@collabora.com>
- <20210323183201.812944-6-shreeya.patel@collabora.com>
- <87eeg5d4xb.fsf@collabora.com> <YFpPxCQiMLqctIuS@gmail.com>
-From:   Shreeya Patel <shreeya.patel@collabora.com>
-Message-ID: <dd7dae42-6024-8868-3e3e-f6d672274682@collabora.com>
-Date:   Wed, 24 Mar 2021 03:48:10 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.8.0
+        with ESMTP id S239022AbhCXXTd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Mar 2021 19:19:33 -0400
+Received: from mail-pf1-x42b.google.com (mail-pf1-x42b.google.com [IPv6:2607:f8b0:4864:20::42b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07474C06175F
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2021 16:19:33 -0700 (PDT)
+Received: by mail-pf1-x42b.google.com with SMTP id 11so49311pfn.9
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Mar 2021 16:19:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=ElMJ7bjXqaQdzuOQnFsg0ZG+tTn3DsBAWPK7hzq2d+0=;
+        b=bMXF6Q30GU7fZH8Wk7H1TfNIbhOWjwZZglIqlASYeLcu7KnLlxN3j3KcSdv05iGhhh
+         vdc6q6X9Cd4ng0RGewSGyhuSpmSL2lrpHyDXclnsLC+zbmgSRpkG0lCCb1MeXXJT6LeK
+         SIWHDD7uCVhW3T8zjoaZOrAZMB6pSbVoGN19R+88IkXnOtiAtT1OEnHdWS1fa2EaZ96z
+         zY1pM2wVW2pz0J5tnuxNxYU03ttXDqZeludYHMrN2xceovd9ClzWeYPKvwrWMUibYDbu
+         2Gl47fyZcJB8ynjI0HAAnEjGenYDCe20XMdec2QkOLM8mDDmSmADIboeSrNR6L9iL0QD
+         nN3g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=ElMJ7bjXqaQdzuOQnFsg0ZG+tTn3DsBAWPK7hzq2d+0=;
+        b=iZygXRz1M07SZ+KOus7c9CGh2QLpHzJUvmyR71mAfKQkNjp8bp9lD+zjcdhvSOdDg0
+         28wrXQIqlS2AB9Qd3u1q/POkP3evxA/nkgn1QPqiUgMiLizbqy79J0HSty04HqInwj/M
+         szB+M8uy6TXpNSjasZbtmglifCLC866EZ+fouWCbxtc3cX7ihml/lvblxqL95+X0e37e
+         4DIq2GJJShdNEwwTQAVQY/ObWiRttr6DWiQL+J/R0wHh7OfYkkGBcimEt/h6+SPDAi4g
+         giUa+e+GxHfjE1DFUhP4NVMMQMlbGLn512oICqHJRuJmVDw+JGC/wI14NvFY55QN6cq+
+         n3Vg==
+X-Gm-Message-State: AOAM532oDuoBsxFn7a9fh3c9IrAMTXA7bDu6ofKoWAHQksyTHQT9Hll1
+        E/EzQut0QfK7WH2aFM6XgJqdKbaYuTM=
+X-Google-Smtp-Source: ABdhPJzl2sNY9D/P3SNZFbHGL6XRAqe9JvEhWGrSO+KRNE1llBItcwr9bdAJ/PSztIc8fIsFV6txWQ==
+X-Received: by 2002:a63:3e06:: with SMTP id l6mr4892681pga.140.1616627972173;
+        Wed, 24 Mar 2021 16:19:32 -0700 (PDT)
+Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:f8fe:8e5d:4c9f:edfd])
+        by smtp.googlemail.com with ESMTPSA id z3sm3629928pff.40.2021.03.24.16.19.31
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 24 Mar 2021 16:19:31 -0700 (PDT)
+From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH v5 1/6] ext4: drop s_mb_bal_lock and convert protected fields to atomic
+Date:   Wed, 24 Mar 2021 16:19:11 -0700
+Message-Id: <20210324231916.2515824-2-harshadshirwadkar@gmail.com>
+X-Mailer: git-send-email 2.31.0.291.g576ba9dcdaf-goog
+In-Reply-To: <20210324231916.2515824-1-harshadshirwadkar@gmail.com>
+References: <20210324231916.2515824-1-harshadshirwadkar@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <YFpPxCQiMLqctIuS@gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+s_mb_buddies_generated gets used later in this patch series to
+determine if the cr 0 and cr 1 optimziations should be performed or
+not. Currently, s_mb_buddies_generated is protected under a
+spin_lock. In the allocation path, it is better if we don't depend on
+the lock and instead read the value atomically. In order to do that,
+we drop s_bal_lock altogether and we convert the only two protected
+fields by it s_mb_buddies_generated and s_mb_generation_time to atomic
+type.
 
-On 24/03/21 1:59 am, Eric Biggers wrote:
-> On Tue, Mar 23, 2021 at 03:51:44PM -0400, Gabriel Krisman Bertazi wrote:
->>> -int unicode_validate(const struct unicode_map *um, const struct qstr *str)
->>> -{
->>> -	const struct utf8data *data = utf8nfdi(um->version);
->>> -
->>> -	if (utf8nlen(data, str->name, str->len) < 0)
->>> -		return -1;
->>> -	return 0;
->>> -}
->>> +struct unicode_ops *utf8_ops;
->>> +EXPORT_SYMBOL(utf8_ops);
->>> +
->>> +int _utf8_validate(const struct unicode_map *um, const struct qstr *str)
->>> +{
->>> +	return 0;
->>> +}
->>> -EXPORT_SYMBOL(unicode_validate);
->> I think that any calls to the default static calls should return errors
->> instead of succeeding without doing anything.
->>
->> In fact, are the default calls really necessary?  If someone gets here,
->> there is a bug elsewhere, so WARN_ON and maybe -EIO.
->>
->> int unicode_validate_default_static_call(...)
->> {
->>     WARN_ON(1);
->>     return -EIO;
->> }
->>
->> Or just have a NULL default, as I mentioned below, if that is possible.
->>
-> [...]
->>> +DEFINE_STATIC_CALL(utf8_validate, _utf8_validate);
->>> +DEFINE_STATIC_CALL(utf8_strncmp, _utf8_strncmp);
->>> +DEFINE_STATIC_CALL(utf8_strncasecmp, _utf8_strncasecmp);
->>> +DEFINE_STATIC_CALL(utf8_strncasecmp_folded, _utf8_strncasecmp_folded);
->>> +DEFINE_STATIC_CALL(utf8_normalize, _utf8_normalize);
->>> +DEFINE_STATIC_CALL(utf8_casefold, _utf8_casefold);
->>> +DEFINE_STATIC_CALL(utf8_casefold_hash, _utf8_casefold_hash);
->>> +DEFINE_STATIC_CALL(utf8_load, _utf8_load);
->>> +DEFINE_STATIC_CALL_NULL(utf8_unload, _utf8_unload);
->>> +EXPORT_STATIC_CALL(utf8_strncmp);
->>> +EXPORT_STATIC_CALL(utf8_strncasecmp);
->>> +EXPORT_STATIC_CALL(utf8_strncasecmp_folded);
->> I'm having a hard time understanding why some use
->> DEFINE_STATIC_CALL_NULL, while other use DEFINE_STATIC_CALL.  This new
->> static call API is new to me :).  None of this can be called if the
->> module is not loaded anyway, so perhaps the default function can just be
->> NULL, per the documentation of include/linux/static_call.h?
->>
->> Anyway, Aren't utf8_{validate,casefold,normalize} missing the
->> equivalent EXPORT_STATIC_CALL?
->>
-> The static_call API is fairly new to me too.  But the intent of this patch seems
-> to be that none of the utf8 functions are called without the utf8 module loaded.
-> If they are called, it's a kernel bug.  So there are two options for what to do
-> if it happens anyway:
->
->    1. call a "null" static call, which does nothing
->
-> *or*
->
->    2. call a default function which does WARN_ON_ONCE() and returns an error if
->       possible.
->
-> (or 3. don't use static calls and instead dereference a NULL utf8_ops like
-> previous versions of this patch did.)
->
-> It shouldn't really matter which of these approaches you take, but please be
-> consistent and use the same one everywhere.
->
->> + void unicode_unregister(void)
->> + {
->> +         spin_lock(&utf8ops_lock);
->> +         utf8_ops = NULL;
->> +         spin_unlock(&utf8ops_lock);
->> + }
->> + EXPORT_SYMBOL(unicode_unregister);
-> This should restore the static calls to their default values (either NULL or the
-> default functions, depending on what you decide).
->
-> Also, it's weird to still have the utf8_ops structure when using static calls.
-> It seems it should be one way or the other: static calls *or* utf8_ops.
->
-> The static calls could be exported, and the module could be responsible for
-> updating them.  That would eliminate the need for utf8_ops.
+Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+---
+ fs/ext4/ext4.h    |  5 ++---
+ fs/ext4/mballoc.c | 13 +++++--------
+ 2 files changed, 7 insertions(+), 11 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2866d249f3d2..cb0724b87d54 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1552,9 +1552,8 @@ struct ext4_sb_info {
+ 	atomic_t s_bal_goals;	/* goal hits */
+ 	atomic_t s_bal_breaks;	/* too long searches */
+ 	atomic_t s_bal_2orders;	/* 2^order hits */
+-	spinlock_t s_bal_lock;
+-	unsigned long s_mb_buddies_generated;
+-	unsigned long long s_mb_generation_time;
++	atomic_t s_mb_buddies_generated;	/* number of buddies generated */
++	atomic64_t s_mb_generation_time;
+ 	atomic_t s_mb_lost_chunks;
+ 	atomic_t s_mb_preallocated;
+ 	atomic_t s_mb_discarded;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 99bf091fee10..07b78a3cc421 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -816,10 +816,8 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+ 	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
+ 
+ 	period = get_cycles() - period;
+-	spin_lock(&sbi->s_bal_lock);
+-	sbi->s_mb_buddies_generated++;
+-	sbi->s_mb_generation_time += period;
+-	spin_unlock(&sbi->s_bal_lock);
++	atomic_inc(&sbi->s_mb_buddies_generated);
++	atomic64_add(period, &sbi->s_mb_generation_time);
+ }
+ 
+ /* The buddy information is attached the buddy cache inode
+@@ -2843,7 +2841,6 @@ int ext4_mb_init(struct super_block *sb)
+ 	} while (i <= sb->s_blocksize_bits + 1);
+ 
+ 	spin_lock_init(&sbi->s_md_lock);
+-	spin_lock_init(&sbi->s_bal_lock);
+ 	sbi->s_mb_free_pending = 0;
+ 	INIT_LIST_HEAD(&sbi->s_freed_data_list);
+ 
+@@ -2979,9 +2976,9 @@ int ext4_mb_release(struct super_block *sb)
+ 				atomic_read(&sbi->s_bal_breaks),
+ 				atomic_read(&sbi->s_mb_lost_chunks));
+ 		ext4_msg(sb, KERN_INFO,
+-		       "mballoc: %lu generated and it took %Lu",
+-				sbi->s_mb_buddies_generated,
+-				sbi->s_mb_generation_time);
++		       "mballoc: %u generated and it took %llu",
++				atomic_read(&sbi->s_mb_buddies_generated),
++				atomic64_read(&sbi->s_mb_generation_time));
+ 		ext4_msg(sb, KERN_INFO,
+ 		       "mballoc: %u preallocated, %u discarded",
+ 				atomic_read(&sbi->s_mb_preallocated),
+-- 
+2.31.0.291.g576ba9dcdaf-goog
 
-Hmmm yes, I think we are just using utf8_ops for getting the owner details
-which we can now remove and instead pass it as an argument while 
-registering the module.
-Will make this change in v4. Thanks
-
-
->
-> - Eric
