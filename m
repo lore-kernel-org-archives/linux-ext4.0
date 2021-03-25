@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F6B2C433EA
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:34:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7671C433E9
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:35:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EBB7961A24
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:34:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C0C5B61A23
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:35:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231952AbhCYLen (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:34:43 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42140 "EHLO mail.kernel.org"
+        id S230509AbhCYLfF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:35:05 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41320 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S232026AbhCYLch (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:32:37 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 6D64961A32;
-        Thu, 25 Mar 2021 11:28:15 +0000 (UTC)
+        id S230478AbhCYLdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:33:04 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 56D3161A81;
+        Thu, 25 Mar 2021 11:28:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671696;
-        bh=P0r+3uN5GBDqBg+P3fl9fPh59W8VXQ7KuvSjr4zbcfo=;
+        s=k20201202; t=1616671714;
+        bh=fk9QduYSwiKkapdVA2+fzoirhsw/ghmQIFXqvZuYu6c=;
         h=From:To:Cc:Subject:Date:From;
-        b=aHLeVhNL5aEMwfhGuINCC2CwlYJziW+KobywhP6efI0CWbdF9Vrsp9rgxQYWY1dc8
-         l4jnnowZEzlcrU4utbgZ+ehkiXqoQbh1m/stdvRtxkYGsOWerD5MGjvaq6N+FrqtnV
-         NtliQ59WyNHDmWEq39v7+PPW6ytS9CvjumC7sPeu+UeBoZeO5wYsqE6KmxSdH5N1ZT
-         43mgJCl/vILdnEh0OHwhPUwKp87V6g6LioBcO6dbuBF4yZMqXPTXq+eBoukA4F7Oh8
-         kN92ZzfXwdJlTMa4NP50VQrYxU6hPL79UNXM+Fc7+7lmrrN8pgjafXDlRiQcX6sDee
-         P1OQfAYhKHBTA==
+        b=CvA/kC0Ft2Zi/iKi709ipd+UUxu689We36U+Si+naBu4xS+OtjWwYELc7u4kQFUEg
+         nycS7U7l8CspIhonTTOyNYAUziHJUcQ1LaNV1IndT0bD+nTA+IFsN2EY2M5f/JV2oE
+         rfOzEgmKtVQsFtOFcBlSYOovOfE/dMLpliW/vm8EuoTfrFk4BNjk48en2YJulgEty4
+         +T2wSSXEj7pA+IePNySFjV/ulwAcVIlGSwRHpXFtrIkO/heeP+kX34V3GEjzriKqwo
+         BYwsUQy6R0wk2My6tSXIfB+d064FTq4yMQ1ewmYY6ycc+WdtsNV82xk5E6amaMz3PJ
+         JPSUVl8CBPNYQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Zhaolong Zhang <zhangzl2013@126.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 01/13] ext4: fix bh ref count on error paths
-Date:   Thu, 25 Mar 2021 07:28:01 -0400
-Message-Id: <20210325112814.1928637-1-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 01/10] ext4: fix bh ref count on error paths
+Date:   Thu, 25 Mar 2021 07:28:22 -0400
+Message-Id: <20210325112832.1928898-1-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 MIME-Version: 1.0
 X-stable: review
@@ -63,10 +63,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ccce89de6d7e..7e41f7ccbfb5 100644
+index 881601691bd4..336e5c8f423e 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1979,13 +1979,13 @@ static int __ext4_journalled_writepage(struct page *page,
+@@ -1825,13 +1825,13 @@ static int __ext4_journalled_writepage(struct page *page,
  	if (!ret)
  		ret = err;
  
