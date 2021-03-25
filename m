@@ -4,40 +4,41 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2E35C433E9
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A3CBC433ED
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7A11061A3C
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4ACC761A2E
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230163AbhCYLZa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:25:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33516 "EHLO mail.kernel.org"
+        id S230206AbhCYLZc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:25:32 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33568 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229659AbhCYLZE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:25:04 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id BC12461A17;
-        Thu, 25 Mar 2021 11:25:03 +0000 (UTC)
+        id S229716AbhCYLZH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:25:07 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 5242D61A17;
+        Thu, 25 Mar 2021 11:25:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671504;
-        bh=H4bGBmXA9yhNs1UWlY9Ti7mPaWTEHuizqjHmc6X507k=;
+        s=k20201202; t=1616671507;
+        bh=iBd8lv3XWAnh+G1+FV3Mpd4a8xPiapG6OA7D9kyr+IA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=EmedEMjIFTYv87EjsnqmK8nT5V9U6surxRnOEiWhIE1xQ9QPXbNx5EFqaeQiaWgTU
-         IkqKMt2NTPhkUnMhAlOK5qBtHsGtb+xAPwCgLpxM+WrMTPwamenpNAlY/RKpX/l2RZ
-         X9ODyOJSqfnAfS+s667Y4XgtT5RO+M9ljH5o3s0ICAt7EOq34zTFz3cLqaCBPXoNiO
-         ZFUZnyQ8hvffBtzXHuKNDcxR1CbvqwhQOGmGsyzOcZxYjxdjrJkBYZclGb6HyGz9Rr
-         Nm47yK9js2fo1SvVynTVuXlkVhAQHVn351R3dcG57k6LvhsNL2LAP6dWGMMsfN9S5u
-         erl1gvd4/FCfg==
+        b=FOErQptZBOsUM2m7MKg3+bBpOGehvKQMn6+K92tCwrmj+iSyBcWTBE1q2WMNV5pCM
+         xwzU3QZR4v3eK6EpnmT8Q4oEaHt1Udqse0a7yGRjLlrn9MQn0joSCLWSJ4ReCMTMCE
+         u70pqtPqAggzBnzeh1F/mVv+ZG9D2E7hLPGkfvVdb8bPkFFlE1pNHp39jD0WT4objH
+         GhCDCMAAQN+L6WQ+bWYyqkjtSlbh7BNu4IyHxY1988UcCOAq8nK8FE/WfSXxq2hvVK
+         HqL4t5gjF3XXh9bBGzgmp0hnwz0Q3V3BF90wAHBIY0UKfl5DvUxDDcBVpJhLwtoq6k
+         zYOSb7u5MwiNg==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 03/44] ext4: add reclaim checks to xattr code
-Date:   Thu, 25 Mar 2021 07:24:18 -0400
-Message-Id: <20210325112459.1926846-3-sashal@kernel.org>
+Cc:     Zhaolong Zhang <zhangzl2013@126.com>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.11 05/44] ext4: fix bh ref count on error paths
+Date:   Thu, 25 Mar 2021 07:24:20 -0400
+Message-Id: <20210325112459.1926846-5-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 In-Reply-To: <20210325112459.1926846-1-sashal@kernel.org>
 References: <20210325112459.1926846-1-sashal@kernel.org>
@@ -49,63 +50,41 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+From: Zhaolong Zhang <zhangzl2013@126.com>
 
-[ Upstream commit 163f0ec1df33cf468509ff38cbcbb5eb0d7fac60 ]
+[ Upstream commit c915fb80eaa6194fa9bd0a4487705cd5b0dda2f1 ]
 
-Syzbot is reporting that ext4 can enter fs reclaim from kvmalloc() while
-the transaction is started like:
+__ext4_journalled_writepage should drop bhs' ref count on error paths
 
-  fs_reclaim_acquire+0x117/0x150 mm/page_alloc.c:4340
-  might_alloc include/linux/sched/mm.h:193 [inline]
-  slab_pre_alloc_hook mm/slab.h:493 [inline]
-  slab_alloc_node mm/slub.c:2817 [inline]
-  __kmalloc_node+0x5f/0x430 mm/slub.c:4015
-  kmalloc_node include/linux/slab.h:575 [inline]
-  kvmalloc_node+0x61/0xf0 mm/util.c:587
-  kvmalloc include/linux/mm.h:781 [inline]
-  ext4_xattr_inode_cache_find fs/ext4/xattr.c:1465 [inline]
-  ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1508 [inline]
-  ext4_xattr_set_entry+0x1ce6/0x3780 fs/ext4/xattr.c:1649
-  ext4_xattr_ibody_set+0x78/0x2b0 fs/ext4/xattr.c:2224
-  ext4_xattr_set_handle+0x8f4/0x13e0 fs/ext4/xattr.c:2380
-  ext4_xattr_set+0x13a/0x340 fs/ext4/xattr.c:2493
-
-This should be impossible since transaction start sets PF_MEMALLOC_NOFS.
-Add some assertions to the code to catch if something isn't working as
-expected early.
-
-Link: https://lore.kernel.org/linux-ext4/000000000000563a0205bafb7970@google.com/
-Signed-off-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20210222171626.21884-1-jack@suse.cz
+Signed-off-by: Zhaolong Zhang <zhangzl2013@126.com>
+Link: https://lore.kernel.org/r/1614678151-70481-1-git-send-email-zhangzl2013@126.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/xattr.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/ext4/inode.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 372208500f4e..083c95126781 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1462,6 +1462,9 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 	if (!ce)
- 		return NULL;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c173c8405856..ffbd459e2b37 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1937,13 +1937,13 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	if (!ret)
+ 		ret = err;
  
-+	WARN_ON_ONCE(ext4_handle_valid(journal_current_handle()) &&
-+		     !(current->flags & PF_MEMALLOC_NOFS));
-+
- 	ea_data = kvmalloc(value_len, GFP_KERNEL);
- 	if (!ea_data) {
- 		mb_cache_entry_put(ea_inode_cache, ce);
-@@ -2327,6 +2330,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 			error = -ENOSPC;
- 			goto cleanup;
- 		}
-+		WARN_ON_ONCE(!(current->flags & PF_MEMALLOC_NOFS));
- 	}
- 
- 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
+-	if (!ext4_has_inline_data(inode))
+-		ext4_walk_page_buffers(NULL, page_bufs, 0, len,
+-				       NULL, bput_one);
+ 	ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ out:
+ 	unlock_page(page);
+ out_no_pagelock:
++	if (!inline_data && page_bufs)
++		ext4_walk_page_buffers(NULL, page_bufs, 0, len,
++				       NULL, bput_one);
+ 	brelse(inode_bh);
+ 	return ret;
+ }
 -- 
 2.30.1
 
