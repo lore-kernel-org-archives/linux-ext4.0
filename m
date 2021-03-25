@@ -4,43 +4,43 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8A18C433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BADEC433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A13D461A67
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 508E661A64
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230517AbhCYL0V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:26:21 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34238 "EHLO mail.kernel.org"
+        id S231213AbhCYL0k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:26:40 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34492 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230358AbhCYLZx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:25:53 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 2282461A32;
-        Thu, 25 Mar 2021 11:25:52 +0000 (UTC)
+        id S230453AbhCYL0J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:26:09 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 485E161A39;
+        Thu, 25 Mar 2021 11:26:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671552;
-        bh=x1dLd35kS/fsJEktN17mPa9CELWLfzMplx6mvWu1YUk=;
+        s=k20201202; t=1616671563;
+        bh=zYNeFVcIfi3bPfvaIZC8EBWDHiXB4fm8GkIpteE1/Xg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=UGh5InIpNclj9MzT6HFHK2r7kpFMdY44zvm9xp6XMJevjumGgotseFrHxCmyXXV6p
-         FegOfbKUWS21O+hCcpEkbkf4oUpOS1dNUaaq69+BUbE8PcpeZg6101i6oI418rN8H/
-         uMYH6bN9lJwelUNRDMJWtRl2FE8xv6AYxAm9HOdOhM/rHwpipg06rhK/b3YTLmk5+e
-         n/rS01zs3AhTnUP74yoHI4EfE7Pad54v9qyIv9oBPJ/J7SCX+sqK8gSawMpKRwOanE
-         0RSDYfKI8+6FhFWMRhZomxp39vjLbd2FHfwEL8IZuV+rDVIxIEytt5nNwNsrjNkgq1
-         FQ3YQDwTMr8yA==
+        b=ClXQHRmIN5z0XrFhMKv9NryzOsxDgpvmX7xomkD8jmC3om491gy1X4SguFwvt9KV+
+         P8XmL9g4ZIgqdcSKJJ6jJH/47q3Y5nlxTXwINkyLB1ZBmztf1GKRk8Xcjpg/sUQQ3Y
+         sNuAUO9BwFyYubjORNvw2WTWhYef33auTI/WTtyvwiOPgJdTAEvPhjRtvQU1q1q+k6
+         cNxlgy2Wtl0DtwwEKFZhtxjGLFhEcRo7G4zl7mZDYd9r1qUrLN6fYpgynNixbIStQP
+         fXq9zwqBW4War9u1MN2dVkCsCJAeBvukzcOWXXeWvuWeuThSiLJ8UfhtgbXa4n/rXa
+         HlrTsQlGHv2kQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
+Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 41/44] ext4: do not iput inode under running transaction in ext4_rename()
-Date:   Thu, 25 Mar 2021 07:24:56 -0400
-Message-Id: <20210325112459.1926846-41-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.10 03/39] ext4: add reclaim checks to xattr code
+Date:   Thu, 25 Mar 2021 07:25:22 -0400
+Message-Id: <20210325112558.1927423-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210325112459.1926846-1-sashal@kernel.org>
-References: <20210325112459.1926846-1-sashal@kernel.org>
+In-Reply-To: <20210325112558.1927423-1-sashal@kernel.org>
+References: <20210325112558.1927423-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -49,88 +49,63 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "zhangyi (F)" <yi.zhang@huawei.com>
+From: Jan Kara <jack@suse.cz>
 
-[ Upstream commit 5dccdc5a1916d4266edd251f20bbbb113a5c495f ]
+[ Upstream commit 163f0ec1df33cf468509ff38cbcbb5eb0d7fac60 ]
 
-In ext4_rename(), when RENAME_WHITEOUT failed to add new entry into
-directory, it ends up dropping new created whiteout inode under the
-running transaction. After commit <9b88f9fb0d2> ("ext4: Do not iput inode
-under running transaction"), we follow the assumptions that evict() does
-not get called from a transaction context but in ext4_rename() it breaks
-this suggestion. Although it's not a real problem, better to obey it, so
-this patch add inode to orphan list and stop transaction before final
-iput().
+Syzbot is reporting that ext4 can enter fs reclaim from kvmalloc() while
+the transaction is started like:
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Link: https://lore.kernel.org/r/20210303131703.330415-2-yi.zhang@huawei.com
+  fs_reclaim_acquire+0x117/0x150 mm/page_alloc.c:4340
+  might_alloc include/linux/sched/mm.h:193 [inline]
+  slab_pre_alloc_hook mm/slab.h:493 [inline]
+  slab_alloc_node mm/slub.c:2817 [inline]
+  __kmalloc_node+0x5f/0x430 mm/slub.c:4015
+  kmalloc_node include/linux/slab.h:575 [inline]
+  kvmalloc_node+0x61/0xf0 mm/util.c:587
+  kvmalloc include/linux/mm.h:781 [inline]
+  ext4_xattr_inode_cache_find fs/ext4/xattr.c:1465 [inline]
+  ext4_xattr_inode_lookup_create fs/ext4/xattr.c:1508 [inline]
+  ext4_xattr_set_entry+0x1ce6/0x3780 fs/ext4/xattr.c:1649
+  ext4_xattr_ibody_set+0x78/0x2b0 fs/ext4/xattr.c:2224
+  ext4_xattr_set_handle+0x8f4/0x13e0 fs/ext4/xattr.c:2380
+  ext4_xattr_set+0x13a/0x340 fs/ext4/xattr.c:2493
+
+This should be impossible since transaction start sets PF_MEMALLOC_NOFS.
+Add some assertions to the code to catch if something isn't working as
+expected early.
+
+Link: https://lore.kernel.org/linux-ext4/000000000000563a0205bafb7970@google.com/
+Signed-off-by: Jan Kara <jack@suse.cz>
+Link: https://lore.kernel.org/r/20210222171626.21884-1-jack@suse.cz
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/namei.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ fs/ext4/xattr.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index df0368d578b1..6d954d681502 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3760,14 +3760,14 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	 */
- 	retval = -ENOENT;
- 	if (!old.bh || le32_to_cpu(old.de->inode) != old.inode->i_ino)
--		goto end_rename;
-+		goto release_bh;
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 6127e94ea4f5..0d9fedfc6baa 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1459,6 +1459,9 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
+ 	if (!ce)
+ 		return NULL;
  
- 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
- 				 &new.de, &new.inlined);
- 	if (IS_ERR(new.bh)) {
- 		retval = PTR_ERR(new.bh);
- 		new.bh = NULL;
--		goto end_rename;
-+		goto release_bh;
- 	}
- 	if (new.bh) {
- 		if (!new.inode) {
-@@ -3784,15 +3784,13 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
- 		if (IS_ERR(handle)) {
- 			retval = PTR_ERR(handle);
--			handle = NULL;
--			goto end_rename;
-+			goto release_bh;
++	WARN_ON_ONCE(ext4_handle_valid(journal_current_handle()) &&
++		     !(current->flags & PF_MEMALLOC_NOFS));
++
+ 	ea_data = kvmalloc(value_len, GFP_KERNEL);
+ 	if (!ea_data) {
+ 		mb_cache_entry_put(ea_inode_cache, ce);
+@@ -2325,6 +2328,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 			error = -ENOSPC;
+ 			goto cleanup;
  		}
- 	} else {
- 		whiteout = ext4_whiteout_for_rename(&old, credits, &handle);
- 		if (IS_ERR(whiteout)) {
- 			retval = PTR_ERR(whiteout);
--			whiteout = NULL;
--			goto end_rename;
-+			goto release_bh;
- 		}
++		WARN_ON_ONCE(!(current->flags & PF_MEMALLOC_NOFS));
  	}
  
-@@ -3926,16 +3924,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			ext4_setent(handle, &old,
- 				old.inode->i_ino, old_file_type);
- 			drop_nlink(whiteout);
-+			ext4_orphan_add(handle, whiteout);
- 		}
- 		unlock_new_inode(whiteout);
-+		ext4_journal_stop(handle);
- 		iput(whiteout);
--
-+	} else {
-+		ext4_journal_stop(handle);
- 	}
-+release_bh:
- 	brelse(old.dir_bh);
- 	brelse(old.bh);
- 	brelse(new.bh);
--	if (handle)
--		ext4_journal_stop(handle);
- 	return retval;
- }
- 
+ 	error = ext4_reserve_inode_write(handle, inode, &is.iloc);
 -- 
 2.30.1
 
