@@ -4,42 +4,40 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D56FC433E0
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8A18C433E0
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B735B61A57
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:26:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A13D461A67
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:27:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230005AbhCYLZb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:25:31 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33530 "EHLO mail.kernel.org"
+        id S230517AbhCYL0V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:26:21 -0400
+Received: from mail.kernel.org ([198.145.29.99]:34238 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229666AbhCYLZG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:25:06 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id ED93061A24;
-        Thu, 25 Mar 2021 11:25:04 +0000 (UTC)
+        id S230358AbhCYLZx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:25:53 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2282461A32;
+        Thu, 25 Mar 2021 11:25:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671505;
-        bh=5eiIfl9nXeOM1T/tJcH/If9OUi5sOYkqrdr6Rhqy2lI=;
+        s=k20201202; t=1616671552;
+        bh=x1dLd35kS/fsJEktN17mPa9CELWLfzMplx6mvWu1YUk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ZfwXN++DRwuODssAIKHAcfDXzqy8ceh1zbYMTz0EW4cbFH74d/s9aDnD7nD5JYYg2
-         i9C16lQ55YgqQATTh130Ii8ZYuEMC+fRnlGEOq8WbkqKpjEC88yjIZOuQi1H78v/1G
-         9pwVw6evTNR7nrxHk8LEfvlB1syghp10pNnERv47+OMTeN8AnTuMWOdBPEEIIilZq9
-         djehl1I9HUfoJAdFqjPWKwQO+99m+t/pVKXrBMOeVgIX4RApvl06hvf1zVhIhxnfxp
-         UX74mDRA1xYMSyPHO0z0q+RO6WOrefLNHOq2EYLf256j8y8FBQxB/xC8UP3ru99XsG
-         EGmXQMy7ZMEjw==
+        b=UGh5InIpNclj9MzT6HFHK2r7kpFMdY44zvm9xp6XMJevjumGgotseFrHxCmyXXV6p
+         FegOfbKUWS21O+hCcpEkbkf4oUpOS1dNUaaq69+BUbE8PcpeZg6101i6oI418rN8H/
+         uMYH6bN9lJwelUNRDMJWtRl2FE8xv6AYxAm9HOdOhM/rHwpipg06rhK/b3YTLmk5+e
+         n/rS01zs3AhTnUP74yoHI4EfE7Pad54v9qyIv9oBPJ/J7SCX+sqK8gSawMpKRwOanE
+         0RSDYfKI8+6FhFWMRhZomxp39vjLbd2FHfwEL8IZuV+rDVIxIEytt5nNwNsrjNkgq1
+         FQ3YQDwTMr8yA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Sabyrzhan Tasbolatov <snovitoll@gmail.com>,
-        syzbot+a8b4b0c60155e87e9484@syzkaller.appspotmail.com,
-        Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.11 04/44] fs/ext4: fix integer overflow in s_log_groups_per_flex
-Date:   Thu, 25 Mar 2021 07:24:19 -0400
-Message-Id: <20210325112459.1926846-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.11 41/44] ext4: do not iput inode under running transaction in ext4_rename()
+Date:   Thu, 25 Mar 2021 07:24:56 -0400
+Message-Id: <20210325112459.1926846-41-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
 In-Reply-To: <20210325112459.1926846-1-sashal@kernel.org>
 References: <20210325112459.1926846-1-sashal@kernel.org>
@@ -51,66 +49,88 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Sabyrzhan Tasbolatov <snovitoll@gmail.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
 
-[ Upstream commit f91436d55a279f045987e8b8c1385585dca54be9 ]
+[ Upstream commit 5dccdc5a1916d4266edd251f20bbbb113a5c495f ]
 
-syzbot found UBSAN: shift-out-of-bounds in ext4_mb_init [1], when
-1 << sbi->s_es->s_log_groups_per_flex is bigger than UINT_MAX,
-where sbi->s_mb_prefetch is unsigned integer type.
+In ext4_rename(), when RENAME_WHITEOUT failed to add new entry into
+directory, it ends up dropping new created whiteout inode under the
+running transaction. After commit <9b88f9fb0d2> ("ext4: Do not iput inode
+under running transaction"), we follow the assumptions that evict() does
+not get called from a transaction context but in ext4_rename() it breaks
+this suggestion. Although it's not a real problem, better to obey it, so
+this patch add inode to orphan list and stop transaction before final
+iput().
 
-32 is the maximum allowed power of s_log_groups_per_flex. Following if
-check will also trigger UBSAN shift-out-of-bound:
-
-if (1 << sbi->s_es->s_log_groups_per_flex >= UINT_MAX) {
-
-So I'm checking it against the raw number, perhaps there is another way
-to calculate UINT_MAX max power. Also use min_t as to make sure it's
-uint type.
-
-[1] UBSAN: shift-out-of-bounds in fs/ext4/mballoc.c:2713:24
-shift exponent 60 is too large for 32-bit type 'int'
-Call Trace:
- __dump_stack lib/dump_stack.c:79 [inline]
- dump_stack+0x137/0x1be lib/dump_stack.c:120
- ubsan_epilogue lib/ubsan.c:148 [inline]
- __ubsan_handle_shift_out_of_bounds+0x432/0x4d0 lib/ubsan.c:395
- ext4_mb_init_backend fs/ext4/mballoc.c:2713 [inline]
- ext4_mb_init+0x19bc/0x19f0 fs/ext4/mballoc.c:2898
- ext4_fill_super+0xc2ec/0xfbe0 fs/ext4/super.c:4983
-
-Reported-by: syzbot+a8b4b0c60155e87e9484@syzkaller.appspotmail.com
-Signed-off-by: Sabyrzhan Tasbolatov <snovitoll@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/20210224095800.3350002-1-snovitoll@gmail.com
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Link: https://lore.kernel.org/r/20210303131703.330415-2-yi.zhang@huawei.com
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/mballoc.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 99bf091fee10..a02fadf4fc84 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2709,8 +2709,15 @@ static int ext4_mb_init_backend(struct super_block *sb)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index df0368d578b1..6d954d681502 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3760,14 +3760,14 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	 */
+ 	retval = -ENOENT;
+ 	if (!old.bh || le32_to_cpu(old.de->inode) != old.inode->i_ino)
+-		goto end_rename;
++		goto release_bh;
+ 
+ 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
+ 				 &new.de, &new.inlined);
+ 	if (IS_ERR(new.bh)) {
+ 		retval = PTR_ERR(new.bh);
+ 		new.bh = NULL;
+-		goto end_rename;
++		goto release_bh;
+ 	}
+ 	if (new.bh) {
+ 		if (!new.inode) {
+@@ -3784,15 +3784,13 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
+ 		if (IS_ERR(handle)) {
+ 			retval = PTR_ERR(handle);
+-			handle = NULL;
+-			goto end_rename;
++			goto release_bh;
+ 		}
+ 	} else {
+ 		whiteout = ext4_whiteout_for_rename(&old, credits, &handle);
+ 		if (IS_ERR(whiteout)) {
+ 			retval = PTR_ERR(whiteout);
+-			whiteout = NULL;
+-			goto end_rename;
++			goto release_bh;
+ 		}
  	}
  
- 	if (ext4_has_feature_flex_bg(sb)) {
--		/* a single flex group is supposed to be read by a single IO */
--		sbi->s_mb_prefetch = min(1 << sbi->s_es->s_log_groups_per_flex,
-+		/* a single flex group is supposed to be read by a single IO.
-+		 * 2 ^ s_log_groups_per_flex != UINT_MAX as s_mb_prefetch is
-+		 * unsigned integer, so the maximum shift is 32.
-+		 */
-+		if (sbi->s_es->s_log_groups_per_flex >= 32) {
-+			ext4_msg(sb, KERN_ERR, "too many log groups per flexible block group");
-+			goto err_freesgi;
-+		}
-+		sbi->s_mb_prefetch = min_t(uint, 1 << sbi->s_es->s_log_groups_per_flex,
- 			BLK_MAX_SEGMENT_SIZE >> (sb->s_blocksize_bits - 9));
- 		sbi->s_mb_prefetch *= 8; /* 8 prefetch IOs in flight at most */
- 	} else {
+@@ -3926,16 +3924,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			ext4_setent(handle, &old,
+ 				old.inode->i_ino, old_file_type);
+ 			drop_nlink(whiteout);
++			ext4_orphan_add(handle, whiteout);
+ 		}
+ 		unlock_new_inode(whiteout);
++		ext4_journal_stop(handle);
+ 		iput(whiteout);
+-
++	} else {
++		ext4_journal_stop(handle);
+ 	}
++release_bh:
+ 	brelse(old.dir_bh);
+ 	brelse(old.bh);
+ 	brelse(new.bh);
+-	if (handle)
+-		ext4_journal_stop(handle);
+ 	return retval;
+ }
+ 
 -- 
 2.30.1
 
