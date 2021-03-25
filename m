@@ -4,73 +4,95 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF729C433E6
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 00:09:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1ACA5C433DB
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 02:22:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9111561A07
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 00:09:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DB82861A1E
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 02:22:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239163AbhCYAJO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Mar 2021 20:09:14 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:41422 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239147AbhCYAIq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Mar 2021 20:08:46 -0400
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: shreeya)
-        with ESMTPSA id E68EE1F45F1A
-From:   Shreeya Patel <shreeya.patel@collabora.com>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
-        chao@kernel.org, krisman@collabora.com, ebiggers@google.com,
-        drosen@google.com, ebiggers@kernel.org, yuchao0@huawei.com
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        andre.almeida@collabora.com
-Subject: [PATCH v4 4/5] fs: unicode: Rename utf8-core file to unicode-core
-Date:   Thu, 25 Mar 2021 05:38:10 +0530
-Message-Id: <20210325000811.1379641-5-shreeya.patel@collabora.com>
-X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210325000811.1379641-1-shreeya.patel@collabora.com>
-References: <20210325000811.1379641-1-shreeya.patel@collabora.com>
+        id S234433AbhCYCWE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Mar 2021 22:22:04 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:14579 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234257AbhCYCVd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Mar 2021 22:21:33 -0400
+Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.58])
+        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4F5TM30x5Hz19HM2;
+        Thu, 25 Mar 2021 10:19:27 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by DGGEMS406-HUB.china.huawei.com
+ (10.3.19.206) with Microsoft SMTP Server id 14.3.498.0; Thu, 25 Mar 2021
+ 10:21:15 +0800
+From:   Ye Bin <yebin10@huawei.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+CC:     Ye Bin <yebin10@huawei.com>
+Subject: [PATCH] ext4: Fix bug on in ext4_es_cache_extent as ext4_split_extent_at failed
+Date:   Thu, 25 Mar 2021 10:29:25 +0800
+Message-ID: <20210325022925.1769056-1-yebin10@huawei.com>
+X-Mailer: git-send-email 2.25.4
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Rename the file name from utf8-core to unicode-core for transformation of
-utf8-core file into the unicode subsystem layer file and also for better
-understanding.
+We got follow bug_on:
+[130747.323114] kernel BUG at fs/ext4/extents_status.c:762!
+[130747.323117] Internal error: Oops - BUG: 0 [#1] SMP
+......
+[130747.334329] Call trace:
+[130747.334553]  ext4_es_cache_extent+0x150/0x168 [ext4]
+[130747.334975]  ext4_cache_extents+0x64/0xe8 [ext4]
+[130747.335368]  ext4_find_extent+0x300/0x330 [ext4]
+[130747.335759]  ext4_ext_map_blocks+0x74/0x1178 [ext4]
+[130747.336179]  ext4_map_blocks+0x2f4/0x5f0 [ext4]
+[130747.336567]  ext4_mpage_readpages+0x4a8/0x7a8 [ext4]
+[130747.336995]  ext4_readpage+0x54/0x100 [ext4]
+[130747.337359]  generic_file_buffered_read+0x410/0xae8
+[130747.337767]  generic_file_read_iter+0x114/0x190
+[130747.338152]  ext4_file_read_iter+0x5c/0x140 [ext4]
+[130747.338556]  __vfs_read+0x11c/0x188
+[130747.338851]  vfs_read+0x94/0x150
+[130747.339110]  ksys_read+0x74/0xf0
 
-Acked-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-Signed-off-by: Shreeya Patel <shreeya.patel@collabora.com>
+If call ext4_ext_insert_extent failed but new extent already inserted, we just
+update "ex->ee_len = orig_ex.ee_len", this will lead to extent overlap, then
+cause bug on when cache extent.
+If call ext4_ext_insert_extent failed don't update ex->ee_len with old value.
+Maybe there will lead to block leak, but it can be fixed by fsck later.
+
+Signed-off-by: Ye Bin <yebin10@huawei.com>
 ---
- fs/unicode/Makefile                        | 2 +-
- fs/unicode/{utf8-core.c => unicode-core.c} | 0
- 2 files changed, 1 insertion(+), 1 deletion(-)
- rename fs/unicode/{utf8-core.c => unicode-core.c} (100%)
+ fs/ext4/extents.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/unicode/Makefile b/fs/unicode/Makefile
-index b88aecc86550..fbf9a629ed0d 100644
---- a/fs/unicode/Makefile
-+++ b/fs/unicode/Makefile
-@@ -3,7 +3,7 @@
- obj-$(CONFIG_UNICODE) += unicode.o
- obj-$(CONFIG_UNICODE_NORMALIZATION_SELFTEST) += utf8-selftest.o
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 77c84d6f1af6..970eb2dfcc46 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3246,7 +3246,7 @@ static int ext4_split_extent_at(handle_t *handle,
  
--unicode-y := utf8-norm.o utf8-core.o
-+unicode-y := utf8-norm.o unicode-core.o
+ 		goto out;
+ 	} else if (err)
+-		goto fix_extent_len;
++		goto err;
  
- $(obj)/utf8-norm.o: $(obj)/utf8data.h
+ out:
+ 	ext4_ext_show_leaf(inode, path);
+@@ -3254,6 +3254,7 @@ static int ext4_split_extent_at(handle_t *handle,
  
-diff --git a/fs/unicode/utf8-core.c b/fs/unicode/unicode-core.c
-similarity index 100%
-rename from fs/unicode/utf8-core.c
-rename to fs/unicode/unicode-core.c
+ fix_extent_len:
+ 	ex->ee_len = orig_ex.ee_len;
++err:
+ 	/*
+ 	 * Ignore ext4_ext_dirty return value since we are already in error path
+ 	 * and err is a non-zero error code.
 -- 
-2.30.1
+2.25.4
 
