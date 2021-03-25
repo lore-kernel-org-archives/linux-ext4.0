@@ -4,43 +4,43 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7232C433E6
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:35:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 19167C433E1
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:38:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 918BC61A17
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:35:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DDD29601FF
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Mar 2021 11:38:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230041AbhCYLfD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Mar 2021 07:35:03 -0400
-Received: from mail.kernel.org ([198.145.29.99]:42484 "EHLO mail.kernel.org"
+        id S231698AbhCYLgh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Mar 2021 07:36:37 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42150 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230468AbhCYLdE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Mar 2021 07:33:04 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 71E9461A7B;
-        Thu, 25 Mar 2021 11:28:30 +0000 (UTC)
+        id S231814AbhCYLeQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Mar 2021 07:34:16 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id CAD3761A8A;
+        Thu, 25 Mar 2021 11:28:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1616671711;
-        bh=4dBwzBth/MGDFVngC00eufD17tCIyKRLBQh/0Y8CU6Y=;
+        s=k20201202; t=1616671725;
+        bh=b4jFzIN2WpyeuB0Ec75kbI+N6+NiOD9f6rjxXDCsEHs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FaX2cqqxNtCgDumK6tCDQIaW57Qm1+Xvht11UMmxuyUr57zykJSOE6rCSvelnE8WO
-         PsIkyiIRqmic/5qTgMFpX16vCqDeKhsuhvDJNdNjz20XTR0UZI390tRUDUKV0NWD8n
-         jtxQVzonS8fjwOqgsjryw+UchvUXByW+yL+x/ZvyprCrDhvYzLCmwFJGaLqj5kmFtS
-         uBTk06DLxj/HuKH8rT5qR8B7NagcgpOZPQvfhAU9Y1+U8FUms2Bdo3nzbILSDN2vbC
-         LvBzyrC0/80y4mZd4tTXIe0/Z7kQQ5cfQu81o6F/+YeE2aglnc4hzKlykd8uaWmBEc
-         Mca7bk9GsW+ew==
+        b=m4q9lf7TsO37b1MjOcO6YiRh5sPGTUV8+mqlTuT7ZAyY0+PGZ/NSIAMQtA9QGW0I4
+         iTvrw43np9PoXz0Ps3JCmv8qHIQCi2OieuTbb7raM5o2JwcfcMp13M0PwrBZRh699A
+         cgWmI4irTAx/YSAZSAQlh6k8Jfa6mGeyeAtzI2WhywAXHDpDlU9tYcZxPntLLxyDQP
+         tkUqDU32r/9O63X2QqYZUgR0OXvnl7fMnPtYBz91GkWBQJW2eQcY1m5mCxfz9fMpG5
+         eujHJD3+r4g6CaDoMWbxh6Gt+Mg+MYukJEnSutOea/vFI58GPQAXEim0pM34RvJxfd
+         538xGHizDZT5g==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "zhangyi (F)" <yi.zhang@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 13/13] ext4: do not iput inode under running transaction in ext4_rename()
-Date:   Thu, 25 Mar 2021 07:28:13 -0400
-Message-Id: <20210325112814.1928637-13-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 10/10] ext4: do not iput inode under running transaction in ext4_rename()
+Date:   Thu, 25 Mar 2021 07:28:31 -0400
+Message-Id: <20210325112832.1928898-10-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.1
-In-Reply-To: <20210325112814.1928637-1-sashal@kernel.org>
-References: <20210325112814.1928637-1-sashal@kernel.org>
+In-Reply-To: <20210325112832.1928898-1-sashal@kernel.org>
+References: <20210325112832.1928898-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -71,10 +71,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 6224b0e6fb64..145774d52b6e 100644
+index d5b3216585cf..50e2be89e056 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -3590,7 +3590,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+@@ -3529,7 +3529,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  	 */
  	retval = -ENOENT;
  	if (!old.bh || le32_to_cpu(old.de->inode) != old.inode->i_ino)
@@ -83,7 +83,7 @@ index 6224b0e6fb64..145774d52b6e 100644
  
  	if ((old.dir != new.dir) &&
  	    ext4_encrypted_inode(new.dir) &&
-@@ -3604,7 +3604,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+@@ -3544,7 +3544,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  	if (IS_ERR(new.bh)) {
  		retval = PTR_ERR(new.bh);
  		new.bh = NULL;
@@ -92,7 +92,7 @@ index 6224b0e6fb64..145774d52b6e 100644
  	}
  	if (new.bh) {
  		if (!new.inode) {
-@@ -3621,15 +3621,13 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+@@ -3561,15 +3561,13 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  		handle = ext4_journal_start(old.dir, EXT4_HT_DIR, credits);
  		if (IS_ERR(handle)) {
  			retval = PTR_ERR(handle);
@@ -110,7 +110,7 @@ index 6224b0e6fb64..145774d52b6e 100644
  		}
  	}
  
-@@ -3737,16 +3735,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+@@ -3677,16 +3675,18 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
  			ext4_setent(handle, &old,
  				old.inode->i_ino, old_file_type);
  			drop_nlink(whiteout);
