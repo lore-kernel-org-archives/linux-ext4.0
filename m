@@ -5,26 +5,26 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02249C433E5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C855C433EA
 	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 14:45:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BC30E6194A
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 14:45:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1DCBC6196C
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 14:45:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230247AbhC1Oo5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S231373AbhC1Oo5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sun, 28 Mar 2021 10:44:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48302 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48318 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231208AbhC1Ooa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2021 10:44:30 -0400
+        with ESMTP id S231321AbhC1Ooe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2021 10:44:34 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E58AC061756;
-        Sun, 28 Mar 2021 07:44:30 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6CBFBC061756;
+        Sun, 28 Mar 2021 07:44:34 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: tonyk)
-        with ESMTPSA id CF00F1F42CD7
+        with ESMTPSA id CED981F46335
 From:   =?UTF-8?q?Andr=C3=A9=20Almeida?= <andrealmeid@collabora.com>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Theodore Ts'o <tytso@mit.edu>,
@@ -36,9 +36,9 @@ Cc:     krisman@collabora.com, kernel@collabora.com,
         Daniel Rosenberg <drosen@google.com>,
         Chao Yu <yuchao0@huawei.com>,
         =?UTF-8?q?Andr=C3=A9=20Almeida?= <andrealmeid@collabora.com>
-Subject: [PATCH 2/3] ext4: Prevent dangling dentries on casefold directories
-Date:   Sun, 28 Mar 2021 11:43:55 -0300
-Message-Id: <20210328144356.12866-3-andrealmeid@collabora.com>
+Subject: [PATCH 3/3] f2fs: Prevent dangling dentries on casefold directories
+Date:   Sun, 28 Mar 2021 11:43:56 -0300
+Message-Id: <20210328144356.12866-4-andrealmeid@collabora.com>
 X-Mailer: git-send-email 2.31.0
 In-Reply-To: <20210328144356.12866-1-andrealmeid@collabora.com>
 References: <20210328144356.12866-1-andrealmeid@collabora.com>
@@ -59,26 +59,27 @@ might have a name different than the specified by user.
 To prevent this from happening, remove all negative dentries in a
 directory before making it a case-folded one.
 
-Fixes: b886ee3e778e ("ext4: Support case-insensitive file name lookups")
+Fixes: 2c2eb7a300cd ("f2fs: Support case-insensitive file name lookups")
 Signed-off-by: André Almeida <andrealmeid@collabora.com>
 ---
- fs/ext4/ioctl.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/f2fs/file.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index a2cf35066f46..0eede4c93c22 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -381,6 +381,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 			err = -ENOTEMPTY;
- 			goto flags_out;
- 		}
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index d26ff2ae3f5e..616b7eb43795 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1826,6 +1826,10 @@ static int f2fs_setflags_common(struct inode *inode, u32 iflags, u32 mask)
+ 			return -EOPNOTSUPP;
+ 		if (!f2fs_empty_dir(inode))
+ 			return -ENOTEMPTY;
 +
-+		if (!(oldflags & EXT4_CASEFOLD_FL) && (flags & EXT4_CASEFOLD_FL))
++		if (!(masked_flags & F2FS_CASEFOLD_FL) &&
++		    (iflags & F2FS_CASEFOLD_FL))
 +			d_clear_dir_neg_dentries(inode);
  	}
  
- 	/*
+ 	if (iflags & (F2FS_COMPR_FL | F2FS_NOCOMP_FL)) {
 -- 
 2.31.0
 
