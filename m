@@ -2,120 +2,97 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1242FC433E9
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 14:45:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E9A7C433C1
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 15:09:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EC5126196C
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 14:45:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D922D61948
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Mar 2021 15:09:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231363AbhC1Oo4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 28 Mar 2021 10:44:56 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:33608 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230526AbhC1Oo0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2021 10:44:26 -0400
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: tonyk)
-        with ESMTPSA id C8BF11F4418B
-From:   =?UTF-8?q?Andr=C3=A9=20Almeida?= <andrealmeid@collabora.com>
-To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        id S231225AbhC1PIQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Mar 2021 11:08:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53240 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231131AbhC1PHg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Mar 2021 11:07:36 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD65BC061756;
+        Sun, 28 Mar 2021 08:07:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Transfer-Encoding:
+        Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+        Sender:Reply-To:Content-ID:Content-Description;
+        bh=U3VUBgSWmtuhj2eaOcurajScUzkTC8xyuO2uGbgOuaE=; b=aSLec8BLfvM6s8JuxKcmT1Wg2W
+        m/And3P1jFN2IW/L1JYvNroaUyFxLz1W6U6oz2tM0c5Sp4BKZUJNortM4lqrYuDyQgFOu7KQfKV26
+        NE/GIoPujfo70lzZ3SrNV6WgavKVz7Mddbw9+fBhoAZuak+LqRB9jlhYNddifLa4BckCw1fK+2XZt
+        zaMHXwj84B8anfi9sKC1D8iIJj788XdTVYqtxEE9t9kVqlZcoc9xa3IdPN4IA4PPLZ5iTdV+QRT+d
+        bqgwGE1tdJzUh/NLuFafHWioh96XJcCZRhZ1Wg1yckv0WTHCdvtIBvJCBz4e0ODFl5hZk9rrMfG9V
+        OVKMzBeg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
+        id 1lQX0V-000CDn-KJ; Sun, 28 Mar 2021 15:07:20 +0000
+Date:   Sun, 28 Mar 2021 16:07:15 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     =?iso-8859-1?Q?Andr=E9?= Almeida <andrealmeid@collabora.com>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
-Cc:     krisman@collabora.com, kernel@collabora.com,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        krisman@collabora.com, kernel@collabora.com,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Daniel Rosenberg <drosen@google.com>,
-        Chao Yu <yuchao0@huawei.com>,
-        =?UTF-8?q?Andr=C3=A9=20Almeida?= <andrealmeid@collabora.com>
-Subject: [PATCH 1/3] fs/dcache: Add d_clear_dir_neg_dentries()
-Date:   Sun, 28 Mar 2021 11:43:54 -0300
-Message-Id: <20210328144356.12866-2-andrealmeid@collabora.com>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20210328144356.12866-1-andrealmeid@collabora.com>
+        Chao Yu <yuchao0@huawei.com>
+Subject: Re: [PATCH 1/3] fs/dcache: Add d_clear_dir_neg_dentries()
+Message-ID: <20210328150715.GA33249@casper.infradead.org>
 References: <20210328144356.12866-1-andrealmeid@collabora.com>
+ <20210328144356.12866-2-andrealmeid@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <20210328144356.12866-2-andrealmeid@collabora.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For directories with negative dentries that are becoming case-insensitive
-dirs, we need to remove all those negative dentries, otherwise they will
-become dangling dentries. During the creation of a new file, if a d_hash
-collision happens and the names match in a case-insensitive way, the name
-of the file will be the name defined at the negative dentry, that may be
-different from the specified by the user. To prevent this from
-happening, we need to remove all dentries in a directory. Given that the
-directory must be empty before we call this function we are sure that
-all dentries there will be negative.
+On Sun, Mar 28, 2021 at 11:43:54AM -0300, AndrÈ Almeida wrote:
+> +/**
+> + * d_clear_dir_neg_dentries - Remove negative dentries in an inode
+> + * @dir: Directory to clear negative dentries
+> + *
+> + * For directories with negative dentries that are becoming case-insensitive
+> + * dirs, we need to remove all those negative dentries, otherwise they will
+> + * become dangling dentries. During the creation of a new file, if a d_hash
+> + * collision happens and the names match in a case-insensitive, the name of
+> + * the file will be the name defined at the negative dentry, that can be
+> + * different from the specified by the user. To prevent this from happening, we
+> + * need to remove all dentries in a directory. Given that the directory must be
+> + * empty before we call this function we are sure that all dentries there will
+> + * be negative.
+> + */
 
-Create a function to remove all negative dentries from a directory, to
-be used as explained above by filesystems that support case-insensitive
-lookups.
+This is quite the landmine of a function.  It _assumes_ that the directory
+is empty, and clears all dentries in it.
 
-Signed-off-by: Andr√© Almeida <andrealmeid@collabora.com>
----
- fs/dcache.c            | 27 +++++++++++++++++++++++++++
- include/linux/dcache.h |  1 +
- 2 files changed, 28 insertions(+)
+> +void d_clear_dir_neg_dentries(struct inode *dir)
+> +{
+> +	struct dentry *alias, *dentry;
+> +
+> +	hlist_for_each_entry(alias, &dir->i_dentry, d_u.d_alias) {
+> +		list_for_each_entry(dentry, &alias->d_subdirs, d_child) {
+> +			d_drop(dentry);
+> +			dput(dentry);
+> +		}
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 7d24ff7eb206..fafb3016d6fd 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1723,6 +1723,33 @@ void d_invalidate(struct dentry *dentry)
- }
- EXPORT_SYMBOL(d_invalidate);
- 
-+/**
-+ * d_clear_dir_neg_dentries - Remove negative dentries in an inode
-+ * @dir: Directory to clear negative dentries
-+ *
-+ * For directories with negative dentries that are becoming case-insensitive
-+ * dirs, we need to remove all those negative dentries, otherwise they will
-+ * become dangling dentries. During the creation of a new file, if a d_hash
-+ * collision happens and the names match in a case-insensitive, the name of
-+ * the file will be the name defined at the negative dentry, that can be
-+ * different from the specified by the user. To prevent this from happening, we
-+ * need to remove all dentries in a directory. Given that the directory must be
-+ * empty before we call this function we are sure that all dentries there will
-+ * be negative.
-+ */
-+void d_clear_dir_neg_dentries(struct inode *dir)
-+{
-+	struct dentry *alias, *dentry;
-+
-+	hlist_for_each_entry(alias, &dir->i_dentry, d_u.d_alias) {
-+		list_for_each_entry(dentry, &alias->d_subdirs, d_child) {
-+			d_drop(dentry);
-+			dput(dentry);
-+		}
-+	}
-+}
-+EXPORT_SYMBOL(d_clear_dir_neg_dentries);
-+
- /**
-  * __d_alloc	-	allocate a dcache entry
-  * @sb: filesystem it will belong to
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index c1e48014106f..c43cd0be077f 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -250,6 +250,7 @@ extern void shrink_dcache_sb(struct super_block *);
- extern void shrink_dcache_parent(struct dentry *);
- extern void shrink_dcache_for_umount(struct super_block *);
- extern void d_invalidate(struct dentry *);
-+extern void d_clear_dir_neg_dentries(struct inode *);
- 
- /* only used at mount-time */
- extern struct dentry * d_make_root(struct inode *);
--- 
-2.31.0
+I would be happier if it included a check for negativity.  d_is_negative()
+or maybe this newfangled d_really_is_negative() (i haven't stayed up
+to speed on the precise difference between the two)
 
+> +	}
+> +}
+> +EXPORT_SYMBOL(d_clear_dir_neg_dentries);
+
+I'd rather see this _GPL for such an internal thing.
