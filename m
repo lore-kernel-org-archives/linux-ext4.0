@@ -2,88 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AFAFC433DB
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 Mar 2021 12:05:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A903C433DB
+	for <linux-ext4@archiver.kernel.org>; Wed, 31 Mar 2021 12:08:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2377B617C9
-	for <linux-ext4@archiver.kernel.org>; Wed, 31 Mar 2021 12:05:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6805861998
+	for <linux-ext4@archiver.kernel.org>; Wed, 31 Mar 2021 12:08:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235119AbhCaMFV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 31 Mar 2021 08:05:21 -0400
-Received: from mx2.suse.de ([195.135.220.15]:56978 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S235140AbhCaMFJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Mar 2021 08:05:09 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 75AA1B1E6;
-        Wed, 31 Mar 2021 12:05:08 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 306301E4415; Wed, 31 Mar 2021 14:05:08 +0200 (CEST)
-Date:   Wed, 31 Mar 2021 14:05:08 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     ira.weiny@intel.com
-Cc:     Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 0/2] ext2: Convert kmap to kmap_local_page
-Message-ID: <20210331120508.GG30749@quack2.suse.cz>
-References: <20210329065402.3297092-1-ira.weiny@intel.com>
+        id S235246AbhCaMHg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 31 Mar 2021 08:07:36 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:15125 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234377AbhCaMH0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Mar 2021 08:07:26 -0400
+Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.58])
+        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4F9Q4H3cvDz1BFXb;
+        Wed, 31 Mar 2021 20:05:19 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by DGGEMS412-HUB.china.huawei.com
+ (10.3.19.212) with Microsoft SMTP Server id 14.3.498.0; Wed, 31 Mar 2021
+ 20:07:15 +0800
+From:   Zhang Yi <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <yi.zhang@huawei.com>
+Subject: [PATCH v2] ext4: fix check to prevent false positive report of incorrect used inodes
+Date:   Wed, 31 Mar 2021 20:15:16 +0800
+Message-ID: <20210331121516.2243099-1-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.25.4
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210329065402.3297092-1-ira.weiny@intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ira!
+Commit <50122847007> ("ext4: fix check to prevent initializing reserved
+inodes") check the block group zero and prevent initializing reserved
+inodes. But in some special cases, the reserved inode may not all belong
+to the group zero, it may exist into the second group if we format
+filesystem below.
 
-On Sun 28-03-21 23:54:00, ira.weiny@intel.com wrote:
-> From: Ira Weiny <ira.weiny@intel.com>
-> 
-> kmap is inefficient and can be abused so it is being phased out in favor of
-> kmap_local_page where possible.
-> 
-> ext2 uses kmap in ext2_[get|put]_page().  All of the calls to
-> ext2_[get|put]_page() occur in single threads so it is perfectly safe and
-> preferable to use kmap_local_page().
-> 
-> This series has a clean up which matches ext2_put_page() with ext2_dotdot() and
-> ext2_find_entry().  Those calls use ext2_get_page() to map the page prior to
-> returning it to their callers.  And they document that ext2_put_page() should
-> be matched up with them.  This was the case but the ext2_put_page() calls were
-> hidden in other functions.  We lift the ext2_put_page() calls to match up to
-> the functions where ext2_dotdot() and ext2_find_entry() are called.
-> 
-> After that clean up convert ext2_[get|put]_page() to kmap and adjust for
-> kunmap_local() requiring the page address.
-> 
-> Nesting of kmap_local_page() calls is maintained with minor changes.
+  mkfs.ext4 -b 4096 -g 8192 -N 1024 -I 4096 /dev/sda
 
-Pulled into my tree. Thanks!
+So, it will end up triggering a false positive report of a corrupted
+file system. This patch fix it by avoid check reserved inodes if no free
+inode blocks will be zeroed.
 
-								Honza
+Fixes: 50122847007 ("ext4: fix check to prevent initializing reserved inodes")
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+---
+Changes since v1:
+ - Splict check of used_blks and used_inos to make code more
+   comprehensible as Jan suggested.
 
-> 
-> Ira Weiny (2):
->   ext2: Match up ext2_put_page() with ext2_dotdot() and
->     ext2_find_entry()
->   fs/ext2: Replace kmap() with kmap_local_page()
-> 
->  fs/ext2/dir.c   | 94 +++++++++++++++++++++++++++++++------------------
->  fs/ext2/ext2.h  | 12 ++++---
->  fs/ext2/namei.c | 34 +++++++++++-------
->  3 files changed, 89 insertions(+), 51 deletions(-)
-> 
-> -- 
-> 2.28.0.rc0.12.gb6a658bd00c9
-> 
+ fs/ext4/ialloc.c | 48 ++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 32 insertions(+), 16 deletions(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 633ae7becd61..5f0c7fe32672 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1513,6 +1513,7 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ 	handle_t *handle;
+ 	ext4_fsblk_t blk;
+ 	int num, ret = 0, used_blks = 0;
++	unsigned long used_inos = 0;
+ 
+ 	/* This should not happen, but just to be sure check this */
+ 	if (sb_rdonly(sb)) {
+@@ -1543,22 +1544,37 @@ int ext4_init_inode_table(struct super_block *sb, ext4_group_t group,
+ 	 * used inodes so we need to skip blocks with used inodes in
+ 	 * inode table.
+ 	 */
+-	if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)))
+-		used_blks = DIV_ROUND_UP((EXT4_INODES_PER_GROUP(sb) -
+-			    ext4_itable_unused_count(sb, gdp)),
+-			    sbi->s_inodes_per_block);
+-
+-	if ((used_blks < 0) || (used_blks > sbi->s_itb_per_group) ||
+-	    ((group == 0) && ((EXT4_INODES_PER_GROUP(sb) -
+-			       ext4_itable_unused_count(sb, gdp)) <
+-			      EXT4_FIRST_INO(sb)))) {
+-		ext4_error(sb, "Something is wrong with group %u: "
+-			   "used itable blocks: %d; "
+-			   "itable unused count: %u",
+-			   group, used_blks,
+-			   ext4_itable_unused_count(sb, gdp));
+-		ret = 1;
+-		goto err_out;
++	if (!(gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT))) {
++		used_inos = EXT4_INODES_PER_GROUP(sb) -
++			    ext4_itable_unused_count(sb, gdp);
++		used_blks = DIV_ROUND_UP(used_inos, sbi->s_inodes_per_block);
++
++		/* Bogus inode unused count? */
++		if (used_blks < 0 || used_blks > sbi->s_itb_per_group) {
++			ext4_error(sb, "Something is wrong with group %u: "
++				   "used itable blocks: %d; "
++				   "itable unused count: %u",
++				   group, used_blks,
++				   ext4_itable_unused_count(sb, gdp));
++			ret = 1;
++			goto err_out;
++		}
++
++		used_inos += group * EXT4_INODES_PER_GROUP(sb);
++		/*
++		 * Are there some uninitialized inodes in the inode table
++		 * before the first normal inode?
++		 */
++		if ((used_blks != sbi->s_itb_per_group) &&
++		     (used_inos < EXT4_FIRST_INO(sb))) {
++			ext4_error(sb, "Something is wrong with group %u: "
++				   "itable unused count: %u; "
++				   "itables initialized count: %ld",
++				   group, ext4_itable_unused_count(sb, gdp),
++				   used_inos);
++			ret = 1;
++			goto err_out;
++		}
+ 	}
+ 
+ 	blk = ext4_inode_table(sb, gdp) + used_blks;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.25.4
+
