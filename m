@@ -2,36 +2,67 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.2 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-9.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A933FC433ED
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Apr 2021 18:44:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AD08C433ED
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Apr 2021 18:46:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8821360FED
-	for <linux-ext4@archiver.kernel.org>; Thu,  1 Apr 2021 18:44:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E97A860FED
+	for <linux-ext4@archiver.kernel.org>; Thu,  1 Apr 2021 18:46:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237419AbhDASn6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 1 Apr 2021 14:43:58 -0400
-Received: from mx2.suse.de ([195.135.220.15]:58566 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S236933AbhDASdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Apr 2021 14:33:41 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 09EAFB167;
-        Thu,  1 Apr 2021 16:15:49 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id C984D1F2B53; Thu,  1 Apr 2021 18:15:48 +0200 (CEST)
-Date:   Thu, 1 Apr 2021 18:15:48 +0200
-From:   Jan Kara <jack@suse.cz>
+        id S236817AbhDASqp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 1 Apr 2021 14:46:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43482 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S238227AbhDASoo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Apr 2021 14:44:44 -0400
+Received: from mail-qv1-xf35.google.com (mail-qv1-xf35.google.com [IPv6:2607:f8b0:4864:20::f35])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2DEB7C02258B
+        for <linux-ext4@vger.kernel.org>; Thu,  1 Apr 2021 10:46:42 -0700 (PDT)
+Received: by mail-qv1-xf35.google.com with SMTP id iu14so1403702qvb.4
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Apr 2021 10:46:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=5OMntDA2FM97HxcZAmCmRSP2NYssDkXawHr9+Rd4nAA=;
+        b=AfvQo1Arr/cRsrPUwMC94gLCqLOCUn1dHPoesBklBaAwf9COaxYji90TrCqQX1Hyy2
+         CyBsmXJdkVpoTTNGGCWvPbcBDUqsOlpBQBYPf3+mEd8Ylnd9LyoKTyM9DAZUOPkG9wTn
+         SiTN1IkrECcWfod+s20ZzPVR46kwjyiRIG0uVPPO6yabUohcK6XjbLHMrD3d/u2WnpyK
+         w4RIYzf29AhtkLccbW96M6xQ8+InKh0zzCnCXfNVXI4+C1nKZR0KBnLsLCsSEfLQXg6v
+         MLtMPvV6BsC4tY7qZWSg6jtJC3G0FxvXgK7X6d+tjb1N4S/pU11rkwusPyfxr0NnpmV7
+         WCcA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=5OMntDA2FM97HxcZAmCmRSP2NYssDkXawHr9+Rd4nAA=;
+        b=uCalNlHkWd2K+gVrwR9IDatsabn2uHS/HevXaHUMyfVf4o0H0LQbMWLlLcnhI7Mh85
+         i21r0fQemnhyanJrKL1+EfmROj8RvIneXaMr8xAaiA4+k9sNR3S9RkrC9LN32K4GViRF
+         b1f0suDOnY6i5QaMyEbg0HWAm55Nq+x3UKzkmZtWp7lL4I/gX8FGvaOtPa/sBupX4/Fl
+         p2QhlIO0j8+dQH8nVper2QlWcorp/lq318L8tUM1hZmm1K6i/EVJIsgd2DP1TJbeKu1A
+         Od6LCN0KFZN5KlzDrSswLEhfPX5IUB1PQFKB26iKs5pWRnvONjZitcCex6p6A8XJRUK2
+         JVhg==
+X-Gm-Message-State: AOAM532T5M1g2Jcb26NyPisbnhywx8MTPH6qRkpej1dYu1Sou4FGdJpk
+        QoJVsj19QMUEfHpvnCKxLnXxcol7/Rk=
+X-Google-Smtp-Source: ABdhPJz5+SG2/RLPlspacpdsm1T2r1nNIDX24CyY/fHhcoupzSSQ5RR5azz8Lt8pQ33Zr4AbU6q4sw==
+X-Received: by 2002:a05:6214:80a:: with SMTP id df10mr9454422qvb.46.1617299201339;
+        Thu, 01 Apr 2021 10:46:41 -0700 (PDT)
+Received: from localhost.localdomain (c-73-60-226-25.hsd1.nh.comcast.net. [73.60.226.25])
+        by smtp.gmail.com with ESMTPSA id f9sm4475916qkk.115.2021.04.01.10.46.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 01 Apr 2021 10:46:41 -0700 (PDT)
+Date:   Thu, 1 Apr 2021 13:46:39 -0400
+From:   Eric Whitney <enwlinux@gmail.com>
 To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
         tytso@mit.edu
 Subject: Re: generic/418 regression seen on 5.12-rc3
-Message-ID: <20210401161548.GA12088@quack2.suse.cz>
+Message-ID: <20210401174639.GA714@localhost.localdomain>
 References: <20210318181613.GA13891@localhost.localdomain>
  <20210318201506.GU3420@casper.infradead.org>
  <20210318213808.GA26924@localhost.localdomain>
@@ -47,7 +78,7 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun 28-03-21 03:41:06, Matthew Wilcox wrote:
+* Matthew Wilcox <willy@infradead.org>:
 > On Mon, Mar 22, 2021 at 12:37:03PM -0400, Eric Whitney wrote:
 > > * Matthew Wilcox <willy@infradead.org>:
 > > > On Thu, Mar 18, 2021 at 05:38:08PM -0400, Eric Whitney wrote:
@@ -136,6 +167,48 @@ On Sun 28-03-21 03:41:06, Matthew Wilcox wrote:
 > I think what's going on is that we have a dio write vs a buffered read.
 > That is, we're only specifying -w to diotest and not -w -r.  So we have
 > a read-vs-invalidate situation.
+
+Sorry about this - when writing this up, I was misled by a buggy comment in
+dio-invalidate-cache.c's text which states that the reads are direct reads.
+
+I've only seen the failure occur with a dio write to a region followed by
+a buffered read of the same region.  A dio write followed by a dio read always
+succeeds in obtaining the written data (multiple thousands of test runs to
+support this claim).
+
+In addition, if any of generic/418's preallocation options (-F, -p, -t) are
+specified, the test does not fail even with the combination of a dio write
+followed by a buffered read.  This is the first suggestion that ext4 might
+be at fault.
+
+With some work to simplify the test, the description of the problem looks like:
+
+1) test on file system with block size < page size (1k on x86_64, say)
+
+2) two processes do one dio write each to two disjoint regions of the same
+size in a freshly created file
+
+3) each process does a buffered read of the region it wrote for verification
+
+4) if the region written is less than the file system block size (512 bytes
+on a 1k file system, first write at offset 0, second at offset 512), the
+test does not fail
+
+5) if the region written is equal to or greater than the system page size,
+the test does not fail
+
+6) if the region written is less than the system page size, and equal to or
+greater than the file system block size (1024 bytes on 1k file system, say,
+first write at offset 0, second write at offset 1024), the test can (but
+does not always) fail
+
+7) in my data, it's always the second process writing at the non-zero offset
+that sees the failure
+
+8) failure rate is around 1% on my test system
+
+So, point 6) also suggests the problem might be due to ext4.
+
 > 
 > What used to happen:
 > 
@@ -182,33 +255,12 @@ On Sun 28-03-21 03:41:06, Matthew Wilcox wrote:
 > found a page in the page cache, so this is just widening the window in
 > which this race can happen.
 
-I was looking into this for a while after Eric was talking about this
-problem on ext4 concall and I think I see where the problem is. The problem
-is with handling of extending direct IO write. For extending dio write
-ext4_dio_write_iter() ends up doing:
+Yes, it seems likely your patch simply enlarged a race window somewhere in
+ext4's dio implementation.  In parallel with this posting, Jan has noted
+he's got a possible explanation.  So, we'll pursue that direction next.
 
-	iomap_dio_rw(..., IOMAP_DIO_FORCE_WAIT);
-	ext4_handle_inode_extension()
-		-> updates i_size
+Matthew - thanks very much for your time and effort in reproducing this
+failure and considering it in the context of your patch!  
 
-Now the problem is that i_size gets update only after we invalidate page
-cache in iomap_dio_rw() after direct IO write. So we can race like:
+Eric
 
-CPU1 - write at offset 1k			CPU2 - read from offset 0
-iomap_dio_rw(..., IOMAP_DIO_FORCE_WAIT);
-						ext4_readpage();
-ext4_handle_inode_extension()
-
-We will read the page at index 0, still see i_size == 1k so we will leave
-page contents beyond 1k zeroed out in ext4_mpage_readpages(). But the page
-is marked uptodate and there's nobody to invalidate it anymore. So
-following buffered read at offset 1k will read stale zeros.
-
-The cleanest solution would be to handle inode extension in
-ext4_dio_write_end_io() to avoid this race. However it is not obvious how
-to propagate all the information we need there... :-|
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
