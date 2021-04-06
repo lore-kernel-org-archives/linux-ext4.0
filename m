@@ -2,80 +2,98 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D1FCCC43470
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Apr 2021 12:21:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3115C433B4
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Apr 2021 12:32:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE5F4613D0
-	for <linux-ext4@archiver.kernel.org>; Tue,  6 Apr 2021 12:21:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9987D6135D
+	for <linux-ext4@archiver.kernel.org>; Tue,  6 Apr 2021 12:32:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343983AbhDFMWE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 6 Apr 2021 08:22:04 -0400
-Received: from mx2.suse.de ([195.135.220.15]:39256 "EHLO mx2.suse.de"
+        id S1344028AbhDFMcm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 6 Apr 2021 08:32:42 -0400
+Received: from mx2.suse.de ([195.135.220.15]:48300 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1343961AbhDFMV6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 6 Apr 2021 08:21:58 -0400
+        id S238115AbhDFMcm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Apr 2021 08:32:42 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id DA330B165;
-        Tue,  6 Apr 2021 12:21:48 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 4BD67B178;
+        Tue,  6 Apr 2021 12:32:33 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id AF6701F2B77; Tue,  6 Apr 2021 14:21:48 +0200 (CEST)
-Date:   Tue, 6 Apr 2021 14:21:48 +0200
+        id 07D541F2B77; Tue,  6 Apr 2021 14:32:33 +0200 (CEST)
+Date:   Tue, 6 Apr 2021 14:32:33 +0200
 From:   Jan Kara <jack@suse.cz>
-To:     Kent Overstreet <kent.overstreet@gmail.com>
-Cc:     Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel@vger.kernel.org,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/3] mm: Provide address_space operation for filling
- pages for read
-Message-ID: <20210406122148.GC19407@quack2.suse.cz>
-References: <20210120160611.26853-1-jack@suse.cz>
- <20210120160611.26853-3-jack@suse.cz>
- <20210120162001.GB3790454@infradead.org>
- <YGeJ1hBP3lEMOSA2@moria.home.lan>
+To:     Hao Sun <sunhao.th@gmail.com>
+Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: KCSAN: data-race in __jbd2_journal_file_buffer /
+ jbd2_journal_dirty_metadata
+Message-ID: <20210406123232.GD19407@quack2.suse.cz>
+References: <CACkBjsZW5Sp4jB51+C5mrMssgq73x8iEko_EV6CTXVvtVa7KPQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <YGeJ1hBP3lEMOSA2@moria.home.lan>
+In-Reply-To: <CACkBjsZW5Sp4jB51+C5mrMssgq73x8iEko_EV6CTXVvtVa7KPQ@mail.gmail.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 02-04-21 17:17:10, Kent Overstreet wrote:
-> On Wed, Jan 20, 2021 at 04:20:01PM +0000, Christoph Hellwig wrote:
-> > On Wed, Jan 20, 2021 at 05:06:10PM +0100, Jan Kara wrote:
-> > > Provide an address_space operation for filling pages needed for read
-> > > into page cache. Filesystems can use this operation to seriealize
-> > > page cache filling with e.g. hole punching properly.
-> > 
-> > Besides the impending rewrite of the area - having another indirection
-> > here is just horrible for performance.  If we want locking in this area
-> > it should be in core code and common for multiple file systems.
+Hello!
+
+On Sun 04-04-21 17:40:44, Hao Sun wrote:
+> When using Healer(https://github.com/SunHao-0/healer/tree/dev) to fuzz
+> the Linux kernel, I found a data-race vulnerability in
+> __jbd2_journal_file_buffer / jbd2_journal_dirty_metadata.
+> Sorry, data-race is usually difficult to reproduce. I cannot provide
+> you with a reproducing program.
+> I hope that the call stack information in the crash log can help you
+> locate the problem.
+> Kernel config and full log can be found in the attachment.
 > 
-> Agreed.
+> Here is the detailed information:
+> commit:   3b9cdafb5358eb9f3790de2f728f765fef100731
+> version:   linux 5.11
+> git tree:    upstream
+> report:
+> ==================================================================
+> BUG: KCSAN: data-race in __jbd2_journal_file_buffer /
+> jbd2_journal_dirty_metadata
+> write to 0xffff88800af6da38 of 8 bytes by task 4822 on cpu 1:
+>  __jbd2_journal_file_buffer+0x18d/0x370 linux/fs/jbd2/transaction.c:2518
+>  __jbd2_journal_refile_buffer+0x155/0x230 linux/fs/jbd2/transaction.c:2612
+>  jbd2_journal_commit_transaction+0x24c6/0x3200 linux/fs/jbd2/commit.c:1084
+>  kjournald2+0x253/0x470 linux/fs/jbd2/journal.c:213
+>  kthread+0x1f0/0x220 linux/kernel/kthread.c:292
+>  ret_from_fork+0x1f/0x30 linux/arch/x86/entry/entry_64.S:294
 
-Please see v2 [1] where the indirection is avoided.
+Thanks for report but I'm not sure what KCSAN is complaining about - isn't
+the report truncated? I'm missing 'read' part of the report... The complaint
+is on line:
 
-> But, instead of using a rwsemaphore, why not just make it a lock with two shared
-> states that are exclusive with each other? One state for things that add pages
-> to the page cache, the other state for things that want to prevent that. That
-> way, DIO can use it too...
+jh->b_transaction = transaction;
 
-Well, the filesystems I convert use rwsem currently so for the conversion,
-keeping rwsem is the simplest. If we then decide for a more fancy locking
-primitive (and I agree what you describe should be possible), then we can
-do that but IMO that's the next step (because it requires auditing every
-filesystem that the new primitive is indeed safe for them).
+I would guess the complaint is because of the check:
+
+        /*
+         * This and the following assertions are unreliable since we may see jh
+         * in inconsistent state unless we grab bh_state lock. But this is
+         * crucial to catch bugs so let's do a reliable check until the
+         * lockless handling is fully proven.
+         */
+        if (jh->b_transaction != transaction &&
+            jh->b_next_transaction != transaction) {
+
+And the comment explains, why we do this unreliable check. Again, if we
+wanted to silence KCSAN, we could use data_race() macro but AFAIU Ted isn't
+very fond of that annotation.
 
 								Honza
 
-[1] https://lore.kernel.org/linux-fsdevel/20210212160108.GW19070@quack2.suse.cz/
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
