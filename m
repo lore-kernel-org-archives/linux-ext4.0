@@ -4,79 +4,57 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24A0DC433ED
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Apr 2021 22:41:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83639C433B4
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Apr 2021 22:45:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EC5D3610F9
-	for <linux-ext4@archiver.kernel.org>; Fri,  9 Apr 2021 22:41:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4FAE061165
+	for <linux-ext4@archiver.kernel.org>; Fri,  9 Apr 2021 22:45:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235103AbhDIWl4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 9 Apr 2021 18:41:56 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57089 "EHLO
+        id S235096AbhDIWpx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 9 Apr 2021 18:45:53 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57548 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S235046AbhDIWl4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Apr 2021 18:41:56 -0400
+        with ESMTP id S234880AbhDIWpv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Apr 2021 18:45:51 -0400
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 139MfYaG028899
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 139MjYwu030021
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 9 Apr 2021 18:41:35 -0400
+        Fri, 9 Apr 2021 18:45:34 -0400
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id C94B815C3B12; Fri,  9 Apr 2021 18:41:34 -0400 (EDT)
-Date:   Fri, 9 Apr 2021 18:41:34 -0400
+        id 4853C15C3B12; Fri,  9 Apr 2021 18:45:34 -0400 (EDT)
+Date:   Fri, 9 Apr 2021 18:45:34 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ye Bin <yebin10@huawei.com>
-Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [RFC] ext4: Fix fs can't panic when abort by user
-Message-ID: <YHDYHvV0Cj3wpO28@mit.edu>
-References: <20210401081903.3421208-1-yebin10@huawei.com>
- <YHDHFv99m3A6jQjP@mit.edu>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Fengnan Chang <changfengnan@vivo.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH v2] ext4: fix error code in ext4_commit_super
+Message-ID: <YHDZDt+EZ5/iErIr@mit.edu>
+References: <20210402101631.561-1-changfengnan@vivo.com>
+ <F552F506-E58D-4705-A2B5-FA2DD8BA2F92@dilger.ca>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <YHDHFv99m3A6jQjP@mit.edu>
+In-Reply-To: <F552F506-E58D-4705-A2B5-FA2DD8BA2F92@dilger.ca>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Apr 09, 2021 at 05:28:54PM -0400, Theodore Ts'o wrote:
-> I'll apply the patch with a modified commit description to warn of
-> this particular change in behavior.
+On Sat, Apr 03, 2021 at 12:34:50PM -0600, Andreas Dilger wrote:
+> On Apr 2, 2021, at 4:16 AM, Fengnan Chang <changfengnan@vivo.com> wrote:
+> > 
+> > We should set the error code when ext4_commit_super check argument failed.
+> > Found in code review.
+> > Fixes: c4be0c1dc4cdc ("filesystem freeze: add error handling of write_super_lockfs/unlockfs").
+> > 
+> > Signed-off-by: Fengnan Chang <changfengnan@vivo.com>
+> 
+> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-Applied with the following commit description:
+Thanks, applied.
 
-    ext4: always panic when errors=panic is specified
-    
-    Before commit 014c9caa29d3 ("ext4: make ext4_abort() use
-    __ext4_error()"), the following series of commands would trigger a
-    panic:
-    
-    1. mount /dev/sda -o ro,errors=panic test
-    2. mount /dev/sda -o remount,abort test
-    
-    After commit 014c9caa29d3, remounting a file system using the test
-    mount option "abort" will no longer trigger a panic.  This commit will
-    restore the behaviour immediately before commit 014c9caa29d3.
-    (However, note that the Linux kernel's behavior has not been
-    consistent; some previous kernel versions, including 5.4 and 4.19
-    similarly did not panic after using the mount option "abort".)
-    
-    This also makes a change to long-standing behaviour; namely, the
-    following series commands will now cause a panic, when previously it
-    did not:
-    
-    1. mount /dev/sda -o ro,errors=panic test
-    2. echo test > /sys/fs/ext4/sda/trigger_fs_error
-    
-    However, this makes ext4's behaviour much more consistent, so this is
-    a good thing.
-    
-    Fixes: 014c9caa29d3 ("ext4: make ext4_abort() use __ext4_error()")
-    Signed-off-by: Ye Bin <yebin10@huawei.com>
-    Link: https://lore.kernel.org/r/20210401081903.3421208-1-yebin10@huawei.com
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
+						- Ted
