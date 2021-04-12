@@ -2,354 +2,186 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B324BC43600
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Apr 2021 10:23:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 509B6C433B4
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Apr 2021 10:43:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 836D06121E
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Apr 2021 10:23:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 13E0F61027
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Apr 2021 10:43:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239179AbhDLKYB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Apr 2021 06:24:01 -0400
-Received: from mx2.suse.de ([195.135.220.15]:50002 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S238685AbhDLKX5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Apr 2021 06:23:57 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 07EC7B15B;
-        Mon, 12 Apr 2021 10:23:39 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id A90261F2B67; Mon, 12 Apr 2021 12:23:38 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Eric Whitney <enwlinux@gmail.com>,
-        <linux-fsdevel@vger.kernel.org>,
-        "Darrick J . Wong" <djwong@kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/3] ext4: Fix occasional generic/418 failure
-Date:   Mon, 12 Apr 2021 12:23:32 +0200
-Message-Id: <20210412102333.2676-3-jack@suse.cz>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210412102333.2676-1-jack@suse.cz>
-References: <20210412102333.2676-1-jack@suse.cz>
+        id S239527AbhDLKnT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Apr 2021 06:43:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33082 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S239522AbhDLKnS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Apr 2021 06:43:18 -0400
+Received: from mail-pg1-x536.google.com (mail-pg1-x536.google.com [IPv6:2607:f8b0:4864:20::536])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDC81C061574;
+        Mon, 12 Apr 2021 03:43:00 -0700 (PDT)
+Received: by mail-pg1-x536.google.com with SMTP id d10so9024995pgf.12;
+        Mon, 12 Apr 2021 03:43:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=HEK0nhztsH9mu96d1FzhM0ZDZsnUHURdhQ+XaFjk794=;
+        b=vUKK3xVtZ1ns6QVpic8QwSyGa7ukh7Fdo7RdRRVAv3O44CN7gzae0xnjcIWkF5OpVN
+         AfttBwqPteUWgFDa38DKZ86DNX1kR3EAmfs+u3lBVJZy0LyTIjFTjsmPzHSCmftVJ27m
+         YRAYWKJpPTbw2qQJGpm4YhFAnJlw5ONMtHe5mmxDkdj4RYQkWYCLUcmZFrCc1ZyXj+jP
+         xEH9IYaxVERMaKjYcc+q/PHK/tHdfjqgyYnVgIMio+x3M4hOGtItMpEvu+EVS36TWb5i
+         yL2UTH+fToXM6P9bav6qRcs8vvKU4rdyKmX4urhtKYgJVuFNCMNrs2qtXft4V099NfL9
+         ya0A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=HEK0nhztsH9mu96d1FzhM0ZDZsnUHURdhQ+XaFjk794=;
+        b=AcwsgbsGxIr5qy4flq7HSzCkQn+LsED/5F5H9sTlIrE1raOrAwCnahw4su1MsqCAWH
+         b3kQx0d48QCfapcuWufRK1HNQWSoTaH0FqozPONXaX6bRfdSq/WdtHLohp/CoSRWz9Y6
+         d69eaoeqBnwBxs4M0IYShV8/UGjGu4dAG1WIP1DhxfloMgfeQKlmLHS94rRlV6k2JmxK
+         l9eOnyfAOrs6TuITdIeu5H3fgYo3BEJJF/DDEWXT1LlCQyCaMxoI68NMqEiXj0tVqhpx
+         M1dA6WhwtgBSs77a+YlC4giTQxG8MDjoo2jgMqw5TADzbb2QBIKn23czNvm0OFPkncAu
+         XzHw==
+X-Gm-Message-State: AOAM5327DSGf+KdrQSDC3NFj8WgiKWuMrAfhpuuXKYFkq2aerpSgVpYa
+        smGF6XXFCEv8RY+stsbeKv51znxgvsuxYim7eQ==
+X-Google-Smtp-Source: ABdhPJw0ds5EmL0VZYpokhc0XW2/tJ9E24q0a9iTdeHgTcuD82YHOWlrs+LPS65NMsiyjRoqhPvVmYxD6nH1Bxtl56w=
+X-Received: by 2002:aa7:818e:0:b029:215:2466:3994 with SMTP id
+ g14-20020aa7818e0000b029021524663994mr25117151pfi.48.1618224180432; Mon, 12
+ Apr 2021 03:43:00 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CACkBjsYrsp5LekZciBjSbnJLHvBwQF3YM5TiKEMPeUX-D_DaSA@mail.gmail.com>
+ <20210412090212.GA31090@quack2.suse.cz>
+In-Reply-To: <20210412090212.GA31090@quack2.suse.cz>
+From:   Hao Sun <sunhao.th@gmail.com>
+Date:   Mon, 12 Apr 2021 18:42:58 +0800
+Message-ID: <CACkBjsYuWeJNYTGUhBVszgiUVOrMdEZ=qcmDtEk97BEtm4ggSA@mail.gmail.com>
+Subject: Re: More KCSAN data-race Reports
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-kernel@vger.kernel.org, jack@suse.com,
+        linux-ext4@vger.kernel.org, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Eric has noticed that after pagecache read rework, generic/418 is
-occasionally failing for ext4 when blocksize < pagesize. In fact, the
-pagecache rework just made hard to hit race in ext4 more likely. The
-problem is that since ext4 conversion of direct IO writes to iomap
-framework (commit 378f32bab371), we update inode size after direct IO
-write only after invalidating page cache. Thus if buffered read sneaks
-at unfortunate moment like:
+Jan Kara <jack@suse.cz> =E4=BA=8E2021=E5=B9=B44=E6=9C=8812=E6=97=A5=E5=91=
+=A8=E4=B8=80 =E4=B8=8B=E5=8D=885:02=E5=86=99=E9=81=93=EF=BC=9A
+>
+> Hello,
+>
+> On Sun 11-04-21 11:42:05, Hao Sun wrote:
+> > Since the last KCSAN report[1], I found two more KCSAN reports that
+> > Syzbot had not reported.
+> > Not sure if they are valid bugs, I hope the stack information in
+> > reports can help you locate the problem.
+> > Kernel config can be found in the attachment.
+>
+> Do we have symbolic decoding of the traces below? Because involved
+> functions are really big so it's difficult to guess what KCSAN is
+> complaining about... At least I wasn't able to guess it after looking int=
+o
+> the stacktraces for a while.
+>
+Sorry, the log processing module of Fuzzer still has some logic bugs,
+only some of the symbolized reports are stored in the disk.
+Interestingly, however, the read-write end that causes data racing in
+both reports are in the same location (fs/jbd2/commit.c:443), and this
+information should help locate the problem.
 
-CPU1 - write at offset 1k                       CPU2 - read from offset 0
-iomap_dio_rw(..., IOMAP_DIO_FORCE_WAIT);
-                                                ext4_readpage();
-ext4_handle_inode_extension()
+Partial symbolized report 1:
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+BUG: KCSAN: data-race in ext4_mark_iloc_dirty / jbd2_journal_commit_transac=
+tion
+read-write to 0xffff88804451d800 of 8 bytes by task 4821 on cpu 1:
+ jbd2_journal_commit_transaction+0x222/0x3200 fs/jbd2/commit.c:443
+ kjournald2+0x253/0x470 fs/jbd2/journal.c:213
+ kthread+0x1f0/0x220 kernel/kthread.c:292
+ ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:294
 
-the read will zero out tail of the page as it still sees smaller inode
-size and thus page cache becomes inconsistent with on-disk contents with
-all the consequences.
+Partial symbolized report 2:
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+BUG: KCSAN: data-race in __ext4_handle_dirty_metadata /
+jbd2_journal_commit_transaction
+read-write to 0xffff88800e142800 of 8 bytes by task 4823 on cpu 0:
+ jbd2_journal_commit_transaction+0x222/0x3200 fs/jbd2/commit.c:443
+ kjournald2+0x253/0x470 fs/jbd2/journal.c:213
+ kthread+0x1f0/0x220 kernel/kthread.c:292
+ ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:294
 
-Fix the problem by moving inode size update into end_io handler which
-gets called before the page cache is invalidated.
-
-Reported-by: Eric Whitney <enwlinux@gmail.com>
-Fixes: 378f32bab371 ("ext4: introduce direct I/O write using iomap infrastructure")
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/file.c | 185 ++++++++++++++++++++++++++-----------------------
- 1 file changed, 99 insertions(+), 86 deletions(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 2505313d96b0..ec59ea078f53 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -280,11 +280,67 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 	return ret;
- }
- 
-+static int ext4_prepare_dio_extend(struct inode *inode)
-+{
-+	handle_t *handle;
-+	int ret;
-+
-+	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
-+
-+	ext4_fc_start_update(inode);
-+	ret = ext4_orphan_add(handle, inode);
-+	ext4_fc_stop_update(inode);
-+	if (ret) {
-+		ext4_journal_stop(handle);
-+		return ret;
-+	}
-+	ext4_journal_stop(handle);
-+	return 0;
-+}
-+
-+static void ext4_cleanup_dio_extend(struct inode *inode, loff_t offset,
-+				    ssize_t written, size_t count)
-+{
-+	handle_t *handle;
-+	u8 blkbits = inode->i_blkbits;
-+	ext4_lblk_t written_blk, end_blk;
-+
-+	written_blk = ALIGN(offset + written, 1 << blkbits);
-+	end_blk = ALIGN(offset + count, 1 << blkbits);
-+	if (written_blk < end_blk && ext4_can_truncate(inode)) {
-+		ext4_truncate_failed_write(inode);
-+		/*
-+		 * If the truncate operation failed early, then the inode may
-+		 * still be on the orphan list. In that case, we need to try
-+		 * remove the inode from the in-memory linked list.
-+		 */
-+		if (inode->i_nlink)
-+			ext4_orphan_del(NULL, inode);
-+		return;
-+	}
-+
-+	/*
-+	 * We need to ensure that the inode is removed from the orphan
-+	 * list if it has been added prematurely, due to writeback of
-+	 * delalloc blocks.
-+	 */
-+	if (!list_empty(&EXT4_I(inode)->i_orphan) && inode->i_nlink) {
-+		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
-+		if (IS_ERR(handle)) {
-+			ext4_orphan_del(NULL, inode);
-+			return;
-+		}
-+		ext4_orphan_del(handle, inode);
-+		ext4_journal_stop(handle);
-+	}
-+}
-+
- static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
- 					   ssize_t written, size_t count)
- {
- 	handle_t *handle;
--	bool truncate = false;
- 	u8 blkbits = inode->i_blkbits;
- 	ext4_lblk_t written_blk, end_blk;
- 	int ret;
-@@ -298,73 +354,31 @@ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
- 	 * as much as we intended.
- 	 */
- 	WARN_ON_ONCE(i_size_read(inode) < EXT4_I(inode)->i_disksize);
--	if (offset + count <= EXT4_I(inode)->i_disksize) {
--		/*
--		 * We need to ensure that the inode is removed from the orphan
--		 * list if it has been added prematurely, due to writeback of
--		 * delalloc blocks.
--		 */
--		if (!list_empty(&EXT4_I(inode)->i_orphan) && inode->i_nlink) {
--			handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--
--			if (IS_ERR(handle)) {
--				ext4_orphan_del(NULL, inode);
--				return PTR_ERR(handle);
--			}
--
--			ext4_orphan_del(handle, inode);
--			ext4_journal_stop(handle);
--		}
--
-+	if (offset + count <= EXT4_I(inode)->i_disksize)
- 		return written;
--	}
--
--	if (written < 0)
--		goto truncate;
- 
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--	if (IS_ERR(handle)) {
--		written = PTR_ERR(handle);
--		goto truncate;
--	}
-+	if (IS_ERR(handle))
-+		return PTR_ERR(handle);
- 
- 	if (ext4_update_inode_size(inode, offset + written)) {
- 		ret = ext4_mark_inode_dirty(handle, inode);
- 		if (unlikely(ret)) {
--			written = ret;
- 			ext4_journal_stop(handle);
--			goto truncate;
-+			return ret;
- 		}
- 	}
- 
- 	/*
--	 * We may need to truncate allocated but not written blocks beyond EOF.
-+	 * If there cannot be allocated but unused blocks beyond EOF, remove
-+	 * the inode from the orphan list as we are done with it.
- 	 */
- 	written_blk = ALIGN(offset + written, 1 << blkbits);
- 	end_blk = ALIGN(offset + count, 1 << blkbits);
--	if (written_blk < end_blk && ext4_can_truncate(inode))
--		truncate = true;
--
--	/*
--	 * Remove the inode from the orphan list if it has been extended and
--	 * everything went OK.
--	 */
--	if (!truncate && inode->i_nlink)
-+	if (written_blk == end_blk && inode->i_nlink)
- 		ext4_orphan_del(handle, inode);
- 	ext4_journal_stop(handle);
- 
--	if (truncate) {
--truncate:
--		ext4_truncate_failed_write(inode);
--		/*
--		 * If the truncate operation failed early, then the inode may
--		 * still be on the orphan list. In that case, we need to try
--		 * remove the inode from the in-memory linked list.
--		 */
--		if (inode->i_nlink)
--			ext4_orphan_del(NULL, inode);
--	}
--
- 	return written;
- }
- 
-@@ -385,10 +399,28 @@ static int ext4_dio_write_end_io(struct kiocb *iocb, ssize_t size,
- 	return 0;
- }
- 
-+static int ext4_dio_extending_write_end_io(struct kiocb *iocb, ssize_t size,
-+					   ssize_t orig_size, int error,
-+					   unsigned int flags)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	int ret;
-+
-+	ret = ext4_dio_write_end_io(iocb, size, orig_size, error, flags);
-+	if (ret < 0)
-+		return ret;
-+	return ext4_handle_inode_extension(inode, iocb->ki_pos, size,
-+					   orig_size);
-+}
-+
- static const struct iomap_dio_ops ext4_dio_write_ops = {
- 	.end_io = ext4_dio_write_end_io,
- };
- 
-+static const struct iomap_dio_ops ext4_dio_extending_write_ops = {
-+	.end_io = ext4_dio_extending_write_end_io,
-+};
-+
- /*
-  * The intention here is to start with shared lock acquired then see if any
-  * condition requires an exclusive inode lock. If yes, then we restart the
-@@ -455,11 +487,11 @@ static ssize_t ext4_dio_write_checks(struct kiocb *iocb, struct iov_iter *from,
- static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	ssize_t ret;
--	handle_t *handle;
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	loff_t offset = iocb->ki_pos;
- 	size_t count = iov_iter_count(from);
- 	const struct iomap_ops *iomap_ops = &ext4_iomap_ops;
-+	const struct iomap_dio_ops *dio_ops = &ext4_dio_write_ops;
- 	bool extend = false, unaligned_io = false;
- 	bool ilock_shared = true;
- 
-@@ -530,33 +562,21 @@ static ssize_t ext4_dio_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		inode_dio_wait(inode);
- 
- 	if (extend) {
--		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
-+		ret = ext4_prepare_dio_extend(inode);
-+		if (ret)
- 			goto out;
--		}
--
--		ext4_fc_start_update(inode);
--		ret = ext4_orphan_add(handle, inode);
--		ext4_fc_stop_update(inode);
--		if (ret) {
--			ext4_journal_stop(handle);
--			goto out;
--		}
--
--		ext4_journal_stop(handle);
- 	}
- 
- 	if (ilock_shared)
- 		iomap_ops = &ext4_iomap_overwrite_ops;
--	ret = iomap_dio_rw(iocb, from, iomap_ops, &ext4_dio_write_ops,
--			   (unaligned_io || extend) ? IOMAP_DIO_FORCE_WAIT : 0);
--	if (ret == -ENOTBLK)
--		ret = 0;
--
- 	if (extend)
--		ret = ext4_handle_inode_extension(inode, offset, ret, count);
-+		dio_ops = &ext4_dio_extending_write_ops;
- 
-+	ret = iomap_dio_rw(iocb, from, iomap_ops, dio_ops,
-+			   (extend || unaligned_io) ? IOMAP_DIO_FORCE_WAIT : 0);
-+	if (ret == -ENOTBLK)
-+		ret = 0;
-+	ext4_cleanup_dio_extend(inode, offset, ret, count);
- out:
- 	if (ilock_shared)
- 		inode_unlock_shared(inode);
-@@ -599,7 +619,6 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	ssize_t ret;
- 	size_t count;
- 	loff_t offset;
--	handle_t *handle;
- 	bool extend = false;
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 
-@@ -618,26 +637,20 @@ ext4_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	count = iov_iter_count(from);
- 
- 	if (offset + count > EXT4_I(inode)->i_disksize) {
--		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
--		if (IS_ERR(handle)) {
--			ret = PTR_ERR(handle);
--			goto out;
--		}
--
--		ret = ext4_orphan_add(handle, inode);
--		if (ret) {
--			ext4_journal_stop(handle);
-+		ret = ext4_prepare_dio_extend(inode);
-+		if (ret < 0)
- 			goto out;
--		}
--
- 		extend = true;
--		ext4_journal_stop(handle);
- 	}
- 
- 	ret = dax_iomap_rw(iocb, from, &ext4_iomap_ops);
- 
--	if (extend)
--		ret = ext4_handle_inode_extension(inode, offset, ret, count);
-+	if (extend) {
-+		if (ret > 0)
-+			ret = ext4_handle_inode_extension(inode, offset, ret,
-+							  count);
-+		ext4_cleanup_dio_extend(inode, offset, ret, count);
-+	}
- out:
- 	inode_unlock(inode);
- 	if (ret > 0)
--- 
-2.26.2
-
+>
+> >
+> > Here is the detailed information:
+> > commit:   3b9cdafb5358eb9f3790de2f728f765fef100731
+> > version:   linux 5.11
+> > git tree:    upstream
+> >
+> > Report-1
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > BUG: KCSAN: data-race in ext4_mark_iloc_dirty / jbd2_journal_commit_tra=
+nsaction
+> >
+> > read-write to 0xffff88804451d800 of 8 bytes by task 4821 on cpu 1:
+> >  jbd2_journal_commit_transaction+0x222/0x3200
+> >  kjournald2+0x253/0x470
+> >  kthread+0x1f0/0x220
+> >  ret_from_fork+0x1f/0x30
+> >
+> > read to 0xffff88804451d800 of 8 bytes by task 8418 on cpu 0:
+> >  ext4_mark_iloc_dirty+0x14ec/0x16e0
+> >  __ext4_mark_inode_dirty+0x4d2/0x5d0
+> >  ext4_evict_inode+0xb9f/0xed0
+> >  evict+0x1a6/0x410
+> >  iput+0x3fc/0x510
+> >  do_unlinkat+0x2c9/0x4d0
+> >  __x64_sys_unlink+0x2c/0x30
+> >  do_syscall_64+0x39/0x80
+> >  entry_SYSCALL_64_after_hwframe+0x44/0xae
+> >
+> > Report-2
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > BUG: KCSAN: data-race in __ext4_handle_dirty_metadata /
+> > jbd2_journal_commit_transaction
+> >
+> > read-write to 0xffff88800e142800 of 8 bytes by task 4823 on cpu 0:
+> >  jbd2_journal_commit_transaction+0x222/0x3200
+> >  kjournald2+0x253/0x470
+> >  kthread+0x1f0/0x220
+> >  ret_from_fork+0x1f/0x30
+> >
+> > read to 0xffff88800e142800 of 8 bytes by task 7925 on cpu 1:
+> >  __ext4_handle_dirty_metadata+0x11a/0x590
+> >  ext4_mark_iloc_dirty+0x12dd/0x16e0
+> >  __ext4_mark_inode_dirty+0x4d2/0x5d0
+> >  ext4_dirty_inode+0x86/0xa0
+> >  __mark_inode_dirty+0x70/0x6b0
+> >  file_update_time+0x3ab/0x3f0
+> >  file_modified+0x62/0x80
+> >  ext4_buffered_write_iter+0x1f9/0x3d0
+> >  ext4_file_write_iter+0x45e/0x10d0
+> >  vfs_write+0x6db/0x7c0
+> >  ksys_write+0xce/0x180
+> >  __x64_sys_write+0x3e/0x50
+> >  do_syscall_64+0x39/0x80
+> >  entry_SYSCALL_64_after_hwframe+0x44/0xae
+> >
+> >
+> > [1] https://lore.kernel.org/lkml/CACkBjsZW5Sp4jB51+C5mrMssgq73x8iEko_EV=
+6CTXVvtVa7KPQ@mail.gmail.com/
+>
+>
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
