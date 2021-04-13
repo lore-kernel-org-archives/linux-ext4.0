@@ -2,110 +2,146 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.9 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 450DBC43619
-	for <linux-ext4@archiver.kernel.org>; Tue, 13 Apr 2021 11:29:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 560C9C4361B
+	for <linux-ext4@archiver.kernel.org>; Tue, 13 Apr 2021 11:29:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2761261244
-	for <linux-ext4@archiver.kernel.org>; Tue, 13 Apr 2021 11:29:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B7596135C
+	for <linux-ext4@archiver.kernel.org>; Tue, 13 Apr 2021 11:29:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238148AbhDML31 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 13 Apr 2021 07:29:27 -0400
-Received: from mx2.suse.de ([195.135.220.15]:54958 "EHLO mx2.suse.de"
+        id S238492AbhDML33 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 13 Apr 2021 07:29:29 -0400
+Received: from mx2.suse.de ([195.135.220.15]:55010 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231201AbhDML3V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 13 Apr 2021 07:29:21 -0400
+        id S231330AbhDML3X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 13 Apr 2021 07:29:23 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 158ABB155;
+        by mx2.suse.de (Postfix) with ESMTP id 4EF27B15D;
         Tue, 13 Apr 2021 11:29:00 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id C7B8B1E37A2; Tue, 13 Apr 2021 13:28:59 +0200 (CEST)
+        id DEC271F2B6C; Tue, 13 Apr 2021 13:28:59 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         Ted Tso <tytso@mit.edu>, Christoph Hellwig <hch@infradead.org>,
         Amir Goldstein <amir73il@gmail.com>,
         Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/7 RFC v3] fs: Hole punch vs page cache filling races
-Date:   Tue, 13 Apr 2021 13:28:44 +0200
-Message-Id: <20210413105205.3093-1-jack@suse.cz>
+Subject: [PATCH 6/7] zonefs: Convert to using i_mapping_sem
+Date:   Tue, 13 Apr 2021 13:28:50 +0200
+Message-Id: <20210413112859.32249-6-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210413105205.3093-1-jack@suse.cz>
+References: <20210413105205.3093-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Use i_mapping_sem instead of zonefs' private i_mmap_sem. The intended
+purpose is exactly the same.
 
-here is another version of my patches to address races between hole punching
-and page cache filling functions for ext4 and other filesystems. Since the last
-posting I've added more documentation and comments regarding the lock ordering
-of the new lock (i_mapping_sem) and how is the new lock supposed to be used.
-I've also added conversions of ext2, xfs, zonefs so that there is better idea
-how the conversion looks for most filesystems. Obviously, there are much more
-filesystems to convert but I don't want to do that work unless we have a
-concensus this is indeed the right approach. Also as a result of spelling out
-locking rules more precisely, I have realized there's no need to use
-i_mapping_sem in .page_mkwrite handlers so I've added a bonus patch removing
-those - not sure we want to actually do that together with the rest of the
-series (maybe we can do this cleanup later when the rest of the conversion has
-settled down).
-
-Also when writing the documentation I came across one question: Do we mandate
-i_mapping_sem for truncate + hole punch for all filesystems or just for
-filesystems that support hole punching (or other complex fallocate operations)?
-I wrote the documentation so that we require every filesystem to use
-i_mapping_sem. This makes locking rules simpler, we can also add asserts when
-all filesystems are converted. The downside is that simple filesystems now pay
-the overhead of the locking unnecessary for them. The overhead is small
-(uncontended rwsem acquisition for truncate) so I don't think we care and the
-simplicity is worth it but I wanted to spell this out.
-
-What do people think about this?
-
-Changes since v2:
-* Added documentation and comments regarding lock ordering and how the lock is
-  supposed to be used
-* Added conversions of ext2, xfs, zonefs
-* Added patch removing i_mapping_sem protection from .page_mkwrite handlers
-
-Changes since v1:
-* Moved to using inode->i_mapping_sem instead of aops handler to acquire
-  appropriate lock
-
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-Motivation:
+ fs/zonefs/super.c  | 23 +++++------------------
+ fs/zonefs/zonefs.h |  7 +++----
+ 2 files changed, 8 insertions(+), 22 deletions(-)
 
-Amir has reported [1] a that ext4 has a potential issues when reads can race
-with hole punching possibly exposing stale data from freed blocks or even
-corrupting filesystem when stale mapping data gets used for writeout. The
-problem is that during hole punching, new page cache pages can get instantiated
-and block mapping from the looked up in a punched range after
-truncate_inode_pages() has run but before the filesystem removes blocks from
-the file. In principle any filesystem implementing hole punching thus needs to
-implement a mechanism to block instantiating page cache pages during hole
-punching to avoid this race. This is further complicated by the fact that there
-are multiple places that can instantiate pages in page cache.  We can have
-regular read(2) or page fault doing this but fadvise(2) or madvise(2) can also
-result in reading in page cache pages through force_page_cache_readahead().
+diff --git a/fs/zonefs/super.c b/fs/zonefs/super.c
+index 049e36c69ed7..ace6f3a223da 100644
+--- a/fs/zonefs/super.c
++++ b/fs/zonefs/super.c
+@@ -462,7 +462,7 @@ static int zonefs_file_truncate(struct inode *inode, loff_t isize)
+ 	inode_dio_wait(inode);
+ 
+ 	/* Serialize against page faults */
+-	down_write(&zi->i_mmap_sem);
++	down_write(&inode->i_mapping_sem);
+ 
+ 	/* Serialize against zonefs_iomap_begin() */
+ 	mutex_lock(&zi->i_truncate_mutex);
+@@ -500,7 +500,7 @@ static int zonefs_file_truncate(struct inode *inode, loff_t isize)
+ 
+ unlock:
+ 	mutex_unlock(&zi->i_truncate_mutex);
+-	up_write(&zi->i_mmap_sem);
++	up_write(&inode->i_mapping_sem);
+ 
+ 	return ret;
+ }
+@@ -575,18 +575,6 @@ static int zonefs_file_fsync(struct file *file, loff_t start, loff_t end,
+ 	return ret;
+ }
+ 
+-static vm_fault_t zonefs_filemap_fault(struct vm_fault *vmf)
+-{
+-	struct zonefs_inode_info *zi = ZONEFS_I(file_inode(vmf->vma->vm_file));
+-	vm_fault_t ret;
+-
+-	down_read(&zi->i_mmap_sem);
+-	ret = filemap_fault(vmf);
+-	up_read(&zi->i_mmap_sem);
+-
+-	return ret;
+-}
+-
+ static vm_fault_t zonefs_filemap_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+@@ -607,16 +595,16 @@ static vm_fault_t zonefs_filemap_page_mkwrite(struct vm_fault *vmf)
+ 	file_update_time(vmf->vma->vm_file);
+ 
+ 	/* Serialize against truncates */
+-	down_read(&zi->i_mmap_sem);
++	down_read(&inode->i_mapping_sem);
+ 	ret = iomap_page_mkwrite(vmf, &zonefs_iomap_ops);
+-	up_read(&zi->i_mmap_sem);
++	up_read(&inode->i_mapping_sem);
+ 
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
+ 
+ static const struct vm_operations_struct zonefs_file_vm_ops = {
+-	.fault		= zonefs_filemap_fault,
++	.fault		= filemap_fault,
+ 	.map_pages	= filemap_map_pages,
+ 	.page_mkwrite	= zonefs_filemap_page_mkwrite,
+ };
+@@ -1158,7 +1146,6 @@ static struct inode *zonefs_alloc_inode(struct super_block *sb)
+ 
+ 	inode_init_once(&zi->i_vnode);
+ 	mutex_init(&zi->i_truncate_mutex);
+-	init_rwsem(&zi->i_mmap_sem);
+ 	zi->i_wr_refcnt = 0;
+ 
+ 	return &zi->i_vnode;
+diff --git a/fs/zonefs/zonefs.h b/fs/zonefs/zonefs.h
+index 51141907097c..d00626442ab5 100644
+--- a/fs/zonefs/zonefs.h
++++ b/fs/zonefs/zonefs.h
+@@ -70,12 +70,11 @@ struct zonefs_inode_info {
+ 	 * and changes to the inode private data, and in particular changes to
+ 	 * a sequential file size on completion of direct IO writes.
+ 	 * Serialization of mmap read IOs with truncate and syscall IO
+-	 * operations is done with i_mmap_sem in addition to i_truncate_mutex.
+-	 * Only zonefs_seq_file_truncate() takes both lock (i_mmap_sem first,
+-	 * i_truncate_mutex second).
++	 * operations is done with i_mapping_sem in addition to
++	 * i_truncate_mutex.  Only zonefs_seq_file_truncate() takes both lock
++	 * (i_mapping_sem first, i_truncate_mutex second).
+ 	 */
+ 	struct mutex		i_truncate_mutex;
+-	struct rw_semaphore	i_mmap_sem;
+ 
+ 	/* guarded by i_truncate_mutex */
+ 	unsigned int		i_wr_refcnt;
+-- 
+2.31.0.99.g0d91da736d9f.dirty
 
-There are couple of ways how to fix this. First way (currently implemented by
-XFS) is to protect read(2) and *advise(2) calls with i_rwsem so that they are
-serialized with hole punching. This is easy to do but as a result all reads
-would then be serialized with writes and thus mixed read-write workloads suffer
-heavily on ext4. Thus this series introduces inode->i_mapping_sem and uses it
-when creating new pages in the page cache and looking up their corresponding
-block mapping. We also replace EXT4_I(inode)->i_mmap_sem with this new rwsem
-which provides necessary serialization with hole punching for ext4.
-
-								Honza
-
-[1] https://lore.kernel.org/linux-fsdevel/CAOQ4uxjQNmxqmtA_VbYW0Su9rKRk2zobJmahcyeaEVOFKVQ5dw@mail.gmail.com/
-
-Previous versions:
-Link: https://lore.kernel.org/linux-fsdevel/20210208163918.7871-1-jack@suse.cz/
