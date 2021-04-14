@@ -5,43 +5,43 @@ X-Spam-Level:
 X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 200A7C433B4
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A6ECC433B4
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0058D613D7
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7D734613D9
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350400AbhDNJBJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 05:01:09 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:34120 "EHLO
+        id S1350251AbhDNJBM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 05:01:12 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:47607 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1350255AbhDNJAN (ORCPT
+        by vger.kernel.org with ESMTP id S1350229AbhDNJAN (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 14 Apr 2021 05:00:13 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1618390733;
+        s=mimecast20190719; t=1618390725;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=WcS3XqDLjWw2JcTnxRCko+qmOPIOGyWNCS5CmAztAiQ=;
-        b=NEEBPdjaVgz+sN+V9/LdsiEOFHdb0VR7gN36DRvLDZdlrGUvEdbzYP1ZWiM6m/w/0+Dcc1
-        G04VvNM8B5eJ6LJW820sjw3z6cLQgFFUHGGRs5YAESJpYz+wKx7APHCP/XtWU3Fw9sa4Bh
-        YUqjChDv3Yv59s3NkvTcJmP46CxsWtU=
+        bh=zBzvd/Ow2mhy2uRNHAspe0Hcs9m7pozn4DLZaIWN8HE=;
+        b=Klza2MYW4qfn4eXkvlwnpn83wSLhuMxk9zBJmogIVhci56ltw2gvJ9zoHLanDQq9k7ifVF
+        k1zTYoLQWu4WjD14aUxm7BQJx85eY912dG4rDC9Qj9v4dH7TTs8t4v2xDsxzaqf42RRmBQ
+        IlhsUtiXxK1VtBrcY/qnXvczKeUT/zE=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-253-Tm09oKAfPRaAHSyqBNW31Q-1; Wed, 14 Apr 2021 04:58:49 -0400
-X-MC-Unique: Tm09oKAfPRaAHSyqBNW31Q-1
+ us-mta-345-gmp_Md04MiGYrsZUH90EhQ-1; Wed, 14 Apr 2021 04:58:43 -0400
+X-MC-Unique: gmp_Md04MiGYrsZUH90EhQ-1
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 24EA681426D;
-        Wed, 14 Apr 2021 08:58:47 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 41C59107ACC7;
+        Wed, 14 Apr 2021 08:58:41 +0000 (UTC)
 Received: from localhost.localdomain.com (ovpn-112-67.rdu2.redhat.com [10.10.112.67])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 642975D71D;
-        Wed, 14 Apr 2021 08:58:45 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 66E205D76F;
+        Wed, 14 Apr 2021 08:58:39 +0000 (UTC)
 From:   Nico Pache <npache@redhat.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
@@ -51,9 +51,9 @@ Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
         tytso@mit.edu, mathew.j.martineau@linux.intel.com,
         davem@davemloft.net, broonie@kernel.org, davidgow@google.com,
         skhan@linuxfoundation.org, mptcp@lists.linux.dev
-Subject: [PATCH v2 5/6] kunit: mptcp: adhear to KUNIT formatting standard
-Date:   Wed, 14 Apr 2021 04:58:08 -0400
-Message-Id: <0fa191715b236766ad13c5f786d8daf92a9a0cf2.1618388989.git.npache@redhat.com>
+Subject: [PATCH v2 2/6] kunit: software node: adhear to KUNIT formatting standard
+Date:   Wed, 14 Apr 2021 04:58:05 -0400
+Message-Id: <ef06f65f4a622cf83cce5ba2ba5a060d2aa2e1b9.1618388989.git.npache@redhat.com>
 In-Reply-To: <cover.1618388989.git.npache@redhat.com>
 References: <cover.1618388989.git.npache@redhat.com>
 MIME-Version: 1.0
@@ -63,66 +63,40 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Drop 'S' from end of CONFIG_MPTCP_KUNIT_TESTS inorder to adhear to the
-KUNIT *_KUNIT_TEST config name format.
+Change CONFIG_KUNIT_DRIVER_PE_TEST to CONFIG_DRIVER_PE_KUNIT_TEST inorder
+to adhear to the KUNIT *_KUNIT_TEST config name format.
 
-Fixes: a00a582203db (mptcp: move crypto test to KUNIT)
+Fixes: aa811e3cecec (software node: introduce CONFIG_KUNIT_DRIVER_PE_TEST)
 Signed-off-by: Nico Pache <npache@redhat.com>
 ---
- net/mptcp/Kconfig  | 2 +-
- net/mptcp/Makefile | 2 +-
- net/mptcp/crypto.c | 2 +-
- net/mptcp/token.c  | 2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+ drivers/base/test/Kconfig  | 2 +-
+ drivers/base/test/Makefile | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/mptcp/Kconfig b/net/mptcp/Kconfig
-index a014149aa323..20328920f6ed 100644
---- a/net/mptcp/Kconfig
-+++ b/net/mptcp/Kconfig
-@@ -22,7 +22,7 @@ config MPTCP_IPV6
- 	depends on IPV6=y
- 	default y
+diff --git a/drivers/base/test/Kconfig b/drivers/base/test/Kconfig
+index ba225eb1b761..2f3fa31a948e 100644
+--- a/drivers/base/test/Kconfig
++++ b/drivers/base/test/Kconfig
+@@ -8,7 +8,7 @@ config TEST_ASYNC_DRIVER_PROBE
+ 	  The module name will be test_async_driver_probe.ko
  
--config MPTCP_KUNIT_TESTS
-+config MPTCP_KUNIT_TEST
- 	tristate "This builds the MPTCP KUnit tests" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
+ 	  If unsure say N.
+-config KUNIT_DRIVER_PE_TEST
++config DRIVER_PE_KUNIT_TEST
+ 	bool "KUnit Tests for property entry API" if !KUNIT_ALL_TESTS
+ 	depends on KUNIT=y
  	default KUNIT_ALL_TESTS
-diff --git a/net/mptcp/Makefile b/net/mptcp/Makefile
-index a611968be4d7..dcce3cbd1f19 100644
---- a/net/mptcp/Makefile
-+++ b/net/mptcp/Makefile
-@@ -9,4 +9,4 @@ obj-$(CONFIG_INET_MPTCP_DIAG) += mptcp_diag.o
+diff --git a/drivers/base/test/Makefile b/drivers/base/test/Makefile
+index 2f15fae8625f..64b2f3d744d5 100644
+--- a/drivers/base/test/Makefile
++++ b/drivers/base/test/Makefile
+@@ -1,5 +1,5 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_TEST_ASYNC_DRIVER_PROBE)	+= test_async_driver_probe.o
  
- mptcp_crypto_test-objs := crypto_test.o
- mptcp_token_test-objs := token_test.o
--obj-$(CONFIG_MPTCP_KUNIT_TESTS) += mptcp_crypto_test.o mptcp_token_test.o
-+obj-$(CONFIG_MPTCP_KUNIT_TEST) += mptcp_crypto_test.o mptcp_token_test.o
-diff --git a/net/mptcp/crypto.c b/net/mptcp/crypto.c
-index b472dc149856..a8931349933c 100644
---- a/net/mptcp/crypto.c
-+++ b/net/mptcp/crypto.c
-@@ -78,6 +78,6 @@ void mptcp_crypto_hmac_sha(u64 key1, u64 key2, u8 *msg, int len, void *hmac)
- 	sha256(input, SHA256_BLOCK_SIZE + SHA256_DIGEST_SIZE, hmac);
- }
- 
--#if IS_MODULE(CONFIG_MPTCP_KUNIT_TESTS)
-+#if IS_MODULE(CONFIG_MPTCP_KUNIT_TEST)
- EXPORT_SYMBOL_GPL(mptcp_crypto_hmac_sha);
- #endif
-diff --git a/net/mptcp/token.c b/net/mptcp/token.c
-index feb4b9ffd462..8f0270a780ce 100644
---- a/net/mptcp/token.c
-+++ b/net/mptcp/token.c
-@@ -402,7 +402,7 @@ void __init mptcp_token_init(void)
- 	}
- }
- 
--#if IS_MODULE(CONFIG_MPTCP_KUNIT_TESTS)
-+#if IS_MODULE(CONFIG_MPTCP_KUNIT_TEST)
- EXPORT_SYMBOL_GPL(mptcp_token_new_request);
- EXPORT_SYMBOL_GPL(mptcp_token_new_connect);
- EXPORT_SYMBOL_GPL(mptcp_token_accept);
+-obj-$(CONFIG_KUNIT_DRIVER_PE_TEST) += property-entry-test.o
++obj-$(CONFIG_DRIVER_PE_KUNIT_TEST) += property-entry-test.o
+ CFLAGS_REMOVE_property-entry-test.o += -fplugin-arg-structleak_plugin-byref -fplugin-arg-structleak_plugin-byref-all
 -- 
 2.30.2
 
