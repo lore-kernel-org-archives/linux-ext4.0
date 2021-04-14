@@ -4,35 +4,35 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76471C433ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33937C4360C
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5B6C9611EE
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 19437611AD
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351428AbhDNNkE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:40:04 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:16915 "EHLO
+        id S1351431AbhDNNkF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:40:05 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:16917 "EHLO
         szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351378AbhDNNkB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:01 -0400
+        with ESMTP id S1346798AbhDNNkC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:02 -0400
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3ST6jdkzjZ9Y;
-        Wed, 14 Apr 2021 21:37:45 +0800 (CST)
+        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0GztzjZRp;
+        Wed, 14 Apr 2021 21:37:46 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.498.0; Wed, 14 Apr 2021
- 21:39:28 +0800
+ 21:39:27 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
         <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yi.zhang@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [RFC PATCH v2 4/7] jbd2: do not free buffers in jbd2_journal_try_to_free_buffers()
-Date:   Wed, 14 Apr 2021 21:47:34 +0800
-Message-ID: <20210414134737.2366971-5-yi.zhang@huawei.com>
+Subject: [RFC PATCH v2 2/7] jbd2: ensure abort the journal if detect IO error when writing original buffer back
+Date:   Wed, 14 Apr 2021 21:47:32 +0800
+Message-ID: <20210414134737.2366971-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20210414134737.2366971-1-yi.zhang@huawei.com>
 References: <20210414134737.2366971-1-yi.zhang@huawei.com>
@@ -45,132 +45,162 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch move try_to_free_buffers() out from
-jbd2_journal_try_to_free_buffers() to the caller function, it just check
-the buffers are JBD2 journal busy or not, and the caller should invoke
-try_to_free_buffers() if it want to release page.
+Althourh we merged <c044f3d8360> ("jbd2: abort journal if free a async
+write error metadata buffer"), there is a race between
+jbd2_journal_try_to_free_buffers() and jbd2_journal_destroy(), so the
+jbd2_log_do_checkpoint() may still missing to detect the buffer write
+io error flag and will end up leading to filesystem inconsistency.
+
+jbd2_journal_try_to_free_buffers()     ext4_put_super()
+                                        jbd2_journal_destroy()
+  __jbd2_journal_remove_checkpoint()
+  detect buffer write error              jbd2_log_do_checkpoint()
+                                         jbd2_cleanup_journal_tail()
+                                           <--- lead to inconsistency
+  jbd2_journal_abort()
+
+Fix this issue by introduce a new mark j_checkpoint_io_error and set it
+in __jbd2_journal_remove_checkpoint() when freeing a checkpoint buffer
+has write_io_error flag. Then jbd2_journal_destroy() will detect this
+mark and abort the journal to prevent updating log tail.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/block_dev.c        |  8 +++++---
- fs/ext4/inode.c       |  6 ++++--
- fs/ext4/super.c       |  5 +++--
- fs/jbd2/transaction.c | 17 ++++++++---------
- 4 files changed, 20 insertions(+), 16 deletions(-)
+ fs/jbd2/checkpoint.c | 32 +++++++++++++++++++-------------
+ fs/jbd2/journal.c    |  9 +++++++++
+ include/linux/jbd2.h |  7 +++++++
+ 3 files changed, 35 insertions(+), 13 deletions(-)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 09d6f7229db9..5ed79a9063f6 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1735,11 +1735,13 @@ EXPORT_SYMBOL_GPL(blkdev_read_iter);
- static int blkdev_releasepage(struct page *page, gfp_t wait)
- {
- 	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
-+	int ret = 0;
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index bf5511d19ac5..ff3d38ad3a1e 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -221,14 +221,15 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 	result = jbd2_cleanup_journal_tail(journal);
+ 	trace_jbd2_checkpoint(journal, result);
+ 	jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
+-	if (result <= 0)
++	if (result == 0)
+ 		return result;
++	if (result < 0)
++		goto error;
  
- 	if (super && super->s_op->bdev_try_to_free_page)
--		return super->s_op->bdev_try_to_free_page(super, page, wait);
+ 	/*
+ 	 * OK, we need to start writing disk blocks.  Take one transaction
+ 	 * and write it.
+ 	 */
+-	result = 0;
+ 	spin_lock(&journal->j_list_lock);
+ 	if (!journal->j_checkpoint_transactions)
+ 		goto out;
+@@ -295,8 +296,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 			goto restart;
+ 		}
+ 		if (!buffer_dirty(bh)) {
+-			if (unlikely(buffer_write_io_error(bh)) && !result)
+-				result = -EIO;
+ 			BUFFER_TRACE(bh, "remove from checkpoint");
+ 			if (__jbd2_journal_remove_checkpoint(jh))
+ 				/* The transaction was released; we're done */
+@@ -356,9 +355,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 			spin_lock(&journal->j_list_lock);
+ 			goto restart2;
+ 		}
+-		if (unlikely(buffer_write_io_error(bh)) && !result)
+-			result = -EIO;
 -
--	return try_to_free_buffers(page);
-+		ret = super->s_op->bdev_try_to_free_page(super, page, wait);
-+	if (!ret)
-+		return try_to_free_buffers(page);
-+	return 0;
- }
- 
- static int blkdev_writepages(struct address_space *mapping,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 0948a43f1b3d..3211af9c969f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3301,6 +3301,7 @@ static void ext4_journalled_invalidatepage(struct page *page,
- static int ext4_releasepage(struct page *page, gfp_t wait)
- {
- 	journal_t *journal = EXT4_JOURNAL(page->mapping->host);
-+	int ret = 0;
- 
- 	trace_ext4_releasepage(page);
- 
-@@ -3308,9 +3309,10 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
- 	if (PageChecked(page))
- 		return 0;
- 	if (journal)
--		return jbd2_journal_try_to_free_buffers(journal, page);
+ 		/*
+ 		 * Now in whatever state the buffer currently is, we
+ 		 * know that it has been written out and so we can
+@@ -369,12 +365,13 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 	}
+ out:
+ 	spin_unlock(&journal->j_list_lock);
+-	if (result < 0)
++	result = jbd2_cleanup_journal_tail(journal);
++	if (result >= 0)
++		return 0;
++error:
++	if (!is_journal_aborted(journal))
+ 		jbd2_journal_abort(journal, result);
 -	else
-+		ret = jbd2_journal_try_to_free_buffers(journal, page);
-+	if (!ret)
- 		return try_to_free_buffers(page);
-+	return 0;
+-		result = jbd2_cleanup_journal_tail(journal);
+-
+-	return (result < 0) ? result : 0;
++	return result;
  }
  
- static bool ext4_inode_datasync_dirty(struct inode *inode)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b9693680463a..55c7a0d8d77d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1444,7 +1444,8 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
-  * Try to release metadata pages (indirect blocks, directories) which are
-  * mapped via the block device.  Since these pages could have journal heads
-  * which would prevent try_to_free_buffers() from freeing them, we must use
-- * jbd2 layer's try_to_free_buffers() function to release them.
-+ * jbd2 layer's try_to_free_buffers() function to check and we could
-+ * release them if it return 0.
-  */
- static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- 				 gfp_t wait)
-@@ -1457,7 +1458,7 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- 	if (journal)
- 		return jbd2_journal_try_to_free_buffers(journal, page);
+ /*
+@@ -400,7 +397,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+ 	tid_t		first_tid;
+ 	unsigned long	blocknr;
  
--	return try_to_free_buffers(page);
-+	return 0;
- }
+-	if (is_journal_aborted(journal))
++	if (is_journal_aborted(journal) || journal->j_checkpoint_io_error)
+ 		return -EIO;
  
- #ifdef CONFIG_FS_ENCRYPTION
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 3e0db4953fe4..451798051fde 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2089,10 +2089,9 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
-  * if they are fully written out ordered data, move them onto BUF_CLEAN
-  * so try_to_free_buffers() can reap them.
-  *
-- * This function returns non-zero if we wish try_to_free_buffers()
-- * to be called. We do this if the page is releasable by try_to_free_buffers().
-- * We also do it if the page has locked or dirty buffers and the caller wants
-- * us to perform sync or async writeout.
-+ * This function returns zero if all the buffers on this page are
-+ * journal cleaned and the caller should invoke try_to_free_buffers() and
-+ * could release page if the page is releasable by try_to_free_buffers().
-  *
-  * This complicates JBD locking somewhat.  We aren't protected by the
-  * BKL here.  We wish to remove the buffer from its committing or
-@@ -2112,7 +2111,7 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
-  * cannot happen because we never reallocate freed data as metadata
-  * while the data is part of a transaction.  Yes?
-  *
-- * Return 0 on failure, 1 on success
-+ * Return 0 on success, -EBUSY if any buffer is still journal busy.
-  */
- int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
- {
-@@ -2140,12 +2139,12 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
- 		__journal_try_to_free_buffer(journal, bh);
- 		spin_unlock(&jh->b_state_lock);
- 		jbd2_journal_put_journal_head(jh);
--		if (buffer_jbd(bh))
--			goto busy;
-+		if (buffer_jbd(bh)) {
-+			ret = -EBUSY;
-+			break;
-+		}
- 	} while ((bh = bh->b_this_page) != head);
+ 	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
+@@ -564,6 +561,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 	struct transaction_chp_stats_s *stats;
+ 	transaction_t *transaction;
+ 	journal_t *journal;
++	struct buffer_head *bh = jh2bh(jh);
  
--	ret = try_to_free_buffers(page);
--busy:
- 	return ret;
- }
+ 	JBUFFER_TRACE(jh, "entry");
  
+@@ -575,6 +573,14 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 	journal = transaction->t_journal;
+ 
+ 	JBUFFER_TRACE(jh, "removing from transaction");
++	/*
++	 * If the buffer has been failed to write out to disk, it may probably
++	 * lead to filesystem inconsistency after remove it from the log, so
++	 * mark the journal checkpoint write back IO error.
++	 */
++	if (buffer_write_io_error(bh))
++		journal->j_checkpoint_io_error = true;
++
+ 	__buffer_unlink(jh);
+ 	jh->b_cp_transaction = NULL;
+ 	jbd2_journal_put_journal_head(jh);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 2dc944442802..6dbeab8b9feb 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1995,6 +1995,15 @@ int jbd2_journal_destroy(journal_t *journal)
+ 	J_ASSERT(journal->j_checkpoint_transactions == NULL);
+ 	spin_unlock(&journal->j_list_lock);
+ 
++	/*
++	 * OK, all checkpoint transactions have been checked, now check the
++	 * write out io error flag and abort the journal if some buffer failed
++	 * to write back to the original location, otherwise the filesystem
++	 * may probably becomes inconsistency.
++	 */
++	if (!is_journal_aborted(journal) && journal->j_checkpoint_io_error)
++		jbd2_journal_abort(journal, -EIO);
++
+ 	if (journal->j_sb_buffer) {
+ 		if (!is_journal_aborted(journal)) {
+ 			mutex_lock_io(&journal->j_checkpoint_mutex);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 99d3cd051ac3..53ca70f80ad8 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -841,6 +841,13 @@ struct journal_s
+ 	 */
+ 	transaction_t		*j_checkpoint_transactions;
+ 
++	/**
++	 * @j_checkpoint_io_error:
++	 *
++	 * Detect io error while writing back original buffer to disk.
++	 */
++	bool			j_checkpoint_io_error;
++
+ 	/**
+ 	 * @j_wait_transaction_locked:
+ 	 *
 -- 
 2.25.4
 
