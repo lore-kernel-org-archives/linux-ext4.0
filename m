@@ -4,35 +4,35 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5C3CC43617
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B102C43619
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CE05E61107
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0C49B611AD
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351437AbhDNNkF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:40:05 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:16914 "EHLO
+        id S1351442AbhDNNkG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:40:06 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:16919 "EHLO
         szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351417AbhDNNkD (ORCPT
+        with ESMTP id S1351422AbhDNNkD (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:03 -0400
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV03CtzjZRZ;
+        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0hfJzjZSG;
         Wed, 14 Apr 2021 21:37:46 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.498.0; Wed, 14 Apr 2021
- 21:39:30 +0800
+ 21:39:29 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
         <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yi.zhang@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [RFC PATCH v2 7/7] ext4: fix race between blkdev_releasepage() and ext4_put_super()
-Date:   Wed, 14 Apr 2021 21:47:37 +0800
-Message-ID: <20210414134737.2366971-8-yi.zhang@huawei.com>
+Subject: [RFC PATCH v2 5/7] ext4: use RCU to protect accessing superblock in blkdev_releasepage()
+Date:   Wed, 14 Apr 2021 21:47:35 +0800
+Message-ID: <20210414134737.2366971-6-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20210414134737.2366971-1-yi.zhang@huawei.com>
 References: <20210414134737.2366971-1-yi.zhang@huawei.com>
@@ -45,114 +45,51 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There still exist a use after free issue when accessing the journal
-structure and ext4_sb_info structure on freeing bdev buffers in
-bdev_try_to_free_page(). The problem is bdev_try_to_free_page() could be
-raced by ext4_put_super(), it dose freeing sb->s_fs_info and
-sbi->s_journal while release page progress are still accessing them.
-So it could end up trigger use-after-free or NULL pointer dereference.
+In blkdev_releasepage() we access the superblock structure directly, it
+could be raced by umount filesystem on destroy superblock in put_super(),
+and end up triggering a use after free issue.
 
-drop cache                           umount filesystem
-blkdev_releasepage()
- get sb
- bdev_try_to_free_page()             ext4_put_super()
-                                      kfree(journal)
-  if access EXT4_SB(sb)->s_journal  <-- leader to use after free
-                                      sb->s_fs_info = NULL;
-                                      kfree(sbi)
-  if access EXT4_SB(sb)->s_journal  <-- trigger NULL pointer dereference
+drop cache                  umount filesystem
+bdev_try_to_free_page()
+ get superblock
+                             deactivate_locked_super()
+                               ...
+                               put_super() and free sb by destroy_work
+ access superblock  <-- trigger use after free
 
-The above race could also happens on the error path of
-ext4_fill_super(). Now the bdev_try_to_free_page() is under RCU
-protection, this patch fix this race by use sb->s_usage_counter to
-make bdev_try_to_free_page() safe against concurrent kill_block_super().
+This issue doesn't trigger easily in general because we get page locked
+when invoking bdev_try_to_free_page(), and when umount filesystem the
+kill_block_super()->..->kill_bdev()->truncate_inode_pages_range()
+procedure wait on page unlock, but it's not a guarantee. Fix this race
+by use RCU to protect superblock in blkdev_releasepage().
 
-Fixes: c39a7f84d784 ("ext4: provide function to release metadata pages under memory pressure")
+Fixes: 87d8fe1ee6b8 ("add releasepage hooks to block devices which can be used by file systems")
+Reported-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/super.c | 29 +++++++++++++++++++++++++----
- 1 file changed, 25 insertions(+), 4 deletions(-)
+ fs/block_dev.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 55c7a0d8d77d..14eedd8e5bd3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1172,6 +1172,12 @@ static void ext4_put_super(struct super_block *sb)
- 	 */
- 	ext4_unregister_sysfs(sb);
- 
-+	/*
-+	 * Prevent racing with bdev_try_to_free_page() access the sbi and
-+	 * journal concurrently.
-+	 */
-+	sb_usage_counter_wait(sb);
-+
- 	if (sbi->s_journal) {
- 		aborted = is_journal_aborted(sbi->s_journal);
- 		err = jbd2_journal_destroy(sbi->s_journal);
-@@ -1248,6 +1254,7 @@ static void ext4_put_super(struct super_block *sb)
- 		kthread_stop(sbi->s_mmp_tsk);
- 	brelse(sbi->s_sbh);
- 	sb->s_fs_info = NULL;
-+	percpu_ref_exit(&sb->s_usage_counter);
- 	/*
- 	 * Now that we are completely done shutting down the
- 	 * superblock, we need to actually destroy the kobject.
-@@ -1450,15 +1457,22 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
- static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- 				 gfp_t wait)
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 5ed79a9063f6..cb84f347fb04 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -1734,11 +1734,14 @@ EXPORT_SYMBOL_GPL(blkdev_read_iter);
+  */
+ static int blkdev_releasepage(struct page *page, gfp_t wait)
  {
--	journal_t *journal = EXT4_SB(sb)->s_journal;
-+	int ret = 0;
+-	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
++	struct super_block *super;
+ 	int ret = 0;
  
- 	WARN_ON(PageChecked(page));
- 	if (!page_has_buffers(page))
- 		return 0;
--	if (journal)
--		return jbd2_journal_try_to_free_buffers(journal, page);
- 
--	return 0;
-+	/* Racing with umount filesystem concurrently? */
-+	if (percpu_ref_tryget_live(&sb->s_usage_counter)) {
-+		journal_t *journal = EXT4_SB(sb)->s_journal;
-+
-+		if (journal)
-+			ret = jbd2_journal_try_to_free_buffers(journal, page);
-+		percpu_ref_put(&sb->s_usage_counter);
-+	}
-+
-+	return ret;
- }
- 
- #ifdef CONFIG_FS_ENCRYPTION
-@@ -4709,6 +4723,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	spin_lock_init(&sbi->s_error_lock);
- 	INIT_WORK(&sbi->s_error_work, flush_stashed_error_work);
- 
-+	if (sb_usage_counter_init(sb))
-+		goto failed_mount2a;
-+
- 	/* Register extent status tree shrinker */
- 	if (ext4_es_register_shrinker(sbi))
- 		goto failed_mount3;
-@@ -5148,6 +5165,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	ext4_xattr_destroy_cache(sbi->s_ea_block_cache);
- 	sbi->s_ea_block_cache = NULL;
- 
-+	sb->s_bdev->bd_super = NULL;
-+	sb_usage_counter_wait(sb);
- 	if (sbi->s_journal) {
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
-@@ -5155,6 +5174,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- failed_mount3a:
- 	ext4_es_unregister_shrinker(sbi);
- failed_mount3:
-+	percpu_ref_exit(&sb->s_usage_counter);
-+failed_mount2a:
- 	flush_work(&sbi->s_error_work);
- 	del_timer_sync(&sbi->s_err_report);
- 	if (sbi->s_mmp_tsk)
++	rcu_read_lock();
++	super = READ_ONCE(BDEV_I(page->mapping->host)->bdev.bd_super);
+ 	if (super && super->s_op->bdev_try_to_free_page)
+ 		ret = super->s_op->bdev_try_to_free_page(super, page, wait);
++	rcu_read_unlock();
+ 	if (!ret)
+ 		return try_to_free_buffers(page);
+ 	return 0;
 -- 
 2.25.4
 
