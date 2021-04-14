@@ -7,41 +7,41 @@ X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9B6BC43461
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3953AC433ED
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D22D4613DA
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 200B4613DD
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350410AbhDNJBP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 05:01:15 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:52564 "EHLO
+        id S1350413AbhDNJBR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 05:01:17 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:42469 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1350233AbhDNJAN (ORCPT
+        by vger.kernel.org with ESMTP id S1350244AbhDNJAO (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Apr 2021 05:00:13 -0400
+        Wed, 14 Apr 2021 05:00:14 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1618390725;
+        s=mimecast20190719; t=1618390728;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=TEp5EMAVm24nx2qah+gDcXQEPkr6Mgmzt2H3gu4gLOI=;
-        b=iNcXlB0pN3cNcQs61N8y9JE+ypxXLzu2gCOJwAumuL04DKQoebqoRdsuQHON/Gox0Pru3b
-        PShggzkyeiEhgdpPqZCec0aYahTX/bKpEWaVkIa1iHPQSV3DzQqatwuCKFeu4epoNGHxQN
-        TWeOayzeG86lMjoMIdqk02VbxPtDjf8=
+        bh=IL9tcO7W5w4Q5zI/RcosteAuoS46bX3sbgqpkLeCCFg=;
+        b=Nl3RtvOGnuyAqza4bhrnC6/B1mmfiFVvgPkD/6psGOLZHsSVem+Zdwop3YNwhswg/UV/zL
+        mJ9voOtEuxDOQFeDXhRrmBm158sPkO96U403Oqs0Dz64ysyxfB5bkUixHGqiwu//BnDgKu
+        /9Rw6GWzNBuAiDBoDEBGcVGr7ftfBQI=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-243-VArnQOmGORuqLgkb8UeZrQ-1; Wed, 14 Apr 2021 04:58:41 -0400
-X-MC-Unique: VArnQOmGORuqLgkb8UeZrQ-1
+ us-mta-518-rmKrQ_-HMAKpj1cnkwnmsQ-1; Wed, 14 Apr 2021 04:58:44 -0400
+X-MC-Unique: rmKrQ_-HMAKpj1cnkwnmsQ-1
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3CAD6195D56E;
-        Wed, 14 Apr 2021 08:58:39 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 31C2A107ACCD;
+        Wed, 14 Apr 2021 08:58:43 +0000 (UTC)
 Received: from localhost.localdomain.com (ovpn-112-67.rdu2.redhat.com [10.10.112.67])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 7D7525D71D;
-        Wed, 14 Apr 2021 08:58:37 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 6F83D5D71D;
+        Wed, 14 Apr 2021 08:58:41 +0000 (UTC)
 From:   Nico Pache <npache@redhat.com>
 To:     linux-kernel@vger.kernel.org
 Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
@@ -51,9 +51,9 @@ Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
         tytso@mit.edu, mathew.j.martineau@linux.intel.com,
         davem@davemloft.net, broonie@kernel.org, davidgow@google.com,
         skhan@linuxfoundation.org, mptcp@lists.linux.dev
-Subject: [PATCH v2 1/6] kunit: ASoC: topology: adhear to KUNIT formatting standard
-Date:   Wed, 14 Apr 2021 04:58:04 -0400
-Message-Id: <dcf79e592f9a7e14483dde32ac561f6af2632e50.1618388989.git.npache@redhat.com>
+Subject: [PATCH v2 3/6] kunit: ext4: adhear to KUNIT formatting standard
+Date:   Wed, 14 Apr 2021 04:58:06 -0400
+Message-Id: <cbc925da29648e3c9fa6d0945331914911ab6d40.1618388989.git.npache@redhat.com>
 In-Reply-To: <cover.1618388989.git.npache@redhat.com>
 References: <cover.1618388989.git.npache@redhat.com>
 MIME-Version: 1.0
@@ -63,45 +63,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Drop 'S' from end of SND_SOC_TOPOLOGY_KUNIT_TESTS inorder to adhear to
- the KUNIT *_KUNIT_TEST config name format.
+Drop 'S' from end of CONFIG_EXT4_KUNIT_TESTS inorder to adhear to the KUNIT
+*_KUNIT_TEST config name format.
 
-Fixes: d52bbf747cfa (ASoC: topology: KUnit: Add KUnit tests passing various...)
+Fixes: 1cbeab1b242d (ext4: add kunit test for decoding extended timestamps)
 Signed-off-by: Nico Pache <npache@redhat.com>
 ---
- sound/soc/Kconfig  | 2 +-
- sound/soc/Makefile | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/.kunitconfig | 2 +-
+ fs/ext4/Kconfig      | 2 +-
+ fs/ext4/Makefile     | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/sound/soc/Kconfig b/sound/soc/Kconfig
-index 640494f76cbd..8a13462e1a63 100644
---- a/sound/soc/Kconfig
-+++ b/sound/soc/Kconfig
-@@ -37,7 +37,7 @@ config SND_SOC_COMPRESS
- config SND_SOC_TOPOLOGY
- 	bool
+diff --git a/fs/ext4/.kunitconfig b/fs/ext4/.kunitconfig
+index bf51da7cd9fc..81d4da667740 100644
+--- a/fs/ext4/.kunitconfig
++++ b/fs/ext4/.kunitconfig
+@@ -1,3 +1,3 @@
+ CONFIG_KUNIT=y
+ CONFIG_EXT4_FS=y
+-CONFIG_EXT4_KUNIT_TESTS=y
++CONFIG_EXT4_KUNIT_TEST=y
+diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+index 86699c8cab28..1569d3872136 100644
+--- a/fs/ext4/Kconfig
++++ b/fs/ext4/Kconfig
+@@ -101,7 +101,7 @@ config EXT4_DEBUG
+ 	  If you select Y here, then you will be able to turn on debugging
+ 	  using dynamic debug control for mb_debug() / ext_debug() msgs.
  
--config SND_SOC_TOPOLOGY_KUNIT_TESTS
-+config SND_SOC_TOPOLOGY_KUNIT_TEST
- 	tristate "KUnit tests for SoC topology"
- 	depends on KUNIT
- 	depends on SND_SOC_TOPOLOGY
-diff --git a/sound/soc/Makefile b/sound/soc/Makefile
-index f56ad996eae8..a7b37c06dc43 100644
---- a/sound/soc/Makefile
-+++ b/sound/soc/Makefile
-@@ -7,9 +7,9 @@ ifneq ($(CONFIG_SND_SOC_TOPOLOGY),)
- snd-soc-core-objs += soc-topology.o
- endif
- 
--ifneq ($(CONFIG_SND_SOC_TOPOLOGY_KUNIT_TESTS),)
-+ifneq ($(CONFIG_SND_SOC_TOPOLOGY_KUNIT_TEST),)
- # snd-soc-test-objs := soc-topology-test.o
--obj-$(CONFIG_SND_SOC_TOPOLOGY_KUNIT_TESTS) := soc-topology-test.o
-+obj-$(CONFIG_SND_SOC_TOPOLOGY_KUNIT_TEST) := soc-topology-test.o
- endif
- 
- ifneq ($(CONFIG_SND_SOC_GENERIC_DMAENGINE_PCM),)
+-config EXT4_KUNIT_TESTS
++config EXT4_KUNIT_TEST
+ 	tristate "KUnit tests for ext4" if !KUNIT_ALL_TESTS
+ 	depends on EXT4_FS && KUNIT
+ 	default KUNIT_ALL_TESTS
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index 49e7af6cc93f..4e28e380d51b 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -15,5 +15,5 @@ ext4-y	:= balloc.o bitmap.o block_validity.o dir.o ext4_jbd2.o extents.o \
+ ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
+ ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
+ ext4-inode-test-objs			+= inode-test.o
+-obj-$(CONFIG_EXT4_KUNIT_TESTS)		+= ext4-inode-test.o
++obj-$(CONFIG_EXT4_KUNIT_TEST)		+= ext4-inode-test.o
+ ext4-$(CONFIG_FS_VERITY)		+= verity.o
 -- 
 2.30.2
 
