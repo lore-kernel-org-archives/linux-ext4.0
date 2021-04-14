@@ -2,66 +2,109 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7616CC433B4
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:51:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D623C43460
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 07:42:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5314D60240
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:51:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2352C61166
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 07:42:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347598AbhDNFwK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 01:52:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:56218 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1347576AbhDNFwG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Apr 2021 01:52:06 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id D63A6608FC;
-        Wed, 14 Apr 2021 05:51:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1618379505;
-        bh=VHNEZKd5mSrU+q+QpM/cxwyQJ4+1svxalTBviaeRaBs=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=B4BIMzMMduzMjtvzXY1t7ZDiinZBo3MLhw8LTz4EAFJmzNNYrNiZMOkABCROL0J4N
-         j+xffx7JFH3tS88eU2cF05qpF8+1LPN49Iq2njY3OoPSK3fnUF4QdNsSZ+KYRnIV1H
-         TNU76QIO2jW6ilBhYFiEzEBJ56auODMTmfLpvFAk=
-Date:   Wed, 14 Apr 2021 07:51:43 +0200
-From:   Greg KH <gregkh@linuxfoundation.org>
-To:     Nico Pache <npache@redhat.com>
-Cc:     linux-kernel@vger.kernel.org, brendanhiggins@google.com,
-        linux-ext4@vger.kernel.org, netdev@vger.kernel.org,
-        rafael@kernel.org, linux-m68k@lists.linux-m68k.org,
-        geert@linux-m68k.org
-Subject: Re: [PATCH 1/2] kunit: Fix formatting of KUNIT tests to meet the
- standard
-Message-ID: <YHaC74uSAJg/ZO7x@kroah.com>
-References: <20210414043303.1072552-1-npache@redhat.com>
+        id S1349580AbhDNHmb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 03:42:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57270 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1349708AbhDNHma (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 03:42:30 -0400
+Received: from mail-pj1-x102e.google.com (mail-pj1-x102e.google.com [IPv6:2607:f8b0:4864:20::102e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D94F1C061574
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 00:42:09 -0700 (PDT)
+Received: by mail-pj1-x102e.google.com with SMTP id r13so6036242pjf.2
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 00:42:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=mforney-org.20150623.gappssmtp.com; s=20150623;
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
+         :content-transfer-encoding;
+        bh=8a4+QM2cN3ClF4jMy+wdo1aOSs6UrwNPl9bPzaFpOFM=;
+        b=QIasb52qm+otSclRc6u2qNS6uBwuoH/GRmLJ36xkfQEy39WgaIi+AH2sEKPAy3+V+1
+         85kpck89j5lZseUDvQeNN+qo9M2rmGGgmzNiqTvkxaaUISDn0gg7jdAteElgEF8RNoqc
+         pmsQeg66Kxti/jroQwQoYr4DlRXxCTMqI5aTM1d/PVYT2WceTbODgsZOpSmiwJ1d8ysr
+         P8ptuYg3i6dx6tuVt8HBd45ebmZn8O1qH6SR4VV3wAiP8cssyBUV6WxXn3kBuXfU1NaJ
+         mY/h+lOVW770XfAhXbKp3KoHQtVEiPKgriMnwAXWu/OnClCPT5YQ2vdp2denI4wRP4M2
+         xgwQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=8a4+QM2cN3ClF4jMy+wdo1aOSs6UrwNPl9bPzaFpOFM=;
+        b=cH2RPh2dDVep/fVN9l2H00Kk9G60lLvvI3cux68HsgABlxAHF/E14C0cfw38LqyoV6
+         dPvnjPLGpCsVTPmZrS8Nq3V3/K56GCRMAeZF+eKCpJH7qmte2YH9UBg7ltIblQXJxz0M
+         XdFqXjGl+Ob4UrpyKpkCBBHV0fXxkvBaE0WrcN6mPHabbZ3DgYuhOQpYA1P80yupDOr/
+         uoL+b9R0CLzxNTUXbUj+nBAz9ubv11NhF2wtk9VCQAuVwdQu75sGg700S89mvDxCOmjB
+         cXt5seLzuSDoWMXcOaVDRz3J8xqaZ66thn05ItAAV5i1nTIQ+i0UTR6CB0fAAm3KS555
+         KX7g==
+X-Gm-Message-State: AOAM531H0GqMrgEqyITUEZjdbmSbi8ifEVGidKszOP27azqZGw8hzCGK
+        VDqUGOcQn8kPuCCGk6oYV59ugPdL/nlg3HA9tuQ=
+X-Google-Smtp-Source: ABdhPJzgiRgPn834sJYRlvzlmP9vJoYCiyLW+CM1PipzEi3oqVgvLnstcHsHavXOTcNZdIOlqd5mbw==
+X-Received: by 2002:a17:902:d507:b029:ea:ac65:b98e with SMTP id b7-20020a170902d507b02900eaac65b98emr25569504plg.56.1618386129297;
+        Wed, 14 Apr 2021 00:42:09 -0700 (PDT)
+Received: from localhost ([2601:647:5180:4570:16dd:a9ff:fee7:6b79])
+        by smtp.gmail.com with ESMTPSA id g8sm14166056pfr.106.2021.04.14.00.42.08
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 14 Apr 2021 00:42:09 -0700 (PDT)
+From:   Michael Forney <mforney@mforney.org>
+To:     linux-ext4@vger.kernel.org
+Subject: [PATCH 2/2] libext2fs: use offsetof() from stddef.h
+Date:   Wed, 14 Apr 2021 00:41:28 -0700
+Message-Id: <20210414074128.31268-2-mforney@mforney.org>
+X-Mailer: git-send-email 2.30.1
+In-Reply-To: <20210414074128.31268-1-mforney@mforney.org>
+References: <20210414074128.31268-1-mforney@mforney.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210414043303.1072552-1-npache@redhat.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 14, 2021 at 12:33:02AM -0400, Nico Pache wrote:
-> There are few instances of KUNIT tests that are not properly defined.
-> This commit focuses on correcting these issues to match the standard
-> defined in the Documentation.
-> 
->     Issues Fixed:
->  - Tests should default to KUNIT_ALL_TESTS
->  - Tests configs tristate should have `if !KUNIT_ALL_TESTS`
->  - Tests should end in KUNIT_TEST, some fixes have been applied to
->     correct issues were KUNIT_TESTS is used or KUNIT is not mentioned.
+offsetof is a standard C feature available from stddef.h, going
+back all the way to ANSI C.
 
-You are changing lots of different things all in one patch, please break
-this up into "one config option change per patch" to make it easier to
-review and get merged through the proper subsystem.
+Signed-off-by: Michael Forney <mforney@mforney.org>
+---
+Perhaps there is some reason to prefer compiler builtins over libc
+that I'm not seeing?
 
-thanks,
+ lib/ext2fs/compiler.h | 13 +------------
+ 1 file changed, 1 insertion(+), 12 deletions(-)
 
-greg k-h
+diff --git a/lib/ext2fs/compiler.h b/lib/ext2fs/compiler.h
+index 03c35ab8..42faa61c 100644
+--- a/lib/ext2fs/compiler.h
++++ b/lib/ext2fs/compiler.h
+@@ -1,18 +1,7 @@
+ #ifndef _EXT2FS_COMPILER_H
+ #define _EXT2FS_COMPILER_H
+ 
+-#ifndef __has_builtin
+-#define __has_builtin(x) 0
+-#endif
+-
+-#undef offsetof
+-#if __has_builtin(__builtin_offsetof)
+-#define offsetof(TYPE, MEMBER) __builtin_offsetof(TYPE, MEMBER)
+-#elif defined(__compiler_offsetof)
+-#define offsetof(TYPE,MEMBER) __compiler_offsetof(TYPE,MEMBER)
+-#else
+-#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+-#endif
++#include <stddef.h>
+ 
+ #ifdef __GNUC__
+ #define container_of(ptr, type, member) ({			\
+-- 
+2.30.1
+
