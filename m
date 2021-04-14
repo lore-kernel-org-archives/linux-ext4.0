@@ -4,35 +4,35 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	MAILING_LIST_MULTI,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B102C43619
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E327C4361A
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0C49B611AD
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66E3361242
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351442AbhDNNkG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:40:06 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:16919 "EHLO
+        id S1351447AbhDNNkL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 09:40:11 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:16918 "EHLO
         szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351422AbhDNNkD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:03 -0400
+        with ESMTP id S1351446AbhDNNkJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:09 -0400
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0hfJzjZSG;
+        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0VWQzjZS5;
         Wed, 14 Apr 2021 21:37:46 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.498.0; Wed, 14 Apr 2021
- 21:39:29 +0800
+ 21:39:27 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
         <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yi.zhang@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [RFC PATCH v2 5/7] ext4: use RCU to protect accessing superblock in blkdev_releasepage()
-Date:   Wed, 14 Apr 2021 21:47:35 +0800
-Message-ID: <20210414134737.2366971-6-yi.zhang@huawei.com>
+Subject: [RFC PATCH v2 3/7] jbd2: don't abort the journal when freeing buffers
+Date:   Wed, 14 Apr 2021 21:47:33 +0800
+Message-ID: <20210414134737.2366971-4-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20210414134737.2366971-1-yi.zhang@huawei.com>
 References: <20210414134737.2366971-1-yi.zhang@huawei.com>
@@ -45,51 +45,56 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In blkdev_releasepage() we access the superblock structure directly, it
-could be raced by umount filesystem on destroy superblock in put_super(),
-and end up triggering a use after free issue.
+Now, we can make sure to abort the journal once the original buffer was
+failed to write back to disk, we can remove the journal abort logic in
+jbd2_journal_try_to_free_buffers() which was introduced in
+<c044f3d8360d> ("jbd2: abort journal if free a async write error
+metadata buffer"), because it may costs and propably not safe.
 
-drop cache                  umount filesystem
-bdev_try_to_free_page()
- get superblock
-                             deactivate_locked_super()
-                               ...
-                               put_super() and free sb by destroy_work
- access superblock  <-- trigger use after free
-
-This issue doesn't trigger easily in general because we get page locked
-when invoking bdev_try_to_free_page(), and when umount filesystem the
-kill_block_super()->..->kill_bdev()->truncate_inode_pages_range()
-procedure wait on page unlock, but it's not a guarantee. Fix this race
-by use RCU to protect superblock in blkdev_releasepage().
-
-Fixes: 87d8fe1ee6b8 ("add releasepage hooks to block devices which can be used by file systems")
-Reported-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/block_dev.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/jbd2/transaction.c | 17 -----------------
+ 1 file changed, 17 deletions(-)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 5ed79a9063f6..cb84f347fb04 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1734,11 +1734,14 @@ EXPORT_SYMBOL_GPL(blkdev_read_iter);
-  */
- static int blkdev_releasepage(struct page *page, gfp_t wait)
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 9396666b7314..3e0db4953fe4 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2118,7 +2118,6 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
  {
--	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
-+	struct super_block *super;
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
+-	bool has_write_io_error = false;
  	int ret = 0;
  
-+	rcu_read_lock();
-+	super = READ_ONCE(BDEV_I(page->mapping->host)->bdev.bd_super);
- 	if (super && super->s_op->bdev_try_to_free_page)
- 		ret = super->s_op->bdev_try_to_free_page(super, page, wait);
-+	rcu_read_unlock();
- 	if (!ret)
- 		return try_to_free_buffers(page);
- 	return 0;
+ 	J_ASSERT(PageLocked(page));
+@@ -2143,26 +2142,10 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
+ 		jbd2_journal_put_journal_head(jh);
+ 		if (buffer_jbd(bh))
+ 			goto busy;
+-
+-		/*
+-		 * If we free a metadata buffer which has been failed to
+-		 * write out, the jbd2 checkpoint procedure will not detect
+-		 * this failure and may lead to filesystem inconsistency
+-		 * after cleanup journal tail.
+-		 */
+-		if (buffer_write_io_error(bh)) {
+-			pr_err("JBD2: Error while async write back metadata bh %llu.",
+-			       (unsigned long long)bh->b_blocknr);
+-			has_write_io_error = true;
+-		}
+ 	} while ((bh = bh->b_this_page) != head);
+ 
+ 	ret = try_to_free_buffers(page);
+-
+ busy:
+-	if (has_write_io_error)
+-		jbd2_journal_abort(journal, -EIO);
+-
+ 	return ret;
+ }
+ 
 -- 
 2.25.4
 
