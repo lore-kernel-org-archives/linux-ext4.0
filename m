@@ -2,33 +2,33 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EB60C433ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:50:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7616CC433B4
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:51:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 744D961249
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:50:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5314D60240
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 05:51:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344284AbhDNFvK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 01:51:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55116 "EHLO mail.kernel.org"
+        id S1347598AbhDNFwK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 01:52:10 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56218 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231321AbhDNFvK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Apr 2021 01:51:10 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id A8DEF611C9;
-        Wed, 14 Apr 2021 05:50:47 +0000 (UTC)
+        id S1347576AbhDNFwG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Apr 2021 01:52:06 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id D63A6608FC;
+        Wed, 14 Apr 2021 05:51:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-        s=korg; t=1618379448;
-        bh=bJW6XiHgI7CexCM+0KjgcDdLA76bJUD9XAmxOqSXzsM=;
+        s=korg; t=1618379505;
+        bh=VHNEZKd5mSrU+q+QpM/cxwyQJ4+1svxalTBviaeRaBs=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=KEcuBG3/cVH3l60Fks5Sisq+hkxTxqMqraRZFdoBKeQoiR0+UwwG1Em64SCv3+eJh
-         GD9v7Ico7mrJxV9bqIo4F1uDRrawn47Mh488yDXL9fUoq1AZqGCSQIieMKOozJSBDG
-         lDxXUUMHaf6oZsw7pCJSzpYmYnEpV3Ckeb4BFq1c=
-Date:   Wed, 14 Apr 2021 07:50:45 +0200
+        b=B4BIMzMMduzMjtvzXY1t7ZDiinZBo3MLhw8LTz4EAFJmzNNYrNiZMOkABCROL0J4N
+         j+xffx7JFH3tS88eU2cF05qpF8+1LPN49Iq2njY3OoPSK3fnUF4QdNsSZ+KYRnIV1H
+         TNU76QIO2jW6ilBhYFiEzEBJ56auODMTmfLpvFAk=
+Date:   Wed, 14 Apr 2021 07:51:43 +0200
 From:   Greg KH <gregkh@linuxfoundation.org>
 To:     Nico Pache <npache@redhat.com>
 Cc:     linux-kernel@vger.kernel.org, brendanhiggins@google.com,
@@ -37,7 +37,7 @@ Cc:     linux-kernel@vger.kernel.org, brendanhiggins@google.com,
         geert@linux-m68k.org
 Subject: Re: [PATCH 1/2] kunit: Fix formatting of KUNIT tests to meet the
  standard
-Message-ID: <YHaCtfn2UqKbhB3a@kroah.com>
+Message-ID: <YHaC74uSAJg/ZO7x@kroah.com>
 References: <20210414043303.1072552-1-npache@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -57,12 +57,10 @@ On Wed, Apr 14, 2021 at 12:33:02AM -0400, Nico Pache wrote:
 >  - Tests configs tristate should have `if !KUNIT_ALL_TESTS`
 >  - Tests should end in KUNIT_TEST, some fixes have been applied to
 >     correct issues were KUNIT_TESTS is used or KUNIT is not mentioned.
-> 
-> No functional changes other than CONFIG name changes
-> Signed-off-by: Nico Pache <npache@redhat.com>
 
-Please put a blank line before your signed-off-by, as is required by the
-tools :(
+You are changing lots of different things all in one patch, please break
+this up into "one config option change per patch" to make it easier to
+review and get merged through the proper subsystem.
 
 thanks,
 
