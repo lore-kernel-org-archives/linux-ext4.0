@@ -4,35 +4,35 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33937C4360C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5C3CC43617
 	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 19437611AD
+	by mail.kernel.org (Postfix) with ESMTP id CE05E61107
 	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351431AbhDNNkF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1351437AbhDNNkF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 14 Apr 2021 09:40:05 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:16917 "EHLO
+Received: from szxga06-in.huawei.com ([45.249.212.32]:16914 "EHLO
         szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346798AbhDNNkC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:02 -0400
+        with ESMTP id S1351417AbhDNNkD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:03 -0400
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0GztzjZRp;
+        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV03CtzjZRZ;
         Wed, 14 Apr 2021 21:37:46 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.498.0; Wed, 14 Apr 2021
- 21:39:27 +0800
+ 21:39:30 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
         <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yi.zhang@huawei.com>,
         <yukuai3@huawei.com>
-Subject: [RFC PATCH v2 2/7] jbd2: ensure abort the journal if detect IO error when writing original buffer back
-Date:   Wed, 14 Apr 2021 21:47:32 +0800
-Message-ID: <20210414134737.2366971-3-yi.zhang@huawei.com>
+Subject: [RFC PATCH v2 7/7] ext4: fix race between blkdev_releasepage() and ext4_put_super()
+Date:   Wed, 14 Apr 2021 21:47:37 +0800
+Message-ID: <20210414134737.2366971-8-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20210414134737.2366971-1-yi.zhang@huawei.com>
 References: <20210414134737.2366971-1-yi.zhang@huawei.com>
@@ -45,162 +45,114 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Althourh we merged <c044f3d8360> ("jbd2: abort journal if free a async
-write error metadata buffer"), there is a race between
-jbd2_journal_try_to_free_buffers() and jbd2_journal_destroy(), so the
-jbd2_log_do_checkpoint() may still missing to detect the buffer write
-io error flag and will end up leading to filesystem inconsistency.
+There still exist a use after free issue when accessing the journal
+structure and ext4_sb_info structure on freeing bdev buffers in
+bdev_try_to_free_page(). The problem is bdev_try_to_free_page() could be
+raced by ext4_put_super(), it dose freeing sb->s_fs_info and
+sbi->s_journal while release page progress are still accessing them.
+So it could end up trigger use-after-free or NULL pointer dereference.
 
-jbd2_journal_try_to_free_buffers()     ext4_put_super()
-                                        jbd2_journal_destroy()
-  __jbd2_journal_remove_checkpoint()
-  detect buffer write error              jbd2_log_do_checkpoint()
-                                         jbd2_cleanup_journal_tail()
-                                           <--- lead to inconsistency
-  jbd2_journal_abort()
+drop cache                           umount filesystem
+blkdev_releasepage()
+ get sb
+ bdev_try_to_free_page()             ext4_put_super()
+                                      kfree(journal)
+  if access EXT4_SB(sb)->s_journal  <-- leader to use after free
+                                      sb->s_fs_info = NULL;
+                                      kfree(sbi)
+  if access EXT4_SB(sb)->s_journal  <-- trigger NULL pointer dereference
 
-Fix this issue by introduce a new mark j_checkpoint_io_error and set it
-in __jbd2_journal_remove_checkpoint() when freeing a checkpoint buffer
-has write_io_error flag. Then jbd2_journal_destroy() will detect this
-mark and abort the journal to prevent updating log tail.
+The above race could also happens on the error path of
+ext4_fill_super(). Now the bdev_try_to_free_page() is under RCU
+protection, this patch fix this race by use sb->s_usage_counter to
+make bdev_try_to_free_page() safe against concurrent kill_block_super().
 
+Fixes: c39a7f84d784 ("ext4: provide function to release metadata pages under memory pressure")
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/jbd2/checkpoint.c | 32 +++++++++++++++++++-------------
- fs/jbd2/journal.c    |  9 +++++++++
- include/linux/jbd2.h |  7 +++++++
- 3 files changed, 35 insertions(+), 13 deletions(-)
+ fs/ext4/super.c | 29 +++++++++++++++++++++++++----
+ 1 file changed, 25 insertions(+), 4 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index bf5511d19ac5..ff3d38ad3a1e 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -221,14 +221,15 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	result = jbd2_cleanup_journal_tail(journal);
- 	trace_jbd2_checkpoint(journal, result);
- 	jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
--	if (result <= 0)
-+	if (result == 0)
- 		return result;
-+	if (result < 0)
-+		goto error;
- 
- 	/*
- 	 * OK, we need to start writing disk blocks.  Take one transaction
- 	 * and write it.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 55c7a0d8d77d..14eedd8e5bd3 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1172,6 +1172,12 @@ static void ext4_put_super(struct super_block *sb)
  	 */
--	result = 0;
- 	spin_lock(&journal->j_list_lock);
- 	if (!journal->j_checkpoint_transactions)
- 		goto out;
-@@ -295,8 +296,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 			goto restart;
- 		}
- 		if (!buffer_dirty(bh)) {
--			if (unlikely(buffer_write_io_error(bh)) && !result)
--				result = -EIO;
- 			BUFFER_TRACE(bh, "remove from checkpoint");
- 			if (__jbd2_journal_remove_checkpoint(jh))
- 				/* The transaction was released; we're done */
-@@ -356,9 +355,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 			spin_lock(&journal->j_list_lock);
- 			goto restart2;
- 		}
--		if (unlikely(buffer_write_io_error(bh)) && !result)
--			result = -EIO;
--
- 		/*
- 		 * Now in whatever state the buffer currently is, we
- 		 * know that it has been written out and so we can
-@@ -369,12 +365,13 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	}
- out:
- 	spin_unlock(&journal->j_list_lock);
--	if (result < 0)
-+	result = jbd2_cleanup_journal_tail(journal);
-+	if (result >= 0)
-+		return 0;
-+error:
-+	if (!is_journal_aborted(journal))
- 		jbd2_journal_abort(journal, result);
--	else
--		result = jbd2_cleanup_journal_tail(journal);
--
--	return (result < 0) ? result : 0;
-+	return result;
+ 	ext4_unregister_sysfs(sb);
+ 
++	/*
++	 * Prevent racing with bdev_try_to_free_page() access the sbi and
++	 * journal concurrently.
++	 */
++	sb_usage_counter_wait(sb);
++
+ 	if (sbi->s_journal) {
+ 		aborted = is_journal_aborted(sbi->s_journal);
+ 		err = jbd2_journal_destroy(sbi->s_journal);
+@@ -1248,6 +1254,7 @@ static void ext4_put_super(struct super_block *sb)
+ 		kthread_stop(sbi->s_mmp_tsk);
+ 	brelse(sbi->s_sbh);
+ 	sb->s_fs_info = NULL;
++	percpu_ref_exit(&sb->s_usage_counter);
+ 	/*
+ 	 * Now that we are completely done shutting down the
+ 	 * superblock, we need to actually destroy the kobject.
+@@ -1450,15 +1457,22 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
+ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
+ 				 gfp_t wait)
+ {
+-	journal_t *journal = EXT4_SB(sb)->s_journal;
++	int ret = 0;
+ 
+ 	WARN_ON(PageChecked(page));
+ 	if (!page_has_buffers(page))
+ 		return 0;
+-	if (journal)
+-		return jbd2_journal_try_to_free_buffers(journal, page);
+ 
+-	return 0;
++	/* Racing with umount filesystem concurrently? */
++	if (percpu_ref_tryget_live(&sb->s_usage_counter)) {
++		journal_t *journal = EXT4_SB(sb)->s_journal;
++
++		if (journal)
++			ret = jbd2_journal_try_to_free_buffers(journal, page);
++		percpu_ref_put(&sb->s_usage_counter);
++	}
++
++	return ret;
  }
  
- /*
-@@ -400,7 +397,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
- 	tid_t		first_tid;
- 	unsigned long	blocknr;
+ #ifdef CONFIG_FS_ENCRYPTION
+@@ -4709,6 +4723,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	spin_lock_init(&sbi->s_error_lock);
+ 	INIT_WORK(&sbi->s_error_work, flush_stashed_error_work);
  
--	if (is_journal_aborted(journal))
-+	if (is_journal_aborted(journal) || journal->j_checkpoint_io_error)
- 		return -EIO;
- 
- 	if (!jbd2_journal_get_log_tail(journal, &first_tid, &blocknr))
-@@ -564,6 +561,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 	struct transaction_chp_stats_s *stats;
- 	transaction_t *transaction;
- 	journal_t *journal;
-+	struct buffer_head *bh = jh2bh(jh);
- 
- 	JBUFFER_TRACE(jh, "entry");
- 
-@@ -575,6 +573,14 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 	journal = transaction->t_journal;
- 
- 	JBUFFER_TRACE(jh, "removing from transaction");
-+	/*
-+	 * If the buffer has been failed to write out to disk, it may probably
-+	 * lead to filesystem inconsistency after remove it from the log, so
-+	 * mark the journal checkpoint write back IO error.
-+	 */
-+	if (buffer_write_io_error(bh))
-+		journal->j_checkpoint_io_error = true;
++	if (sb_usage_counter_init(sb))
++		goto failed_mount2a;
 +
- 	__buffer_unlink(jh);
- 	jh->b_cp_transaction = NULL;
- 	jbd2_journal_put_journal_head(jh);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 2dc944442802..6dbeab8b9feb 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -1995,6 +1995,15 @@ int jbd2_journal_destroy(journal_t *journal)
- 	J_ASSERT(journal->j_checkpoint_transactions == NULL);
- 	spin_unlock(&journal->j_list_lock);
+ 	/* Register extent status tree shrinker */
+ 	if (ext4_es_register_shrinker(sbi))
+ 		goto failed_mount3;
+@@ -5148,6 +5165,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	ext4_xattr_destroy_cache(sbi->s_ea_block_cache);
+ 	sbi->s_ea_block_cache = NULL;
  
-+	/*
-+	 * OK, all checkpoint transactions have been checked, now check the
-+	 * write out io error flag and abort the journal if some buffer failed
-+	 * to write back to the original location, otherwise the filesystem
-+	 * may probably becomes inconsistency.
-+	 */
-+	if (!is_journal_aborted(journal) && journal->j_checkpoint_io_error)
-+		jbd2_journal_abort(journal, -EIO);
-+
- 	if (journal->j_sb_buffer) {
- 		if (!is_journal_aborted(journal)) {
- 			mutex_lock_io(&journal->j_checkpoint_mutex);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 99d3cd051ac3..53ca70f80ad8 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -841,6 +841,13 @@ struct journal_s
- 	 */
- 	transaction_t		*j_checkpoint_transactions;
- 
-+	/**
-+	 * @j_checkpoint_io_error:
-+	 *
-+	 * Detect io error while writing back original buffer to disk.
-+	 */
-+	bool			j_checkpoint_io_error;
-+
- 	/**
- 	 * @j_wait_transaction_locked:
- 	 *
++	sb->s_bdev->bd_super = NULL;
++	sb_usage_counter_wait(sb);
+ 	if (sbi->s_journal) {
+ 		jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+@@ -5155,6 +5174,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ failed_mount3a:
+ 	ext4_es_unregister_shrinker(sbi);
+ failed_mount3:
++	percpu_ref_exit(&sb->s_usage_counter);
++failed_mount2a:
+ 	flush_work(&sbi->s_error_work);
+ 	del_timer_sync(&sbi->s_err_report);
+ 	if (sbi->s_mmp_tsk)
 -- 
 2.25.4
 
