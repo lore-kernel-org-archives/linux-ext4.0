@@ -2,99 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E327C4361A
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EBB0C433B4
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 14:20:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 66E3361242
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 13:39:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DFCF961179
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 14:20:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351447AbhDNNkL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 09:40:11 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:16918 "EHLO
-        szxga06-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351446AbhDNNkJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 09:40:09 -0400
-Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga06-in.huawei.com (SkyGuard) with ESMTP id 4FL3SV0VWQzjZS5;
-        Wed, 14 Apr 2021 21:37:46 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by DGGEMS411-HUB.china.huawei.com
- (10.3.19.211) with Microsoft SMTP Server id 14.3.498.0; Wed, 14 Apr 2021
- 21:39:27 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <linux-fsdevel@vger.kernel.org>, <tytso@mit.edu>,
-        <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yi.zhang@huawei.com>,
-        <yukuai3@huawei.com>
-Subject: [RFC PATCH v2 3/7] jbd2: don't abort the journal when freeing buffers
-Date:   Wed, 14 Apr 2021 21:47:33 +0800
-Message-ID: <20210414134737.2366971-4-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.25.4
-In-Reply-To: <20210414134737.2366971-1-yi.zhang@huawei.com>
-References: <20210414134737.2366971-1-yi.zhang@huawei.com>
+        id S1349460AbhDNOVE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 10:21:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60656 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1348303AbhDNOVA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Apr 2021 10:21:00 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2632861019;
+        Wed, 14 Apr 2021 14:20:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1618410038;
+        bh=DykQO4BQxTHccj2c0RU/3WhmZd1h8XFYW7G9mDIAu20=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=PSuRbnLqSceeRXtJOmVbK2ImrfOgaaxVevo2l0FliVCtz6IapYN6ta3q8ZDOxTOyf
+         9PIh4JXcGsdm3oUf474ro0pblftH6gjuJ/70YDYDFYQJDbFzyXiuVd9mRbyCMGOgmH
+         W1Ssg8FbNI9Ym7O4ohirhw+9mVR24wEb6/gxCBFENBF0ivN7OHSIe5ohF7HvBz12at
+         ThwiA9XHnPqXvtRSSC0NzL3LZ8I/BHrmxQ3NaY9oPLFMjiAzEVjmXKqiwUN6h0mxL4
+         yJsnj4ZhMGGXIkmgdrFy0jJPJlSR+bSdf9RRa302+2rabt7hxc5S8hOnvT+H5HDwFq
+         3hq79rq5V6MYw==
+Date:   Wed, 14 Apr 2021 15:20:16 +0100
+From:   Mark Brown <broonie@kernel.org>
+To:     Nico Pache <npache@redhat.com>
+Cc:     linux-kernel@vger.kernel.org, brendanhiggins@google.com,
+        gregkh@linuxfoundation.org, linux-ext4@vger.kernel.org,
+        netdev@vger.kernel.org, rafael@kernel.org,
+        linux-m68k@lists.linux-m68k.org, geert@linux-m68k.org,
+        tytso@mit.edu, mathew.j.martineau@linux.intel.com,
+        davem@davemloft.net, davidgow@google.com,
+        skhan@linuxfoundation.org, mptcp@lists.linux.dev
+Subject: Re: [PATCH v2 1/6] kunit: ASoC: topology: adhear to KUNIT formatting
+ standard
+Message-ID: <20210414142016.GE4535@sirena.org.uk>
+References: <cover.1618388989.git.npache@redhat.com>
+ <dcf79e592f9a7e14483dde32ac561f6af2632e50.1618388989.git.npache@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+Content-Type: multipart/signed; micalg=pgp-sha512;
+        protocol="application/pgp-signature"; boundary="imjhCm/Pyz7Rq5F2"
+Content-Disposition: inline
+In-Reply-To: <dcf79e592f9a7e14483dde32ac561f6af2632e50.1618388989.git.npache@redhat.com>
+X-Cookie: George Orwell was an optimist.
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now, we can make sure to abort the journal once the original buffer was
-failed to write back to disk, we can remove the journal abort logic in
-jbd2_journal_try_to_free_buffers() which was introduced in
-<c044f3d8360d> ("jbd2: abort journal if free a async write error
-metadata buffer"), because it may costs and propably not safe.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/jbd2/transaction.c | 17 -----------------
- 1 file changed, 17 deletions(-)
+--imjhCm/Pyz7Rq5F2
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 9396666b7314..3e0db4953fe4 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2118,7 +2118,6 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
- {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
--	bool has_write_io_error = false;
- 	int ret = 0;
- 
- 	J_ASSERT(PageLocked(page));
-@@ -2143,26 +2142,10 @@ int jbd2_journal_try_to_free_buffers(journal_t *journal, struct page *page)
- 		jbd2_journal_put_journal_head(jh);
- 		if (buffer_jbd(bh))
- 			goto busy;
--
--		/*
--		 * If we free a metadata buffer which has been failed to
--		 * write out, the jbd2 checkpoint procedure will not detect
--		 * this failure and may lead to filesystem inconsistency
--		 * after cleanup journal tail.
--		 */
--		if (buffer_write_io_error(bh)) {
--			pr_err("JBD2: Error while async write back metadata bh %llu.",
--			       (unsigned long long)bh->b_blocknr);
--			has_write_io_error = true;
--		}
- 	} while ((bh = bh->b_this_page) != head);
- 
- 	ret = try_to_free_buffers(page);
--
- busy:
--	if (has_write_io_error)
--		jbd2_journal_abort(journal, -EIO);
--
- 	return ret;
- }
- 
--- 
-2.25.4
+On Wed, Apr 14, 2021 at 04:58:04AM -0400, Nico Pache wrote:
+> Drop 'S' from end of SND_SOC_TOPOLOGY_KUNIT_TESTS inorder to adhear to
+>  the KUNIT *_KUNIT_TEST config name format.
 
+Please submit patches using subject lines reflecting the style for the
+subsystem, this makes it easier for people to identify relevant patches.
+Look at what existing commits in the area you're changing are doing and
+make sure your subject lines visually resemble what they're doing.
+There's no need to resubmit to fix this alone.
+
+--imjhCm/Pyz7Rq5F2
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCgAdFiEEreZoqmdXGLWf4p/qJNaLcl1Uh9AFAmB2+h8ACgkQJNaLcl1U
+h9C5ygf/f+BNG8PCz0e3sGq/F/lIAmu23fPiN7lzXIQ/7/mdT3MwGiTHu9temsXL
+0d99SUvGT3MUczcKW+6Vj6faDQZGBXKBsKMW7rOq5h7Ns2tvw5MyvWwSYhHLj/Zt
+Ojkg3tN7GXemTVGC+TZyHVqWgh2q2wWvqJHeNzKY/9WPDcQo5BqoHlvO0xm9iF+L
+w3XI2y5+R6HulHM9PNNH18x3QiPWrjIjDAn2INWfPuPsAwu9+GpPf16ZK6CusCmZ
+ugX0b36XCpwrS2aNmb6SrjAA7GiQGnNXTZZ290lLhaN+ams3aM2pCePDkPjQU5EI
+ASor0godC7IdsihlvPd4BHIRP07Sdw==
+=U3R8
+-----END PGP SIGNATURE-----
+
+--imjhCm/Pyz7Rq5F2--
