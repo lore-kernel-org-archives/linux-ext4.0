@@ -2,103 +2,127 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E3FAEC43461
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 07:42:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 200A7C433B4
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B0E3C613C1
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 07:42:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0058D613D7
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:00:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349701AbhDNHma (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 03:42:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57266 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349580AbhDNHm3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 03:42:29 -0400
-Received: from mail-pg1-x536.google.com (mail-pg1-x536.google.com [IPv6:2607:f8b0:4864:20::536])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 49430C061574
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 00:42:08 -0700 (PDT)
-Received: by mail-pg1-x536.google.com with SMTP id z16so13801388pga.1
-        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 00:42:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=mforney-org.20150623.gappssmtp.com; s=20150623;
-        h=from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=xU8WG5+NcR3eTLPyi1wo1D3S3/zOx39I7p4dBbe6EwU=;
-        b=nYrpIc9PHHZ/LhMMSwMIkPMzKQWwl6aXom7z6/i7LVQIikFs7DCPtOUIMpf9snGwJ9
-         t+bdbCyoxkC8qxYih4ts96TyghNw7gBtaY2y0lAFKOoHJ8JKIjfKqCPc4TBAvPWLwoFR
-         RWUw8QJOgfF1qBVjU5UKKKVA0Pl0Y8I01ar3Mj7zuruPF+5M1TCiL27aiCom+zeySUyi
-         Pb7zj8Tw/GSzaGcxLDJ5t8+8cr2g0NVUKoTneYvyJH11TwMLvJjRVhP6yTsn9Sje+lfm
-         9Ucwnr2DeQOJLl3r3LlXEwTMbdfA5F72YqHmpucAAeBWg4hZjmbEtdLoykSapVmwMKR8
-         BNEQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=xU8WG5+NcR3eTLPyi1wo1D3S3/zOx39I7p4dBbe6EwU=;
-        b=YrPsQDgO0+NCV9EJPjC0RCi7mE+3C+zRViZVOSagPihQqFcqyun9BHyQUQH64i6rzx
-         xFn95zQqMZJYxpZKSert/Tq4K5ZuClOAPl3RWIeY/k+5s4ws7phbt/A/QCpkL2OiXXem
-         39EwPvA/2MBmpKet0a7zNuKz1ao+VFXfoB9yhle8yOXAh0ECXnm5G+0MWaivj1ADX8QE
-         6/huk/s3Lqwb+cAphmxxI8TatfTBu8S/55e79aGUDbn2faJn4R/sXjtCIKPUSdKxR2ck
-         QqyfaFbFGp4zw6GoNeNgF5YGemyEKg3Ez2vZLaX+8zgEblkBChg2En9SE/K+cfwEmWO+
-         yCwQ==
-X-Gm-Message-State: AOAM530INRs8kwzMdPJRBz9RKlTnp1VAC3czVKBERj+XZ4NCEwCRQ/M9
-        E8VYw5RlPC6aTzWbD17Xf1QABg/T2mhbAwdEDQA=
-X-Google-Smtp-Source: ABdhPJy5NVpoAglPtD1nhPlNQdOcs+5WuyBeSmjGS/sv19lDBqjF7W6Pi3rt8289zPRVjzIwJh6Adw==
-X-Received: by 2002:aa7:850c:0:b029:24c:b470:cc79 with SMTP id v12-20020aa7850c0000b029024cb470cc79mr13740297pfn.69.1618386127599;
-        Wed, 14 Apr 2021 00:42:07 -0700 (PDT)
-Received: from localhost ([2601:647:5180:4570:16dd:a9ff:fee7:6b79])
-        by smtp.gmail.com with ESMTPSA id x62sm1175268pfb.71.2021.04.14.00.42.06
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-ECDSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 14 Apr 2021 00:42:07 -0700 (PDT)
-From:   Michael Forney <mforney@mforney.org>
-To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 1/2] libext2fs: use statement-expression for container_of only on GNU-compatible compilers
-Date:   Wed, 14 Apr 2021 00:41:27 -0700
-Message-Id: <20210414074128.31268-1-mforney@mforney.org>
-X-Mailer: git-send-email 2.30.1
+        id S1350400AbhDNJBJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 05:01:09 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:34120 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1350255AbhDNJAN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Apr 2021 05:00:13 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1618390733;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=WcS3XqDLjWw2JcTnxRCko+qmOPIOGyWNCS5CmAztAiQ=;
+        b=NEEBPdjaVgz+sN+V9/LdsiEOFHdb0VR7gN36DRvLDZdlrGUvEdbzYP1ZWiM6m/w/0+Dcc1
+        G04VvNM8B5eJ6LJW820sjw3z6cLQgFFUHGGRs5YAESJpYz+wKx7APHCP/XtWU3Fw9sa4Bh
+        YUqjChDv3Yv59s3NkvTcJmP46CxsWtU=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-253-Tm09oKAfPRaAHSyqBNW31Q-1; Wed, 14 Apr 2021 04:58:49 -0400
+X-MC-Unique: Tm09oKAfPRaAHSyqBNW31Q-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 24EA681426D;
+        Wed, 14 Apr 2021 08:58:47 +0000 (UTC)
+Received: from localhost.localdomain.com (ovpn-112-67.rdu2.redhat.com [10.10.112.67])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 642975D71D;
+        Wed, 14 Apr 2021 08:58:45 +0000 (UTC)
+From:   Nico Pache <npache@redhat.com>
+To:     linux-kernel@vger.kernel.org
+Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
+        linux-ext4@vger.kernel.org, netdev@vger.kernel.org,
+        rafael@kernel.org, npache@redhat.com,
+        linux-m68k@lists.linux-m68k.org, geert@linux-m68k.org,
+        tytso@mit.edu, mathew.j.martineau@linux.intel.com,
+        davem@davemloft.net, broonie@kernel.org, davidgow@google.com,
+        skhan@linuxfoundation.org, mptcp@lists.linux.dev
+Subject: [PATCH v2 5/6] kunit: mptcp: adhear to KUNIT formatting standard
+Date:   Wed, 14 Apr 2021 04:58:08 -0400
+Message-Id: <0fa191715b236766ad13c5f786d8daf92a9a0cf2.1618388989.git.npache@redhat.com>
+In-Reply-To: <cover.1618388989.git.npache@redhat.com>
+References: <cover.1618388989.git.npache@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Functionally, the statement-expression is not necessary here; it
-just gives a bit of type-safety to make sure the pointer really
-does have a compatible type with the specified member of the struct.
+Drop 'S' from end of CONFIG_MPTCP_KUNIT_TESTS inorder to adhear to the
+KUNIT *_KUNIT_TEST config name format.
 
-When statement expressions are not available, we can just use a
-portable fallback macro that skips this member type check.
-
-Signed-off-by: Michael Forney <mforney@mforney.org>
+Fixes: a00a582203db (mptcp: move crypto test to KUNIT)
+Signed-off-by: Nico Pache <npache@redhat.com>
 ---
- lib/ext2fs/compiler.h | 5 +++++
- 1 file changed, 5 insertions(+)
+ net/mptcp/Kconfig  | 2 +-
+ net/mptcp/Makefile | 2 +-
+ net/mptcp/crypto.c | 2 +-
+ net/mptcp/token.c  | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/compiler.h b/lib/ext2fs/compiler.h
-index 9aa9b4ec..03c35ab8 100644
---- a/lib/ext2fs/compiler.h
-+++ b/lib/ext2fs/compiler.h
-@@ -14,9 +14,14 @@
- #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+diff --git a/net/mptcp/Kconfig b/net/mptcp/Kconfig
+index a014149aa323..20328920f6ed 100644
+--- a/net/mptcp/Kconfig
++++ b/net/mptcp/Kconfig
+@@ -22,7 +22,7 @@ config MPTCP_IPV6
+ 	depends on IPV6=y
+ 	default y
+ 
+-config MPTCP_KUNIT_TESTS
++config MPTCP_KUNIT_TEST
+ 	tristate "This builds the MPTCP KUnit tests" if !KUNIT_ALL_TESTS
+ 	depends on KUNIT
+ 	default KUNIT_ALL_TESTS
+diff --git a/net/mptcp/Makefile b/net/mptcp/Makefile
+index a611968be4d7..dcce3cbd1f19 100644
+--- a/net/mptcp/Makefile
++++ b/net/mptcp/Makefile
+@@ -9,4 +9,4 @@ obj-$(CONFIG_INET_MPTCP_DIAG) += mptcp_diag.o
+ 
+ mptcp_crypto_test-objs := crypto_test.o
+ mptcp_token_test-objs := token_test.o
+-obj-$(CONFIG_MPTCP_KUNIT_TESTS) += mptcp_crypto_test.o mptcp_token_test.o
++obj-$(CONFIG_MPTCP_KUNIT_TEST) += mptcp_crypto_test.o mptcp_token_test.o
+diff --git a/net/mptcp/crypto.c b/net/mptcp/crypto.c
+index b472dc149856..a8931349933c 100644
+--- a/net/mptcp/crypto.c
++++ b/net/mptcp/crypto.c
+@@ -78,6 +78,6 @@ void mptcp_crypto_hmac_sha(u64 key1, u64 key2, u8 *msg, int len, void *hmac)
+ 	sha256(input, SHA256_BLOCK_SIZE + SHA256_DIGEST_SIZE, hmac);
+ }
+ 
+-#if IS_MODULE(CONFIG_MPTCP_KUNIT_TESTS)
++#if IS_MODULE(CONFIG_MPTCP_KUNIT_TEST)
+ EXPORT_SYMBOL_GPL(mptcp_crypto_hmac_sha);
  #endif
+diff --git a/net/mptcp/token.c b/net/mptcp/token.c
+index feb4b9ffd462..8f0270a780ce 100644
+--- a/net/mptcp/token.c
++++ b/net/mptcp/token.c
+@@ -402,7 +402,7 @@ void __init mptcp_token_init(void)
+ 	}
+ }
  
-+#ifdef __GNUC__
- #define container_of(ptr, type, member) ({			\
- 	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
- 	(type *)( (char *)__mptr - offsetof(type,member) );})
-+#else
-+#define container_of(ptr, type, member)				\
-+	((type *)((char *)(ptr) - offsetof(type, member)))
-+#endif
- 
- 
- #endif /* _EXT2FS_COMPILER_H */
+-#if IS_MODULE(CONFIG_MPTCP_KUNIT_TESTS)
++#if IS_MODULE(CONFIG_MPTCP_KUNIT_TEST)
+ EXPORT_SYMBOL_GPL(mptcp_token_new_request);
+ EXPORT_SYMBOL_GPL(mptcp_token_new_connect);
+ EXPORT_SYMBOL_GPL(mptcp_token_accept);
 -- 
-2.30.1
+2.30.2
 
