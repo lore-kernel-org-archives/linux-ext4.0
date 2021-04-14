@@ -2,168 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA1FFC433ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:01:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E16E7C433B4
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:25:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A1A3C613D0
-	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:01:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C6B3E613D0
+	for <linux-ext4@archiver.kernel.org>; Wed, 14 Apr 2021 09:25:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350392AbhDNJBH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Apr 2021 05:01:07 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:47817 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1350248AbhDNJAN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Apr 2021 05:00:13 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1618390729;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=jlnZwcw+mxLXWda0HYhbEoeQ7agY7cub5GyZAaXsC1s=;
-        b=Crz5isC1KK+YJ2aKwv0viJR7JAs26IFYjUtYdmV5BlHgxgsf+UToOdbigR2OCwGHq0OfIb
-        WgQrsA6tkkml6xXXC6AZnzuVu9QbAi7plRBcLjAkhyKLBAcCo1LwLZamIjeaPnupBJugHn
-        6qkEUYytE9K1L2alghY/R6ff7s3O+2Y=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-449-BinsS_SQNfC2qh-O4LuB6g-1; Wed, 14 Apr 2021 04:58:47 -0400
-X-MC-Unique: BinsS_SQNfC2qh-O4LuB6g-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 3A07680A19E;
-        Wed, 14 Apr 2021 08:58:45 +0000 (UTC)
-Received: from localhost.localdomain.com (ovpn-112-67.rdu2.redhat.com [10.10.112.67])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 634395D76F;
-        Wed, 14 Apr 2021 08:58:43 +0000 (UTC)
-From:   Nico Pache <npache@redhat.com>
-To:     linux-kernel@vger.kernel.org
+        id S1350455AbhDNJZb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Apr 2021 05:25:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52310 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1350395AbhDNJZa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Apr 2021 05:25:30 -0400
+Received: from mail-ed1-x529.google.com (mail-ed1-x529.google.com [IPv6:2a00:1450:4864:20::529])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D8748C06138C
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 02:25:06 -0700 (PDT)
+Received: by mail-ed1-x529.google.com with SMTP id w18so22911421edc.0
+        for <linux-ext4@vger.kernel.org>; Wed, 14 Apr 2021 02:25:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=tessares-net.20150623.gappssmtp.com; s=20150623;
+        h=to:cc:references:from:subject:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=gHbX9CNZcLaiMHXNZmBKODRDqd/reEdwnJR9AYcgnvs=;
+        b=gINN1R9lI5tCoYH2ZPewi+utvLw1oNr+AYOfDMNtw/hKaSHIjWFrbHQ2mEP/s050tD
+         g448CE9NUc6LD5cIHE915wtYMuh12ELdt/BZzVJtfcbRlcZzDt0CH8Ve04xqPwET4Rh5
+         BHdMYM5h1f/E2uWaCn6cX9rtXlGY2VM249gpU+JczEOZGYRnqBdk5vjJ2O5+ToJ3ERbh
+         U3FM3+/YLy3sEwiHrE30IVFtoFTTLn4R1GTNSu4oQJjn/xhueIXu1t9NC5c0QjPFa4VI
+         mHQlWeb7xSouf3EcOgTxrw7wUrUZIGalS4Ba2F808A+YtDSZwP171zeWniTOjTgCp8d7
+         ejDw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:to:cc:references:from:subject:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=gHbX9CNZcLaiMHXNZmBKODRDqd/reEdwnJR9AYcgnvs=;
+        b=sz9mZogix40lFEFX1uvHi+pCnXn0yiIPO/DTYwFhCBhLLz+TnS2X0AD1cbi+nHcuSY
+         6f2PDI5ZiYGl8Fo/j9w14LEZUMUs+drQjSp9lyJovoEoZvjiO/BW0HELNvMDa3n+j6LL
+         7YcT4Wns3TlU4dq6FmnV5mWLZ4F7CjhitntCT35qlqWEojmMmlrMixqJu43pYhR4p3c0
+         My+El8mAk+ctGv9iI3ecLAyZd3ajVmjiu5/Vf/p+jkIN+BAsbDp+Gc7kvAVAnO0+kcna
+         X3z4fp+iIwGNrPqJCEf8TFO06FdjJa+qRzLP1ejIDyFmUjm5/FGyzd7Q8YM4LfVDcMzI
+         de4Q==
+X-Gm-Message-State: AOAM531jKy7JvHJQL9z1T++Gw9xyPNquOyZ+AVXyzoQrPK8BINFi6nT5
+        VocLpatvhd6eawXGT2wJNdqGJQ==
+X-Google-Smtp-Source: ABdhPJwKI3fyWANihaNxRNJcYcXaOIyeXGZHEp2xOggKD3L098p3onGrqOxzTlf7HKaohGrVesV2FQ==
+X-Received: by 2002:aa7:c907:: with SMTP id b7mr40534459edt.37.1618392305540;
+        Wed, 14 Apr 2021 02:25:05 -0700 (PDT)
+Received: from tsr-lap-08.nix.tessares.net ([2a02:578:85b0:e00:bfbf:e0a9:a746:c4b9])
+        by smtp.gmail.com with ESMTPSA id t14sm9473304ejc.121.2021.04.14.02.25.04
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 14 Apr 2021 02:25:05 -0700 (PDT)
+To:     Nico Pache <npache@redhat.com>, linux-kernel@vger.kernel.org
 Cc:     brendanhiggins@google.com, gregkh@linuxfoundation.org,
         linux-ext4@vger.kernel.org, netdev@vger.kernel.org,
-        rafael@kernel.org, npache@redhat.com,
-        linux-m68k@lists.linux-m68k.org, geert@linux-m68k.org,
-        tytso@mit.edu, mathew.j.martineau@linux.intel.com,
-        davem@davemloft.net, broonie@kernel.org, davidgow@google.com,
-        skhan@linuxfoundation.org, mptcp@lists.linux.dev
-Subject: [PATCH v2 4/6] kunit: lib: adhear to KUNIT formatting standard
-Date:   Wed, 14 Apr 2021 04:58:07 -0400
-Message-Id: <f427ed5cbc08da83086c504fbb3ad1bab50340cd.1618388989.git.npache@redhat.com>
-In-Reply-To: <cover.1618388989.git.npache@redhat.com>
+        rafael@kernel.org, linux-m68k@lists.linux-m68k.org,
+        geert@linux-m68k.org, tytso@mit.edu,
+        mathew.j.martineau@linux.intel.com, davem@davemloft.net,
+        broonie@kernel.org, davidgow@google.com, skhan@linuxfoundation.org,
+        mptcp@lists.linux.dev
 References: <cover.1618388989.git.npache@redhat.com>
+ <0fa191715b236766ad13c5f786d8daf92a9a0cf2.1618388989.git.npache@redhat.com>
+From:   Matthieu Baerts <matthieu.baerts@tessares.net>
+Subject: Re: [PATCH v2 5/6] kunit: mptcp: adhear to KUNIT formatting standard
+Message-ID: <e26fbcc8-ba3e-573a-523d-9c5d5f84bc46@tessares.net>
+Date:   Wed, 14 Apr 2021 11:25:03 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.8.1
 MIME-Version: 1.0
+In-Reply-To: <0fa191715b236766ad13c5f786d8daf92a9a0cf2.1618388989.git.npache@redhat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-GB
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Change config names inorder to adhear to the KUNIT *KUNIT_TEST config
-name format.
+Hi Nico,
 
-Add 'if !KUNIT_ALL_TESTS' to the KUNIT config tristates inorder to
-adhear to the KUNIT standard.
+On 14/04/2021 10:58, Nico Pache wrote:
+> Drop 'S' from end of CONFIG_MPTCP_KUNIT_TESTS inorder to adhear to the
+> KUNIT *_KUNIT_TEST config name format.
 
-add 'default KUNIT_ALL_TESTS' to the KUNIT config options inorder
-to adhear to the KUNIT standard.
+For MPTCP, we have multiple KUnit tests: crypto and token. That's why we 
+wrote TESTS with a S.
 
-Fixes: 6d511020e13d (lib/test_bits.c: add tests of GENMASK)
-Fixes: d2585f5164c2 (lib: kunit: add bitfield test conversion to KUnit)
-Fixes: 33d599f05299 (lib/test_linear_ranges: add a test for the 'linear_ranges')
-Signed-off-by: Nico Pache <npache@redhat.com>
----
- lib/Kconfig.debug | 21 +++++++++++++--------
- lib/Makefile      |  6 +++---
- 2 files changed, 16 insertions(+), 11 deletions(-)
+I'm fine without S if we need to stick with KUnit' standard. But maybe 
+the standard wants us to split the two tests and create 
+MPTCP_TOKEN_KUNIT_TEST and MPTCP_TOKEN_KUNIT_TEST config?
 
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 417c3d3e521b..e7a5f4cc6de1 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -2279,9 +2279,10 @@ config TEST_SYSCTL
- 
- 	  If unsure, say N.
- 
--config BITFIELD_KUNIT
--	tristate "KUnit test bitfield functions at runtime"
-+config BITFIELD_KUNIT_TEST
-+	tristate "KUnit test bitfield functions at runtime" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-+	default KUNIT_ALL_TESTS
- 	help
- 	  Enable this option to test the bitfield functions at boot.
- 
-@@ -2296,8 +2297,9 @@ config BITFIELD_KUNIT
- 	  If unsure, say N.
- 
- config RESOURCE_KUNIT_TEST
--	tristate "KUnit test for resource API"
-+	tristate "KUnit test for resource API" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-+	default KUNIT_ALL_TESTS
- 	help
- 	  This builds the resource API unit test.
- 	  Tests the logic of API provided by resource.c and ioport.h.
-@@ -2337,9 +2339,10 @@ config LIST_KUNIT_TEST
- 
- 	  If unsure, say N.
- 
--config LINEAR_RANGES_TEST
--	tristate "KUnit test for linear_ranges"
-+config LINEAR_RANGES_KUNIT_TEST
-+	tristate "KUnit test for linear_ranges" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-+	default KUNIT_ALL_TESTS
- 	select LINEAR_RANGES
- 	help
- 	  This builds the linear_ranges unit test, which runs on boot.
-@@ -2350,8 +2353,9 @@ config LINEAR_RANGES_TEST
- 	  If unsure, say N.
- 
- config CMDLINE_KUNIT_TEST
--	tristate "KUnit test for cmdline API"
-+	tristate "KUnit test for cmdline API" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-+	default KUNIT_ALL_TESTS
- 	help
- 	  This builds the cmdline API unit test.
- 	  Tests the logic of API provided by cmdline.c.
-@@ -2360,9 +2364,10 @@ config CMDLINE_KUNIT_TEST
- 
- 	  If unsure, say N.
- 
--config BITS_TEST
--	tristate "KUnit test for bits.h"
-+config BITS_KUNIT_TEST
-+	tristate "KUnit test for bits.h" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-+	default KUNIT_ALL_TESTS
- 	help
- 	  This builds the bits unit test.
- 	  Tests the logic of macros defined in bits.h.
-diff --git a/lib/Makefile b/lib/Makefile
-index b5307d3eec1a..ffa749c3b6e4 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -347,10 +347,10 @@ obj-$(CONFIG_OBJAGG) += objagg.o
- obj-$(CONFIG_PLDMFW) += pldmfw/
- 
- # KUnit tests
--obj-$(CONFIG_BITFIELD_KUNIT) += bitfield_kunit.o
-+obj-$(CONFIG_BITFIELD_KUNIT_TEST) += bitfield_kunit.o
- obj-$(CONFIG_LIST_KUNIT_TEST) += list-test.o
--obj-$(CONFIG_LINEAR_RANGES_TEST) += test_linear_ranges.o
--obj-$(CONFIG_BITS_TEST) += test_bits.o
-+obj-$(CONFIG_LINEAR_RANGES_KUNIT_TEST) += test_linear_ranges.o
-+obj-$(CONFIG_BITS_KUNIT_TEST) += test_bits.o
- obj-$(CONFIG_CMDLINE_KUNIT_TEST) += cmdline_kunit.o
- 
- obj-$(CONFIG_GENERIC_LIB_DEVMEM_IS_ALLOWED) += devmem_is_allowed.o
+In this case, we could eventually keep MPTCP_KUNIT_TESTS which will in 
+charge of selecting the two new ones.
+
+Up to the KUnit maintainers to decide ;-)
+
+Cheers,
+Matt
 -- 
-2.30.2
-
+Tessares | Belgium | Hybrid Access Solutions
+www.tessares.net
