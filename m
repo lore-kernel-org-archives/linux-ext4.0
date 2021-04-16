@@ -2,131 +2,85 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E4B3C433B4
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Apr 2021 22:01:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADBEDC433B4
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Apr 2021 08:00:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 17DCB6101B
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Apr 2021 22:01:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9170161057
+	for <linux-ext4@archiver.kernel.org>; Fri, 16 Apr 2021 08:00:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234941AbhDOWBy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Apr 2021 18:01:54 -0400
-Received: from mail108.syd.optusnet.com.au ([211.29.132.59]:37477 "EHLO
-        mail108.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234777AbhDOWBx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Apr 2021 18:01:53 -0400
-Received: from dread.disaster.area (pa49-181-239-12.pa.nsw.optusnet.com.au [49.181.239.12])
-        by mail108.syd.optusnet.com.au (Postfix) with ESMTPS id 376301AEBCB;
-        Fri, 16 Apr 2021 08:01:24 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1lXA37-009m6A-H1; Fri, 16 Apr 2021 08:01:21 +1000
-Date:   Fri, 16 Apr 2021 08:01:21 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Eric Whitney <enwlinux@gmail.com>, stable@vger.kernel.org
-Subject: Re: [PATCH v3] ext4: Fix occasional generic/418 failure
-Message-ID: <20210415220121.GX1990290@dread.disaster.area>
-References: <20210415155417.4734-1-jack@suse.cz>
+        id S238757AbhDPIBK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 16 Apr 2021 04:01:10 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:16596 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237986AbhDPIBJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Apr 2021 04:01:09 -0400
+Received: from DGGEMS408-HUB.china.huawei.com (unknown [172.30.72.60])
+        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4FM7r060msz17QdP;
+        Fri, 16 Apr 2021 15:58:24 +0800 (CST)
+Received: from [10.174.176.202] (10.174.176.202) by
+ DGGEMS408-HUB.china.huawei.com (10.3.19.208) with Microsoft SMTP Server id
+ 14.3.498.0; Fri, 16 Apr 2021 16:00:35 +0800
+Subject: Re: [RFC PATCH v2 6/7] fs: introduce a usage count into the
+ superblock
+To:     Christoph Hellwig <hch@infradead.org>
+CC:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+        <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <yukuai3@huawei.com>
+References: <20210414134737.2366971-1-yi.zhang@huawei.com>
+ <20210414134737.2366971-7-yi.zhang@huawei.com>
+ <20210415144056.GA2069063@infradead.org>
+From:   Zhang Yi <yi.zhang@huawei.com>
+Message-ID: <a35319b2-8d5d-2a32-9284-d1828ec4d9df@huawei.com>
+Date:   Fri, 16 Apr 2021 16:00:35 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.3.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210415155417.4734-1-jack@suse.cz>
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=F8MpiZpN c=1 sm=1 tr=0 cx=a_idp_f
-        a=gO82wUwQTSpaJfP49aMSow==:117 a=gO82wUwQTSpaJfP49aMSow==:17
-        a=kj9zAlcOel0A:10 a=3YhXtTcJ-WEA:10 a=pGLkceISAAAA:8 a=VwQbUJbxAAAA:8
-        a=20KFwNOVAAAA:8 a=7-415B0cAAAA:8 a=BVGimuPS_KFzXVpvEk4A:9
-        a=CjuIK1q_8ugA:10 a=HUqATDVKn4QA:10 a=AjGcO6oz07-iQ99wixmX:22
-        a=biEYGPWJfzWAr4FL6Ov7:22
+In-Reply-To: <20210415144056.GA2069063@infradead.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.176.202]
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Apr 15, 2021 at 05:54:17PM +0200, Jan Kara wrote:
-> Eric has noticed that after pagecache read rework, generic/418 is
-> occasionally failing for ext4 when blocksize < pagesize. In fact, the
-> pagecache rework just made hard to hit race in ext4 more likely. The
-> problem is that since ext4 conversion of direct IO writes to iomap
-> framework (commit 378f32bab371), we update inode size after direct IO
-> write only after invalidating page cache. Thus if buffered read sneaks
-> at unfortunate moment like:
-> 
-> CPU1 - write at offset 1k                       CPU2 - read from offset 0
-> iomap_dio_rw(..., IOMAP_DIO_FORCE_WAIT);
->                                                 ext4_readpage();
-> ext4_handle_inode_extension()
-> 
-> the read will zero out tail of the page as it still sees smaller inode
-> size and thus page cache becomes inconsistent with on-disk contents with
-> all the consequences.
-> 
-> Fix the problem by moving inode size update into end_io handler which
-> gets called before the page cache is invalidated.
-> 
-> Reported-and-tested-by: Eric Whitney <enwlinux@gmail.com>
-> Fixes: 378f32bab371 ("ext4: introduce direct I/O write using iomap infrastructure")
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/file.c | 25 +++++++++++++++++++++----
->  1 file changed, 21 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 194f5d00fa32..7924634ab0bf 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -371,15 +371,32 @@ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
->  static int ext4_dio_write_end_io(struct kiocb *iocb, ssize_t size,
->  				 int error, unsigned int flags)
->  {
-> -	loff_t offset = iocb->ki_pos;
-> +	loff_t pos = iocb->ki_pos;
->  	struct inode *inode = file_inode(iocb->ki_filp);
->  
->  	if (error)
->  		return error;
->  
-> -	if (size && flags & IOMAP_DIO_UNWRITTEN)
-> -		return ext4_convert_unwritten_extents(NULL, inode,
-> -						      offset, size);
-> +	if (size && flags & IOMAP_DIO_UNWRITTEN) {
-> +		error = ext4_convert_unwritten_extents(NULL, inode, pos, size);
-> +		if (error < 0)
-> +			return error;
-> +	}
-> +	/*
-> +	 * If we are extending the file, we have to update i_size here before
-> +	 * page cache gets invalidated in iomap_dio_rw(). Otherwise racing
-> +	 * buffered reads could zero out too much from page cache pages. Update
-> +	 * of on-disk size will happen later in ext4_dio_write_iter() where
-> +	 * we have enough information to also perform orphan list handling etc.
-> +	 * Note that we perform all extending writes synchronously under
-> +	 * i_rwsem held exclusively so i_size update is safe here in that case.
-> +	 * If the write was not extending, we cannot see pos > i_size here
-> +	 * because operations reducing i_size like truncate wait for all
-> +	 * outstanding DIO before updating i_size.
-> +	 */
-> +	pos += size;
-> +	if (pos > i_size_read(inode))
-> +		i_size_write(inode, pos);
->  
->  	return 0;
->  }
+Hi, Christoph
 
-Thanks for updating the comment, Jan!
+On 2021/4/15 22:40, Christoph Hellwig wrote:
+> On Wed, Apr 14, 2021 at 09:47:36PM +0800, Zhang Yi wrote:
+>> Commit <87d8fe1ee6b8> ("add releasepage hooks to block devices which can
+>> be used by file systems") introduce a hook that used by ext4 filesystem
+>> to release journal buffers, but it doesn't add corresponding concurrency
+>> protection that ->bdev_try_to_free_page() could be raced by umount
+>> filesystem concurrently. This patch add a usage count on superblock that
+>> filesystem can use it to prevent above race and make invoke
+>> ->bdev_try_to_free_page() safe.
+> 
+> We already have two refcounts in the superblock: s_active which counts
+> the active refernce, and s_count which prevents the data structures
+> from beeing freed.  I don't think we need yet another one.
+> .
+> 
 
-Acked-by: Dave Chinner <dchinner@redhat.com>
+Thanks you for your response. I checked the s_count and s_active refcounts,
+but it seems that we could not use these two refcounts directly.
 
-Cheers,
+For the s_active. If we get s_active refcount in blkdev_releasepage(), we may
+put the final refcount when doing umount concurrently and have to do resource
+recycling, but we got page locked here and lead to deadlock. Maybe we could do
+async resource recycling through kworker, but I think it's not a good way.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+For the s_count, it is operated under the global sb_lock now, so get this
+refcount will serialize page release and affect performance. Besides, It's
+semantics are different from the 'usage count' by private fileststem, and we
+have to cooperate with sb->s_umount mutex lock to close the above race.
+
+So I introduce another refcount. Am I missing something or any suggestions?
+
+Thanks,
+Yi.
