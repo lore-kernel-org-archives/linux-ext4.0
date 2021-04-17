@@ -2,88 +2,96 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9CA6C433B4
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Apr 2021 08:00:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A6EFC433ED
+	for <linux-ext4@archiver.kernel.org>; Sat, 17 Apr 2021 04:24:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A25B76117A
-	for <linux-ext4@archiver.kernel.org>; Fri, 16 Apr 2021 08:00:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DA801611AC
+	for <linux-ext4@archiver.kernel.org>; Sat, 17 Apr 2021 04:24:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239806AbhDPIBW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 16 Apr 2021 04:01:22 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:16468 "EHLO
-        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237986AbhDPIBV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Apr 2021 04:01:21 -0400
-Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.60])
-        by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4FM7rF5mHJzwS9k;
-        Fri, 16 Apr 2021 15:58:37 +0800 (CST)
-Received: from [10.174.176.202] (10.174.176.202) by
- DGGEMS411-HUB.china.huawei.com (10.3.19.211) with Microsoft SMTP Server id
- 14.3.498.0; Fri, 16 Apr 2021 16:00:48 +0800
-Subject: Re: [RFC PATCH v2 7/7] ext4: fix race between blkdev_releasepage()
- and ext4_put_super()
-To:     Christoph Hellwig <hch@infradead.org>
-CC:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yukuai3@huawei.com>
-References: <20210414134737.2366971-1-yi.zhang@huawei.com>
- <20210414134737.2366971-8-yi.zhang@huawei.com>
- <20210415145235.GD2069063@infradead.org>
-From:   Zhang Yi <yi.zhang@huawei.com>
-Message-ID: <ca810e21-5f92-ee6c-a046-255c70c6bf78@huawei.com>
-Date:   Fri, 16 Apr 2021 16:00:48 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
- Thunderbird/78.3.1
+        id S229716AbhDQEYn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 17 Apr 2021 00:24:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57550 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229465AbhDQEYm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Apr 2021 00:24:42 -0400
+Received: from mail-lf1-x136.google.com (mail-lf1-x136.google.com [IPv6:2a00:1450:4864:20::136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8193C061756
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Apr 2021 21:24:16 -0700 (PDT)
+Received: by mail-lf1-x136.google.com with SMTP id i10so11990560lfe.11
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Apr 2021 21:24:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=dC0Ua26Rxhnd0n6CHTRnAJbktP1VUUbdUEYM+ldETTs=;
+        b=oLz758tToKci7zsi0yL0Scc7eybfO9b01MpTabJVy82AvrHxAm2Q8Bl580gyU51ORl
+         5O+hqfRQo/6iYzb6O/esTi7MhnB6inJ0UZ/cuMm5NCWSGF2LNtJrP8UzjS/jpcV3dYad
+         niAlpUWRvdSPNLTDAVSOb0zS9baNZ+yioNktaRnNcad2e6nypv+8Y4eSUqBy996u3E+p
+         dzuLhBxP2Nin+DHWvtnMYL4gfn2ujPEJkjlcfStQ5exWrdbLtmwnLwNSGW87LDnt9nVW
+         0diE7nHwTIYX3X25SJy70YHdEdFqr+IDG6Fbh5R/Y3Fd7APM7uiRGoj+GA3ywBCA3jQF
+         xLQw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=dC0Ua26Rxhnd0n6CHTRnAJbktP1VUUbdUEYM+ldETTs=;
+        b=j6vXQIqKaUAofQl0L+IttvIZvZj+MxtYzchF+ssjEzRdgxpt/soqhJU70FEPPdKclm
+         UJWglMg8zWODAvccPj79u43pmjhrMbT+xQvNIpS2UlSLqL0Cat7ztK3hXvu6hWqR5Htg
+         AKr6bsFO9RZ7CI6umSUxCHTs/Kc8FS3D77WYGS0lZ5eZ+uQvJqevYfribhCPG2pZOpxt
+         Ky5GG19katrtNSU06KtQVIuIvZ+/6uN9yvz0x6m3DLIyjK8KJb0Y28qMWwgRKY3Pl3wt
+         mDVsKgSx5MAxEwM/jjg7LnbEAEmBk/EhX+8H5G2Ky8jhepwWycI/JkdQrS0y9CJrQQzo
+         IwOg==
+X-Gm-Message-State: AOAM5329DmG4FzwkEN53Ef2JwDHxD5DqfvC+nJi7+WIqwJfFmBReJIwT
+        YtzAzji4cax92g/udTeFf8a9acfMD6NQCfcU3lPFgA==
+X-Google-Smtp-Source: ABdhPJzmV9SsVkwYJidvbnM4iWS8L0mm8LtiTIuV/aB/PYpvnOKcYLGWvpGibFQPijvf3rE6GcpLQP9erwMtTMvFSCo=
+X-Received: by 2002:a05:6512:138e:: with SMTP id p14mr3589595lfa.47.1618633455136;
+ Fri, 16 Apr 2021 21:24:15 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20210415145235.GD2069063@infradead.org>
-Content-Type: text/plain; charset="utf-8"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.174.176.202]
-X-CFilter-Loop: Reflected
+References: <cover.1618388989.git.npache@redhat.com> <0fa191715b236766ad13c5f786d8daf92a9a0cf2.1618388989.git.npache@redhat.com>
+ <e26fbcc8-ba3e-573a-523d-9c5d5f84bc46@tessares.net> <CABVgOSm9Lfcu--iiFo=PNLCWCj4vkxqAqO0aZT9B2r3Kw5Fhaw@mail.gmail.com>
+ <b57a1cc8-4921-6ed5-adb8-0510d1918d28@tessares.net>
+In-Reply-To: <b57a1cc8-4921-6ed5-adb8-0510d1918d28@tessares.net>
+From:   David Gow <davidgow@google.com>
+Date:   Sat, 17 Apr 2021 12:24:03 +0800
+Message-ID: <CABVgOS=QDATYk3nn1jLHhVRh7rXoTp1+jQhUE5pZq8P9M0VpUA@mail.gmail.com>
+Subject: Re: [PATCH v2 5/6] kunit: mptcp: adhear to KUNIT formatting standard
+To:     Matthieu Baerts <matthieu.baerts@tessares.net>
+Cc:     Nico Pache <npache@redhat.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Brendan Higgins <brendanhiggins@google.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-ext4@vger.kernel.org, Networking <netdev@vger.kernel.org>,
+        rafael@kernel.org, linux-m68k@lists.linux-m68k.org,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        mathew.j.martineau@linux.intel.com, davem@davemloft.net,
+        Mark Brown <broonie@kernel.org>,
+        Shuah Khan <skhan@linuxfoundation.org>, mptcp@lists.linux.dev
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi, Christoph
+Hi Matt,
 
-On 2021/4/15 22:52, Christoph Hellwig wrote:
-> On Wed, Apr 14, 2021 at 09:47:37PM +0800, Zhang Yi wrote:
->> There still exist a use after free issue when accessing the journal
->> structure and ext4_sb_info structure on freeing bdev buffers in
->> bdev_try_to_free_page(). The problem is bdev_try_to_free_page() could be
->> raced by ext4_put_super(), it dose freeing sb->s_fs_info and
->> sbi->s_journal while release page progress are still accessing them.
->> So it could end up trigger use-after-free or NULL pointer dereference.
-> 
-> I think the right fix is to not even call into ->bdev_try_to_free_page
-> unless the superblock is active.
-> .
-> 
-Thanks for your suggestions.
+> Like patch 1/6, I can apply it in MPTCP tree and send it later to
+> net-next with other patches.
+> Except if you guys prefer to apply it in KUnit tree and send it to
+> linux-next?
 
-Now, we use already use "if (bdev->bd_super)" to prevent call into
-->bdev_try_to_free_page unless the super is alive, and the problem is
-bd_super becomes NULL concurrently after this check. So, IIUC, I think it's
-the same to switch to check the superblock is active or not. The acvive
-flag also could becomes inactive (raced by umount) after we call into
-bdev_try_to_free_page().
+Given 1/6 is going to net-next, it makes sense to send this out that
+way too, then, IMHO.
+The only slight concern I have is that the m68k test config patch in
+the series will get split from the others, but that should resolve
+itself when they pick up the last patch.
 
-In order to close this race, One solution is introduce a lock to synchronize
-the active state between kill_block_super() and blkdev_releasepage(), but
-the releasing page process have to try to acquire this lock in
-blkdev_releasepage() for each page, and the umount process still need to wait
-until the page release if some one invoke into ->bdev_try_to_free_page().
-I think this solution may affect performace and is not a good way.
-Think about it in depth, use percpu refcount seems have the smallest
-performance effect on blkdev_releasepage().
+At the very least, this shouldn't cause any conflicts with anything
+we're doing in the KUnit tree.
 
-If you don't like the refcount, maybe we could add synchronize_rcu_expedited()
-in ext4_put_super(), it also could prevent this race. Any suggestions?
-
-Thanks,
-Yi.
+Cheers,
+-- David
