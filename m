@@ -2,161 +2,242 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32539C43460
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Apr 2021 22:34:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9570C433B4
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Apr 2021 00:57:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C780261440
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Apr 2021 22:34:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A88761424
+	for <linux-ext4@archiver.kernel.org>; Thu, 29 Apr 2021 00:57:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240100AbhD1Wf1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 28 Apr 2021 18:35:27 -0400
-Received: from ex13-edg-ou-001.vmware.com ([208.91.0.189]:39769 "EHLO
-        EX13-EDG-OU-001.vmware.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S240038AbhD1Wf1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Apr 2021 18:35:27 -0400
-X-Greylist: delayed 901 seconds by postgrey-1.27 at vger.kernel.org; Wed, 28 Apr 2021 18:35:27 EDT
-Received: from sc9-mailhost1.vmware.com (10.113.161.71) by
- EX13-EDG-OU-001.vmware.com (10.113.208.155) with Microsoft SMTP Server id
- 15.0.1156.6; Wed, 28 Apr 2021 15:19:37 -0700
-Received: from localhost.localdomain (unknown [10.118.101.147])
-        by sc9-mailhost1.vmware.com (Postfix) with ESMTP id BE5CA203F8;
-        Wed, 28 Apr 2021 15:19:40 -0700 (PDT)
-From:   Alexey Makhalov <amakhalov@vmware.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     Alexey Makhalov <amakhalov@vmware.com>, <stable@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: [PATCH] ext4: fix memory leak in ext4_fill_super
-Date:   Wed, 28 Apr 2021 22:19:28 +0000
-Message-ID: <20210428221928.38960-1-amakhalov@vmware.com>
-X-Mailer: git-send-email 2.14.2
+        id S231966AbhD2A6f (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 28 Apr 2021 20:58:35 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50848 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229479AbhD2A6e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Apr 2021 20:58:34 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 07B9661423;
+        Thu, 29 Apr 2021 00:57:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1619657869;
+        bh=gnim+zpxDvmUPkterXp3NMO9ZofgKmb2jTya0X5ziN0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=jBby6sSl0WJQNyesYT6YXQHmd4+0H3ZMt2ZP4YcW/Xs0UBKyKiX93yqleYBw+ziaT
+         D1ep1SpSQa6JpWhYzaAaQ8fj9wAB4RkcJC+D0WpmG/jxquHZecttVdhkZCnXpHvwGi
+         PiNqhuZNnOmh9hFyN6muSRG88qSHhtyFUGTNrh5geqkncc8vL83qjnMcRMePY54AiT
+         zPUW9wlbRPmT0/F88JxuVTlqXE4KFWIkEcACesRO8LpswmyZw2Fy3QGcoZ15b4y7Qs
+         Gqf949pY9bMFY8QZlBxsvEHMUnjK4GwNQJpdA7IceLEnZZ7CU+ksWGCErTSZcWsMn2
+         9LMYoz2zdTc+w==
+Date:   Wed, 28 Apr 2021 17:57:49 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     amir73il@gmail.com, tytso@mit.edu, david@fromorbit.com,
+        jack@suse.com, dhowells@redhat.com, khazhy@google.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        kernel@collabora.com
+Subject: Re: [PATCH RFC 13/15] ext4: Send notifications on error
+Message-ID: <20210429005749.GH1251862@magnolia>
+References: <20210426184201.4177978-1-krisman@collabora.com>
+ <20210426184201.4177978-14-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-Received-SPF: None (EX13-EDG-OU-001.vmware.com: amakhalov@vmware.com does not
- designate permitted sender hosts)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210426184201.4177978-14-krisman@collabora.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I've recently discovered that doing infinite loop of
-  systemctl start <ext4_on_lvm>.mount, and
-  systemctl stop <ext4_on_lvm>.mount
-linearly increases percpu allocator memory consumption.
-In several hours, it might lead to system instability by
-consuming most of the memory.
+On Mon, Apr 26, 2021 at 02:41:59PM -0400, Gabriel Krisman Bertazi wrote:
+> Send a FS_ERROR message via fsnotify to a userspace monitoring tool
+> whenever a ext4 error condition is triggered.  This follows the existing
+> error conditions in ext4, so it is hooked to the ext4_error* functions.
+> 
+> It also follows the current dmesg reporting in the format.  The
+> filesystem message is composed mostly by the string that would be
+> otherwise printed in dmesg.
+> 
+> A new ext4 specific record format is exposed in the uapi, such that a
+> monitoring tool knows what to expect when listening errors of an ext4
+> filesystem.
+> 
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> ---
+>  fs/ext4/super.c                  | 60 ++++++++++++++++++++++++--------
+>  include/uapi/linux/ext4-notify.h | 17 +++++++++
+>  2 files changed, 62 insertions(+), 15 deletions(-)
+>  create mode 100644 include/uapi/linux/ext4-notify.h
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index b9693680463a..032e29e7ff6a 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -46,6 +46,8 @@
+>  #include <linux/part_stat.h>
+>  #include <linux/kthread.h>
+>  #include <linux/freezer.h>
+> +#include <linux/fsnotify.h>
+> +#include <uapi/linux/ext4-notify.h>
+>  
+>  #include "ext4.h"
+>  #include "ext4_extents.h"	/* Needed for trace points definition */
+> @@ -727,6 +729,22 @@ static void flush_stashed_error_work(struct work_struct *work)
+>  	ext4_commit_super(sbi->s_sb);
+>  }
+>  
+> +static void ext4_fsnotify_error(int error, struct inode *inode, __u64 block,
+> +				const char *func, int line,
+> +				const char *desc, struct va_format *vaf)
+> +{
+> +	struct ext4_error_inode_report report;
+> +
+> +	if (inode->i_sb->s_fsnotify_marks) {
+> +		report.inode = inode ? inode->i_ino : -1L;
+> +		report.block = block ? block : -1L;
+> +
+> +		snprintf(report.desc, EXT4_FSN_DESC_LEN, "%s%pV\n", desc?:"", vaf);
+> +
+> +		fsnotify_error_event(error, inode, func, line, &report, sizeof(report));
+> +	}
+> +}
+> +
+>  #define ext4_error_ratelimit(sb)					\
+>  		___ratelimit(&(EXT4_SB(sb)->s_err_ratelimit_state),	\
+>  			     "EXT4-fs error")
+> @@ -742,15 +760,18 @@ void __ext4_error(struct super_block *sb, const char *function,
+>  		return;
+>  
+>  	trace_ext4_error(sb, function, line);
+> +
+> +	va_start(args, fmt);
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+>  	if (ext4_error_ratelimit(sb)) {
+> -		va_start(args, fmt);
+> -		vaf.fmt = fmt;
+> -		vaf.va = &args;
+>  		printk(KERN_CRIT
+>  		       "EXT4-fs error (device %s): %s:%d: comm %s: %pV\n",
+>  		       sb->s_id, function, line, current->comm, &vaf);
+> -		va_end(args);
+> +
+>  	}
+> +	ext4_fsnotify_error(error, sb->s_root->d_inode, block, function, line, NULL, &vaf);
+> +	va_end(args);
+>  	ext4_handle_error(sb, force_ro, error, 0, block, function, line);
+>  }
+>  
+> @@ -765,10 +786,10 @@ void __ext4_error_inode(struct inode *inode, const char *function,
+>  		return;
+>  
+>  	trace_ext4_error(inode->i_sb, function, line);
+> +	va_start(args, fmt);
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+>  	if (ext4_error_ratelimit(inode->i_sb)) {
+> -		va_start(args, fmt);
+> -		vaf.fmt = fmt;
+> -		vaf.va = &args;
+>  		if (block)
+>  			printk(KERN_CRIT "EXT4-fs error (device %s): %s:%d: "
+>  			       "inode #%lu: block %llu: comm %s: %pV\n",
+> @@ -779,8 +800,11 @@ void __ext4_error_inode(struct inode *inode, const char *function,
+>  			       "inode #%lu: comm %s: %pV\n",
+>  			       inode->i_sb->s_id, function, line, inode->i_ino,
+>  			       current->comm, &vaf);
+> -		va_end(args);
+>  	}
+> +
+> +	ext4_fsnotify_error(error, inode, block, function, line, NULL, &vaf);
+> +	va_end(args);
+> +
+>  	ext4_handle_error(inode->i_sb, false, error, inode->i_ino, block,
+>  			  function, line);
+>  }
+> @@ -798,13 +822,16 @@ void __ext4_error_file(struct file *file, const char *function,
+>  		return;
+>  
+>  	trace_ext4_error(inode->i_sb, function, line);
+> +
+> +	path = file_path(file, pathname, sizeof(pathname));
+> +	if (IS_ERR(path))
+> +		path = "(unknown)";
+> +
+> +	va_start(args, fmt);
+> +	vaf.fmt = fmt;
+> +	vaf.va = &args;
+> +
+>  	if (ext4_error_ratelimit(inode->i_sb)) {
+> -		path = file_path(file, pathname, sizeof(pathname));
+> -		if (IS_ERR(path))
+> -			path = "(unknown)";
+> -		va_start(args, fmt);
+> -		vaf.fmt = fmt;
+> -		vaf.va = &args;
+>  		if (block)
+>  			printk(KERN_CRIT
+>  			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
+> @@ -817,8 +844,10 @@ void __ext4_error_file(struct file *file, const char *function,
+>  			       "comm %s: path %s: %pV\n",
+>  			       inode->i_sb->s_id, function, line, inode->i_ino,
+>  			       current->comm, path, &vaf);
+> -		va_end(args);
+>  	}
+> +	ext4_fsnotify_error(EFSCORRUPTED, inode, block, function, line, NULL, &vaf);
+> +	va_end(args);
+> +
+>  	ext4_handle_error(inode->i_sb, false, EFSCORRUPTED, inode->i_ino, block,
+>  			  function, line);
+>  }
+> @@ -886,6 +915,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+>  		printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
+>  		       sb->s_id, function, line, errstr);
+>  	}
+> +	ext4_fsnotify_error(errno, NULL, -1L, function, line, errstr, NULL);
+>  
+>  	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
+>  }
+> diff --git a/include/uapi/linux/ext4-notify.h b/include/uapi/linux/ext4-notify.h
+> new file mode 100644
+> index 000000000000..31a3bbcafd13
+> --- /dev/null
+> +++ b/include/uapi/linux/ext4-notify.h
+> @@ -0,0 +1,17 @@
+> +/* SPDX-License-Identifier: GPL-2.0+ WITH Linux-syscall-note */
+> +/*
+> + * Copyright 2021, Collabora Ltd.
+> + */
+> +
+> +#ifndef EXT4_NOTIFY_H
+> +#define EXT4_NOTIFY_H
+> +
+> +#define EXT4_FSN_DESC_LEN	256
+> +
+> +struct ext4_error_inode_report {
+> +	u64 inode;
 
-Bug is not reproducible when the ext4 filesystem is on
-physical partition, but it is persistent when ext4 is on
-logical volume.
+I don't have much to contribute this time, other than suggesting that
+you might want to encode the inode generation here so that forensics
+tools won't waste their time if the inode has been deleted and recreated
+in between when the error happens and when the fs gets pulled offline
+for analysis.
 
-During debugging it was found that most of active percpu
-allocations are from /system.slice/<ext4_on_lvm>.mount
-memory cgroups (created by systemd for each mount). All
-of these cgroups are in dying state with refcount equal
-to 2. And most interesting that each mount/umount itera-
-tion creates exactly one dying memory cgroup.
+(...and maybe add a u32 flags field that can remain zero for now)
 
-Tracking down the remaining refcounts showed that it was
-charged from ext4_fill_super(). And the page is always
-0 index in the page cache mapping.
+> +	u64 block;
 
-The issue was hidden behind initial super block read using
-logical blocksize from bdev and adjusting blocksize later
-after reading actual block size from superblock.
-If blocksizes differ, sb_set_blocksize() will kill current
-buffers and page cache by using kill_bdev(). And then super
-block will be reread again but using correct blocksize this
-time. sb_set_blocksize() didn't fully free superblock page
-and buffers as buffer pointed by bh variable remained busy.
-So buffer and its page remains in the memory (leak). Super
-block reread logic does not happen when ext4 filesystem is
-on physical partition as blocksize is correct for initial
-superblock read.
+...and maybe call this "lblk" (assuming this is the logical block offset
+within the file?) since that's already in wide use around e2fsprogs and
+fs/ext4/.
 
-brelse(bh), where bh is a buffer head of superblock page,
-must be called and bh references must be released before
-kill_bdev(). kill_bdev() subfunctions (see callstack below)
-won't be able to free not released buffer (even if it's
-clean) and superblock page won't be freed as well.
+--D
 
-callstack:
-kill_bdev()
-->truncate_inode_pages()
-  ->truncate_inode_pages_range()
-    ->truncate_cleanup_page()
-      ->do_invalidatepage
-        ->block_invalidatepage()
-	  ->try_to_release_page() == fail to release
-	    ->try_to_free_buffers() == fail to free
-	      ->drop_buffers()
-	        ->buffer_busy() == yes
-
-Incorrect order of brelse() and kill_bdev() in ext4_fill_super()
-was introduced by commit ce40733ce93d ("ext4: Check for return
-value from sb_set_blocksize") 13 years ago! Thanks to memory
-hungry percpu, it was easy to detect this issue now.
-
-Fix this by moving the brelse() before sb_set_blocksize() and
-add a comment about the dependency.
-
-In addition, fix similar issue under failed_mount: label (in
-the same function) about incorrect order of ext4_blkdev_remove()
-vs brelse() introduced by commit ac27a0ec112a ("ext4: initial
-copy of files from ext3")
-
-Signed-off-by: Alexey Makhalov <amakhalov@vmware.com>
-Cc: stable@vger.kernel.org
-Fixes: ce40733ce93d ("ext4: Check for return value from sb_set_blocksize")
-Fixes: ac27a0ec112a ("ext4: initial copy of files from ext3")
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
----
- fs/ext4/super.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b9693680463a..6c8f68309834 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4451,14 +4451,20 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 
- 	if (sb->s_blocksize != blocksize) {
-+		/*
-+		 * bh must be released before kill_bdev(), otherwise
-+		 * it won't be freed and its page also. kill_bdev()
-+		 * is called by sb_set_blocksize().
-+		 */
-+		brelse(bh);
- 		/* Validate the filesystem blocksize */
- 		if (!sb_set_blocksize(sb, blocksize)) {
- 			ext4_msg(sb, KERN_ERR, "bad block size %d",
- 					blocksize);
-+			bh = NULL;
- 			goto failed_mount;
- 		}
- 
--		brelse(bh);
- 		logical_sb_block = sb_block * EXT4_MIN_BLOCK_SIZE;
- 		offset = do_div(logical_sb_block, blocksize);
- 		bh = ext4_sb_bread_unmovable(sb, logical_sb_block);
-@@ -5178,8 +5184,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		kfree(get_qf_name(sb, sbi, i));
- #endif
- 	fscrypt_free_dummy_policy(&sbi->s_dummy_enc_policy);
--	ext4_blkdev_remove(sbi);
-+	/* ext4_blkdev_remove() calls kill_bdev(), release bh before it. */
- 	brelse(bh);
-+	ext4_blkdev_remove(sbi);
- out_fail:
- 	sb->s_fs_info = NULL;
- 	kfree(sbi->s_blockgroup_lock);
--- 
-2.14.2
-
+> +	char desc[EXT4_FSN_DESC_LEN];
+> +};
+> +
+> +#endif
+> -- 
+> 2.31.0
+> 
