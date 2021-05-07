@@ -2,113 +2,60 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D462AC43460
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 16:23:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B47EC433B4
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 22:50:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A43E760698
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 16:23:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FF9061003
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 22:50:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236734AbhEGQYK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 May 2021 12:24:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53524 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236633AbhEGQYF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2021 12:24:05 -0400
-Received: from mail-ej1-x629.google.com (mail-ej1-x629.google.com [IPv6:2a00:1450:4864:20::629])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 69B4FC061574
-        for <linux-ext4@vger.kernel.org>; Fri,  7 May 2021 09:23:04 -0700 (PDT)
-Received: by mail-ej1-x629.google.com with SMTP id s20so8971611ejr.9
-        for <linux-ext4@vger.kernel.org>; Fri, 07 May 2021 09:23:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=AZG5LIGbxrcaihi/vkw91BcWm3f5d8BtDxqprZlEad8=;
-        b=mkQ1VjFzpPCAsd69nbfzo/3UY5/OOvHv+NcxtkbJ6YQ+XC2tWJjU1/oVk7fdIv6Rz5
-         7RoHuvDTqtkY2UPf65IP+C1eX8FnA1Vos75HgPgj7TvEcBJrL5qJiW+YwysMBdDhjBxV
-         cpfBkUIVhjMYX+EjGdrkGJZviOqunU3U+k73jhcnObUBrphuKB7NCTk9gcGdVAQcX3A5
-         VhPxjU/vDkOPVZVczvmSW4EzW62t3hs8xo8mhYC3yqTzace/PTzEbFspXkJCI9W43VTE
-         nmjRaap6X+L7S96452Hx/2KQ4ynezBg/V1AwPfmbjfeMtwCSJl68IlS4GlaWMebmZVFD
-         UNnA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=AZG5LIGbxrcaihi/vkw91BcWm3f5d8BtDxqprZlEad8=;
-        b=GMkI4oHF1rQPn+wNx2yvdGJUtnivEduiXD8FiE+iX1/+/5MDUXIOGAbXAc3Oo7ghWD
-         bc9plf4fcB+o0pCBQoYzFWFggeDPmWN7v+SJI6h45yrQW6Jhrs1XsDWe4argtcGRQmx3
-         7rwuoIObY+NkZq4fhJQDLINm/evG1iHQ5rxI8PhAKLx3KkN/e2RAroZizZUyahGn4EUk
-         29UqM0WNScUy1zzIeECo1RvdigfrtiKE74kX7nMHfJxvqWGnPopV2XADHVdvBNRa4V/b
-         ag9K0b4grbJfiATXwPJuPusExD9GJW/XtJ8BC6RegmxZnvzWZ2ayBpXajGyqExa5YS9H
-         BGtg==
-X-Gm-Message-State: AOAM5313bfsdRAMDzt/kQSSK2jZntHzwKhQO5IU60O/YX2gI55naynSD
-        2SNjIL/Acntl92aiOkNzLKv2KJT3JV223Z4JdD0=
-X-Google-Smtp-Source: ABdhPJzYCS74/4ehKRzb8RNChjVxjqzwH9JiMDqFHjq5G3/KX+ZUM4jeTjp4eAglz8Q2cjcEUlksUcewox4gqj5c6ZA=
-X-Received: by 2002:a17:906:5584:: with SMTP id y4mr10847425ejp.120.1620404583062;
- Fri, 07 May 2021 09:23:03 -0700 (PDT)
+        id S229542AbhEGWvC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 7 May 2021 18:51:02 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40293 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S229470AbhEGWvB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2021 18:51:01 -0400
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 147Mntd2018763
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 7 May 2021 18:49:55 -0400
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id F414015C39BD; Fri,  7 May 2021 18:49:54 -0400 (EDT)
+Date:   Fri, 7 May 2021 18:49:54 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        Alexey Lyashkov <c17817@cray.com>,
+        Artem Blagodarenko <c17828@cray.com>
+Subject: Re: [PATCH] e2image: fix overflow in l2 table processing
+Message-ID: <YJXEEhxkGdMEdRGQ@mit.edu>
+References: <20210422052448.29802-1-artem.blagodarenko@gmail.com>
 MIME-Version: 1.0
-References: <YJFQ20rLK16rise2@mit.edu> <YJF6W7WHZBcVZexU@gmail.com>
- <CAD+ocby+01k9kx3-gEY_z+Ub9GFxi=AwxRS4Ax5-HUFDrVkT0w@mail.gmail.com>
- <YJGdDHLcYuRajhsb@gmail.com> <YJGmTNIHixCLiKok@mit.edu> <CAD+ocbwS9h4knUbhiXFUicvi-PwKSnPdF7hrZUhbg1MkzbDmrw@mail.gmail.com>
- <YJGyTjYKcEkx+fQq@gmail.com> <YJG4SrJ/ZEjv3Ha0@mit.edu> <YJG9CjVXKkha57RU@gmail.com>
- <YJTh9T3sgdFFE7fM@sol.localdomain> <YJVjJoI8sX531AL2@mit.edu>
-In-Reply-To: <YJVjJoI8sX531AL2@mit.edu>
-From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
-Date:   Fri, 7 May 2021 09:22:51 -0700
-Message-ID: <CAD+ocbxtTP2Ow4JjXb5P9kZfrdbnQ27AWLFpwmR5RKLvJpnt+A@mail.gmail.com>
-Subject: Re: [PATCH] e2fsck: fix portability problems caused by unaligned accesses
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Eric Biggers <ebiggers@kernel.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Harshad Shirwadkar <harshads@google.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210422052448.29802-1-artem.blagodarenko@gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, May 7, 2021 at 8:56 AM Theodore Ts'o <tytso@mit.edu> wrote:
->
-> On Thu, May 06, 2021 at 11:45:09PM -0700, Eric Biggers wrote:
-> > Just to be clear (looking at the latest patches on the list which are copying
-> > whole structs), by "the memcpy() approach does get optimized properly", I meant
-> > that it gets optimized properly in implementations of get_unaligned_le16(),
-> > get_unaligned_le32(), put_unaligned_le32(), etc., where a single word (or less
-> > than a word) is loaded or stored.  I don't know how reliably the compilers will
-> > optimize out the copy if you memcpy() a whole struct instead of a single word.
-> >
-> > Even if they don't optimize it out, I don't expect that it would be a
-> > performance problem in this context, so it's probably still fine to solve the
-> > problem.  But I just wanted to clarify what I meant here.
->
-> For the most recent patch that sent out, we really needed to copy out
-> the whole structure since we're then passing it to ext2fs library
-> functions.  I agree that it's not likely going to be a performance
-> problem, and at this point, I'm more concerned about code clarity and
-> correctness.
->
-> Especially since apparently the problems which Harshad's change and my
-> most recent commit addressed were not picked up by UBSAN (either using
-> gcc or clang), --- and IMHO they really should have.  So we can't
-> count on UBSAN to find all possible alignment problems.
->
-> Lesson learned, before I do future releases, I should do a build and
-> "make check" on a armhf chroot running on a arm-64 machine, as well as
-> on a sparc64 machine, since these seem to be the most sensitive to
-> alignment issues.  And if I miss anything, fortunately Debian's
-> autobuilders on a large cross-section of architectures will catch them
-> since we run the regression test suite as part of the package build.
->
->                                         - Ted
->
-> P.S.  Harshad, could you prepare patches to kernel files in ext4 and
-> jbd2 to make similar alignment portability fixes?   Thanks!!
+On Thu, Apr 22, 2021 at 01:24:48AM -0400, Artem Blagodarenko wrote:
+> For a large partition during e2image capture process
+> it is possible to overflow offset at multiply operation.
+> This leads to the situation when data is written to the
+> position at the start of the image instead of the image end.
+> 
+> Let's use the right cast to avoid integer overflow.
+> 
+> Signed-off-by: Alexey Lyashkov <c17817@cray.com>
+> Signed-off-by: Artem Blagodarenko <c17828@cray.com>
+> HPE-bug-id: LUS-9368
 
-Sure, I'll take care of that, thanks!
+Thanks, applied.
 
-- Harshad
+					- Ted
