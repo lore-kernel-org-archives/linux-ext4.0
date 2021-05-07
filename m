@@ -2,87 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0721FC433B4
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 07:11:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 763EAC433B4
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 15:56:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BA46D61041
-	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 07:11:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 387B26100C
+	for <linux-ext4@archiver.kernel.org>; Fri,  7 May 2021 15:56:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235184AbhEGHMd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 7 May 2021 03:12:33 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:18006 "EHLO
-        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234992AbhEGHMc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2021 03:12:32 -0400
-Received: from DGGEMS412-HUB.china.huawei.com (unknown [172.30.72.58])
-        by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4Fc1kP6pMzzQjt6;
-        Fri,  7 May 2021 15:08:13 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by DGGEMS412-HUB.china.huawei.com
- (10.3.19.212) with Microsoft SMTP Server id 14.3.498.0; Fri, 7 May 2021
- 15:11:21 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH] ext4: cleanup in-core orphan list if ext4_truncate() failed to get a transaction handle
-Date:   Fri, 7 May 2021 15:19:04 +0800
-Message-ID: <20210507071904.160808-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.25.4
+        id S233975AbhEGP5b (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 7 May 2021 11:57:31 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:47803 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S231130AbhEGP53 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 May 2021 11:57:29 -0400
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 147FuMnA007370
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 7 May 2021 11:56:23 -0400
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 342B215C39BD; Fri,  7 May 2021 11:56:22 -0400 (EDT)
+Date:   Fri, 7 May 2021 11:56:22 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     harshad shirwadkar <harshadshirwadkar@gmail.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Harshad Shirwadkar <harshads@google.com>
+Subject: Re: [PATCH] e2fsck: fix portability problems caused by unaligned
+ accesses
+Message-ID: <YJVjJoI8sX531AL2@mit.edu>
+References: <YJFQ20rLK16rise2@mit.edu>
+ <YJF6W7WHZBcVZexU@gmail.com>
+ <CAD+ocby+01k9kx3-gEY_z+Ub9GFxi=AwxRS4Ax5-HUFDrVkT0w@mail.gmail.com>
+ <YJGdDHLcYuRajhsb@gmail.com>
+ <YJGmTNIHixCLiKok@mit.edu>
+ <CAD+ocbwS9h4knUbhiXFUicvi-PwKSnPdF7hrZUhbg1MkzbDmrw@mail.gmail.com>
+ <YJGyTjYKcEkx+fQq@gmail.com>
+ <YJG4SrJ/ZEjv3Ha0@mit.edu>
+ <YJG9CjVXKkha57RU@gmail.com>
+ <YJTh9T3sgdFFE7fM@sol.localdomain>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <YJTh9T3sgdFFE7fM@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In ext4_orphan_cleanup(), if ext4_truncate() failed to get a transaction
-handle, it didn't remove the inode from the in-core orphan list, which
-may probably trigger below error dump in ext4_destroy_inode() during the
-final iput() and could lead to memory corruption on the later orphan
-list changes.
+On Thu, May 06, 2021 at 11:45:09PM -0700, Eric Biggers wrote:
+> Just to be clear (looking at the latest patches on the list which are copying
+> whole structs), by "the memcpy() approach does get optimized properly", I meant
+> that it gets optimized properly in implementations of get_unaligned_le16(),
+> get_unaligned_le32(), put_unaligned_le32(), etc., where a single word (or less
+> than a word) is loaded or stored.  I don't know how reliably the compilers will
+> optimize out the copy if you memcpy() a whole struct instead of a single word.
+> 
+> Even if they don't optimize it out, I don't expect that it would be a
+> performance problem in this context, so it's probably still fine to solve the
+> problem.  But I just wanted to clarify what I meant here.
 
- EXT4-fs (sda): Inode 6291467 (00000000b8247c67): orphan list check failed!
- 00000000b8247c67: 0001f30a 00000004 00000000 00000023  ............#...
- 00000000e24cde71: 00000006 014082a3 00000000 00000000  ......@.........
- 0000000072c6a5ee: 00000000 00000000 00000000 00000000  ................
- ...
+For the most recent patch that sent out, we really needed to copy out
+the whole structure since we're then passing it to ext2fs library
+functions.  I agree that it's not likely going to be a performance
+problem, and at this point, I'm more concerned about code clarity and
+correctness.
 
-This patch fix this by cleanup in-core orphan list manually if
-ext4_truncate() return error.
+Especially since apparently the problems which Harshad's change and my
+most recent commit addressed were not picked up by UBSAN (either using
+gcc or clang), --- and IMHO they really should have.  So we can't
+count on UBSAN to find all possible alignment problems.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/super.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+Lesson learned, before I do future releases, I should do a build and
+"make check" on a armhf chroot running on a arm-64 machine, as well as
+on a sparc64 machine, since these seem to be the most sensitive to
+alignment issues.  And if I miss anything, fortunately Debian's
+autobuilders on a large cross-section of architectures will catch them
+since we run the regression test suite as part of the package build.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7dc94f3e18e6..12850d72e9a4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3101,8 +3101,15 @@ static void ext4_orphan_cleanup(struct super_block *sb,
- 			inode_lock(inode);
- 			truncate_inode_pages(inode->i_mapping, inode->i_size);
- 			ret = ext4_truncate(inode);
--			if (ret)
-+			if (ret) {
-+				/*
-+				 * We need to clean up the in-core orphan list
-+				 * manually if ext4_truncate() failed to get a
-+				 * transaction handle.
-+				 */
-+				ext4_orphan_del(NULL, inode);
- 				ext4_std_error(inode->i_sb, ret);
-+			}
- 			inode_unlock(inode);
- 			nr_truncates++;
- 		} else {
--- 
-2.25.4
+					- Ted
 
+P.S.  Harshad, could you prepare patches to kernel files in ext4 and
+jbd2 to make similar alignment portability fixes?   Thanks!!
