@@ -2,64 +2,72 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ECC56C433B4
-	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 13:42:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82AF2C43462
+	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 14:07:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CD8A26101B
-	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 13:42:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 41F6B6127A
+	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 14:07:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237294AbhEJNnM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 10 May 2021 09:43:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47602 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236863AbhEJNR0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 May 2021 09:17:26 -0400
-Received: from mail-wm1-x32b.google.com (mail-wm1-x32b.google.com [IPv6:2a00:1450:4864:20::32b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED3A6C06138C;
-        Mon, 10 May 2021 06:16:19 -0700 (PDT)
-Received: by mail-wm1-x32b.google.com with SMTP id 82-20020a1c01550000b0290142562ff7c9so8868251wmb.3;
-        Mon, 10 May 2021 06:16:19 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=Sh4i9feljTPFrIfpR/IU/E8n0D3Fda88xyQfypmum7w=;
-        b=GfQpYA/u/ESXNzCwhJN35I1L0Sb2vRVeukRNG83W8xG2OMlDA6+i5W0OODo/+LWE9E
-         ivWW5//Dci3M+PXPgJnH/odM7KtTO7yjQKrEe7KAvh4E7fvrd/ZuLkJAZP62sWtsDMuB
-         AIqgCRqoTLZzj0iGC6/REa3QuGlmZjiRxifV0mZYrMLJSap8JjiujnvbMmFTzTlx+O95
-         x9XnwiLNDr5qqWcsdoyW+ETG1hWAlzA+FW12aKJEwh2j5DlnppfpjkE6ahf9DAyZ8V+v
-         c4HLN0tsaWZM2+zfMzrOFU3u/mXI98pyg6LlDYSgFBtDuHlk1DmX0lhge4HX1KOLhtwA
-         z+4g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=Sh4i9feljTPFrIfpR/IU/E8n0D3Fda88xyQfypmum7w=;
-        b=cYGoVbnuzC8qi/rSzJ+ExaPcPY6WDiRnoQYrUOJUW/LDLaupeK70YlIz31CC6DpEIO
-         YjQqqXw2K1KRvLE2EmkMqZgmSNaOqjLw3WgaQER7nKYN78smSnUQvql/Lq9C3BYIAbbS
-         A89hiMUo84LxHpIIH5PXWbH2rmZnREpJ+CAq/H0QPEPvY3481ifRRLSpOK8Cv3AHyzwB
-         Y9C4Y5kQCgYC6MsNt9LSL+mATP7JJWBNR9KZjed7REYhOTmkJTYOrQnd1aSrwgzazjvo
-         Ixtv6yd4OPdU4nF7WYCxOtY9Watsai28mxpDWeEFK5xhy198jgxuKAvRFJqigderRiYZ
-         zU/w==
-X-Gm-Message-State: AOAM5320WfRdSTq1VXESkXjcB7G2WrDl9rtLEDxZcnwiFr7WOtK+XUaU
-        ikYqT3CuD1N4pbhEXWdxDhI=
-X-Google-Smtp-Source: ABdhPJysoQ4YBpE1J87NsTC/Z24p8NQqGLKPSudpVCmtLwZFhM2Wy0R7/k0aKiXMKdpTI23nPdYVEw==
-X-Received: by 2002:a05:600c:47d7:: with SMTP id l23mr36980376wmo.95.1620652578722;
-        Mon, 10 May 2021 06:16:18 -0700 (PDT)
-Received: from [192.168.1.122] (cpc159425-cmbg20-2-0-cust403.5-4.cable.virginm.net. [86.7.189.148])
-        by smtp.gmail.com with ESMTPSA id s1sm27945073wmj.8.2021.05.10.06.16.16
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 10 May 2021 06:16:17 -0700 (PDT)
-Subject: Re: [PATCH 00/53] Get rid of UTF-8 chars that can be mapped as ASCII
-To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        David Woodhouse <dwmw2@infradead.org>
-Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        id S234684AbhEJOIQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 10 May 2021 10:08:16 -0400
+Received: from new4-smtp.messagingengine.com ([66.111.4.230]:37919 "EHLO
+        new4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S235412AbhEJOBt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 May 2021 10:01:49 -0400
+Received: from compute3.internal (compute3.nyi.internal [10.202.2.43])
+        by mailnew.nyi.internal (Postfix) with ESMTP id 14AAD5807B2;
+        Mon, 10 May 2021 10:00:38 -0400 (EDT)
+Received: from mailfrontend1 ([10.202.2.162])
+  by compute3.internal (MEProxy); Mon, 10 May 2021 10:00:38 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=benboeckel.net;
+         h=date:from:to:cc:subject:message-id:references:mime-version
+        :content-type:in-reply-to; s=fm1; bh=fwXudyHn8IUNsmfHA12W5pUxFzr
+        IcUsJJs6niPOOwGc=; b=gQh6u0zhPsG//1fbjCgHH3SUq5OZEixVi+ckcNcOvNr
+        8f8S6u6OqczboxIeZQzxpdw3AUy1t45vyyuSQKDA1+yJJEqv0Na0yFB8YXQoxGQa
+        A5mz/uekXLKQlXSBVpDzZgWHaTwxLQ8cfd/84Seg6MJA86M+DwrG/rxkfmjHnsDx
+        Vsn+We4G3Oh5Yvv4HNwlluWEHPMQsGoYqOZqIpzyUGPfcSXaDfcxgaoBasafO20O
+        Nia4uZb9+lsHdBKwEogjjnykkTJJzKThWOeq3e2hyjT/F/nLvkiGpnFJ0uMYCJ5w
+        yhbph4b45d/9JdizeckN5aTq6WAACtGxOiZQK1Svtuw==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-type:date:from:in-reply-to
+        :message-id:mime-version:references:subject:to:x-me-proxy
+        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; bh=fwXudy
+        Hn8IUNsmfHA12W5pUxFzrIcUsJJs6niPOOwGc=; b=FkYLunR8+bNyojGntZzlTv
+        lNhoU5Ih8GFYdgqBiM9GEeBgkR7PC0rd49vKxgNK2oVHYiwvnJ0pFHee6wyNEefG
+        07iyoKlPp2/47lNX2/0a3w6XYC3Muan3VrHn9DIyh2AJDD/sq19lwcD+nClmgOGW
+        3kjTJut/WH9S1nO20R6vTeVSVeiFhLK/oh1ul5trEQZynTCu46HI2dcf9dXPVKk9
+        sOjDpOdiQFUH6B6gq1Emr8rDL+S3scV3gAHdetS1J2hIDO0dgu0hscWNc8fHxaey
+        25F3JvGPZJisNAQmAtq62YqH7TCAIzVvBqJwx8rI9Oyho2YDtxrFPxf1S0VsKOTA
+        ==
+X-ME-Sender: <xms:hDyZYCqZ48w__j-3J2DdcFFyCNO8Px1wZAdweI2vgyXQ5g_1A_avfw>
+    <xme:hDyZYAoPMp-2hhXE5dIuFZVKJLDFR-LeVjsu56BtdhTJGnUi8Md4Pqb1pnf9Vqqdn
+    t02Gw-Ku9S6gnwxX4I>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduledrvdegkedgjedvucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfqfgfvpdfurfetoffkrfgpnffqhgen
+    uceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmne
+    cujfgurhepfffhvffukfhfgggtuggjfgesthdtredttderjeenucfhrhhomhepuegvnhcu
+    uehovggtkhgvlhcuoehmvgessggvnhgsohgvtghkvghlrdhnvghtqeenucggtffrrghtth
+    gvrhhnpeevffdtteetgfdttdekueefgedttddtueeugeekgeetffeuteffjeduieehhfek
+    tdenucfkphepvdegrdduieelrddvtddrvdehheenucevlhhushhtvghrufhiiigvpedtne
+    curfgrrhgrmhepmhgrihhlfhhrohhmpehmvgessggvnhgsohgvtghkvghlrdhnvght
+X-ME-Proxy: <xmx:hDyZYHO7a0I2ObO3iNQCJFMynfyvzQSxH3x8A4ShPc13xjvG6wh63A>
+    <xmx:hDyZYB6OL9_iqJiCXEkFvw1uMnu0UHjkSyxn6Irx0qOidEFWAmkwbA>
+    <xmx:hDyZYB472gSq8MYTawlNh6oofIzwaZQvJxltEegElvbnNVF17UiCaA>
+    <xmx:hjyZYNFuZhUi4dOrdPamnliiTh3owe6Tf-ewK9C2k9SXGvHlGfVlTg>
+Received: from localhost (unknown [24.169.20.255])
+        by mail.messagingengine.com (Postfix) with ESMTPA;
+        Mon, 10 May 2021 10:00:35 -0400 (EDT)
+Date:   Mon, 10 May 2021 10:00:34 -0400
+From:   Ben Boeckel <me@benboeckel.net>
+To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Cc:     David Woodhouse <dwmw2@infradead.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
         linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
         alsa-devel@alsa-project.org, coresight@lists.linaro.org,
         dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
@@ -75,64 +83,28 @@ Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
         linux-sgx@vger.kernel.org, linux-usb@vger.kernel.org,
         mjpeg-users@lists.sourceforge.net, netdev@vger.kernel.org,
         rcu@vger.kernel.org, x86@kernel.org
+Subject: Re: [PATCH 00/53] Get rid of UTF-8 chars that can be mapped as ASCII
+Message-ID: <YJk8gkMlk8dtaEsz@erythro.dev.benboeckel.internal>
 References: <cover.1620641727.git.mchehab+huawei@kernel.org>
  <2ae366fdff4bd5910a2270823e8da70521c859af.camel@infradead.org>
  <20210510135518.305cc03d@coco.lan>
-From:   Edward Cree <ecree.xilinx@gmail.com>
-Message-ID: <df6b4567-030c-a480-c5a6-fe579830e8c0@gmail.com>
-Date:   Mon, 10 May 2021 14:16:16 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.5.0
 MIME-Version: 1.0
-In-Reply-To: <20210510135518.305cc03d@coco.lan>
 Content-Type: text/plain; charset=utf-8
-Content-Language: en-GB
-Content-Transfer-Encoding: 8bit
+Content-Disposition: inline
+In-Reply-To: <20210510135518.305cc03d@coco.lan>
+User-Agent: Mutt/2.0.5 (2021-01-21)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 10/05/2021 12:55, Mauro Carvalho Chehab wrote:
-> The main point on this series is to replace just the occurrences
-> where ASCII represents the symbol equally well
+On Mon, May 10, 2021 at 13:55:18 +0200, Mauro Carvalho Chehab wrote:
+>     $ git grep "CPU 0 has been" Documentation/RCU/
+>       Documentation/RCU/Design/Data-Structures/Data-Structures.rst:| #. CPU 0 has been in dyntick-idle mode for quite some time. When it   |
+>       Documentation/RCU/Design/Data-Structures/Data-Structures.rst:|    notices that CPU 0 has been in dyntick idle mode, which qualifies  |
 
-> 	- U+2014 ('—'): EM DASH
-Em dash is not the same thing as hyphen-minus, and the latter does not
- serve 'equally well'.  People use em dashes because — even in
- monospace fonts — they make text easier to read and comprehend, when
- used correctly.
-I accept that some of the other distinctions — like en dashes — are
- needlessly pedantic (though I don't doubt there is someone out there
- who will gladly defend them with the same fervour with which I argue
- for the em dash) and I wouldn't take the trouble to use them myself;
- but I think there is a reasonable assumption that when someone goes
- to the effort of using a Unicode punctuation mark that is semantic
- (rather than merely typographical), they probably had a reason for
- doing so.
+The kernel documentation uses hard line wraps, so such a naive grep is
+going to always fail unless such line wraps are taken into account. Not
+saying this isn't an improvement in and of itself, but smarter searching
+strategies are likely needed anyways.
 
-> 	- U+2018 ('‘'): LEFT SINGLE QUOTATION MARK
-> 	- U+2019 ('’'): RIGHT SINGLE QUOTATION MARK
-> 	- U+201c ('“'): LEFT DOUBLE QUOTATION MARK
-> 	- U+201d ('”'): RIGHT DOUBLE QUOTATION MARK
-(These are purely typographic, I have no problem with dumping them.)
-
-> 	- U+00d7 ('×'): MULTIPLICATION SIGN
-Presumably this is appearing in mathematical formulae, in which case
- changing it to 'x' loses semantic information.
-
-> Using the above symbols will just trick tools like grep for no good
-> reason.
-NBSP, sure.  That one's probably an artefact of some document format
- conversion somewhere along the line, anyway.
-But what kinds of things with × or — in are going to be grept for?
-
-If there are em dashes lying around that semantically _should_ be
- hyphen-minus (one of your patches I've seen, for instance, fixes an
- *en* dash moonlighting as the option character in an `ethtool`
- command line), then sure, convert them.
-But any time someone is using a Unicode character to *express
- semantics*, even if you happen to think the semantic distinction
- involved is a pedantic or unimportant one, I think you need an
- explicit grep case to justify ASCIIfying it.
-
--ed
+--Ben
