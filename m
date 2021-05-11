@@ -2,108 +2,74 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96E63C4360C
-	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 22:36:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F826C433ED
+	for <linux-ext4@archiver.kernel.org>; Tue, 11 May 2021 04:36:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 74D3C61585
-	for <linux-ext4@archiver.kernel.org>; Mon, 10 May 2021 22:36:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 46888615FF
+	for <linux-ext4@archiver.kernel.org>; Tue, 11 May 2021 04:36:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231290AbhEJWh3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 10 May 2021 18:37:29 -0400
-Received: from tartarus.angband.pl ([51.83.246.204]:34704 "EHLO
-        tartarus.angband.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230271AbhEJWh2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 May 2021 18:37:28 -0400
-X-Greylist: delayed 1784 seconds by postgrey-1.27 at vger.kernel.org; Mon, 10 May 2021 18:37:20 EDT
-Received: from kilobyte by tartarus.angband.pl with local (Exim 4.94.2)
-        (envelope-from <kilobyte@angband.pl>)
-        id 1lgDtp-00EKjz-Lm; Mon, 10 May 2021 23:57:13 +0200
-Date:   Mon, 10 May 2021 23:57:13 +0200
-From:   Adam Borowski <kilobyte@angband.pl>
-To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Cc:     Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        alsa-devel@alsa-project.org, coresight@lists.linaro.org,
-        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
-        intel-wired-lan@lists.osuosl.org, keyrings@vger.kernel.org,
-        kvm@vger.kernel.org, linux-acpi@vger.kernel.org,
-        linux-arm-kernel@lists.infradead.org, linux-edac@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fpga@vger.kernel.org, linux-hwmon@vger.kernel.org,
-        linux-iio@vger.kernel.org, linux-input@vger.kernel.org,
-        linux-integrity@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-pci@vger.kernel.org, linux-pm@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-riscv@lists.infradead.org,
-        linux-sgx@vger.kernel.org, linux-usb@vger.kernel.org,
-        mjpeg-users@lists.sourceforge.net, netdev@vger.kernel.org,
-        rcu@vger.kernel.org, x86@kernel.org
-Subject: Re: [PATCH 00/53] Get rid of UTF-8 chars that can be mapped as ASCII
-Message-ID: <YJmsOYzPIsQ04Zxb@angband.pl>
-References: <cover.1620641727.git.mchehab+huawei@kernel.org>
+        id S229948AbhEKEh3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 11 May 2021 00:37:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56218 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229548AbhEKEh2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 11 May 2021 00:37:28 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A9780C061574;
+        Mon, 10 May 2021 21:36:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=+LTUHNeE94R2O+bXANYuERUrQYGZz1p62AmaYL7iaa0=; b=PpezK03OB1C8eJRbNdZYTJmHU2
+        YxbOUgtOt0V/rQha8ZqXlibpnp+YftcHnNgOLUQLAlOi3VeRiXaY0063okKKZvwXPwyJNguaaK1rZ
+        UdSK5B7Kzbl/ITLs7uwYebhy0zBDHIOzE3Fo5BeNq5LwjuMAhZ7b1TT8NzW5xoViWmxIS7QOVoXT5
+        jtWz0+pf6tJJaV4mRLIKZt/09eoLkay840VzOzmzr+B/H6LGqW+isqgpLa+yI3BxFnbAFW/UjgOVh
+        G/uOcpTscOBvaeezfId6QazbqH51Ap/i1ATpWCMA/xK68Fzs3VZ9MLDAMxSngDC8VnnABhoNRnJSe
+        UbtwTE2g==;
+Received: from hch by casper.infradead.org with local (Exim 4.94 #2 (Red Hat Linux))
+        id 1lgK7b-006uVb-KJ; Tue, 11 May 2021 04:35:54 +0000
+Date:   Tue, 11 May 2021 05:35:51 +0100
+From:   Christoph Hellwig <hch@infradead.org>
+To:     Shreeya Patel <shreeya.patel@collabora.com>
+Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, chao@kernel.org,
+        ebiggers@google.com, drosen@google.com, ebiggers@kernel.org,
+        yuchao0@huawei.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, kernel@collabora.com,
+        andre.almeida@collabora.com
+Subject: Re: [PATCH v8 4/4] fs: unicode: Add utf8 module and a unicode layer
+Message-ID: <YJoJp1FnHxyQc9/2@infradead.org>
+References: <20210423205136.1015456-1-shreeya.patel@collabora.com>
+ <20210423205136.1015456-5-shreeya.patel@collabora.com>
+ <20210427062907.GA1564326@infradead.org>
+ <61d85255-d23e-7016-7fb5-7ab0a6b4b39f@collabora.com>
+ <YIgkvjdrJPjeoJH7@mit.edu>
+ <87bl9z937q.fsf@collabora.com>
+ <YIlta1Saw7dEBpfs@mit.edu>
+ <87mtti6xtf.fsf@collabora.com>
+ <7caab939-2800-0cc2-7b65-345af3fce73d@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <cover.1620641727.git.mchehab+huawei@kernel.org>
-X-Junkbait: aaron@angband.pl, zzyx@angband.pl
-X-SA-Exim-Connect-IP: <locally generated>
-X-SA-Exim-Mail-From: kilobyte@angband.pl
-X-SA-Exim-Scanned: No (on tartarus.angband.pl); SAEximRunCond expanded to false
+In-Reply-To: <7caab939-2800-0cc2-7b65-345af3fce73d@collabora.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, May 10, 2021 at 12:26:12PM +0200, Mauro Carvalho Chehab wrote:
-> There are several UTF-8 characters at the Kernel's documentation.
-[...]
-> Other UTF-8 characters were added along the time, but they're easily
-> replaceable by ASCII chars.
-> 
-> As Linux developers are all around the globe, and not everybody has UTF-8
-> as their default charset
+On Tue, May 11, 2021 at 02:17:00AM +0530, Shreeya Patel wrote:
+> Theodore / Christoph, since we haven't come up with any final decision with
+> this discussion, how do you think we should proceed on this?
 
-I'm not aware of a distribution that still allows selecting a non-UTF-8
-charset in a normal flow in their installer.  And if they haven't purged
-support for ancient encodings, that support is thoroughly bitrotten.
-Thus, I disagree that this is a legitimate concern.
-
-What _could_ be a legitimate reason is that someone is on a _terminal_
-that can't display a wide enough set of glyphs.  Such terminals are:
- • Linux console (because of vgacon limitations; patchsets to improve
-   other cons haven't been mainlined)
- • some Windows terminals (putty, old Windows console) that can't borrow
-   glyphs from other fonts like fontconfig can
-
-For the former, it's whatever your distribution ships in
-/usr/share/consolefonts/ or an equivalent, which is based on historic
-ISO-8859 and VT100 traditions.
-
-For the latter, the near-guaranteed character set is WGL4.
-
-
-Thus, at least two of your choices seem to disagree with the above:
-[dropped]
-> 	0xd7   => 'x',		# MULTIPLICATION SIGN
-[retained]
-> 	- U+2b0d ('⬍'): UP DOWN BLACK ARROW
-
-× is present in ISO-8859, V100, WGL4; I've found no font in
-/usr/share/consolefonts/ on my Debian unstable box that lacks this
-character.
-
-⬍ is not found in any of the above.  You might want to at least
-convert it to ↕ which is at least present in WGL4, and thus likely
-to be supported in fonts heeding Windows/Mac/OpenType recommendations.
-That still won't make it work on VT.
-
-
-Meow!
--- 
-⢀⣴⠾⠻⢶⣦⠀ .--[ Makefile ]
-⣾⠁⢠⠒⠀⣿⡁ # beware of races
-⢿⡄⠘⠷⠚⠋⠀ all: pillage burn
-⠈⠳⣄⠀⠀⠀⠀ `----
+I think loading it as a firmware-like table is much preferable to
+a module with all the static call magic papering over that it really is
+just one specific table.
