@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8016EC433ED
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A71C2C41515
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4405A6112F
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8FFCE6112F
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231285AbhELNrq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 May 2021 09:47:46 -0400
-Received: from mx2.suse.de ([195.135.220.15]:41626 "EHLO mx2.suse.de"
+        id S231309AbhELNrs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 May 2021 09:47:48 -0400
+Received: from mx2.suse.de ([195.135.220.15]:41668 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231163AbhELNro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S231173AbhELNro (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 12 May 2021 09:47:44 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id BC448B186;
+        by mx2.suse.de (Postfix) with ESMTP id 5DBFFB1B6;
         Wed, 12 May 2021 13:46:32 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 055701F2B6A; Wed, 12 May 2021 15:46:32 +0200 (CEST)
+        id DF3B21E0CD7; Wed, 12 May 2021 15:46:31 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     Christoph Hellwig <hch@infradead.org>,
@@ -40,9 +40,9 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
         Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
         Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/11] fuse: Convert to using invalidate_lock
-Date:   Wed, 12 May 2021 15:46:17 +0200
-Message-Id: <20210512134631.4053-9-jack@suse.cz>
+Subject: [PATCH 03/11] mm: Protect operations adding pages to page cache with invalidate_lock
+Date:   Wed, 12 May 2021 15:46:11 +0200
+Message-Id: <20210512134631.4053-3-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210512101639.22278-1-jack@suse.cz>
 References: <20210512101639.22278-1-jack@suse.cz>
@@ -52,294 +52,449 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use invalidate_lock instead of fuse's private i_mmap_sem. The intended
-purpose is exactly the same. By this conversion we fix a long standing
-race between hole punching and read(2) / readahead(2) paths that can
-lead to stale page cache contents.
+Currently, serializing operations such as page fault, read, or readahead
+against hole punching is rather difficult. The basic race scheme is
+like:
 
-CC: Miklos Szeredi <miklos@szeredi.hu>
+fallocate(FALLOC_FL_PUNCH_HOLE)			read / fault / ..
+  truncate_inode_pages_range()
+						  <create pages in page
+						   cache here>
+  <update fs block mapping and free blocks>
+
+Now the problem is in this way read / page fault / readahead can
+instantiate pages in page cache with potentially stale data (if blocks
+get quickly reused). Avoiding this race is not simple - page locks do
+not work because we want to make sure there are *no* pages in given
+range. inode->i_rwsem does not work because page fault happens under
+mmap_sem which ranks below inode->i_rwsem. Also using it for reads makes
+the performance for mixed read-write workloads suffer.
+
+So create a new rw_semaphore in the address_space - invalidate_lock -
+that protects adding of pages to page cache for page faults / reads /
+readahead.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/fuse/dax.c    | 50 +++++++++++++++++++++++-------------------------
- fs/fuse/dir.c    | 11 ++++++-----
- fs/fuse/file.c   | 10 +++++-----
- fs/fuse/fuse_i.h |  7 -------
- fs/fuse/inode.c  |  1 -
- 5 files changed, 35 insertions(+), 44 deletions(-)
+ Documentation/filesystems/locking.rst | 60 ++++++++++++++++++-------
+ fs/inode.c                            |  3 ++
+ include/linux/fs.h                    |  6 +++
+ mm/filemap.c                          | 65 ++++++++++++++++++++++-----
+ mm/readahead.c                        |  2 +
+ mm/rmap.c                             | 37 +++++++--------
+ mm/truncate.c                         |  2 +-
+ 7 files changed, 127 insertions(+), 48 deletions(-)
 
-diff --git a/fs/fuse/dax.c b/fs/fuse/dax.c
-index ff99ab2a3c43..03e5477ee913 100644
---- a/fs/fuse/dax.c
-+++ b/fs/fuse/dax.c
-@@ -443,12 +443,12 @@ static int fuse_setup_new_dax_mapping(struct inode *inode, loff_t pos,
- 	/*
- 	 * Can't do inline reclaim in fault path. We call
- 	 * dax_layout_busy_page() before we free a range. And
--	 * fuse_wait_dax_page() drops fi->i_mmap_sem lock and requires it.
--	 * In fault path we enter with fi->i_mmap_sem held and can't drop
--	 * it. Also in fault path we hold fi->i_mmap_sem shared and not
--	 * exclusive, so that creates further issues with fuse_wait_dax_page().
--	 * Hence return -EAGAIN and fuse_dax_fault() will wait for a memory
--	 * range to become free and retry.
-+	 * fuse_wait_dax_page() drops mapping->invalidate_lock and requires it.
-+	 * In fault path we enter with mapping->invalidate_lock held and can't
-+	 * drop it. Also in fault path we hold mapping->invalidate_lock shared
-+	 * and not exclusive, so that creates further issues with
-+	 * fuse_wait_dax_page().  Hence return -EAGAIN and fuse_dax_fault()
-+	 * will wait for a memory range to become free and retry.
- 	 */
- 	if (flags & IOMAP_FAULT) {
- 		alloc_dmap = alloc_dax_mapping(fcd);
-@@ -512,7 +512,7 @@ static int fuse_upgrade_dax_mapping(struct inode *inode, loff_t pos,
- 	down_write(&fi->dax->sem);
- 	node = interval_tree_iter_first(&fi->dax->tree, idx, idx);
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 4ed2b22bd0a8..b73666a3da42 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -271,19 +271,19 @@ prototypes::
+ locking rules:
+ 	All except set_page_dirty and freepage may block
  
--	/* We are holding either inode lock or i_mmap_sem, and that should
-+	/* We are holding either inode lock or invalidate_lock, and that should
- 	 * ensure that dmap can't be truncated. We are holding a reference
- 	 * on dmap and that should make sure it can't be reclaimed. So dmap
- 	 * should still be there in tree despite the fact we dropped and
-@@ -659,14 +659,12 @@ static const struct iomap_ops fuse_iomap_ops = {
+-======================	======================== =========
+-ops			PageLocked(page)	 i_rwsem
+-======================	======================== =========
++======================	======================== =========	===============
++ops			PageLocked(page)	 i_rwsem	invalidate_lock
++======================	======================== =========	===============
+ writepage:		yes, unlocks (see below)
+-readpage:		yes, unlocks
++readpage:		yes, unlocks				shared
+ writepages:
+ set_page_dirty		no
+-readahead:		yes, unlocks
+-readpages:		no
++readahead:		yes, unlocks				shared
++readpages:		no					shared
+ write_begin:		locks the page		 exclusive
+ write_end:		yes, unlocks		 exclusive
+ bmap:
+-invalidatepage:		yes
++invalidatepage:		yes					exclusive
+ releasepage:		yes
+ freepage:		yes
+ direct_IO:
+@@ -378,7 +378,10 @@ keep it that way and don't breed new callers.
+ ->invalidatepage() is called when the filesystem must attempt to drop
+ some or all of the buffers from the page when it is being truncated. It
+ returns zero on success. If ->invalidatepage is zero, the kernel uses
+-block_invalidatepage() instead.
++block_invalidatepage() instead. The filesystem should exclusively acquire
++invalidate_lock before invalidating page cache in truncate / hole punch path (and
++thus calling into ->invalidatepage) to block races between page cache
++invalidation and page cache filling functions (fault, read, ...).
  
- static void fuse_wait_dax_page(struct inode *inode)
+ ->releasepage() is called when the kernel is about to try to drop the
+ buffers from the page in preparation for freeing it.  It returns zero to
+@@ -573,6 +576,27 @@ in sys_read() and friends.
+ the lease within the individual filesystem to record the result of the
+ operation
+ 
++->fallocate implementation must be really careful to maintain page cache
++consistency when punching holes or performing other operations that invalidate
++page cache contents. Usually the filesystem needs to call
++truncate_inode_pages_range() to invalidate relevant range of the page cache.
++However the filesystem usually also needs to update its internal (and on disk)
++view of file offset -> disk block mapping. Until this update is finished, the
++filesystem needs to block page faults and reads from reloading now-stale page
++cache contents from the disk. VFS provides mapping->invalidate_lock for this
++and acquires it in shared mode in paths loading pages from disk
++(filemap_fault(), filemap_read(), readahead paths). The filesystem is
++responsible for taking this lock in its fallocate implementation and generally
++whenever the page cache contents needs to be invalidated because a block is
++moving from under a page.
++
++->copy_file_range and ->remap_file_range implementations need to serialize
++against modifications of file data while the operation is running. For blocking
++changes through write(2) and similar operations inode->i_rwsem can be used. For
++blocking changes through memory mapping, the filesystem can use
++mapping->invalidate_lock provided it also acquires it in its ->page_mkwrite
++implementation.
++
+ dquot_operations
+ ================
+ 
+@@ -634,9 +658,9 @@ access:		yes
+ to be faulted in. The filesystem must find and return the page associated
+ with the passed in "pgoff" in the vm_fault structure. If it is possible that
+ the page may be truncated and/or invalidated, then the filesystem must lock
+-the page, then ensure it is not already truncated (the page lock will block
+-subsequent truncate), and then return with VM_FAULT_LOCKED, and the page
+-locked. The VM will unlock the page.
++invalidate_lock, then ensure the page is not already truncated (invalidate_lock
++will block subsequent truncate), and then return with VM_FAULT_LOCKED, and the
++page locked. The VM will unlock the page.
+ 
+ ->map_pages() is called when VM asks to map easy accessible pages.
+ Filesystem should find and map pages associated with offsets from "start_pgoff"
+@@ -647,12 +671,14 @@ page table entry. Pointer to entry associated with the page is passed in
+ "pte" field in vm_fault structure. Pointers to entries for other offsets
+ should be calculated relative to "pte".
+ 
+-->page_mkwrite() is called when a previously read-only pte is
+-about to become writeable. The filesystem again must ensure that there are
+-no truncate/invalidate races, and then return with the page locked. If
+-the page has been truncated, the filesystem should not look up a new page
+-like the ->fault() handler, but simply return with VM_FAULT_NOPAGE, which
+-will cause the VM to retry the fault.
++->page_mkwrite() is called when a previously read-only pte is about to become
++writeable. The filesystem again must ensure that there are no
++truncate/invalidate races or races with operations such as ->remap_file_range
++or ->copy_file_range, and then return with the page locked. Usually
++mapping->invalidate_lock is suitable for proper serialization. If the page has
++been truncated, the filesystem should not look up a new page like the ->fault()
++handler, but simply return with VM_FAULT_NOPAGE, which will cause the VM to
++retry the fault.
+ 
+ ->pfn_mkwrite() is the same as page_mkwrite but when the pte is
+ VM_PFNMAP or VM_MIXEDMAP with a page-less entry. Expected return is
+diff --git a/fs/inode.c b/fs/inode.c
+index c93500d84264..63a814367118 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -190,6 +190,9 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	mapping_set_gfp_mask(mapping, GFP_HIGHUSER_MOVABLE);
+ 	mapping->private_data = NULL;
+ 	mapping->writeback_index = 0;
++	init_rwsem(&mapping->invalidate_lock);
++	lockdep_set_class(&mapping->invalidate_lock,
++			  &sb->s_type->invalidate_lock_key);
+ 	inode->i_private = NULL;
+ 	inode->i_mapping = mapping;
+ 	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c3c88fdb9b2a..897238d9f1e0 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -436,6 +436,10 @@ int pagecache_write_end(struct file *, struct address_space *mapping,
+  * struct address_space - Contents of a cacheable, mappable object.
+  * @host: Owner, either the inode or the block_device.
+  * @i_pages: Cached pages.
++ * @invalidate_lock: Guards coherency between page cache contents and
++ *   file offset->disk block mappings in the filesystem during invalidates.
++ *   It is also used to block modification of page cache contents through
++ *   memory mappings.
+  * @gfp_mask: Memory allocation flags to use for allocating pages.
+  * @i_mmap_writable: Number of VM_SHARED mappings.
+  * @nr_thps: Number of THPs in the pagecache (non-shmem only).
+@@ -453,6 +457,7 @@ int pagecache_write_end(struct file *, struct address_space *mapping,
+ struct address_space {
+ 	struct inode		*host;
+ 	struct xarray		i_pages;
++	struct rw_semaphore	invalidate_lock;
+ 	gfp_t			gfp_mask;
+ 	atomic_t		i_mmap_writable;
+ #ifdef CONFIG_READ_ONLY_THP_FOR_FS
+@@ -2488,6 +2493,7 @@ struct file_system_type {
+ 
+ 	struct lock_class_key i_lock_key;
+ 	struct lock_class_key i_mutex_key;
++	struct lock_class_key invalidate_lock_key;
+ 	struct lock_class_key i_mutex_dir_key;
+ };
+ 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index ba1068a1837f..4d9ec4c6cc34 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -77,7 +77,8 @@
+  *        ->i_pages lock
+  *
+  *  ->i_rwsem
+- *    ->i_mmap_rwsem		(truncate->unmap_mapping_range)
++ *    ->invalidate_lock		(acquired by fs in truncate path)
++ *      ->i_mmap_rwsem		(truncate->unmap_mapping_range)
+  *
+  *  ->mmap_lock
+  *    ->i_mmap_rwsem
+@@ -85,7 +86,8 @@
+  *        ->i_pages lock	(arch-dependent flush_dcache_mmap_lock)
+  *
+  *  ->mmap_lock
+- *    ->lock_page		(access_process_vm)
++ *    ->invalidate_lock		(filemap_fault)
++ *      ->lock_page		(filemap_fault, access_process_vm)
+  *
+  *  ->i_rwsem			(generic_perform_write)
+  *    ->mmap_lock		(fault_in_pages_readable->do_page_fault)
+@@ -2368,20 +2370,30 @@ static int filemap_update_page(struct kiocb *iocb,
  {
--	struct fuse_inode *fi = get_fuse_inode(inode);
--
--	up_write(&fi->i_mmap_sem);
-+	up_write(&inode->i_mapping->invalidate_lock);
- 	schedule();
--	down_write(&fi->i_mmap_sem);
-+	down_write(&inode->i_mapping->invalidate_lock);
- }
+ 	int error;
  
--/* Should be called with fi->i_mmap_sem lock held exclusively */
-+/* Should be called with mapping->invalidate_lock held exclusively */
- static int __fuse_dax_break_layouts(struct inode *inode, bool *retry,
- 				    loff_t start, loff_t end)
- {
-@@ -812,18 +810,18 @@ static vm_fault_t __fuse_dax_fault(struct vm_fault *vmf,
- 	 * we do not want any read/write/mmap to make progress and try
- 	 * to populate page cache or access memory we are trying to free.
- 	 */
--	down_read(&get_fuse_inode(inode)->i_mmap_sem);
-+	down_read(&inode->i_mapping->invalidate_lock);
- 	ret = dax_iomap_fault(vmf, pe_size, &pfn, &error, &fuse_iomap_ops);
- 	if ((ret & VM_FAULT_ERROR) && error == -EAGAIN) {
- 		error = 0;
- 		retry = true;
--		up_read(&get_fuse_inode(inode)->i_mmap_sem);
-+		up_read(&inode->i_mapping->invalidate_lock);
- 		goto retry;
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		if (!down_read_trylock(&mapping->invalidate_lock))
++			return -EAGAIN;
++	} else {
++		down_read(&mapping->invalidate_lock);
++	}
++
+ 	if (!trylock_page(page)) {
++		error = -EAGAIN;
+ 		if (iocb->ki_flags & (IOCB_NOWAIT | IOCB_NOIO))
+-			return -EAGAIN;
++			goto unlock_mapping;
+ 		if (!(iocb->ki_flags & IOCB_WAITQ)) {
++			up_read(&mapping->invalidate_lock);
+ 			put_and_wait_on_page_locked(page, TASK_KILLABLE);
+ 			return AOP_TRUNCATED_PAGE;
+ 		}
+ 		error = __lock_page_async(page, iocb->ki_waitq);
+ 		if (error)
+-			return error;
++			goto unlock_mapping;
  	}
  
- 	if (ret & VM_FAULT_NEEDDSYNC)
- 		ret = dax_finish_sync_fault(vmf, pe_size, pfn);
--	up_read(&get_fuse_inode(inode)->i_mmap_sem);
-+	up_read(&inode->i_mapping->invalidate_lock);
++	error = AOP_TRUNCATED_PAGE;
+ 	if (!page->mapping)
+-		goto truncated;
++		goto unlock;
  
- 	if (write)
- 		sb_end_pagefault(sb);
-@@ -959,7 +957,7 @@ inode_inline_reclaim_one_dmap(struct fuse_conn_dax *fcd, struct inode *inode,
- 	int ret;
- 	struct interval_tree_node *node;
+ 	error = 0;
+ 	if (filemap_range_uptodate(mapping, iocb->ki_pos, iter, page))
+@@ -2392,15 +2404,13 @@ static int filemap_update_page(struct kiocb *iocb,
+ 		goto unlock;
  
--	down_write(&fi->i_mmap_sem);
-+	down_write(&inode->i_mapping->invalidate_lock);
- 
- 	/* Lookup a dmap and corresponding file offset to reclaim. */
- 	down_read(&fi->dax->sem);
-@@ -1020,7 +1018,7 @@ inode_inline_reclaim_one_dmap(struct fuse_conn_dax *fcd, struct inode *inode,
- out_write_dmap_sem:
- 	up_write(&fi->dax->sem);
- out_mmap_sem:
--	up_write(&fi->i_mmap_sem);
-+	up_write(&inode->i_mapping->invalidate_lock);
- 	return dmap;
+ 	error = filemap_read_page(iocb->ki_filp, mapping, page);
+-	if (error == AOP_TRUNCATED_PAGE)
+-		put_page(page);
+-	return error;
+-truncated:
+-	unlock_page(page);
+-	put_page(page);
+-	return AOP_TRUNCATED_PAGE;
++	goto unlock_mapping;
+ unlock:
+ 	unlock_page(page);
++unlock_mapping:
++	up_read(&mapping->invalidate_lock);
++	if (error == AOP_TRUNCATED_PAGE)
++		put_page(page);
+ 	return error;
  }
  
-@@ -1049,10 +1047,10 @@ alloc_dax_mapping_reclaim(struct fuse_conn_dax *fcd, struct inode *inode)
- 		 * had a reference or some other temporary failure,
- 		 * Try again. We want to give up inline reclaim only
- 		 * if there is no range assigned to this node. Otherwise
--		 * if a deadlock is possible if we sleep with fi->i_mmap_sem
--		 * held and worker to free memory can't make progress due
--		 * to unavailability of fi->i_mmap_sem lock. So sleep
--		 * only if fi->dax->nr=0
-+		 * if a deadlock is possible if we sleep with
-+		 * mapping->invalidate_lock held and worker to free memory
-+		 * can't make progress due to unavailability of
-+		 * mapping->invalidate_lock.  So sleep only if fi->dax->nr=0
- 		 */
- 		if (retry)
- 			continue;
-@@ -1060,8 +1058,8 @@ alloc_dax_mapping_reclaim(struct fuse_conn_dax *fcd, struct inode *inode)
- 		 * There are no mappings which can be reclaimed. Wait for one.
- 		 * We are not holding fi->dax->sem. So it is possible
- 		 * that range gets added now. But as we are not holding
--		 * fi->i_mmap_sem, worker should still be able to free up
--		 * a range and wake us up.
-+		 * mapping->invalidate_lock, worker should still be able to
-+		 * free up a range and wake us up.
- 		 */
- 		if (!fi->dax->nr && !(fcd->nr_free_ranges > 0)) {
- 			if (wait_event_killable_exclusive(fcd->range_waitq,
-@@ -1107,7 +1105,7 @@ static int lookup_and_reclaim_dmap_locked(struct fuse_conn_dax *fcd,
- /*
-  * Free a range of memory.
-  * Locking:
-- * 1. Take fi->i_mmap_sem to block dax faults.
-+ * 1. Take mapping->invalidate_lock to block dax faults.
-  * 2. Take fi->dax->sem to protect interval tree and also to make sure
-  *    read/write can not reuse a dmap which we might be freeing.
-  */
-@@ -1121,7 +1119,7 @@ static int lookup_and_reclaim_dmap(struct fuse_conn_dax *fcd,
- 	loff_t dmap_start = start_idx << FUSE_DAX_SHIFT;
- 	loff_t dmap_end = (dmap_start + FUSE_DAX_SZ) - 1;
+@@ -2415,6 +2425,19 @@ static int filemap_create_page(struct file *file,
+ 	if (!page)
+ 		return -ENOMEM;
  
--	down_write(&fi->i_mmap_sem);
-+	down_write(&inode->i_mapping->invalidate_lock);
- 	ret = fuse_dax_break_layouts(inode, dmap_start, dmap_end);
- 	if (ret) {
- 		pr_debug("virtio_fs: fuse_dax_break_layouts() failed. err=%d\n",
-@@ -1133,7 +1131,7 @@ static int lookup_and_reclaim_dmap(struct fuse_conn_dax *fcd,
- 	ret = lookup_and_reclaim_dmap_locked(fcd, inode, start_idx);
- 	up_write(&fi->dax->sem);
- out_mmap_sem:
--	up_write(&fi->i_mmap_sem);
-+	up_write(&inode->i_mapping->invalidate_lock);
- 	return ret;
++	/*
++	 * Protect against truncate / hole punch. Grabbing invalidate_lock here
++	 * assures we cannot instantiate and bring uptodate new pagecache pages
++	 * after evicting page cache during truncate and before actually
++	 * freeing blocks.  Note that we could release invalidate_lock after
++	 * inserting the page into page cache as the locked page would then be
++	 * enough to synchronize with hole punching. But there are code paths
++	 * such as filemap_update_page() filling in partially uptodate pages or
++	 * ->readpages() that need to hold invalidate_lock while mapping blocks
++	 * for IO so let's hold the lock here as well to keep locking rules
++	 * simple.
++	 */
++	down_read(&mapping->invalidate_lock);
+ 	error = add_to_page_cache_lru(page, mapping, index,
+ 			mapping_gfp_constraint(mapping, GFP_KERNEL));
+ 	if (error == -EEXIST)
+@@ -2426,9 +2449,11 @@ static int filemap_create_page(struct file *file,
+ 	if (error)
+ 		goto error;
+ 
++	up_read(&mapping->invalidate_lock);
+ 	pagevec_add(pvec, page);
+ 	return 0;
+ error:
++	up_read(&mapping->invalidate_lock);
+ 	put_page(page);
+ 	return error;
  }
- 
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index 1b6c001a7dd1..0ab27170da11 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -1601,6 +1601,7 @@ int fuse_do_setattr(struct dentry *dentry, struct iattr *attr,
- 	struct fuse_mount *fm = get_fuse_mount(inode);
- 	struct fuse_conn *fc = fm->fc;
- 	struct fuse_inode *fi = get_fuse_inode(inode);
-+	struct address_space *mapping = inode->i_mapping;
- 	FUSE_ARGS(args);
- 	struct fuse_setattr_in inarg;
- 	struct fuse_attr_out outarg;
-@@ -1625,11 +1626,11 @@ int fuse_do_setattr(struct dentry *dentry, struct iattr *attr,
- 	}
- 
- 	if (FUSE_IS_DAX(inode) && is_truncate) {
--		down_write(&fi->i_mmap_sem);
-+		down_write(&mapping->invalidate_lock);
- 		fault_blocked = true;
- 		err = fuse_dax_break_layouts(inode, 0, 0);
- 		if (err) {
--			up_write(&fi->i_mmap_sem);
-+			up_write(&mapping->invalidate_lock);
- 			return err;
+@@ -2988,6 +3013,13 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
+ 		count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
+ 		ret = VM_FAULT_MAJOR;
+ 		fpin = do_sync_mmap_readahead(vmf);
++	}
++
++	/*
++	 * See comment in filemap_create_page() why we need invalidate_lock
++	 */
++	down_read(&mapping->invalidate_lock);
++	if (!page) {
+ retry_find:
+ 		page = pagecache_get_page(mapping, offset,
+ 					  FGP_CREAT|FGP_FOR_MMAP,
+@@ -2995,6 +3027,7 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
+ 		if (!page) {
+ 			if (fpin)
+ 				goto out_retry;
++			up_read(&mapping->invalidate_lock);
+ 			return VM_FAULT_OOM;
  		}
  	}
-@@ -1739,13 +1740,13 @@ int fuse_do_setattr(struct dentry *dentry, struct iattr *attr,
- 	if ((is_truncate || !is_wb) &&
- 	    S_ISREG(inode->i_mode) && oldsize != outarg.attr.size) {
- 		truncate_pagecache(inode, outarg.attr.size);
--		invalidate_inode_pages2(inode->i_mapping);
-+		invalidate_inode_pages2(mapping);
+@@ -3035,9 +3068,11 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
+ 	if (unlikely(offset >= max_off)) {
+ 		unlock_page(page);
+ 		put_page(page);
++		up_read(&mapping->invalidate_lock);
+ 		return VM_FAULT_SIGBUS;
  	}
  
- 	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
- out:
- 	if (fault_blocked)
--		up_write(&fi->i_mmap_sem);
-+		up_write(&mapping->invalidate_lock);
++	up_read(&mapping->invalidate_lock);
+ 	vmf->page = page;
+ 	return ret | VM_FAULT_LOCKED;
  
- 	return 0;
+@@ -3056,6 +3091,7 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
  
-@@ -1756,7 +1757,7 @@ int fuse_do_setattr(struct dentry *dentry, struct iattr *attr,
- 	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
+ 	if (!error || error == AOP_TRUNCATED_PAGE)
+ 		goto retry_find;
++	up_read(&mapping->invalidate_lock);
  
- 	if (fault_blocked)
--		up_write(&fi->i_mmap_sem);
-+		up_write(&mapping->invalidate_lock);
- 	return err;
- }
+ 	return VM_FAULT_SIGBUS;
  
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index 09ef2a4d25ed..22be837169a7 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -243,7 +243,7 @@ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
- 	}
- 
- 	if (dax_truncate) {
--		down_write(&get_fuse_inode(inode)->i_mmap_sem);
-+		down_write(&inode->i_mapping->invalidate_lock);
- 		err = fuse_dax_break_layouts(inode, 0, 0);
- 		if (err)
- 			goto out;
-@@ -255,7 +255,7 @@ int fuse_open_common(struct inode *inode, struct file *file, bool isdir)
- 
- out:
- 	if (dax_truncate)
--		up_write(&get_fuse_inode(inode)->i_mmap_sem);
-+		up_write(&inode->i_mapping->invalidate_lock);
- 
- 	if (is_wb_truncate | dax_truncate) {
- 		fuse_release_nowrite(inode);
-@@ -2920,7 +2920,7 @@ static long fuse_file_fallocate(struct file *file, int mode, loff_t offset,
- 	if (lock_inode) {
- 		inode_lock(inode);
- 		if (block_faults) {
--			down_write(&fi->i_mmap_sem);
-+			down_write(&inode->i_mapping->invalidate_lock);
- 			err = fuse_dax_break_layouts(inode, 0, 0);
- 			if (err)
- 				goto out;
-@@ -2976,7 +2976,7 @@ static long fuse_file_fallocate(struct file *file, int mode, loff_t offset,
- 		clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
- 
- 	if (block_faults)
--		up_write(&fi->i_mmap_sem);
-+		up_write(&inode->i_mapping->invalidate_lock);
- 
- 	if (lock_inode)
- 		inode_unlock(inode);
-@@ -3045,7 +3045,7 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
- 	 * modifications.  Yet this does give less guarantees than if the
- 	 * copying was performed with write(2).
- 	 *
--	 * To fix this a i_mmap_sem style lock could be used to prevent new
-+	 * To fix this a mapping->invalidate_lock could be used to prevent new
- 	 * faults while the copy is ongoing.
+@@ -3067,6 +3103,7 @@ vm_fault_t filemap_fault(struct vm_fault *vmf)
  	 */
- 	err = fuse_writeback_range(inode_out, pos_out, pos_out + len - 1);
-diff --git a/fs/fuse/fuse_i.h b/fs/fuse/fuse_i.h
-index 7e463e220053..5130e88f811e 100644
---- a/fs/fuse/fuse_i.h
-+++ b/fs/fuse/fuse_i.h
-@@ -149,13 +149,6 @@ struct fuse_inode {
- 	/** Lock to protect write related fields */
- 	spinlock_t lock;
+ 	if (page)
+ 		put_page(page);
++	up_read(&mapping->invalidate_lock);
+ 	if (fpin)
+ 		fput(fpin);
+ 	return ret | VM_FAULT_RETRY;
+@@ -3437,6 +3474,8 @@ static struct page *do_read_cache_page(struct address_space *mapping,
+  *
+  * If the page does not get brought uptodate, return -EIO.
+  *
++ * The function expects mapping->invalidate_lock to be already held.
++ *
+  * Return: up to date page on success, ERR_PTR() on failure.
+  */
+ struct page *read_cache_page(struct address_space *mapping,
+@@ -3460,6 +3499,8 @@ EXPORT_SYMBOL(read_cache_page);
+  *
+  * If the page does not get brought uptodate, return -EIO.
+  *
++ * The function expects mapping->invalidate_lock to be already held.
++ *
+  * Return: up to date page on success, ERR_PTR() on failure.
+  */
+ struct page *read_cache_page_gfp(struct address_space *mapping,
+diff --git a/mm/readahead.c b/mm/readahead.c
+index d589f147f4c2..9785c54107bb 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -192,6 +192,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
+ 	 */
+ 	unsigned int nofs = memalloc_nofs_save();
  
--	/**
--	 * Can't take inode lock in fault path (leads to circular dependency).
--	 * Introduce another semaphore which can be taken in fault path and
--	 * then other filesystem paths can take this to block faults.
--	 */
--	struct rw_semaphore i_mmap_sem;
--
- #ifdef CONFIG_FUSE_DAX
++	down_read(&mapping->invalidate_lock);
  	/*
- 	 * Dax specific inode data
-diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-index 393e36b74dc4..f73bab71a0a0 100644
---- a/fs/fuse/inode.c
-+++ b/fs/fuse/inode.c
-@@ -85,7 +85,6 @@ static struct inode *fuse_alloc_inode(struct super_block *sb)
- 	fi->orig_ino = 0;
- 	fi->state = 0;
- 	mutex_init(&fi->mutex);
--	init_rwsem(&fi->i_mmap_sem);
- 	spin_lock_init(&fi->lock);
- 	fi->forget = fuse_alloc_forget();
- 	if (!fi->forget)
+ 	 * Preallocate as many pages as we will need.
+ 	 */
+@@ -236,6 +237,7 @@ void page_cache_ra_unbounded(struct readahead_control *ractl,
+ 	 * will then handle the error.
+ 	 */
+ 	read_pages(ractl, &page_pool, false);
++	up_read(&mapping->invalidate_lock);
+ 	memalloc_nofs_restore(nofs);
+ }
+ EXPORT_SYMBOL_GPL(page_cache_ra_unbounded);
+diff --git a/mm/rmap.c b/mm/rmap.c
+index a35cbbbded0d..76d33c3b8ae6 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -22,24 +22,25 @@
+  *
+  * inode->i_rwsem	(while writing or truncating, not reading or faulting)
+  *   mm->mmap_lock
+- *     page->flags PG_locked (lock_page)   * (see hugetlbfs below)
+- *       hugetlbfs_i_mmap_rwsem_key (in huge_pmd_share)
+- *         mapping->i_mmap_rwsem
+- *           hugetlb_fault_mutex (hugetlbfs specific page fault mutex)
+- *           anon_vma->rwsem
+- *             mm->page_table_lock or pte_lock
+- *               swap_lock (in swap_duplicate, swap_info_get)
+- *                 mmlist_lock (in mmput, drain_mmlist and others)
+- *                 mapping->private_lock (in __set_page_dirty_buffers)
+- *                   lock_page_memcg move_lock (in __set_page_dirty_buffers)
+- *                     i_pages lock (widely used)
+- *                       lruvec->lru_lock (in lock_page_lruvec_irq)
+- *                 inode->i_lock (in set_page_dirty's __mark_inode_dirty)
+- *                 bdi.wb->list_lock (in set_page_dirty's __mark_inode_dirty)
+- *                   sb_lock (within inode_lock in fs/fs-writeback.c)
+- *                   i_pages lock (widely used, in set_page_dirty,
+- *                             in arch-dependent flush_dcache_mmap_lock,
+- *                             within bdi.wb->list_lock in __sync_single_inode)
++ *     mapping->invalidate_lock (in filemap_fault)
++ *       page->flags PG_locked (lock_page)   * (see hugetlbfs below)
++ *         hugetlbfs_i_mmap_rwsem_key (in huge_pmd_share)
++ *           mapping->i_mmap_rwsem
++ *             hugetlb_fault_mutex (hugetlbfs specific page fault mutex)
++ *             anon_vma->rwsem
++ *               mm->page_table_lock or pte_lock
++ *                 swap_lock (in swap_duplicate, swap_info_get)
++ *                   mmlist_lock (in mmput, drain_mmlist and others)
++ *                   mapping->private_lock (in __set_page_dirty_buffers)
++ *                     lock_page_memcg move_lock (in __set_page_dirty_buffers)
++ *                       i_pages lock (widely used)
++ *                         lruvec->lru_lock (in lock_page_lruvec_irq)
++ *                   inode->i_lock (in set_page_dirty's __mark_inode_dirty)
++ *                   bdi.wb->list_lock (in set_page_dirty's __mark_inode_dirty)
++ *                     sb_lock (within inode_lock in fs/fs-writeback.c)
++ *                     i_pages lock (widely used, in set_page_dirty,
++ *                               in arch-dependent flush_dcache_mmap_lock,
++ *                               within bdi.wb->list_lock in __sync_single_inode)
+  *
+  * anon_vma->rwsem,mapping->i_mmap_rwsem   (memory_failure, collect_procs_anon)
+  *   ->tasklist_lock
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 57a618c4a0d6..93bde2741e0e 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -415,7 +415,7 @@ EXPORT_SYMBOL(truncate_inode_pages_range);
+  * @mapping: mapping to truncate
+  * @lstart: offset from which to truncate
+  *
+- * Called under (and serialised by) inode->i_rwsem.
++ * Called under (and serialised by) inode->i_rwsem and inode->i_mapping_rwsem.
+  *
+  * Note: When this function returns, there can be a page in the process of
+  * deletion (inside __delete_from_page_cache()) in the specified range.  Thus
 -- 
 2.26.2
 
