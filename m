@@ -2,441 +2,303 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70E61C433B4
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 12:52:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4333C43460
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3C2F361104
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 12:52:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6607F61040
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233194AbhELMxa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 May 2021 08:53:30 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53112 "EHLO mail.kernel.org"
+        id S231178AbhELNrn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 May 2021 09:47:43 -0400
+Received: from mx2.suse.de ([195.135.220.15]:41368 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S231511AbhELMxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 May 2021 08:53:00 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id B60C161440;
-        Wed, 12 May 2021 12:51:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1620823903;
-        bh=ci0NPQRJoitFBVK7T/HduDhQFHYjAS06dj5QsaeqhBE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=skOSGWZhOfI+w5Es54SkFem5XmRRP+tXDPLoIrYLFHq6PksIcJyF/ba7KP9KCUDVF
-         UZRqPWC9AV5ekoeUGFKy6oy30K7ceJVzw1omQKfUqKx5g43VUl/mfHs+LgUUcOLacR
-         IKCglqp06PUOw1yZ9yfBXIaA9zdRFygzmOjFB6voWUl0GNjzx9DxkKpD/KlIJUGgRA
-         jYJEl/bbA7XxTV++C53lT1Xch/FW+2XnfWBnZC6fSC1+QEx4ugso4HbPzlylQU3Wiu
-         lO5Gi5dyRmPExYEmCG8avia1yii4yXBag1oiirZh6HRhqSEdR/ViVXExuaaXyGJncp
-         te2UARcwsVofA==
-Received: by mail.kernel.org with local (Exim 4.94.2)
-        (envelope-from <mchehab@kernel.org>)
-        id 1lgoKy-0018i1-Rv; Wed, 12 May 2021 14:51:40 +0200
-From:   Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-To:     Linux Doc Mailing List <linux-doc@vger.kernel.org>
-Cc:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        "Jonathan Corbet" <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 19/40] docs: filesystems: ext4: Use ASCII subset instead of UTF-8 alternate symbols
-Date:   Wed, 12 May 2021 14:50:23 +0200
-Message-Id: <7896ae798aabd587ae3386ca23d5105596cb1a00.1620823573.git.mchehab+huawei@kernel.org>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <cover.1620823573.git.mchehab+huawei@kernel.org>
-References: <cover.1620823573.git.mchehab+huawei@kernel.org>
+        id S230492AbhELNrm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 May 2021 09:47:42 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 58A3CB1B4;
+        Wed, 12 May 2021 13:46:32 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id D59C61E08FF; Wed, 12 May 2021 15:46:31 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>, ceph-devel@vger.kernel.org,
+        Chao Yu <yuchao0@huawei.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Johannes Thumshirn <jth@kernel.org>,
+        linux-cifs@vger.kernel.org, <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
+        <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
+        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>, Hugh Dickins <hughd@google.com>
+Subject: [PATCH 01/11] mm: Fix comments mentioning i_mutex
+Date:   Wed, 12 May 2021 15:46:09 +0200
+Message-Id: <20210512134631.4053-1-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210512101639.22278-1-jack@suse.cz>
+References: <20210512101639.22278-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-Sender: Mauro Carvalho Chehab <mchehab@kernel.org>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The conversion tools used during DocBook/LaTeX/Markdown->ReST conversion
-and some automatic rules which exists on certain text editors like
-LibreOffice turned ASCII characters into some UTF-8 alternatives that
-are better displayed on html and PDF.
+inode->i_mutex has been replaced with inode->i_rwsem long ago. Fix
+comments still mentioning i_mutex.
 
-While it is OK to use UTF-8 characters in Linux, it is better to
-use the ASCII subset instead of using an UTF-8 equivalent character
-as it makes life easier for tools like grep, and are easier to edit
-with the some commonly used text/source code editors.
-
-Also, Sphinx already do such conversion automatically outside literal blocks:
-   https://docutils.sourceforge.io/docs/user/smartquotes.html
-
-So, replace the occurences of the following UTF-8 characters:
-
-	- U+201c ('“'): LEFT DOUBLE QUOTATION MARK
-	- U+201d ('”'): RIGHT DOUBLE QUOTATION MARK
-	- U+2217 ('∗'): ASTERISK OPERATOR
-
-Acked-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Acked-by: Hugh Dickins <hughd@google.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- Documentation/filesystems/ext4/attributes.rst | 20 +++++++++----------
- Documentation/filesystems/ext4/bigalloc.rst   |  6 +++---
- Documentation/filesystems/ext4/blockgroup.rst |  8 ++++----
- Documentation/filesystems/ext4/blocks.rst     |  2 +-
- Documentation/filesystems/ext4/directory.rst  | 16 +++++++--------
- Documentation/filesystems/ext4/eainode.rst    |  2 +-
- Documentation/filesystems/ext4/inlinedata.rst |  6 +++---
- Documentation/filesystems/ext4/inodes.rst     |  6 +++---
- Documentation/filesystems/ext4/journal.rst    |  8 ++++----
- Documentation/filesystems/ext4/mmp.rst        |  2 +-
- .../filesystems/ext4/special_inodes.rst       |  4 ++--
- Documentation/filesystems/ext4/super.rst      | 10 +++++-----
- 12 files changed, 45 insertions(+), 45 deletions(-)
+ mm/filemap.c        | 10 +++++-----
+ mm/madvise.c        |  2 +-
+ mm/memory-failure.c |  2 +-
+ mm/rmap.c           |  6 +++---
+ mm/shmem.c          | 20 ++++++++++----------
+ mm/truncate.c       |  8 ++++----
+ 6 files changed, 24 insertions(+), 24 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4/attributes.rst b/Documentation/filesystems/ext4/attributes.rst
-index 54386a010a8d..39e695678c01 100644
---- a/Documentation/filesystems/ext4/attributes.rst
-+++ b/Documentation/filesystems/ext4/attributes.rst
-@@ -8,7 +8,7 @@ block on the disk and referenced from inodes via ``inode.i_file_acl*``.
- The first use of extended attributes seems to have been for storing file
- ACLs and other security data (selinux). With the ``user_xattr`` mount
- option it is possible for users to store extended attributes so long as
--all attribute names begin with “user”; this restriction seems to have
-+all attribute names begin with "user"; this restriction seems to have
- disappeared as of Linux 3.0.
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 66f7e9fdfbc4..ba1068a1837f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -76,7 +76,7 @@
+  *      ->swap_lock		(exclusive_swap_page, others)
+  *        ->i_pages lock
+  *
+- *  ->i_mutex
++ *  ->i_rwsem
+  *    ->i_mmap_rwsem		(truncate->unmap_mapping_range)
+  *
+  *  ->mmap_lock
+@@ -87,7 +87,7 @@
+  *  ->mmap_lock
+  *    ->lock_page		(access_process_vm)
+  *
+- *  ->i_mutex			(generic_perform_write)
++ *  ->i_rwsem			(generic_perform_write)
+  *    ->mmap_lock		(fault_in_pages_readable->do_page_fault)
+  *
+  *  bdi->wb.list_lock
+@@ -3710,12 +3710,12 @@ EXPORT_SYMBOL(generic_perform_write);
+  * modification times and calls proper subroutines depending on whether we
+  * do direct IO or a standard buffered write.
+  *
+- * It expects i_mutex to be grabbed unless we work on a block device or similar
++ * It expects i_rwsem to be grabbed unless we work on a block device or similar
+  * object which does not need locking at all.
+  *
+  * This function does *not* take care of syncing data in case of O_SYNC write.
+  * A caller has to handle it. This is mainly due to the fact that we want to
+- * avoid syncing under i_mutex.
++ * avoid syncing under i_rwsem.
+  *
+  * Return:
+  * * number of bytes written, even for truncated writes
+@@ -3803,7 +3803,7 @@ EXPORT_SYMBOL(__generic_file_write_iter);
+  *
+  * This is a wrapper around __generic_file_write_iter() to be used by most
+  * filesystems. It takes care of syncing the file in case of O_SYNC file
+- * and acquires i_mutex as needed.
++ * and acquires i_rwsem as needed.
+  * Return:
+  * * negative error code if no data has been written at all of
+  *   vfs_fsync_range() failed for a synchronous write
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 63e489e5bfdb..a0137706b92a 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -853,7 +853,7 @@ static long madvise_remove(struct vm_area_struct *vma,
+ 			+ ((loff_t)vma->vm_pgoff << PAGE_SHIFT);
  
- There are two places where extended attributes can be found. The first
-@@ -165,22 +165,22 @@ the key name. Here is a map of name index values to key prefixes:
-    * - 0
-      - (no prefix)
-    * - 1
--     - “user.”
-+     - "user."
-    * - 2
--     - “system.posix\_acl\_access”
-+     - "system.posix\_acl\_access"
-    * - 3
--     - “system.posix\_acl\_default”
-+     - "system.posix\_acl\_default"
-    * - 4
--     - “trusted.”
-+     - "trusted."
-    * - 6
--     - “security.”
-+     - "security."
-    * - 7
--     - “system.” (inline\_data only?)
-+     - "system." (inline\_data only?)
-    * - 8
--     - “system.richacl” (SuSE kernels only?)
-+     - "system.richacl" (SuSE kernels only?)
+ 	/*
+-	 * Filesystem's fallocate may need to take i_mutex.  We need to
++	 * Filesystem's fallocate may need to take i_rwsem.  We need to
+ 	 * explicitly grab a reference because the vma (and hence the
+ 	 * vma's reference to the file) can go away as soon as we drop
+ 	 * mmap_lock.
+diff --git a/mm/memory-failure.c b/mm/memory-failure.c
+index 85ad98c00fd9..9dcc9bcea731 100644
+--- a/mm/memory-failure.c
++++ b/mm/memory-failure.c
+@@ -704,7 +704,7 @@ static int me_pagecache_clean(struct page *p, unsigned long pfn)
+ 	/*
+ 	 * Truncation is a bit tricky. Enable it per file system for now.
+ 	 *
+-	 * Open: to take i_mutex or not for this? Right now we don't.
++	 * Open: to take i_rwsem or not for this? Right now we don't.
+ 	 */
+ 	return truncate_error_page(p, pfn, mapping);
+ }
+diff --git a/mm/rmap.c b/mm/rmap.c
+index 693a610e181d..a35cbbbded0d 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -20,9 +20,9 @@
+ /*
+  * Lock ordering in mm:
+  *
+- * inode->i_mutex	(while writing or truncating, not reading or faulting)
++ * inode->i_rwsem	(while writing or truncating, not reading or faulting)
+  *   mm->mmap_lock
+- *     page->flags PG_locked (lock_page)   * (see huegtlbfs below)
++ *     page->flags PG_locked (lock_page)   * (see hugetlbfs below)
+  *       hugetlbfs_i_mmap_rwsem_key (in huge_pmd_share)
+  *         mapping->i_mmap_rwsem
+  *           hugetlb_fault_mutex (hugetlbfs specific page fault mutex)
+@@ -41,7 +41,7 @@
+  *                             in arch-dependent flush_dcache_mmap_lock,
+  *                             within bdi.wb->list_lock in __sync_single_inode)
+  *
+- * anon_vma->rwsem,mapping->i_mutex      (memory_failure, collect_procs_anon)
++ * anon_vma->rwsem,mapping->i_mmap_rwsem   (memory_failure, collect_procs_anon)
+  *   ->tasklist_lock
+  *     pte map lock
+  *
+diff --git a/mm/shmem.c b/mm/shmem.c
+index a08cedefbfaa..056204b1f76a 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -96,7 +96,7 @@ static struct vfsmount *shm_mnt;
  
--For example, if the attribute key is “user.fubar”, the attribute name
--index is set to 1 and the “fubar” name is recorded on disk.
-+For example, if the attribute key is "user.fubar", the attribute name
-+index is set to 1 and the "fubar" name is recorded on disk.
+ /*
+  * shmem_fallocate communicates with shmem_fault or shmem_writepage via
+- * inode->i_private (with i_mutex making sure that it has only one user at
++ * inode->i_private (with i_rwsem making sure that it has only one user at
+  * a time): we would prefer not to enlarge the shmem inode just for that.
+  */
+ struct shmem_falloc {
+@@ -774,7 +774,7 @@ static int shmem_free_swap(struct address_space *mapping,
+  * Determine (in bytes) how many of the shmem object's pages mapped by the
+  * given offsets are swapped out.
+  *
+- * This is safe to call without i_mutex or the i_pages lock thanks to RCU,
++ * This is safe to call without i_rwsem or the i_pages lock thanks to RCU,
+  * as long as the inode doesn't go away and racy results are not a problem.
+  */
+ unsigned long shmem_partial_swap_usage(struct address_space *mapping,
+@@ -806,7 +806,7 @@ unsigned long shmem_partial_swap_usage(struct address_space *mapping,
+  * Determine (in bytes) how many of the shmem object's pages mapped by the
+  * given vma is swapped out.
+  *
+- * This is safe to call without i_mutex or the i_pages lock thanks to RCU,
++ * This is safe to call without i_rwsem or the i_pages lock thanks to RCU,
+  * as long as the inode doesn't go away and racy results are not a problem.
+  */
+ unsigned long shmem_swap_usage(struct vm_area_struct *vma)
+@@ -1069,7 +1069,7 @@ static int shmem_setattr(struct user_namespace *mnt_userns,
+ 		loff_t oldsize = inode->i_size;
+ 		loff_t newsize = attr->ia_size;
  
- POSIX ACLs
- ~~~~~~~~~~
-diff --git a/Documentation/filesystems/ext4/bigalloc.rst b/Documentation/filesystems/ext4/bigalloc.rst
-index 72075aa608e4..897e1b284c97 100644
---- a/Documentation/filesystems/ext4/bigalloc.rst
-+++ b/Documentation/filesystems/ext4/bigalloc.rst
-@@ -27,8 +27,8 @@ stored in the s\_log\_cluster\_size field in the superblock); from then
- on, the block bitmaps track clusters, not individual blocks. This means
- that block groups can be several gigabytes in size (instead of just
- 128MiB); however, the minimum allocation unit becomes a cluster, not a
--block, even for directories. TaoBao had a patchset to extend the “use
--units of clusters instead of blocks” to the extent tree, though it is
-+block, even for directories. TaoBao had a patchset to extend the "use
-+units of clusters instead of blocks" to the extent tree, though it is
- not clear where those patches went-- they eventually morphed into
--“extent tree v2” but that code has not landed as of May 2015.
-+"extent tree v2" but that code has not landed as of May 2015.
+-		/* protected by i_mutex */
++		/* protected by i_rwsem */
+ 		if ((newsize < oldsize && (info->seals & F_SEAL_SHRINK)) ||
+ 		    (newsize > oldsize && (info->seals & F_SEAL_GROW)))
+ 			return -EPERM;
+@@ -2049,7 +2049,7 @@ static vm_fault_t shmem_fault(struct vm_fault *vmf)
+ 	/*
+ 	 * Trinity finds that probing a hole which tmpfs is punching can
+ 	 * prevent the hole-punch from ever completing: which in turn
+-	 * locks writers out with its hold on i_mutex.  So refrain from
++	 * locks writers out with its hold on i_rwsem.  So refrain from
+ 	 * faulting pages into the hole while it's being punched.  Although
+ 	 * shmem_undo_range() does remove the additions, it may be unable to
+ 	 * keep up, as each new page needs its own unmap_mapping_range() call,
+@@ -2060,7 +2060,7 @@ static vm_fault_t shmem_fault(struct vm_fault *vmf)
+ 	 * we just need to make racing faults a rare case.
+ 	 *
+ 	 * The implementation below would be much simpler if we just used a
+-	 * standard mutex or completion: but we cannot take i_mutex in fault,
++	 * standard mutex or completion: but we cannot take i_rwsem in fault,
+ 	 * and bloating every shmem inode for this unlikely case would be sad.
+ 	 */
+ 	if (unlikely(inode->i_private)) {
+@@ -2518,7 +2518,7 @@ shmem_write_begin(struct file *file, struct address_space *mapping,
+ 	struct shmem_inode_info *info = SHMEM_I(inode);
+ 	pgoff_t index = pos >> PAGE_SHIFT;
  
-diff --git a/Documentation/filesystems/ext4/blockgroup.rst b/Documentation/filesystems/ext4/blockgroup.rst
-index 3da156633339..99aa1f330bd1 100644
---- a/Documentation/filesystems/ext4/blockgroup.rst
-+++ b/Documentation/filesystems/ext4/blockgroup.rst
-@@ -41,8 +41,8 @@ across the disk in case the beginning of the disk gets trashed, though
- not all block groups necessarily host a redundant copy (see following
- paragraph for more details). If the group does not have a redundant
- copy, the block group begins with the data block bitmap. Note also that
--when the filesystem is freshly formatted, mkfs will allocate “reserve
--GDT block” space after the block group descriptors and before the start
-+when the filesystem is freshly formatted, mkfs will allocate "reserve
-+GDT block" space after the block group descriptors and before the start
- of the block bitmaps to allow for future expansion of the filesystem. By
- default, a filesystem is allowed to increase in size by a factor of
- 1024x over the original filesystem size.
-@@ -84,7 +84,7 @@ Without the option META\_BG, for safety concerns, all block group
- descriptors copies are kept in the first block group. Given the default
- 128MiB(2^27 bytes) block group size and 64-byte group descriptors, ext4
- can have at most 2^27/64 = 2^21 block groups. This limits the entire
--filesystem size to 2^21 ∗ 2^27 = 2^48bytes or 256TiB.
-+filesystem size to 2^21 * 2^27 = 2^48bytes or 256TiB.
+-	/* i_mutex is held by caller */
++	/* i_rwsem is held by caller */
+ 	if (unlikely(info->seals & (F_SEAL_GROW |
+ 				   F_SEAL_WRITE | F_SEAL_FUTURE_WRITE))) {
+ 		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE))
+@@ -2618,7 +2618,7 @@ static ssize_t shmem_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
  
- The solution to this problem is to use the metablock group feature
- (META\_BG), which is already in ext3 for all 2.6 releases. With the
-@@ -131,5 +131,5 @@ rely on the kernel to initialize the inode tables in the background.
+ 		/*
+ 		 * We must evaluate after, since reads (unlike writes)
+-		 * are called without i_mutex protection against truncate
++		 * are called without i_rwsem protection against truncate
+ 		 */
+ 		nr = PAGE_SIZE;
+ 		i_size = i_size_read(inode);
+@@ -2688,7 +2688,7 @@ static loff_t shmem_file_llseek(struct file *file, loff_t offset, int whence)
+ 		return -ENXIO;
  
- By not writing zeroes to the bitmaps and inode table, mkfs time is
- reduced considerably. Note the feature flag is RO\_COMPAT\_GDT\_CSUM,
--but the dumpe2fs output prints this as “uninit\_bg”. They are the same
-+but the dumpe2fs output prints this as "uninit\_bg". They are the same
- thing.
-diff --git a/Documentation/filesystems/ext4/blocks.rst b/Documentation/filesystems/ext4/blocks.rst
-index bd722ecd92d6..ca16435d469e 100644
---- a/Documentation/filesystems/ext4/blocks.rst
-+++ b/Documentation/filesystems/ext4/blocks.rst
-@@ -3,7 +3,7 @@
- Blocks
- ------
+ 	inode_lock(inode);
+-	/* We're holding i_mutex so we can access i_size directly */
++	/* We're holding i_rwsem so we can access i_size directly */
+ 	offset = mapping_seek_hole_data(mapping, offset, inode->i_size, whence);
+ 	if (offset >= 0)
+ 		offset = vfs_setpos(file, offset, MAX_LFS_FILESIZE);
+@@ -2717,7 +2717,7 @@ static long shmem_fallocate(struct file *file, int mode, loff_t offset,
+ 		loff_t unmap_end = round_down(offset + len, PAGE_SIZE) - 1;
+ 		DECLARE_WAIT_QUEUE_HEAD_ONSTACK(shmem_falloc_waitq);
  
--ext4 allocates storage space in units of “blocks”. A block is a group of
-+ext4 allocates storage space in units of "blocks". A block is a group of
- sectors between 1KiB and 64KiB, and the number of sectors must be an
- integral power of 2. Blocks are in turn grouped into larger units called
- block groups. Block size is specified at mkfs time and typically is
-diff --git a/Documentation/filesystems/ext4/directory.rst b/Documentation/filesystems/ext4/directory.rst
-index 55f618b37144..317e672cd457 100644
---- a/Documentation/filesystems/ext4/directory.rst
-+++ b/Documentation/filesystems/ext4/directory.rst
-@@ -15,8 +15,8 @@ is desired.
- Linear (Classic) Directories
- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- 
--By default, each directory lists its entries in an “almost-linear”
--array. I write “almost” because it's not a linear array in the memory
-+By default, each directory lists its entries in an "almost-linear"
-+array. I write "almost" because it's not a linear array in the memory
- sense because directory entries are not split across filesystem blocks.
- Therefore, it is more accurate to say that a directory is a series of
- data blocks and that each block contains a linear array of directory
-@@ -26,7 +26,7 @@ takes it all the way to the end of the block. The end of the entire
- directory is of course signified by reaching the end of the file. Unused
- directory entries are signified by inode = 0. By default the filesystem
- uses ``struct ext4_dir_entry_2`` for directory entries unless the
--“filetype” feature flag is not set, in which case it uses
-+"filetype" feature flag is not set, in which case it uses
- ``struct ext4_dir_entry``.
- 
- The original directory entry format is ``struct ext4_dir_entry``, which
-@@ -197,7 +197,7 @@ balanced tree keyed off a hash of the directory entry name. If the
- EXT4\_INDEX\_FL (0x1000) flag is set in the inode, this directory uses a
- hashed btree (htree) to organize and find directory entries. For
- backwards read-only compatibility with ext2, this tree is actually
--hidden inside the directory file, masquerading as “empty” directory data
-+hidden inside the directory file, masquerading as "empty" directory data
- blocks! It was stated previously that the end of the linear directory
- entry table was signified with an entry pointing to inode 0; this is
- (ab)used to fool the old linear-scan algorithm into thinking that the
-@@ -263,7 +263,7 @@ of a data block:
-    * - 0x8
-      - char
-      - dot.name[4]
--     - “.\\0\\0\\0”
-+     - ".\\0\\0\\0"
-    * - 0xC
-      - \_\_le32
-      - dotdot.inode
-@@ -284,7 +284,7 @@ of a data block:
-    * - 0x14
-      - char
-      - dotdot\_name[4]
--     - “..\\0\\0”
-+     - "..\\0\\0"
-    * - 0x18
-      - \_\_le32
-      - struct dx\_root\_info.reserved\_zero
-@@ -372,11 +372,11 @@ also the full length of a data block:
-    * - 0x6
-      - u8
-      - name\_len
--     - Zero. There is no name for this “unused” directory entry.
-+     - Zero. There is no name for this "unused" directory entry.
-    * - 0x7
-      - u8
-      - file\_type
--     - Zero. There is no file type for this “unused” directory entry.
-+     - Zero. There is no file type for this "unused" directory entry.
-    * - 0x8
-      - \_\_le16
-      - limit
-diff --git a/Documentation/filesystems/ext4/eainode.rst b/Documentation/filesystems/ext4/eainode.rst
-index ecc0d01a0a72..71e64aadaa89 100644
---- a/Documentation/filesystems/ext4/eainode.rst
-+++ b/Documentation/filesystems/ext4/eainode.rst
-@@ -6,7 +6,7 @@ Large Extended Attribute Values
- To enable ext4 to store extended attribute values that do not fit in the
- inode or in the single extended attribute block attached to an inode,
- the EA\_INODE feature allows us to store the value in the data blocks of
--a regular file inode. This “EA inode” is linked only from the extended
-+a regular file inode. This "EA inode" is linked only from the extended
- attribute name index and must not appear in a directory entry. The
- inode's i\_atime field is used to store a checksum of the xattr value;
- and i\_ctime/i\_version store a 64-bit reference count, which enables
-diff --git a/Documentation/filesystems/ext4/inlinedata.rst b/Documentation/filesystems/ext4/inlinedata.rst
-index d1075178ce0b..8efa8a1cf273 100644
---- a/Documentation/filesystems/ext4/inlinedata.rst
-+++ b/Documentation/filesystems/ext4/inlinedata.rst
-@@ -9,7 +9,7 @@ data is so tiny that it readily fits inside the inode, which
- file is smaller than 60 bytes, then the data are stored inline in
- ``inode.i_block``. If the rest of the file would fit inside the extended
- attribute space, then it might be found as an extended attribute
--“system.data” within the inode body (“ibody EA”). This of course
-+"system.data" within the inode body ("ibody EA"). This of course
- constrains the amount of extended attributes one can attach to an inode.
- If the data size increases beyond i\_block + ibody EA, a regular block
- is allocated and the contents moved to that block.
-@@ -20,14 +20,14 @@ inline data, one ought to be able to store 160 bytes of data in a
- that, the limit was 156 bytes due to inefficient use of inode space.
- 
- The inline data feature requires the presence of an extended attribute
--for “system.data”, even if the attribute value is zero length.
-+for "system.data", even if the attribute value is zero length.
- 
- Inline Directories
- ~~~~~~~~~~~~~~~~~~
- 
- The first four bytes of i\_block are the inode number of the parent
- directory. Following that is a 56-byte space for an array of directory
--entries; see ``struct ext4_dir_entry``. If there is a “system.data”
-+entries; see ``struct ext4_dir_entry``. If there is a "system.data"
- attribute in the inode body, the EA value is an array of
- ``struct ext4_dir_entry`` as well. Note that for inline directories, the
- i\_block and EA space are treated as separate dirent blocks; directory
-diff --git a/Documentation/filesystems/ext4/inodes.rst b/Documentation/filesystems/ext4/inodes.rst
-index a65baffb4ebf..cd3bbc3c1e33 100644
---- a/Documentation/filesystems/ext4/inodes.rst
-+++ b/Documentation/filesystems/ext4/inodes.rst
-@@ -90,7 +90,7 @@ The inode table entry is laid out in ``struct ext4_inode``.
-    * - 0x1C
-      - \_\_le32
-      - i\_blocks\_lo
--     - Lower 32-bits of “block” count. If the huge\_file feature flag is not
-+     - Lower 32-bits of "block" count. If the huge\_file feature flag is not
-        set on the filesystem, the file consumes ``i_blocks_lo`` 512-byte blocks
-        on disk. If huge\_file is set and EXT4\_HUGE\_FILE\_FL is NOT set in
-        ``inode.i_flags``, then the file consumes ``i_blocks_lo + (i_blocks_hi
-@@ -109,7 +109,7 @@ The inode table entry is laid out in ``struct ext4_inode``.
-    * - 0x28
-      - 60 bytes
-      - i\_block[EXT4\_N\_BLOCKS=15]
--     - Block map or extent tree. See the section “The Contents of inode.i\_block”.
-+     - Block map or extent tree. See the section "The Contents of inode.i\_block".
-    * - 0x64
-      - \_\_le32
-      - i\_generation
-@@ -507,7 +507,7 @@ orphaned inode, or zero if there are no more orphans.
- If the inode structure size ``sb->s_inode_size`` is larger than 128
- bytes and the ``i_inode_extra`` field is large enough to encompass the
- respective ``i_[cma]time_extra`` field, the ctime, atime, and mtime
--inode fields are widened to 64 bits. Within this “extra” 32-bit field,
-+inode fields are widened to 64 bits. Within this "extra" 32-bit field,
- the lower two bits are used to extend the 32-bit seconds field to be 34
- bit wide; the upper 30 bits are used to provide nanosecond timestamp
- accuracy. Therefore, timestamps should not overflow until May 2446.
-diff --git a/Documentation/filesystems/ext4/journal.rst b/Documentation/filesystems/ext4/journal.rst
-index cdbfec473167..9e12d5366ad6 100644
---- a/Documentation/filesystems/ext4/journal.rst
-+++ b/Documentation/filesystems/ext4/journal.rst
-@@ -6,7 +6,7 @@ Journal (jbd2)
- Introduced in ext3, the ext4 filesystem employs a journal to protect the
- filesystem against corruption in the case of a system crash. A small
- continuous region of disk (default 128MiB) is reserved inside the
--filesystem as a place to land “important” data writes on-disk as quickly
-+filesystem as a place to land "important" data writes on-disk as quickly
- as possible. Once the important data transaction is fully written to the
- disk and flushed from the disk write cache, a record of the data being
- committed is also written to the journal. At some later point in time,
-@@ -507,7 +507,7 @@ Data Block
- In general, the data blocks being written to disk through the journal
- are written verbatim into the journal file after the descriptor block.
- However, if the first four bytes of the block match the jbd2 magic
--number then those four bytes are replaced with zeroes and the “escaped”
-+number then those four bytes are replaced with zeroes and the "escaped"
- flag is set in the descriptor block tag.
- 
- Revocation Block
-@@ -520,8 +520,8 @@ block is freed and re-allocated as a file data block; in this case, a
- journal replay after the file block was written to disk will cause
- corruption.
- 
--**NOTE**: This mechanism is NOT used to express “this journal block is
--superseded by this other journal block”, as the author (djwong)
-+**NOTE**: This mechanism is NOT used to express "this journal block is
-+superseded by this other journal block", as the author (djwong)
- mistakenly thought. Any block being added to a transaction will cause
- the removal of all existing revocation records for that block.
- 
-diff --git a/Documentation/filesystems/ext4/mmp.rst b/Documentation/filesystems/ext4/mmp.rst
-index 25660981d93c..20631883a32b 100644
---- a/Documentation/filesystems/ext4/mmp.rst
-+++ b/Documentation/filesystems/ext4/mmp.rst
-@@ -42,7 +42,7 @@ The MMP structure (``struct mmp_struct``) is as follows:
-    * - 0x0
-      - \_\_le32
-      - mmp\_magic
--     - Magic number for MMP, 0x004D4D50 (“MMP”).
-+     - Magic number for MMP, 0x004D4D50 ("MMP").
-    * - 0x4
-      - \_\_le32
-      - mmp\_seq
-diff --git a/Documentation/filesystems/ext4/special_inodes.rst b/Documentation/filesystems/ext4/special_inodes.rst
-index 9061aabba827..407537be8fe5 100644
---- a/Documentation/filesystems/ext4/special_inodes.rst
-+++ b/Documentation/filesystems/ext4/special_inodes.rst
-@@ -26,11 +26,11 @@ ext4 reserves some inode for special features, as follows:
-    * - 6
-      - Undelete directory.
-    * - 7
--     - Reserved group descriptors inode. (“resize inode”)
-+     - Reserved group descriptors inode. ("resize inode")
-    * - 8
-      - Journal inode.
-    * - 9
--     - The “exclude” inode, for snapshots(?)
-+     - The "exclude" inode, for snapshots(?)
-    * - 10
-      - Replica inode, used for some non-upstream feature?
-    * - 11
-diff --git a/Documentation/filesystems/ext4/super.rst b/Documentation/filesystems/ext4/super.rst
-index 2eb1ab20498d..8c52ccc6dd04 100644
---- a/Documentation/filesystems/ext4/super.rst
-+++ b/Documentation/filesystems/ext4/super.rst
-@@ -572,7 +572,7 @@ following:
-    * - 0x1
-      - Directory preallocation (COMPAT\_DIR\_PREALLOC).
-    * - 0x2
--     - “imagic inodes”. Not clear from the code what this does
-+     - "imagic inodes". Not clear from the code what this does
-        (COMPAT\_IMAGIC\_INODES).
-    * - 0x4
-      - Has a journal (COMPAT\_HAS\_JOURNAL).
-@@ -584,12 +584,12 @@ following:
-    * - 0x20
-      - Has directory indices (COMPAT\_DIR\_INDEX).
-    * - 0x40
--     - “Lazy BG”. Not in Linux kernel, seems to have been for uninitialized
-+     - "Lazy BG". Not in Linux kernel, seems to have been for uninitialized
-        block groups? (COMPAT\_LAZY\_BG)
-    * - 0x80
--     - “Exclude inode”. Not used. (COMPAT\_EXCLUDE\_INODE).
-+     - "Exclude inode". Not used. (COMPAT\_EXCLUDE\_INODE).
-    * - 0x100
--     - “Exclude bitmap”. Seems to be used to indicate the presence of
-+     - "Exclude bitmap". Seems to be used to indicate the presence of
-        snapshot-related exclude bitmaps? Not defined in kernel or used in
-        e2fsprogs (COMPAT\_EXCLUDE\_BITMAP).
-    * - 0x200
-@@ -695,7 +695,7 @@ the following:
-    * - 0x100
-      - `Quota <Quota>`__ (RO\_COMPAT\_QUOTA).
-    * - 0x200
--     - This filesystem supports “bigalloc”, which means that file extents are
-+     - This filesystem supports "bigalloc", which means that file extents are
-        tracked in units of clusters (of blocks) instead of blocks
-        (RO\_COMPAT\_BIGALLOC).
-    * - 0x400
+-		/* protected by i_mutex */
++		/* protected by i_rwsem */
+ 		if (info->seals & (F_SEAL_WRITE | F_SEAL_FUTURE_WRITE)) {
+ 			error = -EPERM;
+ 			goto out;
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 95af244b112a..57a618c4a0d6 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -415,7 +415,7 @@ EXPORT_SYMBOL(truncate_inode_pages_range);
+  * @mapping: mapping to truncate
+  * @lstart: offset from which to truncate
+  *
+- * Called under (and serialised by) inode->i_mutex.
++ * Called under (and serialised by) inode->i_rwsem.
+  *
+  * Note: When this function returns, there can be a page in the process of
+  * deletion (inside __delete_from_page_cache()) in the specified range.  Thus
+@@ -432,7 +432,7 @@ EXPORT_SYMBOL(truncate_inode_pages);
+  * truncate_inode_pages_final - truncate *all* pages before inode dies
+  * @mapping: mapping to truncate
+  *
+- * Called under (and serialized by) inode->i_mutex.
++ * Called under (and serialized by) inode->i_rwsem.
+  *
+  * Filesystems have to use this in the .evict_inode path to inform the
+  * VM that this is the final truncate and the inode is going away.
+@@ -753,7 +753,7 @@ EXPORT_SYMBOL(truncate_pagecache);
+  * setattr function when ATTR_SIZE is passed in.
+  *
+  * Must be called with a lock serializing truncates and writes (generally
+- * i_mutex but e.g. xfs uses a different lock) and before all filesystem
++ * i_rwsem but e.g. xfs uses a different lock) and before all filesystem
+  * specific block truncation has been performed.
+  */
+ void truncate_setsize(struct inode *inode, loff_t newsize)
+@@ -782,7 +782,7 @@ EXPORT_SYMBOL(truncate_setsize);
+  *
+  * The function must be called after i_size is updated so that page fault
+  * coming after we unlock the page will already see the new i_size.
+- * The function must be called while we still hold i_mutex - this not only
++ * The function must be called while we still hold i_rwsem - this not only
+  * makes sure i_size is stable but also that userspace cannot observe new
+  * i_size value before we are prepared to store mmap writes at new inode size.
+  */
 -- 
-2.30.2
+2.26.2
 
