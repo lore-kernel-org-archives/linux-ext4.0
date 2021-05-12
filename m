@@ -2,29 +2,29 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-13.9 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 881C6C46461
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BBBAC2B9FD
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6AF2861040
-	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 32F18613E6
+	for <linux-ext4@archiver.kernel.org>; Wed, 12 May 2021 13:46:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231235AbhELNrp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 May 2021 09:47:45 -0400
-Received: from mx2.suse.de ([195.135.220.15]:41460 "EHLO mx2.suse.de"
+        id S231453AbhELNry (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 May 2021 09:47:54 -0400
+Received: from mx2.suse.de ([195.135.220.15]:41750 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230494AbhELNrm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 May 2021 09:47:42 -0400
+        id S231204AbhELNrp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 May 2021 09:47:45 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 56D65B1AB;
+        by mx2.suse.de (Postfix) with ESMTP id D8C44B1B9;
         Wed, 12 May 2021 13:46:32 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id D98701E0A80; Wed, 12 May 2021 15:46:31 +0200 (CEST)
+        id F126A1E61F0; Wed, 12 May 2021 15:46:31 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     Christoph Hellwig <hch@infradead.org>,
@@ -40,9 +40,9 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
         Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
         Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] documentation: Sync file_operations members with reality
-Date:   Wed, 12 May 2021 15:46:10 +0200
-Message-Id: <20210512134631.4053-2-jack@suse.cz>
+Subject: [PATCH 07/11] zonefs: Convert to using invalidate_lock
+Date:   Wed, 12 May 2021 15:46:15 +0200
+Message-Id: <20210512134631.4053-7-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210512101639.22278-1-jack@suse.cz>
 References: <20210512101639.22278-1-jack@suse.cz>
@@ -52,54 +52,107 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Sync listing of struct file_operations members with the real one in
-fs.h.
+Use invalidate_lock instead of zonefs' private i_mmap_sem. The intended
+purpose is exactly the same.
 
+CC: Damien Le Moal <damien.lemoal@wdc.com>
+CC: Johannes Thumshirn <jth@kernel.org>
+CC: <linux-fsdevel@vger.kernel.org>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- Documentation/filesystems/locking.rst | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ fs/zonefs/super.c  | 23 +++++------------------
+ fs/zonefs/zonefs.h |  7 +++----
+ 2 files changed, 8 insertions(+), 22 deletions(-)
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 1e894480115b..4ed2b22bd0a8 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -506,6 +506,7 @@ prototypes::
- 	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
- 	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
- 	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
-+	int (*iopoll) (struct kiocb *kiocb, bool spin);
- 	int (*iterate) (struct file *, struct dir_context *);
- 	int (*iterate_shared) (struct file *, struct dir_context *);
- 	__poll_t (*poll) (struct file *, struct poll_table_struct *);
-@@ -518,12 +519,6 @@ prototypes::
- 	int (*fsync) (struct file *, loff_t start, loff_t end, int datasync);
- 	int (*fasync) (int, struct file *, int);
- 	int (*lock) (struct file *, int, struct file_lock *);
--	ssize_t (*readv) (struct file *, const struct iovec *, unsigned long,
--			loff_t *);
--	ssize_t (*writev) (struct file *, const struct iovec *, unsigned long,
--			loff_t *);
--	ssize_t (*sendfile) (struct file *, loff_t *, size_t, read_actor_t,
--			void __user *);
- 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t,
- 			loff_t *, int);
- 	unsigned long (*get_unmapped_area)(struct file *, unsigned long,
-@@ -536,6 +531,14 @@ prototypes::
- 			size_t, unsigned int);
- 	int (*setlease)(struct file *, long, struct file_lock **, void **);
- 	long (*fallocate)(struct file *, int, loff_t, loff_t);
-+	void (*show_fdinfo)(struct seq_file *m, struct file *f);
-+	unsigned (*mmap_capabilities)(struct file *);
-+	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
-+			loff_t, size_t, unsigned int);
-+	loff_t (*remap_file_range)(struct file *file_in, loff_t pos_in,
-+			struct file *file_out, loff_t pos_out,
-+			loff_t len, unsigned int remap_flags);
-+	int (*fadvise)(struct file *, loff_t, loff_t, int);
+diff --git a/fs/zonefs/super.c b/fs/zonefs/super.c
+index cd145d318b17..da2e95d98677 100644
+--- a/fs/zonefs/super.c
++++ b/fs/zonefs/super.c
+@@ -462,7 +462,7 @@ static int zonefs_file_truncate(struct inode *inode, loff_t isize)
+ 	inode_dio_wait(inode);
  
- locking rules:
- 	All may block.
+ 	/* Serialize against page faults */
+-	down_write(&zi->i_mmap_sem);
++	down_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	/* Serialize against zonefs_iomap_begin() */
+ 	mutex_lock(&zi->i_truncate_mutex);
+@@ -500,7 +500,7 @@ static int zonefs_file_truncate(struct inode *inode, loff_t isize)
+ 
+ unlock:
+ 	mutex_unlock(&zi->i_truncate_mutex);
+-	up_write(&zi->i_mmap_sem);
++	up_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	return ret;
+ }
+@@ -575,18 +575,6 @@ static int zonefs_file_fsync(struct file *file, loff_t start, loff_t end,
+ 	return ret;
+ }
+ 
+-static vm_fault_t zonefs_filemap_fault(struct vm_fault *vmf)
+-{
+-	struct zonefs_inode_info *zi = ZONEFS_I(file_inode(vmf->vma->vm_file));
+-	vm_fault_t ret;
+-
+-	down_read(&zi->i_mmap_sem);
+-	ret = filemap_fault(vmf);
+-	up_read(&zi->i_mmap_sem);
+-
+-	return ret;
+-}
+-
+ static vm_fault_t zonefs_filemap_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+@@ -607,16 +595,16 @@ static vm_fault_t zonefs_filemap_page_mkwrite(struct vm_fault *vmf)
+ 	file_update_time(vmf->vma->vm_file);
+ 
+ 	/* Serialize against truncates */
+-	down_read(&zi->i_mmap_sem);
++	down_read(&inode->i_mapping->invalidate_lock);
+ 	ret = iomap_page_mkwrite(vmf, &zonefs_iomap_ops);
+-	up_read(&zi->i_mmap_sem);
++	up_read(&inode->i_mapping->invalidate_lock);
+ 
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
+ 
+ static const struct vm_operations_struct zonefs_file_vm_ops = {
+-	.fault		= zonefs_filemap_fault,
++	.fault		= filemap_fault,
+ 	.map_pages	= filemap_map_pages,
+ 	.page_mkwrite	= zonefs_filemap_page_mkwrite,
+ };
+@@ -1158,7 +1146,6 @@ static struct inode *zonefs_alloc_inode(struct super_block *sb)
+ 
+ 	inode_init_once(&zi->i_vnode);
+ 	mutex_init(&zi->i_truncate_mutex);
+-	init_rwsem(&zi->i_mmap_sem);
+ 	zi->i_wr_refcnt = 0;
+ 
+ 	return &zi->i_vnode;
+diff --git a/fs/zonefs/zonefs.h b/fs/zonefs/zonefs.h
+index 51141907097c..7b147907c328 100644
+--- a/fs/zonefs/zonefs.h
++++ b/fs/zonefs/zonefs.h
+@@ -70,12 +70,11 @@ struct zonefs_inode_info {
+ 	 * and changes to the inode private data, and in particular changes to
+ 	 * a sequential file size on completion of direct IO writes.
+ 	 * Serialization of mmap read IOs with truncate and syscall IO
+-	 * operations is done with i_mmap_sem in addition to i_truncate_mutex.
+-	 * Only zonefs_seq_file_truncate() takes both lock (i_mmap_sem first,
+-	 * i_truncate_mutex second).
++	 * operations is done with invalidate_lock in addition to
++	 * i_truncate_mutex.  Only zonefs_seq_file_truncate() takes both lock
++	 * (invalidate_lock first, i_truncate_mutex second).
+ 	 */
+ 	struct mutex		i_truncate_mutex;
+-	struct rw_semaphore	i_mmap_sem;
+ 
+ 	/* guarded by i_truncate_mutex */
+ 	unsigned int		i_wr_refcnt;
 -- 
 2.26.2
 
