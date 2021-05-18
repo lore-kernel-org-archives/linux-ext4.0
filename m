@@ -2,222 +2,159 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57E4AC43461
-	for <linux-ext4@archiver.kernel.org>; Tue, 18 May 2021 15:13:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3329C43470
+	for <linux-ext4@archiver.kernel.org>; Tue, 18 May 2021 22:36:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 29E78610FA
-	for <linux-ext4@archiver.kernel.org>; Tue, 18 May 2021 15:13:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 87C0161377
+	for <linux-ext4@archiver.kernel.org>; Tue, 18 May 2021 22:36:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343506AbhERPOv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 18 May 2021 11:14:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37262 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244531AbhERPOu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 May 2021 11:14:50 -0400
-Received: from mail-ua1-x931.google.com (mail-ua1-x931.google.com [IPv6:2607:f8b0:4864:20::931])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D3720C061756
-        for <linux-ext4@vger.kernel.org>; Tue, 18 May 2021 08:13:31 -0700 (PDT)
-Received: by mail-ua1-x931.google.com with SMTP id d30so3329902uae.13
-        for <linux-ext4@vger.kernel.org>; Tue, 18 May 2021 08:13:31 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=8XCNPu2m9b0eZ+5yFiGFpPcrrlvxtaV2zPV9ChH3c/4=;
-        b=vVD9Xhu363k7pnZT1PK2C0x3R85gaqiR0yuHtPiM/4EVj2LGkOwhf6FrddGhBmcg4f
-         GjGGDFuJFxU82qZ8gllCHAwDvAzMDl5vn99G1Z6hS5pg058K9RJiGWIXW5PvmDKrfmCJ
-         dyaZrcNjtL/wHh4GT/wadzatKNtYi/ntLUXVmMiLoby8k4IOmjJ1hTKv6tenfrwMzfHP
-         pjDlP1t83EgioPEK9yFnpDNYBl9Ipf12Gf9s3XR/rY8cIlsNL89wEYMUr3QAO0Nq7llZ
-         4Fso0DoOC0DxQyruOjIkBgDBX0diVpKYXkTGzJne/Dad4j0LgyzEOOWPA9yTIBktTQiQ
-         3CzA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=8XCNPu2m9b0eZ+5yFiGFpPcrrlvxtaV2zPV9ChH3c/4=;
-        b=lrs7BL2mjqA7bQWjzEwG3r5Bsgj60G9pMAM8gzP1ysk8sfEcRE+L2x6yJcALT0H+X7
-         l/9ejrdCsOjYH9NY/g+Y7V1xkSInLjZGg+ZbKlPZnvRzf+6XSvPAQP3U6BbQO0XI7RS+
-         0QGep4m4xg7coP+lL53+Q67ICX8lj/f6zHQMsPdsQ1QtjPu0JvsFHboHz83kYgTl4OcS
-         iaU5Jx3WGF4fIxnTw1C+R4VOml8/CmxoBDW6a32rT5NjeFmJqwNtjoeaZGFYE2yjCDuH
-         5fEx6Ew6epyafGyr0/3OK7o/v/vX+QWhCfb9Hu6QNgpc2x5Q1qTz2KM22b4ry7b4/See
-         LW9Q==
-X-Gm-Message-State: AOAM533uuKYvEfnCE4OgQp7+a4HkNCWOEEjoVtX5EF5GI7L4dmFnwunL
-        Ys1mj6d7N90BZSm1Hy+uHGi36fxkx6DMTQ==
-X-Google-Smtp-Source: ABdhPJwkyr0g84U2OkkxMoehnUpvIX9I6X6D2piFZUZGk3vyHBY++Wj7vV983nEIgYlpwDV4+pG3bQ==
-X-Received: by 2002:ab0:3256:: with SMTP id r22mr6886699uan.47.1621350810667;
-        Tue, 18 May 2021 08:13:30 -0700 (PDT)
-Received: from leah-cloudtop2.c.googlers.com.com (241.36.196.104.bc.googleusercontent.com. [104.196.36.241])
-        by smtp.googlemail.com with ESMTPSA id o63sm2765340vsc.22.2021.05.18.08.13.30
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 18 May 2021 08:13:30 -0700 (PDT)
-From:   Leah Rumancik <leah.rumancik@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Leah Rumancik <leah.rumancik@gmail.com>
-Subject: [PATCH v5 2/3] ext4: add ioctl EXT4_IOC_CHECKPOINT
-Date:   Tue, 18 May 2021 15:13:26 +0000
-Message-Id: <20210518151327.130198-2-leah.rumancik@gmail.com>
-X-Mailer: git-send-email 2.31.1.751.gd2f1c929bd-goog
-In-Reply-To: <20210518151327.130198-1-leah.rumancik@gmail.com>
-References: <20210518151327.130198-1-leah.rumancik@gmail.com>
+        id S1352769AbhERWiD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 18 May 2021 18:38:03 -0400
+Received: from mail110.syd.optusnet.com.au ([211.29.132.97]:51453 "EHLO
+        mail110.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S230251AbhERWiC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 May 2021 18:38:02 -0400
+Received: from dread.disaster.area (pa49-195-118-180.pa.nsw.optusnet.com.au [49.195.118.180])
+        by mail110.syd.optusnet.com.au (Postfix) with ESMTPS id 363BA108858;
+        Wed, 19 May 2021 08:36:38 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92.3)
+        (envelope-from <david@fromorbit.com>)
+        id 1lj8KL-002Ymb-Nc; Wed, 19 May 2021 08:36:37 +1000
+Date:   Wed, 19 May 2021 08:36:37 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        ceph-devel@vger.kernel.org, Chao Yu <yuchao0@huawei.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Johannes Thumshirn <jth@kernel.org>,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>,
+        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
+        Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCH 03/11] mm: Protect operations adding pages to page cache
+ with invalidate_lock
+Message-ID: <20210518223637.GJ2893@dread.disaster.area>
+References: <20210512101639.22278-1-jack@suse.cz>
+ <20210512134631.4053-3-jack@suse.cz>
+ <20210512152345.GE8606@magnolia>
+ <20210513174459.GH2734@quack2.suse.cz>
+ <20210513185252.GB9675@magnolia>
+ <20210513231945.GD2893@dread.disaster.area>
+ <20210514161730.GL9675@magnolia>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210514161730.GL9675@magnolia>
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.3 cv=YKPhNiOx c=1 sm=1 tr=0
+        a=xcwBwyABtj18PbVNKPPJDQ==:117 a=xcwBwyABtj18PbVNKPPJDQ==:17
+        a=kj9zAlcOel0A:10 a=5FLXtPjwQuUA:10 a=7-415B0cAAAA:8
+        a=cLZU_rh0lbdFaG61GT8A:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-ioctl EXT4_IOC_CHECKPOINT checkpoints and flushes the journal. This
-includes forcing all the transactions to the log, checkpointing the
-transactions, and flushing the log to disk. This ioctl takes u32 "flags"
-as an argument. Three flags are supported. EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN
-can be used to verify input to the ioctl. It returns error if there is any
-invalid input, otherwise it returns success without performing
-any checkpointing. The other two flags, EXT4_IOC_CHECKPOINT_FLAG_DISCARD
-and EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT, can be used to issue requests to
-discard or zeroout the journal logs blocks, respectively. At this
-point, EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT is primarily added to enable
-testing of this codepath on devices that don't support discard.
-EXT4_IOC_CHECKPOINT_FLAG_DISCARD and EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT
-cannot both be set.
+On Fri, May 14, 2021 at 09:17:30AM -0700, Darrick J. Wong wrote:
+> On Fri, May 14, 2021 at 09:19:45AM +1000, Dave Chinner wrote:
+> > On Thu, May 13, 2021 at 11:52:52AM -0700, Darrick J. Wong wrote:
+> > > On Thu, May 13, 2021 at 07:44:59PM +0200, Jan Kara wrote:
+> > > > On Wed 12-05-21 08:23:45, Darrick J. Wong wrote:
+> > > > > On Wed, May 12, 2021 at 03:46:11PM +0200, Jan Kara wrote:
+> > > > > > +->fallocate implementation must be really careful to maintain page cache
+> > > > > > +consistency when punching holes or performing other operations that invalidate
+> > > > > > +page cache contents. Usually the filesystem needs to call
+> > > > > > +truncate_inode_pages_range() to invalidate relevant range of the page cache.
+> > > > > > +However the filesystem usually also needs to update its internal (and on disk)
+> > > > > > +view of file offset -> disk block mapping. Until this update is finished, the
+> > > > > > +filesystem needs to block page faults and reads from reloading now-stale page
+> > > > > > +cache contents from the disk. VFS provides mapping->invalidate_lock for this
+> > > > > > +and acquires it in shared mode in paths loading pages from disk
+> > > > > > +(filemap_fault(), filemap_read(), readahead paths). The filesystem is
+> > > > > > +responsible for taking this lock in its fallocate implementation and generally
+> > > > > > +whenever the page cache contents needs to be invalidated because a block is
+> > > > > > +moving from under a page.
+> > > > > > +
+> > > > > > +->copy_file_range and ->remap_file_range implementations need to serialize
+> > > > > > +against modifications of file data while the operation is running. For blocking
+> > > > > > +changes through write(2) and similar operations inode->i_rwsem can be used. For
+> > > > > > +blocking changes through memory mapping, the filesystem can use
+> > > > > > +mapping->invalidate_lock provided it also acquires it in its ->page_mkwrite
+> > > > > > +implementation.
+> > > > > 
+> > > > > Question: What is the locking order when acquiring the invalidate_lock
+> > > > > of two different files?  Is it the same as i_rwsem (increasing order of
+> > > > > the struct inode pointer) or is it the same as the XFS MMAPLOCK that is
+> > > > > being hoisted here (increasing order of i_ino)?
+> > > > > 
+> > > > > The reason I ask is that remap_file_range has to do that, but I don't
+> > > > > see any conversions for the xfs_lock_two_inodes(..., MMAPLOCK_EXCL)
+> > > > > calls in xfs_ilock2_io_mmap in this series.
+> > > > 
+> > > > Good question. Technically, I don't think there's real need to establish a
+> > > > single ordering because locks among different filesystems are never going
+> > > > to be acquired together (effectively each lock type is local per sb and we
+> > > > are free to define an ordering for each lock type differently). But to
+> > > > maintain some sanity I guess having the same locking order for doublelock
+> > > > of i_rwsem and invalidate_lock makes sense. Is there a reason why XFS uses
+> > > > by-ino ordering? So that we don't have to consider two different orders in
+> > > > xfs_lock_two_inodes()...
+> > > 
+> > > I imagine Dave will chime in on this, but I suspect the reason is
+> > > hysterical raisins^Wreasons.
+> > 
+> > It's the locking rules that XFS has used pretty much forever.
+> > Locking by inode number always guarantees the same locking order of
+> > two inodes in the same filesystem, regardless of the specific
+> > in-memory instances of the two inodes.
+> > 
+> > e.g. if we lock based on the inode structure address, in one
+> > instancex, we could get A -> B, then B gets recycled and
+> > reallocated, then we get B -> A as the locking order for the same
+> > two inodes.
+> > 
+> > That, IMNSHO, is utterly crazy because with non-deterministic inode
+> > lock ordered like this you can't make consistent locking rules for
+> > locking the physical inode cluster buffers underlying the inodes in
+> > the situation where they also need to be locked.
+> 
+> <nod> That's protected by the ILOCK, correct?
+> 
+> > We've been down this path before more than a decade ago when the
+> > powers that be decreed that inode locking order is to be "by
+> > structure address" rather than inode number, because "inode number
+> > is not unique across multiple superblocks".
+> > 
+> > I'm not sure that there is anywhere that locks multiple inodes
+> > across different superblocks, but here we are again....
+> 
+> Hm.  Are there situations where one would want to lock multiple
+> /mappings/ across different superblocks?  The remapping code doesn't
+> allow cross-super operations, so ... pipes and splice, maybe?  I don't
+> remember that code well enough to say for sure.
 
-Systems that wish to achieve content deletion SLO can set up a daemon
-that calls this ioctl at a regular interval such that it matches with the
-SLO requirement. Thus, with this patch, the ext4_dir_entry2 wipeout
-patch[1], and the Ext4 "-o discard" mount option set, Ext4 can now
-guarantee that all file contents, file metatdata, and filenames will not
-be accessible through the filesystem and will have had discard or
-zeroout requests issued for corresponding device blocks.
+Hmmmm. Doing read IO into a buffer that is mmap()d from another
+file, and we take a page fault on it inside the read IO path? We're
+copying from a page in one mapping and taking a fault in another
+mapping and hence taking the invalidate_lock to populate the page
+cache for the second mapping...
 
-The __jbd2_journal_erase function could also be used to discard or
-zero-fill the journal during journal load after recovery. This would
-provide a potential solution to a journal replay bug reported earlier this
-year[2]. After a successful journal recovery, e2fsck can call this ioctl to
-discard the journal as well.
+I haven't looked closely enough at where the invalidate_lock is held
+in the read path to determine if this is an issue, but if it is then
+it is also a potential deadlock scenario...
 
-[1] https://lore.kernel.org/linux-ext4/YIHknqxngB1sUdie@mit.edu/
-[2] https://lore.kernel.org/linux-ext4/YDZoaacIYStFQT8g@mit.edu/
+Cheers,
 
-Signed-off-by: Leah Rumancik <leah.rumancik@gmail.com>
-
-Changes in v4:
-- update commit description
-- update error codes
-- update code formatting
-- add flag EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN
-- add flag EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT
-
-Changes in v5:
-- update error checking
-- make DRY_RUN include checks on input
-- added info about DRY_RUN in commit
-- added explicit conversion from ioctl flags to jbd2 flags
----
- fs/ext4/ext4.h  |  9 +++++++++
- fs/ext4/ioctl.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 54 insertions(+)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a29660db86ac..5aa203534997 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -729,6 +729,7 @@ enum {
- #define EXT4_IOC_CLEAR_ES_CACHE		_IO('f', 40)
- #define EXT4_IOC_GETSTATE		_IOW('f', 41, __u32)
- #define EXT4_IOC_GET_ES_CACHE		_IOWR('f', 42, struct fiemap)
-+#define EXT4_IOC_CHECKPOINT		_IOW('f', 43, __u32)
- 
- #define EXT4_IOC_SHUTDOWN _IOR ('X', 125, __u32)
- 
-@@ -750,6 +751,14 @@ enum {
- #define EXT4_STATE_FLAG_NEWENTRY	0x00000004
- #define EXT4_STATE_FLAG_DA_ALLOC_CLOSE	0x00000008
- 
-+/* flags for ioctl EXT4_IOC_CHECKPOINT */
-+#define EXT4_IOC_CHECKPOINT_FLAG_DISCARD	0x1
-+#define EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT	0x2
-+#define EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN	0x4
-+#define EXT4_IOC_CHECKPOINT_FLAG_VALID		(EXT4_IOC_CHECKPOINT_FLAG_DISCARD | \
-+						EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT | \
-+						EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN)
-+
- #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
- /*
-  * ioctl commands in 32 bit emulation
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index d5512e17a13f..d25eaec1afdc 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -818,6 +818,47 @@ static int ext4_ioctl_get_es_cache(struct file *filp, unsigned long arg)
- 	return error;
- }
- 
-+static int ext4_ioctl_checkpoint(struct file *filp, unsigned long arg)
-+{
-+	int err = 0;
-+	__u32 flags = 0;
-+	unsigned int flush_flags = 0;
-+	struct super_block *sb = file_inode(filp)->i_sb;
-+
-+	if (copy_from_user(&flags, (__u32 __user *)arg,
-+				sizeof(__u32)))
-+		return -EFAULT;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	/* check for invalid bits set */
-+	if ((flags & ~EXT4_IOC_CHECKPOINT_FLAG_VALID) ||
-+				((flags & JBD2_JOURNAL_FLUSH_DISCARD) &&
-+				(flags & JBD2_JOURNAL_FLUSH_ZEROOUT)))
-+		return -EINVAL;
-+
-+	if (!EXT4_SB(sb)->s_journal)
-+		return -ENODEV;
-+
-+	if (flags & EXT4_IOC_CHECKPOINT_FLAG_DRY_RUN)
-+		return 0;
-+
-+	if (flags & EXT4_IOC_CHECKPOINT_FLAG_DISCARD)
-+		flush_flags |= JBD2_JOURNAL_FLUSH_DISCARD;
-+
-+	if (flags & EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT) {
-+		flush_flags |= JBD2_JOURNAL_FLUSH_ZEROOUT;
-+		pr_info_ratelimited("warning: checkpointing journal with EXT4_IOC_CHECKPOINT_FLAG_ZEROOUT can be slow");
-+	}
-+
-+	jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-+	err = jbd2_journal_flush(EXT4_SB(sb)->s_journal, flush_flags);
-+	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
-+
-+	return err;
-+}
-+
- static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -1325,6 +1366,9 @@ static long __ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		return fsverity_ioctl_read_metadata(filp,
- 						    (const void __user *)arg);
- 
-+	case EXT4_IOC_CHECKPOINT:
-+		return ext4_ioctl_checkpoint(filp, arg);
-+
- 	default:
- 		return -ENOTTY;
- 	}
-@@ -1413,6 +1457,7 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case EXT4_IOC_GET_ES_CACHE:
- 	case FS_IOC_FSGETXATTR:
- 	case FS_IOC_FSSETXATTR:
-+	case EXT4_IOC_CHECKPOINT:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
+Dave.
 -- 
-2.31.1.751.gd2f1c929bd-goog
-
+Dave Chinner
+david@fromorbit.com
