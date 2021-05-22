@@ -2,41 +2,44 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E69EC2B9F2
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 May 2021 10:21:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 384B9C2B9F2
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 May 2021 10:21:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 77A316115C
-	for <linux-ext4@archiver.kernel.org>; Sat, 22 May 2021 10:21:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 17D246115C
+	for <linux-ext4@archiver.kernel.org>; Sat, 22 May 2021 10:21:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230171AbhEVKWk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 22 May 2021 06:22:40 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:3634 "EHLO
-        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        id S230318AbhEVKWl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 22 May 2021 06:22:41 -0400
+Received: from szxga04-in.huawei.com ([45.249.212.190]:5735 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
         with ESMTP id S230164AbhEVKWk (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 22 May 2021 06:22:40 -0400
-Received: from dggems703-chm.china.huawei.com (unknown [172.30.72.58])
-        by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4FnKD52LSXzQqwS;
-        Sat, 22 May 2021 18:17:41 +0800 (CST)
+Received: from dggems706-chm.china.huawei.com (unknown [172.30.72.59])
+        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4FnKD63zqNzqV3p;
+        Sat, 22 May 2021 18:17:42 +0800 (CST)
 Received: from dggeme752-chm.china.huawei.com (10.3.19.98) by
- dggems703-chm.china.huawei.com (10.3.19.180) with Microsoft SMTP Server
+ dggems706-chm.china.huawei.com (10.3.19.183) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) id
- 15.1.2176.2; Sat, 22 May 2021 18:21:14 +0800
+ 15.1.2176.2; Sat, 22 May 2021 18:21:15 +0800
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Sat, 22
- May 2021 18:21:13 +0800
+ May 2021 18:21:14 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH 0/2] ext4: fix two minor mistakes in ext4_es_scan()
-Date:   Sat, 22 May 2021 18:30:43 +0800
-Message-ID: <20210522103045.690103-1-yi.zhang@huawei.com>
+Subject: [PATCH 2/2] ext4: correct the cache_nr in tracepoint ext4_es_shrink_exit
+Date:   Sat, 22 May 2021 18:30:45 +0800
+Message-ID: <20210522103045.690103-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
+In-Reply-To: <20210522103045.690103-1-yi.zhang@huawei.com>
+References: <20210522103045.690103-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -48,16 +51,29 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fix two minor mistakes introduced by 1ab6c4997e04 ("fs: convert fs
-shrinkers to new scan/count API") in  ext4_es_scan().
+The cache_cnt parameter of tracepoint ext4_es_shrink_exit means the
+remaining cache count after shrink, but now it is the cache count before
+shrink, fix it by read sbi->s_extent_cache_cnt again.
 
-Zhang Yi (2):
-  ext4: remove check for zero nr_to_scan in ext4_es_scan()
-  ext4: correct the cache_nr in tracepoint ext4_es_shrink_exit
+Fixes: 1ab6c4997e04 ("fs: convert fs shrinkers to new scan/count API")
+Cc: stable@vger.kernel.org # 3.12+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/extents_status.c | 1 +
+ 1 file changed, 1 insertion(+)
 
- fs/ext4/extents_status.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index db3cd70a72e4..9a3a8996aacf 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1576,6 +1576,7 @@ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ 
+ 	nr_shrunk = __es_shrink(sbi, nr_to_scan, NULL);
+ 
++	ret = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	trace_ext4_es_shrink_scan_exit(sbi->s_sb, nr_shrunk, ret);
+ 	return nr_shrunk;
+ }
 -- 
 2.25.4
 
