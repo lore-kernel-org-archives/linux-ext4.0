@@ -2,47 +2,48 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-15.9 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0C1FC4708A
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96530C4707F
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 825E36142C
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CD446142B
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233517AbhEYNwp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 May 2021 09:52:45 -0400
-Received: from mx2.suse.de ([195.135.220.15]:42684 "EHLO mx2.suse.de"
+        id S233552AbhEYNwr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 May 2021 09:52:47 -0400
+Received: from mx2.suse.de ([195.135.220.15]:42766 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233396AbhEYNwf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 May 2021 09:52:35 -0400
+        id S233428AbhEYNwj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 May 2021 09:52:39 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1621950662; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1Zm3GVDAk5aDXe2oCWbogZ1CdxctGqDI9RHacxZ37OA=;
-        b=UvfzAbk2FV6liQCbICuNLqokQTuq76a239lxr+CsPOrA0tPk4fALfbzAsdkBTPZittPII1
-        Nudohpq6Q6ZiexTpz3SJEoH2hrxmk6cmi/mwCWDajRc4gAHNgP7QZVIb599/jSRHH6gc0k
-        pE+smzd6pi3Rrq3PFtg1K1y09N+Xdqw=
+        bh=ALcEGHv8t3X2s6oQVneEjza7qO67e2ajkJbcSS9NJWY=;
+        b=OqOR4D+6avwyNs8MOItkXG24b5dk9rAiSnu5PZkFOrqEJcbVpLi/4oyD+63FDEPPEQoqoZ
+        gRWNOHqAf1ZHEoYBjhYONyP7xMFbSPCzS4B6VWBgefUbVLdaQqWRvzE2/DIyQbcPBuPtkP
+        mj5VzgrkbHLdEIJsTn13phMnzKBjjEQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1621950662;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1Zm3GVDAk5aDXe2oCWbogZ1CdxctGqDI9RHacxZ37OA=;
-        b=/EJJwL07hO3T+1CGeSpg67JNe590u7yBl7pKd8Vg7NYw6XQCNpUforMSO/lJ0Eb5GKgeHR
-        w1wrarlb74vlGFBw==
+        bh=ALcEGHv8t3X2s6oQVneEjza7qO67e2ajkJbcSS9NJWY=;
+        b=Ip8my8vRlpYBrT6egOzdqE6Zph6m2aRdestsqJVPzzR0zBCo2I74kiYeSgnqDdYl8zfRyX
+        G/Zxy2WNCETy4rBQ==
 Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id EC3E6AED5;
-        Tue, 25 May 2021 13:51:01 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 1FB8FAEFE;
+        Tue, 25 May 2021 13:51:02 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 2C3321F2CB3; Tue, 25 May 2021 15:51:00 +0200 (CEST)
+        id 383A71F2CB9; Tue, 25 May 2021 15:51:00 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     <linux-fsdevel@vger.kernel.org>
 Cc:     Christoph Hellwig <hch@infradead.org>,
@@ -57,11 +58,10 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
         <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
         Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 07/13] xfs: Convert to use invalidate_lock
-Date:   Tue, 25 May 2021 15:50:44 +0200
-Message-Id: <20210525135100.11221-7-jack@suse.cz>
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 10/13] f2fs: Convert to using invalidate_lock
+Date:   Tue, 25 May 2021 15:50:47 +0200
+Message-Id: <20210525135100.11221-10-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210525125652.20457-1-jack@suse.cz>
 References: <20210525125652.20457-1-jack@suse.cz>
@@ -71,215 +71,315 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use invalidate_lock instead of XFS internal i_mmap_lock. The intended
-purpose of invalidate_lock is exactly the same. Note that the locking in
-__xfs_filemap_fault() slightly changes as filemap_fault() already takes
-invalidate_lock.
+Use invalidate_lock instead of f2fs' private i_mmap_sem. The intended
+purpose is exactly the same. By this conversion we fix a long standing
+race between hole punching and read(2) / readahead(2) paths that can
+lead to stale page cache contents.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-CC: <linux-xfs@vger.kernel.org>
-CC: "Darrick J. Wong" <darrick.wong@oracle.com>
+CC: Jaegeuk Kim <jaegeuk@kernel.org>
+CC: Chao Yu <yuchao0@huawei.com>
+CC: linux-f2fs-devel@lists.sourceforge.net
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/xfs/xfs_file.c  | 12 ++++++-----
- fs/xfs/xfs_inode.c | 52 ++++++++++++++++++++++++++--------------------
- fs/xfs/xfs_inode.h |  1 -
- fs/xfs/xfs_super.c |  2 --
- 4 files changed, 36 insertions(+), 31 deletions(-)
+ fs/f2fs/data.c  |  4 ++--
+ fs/f2fs/f2fs.h  |  1 -
+ fs/f2fs/file.c  | 62 ++++++++++++++++++++++++-------------------------
+ fs/f2fs/super.c |  1 -
+ 4 files changed, 32 insertions(+), 36 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 396ef36dcd0a..dc9cb5c20549 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1282,7 +1282,7 @@ xfs_file_llseek(
-  *
-  * mmap_lock (MM)
-  *   sb_start_pagefault(vfs, freeze)
-- *     i_mmaplock (XFS - truncate serialisation)
-+ *     invalidate_lock (vfs/XFS_MMAPLOCK - truncate serialisation)
-  *       page_lock (MM)
-  *         i_lock (XFS - extent map serialisation)
-  */
-@@ -1303,24 +1303,26 @@ __xfs_filemap_fault(
- 		file_update_time(vmf->vma->vm_file);
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 96f1a354f89f..f3177d03c28f 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -3165,12 +3165,12 @@ static void f2fs_write_failed(struct address_space *mapping, loff_t to)
+ 	/* In the fs-verity case, f2fs_end_enable_verity() does the truncate */
+ 	if (to > i_size && !f2fs_verity_in_progress(inode)) {
+ 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-		down_write(&F2FS_I(inode)->i_mmap_sem);
++		down_write(&mapping->invalidate_lock);
+ 
+ 		truncate_pagecache(inode, i_size);
+ 		f2fs_truncate_blocks(inode, i_size, true);
+ 
+-		up_write(&F2FS_I(inode)->i_mmap_sem);
++		up_write(&mapping->invalidate_lock);
+ 		up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
  	}
- 
--	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 	if (IS_DAX(inode)) {
- 		pfn_t pfn;
- 
-+		xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 		ret = dax_iomap_fault(vmf, pe_size, &pfn, NULL,
- 				(write_fault && !vmf->cow_page) ?
- 				 &xfs_direct_write_iomap_ops :
- 				 &xfs_read_iomap_ops);
- 		if (ret & VM_FAULT_NEEDDSYNC)
- 			ret = dax_finish_sync_fault(vmf, pe_size, pfn);
-+		xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 	} else {
--		if (write_fault)
-+		if (write_fault) {
-+			xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 			ret = iomap_page_mkwrite(vmf,
- 					&xfs_buffered_write_iomap_ops);
--		else
-+			xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
-+		} else
- 			ret = filemap_fault(vmf);
- 	}
--	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 
- 	if (write_fault)
- 		sb_end_pagefault(inode->i_sb);
-diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-index 0369eb22c1bb..53bb5fc33621 100644
---- a/fs/xfs/xfs_inode.c
-+++ b/fs/xfs/xfs_inode.c
-@@ -131,7 +131,7 @@ xfs_ilock_attr_map_shared(
- 
- /*
-  * In addition to i_rwsem in the VFS inode, the xfs inode contains 2
-- * multi-reader locks: i_mmap_lock and the i_lock.  This routine allows
-+ * multi-reader locks: invalidate_lock and the i_lock.  This routine allows
-  * various combinations of the locks to be obtained.
-  *
-  * The 3 locks should always be ordered so that the IO lock is obtained first,
-@@ -139,23 +139,23 @@ xfs_ilock_attr_map_shared(
-  *
-  * Basic locking order:
-  *
-- * i_rwsem -> i_mmap_lock -> page_lock -> i_ilock
-+ * i_rwsem -> invalidate_lock -> page_lock -> i_ilock
-  *
-  * mmap_lock locking order:
-  *
-  * i_rwsem -> page lock -> mmap_lock
-- * mmap_lock -> i_mmap_lock -> page_lock
-+ * mmap_lock -> invalidate_lock -> page_lock
-  *
-  * The difference in mmap_lock locking order mean that we cannot hold the
-- * i_mmap_lock over syscall based read(2)/write(2) based IO. These IO paths can
-- * fault in pages during copy in/out (for buffered IO) or require the mmap_lock
-- * in get_user_pages() to map the user pages into the kernel address space for
-- * direct IO. Similarly the i_rwsem cannot be taken inside a page fault because
-- * page faults already hold the mmap_lock.
-+ * invalidate_lock over syscall based read(2)/write(2) based IO. These IO paths
-+ * can fault in pages during copy in/out (for buffered IO) or require the
-+ * mmap_lock in get_user_pages() to map the user pages into the kernel address
-+ * space for direct IO. Similarly the i_rwsem cannot be taken inside a page
-+ * fault because page faults already hold the mmap_lock.
-  *
-  * Hence to serialise fully against both syscall and mmap based IO, we need to
-- * take both the i_rwsem and the i_mmap_lock. These locks should *only* be both
-- * taken in places where we need to invalidate the page cache in a race
-+ * take both the i_rwsem and the invalidate_lock. These locks should *only* be
-+ * both taken in places where we need to invalidate the page cache in a race
-  * free manner (e.g. truncate, hole punch and other extent manipulation
-  * functions).
-  */
-@@ -187,10 +187,13 @@ xfs_ilock(
- 				 XFS_IOLOCK_DEP(lock_flags));
- 	}
- 
--	if (lock_flags & XFS_MMAPLOCK_EXCL)
--		mrupdate_nested(&ip->i_mmaplock, XFS_MMAPLOCK_DEP(lock_flags));
--	else if (lock_flags & XFS_MMAPLOCK_SHARED)
--		mraccess_nested(&ip->i_mmaplock, XFS_MMAPLOCK_DEP(lock_flags));
-+	if (lock_flags & XFS_MMAPLOCK_EXCL) {
-+		down_write_nested(&VFS_I(ip)->i_mapping->invalidate_lock,
-+				  XFS_MMAPLOCK_DEP(lock_flags));
-+	} else if (lock_flags & XFS_MMAPLOCK_SHARED) {
-+		down_read_nested(&VFS_I(ip)->i_mapping->invalidate_lock,
-+				 XFS_MMAPLOCK_DEP(lock_flags));
-+	}
- 
- 	if (lock_flags & XFS_ILOCK_EXCL)
- 		mrupdate_nested(&ip->i_lock, XFS_ILOCK_DEP(lock_flags));
-@@ -239,10 +242,10 @@ xfs_ilock_nowait(
- 	}
- 
- 	if (lock_flags & XFS_MMAPLOCK_EXCL) {
--		if (!mrtryupdate(&ip->i_mmaplock))
-+		if (!down_write_trylock(&VFS_I(ip)->i_mapping->invalidate_lock))
- 			goto out_undo_iolock;
- 	} else if (lock_flags & XFS_MMAPLOCK_SHARED) {
--		if (!mrtryaccess(&ip->i_mmaplock))
-+		if (!down_read_trylock(&VFS_I(ip)->i_mapping->invalidate_lock))
- 			goto out_undo_iolock;
- 	}
- 
-@@ -257,9 +260,9 @@ xfs_ilock_nowait(
- 
- out_undo_mmaplock:
- 	if (lock_flags & XFS_MMAPLOCK_EXCL)
--		mrunlock_excl(&ip->i_mmaplock);
-+		up_write(&VFS_I(ip)->i_mapping->invalidate_lock);
- 	else if (lock_flags & XFS_MMAPLOCK_SHARED)
--		mrunlock_shared(&ip->i_mmaplock);
-+		up_read(&VFS_I(ip)->i_mapping->invalidate_lock);
- out_undo_iolock:
- 	if (lock_flags & XFS_IOLOCK_EXCL)
- 		up_write(&VFS_I(ip)->i_rwsem);
-@@ -306,9 +309,9 @@ xfs_iunlock(
- 		up_read(&VFS_I(ip)->i_rwsem);
- 
- 	if (lock_flags & XFS_MMAPLOCK_EXCL)
--		mrunlock_excl(&ip->i_mmaplock);
-+		up_write(&VFS_I(ip)->i_mapping->invalidate_lock);
- 	else if (lock_flags & XFS_MMAPLOCK_SHARED)
--		mrunlock_shared(&ip->i_mmaplock);
-+		up_read(&VFS_I(ip)->i_mapping->invalidate_lock);
- 
- 	if (lock_flags & XFS_ILOCK_EXCL)
- 		mrunlock_excl(&ip->i_lock);
-@@ -334,7 +337,7 @@ xfs_ilock_demote(
- 	if (lock_flags & XFS_ILOCK_EXCL)
- 		mrdemote(&ip->i_lock);
- 	if (lock_flags & XFS_MMAPLOCK_EXCL)
--		mrdemote(&ip->i_mmaplock);
-+		downgrade_write(&VFS_I(ip)->i_mapping->invalidate_lock);
- 	if (lock_flags & XFS_IOLOCK_EXCL)
- 		downgrade_write(&VFS_I(ip)->i_rwsem);
- 
-@@ -355,8 +358,11 @@ xfs_isilocked(
- 
- 	if (lock_flags & (XFS_MMAPLOCK_EXCL|XFS_MMAPLOCK_SHARED)) {
- 		if (!(lock_flags & XFS_MMAPLOCK_SHARED))
--			return !!ip->i_mmaplock.mr_writer;
--		return rwsem_is_locked(&ip->i_mmaplock.mr_lock);
-+			return !debug_locks ||
-+				lockdep_is_held_type(
-+					&VFS_I(ip)->i_mapping->invalidate_lock,
-+					0);
-+		return rwsem_is_locked(&VFS_I(ip)->i_mapping->invalidate_lock);
- 	}
- 
- 	if (lock_flags & (XFS_IOLOCK_EXCL|XFS_IOLOCK_SHARED)) {
-diff --git a/fs/xfs/xfs_inode.h b/fs/xfs/xfs_inode.h
-index ca826cfba91c..a0e4153efbbe 100644
---- a/fs/xfs/xfs_inode.h
-+++ b/fs/xfs/xfs_inode.h
-@@ -40,7 +40,6 @@ typedef struct xfs_inode {
- 	/* Transaction and locking information. */
- 	struct xfs_inode_log_item *i_itemp;	/* logging information */
- 	mrlock_t		i_lock;		/* inode lock */
--	mrlock_t		i_mmaplock;	/* inode mmap IO lock */
- 	atomic_t		i_pincount;	/* inode pin count */
- 
- 	/*
-diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-index a2dab05332ac..eeaf44910b5f 100644
---- a/fs/xfs/xfs_super.c
-+++ b/fs/xfs/xfs_super.c
-@@ -715,8 +715,6 @@ xfs_fs_inode_init_once(
- 	atomic_set(&ip->i_pincount, 0);
- 	spin_lock_init(&ip->i_flags_lock);
- 
--	mrlock_init(&ip->i_mmaplock, MRLOCK_ALLOW_EQUAL_PRI|MRLOCK_BARRIER,
--		     "xfsino", ip->i_ino);
- 	mrlock_init(&ip->i_lock, MRLOCK_ALLOW_EQUAL_PRI|MRLOCK_BARRIER,
- 		     "xfsino", ip->i_ino);
  }
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 044878866ca3..1f887c906aaf 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -748,7 +748,6 @@ struct f2fs_inode_info {
+ 
+ 	/* avoid racing between foreground op and gc */
+ 	struct rw_semaphore i_gc_rwsem[2];
+-	struct rw_semaphore i_mmap_sem;
+ 	struct rw_semaphore i_xattr_sem; /* avoid racing between reading and changing EAs */
+ 
+ 	int i_extra_isize;		/* size of extra space located in i_addr */
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 44a4650aea7b..3899ce46b67a 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -38,10 +38,7 @@ static vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf)
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+ 	vm_fault_t ret;
+ 
+-	down_read(&F2FS_I(inode)->i_mmap_sem);
+ 	ret = filemap_fault(vmf);
+-	up_read(&F2FS_I(inode)->i_mmap_sem);
+-
+ 	if (!ret)
+ 		f2fs_update_iostat(F2FS_I_SB(inode), APP_MAPPED_READ_IO,
+ 							F2FS_BLKSIZE);
+@@ -102,7 +99,7 @@ static vm_fault_t f2fs_vm_page_mkwrite(struct vm_fault *vmf)
+ 	f2fs_bug_on(sbi, f2fs_has_inline_data(inode));
+ 
+ 	file_update_time(vmf->vma->vm_file);
+-	down_read(&F2FS_I(inode)->i_mmap_sem);
++	down_read(&inode->i_mapping->invalidate_lock);
+ 	lock_page(page);
+ 	if (unlikely(page->mapping != inode->i_mapping ||
+ 			page_offset(page) > i_size_read(inode) ||
+@@ -161,7 +158,7 @@ static vm_fault_t f2fs_vm_page_mkwrite(struct vm_fault *vmf)
+ 
+ 	trace_f2fs_vm_page_mkwrite(page, DATA);
+ out_sem:
+-	up_read(&F2FS_I(inode)->i_mmap_sem);
++	up_read(&inode->i_mapping->invalidate_lock);
+ 
+ 	sb_end_pagefault(inode->i_sb);
+ err:
+@@ -942,7 +939,7 @@ int f2fs_setattr(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 		}
+ 
+ 		down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-		down_write(&F2FS_I(inode)->i_mmap_sem);
++		down_write(&inode->i_mapping->invalidate_lock);
+ 
+ 		truncate_setsize(inode, attr->ia_size);
+ 
+@@ -952,7 +949,7 @@ int f2fs_setattr(struct user_namespace *mnt_userns, struct dentry *dentry,
+ 		 * do not trim all blocks after i_size if target size is
+ 		 * larger than i_size.
+ 		 */
+-		up_write(&F2FS_I(inode)->i_mmap_sem);
++		up_write(&inode->i_mapping->invalidate_lock);
+ 		up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 		if (err)
+ 			return err;
+@@ -1097,7 +1094,7 @@ static int punch_hole(struct inode *inode, loff_t offset, loff_t len)
+ 			blk_end = (loff_t)pg_end << PAGE_SHIFT;
+ 
+ 			down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-			down_write(&F2FS_I(inode)->i_mmap_sem);
++			down_write(&mapping->invalidate_lock);
+ 
+ 			truncate_inode_pages_range(mapping, blk_start,
+ 					blk_end - 1);
+@@ -1106,7 +1103,7 @@ static int punch_hole(struct inode *inode, loff_t offset, loff_t len)
+ 			ret = f2fs_truncate_hole(inode, pg_start, pg_end);
+ 			f2fs_unlock_op(sbi);
+ 
+-			up_write(&F2FS_I(inode)->i_mmap_sem);
++			up_write(&mapping->invalidate_lock);
+ 			up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 		}
+ 	}
+@@ -1341,7 +1338,7 @@ static int f2fs_do_collapse(struct inode *inode, loff_t offset, loff_t len)
+ 
+ 	/* avoid gc operation during block exchange */
+ 	down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	f2fs_lock_op(sbi);
+ 	f2fs_drop_extent_tree(inode);
+@@ -1349,7 +1346,7 @@ static int f2fs_do_collapse(struct inode *inode, loff_t offset, loff_t len)
+ 	ret = __exchange_data_block(inode, inode, end, start, nrpages - end, true);
+ 	f2fs_unlock_op(sbi);
+ 
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&inode->i_mapping->invalidate_lock);
+ 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 	return ret;
+ }
+@@ -1380,13 +1377,13 @@ static int f2fs_collapse_range(struct inode *inode, loff_t offset, loff_t len)
+ 		return ret;
+ 
+ 	/* write out all moved pages, if possible */
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&inode->i_mapping->invalidate_lock);
+ 	filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
+ 	truncate_pagecache(inode, offset);
+ 
+ 	new_size = i_size_read(inode) - len;
+ 	ret = f2fs_truncate_blocks(inode, new_size, true);
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&inode->i_mapping->invalidate_lock);
+ 	if (!ret)
+ 		f2fs_i_size_write(inode, new_size);
+ 	return ret;
+@@ -1486,7 +1483,7 @@ static int f2fs_zero_range(struct inode *inode, loff_t offset, loff_t len,
+ 			pgoff_t end;
+ 
+ 			down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-			down_write(&F2FS_I(inode)->i_mmap_sem);
++			down_write(&mapping->invalidate_lock);
+ 
+ 			truncate_pagecache_range(inode,
+ 				(loff_t)index << PAGE_SHIFT,
+@@ -1498,7 +1495,7 @@ static int f2fs_zero_range(struct inode *inode, loff_t offset, loff_t len,
+ 			ret = f2fs_get_dnode_of_data(&dn, index, ALLOC_NODE);
+ 			if (ret) {
+ 				f2fs_unlock_op(sbi);
+-				up_write(&F2FS_I(inode)->i_mmap_sem);
++				up_write(&mapping->invalidate_lock);
+ 				up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 				goto out;
+ 			}
+@@ -1510,7 +1507,7 @@ static int f2fs_zero_range(struct inode *inode, loff_t offset, loff_t len,
+ 			f2fs_put_dnode(&dn);
+ 
+ 			f2fs_unlock_op(sbi);
+-			up_write(&F2FS_I(inode)->i_mmap_sem);
++			up_write(&mapping->invalidate_lock);
+ 			up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 
+ 			f2fs_balance_fs(sbi, dn.node_changed);
+@@ -1545,6 +1542,7 @@ static int f2fs_zero_range(struct inode *inode, loff_t offset, loff_t len,
+ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
++	struct address_space *mapping = inode->i_mapping;
+ 	pgoff_t nr, pg_start, pg_end, delta, idx;
+ 	loff_t new_size;
+ 	int ret = 0;
+@@ -1567,14 +1565,14 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 
+ 	f2fs_balance_fs(sbi, true);
+ 
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&mapping->invalidate_lock);
+ 	ret = f2fs_truncate_blocks(inode, i_size_read(inode), true);
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&mapping->invalidate_lock);
+ 	if (ret)
+ 		return ret;
+ 
+ 	/* write out all dirty pages from offset */
+-	ret = filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
++	ret = filemap_write_and_wait_range(mapping, offset, LLONG_MAX);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -1585,7 +1583,7 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 
+ 	/* avoid gc operation during block exchange */
+ 	down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&mapping->invalidate_lock);
+ 	truncate_pagecache(inode, offset);
+ 
+ 	while (!ret && idx > pg_start) {
+@@ -1601,14 +1599,14 @@ static int f2fs_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 					idx + delta, nr, false);
+ 		f2fs_unlock_op(sbi);
+ 	}
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&mapping->invalidate_lock);
+ 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 
+ 	/* write out all moved pages, if possible */
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
+-	filemap_write_and_wait_range(inode->i_mapping, offset, LLONG_MAX);
++	down_write(&mapping->invalidate_lock);
++	filemap_write_and_wait_range(mapping, offset, LLONG_MAX);
+ 	truncate_pagecache(inode, offset);
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&mapping->invalidate_lock);
+ 
+ 	if (!ret)
+ 		f2fs_i_size_write(inode, new_size);
+@@ -3442,7 +3440,7 @@ static int f2fs_release_compress_blocks(struct file *filp, unsigned long arg)
+ 		goto out;
+ 
+ 	down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	last_idx = DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE);
+ 
+@@ -3478,7 +3476,7 @@ static int f2fs_release_compress_blocks(struct file *filp, unsigned long arg)
+ 	}
+ 
+ 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&inode->i_mapping->invalidate_lock);
+ out:
+ 	inode_unlock(inode);
+ 
+@@ -3595,7 +3593,7 @@ static int f2fs_reserve_compress_blocks(struct file *filp, unsigned long arg)
+ 	}
+ 
+ 	down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	last_idx = DIV_ROUND_UP(i_size_read(inode), PAGE_SIZE);
+ 
+@@ -3631,7 +3629,7 @@ static int f2fs_reserve_compress_blocks(struct file *filp, unsigned long arg)
+ 	}
+ 
+ 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&inode->i_mapping->invalidate_lock);
+ 
+ 	if (ret >= 0) {
+ 		F2FS_I(inode)->i_flags &= ~F2FS_IMMUTABLE_FL;
+@@ -3751,7 +3749,7 @@ static int f2fs_sec_trim_file(struct file *filp, unsigned long arg)
+ 		goto err;
+ 
+ 	down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-	down_write(&F2FS_I(inode)->i_mmap_sem);
++	down_write(&mapping->invalidate_lock);
+ 
+ 	ret = filemap_write_and_wait_range(mapping, range.start,
+ 			to_end ? LLONG_MAX : end_addr - 1);
+@@ -3838,7 +3836,7 @@ static int f2fs_sec_trim_file(struct file *filp, unsigned long arg)
+ 		ret = f2fs_secure_erase(prev_bdev, inode, prev_index,
+ 				prev_block, len, range.flags);
+ out:
+-	up_write(&F2FS_I(inode)->i_mmap_sem);
++	up_write(&mapping->invalidate_lock);
+ 	up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ err:
+ 	inode_unlock(inode);
+@@ -4313,9 +4311,9 @@ static ssize_t f2fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		/* if we couldn't write data, we should deallocate blocks. */
+ 		if (preallocated && i_size_read(inode) < target_size) {
+ 			down_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+-			down_write(&F2FS_I(inode)->i_mmap_sem);
++			down_write(&inode->i_mapping->invalidate_lock);
+ 			f2fs_truncate(inode);
+-			up_write(&F2FS_I(inode)->i_mmap_sem);
++			up_write(&inode->i_mapping->invalidate_lock);
+ 			up_write(&F2FS_I(inode)->i_gc_rwsem[WRITE]);
+ 		}
+ 
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 7d325bfaf65a..22e942aac7ad 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1187,7 +1187,6 @@ static struct inode *f2fs_alloc_inode(struct super_block *sb)
+ 	mutex_init(&fi->inmem_lock);
+ 	init_rwsem(&fi->i_gc_rwsem[READ]);
+ 	init_rwsem(&fi->i_gc_rwsem[WRITE]);
+-	init_rwsem(&fi->i_mmap_sem);
+ 	init_rwsem(&fi->i_xattr_sem);
+ 
+ 	/* Will be used by directory only */
 -- 
 2.26.2
 
