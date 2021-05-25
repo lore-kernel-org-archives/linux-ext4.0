@@ -2,146 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C463FC47098
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DADDEC2B9F8
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 17:29:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A47156140F
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 13:51:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C1C3761059
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 May 2021 17:29:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233625AbhEYNwz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 May 2021 09:52:55 -0400
-Received: from mx2.suse.de ([195.135.220.15]:42780 "EHLO mx2.suse.de"
+        id S232660AbhEYRa5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 May 2021 13:30:57 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58060 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233435AbhEYNwj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 May 2021 09:52:39 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1621950662; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=J9i26LHL2rlVmaJ49pwJamYptfR6NjvqlSUaLcXXdxM=;
-        b=fVtuBhGBODJ/q4WtenoZlmsUFVoiJdvJk+GxugxWsyTz4LAtQiQS/Iu1ZvwKRd2g3kvS60
-        MV9ntfut1APeWOS+c7ZH57UOJzZ+5bXN+RW7JyZGFpt7D+YgH/LqFuYPEPP1t0cLyktyzO
-        lgKL7Jn4+a+bkcNdXw+HL5Y2PWcL3po=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1621950662;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=J9i26LHL2rlVmaJ49pwJamYptfR6NjvqlSUaLcXXdxM=;
-        b=6QDtzpbab4vaBOv4VCkDNUMcoimrVwb3/6BsjgWKLsuFNnENOviDrGEbqFZnFhIdR38G1M
-        /U3ruX0XChlnCiAQ==
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 35461AF1F;
-        Tue, 25 May 2021 13:51:02 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 41D691F2CBD; Tue, 25 May 2021 15:51:00 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-fsdevel@vger.kernel.org>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, ceph-devel@vger.kernel.org,
-        Chao Yu <yuchao0@huawei.com>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Johannes Thumshirn <jth@kernel.org>,
-        linux-cifs@vger.kernel.org, <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
-        <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 12/13] ceph: Fix race between hole punch and page fault
-Date:   Tue, 25 May 2021 15:50:49 +0200
-Message-Id: <20210525135100.11221-12-jack@suse.cz>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210525125652.20457-1-jack@suse.cz>
-References: <20210525125652.20457-1-jack@suse.cz>
+        id S232246AbhEYRa5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 May 2021 13:30:57 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 18B1E61404;
+        Tue, 25 May 2021 17:29:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1621963767;
+        bh=F8vf1n1Dtzgp3rnX9vk5TZwA3ysgxGjZZo3YJRJTqZI=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Oh2Ojt7F5onIP/3sUR2rPQ7sKlePzY1Skcm6Yd46chWDvuuKEWj01TFYsfJpKL6wm
+         EZL36hw3h0CXYdDs0+1z3RItguYYAVYZlJdi5tpEF4r0mUThdtb3HuAbkVcTew72Go
+         zi86sXOU7/T9WdOSstRNnjhdAF/MOPaQhEZjD3toOgN1PyDK7GZM8xDa/+BiNMGVdL
+         r90BdNGsPf9yk+F7wpMIZdpcj30gftyOOBokV7Dl5AdAJ84HU6XA8ooO+CtCAzZv+D
+         3WBENHjO2uvZC9uXiLMCzXqAdogq0Oe3ouohYNn7eMbLB5t9e+qtTgdr5uTJu4dtKM
+         dXmvbLKwfr2bg==
+Date:   Tue, 25 May 2021 10:29:25 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Daniel Rosenberg <drosen@google.com>
+Cc:     "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel-team@android.com
+Subject: Re: [PATCH] ext4: Fix no-key deletion for encrypt+casefold
+Message-ID: <YK0z9US1ek615F8Z@sol.localdomain>
+References: <20210522004132.2142563-1-drosen@google.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210522004132.2142563-1-drosen@google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Ceph has a following race between hole punching and page fault:
+On Sat, May 22, 2021 at 12:41:32AM +0000, Daniel Rosenberg wrote:
+> commit 471fbbea7ff7 ("ext4: handle casefolding with encryption") is
+> missing a few checks for the encryption key which are needed to
+> support deleting enrypted casefolded files when the key is not
+> present.
+> 
+> Note from ebiggers:
+> (These checks for the encryption key are still racy since they happen
+> too late, but apparently they worked well enough...)
+> 
+> This bug made it impossible to delete encrypted+casefolded directories
+> without the encryption key, due to errors like:
+> 
+>     W         : EXT4-fs warning (device vdc): __ext4fs_dirhash:270: inode #49202: comm Binder:378_4: Siphash requires key
+> 
+> Repro steps in kvm-xfstests test appliance:
+>       mkfs.ext4 -F -E encoding=utf8 -O encrypt /dev/vdc
+>       mount /vdc
+>       mkdir /vdc/dir
+>       chattr +F /vdc/dir
+>       keyid=$(head -c 64 /dev/zero | xfs_io -c add_enckey /vdc | awk '{print $NF}')
+>       xfs_io -c "set_encpolicy $keyid" /vdc/dir
+>       for i in `seq 1 100`; do
+>           mkdir /vdc/dir/$i
+>       done
+>       xfs_io -c "rm_enckey $keyid" /vdc
+>       rm -rf /vdc/dir # fails with the bug
 
-CPU1                                  CPU2
-ceph_fallocate()
-  ...
-  ceph_zero_pagecache_range()
-                                      ceph_filemap_fault()
-                                        faults in page in the range being
-                                        punched
-  ceph_zero_objects()
+Looks fine, but can you please turn this reproducer into an xfstest?
 
-And now we have a page in punched range with invalid data. Fix the
-problem by using mapping->invalidate_lock similarly to other
-filesystems. Note that using invalidate_lock also fixes a similar race
-wrt ->readpage().
+I'm also wondering if you've done any investigation into fixing ext4 to handle
+filenames properly like f2fs does, so that the above-mentioned race condition is
+eliminated.  In particular, we should decide whether the user-supplied filename
+is a no-key name, and whether it needs casefolding or not, just once -- rather
+than separately for each directory entry compared in ext4_match().
 
-CC: Jeff Layton <jlayton@kernel.org>
-CC: ceph-devel@vger.kernel.org
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ceph/addr.c | 9 ++++++---
- fs/ceph/file.c | 2 ++
- 2 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index c1570fada3d8..6d868faf97b5 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -1401,9 +1401,11 @@ static vm_fault_t ceph_filemap_fault(struct vm_fault *vmf)
- 		ret = VM_FAULT_SIGBUS;
- 	} else {
- 		struct address_space *mapping = inode->i_mapping;
--		struct page *page = find_or_create_page(mapping, 0,
--						mapping_gfp_constraint(mapping,
--						~__GFP_FS));
-+		struct page *page;
-+
-+		down_read(&mapping->invalidate_lock);
-+		page = find_or_create_page(mapping, 0,
-+				mapping_gfp_constraint(mapping, ~__GFP_FS));
- 		if (!page) {
- 			ret = VM_FAULT_OOM;
- 			goto out_inline;
-@@ -1424,6 +1426,7 @@ static vm_fault_t ceph_filemap_fault(struct vm_fault *vmf)
- 		vmf->page = page;
- 		ret = VM_FAULT_MAJOR | VM_FAULT_LOCKED;
- out_inline:
-+		up_read(&mapping->invalidate_lock);
- 		dout("filemap_fault %p %llu read inline data ret %x\n",
- 		     inode, off, ret);
- 	}
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 77fc037d5beb..91693d8b458e 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -2083,6 +2083,7 @@ static long ceph_fallocate(struct file *file, int mode,
- 	if (ret < 0)
- 		goto unlock;
- 
-+	down_write(&inode->i_mapping->invalidate_lock);
- 	ceph_zero_pagecache_range(inode, offset, length);
- 	ret = ceph_zero_objects(inode, offset, length);
- 
-@@ -2095,6 +2096,7 @@ static long ceph_fallocate(struct file *file, int mode,
- 		if (dirty)
- 			__mark_inode_dirty(inode, dirty);
- 	}
-+	up_write(&inode->i_mapping->invalidate_lock);
- 
- 	ceph_put_cap_refs(ci, got);
- unlock:
--- 
-2.26.2
-
+- Eric
