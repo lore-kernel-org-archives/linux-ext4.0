@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1C3DC4708B
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A13E7C4708A
 	for <linux-ext4@archiver.kernel.org>; Thu, 27 May 2021 13:47:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C7310613BC
+	by mail.kernel.org (Postfix) with ESMTP id 8212361005
 	for <linux-ext4@archiver.kernel.org>; Thu, 27 May 2021 13:47:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236616AbhE0NtC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 May 2021 09:49:02 -0400
-Received: from szxga02-in.huawei.com ([45.249.212.188]:2505 "EHLO
+        id S236605AbhE0NtB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 May 2021 09:49:01 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:2504 "EHLO
         szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236607AbhE0Ns4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 May 2021 09:48:56 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4FrTZc2xJQzYrC5;
-        Thu, 27 May 2021 21:44:40 +0800 (CST)
+        with ESMTP id S236535AbhE0Nsz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 May 2021 09:48:55 -0400
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4FrTZc006nzYr8G;
+        Thu, 27 May 2021 21:44:39 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Thu, 27
- May 2021 21:47:20 +0800
+ May 2021 21:47:19 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [RFC PATCH v3 8/8] fs: remove bdev_try_to_free_page callback
-Date:   Thu, 27 May 2021 21:56:41 +0800
-Message-ID: <20210527135641.420514-9-yi.zhang@huawei.com>
+Subject: [RFC PATCH v3 7/8] ext4: remove bdev_try_to_free_page() callback
+Date:   Thu, 27 May 2021 21:56:40 +0800
+Message-ID: <20210527135641.420514-8-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.25.4
 In-Reply-To: <20210527135641.420514-1-yi.zhang@huawei.com>
 References: <20210527135641.420514-1-yi.zhang@huawei.com>
@@ -47,61 +47,56 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After remove the unique user of sop->bdev_try_to_free_page() callback,
-we could remove the callback and the corresponding blkdev_releasepage()
-at all.
+After we introduce a jbd2 shrinker to release checkpointed buffer's
+journal head, we could free buffer without bdev_try_to_free_page()
+under memory pressure. So this patch remove the whole
+bdev_try_to_free_page() callback directly. It also remove many
+use-after-free issues relate to it together.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/block_dev.c     | 15 ---------------
- include/linux/fs.h |  1 -
- 2 files changed, 16 deletions(-)
+ fs/ext4/super.c | 21 ---------------------
+ 1 file changed, 21 deletions(-)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 6cc4d4cfe0c2..e215da6d49b4 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1733,20 +1733,6 @@ ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bf6d0085e1b7..b778236d06e6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1442,26 +1442,6 @@ static int ext4_nfs_commit_metadata(struct inode *inode)
+ 	return ext4_write_inode(inode, &wbc);
  }
- EXPORT_SYMBOL_GPL(blkdev_read_iter);
  
 -/*
-- * Try to release a page associated with block device when the system
-- * is under memory pressure.
+- * Try to release metadata pages (indirect blocks, directories) which are
+- * mapped via the block device.  Since these pages could have journal heads
+- * which would prevent try_to_free_buffers() from freeing them, we must use
+- * jbd2 layer's try_to_free_buffers() function to release them.
 - */
--static int blkdev_releasepage(struct page *page, gfp_t wait)
+-static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
+-				 gfp_t wait)
 -{
--	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
+-	journal_t *journal = EXT4_SB(sb)->s_journal;
 -
--	if (super && super->s_op->bdev_try_to_free_page)
--		return super->s_op->bdev_try_to_free_page(super, page, wait);
+-	WARN_ON(PageChecked(page));
+-	if (!page_has_buffers(page))
+-		return 0;
+-	if (journal)
+-		return jbd2_journal_try_to_free_buffers(journal, page);
 -
 -	return try_to_free_buffers(page);
 -}
 -
- static int blkdev_writepages(struct address_space *mapping,
- 			     struct writeback_control *wbc)
+ #ifdef CONFIG_FS_ENCRYPTION
+ static int ext4_get_context(struct inode *inode, void *ctx, size_t len)
  {
-@@ -1760,7 +1746,6 @@ static const struct address_space_operations def_blk_aops = {
- 	.write_begin	= blkdev_write_begin,
- 	.write_end	= blkdev_write_end,
- 	.writepages	= blkdev_writepages,
--	.releasepage	= blkdev_releasepage,
- 	.direct_IO	= blkdev_direct_IO,
- 	.migratepage	= buffer_migrate_page_norefs,
- 	.is_dirty_writeback = buffer_check_dirty_writeback,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c3c88fdb9b2a..c3277b445f96 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2171,7 +2171,6 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- 	struct dquot **(*get_dquots)(struct inode *);
+@@ -1656,7 +1636,6 @@ static const struct super_operations ext4_sops = {
+ 	.quota_write	= ext4_quota_write,
+ 	.get_dquots	= ext4_get_dquots,
  #endif
--	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
- 	long (*nr_cached_objects)(struct super_block *,
- 				  struct shrink_control *);
- 	long (*free_cached_objects)(struct super_block *,
+-	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
+ 
+ static const struct export_operations ext4_export_ops = {
 -- 
 2.25.4
 
