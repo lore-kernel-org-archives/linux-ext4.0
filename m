@@ -5,62 +5,61 @@ X-Spam-Level:
 X-Spam-Status: No, score=-26.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no
+	USER_AGENT_GIT,USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 38625C4743C
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Jun 2021 21:09:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 591C3C4743E
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Jun 2021 21:09:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 23B2D61407
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Jun 2021 21:09:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4496B613EA
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Jun 2021 21:09:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230175AbhFDVLD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Jun 2021 17:11:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51154 "EHLO
+        id S230246AbhFDVLI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Jun 2021 17:11:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51186 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229665AbhFDVLC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jun 2021 17:11:02 -0400
-Received: from mail-qv1-xf4a.google.com (mail-qv1-xf4a.google.com [IPv6:2607:f8b0:4864:20::f4a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A28CC061766
-        for <linux-ext4@vger.kernel.org>; Fri,  4 Jun 2021 14:09:15 -0700 (PDT)
-Received: by mail-qv1-xf4a.google.com with SMTP id bl11-20020ad4564b0000b029021d1fdffd5aso7583754qvb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jun 2021 14:09:15 -0700 (PDT)
+        with ESMTP id S230231AbhFDVLH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jun 2021 17:11:07 -0400
+Received: from mail-qv1-xf49.google.com (mail-qv1-xf49.google.com [IPv6:2607:f8b0:4864:20::f49])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C26F1C06178B
+        for <linux-ext4@vger.kernel.org>; Fri,  4 Jun 2021 14:09:20 -0700 (PDT)
+Received: by mail-qv1-xf49.google.com with SMTP id ea18-20020ad458b20000b0290215c367b5d3so3969996qvb.3
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Jun 2021 14:09:20 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=google.com; s=20161025;
         h=date:in-reply-to:message-id:mime-version:references:subject:from:to
          :cc;
-        bh=91peql34DHbFUki+AbIkoVzV6GEWt4wa1rjinU0Vj1o=;
-        b=NWM6rSqjQWgBV4b0PQCeKKpM41Gh30JBudqV4IzVKloaLmDl/Elq/REtE98KKwRDDK
-         RoyIta1OKr/9Zo6G9QXrLium4ej+9gKZTVPYUePqI1jhOJgobWyhOoEeUm6Z8HlMRjIr
-         Qx4GLl9jime2jzklU9y2MF4l4VIiast22wwPkx8CULvJraclZ2P+a0Rou3l70zG/oHiq
-         1UjT69ghMT/VyqfhLtg/Z6iCpGrigd9QganfvoleBrBwR0XeBn1h+LbhUsV4OYDFF6iX
-         rkUigqHsbMPT6bWEOC6ezUgYqzhG+7kTT2s2TUnbwbfhC+8Z9agd+FqZP4QJKKf7EKS3
-         yU5A==
+        bh=XCMW74I69DeN8Z3kX5iYnnwjp70fgDZ7aIjMCwTUzeM=;
+        b=Mw++crRiYfOUuxBBsYJaIjEa2wzFZ7uIymgYyHPMmfqTENGSHY2XJFEFHfB0uF7oKU
+         q+30l4Moqzicat/BsS7qK98HMHFB/NLzIAJndkfQNTeAD2gynzn1R3KcC6ecx+103TBP
+         GDOBRtGgHEnAavWAyXnjadC5RjL1xZKdJoiqVP9LX+Baz1NH8ZskxxPR83N7wSzYmGmy
+         AzR1MNMkb9T8NXWXKltKXehqDno9ArTvpLAmBtZwsBDFWHY2DN8mTuZF85xYugPqWMzK
+         yDR3nmN38QXxX3Feu5LZLFS1lswICuDdid9tBrfJEby3qDOgFQZQYjh0Whmxpid95T2Z
+         py5w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:in-reply-to:message-id:mime-version
          :references:subject:from:to:cc;
-        bh=91peql34DHbFUki+AbIkoVzV6GEWt4wa1rjinU0Vj1o=;
-        b=SjbtylH88Phgax6yUC5SS5My6pETL6gK9RA3M3on9Y4KzTyCT1sZ93fXZy5+8NscgS
-         44MtJGj4ERJN6y3ssyxItauIRD3sPN7jXR+UuLYg/bm5nsnOrxiGOOoybV19rKZ0ZtGm
-         7e82gmv1M37OEjgvHbNWtWloCIx8AlyNC30n4PPGA/G90DzuCz/vLjbEhw/jiuFYQO7M
-         5crSxCWJth2O3DsVXhF3gvko9n1MBbpCobq0pawuTiMJBkQm3Eh7KDr77gC+UlPKZo6z
-         WOj7m4F3La4sPP0lIOlEbI2MHx+jbp16eDW8zkU4suW/H2PwWvIkLXgi9HhKFJyS6kOR
-         I/ww==
-X-Gm-Message-State: AOAM533uiCbM0OknpxBhNJ9A8W4enn1lGOgbLgtfUJ07RaiFicx9mzWR
-        RvWtENQt9TehOSCbwbVgpMLedJwuKm4=
-X-Google-Smtp-Source: ABdhPJyxZNAgaBzH8MB4R3w5D0FDEiNYSY0E6g3pRNVW4sq6jgFG0GaBevF/RjxS6fOw2/bE9D33hwV+eRU=
+        bh=XCMW74I69DeN8Z3kX5iYnnwjp70fgDZ7aIjMCwTUzeM=;
+        b=M7yDW3uT/YGDb1GhHB071qa3baUGJfMoGMeDr7UmO2mAfxvaNCZsXpO+bu1tNqDtDW
+         o9UStaqsjNlgbUHCC6fp+wVvMtGmirPTnj0P4gehViznIm4cr3o4j8TB+7UaJX1R2jx/
+         BZNRUMV2Mmlw0BRFsdTO/GRZt4uXnFnsp4b0iUqMITiewezEOgCt1X49tAwUmUwvGS8s
+         3ZePMbvauln3QcXQeKDCx8ZZQ1xRHhp52MNM/a90pXSfDb4gs80yLOMv5DmxYbXC8fLy
+         aDhEvXMcBpU+pSYhbNH6CYEsWh5/pFy7bJ5xnaqaJnZJU/XWkfSHYGiAfxEeksep3ljU
+         JXoA==
+X-Gm-Message-State: AOAM530A4ZJXrK858OLOlBW+RhPwXqaKtCEzlGtwRodjDS6b0E5z6SJN
+        C7uKqPD8yMYFsm55eOaYJYcmpB6sF8g=
+X-Google-Smtp-Source: ABdhPJxiSLZqcPqUF+AidxN8J2rs3GJOT86onesJOcAIexrEcLNAzcay/hdWehQRGDOJrX95PrTmEboMFxw=
 X-Received: from satyaprateek.c.googlers.com ([fda3:e722:ac3:10:24:72f4:c0a8:1092])
- (user=satyat job=sendgmr) by 2002:a05:6214:428:: with SMTP id
- a8mr3037233qvy.3.1622840954643; Fri, 04 Jun 2021 14:09:14 -0700 (PDT)
-Date:   Fri,  4 Jun 2021 21:09:01 +0000
+ (user=satyat job=sendgmr) by 2002:a05:6214:2aa3:: with SMTP id
+ js3mr6751098qvb.56.1622840959831; Fri, 04 Jun 2021 14:09:19 -0700 (PDT)
+Date:   Fri,  4 Jun 2021 21:09:04 +0000
 In-Reply-To: <20210604210908.2105870-1-satyat@google.com>
-Message-Id: <20210604210908.2105870-3-satyat@google.com>
+Message-Id: <20210604210908.2105870-6-satyat@google.com>
 Mime-Version: 1.0
 References: <20210604210908.2105870-1-satyat@google.com>
 X-Mailer: git-send-email 2.32.0.rc1.229.g3e70b5a671-goog
-Subject: [PATCH v9 2/9] block: blk-crypto: relax alignment requirements for
- bvecs in bios
+Subject: [PATCH v9 5/9] block: Make bio_iov_iter_get_pages() respect bio_required_sector_alignment()
 From:   Satya Tangirala <satyat@google.com>
 To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
@@ -70,65 +69,61 @@ To:     "Theodore Y . Ts'o" <tytso@mit.edu>,
 Cc:     linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org,
         linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Satya Tangirala <satyat@google.com>,
-        Eric Biggers <ebiggers@google.com>
+        Satya Tangirala <satyat@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-blk-crypto only accepted bios whose bvecs' offsets and lengths were aligned
-to the crypto data unit size, since blk-crypto-fallback required that to
-work correctly.
+Previously, bio_iov_iter_get_pages() wasn't used with bios that could have
+an encryption context. However, direct I/O support using blk-crypto
+introduces this possibility, so this function must now respect
+bio_required_sector_alignment() (otherwise, xfstests like generic/465 with
+ext4 will fail).
 
-Now that the blk-crypto-fallback has been updated to work without that
-assumption, we relax the alignment requirement - blk-crypto now only needs
-the total size of the bio to be aligned to the crypto data unit size.
-
-Co-developed-by: Eric Biggers <ebiggers@google.com>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
 Signed-off-by: Satya Tangirala <satyat@google.com>
 ---
- block/blk-crypto.c | 19 ++-----------------
- 1 file changed, 2 insertions(+), 17 deletions(-)
+ block/bio.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/block/blk-crypto.c b/block/blk-crypto.c
-index c5bdaafffa29..06f81e64151d 100644
---- a/block/blk-crypto.c
-+++ b/block/blk-crypto.c
-@@ -200,22 +200,6 @@ bool bio_crypt_ctx_mergeable(struct bio_crypt_ctx *bc1, unsigned int bc1_bytes,
- 	return !bc1 || bio_crypt_dun_is_contiguous(bc1, bc1_bytes, bc2->bc_dun);
- }
- 
--/* Check that all I/O segments are data unit aligned. */
--static bool bio_crypt_check_alignment(struct bio *bio)
--{
--	const unsigned int data_unit_size =
--		bio->bi_crypt_context->bc_key->crypto_cfg.data_unit_size;
--	struct bvec_iter iter;
--	struct bio_vec bv;
--
--	bio_for_each_segment(bv, bio, iter) {
--		if (!IS_ALIGNED(bv.bv_len | bv.bv_offset, data_unit_size))
--			return false;
--	}
--
--	return true;
--}
--
- blk_status_t __blk_crypto_init_request(struct request *rq)
+diff --git a/block/bio.c b/block/bio.c
+index 32f75f31bb5c..99c510f706e2 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -1099,7 +1099,8 @@ static int __bio_iov_append_get_pages(struct bio *bio, struct iov_iter *iter)
+  * The function tries, but does not guarantee, to pin as many pages as
+  * fit into the bio, or are requested in @iter, whatever is smaller. If
+  * MM encounters an error pinning the requested pages, it stops. Error
+- * is returned only if 0 pages could be pinned.
++ * is returned only if 0 pages could be pinned. It also ensures that the number
++ * of sectors added to the bio is aligned to bio_required_sector_alignment().
+  *
+  * It's intended for direct IO, so doesn't do PSI tracking, the caller is
+  * responsible for setting BIO_WORKINGSET if necessary.
+@@ -1107,6 +1108,7 @@ static int __bio_iov_append_get_pages(struct bio *bio, struct iov_iter *iter)
+ int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter)
  {
- 	return blk_ksm_get_slot_for_key(rq->q->ksm, rq->crypt_ctx->bc_key,
-@@ -271,7 +255,8 @@ bool __blk_crypto_bio_prep(struct bio **bio_ptr)
- 		goto fail;
- 	}
+ 	int ret = 0;
++	unsigned int aligned_sectors;
  
--	if (!bio_crypt_check_alignment(bio)) {
-+	if (!IS_ALIGNED(bio->bi_iter.bi_size,
-+			bc_key->crypto_cfg.data_unit_size)) {
- 		bio->bi_status = BLK_STS_IOERR;
- 		goto fail;
- 	}
+ 	if (iov_iter_is_bvec(iter)) {
+ 		if (bio_op(bio) == REQ_OP_ZONE_APPEND)
+@@ -1121,6 +1123,15 @@ int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter)
+ 			ret = __bio_iov_iter_get_pages(bio, iter);
+ 	} while (!ret && iov_iter_count(iter) && !bio_full(bio, 0));
+ 
++	/*
++	 * Ensure that number of sectors in bio is aligned to
++	 * bio_required_sector_align()
++	 */
++	aligned_sectors = round_down(bio_sectors(bio),
++				     bio_required_sector_alignment(bio));
++	iov_iter_revert(iter, (bio_sectors(bio) - aligned_sectors) << SECTOR_SHIFT);
++	bio_truncate(bio, aligned_sectors << SECTOR_SHIFT);
++
+ 	/* don't account direct I/O as memory stall */
+ 	bio_clear_flag(bio, BIO_WORKINGSET);
+ 	return bio->bi_vcnt ? 0 : ret;
 -- 
 2.32.0.rc1.229.g3e70b5a671-goog
 
