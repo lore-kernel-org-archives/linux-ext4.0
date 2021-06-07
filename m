@@ -2,131 +2,153 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIMWL_WL_MED,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
-	UNPARSEABLE_RELAY,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58C1CC47082
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Jun 2021 10:24:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC551C48BE0
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Jun 2021 14:52:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 455E7611ED
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Jun 2021 10:24:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DD45560FE5
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Jun 2021 14:52:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230372AbhFGK0g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Jun 2021 06:26:36 -0400
-Received: from mx0a-00069f02.pphosted.com ([205.220.165.32]:21976 "EHLO
-        mx0a-00069f02.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230127AbhFGK0f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jun 2021 06:26:35 -0400
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.16.0.43/8.16.0.43) with SMTP id 157AHeil005413;
-        Mon, 7 Jun 2021 10:24:41 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : mime-version : content-type; s=corp-2020-01-29;
- bh=u12TmV5uGv81rRznZbzspuuXXc/5c57q0zq4nsWum48=;
- b=jgmKAik5hDJlP2wURcTO9vY7Mr29tTALlGRSSJjnmn9DnbeZssy+SefZdShzJqXr2Vwh
- tH+b9LwlagI0q87FxZHDzp2iE1Esqs9aIKKV7TSvsCdtg730ekW/2HW1q+BbvRXGuqIy
- DjINKygDnBWVxuRHu6y1GpwI3XS239qX6kC65eVj5pnupyGTSGFTjwowo3qzO0nVUb80
- 5rN+I5IFznTGyaAKzi3AzTLB4cjGT0klP96sFwnKKFDM7DlfeijPQERjlGCuNSW2rs1t
- ehsgo3WR5sVZXY9+CqCdOBsePYvSrBWj3FC8sVoosmfwjT5UXCDCvgCyVdA45lmKShje Hg== 
-Received: from oracle.com (aserp3020.oracle.com [141.146.126.70])
-        by mx0b-00069f02.pphosted.com with ESMTP id 391g4g814k-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 07 Jun 2021 10:24:40 +0000
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [127.0.0.1])
-        by pps.podrdrct (8.16.0.36/8.16.0.36) with SMTP id 157AOdFi053883;
-        Mon, 7 Jun 2021 10:24:39 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by aserp3020.oracle.com with ESMTP id 3906spaj0j-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 07 Jun 2021 10:24:39 +0000
-Received: from aserp3020.oracle.com (aserp3020.oracle.com [127.0.0.1])
-        by pps.reinject (8.16.0.36/8.16.0.36) with SMTP id 157AOdb2053829;
-        Mon, 7 Jun 2021 10:24:39 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserp3020.oracle.com with ESMTP id 3906spahyb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 07 Jun 2021 10:24:39 +0000
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 157AOcef011743;
-        Mon, 7 Jun 2021 10:24:38 GMT
-Received: from kadam (/41.212.42.34)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 07 Jun 2021 03:24:37 -0700
-Date:   Mon, 7 Jun 2021 13:24:31 +0300
-From:   Dan Carpenter <dan.carpenter@oracle.com>
-To:     kbuild@lists.01.org, Leah Rumancik <leah.rumancik@gmail.com>
-Cc:     lkp@intel.com, kbuild-all@lists.01.org, linux-ext4@vger.kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [ext4:dev 40/42] fs/jbd2/journal.c:1718 __jbd2_journal_erase() warn:
- maybe use && instead of &
-Message-ID: <202106070427.SYkrGwCC-lkp@intel.com>
+        id S231184AbhFGOyc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Jun 2021 10:54:32 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:34624 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230264AbhFGOya (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jun 2021 10:54:30 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 819DE21A68;
+        Mon,  7 Jun 2021 14:52:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1623077557; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=vhH8fZvd6Tom4nBiYNHBFCVmcJF6aY93XCBQD2IK7mE=;
+        b=sTYyrBrhmcoYH4Pc6qGpefCJy5Sux5PJVReKTeUz6gUVd74lV8PShJvlmgXRUYi7K78zGY
+        d4J3ry2lEKY4SEj8ooKRSfsxNwMcXt1Hj4nLWK6IcMLWMM+R6InO8T8IFySZfCpG7xy0Kk
+        TEFjqGOekbxuEn9tycM3YhzJbNJncoU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1623077557;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=vhH8fZvd6Tom4nBiYNHBFCVmcJF6aY93XCBQD2IK7mE=;
+        b=DwFAqfCR7Wr+2ACyXhre2GSoLv5DOgFn+ENsakIV7+3dRNt9fpuZ6AfKNeT4x7NlOGqZpl
+        fOCS0M97+XnF36Bg==
+Received: from quack2.suse.cz (unknown [10.100.200.198])
+        by relay2.suse.de (Postfix) with ESMTP id B8DC1A3B98;
+        Mon,  7 Jun 2021 14:52:36 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 91DF31F2CB3; Mon,  7 Jun 2021 16:52:36 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>, ceph-devel@vger.kernel.org,
+        Chao Yu <yuchao0@huawei.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Johannes Thumshirn <jth@kernel.org>,
+        linux-cifs@vger.kernel.org, <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
+        <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
+        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/14] mm: Add functions to lock invalidate_lock for two mappings
+Date:   Mon,  7 Jun 2021 16:52:14 +0200
+Message-Id: <20210607145236.31852-4-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210607144631.8717-1-jack@suse.cz>
+References: <20210607144631.8717-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-GUID: EP2rIBNpkt1goxg59Sxo5ineu-QRNQY9
-X-Proofpoint-ORIG-GUID: EP2rIBNpkt1goxg59Sxo5ineu-QRNQY9
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2616; h=from:subject; bh=feuIxLKoHMpqfTsHSNzx+Llrxfh/M4pQHEj3mln4fkU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBgvjKf4qNEt/Jyz8s3OnJ3hXcO5MHT6Xe5BiU0vi7v Yg+bSvWJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYL4ynwAKCRCcnaoHP2RA2chHB/ wKYys4WnIBaTn+iTmcDwD76cwJNj9fNUmSIB5g6n0gtAP4/BnjWvcBbmQla0RGUYJvtO/9VQX1/DPE RdysgXZVUQqMFjHYjWjBwkkpPWcvdHvIW+9KXp0iJzLJkqUV8p8ZfByoP2JTRzDN82Rte87GtnN2Sp L0xIljcsn5jrH8Ww2o3Twm5GXBaCRdS8AVgRk1xEBgsw9Tm6VEqipm87uxNWlHgaU4THjuXQviA32K qTmxhDoIUFvd+7DyJIQyVFx8U2bwkAdQVm20zTZnZAZepHKSgapRODGbx6Yqk1g6ob+l9hmvzMz/zA Y3rmXXMf7ydvJe7qAvc8CkddqajivD
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-head:   a492dedb708d287aac857c6799f6f364f3d914b3
-commit: 84ed553af7e5c8f3f3de0160ba7eaabcab8b9f7b [40/42] ext4: add discard/zeroout flags to journal flush
-config: arm-randconfig-m031-20210604 (attached as .config)
-compiler: arm-linux-gnueabi-gcc (GCC) 9.3.0
+Some operations such as reflinking blocks among files will need to lock
+invalidate_lock for two mappings. Add helper functions to do that.
 
-If you fix the issue, kindly add following tag as appropriate
-Reported-by: kernel test robot <lkp@intel.com>
-Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
-
-smatch warnings:
-fs/jbd2/journal.c:1718 __jbd2_journal_erase() warn: maybe use && instead of &
-
-vim +1718 fs/jbd2/journal.c
-
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1701  static int __jbd2_journal_erase(journal_t *journal, unsigned int flags)
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1702  {
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1703  	int err = 0;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1704  	unsigned long block, log_offset; /* logical */
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1705  	unsigned long long phys_block, block_start, block_stop; /* physical */
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1706  	loff_t byte_start, byte_stop, byte_count;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1707  	struct request_queue *q = bdev_get_queue(journal->j_dev);
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1708  
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1709  	/* flags must be set to either discard or zeroout */
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1710  	if ((flags & ~JBD2_JOURNAL_FLUSH_VALID) || !flags ||
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1711  			((flags & JBD2_JOURNAL_FLUSH_DISCARD) &&
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1712  			(flags & JBD2_JOURNAL_FLUSH_ZEROOUT)))
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1713  		return -EINVAL;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1714  
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1715  	if (!q)
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1716  		return -ENXIO;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1717  
-84ed553af7e5c8 Leah Rumancik 2021-05-18 @1718  	if (JBD2_JOURNAL_FLUSH_DISCARD & !blk_queue_discard(q))
-
-JBD2_JOURNAL_FLUSH_DISCARD is 1 so this works, but probably && was
-intended.
-
-Using && should be a little bit faster.  blk_queue_discard() is just a
-wrapper around test_bit() so it doesn't have side effects.
-
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1719  		return -EOPNOTSUPP;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1720  
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1721  	/*
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1722  	 * lookup block mapping and issue discard/zeroout for each
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1723  	 * contiguous region
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1724  	 */
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1725  	log_offset = be32_to_cpu(journal->j_superblock->s_first);
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1726  	block_start =  ~0ULL;
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1727  	for (block = log_offset; block < journal->j_total_len; block++) {
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1728  		err = jbd2_journal_bmap(journal, block, &phys_block);
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1729  		if (err) {
-84ed553af7e5c8 Leah Rumancik 2021-05-18  1730  			pr_err("JBD2: bad block at offset %lu", block);
-
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-0-DAY CI Kernel Test Service, Intel Corporation
-https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
+ include/linux/fs.h |  6 ++++++
+ mm/filemap.c       | 38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d8afbc9661d7..ddc11bafc183 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -849,6 +849,12 @@ static inline void filemap_invalidate_unlock_shared(
+ void lock_two_nondirectories(struct inode *, struct inode*);
+ void unlock_two_nondirectories(struct inode *, struct inode*);
+ 
++void filemap_invalidate_lock_two(struct address_space *mapping1,
++				 struct address_space *mapping2);
++void filemap_invalidate_unlock_two(struct address_space *mapping1,
++				   struct address_space *mapping2);
++
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
+diff --git a/mm/filemap.c b/mm/filemap.c
+index c8e7e451d81e..b8e9bccecd9f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1009,6 +1009,44 @@ struct page *__page_cache_alloc(gfp_t gfp)
+ EXPORT_SYMBOL(__page_cache_alloc);
+ #endif
+ 
++/*
++ * filemap_invalidate_lock_two - lock invalidate_lock for two mappings
++ *
++ * Lock exclusively invalidate_lock of any passed mapping that is not NULL.
++ *
++ * @mapping1: the first mapping to lock
++ * @mapping2: the second mapping to lock
++ */
++void filemap_invalidate_lock_two(struct address_space *mapping1,
++				 struct address_space *mapping2)
++{
++	if (mapping1 > mapping2)
++		swap(mapping1, mapping2);
++	if (mapping1)
++		down_write(&mapping1->invalidate_lock);
++	if (mapping2 && mapping1 != mapping2)
++		down_write_nested(&mapping2->invalidate_lock, 1);
++}
++EXPORT_SYMBOL(filemap_invalidate_lock_two);
++
++/*
++ * filemap_invalidate_unlock_two - unlock invalidate_lock for two mappings
++ *
++ * Unlock exclusive invalidate_lock of any passed mapping that is not NULL.
++ *
++ * @mapping1: the first mapping to unlock
++ * @mapping2: the second mapping to unlock
++ */
++void filemap_invalidate_unlock_two(struct address_space *mapping1,
++				   struct address_space *mapping2)
++{
++	if (mapping1)
++		up_write(&mapping1->invalidate_lock);
++	if (mapping2 && mapping1 != mapping2)
++		up_write(&mapping2->invalidate_lock);
++}
++EXPORT_SYMBOL(filemap_invalidate_unlock_two);
++
+ /*
+  * In order to wait for pages to become available there must be
+  * waitqueues associated with pages. By using a hash table of
+-- 
+2.26.2
 
