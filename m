@@ -5,35 +5,35 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0D82C48BE5
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8859BC49EA2
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BB812613FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66591613DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230265AbhFJLR6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Jun 2021 07:17:58 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:3831 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230212AbhFJLRv (ORCPT
+        id S230259AbhFJLR5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Jun 2021 07:17:57 -0400
+Received: from szxga03-in.huawei.com ([45.249.212.189]:5370 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230211AbhFJLRv (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jun 2021 07:17:51 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4G11Vr4g0DzWsdF;
-        Thu, 10 Jun 2021 19:11:00 +0800 (CST)
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.55])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4G11Wz6fJkz6vGD;
+        Thu, 10 Jun 2021 19:11:59 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Thu, 10
- Jun 2021 19:15:53 +0800
+ Jun 2021 19:15:52 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         <jack@suse.cz>, <tytso@mit.edu>
 CC:     <adilger.kernel@dilger.ca>, <david@fromorbit.com>,
         <hch@infradead.org>, <yi.zhang@huawei.com>
-Subject: [RFC PATCH v4 8/8] fs: remove bdev_try_to_free_page callback
-Date:   Thu, 10 Jun 2021 19:24:40 +0800
-Message-ID: <20210610112440.3438139-9-yi.zhang@huawei.com>
+Subject: [RFC PATCH v4 5/8] jbd2,ext4: add a shrinker to release checkpointed buffers
+Date:   Thu, 10 Jun 2021 19:24:37 +0800
+Message-ID: <20210610112440.3438139-6-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20210610112440.3438139-1-yi.zhang@huawei.com>
 References: <20210610112440.3438139-1-yi.zhang@huawei.com>
@@ -48,62 +48,521 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After remove the unique user of sop->bdev_try_to_free_page() callback,
-we could remove the callback and the corresponding blkdev_releasepage()
-at all.
+Current metadata buffer release logic in bdev_try_to_free_page() have
+a lot of use-after-free issues when umount filesystem concurrently, and
+it is difficult to fix directly because ext4 is the only user of
+s_op->bdev_try_to_free_page callback and we may have to add more special
+refcount or lock that is only used by ext4 into the common vfs layer,
+which is unacceptable.
+
+One better solution is remove the bdev_try_to_free_page callback, but
+the real problem is we cannot easily release journal_head on the
+checkpointed buffer, so try_to_free_buffers() cannot release buffers and
+page under memory pressure, which is more likely to trigger
+out-of-memory. So we cannot remove the callback directly before we find
+another way to release journal_head.
+
+This patch introduce a shrinker to free journal_head on the checkpointed
+transaction. After the journal_head got freed, try_to_free_buffers()
+could free buffer properly.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Suggested-by: Jan Kara <jack@suse.cz>
 ---
- fs/block_dev.c     | 15 ---------------
- include/linux/fs.h |  1 -
- 2 files changed, 16 deletions(-)
+ fs/ext4/super.c             |   8 ++
+ fs/jbd2/checkpoint.c        | 147 ++++++++++++++++++++++++++++++++++++
+ fs/jbd2/journal.c           |  87 +++++++++++++++++++++
+ include/linux/jbd2.h        |  26 +++++++
+ include/trace/events/jbd2.h | 101 +++++++++++++++++++++++++
+ 5 files changed, 369 insertions(+)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index 6cc4d4cfe0c2..e215da6d49b4 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -1733,20 +1733,6 @@ ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
- }
- EXPORT_SYMBOL_GPL(blkdev_read_iter);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d29f6aa7d96e..80064e566f56 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1174,6 +1174,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	ext4_unregister_sysfs(sb);
  
--/*
-- * Try to release a page associated with block device when the system
-- * is under memory pressure.
-- */
--static int blkdev_releasepage(struct page *page, gfp_t wait)
--{
--	struct super_block *super = BDEV_I(page->mapping->host)->bdev.bd_super;
--
--	if (super && super->s_op->bdev_try_to_free_page)
--		return super->s_op->bdev_try_to_free_page(super, page, wait);
--
--	return try_to_free_buffers(page);
--}
--
- static int blkdev_writepages(struct address_space *mapping,
- 			     struct writeback_control *wbc)
+ 	if (sbi->s_journal) {
++		jbd2_journal_unregister_shrinker(sbi->s_journal);
+ 		aborted = is_journal_aborted(sbi->s_journal);
+ 		err = jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+@@ -5178,6 +5179,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_ea_block_cache = NULL;
+ 
+ 	if (sbi->s_journal) {
++		jbd2_journal_unregister_shrinker(sbi->s_journal);
+ 		jbd2_journal_destroy(sbi->s_journal);
+ 		sbi->s_journal = NULL;
+ 	}
+@@ -5504,6 +5506,12 @@ static int ext4_load_journal(struct super_block *sb,
+ 		ext4_commit_super(sb);
+ 	}
+ 
++	err = jbd2_journal_register_shrinker(journal);
++	if (err) {
++		EXT4_SB(sb)->s_journal = NULL;
++		goto err_out;
++	}
++
+ 	return 0;
+ 
+ err_out:
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 75a4f622afaf..1abdae44a3d8 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -79,6 +79,18 @@ static inline void __buffer_relink_io(struct journal_head *jh)
+ 	transaction->t_checkpoint_io_list = jh;
+ }
+ 
++/*
++ * Check a checkpoint buffer could be release or not.
++ *
++ * Requires j_list_lock
++ */
++static inline bool __cp_buffer_busy(struct journal_head *jh)
++{
++	struct buffer_head *bh = jh2bh(jh);
++
++	return (jh->b_transaction || buffer_locked(bh) || buffer_dirty(bh));
++}
++
+ /*
+  * Try to release a checkpointed buffer from its transaction.
+  * Returns 1 if we released it and 2 if we also released the
+@@ -458,6 +470,137 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ 	return 0;
+ }
+ 
++/*
++ * journal_shrink_one_cp_list
++ *
++ * Find 'nr_to_scan' written-back checkpoint buffers in the given list
++ * and try to release them. If the whole transaction is released, set
++ * the 'released' parameter. Return the number of released checkpointed
++ * buffers.
++ *
++ * Called with j_list_lock held.
++ */
++static unsigned long journal_shrink_one_cp_list(struct journal_head *jh,
++						unsigned long *nr_to_scan,
++						bool *released)
++{
++	struct journal_head *last_jh;
++	struct journal_head *next_jh = jh;
++	unsigned long nr_freed = 0;
++	int ret;
++
++	if (!jh || *nr_to_scan == 0)
++		return 0;
++
++	last_jh = jh->b_cpprev;
++	do {
++		jh = next_jh;
++		next_jh = jh->b_cpnext;
++
++		(*nr_to_scan)--;
++		if (__cp_buffer_busy(jh))
++			continue;
++
++		nr_freed++;
++		ret = __jbd2_journal_remove_checkpoint(jh);
++		if (ret) {
++			*released = true;
++			break;
++		}
++
++		if (need_resched())
++			break;
++	} while (jh != last_jh && *nr_to_scan);
++
++	return nr_freed;
++}
++
++/*
++ * jbd2_journal_shrink_checkpoint_list
++ *
++ * Find 'nr_to_scan' written-back checkpoint buffers in the journal
++ * and try to release them. Return the number of released checkpointed
++ * buffers.
++ *
++ * Called with j_list_lock held.
++ */
++unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal,
++						  unsigned long *nr_to_scan)
++{
++	transaction_t *transaction, *last_transaction, *next_transaction;
++	bool released;
++	tid_t first_tid = 0, last_tid = 0, next_tid = 0;
++	tid_t tid = 0;
++	unsigned long nr_freed = 0;
++	unsigned long nr_scanned = *nr_to_scan;
++
++again:
++	spin_lock(&journal->j_list_lock);
++	if (!journal->j_checkpoint_transactions) {
++		spin_unlock(&journal->j_list_lock);
++		goto out;
++	}
++
++	/*
++	 * Get next shrink transaction, resume previous scan or start
++	 * over again. If some others do checkpoint and drop transaction
++	 * from the checkpoint list, we ignore saved j_shrink_transaction
++	 * and start over unconditionally.
++	 */
++	if (journal->j_shrink_transaction)
++		transaction = journal->j_shrink_transaction;
++	else
++		transaction = journal->j_checkpoint_transactions;
++
++	if (!first_tid)
++		first_tid = transaction->t_tid;
++	last_transaction = journal->j_checkpoint_transactions->t_cpprev;
++	next_transaction = transaction;
++	last_tid = last_transaction->t_tid;
++	do {
++		transaction = next_transaction;
++		next_transaction = transaction->t_cpnext;
++		tid = transaction->t_tid;
++		released = false;
++
++		nr_freed += journal_shrink_one_cp_list(transaction->t_checkpoint_list,
++						       nr_to_scan, &released);
++		if (*nr_to_scan == 0)
++			break;
++		if (need_resched() || spin_needbreak(&journal->j_list_lock))
++			break;
++		if (released)
++			continue;
++
++		nr_freed += journal_shrink_one_cp_list(transaction->t_checkpoint_io_list,
++						       nr_to_scan, &released);
++		if (*nr_to_scan == 0)
++			break;
++		if (need_resched() || spin_needbreak(&journal->j_list_lock))
++			break;
++	} while (transaction != last_transaction);
++
++	if (transaction != last_transaction) {
++		journal->j_shrink_transaction = next_transaction;
++		next_tid = next_transaction->t_tid;
++	} else {
++		journal->j_shrink_transaction = NULL;
++		next_tid = 0;
++	}
++
++	spin_unlock(&journal->j_list_lock);
++	cond_resched();
++
++	if (*nr_to_scan && next_tid)
++		goto again;
++out:
++	nr_scanned -= *nr_to_scan;
++	trace_jbd2_shrink_checkpoint_list(journal, first_tid, tid, last_tid,
++					  nr_freed, nr_scanned, next_tid);
++
++	return nr_freed;
++}
++
+ /*
+  * journal_clean_checkpoint_list
+  *
+@@ -580,6 +723,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 
+ 	__buffer_unlink(jh);
+ 	jh->b_cp_transaction = NULL;
++	percpu_counter_dec(&journal->j_jh_shrink_count);
+ 	jbd2_journal_put_journal_head(jh);
+ 
+ 	/* Is this transaction empty? */
+@@ -642,6 +786,7 @@ void __jbd2_journal_insert_checkpoint(struct journal_head *jh,
+ 		jh->b_cpnext->b_cpprev = jh;
+ 	}
+ 	transaction->t_checkpoint_list = jh;
++	percpu_counter_inc(&transaction->t_journal->j_jh_shrink_count);
+ }
+ 
+ /*
+@@ -657,6 +802,8 @@ void __jbd2_journal_insert_checkpoint(struct journal_head *jh,
+ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transaction)
  {
-@@ -1760,7 +1746,6 @@ static const struct address_space_operations def_blk_aops = {
- 	.write_begin	= blkdev_write_begin,
- 	.write_end	= blkdev_write_end,
- 	.writepages	= blkdev_writepages,
--	.releasepage	= blkdev_releasepage,
- 	.direct_IO	= blkdev_direct_IO,
- 	.migratepage	= buffer_migrate_page_norefs,
- 	.is_dirty_writeback = buffer_check_dirty_writeback,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index c3c88fdb9b2a..c3277b445f96 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2171,7 +2171,6 @@ struct super_operations {
- 	ssize_t (*quota_write)(struct super_block *, int, const char *, size_t, loff_t);
- 	struct dquot **(*get_dquots)(struct inode *);
- #endif
--	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
- 	long (*nr_cached_objects)(struct super_block *,
- 				  struct shrink_control *);
- 	long (*free_cached_objects)(struct super_block *,
+ 	assert_spin_locked(&journal->j_list_lock);
++
++	journal->j_shrink_transaction = NULL;
+ 	if (transaction->t_cpnext) {
+ 		transaction->t_cpnext->t_cpprev = transaction->t_cpprev;
+ 		transaction->t_cpprev->t_cpnext = transaction->t_cpnext;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 90146755941f..3746bb4fc431 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1954,6 +1954,91 @@ int jbd2_journal_load(journal_t *journal)
+ 	return -EIO;
+ }
+ 
++/**
++ * jbd2_journal_shrink_scan()
++ *
++ * Scan the checkpointed buffer on the checkpoint list and release the
++ * journal_head.
++ */
++static unsigned long jbd2_journal_shrink_scan(struct shrinker *shrink,
++					      struct shrink_control *sc)
++{
++	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
++	unsigned long nr_to_scan = sc->nr_to_scan;
++	unsigned long nr_shrunk;
++	unsigned long count;
++
++	count = percpu_counter_read_positive(&journal->j_jh_shrink_count);
++	trace_jbd2_shrink_scan_enter(journal, sc->nr_to_scan, count);
++
++	nr_shrunk = jbd2_journal_shrink_checkpoint_list(journal, &nr_to_scan);
++
++	count = percpu_counter_read_positive(&journal->j_jh_shrink_count);
++	trace_jbd2_shrink_scan_exit(journal, nr_to_scan, nr_shrunk, count);
++
++	return nr_shrunk;
++}
++
++/**
++ * jbd2_journal_shrink_count()
++ *
++ * Count the number of checkpoint buffers on the checkpoint list.
++ */
++static unsigned long jbd2_journal_shrink_count(struct shrinker *shrink,
++					       struct shrink_control *sc)
++{
++	journal_t *journal = container_of(shrink, journal_t, j_shrinker);
++	unsigned long count;
++
++	count = percpu_counter_read_positive(&journal->j_jh_shrink_count);
++	trace_jbd2_shrink_count(journal, sc->nr_to_scan, count);
++
++	return count;
++}
++
++/**
++ * jbd2_journal_register_shrinker()
++ * @journal: Journal to act on.
++ *
++ * Init a percpu counter to record the checkpointed buffers on the checkpoint
++ * list and register a shrinker to release their journal_head.
++ */
++int jbd2_journal_register_shrinker(journal_t *journal)
++{
++	int err;
++
++	journal->j_shrink_transaction = NULL;
++
++	err = percpu_counter_init(&journal->j_jh_shrink_count, 0, GFP_KERNEL);
++	if (err)
++		return err;
++
++	journal->j_shrinker.scan_objects = jbd2_journal_shrink_scan;
++	journal->j_shrinker.count_objects = jbd2_journal_shrink_count;
++	journal->j_shrinker.seeks = DEFAULT_SEEKS;
++	journal->j_shrinker.batch = journal->j_max_transaction_buffers;
++
++	err = register_shrinker(&journal->j_shrinker);
++	if (err) {
++		percpu_counter_destroy(&journal->j_jh_shrink_count);
++		return err;
++	}
++
++	return 0;
++}
++
++/**
++ * jbd2_journal_unregister_shrinker()
++ * @journal: Journal to act on.
++ *
++ * Unregister the checkpointed buffer shrinker and destroy the percpu counter.
++ */
++void jbd2_journal_unregister_shrinker(journal_t *journal)
++{
++	percpu_counter_destroy(&journal->j_jh_shrink_count);
++	unregister_shrinker(&journal->j_shrinker);
++}
++
+ /**
+  * jbd2_journal_destroy() - Release a journal_t structure.
+  * @journal: Journal to act on.
+@@ -2026,6 +2111,8 @@ int jbd2_journal_destroy(journal_t *journal)
+ 		brelse(journal->j_sb_buffer);
+ 	}
+ 
++	jbd2_journal_unregister_shrinker(journal);
++
+ 	if (journal->j_proc_entry)
+ 		jbd2_stats_proc_exit(journal);
+ 	iput(journal->j_inode);
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f9b5e657b8f3..23578506215f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -909,6 +909,29 @@ struct journal_s
+ 	 */
+ 	struct buffer_head	*j_chkpt_bhs[JBD2_NR_BATCH];
+ 
++	/**
++	 * @j_shrinker:
++	 *
++	 * Journal head shrinker, reclaim buffer's journal head which
++	 * has been written back.
++	 */
++	struct shrinker		j_shrinker;
++
++	/**
++	 * @j_jh_shrink_count:
++	 *
++	 * Number of journal buffers on the checkpoint list. [j_list_lock]
++	 */
++	struct percpu_counter	j_jh_shrink_count;
++
++	/**
++	 * @j_shrink_transaction:
++	 *
++	 * Record next transaction will shrink on the checkpoint list.
++	 * [j_list_lock]
++	 */
++	transaction_t		*j_shrink_transaction;
++
+ 	/**
+ 	 * @j_head:
+ 	 *
+@@ -1418,6 +1441,7 @@ extern void jbd2_journal_commit_transaction(journal_t *);
+ 
+ /* Checkpoint list management */
+ void __jbd2_journal_clean_checkpoint_list(journal_t *journal, bool destroy);
++unsigned long jbd2_journal_shrink_checkpoint_list(journal_t *journal, unsigned long *nr_to_scan);
+ int __jbd2_journal_remove_checkpoint(struct journal_head *);
+ void jbd2_journal_destroy_checkpoint(journal_t *journal);
+ void __jbd2_journal_insert_checkpoint(struct journal_head *, transaction_t *);
+@@ -1528,6 +1552,8 @@ extern int	   jbd2_journal_set_features
+ 		   (journal_t *, unsigned long, unsigned long, unsigned long);
+ extern void	   jbd2_journal_clear_features
+ 		   (journal_t *, unsigned long, unsigned long, unsigned long);
++extern int	   jbd2_journal_register_shrinker(journal_t *journal);
++extern void	   jbd2_journal_unregister_shrinker(journal_t *journal);
+ extern int	   jbd2_journal_load       (journal_t *journal);
+ extern int	   jbd2_journal_destroy    (journal_t *);
+ extern int	   jbd2_journal_recover    (journal_t *journal);
+diff --git a/include/trace/events/jbd2.h b/include/trace/events/jbd2.h
+index d16a32867f3a..a4dfe005983d 100644
+--- a/include/trace/events/jbd2.h
++++ b/include/trace/events/jbd2.h
+@@ -394,6 +394,107 @@ TRACE_EVENT(jbd2_lock_buffer_stall,
+ 		__entry->stall_ms)
+ );
+ 
++DECLARE_EVENT_CLASS(jbd2_journal_shrink,
++
++	TP_PROTO(journal_t *journal, unsigned long nr_to_scan,
++		 unsigned long count),
++
++	TP_ARGS(journal, nr_to_scan, count),
++
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(unsigned long, nr_to_scan)
++		__field(unsigned long, count)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= journal->j_fs_dev->bd_dev;
++		__entry->nr_to_scan	= nr_to_scan;
++		__entry->count		= count;
++	),
++
++	TP_printk("dev %d,%d nr_to_scan %lu count %lu",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->nr_to_scan, __entry->count)
++);
++
++DEFINE_EVENT(jbd2_journal_shrink, jbd2_shrink_count,
++
++	TP_PROTO(journal_t *journal, unsigned long nr_to_scan, unsigned long count),
++
++	TP_ARGS(journal, nr_to_scan, count)
++);
++
++DEFINE_EVENT(jbd2_journal_shrink, jbd2_shrink_scan_enter,
++
++	TP_PROTO(journal_t *journal, unsigned long nr_to_scan, unsigned long count),
++
++	TP_ARGS(journal, nr_to_scan, count)
++);
++
++TRACE_EVENT(jbd2_shrink_scan_exit,
++
++	TP_PROTO(journal_t *journal, unsigned long nr_to_scan,
++		 unsigned long nr_shrunk, unsigned long count),
++
++	TP_ARGS(journal, nr_to_scan, nr_shrunk, count),
++
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(unsigned long, nr_to_scan)
++		__field(unsigned long, nr_shrunk)
++		__field(unsigned long, count)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= journal->j_fs_dev->bd_dev;
++		__entry->nr_to_scan	= nr_to_scan;
++		__entry->nr_shrunk	= nr_shrunk;
++		__entry->count		= count;
++	),
++
++	TP_printk("dev %d,%d nr_to_scan %lu nr_shrunk %lu count %lu",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->nr_to_scan, __entry->nr_shrunk,
++		  __entry->count)
++);
++
++TRACE_EVENT(jbd2_shrink_checkpoint_list,
++
++	TP_PROTO(journal_t *journal, tid_t first_tid, tid_t tid, tid_t last_tid,
++		 unsigned long nr_freed, unsigned long nr_scanned,
++		 tid_t next_tid),
++
++	TP_ARGS(journal, first_tid, tid, last_tid, nr_freed,
++		nr_scanned, next_tid),
++
++	TP_STRUCT__entry(
++		__field(dev_t, dev)
++		__field(tid_t, first_tid)
++		__field(tid_t, tid)
++		__field(tid_t, last_tid)
++		__field(unsigned long, nr_freed)
++		__field(unsigned long, nr_scanned)
++		__field(tid_t, next_tid)
++	),
++
++	TP_fast_assign(
++		__entry->dev		= journal->j_fs_dev->bd_dev;
++		__entry->first_tid	= first_tid;
++		__entry->tid		= tid;
++		__entry->last_tid	= last_tid;
++		__entry->nr_freed	= nr_freed;
++		__entry->nr_scanned	= nr_scanned;
++		__entry->next_tid	= next_tid;
++	),
++
++	TP_printk("dev %d,%d shrink transaction %u-%u(%u) freed %lu "
++		  "scanned %lu next transaction %u",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  __entry->first_tid, __entry->tid, __entry->last_tid,
++		  __entry->nr_freed, __entry->nr_scanned, __entry->next_tid)
++);
++
+ #endif /* _TRACE_JBD2_H */
+ 
+ /* This part must be outside protection */
 -- 
 2.31.1
 
