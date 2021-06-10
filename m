@@ -5,35 +5,35 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EFAB5C48BE8
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:15:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C966C47094
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D9A8D613F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:15:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3D38F613DF
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Jun 2021 11:16:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230175AbhFJLRz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S230248AbhFJLRz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Thu, 10 Jun 2021 07:17:55 -0400
-Received: from szxga02-in.huawei.com ([45.249.212.188]:5487 "EHLO
+Received: from szxga02-in.huawei.com ([45.249.212.188]:5488 "EHLO
         szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229961AbhFJLRt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jun 2021 07:17:49 -0400
+        with ESMTP id S230205AbhFJLRu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jun 2021 07:17:50 -0400
 Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4G11Y930HPzZfZw;
-        Thu, 10 Jun 2021 19:13:01 +0800 (CST)
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4G11YB2S0YzZf9N;
+        Thu, 10 Jun 2021 19:13:02 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Thu, 10
- Jun 2021 19:15:51 +0800
+ Jun 2021 19:15:52 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
         <jack@suse.cz>, <tytso@mit.edu>
 CC:     <adilger.kernel@dilger.ca>, <david@fromorbit.com>,
         <hch@infradead.org>, <yi.zhang@huawei.com>
-Subject: [RFC PATCH v4 4/8] jbd2: remove redundant buffer io error checks
-Date:   Thu, 10 Jun 2021 19:24:36 +0800
-Message-ID: <20210610112440.3438139-5-yi.zhang@huawei.com>
+Subject: [RFC PATCH v4 6/8] jbd2: simplify journal_clean_one_cp_list()
+Date:   Thu, 10 Jun 2021 19:24:38 +0800
+Message-ID: <20210610112440.3438139-7-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20210610112440.3438139-1-yi.zhang@huawei.com>
 References: <20210610112440.3438139-1-yi.zhang@huawei.com>
@@ -48,69 +48,73 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that __jbd2_journal_remove_checkpoint() can detect buffer io error
-and mark journal checkpoint error, then we abort the journal later
-before updating log tail to ensure the filesystem works consistently.
-So we could remove other redundant buffer io error checkes.
+Now that __try_to_free_cp_buf() remove checkpointed buffer or transaction
+when the buffer is not 'busy', which is only called by
+journal_clean_one_cp_list(). This patch simplify this function by remove
+__try_to_free_cp_buf() and invoke __cp_buffer_busy() directly.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/checkpoint.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ fs/jbd2/checkpoint.c | 30 ++++--------------------------
+ 1 file changed, 4 insertions(+), 26 deletions(-)
 
 diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index d27c10f4502f..75a4f622afaf 100644
+index 1abdae44a3d8..51d1eb2ffeb9 100644
 --- a/fs/jbd2/checkpoint.c
 +++ b/fs/jbd2/checkpoint.c
-@@ -91,8 +91,7 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
- 	int ret = 0;
- 	struct buffer_head *bh = jh2bh(jh);
- 
--	if (jh->b_transaction == NULL && !buffer_locked(bh) &&
--	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
-+	if (!jh->b_transaction && !buffer_locked(bh) && !buffer_dirty(bh)) {
- 		JBUFFER_TRACE(jh, "remove from checkpoint list");
- 		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
- 	}
-@@ -228,7 +227,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	 * OK, we need to start writing disk blocks.  Take one transaction
- 	 * and write it.
- 	 */
--	result = 0;
- 	spin_lock(&journal->j_list_lock);
- 	if (!journal->j_checkpoint_transactions)
- 		goto out;
-@@ -295,8 +293,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 			goto restart;
- 		}
- 		if (!buffer_dirty(bh)) {
--			if (unlikely(buffer_write_io_error(bh)) && !result)
--				result = -EIO;
- 			BUFFER_TRACE(bh, "remove from checkpoint");
- 			if (__jbd2_journal_remove_checkpoint(jh))
- 				/* The transaction was released; we're done */
-@@ -356,8 +352,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 			spin_lock(&journal->j_list_lock);
- 			goto restart2;
- 		}
--		if (unlikely(buffer_write_io_error(bh)) && !result)
--			result = -EIO;
- 
- 		/*
- 		 * Now in whatever state the buffer currently is, we
-@@ -369,10 +363,7 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	}
- out:
- 	spin_unlock(&journal->j_list_lock);
--	if (result < 0)
--		jbd2_journal_abort(journal, result);
--	else
--		result = jbd2_cleanup_journal_tail(journal);
-+	result = jbd2_cleanup_journal_tail(journal);
- 
- 	return (result < 0) ? result : 0;
+@@ -91,25 +91,6 @@ static inline bool __cp_buffer_busy(struct journal_head *jh)
+ 	return (jh->b_transaction || buffer_locked(bh) || buffer_dirty(bh));
  }
+ 
+-/*
+- * Try to release a checkpointed buffer from its transaction.
+- * Returns 1 if we released it and 2 if we also released the
+- * whole transaction.
+- *
+- * Requires j_list_lock
+- */
+-static int __try_to_free_cp_buf(struct journal_head *jh)
+-{
+-	int ret = 0;
+-	struct buffer_head *bh = jh2bh(jh);
+-
+-	if (!jh->b_transaction && !buffer_locked(bh) && !buffer_dirty(bh)) {
+-		JBUFFER_TRACE(jh, "remove from checkpoint list");
+-		ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+-	}
+-	return ret;
+-}
+-
+ /*
+  * __jbd2_log_wait_for_space: wait until there is space in the journal.
+  *
+@@ -440,7 +421,6 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ {
+ 	struct journal_head *last_jh;
+ 	struct journal_head *next_jh = jh;
+-	int ret;
+ 
+ 	if (!jh)
+ 		return 0;
+@@ -449,13 +429,11 @@ static int journal_clean_one_cp_list(struct journal_head *jh, bool destroy)
+ 	do {
+ 		jh = next_jh;
+ 		next_jh = jh->b_cpnext;
+-		if (!destroy)
+-			ret = __try_to_free_cp_buf(jh);
+-		else
+-			ret = __jbd2_journal_remove_checkpoint(jh) + 1;
+-		if (!ret)
++
++		if (!destroy && __cp_buffer_busy(jh))
+ 			return 0;
+-		if (ret == 2)
++
++		if (__jbd2_journal_remove_checkpoint(jh))
+ 			return 1;
+ 		/*
+ 		 * This function only frees up some memory
 -- 
 2.31.1
 
