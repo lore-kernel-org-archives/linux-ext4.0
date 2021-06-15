@@ -2,140 +2,155 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48D17C48BDF
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 08:56:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D6E4C49EA5
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 09:18:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 182ED611EE
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 08:56:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E673761245
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 09:18:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231310AbhFOI6p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Jun 2021 04:58:45 -0400
-Received: from szxga08-in.huawei.com ([45.249.212.255]:7270 "EHLO
-        szxga08-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231267AbhFOI6o (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jun 2021 04:58:44 -0400
-Received: from dggeme754-chm.china.huawei.com (unknown [172.30.72.54])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4G429l16Fyz1BMJ8;
-        Tue, 15 Jun 2021 16:51:39 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggeme754-chm.china.huawei.com
- (10.3.19.100) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Tue, 15
- Jun 2021 16:56:38 +0800
-From:   Ye Bin <yebin10@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <jack@suse.cz>
-CC:     Ye Bin <yebin10@huawei.com>
-Subject: [PATCH RFC v2] ext4:fix warning in mark_buffer_dirty as IO error when mount with errors=continue
-Date:   Tue, 15 Jun 2021 17:05:37 +0800
-Message-ID: <20210615090537.3423231-1-yebin10@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        id S231360AbhFOJUW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Jun 2021 05:20:22 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:54346 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230454AbhFOJUU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jun 2021 05:20:20 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 0514321989;
+        Tue, 15 Jun 2021 09:18:15 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1623748695; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=0XkV+RgC+fT2zb/9P8XJncXzoes6c7BbAf1UfyHkV6A=;
+        b=0e1HG1zyf9r0J2dNWokgc+OQ6H0UXR3iSbtdwrp9wm/bE28mhz4Fb/S8UqOpeYqRtSdOQu
+        cjzSydpXdO1I2vHzYya5mJAaN//RyXzr/7zzUn4xfaMsXEldyCft0OEcFgoH8uBWNaf9EV
+        K6ZVvlNwJx3pxSvhG+7r7Tc+dgN3eSM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1623748695;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=0XkV+RgC+fT2zb/9P8XJncXzoes6c7BbAf1UfyHkV6A=;
+        b=uT6drJDEI8MJfUI/sGn0NhkaG98lb5Jbe1P+6dH/SBVNuTJJgwgIMJ3LZV0NLinp+sR++m
+        YCE36wZaDGigUuDw==
+Received: from quack2.suse.cz (unknown [10.100.200.198])
+        by relay2.suse.de (Postfix) with ESMTP id 64B4CA3B95;
+        Tue, 15 Jun 2021 09:18:14 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 3153F1F2CBC; Tue, 15 Jun 2021 11:18:14 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>, ceph-devel@vger.kernel.org,
+        Chao Yu <yuchao0@huawei.com>,
+        Damien Le Moal <damien.lemoal@wdc.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Johannes Thumshirn <jth@kernel.org>,
+        linux-cifs@vger.kernel.org, <linux-ext4@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
+        <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
+        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
+        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+        "Darrick J . Wong" <djwong@kernel.org>
+Subject: [PATCH 04/14] mm: Add functions to lock invalidate_lock for two mappings
+Date:   Tue, 15 Jun 2021 11:17:54 +0200
+Message-Id: <20210615091814.28626-4-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210615090844.6045-1-jack@suse.cz>
+References: <20210615090844.6045-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
- dggeme754-chm.china.huawei.com (10.3.19.100)
-X-CFilter-Loop: Reflected
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2666; h=from:subject; bh=oUYTBj0usYKZHAhcL7fto1zqDGKiVZb74yqc2jI2vTI=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBgyHBDjHixD9ynk7cHWEaRc2rAtNglfOdu6LFrLdwd AgRldvWJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYMhwQwAKCRCcnaoHP2RA2dx8B/ 4gR5b8Yria4/uQruq+8EWovN0cccZVV1BF92wjDcg5rTaSr5GwLxoWGNa1zmJPwwQ2NRH2fz9jBbWX XTLnwG6OSvOA0TXxy9HTK9HZV6SHDFXUW3yhJ22X9hfGvy8bJz0s8f1eW8xywNms/Nly/xRu5UrXBT GyDDHranBIdveS/GDQ6BdURWmvKQyXthCrw1Wzl56+seW+PZeDN12hTUHRuojD2IaCIEoViNboFWcx jP6JhEYnZi/9K03+kpC2TWCBzY9VNPll6r5dkv4DCQIYTcVCyUPzhAmY4ETc89VR+5lWLjW0AVtXsz vAlFo8n+VuIi4W+AICrWJ+aOTHxfPV
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We test with following step:
-1. dmsetup  create dust1 --table  '0 2097152 dust /dev/sdc 0 4096'
-2. mount  /dev/mapper/dust1  /home/test
-3. dmsetup message dust1 0 addbadblock 0 10
-4. cd /home/test
-5. echo "XXXXXXX" > t
-6. wait a moment we got following warning:
-[   80.654487] end_buffer_async_write: bh=0xffff88842f18bdd0
-[   80.656134] Buffer I/O error on dev dm-0, logical block 0, lost async page write
-[   85.774450] EXT4-fs error (device dm-0): ext4_check_bdev_write_error:193: comm kworker/u16:8: Error while async write back metadata
-[   91.415513] mark_buffer_dirty: bh=0xffff88842f18bdd0
-[   91.417038] ------------[ cut here ]------------
-[   91.418450] WARNING: CPU: 1 PID: 1944 at fs/buffer.c:1092 mark_buffer_dirty.cold+0x1c/0x5e
+Some operations such as reflinking blocks among files will need to lock
+invalidate_lock for two mappings. Add helper functions to do that.
 
-[   91.440322] Call Trace:
-[   91.440652]  __jbd2_journal_temp_unlink_buffer+0x135/0x220
-[   91.441354]  __jbd2_journal_unfile_buffer+0x24/0x90
-[   91.441981]  __jbd2_journal_refile_buffer+0x134/0x1d0
-[   91.442628]  jbd2_journal_commit_transaction+0x249a/0x3240
-[   91.443336]  ? put_prev_entity+0x2a/0x200
-[   91.443856]  ? kjournald2+0x12e/0x510
-[   91.444324]  kjournald2+0x12e/0x510
-[   91.444773]  ? woken_wake_function+0x30/0x30
-[   91.445326]  kthread+0x150/0x1b0
-[   91.445739]  ? commit_timeout+0x20/0x20
-[   91.446258]  ? kthread_flush_worker+0xb0/0xb0
-[   91.446818]  ret_from_fork+0x1f/0x30
-[   91.447293] ---[ end trace 66f0b6bf3d1abade ]---
-
-If super block write back with IO error, then will call clear_buffer_uptodate
-clear uptodate flag. But there is no chance to set buffer uptodate again.
-So call set_buffer_uptodate before call jbd2_journal_dirty_metadata to make sure
-that buffer is uptodate when buffer is jbddirty.
-
-Signed-off-by: Ye Bin <yebin10@huawei.com>
+Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4_jbd2.c |  2 +-
- fs/ext4/super.c     | 12 ++++++++++--
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ include/linux/fs.h |  6 ++++++
+ mm/filemap.c       | 38 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index be799040a415..b96ecba91899 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -327,6 +327,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d8afbc9661d7..ddc11bafc183 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -849,6 +849,12 @@ static inline void filemap_invalidate_unlock_shared(
+ void lock_two_nondirectories(struct inode *, struct inode*);
+ void unlock_two_nondirectories(struct inode *, struct inode*);
  
- 	set_buffer_meta(bh);
- 	set_buffer_prio(bh);
-+	set_buffer_uptodate(bh);
- 	if (ext4_handle_valid(handle)) {
- 		err = jbd2_journal_dirty_metadata(handle, bh);
- 		/* Errors can only happen due to aborted journal or a nasty bug */
-@@ -355,7 +356,6 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
- 					 err);
- 		}
- 	} else {
--		set_buffer_uptodate(bh);
- 		if (inode)
- 			mark_buffer_dirty_inode(bh, inode);
- 		else
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d29f6aa7d96e..67a92c11a45c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -705,15 +705,23 @@ static void flush_stashed_error_work(struct work_struct *work)
- 	 * ext4 error handling code during handling of previous errors.
- 	 */
- 	if (!sb_rdonly(sbi->s_sb) && journal) {
-+		struct buffer_head *sbh = sbi->s_sbh;
- 		handle = jbd2_journal_start(journal, 1);
- 		if (IS_ERR(handle))
- 			goto write_directly;
--		if (jbd2_journal_get_write_access(handle, sbi->s_sbh)) {
-+		if (jbd2_journal_get_write_access(handle, sbh)) {
- 			jbd2_journal_stop(handle);
- 			goto write_directly;
- 		}
- 		ext4_update_super(sbi->s_sb);
--		if (jbd2_journal_dirty_metadata(handle, sbi->s_sbh)) {
-+		if (buffer_write_io_error(sbh) || !buffer_uptodate(sbh)) {
-+			ext4_msg(sbi->s_sb, KERN_ERR, "previous I/O error to "
-+				 "superblock detected");
-+			clear_buffer_write_io_error(sbh);
-+			set_buffer_uptodate(sbh);
-+		}
++void filemap_invalidate_lock_two(struct address_space *mapping1,
++				 struct address_space *mapping2);
++void filemap_invalidate_unlock_two(struct address_space *mapping1,
++				   struct address_space *mapping2);
 +
-+		if (jbd2_journal_dirty_metadata(handle, sbh)) {
- 			jbd2_journal_stop(handle);
- 			goto write_directly;
- 		}
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
+diff --git a/mm/filemap.c b/mm/filemap.c
+index c8e7e451d81e..b8e9bccecd9f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1009,6 +1009,44 @@ struct page *__page_cache_alloc(gfp_t gfp)
+ EXPORT_SYMBOL(__page_cache_alloc);
+ #endif
+ 
++/*
++ * filemap_invalidate_lock_two - lock invalidate_lock for two mappings
++ *
++ * Lock exclusively invalidate_lock of any passed mapping that is not NULL.
++ *
++ * @mapping1: the first mapping to lock
++ * @mapping2: the second mapping to lock
++ */
++void filemap_invalidate_lock_two(struct address_space *mapping1,
++				 struct address_space *mapping2)
++{
++	if (mapping1 > mapping2)
++		swap(mapping1, mapping2);
++	if (mapping1)
++		down_write(&mapping1->invalidate_lock);
++	if (mapping2 && mapping1 != mapping2)
++		down_write_nested(&mapping2->invalidate_lock, 1);
++}
++EXPORT_SYMBOL(filemap_invalidate_lock_two);
++
++/*
++ * filemap_invalidate_unlock_two - unlock invalidate_lock for two mappings
++ *
++ * Unlock exclusive invalidate_lock of any passed mapping that is not NULL.
++ *
++ * @mapping1: the first mapping to unlock
++ * @mapping2: the second mapping to unlock
++ */
++void filemap_invalidate_unlock_two(struct address_space *mapping1,
++				   struct address_space *mapping2)
++{
++	if (mapping1)
++		up_write(&mapping1->invalidate_lock);
++	if (mapping2 && mapping1 != mapping2)
++		up_write(&mapping2->invalidate_lock);
++}
++EXPORT_SYMBOL(filemap_invalidate_unlock_two);
++
+ /*
+  * In order to wait for pages to become available there must be
+  * waitqueues associated with pages. By using a hash table of
 -- 
-2.31.1
+2.26.2
 
