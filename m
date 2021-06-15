@@ -2,212 +2,87 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4ECF4C49EC7
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 09:18:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E20DC48BE8
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 11:27:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3290E61432
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 09:18:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 412766145E
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Jun 2021 11:27:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231487AbhFOJUt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Jun 2021 05:20:49 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:54498 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230519AbhFOJUV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jun 2021 05:20:21 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 2CB2D219CE;
-        Tue, 15 Jun 2021 09:18:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1623748695; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=jzpVj8JlrB8ydY+vFRnq+G9CoeRUVMlFtm7aKp4N1TU=;
-        b=jIyNAG9KFenh2z2siQJXSnp6wk4j3u0lHvGIRuc95y2Iz7dJphW6jZer7NjmAMG3UAGSi8
-        p2Gypy1k/cSMKrfPUvmpuqqmB51SVvAxH96AQ8OO5vuL4HqNwe5dNHmrQO+7omOhgmDGi+
-        arYs+IWjE2JHjCyb+wNGIIcOkOlby0k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1623748695;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=jzpVj8JlrB8ydY+vFRnq+G9CoeRUVMlFtm7aKp4N1TU=;
-        b=zdbe+wLegF9N6BdAYz21hwpOcpeFQLPCiznBaKEgMFDJgyBhBwUdkS2CCn44d3XZommyI9
-        oXDi/0dmGOrNp2Bg==
-Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id 1A965A3B99;
-        Tue, 15 Jun 2021 09:18:15 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 45F9A1F2CC2; Tue, 15 Jun 2021 11:18:14 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     <linux-fsdevel@vger.kernel.org>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, ceph-devel@vger.kernel.org,
-        Chao Yu <yuchao0@huawei.com>,
-        Damien Le Moal <damien.lemoal@wdc.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Johannes Thumshirn <jth@kernel.org>,
-        linux-cifs@vger.kernel.org, <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, <linux-mm@kvack.org>,
-        <linux-xfs@vger.kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-        Steve French <sfrench@samba.org>, Ted Tso <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
-        "Darrick J. Wong" <djwong@kernel.org>
-Subject: [PATCH 09/14] xfs: Convert double locking of MMAPLOCK to use VFS helpers
-Date:   Tue, 15 Jun 2021 11:17:59 +0200
-Message-Id: <20210615091814.28626-9-jack@suse.cz>
-X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210615090844.6045-1-jack@suse.cz>
-References: <20210615090844.6045-1-jack@suse.cz>
+        id S230040AbhFOL3d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Jun 2021 07:29:33 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:4915 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229951AbhFOL3d (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jun 2021 07:29:33 -0400
+Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4G45Yv0LnTz705r;
+        Tue, 15 Jun 2021 19:24:19 +0800 (CST)
+Received: from dggema765-chm.china.huawei.com (10.1.198.207) by
+ dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) id
+ 15.1.2176.2; Tue, 15 Jun 2021 19:27:27 +0800
+Received: from [127.0.0.1] (10.174.177.249) by dggema765-chm.china.huawei.com
+ (10.1.198.207) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Tue, 15
+ Jun 2021 19:27:27 +0800
+Subject: Re: [PATCH V2 00/12] e2fsprogs: some bugfixs and some code cleanups
+To:     Theodore Ts'o <tytso@mit.edu>, Wu Guanghao <wuguanghao3@huawei.com>
+CC:     <linux-ext4@vger.kernel.org>,
+        =?UTF-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?= 
+        <artem.blagodarenko@gmail.com>, <linfeilong@huawei.com>
+References: <00ad4a90-8a40-24c1-98d9-eb5f0da42436@huawei.com>
+ <YLRl/tFB4rakYJ7q@mit.edu>
+From:   Zhiqiang Liu <liuzhiqiang26@huawei.com>
+Message-ID: <c10ba297-c98c-5d9b-b022-5614a6986589@huawei.com>
+Date:   Tue, 15 Jun 2021 19:27:26 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.2.2
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4917; h=from:subject; bh=Pt3UjgWOKw5VBXlHinJjhLE0BJn5KyvbzUsgusJoyQ8=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBgyHBHQz7sYYGESLOPUM9je2BwnQMR+94bnROYEA4r PHSnKz2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYMhwRwAKCRCcnaoHP2RA2ZcrB/ 9gzkntEzMfcOHZzvFBHpOx8w6qa0DVwkTogkJwuD4ehyxoN26RDHjrHkpfGyuWmge5Xcv9Xe5qEzFU DGYDGiBq1WPXUespIfaU645ADMMvxG8mcSLWgoN8D2yaJfdCkNjHckHDbJGPAyg7+suX2Jjc/F6HQO qKDWxh+eH9kUWsv6zTuK/BGNGjb53iH4swqvoVGw29hTwqMA28nYxUM36aRdCe01AVXlq5ruTMiRfg xD0/4Jat8TpArX3qchGrDyDlRz2ff7SrsyOZ5Qf/Lieqn/YbcoQgskaWyXlMUv3LQANbfCq5+zeJ4Q 3ffjlRg4ZpEVIz1Q5fmJeRMUsHUJ9h
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+In-Reply-To: <YLRl/tFB4rakYJ7q@mit.edu>
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+Content-Language: en-US
+X-Originating-IP: [10.174.177.249]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ dggema765-chm.china.huawei.com (10.1.198.207)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Convert places in XFS that take MMAPLOCK for two inodes to use helper
-VFS provides for it (filemap_invalidate_down_write_two()). Note that
-this changes lock ordering for MMAPLOCK from inode number based ordering
-to pointer based ordering VFS generally uses.
+friendly ping...
 
-CC: "Darrick J. Wong" <djwong@kernel.org>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/xfs/xfs_bmap_util.c | 15 ++++++++-------
- fs/xfs/xfs_inode.c     | 37 +++++++++++--------------------------
- 2 files changed, 19 insertions(+), 33 deletions(-)
+What is the current status of the patch set？
 
-diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
-index 0936f3a96fe6..ef18269ad1f7 100644
---- a/fs/xfs/xfs_bmap_util.c
-+++ b/fs/xfs/xfs_bmap_util.c
-@@ -1626,7 +1626,6 @@ xfs_swap_extents(
- 	struct xfs_bstat	*sbp = &sxp->sx_stat;
- 	int			src_log_flags, target_log_flags;
- 	int			error = 0;
--	int			lock_flags;
- 	uint64_t		f;
- 	int			resblks = 0;
- 	unsigned int		flags = 0;
-@@ -1638,8 +1637,8 @@ xfs_swap_extents(
- 	 * do the rest of the checks.
- 	 */
- 	lock_two_nondirectories(VFS_I(ip), VFS_I(tip));
--	lock_flags = XFS_MMAPLOCK_EXCL;
--	xfs_lock_two_inodes(ip, XFS_MMAPLOCK_EXCL, tip, XFS_MMAPLOCK_EXCL);
-+	filemap_invalidate_lock_two(VFS_I(ip)->i_mapping,
-+				    VFS_I(tip)->i_mapping);
- 
- 	/* Verify that both files have the same format */
- 	if ((VFS_I(ip)->i_mode & S_IFMT) != (VFS_I(tip)->i_mode & S_IFMT)) {
-@@ -1711,7 +1710,6 @@ xfs_swap_extents(
- 	 * or cancel will unlock the inodes from this point onwards.
- 	 */
- 	xfs_lock_two_inodes(ip, XFS_ILOCK_EXCL, tip, XFS_ILOCK_EXCL);
--	lock_flags |= XFS_ILOCK_EXCL;
- 	xfs_trans_ijoin(tp, ip, 0);
- 	xfs_trans_ijoin(tp, tip, 0);
- 
-@@ -1830,13 +1828,16 @@ xfs_swap_extents(
- 	trace_xfs_swap_extent_after(ip, 0);
- 	trace_xfs_swap_extent_after(tip, 1);
- 
-+out_unlock_ilock:
-+	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-+	xfs_iunlock(tip, XFS_ILOCK_EXCL);
- out_unlock:
--	xfs_iunlock(ip, lock_flags);
--	xfs_iunlock(tip, lock_flags);
-+	filemap_invalidate_unlock_two(VFS_I(ip)->i_mapping,
-+				      VFS_I(tip)->i_mapping);
- 	unlock_two_nondirectories(VFS_I(ip), VFS_I(tip));
- 	return error;
- 
- out_trans_cancel:
- 	xfs_trans_cancel(tp);
--	goto out_unlock;
-+	goto out_unlock_ilock;
- }
-diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-index da0c3b62dae6..c963b9dc484b 100644
---- a/fs/xfs/xfs_inode.c
-+++ b/fs/xfs/xfs_inode.c
-@@ -551,12 +551,10 @@ xfs_lock_inodes(
- }
- 
- /*
-- * xfs_lock_two_inodes() can only be used to lock one type of lock at a time -
-- * the mmaplock or the ilock, but not more than one type at a time. If we lock
-- * more than one at a time, lockdep will report false positives saying we have
-- * violated locking orders.  The iolock must be double-locked separately since
-- * we use i_rwsem for that.  We now support taking one lock EXCL and the other
-- * SHARED.
-+ * xfs_lock_two_inodes() can only be used to lock ilock. The iolock and
-+ * mmaplock must be double-locked separately since we use i_rwsem and
-+ * invalidate_lock for that. We now support taking one lock EXCL and the
-+ * other SHARED.
-  */
- void
- xfs_lock_two_inodes(
-@@ -574,15 +572,8 @@ xfs_lock_two_inodes(
- 	ASSERT(hweight32(ip1_mode) == 1);
- 	ASSERT(!(ip0_mode & (XFS_IOLOCK_SHARED|XFS_IOLOCK_EXCL)));
- 	ASSERT(!(ip1_mode & (XFS_IOLOCK_SHARED|XFS_IOLOCK_EXCL)));
--	ASSERT(!(ip0_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)) ||
--	       !(ip0_mode & (XFS_ILOCK_SHARED|XFS_ILOCK_EXCL)));
--	ASSERT(!(ip1_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)) ||
--	       !(ip1_mode & (XFS_ILOCK_SHARED|XFS_ILOCK_EXCL)));
--	ASSERT(!(ip1_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)) ||
--	       !(ip0_mode & (XFS_ILOCK_SHARED|XFS_ILOCK_EXCL)));
--	ASSERT(!(ip0_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)) ||
--	       !(ip1_mode & (XFS_ILOCK_SHARED|XFS_ILOCK_EXCL)));
--
-+	ASSERT(!(ip0_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)));
-+	ASSERT(!(ip1_mode & (XFS_MMAPLOCK_SHARED|XFS_MMAPLOCK_EXCL)));
- 	ASSERT(ip0->i_ino != ip1->i_ino);
- 
- 	if (ip0->i_ino > ip1->i_ino) {
-@@ -3774,11 +3765,8 @@ xfs_ilock2_io_mmap(
- 	ret = xfs_iolock_two_inodes_and_break_layout(VFS_I(ip1), VFS_I(ip2));
- 	if (ret)
- 		return ret;
--	if (ip1 == ip2)
--		xfs_ilock(ip1, XFS_MMAPLOCK_EXCL);
--	else
--		xfs_lock_two_inodes(ip1, XFS_MMAPLOCK_EXCL,
--				    ip2, XFS_MMAPLOCK_EXCL);
-+	filemap_invalidate_lock_two(VFS_I(ip1)->i_mapping,
-+				    VFS_I(ip2)->i_mapping);
- 	return 0;
- }
- 
-@@ -3788,12 +3776,9 @@ xfs_iunlock2_io_mmap(
- 	struct xfs_inode	*ip1,
- 	struct xfs_inode	*ip2)
- {
--	bool			same_inode = (ip1 == ip2);
--
--	xfs_iunlock(ip2, XFS_MMAPLOCK_EXCL);
--	if (!same_inode)
--		xfs_iunlock(ip1, XFS_MMAPLOCK_EXCL);
-+	filemap_invalidate_unlock_two(VFS_I(ip1)->i_mapping,
-+				      VFS_I(ip2)->i_mapping);
- 	inode_unlock(VFS_I(ip2));
--	if (!same_inode)
-+	if (ip1 != ip2)
- 		inode_unlock(VFS_I(ip1));
- }
--- 
-2.26.2
+
+On 2021/5/31 12:28, Theodore Ts'o wrote:
+> On Mon, May 31, 2021 at 09:23:49AM +0800, Wu Guanghao wrote:
+>> V1 -> V2:
+>>
+>> [PATCH V2 03/12] zap_sector: fix memory leak
+>> 	free and return operators placed in {} block
+>>
+>> [PATCH V2 04/12] ss_add_info_dir: fix memory leak and check whether,NULL pointer
+>> 	modified "=" to "=="
+>>
+>> [PATCH V2 06/12] append_pathname: check the value returned by realloc to avoid segfault
+>> [PATCH V2 07/12] argv_parse: check return value of malloc in argv_parse()
+>> 	Fix typos
+>>
+>> [PATCH V2 10/12] hashmap: change return value type of, ext2fs_hashmap_add()
+>> 	remove "new_block = NULL;"
+> Did you only send the patches that you changed, and didn't resend the
+> patches that didn't change between V1 and V2?
+>
+> It's actually better if you resend the whole series in the future.
+>
+> Thanks,
+>
+> 					- Ted
+>
+> .
 
