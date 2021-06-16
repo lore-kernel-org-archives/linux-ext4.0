@@ -7,35 +7,35 @@ X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1F7EC48BE6
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73715C48BE5
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8BCEC613BF
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E7FF61375
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230436AbhFPE6w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Jun 2021 00:58:52 -0400
-Received: from mail.kernel.org ([198.145.29.99]:38818 "EHLO mail.kernel.org"
+        id S230447AbhFPE6y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Jun 2021 00:58:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:38826 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229699AbhFPE6r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Jun 2021 00:58:47 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 7E40D61375
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2021 04:56:42 +0000 (UTC)
+        id S230403AbhFPE6s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 16 Jun 2021 00:58:48 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 2323661351
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2021 04:56:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1623819402;
-        bh=Gkoksc4ydaJpOKo/fJKbpiCJNijqA118um3jqF+tvoI=;
+        s=k20201202; t=1623819403;
+        bh=ZCK26L0vvIQBHiKDlLRE36jToio1MfvK3lWJxLR4lRM=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=AS8a2oVUIRL+4BJHaky0scOnstxl5au4NnM7+eNFXCHnhgP/L0/2o5/BtUcJeRbAv
-         QEaWFo8TIL9G3IWU/aXv9S52kRi9Xv7duAdxg1jbsLJTvYqrNqxu4HFEHf10inef3u
-         fs/zIwgfAvUri5PNI1TLkfDPWrywjF5stI6KlSbWgEWAXVK4DYdG3cQbEvi8SFE7kj
-         +EZtoATmLCcHcXVNjpwQXIP1wSUe+aN24+emhqkJg7gcdqxbypIuMaiKqtebqMHzMd
-         mI+fHyPMGQFIRH/tVoCKJOOrgcDZEzKhbWP9LNLdXcWxQuZyJKZ9GX/y7KMhdAzLou
-         lRtkFpiJKUggg==
+        b=l3+I2wRW0wPqhwKIdI9N+YqgX9mageYjnWvBLg62uFHSVCJpUMWBR4YMNXAZgWOy7
+         gntE+wp35jSPvD/SXoLeaFUy3MnCxdlMlM3FD+4fVWVRrDA/+SwWFGlE2DgtTbXRbV
+         nFCv4l7k6PcNfofweb8Qi6f1F6+I0hurHPxWQeK4ps/kYA8zALHSnvc535Vmxqcld1
+         rXpkEVhRfSol+iCUkKPbZFq/0YsrirZq7VWQBUMcX8CrsNvfUnsxwUZoemeHjZE21m
+         H436tQjkNfYxHlcunx/y88LCvpc6kYBNUo2AxQtzcMsotDoTz6lFzOs5HjVgOHb2yO
+         iKCXEV8xK6NeQ==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 3/6] mke2fs: use ext2fs_get_device_size2() on all platforms
-Date:   Tue, 15 Jun 2021 21:53:31 -0700
-Message-Id: <20210616045334.1655288-4-ebiggers@kernel.org>
+Subject: [PATCH 6/6] libext2fs: fix a -Wunused-label warning
+Date:   Tue, 15 Jun 2021 21:53:34 -0700
+Message-Id: <20210616045334.1655288-7-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.32.0.272.g935e593368-goog
 In-Reply-To: <20210616045334.1655288-1-ebiggers@kernel.org>
 References: <20210616045334.1655288-1-ebiggers@kernel.org>
@@ -47,40 +47,25 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Since commit e8c858047be6 ("libext2fs: fix build issue for on
-Windows/Cygwin systems"), ext2fs_get_device_size2() is available in
-Windows builds of libext2fs.  So there is no need for mke2fs to call
-ext2fs_get_device_size() instead.
-
-This fixes a -Wincompatible-pointer-types warning because
-ext2fs_get_device_size() was being passed a 'blk64_t *', but it expected
-a 'blk_t *'.
+Remove a label which isn't used.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- misc/mke2fs.c | 6 ------
- 1 file changed, 6 deletions(-)
+ lib/ext2fs/unix_io.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index afbcf486..d5ab334e 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -1989,15 +1989,9 @@ profile_error:
- 		dev_size = fs_blocks_count;
- 		retval = 0;
- 	} else
--#ifndef _WIN32
- 		retval = ext2fs_get_device_size2(device_name,
- 						 EXT2_BLOCK_SIZE(&fs_param),
- 						 &dev_size);
--#else
--		retval = ext2fs_get_device_size(device_name,
--						EXT2_BLOCK_SIZE(&fs_param),
--						&dev_size);
--#endif
- 	if (retval && (retval != EXT2_ET_UNIMPLEMENTED)) {
- 		com_err(program_name, retval, "%s",
- 			_("while trying to determine filesystem size"));
+diff --git a/lib/ext2fs/unix_io.c b/lib/ext2fs/unix_io.c
+index 64eee342..3bb8d238 100644
+--- a/lib/ext2fs/unix_io.c
++++ b/lib/ext2fs/unix_io.c
+@@ -329,7 +329,6 @@ success_unlock:
+ 
+ error_unlock:
+ 	mutex_unlock(data, BOUNCE_MTX);
+-error_out:
+ 	if (actual >= 0 && actual < size)
+ 		memset((char *) buf+actual, 0, size-actual);
+ 	if (channel->read_error)
 -- 
 2.32.0.272.g935e593368-goog
 
