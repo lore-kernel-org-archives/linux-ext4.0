@@ -2,70 +2,98 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F634C49361
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65AC1C48BE8
 	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1A2C861356
+	by mail.kernel.org (Postfix) with ESMTP id 4F9A9611CA
 	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231604AbhFPK7x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S231618AbhFPK7x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 16 Jun 2021 06:59:53 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:35790 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231307AbhFPK7w (ORCPT
+Received: from smtp-out1.suse.de ([195.135.220.28]:40686 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231311AbhFPK7w (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jun 2021 06:59:52 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 988C11FD6E;
+        by smtp-out1.suse.de (Postfix) with ESMTP id A87A7219E4;
         Wed, 16 Jun 2021 10:57:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1623841065; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=GQIxr/VEW28OlBMCkhraBNg14hr6TB1xA5QgX7HlrI4=;
-        b=rNzYsBHMMGKDYjNoxQBMjJ6CjQe9ngpctUAf8dHXYdlWZ74AKoylgn9QNrQG6OFgfbOuDe
-        VXAew5BVzycfMRcO3ZlCUlMp6fmFcMKNB0L3owkXGZ1hIqkE0DeS8T8AgHbO7SKM010jru
-        TXFR1LJl5OrBS6OrvUbmvs6qHIPVrj0=
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=uO8dUp84n6yNDrm8gJ+4XYzi8C4FmWVx7RQ+DqaFXY0=;
+        b=ZlLzdityhxvSQbMHzPtv8x+YRFKP6QJwQ5SZiH8KU3ABc0Sdywjs0gInJSUOlfo+J1bl40
+        MjrT8DMfcvrH8PKKaOLZMQHlT3VPWwHwunaUeAK+kmVpZtZmCnaC0tBaWFaE6x755AeTSh
+        Rib8r8r5oXcsvR0bPMwAzsut0lex5ko=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1623841065;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=GQIxr/VEW28OlBMCkhraBNg14hr6TB1xA5QgX7HlrI4=;
-        b=xG9+dbSZ5m9xmpd7Ed3OaTDkjwdERARW8fRDdo3GCorgDNvcF7Me0+tFWRd5QXHYtplqRz
-        6JlDnW+OnNgDUdBQ==
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=uO8dUp84n6yNDrm8gJ+4XYzi8C4FmWVx7RQ+DqaFXY0=;
+        b=HHe81ALtElFoC4Nwl3DYuZ+zkGhAkK9RN+nJMuHGIMazN22WY9jMsu5zosi7u+tpm/fjL3
+        IZ/1M2JbIgHn0LCg==
 Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id 86510A3B98;
+        by relay2.suse.de (Postfix) with ESMTP id 8A4D1A3BA9;
         Wed, 16 Jun 2021 10:57:45 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 5912F1F2C88; Wed, 16 Jun 2021 12:57:45 +0200 (CEST)
+        id 62D4D1F2CBB; Wed, 16 Jun 2021 12:57:45 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/9 v3] e2fsprogs: Support for orphan file feature
-Date:   Wed, 16 Jun 2021 12:57:26 +0200
-Message-Id: <20210616105735.5424-1-jack@suse.cz>
+Subject: [PATCH 3/9] e2image: Dump quota files
+Date:   Wed, 16 Jun 2021 12:57:29 +0200
+Message-Id: <20210616105735.5424-4-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210616105735.5424-1-jack@suse.cz>
+References: <20210616105735.5424-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-  Hello,
+Dump quota files to resulting filesystem image. They are fs metadata.
 
-  reviving this series after 6 years. This is the third version of support for
-orphan file feature in e2fsprogs. The first patch removes feature bit for a
-feature which never happened and probably isn't living anywhere (if it still
-lives I can allocate a different bit...). Other two patches are fixes I've
-spotted while debugging this series. I'm not aware of any outstanding issue
-with the series, xfstests pass fine with it.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ misc/e2image.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-Changes since v2:
-* rebased onto current master branch
-* fixed various bugs I've spotted during testing
-* added support for debugfs, dumpe2fs, e2image
-* changed code to use dynamically allocated inode number instead of fixed one
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 90a34bebc36d..ac00827e4628 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -52,6 +52,7 @@ extern int optind;
+ 
+ #include "support/nls-enable.h"
+ #include "support/plausible.h"
++#include "support/quotaio.h"
+ #include "../version.h"
+ 
+ #define QCOW_OFLAG_COPIED     (1ULL << 63)
+@@ -1364,9 +1365,11 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags,
+ 		pb.ino = ino;
+ 		pb.is_dir = LINUX_S_ISDIR(inode.i_mode);
+ 		if (LINUX_S_ISDIR(inode.i_mode) ||
+-		    (LINUX_S_ISLNK(inode.i_mode) &&
+-		     ext2fs_inode_has_valid_blocks2(fs, &inode)) ||
+-		    ino == fs->super->s_journal_inum) {
++		    LINUX_S_ISLNK(inode.i_mode) ||
++		    ino == fs->super->s_journal_inum ||
++		    ino == quota_type2inum(USRQUOTA, fs->super) ||
++		    ino == quota_type2inum(GRPQUOTA, fs->super) ||
++		    ino == quota_type2inum(PRJQUOTA, fs->super)) {
+ 			retval = ext2fs_block_iterate3(fs, ino,
+ 					BLOCK_FLAG_READ_ONLY, block_buf,
+ 					process_dir_block, &pb);
+-- 
+2.26.2
 
-								Honza
