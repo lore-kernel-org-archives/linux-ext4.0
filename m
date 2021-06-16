@@ -2,88 +2,81 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-14.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-19.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0201CC48BE8
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58BE9C49361
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DB3B4613B9
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3EA6F610A0
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 04:56:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230409AbhFPE6t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Jun 2021 00:58:49 -0400
-Received: from mail.kernel.org ([198.145.29.99]:38812 "EHLO mail.kernel.org"
+        id S229569AbhFPE6v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Jun 2021 00:58:51 -0400
+Received: from mail.kernel.org ([198.145.29.99]:38816 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229514AbhFPE6r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S229559AbhFPE6r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 16 Jun 2021 00:58:47 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id D43CC61351
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2021 04:56:41 +0000 (UTC)
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 4A04C613B9
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Jun 2021 04:56:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1623819401;
-        bh=WV1ww3dgoBXIHQTOcTVXxkQDaDNYP9G7s3ivR1Yn+bc=;
-        h=From:To:Subject:Date:From;
-        b=ctG3xWrDpEsC27hF1suD+DmGBYS6NWN0a0MW/cRK2vibU4PQEsDCFNHCPrkljOSXN
-         j5h8VkEQUHexHbdxrdTo81gHlVldgHbQZHtawPfP/VNWtt1BtVp8PiH5by7onDhHv6
-         OJFRrD7QWExglbBut9saQms5+WoXPCUR1uzgPJdiC0RbTcOzfgr3IppEjcgYxwAFCs
-         Zzj8lXGNbvJokvemdJweYjHR730E8+d0jKWq0gsllBLFySUatOKopId5dT/FrOYd2B
-         0xZx9YiaA8x2VLcA06wN4hP57bbI+Ea4Ve7XQH1vXpyBJR8nQ/lYu/1Mm9oUPd+o1a
-         wdzSwOCFr9kkA==
+        s=k20201202; t=1623819402;
+        bh=cp+/sUprr2jxLTFO95sbImHWfZ6xm97+fgls0B+Tf24=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=lrOPnektRvzrIWj7poz+72rtoQj79A5tpZgpG+KiRBQmyjwouMBsToS9+hlmk0FNp
+         GckvwVyt11VZW6Tlz3CF8NDv6DAo2ed0OFPiYgdIuUGcsXoH+utSs6skdQXGvrpWkV
+         mjmq79as+ytxc2tJc3dasvLHzJ9S5mNxA596xxUbPM6zubd2W9OFT34XR4VvWiLeNV
+         /3I3hL18b2RS2MPxUxH3DwHnBEd1OsWTzjYy/+gp+brx3a7mR30wKCnMbffcQlY7fA
+         w14xU458GefzpFxLmtT12mMVTFc3ZNBt7FSOeOdhpoox+OhC2MdJuXLkrtlYmLgJCu
+         ID4gSa7URNluA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH 0/6] e2fsprogs: fix compiler warnings introduced since v1.45.4
-Date:   Tue, 15 Jun 2021 21:53:28 -0700
-Message-Id: <20210616045334.1655288-1-ebiggers@kernel.org>
+Subject: [PATCH 2/6] e2fsck: sync fc_do_one_pass() changes from kernel
+Date:   Tue, 15 Jun 2021 21:53:30 -0700
+Message-Id: <20210616045334.1655288-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.32.0.272.g935e593368-goog
+In-Reply-To: <20210616045334.1655288-1-ebiggers@kernel.org>
+References: <20210616045334.1655288-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Fix various compiler warnings that were introduced since e2fsprogs
-v1.45.4, including the following types of warnings:
+From: Eric Biggers <ebiggers@google.com>
 
-  -Wunused-variable  (enabled by -Wall)
-  -Wunused-label     (enabled by -Wall)
-  -Wunused-parameter
+Sync the changes to fc_do_one_pass() from the kernel's recovery.c so
+that e2fsck picks up the fixes to the jbd_debug() statements.
 
-Note, there were also -Wpointer-arith (arithmetic on a void pointer is a
-GNU extension) warnings introduced, but I don't find those to be very
-useful.  But I can send out a patch for those too if people want it.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ e2fsck/recovery.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-Also fix a -Wincompatible-pointer-types warning in the Windows build.
-
-Eric Biggers (6):
-  libext2fs: improve jbd_debug() implementation
-  e2fsck: sync fc_do_one_pass() changes from kernel
-  mke2fs: use ext2fs_get_device_size2() on all platforms
-  Fix -Wunused-parameter warnings
-  Fix -Wunused-variable warnings
-  libext2fs: fix a -Wunused-label warning
-
- debugfs/journal.c       |  7 ++-----
- e2fsck/extents.c        |  2 +-
- e2fsck/jfs_user.h       |  3 ++-
- e2fsck/journal.c        | 18 +++++-------------
- e2fsck/pass1b.c         |  3 ++-
- e2fsck/pass2.c          |  3 ++-
- e2fsck/recovery.c       |  5 ++---
- e2fsck/rehash.c         |  2 +-
- lib/e2p/errcode.c       |  1 -
- lib/e2p/fgetflags.c     |  2 +-
- lib/e2p/fsetflags.c     |  1 -
- lib/ext2fs/kernel-jbd.h | 26 +++++---------------------
- lib/ext2fs/mkjournal.c  |  1 -
- lib/ext2fs/unix_io.c    |  1 -
- lib/support/mkquota.c   |  3 ++-
- misc/mke2fs.c           |  8 ++------
- 16 files changed, 27 insertions(+), 59 deletions(-)
-
-
-base-commit: 32fda1e5a338ff676ae7f7e3e2bc256e7a7e2855
+diff --git a/e2fsck/recovery.c b/e2fsck/recovery.c
+index dc0694fc..1e07dfac 100644
+--- a/e2fsck/recovery.c
++++ b/e2fsck/recovery.c
+@@ -245,15 +245,14 @@ static int fc_do_one_pass(journal_t *journal,
+ 		return 0;
+ 
+ 	while (next_fc_block <= journal->j_fc_last) {
+-		jbd_debug(3, "Fast commit replay: next block %ld",
++		jbd_debug(3, "Fast commit replay: next block %ld\n",
+ 			  next_fc_block);
+ 		err = jread(&bh, journal, next_fc_block);
+ 		if (err) {
+-			jbd_debug(3, "Fast commit replay: read error");
++			jbd_debug(3, "Fast commit replay: read error\n");
+ 			break;
+ 		}
+ 
+-		jbd_debug(3, "Processing fast commit blk with seq %d");
+ 		err = journal->j_fc_replay_callback(journal, bh, pass,
+ 					next_fc_block - journal->j_fc_first,
+ 					expected_commit_id);
 -- 
 2.32.0.272.g935e593368-goog
 
