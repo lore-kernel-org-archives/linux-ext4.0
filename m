@@ -7,50 +7,50 @@ X-Spam-Status: No, score=-18.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 03B9FC49EA4
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EBFBC48BE6
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DC367611CE
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E5A3611CA
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Jun 2021 10:57:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231672AbhFPK7y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S231698AbhFPK7y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 16 Jun 2021 06:59:54 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:35810 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231391AbhFPK7w (ORCPT
+Received: from smtp-out1.suse.de ([195.135.220.28]:40694 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231326AbhFPK7w (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jun 2021 06:59:52 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id D69EC1FD70;
+        by smtp-out1.suse.de (Postfix) with ESMTP id AD98121A4E;
         Wed, 16 Jun 2021 10:57:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1623841065; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9//VL3jBOGhKr9yJAsWh0HMkNbxa5TY9gnH+hhZMqX4=;
-        b=bsAZVVBHxMsfIAqBnnB9OJJUpwlwy0I3Z0HoybD0ppSEb57/561vFKQD5kTT479CHoflwv
-        tzVq7nANn6ULJvaQjYUZcsGmTsgeR3Bram8d6gkrTh2eYAt3BlLJxUNfKOjrSNEZe0kXw8
-        BrPusAmSTSwXhwJGbecS4GCJbID9O4w=
+        bh=Zs3eFdvrR/1ZmbFo0Ij2w6Oqe8l4cpvAONaHyU0TsDI=;
+        b=hR8qGDOhsaLhBEBx4b4R0O9IoHiiMLL6LyQrO9WvNFul00PNVVALbUf0GVh6inTirPKFrC
+        YNW+c2JosOxAQEXwOY9McXXh1kawK5Tz4d4aGy4bze2FUs8UC8iCm3ovUhutH/85dkFsWO
+        i5+sZ8xTqNM7ZJnQ6Wrww1BnZ2KpFTQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1623841065;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9//VL3jBOGhKr9yJAsWh0HMkNbxa5TY9gnH+hhZMqX4=;
-        b=zMetrdtuxtWZeyxz172GcAhRjstQkrsug0Dq9+AvFcSm3SSYBQ1ZdOb6L5UVv9P7TAI6/6
-        NcniPBpF5YCQFFCw==
+        bh=Zs3eFdvrR/1ZmbFo0Ij2w6Oqe8l4cpvAONaHyU0TsDI=;
+        b=hvrTsa5rjMvKCYSDuaN2BLVUH8MQzj1MIdGzqykP+Wbwf0TrnvaVs3kfON/2+QcTIaaKI3
+        jGzEPssOVIUp0mCw==
 Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id B66FBA3BA1;
+        by relay2.suse.de (Postfix) with ESMTP id 896CDA3BA8;
         Wed, 16 Jun 2021 10:57:45 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 72C461F2CC0; Wed, 16 Jun 2021 12:57:45 +0200 (CEST)
+        id 678801F2CBC; Wed, 16 Jun 2021 12:57:45 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 7/9] tune2fs: Add support for orphan_file feature
-Date:   Wed, 16 Jun 2021 12:57:33 +0200
-Message-Id: <20210616105735.5424-8-jack@suse.cz>
+Subject: [PATCH 4/9] libext2fs: Support for orphan file feature
+Date:   Wed, 16 Jun 2021 12:57:30 +0200
+Message-Id: <20210616105735.5424-5-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210616105735.5424-1-jack@suse.cz>
 References: <20210616105735.5424-1-jack@suse.cz>
@@ -60,163 +60,498 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Add support for creating and deleting orphan file and a couple of
+utility functions that will be used in other tools.
+
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- misc/tune2fs.8.in |  5 +++
- misc/tune2fs.c    | 89 +++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 92 insertions(+), 2 deletions(-)
+ lib/e2p/feature.c           |   4 +
+ lib/ext2fs/Makefile.in      |   2 +
+ lib/ext2fs/ext2_fs.h        |  16 ++-
+ lib/ext2fs/ext2fs.h         |  32 ++++-
+ lib/ext2fs/orphan.c         | 252 ++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/swapfs.c         |   3 +-
+ lib/ext2fs/tst_super_size.c |   3 +-
+ lib/support/mkquota.c       |   3 +-
+ 8 files changed, 307 insertions(+), 8 deletions(-)
+ create mode 100644 lib/ext2fs/orphan.c
 
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index b963f30edef3..849f94b68d6e 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -257,6 +257,11 @@ program.
- This superblock setting is only honored in 2.6.35+ kernels;
- and not at all by the ext2 and ext3 file system drivers.
- .TP
-+.BI orphan_file_size= size
-+Set size of the file for tracking unlinked but still open inodes and inodes
-+with truncate in progress. Larger file allows for better scalability, reserving
-+a few blocks per cpu is ideal.
-+.TP
- .B force_fsck
- Set a flag in the filesystem superblock indicating that errors have been found.
- This will force fsck to run at the next mount.
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index f739f16cd62b..4d4cf5a13384 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -106,6 +106,7 @@ int enabling_casefold;
- int journal_size, journal_fc_size, journal_flags;
- char *journal_device;
- static blk64_t journal_location = ~0LL;
-+static e2_blkcnt_t orphan_file_blocks;
+diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
+index 2291060214ff..29b7b1512400 100644
+--- a/lib/e2p/feature.c
++++ b/lib/e2p/feature.c
+@@ -49,6 +49,8 @@ static struct feature feature_list[] = {
+ 			"fast_commit" },
+ 	{	E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_STABLE_INODES,
+ 			"stable_inodes" },
++	{	E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE,
++			"orphan_file" },
  
- static struct list_head blk_move_list;
+ 	{	E2P_FEATURE_RO_INCOMPAT, EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER,
+ 			"sparse_super" },
+@@ -80,6 +82,8 @@ static struct feature feature_list[] = {
+ 			"shared_blocks"},
+ 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_VERITY,
+ 			"verity"},
++	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT,
++			"orphan_present" },
  
-@@ -152,7 +153,8 @@ static __u32 ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX |
- 		EXT4_FEATURE_COMPAT_FAST_COMMIT |
--		EXT4_FEATURE_COMPAT_STABLE_INODES,
-+		EXT4_FEATURE_COMPAT_STABLE_INODES |
-+		EXT4_FEATURE_COMPAT_ORPHAN_FILE,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT3_FEATURE_INCOMPAT_EXTENTS |
-@@ -183,7 +185,8 @@ static __u32 clear_ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX |
--		EXT4_FEATURE_COMPAT_FAST_COMMIT,
-+		EXT4_FEATURE_COMPAT_FAST_COMMIT |
-+		EXT4_FEATURE_COMPAT_ORPHAN_FILE,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
-@@ -1143,6 +1146,55 @@ static int update_feature_set(ext2_filsys fs, char *features)
- 		}
- 	}
+ 	{	E2P_FEATURE_INCOMPAT, EXT2_FEATURE_INCOMPAT_COMPRESSION,
+ 			"compression" },
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 5d9af86e520b..ffbfd7a7fc33 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -115,6 +115,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	newdir.o \
+ 	nls_utf8.o \
+ 	openfs.o \
++	orphan.o \
+ 	progress.o \
+ 	punch.o \
+ 	qcow2.o \
+@@ -198,6 +199,7 @@ SRCS= ext2_err.c \
+ 	$(srcdir)/newdir.c \
+ 	$(srcdir)/nls_utf8.c \
+ 	$(srcdir)/openfs.c \
++	$(srcdir)/orphan.c \
+ 	$(srcdir)/progress.c \
+ 	$(srcdir)/punch.c \
+ 	$(srcdir)/qcow2.c \
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 6f1d5db4b482..00809e7b92be 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -761,7 +761,8 @@ struct ext2_super_block {
+ 	__u8    s_last_error_errcode;
+ /*27c*/ __le16	s_encoding;		/* Filename charset encoding */
+ 	__le16	s_encoding_flags;	/* Filename charset encoding flags */
+-	__le32	s_reserved[95];		/* Padding to the end of the block */
++	__le32  s_orphan_file_inum;	/* Inode for tracking orphan inodes */
++	__le32	s_reserved[94];		/* Padding to the end of the block */
+ /*3fc*/	__u32	s_checksum;		/* crc32c(superblock) */
+ };
  
-+	if (FEATURE_OFF(E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE)) {
-+		ext2_ino_t ino;
+@@ -816,7 +817,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
+ #define EXT4_FEATURE_COMPAT_FAST_COMMIT		0x0400
+ #define EXT4_FEATURE_COMPAT_STABLE_INODES	0x0800
+-
++#define EXT4_FEATURE_COMPAT_ORPHAN_FILE		0x1000
+ 
+ #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+ #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+@@ -825,6 +826,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_RO_COMPAT_GDT_CSUM		0x0010
+ #define EXT4_FEATURE_RO_COMPAT_DIR_NLINK	0x0020
+ #define EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE	0x0040
++#define EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT	0x0080
+ #define EXT4_FEATURE_RO_COMPAT_QUOTA		0x0100
+ #define EXT4_FEATURE_RO_COMPAT_BIGALLOC		0x0200
+ /*
+@@ -918,6 +920,7 @@ EXT4_FEATURE_COMPAT_FUNCS(exclude_bitmap,	2, EXCLUDE_BITMAP)
+ EXT4_FEATURE_COMPAT_FUNCS(sparse_super2,	4, SPARSE_SUPER2)
+ EXT4_FEATURE_COMPAT_FUNCS(fast_commit,		4, FAST_COMMIT)
+ EXT4_FEATURE_COMPAT_FUNCS(stable_inodes,	4, STABLE_INODES)
++EXT4_FEATURE_COMPAT_FUNCS(orphan_file,		4, ORPHAN_FILE)
+ 
+ EXT4_FEATURE_RO_COMPAT_FUNCS(sparse_super,	2, SPARSE_SUPER)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(large_file,	2, LARGE_FILE)
+@@ -933,6 +936,7 @@ EXT4_FEATURE_RO_COMPAT_FUNCS(readonly,		4, READONLY)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(project,		4, PROJECT)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(shared_blocks,	4, SHARED_BLOCKS)
+ EXT4_FEATURE_RO_COMPAT_FUNCS(verity,		4, VERITY)
++EXT4_FEATURE_RO_COMPAT_FUNCS(orphan_present,	4, ORPHAN_PRESENT)
+ 
+ EXT4_FEATURE_INCOMPAT_FUNCS(compression,	2, COMPRESSION)
+ EXT4_FEATURE_INCOMPAT_FUNCS(filetype,		2, FILETYPE)
+@@ -1100,6 +1104,14 @@ static inline unsigned int ext2fs_dir_rec_len(__u8 name_len,
+ 	return rec_len;
+ }
+ 
++#define EXT4_ORPHAN_BLOCK_MAGIC 0x0b10ca04
 +
-+		if (mount_flags & EXT2_MF_MOUNTED) {
-+			fputs(_("The orphan_file feature may only be cleared "
-+				"when the filesystem is unmounted.\n"), stderr);
-+			return 1;
-+		}
-+		if (ext2fs_has_feature_orphan_present(sb) && f_flag < 2) {
-+			fputs(_("The orphan_present flag is set. Please run "
-+				"e2fsck before clearing orphan_file flag.\n"),
-+			      stderr);
-+			return 1;
-+		}
-+		err = ext2fs_read_bitmaps(fs);
++/* Structure at the tail of orphan block */
++struct ext4_orphan_block_tail {
++	__u32 ob_magic;
++	__u32 ob_checksum;
++};
++
+ /*
+  * Constants for ext4's extended time encoding
+  */
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index df150f0003f2..886e12793620 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -620,7 +620,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT2_FEATURE_COMPAT_EXT_ATTR|\
+ 					 EXT4_FEATURE_COMPAT_SPARSE_SUPER2|\
+ 					 EXT4_FEATURE_COMPAT_FAST_COMMIT|\
+-					 EXT4_FEATURE_COMPAT_STABLE_INODES)
++					 EXT4_FEATURE_COMPAT_STABLE_INODES|\
++					 EXT4_FEATURE_COMPAT_ORPHAN_FILE)
+ 
+ #ifdef CONFIG_MMP
+ #define EXT4_LIB_INCOMPAT_MMP		EXT4_FEATURE_INCOMPAT_MMP
+@@ -655,7 +656,8 @@ typedef struct ext2_icount *ext2_icount_t;
+ 					 EXT4_FEATURE_RO_COMPAT_READONLY |\
+ 					 EXT4_FEATURE_RO_COMPAT_PROJECT |\
+ 					 EXT4_FEATURE_RO_COMPAT_SHARED_BLOCKS |\
+-					 EXT4_FEATURE_RO_COMPAT_VERITY)
++					 EXT4_FEATURE_RO_COMPAT_VERITY |\
++					 EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT)
+ 
+ /*
+  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
+@@ -1687,6 +1689,15 @@ errcode_t ext2fs_get_data_io(ext2_filsys fs, io_channel *old_io);
+ errcode_t ext2fs_set_data_io(ext2_filsys fs, io_channel new_io);
+ errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, io_channel new_io);
+ 
++/* orphan.c */
++extern errcode_t ext2fs_create_orphan_file(ext2_filsys fs, blk_t num_blocks);
++extern errcode_t ext2fs_truncate_orphan_file(ext2_filsys fs);
++extern e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs);
++extern errcode_t ext2fs_orphan_file_block_csum_set(ext2_filsys fs,
++						   ext2_ino_t ino, char *buf);
++extern int ext2fs_orphan_file_block_csum_verify(ext2_filsys fs, ext2_ino_t ino,
++						char *buf);
++
+ /* get_pathname.c */
+ extern errcode_t ext2fs_get_pathname(ext2_filsys fs, ext2_ino_t dir, ext2_ino_t ino,
+ 			       char **name);
+@@ -1840,7 +1851,9 @@ extern int ext2fs_dirent_file_type(const struct ext2_dir_entry *entry);
+ extern void ext2fs_dirent_set_file_type(struct ext2_dir_entry *entry, int type);
+ extern struct ext2_inode *ext2fs_inode(struct ext2_inode_large * large_inode);
+ extern const struct ext2_inode *ext2fs_const_inode(const struct ext2_inode_large * large_inode);
+-
++extern int ext2fs_inodes_per_orphan_block(ext2_filsys fs);
++extern struct ext4_orphan_block_tail *ext2fs_orphan_block_tail(ext2_filsys fs,
++							       char *buf);
+ #endif
+ 
+ /*
+@@ -2150,6 +2163,19 @@ ext2fs_const_inode(const struct ext2_inode_large * large_inode)
+ 	return (const struct ext2_inode *) large_inode;
+ }
+ 
++_INLINE_ int ext2fs_inodes_per_orphan_block(ext2_filsys fs)
++{
++	return (fs->blocksize - sizeof(struct ext4_orphan_block_tail)) /
++		sizeof(__u32);
++}
++
++_INLINE_ struct ext4_orphan_block_tail *
++ext2fs_orphan_block_tail(ext2_filsys fs, char *buf)
++{
++	return (struct ext4_orphan_block_tail *)(buf + fs->blocksize -
++		sizeof(struct ext4_orphan_block_tail));
++}
++
+ #undef _INLINE_
+ #endif
+ 
+diff --git a/lib/ext2fs/orphan.c b/lib/ext2fs/orphan.c
+new file mode 100644
+index 000000000000..71e8674ce601
+--- /dev/null
++++ b/lib/ext2fs/orphan.c
+@@ -0,0 +1,252 @@
++/*
++ * orphan.c --- utility function to handle orphan file
++ *
++ * Copyright (C) 2015 Jan Kara.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Library
++ * General Public License, version 2.
++ * %End-Header%
++ */
++
++#include "config.h"
++#include <string.h>
++
++#include "ext2_fs.h"
++#include "ext2fsP.h"
++
++errcode_t ext2fs_truncate_orphan_file(ext2_filsys fs)
++{
++	struct ext2_inode inode;
++	errcode_t err;
++	ext2_ino_t ino = fs->super->s_orphan_file_inum;
++
++	err = ext2fs_read_inode(fs, ino, &inode);
++	if (err)
++		return err;
++
++	err = ext2fs_punch(fs, ino, &inode, NULL, 0, ~0ULL);
++	if (err)
++		return err;
++
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++	memset(&inode, 0, sizeof(struct ext2_inode));
++	err = ext2fs_write_inode(fs, ino, &inode);
++
++	ext2fs_clear_feature_orphan_file(fs->super);
++	ext2fs_clear_feature_orphan_present(fs->super);
++	ext2fs_mark_super_dirty(fs);
++	/* Need to update group descriptors as well */
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++
++	return err;
++}
++
++struct mkorphan_info {
++	char *buf;
++	char *zerobuf;
++	blk_t num_blocks;
++	blk_t alloc_blocks;
++	blk64_t last_blk;
++	errcode_t err;
++};
++
++static int mkorphan_proc(ext2_filsys	fs,
++			 blk64_t	*blocknr,
++			 e2_blkcnt_t	blockcnt,
++			 blk64_t	ref_block EXT2FS_ATTR((unused)),
++			 int		ref_offset EXT2FS_ATTR((unused)),
++			 void		*priv_data)
++{
++	struct mkorphan_info *oi = (struct mkorphan_info *)priv_data;
++	blk64_t new_blk;
++	errcode_t err;
++
++	/* Can we just continue in currently allocated cluster? */
++	if (blockcnt &&
++	    EXT2FS_B2C(fs, oi->last_blk) == EXT2FS_B2C(fs, oi->last_blk + 1)) {
++		new_blk = oi->last_blk + 1;
++	} else {
++		err = ext2fs_new_block2(fs, oi->last_blk, 0, &new_blk);
 +		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while loading bitmaps"));
-+			return 1;
++			oi->err = err;
++			return BLOCK_ABORT;
 +		}
++		ext2fs_block_alloc_stats2(fs, new_blk, +1);
++		oi->alloc_blocks++;
++	}
++	if (blockcnt >= 0)
++		err = io_channel_write_blk64(fs->io, new_blk, 1, oi->buf);
++	else	/* zerobuf is used to initialize new indirect blocks... */
++		err = io_channel_write_blk64(fs->io, new_blk, 1, oi->zerobuf);
++	if (err) {
++		oi->err = err;
++		return BLOCK_ABORT;
++	}
++	oi->last_blk = new_blk;
++	*blocknr = new_blk;
++	if (blockcnt >= 0 && --oi->num_blocks == 0)
++		return BLOCK_CHANGED | BLOCK_ABORT;
++	return BLOCK_CHANGED;
++}
++
++errcode_t ext2fs_create_orphan_file(ext2_filsys fs, blk_t num_blocks)
++{
++	struct ext2_inode inode;
++	ext2_ino_t ino = fs->super->s_orphan_file_inum;
++	errcode_t err;
++	char *buf = NULL, *zerobuf = NULL;
++	struct mkorphan_info oi;
++	struct ext4_orphan_block_tail *ob_tail;
++
++	if (!ino) {
++		err = ext2fs_new_inode(fs, EXT2_ROOT_INO, LINUX_S_IFREG | 0600,
++				       0, &ino);
++		if (err)
++			return err;
++		ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
++		ext2fs_mark_ib_dirty(fs);
++	}
++
++	err = ext2fs_read_inode(fs, ino, &inode);
++	if (err)
++		return err;
++	if (EXT2_I_SIZE(&inode)) {
 +		err = ext2fs_truncate_orphan_file(fs);
-+		if (err) {
-+			com_err(program_name, err,
-+				_("\n\twhile trying to delete orphan file\n"));
-+			return 1;
-+		}
-+		ino = sb->s_orphan_file_inum;
-+		sb->s_orphan_file_inum = 0;
-+		ext2fs_inode_alloc_stats2(fs, ino, -1, 0);
-+		ext2fs_clear_feature_orphan_file(sb);
-+		ext2fs_clear_feature_orphan_present(sb);
-+		ext2fs_mark_super_dirty(fs);
++		if (err)
++			return err;
 +	}
 +
-+	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE)) {
-+		if (!ext2fs_has_feature_journal(sb)) {
-+			fputs(_("orphan_file flag can be set only for "
-+				"filesystems with journal.\n"), stderr);
-+			return 1;
-+		}
-+		/*
-+		 * If adding an orphan file, let the create orphan file
-+		 * code below handle setting the flag and creating it.
-+		 * We supply a default size if necessary.
-+		 */
-+		orphan_file_blocks = ext2fs_default_orphan_file_blocks(fs);
-+		ext2fs_set_feature_orphan_file(sb);
++	memset(&inode, 0, sizeof(struct ext2_inode));
++	if (ext2fs_has_feature_extents(fs->super)) {
++		inode.i_flags |= EXT4_EXTENTS_FL;
++		err = ext2fs_write_inode(fs, ino, &inode);
++		if (err)
++			return err;
 +	}
 +
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
- 		if (ext2fs_has_feature_meta_bg(sb)) {
-@@ -2262,6 +2314,21 @@ static int parse_extended_opts(ext2_filsys fs, const char *opts)
- 				continue;
- 			}
- 			encoding_flags = arg;
-+		} else if (!strcmp(token, "orphan_file_size")) {
-+			if (!arg) {
-+				r_usage++;
-+				continue;
-+			}
-+			orphan_file_blocks = parse_num_blocks2(arg,
-+						 fs->super->s_log_block_size);
-+
-+			if (orphan_file_blocks < 1) {
-+				fprintf(stderr,
-+					_("Invalid size of orphan file %s\n"),
-+					arg);
-+				r_usage++;
-+				continue;
-+			}
- 		} else
- 			r_usage++;
- 	}
-@@ -3247,6 +3314,24 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
- 		if (rc)
- 			goto closefs;
- 	}
-+	if (orphan_file_blocks) {
-+		errcode_t err;
-+
-+		err = ext2fs_read_bitmaps(fs);
-+		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while loading bitmaps"));
-+			rc = 1;
-+			goto closefs;
-+		}
-+		err = ext2fs_create_orphan_file(fs, orphan_file_blocks);
-+		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while creating orphan file"));
-+			rc = 1;
-+			goto closefs;
-+		}
++	err = ext2fs_get_mem(fs->blocksize, &buf);
++	if (err)
++		return err;
++	err = ext2fs_get_mem(fs->blocksize, &zerobuf);
++	if (err)
++		goto out;
++	memset(buf, 0, fs->blocksize);
++	memset(zerobuf, 0, fs->blocksize);
++	ob_tail = ext2fs_orphan_block_tail(fs, buf);
++	ob_tail->ob_magic = ext2fs_cpu_to_le32(EXT4_ORPHAN_BLOCK_MAGIC);
++	err = ext2fs_orphan_file_block_csum_set(fs, ino, buf);
++	if (err)
++		goto out;
++	oi.num_blocks = num_blocks;
++	oi.alloc_blocks = 0;
++	oi.last_blk = 0;
++	oi.buf = buf;
++	oi.zerobuf = zerobuf;
++	oi.err = 0;
++	err = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_APPEND,
++				    0, mkorphan_proc, &oi);
++	if (err)
++		goto out;
++	if (oi.err) {
++		err = oi.err;
++		goto out;
 +	}
++
++	/* Reread inode after blocks were allocated */
++	err = ext2fs_read_inode(fs, ino, &inode);
++	if (err)
++		goto out;
++	ext2fs_iblk_set(fs, &inode, 0);
++	inode.i_atime = inode.i_mtime =
++		inode.i_ctime = fs->now ? fs->now : time(0);
++	inode.i_links_count = 1;
++	inode.i_mode = LINUX_S_IFREG | 0600;
++	ext2fs_iblk_add_blocks(fs, &inode, oi.alloc_blocks);
++	err = ext2fs_inode_size_set(fs, &inode,
++			(unsigned long long)fs->blocksize * num_blocks);
++	if (err)
++		goto out;
++	err = ext2fs_write_new_inode(fs, ino, &inode);
++	if (err)
++		goto out;
++
++	fs->super->s_orphan_file_inum = ino;
++	ext2fs_set_feature_orphan_file(fs->super);
++	ext2fs_mark_super_dirty(fs);
++	/* Need to update group descriptors as well */
++	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
++out:
++	if (buf)
++		ext2fs_free_mem(&buf);
++	if (zerobuf)
++		ext2fs_free_mem(&zerobuf);
++	return err;
++}
++
++/*
++ * Find reasonable size for orphan file. We choose orphan file size to be
++ * between 32 and 512 filesystem blocks and not more than 1/4096 of the
++ * filesystem unless it is really small.
++ */
++e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs)
++{
++	__u64 num_blocks = ext2fs_blocks_count(fs->super);
++	e2_blkcnt_t blks = 512;
++
++	if (num_blocks < 128 * 1024)
++		blks = 32;
++	else if (num_blocks < 2 * 1024 * 1024)
++		blks = num_blocks / 4096;
++	return (blks + EXT2FS_CLUSTER_MASK(fs)) & ~EXT2FS_CLUSTER_MASK(fs);
++}
++
++static errcode_t ext2fs_orphan_file_block_csum(ext2_filsys fs, ext2_ino_t ino,
++					       char *buf, __u32 *crcp)
++{
++	int inodes_per_ob = ext2fs_inodes_per_orphan_block(fs);
++	__u32 gen, crc;
++	struct ext2_inode inode;
++	errcode_t retval;
++
++	retval = ext2fs_read_inode(fs, ino, &inode);
++	if (retval)
++		return retval;
++	ino = ext2fs_cpu_to_le32(ino);
++	gen = ext2fs_cpu_to_le32(inode.i_generation);
++	crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&ino,
++			       sizeof(ino));
++	crc = ext2fs_crc32c_le(crc, (unsigned char *)&gen, sizeof(gen));
++	crc = ext2fs_crc32c_le(crc, buf, inodes_per_ob * sizeof(__u32));
++	*crcp = ext2fs_cpu_to_le32(crc);
++
++	return 0;
++}
++
++errcode_t ext2fs_orphan_file_block_csum_set(ext2_filsys fs, ext2_ino_t ino,
++					    char *buf)
++{
++	struct ext4_orphan_block_tail *tail;
++
++	if (!ext2fs_has_feature_metadata_csum(fs->super))
++		return 0;
++
++	tail = ext2fs_orphan_block_tail(fs, buf);
++	return ext2fs_orphan_file_block_csum(fs, ino, buf, &tail->ob_checksum);
++}
++
++int ext2fs_orphan_file_block_csum_verify(ext2_filsys fs, ext2_ino_t ino,
++					 char *buf)
++{
++	struct ext4_orphan_block_tail *tail;
++	__u32 crc;
++	errcode_t retval;
++
++	if (!ext2fs_has_feature_metadata_csum(fs->super))
++		return 1;
++	retval = ext2fs_orphan_file_block_csum(fs, ino, buf, &crc);
++	if (retval)
++		return 0;
++	tail = ext2fs_orphan_block_tail(fs, buf);
++	return ext2fs_le32_to_cpu(tail->ob_checksum) == crc;
++}
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index 1006b2d2bd52..b844e7665999 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -131,8 +131,9 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
+ 	/* s_*_time_hi are __u8 and does not need swabbing */
+ 	sb->s_encoding = ext2fs_swab16(sb->s_encoding);
+ 	sb->s_encoding_flags = ext2fs_swab16(sb->s_encoding_flags);
++	sb->s_orphan_file_inum = ext2fs_swab32(sb->s_orphan_file_inum);
+ 	/* catch when new fields are used from s_reserved */
+-	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 95 * sizeof(__le32));
++	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 94 * sizeof(__le32));
+ 	sb->s_checksum = ext2fs_swab32(sb->s_checksum);
+ }
  
- 	if (Q_flag) {
- 		if (mount_flags & EXT2_MF_MOUNTED) {
+diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
+index 80a5269bceb7..ad452dee8eb3 100644
+--- a/lib/ext2fs/tst_super_size.c
++++ b/lib/ext2fs/tst_super_size.c
+@@ -152,7 +152,8 @@ int main(int argc, char **argv)
+ 	check_field(s_last_error_errcode, 1);
+ 	check_field(s_encoding, 2);
+ 	check_field(s_encoding_flags, 2);
+-	check_field(s_reserved, 95 * 4);
++	check_field(s_orphan_file_inum, 4);
++	check_field(s_reserved, 94 * 4);
+ 	check_field(s_checksum, 4);
+ 	do_field("Superblock end", 0, 0, cur_offset, 1024);
+ #endif
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index 21a5c34d6921..b790b93f52c2 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -504,7 +504,8 @@ errcode_t quota_compute_usage(quota_ctx_t qctx)
+ 			continue;
+ 		if (ino == EXT2_ROOT_INO ||
+ 		    (ino >= EXT2_FIRST_INODE(fs->super) &&
+-		     ino != quota_type2inum(PRJQUOTA, fs->super))) {
++		     ino != quota_type2inum(PRJQUOTA, fs->super) &&
++		     ino != fs->super->s_orphan_file_inum)) {
+ 			space = ext2fs_get_stat_i_blocks(fs,
+ 						EXT2_INODE(inode)) << 9;
+ 			quota_data_add(qctx, inode, ino, space);
 -- 
 2.26.2
 
