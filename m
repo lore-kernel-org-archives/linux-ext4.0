@@ -2,81 +2,57 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A445BC48BE5
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Jun 2021 19:35:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 510E6C2B9F4
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Jun 2021 20:16:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8DFA3613F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Jun 2021 19:35:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 25F07611BE
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Jun 2021 20:16:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233634AbhFQThZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Jun 2021 15:37:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48408 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233599AbhFQThX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jun 2021 15:37:23 -0400
-Received: from ms.lwn.net (ms.lwn.net [IPv6:2600:3c01:e000:3a1::42])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13F2FC061574;
-        Thu, 17 Jun 2021 12:35:15 -0700 (PDT)
-Received: from localhost (unknown [IPv6:2601:281:8300:104d:444a:d152:279d:1dbb])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ms.lwn.net (Postfix) with ESMTPSA id A93469A9;
-        Thu, 17 Jun 2021 19:35:14 +0000 (UTC)
-DKIM-Filter: OpenDKIM Filter v2.11.0 ms.lwn.net A93469A9
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=lwn.net; s=20201203;
-        t=1623958514; bh=Ob76x7fxQDpyGJnHa31xoDRYOIjUeb2UTOSmumypFGM=;
-        h=From:To:Cc:Subject:In-Reply-To:References:Date:From;
-        b=Wl987n+7qTGE/KOM2prVX9YDpbSt8wwuxgz0twwMYYpUJfEgudq12x+JUN63FHKBC
-         CtHRaIFZiFgQfgOh2IGa26RFx/+yx5WFl1FJ3X9RmhWnPhOTok8vOP8kjPHWKONWZZ
-         J9uKe8iXDnLzd3wYdgPwEZITwVLlffEj9pCjBHFFV8FbAIBnjAl54FTCMJdEVGZLRi
-         8qrb9j/kiT9YV85XXtje09nGoQZCBZ+HlYUIYKCAsrnZj5XL4gk0A0zDK8yV1vdlAU
-         y7uxQWkMhnNl/RQMgdBd0wpzPDnRSWUieK0ts+R755yHXeeIfQfoRF3d5zda2F/niH
-         07rNDop6MQbfA==
-From:   Jonathan Corbet <corbet@lwn.net>
-To:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>
-Cc:     Mauro Carvalho Chehab <mchehab+huawei@kernel.org>,
-        linux-kernel@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Alan Stern <stern@rowland.harvard.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jakub Kicinski <kuba@kernel.org>, Leo Yan <leo.yan@linaro.org>,
-        Mathieu Poirier <mathieu.poirier@linaro.org>,
-        Mike Leach <mike.leach@linaro.org>,
-        Suzuki K Poulose <suzuki.poulose@arm.com>,
-        Thorsten Leemhuis <linux@leemhuis.info>,
-        coresight@lists.linaro.org, intel-wired-lan@lists.osuosl.org,
-        linux-arm-kernel@lists.infradead.org, linux-ext4@vger.kernel.org,
-        linux-pci@vger.kernel.org, linux-usb@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH 0/8] Replace some bad characters on documents
-In-Reply-To: <cover.1623826294.git.mchehab+huawei@kernel.org>
-References: <cover.1623826294.git.mchehab+huawei@kernel.org>
-Date:   Thu, 17 Jun 2021 13:35:14 -0600
-Message-ID: <87lf78thcd.fsf@meer.lwn.net>
+        id S232431AbhFQUSc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Jun 2021 16:18:32 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:44642 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S232037AbhFQUSc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jun 2021 16:18:32 -0400
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 15HKGBGN009896
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 17 Jun 2021 16:16:12 -0400
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 2764A15C3CBA; Thu, 17 Jun 2021 16:16:11 -0400 (EDT)
+Date:   Thu, 17 Jun 2021 16:16:11 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Zhang Yi <yi.zhang@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, jack@suse.cz,
+        yukuai3@huawei.com
+Subject: Re: [PATCH 1/2] ext4: remove check for zero nr_to_scan in
+ ext4_es_scan()
+Message-ID: <YMuti1qbb9iZynje@mit.edu>
+References: <20210522103045.690103-1-yi.zhang@huawei.com>
+ <20210522103045.690103-2-yi.zhang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210522103045.690103-2-yi.zhang@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Mauro Carvalho Chehab <mchehab+huawei@kernel.org> writes:
+On Sat, May 22, 2021 at 06:30:44PM +0800, Zhang Yi wrote:
+> After converting fs shrinkers to new scan/count API, we are no longer
+> pass zero nr_to_scan parameter to detect the number of objects to free,
+> just remove this check.
+> 
+> Fixes: 1ab6c4997e04 ("fs: convert fs shrinkers to new scan/count API")
+> Cc: stable@vger.kernel.org # 3.12+
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 
-> Hi Jon,
->
-> This series contain the remaining 8 patches I submitted at v3 that
-> weren't merged yet at -next.
->
-> This series is rebased on the top of your docs-next branch.
->
-> No changes here, except by some Reviewed/ack lines, and at the
-> name of the final patch (per PCI maintainer's request).
+Thanks, applied.
 
-Applied, thanks.
-
-jon
+					- Ted
