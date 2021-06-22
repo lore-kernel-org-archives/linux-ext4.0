@@ -2,114 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12239C48BDF
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:16:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F807C2B9F4
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:23:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EEEFC6128C
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:16:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 27B8160249
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:23:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232426AbhFVSS1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Jun 2021 14:18:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41778 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229612AbhFVSSX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2021 14:18:23 -0400
-Received: from mail-pg1-x529.google.com (mail-pg1-x529.google.com [IPv6:2607:f8b0:4864:20::529])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C687FC061574;
-        Tue, 22 Jun 2021 11:16:07 -0700 (PDT)
-Received: by mail-pg1-x529.google.com with SMTP id t9so17772572pgn.4;
-        Tue, 22 Jun 2021 11:16:07 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=LvlqUd76IAy9L7kdhodL+NG05Os6O0cVnFr95gFkQvM=;
-        b=NFhodhGHGGFBpXeVNZ3VtVimQGMgS4j13UL3omISPfnTJdZmAAcssg5FkMCjZJ6GtY
-         2emg4vs+l1ZiKR6HrdAPmh6nIInlpAwJcOk4dWMvavgDZVfpF03nRY9QGNnXnz7XklF8
-         wLYXVBBk8Cyqp/xoszIZxZ4xPs66gNVNIE0nVoTHZoouQE214nqTxGrkCDceq/XhfXo8
-         3W91ZZsHxpiT5BdwB/v+veZaU5UYn1HnkhbStmXbLibp62yBmPLQWQDvn45V6suoPnTQ
-         3wn2r9gaaqc33TMzVVqCMAiyqpyGjByUVsT9wtgTQHQrk0hsnuc/YsUIiwDLi1vcF3k3
-         Nvyw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=LvlqUd76IAy9L7kdhodL+NG05Os6O0cVnFr95gFkQvM=;
-        b=msCfgefXFyZkaPYSGrnbR9580xbzw6UVJ2aK9LTpfPsii3SLN5lGBm1fGKC1WjHocf
-         rn3eqvNE1YkGiJ8LLw7U4EMDI6rLWNnbJBV6LFfWlMvNAaee1w2wvpQ6kJWCb6UxQprJ
-         GBPtAM0y/Cg+TXEAtnAo/qcsl89NpQtHRFu/WdqzGuhyW+YcOlUIAzUCIu7wIxhDqlXy
-         dgPB2mWwBso/5zwWReVoQ141B4sJSQlwJ3L2eiBZ8nhliFV+xkinHbu4CyQ9qSZPkgJx
-         gnnBKAcw8rRkYsaapD0eEugK0sdqEHPF9MzrdzvqfsqV/ZzlrigltgZmKuowapMpLENx
-         MKrA==
-X-Gm-Message-State: AOAM531aA4tfcuzjyOzMyUyHn6vKQL5+HDAYfYYE8cLXou7Hwzc4RkvC
-        +Z9HIqIPwJ7w9zJWelN/zw43N3tbTMSW1Q==
-X-Google-Smtp-Source: ABdhPJycAUB8Y1J8RSIc/cFA/fer7B+da2ICW/wH5DbTzVV8vS8ArfYM8UTJ8N9qR49CebfnJIr6XQ==
-X-Received: by 2002:a65:5ac9:: with SMTP id d9mr5042005pgt.293.1624385767083;
-        Tue, 22 Jun 2021 11:16:07 -0700 (PDT)
-Received: from smtpclient.apple (c-24-6-216-183.hsd1.ca.comcast.net. [24.6.216.183])
-        by smtp.gmail.com with ESMTPSA id c3sm42759pfl.42.2021.06.22.11.16.05
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 22 Jun 2021 11:16:06 -0700 (PDT)
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 14.0 \(3654.100.0.2.22\))
-Subject: Re: Do we need to unrevert "fs: do not prefault sys_write() user
- buffer pages"?
-From:   Nadav Amit <nadav.amit@gmail.com>
+        id S232415AbhFVS0B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Jun 2021 14:26:01 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:42550 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232371AbhFVS0B (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Jun 2021 14:26:01 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1624386224;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=4wcUku5VYFOIqpjq4OYU4JOlXU8CasqeJwQGFJvPLW0=;
+        b=RneEJtGJ2LlTcXcG9gnmQmSDJZlIUWqHf23uMU6xCuKbTptEmevba1y3Lxv6UqTzIWByL4
+        /jYgvZwAB3J87h/UpBLubhCgKth1rrIRzE3G4gNrdsHOygDEN9uOT7M9gSGguZLoJ9S5NN
+        hKEErNPcI/ciTXYw5uAm6RZlCuBXKqI=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-148-ixJxdKnMMziAfh0cKU_bOw-1; Tue, 22 Jun 2021 14:23:28 -0400
+X-MC-Unique: ixJxdKnMMziAfh0cKU_bOw-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 5CA02804142;
+        Tue, 22 Jun 2021 18:23:27 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-118-65.rdu2.redhat.com [10.10.118.65])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9218B69CB4;
+        Tue, 22 Jun 2021 18:23:24 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
 In-Reply-To: <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com>
-Date:   Tue, 22 Jun 2021 11:16:03 -0700
-Cc:     Matthew Wilcox <willy@infradead.org>,
-        David Howells <dhowells@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>, Ted Ts'o <tytso@mit.edu>,
+References: <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com> <CAHk-=wh=YxjEtTpYyhgypKmPJQ8eVLJ4qowmwbnG1bOU06_4Bg@mail.gmail.com> <3221175.1624375240@warthog.procyon.org.uk> <YNIBb5WPrk8nnKKn@zeniv-ca.linux.org.uk> <YNIDdgn0m8d2a0P3@zeniv-ca.linux.org.uk> <YNIdJaKrNj5GoT7w@casper.infradead.org> <3231150.1624384533@warthog.procyon.org.uk> <YNImEkqizzuStW72@casper.infradead.org>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     dhowells@redhat.com, Matthew Wilcox <willy@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, "Ted Ts'o" <tytso@mit.edu>,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Linux-MM <linux-mm@kvack.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <437C30AA-2256-4F4F-9CC0-363A21DB1044@gmail.com>
-References: <CAHk-=wh=YxjEtTpYyhgypKmPJQ8eVLJ4qowmwbnG1bOU06_4Bg@mail.gmail.com>
- <3221175.1624375240@warthog.procyon.org.uk>
- <YNIBb5WPrk8nnKKn@zeniv-ca.linux.org.uk>
- <YNIDdgn0m8d2a0P3@zeniv-ca.linux.org.uk>
- <YNIdJaKrNj5GoT7w@casper.infradead.org>
- <3231150.1624384533@warthog.procyon.org.uk>
- <YNImEkqizzuStW72@casper.infradead.org>
- <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-X-Mailer: Apple Mail (2.3654.100.0.2.22)
+Subject: Re: Do we need to unrevert "fs: do not prefault sys_write() user buffer pages"?
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <3233311.1624386204.1@warthog.procyon.org.uk>
+Date:   Tue, 22 Jun 2021 19:23:24 +0100
+Message-ID: <3233312.1624386204@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-
-> On Jun 22, 2021, at 11:07 AM, Linus Torvalds =
-<torvalds@linux-foundation.org> wrote:
->=20
-> On Tue, Jun 22, 2021 at 11:05 AM Matthew Wilcox <willy@infradead.org> =
-wrote:
->>=20
->> Huh?  Last I checked, the fault_in_readable actually read a byte from
->> the page.  It has to wait for the read to complete before that can
->> happen.
->=20
-> Yeah, we don't have any kind of async fault-in model.
->=20
 > I'm not sure how that would even look. I don't think it would
 > necessarily be *impossible* (special marker in the exception table to
 > let the fault code know that this is a "prepare" fault), but it would
 > be pretty challenging.
 
-I did send an RFC some time ago for =E2=80=9Cprepare=E2=80=9D fault, but =
-it the RFC
-requires some more work.
+Probably the most obvious way would be to set a flag in task_struct saying
+what you're doing and have the point that would otherwise wait for the page to
+become unlocked skip to the fault fixup code if the page is locked after
+->readahead() has been invoked and the flag is set, then use get_user() in
+iov_iter_fault_in_readable().
 
-https://lore.kernel.org/lkml/20210225072910.2811795-1-namit@vmware.com/
+But, as Willy says, there's a reasonable chance that the source page is
+present anyway (presumably you want to write out data you've just constructed
+or modified), in which case it's probably not worth the complexity.
+
+David
 
