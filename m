@@ -7,84 +7,105 @@ X-Spam-Status: No, score=-5.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BE19C2B9F4
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:24:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBA4AC2B9F4
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:28:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1080F61289
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:24:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D02BC61164
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jun 2021 18:28:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232444AbhFVS0Z (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Jun 2021 14:26:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43604 "EHLO
+        id S232416AbhFVSbH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Jun 2021 14:31:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44642 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232453AbhFVS0X (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2021 14:26:23 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 33532C061756;
-        Tue, 22 Jun 2021 11:24:06 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=1i+51cszTri2Pv6HZYmqCBAao6nBfImeLdZrjWVU9oI=; b=OvqyJ5NT5aiJLaAtcuhODvVx8r
-        2CU8kI2Vq62ueK5dcTXUbqE/rsz+6aovjex2JX/YcAGwyHWKkMbf+eN+AAtPAwKtVms9jefILxXPX
-        9AITgSGMMeXOir+xGZF7Zyz20TzMD+gZ7N4/yvD2wVdAsuo5IgrLsMpBeKzdRTItGNs6LYVSE9qcC
-        F5eM9uw7klgR1l/aBEKY9ufwyqeyqa1hnPDStxhgxAoMEC5meh9Nrc0SCmZJCV9N9Lxzdm54K2/vY
-        jVIgq4huUBENpA7JC6/DLw9CaAhoqhUdJgCGIrwTYzFseT/82ruPWDtAZB49Mrjky7xi6N2sSWrGf
-        oSHaKPtw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1lvl3H-00EcNm-0Z; Tue, 22 Jun 2021 18:23:17 +0000
-Date:   Tue, 22 Jun 2021 19:23:10 +0100
-From:   Matthew Wilcox <willy@infradead.org>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
+        with ESMTP id S230146AbhFVSbG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jun 2021 14:31:06 -0400
+Received: from mail-lf1-x130.google.com (mail-lf1-x130.google.com [IPv6:2a00:1450:4864:20::130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7EF9DC061574
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jun 2021 11:28:49 -0700 (PDT)
+Received: by mail-lf1-x130.google.com with SMTP id a11so24465559lfg.11
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jun 2021 11:28:49 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=1ZpVUR22GV2FhIPfitStL6sJNaCS4zKOgFuhT+Jblpo=;
+        b=Z693fDgItvtwcb4kTOVryT20g278Zz6hUQqITd0+HePvWOEJ/q4X2/GBHNiKYE5aNZ
+         xF4pSUq8WFx8OrMLW1r42O24+mcof+0hdJXuwaV68w1SsOSyBEhfQWKBUBZM0GfgOc5N
+         g49GS2nhPH9aIUXjg2ss34vZ75Z/DfiJKbz0k=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=1ZpVUR22GV2FhIPfitStL6sJNaCS4zKOgFuhT+Jblpo=;
+        b=ZpxgFzjJcWx4LUyRXF6nmihYFuMJnUryuRG6bDp7SguTvhZlW467eXKow/YDHwuZRN
+         lTuev/R2+Xa1DxFVOSqX3sKK2XAKu03ry6Vh3hNXnl8n9OXxnsRKTKaQ7Hp2qvlnUQI9
+         R24yc4iYX5fz/ZcVL97bpEyUzkLC8djV24UTGF+PsstfRH4u6UqPB7D7JpN0lTqMbbxG
+         SV2gDGDGb+N+zS5+xgMLsBWlwV877ilM5qhSJMZyUjMKS88qTrxPbXRm2CPUPQzWET2o
+         WhmhFXBpldkimd9IX5f976iVb/AmUaamC5CoXhT0/24DB7N2SgMFYZjZiP08Ioz6dLLd
+         9E0g==
+X-Gm-Message-State: AOAM532exdOH3/9A6S6AGdCJYVBKaK95gWH1ohRwjEXV9PvERwDIKKxS
+        BQQ0yvT+kA3JsAd32u9EP52OeWRHT57BFTw0gIo=
+X-Google-Smtp-Source: ABdhPJzA0QghnRaudzSESeJ2zpyw3gpBTbBy22SyvqMVdWkyE+Y0aFkSawgc2HFMgKcuLK7sDUSZsw==
+X-Received: by 2002:a05:6512:169b:: with SMTP id bu27mr3970648lfb.327.1624386527642;
+        Tue, 22 Jun 2021 11:28:47 -0700 (PDT)
+Received: from mail-lj1-f174.google.com (mail-lj1-f174.google.com. [209.85.208.174])
+        by smtp.gmail.com with ESMTPSA id p5sm14341ljn.109.2021.06.22.11.28.47
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 22 Jun 2021 11:28:47 -0700 (PDT)
+Received: by mail-lj1-f174.google.com with SMTP id k8so31297470lja.4
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jun 2021 11:28:47 -0700 (PDT)
+X-Received: by 2002:a2e:b618:: with SMTP id r24mr4383026ljn.48.1624386526776;
+ Tue, 22 Jun 2021 11:28:46 -0700 (PDT)
+MIME-Version: 1.0
+References: <CAHk-=wh=YxjEtTpYyhgypKmPJQ8eVLJ4qowmwbnG1bOU06_4Bg@mail.gmail.com>
+ <3221175.1624375240@warthog.procyon.org.uk> <YNIBb5WPrk8nnKKn@zeniv-ca.linux.org.uk>
+ <YNIDdgn0m8d2a0P3@zeniv-ca.linux.org.uk> <YNIdJaKrNj5GoT7w@casper.infradead.org>
+ <3231150.1624384533@warthog.procyon.org.uk> <YNImEkqizzuStW72@casper.infradead.org>
+ <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com> <YNIqjhsvEms6+vk9@casper.infradead.org>
+In-Reply-To: <YNIqjhsvEms6+vk9@casper.infradead.org>
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Tue, 22 Jun 2021 11:28:30 -0700
+X-Gmail-Original-Message-ID: <CAHk-=wiRumzeOn1Fk-m-FiGf+sA0dSS3YPu--KAkT8-5W5yEHA@mail.gmail.com>
+Message-ID: <CAHk-=wiRumzeOn1Fk-m-FiGf+sA0dSS3YPu--KAkT8-5W5yEHA@mail.gmail.com>
+Subject: Re: Do we need to unrevert "fs: do not prefault sys_write() user
+ buffer pages"?
+To:     Matthew Wilcox <willy@infradead.org>
 Cc:     David Howells <dhowells@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>, Ted Ts'o <tytso@mit.edu>,
+        Al Viro <viro@zeniv.linux.org.uk>, "Ted Ts'o" <tytso@mit.edu>,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Linux-MM <linux-mm@kvack.org>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: Do we need to unrevert "fs: do not prefault sys_write() user
- buffer pages"?
-Message-ID: <YNIqjhsvEms6+vk9@casper.infradead.org>
-References: <CAHk-=wh=YxjEtTpYyhgypKmPJQ8eVLJ4qowmwbnG1bOU06_4Bg@mail.gmail.com>
- <3221175.1624375240@warthog.procyon.org.uk>
- <YNIBb5WPrk8nnKKn@zeniv-ca.linux.org.uk>
- <YNIDdgn0m8d2a0P3@zeniv-ca.linux.org.uk>
- <YNIdJaKrNj5GoT7w@casper.infradead.org>
- <3231150.1624384533@warthog.procyon.org.uk>
- <YNImEkqizzuStW72@casper.infradead.org>
- <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHk-=wicC9ZTNNH1E-oHebcT3+r4Q4Wf1tXBindXrCdotj20Gg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jun 22, 2021 at 11:07:56AM -0700, Linus Torvalds wrote:
-> On Tue, Jun 22, 2021 at 11:05 AM Matthew Wilcox <willy@infradead.org> wrote:
-> >
-> > Huh?  Last I checked, the fault_in_readable actually read a byte from
-> > the page.  It has to wait for the read to complete before that can
-> > happen.
-> 
-> Yeah, we don't have any kind of async fault-in model.
-> 
-> I'm not sure how that would even look. I don't think it would
-> necessarily be *impossible* (special marker in the exception table to
-> let the fault code know that this is a "prepare" fault), but it would
-> be pretty challenging.
+On Tue, Jun 22, 2021 at 11:23 AM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> It wouldn't be _that_ bad necessarily.  filemap_fault:
 
-It wouldn't be _that_ bad necessarily.  filemap_fault:
+It's not actually the mm code that is the biggest problem. We
+obviously already have readahead support.
 
-        page = find_get_page(mapping, offset);
-...
-        } else if (!page) {
-                fpin = do_sync_mmap_readahead(vmf);
+It's the *fault* side.
 
-... and we could return at that point if the flag was set.  There'd be
-some more details to fill in (if there's a !uptodate page in the page
-cache, don't wait for it), but it might not be too bad.
+In particular, since the fault would return without actually filling
+in the page table entry (because the page isn't ready yet, and you
+cannot expose it to other threads!), you also have to jump over the
+instruction that caused this all.
+
+Doable? Oh, absolutely. But you basically need a new inline asm thing
+for each architecture, so that the architecture knows how to skip the
+instruction that caused the page fault, and the new exception table
+entry type to say 'this is that magic VM prefetch instruction".
+
+So filemap_fault() is the least of the problems.
+
+Honestly, it doesn't look _complicated_, but it does look like a fair
+number of small details..
+
+               Linus
