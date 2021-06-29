@@ -2,170 +2,179 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8787DC11F68
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jun 2021 14:27:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FDAFC11F67
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jun 2021 19:10:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 721E461DC2
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jun 2021 14:27:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A50761DD6
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jun 2021 19:10:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234402AbhF2OaA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jun 2021 10:30:00 -0400
-Received: from szxga03-in.huawei.com ([45.249.212.189]:9319 "EHLO
-        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231194AbhF2O3x (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jun 2021 10:29:53 -0400
-Received: from dggeme754-chm.china.huawei.com (unknown [172.30.72.53])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4GDmsp2r3Fz73xx;
-        Tue, 29 Jun 2021 22:23:10 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggeme754-chm.china.huawei.com
- (10.3.19.100) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Tue, 29
- Jun 2021 22:27:23 +0800
-From:   Ye Bin <yebin10@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <jack@suse.cz>
-CC:     Ye Bin <yebin10@huawei.com>
-Subject: [PATCH 1/2] ext4: Fix use-after-free about sbi->s_mmp_tsk
-Date:   Tue, 29 Jun 2021 22:36:02 +0800
-Message-ID: <20210629143603.2166962-2-yebin10@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210629143603.2166962-1-yebin10@huawei.com>
-References: <20210629143603.2166962-1-yebin10@huawei.com>
+        id S235450AbhF2TNQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jun 2021 15:13:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52666 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233916AbhF2TNQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jun 2021 15:13:16 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D8AA7C061760;
+        Tue, 29 Jun 2021 12:10:48 -0700 (PDT)
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        (Authenticated sender: krisman)
+        with ESMTPSA id 5E9E21F431AF
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     amir73il@gmail.com
+Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
+        jack@suse.com, dhowells@redhat.com, khazhy@google.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel@collabora.com
+Subject: [PATCH v3 00/15] File system wide monitoring
+Date:   Tue, 29 Jun 2021 15:10:20 -0400
+Message-Id: <20210629191035.681913-1-krisman@collabora.com>
+X-Mailer: git-send-email 2.32.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- dggeme754-chm.china.huawei.com (10.3.19.100)
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After merge 618f003199c6("ext4: fix memory leak in ext4_fill_super") commit,
-we add delay in ext4_remount after "sb->s_flags |= SB_RDONLY", then
-remount filesystem with read-only kasan report following warning:
-[  888.695326] ==================================================================
-[  888.696566] BUG: KASAN: use-after-free in kthread_stop+0x4c/0x2f0
-[  888.697599] Write of size 4 at addr ffff8883849e0020 by task mount/2013
-[  888.698707]
-[  888.698982] CPU: 4 PID: 2013 Comm: mount Not tainted 4.19.95-00013-ga369a6189bbf-dirty #413
-[  888.700376] Hardware name: QEMU Standard PC
-[  888.702587] Call Trace:
-[  888.703017]  dump_stack+0x108/0x15f
-[  888.703615]  print_address_description+0xa5/0x372
-[  888.704420]  kasan_report.cold+0x236/0x2a8
-[  888.705761]  check_memory_region+0x240/0x270
-[  888.706486]  kasan_check_write+0x20/0x30
-[  888.707156]  kthread_stop+0x4c/0x2f0
-[  888.707776]  ext4_stop_mmpd+0x32/0x90
-[  888.708262]  ext4_remount.cold+0xf6/0x116
-[  888.712671]  do_remount_sb+0xff/0x460
-[  888.714007]  do_mount+0xce3/0x1be0
-[  888.717749]  ksys_mount+0xb2/0x150
-[  888.718163]  __x64_sys_mount+0x6a/0x80
-[  888.718607]  do_syscall_64+0xd9/0x1f0
-[  888.719047]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+Hi,
 
-As kmmpd will exit if filesystem is read-only. Then sbi->s_mmp_tsk become wild
-ptr, lead to use-after-free. As kmmpd will exit by others(call ktread_stop)
-or by itself. After 618f003199c6 commit we can trigger this issue very easy.
-Before this commit also exist this issue.
-If kmmpd exit by itself, after merge 618f003199c6 commit there will trigger UAF
-when umount filesystem.
-To fix this issue, introduce sbi->s_mmp_lock to protect sbi->s_mmp_tsk. If kmmpd
-exit by itself, we set sbi->s_mmp_tsk with NULL, and release mmp buffer_head.
+This is the third version of the FAN_FS_ERROR patches.  The main change
+in this version is the inode information being reported through an FID
+record, which means it requires the group to be created with
+FAN_REPORT_FID.  It indeed simplifies a lot the FAN_FS_ERROR patch
+itself.
 
-Fixes: 618f003199c6 ("ext4: fix memory leak in ext4_fill_super")
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/ext4.h  |  1 +
- fs/ext4/mmp.c   | 24 ++++++++++++++++++++++--
- fs/ext4/super.c |  1 +
- 3 files changed, 24 insertions(+), 2 deletions(-)
+This change raises the question of how we report non-inode errors.  On
+one hand, we could omit the FID report, but then fsid would also be
+ommited.  I chose to report these kind of errors against the root
+inode.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8d3446746718..a479da37fed4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1489,6 +1489,7 @@ struct ext4_sb_info {
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
- 	struct buffer_head *s_mmp_bh;
-+	struct mutex s_mmp_lock;
- 
- 	/* Journaling */
- 	struct journal_s *s_journal;
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 6cb598b549ca..fc18a8c205c7 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -128,8 +128,9 @@ void __dump_mmp_msg(struct super_block *sb, struct mmp_struct *mmp,
- static int kmmpd(void *data)
- {
- 	struct super_block *sb = (struct super_block *) data;
--	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
--	struct buffer_head *bh = EXT4_SB(sb)->s_mmp_bh;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+	struct buffer_head *bh = sbi->s_mmp_bh;
- 	struct mmp_struct *mmp;
- 	ext4_fsblk_t mmp_block;
- 	u32 seq = 0;
-@@ -245,16 +246,35 @@ static int kmmpd(void *data)
- 	retval = write_mmp_block(sb, bh);
- 
- exit_thread:
-+	/*
-+	 * Maybe s_mmp_tsk kthread is stoped by others or by itself. If exit
-+	 * by itself then sbi->s_mmp_tsk will be wild ptr, so there is need
-+	 * set sbi->s_mmp_tsk with NULL, and also release mmp buffer_head.
-+	 */
-+	while (!kthread_should_stop()) {
-+		if (!mutex_trylock(&sbi->s_mmp_lock))
-+			continue;
-+
-+		if (sbi->s_mmp_tsk) {
-+			sbi->s_mmp_tsk = NULL;
-+			brelse(bh);
-+		}
-+		mutex_unlock(&sbi->s_mmp_lock);
-+		break;
-+	}
-+
- 	return retval;
- }
- 
- void ext4_stop_mmpd(struct ext4_sb_info *sbi)
- {
-+	mutex_lock(&sbi->s_mmp_lock);
- 	if (sbi->s_mmp_tsk) {
- 		kthread_stop(sbi->s_mmp_tsk);
- 		brelse(sbi->s_mmp_bh);
- 		sbi->s_mmp_tsk = NULL;
- 	}
-+	mutex_unlock(&sbi->s_mmp_lock);
- }
- 
- /*
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c3942804b57f..5bc3230553fb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4786,6 +4786,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	needs_recovery = (es->s_last_orphan != 0 ||
- 			  ext4_has_feature_journal_needs_recovery(sb));
- 
-+	mutex_init(&sbi->s_mmp_lock);
- 	if (ext4_has_feature_mmp(sb) && !sb_rdonly(sb))
- 		if (ext4_multi_mount_protect(sb, le64_to_cpu(es->s_mmp_block)))
- 			goto failed_mount3a;
+The other changes in this iteration were made to attend to Amir
+feedback.  Thank you again for your very detailed input.  It is really
+appreciated.
+
+This was tested with LTP for regressions, and also using the sample on
+the last patch, with a corrupted image.  I can publish the bad image
+upon request.
+
+I also pushed the full series to:
+
+  https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-single-slot
+
+Thank you
+
+Original cover letter
+---------------------
+Hi,
+
+This series follow up on my previous proposal [1] to support file system
+wide monitoring.  As suggested by Amir, this proposal drops the ring
+buffer in favor of a single slot associated with each mark.  This
+simplifies a bit the implementation, as you can see in the code.
+
+As a reminder, This proposal is limited to an interface for
+administrators to monitor the health of a file system, instead of a
+generic inteface for file errors.  Therefore, this doesn't solve the
+problem of writeback errors or the need to watch a specific subtree.
+
+In comparison to the previous RFC, this implementation also drops the
+per-fs data and location, and leave those as future extensions.
+
+* Implementation
+
+The feature is implemented on top of fanotify, as a new type of fanotify
+mark, FAN_ERROR, which a file system monitoring tool can register to
+receive error notifications.  When an error occurs a new notification is
+generated, in addition followed by this info field:
+
+ - FS generic data: A file system agnostic structure that has a generic
+ error code and identifies the filesystem.  Basically, it let's
+ userspace know something happened on a monitored filesystem.  Since
+ only the first error is recorded since the last read, this also
+ includes a counter of errors that happened since the last read.
+
+* Testing
+
+This was tested by watching notifications flowing from an intentionally
+corrupted filesystem in different places.  In addition, other events
+were watched in an attempt to detect regressions.
+
+Is there a specific testsuite for fanotify I should be running?
+
+* Patches
+
+This patchset is divided as follows: Patch 1 through 5 are refactoring
+to fsnotify/fanotify in preparation for FS_ERROR/FAN_ERROR; patch 6 and
+7 implement the FS_ERROR API for filesystems to report error; patch 8
+add support for FAN_ERROR in fanotify; Patch 9 is an example
+implementation for ext4; patch 10 and 11 provide a sample userspace code
+and documentation.
+
+I also pushed the full series to:
+
+  https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-single-slot
+
+[1] https://lwn.net/Articles/854545/
+[2] https://lwn.net/Articles/856916/
+
+Cc: Darrick J. Wong <djwong@kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: jack@suse.com
+To: amir73il@gmail.com
+Cc: dhowells@redhat.com
+Cc: khazhy@google.com
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+
+Amir Goldstein (1):
+  fsnotify: pass arguments of fsnotify() in struct fsnotify_event_info
+
+Gabriel Krisman Bertazi (14):
+  fsnotify: Don't insert unmergeable events in hashtable
+  fanotify: Fold event size calculation to its own function
+  fanotify: Split fsid check from other fid mode checks
+  fanotify: Split superblock marks out to a new cache
+  inotify: Don't force FS_IN_IGNORED
+  fsnotify: Add helper to detect overflow_event
+  fsnotify: Support passing argument to insert callback on add_event
+  fsnotify: Always run the merge hook
+  fsnotify: Support FS_ERROR event type
+  fsnotify: Introduce helpers to send error_events
+  fanotify: Introduce FAN_FS_ERROR event
+  ext4: Send notifications on error
+  samples: Add fs error monitoring example
+  docs: Document the FAN_FS_ERROR event
+
+ .../admin-guide/filesystem-monitoring.rst     |  70 +++++++
+ Documentation/admin-guide/index.rst           |   1 +
+ fs/ext4/super.c                               |   8 +
+ fs/notify/fanotify/fanotify.c                 | 189 ++++++++++++-----
+ fs/notify/fanotify/fanotify.h                 |  69 ++++++-
+ fs/notify/fanotify/fanotify_user.c            | 195 +++++++++++++++---
+ fs/notify/fsnotify.c                          |  85 ++++----
+ fs/notify/inotify/inotify_fsnotify.c          |   5 +-
+ fs/notify/inotify/inotify_user.c              |   6 +-
+ fs/notify/notification.c                      |   8 +-
+ include/linux/fanotify.h                      |  11 +-
+ include/linux/fsnotify.h                      |  28 ++-
+ include/linux/fsnotify_backend.h              | 104 ++++++++--
+ include/uapi/linux/fanotify.h                 |   8 +
+ samples/Kconfig                               |   9 +
+ samples/Makefile                              |   1 +
+ samples/fanotify/Makefile                     |   3 +
+ samples/fanotify/fs-monitor.c                 | 134 ++++++++++++
+ 18 files changed, 777 insertions(+), 157 deletions(-)
+ create mode 100644 Documentation/admin-guide/filesystem-monitoring.rst
+ create mode 100644 samples/fanotify/Makefile
+ create mode 100644 samples/fanotify/fs-monitor.c
+
 -- 
-2.31.1
+2.32.0
 
