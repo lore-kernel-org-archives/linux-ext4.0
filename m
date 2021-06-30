@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50BEAC11F6A
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB019C11F68
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3B4D261D0B
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A3B2661D0E
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233541AbhF3IaM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S233538AbhF3IaM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 30 Jun 2021 04:30:12 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:6027 "EHLO
+Received: from szxga01-in.huawei.com ([45.249.212.187]:6028 "EHLO
         szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233519AbhF3IaL (ORCPT
+        with ESMTP id S233516AbhF3IaL (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2021 04:30:11 -0400
 Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.57])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GFDq24fynzXmmV
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GFDq252C3zXmpQ
         for <linux-ext4@vger.kernel.org>; Wed, 30 Jun 2021 16:22:22 +0800 (CST)
 Received: from dggpemm500014.china.huawei.com (7.185.36.153) by
  dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Wed, 30 Jun 2021 16:27:34 +0800
+ 15.1.2176.2; Wed, 30 Jun 2021 16:27:35 +0800
 Received: from huawei.com (10.175.104.170) by dggpemm500014.china.huawei.com
  (7.185.36.153) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2176.2; Wed, 30 Jun
- 2021 16:27:33 +0800
+ 2021 16:27:34 +0800
 From:   wuguanghao <wuguanghao3@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <artem.blagodarenko@gmail.com>
 CC:     <liuzhiqiang26@huawei.com>, <linfeilong@huawei.com>,
         <wuguanghao3@huawei.com>
-Subject: [PATCH v2 08/12] misc: fix potential segmentation fault problem in scandir()
-Date:   Wed, 30 Jun 2021 16:27:20 +0800
-Message-ID: <20210630082724.50838-9-wuguanghao3@huawei.com>
+Subject: [PATCH v2 11/12] misc/lsattr: check whether path is NULL in lsattr_dir_proc()
+Date:   Wed, 30 Jun 2021 16:27:23 +0800
+Message-ID: <20210630082724.50838-12-wuguanghao3@huawei.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <20210630082724.50838-2-wuguanghao3@huawei.com>
 References: <20210630082724.50838-2-wuguanghao3@huawei.com>
@@ -53,30 +53,32 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 
-In scandir(), temp_list[num_dent] is allocated by calling
-malloc(), we should check whether malloc() returns NULL before
-accessing temp_list[num_dent].
+In lsattr_dir_proc(), if malloc() return NULL, it will cause
+a segmentation fault problem.
 
 Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
 ---
- misc/create_inode.c | 3 +++
- 1 file changed, 3 insertions(+)
+ misc/lsattr.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/misc/create_inode.c b/misc/create_inode.c
-index d62e1cb4..869b0614 100644
---- a/misc/create_inode.c
-+++ b/misc/create_inode.c
-@@ -771,6 +771,9 @@ static int scandir(const char *dir_name, struct dirent ***name_list,
- 		}
- 		// add the copy of dirent to the list
- 		temp_list[num_dent] = (struct dirent*)malloc((dent->d_reclen + 3) & ~3);
-+		if (!temp_list[num_dent]) {
-+			goto out;
-+		}
- 		memcpy(temp_list[num_dent], dent, dent->d_reclen);
- 		num_dent++;
- 	}
+diff --git a/misc/lsattr.c b/misc/lsattr.c
+index 0d954376..f3212069 100644
+--- a/misc/lsattr.c
++++ b/misc/lsattr.c
+@@ -144,6 +144,12 @@ static int lsattr_dir_proc (const char * dir_name, struct dirent * de,
+ 	int dir_len = strlen(dir_name);
+ 
+ 	path = malloc(dir_len + strlen (de->d_name) + 2);
++	if (!path) {
++		fprintf(stderr, "%s",
++			_("Couldn't allocate path variable "
++			  "in lsattr_dir_proc"));
++		return -1;
++	}
+ 
+ 	if (dir_len && dir_name[dir_len-1] == '/')
+ 		sprintf (path, "%s%s", dir_name, de->d_name);
 -- 
 2.19.1
 
