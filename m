@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 239D0C11F69
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 186D5C11F65
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EEFBE61CA2
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EF2F061D07
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233380AbhF3IaD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Jun 2021 04:30:03 -0400
-Received: from szxga08-in.huawei.com ([45.249.212.255]:9301 "EHLO
-        szxga08-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233089AbhF3IaD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2021 04:30:03 -0400
-Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.53])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4GFDps6rhvz1BTPH
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Jun 2021 16:22:13 +0800 (CST)
+        id S233488AbhF3IaI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Jun 2021 04:30:08 -0400
+Received: from szxga01-in.huawei.com ([45.249.212.187]:6025 "EHLO
+        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233467AbhF3IaH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2021 04:30:07 -0400
+Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.55])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GFDpw0vh5zXmKT
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Jun 2021 16:22:16 +0800 (CST)
 Received: from dggpemm500014.china.huawei.com (7.185.36.153) by
  dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Wed, 30 Jun 2021 16:27:33 +0800
+ 15.1.2176.2; Wed, 30 Jun 2021 16:27:35 +0800
 Received: from huawei.com (10.175.104.170) by dggpemm500014.china.huawei.com
  (7.185.36.153) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2176.2; Wed, 30 Jun
- 2021 16:27:32 +0800
+ 2021 16:27:35 +0800
 From:   wuguanghao <wuguanghao3@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <artem.blagodarenko@gmail.com>
 CC:     <liuzhiqiang26@huawei.com>, <linfeilong@huawei.com>,
         <wuguanghao3@huawei.com>
-Subject: [PATCH v2 06/12] append_pathname: check the value returned by realloc
-Date:   Wed, 30 Jun 2021 16:27:18 +0800
-Message-ID: <20210630082724.50838-7-wuguanghao3@huawei.com>
+Subject: [PATCH v2 12/12] ext2ed: fix potential NULL pointer dereference in dupstr()
+Date:   Wed, 30 Jun 2021 16:27:24 +0800
+Message-ID: <20210630082724.50838-13-wuguanghao3@huawei.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <20210630082724.50838-2-wuguanghao3@huawei.com>
 References: <20210630082724.50838-2-wuguanghao3@huawei.com>
@@ -51,42 +51,29 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In append_pathname(), we need to add a new path to save the value returned by realloc,
-otherwise the name->path may be NULL, causing segfault
+From: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 
-Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
+In dupstr(), we should check return value of malloc().
+
 Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
+Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
+Reviewed-by: Wu Bo <wubo40@huawei.com>
 ---
- contrib/fsstress.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ ext2ed/main.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/contrib/fsstress.c b/contrib/fsstress.c
-index 2a983482..07433205 100644
---- a/contrib/fsstress.c
-+++ b/contrib/fsstress.c
-@@ -599,7 +599,7 @@ void add_to_flist(int ft, int id, int parent)
- void append_pathname(pathname_t * name, char *str)
- {
- 	int len;
--
-+	char *path; 
- 	len = strlen(str);
- #ifdef DEBUG
- 	if (len && *str == '/' && name->len == 0) {
-@@ -609,7 +609,13 @@ void append_pathname(pathname_t * name, char *str)
+diff --git a/ext2ed/main.c b/ext2ed/main.c
+index f7e7d7df..9d33a8e1 100644
+--- a/ext2ed/main.c
++++ b/ext2ed/main.c
+@@ -524,6 +524,8 @@ char *dupstr (char *src)
+ 	char *ptr;
  
- 	}
- #endif
--	name->path = realloc(name->path, name->len + 1 + len);
-+	path = realloc(name->path, name->len + 1 + len);
-+	if (path == NULL) {
-+		fprintf(stderr, "fsstress: append_pathname realloc failed\n");
-+		chdir(homedir);
-+		abort();
-+	}
-+	name->path = path;
- 	strcpy(&name->path[name->len], str);
- 	name->len += len;
+ 	ptr=(char *) malloc (strlen (src)+1);
++	if (!ptr)
++		return NULL;
+ 	strcpy (ptr,src);
+ 	return (ptr);
  }
 -- 
 2.19.1
