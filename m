@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 186D5C11F65
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F696C11F68
 	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EF2F061D07
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 46D3B61D07
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jun 2021 08:27:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233488AbhF3IaI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Jun 2021 04:30:08 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:6025 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233467AbhF3IaH (ORCPT
+        id S233502AbhF3IaJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Jun 2021 04:30:09 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:5945 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233089AbhF3IaH (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jun 2021 04:30:07 -0400
-Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.55])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GFDpw0vh5zXmKT
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Jun 2021 16:22:16 +0800 (CST)
+Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4GFDs91ybVz75pY
+        for <linux-ext4@vger.kernel.org>; Wed, 30 Jun 2021 16:24:13 +0800 (CST)
 Received: from dggpemm500014.china.huawei.com (7.185.36.153) by
  dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Wed, 30 Jun 2021 16:27:35 +0800
+ 15.1.2176.2; Wed, 30 Jun 2021 16:27:34 +0800
 Received: from huawei.com (10.175.104.170) by dggpemm500014.china.huawei.com
  (7.185.36.153) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2176.2; Wed, 30 Jun
- 2021 16:27:35 +0800
+ 2021 16:27:34 +0800
 From:   wuguanghao <wuguanghao3@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <artem.blagodarenko@gmail.com>
 CC:     <liuzhiqiang26@huawei.com>, <linfeilong@huawei.com>,
         <wuguanghao3@huawei.com>
-Subject: [PATCH v2 12/12] ext2ed: fix potential NULL pointer dereference in dupstr()
-Date:   Wed, 30 Jun 2021 16:27:24 +0800
-Message-ID: <20210630082724.50838-13-wuguanghao3@huawei.com>
+Subject: [PATCH v2 09/12] lib/ss/error.c: check return value malloc in ss_name()
+Date:   Wed, 30 Jun 2021 16:27:21 +0800
+Message-ID: <20210630082724.50838-10-wuguanghao3@huawei.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <20210630082724.50838-2-wuguanghao3@huawei.com>
 References: <20210630082724.50838-2-wuguanghao3@huawei.com>
@@ -53,28 +53,28 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 
-In dupstr(), we should check return value of malloc().
+In ss_name(), we should check return value of malloc(),
+otherwise, it may cause a segmentation fault problem.
 
 Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
-Reviewed-by: Wu Bo <wubo40@huawei.com>
 ---
- ext2ed/main.c | 2 ++
+ lib/ss/error.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/ext2ed/main.c b/ext2ed/main.c
-index f7e7d7df..9d33a8e1 100644
---- a/ext2ed/main.c
-+++ b/ext2ed/main.c
-@@ -524,6 +524,8 @@ char *dupstr (char *src)
- 	char *ptr;
- 
- 	ptr=(char *) malloc (strlen (src)+1);
-+	if (!ptr)
-+		return NULL;
- 	strcpy (ptr,src);
- 	return (ptr);
- }
+diff --git a/lib/ss/error.c b/lib/ss/error.c
+index 8d345a9f..656b71be 100644
+--- a/lib/ss/error.c
++++ b/lib/ss/error.c
+@@ -42,6 +42,8 @@ char *ss_name(int sci_idx)
+ 			 (strlen(infop->subsystem_name)+
+ 			  strlen(infop->current_request)+
+ 			  4));
++	if (ret_val == (char *)NULL)
++		return ((char *)NULL);
+ 	cp = ret_val;
+ 	cp1 = infop->subsystem_name;
+ 	while (*cp1)
 -- 
 2.19.1
 
