@@ -2,80 +2,61 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1347DC11F69
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Jul 2021 13:13:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 030F9C11F6A
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Jul 2021 13:15:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE90861424
-	for <linux-ext4@archiver.kernel.org>; Fri,  2 Jul 2021 13:13:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D429D6109D
+	for <linux-ext4@archiver.kernel.org>; Fri,  2 Jul 2021 13:15:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232500AbhGBNQV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 2 Jul 2021 09:16:21 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40717 "EHLO
+        id S232338AbhGBNRs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 2 Jul 2021 09:17:48 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40896 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S231743AbhGBNQU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Jul 2021 09:16:20 -0400
+        with ESMTP id S231718AbhGBNRs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Jul 2021 09:17:48 -0400
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 162DDKDI002165
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 162DF6gM002762
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 2 Jul 2021 09:13:21 -0400
+        Fri, 2 Jul 2021 09:15:06 -0400
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id AE97615C3CE4; Fri,  2 Jul 2021 09:13:20 -0400 (EDT)
-Date:   Fri, 2 Jul 2021 09:13:20 -0400
+        id EBA5F15C3CE4; Fri,  2 Jul 2021 09:15:05 -0400 (EDT)
+Date:   Fri, 2 Jul 2021 09:15:05 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Guoqing Jiang <guoqing.jiang@linux.dev>
-Cc:     Sachin Sant <sachinp@linux.vnet.ibm.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linuxppc-dev@lists.ozlabs.org, yi.zhang@huawei.com, jack@suse.cz
-Subject: Re: [powerpc][5.13.0-next-20210701] Kernel crash while running
- ltp(chdir01) tests
-Message-ID: <YN8Q8O3W5u8iYSQr@mit.edu>
-References: <26ACA75D-E13D-405B-9BFC-691B5FB64243@linux.vnet.ibm.com>
- <bf1c5b38-92f1-65db-e210-a97a199718ba@linux.dev>
+To:     Jon Hunter <jonathanh@nvidia.com>
+Cc:     Zhang Yi <yi.zhang@huawei.com>, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org,
+        linux-tegra <linux-tegra@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 updates for v5.14
+Message-ID: <YN8RWbzwcmScC4Gi@mit.edu>
+References: <YNzY12HgR4UViC4/@mit.edu>
+ <87ade24e-08f2-5fb1-7616-e6032af399a3@nvidia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <bf1c5b38-92f1-65db-e210-a97a199718ba@linux.dev>
+In-Reply-To: <87ade24e-08f2-5fb1-7616-e6032af399a3@nvidia.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jul 02, 2021 at 05:38:10PM +0800, Guoqing Jiang wrote:
+On Fri, Jul 02, 2021 at 10:57:37AM +0100, Jon Hunter wrote:
 > 
-> 
-> I guess the problem is j_jh_shrink_count was destroyed in ext4_put_super _> 
-> jbd2_journal_unregister_shrinker
-> which is before the path ext4_put_super -> jbd2_journal_destroy ->
-> jbd2_log_do_checkpoint to call
-> percpu_counter_dec(&journal->j_jh_shrink_count).
-> 
-> And since jbd2_journal_unregister_shrinker is already called inside
-> jbd2_journal_destroy, does it make sense
-> to do this?
-> 
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1176,7 +1176,6 @@ static void ext4_put_super(struct super_block *sb)
->         ext4_unregister_sysfs(sb);
-> 
->         if (sbi->s_journal) {
-> -               jbd2_journal_unregister_shrinker(sbi->s_journal);
->                 aborted = is_journal_aborted(sbi->s_journal);
->                 err = jbd2_journal_destroy(sbi->s_journal);
->                 sbi->s_journal = NULL;
+> I have noticed that with next-20210701 that one of our eMMC tests
+> started failing on all our ARM and ARM64 platforms and bisect is
+> pointing to commit 4ba3fcdde7e3 ("jbd2,ext4: add a shrinker to
+> release checkpointed buffers"). Today I am seeing the same failure
+> on the mainline.
 
-Good catch.  There's another place where we call
-jbd2_journal_unregister_shrinker(), in the failure path for
-ext4_fill_super().
+Yes, this was noted as a problem on Power as well.  I'll be sending a
+fix for this shortly...
+
+Apologies for not catching this, but for some reason it's not causing
+problems on x86_64.
 
 					- Ted
-
-P.S.  Whatever outgoing mailer you are using, it's not preserving TAB
-characters correctly.  You might want to look into that before trying
-to submit a patch.
