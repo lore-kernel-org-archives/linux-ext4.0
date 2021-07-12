@@ -5,220 +5,121 @@ X-Spam-Level:
 X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2443C11F66
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 15:43:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6034BC11F68
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 16:56:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AF0B56120A
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 15:43:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4CA546120A
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 16:56:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235614AbhGLPqS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Jul 2021 11:46:18 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:52504 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235513AbhGLPqM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jul 2021 11:46:12 -0400
+        id S234749AbhGLQ7C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Jul 2021 12:59:02 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:54352 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234266AbhGLQ7B (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jul 2021 12:59:01 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id C354E22161;
-        Mon, 12 Jul 2021 15:43:21 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTP id EB86D1FFC4;
+        Mon, 12 Jul 2021 16:56:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1626104601; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1626108969; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9//VL3jBOGhKr9yJAsWh0HMkNbxa5TY9gnH+hhZMqX4=;
-        b=w3mjRQWLjzT9j+9PiNolmGIAQfCS0SBMrVjEUX3Wz03Kp31a6eoopOwQbdGIMUUdrg5yhZ
-        SPL8vHwiYPDAocDfP1r3O5dASoZZEIXWW1vfP3DrbfxiFYPvSvUWl/ThPLbxP8lLvwPtxr
-        zU37lB4QpbFIxM15rXrn6VzMEd8T6bE=
+        bh=9yEcA8XH1+Aq+HogCsZ38H71sADSF6n5eh1Yuc7mdUU=;
+        b=idn4FWeQKRJqBP40knKINn6h25aesqwGHAjw7L1RcocMd7xaK5Sdkgkty5sOdKSFlnSjcQ
+        Wx1nQrt2Tl6GrjF3TbktZrEOmbL4tGD4m1Guo8I0S7oA3N6d7tcoVda0FGu0Oa+7Wrxmcy
+        f6k6UuSXjitgQ7/hDl54Nh/bLoWxSPk=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1626104601;
+        s=susede2_ed25519; t=1626108969;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=9//VL3jBOGhKr9yJAsWh0HMkNbxa5TY9gnH+hhZMqX4=;
-        b=151llF91bt4aXtRFaaE/YeJvg0wnlqjV26ERifMXQeYdTaUnWe8piHPD1nmjcFhZ67Jwia
-        uLqd5ua/v0q78dBA==
+        bh=9yEcA8XH1+Aq+HogCsZ38H71sADSF6n5eh1Yuc7mdUU=;
+        b=ZtvIBDSSca7WOpnlIlhXywxDagDPFi2VN1PDK6bpSvMFWJOof37XoPjt9IuM2Aa1etLK4d
+        IwxJC8LYfh/IL+AQ==
 Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id B9B2EA3BA8;
-        Mon, 12 Jul 2021 15:43:21 +0000 (UTC)
+        by relay2.suse.de (Postfix) with ESMTP id D6CF2A3B89;
+        Mon, 12 Jul 2021 16:56:09 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id A105F1F2CD7; Mon, 12 Jul 2021 17:43:21 +0200 (CEST)
+        id B98701F2AA9; Mon, 12 Jul 2021 18:56:09 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 7/9] tune2fs: Add support for orphan_file feature
-Date:   Mon, 12 Jul 2021 17:43:13 +0200
-Message-Id: <20210712154315.9606-8-jack@suse.cz>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     <linux-ext4@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <djwong@kernel.org>, Ted Tso <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>, <linux-mm@kvack.org>,
+        <linux-xfs@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 02/14] documentation: Sync file_operations members with reality
+Date:   Mon, 12 Jul 2021 18:55:53 +0200
+Message-Id: <20210712165609.13215-2-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210712154315.9606-1-jack@suse.cz>
-References: <20210712154315.9606-1-jack@suse.cz>
+In-Reply-To: <20210712163901.29514-1-jack@suse.cz>
+References: <20210712163901.29514-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4952; h=from:subject; bh=wYvGlZFwXN8wLBEKBfF+r7RJJlqY+IP5oxhneDe5VCM=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBg7GMQz57CDndAV5xuKSx4kiBx3IhR8Es0KhLrjIgH VCogVHqJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYOxjEAAKCRCcnaoHP2RA2T1YB/ 904BVjPNTCRwmD9ayv3lzV9pmSMEr1/T9N++/DgD8HRT05JC3B1rOdKLBOYYWMfZQIzNiBQF8NIG42 ZAk2TI6ItQmjSXANN0Cir+/ldRBRL/E8iHVcr9tL3ZXXv5uPoDPwic848GNQyJWrzsDjA5GHiSFaPI 96i0MPyw5PUYUohTCfRubzZnJRiW30g1ulpAXR/hOSOwTS3XHMyOFT6Cm7uusVqwMc4LKcGFP7ryhr eDKnFiOkpd/K1UuYSUPHFQIOUu+fGiC0wsrmQ0SN9dwbFcBMj7paVq02f5cvAVLx7nRkZO8gOyXMMt KOE66HWz250NdJF8Eo9B42uJtRFLuP
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2323; h=from:subject; bh=gIg3iIztJVQoIlghVq1+fJXqU7kYO/MEXF6k8jlkFes=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBg7HQaQHe8HLcxNePecMEKAXHjeRLFAXwNY+MydxMY E0Cx61GJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYOx0GgAKCRCcnaoHP2RA2R0cCA Ce7oPViJYsHG8/ch4tj9ytaWabFvhU9qAa2Mb8zqfoRMDv3PZSuTmQfeSChslezfK004VtuHfp0Wmq rCIeQ1IA39fD/wH8pHDF9pTRbbS+RuYeuD+Qp2ai2I8WiGbhjmgWmV00gTKQl5q9RO3JOFuE19+kCU I2TmSof6im7HJ0YwA2WBiYNJqOD6I/WhnwSVxfn2Jdzdx+l1Zxo7seV8h6A7AEkjvteEF5JcwNuQN1 TE99lrq1wdG8IDLk8JoAtPO9FRtpNj9iPNjC87pqN4qQl05cjwJVeUJmDQaqcw6lzEOcNP/qUSPbhe i68ih2izUsJFu4lY8I4EhFtvrB9K2g
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Sync listing of struct file_operations members with the real one in
+fs.h.
+
+Acked-by: Darrick J. Wong <djwong@kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- misc/tune2fs.8.in |  5 +++
- misc/tune2fs.c    | 89 +++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 92 insertions(+), 2 deletions(-)
+ Documentation/filesystems/locking.rst | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
-index b963f30edef3..849f94b68d6e 100644
---- a/misc/tune2fs.8.in
-+++ b/misc/tune2fs.8.in
-@@ -257,6 +257,11 @@ program.
- This superblock setting is only honored in 2.6.35+ kernels;
- and not at all by the ext2 and ext3 file system drivers.
- .TP
-+.BI orphan_file_size= size
-+Set size of the file for tracking unlinked but still open inodes and inodes
-+with truncate in progress. Larger file allows for better scalability, reserving
-+a few blocks per cpu is ideal.
-+.TP
- .B force_fsck
- Set a flag in the filesystem superblock indicating that errors have been found.
- This will force fsck to run at the next mount.
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index f739f16cd62b..4d4cf5a13384 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -106,6 +106,7 @@ int enabling_casefold;
- int journal_size, journal_fc_size, journal_flags;
- char *journal_device;
- static blk64_t journal_location = ~0LL;
-+static e2_blkcnt_t orphan_file_blocks;
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 2183fd8cc350..cdf15492c699 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -506,6 +506,7 @@ prototypes::
+ 	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+ 	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+ 	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
++	int (*iopoll) (struct kiocb *kiocb, bool spin);
+ 	int (*iterate) (struct file *, struct dir_context *);
+ 	int (*iterate_shared) (struct file *, struct dir_context *);
+ 	__poll_t (*poll) (struct file *, struct poll_table_struct *);
+@@ -518,12 +519,6 @@ prototypes::
+ 	int (*fsync) (struct file *, loff_t start, loff_t end, int datasync);
+ 	int (*fasync) (int, struct file *, int);
+ 	int (*lock) (struct file *, int, struct file_lock *);
+-	ssize_t (*readv) (struct file *, const struct iovec *, unsigned long,
+-			loff_t *);
+-	ssize_t (*writev) (struct file *, const struct iovec *, unsigned long,
+-			loff_t *);
+-	ssize_t (*sendfile) (struct file *, loff_t *, size_t, read_actor_t,
+-			void __user *);
+ 	ssize_t (*sendpage) (struct file *, struct page *, int, size_t,
+ 			loff_t *, int);
+ 	unsigned long (*get_unmapped_area)(struct file *, unsigned long,
+@@ -536,6 +531,14 @@ prototypes::
+ 			size_t, unsigned int);
+ 	int (*setlease)(struct file *, long, struct file_lock **, void **);
+ 	long (*fallocate)(struct file *, int, loff_t, loff_t);
++	void (*show_fdinfo)(struct seq_file *m, struct file *f);
++	unsigned (*mmap_capabilities)(struct file *);
++	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
++			loff_t, size_t, unsigned int);
++	loff_t (*remap_file_range)(struct file *file_in, loff_t pos_in,
++			struct file *file_out, loff_t pos_out,
++			loff_t len, unsigned int remap_flags);
++	int (*fadvise)(struct file *, loff_t, loff_t, int);
  
- static struct list_head blk_move_list;
- 
-@@ -152,7 +153,8 @@ static __u32 ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX |
- 		EXT4_FEATURE_COMPAT_FAST_COMMIT |
--		EXT4_FEATURE_COMPAT_STABLE_INODES,
-+		EXT4_FEATURE_COMPAT_STABLE_INODES |
-+		EXT4_FEATURE_COMPAT_ORPHAN_FILE,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT3_FEATURE_INCOMPAT_EXTENTS |
-@@ -183,7 +185,8 @@ static __u32 clear_ok_features[3] = {
- 	EXT3_FEATURE_COMPAT_HAS_JOURNAL |
- 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX |
--		EXT4_FEATURE_COMPAT_FAST_COMMIT,
-+		EXT4_FEATURE_COMPAT_FAST_COMMIT |
-+		EXT4_FEATURE_COMPAT_ORPHAN_FILE,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
-@@ -1143,6 +1146,55 @@ static int update_feature_set(ext2_filsys fs, char *features)
- 		}
- 	}
- 
-+	if (FEATURE_OFF(E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE)) {
-+		ext2_ino_t ino;
-+
-+		if (mount_flags & EXT2_MF_MOUNTED) {
-+			fputs(_("The orphan_file feature may only be cleared "
-+				"when the filesystem is unmounted.\n"), stderr);
-+			return 1;
-+		}
-+		if (ext2fs_has_feature_orphan_present(sb) && f_flag < 2) {
-+			fputs(_("The orphan_present flag is set. Please run "
-+				"e2fsck before clearing orphan_file flag.\n"),
-+			      stderr);
-+			return 1;
-+		}
-+		err = ext2fs_read_bitmaps(fs);
-+		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while loading bitmaps"));
-+			return 1;
-+		}
-+		err = ext2fs_truncate_orphan_file(fs);
-+		if (err) {
-+			com_err(program_name, err,
-+				_("\n\twhile trying to delete orphan file\n"));
-+			return 1;
-+		}
-+		ino = sb->s_orphan_file_inum;
-+		sb->s_orphan_file_inum = 0;
-+		ext2fs_inode_alloc_stats2(fs, ino, -1, 0);
-+		ext2fs_clear_feature_orphan_file(sb);
-+		ext2fs_clear_feature_orphan_present(sb);
-+		ext2fs_mark_super_dirty(fs);
-+	}
-+
-+	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE)) {
-+		if (!ext2fs_has_feature_journal(sb)) {
-+			fputs(_("orphan_file flag can be set only for "
-+				"filesystems with journal.\n"), stderr);
-+			return 1;
-+		}
-+		/*
-+		 * If adding an orphan file, let the create orphan file
-+		 * code below handle setting the flag and creating it.
-+		 * We supply a default size if necessary.
-+		 */
-+		orphan_file_blocks = ext2fs_default_orphan_file_blocks(fs);
-+		ext2fs_set_feature_orphan_file(sb);
-+	}
-+
- 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
- 		EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)) {
- 		if (ext2fs_has_feature_meta_bg(sb)) {
-@@ -2262,6 +2314,21 @@ static int parse_extended_opts(ext2_filsys fs, const char *opts)
- 				continue;
- 			}
- 			encoding_flags = arg;
-+		} else if (!strcmp(token, "orphan_file_size")) {
-+			if (!arg) {
-+				r_usage++;
-+				continue;
-+			}
-+			orphan_file_blocks = parse_num_blocks2(arg,
-+						 fs->super->s_log_block_size);
-+
-+			if (orphan_file_blocks < 1) {
-+				fprintf(stderr,
-+					_("Invalid size of orphan file %s\n"),
-+					arg);
-+				r_usage++;
-+				continue;
-+			}
- 		} else
- 			r_usage++;
- 	}
-@@ -3247,6 +3314,24 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
- 		if (rc)
- 			goto closefs;
- 	}
-+	if (orphan_file_blocks) {
-+		errcode_t err;
-+
-+		err = ext2fs_read_bitmaps(fs);
-+		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while loading bitmaps"));
-+			rc = 1;
-+			goto closefs;
-+		}
-+		err = ext2fs_create_orphan_file(fs, orphan_file_blocks);
-+		if (err) {
-+			com_err(program_name, err, "%s",
-+				_("while creating orphan file"));
-+			rc = 1;
-+			goto closefs;
-+		}
-+	}
- 
- 	if (Q_flag) {
- 		if (mount_flags & EXT2_MF_MOUNTED) {
+ locking rules:
+ 	All may block.
 -- 
 2.26.2
 
