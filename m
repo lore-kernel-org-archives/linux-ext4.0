@@ -2,126 +2,231 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63E1CC07E99
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 09:06:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89A97C07E99
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 15:40:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4A4F961026
-	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 09:06:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EEDD61209
+	for <linux-ext4@archiver.kernel.org>; Mon, 12 Jul 2021 15:40:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350982AbhGLJJH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 12 Jul 2021 05:09:07 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:56014 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1379744AbhGLJHs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jul 2021 05:07:48 -0400
+        id S235428AbhGLPnC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 12 Jul 2021 11:43:02 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:51662 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232887AbhGLPnB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jul 2021 11:43:01 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 4A0C81FF64;
-        Mon, 12 Jul 2021 09:04:59 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTP id 2398821CF7;
+        Mon, 12 Jul 2021 15:40:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1626080699; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1626104412; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=XTzSB4J3/KV9nyIyfWQISjsIgq8wiabBhC/21wJ8J7s=;
-        b=r9+JNf86vghp3AmGz2Y+BgUigg7+6NU9fboAOWM+kFnkcwwy+VGSapzT8B5cLPClYhVts+
-        0JSgNO39hiPSvKHHP2nG4pcRIoFO26FyA255ZHVKejlvLK4DcAa2ROMujTBPsV1LyQoMgN
-        DNb8zud25yPdyiFQjZBIT3uVac0LbGw=
+        bh=OCuY8IIGEgmsIlvIUcwQvjAk1tlFbXDf67KqJWY5dmI=;
+        b=02bVV1/GhYeM5cwd4gifisJb+BCZc/CNg9eB050N/vyP2a35onO9VmbZlr7S0YwzVltgcs
+        WR4I3T6Y2opKN/r8u/0oBa9sK13TrIzjbOrS3ctwBLNvehCBwuTECCg4CoX9ouHEofDMf3
+        PFvz1PyCl/4COCWC/cqtO9GTYY+dnWs=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1626080699;
+        s=susede2_ed25519; t=1626104412;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=XTzSB4J3/KV9nyIyfWQISjsIgq8wiabBhC/21wJ8J7s=;
-        b=GreD0oYsAv9e4RdhYQOn62ltTqwvcLI0bB22U43iqF4Gh5w14UKwzuXG+2SS2txezGKRRy
-        VJgCpMpGJ4VrMzAg==
+        bh=OCuY8IIGEgmsIlvIUcwQvjAk1tlFbXDf67KqJWY5dmI=;
+        b=A0QZDDU3e9DtIGDewQ4t1uDTKMstAGt+9aBEtlPO7DZdNYF7ldAmf/YO3mohHgHFeWfE19
+        Ql0JZJqPTvjE/qBw==
 Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 3B2C3A3C0D;
-        Mon, 12 Jul 2021 09:04:59 +0000 (UTC)
+        by relay2.suse.de (Postfix) with ESMTP id 16255A3B8B;
+        Mon, 12 Jul 2021 15:40:12 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 0A12D1E62D6; Mon, 12 Jul 2021 11:04:59 +0200 (CEST)
-Date:   Mon, 12 Jul 2021 11:04:59 +0200
+        id 062F81F2CD2; Mon, 12 Jul 2021 17:40:12 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
-To:     Ivan Zahariev <famzah@famzah.net>
-Cc:     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: jbd2: fix deadlock while checkpoint thread waits commit thread
- to finish (backport to 4.14)
-Message-ID: <20210712090459.GA27936@quack2.suse.cz>
-References: <3221ced0-e8f3-53da-3474-28367272f35d@famzah.net>
- <YOY+SXgPShxGzyJO@mit.edu>
- <44dd99fc-11ce-6a73-20bd-6ee645c5dd5e@famzah.net>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 4/5] ext4: Orphan file documentation
+Date:   Mon, 12 Jul 2021 17:40:08 +0200
+Message-Id: <20210712154009.9290-5-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210712154009.9290-1-jack@suse.cz>
+References: <20210712154009.9290-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7555; h=from:subject; bh=tEfn01YgtgmBcMsgExnmyocr2y8lcypnTh31AbKIiZE=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBg7GJY8sLvyfwnrm4WYpgYZcEh3UOtbN3TjvC7qh0A Defxm8OJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYOxiWAAKCRCcnaoHP2RA2Wy3B/ 4iwd9Wpq8spuwYvyUGvwNTfbyuxoaLcV/UZtVSCFKxJELYDWjAx7lm7pF5PEApqQqVgl8FchbYVzJA ej7/c/RAtnDDcfOSNmWjMVCgMwb+4xeR9p0w3YopRFn7S7oNWktzJ73Xb6+4ITRRS8u0XtsIvs+dJt oqTc/K08n6SWYSJQ749/fAmZ1QB9bB02lvIlz00G9ztivh+4KIf8mEWioYp1TVJXwPTMTdyjueEeUo uXt2rEfC+wWs26qjnuqg7RYIpqk5AY5DWJUPCGEsw4j1JKuNnpEKRSevVw83Z9+j8IvTRoeuSqN4z+ isr1OaGej1gn6oz3QXYSZemnDIjRk0
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <44dd99fc-11ce-6a73-20bd-6ee645c5dd5e@famzah.net>
-User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 08-07-21 06:45:35, Ivan Zahariev wrote:
-> Out of thousand machines, one would trigger the problem about every 1 to 10
-> days. Some machines trigger the problem much often than others. So I can say
-> that we have a way to verify quickly if applying the patch will fix this for
-> us.
-> 
-> The most important question is: Is it safe to apply the patch on production
-> machines with kernel 4.14?
-> 
-> We can't risk data loss. And I lack the expertise to asses what risks this
-> small patch brings.
+Add documentation about the orphan file feature.
 
-The fix should work correctly even for older kernels. I'm not aware of any
-changes in this area in the past that could conflict...
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ Documentation/filesystems/ext4/globals.rst    |  1 +
+ Documentation/filesystems/ext4/inodes.rst     | 10 ++--
+ Documentation/filesystems/ext4/orphan.rst     | 52 +++++++++++++++++++
+ .../filesystems/ext4/special_inodes.rst       | 17 ++++++
+ Documentation/filesystems/ext4/super.rst      | 15 +++++-
+ 5 files changed, 88 insertions(+), 7 deletions(-)
+ create mode 100644 Documentation/filesystems/ext4/orphan.rst
 
-								Honza
-
-> On 8.7.2021 г. 2:52, Theodore Ts'o wrote:
-> > On Wed, Jul 07, 2021 at 09:42:25PM +0300, Ivan Zahariev wrote:
-> > > Hello,
-> > > 
-> > > We're running Linux kernel 4.14.x and our systems occasionally suffer a bug
-> > > which is already fixed: https://github.com/torvalds/linux/commit/53cf978457325d8fb2cdecd7981b31a8229e446e
-> > > 
-> > > This bugfix hasn't been ported to Linux kernels 4.14 or 4.19. The patch
-> > > applies cleanly. The two files "fs/jbd2/checkpoint.c" and
-> > > "fs/jbd2/journal.c" seem pretty identical in the affected sections compared
-> > > to kernel 5.4 where we have this bugfix already applied.
-> > > 
-> > > Is it on purpose that this bugfix hasn't been ported to 4.14? Is it safe
-> > > that we backport it manually in our kernel 4.14 builds? Or is the "ext4"
-> > > system in 4.14 and 5.4 fundamentally different and this would lead to data
-> > > loss or other problems?
-> > The commit was over two years ago, so my memory is not going to be
-> > perfect.  However, Jan had made a comment suggesting the approach in
-> > this commit because it should be easier to backport into older stble
-> > kernels[1].
-> > 
-> >     "Since proper locking change is going to be a bit more involved, can you
-> >      perhaps fix this deadlock by just dropping j_checkpoint_mutex in
-> >      log_do_checkpoint() when we are going to wait for transaction commit. I've
-> >      checked and that should be fine and that is going to be much easier change
-> >      to backport into stable kernels..."
-> > 
-> > [1] https://marc.info/?l=linux-ext4&m=154212553014669&w=2
-> > 
-> > So I suspect it was just that I failed to remember to add a "Cc:
-> > stable@kernel.org" and so it was never automatically backported into
-> > 4.14 or 4.19.
-> > 
-> > Do you have a reliable reproduction which is triggering the deadlock
-> > on your kernels?  If so, have you tried applying the patch and does it
-> > make the problem go away for you?
-> > 
-> > Cheers,
-> > 
-> > 						- Ted
+diff --git a/Documentation/filesystems/ext4/globals.rst b/Documentation/filesystems/ext4/globals.rst
+index 368bf7662b96..b17418974fd3 100644
+--- a/Documentation/filesystems/ext4/globals.rst
++++ b/Documentation/filesystems/ext4/globals.rst
+@@ -11,3 +11,4 @@ have static metadata at fixed locations.
+ .. include:: bitmaps.rst
+ .. include:: mmp.rst
+ .. include:: journal.rst
++.. include:: orphan.rst
+diff --git a/Documentation/filesystems/ext4/inodes.rst b/Documentation/filesystems/ext4/inodes.rst
+index a65baffb4ebf..6c5ce666e63f 100644
+--- a/Documentation/filesystems/ext4/inodes.rst
++++ b/Documentation/filesystems/ext4/inodes.rst
+@@ -498,11 +498,11 @@ structure -- inode change time (ctime), access time (atime), data
+ modification time (mtime), and deletion time (dtime). The four fields
+ are 32-bit signed integers that represent seconds since the Unix epoch
+ (1970-01-01 00:00:00 GMT), which means that the fields will overflow in
+-January 2038. For inodes that are not linked from any directory but are
+-still open (orphan inodes), the dtime field is overloaded for use with
+-the orphan list. The superblock field ``s_last_orphan`` points to the
+-first inode in the orphan list; dtime is then the number of the next
+-orphaned inode, or zero if there are no more orphans.
++January 2038. If the filesystem does not have orphan_file feature, inodes
++that are not linked from any directory but are still open (orphan inodes) have
++the dtime field overloaded for use with the orphan list. The superblock field
++``s_last_orphan`` points to the first inode in the orphan list; dtime is then
++the number of the next orphaned inode, or zero if there are no more orphans.
+ 
+ If the inode structure size ``sb->s_inode_size`` is larger than 128
+ bytes and the ``i_inode_extra`` field is large enough to encompass the
+diff --git a/Documentation/filesystems/ext4/orphan.rst b/Documentation/filesystems/ext4/orphan.rst
+new file mode 100644
+index 000000000000..bb19ecd1b626
+--- /dev/null
++++ b/Documentation/filesystems/ext4/orphan.rst
+@@ -0,0 +1,52 @@
++.. SPDX-License-Identifier: GPL-2.0
++
++Orphan file
++-----------
++
++In unix there can inodes that are unlinked from directory hierarchy but that
++are still alive because they are open. In case of crash the filesystem has to
++clean up these inodes as otherwise they (and the blocks referenced from them)
++would leak. Similarly if we truncate or extend the file, we need not be able
++to perform the operation in a single journalling transaction. In such case we
++track the inode as orphan so that in case of crash extra blocks allocated to
++the file get truncated.
++
++Traditionally ext4 tracks orphan inodes in a form of single linked list where
++superblock contains the inode number of the last orphan inode (s\_last\_orphan
++field) and then each inode contains inode number of the previously orphaned
++inode (we overload i\_dtime inode field for this). However this filesystem
++global single linked list is a scalability bottleneck for workloads that result
++in heavy creation of orphan inodes. When orphan file feature
++(COMPAT\_ORPHAN\_FILE) is enabled, the filesystem has a special inode
++(referenced from the superblock through s\_orphan_file_inum) with several
++blocks. Each of these blocks has a structure:
++
++.. list-table::
++   :widths: 8 8 24 40
++   :header-rows: 1
++
++   * - Offset
++     - Type
++     - Name
++     - Description
++   * - 0x0
++     - Array of \_\_le32 entries
++     - Orphan inode entries
++     - Each \_\_le32 entry is either empty (0) or it contains inode number of
++       an orphan inode.
++   * - blocksize - 8
++     - \_\_le32
++     - ob\_magic
++     - Magic value stored in orphan block tail (0x0b10ca04)
++   * - blocksize - 4
++     - \_\_le32
++     - ob\_checksum
++     - Checksum of the orphan block.
++
++When a filesystem with orphan file feature is writeably mounted, we set
++RO\_COMPAT\_ORPHAN\_PRESENT feature in the superblock to indicate there may
++be valid orphan entries. In case we see this feature when mounting the
++filesystem, we read the whole orphan file and process all orphan inodes found
++there as usual. When cleanly unmounting the filesystem we remove the
++RO\_COMPAT\_ORPHAN\_PRESENT feature to avoid unnecessary scanning of the orphan
++file and also make the filesystem fully compatible with older kernels.
+diff --git a/Documentation/filesystems/ext4/special_inodes.rst b/Documentation/filesystems/ext4/special_inodes.rst
+index 9061aabba827..94f304e3a0a7 100644
+--- a/Documentation/filesystems/ext4/special_inodes.rst
++++ b/Documentation/filesystems/ext4/special_inodes.rst
+@@ -36,3 +36,20 @@ ext4 reserves some inode for special features, as follows:
+    * - 11
+      - Traditional first non-reserved inode. Usually this is the lost+found directory. See s\_first\_ino in the superblock.
+ 
++Note that there are also some inodes allocated from non-reserved inode numbers
++for other filesystem features which are not referenced from standard directory
++hierarchy. These are generally reference from the superblock. They are:
++
++.. list-table::
++   :widths: 20 50
++   :header-rows: 1
++
++   * - Superblock field
++     - Description
++
++   * - s\_lpf\_ino
++     - Inode number of lost+found directory.
++   * - s\_prj\_quota\_inum
++     - Inode number of quota file tracking project quotas
++   * - s\_orphan\_file\_inum
++     - Inode number of file tracking orphan inodes.
+diff --git a/Documentation/filesystems/ext4/super.rst b/Documentation/filesystems/ext4/super.rst
+index 2eb1ab20498d..f1d4907104f5 100644
+--- a/Documentation/filesystems/ext4/super.rst
++++ b/Documentation/filesystems/ext4/super.rst
+@@ -479,7 +479,11 @@ The ext4 superblock is laid out as follows in
+      - Filename charset encoding flags.
+    * - 0x280
+      - \_\_le32
+-     - s\_reserved[95]
++     - s\_orphan\_file\_inum
++     - Orphan file inode number.
++   * - 0x284
++     - \_\_le32
++     - s\_reserved[94]
+      - Padding to the end of the block.
+    * - 0x3FC
+      - \_\_le32
+@@ -603,6 +607,11 @@ following:
+        the journal, JBD2 incompat feature
+        (JBD2\_FEATURE\_INCOMPAT\_FAST\_COMMIT) gets
+        set (COMPAT\_FAST\_COMMIT).
++   * - 0x1000
++     - Orphan file allocated. This is the special file for more efficient
++       tracking of unlinked but still open inodes. When there may be any
++       entries in the file, we additionally set proper rocompat feature
++       (RO\_COMPAT\_ORPHAN\_PRESENT).
+ 
+ .. _super_incompat:
+ 
+@@ -691,7 +700,9 @@ the following:
+      - Indicates that large inodes exist on this filesystem
+        (RO\_COMPAT\_EXTRA\_ISIZE).
+    * - 0x80
+-     - This filesystem has a snapshot (RO\_COMPAT\_HAS\_SNAPSHOT).
++     - Indicates orphan file may have valid orphan entries and thus we need
++       to clean them up when mounting the filesystem
++       (RO\_COMPAT\_ORPHAN\_PRESENT).
+    * - 0x100
+      - `Quota <Quota>`__ (RO\_COMPAT\_QUOTA).
+    * - 0x200
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.26.2
+
