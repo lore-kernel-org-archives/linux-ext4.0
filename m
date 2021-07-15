@@ -2,199 +2,214 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-16.0 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74288C07E96
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 12:17:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DAAEDC1B08C
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 13:40:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 52F2C6136E
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 12:17:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C844D613C3
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 13:40:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236686AbhGOMUZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 15 Jul 2021 08:20:25 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:35906 "EHLO
+        id S237733AbhGONne (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 15 Jul 2021 09:43:34 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:55758 "EHLO
         smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234549AbhGOMUY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jul 2021 08:20:24 -0400
+        with ESMTP id S233113AbhGONn2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jul 2021 09:43:28 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id A8EB322A40;
-        Thu, 15 Jul 2021 12:17:30 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTP id 740C222A7B;
+        Thu, 15 Jul 2021 13:40:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1626351450; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        t=1626356433; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=2G1Y7Dq2G1lRkAXyGQqqCoW7SdZI3xDEIgpTzzjpdx0=;
-        b=kK9UOj5XzUSLRGfD+xkduKWymM2szteyteENNi+InCqVhHQrzi3w+Lpq99v9FWKu0MBQVo
-        h6sXhu4OU0+QqXZnTBTFR12oT45En8WQZR/Q32ijUz9TfnOqNyE5bhlpaThXJCWoeEN03B
-        /47+NL1AM3/HpAGNK9F8wDn9lHdMot0=
+        bh=VgWT5tfqbtBkDrX2L7CznODEgq2BTXfXClIF6lsIWFg=;
+        b=gGAAOtj/R/fvQnISwpVoNlCX95cynpLxqoTBi7etApByJozAjxDpXsF8d3i30UbXCML7jG
+        fTs5TUqO+ZV0RlC7s0jsNNNhJRcpsrD9cFStpzyKr4P/ExgrJTkDLmaw7zJt/s/IEKfC2m
+        zDr7JrvvwhmB/8NSfDfkbD1Y/7FDypY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1626351450;
+        s=susede2_ed25519; t=1626356433;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=2G1Y7Dq2G1lRkAXyGQqqCoW7SdZI3xDEIgpTzzjpdx0=;
-        b=IcArJtX12CWDtgShdzhgV/HPgnDFAB0uSJtZHXBDmFImfv1F3//OlSdNxpVVofpj9WGf1T
-        nkjNqQIomRtaDjDA==
+        bh=VgWT5tfqbtBkDrX2L7CznODEgq2BTXfXClIF6lsIWFg=;
+        b=shEPb7ejWp4NsR1zkbD7mwxPzoc5euT22W3fMApWWWKV805FqStp/zNqf6W4W2KXimr60g
+        Kfu9AYj1Y4dekvDw==
 Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id 972BCA3B8D;
-        Thu, 15 Jul 2021 12:17:30 +0000 (UTC)
+        by relay2.suse.de (Postfix) with ESMTP id 63481A3B9C;
+        Thu, 15 Jul 2021 13:40:33 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 480871E0BF2; Thu, 15 Jul 2021 14:17:30 +0200 (CEST)
-Date:   Thu, 15 Jul 2021 14:17:30 +0200
+        id 16BF81E0BFF; Thu, 15 Jul 2021 15:40:33 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
-To:     Ira Weiny <ira.weiny@intel.com>
-Cc:     Javier Pello <javier.pello@urjc.es>, Jan Kara <jack@suse.cz>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] fs/ext2: Avoid page_address on pages returned by
- ext2_get_page
-Message-ID: <20210715121730.GA31920@quack2.suse.cz>
-References: <20210713165821.8a268e2c1db4fd5cf452acd2@urjc.es>
- <20210713165918.10da0318af5b9b73e599a517@urjc.es>
- <20210713163018.GF24271@quack2.suse.cz>
- <20210713193319.a223cd12e3fb8687f0cae0e8@urjc.es>
- <20210714090013.GA9457@quack2.suse.cz>
- <20210714185448.8707ac239e9f12b3a7f5b9f9@urjc.es>
- <20210714170746.GL3169279@iweiny-DESK2.sc.intel.com>
+To:     <linux-fsdevel@vger.kernel.org>
+Cc:     <linux-ext4@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <djwong@kernel.org>, Ted Tso <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        Matthew Wilcox <willy@infradead.org>, <linux-mm@kvack.org>,
+        <linux-xfs@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 06/14] ext2: Convert to using invalidate_lock
+Date:   Thu, 15 Jul 2021 15:40:16 +0200
+Message-Id: <20210715134032.24868-6-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210715133202.5975-1-jack@suse.cz>
+References: <20210715133202.5975-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210714170746.GL3169279@iweiny-DESK2.sc.intel.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4727; h=from:subject; bh=ym49Iu4QRUik/RZXy3TKmo1SdbNHjClhswakdveozJ4=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBg8DrAXqVppyqhs9Kow3gAlNxylsvMUO1Q8weiZrXk EGLnB5OJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYPA6wAAKCRCcnaoHP2RA2S+qCA CCBAY7LsLaKnOxsZuCxP4VBsac7Lk876C7u73EmUZtNt0EC5qDjOmRB0ATJwzIyVRUh3mHiGmtZ1uG 87F4zRdonHW0OV7lYuIq/jDqMylYcLuNrWsvfy68+3c4JlNG4CTc88aLlAJz1PR+F/oHknHoPSak1w VPjx0Vt7fUH0njMXhC0jG1FSWpZbkTSjiwmKvQMCTi0qyI+C8HIVMZ0HYymDZSg9hhGQQWYetUysOd IP2occRPzhyeNETOyCJt0vKz3NrVNjqxeWIs6WMZwSECHfTj05fJ672DgNM3IeSIBGb6ijVcclHFw5 04GlJM6nay0POEc0+MsPU2TXQ5EHjH
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 14-07-21 10:07:46, Ira Weiny wrote:
-> On Wed, Jul 14, 2021 at 06:54:48PM +0200, Javier Pello wrote:
-> > From: Javier Pello <javier.pello@urjc.es>
-> > 
-> > Commit 782b76d7abdf02b12c46ed6f1e9bf715569027f7 ("fs/ext2: Replace
-> > kmap() with kmap_local_page()") replaced the kmap/kunmap calls in
-> > ext2_get_page/ext2_put_page with kmap_local_page/kunmap_local for
-> > efficiency reasons. As a necessary side change, the commit also
-> > made ext2_get_page (and ext2_find_entry and ext2_dotdot) return
-> > the mapping address along with the page itself, as it is required
-> > for kunmap_local, and converted uses of page_address on such pages
-> > to use the newly returned address instead. However, uses of
-> > page_address on such pages were missed in ext2_check_page and
-> > ext2_delete_entry, which triggers oopses if kmap_local_page happens
-> > to return an address from high memory. Fix this now by converting
-> > the remaining uses of page_address to use the right address, as
-> > returned by kmap_local_page.
-> > 
-> 
-> Again thanks for catching this!
-> 
-> Reviewed-by: Ira Weiny <ira.weiny@intel.com>
+Ext2 has its private dax_sem used for synchronizing page faults and
+truncation. Use mapping->invalidate_lock instead as it is meant for this
+purpose.
 
-Thanks for the patch and the review. I'de added the patch to my tree.
+CC: <linux-ext4@vger.kernel.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext2/ext2.h  | 11 -----------
+ fs/ext2/file.c  |  7 +++----
+ fs/ext2/inode.c | 12 ++++++------
+ fs/ext2/super.c |  3 ---
+ 4 files changed, 9 insertions(+), 24 deletions(-)
 
-								Honza
-
-> 
-> > Signed-off-by: Javier Pello <javier.pello@urjc.es>
-> > Fixes: 782b76d7abdf ("fs/ext2: Replace kmap() with kmap_local_page()")
-> > ---
-> > 
-> > v2: Use char * for the new parameter to ext2_delete_entry.
-> > 
-> >  fs/ext2/dir.c   | 12 ++++++------
-> >  fs/ext2/ext2.h  |  3 ++-
-> >  fs/ext2/namei.c |  4 ++--
-> >  3 files changed, 10 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> > index 14292dba..2c2f179b 100644
-> > --- a/fs/ext2/dir.c
-> > +++ b/fs/ext2/dir.c
-> > @@ -106,12 +106,11 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
-> >  	return err;
-> >  }
-> >  
-> > -static bool ext2_check_page(struct page *page, int quiet)
-> > +static bool ext2_check_page(struct page *page, int quiet, char *kaddr)
-> >  {
-> >  	struct inode *dir = page->mapping->host;
-> >  	struct super_block *sb = dir->i_sb;
-> >  	unsigned chunk_size = ext2_chunk_size(dir);
-> > -	char *kaddr = page_address(page);
-> >  	u32 max_inumber = le32_to_cpu(EXT2_SB(sb)->s_es->s_inodes_count);
-> >  	unsigned offs, rec_len;
-> >  	unsigned limit = PAGE_SIZE;
-> > @@ -205,7 +204,8 @@ static struct page * ext2_get_page(struct inode *dir, unsigned long n,
-> >  	if (!IS_ERR(page)) {
-> >  		*page_addr = kmap_local_page(page);
-> >  		if (unlikely(!PageChecked(page))) {
-> > -			if (PageError(page) || !ext2_check_page(page, quiet))
-> > +			if (PageError(page) || !ext2_check_page(page, quiet,
-> > +								*page_addr))
-> >  				goto fail;
-> >  		}
-> >  	}
-> > @@ -584,10 +584,10 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
-> >   * ext2_delete_entry deletes a directory entry by merging it with the
-> >   * previous entry. Page is up-to-date.
-> >   */
-> > -int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
-> > +int ext2_delete_entry (struct ext2_dir_entry_2 *dir, struct page *page,
-> > +			char *kaddr)
-> >  {
-> >  	struct inode *inode = page->mapping->host;
-> > -	char *kaddr = page_address(page);
-> >  	unsigned from = ((char*)dir - kaddr) & ~(ext2_chunk_size(inode)-1);
-> >  	unsigned to = ((char *)dir - kaddr) +
-> >  				ext2_rec_len_from_disk(dir->rec_len);
-> > @@ -607,7 +607,7 @@ int ext2_delete_entry (struct ext2_dir_entry_2 * dir, struct page * page )
-> >  		de = ext2_next_entry(de);
-> >  	}
-> >  	if (pde)
-> > -		from = (char*)pde - (char*)page_address(page);
-> > +		from = (char *)pde - kaddr;
-> >  	pos = page_offset(page) + from;
-> >  	lock_page(page);
-> >  	err = ext2_prepare_chunk(page, pos, to - from);
-> > diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-> > index b0a69482..e512630c 100644
-> > --- a/fs/ext2/ext2.h
-> > +++ b/fs/ext2/ext2.h
-> > @@ -740,7 +740,8 @@ extern int ext2_inode_by_name(struct inode *dir,
-> >  extern int ext2_make_empty(struct inode *, struct inode *);
-> >  extern struct ext2_dir_entry_2 *ext2_find_entry(struct inode *, const struct qstr *,
-> >  						struct page **, void **res_page_addr);
-> > -extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
-> > +extern int ext2_delete_entry(struct ext2_dir_entry_2 *dir, struct page *page,
-> > +			     char *kaddr);
-> >  extern int ext2_empty_dir (struct inode *);
-> >  extern struct ext2_dir_entry_2 *ext2_dotdot(struct inode *dir, struct page **p, void **pa);
-> >  extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, void *,
-> > diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-> > index 1f69b816..5f6b7560 100644
-> > --- a/fs/ext2/namei.c
-> > +++ b/fs/ext2/namei.c
-> > @@ -293,7 +293,7 @@ static int ext2_unlink(struct inode * dir, struct dentry *dentry)
-> >  		goto out;
-> >  	}
-> >  
-> > -	err = ext2_delete_entry (de, page);
-> > +	err = ext2_delete_entry (de, page, page_addr);
-> >  	ext2_put_page(page, page_addr);
-> >  	if (err)
-> >  		goto out;
-> > @@ -397,7 +397,7 @@ static int ext2_rename (struct user_namespace * mnt_userns,
-> >  	old_inode->i_ctime = current_time(old_inode);
-> >  	mark_inode_dirty(old_inode);
-> >  
-> > -	ext2_delete_entry(old_de, old_page);
-> > +	ext2_delete_entry(old_de, old_page, old_page_addr);
-> >  
-> >  	if (dir_de) {
-> >  		if (old_dir != new_dir)
-> > -- 
-> > 2.30.1
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index b0a694820cb7..81907a041570 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -667,9 +667,6 @@ struct ext2_inode_info {
+ 	struct rw_semaphore xattr_sem;
+ #endif
+ 	rwlock_t i_meta_lock;
+-#ifdef CONFIG_FS_DAX
+-	struct rw_semaphore dax_sem;
+-#endif
+ 
+ 	/*
+ 	 * truncate_mutex is for serialising ext2_truncate() against
+@@ -685,14 +682,6 @@ struct ext2_inode_info {
+ #endif
+ };
+ 
+-#ifdef CONFIG_FS_DAX
+-#define dax_sem_down_write(ext2_inode)	down_write(&(ext2_inode)->dax_sem)
+-#define dax_sem_up_write(ext2_inode)	up_write(&(ext2_inode)->dax_sem)
+-#else
+-#define dax_sem_down_write(ext2_inode)
+-#define dax_sem_up_write(ext2_inode)
+-#endif
+-
+ /*
+  * Inode dynamic state flags
+  */
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index f98466acc672..eb97aa3d700e 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -81,7 +81,7 @@ static ssize_t ext2_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+  *
+  * mmap_lock (MM)
+  *   sb_start_pagefault (vfs, freeze)
+- *     ext2_inode_info->dax_sem
++ *     address_space->invalidate_lock
+  *       address_space->i_mmap_rwsem or page_lock (mutually exclusive in DAX)
+  *         ext2_inode_info->truncate_mutex
+  *
+@@ -91,7 +91,6 @@ static ssize_t ext2_dax_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ static vm_fault_t ext2_dax_fault(struct vm_fault *vmf)
+ {
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+-	struct ext2_inode_info *ei = EXT2_I(inode);
+ 	vm_fault_t ret;
+ 	bool write = (vmf->flags & FAULT_FLAG_WRITE) &&
+ 		(vmf->vma->vm_flags & VM_SHARED);
+@@ -100,11 +99,11 @@ static vm_fault_t ext2_dax_fault(struct vm_fault *vmf)
+ 		sb_start_pagefault(inode->i_sb);
+ 		file_update_time(vmf->vma->vm_file);
+ 	}
+-	down_read(&ei->dax_sem);
++	filemap_invalidate_lock_shared(inode->i_mapping);
+ 
+ 	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, NULL, &ext2_iomap_ops);
+ 
+-	up_read(&ei->dax_sem);
++	filemap_invalidate_unlock_shared(inode->i_mapping);
+ 	if (write)
+ 		sb_end_pagefault(inode->i_sb);
+ 	return ret;
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index dadb121beb22..33f874f0fc4a 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1177,7 +1177,7 @@ static void ext2_free_branches(struct inode *inode, __le32 *p, __le32 *q, int de
+ 		ext2_free_data(inode, p, q);
+ }
+ 
+-/* dax_sem must be held when calling this function */
++/* mapping->invalidate_lock must be held when calling this function */
+ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+ {
+ 	__le32 *i_data = EXT2_I(inode)->i_data;
+@@ -1194,7 +1194,7 @@ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+ 	iblock = (offset + blocksize-1) >> EXT2_BLOCK_SIZE_BITS(inode->i_sb);
+ 
+ #ifdef CONFIG_FS_DAX
+-	WARN_ON(!rwsem_is_locked(&ei->dax_sem));
++	WARN_ON(!rwsem_is_locked(&inode->i_mapping->invalidate_lock));
+ #endif
+ 
+ 	n = ext2_block_to_path(inode, iblock, offsets, NULL);
+@@ -1276,9 +1276,9 @@ static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
+ 	if (ext2_inode_is_fast_symlink(inode))
+ 		return;
+ 
+-	dax_sem_down_write(EXT2_I(inode));
++	filemap_invalidate_lock(inode->i_mapping);
+ 	__ext2_truncate_blocks(inode, offset);
+-	dax_sem_up_write(EXT2_I(inode));
++	filemap_invalidate_unlock(inode->i_mapping);
+ }
+ 
+ static int ext2_setsize(struct inode *inode, loff_t newsize)
+@@ -1308,10 +1308,10 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+ 	if (error)
+ 		return error;
+ 
+-	dax_sem_down_write(EXT2_I(inode));
++	filemap_invalidate_lock(inode->i_mapping);
+ 	truncate_setsize(inode, newsize);
+ 	__ext2_truncate_blocks(inode, newsize);
+-	dax_sem_up_write(EXT2_I(inode));
++	filemap_invalidate_unlock(inode->i_mapping);
+ 
+ 	inode->i_mtime = inode->i_ctime = current_time(inode);
+ 	if (inode_needs_sync(inode)) {
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 21e09fbaa46f..987bcf32ed46 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -206,9 +206,6 @@ static void init_once(void *foo)
+ 	init_rwsem(&ei->xattr_sem);
+ #endif
+ 	mutex_init(&ei->truncate_mutex);
+-#ifdef CONFIG_FS_DAX
+-	init_rwsem(&ei->dax_sem);
+-#endif
+ 	inode_init_once(&ei->vfs_inode);
+ }
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.26.2
+
