@@ -7,159 +7,96 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BDAFC47E48
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 01:46:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 885AEC12002
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 03:16:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 43896613B5
-	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 01:46:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 72BC5613B9
+	for <linux-ext4@archiver.kernel.org>; Thu, 15 Jul 2021 03:16:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231863AbhGOBtg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 14 Jul 2021 21:49:36 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:15013 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231624AbhGOBtf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jul 2021 21:49:35 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GQHFg1Dz1zbcfh;
-        Thu, 15 Jul 2021 09:43:19 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
- (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Thu, 15
- Jul 2021 09:46:36 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH v2 2/4] ext4: correct the error path of ext4_write_inline_data_end()
-Date:   Thu, 15 Jul 2021 09:54:50 +0800
-Message-ID: <20210715015452.2542505-3-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210715015452.2542505-1-yi.zhang@huawei.com>
-References: <20210715015452.2542505-1-yi.zhang@huawei.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- dggeme752-chm.china.huawei.com (10.3.19.98)
-X-CFilter-Loop: Reflected
+        id S234361AbhGODTe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 14 Jul 2021 23:19:34 -0400
+Received: from foss.arm.com ([217.140.110.172]:46092 "EHLO foss.arm.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S234354AbhGODTa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Jul 2021 23:19:30 -0400
+Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.121.207.14])
+        by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id B96EB11D4;
+        Wed, 14 Jul 2021 20:16:37 -0700 (PDT)
+Received: from entos-ampere-02.shanghai.arm.com (entos-ampere-02.shanghai.arm.com [10.169.214.103])
+        by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPA id 26D283F7D8;
+        Wed, 14 Jul 2021 20:16:34 -0700 (PDT)
+From:   Jia He <justin.he@arm.com>
+To:     linux-kernel@vger.kernel.org
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>, nd@arm.com,
+        Jia He <justin.he@arm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH RFC 13/13] ext4: simplify the printing with '%pD' specifier
+Date:   Thu, 15 Jul 2021 11:15:33 +0800
+Message-Id: <20210715031533.9553-14-justin.he@arm.com>
+X-Mailer: git-send-email 2.17.1
+In-Reply-To: <20210715031533.9553-1-justin.he@arm.com>
+References: <20210715031533.9553-1-justin.he@arm.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Current error path of ext4_write_inline_data_end() is not correct.
+After the behavior of '%pD' is changed to print the full path of file,
+the log printing can be simplified.
 
-Firstly, it should pass out the error value if ext4_get_inode_loc()
-return fail, or else it could trigger infinite loop if we inject error
-here. And then it's better to add inode to orphan list if it return fail
-in ext4_journal_stop(), otherwise we could not restore inline xattr
-entry after power failure. Finally, we need to reset the 'ret' value if
-ext4_write_inline_data_end() return success in ext4_write_end() and
-ext4_journalled_write_end(), otherwise we could not get the error return
-value of ext4_journal_stop().
+The error case is well handled in d_path_unsafe(), the error string
+would be copied in '%pD' buffer, no need to additionally handle IS_ERR().
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Jia He <justin.he@arm.com>
 ---
- fs/ext4/inline.c | 15 +++++----------
- fs/ext4/inode.c  |  7 +++++--
- 2 files changed, 10 insertions(+), 12 deletions(-)
+ fs/ext4/super.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 70cb64db33f7..28b666f25ac2 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -733,25 +733,20 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
- 	void *kaddr;
- 	struct ext4_iloc iloc;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index dfa09a277b56..89ad5a334b80 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -803,31 +803,27 @@ void __ext4_error_file(struct file *file, const char *function,
+ 	va_list args;
+ 	struct va_format vaf;
+ 	struct inode *inode = file_inode(file);
+-	char pathname[80], *path;
  
--	if (unlikely(copied < len)) {
--		if (!PageUptodate(page)) {
--			copied = 0;
--			goto out;
--		}
--	}
-+	if (unlikely(copied < len) && !PageUptodate(page))
-+		return 0;
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+ 		return;
  
- 	ret = ext4_get_inode_loc(inode, &iloc);
- 	if (ret) {
- 		ext4_std_error(inode->i_sb, ret);
--		copied = 0;
--		goto out;
-+		return ret;
+ 	trace_ext4_error(inode->i_sb, function, line);
+ 	if (ext4_error_ratelimit(inode->i_sb)) {
+-		path = file_path(file, pathname, sizeof(pathname));
+-		if (IS_ERR(path))
+-			path = "(unknown)";
+ 		va_start(args, fmt);
+ 		vaf.fmt = fmt;
+ 		vaf.va = &args;
+ 		if (block)
+ 			printk(KERN_CRIT
+ 			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
+-			       "block %llu: comm %s: path %s: %pV\n",
++			       "block %llu: comm %s: path %pD: %pV\n",
+ 			       inode->i_sb->s_id, function, line, inode->i_ino,
+-			       block, current->comm, path, &vaf);
++			       block, current->comm, file, &vaf);
+ 		else
+ 			printk(KERN_CRIT
+ 			       "EXT4-fs error (device %s): %s:%d: inode #%lu: "
+-			       "comm %s: path %s: %pV\n",
++			       "comm %s: path %pD: %pV\n",
+ 			       inode->i_sb->s_id, function, line, inode->i_ino,
+-			       current->comm, path, &vaf);
++			       current->comm, file, &vaf);
+ 		va_end(args);
  	}
- 
- 	ext4_write_lock_xattr(inode, &no_expand);
- 	BUG_ON(!ext4_has_inline_data(inode));
- 
- 	kaddr = kmap_atomic(page);
--	ext4_write_inline_data(inode, &iloc, kaddr, pos, len);
-+	ext4_write_inline_data(inode, &iloc, kaddr, pos, copied);
- 	kunmap_atomic(kaddr);
- 	SetPageUptodate(page);
- 	/* clear page dirty so that writepages wouldn't work for us. */
-@@ -760,7 +755,7 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
- 	ext4_write_unlock_xattr(inode, &no_expand);
- 	brelse(iloc.bh);
- 	mark_inode_dirty(inode);
--out:
-+
- 	return copied;
- }
- 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dca8e3810443..5bbf9f3b8b6f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1295,6 +1295,7 @@ static int ext4_write_end(struct file *file,
- 			goto errout;
- 		}
- 		copied = ret;
-+		ret = 0;
- 	} else
- 		copied = block_write_end(file, mapping, pos,
- 					 len, copied, page, fsdata);
-@@ -1321,13 +1322,14 @@ static int ext4_write_end(struct file *file,
- 	if (i_size_changed || inline_data)
- 		ret = ext4_mark_inode_dirty(handle, inode);
- 
-+errout:
- 	if (pos + len > inode->i_size && !verity && ext4_can_truncate(inode))
- 		/* if we have allocated more blocks and copied
- 		 * less. We will have blocks allocated outside
- 		 * inode->i_size. So truncate them
- 		 */
- 		ext4_orphan_add(handle, inode);
--errout:
-+
- 	ret2 = ext4_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
-@@ -1410,6 +1412,7 @@ static int ext4_journalled_write_end(struct file *file,
- 			goto errout;
- 		}
- 		copied = ret;
-+		ret = 0;
- 	} else if (unlikely(copied < len) && !PageUptodate(page)) {
- 		copied = 0;
- 		ext4_journalled_zero_new_buffers(handle, page, from, to);
-@@ -1439,6 +1442,7 @@ static int ext4_journalled_write_end(struct file *file,
- 			ret = ret2;
- 	}
- 
-+errout:
- 	if (pos + len > inode->i_size && !verity && ext4_can_truncate(inode))
- 		/* if we have allocated more blocks and copied
- 		 * less. We will have blocks allocated outside
-@@ -1446,7 +1450,6 @@ static int ext4_journalled_write_end(struct file *file,
- 		 */
- 		ext4_orphan_add(handle, inode);
- 
--errout:
- 	ret2 = ext4_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
+ 	ext4_handle_error(inode->i_sb, false, EFSCORRUPTED, inode->i_ino, block,
 -- 
-2.31.1
+2.17.1
 
