@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C44C7C6379A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2476C63797
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B98A361029
+	by mail.kernel.org (Postfix) with ESMTP id 9AE5F6100C
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231290AbhGTPbI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:31:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34172 "EHLO
+        id S236362AbhGTPan (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 11:30:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34136 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240510AbhGTPUm (ORCPT
+        with ESMTP id S240517AbhGTPUm (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:42 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9EA60C06178A;
-        Tue, 20 Jul 2021 09:00:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4AFA0C061574;
+        Tue, 20 Jul 2021 09:00:41 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 473981F4312B
+        with ESMTPSA id E01E41F43149
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     jack@suse.com, amir73il@gmail.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -32,9 +32,9 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v4 07/16] fsnotify: Add helper to detect overflow_event
-Date:   Tue, 20 Jul 2021 11:59:35 -0400
-Message-Id: <20210720155944.1447086-8-krisman@collabora.com>
+Subject: [PATCH v4 12/16] fsnotify: Introduce helpers to send error_events
+Date:   Tue, 20 Jul 2021 11:59:40 -0400
+Message-Id: <20210720155944.1447086-13-krisman@collabora.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
 References: <20210720155944.1447086-1-krisman@collabora.com>
@@ -44,48 +44,75 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Similarly to fanotify_is_perm_event and friends, provide a helper
-predicate to say whether a mask is of an overflow event.
+Introduce helpers for filesystems interested in reporting FS_ERROR
+events.  When notifying errors, the file system might not have an inode
+to report on the error.  To support this, allow the caller to specify
+the superblock to which the error applies.
 
-Suggested-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
----
- fs/notify/fanotify/fanotify.h    | 3 ++-
- include/linux/fsnotify_backend.h | 5 +++++
- 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/notify/fanotify/fanotify.h b/fs/notify/fanotify/fanotify.h
-index c548b96472dd..d4a562c2619f 100644
---- a/fs/notify/fanotify/fanotify.h
-+++ b/fs/notify/fanotify/fanotify.h
-@@ -338,7 +338,8 @@ static inline struct path *fanotify_event_path(struct fanotify_event *event)
-  */
- static inline bool fanotify_is_hashed_event(u32 mask)
- {
--	return !fanotify_is_perm_event(mask) && !(mask & FS_Q_OVERFLOW);
-+	return !(fanotify_is_perm_event(mask) ||
-+		 fsnotify_is_overflow_event(mask));
+---
+Changes since v2:
+  - Drop reference to s_fnotify_marks and guards (Amir)
+
+Changes since v1:
+  - Use the inode argument (Amir)
+  - Protect s_fsnotify_marks with ifdef guard
+---
+ fs/notify/fsnotify.c             |  2 +-
+ include/linux/fsnotify.h         | 13 +++++++++++++
+ include/linux/fsnotify_backend.h |  1 +
+ 3 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/fs/notify/fsnotify.c b/fs/notify/fsnotify.c
+index 7c783c9df1dd..f66dff6e2d4e 100644
+--- a/fs/notify/fsnotify.c
++++ b/fs/notify/fsnotify.c
+@@ -487,7 +487,7 @@ int __fsnotify(__u32 mask, const struct fsnotify_event_info *event_info)
+ 		 */
+ 		parent = event_info->dir;
+ 	}
+-	sb = inode->i_sb;
++	sb = event_info->sb ?: inode->i_sb;
+ 
+ 	/*
+ 	 * Optimization: srcu_read_lock() has a memory barrier which can
+diff --git a/include/linux/fsnotify.h b/include/linux/fsnotify.h
+index f8acddcf54fb..f118e20a9926 100644
+--- a/include/linux/fsnotify.h
++++ b/include/linux/fsnotify.h
+@@ -317,4 +317,17 @@ static inline void fsnotify_change(struct dentry *dentry, unsigned int ia_valid)
+ 		fsnotify_dentry(dentry, mask);
  }
  
- static inline unsigned int fanotify_event_hash_bucket(
-diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-index 9d5586445c65..2b5fb9327a77 100644
---- a/include/linux/fsnotify_backend.h
-+++ b/include/linux/fsnotify_backend.h
-@@ -507,6 +507,11 @@ static inline void fsnotify_queue_overflow(struct fsnotify_group *group)
- 	fsnotify_add_event(group, group->overflow_event, NULL, NULL);
- }
- 
-+static inline bool fsnotify_is_overflow_event(u32 mask)
++static inline int fsnotify_sb_error(struct super_block *sb, struct inode *inode,
++				    int error)
 +{
-+	return mask & FS_Q_OVERFLOW;
++	struct fs_error_report report = {
++		.error = error,
++		.inode = inode,
++	};
++
++	return __fsnotify(FS_ERROR, &(struct fsnotify_event_info) {
++			.data = &report, .data_type = FSNOTIFY_EVENT_ERROR,
++			.sb = sb});
 +}
 +
- static inline bool fsnotify_notify_queue_is_empty(struct fsnotify_group *group)
- {
- 	assert_spin_locked(&group->notification_lock);
+ #endif	/* _LINUX_FS_NOTIFY_H */
+diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+index 33988fdf391a..fa1303b8c599 100644
+--- a/include/linux/fsnotify_backend.h
++++ b/include/linux/fsnotify_backend.h
+@@ -138,6 +138,7 @@ struct fsnotify_event_info {
+ 	struct inode *dir;
+ 	const struct qstr *name;
+ 	struct inode *inode;
++	struct super_block *sb;
+ 	u32 cookie;
+ };
+ 
 -- 
 2.32.0
 
