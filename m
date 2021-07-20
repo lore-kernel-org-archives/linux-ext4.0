@@ -2,26 +2,29 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.7 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82E0AC6377C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74DABC6377A
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 77504611CE
+	by mail.kernel.org (Postfix) with ESMTP id 4221761209
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236024AbhGTPa3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:30:29 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56248 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240410AbhGTPUT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:19 -0400
+        id S235400AbhGTP3r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 11:29:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34516 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S240355AbhGTPT5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:19:57 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2105BC06139F;
+        Tue, 20 Jul 2021 08:59:54 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id CF9281F4314E
+        with ESMTPSA id 8CAD81F4311A
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     jack@suse.com, amir73il@gmail.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -29,126 +32,148 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com
-Subject: [PATCH v4 16/16] docs: Document the FAN_FS_ERROR event
-Date:   Tue, 20 Jul 2021 11:59:44 -0400
-Message-Id: <20210720155944.1447086-17-krisman@collabora.com>
+Subject: [PATCH v4 00/16] File system wide monitoring
+Date:   Tue, 20 Jul 2021 11:59:28 -0400
+Message-Id: <20210720155944.1447086-1-krisman@collabora.com>
 X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
-References: <20210720155944.1447086-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Document the FAN_FS_ERROR event for user administrators and user space
-developers.
+Hi,
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+This is the fourth version of the FAN_FS_ERROR patches.  This applies
+the feedback from last version (thanks Amir, Jan), in particular how we
+report file handlers for errors not related to a file.  Now it is
+reported as an invalid, empty fh.
 
----
-Changes Since v3:
-  - Move FAN_FS_ERROR notification into a subsection of the file.
-Changes Since v2:
-  - NTR
-Changes since v1:
-  - Drop references to location record
-  - Explain that the inode field is optional
-  - Explain we are reporting only the first error
----
- .../admin-guide/filesystem-monitoring.rst     | 70 +++++++++++++++++++
- Documentation/admin-guide/index.rst           |  1 +
- 2 files changed, 71 insertions(+)
+This was tested with LTP for regressions, and also using the sample on
+the last patch, with a corrupted image.  I can publish the bad image
+upon request.
+
+In addition, I wrote a man-page that can be pulled from:
+
+  https://gitlab.collabora.com/krisman/man-pages.git -b fan-fs-error
+
+And I'm sending it shortly for review.
+
+I'm automating my tests in LTP next and will be sharing shortly.
+
+I also pushed the full series to:
+
+  https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-single-slot
+
+Thank you
+
+Original cover letter
+---------------------
+Hi,
+
+This series follow up on my previous proposal [1] to support file system
+wide monitoring.  As suggested by Amir, this proposal drops the ring
+buffer in favor of a single slot associated with each mark.  This
+simplifies a bit the implementation, as you can see in the code.
+
+As a reminder, This proposal is limited to an interface for
+administrators to monitor the health of a file system, instead of a
+generic inteface for file errors.  Therefore, this doesn't solve the
+problem of writeback errors or the need to watch a specific subtree.
+
+In comparison to the previous RFC, this implementation also drops the
+per-fs data and location, and leave those as future extensions.
+
+* Implementation
+
+The feature is implemented on top of fanotify, as a new type of fanotify
+mark, FAN_ERROR, which a file system monitoring tool can register to
+receive error notifications.  When an error occurs a new notification is
+generated, in addition followed by this info field:
+
+ - FS generic data: A file system agnostic structure that has a generic
+ error code and identifies the filesystem.  Basically, it let's
+ userspace know something happened on a monitored filesystem.  Since
+ only the first error is recorded since the last read, this also
+ includes a counter of errors that happened since the last read.
+
+* Testing
+
+This was tested by watching notifications flowing from an intentionally
+corrupted filesystem in different places.  In addition, other events
+were watched in an attempt to detect regressions.
+
+Is there a specific testsuite for fanotify I should be running?
+
+* Patches
+
+This patchset is divided as follows: Patch 1 through 5 are refactoring
+to fsnotify/fanotify in preparation for FS_ERROR/FAN_ERROR; patch 6 and
+7 implement the FS_ERROR API for filesystems to report error; patch 8
+add support for FAN_ERROR in fanotify; Patch 9 is an example
+implementation for ext4; patch 10 and 11 provide a sample userspace code
+and documentation.
+
+I also pushed the full series to:
+
+  https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-single-slot
+
+[1] https://lwn.net/Articles/854545/
+[2] https://lwn.net/Articles/856916/
+
+Cc: Darrick J. Wong <djwong@kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: jack@suse.com
+To: amir73il@gmail.com
+Cc: dhowells@redhat.com
+Cc: khazhy@google.com
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+
+Amir Goldstein (1):
+  fsnotify: pass arguments of fsnotify() in struct fsnotify_event_info
+
+Gabriel Krisman Bertazi (15):
+  fsnotify: Don't insert unmergeable events in hashtable
+  fanotify: Fold event size calculation to its own function
+  fanotify: Split fsid check from other fid mode checks
+  fsnotify: Reserve mark bits for backends
+  fanotify: Split superblock marks out to a new cache
+  inotify: Don't force FS_IN_IGNORED
+  fsnotify: Add helper to detect overflow_event
+  fsnotify: Add wrapper around fsnotify_add_event
+  fsnotify: Support passing argument to insert callback on add_event
+  fsnotify: Support FS_ERROR event type
+  fsnotify: Introduce helpers to send error_events
+  fanotify: Introduce FAN_FS_ERROR event
+  ext4: Send notifications on error
+  samples: Add fs error monitoring example
+  docs: Document the FAN_FS_ERROR event
+
+ .../admin-guide/filesystem-monitoring.rst     |  70 +++++
+ Documentation/admin-guide/index.rst           |   1 +
+ fs/ext4/super.c                               |   8 +
+ fs/notify/fanotify/fanotify.c                 | 217 ++++++++++----
+ fs/notify/fanotify/fanotify.h                 |  79 ++++-
+ fs/notify/fanotify/fanotify_user.c            | 278 +++++++++++++++---
+ fs/notify/fsnotify.c                          |  75 ++---
+ fs/notify/inotify/inotify_fsnotify.c          |   2 +-
+ fs/notify/inotify/inotify_user.c              |   6 +-
+ fs/notify/notification.c                      |  16 +-
+ include/linux/fanotify.h                      |   8 +-
+ include/linux/fsnotify.h                      |  13 +
+ include/linux/fsnotify_backend.h              | 140 +++++++--
+ include/uapi/linux/fanotify.h                 |   8 +
+ samples/Kconfig                               |   9 +
+ samples/Makefile                              |   1 +
+ samples/fanotify/Makefile                     |   5 +
+ samples/fanotify/fs-monitor.c                 | 134 +++++++++
+ 18 files changed, 897 insertions(+), 173 deletions(-)
  create mode 100644 Documentation/admin-guide/filesystem-monitoring.rst
+ create mode 100644 samples/fanotify/Makefile
+ create mode 100644 samples/fanotify/fs-monitor.c
 
-diff --git a/Documentation/admin-guide/filesystem-monitoring.rst b/Documentation/admin-guide/filesystem-monitoring.rst
-new file mode 100644
-index 000000000000..6c8982985a27
---- /dev/null
-+++ b/Documentation/admin-guide/filesystem-monitoring.rst
-@@ -0,0 +1,70 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+====================================
-+File system Monitoring with fanotify
-+====================================
-+
-+File system Error Reporting
-+===========================
-+
-+fanotify supports the FAN_FS_ERROR mark for file system-wide error
-+reporting.  It is meant to be used by file system health monitoring
-+daemons who listen on that interface and take actions (notify sysadmin,
-+start recovery) when a file system problem is detected by the kernel.
-+
-+By design, A FAN_FS_ERROR notification exposes sufficient information for a
-+monitoring tool to know a problem in the file system has happened.  It
-+doesn't necessarily provide a user space application with semantics to
-+verify an IO operation was successfully executed.  That is outside of
-+scope of this feature. Instead, it is only meant as a framework for
-+early file system problem detection and reporting recovery tools.
-+
-+When a file system operation fails, it is common for dozens of kernel
-+errors to cascade after the initial failure, hiding the original failure
-+log, which is usually the most useful debug data to troubleshoot the
-+problem.  For this reason, FAN_FS_ERROR only reports the first error that
-+occurred since the last notification, and it simply counts addition
-+errors.  This ensures that the most important piece of error information
-+is never lost.
-+
-+FAN_FS_ERROR requires the fanotify group to be setup with the
-+FAN_REPORT_FID flag.
-+
-+At the time of this writing, the only file system that emits FAN_FS_ERROR
-+notifications is Ext4.
-+
-+A user space example code is provided at ``samples/fanotify/fs-monitor.c``.
-+
-+A FAN_FS_ERROR Notification has the following format::
-+
-+  [ Notification Metadata (Mandatory) ]
-+  [ Generic Error Record  (Mandatory) ]
-+  [ FID record            (Mandatory) ]
-+
-+Generic error record
-+--------------------
-+
-+The generic error record provides enough information for a file system
-+agnostic tool to learn about a problem in the file system, without
-+providing any additional details about the problem.  This record is
-+identified by ``struct fanotify_event_info_header.info_type`` being set
-+to FAN_EVENT_INFO_TYPE_ERROR.
-+
-+  struct fanotify_event_info_error {
-+	struct fanotify_event_info_header hdr;
-+	__s32 error;
-+	__u32 error_count;
-+  };
-+
-+The `error` field identifies the type of error. `error_count` count
-+tracks the number of errors that occurred and were suppressed to
-+preserve the original error, since the last notification.
-+
-+FID record
-+----------
-+
-+The FID record can be used to uniquely identify the inode that triggered
-+the error through the combination of fsid and file handler.  A
-+filesystem specific handler can use that information to attempt a
-+recovery procedure.  Errors that are not related to an inode are
-+reported against the root inode.
-diff --git a/Documentation/admin-guide/index.rst b/Documentation/admin-guide/index.rst
-index dc00afcabb95..1bedab498104 100644
---- a/Documentation/admin-guide/index.rst
-+++ b/Documentation/admin-guide/index.rst
-@@ -82,6 +82,7 @@ configure specific aspects of kernel behavior to your liking.
-    edid
-    efi-stub
-    ext4
-+   filesystem-monitoring
-    nfs/index
-    gpio/index
-    highuid
 -- 
 2.32.0
 
