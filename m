@@ -7,31 +7,34 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BB3AC6377D
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BBC41C6379B
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5EB7B6120A
+	by mail.kernel.org (Postfix) with ESMTP id B1FF461001
 	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235590AbhGTPaI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:30:08 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56164 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240376AbhGTPUA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:00 -0400
+        id S236484AbhGTPbF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 11:31:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34146 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S240495AbhGTPUm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:42 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63E15C0613EE;
+        Tue, 20 Jul 2021 09:00:09 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 5445F1F43141
+        with ESMTPSA id D43781F4312B
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     jack@suse.com, amir73il@gmail.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         dhowells@redhat.com, khazhy@google.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v4 11/16] fsnotify: Support FS_ERROR event type
-Date:   Tue, 20 Jul 2021 11:59:39 -0400
-Message-Id: <20210720155944.1447086-12-krisman@collabora.com>
+        kernel@collabora.com
+Subject: [PATCH v4 04/16] fsnotify: Reserve mark bits for backends
+Date:   Tue, 20 Jul 2021 11:59:32 -0400
+Message-Id: <20210720155944.1447086-5-krisman@collabora.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
 References: <20210720155944.1447086-1-krisman@collabora.com>
@@ -41,74 +44,51 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Expose a new type of fsnotify event for filesystems to report errors for
-userspace monitoring tools.  fanotify will send this type of
-notification for FAN_FS_ERROR events.
+Split out the final bits of struct fsnotify_mark->flags for use by a
+backend.
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
 ---
-Changes since v2:
-  - FAN_ERROR->FAN_FS_ERROR (Amir)
-
-Changes since v1:
-  - Overload FS_ERROR with FS_IN_IGNORED
-  - Implement support for this type on fsnotify_data_inode (Amir)
----
- include/linux/fsnotify_backend.h | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ include/linux/fsnotify_backend.h | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-index ff2cf04c7496..33988fdf391a 100644
+index 1ce66748a2d2..9d5586445c65 100644
 --- a/include/linux/fsnotify_backend.h
 +++ b/include/linux/fsnotify_backend.h
-@@ -42,6 +42,12 @@
- 
- #define FS_UNMOUNT		0x00002000	/* inode on umount fs */
- #define FS_Q_OVERFLOW		0x00004000	/* Event queued overflowed */
-+#define FS_ERROR		0x00008000	/* Filesystem Error (fanotify) */
-+
-+/*
-+ * FS_IN_IGNORED overloads FS_ERROR.  It is only used internally by inotify
-+ * which does not support FS_ERROR.
-+ */
- #define FS_IN_IGNORED		0x00008000	/* last inotify event here */
- 
- #define FS_OPEN_PERM		0x00010000	/* open event in an permission hook */
-@@ -95,7 +101,8 @@
- #define ALL_FSNOTIFY_EVENTS (ALL_FSNOTIFY_DIRENT_EVENTS | \
- 			     FS_EVENTS_POSS_ON_CHILD | \
- 			     FS_DELETE_SELF | FS_MOVE_SELF | FS_DN_RENAME | \
--			     FS_UNMOUNT | FS_Q_OVERFLOW | FS_IN_IGNORED)
-+			     FS_UNMOUNT | FS_Q_OVERFLOW | FS_IN_IGNORED | \
-+			     FS_ERROR)
- 
- /* Extra flags that may be reported with event or control handling of events */
- #define ALL_FSNOTIFY_FLAGS  (FS_EXCL_UNLINK | FS_ISDIR | FS_IN_ONESHOT | \
-@@ -263,6 +270,12 @@ enum fsnotify_data_type {
- 	FSNOTIFY_EVENT_NONE,
- 	FSNOTIFY_EVENT_PATH,
- 	FSNOTIFY_EVENT_INODE,
-+	FSNOTIFY_EVENT_ERROR,
-+};
-+
-+struct fs_error_report {
-+	int error;
-+	struct inode *inode;
+@@ -363,6 +363,21 @@ struct fsnotify_mark_connector {
+ 	struct hlist_head list;
  };
  
- static inline struct inode *fsnotify_data_inode(const void *data, int data_type)
-@@ -272,6 +285,8 @@ static inline struct inode *fsnotify_data_inode(const void *data, int data_type)
- 		return (struct inode *)data;
- 	case FSNOTIFY_EVENT_PATH:
- 		return d_inode(((const struct path *)data)->dentry);
-+	case FSNOTIFY_EVENT_ERROR:
-+		return ((struct fs_error_report *)data)->inode;
- 	default:
- 		return NULL;
- 	}
++#define FSNOTIFY_MARK_FLAG(flag)	\
++static const unsigned int FSNOTIFY_MARK_FLAG_##flag = \
++	(1 << FSN_MARK_FL_BIT_##flag)
++
++enum fsnotify_mark_bits {
++	FSN_MARK_FL_BIT_IGNORED_SURV_MODIFY,
++	FSN_MARK_FL_BIT_ALIVE,
++	FSN_MARK_FL_BIT_ATTACHED,
++	FSN_MARK_PRIVATE_FLAGS,
++};
++
++FSNOTIFY_MARK_FLAG(IGNORED_SURV_MODIFY);
++FSNOTIFY_MARK_FLAG(ALIVE);
++FSNOTIFY_MARK_FLAG(ATTACHED);
++
+ /*
+  * A mark is simply an object attached to an in core inode which allows an
+  * fsnotify listener to indicate they are either no longer interested in events
+@@ -398,9 +413,7 @@ struct fsnotify_mark {
+ 	struct fsnotify_mark_connector *connector;
+ 	/* Events types to ignore [mark->lock, group->mark_mutex] */
+ 	__u32 ignored_mask;
+-#define FSNOTIFY_MARK_FLAG_IGNORED_SURV_MODIFY	0x01
+-#define FSNOTIFY_MARK_FLAG_ALIVE		0x02
+-#define FSNOTIFY_MARK_FLAG_ATTACHED		0x04
++	/* Upper bits [31:PRIVATE_FLAGS] are reserved for backend usage */
+ 	unsigned int flags;		/* flags [mark->lock] */
+ };
+ 
 -- 
 2.32.0
 
