@@ -8,57 +8,57 @@ X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 243E1C07E9B
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:56:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0812C07E95
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 17:05:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0469F610D2
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:56:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B1EB9610C7
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 17:05:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230252AbhGTQPo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 12:15:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47754 "EHLO
+        id S233296AbhGTQYf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 12:24:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49606 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229632AbhGTQPh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 12:15:37 -0400
-Received: from mail-wm1-x331.google.com (mail-wm1-x331.google.com [IPv6:2a00:1450:4864:20::331])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98280C061762;
-        Tue, 20 Jul 2021 09:56:12 -0700 (PDT)
-Received: by mail-wm1-x331.google.com with SMTP id f8-20020a1c1f080000b029022d4c6cfc37so1876847wmf.5;
-        Tue, 20 Jul 2021 09:56:12 -0700 (PDT)
+        with ESMTP id S231221AbhGTQYC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 12:24:02 -0400
+Received: from mail-wm1-x336.google.com (mail-wm1-x336.google.com [IPv6:2a00:1450:4864:20::336])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D2942C061574;
+        Tue, 20 Jul 2021 10:04:35 -0700 (PDT)
+Received: by mail-wm1-x336.google.com with SMTP id l6so12713516wmq.0;
+        Tue, 20 Jul 2021 10:04:35 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=xadoaP6a/fOgGejgqCkE+KjA+gb1/Cu1z/gORdF39MM=;
-        b=UIlfSZIFil/4wlHMam2+jJJTgTC9SLZH5oeQEE6Sf32dqhZw/wD/Z/7Ysj7PiP3v0m
-         qpRtBTAn6k1k8uFzdYjY/4C4FGPGS8p3MpiMH/WVw6KDimYazrtXSw4YtQlrlk6J5QBP
-         due9llyGW/LXKRX4oZrX8hMI7yWgYFOkv8sJQtrzbR8B3Y0+MV/etPP6YCccrNQI/pR9
-         O30+AQU4/6HAOFLRaAFl0QCUBWPfjf3fcMwp/Lf7FqG8Y3njNXDlsT/IpfBqm7vzxJ86
-         I4Aa5vbEhKHXrDmaPSFoxIX/yRMdVIYOHdKKsZvXxt9LST/9+pJE+7CbQERMIGsgJijH
-         713A==
+        bh=OBQQzstrJ1gYNrT0Melpe4vYPm4Di0XzvV/ACAiV8dU=;
+        b=Yl97JjlTnSH/4anBuNe+rxIvT4hdPRd9J9mKU5DfoZdNCGP6C8dsC0OvrJUeVbMEMb
+         wWxtdyr1piIqB9WvgwvcJhK89EdxzV4Jy73kTESHnBgRw7WgKKp/uqQSTSbiBWlfZQlc
+         ULoJ2dI6Bm4fLn2NiFbW5WZNnWo7DTlJB2pDx7hLqJLKtkzufaswOvi5fMHrkU3TLG9j
+         qIXgE6SkYF2uo2PT3Sxn61Te1sozED1NeNA4+Y/6ZslhF9TUlD9MMPD2WqNnjrRIW7qZ
+         b3kjK1UmPnqvZQbnwLrwo5yDNzWHcJscfMn9aSsQILSMKqqE+JTrlOXrSpHhi2z4wNlU
+         jk7A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=xadoaP6a/fOgGejgqCkE+KjA+gb1/Cu1z/gORdF39MM=;
-        b=AgcWTXAsM+3clYeAt1BsIxTl7xE+zmYTZivA3JC9fct34XOJC0Uj2wmh2kWiX8o9wn
-         NV3ZGi16Yp6TLfz5OR8YgrX7Gj/qs9skyqYy86Txm5URIcuaaYjxf6ELj0dMifDV5kGW
-         saCZ1nUX96gUEe2OOxpmnzxtDdRqHO0X5wMUL2bQYCPfE9C4rgtpo0SPH5/T97AVkEyZ
-         ygcUG7Nol+1RqX2nBwPbSyylhxmjq38+tywvl/Wqg1cUM6HzawXYS4VYjz2nGBtE/qdU
-         QVAj0/Sc4T0i5VT+0/k42na4X++KaEB3dboxn2Vi2OK29IhIATgvKAFa7pngJ5/3ue3e
-         H0IA==
-X-Gm-Message-State: AOAM531xHhu50t7gvFC2Ig/evLhRRA/dC0Gk3oRjrZXm0OqpZ0BdnoN/
-        itbWm9YVMpICSIGtfk4Ve2y3zJgjq3VmGFRl544=
-X-Google-Smtp-Source: ABdhPJzeq7D6dxXy4SwjmQ01E/5DNg+7EKLpcvNVDY+xrby+RLKHfxhDwHW0oorrNhOk3tw/IcPuKwMFoV6vzOvsHQ4=
-X-Received: by 2002:a7b:c251:: with SMTP id b17mr17742709wmj.83.1626800171062;
- Tue, 20 Jul 2021 09:56:11 -0700 (PDT)
+        bh=OBQQzstrJ1gYNrT0Melpe4vYPm4Di0XzvV/ACAiV8dU=;
+        b=lYYK343d1Hyf895/YJPr5P4tbvfcLGpY7js8y52pdHYFdlpByYlCqhXoaxmTWC+e88
+         O+8thfzZ5y9eoGm5fOYsLuhEB0ynb5k1amrT3Yh4WVdNd2Dd6a3GyeizDGd9/S0t9Er0
+         4qhUpsXF1OY/5OC2EKwodvIiVgJE/wAFKYR/d4GjUNA83b8i6DFfoDq+nWriJrjh1ANy
+         /1r2Bd2ZpGJaQ30EKMgeUvChq5FnT42VrN+XhNR85hlUILF2p5IxSNv2WT8qYxeBIV/o
+         Hc5monMCGyxKxyQ5ZcKCl1jutK7mmwfPlgF6+lYV74MUno8QKFTEOaNvtrS5a/fhDfnp
+         kFbQ==
+X-Gm-Message-State: AOAM530dpHNTsZFdYV6EkeJqT88NhLv2IePFY6zyPBV79VTvSEfWFaxm
+        sNyloL2QqGGgi+oD8qaGyBXwOO0mSmW8jjsv6tw=
+X-Google-Smtp-Source: ABdhPJxvDJO2Z2acCPBQtmhGcr6JO51jgSOCM7nqjcv55yHELU2G7JdJj4hFhw+HzJ++aRM1L4fCenbPc/uuNenAkAA=
+X-Received: by 2002:a05:600c:4a17:: with SMTP id c23mr38876425wmp.50.1626800673826;
+ Tue, 20 Jul 2021 10:04:33 -0700 (PDT)
 MIME-Version: 1.0
-References: <20210720155944.1447086-1-krisman@collabora.com> <20210720155944.1447086-10-krisman@collabora.com>
-In-Reply-To: <20210720155944.1447086-10-krisman@collabora.com>
+References: <20210720155944.1447086-1-krisman@collabora.com> <20210720155944.1447086-16-krisman@collabora.com>
+In-Reply-To: <20210720155944.1447086-16-krisman@collabora.com>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Tue, 20 Jul 2021 19:56:00 +0300
-Message-ID: <CAOQ4uxgC4qqMVDcoHHC=Zi-29a8pOOrqyNF6ZFYWgK-EBs8SVA@mail.gmail.com>
-Subject: Re: [PATCH v4 09/16] fsnotify: Add wrapper around fsnotify_add_event
+Date:   Tue, 20 Jul 2021 20:04:22 +0300
+Message-ID: <CAOQ4uxhF-HxTefqKFMyC2tUVDv_g+u109M36=xw+2CA55jiNiQ@mail.gmail.com>
+Subject: Re: [PATCH v4 15/16] samples: Add fs error monitoring example
 To:     Gabriel Krisman Bertazi <krisman@collabora.com>
 Cc:     Jan Kara <jack@suse.com>, "Darrick J. Wong" <djwong@kernel.org>,
         Theodore Tso <tytso@mit.edu>,
@@ -75,111 +75,220 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 On Tue, Jul 20, 2021 at 7:00 PM Gabriel Krisman Bertazi
 <krisman@collabora.com> wrote:
 >
-> fsnotify_add_event is growing in number of parameters, which is most
-> case are just passed a NULL pointer.  So, split out a new
-> fsnotify_insert_event function to clean things up for users who don't
-> need an insert hook.
+> Introduce an example of a FAN_FS_ERROR fanotify user to track filesystem
+> errors.
 >
-> Suggested-by: Amir Goldstein <amir73il@gmail.com>
 > Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> ---
+>
 
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
->  fs/notify/fanotify/fanotify.c        |  4 ++--
->  fs/notify/inotify/inotify_fsnotify.c |  2 +-
->  fs/notify/notification.c             | 12 ++++++------
->  include/linux/fsnotify_backend.h     | 23 ++++++++++++++++-------
->  4 files changed, 25 insertions(+), 16 deletions(-)
+except for one small nit
+
+> ---
+> Changes since v1:
+>   - minor fixes
+> ---
+>  samples/Kconfig               |   9 +++
+>  samples/Makefile              |   1 +
+>  samples/fanotify/Makefile     |   5 ++
+>  samples/fanotify/fs-monitor.c | 134 ++++++++++++++++++++++++++++++++++
+>  4 files changed, 149 insertions(+)
+>  create mode 100644 samples/fanotify/Makefile
+>  create mode 100644 samples/fanotify/fs-monitor.c
 >
-> diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-> index 6875d4d34c0c..93f96589ad1e 100644
-> --- a/fs/notify/fanotify/fanotify.c
-> +++ b/fs/notify/fanotify/fanotify.c
-> @@ -778,8 +778,8 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
->         }
+> diff --git a/samples/Kconfig b/samples/Kconfig
+> index b0503ef058d3..88353b8eac0b 100644
+> --- a/samples/Kconfig
+> +++ b/samples/Kconfig
+> @@ -120,6 +120,15 @@ config SAMPLE_CONNECTOR
+>           with it.
+>           See also Documentation/driver-api/connector.rst
 >
->         fsn_event = &event->fse;
-> -       ret = fsnotify_add_event(group, fsn_event, fanotify_merge,
-> -                                fanotify_insert_event);
-> +       ret = fsnotify_insert_event(group, fsn_event, fanotify_merge,
-> +                                   fanotify_insert_event);
->         if (ret) {
->                 /* Permission events shouldn't be merged */
->                 BUG_ON(ret == 1 && mask & FANOTIFY_PERM_EVENTS);
-> diff --git a/fs/notify/inotify/inotify_fsnotify.c b/fs/notify/inotify/inotify_fsnotify.c
-> index d1a64daa0171..a96582cbfad1 100644
-> --- a/fs/notify/inotify/inotify_fsnotify.c
-> +++ b/fs/notify/inotify/inotify_fsnotify.c
-> @@ -116,7 +116,7 @@ int inotify_handle_inode_event(struct fsnotify_mark *inode_mark, u32 mask,
->         if (len)
->                 strcpy(event->name, name->name);
->
-> -       ret = fsnotify_add_event(group, fsn_event, inotify_merge, NULL);
-> +       ret = fsnotify_add_event(group, fsn_event, inotify_merge);
->         if (ret) {
->                 /* Our event wasn't used in the end. Free it. */
->                 fsnotify_destroy_event(group, fsn_event);
-> diff --git a/fs/notify/notification.c b/fs/notify/notification.c
-> index 32f45543b9c6..44bb10f50715 100644
-> --- a/fs/notify/notification.c
-> +++ b/fs/notify/notification.c
-> @@ -78,12 +78,12 @@ void fsnotify_destroy_event(struct fsnotify_group *group,
->   * 2 if the event was not queued - either the queue of events has overflown
->   *   or the group is shutting down.
->   */
-> -int fsnotify_add_event(struct fsnotify_group *group,
-> -                      struct fsnotify_event *event,
-> -                      int (*merge)(struct fsnotify_group *,
-> -                                   struct fsnotify_event *),
-> -                      void (*insert)(struct fsnotify_group *,
-> -                                     struct fsnotify_event *))
-> +int fsnotify_insert_event(struct fsnotify_group *group,
-> +                         struct fsnotify_event *event,
-> +                         int (*merge)(struct fsnotify_group *,
-> +                                      struct fsnotify_event *),
-> +                         void (*insert)(struct fsnotify_group *,
-> +                                        struct fsnotify_event *))
->  {
->         int ret = 0;
->         struct list_head *list = &group->notification_list;
-> diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-> index 3c6fb43276ba..435982f88687 100644
-> --- a/include/linux/fsnotify_backend.h
-> +++ b/include/linux/fsnotify_backend.h
-> @@ -522,16 +522,25 @@ extern int fsnotify_fasync(int fd, struct file *file, int on);
->  extern void fsnotify_destroy_event(struct fsnotify_group *group,
->                                    struct fsnotify_event *event);
->  /* attach the event to the group notification queue */
-> -extern int fsnotify_add_event(struct fsnotify_group *group,
-> -                             struct fsnotify_event *event,
-> -                             int (*merge)(struct fsnotify_group *,
-> -                                          struct fsnotify_event *),
-> -                             void (*insert)(struct fsnotify_group *,
-> -                                            struct fsnotify_event *));
-> +extern int fsnotify_insert_event(struct fsnotify_group *group,
-> +                                struct fsnotify_event *event,
-> +                                int (*merge)(struct fsnotify_group *,
-> +                                             struct fsnotify_event *),
-> +                                void (*insert)(struct fsnotify_group *,
-> +                                               struct fsnotify_event *));
+> +config SAMPLE_FANOTIFY_ERROR
+> +       bool "Build fanotify error monitoring sample"
+> +       depends on FANOTIFY
+> +       help
+> +         When enabled, this builds an example code that uses the
+> +         FAN_FS_ERROR fanotify mechanism to monitor filesystem
+> +         errors.
+> +         See also Documentation/admin-guide/filesystem-monitoring.rst.
 > +
-> +static inline int fsnotify_add_event(struct fsnotify_group *group,
-> +                                    struct fsnotify_event *event,
-> +                                    int (*merge)(struct fsnotify_group *,
-> +                                                 struct fsnotify_event *))
+>  config SAMPLE_HIDRAW
+>         bool "hidraw sample"
+>         depends on CC_CAN_LINK && HEADERS_INSTALL
+> diff --git a/samples/Makefile b/samples/Makefile
+> index 087e0988ccc5..931a81847c48 100644
+> --- a/samples/Makefile
+> +++ b/samples/Makefile
+> @@ -5,6 +5,7 @@ subdir-$(CONFIG_SAMPLE_AUXDISPLAY)      += auxdisplay
+>  subdir-$(CONFIG_SAMPLE_ANDROID_BINDERFS) += binderfs
+>  obj-$(CONFIG_SAMPLE_CONFIGFS)          += configfs/
+>  obj-$(CONFIG_SAMPLE_CONNECTOR)         += connector/
+> +obj-$(CONFIG_SAMPLE_FANOTIFY_ERROR)    += fanotify/
+>  subdir-$(CONFIG_SAMPLE_HIDRAW)         += hidraw
+>  obj-$(CONFIG_SAMPLE_HW_BREAKPOINT)     += hw_breakpoint/
+>  obj-$(CONFIG_SAMPLE_KDB)               += kdb/
+> diff --git a/samples/fanotify/Makefile b/samples/fanotify/Makefile
+> new file mode 100644
+> index 000000000000..e20db1bdde3b
+> --- /dev/null
+> +++ b/samples/fanotify/Makefile
+> @@ -0,0 +1,5 @@
+> +# SPDX-License-Identifier: GPL-2.0-only
+> +userprogs-always-y += fs-monitor
+> +
+> +userccflags += -I usr/include -Wall
+> +
+> diff --git a/samples/fanotify/fs-monitor.c b/samples/fanotify/fs-monitor.c
+> new file mode 100644
+> index 000000000000..ff74ba077f34
+> --- /dev/null
+> +++ b/samples/fanotify/fs-monitor.c
+> @@ -0,0 +1,134 @@
+> +// SPDX-License-Identifier: GPL-2.0
+> +/*
+> + * Copyright 2021, Collabora Ltd.
+> + */
+> +
+> +#define _GNU_SOURCE
+> +#include <errno.h>
+> +#include <err.h>
+> +#include <stdlib.h>
+> +#include <stdio.h>
+> +#include <fcntl.h>
+> +#include <sys/fanotify.h>
+> +#include <sys/types.h>
+> +#include <unistd.h>
+> +#include <sys/stat.h>
+> +#include <sys/types.h>
+> +
+> +#ifndef FAN_FS_ERROR
+> +#define FAN_FS_ERROR           0x00008000
+> +#define FAN_EVENT_INFO_TYPE_ERROR      4
+> +
+> +#define FILEID_INO32_GEN       1
+> +#define        FILEID_INVALID          0xff
+
+If you install the kernel uapi header and try to build this
+sample it will fail because FAN_FS_ERROR will be
+defined but FILEID_INO32_GEN and FILEID_INVALID
+will not be defined.
+
+Thanks,
+Amir.
+
+> +
+> +struct fanotify_event_info_error {
+> +       struct fanotify_event_info_header hdr;
+> +       __s32 error;
+> +       __u32 error_count;
+> +};
+> +#endif
+> +
+> +static void print_fh(struct file_handle *fh)
 > +{
-> +       return fsnotify_insert_event(group, event, merge, NULL);
+> +       int i;
+> +       uint32_t *h = (uint32_t *) fh->f_handle;
+> +
+> +       printf("\tfh: ");
+> +       for (i = 0; i < fh->handle_bytes; i++)
+> +               printf("%hhx", fh->f_handle[i]);
+> +       printf("\n");
+> +
+> +       printf("\tdecoded fh: ");
+> +       if (fh->handle_type == FILEID_INO32_GEN)
+> +               printf("inode=%u gen=%u\n", h[0], h[1]);
+> +       else if (fh->handle_type == FILEID_INVALID && !h[0] && !h[1])
+> +               printf("Type %d (Superblock error)\n", fh->handle_type);
+> +       else
+> +               printf("Type %d (Unknown)\n", fh->handle_type);
+> +
 > +}
 > +
->  /* Queue overflow event to a notification group */
->  static inline void fsnotify_queue_overflow(struct fsnotify_group *group)
->  {
-> -       fsnotify_add_event(group, group->overflow_event, NULL, NULL);
-> +       fsnotify_add_event(group, group->overflow_event, NULL);
->  }
->
->  static inline bool fsnotify_is_overflow_event(u32 mask)
+> +static void handle_notifications(char *buffer, int len)
+> +{
+> +       struct fanotify_event_metadata *metadata;
+> +       struct fanotify_event_info_error *error;
+> +       struct fanotify_event_info_fid *fid;
+> +       char *next;
+> +
+> +       for (metadata = (struct fanotify_event_metadata *) buffer;
+> +            FAN_EVENT_OK(metadata, len);
+> +            metadata = FAN_EVENT_NEXT(metadata, len)) {
+> +               next = (char *)metadata + metadata->event_len;
+> +               if (metadata->mask != FAN_FS_ERROR) {
+> +                       printf("unexpected FAN MARK: %llx\n", metadata->mask);
+> +                       goto next_event;
+> +               } else if (metadata->fd != FAN_NOFD) {
+> +                       printf("Unexpected fd (!= FAN_NOFD)\n");
+> +                       goto next_event;
+> +               }
+> +
+> +               printf("FAN_FS_ERROR found len=%d\n", metadata->event_len);
+> +
+> +               error = (struct fanotify_event_info_error *) (metadata+1);
+> +               if (error->hdr.info_type != FAN_EVENT_INFO_TYPE_ERROR) {
+> +                       printf("unknown record: %d (Expecting TYPE_ERROR)\n",
+> +                              error->hdr.info_type);
+> +                       goto next_event;
+> +               }
+> +
+> +               printf("\tGeneric Error Record: len=%d\n", error->hdr.len);
+> +               printf("\terror: %d\n", error->error);
+> +               printf("\terror_count: %d\n", error->error_count);
+> +
+> +               fid = (struct fanotify_event_info_fid *) (error + 1);
+> +               if ((char *) fid >= next) {
+> +                       printf("Event doesn't have FID\n");
+> +                       goto next_event;
+> +               }
+> +               printf("FID record found\n");
+> +
+> +               if (fid->hdr.info_type != FAN_EVENT_INFO_TYPE_FID) {
+> +                       printf("unknown record: %d (Expecting TYPE_FID)\n",
+> +                              fid->hdr.info_type);
+> +                       goto next_event;
+> +               }
+> +               printf("\tfsid: %x%x\n", fid->fsid.val[0], fid->fsid.val[1]);
+> +               print_fh((struct file_handle *) &fid->handle);
+> +
+> +next_event:
+> +               printf("---\n\n");
+> +       }
+> +}
+> +
+> +int main(int argc, char **argv)
+> +{
+> +       int fd;
+> +
+> +       char buffer[BUFSIZ];
+> +
+> +       if (argc < 2) {
+> +               printf("Missing path argument\n");
+> +               return 1;
+> +       }
+> +
+> +       fd = fanotify_init(FAN_CLASS_NOTIF|FAN_REPORT_FID, O_RDONLY);
+> +       if (fd < 0)
+> +               errx(1, "fanotify_init");
+> +
+> +       if (fanotify_mark(fd, FAN_MARK_ADD|FAN_MARK_FILESYSTEM,
+> +                         FAN_FS_ERROR, AT_FDCWD, argv[1])) {
+> +               errx(1, "fanotify_mark");
+> +       }
+> +
+> +       while (1) {
+> +               int n = read(fd, buffer, BUFSIZ);
+> +
+> +               if (n < 0)
+> +                       errx(1, "read");
+> +
+> +               handle_notifications(buffer, n);
+> +       }
+> +
+> +       return 0;
+> +}
 > --
 > 2.32.0
 >
