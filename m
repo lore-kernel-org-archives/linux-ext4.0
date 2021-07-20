@@ -2,131 +2,184 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A40EC63798
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 243E1C07E9B
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:56:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 906AD61164
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0469F610D2
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:56:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236263AbhGTPai (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:30:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34142 "EHLO
+        id S230252AbhGTQPo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 12:15:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47754 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240518AbhGTPUm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:42 -0400
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8471BC061793;
-        Tue, 20 Jul 2021 09:00:33 -0700 (PDT)
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id 281ED1F43141
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     jack@suse.com, amir73il@gmail.com
-Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
-        dhowells@redhat.com, khazhy@google.com,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v4 10/16] fsnotify: Support passing argument to insert callback on add_event
-Date:   Tue, 20 Jul 2021 11:59:38 -0400
-Message-Id: <20210720155944.1447086-11-krisman@collabora.com>
-X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
-References: <20210720155944.1447086-1-krisman@collabora.com>
+        with ESMTP id S229632AbhGTQPh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 12:15:37 -0400
+Received: from mail-wm1-x331.google.com (mail-wm1-x331.google.com [IPv6:2a00:1450:4864:20::331])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98280C061762;
+        Tue, 20 Jul 2021 09:56:12 -0700 (PDT)
+Received: by mail-wm1-x331.google.com with SMTP id f8-20020a1c1f080000b029022d4c6cfc37so1876847wmf.5;
+        Tue, 20 Jul 2021 09:56:12 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=xadoaP6a/fOgGejgqCkE+KjA+gb1/Cu1z/gORdF39MM=;
+        b=UIlfSZIFil/4wlHMam2+jJJTgTC9SLZH5oeQEE6Sf32dqhZw/wD/Z/7Ysj7PiP3v0m
+         qpRtBTAn6k1k8uFzdYjY/4C4FGPGS8p3MpiMH/WVw6KDimYazrtXSw4YtQlrlk6J5QBP
+         due9llyGW/LXKRX4oZrX8hMI7yWgYFOkv8sJQtrzbR8B3Y0+MV/etPP6YCccrNQI/pR9
+         O30+AQU4/6HAOFLRaAFl0QCUBWPfjf3fcMwp/Lf7FqG8Y3njNXDlsT/IpfBqm7vzxJ86
+         I4Aa5vbEhKHXrDmaPSFoxIX/yRMdVIYOHdKKsZvXxt9LST/9+pJE+7CbQERMIGsgJijH
+         713A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=xadoaP6a/fOgGejgqCkE+KjA+gb1/Cu1z/gORdF39MM=;
+        b=AgcWTXAsM+3clYeAt1BsIxTl7xE+zmYTZivA3JC9fct34XOJC0Uj2wmh2kWiX8o9wn
+         NV3ZGi16Yp6TLfz5OR8YgrX7Gj/qs9skyqYy86Txm5URIcuaaYjxf6ELj0dMifDV5kGW
+         saCZ1nUX96gUEe2OOxpmnzxtDdRqHO0X5wMUL2bQYCPfE9C4rgtpo0SPH5/T97AVkEyZ
+         ygcUG7Nol+1RqX2nBwPbSyylhxmjq38+tywvl/Wqg1cUM6HzawXYS4VYjz2nGBtE/qdU
+         QVAj0/Sc4T0i5VT+0/k42na4X++KaEB3dboxn2Vi2OK29IhIATgvKAFa7pngJ5/3ue3e
+         H0IA==
+X-Gm-Message-State: AOAM531xHhu50t7gvFC2Ig/evLhRRA/dC0Gk3oRjrZXm0OqpZ0BdnoN/
+        itbWm9YVMpICSIGtfk4Ve2y3zJgjq3VmGFRl544=
+X-Google-Smtp-Source: ABdhPJzeq7D6dxXy4SwjmQ01E/5DNg+7EKLpcvNVDY+xrby+RLKHfxhDwHW0oorrNhOk3tw/IcPuKwMFoV6vzOvsHQ4=
+X-Received: by 2002:a7b:c251:: with SMTP id b17mr17742709wmj.83.1626800171062;
+ Tue, 20 Jul 2021 09:56:11 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20210720155944.1447086-1-krisman@collabora.com> <20210720155944.1447086-10-krisman@collabora.com>
+In-Reply-To: <20210720155944.1447086-10-krisman@collabora.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Tue, 20 Jul 2021 19:56:00 +0300
+Message-ID: <CAOQ4uxgC4qqMVDcoHHC=Zi-29a8pOOrqyNF6ZFYWgK-EBs8SVA@mail.gmail.com>
+Subject: Re: [PATCH v4 09/16] fsnotify: Add wrapper around fsnotify_add_event
+To:     Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     Jan Kara <jack@suse.com>, "Darrick J. Wong" <djwong@kernel.org>,
+        Theodore Tso <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        David Howells <dhowells@redhat.com>,
+        Khazhismel Kumykov <khazhy@google.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Ext4 <linux-ext4@vger.kernel.org>, kernel@collabora.com
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-FAN_FS_ERROR requires some initialization to happen from inside the
-insert hook.  This allows a user of fanotify_add_event to pass an
-argument to be sent to the insert callback.
+On Tue, Jul 20, 2021 at 7:00 PM Gabriel Krisman Bertazi
+<krisman@collabora.com> wrote:
+>
+> fsnotify_add_event is growing in number of parameters, which is most
+> case are just passed a NULL pointer.  So, split out a new
+> fsnotify_insert_event function to clean things up for users who don't
+> need an insert hook.
+>
+> Suggested-by: Amir Goldstein <amir73il@gmail.com>
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> ---
 
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
----
- fs/notify/fanotify/fanotify.c    | 5 +++--
- fs/notify/notification.c         | 6 ++++--
- include/linux/fsnotify_backend.h | 6 ++++--
- 3 files changed, 11 insertions(+), 6 deletions(-)
 
-diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-index 93f96589ad1e..912d120b9e48 100644
---- a/fs/notify/fanotify/fanotify.c
-+++ b/fs/notify/fanotify/fanotify.c
-@@ -695,7 +695,8 @@ static __kernel_fsid_t fanotify_get_fsid(struct fsnotify_iter_info *iter_info)
-  * Add an event to hash table for faster merge.
-  */
- static void fanotify_insert_event(struct fsnotify_group *group,
--				  struct fsnotify_event *fsn_event)
-+				  struct fsnotify_event *fsn_event,
-+				  const void *data)
- {
- 	struct fanotify_event *event = FANOTIFY_E(fsn_event);
- 	unsigned int bucket = fanotify_event_hash_bucket(group, event);
-@@ -779,7 +780,7 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
- 
- 	fsn_event = &event->fse;
- 	ret = fsnotify_insert_event(group, fsn_event, fanotify_merge,
--				    fanotify_insert_event);
-+				    fanotify_insert_event, NULL);
- 	if (ret) {
- 		/* Permission events shouldn't be merged */
- 		BUG_ON(ret == 1 && mask & FANOTIFY_PERM_EVENTS);
-diff --git a/fs/notify/notification.c b/fs/notify/notification.c
-index 44bb10f50715..206a17346ca6 100644
---- a/fs/notify/notification.c
-+++ b/fs/notify/notification.c
-@@ -83,7 +83,9 @@ int fsnotify_insert_event(struct fsnotify_group *group,
- 			  int (*merge)(struct fsnotify_group *,
- 				       struct fsnotify_event *),
- 			  void (*insert)(struct fsnotify_group *,
--					 struct fsnotify_event *))
-+					 struct fsnotify_event *,
-+					 const void *),
-+			  const void *insert_data)
- {
- 	int ret = 0;
- 	struct list_head *list = &group->notification_list;
-@@ -121,7 +123,7 @@ int fsnotify_insert_event(struct fsnotify_group *group,
- 	group->q_len++;
- 	list_add_tail(&event->list, list);
- 	if (insert)
--		insert(group, event);
-+		insert(group, event, insert_data);
- 	spin_unlock(&group->notification_lock);
- 
- 	wake_up(&group->notification_waitq);
-diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-index 435982f88687..ff2cf04c7496 100644
---- a/include/linux/fsnotify_backend.h
-+++ b/include/linux/fsnotify_backend.h
-@@ -527,14 +527,16 @@ extern int fsnotify_insert_event(struct fsnotify_group *group,
- 				 int (*merge)(struct fsnotify_group *,
- 					      struct fsnotify_event *),
- 				 void (*insert)(struct fsnotify_group *,
--						struct fsnotify_event *));
-+						struct fsnotify_event *,
-+						const void *),
-+				 const void *insert_data);
- 
- static inline int fsnotify_add_event(struct fsnotify_group *group,
- 				     struct fsnotify_event *event,
- 				     int (*merge)(struct fsnotify_group *,
- 						  struct fsnotify_event *))
- {
--	return fsnotify_insert_event(group, event, merge, NULL);
-+	return fsnotify_insert_event(group, event, merge, NULL, NULL);
- }
- 
- /* Queue overflow event to a notification group */
--- 
-2.32.0
-
+>  fs/notify/fanotify/fanotify.c        |  4 ++--
+>  fs/notify/inotify/inotify_fsnotify.c |  2 +-
+>  fs/notify/notification.c             | 12 ++++++------
+>  include/linux/fsnotify_backend.h     | 23 ++++++++++++++++-------
+>  4 files changed, 25 insertions(+), 16 deletions(-)
+>
+> diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
+> index 6875d4d34c0c..93f96589ad1e 100644
+> --- a/fs/notify/fanotify/fanotify.c
+> +++ b/fs/notify/fanotify/fanotify.c
+> @@ -778,8 +778,8 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
+>         }
+>
+>         fsn_event = &event->fse;
+> -       ret = fsnotify_add_event(group, fsn_event, fanotify_merge,
+> -                                fanotify_insert_event);
+> +       ret = fsnotify_insert_event(group, fsn_event, fanotify_merge,
+> +                                   fanotify_insert_event);
+>         if (ret) {
+>                 /* Permission events shouldn't be merged */
+>                 BUG_ON(ret == 1 && mask & FANOTIFY_PERM_EVENTS);
+> diff --git a/fs/notify/inotify/inotify_fsnotify.c b/fs/notify/inotify/inotify_fsnotify.c
+> index d1a64daa0171..a96582cbfad1 100644
+> --- a/fs/notify/inotify/inotify_fsnotify.c
+> +++ b/fs/notify/inotify/inotify_fsnotify.c
+> @@ -116,7 +116,7 @@ int inotify_handle_inode_event(struct fsnotify_mark *inode_mark, u32 mask,
+>         if (len)
+>                 strcpy(event->name, name->name);
+>
+> -       ret = fsnotify_add_event(group, fsn_event, inotify_merge, NULL);
+> +       ret = fsnotify_add_event(group, fsn_event, inotify_merge);
+>         if (ret) {
+>                 /* Our event wasn't used in the end. Free it. */
+>                 fsnotify_destroy_event(group, fsn_event);
+> diff --git a/fs/notify/notification.c b/fs/notify/notification.c
+> index 32f45543b9c6..44bb10f50715 100644
+> --- a/fs/notify/notification.c
+> +++ b/fs/notify/notification.c
+> @@ -78,12 +78,12 @@ void fsnotify_destroy_event(struct fsnotify_group *group,
+>   * 2 if the event was not queued - either the queue of events has overflown
+>   *   or the group is shutting down.
+>   */
+> -int fsnotify_add_event(struct fsnotify_group *group,
+> -                      struct fsnotify_event *event,
+> -                      int (*merge)(struct fsnotify_group *,
+> -                                   struct fsnotify_event *),
+> -                      void (*insert)(struct fsnotify_group *,
+> -                                     struct fsnotify_event *))
+> +int fsnotify_insert_event(struct fsnotify_group *group,
+> +                         struct fsnotify_event *event,
+> +                         int (*merge)(struct fsnotify_group *,
+> +                                      struct fsnotify_event *),
+> +                         void (*insert)(struct fsnotify_group *,
+> +                                        struct fsnotify_event *))
+>  {
+>         int ret = 0;
+>         struct list_head *list = &group->notification_list;
+> diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+> index 3c6fb43276ba..435982f88687 100644
+> --- a/include/linux/fsnotify_backend.h
+> +++ b/include/linux/fsnotify_backend.h
+> @@ -522,16 +522,25 @@ extern int fsnotify_fasync(int fd, struct file *file, int on);
+>  extern void fsnotify_destroy_event(struct fsnotify_group *group,
+>                                    struct fsnotify_event *event);
+>  /* attach the event to the group notification queue */
+> -extern int fsnotify_add_event(struct fsnotify_group *group,
+> -                             struct fsnotify_event *event,
+> -                             int (*merge)(struct fsnotify_group *,
+> -                                          struct fsnotify_event *),
+> -                             void (*insert)(struct fsnotify_group *,
+> -                                            struct fsnotify_event *));
+> +extern int fsnotify_insert_event(struct fsnotify_group *group,
+> +                                struct fsnotify_event *event,
+> +                                int (*merge)(struct fsnotify_group *,
+> +                                             struct fsnotify_event *),
+> +                                void (*insert)(struct fsnotify_group *,
+> +                                               struct fsnotify_event *));
+> +
+> +static inline int fsnotify_add_event(struct fsnotify_group *group,
+> +                                    struct fsnotify_event *event,
+> +                                    int (*merge)(struct fsnotify_group *,
+> +                                                 struct fsnotify_event *))
+> +{
+> +       return fsnotify_insert_event(group, event, merge, NULL);
+> +}
+> +
+>  /* Queue overflow event to a notification group */
+>  static inline void fsnotify_queue_overflow(struct fsnotify_group *group)
+>  {
+> -       fsnotify_add_event(group, group->overflow_event, NULL, NULL);
+> +       fsnotify_add_event(group, group->overflow_event, NULL);
+>  }
+>
+>  static inline bool fsnotify_is_overflow_event(u32 mask)
+> --
+> 2.32.0
+>
