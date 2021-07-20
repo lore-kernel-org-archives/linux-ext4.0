@@ -7,34 +7,34 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31C2AC64981
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A40EC63798
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1CDF061001
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 906AD61164
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229474AbhGTPb1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:31:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34502 "EHLO
+        id S236263AbhGTPai (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 11:30:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34142 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240531AbhGTPUo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:44 -0400
+        with ESMTP id S240518AbhGTPUm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:42 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46DC1C061768;
-        Tue, 20 Jul 2021 09:00:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8471BC061793;
+        Tue, 20 Jul 2021 09:00:33 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id D74211F43149
+        with ESMTPSA id 281ED1F43141
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     jack@suse.com, amir73il@gmail.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         dhowells@redhat.com, khazhy@google.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com
-Subject: [PATCH v4 14/16] ext4: Send notifications on error
-Date:   Tue, 20 Jul 2021 11:59:42 -0400
-Message-Id: <20210720155944.1447086-15-krisman@collabora.com>
+        kernel@collabora.com, Jan Kara <jack@suse.cz>
+Subject: [PATCH v4 10/16] fsnotify: Support passing argument to insert callback on add_event
+Date:   Tue, 20 Jul 2021 11:59:38 -0400
+Message-Id: <20210720155944.1447086-11-krisman@collabora.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
 References: <20210720155944.1447086-1-krisman@collabora.com>
@@ -44,71 +44,89 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Send a FS_ERROR message via fsnotify to a userspace monitoring tool
-whenever a ext4 error condition is triggered.  This follows the existing
-error conditions in ext4, so it is hooked to the ext4_error* functions.
+FAN_FS_ERROR requires some initialization to happen from inside the
+insert hook.  This allows a user of fanotify_add_event to pass an
+argument to be sent to the insert callback.
 
-It also follows the current dmesg reporting in the format.  The
-filesystem message is composed mostly by the string that would be
-otherwise printed in dmesg.
-
-A new ext4 specific record format is exposed in the uapi, such that a
-monitoring tool knows what to expect when listening errors of an ext4
-filesystem.
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 ---
- fs/ext4/super.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/notify/fanotify/fanotify.c    | 5 +++--
+ fs/notify/notification.c         | 6 ++++--
+ include/linux/fsnotify_backend.h | 6 ++++--
+ 3 files changed, 11 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dfa09a277b56..b9ecd43678d7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -46,6 +46,7 @@
- #include <linux/part_stat.h>
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-+#include <linux/fsnotify.h>
+diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
+index 93f96589ad1e..912d120b9e48 100644
+--- a/fs/notify/fanotify/fanotify.c
++++ b/fs/notify/fanotify/fanotify.c
+@@ -695,7 +695,8 @@ static __kernel_fsid_t fanotify_get_fsid(struct fsnotify_iter_info *iter_info)
+  * Add an event to hash table for faster merge.
+  */
+ static void fanotify_insert_event(struct fsnotify_group *group,
+-				  struct fsnotify_event *fsn_event)
++				  struct fsnotify_event *fsn_event,
++				  const void *data)
+ {
+ 	struct fanotify_event *event = FANOTIFY_E(fsn_event);
+ 	unsigned int bucket = fanotify_event_hash_bucket(group, event);
+@@ -779,7 +780,7 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
  
- #include "ext4.h"
- #include "ext4_extents.h"	/* Needed for trace points definition */
-@@ -762,6 +763,8 @@ void __ext4_error(struct super_block *sb, const char *function,
- 		       sb->s_id, function, line, current->comm, &vaf);
- 		va_end(args);
- 	}
-+	fsnotify_sb_error(sb, NULL, error);
-+
- 	ext4_handle_error(sb, force_ro, error, 0, block, function, line);
+ 	fsn_event = &event->fse;
+ 	ret = fsnotify_insert_event(group, fsn_event, fanotify_merge,
+-				    fanotify_insert_event);
++				    fanotify_insert_event, NULL);
+ 	if (ret) {
+ 		/* Permission events shouldn't be merged */
+ 		BUG_ON(ret == 1 && mask & FANOTIFY_PERM_EVENTS);
+diff --git a/fs/notify/notification.c b/fs/notify/notification.c
+index 44bb10f50715..206a17346ca6 100644
+--- a/fs/notify/notification.c
++++ b/fs/notify/notification.c
+@@ -83,7 +83,9 @@ int fsnotify_insert_event(struct fsnotify_group *group,
+ 			  int (*merge)(struct fsnotify_group *,
+ 				       struct fsnotify_event *),
+ 			  void (*insert)(struct fsnotify_group *,
+-					 struct fsnotify_event *))
++					 struct fsnotify_event *,
++					 const void *),
++			  const void *insert_data)
+ {
+ 	int ret = 0;
+ 	struct list_head *list = &group->notification_list;
+@@ -121,7 +123,7 @@ int fsnotify_insert_event(struct fsnotify_group *group,
+ 	group->q_len++;
+ 	list_add_tail(&event->list, list);
+ 	if (insert)
+-		insert(group, event);
++		insert(group, event, insert_data);
+ 	spin_unlock(&group->notification_lock);
+ 
+ 	wake_up(&group->notification_waitq);
+diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+index 435982f88687..ff2cf04c7496 100644
+--- a/include/linux/fsnotify_backend.h
++++ b/include/linux/fsnotify_backend.h
+@@ -527,14 +527,16 @@ extern int fsnotify_insert_event(struct fsnotify_group *group,
+ 				 int (*merge)(struct fsnotify_group *,
+ 					      struct fsnotify_event *),
+ 				 void (*insert)(struct fsnotify_group *,
+-						struct fsnotify_event *));
++						struct fsnotify_event *,
++						const void *),
++				 const void *insert_data);
+ 
+ static inline int fsnotify_add_event(struct fsnotify_group *group,
+ 				     struct fsnotify_event *event,
+ 				     int (*merge)(struct fsnotify_group *,
+ 						  struct fsnotify_event *))
+ {
+-	return fsnotify_insert_event(group, event, merge, NULL);
++	return fsnotify_insert_event(group, event, merge, NULL, NULL);
  }
  
-@@ -792,6 +795,8 @@ void __ext4_error_inode(struct inode *inode, const char *function,
- 			       current->comm, &vaf);
- 		va_end(args);
- 	}
-+	fsnotify_sb_error(inode->i_sb, inode, error);
-+
- 	ext4_handle_error(inode->i_sb, false, error, inode->i_ino, block,
- 			  function, line);
- }
-@@ -830,6 +835,8 @@ void __ext4_error_file(struct file *file, const char *function,
- 			       current->comm, path, &vaf);
- 		va_end(args);
- 	}
-+	fsnotify_sb_error(inode->i_sb, inode, EFSCORRUPTED);
-+
- 	ext4_handle_error(inode->i_sb, false, EFSCORRUPTED, inode->i_ino, block,
- 			  function, line);
- }
-@@ -897,6 +904,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
- 		printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
- 		       sb->s_id, function, line, errstr);
- 	}
-+	fsnotify_sb_error(sb, sb->s_root->d_inode, errno);
- 
- 	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
- }
+ /* Queue overflow event to a notification group */
 -- 
 2.32.0
 
