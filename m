@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF7ECC6379D
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 31C2AC64981
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C4B6761001
-	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CDF061001
+	for <linux-ext4@archiver.kernel.org>; Tue, 20 Jul 2021 16:12:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237176AbhGTPbM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 20 Jul 2021 11:31:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34192 "EHLO
+        id S229474AbhGTPb1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 20 Jul 2021 11:31:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34502 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240500AbhGTPUm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:42 -0400
+        with ESMTP id S240531AbhGTPUo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jul 2021 11:20:44 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E5F5C0613EF;
-        Tue, 20 Jul 2021 09:00:13 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 46DC1C061768;
+        Tue, 20 Jul 2021 09:00:49 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 345011F4312B
+        with ESMTPSA id D74211F43149
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     jack@suse.com, amir73il@gmail.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -32,9 +32,9 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com
-Subject: [PATCH v4 05/16] fanotify: Split superblock marks out to a new cache
-Date:   Tue, 20 Jul 2021 11:59:33 -0400
-Message-Id: <20210720155944.1447086-6-krisman@collabora.com>
+Subject: [PATCH v4 14/16] ext4: Send notifications on error
+Date:   Tue, 20 Jul 2021 11:59:42 -0400
+Message-Id: <20210720155944.1447086-15-krisman@collabora.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210720155944.1447086-1-krisman@collabora.com>
 References: <20210720155944.1447086-1-krisman@collabora.com>
@@ -44,164 +44,71 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-FAN_FS_ERROR will require an error structure to be stored per mark.
-But, since FAN_FS_ERROR doesn't apply to inode/mount marks, it should
-suffice to only expose this information for superblock marks. Therefore,
-wrap this kind of marks into a container and plumb it for the future.
+Send a FS_ERROR message via fsnotify to a userspace monitoring tool
+whenever a ext4 error condition is triggered.  This follows the existing
+error conditions in ext4, so it is hooked to the ext4_error* functions.
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+It also follows the current dmesg reporting in the format.  The
+filesystem message is composed mostly by the string that would be
+otherwise printed in dmesg.
+
+A new ext4 specific record format is exposed in the uapi, such that a
+monitoring tool knows what to expect when listening errors of an ext4
+filesystem.
+
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 ---
-Changes since v2:
-  - Move mark initialization to fanotify_alloc_mark (Amir)
+ fs/ext4/super.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-Changes since v1:
-  - Only extend superblock marks (Amir)
----
- fs/notify/fanotify/fanotify.c      | 10 ++++++--
- fs/notify/fanotify/fanotify.h      | 23 ++++++++++++++++++
- fs/notify/fanotify/fanotify_user.c | 38 ++++++++++++++++++++++++++++--
- 3 files changed, 67 insertions(+), 4 deletions(-)
-
-diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-index 310246f8d3f1..c3eefe3f6494 100644
---- a/fs/notify/fanotify/fanotify.c
-+++ b/fs/notify/fanotify/fanotify.c
-@@ -869,9 +869,15 @@ static void fanotify_freeing_mark(struct fsnotify_mark *mark,
- 		dec_ucount(group->fanotify_data.ucounts, UCOUNT_FANOTIFY_MARKS);
- }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index dfa09a277b56..b9ecd43678d7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -46,6 +46,7 @@
+ #include <linux/part_stat.h>
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
++#include <linux/fsnotify.h>
  
--static void fanotify_free_mark(struct fsnotify_mark *fsn_mark)
-+static void fanotify_free_mark(struct fsnotify_mark *mark)
- {
--	kmem_cache_free(fanotify_mark_cache, fsn_mark);
-+	if (mark->flags & FANOTIFY_MARK_FLAG_SB_MARK) {
-+		struct fanotify_sb_mark *fa_mark = FANOTIFY_SB_MARK(mark);
-+
-+		kmem_cache_free(fanotify_sb_mark_cache, fa_mark);
-+	} else {
-+		kmem_cache_free(fanotify_mark_cache, mark);
-+	}
- }
- 
- const struct fsnotify_ops fanotify_fsnotify_ops = {
-diff --git a/fs/notify/fanotify/fanotify.h b/fs/notify/fanotify/fanotify.h
-index 4a5e555dc3d2..c548b96472dd 100644
---- a/fs/notify/fanotify/fanotify.h
-+++ b/fs/notify/fanotify/fanotify.h
-@@ -6,6 +6,7 @@
- #include <linux/hashtable.h>
- 
- extern struct kmem_cache *fanotify_mark_cache;
-+extern struct kmem_cache *fanotify_sb_mark_cache;
- extern struct kmem_cache *fanotify_fid_event_cachep;
- extern struct kmem_cache *fanotify_path_event_cachep;
- extern struct kmem_cache *fanotify_perm_event_cachep;
-@@ -129,6 +130,28 @@ static inline void fanotify_info_copy_name(struct fanotify_info *info,
- 	       name->name);
- }
- 
-+#define FANOTIFY_MARK_FLAG(flag) \
-+static const unsigned int FANOTIFY_MARK_FLAG_##flag = \
-+	(1 << FANOTIFY_MARK_FLAG_BIT_##flag)
-+
-+enum fanotify_mark_bits {
-+	FANOTIFY_MARK_FLAG_BIT_SB_MARK = FSN_MARK_PRIVATE_FLAGS,
-+};
-+
-+FANOTIFY_MARK_FLAG(SB_MARK);
-+
-+struct fanotify_sb_mark {
-+	struct fsnotify_mark fsn_mark;
-+};
-+
-+static inline
-+struct fanotify_sb_mark *FANOTIFY_SB_MARK(struct fsnotify_mark *mark)
-+{
-+	WARN_ON(!(mark->flags & FANOTIFY_MARK_FLAG_SB_MARK));
-+
-+	return container_of(mark, struct fanotify_sb_mark, fsn_mark);
-+}
-+
- /*
-  * Common structure for fanotify events. Concrete structs are allocated in
-  * fanotify_handle_event() and freed when the information is retrieved by
-diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fanotify_user.c
-index 67b18dfe0025..0696f2121781 100644
---- a/fs/notify/fanotify/fanotify_user.c
-+++ b/fs/notify/fanotify/fanotify_user.c
-@@ -99,6 +99,7 @@ struct ctl_table fanotify_table[] = {
- extern const struct fsnotify_ops fanotify_fsnotify_ops;
- 
- struct kmem_cache *fanotify_mark_cache __read_mostly;
-+struct kmem_cache *fanotify_sb_mark_cache __read_mostly;
- struct kmem_cache *fanotify_fid_event_cachep __read_mostly;
- struct kmem_cache *fanotify_path_event_cachep __read_mostly;
- struct kmem_cache *fanotify_perm_event_cachep __read_mostly;
-@@ -915,6 +916,38 @@ static __u32 fanotify_mark_add_to_mask(struct fsnotify_mark *fsn_mark,
- 	return mask & ~oldmask;
- }
- 
-+static struct fsnotify_mark *fanotify_alloc_mark(struct fsnotify_group *group,
-+						 unsigned int type)
-+{
-+	struct fanotify_sb_mark *sb_mark;
-+	struct fsnotify_mark *mark;
-+
-+	switch (type) {
-+	case FSNOTIFY_OBJ_TYPE_SB:
-+		sb_mark = kmem_cache_zalloc(fanotify_sb_mark_cache, GFP_KERNEL);
-+		if (!sb_mark)
-+			return NULL;
-+		mark = &sb_mark->fsn_mark;
-+		break;
-+
-+	case FSNOTIFY_OBJ_TYPE_INODE:
-+	case FSNOTIFY_OBJ_TYPE_PARENT:
-+	case FSNOTIFY_OBJ_TYPE_VFSMOUNT:
-+		mark = kmem_cache_alloc(fanotify_mark_cache, GFP_KERNEL);
-+		break;
-+	default:
-+		WARN_ON(1);
-+		return NULL;
-+	}
-+
-+	fsnotify_init_mark(mark, group);
-+
-+	if (type == FSNOTIFY_OBJ_TYPE_SB)
-+		mark->flags |= FANOTIFY_MARK_FLAG_SB_MARK;
-+
-+	return mark;
-+}
-+
- static struct fsnotify_mark *fanotify_add_new_mark(struct fsnotify_group *group,
- 						   fsnotify_connp_t *connp,
- 						   unsigned int type,
-@@ -933,13 +966,12 @@ static struct fsnotify_mark *fanotify_add_new_mark(struct fsnotify_group *group,
- 	    !inc_ucount(ucounts->ns, ucounts->uid, UCOUNT_FANOTIFY_MARKS))
- 		return ERR_PTR(-ENOSPC);
- 
--	mark = kmem_cache_alloc(fanotify_mark_cache, GFP_KERNEL);
-+	mark = fanotify_alloc_mark(group, type);
- 	if (!mark) {
- 		ret = -ENOMEM;
- 		goto out_dec_ucounts;
+ #include "ext4.h"
+ #include "ext4_extents.h"	/* Needed for trace points definition */
+@@ -762,6 +763,8 @@ void __ext4_error(struct super_block *sb, const char *function,
+ 		       sb->s_id, function, line, current->comm, &vaf);
+ 		va_end(args);
  	}
++	fsnotify_sb_error(sb, NULL, error);
++
+ 	ext4_handle_error(sb, force_ro, error, 0, block, function, line);
+ }
  
--	fsnotify_init_mark(mark, group);
- 	ret = fsnotify_add_mark_locked(mark, connp, type, 0, fsid);
- 	if (ret) {
- 		fsnotify_put_mark(mark);
-@@ -1497,6 +1529,8 @@ static int __init fanotify_user_setup(void)
+@@ -792,6 +795,8 @@ void __ext4_error_inode(struct inode *inode, const char *function,
+ 			       current->comm, &vaf);
+ 		va_end(args);
+ 	}
++	fsnotify_sb_error(inode->i_sb, inode, error);
++
+ 	ext4_handle_error(inode->i_sb, false, error, inode->i_ino, block,
+ 			  function, line);
+ }
+@@ -830,6 +835,8 @@ void __ext4_error_file(struct file *file, const char *function,
+ 			       current->comm, path, &vaf);
+ 		va_end(args);
+ 	}
++	fsnotify_sb_error(inode->i_sb, inode, EFSCORRUPTED);
++
+ 	ext4_handle_error(inode->i_sb, false, EFSCORRUPTED, inode->i_ino, block,
+ 			  function, line);
+ }
+@@ -897,6 +904,7 @@ void __ext4_std_error(struct super_block *sb, const char *function,
+ 		printk(KERN_CRIT "EXT4-fs error (device %s) in %s:%d: %s\n",
+ 		       sb->s_id, function, line, errstr);
+ 	}
++	fsnotify_sb_error(sb, sb->s_root->d_inode, errno);
  
- 	fanotify_mark_cache = KMEM_CACHE(fsnotify_mark,
- 					 SLAB_PANIC|SLAB_ACCOUNT);
-+	fanotify_sb_mark_cache = KMEM_CACHE(fanotify_sb_mark,
-+					    SLAB_PANIC|SLAB_ACCOUNT);
- 	fanotify_fid_event_cachep = KMEM_CACHE(fanotify_fid_event,
- 					       SLAB_PANIC);
- 	fanotify_path_event_cachep = KMEM_CACHE(fanotify_path_event,
+ 	ext4_handle_error(sb, false, -errno, 0, 0, function, line);
+ }
 -- 
 2.32.0
 
