@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB4B9C4338F
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jul 2021 01:56:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B218C432BE
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jul 2021 01:56:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8D7C860F9E
-	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jul 2021 01:56:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5E48160FC4
+	for <linux-ext4@archiver.kernel.org>; Wed, 28 Jul 2021 01:56:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234161AbhG1B4g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 27 Jul 2021 21:56:36 -0400
-Received: from szxga08-in.huawei.com ([45.249.212.255]:12273 "EHLO
+        id S234187AbhG1B4i (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 27 Jul 2021 21:56:38 -0400
+Received: from szxga08-in.huawei.com ([45.249.212.255]:12272 "EHLO
         szxga08-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233865AbhG1B4f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jul 2021 21:56:35 -0400
+        with ESMTP id S233223AbhG1B4e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jul 2021 21:56:34 -0400
 Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4GZGp562Nrz1CPbH;
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4GZGp56DS0z1CPbN;
         Wed, 28 Jul 2021 09:50:37 +0800 (CST)
 Received: from dggpemm500014.china.huawei.com (7.185.36.153) by
  dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2176.2; Wed, 28 Jul 2021 09:56:24 +0800
+ 15.1.2176.2; Wed, 28 Jul 2021 09:56:25 +0800
 Received: from huawei.com (10.175.104.170) by dggpemm500014.china.huawei.com
  (7.185.36.153) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2176.2; Wed, 28 Jul
- 2021 09:56:23 +0800
+ 2021 09:56:24 +0800
 From:   wuguanghao <wuguanghao3@huawei.com>
 To:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>
 CC:     <linfeilong@huawei.com>, <liuzhiqiang26@huawei.com>,
         <wuguanghao3@huawei.com>
-Subject: [PATCH v3 04/12] ss_add_info_dir: don't zap the info->info_dirs and check whether
-Date:   Wed, 28 Jul 2021 09:56:45 +0800
-Message-ID: <20210728015648.284588-2-wuguanghao3@huawei.com>
+Subject: [PATCH v3 11/12] misc/lsattr: check whether path is NULL in lsattr_dir_proc()
+Date:   Wed, 28 Jul 2021 09:56:48 +0800
+Message-ID: <20210728015648.284588-5-wuguanghao3@huawei.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <20210728015648.284588-1-wuguanghao3@huawei.com>
 References: <20210728015648.284588-1-wuguanghao3@huawei.com>
@@ -51,41 +51,33 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Wu Guanghao <wuguanghao3@huawei.com>
+From: Zhiqiang Liu <liuzhiqiang26@huawei.com>
 
-In ss_add_info_dir(), don't zap the info->info_dirs. At the same time, it is necessary
-to check whether dirs[n_dirs] is a null pointer, otherwise a segmentation
-fault will occur.
+In lsattr_dir_proc(), if malloc() return NULL, it will cause
+a segmentation fault problem.
 
-Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
 Signed-off-by: Zhiqiang Liu <liuzhiqiang26@huawei.com>
-Reviewed-by: Wu Bo <wubo40@huawei.com>
+Signed-off-by: Wu Guanghao <wuguanghao3@huawei.com>
 ---
- lib/ss/help.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ misc/lsattr.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/lib/ss/help.c b/lib/ss/help.c
-index 5204401b..b4465bfe 100644
---- a/lib/ss/help.c
-+++ b/lib/ss/help.c
-@@ -148,13 +148,16 @@ void ss_add_info_dir(int sci_idx, char *info_dir, int *code_ptr)
-     dirs = (char **)realloc((char *)dirs,
- 			    (unsigned)(n_dirs + 2)*sizeof(char *));
-     if (dirs == (char **)NULL) {
--	info->info_dirs = (char **)NULL;
- 	*code_ptr = errno;
- 	return;
-     }
-     info->info_dirs = dirs;
-     dirs[n_dirs + 1] = (char *)NULL;
-     dirs[n_dirs] = malloc((unsigned)strlen(info_dir)+1);
-+    if (dirs[n_dirs] == (char *)NULL) {
-+        *code_ptr = errno;
-+        return;
-+    }
-     strcpy(dirs[n_dirs], info_dir);
-     *code_ptr = 0;
- }
+diff --git a/misc/lsattr.c b/misc/lsattr.c
+index 0d954376..7958f0ad 100644
+--- a/misc/lsattr.c
++++ b/misc/lsattr.c
+@@ -144,6 +144,11 @@ static int lsattr_dir_proc (const char * dir_name, struct dirent * de,
+ 	int dir_len = strlen(dir_name);
+ 
+ 	path = malloc(dir_len + strlen (de->d_name) + 2);
++	if (!path) {
++		fputs(_("Couldn't allocate path variable in lsattr_dir_proc"),
++			stderr);
++		return -1;
++	}
+ 
+ 	if (dir_len && dir_name[dir_len-1] == '/')
+ 		sprintf (path, "%s%s", dir_name, de->d_name);
 -- 
 2.27.0
 
