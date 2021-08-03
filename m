@@ -6,39 +6,39 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 192BCC432BE
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Aug 2021 17:01:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7893C4338F
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Aug 2021 17:37:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0577F61029
-	for <linux-ext4@archiver.kernel.org>; Tue,  3 Aug 2021 17:01:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8566560EB2
+	for <linux-ext4@archiver.kernel.org>; Tue,  3 Aug 2021 17:37:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237291AbhHCRBl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 3 Aug 2021 13:01:41 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39513 "EHLO
+        id S238313AbhHCRhP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 3 Aug 2021 13:37:15 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:46461 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S237507AbhHCQ5w (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2021 12:57:52 -0400
+        with ESMTP id S238234AbhHCRhP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Aug 2021 13:37:15 -0400
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 173GvaBt005122
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 173HaxCj020724
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 3 Aug 2021 12:57:37 -0400
+        Tue, 3 Aug 2021 13:37:00 -0400
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id D4A0015C37C1; Tue,  3 Aug 2021 12:57:36 -0400 (EDT)
-Date:   Tue, 3 Aug 2021 12:57:36 -0400
+        id 5E84E15C37C1; Tue,  3 Aug 2021 13:36:59 -0400 (EDT)
+Date:   Tue, 3 Aug 2021 13:36:59 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Jan Kara <jack@suse.cz>
 Cc:     linux-ext4@vger.kernel.org
 Subject: Re: [PATCH 4/9] libext2fs: Support for orphan file feature
-Message-ID: <YQl1gGwVSB5+IMCW@mit.edu>
-References: <20210712154315.9606-1-jack@suse.cz>
- <20210712154315.9606-5-jack@suse.cz>
+Message-ID: <YQl+u2HwLV3f6cUE@mit.edu>
+References: <20210616105735.5424-1-jack@suse.cz>
+ <20210616105735.5424-5-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <20210712154315.9606-5-jack@suse.cz>
+In-Reply-To: <20210616105735.5424-5-jack@suse.cz>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
@@ -56,7 +56,7 @@ On Mon, Jul 12, 2021 at 05:43:10PM +0200, Jan Kara wrote:
 what I've noticed so far.)
 
 Since Andreas has requested that we not get rid of the
-RO_COMPAT_SNAPSHOT, I'm using 0x0400 for
+RO_COMPAT_SNAPSHOT, I'm using 0x10000 for
 EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT in my testing.
 
 I also noted a number of new GCC warnings when running "make gcc-wall"
