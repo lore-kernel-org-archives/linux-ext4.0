@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-16.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43DB2C4320E
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDBC3C4338F
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 280BB60ED6
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C0F4360ED6
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244733AbhHFJ6t (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Aug 2021 05:58:49 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:20602 "EHLO
+        id S244768AbhHFJ6y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Aug 2021 05:58:54 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:28725 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229725AbhHFJ6s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2021 05:58:48 -0400
+        by vger.kernel.org with ESMTP id S229725AbhHFJ6t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2021 05:58:49 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1628243912;
+        s=mimecast20190719; t=1628243914;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=kwMtnQY6UKaiQTPRCO07B2I5ui8niDVeQX2+LY+2ao8=;
-        b=ZGzyBQjakiolykq7BLCUhS1J/74r7ckwXjLQRgtq6CtKqtALm3kIbZnhrZbI5gUnwOL3ZQ
-        AltzcNFf5YlhtAH897Kh4sefvlPmf7abXrzOXUqRkOUfiWyXY5MMVH2VEnjFsiNFYsFwf9
-        woyLiIqRekmi+7xNqoFVDcovPJmyO+M=
+        bh=n1mxHwvV4s0WmY6mJwpU5NBAe57HY2UnEei7jangg1k=;
+        b=aR+9s7WEqRcisHvl4gueHZs7RnxkUws9JHdy+Fhml5Vv+zaQf3rbiHrhY7bHDvfA24/tj4
+        5Je4dZfNtDYYY7puUPKyr+dFiSE0K1IJRK/EXhQgikjekENejigmPwT8WnpopBrJooYE11
+        HyjqNBNiVlJzr53TczFWxbHZ6SRklpY=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-291-VxOex-sTMVWXvNsqKqOOOg-1; Fri, 06 Aug 2021 05:58:30 -0400
-X-MC-Unique: VxOex-sTMVWXvNsqKqOOOg-1
+ us-mta-532-YuBw2uo1NzO0pK_QSiR2hA-1; Fri, 06 Aug 2021 05:58:32 -0400
+X-MC-Unique: YuBw2uo1NzO0pK_QSiR2hA-1
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id B8C0887D542;
-        Fri,  6 Aug 2021 09:58:29 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id CE2BA801AE7;
+        Fri,  6 Aug 2021 09:58:31 +0000 (UTC)
 Received: from localhost.localdomain (unknown [10.40.193.198])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0B50D1B5C0;
-        Fri,  6 Aug 2021 09:58:28 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2009281F7D;
+        Fri,  6 Aug 2021 09:58:30 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH 4/7] e2fsprogs: remove augmented rbtree functionality
-Date:   Fri,  6 Aug 2021 11:58:17 +0200
-Message-Id: <20210806095820.83731-4-lczerner@redhat.com>
+Subject: [PATCH 6/7] libss: Add missing error handling for fdopen()
+Date:   Fri,  6 Aug 2021 11:58:19 +0200
+Message-Id: <20210806095820.83731-6-lczerner@redhat.com>
 In-Reply-To: <20210806095820.83731-1-lczerner@redhat.com>
 References: <20210806095820.83731-1-lczerner@redhat.com>
 MIME-Version: 1.0
@@ -56,114 +56,38 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Rbtree code was originally taken from linux kernel. This includes the
-augmented rbtree functionality, however this was never intended to be
-used and is not used still. Just remove it.
-
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- lib/ext2fs/rbtree.c | 68 ---------------------------------------------
- lib/ext2fs/rbtree.h |  8 ------
- 2 files changed, 76 deletions(-)
+ lib/ss/list_rqs.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/lib/ext2fs/rbtree.c b/lib/ext2fs/rbtree.c
-index 5b92099d..74426fa6 100644
---- a/lib/ext2fs/rbtree.c
-+++ b/lib/ext2fs/rbtree.c
-@@ -280,74 +280,6 @@ void ext2fs_rb_erase(struct rb_node *node, struct rb_root *root)
- 		__rb_erase_color(child, parent, root);
- }
- 
--static void ext2fs_rb_augment_path(struct rb_node *node, rb_augment_f func, void *data)
--{
--	struct rb_node *parent;
--
--up:
--	func(node, data);
--	parent = ext2fs_rb_parent(node);
--	if (!parent)
--		return;
--
--	if (node == parent->rb_left && parent->rb_right)
--		func(parent->rb_right, data);
--	else if (parent->rb_left)
--		func(parent->rb_left, data);
--
--	node = parent;
--	goto up;
--}
--
--/*
-- * after inserting @node into the tree, update the tree to account for
-- * both the new entry and any damage done by rebalance
-- */
--void ext2fs_rb_augment_insert(struct rb_node *node, rb_augment_f func, void *data)
--{
--	if (node->rb_left)
--		node = node->rb_left;
--	else if (node->rb_right)
--		node = node->rb_right;
--
--	ext2fs_rb_augment_path(node, func, data);
--}
--
--/*
-- * before removing the node, find the deepest node on the rebalance path
-- * that will still be there after @node gets removed
-- */
--struct rb_node *ext2fs_rb_augment_erase_begin(struct rb_node *node)
--{
--	struct rb_node *deepest;
--
--	if (!node->rb_right && !node->rb_left)
--		deepest = ext2fs_rb_parent(node);
--	else if (!node->rb_right)
--		deepest = node->rb_left;
--	else if (!node->rb_left)
--		deepest = node->rb_right;
--	else {
--		deepest = ext2fs_rb_next(node);
--		if (deepest->rb_right)
--			deepest = deepest->rb_right;
--		else if (ext2fs_rb_parent(deepest) != node)
--			deepest = ext2fs_rb_parent(deepest);
--	}
--
--	return deepest;
--}
--
--/*
-- * after removal, update the tree to account for the removed entry
-- * and any rebalance damage.
-- */
--void ext2fs_rb_augment_erase_end(struct rb_node *node, rb_augment_f func, void *data)
--{
--	if (node)
--		ext2fs_rb_augment_path(node, func, data);
--}
--
- /*
-  * This function returns the first node (in sort order) of the tree.
+diff --git a/lib/ss/list_rqs.c b/lib/ss/list_rqs.c
+index 021a3835..89e37bb2 100644
+--- a/lib/ss/list_rqs.c
++++ b/lib/ss/list_rqs.c
+@@ -12,6 +12,9 @@
   */
-diff --git a/lib/ext2fs/rbtree.h b/lib/ext2fs/rbtree.h
-index dfeeb234..f718ad24 100644
---- a/lib/ext2fs/rbtree.h
-+++ b/lib/ext2fs/rbtree.h
-@@ -151,14 +151,6 @@ static inline void ext2fs_rb_clear_node(struct rb_node *node)
- extern void ext2fs_rb_insert_color(struct rb_node *, struct rb_root *);
- extern void ext2fs_rb_erase(struct rb_node *, struct rb_root *);
+ #include "config.h"
+ #include "ss_internal.h"
++#ifdef HAVE_UNISTD_H
++#include <unistd.h>
++#endif
+ #include <signal.h>
+ #include <setjmp.h>
+ #include <sys/wait.h>
+@@ -46,6 +49,12 @@ void ss_list_requests(int argc __SS_ATTR((unused)),
+         return;
+     }
+     output = fdopen(fd, "w");
++    if (!output) {
++        perror("fdopen");
++        close(fd);
++        (void) signal(SIGINT, func);
++        return;
++    }
+     sigprocmask(SIG_SETMASK, &omask, (sigset_t *) 0);
  
--typedef void (*rb_augment_f)(struct rb_node *node, void *data);
--
--extern void ext2fs_rb_augment_insert(struct rb_node *node,
--			      rb_augment_f func, void *data);
--extern struct rb_node *ext2fs_rb_augment_erase_begin(struct rb_node *node);
--extern void ext2fs_rb_augment_erase_end(struct rb_node *node,
--				 rb_augment_f func, void *data);
--
- /* Find logical next and previous nodes in a tree */
- extern struct rb_node *ext2fs_rb_next(struct rb_node *);
- extern struct rb_node *ext2fs_rb_prev(struct rb_node *);
+     fprintf (output, "Available %s requests:\n\n",
 -- 
 2.31.1
 
