@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-16.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11570C4320A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A32E4C432BE
 	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA577611B0
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8BD83611B0
+	for <linux-ext4@archiver.kernel.org>; Fri,  6 Aug 2021 09:58:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244777AbhHFJ6y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 Aug 2021 05:58:54 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:24618 "EHLO
+        id S244773AbhHFJ64 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 6 Aug 2021 05:58:56 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:41627 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S244770AbhHFJ6u (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2021 05:58:50 -0400
+        by vger.kernel.org with ESMTP id S244771AbhHFJ6v (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Aug 2021 05:58:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1628243915;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BAuFF+ysMIhpafjymRqiwbGdHJ9222ktt2kf0Z31Fvs=;
-        b=HQjLTxPK4ppj/++HAcoD3ZlvgYDyiAciwBU02y34GMCxbhWsqc5ZpMPpqueMbkBANOXBox
-        pBMcnUY5q91Cyjnk09MzILvCEN314DgKqFS4mfKgoA1Vt6TEXq1X6ZHY3tdSH3TPKrKrHB
-        3UABfweBkbqzThXEuFcQiOQzNfCtdsQ=
+        bh=2gyfKEgbT5BTjyNZs/aGzasGPnzV93pjDH6vDUCPUck=;
+        b=PQ+8H0tvT9QE75aFD2CtV4t7wD6+aLQnkeAwb38Tyn081B00TIHvTZB9spT8x+G3AmbT5W
+        hedz+pP899uTqs8MnNi5TWmK9Ijyt7BoOFl1YZn3ynt2lt8o5Av8cjSv8/b8ji8gHGa+BE
+        /wzSsQvJ/UYk9QxIAFtBngEkkibi3Iw=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-4-jevdoz8CMcatOQeFOlwhYg-1; Fri, 06 Aug 2021 05:58:31 -0400
-X-MC-Unique: jevdoz8CMcatOQeFOlwhYg-1
+ us-mta-385-RuLOoc0LMt-X-7SK0tjnKw-1; Fri, 06 Aug 2021 05:58:33 -0400
+X-MC-Unique: RuLOoc0LMt-X-7SK0tjnKw-1
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C3B031008061;
-        Fri,  6 Aug 2021 09:58:30 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D8B66802929;
+        Fri,  6 Aug 2021 09:58:32 +0000 (UTC)
 Received: from localhost.localdomain (unknown [10.40.193.198])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 15F667A8D7;
-        Fri,  6 Aug 2021 09:58:29 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2AE7E81F76;
+        Fri,  6 Aug 2021 09:58:32 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org
-Subject: [PATCH 5/7] libss: handle memory allcation failure in ss_help()
-Date:   Fri,  6 Aug 2021 11:58:18 +0200
-Message-Id: <20210806095820.83731-5-lczerner@redhat.com>
+Subject: [PATCH 7/7] mkquota: Fix potental NULL pointer dereference
+Date:   Fri,  6 Aug 2021 11:58:20 +0200
+Message-Id: <20210806095820.83731-7-lczerner@redhat.com>
 In-Reply-To: <20210806095820.83731-1-lczerner@redhat.com>
 References: <20210806095820.83731-1-lczerner@redhat.com>
 MIME-Version: 1.0
@@ -56,29 +56,89 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+get_dq() function can fail when the memory allocation fails and so we
+could end up dereferencing NULL pointer. Fix it.
+
+Also, we should really return -ENOMEM instead of -1, or even 0 from
+various functions in quotaio_tree.c when memory allocation fails.
+Fix it as well.
+
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- lib/ss/help.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ lib/support/mkquota.c      | 8 ++++++--
+ lib/support/quotaio_tree.c | 8 ++++----
+ 2 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/lib/ss/help.c b/lib/ss/help.c
-index 96eb1092..a22b4017 100644
---- a/lib/ss/help.c
-+++ b/lib/ss/help.c
-@@ -96,7 +96,12 @@ void ss_help(int argc, char const * const *argv, int sci_idx, pointer info_ptr)
-     }
-     if (fd < 0) {
- #define MSG "No info found for "
--        char *buf = malloc(strlen (MSG) + strlen (argv[1]) + 1);
-+	char *buf = malloc(strlen (MSG) + strlen (argv[1]) + 1);
-+	if (!buf) {
-+		ss_perror(sci_idx, 0,
-+			  "couldn't allocate memory to print error message");
-+		return;
-+	}
- 	strcpy(buf, MSG);
- 	strcat(buf, argv[1]);
- 	ss_perror(sci_idx, 0, buf);
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index dce077e6..420ba503 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -433,7 +433,8 @@ void quota_data_sub(quota_ctx_t qctx, struct ext2_inode_large *inode,
+ 		dict = qctx->quota_dict[qtype];
+ 		if (dict) {
+ 			dq = get_dq(dict, get_qid(inode, qtype));
+-			dq->dq_dqb.dqb_curspace -= space;
++			if (dq)
++				dq->dq_dqb.dqb_curspace -= space;
+ 		}
+ 	}
+ }
+@@ -460,7 +461,8 @@ void quota_data_inodes(quota_ctx_t qctx, struct ext2_inode_large *inode,
+ 		dict = qctx->quota_dict[qtype];
+ 		if (dict) {
+ 			dq = get_dq(dict, get_qid(inode, qtype));
+-			dq->dq_dqb.dqb_curinodes += adjust;
++			if (dq)
++				dq->dq_dqb.dqb_curinodes += adjust;
+ 		}
+ 	}
+ }
+@@ -533,6 +535,8 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+ 	struct dquot *dq;
+ 
+ 	dq = get_dq(quota_dict, dquot->dq_id);
++	if (!dq)
++		return -ENOMEM;
+ 	dq->dq_id = dquot->dq_id;
+ 	dq->dq_flags |= DQF_SEEN;
+ 
+diff --git a/lib/support/quotaio_tree.c b/lib/support/quotaio_tree.c
+index 6cc4fb5b..65e68792 100644
+--- a/lib/support/quotaio_tree.c
++++ b/lib/support/quotaio_tree.c
+@@ -569,7 +569,7 @@ static int report_block(struct dquot *dquot, unsigned int blk, char *bitmap,
+ 	int entries, i;
+ 
+ 	if (!buf)
+-		return -1;
++		return -ENOMEM;
+ 
+ 	set_bit(bitmap, blk);
+ 	read_blk(dquot->dq_h, blk, buf);
+@@ -601,7 +601,7 @@ static int report_tree(struct dquot *dquot, unsigned int blk, int depth,
+ 	__le32 *ref = (__le32 *) buf;
+ 
+ 	if (!buf)
+-		return 0;
++		return -ENOMEM;
+ 
+ 	read_blk(dquot->dq_h, blk, buf);
+ 	if (depth == QT_TREEDEPTH - 1) {
+@@ -667,12 +667,12 @@ int qtree_scan_dquots(struct quota_handle *h,
+ 	struct dquot *dquot = get_empty_dquot();
+ 
+ 	if (!dquot)
+-		return -1;
++		return -ENOMEM;
+ 
+ 	dquot->dq_h = h;
+ 	if (ext2fs_get_memzero((info->dqi_blocks + 7) >> 3, &bitmap)) {
+ 		ext2fs_free_mem(&dquot);
+-		return -1;
++		return -ENOMEM;
+ 	}
+ 	ret = report_tree(dquot, QT_TREEOFF, 0, bitmap, process_dquot, data);
+ 	if (ret < 0)
 -- 
 2.31.1
 
