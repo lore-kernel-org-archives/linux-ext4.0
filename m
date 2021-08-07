@@ -2,62 +2,81 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC721C4320A
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Aug 2021 06:30:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D7905C4338F
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Aug 2021 16:55:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BE44C61058
-	for <linux-ext4@archiver.kernel.org>; Sat,  7 Aug 2021 06:30:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA2D561078
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 Aug 2021 16:55:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231334AbhHGGbJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 7 Aug 2021 02:31:09 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33774 "EHLO mail.kernel.org"
+        id S229517AbhHGQ4L (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 Aug 2021 12:56:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58826 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229495AbhHGGbI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 7 Aug 2021 02:31:08 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 8596360EEA;
-        Sat,  7 Aug 2021 06:30:51 +0000 (UTC)
+        id S229437AbhHGQ4K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 7 Aug 2021 12:56:10 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id E104C61058;
+        Sat,  7 Aug 2021 16:55:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1628317851;
-        bh=gqBbm7RQvMmGiA3+sO0OFu5gS/QfanB2nByt2Gwpxgs=;
+        s=k20201202; t=1628355353;
+        bh=xneXCef3FRjBCnaNoY9tPBcNVJGns+i3iXDMrVO58mU=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=FZIE/jRKv7kWLZA2wXSQwDq9hr6eB0pk/cWpEoy68ubzTdGleeflaGLAnR7YPhFKH
-         fjQtBQpnH57rlyH4JfTw92i9rJFlpocxI9GSQCXA9Vn8cbuTlVI3ySZxs+CEa5SsHZ
-         p6/415HlU/z8Kcz7SzW20AX8rNnWIWbPYW9qFMtS1czQu/dIKlFJ4KnhW/XOhMp9ZG
-         M1z3QVHPSISdZAmyuYYuwedK+JGKGZyyGWWPrRT5lma/KI0UOi7iymhtrQE8a66d9f
-         MH/Y4WCM3hPn4dMkOvPdWReMFiaBl9CqMcZg6eDLFKgNjTg6Wj8BXsz4VK4K67PenR
-         Wsakcx87MBmCQ==
-Date:   Fri, 6 Aug 2021 23:30:49 -0700
+        b=U9cRwDNoB6btRNhwTev/FroT9STOvybHbTC5Wd7HQsfk7sHA/LRv2Jz4Ob60iTCW/
+         vzmIgNeKI+7hn91QKZPej+HhOnQebH/rf3tl/mjl57NIoOFNGY0CORfAKiMPACjmOS
+         PZ8VqjW4lyOC4Mq70yCjJYJ9QiLjZdhFC3ajV3x5onW0x0XJI7TsbOBEwAyLd9asNw
+         rO6BXHol6p6s0N0TjMuwKbdmtEIaGSBS9maUDC6DR57GirE9fV2eiZb3XL2C7qchwY
+         vPdsVBfmdSL7eRL002qBnjdFbCj9AoyZDEX8PCp1YzK9i1qlOyJhaQGb9W6K7rFY4f
+         hmJrE1sa3JyxA==
+Date:   Sat, 7 Aug 2021 09:55:51 -0700
 From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH] fscrypt: document struct fscrypt_operations
-Message-ID: <YQ4omeTN73JFZQY+@sol.localdomain>
-References: <20210729043728.18480-1-ebiggers@kernel.org>
+To:     Shreeya Patel <shreeya.patel@collabora.com>
+Cc:     krisman@collabora.com, tytso@mit.edu, adilger.kernel@dilger.ca,
+        jaegeuk@kernel.org, chao@kernel.org, drosen@google.com,
+        yuchao0@huawei.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, kernel@collabora.com,
+        andre.almeida@collabora.com
+Subject: Re: [PATCH] fs: unicode: Add utf8-data module
+Message-ID: <YQ67FxJRlfTj5EGy@sol.localdomain>
+References: <20210730124333.6744-1-shreeya.patel@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210729043728.18480-1-ebiggers@kernel.org>
+In-Reply-To: <20210730124333.6744-1-shreeya.patel@collabora.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jul 28, 2021 at 09:37:28PM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Document all fields of struct fscrypt_operations so that it's more clear
-> what filesystems that use (or plan to use) fs/crypto/ need to implement.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
->  include/linux/fscrypt.h | 109 ++++++++++++++++++++++++++++++++++++++--
->  1 file changed, 105 insertions(+), 4 deletions(-)
+On Fri, Jul 30, 2021 at 06:13:33PM +0530, Shreeya Patel wrote:
+> diff --git a/fs/unicode/utf8n.h b/fs/unicode/utf8n.h
+> index 0acd530c2c79..6843229bcb2b 100644
+> --- a/fs/unicode/utf8n.h
+> +++ b/fs/unicode/utf8n.h
+> @@ -11,6 +11,7 @@
+>  #include <linux/export.h>
+>  #include <linux/string.h>
+>  #include <linux/module.h>
+> +#include <linux/spinlock.h>
+>  
+>  /* Encoding a unicode version number as a single unsigned int. */
+>  #define UNICODE_MAJ_SHIFT		(16)
+> @@ -21,6 +22,11 @@
+>  	 ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) |	\
+>  	 ((unsigned int)(REV)))
+>  
+> +extern spinlock_t utf8_lock;
+> +
+> +extern struct utf8_data *utf8_ops;
+> +extern bool utf8data_loaded;
 
-Applied to fscrypt.git#master for 5.15.
+The 'utf8data_loaded' variable is unnecessary, since it's equivalent to
+'utf8_ops != NULL'.
+
+Also, there are no function pointer fields anymore, so this really should be
+called utf8_data, not utf8_ops.
 
 - Eric
