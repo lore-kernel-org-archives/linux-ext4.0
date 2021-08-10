@@ -2,40 +2,37 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6DF2C43214
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD7D3C432BE
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AFCAE60FDA
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F60961008
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241418AbhHJOS4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Aug 2021 10:18:56 -0400
-Received: from szxga02-in.huawei.com ([45.249.212.188]:13411 "EHLO
+        id S242370AbhHJOS5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Aug 2021 10:18:57 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:8394 "EHLO
         szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242426AbhHJORG (ORCPT
+        with ESMTP id S242832AbhHJORG (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 10:17:06 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4GkZfm0H5gzdZb9;
-        Tue, 10 Aug 2021 22:13:04 +0800 (CST)
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4GkZfP64gpz85xS;
+        Tue, 10 Aug 2021 22:12:45 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Tue, 10
- Aug 2021 22:16:42 +0800
+ Aug 2021 22:16:41 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH 1/3] ext4: move inode eio simulation behind io completeion
-Date:   Tue, 10 Aug 2021 22:27:20 +0800
-Message-ID: <20210810142722.923175-2-yi.zhang@huawei.com>
+Subject: [PATCH 0/3] ext4: fix a inode checksum error
+Date:   Tue, 10 Aug 2021 22:27:19 +0800
+Message-ID: <20210810142722.923175-1-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210810142722.923175-1-yi.zhang@huawei.com>
-References: <20210810142722.923175-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -47,38 +44,46 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-No EIO simulation is required if the buffer is uptodate, so move the
-simulation behind read bio completeion just like inode/block bitmap
-simulation does.
+We find a checksum error and a inode corruption problem while doing
+stress test, this 3 patches address to fix them.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/inode.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ - Checksum error
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d8de607849df..eb2526a35254 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4330,8 +4330,6 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
- 	bh = sb_getblk(sb, block);
- 	if (unlikely(!bh))
- 		return -ENOMEM;
--	if (ext4_simulate_fail(sb, EXT4_SIM_INODE_EIO))
--		goto simulate_eio;
- 	if (!buffer_uptodate(bh)) {
- 		lock_buffer(bh);
- 
-@@ -4418,8 +4416,8 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
- 		ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
- 		blk_finish_plug(&plug);
- 		wait_on_buffer(bh);
-+		ext4_simulate_fail_bh(sb, bh, EXT4_SIM_INODE_EIO);
- 		if (!buffer_uptodate(bh)) {
--		simulate_eio:
- 			if (ret_block)
- 				*ret_block = block;
- 			brelse(bh);
+    EXT4-fs error (device sda): ext4_lookup:1784: inode #131074: comm cat: iget: checksum invalid
+
+ - Inode corruption
+
+    e2fsck 1.46.0 (29-Jan-2020)
+    Pass 1: Checking inodes, blocks, and sizes
+    Pass 2: Checking directory structure
+    Entry 'foo' in / (2) has deleted/unused inode 17.  Clear<y>? yes
+    Pass 3: Checking directory connectivity
+    Pass 4: Checking reference counts
+    Pass 5: Checking group summary information
+    Inode bitmap differences:  -17
+    Fix<y>? yes
+    Free inodes count wrong for group #0 (32750, counted=32751).
+    Fix<y>? yes
+    Free inodes count wrong (32750, counted=32751).
+    Fix<y>? yes
+
+The first patch is relate to the error simulation, and the second patch
+is just a cleanup patch, which are prepare to do the fix. The last patch
+fix these two issue.
+
+Thanks,
+Yi.
+
+
+
+Zhang Yi (3):
+  ext4: move inode eio simulation behind io completeion
+  ext4: remove an unnecessary if statement in __ext4_get_inode_loc()
+  ext4: prevent getting empty inode buffer
+
+ fs/ext4/inode.c | 177 +++++++++++++++++++++++++-----------------------
+ 1 file changed, 94 insertions(+), 83 deletions(-)
+
 -- 
 2.31.1
 
