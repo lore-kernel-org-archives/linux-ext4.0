@@ -2,173 +2,86 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20A6AC4338F
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 01:35:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EC071C4338F
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 13:15:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EC2F960EE7
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 01:35:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CB55A60F38
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 13:15:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236352AbhHJBfs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 Aug 2021 21:35:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55450 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232750AbhHJBfs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Aug 2021 21:35:48 -0400
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E0EEBC0613D3;
-        Mon,  9 Aug 2021 18:35:26 -0700 (PDT)
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id 2E49F1F42F02
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     jack@suse.com, amir73il@gmail.com, djwong@kernel.org,
-        tytso@mit.edu, david@fromorbit.com, dhowells@redhat.com,
-        khazhy@google.com, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-api@vger.kernel.org,
-        kernel@collabora.com
-Subject: Re: [PATCH v5 18/23] fanotify: Handle FAN_FS_ERROR events
-Organization: Collabora
-References: <20210804160612.3575505-1-krisman@collabora.com>
-        <20210804160612.3575505-19-krisman@collabora.com>
-        <20210805121516.GL14483@quack2.suse.cz>
-Date:   Mon, 09 Aug 2021 21:35:20 -0400
-In-Reply-To: <20210805121516.GL14483@quack2.suse.cz> (Jan Kara's message of
-        "Thu, 5 Aug 2021 14:15:16 +0200")
-Message-ID: <87bl66dquf.fsf@collabora.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.1 (gnu/linux)
+        id S241138AbhHJNQB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Aug 2021 09:16:01 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:48608 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S241136AbhHJNP7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 09:15:59 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out2.suse.de (Postfix) with ESMTP id 8EAF720069;
+        Tue, 10 Aug 2021 13:15:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1628601336; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=D/dQpzK2RGx0nfJIPi8qmIpzidGZ0GBUTr3TF7pmVws=;
+        b=U/LzfaVSHRidE7zGYrcbbGFVi/lH2E3+UYGl4e/m84PKk6RKrH1ZzBkUCokv94oZksrhCU
+        H2Vp2V1Ldjwc42MkipSVjlsHEx5fgtxwYgr668vOQr+DLgr9Cd6NcVsNDFt4C9VEjd8GdQ
+        yU1ZDQ5EO+UnlmJ003MRng2tVRwgHCQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1628601336;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=D/dQpzK2RGx0nfJIPi8qmIpzidGZ0GBUTr3TF7pmVws=;
+        b=8yFAzmy0KKRsTEauzrTuwDIonUaIiPXt5w1KYdBwwSbxz9KGuJ0psHPxHK9N+HJBrllBNY
+        9UUlX22wCF1LXMDg==
+Received: from quack2.suse.cz (unknown [10.100.224.230])
+        by relay2.suse.de (Postfix) with ESMTP id 80F1FA3B85;
+        Tue, 10 Aug 2021 13:15:36 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 5BE8D1F2AC2; Tue, 10 Aug 2021 15:15:33 +0200 (CEST)
+Date:   Tue, 10 Aug 2021 15:15:33 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 2/5] ext4: Move orphan inode handling into a separate file
+Message-ID: <20210810131533.GA14725@quack2.suse.cz>
+References: <20210712154009.9290-1-jack@suse.cz>
+ <20210712154009.9290-3-jack@suse.cz>
+ <YQ/qL+lOaYd3iD1+@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <YQ/qL+lOaYd3iD1+@mit.edu>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Jan Kara <jack@suse.cz> writes:
->> @@ -760,6 +796,18 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
->>  			return 0;
->>  	}
->>  
->> +	if (fanotify_is_error_event(mask)) {
->> +		struct fanotify_sb_mark *sb_mark =
->> +			FANOTIFY_SB_MARK(fsnotify_iter_sb_mark(iter_info));
->> +
->> +		ret = fsnotify_insert_event(group,
->> +					    &sb_mark->fee_slot->fae.fse,
->> +					    fanotify_merge_error_event,
->> +					    fanotify_insert_error_event,
->> +					    data);
->> +		goto finish;
->> +	}
->
-> Hum, seeing this and how you had to extend fsnotify_add_event() to
-> accommodate this use, cannot we instead have something like:
->
-> 	if (fanotify_is_error_event(mask)) {
-> 		struct fanotify_sb_mark *sb_mark =
-> 			FANOTIFY_SB_MARK(fsnotify_iter_sb_mark(iter_info));
-> 		struct fanotify_error_event *event = &sb_mark->fee_slot;
-> 		bool queue = false;
->
-> 		spin_lock(&group->notification_lock);
-> 		/* Not yet queued? */
-> 		if (!event->err_count) {
-> 			fee->error = report->error;
-> 			queue = true;
-> 		}
-> 		event->err_count++;
-> 		spin_unlock(&group->notification_lock);
-> 		if (queue) {
-> 			... fill in other error info in 'event' such as fhandle
-> 			fsnotify_add_event(group, &event->fae.fse, NULL);
-> 		}
-> 	}
->
-> It would be IMHO simpler to follow what's going on and we don't have to
-> touch fsnotify_add_event(). I do recognize that due to races it may happen
-> that some racing fsnotify(FAN_FS_ERROR) call returns before the event is
-> actually visible in the event queue. It don't think it really matters but
-> if we wanted to be more careful, we would need to preformat fhandle into a
-> local buffer and only copy it into the event under notification_lock when
-> we see the event is unused.
+On Sun 08-08-21 10:29:03, Theodore Ts'o wrote:
+> On Mon, Jul 12, 2021 at 05:40:06PM +0200, Jan Kara wrote:
+> > Move functions for handling orphan inodes into a new file
+> > fs/ext4/orphan.c to have them in one place and somewhat reduce size of
+> > other files. No code changes.
+> > 
+> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> 
+> Note that when you refresh this patch, you'll need to include commit
+> b9a037b7f3c4: ("ext4: cleanup in-core orphan list if ext4_truncate()
+> failed to get a transaction handle") when moving ext4_orphan_cleanup()
+> to fs/ext4/orphan.c.
 
-Hi Jan,
+Yes, I have that already included in my local version. I guess I'll send a
+new version of the kernel patches and e2fsprogs patches tomorrow since some
+time has passed from the previous posting and some changes have already
+accumulated.
 
-This is actually similar to my first implementation too (like what
-Amir said about the hunk below). It is a shame, cause I really like
-the current version better, but the point about not doing the FH
-encoding under the notification_lock makes a lot of sense.  I will
-revert to the previous approach.
-
->> +/*
->> + * Replace a mark's error event with a new structure in preparation for
->> + * it to be dequeued.  This is a bit annoying since we need to drop the
->> + * lock, so another thread might just steal the event from us.
->> + */
->> +static int fanotify_replace_fs_error_event(struct fsnotify_group *group,
->> +					   struct fanotify_event *fae)
->> +{
->> +	struct fanotify_error_event *new, *fee = FANOTIFY_EE(fae);
->> +	struct fanotify_sb_mark *sb_mark = fee->sb_mark;
->> +	struct fsnotify_event *fse;
->> +
->> +	pr_debug("%s: event=%p\n", __func__, fae);
->> +
->> +	assert_spin_locked(&group->notification_lock);
->> +
->> +	spin_unlock(&group->notification_lock);
->> +	new = fanotify_alloc_error_event(sb_mark);
->> +	spin_lock(&group->notification_lock);
->> +
->> +	if (!new)
->> +		return -ENOMEM;
->> +
->> +	/*
->> +	 * Since we temporarily dropped the notification_lock, the event
->> +	 * might have been taken from under us and reported by another
->> +	 * reader.  If that is the case, don't play games, just retry.
->> +	 */
->> +	fse = fsnotify_peek_first_event(group);
->> +	if (fse != &fae->fse) {
->> +		kfree(new);
->> +		return -EAGAIN;
->> +	}
->> +
->> +	sb_mark->fee_slot = new;
->> +
->> +	return 0;
->> +}
->> +
->>  /*
->>   * Get an fanotify notification event if one exists and is small
->>   * enough to fit in "count". Return an error pointer if the count
->> @@ -212,9 +252,21 @@ static struct fanotify_event *get_one_event(struct fsnotify_group *group,
->>  		goto out;
->>  	}
->>  
->> +	if (fanotify_is_error_event(event->mask)) {
->> +		/*
->> +		 * Replace the error event ahead of dequeueing so we
->> +		 * don't need to handle a incorrectly dequeued event.
->> +		 */
->> +		ret = fanotify_replace_fs_error_event(group, event);
->> +		if (ret) {
->> +			event = ERR_PTR(ret);
->> +			goto out;
->> +		}
->> +	}
->> +
-> The replacing, retry, and all is hairy. Cannot we just keep the same event
-> attached to the sb mark and copy-out to on-stack buffer under
-> notification_lock in get_one_event()? The event is big (due to fhandle) but
-> fanotify_read() is not called from a deep call chain so we should have
-> enough space on stack for that.
-
-
-
+								Honza
 -- 
-Gabriel Krisman Bertazi
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
