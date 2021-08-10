@@ -2,68 +2,80 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39A79C43216
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 16:18:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA20AC432BE
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 18:17:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 19DA860ED8
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 16:18:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 908AF60527
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 18:17:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234682AbhHJQSZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Aug 2021 12:18:25 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:41219 "EHLO
+        id S236162AbhHJSR1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Aug 2021 14:17:27 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59352 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S234658AbhHJQQd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 12:16:33 -0400
+        with ESMTP id S238717AbhHJSO5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 14:14:57 -0400
 Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 17AGFTJl012556
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 17AIEVJg021957
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 10 Aug 2021 12:15:29 -0400
+        Tue, 10 Aug 2021 14:14:32 -0400
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 0997115C3DD0; Tue, 10 Aug 2021 12:15:29 -0400 (EDT)
-Date:   Tue, 10 Aug 2021 12:15:28 -0400
+        id 824F815C37CF; Tue, 10 Aug 2021 14:14:31 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 7/7] mkquota: Fix potental NULL pointer dereference
-Message-ID: <YRKmIDH8XWBwGXAT@mit.edu>
-References: <20210806095820.83731-1-lczerner@redhat.com>
- <20210806095820.83731-7-lczerner@redhat.com>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 2/2] jbd2: clean up two gcc -Wall warnings in recovery.c
+Date:   Tue, 10 Aug 2021 14:14:26 -0400
+Message-Id: <20210810181426.13162-2-tytso@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20210810181426.13162-1-tytso@mit.edu>
+References: <20210810181426.13162-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210806095820.83731-7-lczerner@redhat.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Aug 06, 2021 at 11:58:20AM +0200, Lukas Czerner wrote:
-> get_dq() function can fail when the memory allocation fails and so we
-> could end up dereferencing NULL pointer. Fix it.
-> 
-> Also, we should really return -ENOMEM instead of -1, or even 0 from
-> various functions in quotaio_tree.c when memory allocation fails.
-> Fix it as well.
+Fix a signed vs unsigned and a void * pointer arithmetic warning.
 
-The quota*.c files were taking from the quota_tools package, and are
-currently using the converion of setting errno and returning -1.  I
-don't think an incomplete conversion to the kernel error return
-convention is the way to go.  My long term plan for the quota
-functions in libsupport is to convert them to use the comerr_t error
-return convention, remove all of the printf functions from the
-functions, so they can be properly moved into libext2fs library as a
-first class supported library functions, and so that the high-level
-ext2fs functions would update the quota files --- so that programs
-like fuse2fs would properly update the quota records.
+This cleanup is also in e2fsprogs commit aec460db9a93 ("e2fsck: clean
+up two gcc -Wall warnings in recovery.c").
 
-So I'm going to drop the error handling changes from this patch before
-applying it.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/jbd2/recovery.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Cheers,
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index ba979fcf1cd3..8ca3527189f8 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -179,8 +179,8 @@ static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
+ 	if (!jbd2_journal_has_csum_v2or3(j))
+ 		return 1;
+ 
+-	tail = (struct jbd2_journal_block_tail *)(buf + j->j_blocksize -
+-			sizeof(struct jbd2_journal_block_tail));
++	tail = (struct jbd2_journal_block_tail *)((char *)buf +
++		j->j_blocksize - sizeof(struct jbd2_journal_block_tail));
+ 	provided = tail->t_checksum;
+ 	tail->t_checksum = 0;
+ 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
+@@ -896,7 +896,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
+ {
+ 	jbd2_journal_revoke_header_t *header;
+ 	int offset, max;
+-	int csum_size = 0;
++	unsigned csum_size = 0;
+ 	__u32 rcount;
+ 	int record_len = 4;
+ 
+-- 
+2.31.0
 
-					- Ted
