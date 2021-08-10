@@ -2,86 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC071C4338F
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 13:15:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A27A6C4338F
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CB55A60F38
-	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 13:15:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 86DC061008
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 Aug 2021 14:18:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241138AbhHJNQB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 Aug 2021 09:16:01 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:48608 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241136AbhHJNP7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 09:15:59 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 8EAF720069;
-        Tue, 10 Aug 2021 13:15:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1628601336; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=D/dQpzK2RGx0nfJIPi8qmIpzidGZ0GBUTr3TF7pmVws=;
-        b=U/LzfaVSHRidE7zGYrcbbGFVi/lH2E3+UYGl4e/m84PKk6RKrH1ZzBkUCokv94oZksrhCU
-        H2Vp2V1Ldjwc42MkipSVjlsHEx5fgtxwYgr668vOQr+DLgr9Cd6NcVsNDFt4C9VEjd8GdQ
-        yU1ZDQ5EO+UnlmJ003MRng2tVRwgHCQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1628601336;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=D/dQpzK2RGx0nfJIPi8qmIpzidGZ0GBUTr3TF7pmVws=;
-        b=8yFAzmy0KKRsTEauzrTuwDIonUaIiPXt5w1KYdBwwSbxz9KGuJ0psHPxHK9N+HJBrllBNY
-        9UUlX22wCF1LXMDg==
-Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 80F1FA3B85;
-        Tue, 10 Aug 2021 13:15:36 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 5BE8D1F2AC2; Tue, 10 Aug 2021 15:15:33 +0200 (CEST)
-Date:   Tue, 10 Aug 2021 15:15:33 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/5] ext4: Move orphan inode handling into a separate file
-Message-ID: <20210810131533.GA14725@quack2.suse.cz>
-References: <20210712154009.9290-1-jack@suse.cz>
- <20210712154009.9290-3-jack@suse.cz>
- <YQ/qL+lOaYd3iD1+@mit.edu>
+        id S241521AbhHJOSw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 10 Aug 2021 10:18:52 -0400
+Received: from szxga03-in.huawei.com ([45.249.212.189]:13302 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S242846AbhHJORK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Aug 2021 10:17:10 -0400
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.55])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4GkZdF6jnXz7tH8;
+        Tue, 10 Aug 2021 22:11:45 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
+ (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Tue, 10
+ Aug 2021 22:16:43 +0800
+From:   Zhang Yi <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
+Subject: [PATCH 3/3] ext4: prevent getting empty inode buffer
+Date:   Tue, 10 Aug 2021 22:27:22 +0800
+Message-ID: <20210810142722.923175-4-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20210810142722.923175-1-yi.zhang@huawei.com>
+References: <20210810142722.923175-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YQ/qL+lOaYd3iD1+@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ dggeme752-chm.china.huawei.com (10.3.19.98)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun 08-08-21 10:29:03, Theodore Ts'o wrote:
-> On Mon, Jul 12, 2021 at 05:40:06PM +0200, Jan Kara wrote:
-> > Move functions for handling orphan inodes into a new file
-> > fs/ext4/orphan.c to have them in one place and somewhat reduce size of
-> > other files. No code changes.
-> > 
-> > Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> 
-> Note that when you refresh this patch, you'll need to include commit
-> b9a037b7f3c4: ("ext4: cleanup in-core orphan list if ext4_truncate()
-> failed to get a transaction handle") when moving ext4_orphan_cleanup()
-> to fs/ext4/orphan.c.
+In ext4_get_inode_loc(), we may skip IO and get an zero && uptodate
+inode buffer when the inode monopolize an inode block for performance
+reason. For most cases, ext4_mark_iloc_dirty() will fill the inode
+buffer to make it fine, but we could miss this call if something bad
+happened. Finally, __ext4_get_inode_loc_noinmem() may probably get an
+empty inode buffer and trigger ext4 error.
 
-Yes, I have that already included in my local version. I guess I'll send a
-new version of the kernel patches and e2fsprogs patches tomorrow since some
-time has passed from the previous posting and some changes have already
-accumulated.
+For example, if we remove a nonexistent xattr on inode A,
+ext4_xattr_set_handle() will return ENODATA before invoking
+ext4_mark_iloc_dirty(), it will left an uptodate but zero buffer. We
+will get checksum error message in ext4_iget() when getting inode again.
 
-								Honza
+  EXT4-fs error (device sda): ext4_lookup:1784: inode #131074: comm cat: iget: checksum invalid
+
+Even worse, if we allocate another inode B at the same inode block, it
+will corrupt the inode A on disk when write back inode B.
+
+So this patch clear uptodate flag and mark buffer new if we get an empty
+buffer, clear it after we fill inode data or making read IO.
+
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/inode.c | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index eae1b2d0b550..1f36289e9ef6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4292,6 +4292,18 @@ int ext4_truncate(struct inode *inode)
+ 	return err;
+ }
+ 
++static void ext4_end_inode_loc_read(struct buffer_head *bh, int uptodate)
++{
++	if (buffer_new(bh))
++		clear_buffer_new(bh);
++	if (uptodate)
++		set_buffer_uptodate(bh);
++	else
++		clear_buffer_uptodate(bh);
++	unlock_buffer(bh);
++	put_bh(bh);
++}
++
+ /*
+  * ext4_get_inode_loc returns with an extra refcount against the inode's
+  * underlying buffer_head on success. If 'in_mem' is true, we have all
+@@ -4367,9 +4379,11 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+ 		}
+ 		brelse(bitmap_bh);
+ 		if (i == start + inodes_per_block) {
+-			/* all other inodes are free, so skip I/O */
+-			memset(bh->b_data, 0, bh->b_size);
+-			set_buffer_uptodate(bh);
++			if (!buffer_new(bh)) {
++				/* all other inodes are free, so skip I/O */
++				memset(bh->b_data, 0, bh->b_size);
++				set_buffer_new(bh);
++			}
+ 			unlock_buffer(bh);
+ 			goto has_buffer;
+ 		}
+@@ -4408,7 +4422,7 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+ 	 * Read the block from disk.
+ 	 */
+ 	trace_ext4_load_inode(sb, ino);
+-	ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
++	ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, ext4_end_inode_loc_read);
+ 	blk_finish_plug(&plug);
+ 	wait_on_buffer(bh);
+ 	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_INODE_EIO);
+@@ -5132,6 +5146,11 @@ static int ext4_do_update_inode(handle_t *handle,
+ 	if (err)
+ 		goto out_brelse;
+ 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
++	if (buffer_new(bh)) {
++		clear_buffer_new(bh);
++		set_buffer_uptodate(bh);
++	}
++
+ 	if (set_large_file) {
+ 		BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get write access");
+ 		err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.31.1
+
