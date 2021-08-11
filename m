@@ -7,578 +7,831 @@ X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71AE8C19F35
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C957FC43214
 	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4C864600CD
+	by mail.kernel.org (Postfix) with ESMTP id AAC63600CD
 	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237169AbhHKKbk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 Aug 2021 06:31:40 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:48624 "EHLO
+        id S237170AbhHKKbl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 Aug 2021 06:31:41 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:48632 "EHLO
         smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237129AbhHKKbg (ORCPT
+        with ESMTP id S237140AbhHKKbg (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Aug 2021 06:31:36 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 12C3D221D2;
+        by smtp-out1.suse.de (Postfix) with ESMTP id 1ADB8221D5;
         Wed, 11 Aug 2021 10:31:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1628677872; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VXMZkBgV2RskDwtsoBvluof/w4Ur4ZBq2hkiGXFG2YU=;
-        b=SBahmCiC0XXSIETnOSyZ4SRvGRiNqKe1WsyQ7k8SuaqhxoJtLqdYlBHK6rGKkrUvuc3m/3
-        mC7/2Sk/iRghsMNmtr6cRZ4bfJzrWornAPB5i17J2N5LulxaL2r5DyVvaCY6DLH8zzsSF3
-        +tcsGhio4/c4G/G9RZMPxoo/g5fBwns=
+        bh=w4WHQjza9vehSZY/9EFjn7HUg1qpOyevQgeCtlYKbpo=;
+        b=qinlCYLjPOAXKMmPPCqxR537HP45C51tguGiLm8t9TXUS+WfdUTwUQvc8LpGFRUDTR4Zm8
+        8JnWv8C0JM0JgHqO4d+ZqA+d3y6iArTI3YobhNVnCgb53fb/xI51ZI5iZ8rWhYjkFxYCVg
+        gKtfc9XG+w52SuZ+vHTx9tgC6rgXGrg=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1628677872;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VXMZkBgV2RskDwtsoBvluof/w4Ur4ZBq2hkiGXFG2YU=;
-        b=3Vr4Ocfke+N4r3A+OrycamwvofXZ/TanTZwVyydQ4A3Gv0epUAra+kyGLkmaI0IqnkeBVq
-        iO0tFpTGTHs98RCw==
+        bh=w4WHQjza9vehSZY/9EFjn7HUg1qpOyevQgeCtlYKbpo=;
+        b=UXRzDFQ/a3JmNo9bdbwNywRSti8wXTRpRRZLPdI0HWtPgPG0Xnibr/KWXQDm/zvModP9hs
+        UfqxtYj4A2EGcYBw==
 Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 021EBA3C05;
+        by relay2.suse.de (Postfix) with ESMTP id 06B5CA3C0B;
         Wed, 11 Aug 2021 10:31:12 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id D86DB1E62D5; Wed, 11 Aug 2021 12:31:11 +0200 (CEST)
+        id E2E751F2BB6; Wed, 11 Aug 2021 12:31:11 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/5] libext2fs: Support for orphan file feature
-Date:   Wed, 11 Aug 2021 12:30:50 +0200
-Message-Id: <20210811103054.7896-2-jack@suse.cz>
+Subject: [PATCH 3/5] e2fsck: Add support for handling orphan file
+Date:   Wed, 11 Aug 2021 12:30:52 +0200
+Message-Id: <20210811103054.7896-4-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20210811103054.7896-1-jack@suse.cz>
 References: <20210811103054.7896-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=17327; h=from:subject; bh=W8XDDX06K5znwPssingWuIzqDie7pdrXXj3DEkRpRZ4=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBhE6bZE/C/dO2tKuqK6nJupzI0nM9UXFzJRJWP4AAq KodVQ/2JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYROm2QAKCRCcnaoHP2RA2WklB/ 4x239xGRaL9pfPN8Vi/9nQZxBlEE/8wAmn9zahgptkAZavctKAwBdVOH9UTB5VzxSoQ8KnI8SnYxJx gGBBUeCQJnUz1puv77TJm3oJX/suCGSx5U1SAtuLZ5I9Z3eNMWsQJivnPHg/XHrb1IXJ+E7t5AVIt2 gbuRAI8QwHcIEuAqwmm9JPw2OhsiaGpvZ+NgEfaeuoQfeyow5dKfbYMEzPMw0hTllZYG7wJD5CNIJL OB6zGHymtNPHF0+NgL9av7HSIJPt2b7WN5gCUuCKwbmljUrS7j3aQz5IVpWnHXum+9xBWhIUu5Iv8J ZTmhJs5edMUrtUPg6xBO36CeWn++hU
+X-Developer-Signature: v=1; a=openpgp-sha256; l=24218; h=from:subject; bh=GTqYYp6wlWi5kXcvtGa3jn1DrH6I7VIYLE91f/Gog6w=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGBKFl90Onu8aYLWiIJo3WVvakUN13ZIjsxkM1twsnqH0syLJ ZcmlTkZjFgZGDgZZMUWW1ZEXta/NM+raGqohAzOIlQlkCgMXpwBM5HAt+/88iQhrnvijrz6882cQyX PX+rTqkbeKgnX6ipbe2a8Cl6SpvH8xty334P8QnuAJpbszGVhu2y69d8m7INOocGlmp7Vr1cv0mTum yStEqBZ/cmeurVbMWLLwaInhnrS1T5qjHDyDlYr8b/UxWW2cFhIbU/w3JfZddFyCm2hljV75zEov33 Vn2u/qZOfwvsg9daclNpX3gLDkpw+12W+DM6fGf2ozmcfxxHbptL3bDnGt565Wz+Y5KsX77V7t5wqx XQmZ2e+8r2myz21//9VJJrOsfF2tarKj7r6EA7/e+CvXelR4bJUW59xx1+3q8erwsLxItYg9Jb8CVp 2ZP4Ul5ph8isgL7q+/XDe/ntQBAA==
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add support for creating and deleting orphan file and a couple of
-utility functions that will be used in other tools.
-
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- lib/e2p/feature.c           |   4 +
- lib/ext2fs/Makefile.in      |   2 +
- lib/ext2fs/ext2_fs.h        |  16 ++-
- lib/ext2fs/ext2fs.h         |  36 ++++-
- lib/ext2fs/orphan.c         | 273 ++++++++++++++++++++++++++++++++++++
- lib/ext2fs/swapfs.c         |   3 +-
- lib/ext2fs/tst_super_size.c |   3 +-
- lib/support/mkquota.c       |   3 +-
- 8 files changed, 332 insertions(+), 8 deletions(-)
- create mode 100644 lib/ext2fs/orphan.c
+ e2fsck/e2fsck.h  |   1 +
+ e2fsck/pass1.c   |  27 ++++
+ e2fsck/pass4.c   |   2 +-
+ e2fsck/problem.c |  79 +++++++++++
+ e2fsck/problem.h |  46 ++++++
+ e2fsck/super.c   | 361 +++++++++++++++++++++++++++++++++++++++++------
+ e2fsck/unix.c    |  72 +++++++++-
+ 7 files changed, 542 insertions(+), 46 deletions(-)
 
-diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index 2291060214ff..29b7b1512400 100644
---- a/lib/e2p/feature.c
-+++ b/lib/e2p/feature.c
-@@ -49,6 +49,8 @@ static struct feature feature_list[] = {
- 			"fast_commit" },
- 	{	E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_STABLE_INODES,
- 			"stable_inodes" },
-+	{	E2P_FEATURE_COMPAT, EXT4_FEATURE_COMPAT_ORPHAN_FILE,
-+			"orphan_file" },
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 5704316f66f7..29838b9fccff 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -649,6 +649,7 @@ void sigcatcher_setup(void);
+ void check_super_block(e2fsck_t ctx);
+ int check_backup_super_block(e2fsck_t ctx);
+ void check_resize_inode(e2fsck_t ctx);
++int check_init_orphan_file(e2fsck_t ctx);
  
- 	{	E2P_FEATURE_RO_INCOMPAT, EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER,
- 			"sparse_super" },
-@@ -80,6 +82,8 @@ static struct feature feature_list[] = {
- 			"shared_blocks"},
- 	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_VERITY,
- 			"verity"},
-+	{	E2P_FEATURE_RO_INCOMPAT, EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT,
-+			"orphan_present" },
+ /* util.c */
+ extern void *e2fsck_allocate_memory(e2fsck_t ctx, unsigned long size,
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index dde862a82176..89b734f2fe50 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1778,6 +1778,32 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 							inode_size, "pass1");
+ 				failed_csum = 0;
+ 			}
++		} else if (ino == fs->super->s_orphan_file_inum) {
++			ext2fs_mark_inode_bitmap2(ctx->inode_used_map, ino);
++			if (ext2fs_has_feature_orphan_file(fs->super)) {
++				if (!LINUX_S_ISREG(inode->i_mode) &&
++				    fix_problem(ctx, PR_1_ORPHAN_FILE_BAD_MODE,
++						&pctx)) {
++					inode->i_mode = LINUX_S_IFREG;
++					e2fsck_write_inode(ctx, ino, inode,
++							   "pass1");
++					failed_csum = 0;
++				}
++				check_blocks(ctx, &pctx, block_buf, NULL);
++				FINISH_INODE_LOOP(ctx, ino, &pctx, failed_csum);
++				continue;
++			}
++			if ((inode->i_links_count ||
++			     inode->i_blocks || inode->i_block[0]) &&
++			    fix_problem(ctx, PR_1_ORPHAN_FILE_NOT_CLEAR,
++					&pctx)) {
++				memset(inode, 0, inode_size);
++				ext2fs_icount_store(ctx->inode_link_info, ino,
++						    0);
++				e2fsck_write_inode_full(ctx, ino, inode,
++							inode_size, "pass1");
++				failed_csum = 0;
++			}
+ 		} else if (ino < EXT2_FIRST_INODE(fs->super)) {
+ 			problem_t problem = 0;
  
- 	{	E2P_FEATURE_INCOMPAT, EXT2_FEATURE_INCOMPAT_COMPRESSION,
- 			"compression" },
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 2dca12ea60c6..f6a050a2c5db 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -115,6 +115,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	newdir.o \
- 	nls_utf8.o \
- 	openfs.o \
-+	orphan.o \
- 	progress.o \
- 	punch.o \
- 	qcow2.o \
-@@ -198,6 +199,7 @@ SRCS= ext2_err.c \
- 	$(srcdir)/newdir.c \
- 	$(srcdir)/nls_utf8.c \
- 	$(srcdir)/openfs.c \
-+	$(srcdir)/orphan.c \
- 	$(srcdir)/progress.c \
- 	$(srcdir)/punch.c \
- 	$(srcdir)/qcow2.c \
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 01d2573b6b30..0fc9c09a5925 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -773,7 +773,8 @@ struct ext2_super_block {
- 	__u8    s_last_error_errcode;
- /*27c*/ __le16	s_encoding;		/* Filename charset encoding */
- 	__le16	s_encoding_flags;	/* Filename charset encoding flags */
--	__le32	s_reserved[95];		/* Padding to the end of the block */
-+	__le32  s_orphan_file_inum;	/* Inode for tracking orphan inodes */
-+	__le32	s_reserved[94];		/* Padding to the end of the block */
- /*3fc*/	__u32	s_checksum;		/* crc32c(superblock) */
+@@ -3482,6 +3508,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
+ 	}
+ 
+ 	if (ino != quota_type2inum(PRJQUOTA, fs->super) &&
++	    ino != fs->super->s_orphan_file_inum &&
+ 	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INODE(ctx->fs->super)) &&
+ 	    !(inode->i_flags & EXT4_EA_INODE_FL)) {
+ 		quota_data_add(ctx->qctx, (struct ext2_inode_large *) inode,
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 8c2d2f1fca12..f41eb849e567 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -192,7 +192,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 					goto errout;
+ 		}
+ 		if (i == quota_type2inum(PRJQUOTA, ctx->fs->super) ||
+-		    i == EXT2_BAD_INO ||
++		    i == fs->super->s_orphan_file_inum || i == EXT2_BAD_INO ||
+ 		    (i > EXT2_ROOT_INO && i < EXT2_FIRST_INODE(fs->super)))
+ 			continue;
+ 		if (!(ext2fs_test_inode_bitmap2(ctx->inode_used_map, i)) ||
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 757b5d5648a8..f454dcb7d1cd 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -526,6 +526,26 @@ static struct e2fsck_problem problem_table[] = {
+ 	     "not compatible. Resize @i should be disabled.  "),
+ 	  PROMPT_FIX, 0, 0, 0, 0 },
+ 
++	/* Orphan file contains holes */
++	{ PR_0_ORPHAN_FILE_HOLE,
++	  N_("Orphan file (@i %i) contains hole at @b %b. Terminating orphan file recovery.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file block has wrong magic */
++	{ PR_0_ORPHAN_FILE_BAD_MAGIC,
++	  N_("Orphan file (@i %i) @b %b contains wrong magic. Terminating orphan file recovery.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file block has wrong checksum */
++	{ PR_0_ORPHAN_FILE_BAD_CHECKSUM,
++	  N_("Orphan file (@i %i) @b %b contains wrong checksum. Terminating orphan file recovery.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file size isn't multiple of blocks size */
++	{ PR_0_ORPHAN_FILE_WRONG_SIZE,
++	  N_("Orphan file (@i %i) size is not multiple of block size. Terminating orphan file recovery.\n"),
++	  PROMPT_NONE, 0 },
++
+ 	/* Pass 1 errors */
+ 
+ 	/* Pass 1: Checking inodes, blocks, and sizes */
+@@ -1279,6 +1299,15 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@h %i uses SipHash, but should not.  "),
+ 	  PROMPT_CLEAR_HTREE, PR_PREEN_OK, 0, 0, 0 },
+ 
++	/* Orphan file has bad mode */
++	{ PR_1_ORPHAN_FILE_BAD_MODE,
++	  N_("Orphan file @i %i is not regular file.  "),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* Orphan file inode is not in use, but contains data */
++	{ PR_1_ORPHAN_FILE_NOT_CLEAR,
++	  N_("Orphan file @i %i is not in use, but contains data.  "),
++	  PROMPT_CLEAR, PR_PREEN_OK },
+ 
+ 	/* Pass 1b errors */
+ 
+@@ -2259,6 +2288,56 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("Error writing quota info for quota type %N: %m\n"),
+ 	  PROMPT_NULL, 0, 0, 0, 0 },
+ 
++	/* Orphan file without a journal */
++	{ PR_6_ORPHAN_FILE_WITHOUT_JOURNAL,
++	  N_("@S has orphan file without @j.\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* Orphan file truncation failed */
++	{ PR_6_ORPHAN_FILE_TRUNC_FAILED,
++	  N_("Failed to truncate orphan file.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Failed to initialize orphan file */
++	{ PR_6_ORPHAN_FILE_CORRUPTED,
++	  N_("Failed to initialize orphan file.\n"),
++	  PROMPT_RECREATE, PR_PREEN_OK },
++
++	/* Cannot fix corrupted orphan file with invalid bitmaps */
++	{ PR_6_ORPHAN_FILE_BITMAP_INVALID,
++	  N_("Cannot fix corrupted orphan file with invalid bitmaps.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file creation failed */
++	{ PR_6_ORPHAN_FILE_CREATE_FAILED,
++	  N_("Failed to truncate orphan file (@i %i).\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file block contains data */
++	{ PR_6_ORPHAN_BLOCK_DIRTY,
++	  N_("Orphan file (@i %i) @b %b is not clean.\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* orphan_present set but orphan file is empty */
++	{ PR_6_ORPHAN_PRESENT_CLEAN_FILE,
++	  N_("Feature orphan_present is set but orphan file is clean.\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* orphan_present set but orphan_file is not */
++	{ PR_6_ORPHAN_PRESENT_NO_FILE,
++	  N_("Feature orphan_present is set but feature orphan_file is not.\n"),
++	  PROMPT_CLEAR, PR_PREEN_OK },
++
++	/* Orphan file size isn't multiple of blocks size */
++	{ PR_6_ORPHAN_FILE_WRONG_SIZE,
++	  N_("Orphan file (@i %i) size is not multiple of block size.\n"),
++	  PROMPT_NONE, 0 },
++
++	/* Orphan file contains holes */
++	{ PR_6_ORPHAN_FILE_HOLE,
++	  N_("Orphan file (@i %i) contains hole at @b %b.\n"),
++	  PROMPT_NONE, 0 },
++
+ 	{ 0 }
  };
  
-@@ -828,7 +829,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_COMPAT_SPARSE_SUPER2	0x0200
- #define EXT4_FEATURE_COMPAT_FAST_COMMIT		0x0400
- #define EXT4_FEATURE_COMPAT_STABLE_INODES	0x0800
--
-+#define EXT4_FEATURE_COMPAT_ORPHAN_FILE		0x1000
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index 24cdcf9b90f7..530aea69d88a 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -288,6 +288,18 @@ struct problem_context {
+ /* Meta_bg and resize_inode are not compatible, remove resize_inode*/
+ #define PR_0_DISABLE_RESIZE_INODE		0x000051
  
- #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-@@ -851,6 +852,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_RO_COMPAT_PROJECT		0x2000 /* Project quota */
- #define EXT4_FEATURE_RO_COMPAT_SHARED_BLOCKS	0x4000
- #define EXT4_FEATURE_RO_COMPAT_VERITY		0x8000
-+#define EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT	0x10000
- 
- #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
- #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
-@@ -931,6 +933,7 @@ EXT4_FEATURE_COMPAT_FUNCS(exclude_bitmap,	2, EXCLUDE_BITMAP)
- EXT4_FEATURE_COMPAT_FUNCS(sparse_super2,	4, SPARSE_SUPER2)
- EXT4_FEATURE_COMPAT_FUNCS(fast_commit,		4, FAST_COMMIT)
- EXT4_FEATURE_COMPAT_FUNCS(stable_inodes,	4, STABLE_INODES)
-+EXT4_FEATURE_COMPAT_FUNCS(orphan_file,		4, ORPHAN_FILE)
- 
- EXT4_FEATURE_RO_COMPAT_FUNCS(sparse_super,	2, SPARSE_SUPER)
- EXT4_FEATURE_RO_COMPAT_FUNCS(large_file,	2, LARGE_FILE)
-@@ -947,6 +950,7 @@ EXT4_FEATURE_RO_COMPAT_FUNCS(readonly,		4, READONLY)
- EXT4_FEATURE_RO_COMPAT_FUNCS(project,		4, PROJECT)
- EXT4_FEATURE_RO_COMPAT_FUNCS(shared_blocks,	4, SHARED_BLOCKS)
- EXT4_FEATURE_RO_COMPAT_FUNCS(verity,		4, VERITY)
-+EXT4_FEATURE_RO_COMPAT_FUNCS(orphan_present,	4, ORPHAN_PRESENT)
- 
- EXT4_FEATURE_INCOMPAT_FUNCS(compression,	2, COMPRESSION)
- EXT4_FEATURE_INCOMPAT_FUNCS(filetype,		2, FILETYPE)
-@@ -1114,6 +1118,14 @@ static inline unsigned int ext2fs_dir_rec_len(__u8 name_len,
- 	return rec_len;
- }
- 
-+#define EXT4_ORPHAN_BLOCK_MAGIC 0x0b10ca04
++/* Orphan file contains holes */
++#define PR_0_ORPHAN_FILE_HOLE			0x000052
 +
-+/* Structure at the tail of orphan block */
-+struct ext4_orphan_block_tail {
-+	__u32 ob_magic;
-+	__u32 ob_checksum;
-+};
++/* Orphan file block has wrong magic */
++#define PR_0_ORPHAN_FILE_BAD_MAGIC		0x000053
++
++/* Orphan file block has wrong checksum */
++#define PR_0_ORPHAN_FILE_BAD_CHECKSUM		0x000054
++
++/* Orphan file size isn't multiple of blocks size */
++#define PR_0_ORPHAN_FILE_WRONG_SIZE		0x000055
 +
  /*
-  * Constants for ext4's extended time encoding
+  * Pass 1 errors
   */
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 0ac3e451d958..aac838d68681 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -632,7 +632,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT2_FEATURE_COMPAT_EXT_ATTR|\
- 					 EXT4_FEATURE_COMPAT_SPARSE_SUPER2|\
- 					 EXT4_FEATURE_COMPAT_FAST_COMMIT|\
--					 EXT4_FEATURE_COMPAT_STABLE_INODES)
-+					 EXT4_FEATURE_COMPAT_STABLE_INODES|\
-+					 EXT4_FEATURE_COMPAT_ORPHAN_FILE)
+@@ -716,6 +728,11 @@ struct problem_context {
+ /* Htree directory uses SipHash but should not */
+ #define PR_1_HTREE_CANNOT_SIPHASH		0x01008E
  
- #ifdef CONFIG_MMP
- #define EXT4_LIB_INCOMPAT_MMP		EXT4_FEATURE_INCOMPAT_MMP
-@@ -667,7 +668,8 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_RO_COMPAT_READONLY |\
- 					 EXT4_FEATURE_RO_COMPAT_PROJECT |\
- 					 EXT4_FEATURE_RO_COMPAT_SHARED_BLOCKS |\
--					 EXT4_FEATURE_RO_COMPAT_VERITY)
-+					 EXT4_FEATURE_RO_COMPAT_VERITY |\
-+					 EXT4_FEATURE_RO_COMPAT_ORPHAN_PRESENT)
- 
- /*
-  * These features are only allowed if EXT2_FLAG_SOFTSUPP_FEATURES is passed
-@@ -1699,6 +1701,19 @@ errcode_t ext2fs_get_data_io(ext2_filsys fs, io_channel *old_io);
- errcode_t ext2fs_set_data_io(ext2_filsys fs, io_channel new_io);
- errcode_t ext2fs_rewrite_to_io(ext2_filsys fs, io_channel new_io);
- 
-+/* orphan.c */
-+extern errcode_t ext2fs_create_orphan_file(ext2_filsys fs, blk_t num_blocks);
-+extern errcode_t ext2fs_truncate_orphan_file(ext2_filsys fs);
-+extern e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs);
-+extern __u32 ext2fs_do_orphan_file_block_csum(ext2_filsys fs, ext2_ino_t ino,
-+					      __u32 gen, blk64_t blk,
-+					      char *buf);
-+extern errcode_t ext2fs_orphan_file_block_csum_set(ext2_filsys fs,
-+						   ext2_ino_t ino, blk64_t blk,
-+						   char *buf);
-+extern int ext2fs_orphan_file_block_csum_verify(ext2_filsys fs, ext2_ino_t ino,
-+						blk64_t blk, char *buf);
++/* Orphan file inode is not a regular file */
++#define PR_1_ORPHAN_FILE_BAD_MODE		0x01008F
 +
- /* get_pathname.c */
- extern errcode_t ext2fs_get_pathname(ext2_filsys fs, ext2_ino_t dir, ext2_ino_t ino,
- 			       char **name);
-@@ -1852,7 +1867,9 @@ extern int ext2fs_dirent_file_type(const struct ext2_dir_entry *entry);
- extern void ext2fs_dirent_set_file_type(struct ext2_dir_entry *entry, int type);
- extern struct ext2_inode *ext2fs_inode(struct ext2_inode_large * large_inode);
- extern const struct ext2_inode *ext2fs_const_inode(const struct ext2_inode_large * large_inode);
--
-+extern int ext2fs_inodes_per_orphan_block(ext2_filsys fs);
-+extern struct ext4_orphan_block_tail *ext2fs_orphan_block_tail(ext2_filsys fs,
-+							       char *buf);
- #endif
++/* Orphan file inode is not in use, but contains data */
++#define PR_1_ORPHAN_FILE_NOT_CLEAR		0x010090
  
  /*
-@@ -2162,6 +2179,19 @@ ext2fs_const_inode(const struct ext2_inode_large * large_inode)
- 	return (const struct ext2_inode *) large_inode;
+  * Pass 1b errors
+@@ -1293,6 +1310,35 @@ struct problem_context {
+ /* Error updating quota information */
+ #define PR_6_WRITE_QUOTAS		0x060006
+ 
++/* Orphan file without a journal */
++#define PR_6_ORPHAN_FILE_WITHOUT_JOURNAL	0x060007
++
++/* Orphan file truncation failed */
++#define PR_6_ORPHAN_FILE_TRUNC_FAILED	0x060008
++
++/* Failed to initialize orphan file */
++#define PR_6_ORPHAN_FILE_CORRUPTED	0x060009
++
++/* Cannot fix corrupted orphan file with invalid bitmaps */
++#define PR_6_ORPHAN_FILE_BITMAP_INVALID	0x06000A
++
++/* Orphan file creation failed */
++#define PR_6_ORPHAN_FILE_CREATE_FAILED	0x06000B
++
++/* Orphan file block contains data */
++#define PR_6_ORPHAN_BLOCK_DIRTY		0x06000C
++
++/* orphan_present set but orphan file is empty */
++#define PR_6_ORPHAN_PRESENT_CLEAN_FILE	0x06000D
++
++/* orphan_present set but orphan_file is not */
++#define PR_6_ORPHAN_PRESENT_NO_FILE	0x06000E
++
++/* Orphan file size isn't multiple of blocks size */
++#define PR_6_ORPHAN_FILE_WRONG_SIZE	0x06000F
++
++/* Orphan file contains holes */
++#define PR_6_ORPHAN_FILE_HOLE		0x060010
+ 
+ /*
+  * Function declarations
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index 31e2ffb234d3..6964e2ddae39 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -313,6 +313,180 @@ static errcode_t e2fsck_write_all_quotas(e2fsck_t ctx)
+ 	return pctx.errcode;
  }
  
-+_INLINE_ int ext2fs_inodes_per_orphan_block(ext2_filsys fs)
++static int release_orphan_inode(e2fsck_t ctx, ext2_ino_t *ino, char *block_buf)
 +{
-+	return (fs->blocksize - sizeof(struct ext4_orphan_block_tail)) /
-+		sizeof(__u32);
-+}
++	ext2_filsys fs = ctx->fs;
++	struct problem_context pctx;
++	struct ext2_inode_large inode;
++	ext2_ino_t next_ino;
 +
-+_INLINE_ struct ext4_orphan_block_tail *
-+ext2fs_orphan_block_tail(ext2_filsys fs, char *buf)
-+{
-+	return (struct ext4_orphan_block_tail *)(buf + fs->blocksize -
-+		sizeof(struct ext4_orphan_block_tail));
-+}
++	e2fsck_read_inode_full(ctx, *ino, EXT2_INODE(&inode),
++				sizeof(inode), "release_orphan_inode");
++	clear_problem_context(&pctx);
++	pctx.ino = *ino;
++	pctx.inode = EXT2_INODE(&inode);
++	pctx.str = inode.i_links_count ? _("Truncating") : _("Clearing");
 +
- #undef _INLINE_
- #endif
- 
-diff --git a/lib/ext2fs/orphan.c b/lib/ext2fs/orphan.c
-new file mode 100644
-index 000000000000..649a04378f2b
---- /dev/null
-+++ b/lib/ext2fs/orphan.c
-@@ -0,0 +1,273 @@
-+/*
-+ * orphan.c --- utility function to handle orphan file
-+ *
-+ * Copyright (C) 2015 Jan Kara.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
++	fix_problem(ctx, PR_0_ORPHAN_CLEAR_INODE, &pctx);
 +
-+#include "config.h"
-+#include <string.h>
++	next_ino = inode.i_dtime;
++	if (next_ino &&
++	    ((next_ino < EXT2_FIRST_INODE(fs->super)) ||
++	     (next_ino > fs->super->s_inodes_count))) {
++		pctx.ino = next_ino;
++		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_INODE, &pctx);
++		return 1;
++	}
 +
-+#include "ext2_fs.h"
-+#include "ext2fsP.h"
++	if (release_inode_blocks(ctx, *ino, &inode, block_buf, &pctx))
++		return 1;
 +
-+errcode_t ext2fs_truncate_orphan_file(ext2_filsys fs)
-+{
-+	struct ext2_inode inode;
-+	errcode_t err;
-+	ext2_ino_t ino = fs->super->s_orphan_file_inum;
-+
-+	err = ext2fs_read_inode(fs, ino, &inode);
-+	if (err)
-+		return err;
-+
-+	err = ext2fs_punch(fs, ino, &inode, NULL, 0, ~0ULL);
-+	if (err)
-+		return err;
-+
-+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-+	memset(&inode, 0, sizeof(struct ext2_inode));
-+	err = ext2fs_write_inode(fs, ino, &inode);
-+
-+	ext2fs_clear_feature_orphan_file(fs->super);
-+	ext2fs_clear_feature_orphan_present(fs->super);
-+	ext2fs_mark_super_dirty(fs);
-+	/* Need to update group descriptors as well */
-+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-+
-+	return err;
-+}
-+
-+__u32 ext2fs_do_orphan_file_block_csum(ext2_filsys fs, ext2_ino_t ino,
-+				       __u32 gen, blk64_t blk, char *buf)
-+{
-+	int inodes_per_ob = ext2fs_inodes_per_orphan_block(fs);
-+	__u32 crc;
-+
-+	ino = ext2fs_cpu_to_le32(ino);
-+	gen = ext2fs_cpu_to_le32(gen);
-+	blk = ext2fs_cpu_to_le64(blk);
-+	crc = ext2fs_crc32c_le(fs->csum_seed, (unsigned char *)&ino,
-+			       sizeof(ino));
-+	crc = ext2fs_crc32c_le(crc, (unsigned char *)&gen, sizeof(gen));
-+	crc = ext2fs_crc32c_le(crc, (unsigned char *)&blk, sizeof(blk));
-+	crc = ext2fs_crc32c_le(crc, (unsigned char *)buf,
-+				inodes_per_ob * sizeof(__u32));
-+
-+	return ext2fs_cpu_to_le32(crc);
-+}
-+
-+struct mkorphan_info {
-+	char *buf;
-+	char *zerobuf;
-+	blk_t num_blocks;
-+	blk_t alloc_blocks;
-+	blk64_t last_blk;
-+	errcode_t err;
-+	ino_t ino;
-+	__u32 generation;
-+};
-+
-+static int mkorphan_proc(ext2_filsys	fs,
-+			 blk64_t	*blocknr,
-+			 e2_blkcnt_t	blockcnt,
-+			 blk64_t	ref_block EXT2FS_ATTR((unused)),
-+			 int		ref_offset EXT2FS_ATTR((unused)),
-+			 void		*priv_data)
-+{
-+	struct mkorphan_info *oi = (struct mkorphan_info *)priv_data;
-+	blk64_t new_blk;
-+	errcode_t err;
-+
-+	/* Can we just continue in currently allocated cluster? */
-+	if (blockcnt &&
-+	    EXT2FS_B2C(fs, oi->last_blk) == EXT2FS_B2C(fs, oi->last_blk + 1)) {
-+		new_blk = oi->last_blk + 1;
++	if (!inode.i_links_count) {
++		if (ctx->qctx)
++			quota_data_inodes(ctx->qctx, &inode, *ino, -1);
++		ext2fs_inode_alloc_stats2(fs, *ino, -1,
++					  LINUX_S_ISDIR(inode.i_mode));
++		ctx->free_inodes++;
++		inode.i_dtime = ctx->now;
 +	} else {
-+		err = ext2fs_new_block2(fs, oi->last_blk, 0, &new_blk);
-+		if (err) {
-+			oi->err = err;
-+			return BLOCK_ABORT;
-+		}
-+		ext2fs_block_alloc_stats2(fs, new_blk, +1);
-+		oi->alloc_blocks++;
++		inode.i_dtime = 0;
 +	}
-+	if (blockcnt >= 0) {
-+		if (ext2fs_has_feature_metadata_csum(fs->super)) {
-+			struct ext4_orphan_block_tail *tail;
-+
-+			tail = ext2fs_orphan_block_tail(fs, oi->buf);
-+			tail->ob_checksum = ext2fs_do_orphan_file_block_csum(fs,
-+				oi->ino, oi->generation, new_blk, oi->buf);
-+		}
-+		err = io_channel_write_blk64(fs->io, new_blk, 1, oi->buf);
-+	} else	/* zerobuf is used to initialize new indirect blocks... */
-+		err = io_channel_write_blk64(fs->io, new_blk, 1, oi->zerobuf);
-+	if (err) {
-+		oi->err = err;
-+		return BLOCK_ABORT;
-+	}
-+	oi->last_blk = new_blk;
-+	*blocknr = new_blk;
-+	if (blockcnt >= 0 && --oi->num_blocks == 0)
-+		return BLOCK_CHANGED | BLOCK_ABORT;
-+	return BLOCK_CHANGED;
-+}
-+
-+errcode_t ext2fs_create_orphan_file(ext2_filsys fs, blk_t num_blocks)
-+{
-+	struct ext2_inode inode;
-+	ext2_ino_t ino = fs->super->s_orphan_file_inum;
-+	errcode_t err;
-+	char *buf = NULL, *zerobuf = NULL;
-+	struct mkorphan_info oi;
-+	struct ext4_orphan_block_tail *ob_tail;
-+
-+	if (!ino) {
-+		err = ext2fs_new_inode(fs, EXT2_ROOT_INO, LINUX_S_IFREG | 0600,
-+				       0, &ino);
-+		if (err)
-+			return err;
-+		ext2fs_inode_alloc_stats2(fs, ino, +1, 0);
-+		ext2fs_mark_ib_dirty(fs);
-+	}
-+
-+	err = ext2fs_read_inode(fs, ino, &inode);
-+	if (err)
-+		return err;
-+	if (EXT2_I_SIZE(&inode)) {
-+		err = ext2fs_truncate_orphan_file(fs);
-+		if (err)
-+			return err;
-+	}
-+
-+	memset(&inode, 0, sizeof(struct ext2_inode));
-+	if (ext2fs_has_feature_extents(fs->super)) {
-+		inode.i_flags |= EXT4_EXTENTS_FL;
-+		err = ext2fs_write_inode(fs, ino, &inode);
-+		if (err)
-+			return err;
-+	}
-+
-+	err = ext2fs_get_mem(fs->blocksize, &buf);
-+	if (err)
-+		return err;
-+	err = ext2fs_get_mem(fs->blocksize, &zerobuf);
-+	if (err)
-+		goto out;
-+	memset(buf, 0, fs->blocksize);
-+	memset(zerobuf, 0, fs->blocksize);
-+	ob_tail = ext2fs_orphan_block_tail(fs, buf);
-+	ob_tail->ob_magic = ext2fs_cpu_to_le32(EXT4_ORPHAN_BLOCK_MAGIC);
-+	oi.num_blocks = num_blocks;
-+	oi.alloc_blocks = 0;
-+	oi.last_blk = 0;
-+	oi.generation = inode.i_generation;
-+	oi.ino = ino;
-+	oi.buf = buf;
-+	oi.zerobuf = zerobuf;
-+	oi.err = 0;
-+	err = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_APPEND,
-+				    0, mkorphan_proc, &oi);
-+	if (err)
-+		goto out;
-+	if (oi.err) {
-+		err = oi.err;
-+		goto out;
-+	}
-+
-+	/* Reread inode after blocks were allocated */
-+	err = ext2fs_read_inode(fs, ino, &inode);
-+	if (err)
-+		goto out;
-+	ext2fs_iblk_set(fs, &inode, 0);
-+	inode.i_atime = inode.i_mtime =
-+		inode.i_ctime = fs->now ? fs->now : time(0);
-+	inode.i_links_count = 1;
-+	inode.i_mode = LINUX_S_IFREG | 0600;
-+	ext2fs_iblk_add_blocks(fs, &inode, oi.alloc_blocks);
-+	err = ext2fs_inode_size_set(fs, &inode,
-+			(unsigned long long)fs->blocksize * num_blocks);
-+	if (err)
-+		goto out;
-+	err = ext2fs_write_new_inode(fs, ino, &inode);
-+	if (err)
-+		goto out;
-+
-+	fs->super->s_orphan_file_inum = ino;
-+	ext2fs_set_feature_orphan_file(fs->super);
-+	ext2fs_mark_super_dirty(fs);
-+	/* Need to update group descriptors as well */
-+	fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
-+out:
-+	if (buf)
-+		ext2fs_free_mem(&buf);
-+	if (zerobuf)
-+		ext2fs_free_mem(&zerobuf);
-+	return err;
-+}
-+
-+/*
-+ * Find reasonable size for orphan file. We choose orphan file size to be
-+ * between 32 and 512 filesystem blocks and not more than 1/4096 of the
-+ * filesystem unless it is really small.
-+ */
-+e2_blkcnt_t ext2fs_default_orphan_file_blocks(ext2_filsys fs)
-+{
-+	__u64 num_blocks = ext2fs_blocks_count(fs->super);
-+	e2_blkcnt_t blks = 512;
-+
-+	if (num_blocks < 128 * 1024)
-+		blks = 32;
-+	else if (num_blocks < 2 * 1024 * 1024)
-+		blks = num_blocks / 4096;
-+	return (blks + EXT2FS_CLUSTER_MASK(fs)) & ~EXT2FS_CLUSTER_MASK(fs);
-+}
-+
-+static errcode_t ext2fs_orphan_file_block_csum(ext2_filsys fs, ext2_ino_t ino,
-+					       blk64_t blk, char *buf,
-+					       __u32 *crcp)
-+{
-+	struct ext2_inode inode;
-+	errcode_t retval;
-+
-+	retval = ext2fs_read_inode(fs, ino, &inode);
-+	if (retval)
-+		return retval;
-+	*crcp = ext2fs_do_orphan_file_block_csum(fs, ino, inode.i_generation,
-+						 blk, buf);
++	e2fsck_write_inode_full(ctx, *ino, EXT2_INODE(&inode),
++				sizeof(inode), "delete_file");
++	*ino = next_ino;
 +	return 0;
 +}
 +
-+errcode_t ext2fs_orphan_file_block_csum_set(ext2_filsys fs, ext2_ino_t ino,
-+					    blk64_t blk, char *buf)
++struct process_orphan_block_data {
++	e2fsck_t 	ctx;
++	char 		*buf;
++	char		*block_buf;
++	e2_blkcnt_t	blocks;
++	int		abort;
++	int		clear;
++	errcode_t	errcode;
++	ext2_ino_t	ino;
++	__u32		generation;
++};
++
++static int process_orphan_block(ext2_filsys fs,
++			       blk64_t	*block_nr,
++			       e2_blkcnt_t blockcnt,
++			       blk64_t	ref_blk EXT2FS_ATTR((unused)),
++			       int	ref_offset EXT2FS_ATTR((unused)),
++			       void *priv_data)
 +{
++	struct process_orphan_block_data *pd;
++	e2fsck_t 		ctx;
++	struct problem_context	pctx;
++	blk64_t			blk = *block_nr;
 +	struct ext4_orphan_block_tail *tail;
++	int			j;
++	int			inodes_per_ob;
++	__u32			*bdata;
++	ext2_ino_t		ino;
 +
-+	if (!ext2fs_has_feature_metadata_csum(fs->super))
-+		return 0;
++	pd = priv_data;
++	ctx = pd->ctx;
++	clear_problem_context(&pctx);
++	pctx.ino = fs->super->s_orphan_file_inum;
++	pctx.blk = blockcnt;
 +
-+	tail = ext2fs_orphan_block_tail(fs, buf);
-+	return ext2fs_orphan_file_block_csum(fs, ino, blk, buf,
-+					     &tail->ob_checksum);
++	/* Orphan file must not have holes */
++	if (!blk) {
++		if (blockcnt == pd->blocks)
++			return BLOCK_ABORT;
++		fix_problem(ctx, PR_0_ORPHAN_FILE_HOLE, &pctx);
++return_abort:
++		pd->abort = 1;
++		return BLOCK_ABORT;
++	}
++	inodes_per_ob = ext2fs_inodes_per_orphan_block(fs);
++	pd->errcode = io_channel_read_blk64(fs->io, blk, 1, pd->buf);
++	if (pd->errcode)
++		goto return_abort;
++	tail = ext2fs_orphan_block_tail(fs, pd->buf);
++	if (ext2fs_le32_to_cpu(tail->ob_magic) !=
++	    EXT4_ORPHAN_BLOCK_MAGIC) {
++		fix_problem(ctx, PR_0_ORPHAN_FILE_BAD_MAGIC, &pctx);
++		goto return_abort;
++	}
++	if (!ext2fs_orphan_file_block_csum_verify(fs,
++			fs->super->s_orphan_file_inum, blk, pd->buf)) {
++		fix_problem(ctx, PR_0_ORPHAN_FILE_BAD_CHECKSUM, &pctx);
++		goto return_abort;
++	}
++	bdata = (__u32 *)pd->buf;
++	for (j = 0; j < inodes_per_ob; j++) {
++		if (!bdata[j])
++			continue;
++		ino = ext2fs_le32_to_cpu(bdata[j]);
++		if (release_orphan_inode(ctx, &ino, pd->block_buf))
++			goto return_abort;
++	}
++	return 0;
 +}
 +
-+int ext2fs_orphan_file_block_csum_verify(ext2_filsys fs, ext2_ino_t ino,
-+					 blk64_t blk, char *buf)
++static int process_orphan_file(e2fsck_t ctx, char *block_buf)
 +{
-+	struct ext4_orphan_block_tail *tail;
-+	__u32 crc;
++	ext2_filsys fs = ctx->fs;
++	char *orphan_buf;
++	struct process_orphan_block_data pd;
++	int ret = 0;
++	ext2_ino_t orphan_inum = fs->super->s_orphan_file_inum;
++	struct ext2_inode orphan_inode;
++	struct problem_context	pctx;
 +	errcode_t retval;
 +
-+	if (!ext2fs_has_feature_metadata_csum(fs->super))
-+		return 1;
-+	retval = ext2fs_orphan_file_block_csum(fs, ino, blk, buf, &crc);
-+	if (retval)
++	if (!ext2fs_has_feature_orphan_file(fs->super))
 +		return 0;
-+	tail = ext2fs_orphan_block_tail(fs, buf);
-+	return ext2fs_le32_to_cpu(tail->ob_checksum) == crc;
++
++	clear_problem_context(&pctx);
++	pctx.ino = orphan_inum;
++
++	orphan_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize * 4,
++						    "orphan block buffer");
++	retval = ext2fs_read_inode(fs, orphan_inum, &orphan_inode);
++	if (retval < 0) {
++		com_err("process_orphan_file", retval,
++			_("while reading inode %d"), orphan_inum);
++		ret = 1;
++		goto out;
++	}
++	if (EXT2_I_SIZE(&orphan_inode) & (fs->blocksize - 1)) {
++		fix_problem(ctx, PR_0_ORPHAN_FILE_WRONG_SIZE, &pctx);
++		ret = 1;
++		goto out;
++	}
++	pd.buf = orphan_buf + 3 * fs->blocksize;
++	pd.block_buf = block_buf;
++	pd.blocks = EXT2_I_SIZE(&orphan_inode) / fs->blocksize;
++	pd.ctx = ctx;
++	pd.abort = 0;
++	pd.errcode = 0;
++	retval = ext2fs_block_iterate3(fs, orphan_inum,
++				       BLOCK_FLAG_DATA_ONLY | BLOCK_FLAG_HOLE,
++				       orphan_buf, process_orphan_block, &pd);
++	if (retval) {
++		com_err("process_orphan_block", retval,
++			_("while calling ext2fs_block_iterate for inode %d"),
++			orphan_inum);
++		ret = 1;
++		goto out;
++	}
++	if (pd.abort) {
++		if (pd.errcode) {
++			com_err("process_orphan_block", pd.errcode,
++				_("while reading blocks of inode %d"),
++				orphan_inum);
++		}
++		ret = 1;
++	}
++out:
++	ext2fs_free_mem(&orphan_buf);
++	return ret;
 +}
-diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-index 1006b2d2bd52..b844e7665999 100644
---- a/lib/ext2fs/swapfs.c
-+++ b/lib/ext2fs/swapfs.c
-@@ -131,8 +131,9 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
- 	/* s_*_time_hi are __u8 and does not need swabbing */
- 	sb->s_encoding = ext2fs_swab16(sb->s_encoding);
- 	sb->s_encoding_flags = ext2fs_swab16(sb->s_encoding_flags);
-+	sb->s_orphan_file_inum = ext2fs_swab32(sb->s_orphan_file_inum);
- 	/* catch when new fields are used from s_reserved */
--	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 95 * sizeof(__le32));
-+	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 94 * sizeof(__le32));
- 	sb->s_checksum = ext2fs_swab32(sb->s_checksum);
++
+ /*
+  * This function releases all of the orphan inodes.  It returns 1 if
+  * it hit some error, and 0 on success.
+@@ -320,15 +494,17 @@ static errcode_t e2fsck_write_all_quotas(e2fsck_t ctx)
+ static int release_orphan_inodes(e2fsck_t ctx)
+ {
+ 	ext2_filsys fs = ctx->fs;
+-	ext2_ino_t	ino, next_ino;
+-	struct ext2_inode_large inode;
++	ext2_ino_t ino;
+ 	struct problem_context pctx;
+ 	char *block_buf;
+ 
+-	if ((ino = fs->super->s_last_orphan) == 0)
++	if (fs->super->s_last_orphan == 0 &&
++	    !ext2fs_has_feature_orphan_present(fs->super))
+ 		return 0;
+ 
+ 	clear_problem_context(&pctx);
++	ino = fs->super->s_last_orphan;
++	pctx.ino = ino;
+ 	pctx.errcode = e2fsck_read_all_quotas(ctx);
+ 	if (pctx.errcode) {
+ 		fix_problem(ctx, PR_0_QUOTA_INIT_CTX, &pctx);
+@@ -343,9 +519,10 @@ static int release_orphan_inodes(e2fsck_t ctx)
+ 	ext2fs_mark_super_dirty(fs);
+ 
+ 	/*
+-	 * If the filesystem contains errors, don't run the orphan
+-	 * list, since the orphan list can't be trusted; and we're
+-	 * going to be running a full e2fsck run anyway...
++	 * If the filesystem contains errors, don't process the orphan list
++	 * or orphan file, since neither can be trusted; and we're going to
++	 * be running a full e2fsck run anyway... We clear orphan file contents
++	 * after filesystem is checked to avoid clearing someone else's data.
+ 	 */
+ 	if (fs->super->s_state & EXT2_ERROR_FS) {
+ 		if (ctx->qctx)
+@@ -353,10 +530,8 @@ static int release_orphan_inodes(e2fsck_t ctx)
+ 		return 0;
+ 	}
+ 
+-	if ((ino < EXT2_FIRST_INODE(fs->super)) ||
+-	    (ino > fs->super->s_inodes_count)) {
+-		clear_problem_context(&pctx);
+-		pctx.ino = ino;
++	if (ino && ((ino < EXT2_FIRST_INODE(fs->super)) ||
++	    (ino > fs->super->s_inodes_count))) {
+ 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_HEAD_INODE, &pctx);
+ 		goto err_qctx;
+ 	}
+@@ -365,43 +540,19 @@ static int release_orphan_inodes(e2fsck_t ctx)
+ 						    "block iterate buffer");
+ 	e2fsck_read_bitmaps(ctx);
+ 
++	/* First process orphan list */
+ 	while (ino) {
+-		e2fsck_read_inode_full(ctx, ino, EXT2_INODE(&inode),
+-				sizeof(inode), "release_orphan_inodes");
+-		clear_problem_context(&pctx);
+-		pctx.ino = ino;
+-		pctx.inode = EXT2_INODE(&inode);
+-		pctx.str = inode.i_links_count ? _("Truncating") :
+-			_("Clearing");
+-
+-		fix_problem(ctx, PR_0_ORPHAN_CLEAR_INODE, &pctx);
+-
+-		next_ino = inode.i_dtime;
+-		if (next_ino &&
+-		    ((next_ino < EXT2_FIRST_INODE(fs->super)) ||
+-		     (next_ino > fs->super->s_inodes_count))) {
+-			pctx.ino = next_ino;
+-			fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_INODE, &pctx);
++		if (release_orphan_inode(ctx, &ino, block_buf))
+ 			goto err_buf;
+-		}
++	}
+ 
+-		if (release_inode_blocks(ctx, ino, &inode, block_buf, &pctx))
+-			goto err_buf;
++	/* Next process orphan file */
++	if (ext2fs_has_feature_orphan_present(fs->super) &&
++	    !ext2fs_has_feature_orphan_file(fs->super))
++		goto err_buf;
++	if (process_orphan_file(ctx, block_buf))
++		goto err_buf;
+ 
+-		if (!inode.i_links_count) {
+-			if (ctx->qctx)
+-				quota_data_inodes(ctx->qctx, &inode, ino, -1);
+-			ext2fs_inode_alloc_stats2(fs, ino, -1,
+-						  LINUX_S_ISDIR(inode.i_mode));
+-			ctx->free_inodes++;
+-			inode.i_dtime = ctx->now;
+-		} else {
+-			inode.i_dtime = 0;
+-		}
+-		e2fsck_write_inode_full(ctx, ino, EXT2_INODE(&inode),
+-				sizeof(inode), "delete_file");
+-		ino = next_ino;
+-	}
+ 	ext2fs_free_mem(&block_buf);
+ 	pctx.errcode = e2fsck_write_all_quotas(ctx);
+ 	if (pctx.errcode)
+@@ -416,6 +567,130 @@ err:
+ 	return 1;
  }
  
-diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
-index 80a5269bceb7..ad452dee8eb3 100644
---- a/lib/ext2fs/tst_super_size.c
-+++ b/lib/ext2fs/tst_super_size.c
-@@ -152,7 +152,8 @@ int main(int argc, char **argv)
- 	check_field(s_last_error_errcode, 1);
- 	check_field(s_encoding, 2);
- 	check_field(s_encoding_flags, 2);
--	check_field(s_reserved, 95 * 4);
-+	check_field(s_orphan_file_inum, 4);
-+	check_field(s_reserved, 94 * 4);
- 	check_field(s_checksum, 4);
- 	do_field("Superblock end", 0, 0, cur_offset, 1024);
++static int reinit_orphan_block(ext2_filsys fs,
++			       blk64_t	*block_nr,
++			       e2_blkcnt_t blockcnt,
++			       blk64_t	ref_blk EXT2FS_ATTR((unused)),
++			       int	ref_offset EXT2FS_ATTR((unused)),
++			       void *priv_data)
++{
++	struct process_orphan_block_data *pd;
++	e2fsck_t 		ctx;
++	blk64_t			blk = *block_nr;
++	struct problem_context	pctx;
++	struct ext4_orphan_block_tail *tail;
++
++	pd = priv_data;
++	ctx = pd->ctx;
++	tail = ext2fs_orphan_block_tail(fs, pd->buf);
++
++	/* Orphan file must not have holes */
++	if (!blk) {
++		if (blockcnt == pd->blocks)
++			return BLOCK_ABORT;
++
++		clear_problem_context(&pctx);
++		pctx.ino = fs->super->s_orphan_file_inum;
++		pctx.blk = blockcnt;
++		fix_problem(ctx, PR_6_ORPHAN_FILE_HOLE, &pctx);
++return_abort:
++		pd->abort = 1;
++		return BLOCK_ABORT;
++	}
++	/*
++	 * Update checksum to match expected buffer contents with appropriate
++	 * block number.
++	 */
++	tail->ob_checksum = ext2fs_do_orphan_file_block_csum(fs, pd->ino,
++						pd->generation, blk, pd->buf);
++	if (!pd->clear) {
++		pd->errcode = io_channel_read_blk64(fs->io, blk, 1,
++						    pd->block_buf);
++		/* Block is already cleanly initialized? */
++		if (!memcmp(pd->block_buf, pd->buf, fs->blocksize))
++			return 0;
++
++		clear_problem_context(&pctx);
++		pctx.ino = fs->super->s_orphan_file_inum;
++		pctx.blk = blockcnt;
++		if (!fix_problem(ctx, PR_6_ORPHAN_BLOCK_DIRTY, &pctx))
++			goto return_abort;
++		pd->clear = 1;
++	}
++	pd->errcode = io_channel_write_blk64(fs->io, blk, 1, pd->buf);
++	if (pd->errcode)
++		goto return_abort;
++	return 0;
++}
++
++/*
++ * Check and clear orphan file. We just return non-zero if we hit some
++ * inconsistency. Caller will truncate & recreate new orphan file.
++ */
++int check_init_orphan_file(e2fsck_t ctx)
++{
++	ext2_filsys fs = ctx->fs;
++	char *orphan_buf;
++	struct process_orphan_block_data pd;
++	struct ext4_orphan_block_tail *tail;
++	ext2_ino_t orphan_inum = fs->super->s_orphan_file_inum;
++	struct ext2_inode orphan_inode;
++	int ret = 0;
++	errcode_t retval;
++
++	orphan_buf = (char *) e2fsck_allocate_memory(ctx, fs->blocksize * 5,
++						    "orphan block buffer");
++	e2fsck_read_inode(ctx, orphan_inum, &orphan_inode, "orphan inode");
++	if (EXT2_I_SIZE(&orphan_inode) & (fs->blocksize - 1)) {
++		struct problem_context	pctx;
++
++		clear_problem_context(&pctx);
++		pctx.ino = orphan_inum;
++		fix_problem(ctx, PR_6_ORPHAN_FILE_WRONG_SIZE, &pctx);
++		ret = 1;
++		goto out;
++	}
++	pd.buf = orphan_buf + 3 * fs->blocksize;
++	pd.block_buf = orphan_buf + 4 * fs->blocksize;
++	pd.blocks = EXT2_I_SIZE(&orphan_inode) / fs->blocksize;
++	pd.ctx = ctx;
++	pd.abort = 0;
++	pd.clear = 0;
++	pd.errcode = 0;
++	pd.ino = orphan_inum;
++	pd.generation = orphan_inode.i_generation;
++	/* Initialize buffer to write */
++	memset(pd.buf, 0, fs->blocksize);
++	tail = ext2fs_orphan_block_tail(fs, pd.buf);
++	tail->ob_magic = ext2fs_cpu_to_le32(EXT4_ORPHAN_BLOCK_MAGIC);
++
++	retval = ext2fs_block_iterate3(fs, orphan_inum,
++				       BLOCK_FLAG_DATA_ONLY | BLOCK_FLAG_HOLE,
++				       orphan_buf, reinit_orphan_block, &pd);
++	if (retval) {
++		com_err("reinit_orphan_block", retval,
++			_("while calling ext2fs_block_iterate for inode %d"),
++			orphan_inum);
++		ret = 1;
++		goto out;
++	}
++	if (pd.abort) {
++		if (pd.errcode) {
++			com_err("process_orphan_block", pd.errcode,
++				_("while reading blocks of inode %d"),
++				orphan_inum);
++		}
++		ret = 1;
++	}
++
++	/* We had to clear some blocks. Report it up. */
++	if (ret == 0 && pd.clear)
++		ret = 2;
++out:
++	ext2fs_free_mem(&orphan_buf);
++	return ret;
++}
++
+ /*
+  * Check the resize inode to make sure it is sane.  We check both for
+  * the case where on-line resizing is not enabled (in which case the
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index c5f9e4415f8f..bf9b0bf2ecb8 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1945,15 +1945,82 @@ print_unsupp_features:
+ 				_("\n*** journal has been regenerated ***\n"));
+ 		}
+ 	}
+-no_journal:
+ 
++no_journal:
+ 	if (run_result & E2F_FLAG_ABORT) {
+ 		fatal_error(ctx, _("aborted"));
+ 	} else if (run_result & E2F_FLAG_CANCEL) {
+ 		log_out(ctx, _("%s: e2fsck canceled.\n"), ctx->device_name ?
+ 			ctx->device_name : ctx->filesystem_name);
+ 		exit_value |= FSCK_CANCELED;
+-	} else if (ctx->qctx && !ctx->invalid_bitmaps) {
++		goto cleanup;
++	}
++
++	if (ext2fs_has_feature_orphan_file(fs->super)) {
++		int ret;
++
++		/* No point in orphan file without a journal... */
++		if (!ext2fs_has_feature_journal(fs->super) &&
++		    fix_problem(ctx, PR_6_ORPHAN_FILE_WITHOUT_JOURNAL, &pctx)) {
++			retval = ext2fs_truncate_orphan_file(fs);
++			if (retval) {
++				/* Huh, failed to delete file */
++				fix_problem(ctx, PR_6_ORPHAN_FILE_TRUNC_FAILED,
++					    &pctx);
++				goto check_quotas;
++			}
++			ext2fs_clear_feature_orphan_file(fs->super);
++			ext2fs_mark_super_dirty(fs);
++			goto check_quotas;
++		}
++		ret = check_init_orphan_file(ctx);
++		if (ret == 2 ||
++		    (ret == 0 && ext2fs_has_feature_orphan_present(fs->super) &&
++		     fix_problem(ctx, PR_6_ORPHAN_PRESENT_CLEAN_FILE, &pctx))) {
++			ext2fs_clear_feature_orphan_present(fs->super);
++			ext2fs_mark_super_dirty(fs);
++		} else if (ret == 1 &&
++		    fix_problem(ctx, PR_6_ORPHAN_FILE_CORRUPTED, &pctx)) {
++			int orphan_file_blocks;
++
++			if (ctx->invalid_bitmaps) {
++				fix_problem(ctx,
++					    PR_6_ORPHAN_FILE_BITMAP_INVALID,
++					    &pctx);
++				goto check_quotas;
++			}
++
++			retval = ext2fs_truncate_orphan_file(fs);
++			if (retval) {
++				/* Huh, failed to truncate file */
++				fix_problem(ctx, PR_6_ORPHAN_FILE_TRUNC_FAILED,
++					    &pctx);
++				goto check_quotas;
++			}
++
++			orphan_file_blocks =
++				ext2fs_default_orphan_file_blocks(fs);
++			log_out(ctx, _("Creating orphan file (%d blocks): "),
++				orphan_file_blocks);
++			fflush(stdout);
++			retval = ext2fs_create_orphan_file(fs,
++							   orphan_file_blocks);
++			if (retval) {
++				log_out(ctx, "%s: while trying to create "
++					"orphan file\n", error_message(retval));
++				fix_problem(ctx, PR_6_ORPHAN_FILE_CREATE_FAILED,
++					    &pctx);
++				goto check_quotas;
++			}
++			log_out(ctx, "%s", _(" Done.\n"));
++		}
++	} else if (ext2fs_has_feature_orphan_present(fs->super) &&
++		   fix_problem(ctx, PR_6_ORPHAN_PRESENT_NO_FILE, &pctx)) {
++			ext2fs_clear_feature_orphan_present(fs->super);
++			ext2fs_mark_super_dirty(fs);
++	}
++check_quotas:
++	if (ctx->qctx && !ctx->invalid_bitmaps) {
+ 		int needs_writeout;
+ 
+ 		for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
+@@ -1988,6 +2055,7 @@ no_journal:
+ 		goto restart;
+ 	}
+ 
++cleanup:
+ #ifdef MTRACE
+ 	mtrace_print("Cleanup");
  #endif
-diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-index dce077e640b6..7a587318f73a 100644
---- a/lib/support/mkquota.c
-+++ b/lib/support/mkquota.c
-@@ -505,7 +505,8 @@ errcode_t quota_compute_usage(quota_ctx_t qctx)
- 			continue;
- 		if (ino == EXT2_ROOT_INO ||
- 		    (ino >= EXT2_FIRST_INODE(fs->super) &&
--		     ino != quota_type2inum(PRJQUOTA, fs->super))) {
-+		     ino != quota_type2inum(PRJQUOTA, fs->super) &&
-+		     ino != fs->super->s_orphan_file_inum)) {
- 			space = ext2fs_get_stat_i_blocks(fs,
- 						EXT2_INODE(inode)) << 9;
- 			quota_data_add(qctx, inode, ino, space);
 -- 
 2.26.2
 
