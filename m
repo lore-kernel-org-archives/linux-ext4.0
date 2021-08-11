@@ -2,187 +2,88 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E62AFC4338F
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D11E9C43214
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id CDE8960C3E
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AD6A060D07
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 Aug 2021 10:31:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237156AbhHKKbg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S237159AbhHKKbg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Wed, 11 Aug 2021 06:31:36 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:51262 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237036AbhHKKbg (ORCPT
+Received: from smtp-out1.suse.de ([195.135.220.28]:48616 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S237116AbhHKKbg (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Aug 2021 06:31:36 -0400
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 0CF812014B;
+        by smtp-out1.suse.de (Postfix) with ESMTP id 0E316221D1;
         Wed, 11 Aug 2021 10:31:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1628677872; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=uZQEbjJirFAUW6cxysJ1woaNz+YB82ZLBLHoAUJ9ATk=;
-        b=aBiNsaJcOhstxsc7oSYYZiFRkRUldEdzWzUARhyTp5NZzcgy4kdcUJC4NeknmilApmPAXt
-        tslV5MNarkpwwzL4vYamkUKPfAHc5XgVfQf4QvgoIHBt6ugrba58ms2qrIrswfESWZuYrJ
-        B4ihVLrDn9wCS3oRm2Mlh+UnYlmI22s=
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=t4ob24jXGVENc5AMMPpl0fgYrGHtpcX2WGGnWkvF4YQ=;
+        b=o2u4pNHZ6Motj82j+iW9EfTVqlVJCOpVKyxgr3fn8zZyfPpKCKzJ2bJqOSpvRbjy6aIpt9
+        yFPQI1uSaFqdspJzZkHE/Zt2XinhxN1EjYaUAfQnTdcI33yvKkVfgK7zyxP/8oy/iv8v6F
+        NqrLRM6Sk26Utd/kflV0oHGYsn3HwYU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1628677872;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=uZQEbjJirFAUW6cxysJ1woaNz+YB82ZLBLHoAUJ9ATk=;
-        b=DeRZuKWP1raZjZ8fVU+YSpyBp93Agt9qM0cMINBzYD68apuswl2c0GueAgwe4fxgDv2smO
-        B8MNKOUnDHKsUxBA==
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=t4ob24jXGVENc5AMMPpl0fgYrGHtpcX2WGGnWkvF4YQ=;
+        b=vQ220Hs5yDI51/sXlSnb/5oW8eE5XgNlD4vyEmDRjrivl1gmDoKkkgdPZ2rRbofdLePWlR
+        NBBxIcQaNxV7cZAQ==
 Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 01ECEA3C01;
+        by relay2.suse.de (Postfix) with ESMTP id 048EDA3C08;
         Wed, 11 Aug 2021 10:31:12 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id DD1631F2B76; Wed, 11 Aug 2021 12:31:11 +0200 (CEST)
+        id D44D71E6204; Wed, 11 Aug 2021 12:31:11 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/5] mke2fs: Add support for orphan_file feature
-Date:   Wed, 11 Aug 2021 12:30:51 +0200
-Message-Id: <20210811103054.7896-3-jack@suse.cz>
+Subject: [PATCH 0/5 v5] e2fsprogs: Support for orphan file feature
+Date:   Wed, 11 Aug 2021 12:30:49 +0200
+Message-Id: <20210811103054.7896-1-jack@suse.cz>
 X-Mailer: git-send-email 2.26.2
-In-Reply-To: <20210811103054.7896-1-jack@suse.cz>
-References: <20210811103054.7896-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4275; h=from:subject; bh=+uc4hJRJyXZeQrDeeAPRIPkTXJwy94Ibvj0HDePX+Tc=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBhE6baIIjuAnHWAMNm1sdu7uYYANC7m+c1w6GZsSBr DenVJlOJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYROm2gAKCRCcnaoHP2RA2S6YB/ 4sowHOdymvVn9ezh2sAEH8TGBhWLJZK2QAVYfMriJRr2VEf6skKQkvUmmQMD94kc7uguaEq9O9CI+c BRcXELphMqtU8Ya5gA1BzjQcuCJ/fV8Sy2SeMATjeuqD15/car7mmG5x6mnPKk4xHCGWnstKpsKW2s eNXTn3aQ8f6vPRztC+EREwnLb5OTF2LCHGEqB+QtScE/VtajCyLJ0GmkZX3AayZRnTVVliVrz56Upz euwPK+R8tvXJkoTpr9ioiDDKc25mrzqflLDXGs2RE+wHnEP+23CN1+UGsiLwwRFB8o18Gve71Tr3MP XkJZIRxF/OY1Aew5GaBXQihmutivhd
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1238; h=from:subject; bh=Da02mPJk0z6+1abwV9g+MYg91SClRzQrfBYK2kapryc=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBhE6bYxjAWWZDLNSpzC7KIwBA+B8Xc2GUDlfDPKOys MVEUNn6JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYROm2AAKCRCcnaoHP2RA2aImCA DsuTLRbIoyhdkhckSsq4v6QzCwlg/QwXMMmXnMkvbErtd/q0ZxBxfxTzQApw0/y1ExqlBa03pNEzdV 5huto14sWUdvrRb3Aq6D14c+lAhV5gZzYHDancoxzck+1j0PnWnqQHAMgRBiGzcuqHqPsrkr32kdvA hBVAa1y6zwSVHQzpDPNCxQVwUEVLuG/QsmFuMyslF1PHqF/Z+oX0rE3IbJ0yNLfPWzlEDjni8O1TtT vClJ4jl+Vf+5UVYjHRLxPUSTy0YdcNMizXRiiDAurCpcOD3gIsqEnvR5YPZzWzRcShuG8idZPt/Wqk dZwe/us+alY9srbu7S8CTy7qWBliBz
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- misc/mke2fs.8.in |  5 +++++
- misc/mke2fs.c    | 53 +++++++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 55 insertions(+), 3 deletions(-)
+  Hello,
 
-diff --git a/misc/mke2fs.8.in b/misc/mke2fs.8.in
-index 84248ffc9e1d..3747c93a02bf 100644
---- a/misc/mke2fs.8.in
-+++ b/misc/mke2fs.8.in
-@@ -403,6 +403,11 @@ filesystem to change based on the user running \fBmke2fs\fR.
- Set a flag in the filesystem superblock indicating that it may be
- mounted using experimental kernel code, such as the ext4dev filesystem.
- .TP
-+.BI orphan_file_size= size
-+Set size of the file for tracking unlinked but still open inodes and inodes
-+with truncate in progress. Larger file allows for better scalability, reserving
-+a few blocks per cpu is ideal.
-+.TP
- .B discard
- Attempt to discard blocks at mkfs time (discarding blocks initially is useful
- on solid state devices and sparse / thin-provisioned storage). When the device
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 92003e119558..579d6d18474c 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -94,6 +94,7 @@ static gid_t	root_gid;
- int	journal_size;
- int	journal_flags;
- int	journal_fc_size;
-+static e2_blkcnt_t	orphan_file_blocks;
- static int	lazy_itable_init;
- static int	packed_meta_blocks;
- int		no_copy_xattrs;
-@@ -1089,6 +1090,21 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 				continue;
- 			}
- 			encoding_flags = arg;
-+		} else if (!strcmp(token, "orphan_file_size")) {
-+			if (!arg) {
-+				r_usage++;
-+				badopt = token;
-+				continue;
-+			}
-+			orphan_file_blocks = parse_num_blocks2(arg,
-+						fs_param.s_log_block_size);
-+			if (orphan_file_blocks == 0) {
-+				fprintf(stderr,
-+					_("Invalid size of orphan file %s\n"),
-+					arg);
-+				r_usage++;
-+				continue;
-+			}
- 		} else {
- 			r_usage++;
- 			badopt = token;
-@@ -1156,7 +1172,8 @@ static __u32 ok_features[3] = {
- 		EXT2_FEATURE_COMPAT_EXT_ATTR |
- 		EXT4_FEATURE_COMPAT_SPARSE_SUPER2 |
- 		EXT4_FEATURE_COMPAT_FAST_COMMIT |
--		EXT4_FEATURE_COMPAT_STABLE_INODES,
-+		EXT4_FEATURE_COMPAT_STABLE_INODES |
-+		EXT4_FEATURE_COMPAT_ORPHAN_FILE,
- 	/* Incompat */
- 	EXT2_FEATURE_INCOMPAT_FILETYPE|
- 		EXT3_FEATURE_INCOMPAT_EXTENTS|
-@@ -1551,6 +1568,7 @@ static void PRS(int argc, char *argv[])
- 	int		lsector_size = 0, psector_size = 0;
- 	int		show_version_only = 0, is_device = 0;
- 	unsigned long long num_inodes = 0; /* unsigned long long to catch too-large input */
-+	int		default_orphan_file = 0;
- 	errcode_t	retval;
- 	char *		oldpath = getenv("PATH");
- 	char *		extended_opts = 0;
-@@ -2098,8 +2116,20 @@ profile_error:
- 		ext2fs_clear_feature_ea_inode(&fs_param);
- 		ext2fs_clear_feature_casefold(&fs_param);
- 	}
--	edit_feature(fs_features ? fs_features : tmp,
--		     &fs_param.s_feature_compat);
-+	if (!fs_features && tmp)
-+		edit_feature(tmp, &fs_param.s_feature_compat);
-+	/*
-+	 * Now all the defaults are incorporated in fs_param. Check the state
-+	 * of orphan_file feature so that we know whether we should silently
-+	 * disabled in case journal gets disabled.
-+	 */
-+	if (ext2fs_has_feature_orphan_file(&fs_param))
-+		default_orphan_file = 1;
-+	if (fs_features)
-+		edit_feature(fs_features, &fs_param.s_feature_compat);
-+	/* Silently disable orphan_file if user chose fs without journal */
-+	if (default_orphan_file && !ext2fs_has_feature_journal(&fs_param))
-+		ext2fs_clear_feature_orphan_file(&fs_param);
- 	if (tmp)
- 		free(tmp);
- 	(void) ext2fs_free_mem(&fs_features);
-@@ -3456,6 +3486,23 @@ no_journal:
- 		fix_cluster_bg_counts(fs);
- 	if (ext2fs_has_feature_quota(&fs_param))
- 		create_quota_inodes(fs);
-+	if (ext2fs_has_feature_orphan_file(&fs_param)) {
-+		if (!ext2fs_has_feature_journal(&fs_param)) {
-+			com_err(program_name, 0, _("cannot set orphan_file "
-+				"feature without a journal."));
-+			exit(1);
-+		}
-+		if (!orphan_file_blocks) {
-+			orphan_file_blocks =
-+				ext2fs_default_orphan_file_blocks(fs);
-+		}
-+		retval = ext2fs_create_orphan_file(fs, orphan_file_blocks);
-+		if (retval) {
-+			com_err(program_name, retval,
-+				_("while creating orphan file"));
-+			exit(1);
-+		}
-+	}
- 
- 	retval = mk_hugefiles(fs, device_name);
- 	if (retval)
--- 
-2.26.2
+  This is the fifth version of support for orphan file feature in e2fsprogs.
+I've rebased it on top of maint branch as Ted already merged initial fixes.
+I've also fixed up some issues Ted has already found.  I'm not aware of any
+outstanding issue with the series, xfstests pass fine with it.
 
+Changes since v4:
+* Make sure we consistently speak about orphan_file and orphan_present feature,
+  not flag, in error messages.
+* Do not make orphan_file feature default yet
+* Make sure mke2fs does not complain if orphan_file feature got enabled by the
+  profile but user decided to disable journal.
+* Fixed up value of ORPHAN_PRESENT feature
+* Fixed several introduced -Wall warnings
+* Fixed e2fsck errorcodes
+* Rebased on top of current maint branch (some patches already merged)
+
+Changes since v3:
+* updated to compute checksum also from physical block
+
+Changes since v2:
+* rebased onto current master branch
+* fixed various bugs I've spotted during testing
+* added support for debugfs, dumpe2fs, e2image
+* changed code to use dynamically allocated inode number instead of fixed one
+
+								Honza
+
+Previous versions:
+Link: https://lore.kernel.org/linux-ext4/20210712154315.9606-1-jack@suse.cz/ # v4
