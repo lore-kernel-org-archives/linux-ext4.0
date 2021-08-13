@@ -8,54 +8,54 @@ X-Spam-Status: No, score=-18.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF9A5C432BE
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47921C4320E
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BD38A610CC
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29F93610A5
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239001AbhHMGdS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S238949AbhHMGdS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Fri, 13 Aug 2021 02:33:18 -0400
-Received: from mail-dm6nam10on2054.outbound.protection.outlook.com ([40.107.93.54]:46689
-        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
+Received: from mail-co1nam11on2089.outbound.protection.outlook.com ([40.107.220.89]:28373
+        "EHLO NAM11-CO1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S238997AbhHMGdJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S238996AbhHMGdJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Fri, 13 Aug 2021 02:33:09 -0400
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=hk8Pn6bZYZjnpcGYqjGy12GVxYufK73oSaDUTrsh1Go+Tlz5LQsSDFdUzaADRDczuIoHgYatLamlpnbJAADzinw7GbRiux0surg1Co6XJl87Ah5YxpV1B295KKUEGJCs8vMcQIzRdrXHs1toDgsqlHWm26/RvAo8nF7aX+SF/aq/io3924LI/5PnvWxR2w1xr5+WJmWRSLhr3Lj7dMytR1V9i9oc1l0nkTOfco7wPycZgp9WtvhIQbDdzk/rAJUa7Lc08DA8JJ5t+Uidtp22zbGUZwLHHhm1I/9sfQv2ZOLoiWqkidGO9AdVV+tZFqaczc7OClELlRdfNjC1JZJIPg==
+ b=Kdq/7hh996NUYmjU+DIwV9AwdY8A0QX1rAX7P7QSdlJDs2HOFaNXYeWMEqylLduG9HtDXrpyxL54jmI91oLF7potepRViFqPuix/2haaDW+6k4DmvUnHxvTFDdkEp2wWAxmZfm7S0A/cFHevy0mFnvpjkkd8LXXzuvf/mp2cjvBjyVYxbg5OpP97ugRe/EKzcYrfz5VACzV2+zpaOWPs177B2pakxc/NhY55XPLfRQ59rsw+pDV4XAZCkbMFUHk7aIwSNSKlvIlR4k+68we2HiOPNZARDAVGTjnf+F4dEP9npejmPrUapkW/QB6kJQqrkmxSdLL6IA4wcNmDFk1KHA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=qLzQP0Q2sVgjkO1mJavmGwqXRZqTbEiduZyle3KpBGc=;
- b=LqlfLP4rdnGQrvkrVs7Z7VWQHlPaW3ZQd7N1bOmc+hvAhmTx/61Fwb/17jEGjdww0jlXSZTQQjBW9IzMCiHMj/hWW/HbMMBk9ycvP07nRNMFEers/Ytqgv4m30gny+fU9FwzA5UD+4RRbUaAN9d5dYMr4h8Oo3Hc1PnVHQZMeFMf4sBhcQ5fu/YKF8fn7B7PBOSJhkZh6eXTitYPkaAhfBAtI9jof6uXmuimLIknQMGavE7iUKo/hX5SZZvgu14R4+jTDBcgASIrmiPxhFXWTBmtyU/M8/nejDOo/K0R3rnhC6esP2exkQZ8LXD/xjBaYRr3tjApfoxsHSzw3p4ttQ==
+ bh=JsBEIybxLlWQ1DvvPR9uO9H1ffiY515x5QP2dx6aNZI=;
+ b=IkmUV+jFm6EvaOZUXH594FrlKrOtc5iejyBc87H335kPRVtSwtUIwoVD4c6typOaKF67i4GP3ildiYkWHmdC8iMwSPGC4vqkYZ7LXclDpueD7T6zm4tOpXAT9whPp8CNCmZ/JlV4lBN6/IRHKgf1RzNVJK2x7An4IR4CuSNUVUz/Kve1iS7FipUpLohJyICV7PPJmH6U898ldkTMqNQ9RGhv8+GxjxjWPW0LgJjP2K5+L6xLMC8UcRZlOPVrBAA0aajlXJVN1KXBkNEssICPDMUemdF4sTL7KnMk9oGjXiNOSdjQ5EUDnvNRdFBk7ZbhqWkXyR/12pQMxCEeJuBrCQ==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=amd.com; dmarc=pass action=none header.from=amd.com; dkim=pass
  header.d=amd.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=qLzQP0Q2sVgjkO1mJavmGwqXRZqTbEiduZyle3KpBGc=;
- b=cvQhIkuhSmF82AVHaD6tF5XN9DGuh8bC9iKz1iKzJioeK7QTlMVtE0sYieMXpuyI/1FPnsgIu1/4mTlkYq+L4DFz3yHjdT7S5HsSWlxSn5mhTWto99Kra90z0XJXggs0fQVocFh97hBwxCQKejtkSdfVswmMMvwnzu/HEqmiv/U=
+ bh=JsBEIybxLlWQ1DvvPR9uO9H1ffiY515x5QP2dx6aNZI=;
+ b=Aff3Km2+yPEv8lQyBgURpfX0gY84b6jq7Dv4VTZRCOMvXs1brNNfVebm2b4rr911EHj81YxF9BbTCa7GhEWMVziJ77pUhv5o7cFbNXwCtpNLxgVFH+xoBiX2DoPomM4avQkFgNjimh2sRa6S0XeLklcZlkLz5r6t/wMJaW6X5+M=
 Authentication-Results: linux-foundation.org; dkim=none (message not signed)
  header.d=none;linux-foundation.org; dmarc=none action=none
  header.from=amd.com;
 Received: from SA0PR12MB4430.namprd12.prod.outlook.com (2603:10b6:806:70::20)
- by SN6PR12MB2718.namprd12.prod.outlook.com (2603:10b6:805:6f::22) with
+ by SN6PR12MB2782.namprd12.prod.outlook.com (2603:10b6:805:73::19) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.16; Fri, 13 Aug
- 2021 06:32:05 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4394.19; Fri, 13 Aug
+ 2021 06:32:10 +0000
 Received: from SA0PR12MB4430.namprd12.prod.outlook.com
  ([fe80::e828:5445:a5aa:94cb]) by SA0PR12MB4430.namprd12.prod.outlook.com
  ([fe80::e828:5445:a5aa:94cb%5]) with mapi id 15.20.4415.019; Fri, 13 Aug 2021
- 06:32:05 +0000
+ 06:32:10 +0000
 From:   Alex Sierra <alex.sierra@amd.com>
 To:     akpm@linux-foundation.org, Felix.Kuehling@amd.com,
         linux-mm@kvack.org, rcampbell@nvidia.com,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
 Cc:     amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
         hch@lst.de, jgg@nvidia.com, jglisse@redhat.com
-Subject: [PATCH v6 04/13] drm/amdkfd: add SPM support for SVM
-Date:   Fri, 13 Aug 2021 01:31:41 -0500
-Message-Id: <20210813063150.2938-5-alex.sierra@amd.com>
+Subject: [PATCH v6 10/13] lib: test_hmm add module param for zone device type
+Date:   Fri, 13 Aug 2021 01:31:47 -0500
+Message-Id: <20210813063150.2938-11-alex.sierra@amd.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210813063150.2938-1-alex.sierra@amd.com>
 References: <20210813063150.2938-1-alex.sierra@amd.com>
@@ -66,118 +66,200 @@ X-ClientProxiedBy: SN7PR18CA0026.namprd18.prod.outlook.com
  (2603:10b6:806:70::20)
 MIME-Version: 1.0
 X-MS-Exchange-MessageSentRepresentingType: 1
-Received: from alex-MS-7B09.amd.com (165.204.78.1) by SN7PR18CA0026.namprd18.prod.outlook.com (2603:10b6:806:f3::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.17 via Frontend Transport; Fri, 13 Aug 2021 06:32:05 +0000
+Received: from alex-MS-7B09.amd.com (165.204.78.1) by SN7PR18CA0026.namprd18.prod.outlook.com (2603:10b6:806:f3::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.17 via Frontend Transport; Fri, 13 Aug 2021 06:32:09 +0000
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 88c3f5be-9326-4079-7fd0-08d95e24118c
-X-MS-TrafficTypeDiagnostic: SN6PR12MB2718:
+X-MS-Office365-Filtering-Correlation-Id: 7d37b7bb-2d1d-43bf-74f2-08d95e24140d
+X-MS-TrafficTypeDiagnostic: SN6PR12MB2782:
 X-MS-Exchange-Transport-Forked: True
-X-Microsoft-Antispam-PRVS: <SN6PR12MB2718C41FB5D9CFDEB9993835FDFA9@SN6PR12MB2718.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:6430;
+X-Microsoft-Antispam-PRVS: <SN6PR12MB278287D76F3F1D6C8ED2F883FDFA9@SN6PR12MB2782.namprd12.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:3173;
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: K/psTYsG0EMeqKnKOnHiv9md4U47pS2wZYswuqI8A5mwzEwQ7bRt33eU65iwJ8C4VWAWx42anVxHtyX9FClZOf/wIGyr6xHL2oN0pbfnnFDAM/i/AzAwuN/8jQTO34ipxUFMFaPaA2WyidQhsEwI2J03NdvPvuEw6Mfdh2fX/3kfQlAPkxurCWKqjpdtIo2dffvIc/LbAF+s+ub0Znu74c94A314GMcCZyDU4/h5+z8dpOPZZdW59Mh4wPl1RdA2n9jzYIQwM8NOIAYHv3uJzuZ0EXy5u6+YLqD8DlMxXOgKNp9ph3P58n6jr2qJO+X11X90Op6SRETmkCpCRJk2USjHAPb4tpL3eSPf7uGZMvadR6oGgw0UjKuoBmDpwqN90rKznif6xNGeBTsdmgPTLK4wKieUtg2LsxW4dR6H7X6nyNsfnAfX/bXA3s2hYGPjk5GnAnuUzx3MGbQErM4fWegYkRyx6D895/mdnIiUSq4tuCbKuRJCr8ifP4wuLkfggJIJ5dP0wUS1De4QAXiprdwqjg8AO7VY2WHabRErJNrsaFmtOE0YJS3V6PXJJDenjulHr7Cla5GxbdfrZAlu1YB1051RI/ARcj2x5SOTo3odXVIoWRpW7Fs+XTxiW/V1nzQXvtmSpo1vVIYCGQkXKX5jsjbpWoh34NUY/Tj7vDCyNvmYiT2fRr2tBhzUeK3TH4l5N+omck6goYL1SPEdNw==
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA0PR12MB4430.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(346002)(366004)(396003)(376002)(136003)(39860400002)(956004)(44832011)(2616005)(6486002)(4326008)(86362001)(1076003)(5660300002)(478600001)(8676002)(38100700002)(8936002)(316002)(38350700002)(7416002)(2906002)(66946007)(6666004)(36756003)(66476007)(186003)(26005)(7696005)(52116002)(66556008)(83380400001);DIR:OUT;SFP:1101;
+X-Microsoft-Antispam-Message-Info: ZAGYzmakKvvJk2m3v8GkmMj9aifzCiTHgLxu+/w1olG6eI5wK2+O5N+49sNwuH5mG3vGxg4/r9dQdqoKKlQxzsDNxdQIomEfhVblFsrgX1VZhCtSpp3pZInZMAY6o5X+QMrIo2rrz7gLGv6Mchc+M8Fgr/R0du7eB41HvqfFX1M5rouxPFwHDsFgwzQmaZGgIfEcl8dfSFd40ZpUN/uonf+kdw4xtPYVOFSDoOyk+lF9o/sCSxXsVueyy9deN9oOnHPJWIUeV7I7fiCXI378FIkly3EGIUsb6pSb0sMkNgfl1S1U481XFV9jFEwHnMKHYJRlGKgsRfW03AdPUIoEw6AOme1p6G0QLCu/2bK878k5hgB/VJww6xVb2PWC7APbNhm3a8c4T4tXXOoRb4YqJ8txNSG5kSygCaLC85TKreVU9LBeAQAIag37CJ5JP9GrShRD7+1kreBpjb4RTb5164vcrU0vcaQWr7uMqTKf0ql8Kpvudqnf6hZD+3D+v+TrMu9BwCxcsHydteGQDVhDYS6WuivpOP/emD6dl+kSwYVa7DIfR3Ve8zVnoRRh5HIrp6oLcP722MCgaPlpEPWYFKWASmFJ5FZJfZCO1S9cZHHK+P69Z0k/nq1jG4xyRCttWtwJjgLegpPHD68JHs1utvMQZ47LpPBtxzGb2Y16yexRk/hlPr/QAFfekPboWB798sy6g/NI09IF4lkg4AosKQ==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA0PR12MB4430.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(376002)(346002)(396003)(39860400002)(136003)(316002)(2616005)(956004)(7416002)(38350700002)(7696005)(38100700002)(66946007)(66556008)(4326008)(52116002)(36756003)(6666004)(66476007)(1076003)(8936002)(5660300002)(83380400001)(44832011)(2906002)(478600001)(26005)(6486002)(186003)(8676002)(86362001);DIR:OUT;SFP:1101;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?t+YuQEph7RFqcTuhLol4nNn21A6lV4RCGyNe9vkD1H3xe54E2dZuhBk2j1au?=
- =?us-ascii?Q?2yVRf6WbCL+S5KB9aX6z5yEtomogOC/Ubpru+1DUoqGduGVGts+l2x5nT4iM?=
- =?us-ascii?Q?s+Uy2vH/54swKBI/YS2QzLwQjjJmMBnnVCPdVNCl8Wr5y6IIujZwnn8c9iCq?=
- =?us-ascii?Q?eyzk5AzeriBDqnckuEgIpGbF3am3E9xT2r8Q/HzYt7PubaCpaWGAxZ6wg4U+?=
- =?us-ascii?Q?I0+ENhVrkylW/hWkk+1NymEEbMvKgfGrzhAl0+TaYEVqljoLoU0R68Yb+5jz?=
- =?us-ascii?Q?UCfV7i0MoZw6jhxWXhlTKWGqStS/RTF5e8kuJ2X9B8WG3yvZNL64os6EmQe3?=
- =?us-ascii?Q?RMHggQc2Fy0Yxb8s9Zg8IvX9z04uzKUv5t50jQAljv3eK1e+FRmsh+paV8Rc?=
- =?us-ascii?Q?7FneJTM7gNIJtxKd20VxxBvzMjzrVE6n0JkaG4uarWB6ubWFyyu/wgOmO9sp?=
- =?us-ascii?Q?7/P88P6orCmAv9YUh2SICBdCyv7UpdBvsMeR2HgGo/y57l40+nK0roremKhQ?=
- =?us-ascii?Q?9YIDmsUikrzm9bpK6NwoqMHsbIwrXU0w3lISrjl6NQ3T3sSCkEg88xOJs+BB?=
- =?us-ascii?Q?SjpSAL/mKn70/5T0qiNXQkeAFRZmIx7sQQhZ5rShpkMpK+Cp9Ed0NUJ3OnU5?=
- =?us-ascii?Q?bgAJY79QciKnLm/YfJsysrlodS7+hHzhQMOdCUdlbFMZ390VG+OCij0i9A6H?=
- =?us-ascii?Q?STsUtrP6uxfRDCTOTRNjPlfKjUgL9CMuX/3wkri3kwY4+j03QcGCpylFmIlP?=
- =?us-ascii?Q?ci2LLxF7kDbdAtZpXLnGabXP/bElmqy+JPgIbwWU387ILG+q/C3So6vrxsMr?=
- =?us-ascii?Q?AqDCE06E/L8s5QyOonFjEPz5k4n5MavENafeDfo1gabk10eoNIhN4rIIkXpE?=
- =?us-ascii?Q?HDtAWMAVLA49zSH5eilPIwI3qZieAj2IMRtmgpsresddbScY2ai5pjRaXNyu?=
- =?us-ascii?Q?T+kLCWFci38uqv/hvmCIPmxEZItoJXU72pmSilpTlCSMnLHpCL4CpwI9dwDQ?=
- =?us-ascii?Q?JOvPu0dGEyFf2Jir3fxk/yTJ82wgqhi0QD5k3gM2N7lng5szIwOciuNE+msM?=
- =?us-ascii?Q?qlUPXjfofPj0ourlzQd3vn+rsFfDwdUFZCS2sVEQEXUYLh+4bu6V+t+rDg5E?=
- =?us-ascii?Q?pI6UsR2I9k9ZkGIyv87Iv5b2wj2DXfAMl+aaqoylMnqRqRrYGcZip0AcdYbM?=
- =?us-ascii?Q?fgOU+KcV9z29j/f/BxSvue/lJFH5vCKNpPogxfMqfIfmLOgBhDFxq6Vh5rrt?=
- =?us-ascii?Q?QNcJHJQkZZpIxRU5jkWp5ZwFa4nmO3DLv0Pv2lNrJIkQlgbu61ykfGPkFjJV?=
- =?us-ascii?Q?Y9jMKEg5thq1C01DIYZMeNXa?=
+X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?wnDOf6PA8Kd4Y6Nx/ouIhCZkKUjds6ONup73Mw2PI1TpIrYUZ4K0XKL9FdQq?=
+ =?us-ascii?Q?PI71gRCMH2EUHtRcmR11tOJltTHyOCSDYjFooo8k80cZTwbPBzEBweFaMp4R?=
+ =?us-ascii?Q?tdEXHqlekjsAunLk+k2akiRq/Hfgn7a+4VY2fuTpL2BZ92tT86Dxo+fBUiTm?=
+ =?us-ascii?Q?FetoW02f6X5FrGT1N8+Pg0/zKE5RHxWGYdiQNzcUWo4AwoOBKSuKQquxOs30?=
+ =?us-ascii?Q?O4eBnyW7wwbiHWb8LwOpasoMmpE78w1DZksRAXyqddi/EMHTKFEz2qYTLUFk?=
+ =?us-ascii?Q?wRjZszQ16eCGOkh5q7nS3Xg7eZKRGRJOoJ5Ie5deY3ZGev1xdW+9+uA8105U?=
+ =?us-ascii?Q?LNwUW59Fs5a3QMeBhdYwKX9/G90sgnJcNGPYJGos5NFEtcYA+LY48LnsD1Vx?=
+ =?us-ascii?Q?4zgohdMOoS7Dm7OA++IFcjMbviLNg68ThXKSB7cyJrUira14NqTRG4x8iqje?=
+ =?us-ascii?Q?STNj+l4EMtS9TuthEalf5VsLdReCqMZRrGbLrwDqfrkY8c8QU4l22DAzry9A?=
+ =?us-ascii?Q?2cAcayezOdcyMiefIQgKkdT7OhO7SW+CfG6HDrR5mByKNVPyPgu+udBYyedz?=
+ =?us-ascii?Q?GBnpN8ctRXoIZZjYLHD9+8l6AXpcP8udU9x+z94IXVSCbTZXvTkbJ5qyoSFI?=
+ =?us-ascii?Q?MvoEOQQoTqjUkIVZvHMnQJQRUat/37Cg6kEemPwuZ4jn+oc45eReEQ9FN9r2?=
+ =?us-ascii?Q?1WndRcvdSJmczD8WYCmuMhL7zqX3vdaOhNVQC0FcvPqTuTabAiG4BHDK3vxj?=
+ =?us-ascii?Q?v/MSdwwP70hEFK7npLB+jUddYQHFdvg4Me96YiulhHzJsEOL9llZz4jnxfjc?=
+ =?us-ascii?Q?t2+SibpISQxJH8Hpwm1lM1ghY+GtffkFyvhn0P9W7I9jKy+whamWHqwE5ebc?=
+ =?us-ascii?Q?oQ0Q961LSxl3zcu9azBpvzTXCKBzQyjwfpelC4uJcEmnH484x1p95urtQhkg?=
+ =?us-ascii?Q?hDSzqHh9UM6x07uPKUCa7Omxuzn1AIQLTi9Uq76214EYSEPRttK/1izvNSAi?=
+ =?us-ascii?Q?bkF/G+DzyMwHPwGuKGMhErdHXpVgUYgV9XHxeHB3dWZcr9nf5W3zYGKFJ/F1?=
+ =?us-ascii?Q?i3Zm4PxKAyaGDsD1O4UajQMNltmgdMsmk6hKezob+X0CK/L19LP4tfOI3NQA?=
+ =?us-ascii?Q?UjkUhRQfKf6ogwJyvifmm4IocWBd/EZQiX1MFI/BsZ3JFtsvioh2/Pi7ZyR6?=
+ =?us-ascii?Q?BankQlOHHd47DuzYAq5rlyyaUQyxprGktoW/i4Lp7teXPl8rzYB68IVcNKHQ?=
+ =?us-ascii?Q?SK9YBD6KOXzfDdxVPJlu1uQRcH6SuBNSpHorJ5zP9jpPSaphXgxOa42DpjJw?=
+ =?us-ascii?Q?IcDCyzsmzzT6Um27rgORkP6x?=
 X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 88c3f5be-9326-4079-7fd0-08d95e24118c
+X-MS-Exchange-CrossTenant-Network-Message-Id: 7d37b7bb-2d1d-43bf-74f2-08d95e24140d
 X-MS-Exchange-CrossTenant-AuthSource: SA0PR12MB4430.namprd12.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 13 Aug 2021 06:32:05.7248
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 13 Aug 2021 06:32:09.9339
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: NQKCazYIExa1Wh9Ctjg8XABWxVWJDRH69RPKe/s6bGtL/zbMRWwikHIARrxpZYEQjgk9+jogSpkdXTbf1rNR7A==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR12MB2718
+X-MS-Exchange-CrossTenant-UserPrincipalName: 3g/BXQhqIqEXqZSBmnSZVI8/WZv3RNJp8djrJB+Ml7/ZGsLI+/GsLz8843NDjFL88G3+CI/g73+5EP/oAYyXEw==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR12MB2782
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When CPU is connected throug XGMI, it has coherent
-access to VRAM resource. In this case that resource
-is taken from a table in the device gmc aperture base.
-This resource is used along with the device type, which could
-be DEVICE_PRIVATE or DEVICE_GENERIC to create the device
-page map region.
+In order to configure device generic in test_hmm, two
+module parameters should be passed, which correspon to the
+SP start address of each device (2) spm_addr_dev0 &
+spm_addr_dev1. If no parameters are passed, private device
+type is configured.
+
+v5:
+Remove devmem->pagemap.type = MEMORY_DEVICE_PRIVATE at
+dmirror_allocate_chunk that was forcing to configure pagemap.type
+to MEMORY_DEVICE_PRIVATE
+
+v6:
+Check for null pointers for resource and memremap references
+at dmirror_allocate_chunk
 
 Signed-off-by: Alex Sierra <alex.sierra@amd.com>
-Reviewed-by: Felix Kuehling <Felix.Kuehling@amd.com>
 ---
- drivers/gpu/drm/amd/amdkfd/kfd_migrate.c | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+ lib/test_hmm.c      | 56 ++++++++++++++++++++++++++++++++-------------
+ lib/test_hmm_uapi.h |  1 +
+ 2 files changed, 41 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c b/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-index dab290a4d19d..24a8b6d4f947 100644
---- a/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-+++ b/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-@@ -868,6 +868,7 @@ int svm_migrate_init(struct amdgpu_device *adev)
- 	struct resource *res;
- 	unsigned long size;
- 	void *r;
-+	bool xgmi_connected_to_cpu = adev->gmc.xgmi.connected_to_cpu;
+diff --git a/lib/test_hmm.c b/lib/test_hmm.c
+index 3cd91ca31dd7..b4f885c6c6ae 100644
+--- a/lib/test_hmm.c
++++ b/lib/test_hmm.c
+@@ -33,6 +33,16 @@
+ #define DEVMEM_CHUNK_SIZE		(256 * 1024 * 1024U)
+ #define DEVMEM_CHUNKS_RESERVE		16
  
- 	/* Page migration works on Vega10 or newer */
- 	if (kfddev->device_info->asic_family < CHIP_VEGA10)
-@@ -880,17 +881,22 @@ int svm_migrate_init(struct amdgpu_device *adev)
- 	 * should remove reserved size
- 	 */
- 	size = ALIGN(adev->gmc.real_vram_size, 2ULL << 20);
--	res = devm_request_free_mem_region(adev->dev, &iomem_resource, size);
-+	if (xgmi_connected_to_cpu)
-+		res = lookup_resource(&iomem_resource, adev->gmc.aper_base);
-+	else
-+		res = devm_request_free_mem_region(adev->dev, &iomem_resource, size);
++static unsigned long spm_addr_dev0;
++module_param(spm_addr_dev0, long, 0644);
++MODULE_PARM_DESC(spm_addr_dev0,
++		"Specify start address for SPM (special purpose memory) used for device 0. By setting this Generic device type will be used. Make sure spm_addr_dev1 is set too");
 +
- 	if (IS_ERR(res))
- 		return -ENOMEM;
- 
--	pgmap->type = MEMORY_DEVICE_PRIVATE;
- 	pgmap->nr_range = 1;
- 	pgmap->range.start = res->start;
- 	pgmap->range.end = res->end;
-+	pgmap->type = xgmi_connected_to_cpu ?
-+				MEMORY_DEVICE_GENERIC : MEMORY_DEVICE_PRIVATE;
- 	pgmap->ops = &svm_migrate_pgmap_ops;
- 	pgmap->owner = SVM_ADEV_PGMAP_OWNER(adev);
--	pgmap->flags = MIGRATE_VMA_SELECT_DEVICE_PRIVATE;
-+	pgmap->flags = 0;
- 	r = devm_memremap_pages(adev->dev, pgmap);
- 	if (IS_ERR(r)) {
- 		pr_err("failed to register HMM device memory\n");
-@@ -914,6 +920,7 @@ void svm_migrate_fini(struct amdgpu_device *adev)
- 	struct dev_pagemap *pgmap = &adev->kfd.dev->pgmap;
- 
- 	devm_memunmap_pages(adev->dev, pgmap);
--	devm_release_mem_region(adev->dev, pgmap->range.start,
--				pgmap->range.end - pgmap->range.start + 1);
-+	if (pgmap->type == MEMORY_DEVICE_PRIVATE)
-+		devm_release_mem_region(adev->dev, pgmap->range.start,
-+					pgmap->range.end - pgmap->range.start + 1);
++static unsigned long spm_addr_dev1;
++module_param(spm_addr_dev1, long, 0644);
++MODULE_PARM_DESC(spm_addr_dev1,
++		"Specify start address for SPM (special purpose memory) used for device 1. By setting this Generic device type will be used. Make sure spm_addr_dev0 is set too");
++
+ static const struct dev_pagemap_ops dmirror_devmem_ops;
+ static const struct mmu_interval_notifier_ops dmirror_min_ops;
+ static dev_t dmirror_dev;
+@@ -450,11 +460,11 @@ static int dmirror_write(struct dmirror *dmirror, struct hmm_dmirror_cmd *cmd)
+ 	return ret;
  }
+ 
+-static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
++static int dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 				   struct page **ppage)
+ {
+ 	struct dmirror_chunk *devmem;
+-	struct resource *res;
++	struct resource *res = NULL;
+ 	unsigned long pfn;
+ 	unsigned long pfn_first;
+ 	unsigned long pfn_last;
+@@ -462,15 +472,26 @@ static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 
+ 	devmem = kzalloc(sizeof(*devmem), GFP_KERNEL);
+ 	if (!devmem)
+-		return false;
++		return -ENOMEM;
++
++	if (!spm_addr_dev0 && !spm_addr_dev1) {
++		res = request_free_mem_region(&iomem_resource, DEVMEM_CHUNK_SIZE,
++					      "hmm_dmirror");
++		devmem->pagemap.type = MEMORY_DEVICE_PRIVATE;
++		mdevice->zone_device_type = HMM_DMIRROR_MEMORY_DEVICE_PRIVATE;
++	} else if (spm_addr_dev0 && spm_addr_dev1) {
++		res = lookup_resource(&iomem_resource, MINOR(mdevice->cdevice.dev) ?
++							spm_addr_dev0 :
++							spm_addr_dev1);
++		devmem->pagemap.type = MEMORY_DEVICE_GENERIC;
++		mdevice->zone_device_type = HMM_DMIRROR_MEMORY_DEVICE_GENERIC;
++	} else {
++		pr_err("Both spm_addr_dev parameters should be set\n");
++	}
+ 
+-	res = request_free_mem_region(&iomem_resource, DEVMEM_CHUNK_SIZE,
+-				      "hmm_dmirror");
+-	if (IS_ERR(res))
++	if (IS_ERR_OR_NULL(res))
+ 		goto err_devmem;
+ 
+-	mdevice->zone_device_type = HMM_DMIRROR_MEMORY_DEVICE_PRIVATE;
+-	devmem->pagemap.type = MEMORY_DEVICE_PRIVATE;
+ 	devmem->pagemap.range.start = res->start;
+ 	devmem->pagemap.range.end = res->end;
+ 	devmem->pagemap.nr_range = 1;
+@@ -493,10 +514,14 @@ static bool dmirror_allocate_chunk(struct dmirror_device *mdevice,
+ 		mdevice->devmem_capacity = new_capacity;
+ 		mdevice->devmem_chunks = new_chunks;
+ 	}
+-
+ 	ptr = memremap_pages(&devmem->pagemap, numa_node_id());
+-	if (IS_ERR(ptr))
++	if (IS_ERR_OR_NULL(ptr)) {
++		if (ptr)
++			ret = PTR_ERR(ptr);
++		else
++			ret = -EFAULT;
+ 		goto err_release;
++	}
+ 
+ 	devmem->mdevice = mdevice;
+ 	pfn_first = devmem->pagemap.range.start >> PAGE_SHIFT;
+@@ -1097,10 +1122,8 @@ static int dmirror_device_init(struct dmirror_device *mdevice, int id)
+ 	if (ret)
+ 		return ret;
+ 
+-	/* Build a list of free ZONE_DEVICE private struct pages */
+-	dmirror_allocate_chunk(mdevice, NULL);
+-
+-	return 0;
++	/* Build a list of free ZONE_DEVICE struct pages */
++	return dmirror_allocate_chunk(mdevice, NULL);
+ }
+ 
+ static void dmirror_device_remove(struct dmirror_device *mdevice)
+@@ -1113,8 +1136,9 @@ static void dmirror_device_remove(struct dmirror_device *mdevice)
+ 				mdevice->devmem_chunks[i];
+ 
+ 			memunmap_pages(&devmem->pagemap);
+-			release_mem_region(devmem->pagemap.range.start,
+-					   range_len(&devmem->pagemap.range));
++			if (devmem->pagemap.type == MEMORY_DEVICE_PRIVATE)
++				release_mem_region(devmem->pagemap.range.start,
++						   range_len(&devmem->pagemap.range));
+ 			kfree(devmem);
+ 		}
+ 		kfree(mdevice->devmem_chunks);
+diff --git a/lib/test_hmm_uapi.h b/lib/test_hmm_uapi.h
+index ee88701793d5..17a6b5059871 100644
+--- a/lib/test_hmm_uapi.h
++++ b/lib/test_hmm_uapi.h
+@@ -65,6 +65,7 @@ enum {
+ enum {
+ 	/* 0 is reserved to catch uninitialized type fields */
+ 	HMM_DMIRROR_MEMORY_DEVICE_PRIVATE = 1,
++	HMM_DMIRROR_MEMORY_DEVICE_GENERIC,
+ };
+ 
+ #endif /* _LIB_TEST_HMM_UAPI_H */
 -- 
 2.32.0
 
