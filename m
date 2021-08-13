@@ -8,54 +8,54 @@ X-Spam-Status: No, score=-18.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85047C19F36
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3297C43214
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 64CC9610CC
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D29A610CC
+	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 06:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238986AbhHMGdA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 13 Aug 2021 02:33:00 -0400
-Received: from mail-co1nam11on2047.outbound.protection.outlook.com ([40.107.220.47]:62997
-        "EHLO NAM11-CO1-obe.outbound.protection.outlook.com"
+        id S238587AbhHMGdK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 13 Aug 2021 02:33:10 -0400
+Received: from mail-dm6nam10on2054.outbound.protection.outlook.com ([40.107.93.54]:46689
+        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S238975AbhHMGct (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 13 Aug 2021 02:32:49 -0400
+        id S238910AbhHMGc6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 13 Aug 2021 02:32:58 -0400
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=QP3rt7Oop0Xy1FdCC6/UdJOJ1qYzFFN1adUeI93ujDrtt6HqijezhMVxZhtNe4zqQg4bDI0QwkPTs5haeEb5MjpvOqeaPaDivcKNPvwxHeTO0Kd8jiHcDmK1zpAFtzZLydkKma5/8RDKpy6BA6tarZLSFu+NDaGUm/5SU1QIEWmCa31lUsw5WbPeOeIfpbzRi6ltYEW7jQysthYdCWhq/4OS+oTbFfG0UOmkR38CNg3k3VwTKQw0GeZM1r9DyFjbGabxJu6fk+sWZ347wjGWi9ujvBKf/T1KFfu6r9FqMWVnjQ9OZe3AHsEOEp/n+sGE/bpacoyRnSbZ5iIPz8ZyIw==
+ b=dqsN9jPA9tBoyLZi1pELWlrIJWZbuSDz37U8blwOVzhREBhykPjc4QHpTiseLRrUsDiVkj4uROXg2CEnpLjRbULIfjlxGaMlst642KZ3Lgz3gSKX0XuK9On9qnPxdrztym2dw8HEbUnVoN2eos/IBESBDMO8fCtVvNkv2IQT6FdUnCxwPDK/RaUNCwfZc7s5cPaUuKBYA1eEubAjdaXbN+fQwGqlAVQoJJa425BNNAMBua0jbDTL8TK+zgIrSgBjb0oqJSL897Pro8i5CRyygk0reHvKgVZo89CfepUjgkSM70XXatI56Ad1mRnEUO+B1DgpCH/crU7KCHJvoKMl/g==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=NkgzVl+/WajoOylKd+qelb4J16WUJoVRVM9petSZXSQ=;
- b=MQJhMlf7+Ildrwg0txriWFrC7Fz9XOQY+JDZRprZvT39L8vWMpDmAZL1+zBXbVHetOAhidtmUtaOjwK1lAIM0iCjaKgMhZ31z3NLZ3K6Rhf7H5qcaPAb4/i4a4hVZMNYD6LoUgJOmWfILsiBvfTPCZeoN8eq/wcAiTqwL5ri5l58xea6PNylknrarlqHw4Y2M1iLuJkgY8nSK0qBjHvmyI47hudVM02+diGsi6xLyyJtLeL6PXatPsc5YpO7LAtRd/1eBDk00Bgy1qik26wfzlDhChKIpWxfw/V9tx6+jZlNuRk0zKnm3kBKbpgfshP4zszmMl2P32YfjtfI+5HcHw==
+ bh=TUEROg2UDTQq5LhzAavd4Vw/sWGqA8IarIMmnrPNAZ4=;
+ b=diWRcy/oDBmdOmIsBEC4w0RBGYIWLP97nR11wxeTl7e4pddQuz3gNAXQFBj4/zUByNuQ2HPXP43hbyAGYdal2TwhmhZXPeQSSJCJQSPQn7PVC7R0XnqeDjfZW0/Y4Ctvg+hDYZs1+nht+bhA/33xYdOF6XIR6OTFJcuqzvGUlqiaOws7wpY1dwOapcPRIFpltrSfnRuHWYIYbYFGG5/+l5BIr3Yibtw4Zv+JAJRNTYDtQ8lkHdISHqkKZdin9v4UYfFFjztEf5U6I+ZxSj/8t1IAvqWKiDKoMTTEhiyqpT6UtjqffCG1V2hcxcNtCDQWWGzUEyyRguFtG0uJowZlBg==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=amd.com; dmarc=pass action=none header.from=amd.com; dkim=pass
  header.d=amd.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=NkgzVl+/WajoOylKd+qelb4J16WUJoVRVM9petSZXSQ=;
- b=xWO6N83k6diXu2c5KGZSWXveTEwIAF8zvE08cMlycHLdlqMU1IemS3j1LLQ1CsKFdiUeZcCWmojgFd0n9j5EAeQK3oxgd400FbcyG5R+IZF3IkMQe0IaSB333c02sVqmk7NaDomn093IlCIlyWMOGHa9h+57IofuoAUD6J4khXA=
+ bh=TUEROg2UDTQq5LhzAavd4Vw/sWGqA8IarIMmnrPNAZ4=;
+ b=aB/Icd5F5T19wjDbkiD/2UfWrAFeU1kUPgOZ3g+660f1G7kWaHxOg6OV9Z9ip/hCEOIyV/s2zoSUJ/IJFFGhraVHn+cGYMBGZwgI3GE2ABoYvFdsQQqoQDA3N+tNrDIDF5krSuGTEdbwJCAhdTskkxT2MMqzsqHYMBjqWe1k1Hg=
 Authentication-Results: linux-foundation.org; dkim=none (message not signed)
  header.d=none;linux-foundation.org; dmarc=none action=none
  header.from=amd.com;
 Received: from SA0PR12MB4430.namprd12.prod.outlook.com (2603:10b6:806:70::20)
- by SN6PR12MB2782.namprd12.prod.outlook.com (2603:10b6:805:73::19) with
+ by SN6PR12MB2718.namprd12.prod.outlook.com (2603:10b6:805:6f::22) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4394.19; Fri, 13 Aug
- 2021 06:32:08 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.16; Fri, 13 Aug
+ 2021 06:32:05 +0000
 Received: from SA0PR12MB4430.namprd12.prod.outlook.com
  ([fe80::e828:5445:a5aa:94cb]) by SA0PR12MB4430.namprd12.prod.outlook.com
  ([fe80::e828:5445:a5aa:94cb%5]) with mapi id 15.20.4415.019; Fri, 13 Aug 2021
- 06:32:08 +0000
+ 06:32:05 +0000
 From:   Alex Sierra <alex.sierra@amd.com>
 To:     akpm@linux-foundation.org, Felix.Kuehling@amd.com,
         linux-mm@kvack.org, rcampbell@nvidia.com,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
 Cc:     amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
         hch@lst.de, jgg@nvidia.com, jglisse@redhat.com
-Subject: [PATCH v6 07/13] mm: add generic type support to migrate_vma helpers
-Date:   Fri, 13 Aug 2021 01:31:44 -0500
-Message-Id: <20210813063150.2938-8-alex.sierra@amd.com>
+Subject: [PATCH v6 03/13] kernel: resource: lookup_resource as exported symbol
+Date:   Fri, 13 Aug 2021 01:31:40 -0500
+Message-Id: <20210813063150.2938-4-alex.sierra@amd.com>
 X-Mailer: git-send-email 2.32.0
 In-Reply-To: <20210813063150.2938-1-alex.sierra@amd.com>
 References: <20210813063150.2938-1-alex.sierra@amd.com>
@@ -66,121 +66,83 @@ X-ClientProxiedBy: SN7PR18CA0026.namprd18.prod.outlook.com
  (2603:10b6:806:70::20)
 MIME-Version: 1.0
 X-MS-Exchange-MessageSentRepresentingType: 1
-Received: from alex-MS-7B09.amd.com (165.204.78.1) by SN7PR18CA0026.namprd18.prod.outlook.com (2603:10b6:806:f3::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.17 via Frontend Transport; Fri, 13 Aug 2021 06:32:07 +0000
+Received: from alex-MS-7B09.amd.com (165.204.78.1) by SN7PR18CA0026.namprd18.prod.outlook.com (2603:10b6:806:f3::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4415.17 via Frontend Transport; Fri, 13 Aug 2021 06:32:04 +0000
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: ed1e8986-ae07-45ca-d386-08d95e2412cc
-X-MS-TrafficTypeDiagnostic: SN6PR12MB2782:
+X-MS-Office365-Filtering-Correlation-Id: ed368a08-2203-4a96-3de0-08d95e24111b
+X-MS-TrafficTypeDiagnostic: SN6PR12MB2718:
 X-MS-Exchange-Transport-Forked: True
-X-Microsoft-Antispam-PRVS: <SN6PR12MB2782F7B4BABD735DFA06D066FDFA9@SN6PR12MB2782.namprd12.prod.outlook.com>
+X-Microsoft-Antispam-PRVS: <SN6PR12MB27185A41E3ECEA5F88AB3757FDFA9@SN6PR12MB2718.namprd12.prod.outlook.com>
 X-MS-Oob-TLC-OOBClassifiers: OLM:7691;
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: rg3ShFueTcz9lEgjGgUWfjDqWVnsPBLRZlKums/Weo9h73PgG6lom36q4RqX1+HSaeeQp/4uDau/pyXD5fL6jOYwuwv7un5RfU1AV013uwo2YShIuLbETLZzfok64Li6QF4a4mg9dwZGiIrYi5ZscpHnwps+NnKKaZE/ObULAPPFsHkvfArRZKuU+Ha5h/LfQFV46dSxfe5xl8S0fIkx3AbaCtTxYv6uYU/Bg6uEyFhEkmlBh85jhB91Fr7TJWxsyaZKMaqehYSOjnw90ZHIhuVslBPEVOsyMxKh6CpWalOxX4RuIuJpWGC9NzR0FntlXnD5T9DgAVYangBpie7Z5JdvDFZXaUFAyzYbe5tTSrRIM5OBoHUDt5z7QazWOfsYpIQM7mdRddqwKjO1+wa7ugqgBK6dsz4ZHjTEVrRodG09kncCBrKjSyFMJjgSN5RYE5LcApV5cR4tEjW9UeKzwFqfQe8hKeXXRTbpI89l7kBYAgW0AXLGE3Imj/BC/tqvhBqzuN+JJrBAqSZn4E6K81SyqCTPcH+exg3GMJdGtNH4KFawF8Ol7q5IVFhd9lL1p6iO788GN9CNwTSAKeJMVK9IMyHVwJtGKHb9HIYnPUvNajDgmsHLlH7j4PIwf1tR/fEC22rcgxJdTmPhLwxHzMFkCLWFThLQQRY44xJ7vIySEUqQ9mChwKEOV+/Xsnh9FyuNX/6Qk6LB+7kEtGu1j4Ag+1XsufHoaiOtUmOwEa4=
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA0PR12MB4430.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(376002)(346002)(396003)(39860400002)(136003)(316002)(2616005)(956004)(7416002)(38350700002)(7696005)(38100700002)(66946007)(66556008)(4326008)(52116002)(36756003)(6666004)(66476007)(1076003)(8936002)(5660300002)(83380400001)(44832011)(2906002)(478600001)(26005)(6486002)(186003)(8676002)(86362001)(41533002);DIR:OUT;SFP:1101;
+X-Microsoft-Antispam-Message-Info: JSl1y8LmsF0MDUnrKYz4sK0LovH2bCsYEuGs29cc2XU1vPr7TdJm7VG+JwVgbZ0SNxAcj34uExPTK9vIQCEi3wjoZCu+lwDR4dWRa3cyRX4EiQRvEmMeHdjELd3kzEzoMVJzRj9QQhmY8QDjV09bIyVu8BTALyE0nClISFylxSdPUDoMK6Ze5o9eqZr6YEy3xN9udwjYaqg1nF0+YNsH35Z/qXSFxciaVravozzCc/3pBiUNqWHcdLKHQSyNbah0xU2XC7ZB+35MiaigglH+KvvH6m4IQEVwj+3ehoLWMXrEB4X5bqbrj8vhDrw696l7RSEq1tSFtxGs1hVETlsAfFrieolCxRwT0HkTolBsBkWhKJ26lY4Lrf2rB3ST/QVq+ooMwFSxxTfYQ3vCXBCTt321UteSoheeXQ2r/TYnO4uTbHB7UY+2wcSx72DYrd+gBPYORmFTNei5oT2UvJhL2Vg18CHbq5v9MSea/nD+SnkaVRsRiToaO7sgN3du758INmzTibAfcSJPlZ0SehRzH4xgzvBJXP13AYVdvYoRXEyaPvTnAlquaBYLV5uVnA1x4GWq+fj5PbbPCqVGjrTPBlQjqfPhvDlm5cJ5T/Tka0ggvipbg+Nog1ZGydy5nv3vVBtwkmYPWKnzj7BzjUwVRmEEYdOqnd0RKgXEk95jT6cYdTNrm0Y1ZDVmX5d/57feam8BSuy/66XK4qJXeAKp7A==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SA0PR12MB4430.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(346002)(366004)(396003)(376002)(136003)(39860400002)(956004)(44832011)(2616005)(6486002)(4326008)(4744005)(86362001)(1076003)(5660300002)(478600001)(8676002)(38100700002)(8936002)(316002)(38350700002)(7416002)(2906002)(66946007)(6666004)(36756003)(66476007)(186003)(26005)(7696005)(52116002)(66556008)(83380400001);DIR:OUT;SFP:1101;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?Dplcw4GvGkSCMdfXZsn44I2BvKy2p7xaL7d498iBEniu7E+zntdszuKT/AlN?=
- =?us-ascii?Q?Ad8pqmxfsm1ep6+GWJcHhfwwocrD7hsEqp/f6+FcdUMnfpTvh4Jp6IZw+DLw?=
- =?us-ascii?Q?hs7Tp9hRH3EzDEbazTaUW+u5RPXaYYMuhZWZGmsOLAvIcxmmR8oGg/0NGLZO?=
- =?us-ascii?Q?aigzkqr2OisEJ+2FmksUmsG7cTxYNZljgMWngS4bUv441cj3N5rHodrW9VJe?=
- =?us-ascii?Q?Sythjzo4pl3++sPZjBqb6jqwZPXJn1BHp1M4IxKK+uSUQ6jM3euVtzFnfOQm?=
- =?us-ascii?Q?LFsV9AjWdIz5wW5qUpLlAzwxgx6NfPGrYVcX6IToQjkUsp+w4G8R1Foy88UM?=
- =?us-ascii?Q?k6jYbNM5Icg5IEQ8IhNZv/ZLZesM8JH4/nMx+Ji/jW/NbzOshuyorPZyBcta?=
- =?us-ascii?Q?Scz6UQK+Clg/Fmo3jtD1fo1TAGpk/gezK696Ov8qvt2ni5PhuJwBeFidMlH4?=
- =?us-ascii?Q?vcrFjH4GvmvqZMUBfhXUr22RIn2HBVcewQ6c+suAfx7QB5qOMtCM/C7B1sVH?=
- =?us-ascii?Q?TrNHiELKo7vwCTgvUMacxYbGEQ81jFdqSTHIoqwyV0MbCI5BfeYyVZQxD0fl?=
- =?us-ascii?Q?oDfGCVkHUNdJ1shedIswNtXOpTSAHijcXQGBEbwOOcH67qN/oVljIK3uJBwH?=
- =?us-ascii?Q?JOMreLaPWQmeg9It6GHgerJ8HWnEqtFHjwmra4ifoKRkovjohEg9glwFamPn?=
- =?us-ascii?Q?Bjsp1gUrfzFitriSqfusVJuijpgkZE0oDGgvmq+t9r5ktabgabXh07eoUJXI?=
- =?us-ascii?Q?MVQQImdX6rNqhIBhaO0JEEH263QzEegdqMW9UO+HMSWzxpgBegeRPbQRAgxH?=
- =?us-ascii?Q?eoqbzyrYE5shIGGhM12QxG45Y9iDY5XH2kHPfMx1m4ZswUKEDSzUFzPGaLSe?=
- =?us-ascii?Q?W9e40zT0rlCFn3YJlcDT5wKYdacumZOG9Erybq7yH6vTyF+ZpupQmV+pHd3U?=
- =?us-ascii?Q?qSINMZNf8uCHFbigQCmfC5/OTQL15+J5giZF3utHl2gB4bpQn21h4zX4454W?=
- =?us-ascii?Q?iN82uyJCJyUZIxcTOS2uABGCmoKpDKOtZW5DMMS5tojJi5EfKmb1EY4nRqmP?=
- =?us-ascii?Q?XBy6MmBuyl7sfg+G50emrKJexfV2FleCYXitNEsmZHkuRSFSU2whEH+tr5+F?=
- =?us-ascii?Q?0K9KNZR+s9qGHOFlXRNHG0crAYOxJ7flmzgk+JK+Ic5G8tUU/cYZACnVIgBF?=
- =?us-ascii?Q?YMOhCg0SNfphhZhMZt6f3EW9NUuOpgahCiwH/4T0B0d+MWLBI9e5aAB0cF8E?=
- =?us-ascii?Q?QeRFdDZgkrPEpVfYVgpjBcBzbU5yADaZ8ENluW6W2TdUV3qQ3lfWUrlNUwhL?=
- =?us-ascii?Q?1k/5TANkf4e53W8M+g9oI10H?=
+X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?YrTkPXnRKUidADlzdXj7gJYeoRZKektg/zp4xb83SJfDnNyLuN591A/6gF/v?=
+ =?us-ascii?Q?QZ2q0UbINzanZ91xAFbXio2zyaKGhwCg2uuhg5Ob+juzuezyjL3NWMwJE2ah?=
+ =?us-ascii?Q?cdR/E2fMEG/g7oxn49Hf6u0p345YH/KFUSLf44Gy9ZSXIJCUQ9PlqS1uPygL?=
+ =?us-ascii?Q?MuYG2JooXaxI4Fp1yzTE/1iL3ImTgoccnwYSwYmhkdLVpkJrKUPZj/c7iorA?=
+ =?us-ascii?Q?/UtNiRS4fQ4YViUGJQWYC16yM0SVCPDgv/yYKGvCMXisD9VS7kepomKHmAHk?=
+ =?us-ascii?Q?Boq/upf9NxyTHkARbTUcRRNqoORb2BOg64fszSsPql7tefMk4KcN02/wJgNl?=
+ =?us-ascii?Q?h8l3YTgpdUbRtD3KVxbZdZrsHfBqokYevmTUwCYNfn8VOni7Ro8jKQuUwxtP?=
+ =?us-ascii?Q?eltmgV0z1sYdnmDJxMYnGwDi/E7MSjS0xo/u6RLuIyfqJWrUKnnE5TLlmEr9?=
+ =?us-ascii?Q?n+hKC+hE+26VGzuKM31ENQ/NZVJ8/Jl3L1xLTSE62dP9xK01/YEjwTZFtYny?=
+ =?us-ascii?Q?czxnmaLCbzqPfZQyESA5bc/R1XH/n4GSEiAr8xXcACRo7C93OiKGp3YfVnZF?=
+ =?us-ascii?Q?g4dLW8rkBQl1SHvt3imTnitoJjOAMmbd662XI8F6bTlBmOl+ig//528ofKEs?=
+ =?us-ascii?Q?9Tq7F73l+AgyMqcV7fJgiJSKqR43vx7B0IzlzNkFTPQjirkrOMadfdT45nBl?=
+ =?us-ascii?Q?cBKt1D8i2WHjcjJp1bhaFT9Y1reu6QAM/wssfDI0qCeiyqF1XVeDMATib84l?=
+ =?us-ascii?Q?7vwrWBV8Mw/zFRgaUa3k3N2PLg0CYwD0eWLyu8gDhCQT3KHcHLVCNcnHKtUl?=
+ =?us-ascii?Q?GzKOwWTeSt2Z509Vf++QGN+Vgc1dhGUE4ftGj95JMqJ7T4rwZOi5lV1FKOtJ?=
+ =?us-ascii?Q?rTy5gycmkzx7sbZ8cVsAkFw7kvss86Y6m+YezO1bNtwPCnaZvSL0l6YVLQQf?=
+ =?us-ascii?Q?m6MjPxFcrA9xat8JUI+/mQibmWCDdWSNPz7imta6RlKzpl1y2QyOb11YHP0E?=
+ =?us-ascii?Q?WooyvwwSrAI2t3igO/t54xBTp2mMlVCNcNOewQ79SNcn4FoArLt07i5sHTmR?=
+ =?us-ascii?Q?LmWI599h/ym46vZiXhKrD9hhz2Vp8vFWP9AILGzAeqkS4OxSzYs4QzN87ZMI?=
+ =?us-ascii?Q?3zS7q70FtCTaeFWmrHvgr9mqdRXSXwWlmcvH1+kfkgFAiFANIBOwOg5MNIeA?=
+ =?us-ascii?Q?vSttt5PFjnQEmKUF3LjTugjbz40BpzT01JqWCIorvnBWzUzXP48dZga/z4Of?=
+ =?us-ascii?Q?om644x9978jh39uCxRhmuDN6CgjckecH3kv0lf9BkAJ9nx3ec9xCcbIan1k2?=
+ =?us-ascii?Q?mgl9q7QVuGS8eyks+N3KaCTb?=
 X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ed1e8986-ae07-45ca-d386-08d95e2412cc
+X-MS-Exchange-CrossTenant-Network-Message-Id: ed368a08-2203-4a96-3de0-08d95e24111b
 X-MS-Exchange-CrossTenant-AuthSource: SA0PR12MB4430.namprd12.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 13 Aug 2021 06:32:07.8396
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 13 Aug 2021 06:32:05.0150
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: Iy6lqwV1JSzVhgsn/JpiZBG9en2UTL//aTqbI5G0P7bkCK2aw6OIaocblNpDzqRWXfrbBb56oRqNqvTHviXHSg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR12MB2782
+X-MS-Exchange-CrossTenant-UserPrincipalName: YK64d9WEmVwWNTig8PLcffU0yWCg5RybJhihVDE3q0zUNIOZw9L/hGv+pTelQEE7nR2EPuJkkmIpb/IJ/cJb+g==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR12MB2718
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Device generic type case added for migrate_vma_pages and
-migrate_vma_check_page helpers.
-Both, generic and private device types have the same
-conditions to decide to migrate pages from/to device
-memory.
+The AMD architecture for the Frontier supercomputer will
+have device memory which can be coherently accessed by
+the CPU. The system BIOS advertises this memory as SPM
+(special purpose memory) in the UEFI system address map.
+
+The AMDGPU driver needs to be able to lookup this resource
+in order to claim it as MEMORY_DEVICE_GENERIC using
+devm_memremap_pages.
 
 Signed-off-by: Alex Sierra <alex.sierra@amd.com>
 ---
- mm/migrate.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ kernel/resource.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index e3a10e2a1bb3..f9e6bfa2867c 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -2565,7 +2565,7 @@ static bool migrate_vma_check_page(struct page *page)
- 		 * FIXME proper solution is to rework migration_entry_wait() so
- 		 * it does not need to take a reference on page.
- 		 */
--		return is_device_private_page(page);
-+		return is_device_page(page);
- 	}
+diff --git a/kernel/resource.c b/kernel/resource.c
+index ca9f5198a01f..227fc9fab573 100644
+--- a/kernel/resource.c
++++ b/kernel/resource.c
+@@ -772,6 +772,7 @@ struct resource *lookup_resource(struct resource *root, resource_size_t start)
  
- 	/* For file back page */
-@@ -2854,7 +2854,7 @@ EXPORT_SYMBOL(migrate_vma_setup);
-  *     handle_pte_fault()
-  *       do_anonymous_page()
-  * to map in an anonymous zero page but the struct page will be a ZONE_DEVICE
-- * private page.
-+ * private or generic page.
-  */
- static void migrate_vma_insert_page(struct migrate_vma *migrate,
- 				    unsigned long addr,
-@@ -2925,10 +2925,14 @@ static void migrate_vma_insert_page(struct migrate_vma *migrate,
+ 	return res;
+ }
++EXPORT_SYMBOL_GPL(lookup_resource);
  
- 			swp_entry = make_device_private_entry(page, vma->vm_flags & VM_WRITE);
- 			entry = swp_entry_to_pte(swp_entry);
-+		} else if (is_device_page(page)) {
-+			entry = mk_pte(page, vma->vm_page_prot);
-+			if (vma->vm_flags & VM_WRITE)
-+				entry = pte_mkwrite(pte_mkdirty(entry));
- 		} else {
- 			/*
--			 * For now we only support migrating to un-addressable
--			 * device memory.
-+			 * We support migrating to private and generic types for device
-+			 * zone memory.
- 			 */
- 			pr_warn_once("Unsupported ZONE_DEVICE page type.\n");
- 			goto abort;
-@@ -3034,10 +3038,10 @@ void migrate_vma_pages(struct migrate_vma *migrate)
- 		mapping = page_mapping(page);
- 
- 		if (is_zone_device_page(newpage)) {
--			if (is_device_private_page(newpage)) {
-+			if (is_device_page(newpage)) {
- 				/*
--				 * For now only support private anonymous when
--				 * migrating to un-addressable device memory.
-+				 * For now only support private and generic
-+				 * anonymous when migrating to device memory.
- 				 */
- 				if (mapping) {
- 					migrate->src[i] &= ~MIGRATE_PFN_MIGRATE;
+ /*
+  * Insert a resource into the resource tree. If successful, return NULL,
 -- 
 2.32.0
 
