@@ -2,100 +2,114 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.7 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-15.3 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E6EAC4338F
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 21:27:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35F78C4338F
+	for <linux-ext4@archiver.kernel.org>; Sat, 14 Aug 2021 02:15:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D82E660F51
-	for <linux-ext4@archiver.kernel.org>; Fri, 13 Aug 2021 21:27:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0E0B260F13
+	for <linux-ext4@archiver.kernel.org>; Sat, 14 Aug 2021 02:15:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234831AbhHMV1n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 13 Aug 2021 17:27:43 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36211 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S234716AbhHMV1m (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Aug 2021 17:27:42 -0400
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 17DLR5br031990
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 13 Aug 2021 17:27:06 -0400
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 80C7315C37C1; Fri, 13 Aug 2021 17:27:05 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, yangerkun@huawei.com,
-        yukuai3@huawei.com
-Subject: [PATCH] ext4: if zeroout fails fall back to splitting the extent node
-Date:   Fri, 13 Aug 2021 17:27:01 -0400
-Message-Id: <20210813212701.366447-1-tytso@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <YRaNKc2PvM+Eyzmp@mit.edu>
-References: <YRaNKc2PvM+Eyzmp@mit.edu>
+        id S236402AbhHNCPl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 13 Aug 2021 22:15:41 -0400
+Received: from szxga03-in.huawei.com ([45.249.212.189]:13315 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232651AbhHNCPl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Aug 2021 22:15:41 -0400
+Received: from dggemv711-chm.china.huawei.com (unknown [172.30.72.54])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4GmkXX5NtVz85dS;
+        Sat, 14 Aug 2021 10:15:08 +0800 (CST)
+Received: from dggema766-chm.china.huawei.com (10.1.198.208) by
+ dggemv711-chm.china.huawei.com (10.1.198.66) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) id
+ 15.1.2176.2; Sat, 14 Aug 2021 10:15:11 +0800
+Received: from [10.174.177.210] (10.174.177.210) by
+ dggema766-chm.china.huawei.com (10.1.198.208) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
+ 15.1.2176.2; Sat, 14 Aug 2021 10:15:11 +0800
+Subject: Re: [PATCH] ext4: if zeroout fails fall back to splitting the extent
+ node
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+CC:     <yukuai3@huawei.com>
+References: <YRaNKc2PvM+Eyzmp@mit.edu> <20210813212701.366447-1-tytso@mit.edu>
+From:   yangerkun <yangerkun@huawei.com>
+Message-ID: <2714202a-872e-aa75-7033-fb06a47b9241@huawei.com>
+Date:   Sat, 14 Aug 2021 10:15:11 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101
+ Thunderbird/78.10.2
 MIME-Version: 1.0
+In-Reply-To: <20210813212701.366447-1-tytso@mit.edu>
+Content-Type: text/plain; charset="utf-8"; format=flowed
 Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.177.210]
+X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
+ dggema766-chm.china.huawei.com (10.1.198.208)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If the underlying storage device is using thin-provisioning, it's
-possible for a zeroout operation to return ENOSPC.
 
-Commit df22291ff0fd ("ext4: Retry block allocation if we have free blocks
-left") added logic to retry block allocation since we might get free block
-after we commit a transaction. But the ENOSPC from thin-provisioning
-will confuse ext4, and lead to an infinite loop.
 
-Since using zeroout instead of splitting the extent node is an
-optimization, if it fails, we might as well fall back to splitting the
-extent node.
+在 2021/8/14 5:27, Theodore Ts'o 写道:
+> If the underlying storage device is using thin-provisioning, it's
+> possible for a zeroout operation to return ENOSPC.
+> 
+> Commit df22291ff0fd ("ext4: Retry block allocation if we have free blocks
+> left") added logic to retry block allocation since we might get free block
+> after we commit a transaction. But the ENOSPC from thin-provisioning
+> will confuse ext4, and lead to an infinite loop.
+> 
+> Since using zeroout instead of splitting the extent node is an
+> optimization, if it fails, we might as well fall back to splitting the
+> extent node.
+> 
+> Reported-by: yangerkun <yangerkun@huawei.com>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+> 
+> I've run this through my battery of tests, and it doesn't cause any
+> regressions.  Yangerkun, can you test this and see if this works for
+> you?
 
-Reported-by: yangerkun <yangerkun@huawei.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
+Will do it.
 
-I've run this through my battery of tests, and it doesn't cause any
-regressions.  Yangerkun, can you test this and see if this works for
-you?
-
- fs/ext4/extents.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 92ad64b89d9b..501516cadc1b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3569,7 +3569,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 				split_map.m_len - ee_block);
- 			err = ext4_ext_zeroout(inode, &zero_ex1);
- 			if (err)
--				goto out;
-+				goto fallback;
- 			split_map.m_len = allocated;
- 		}
- 		if (split_map.m_lblk - ee_block + split_map.m_len <
-@@ -3583,7 +3583,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 						      ext4_ext_pblock(ex));
- 				err = ext4_ext_zeroout(inode, &zero_ex2);
- 				if (err)
--					goto out;
-+					goto fallback;
- 			}
- 
- 			split_map.m_len += split_map.m_lblk - ee_block;
-@@ -3592,6 +3592,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 		}
- 	}
- 
-+fallback:
- 	err = ext4_split_extent(handle, inode, ppath, &split_map, split_flag,
- 				flags);
- 	if (err > 0)
--- 
-2.31.0
-
+> 
+>   fs/ext4/extents.c | 5 +++--
+>   1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 92ad64b89d9b..501516cadc1b 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3569,7 +3569,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>   				split_map.m_len - ee_block);
+>   			err = ext4_ext_zeroout(inode, &zero_ex1);
+>   			if (err)
+> -				goto out;
+> +				goto fallback;
+>   			split_map.m_len = allocated;
+>   		}
+>   		if (split_map.m_lblk - ee_block + split_map.m_len <
+> @@ -3583,7 +3583,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>   						      ext4_ext_pblock(ex));
+>   				err = ext4_ext_zeroout(inode, &zero_ex2);
+>   				if (err)
+> -					goto out;
+> +					goto fallback;
+>   			}
+>   
+>   			split_map.m_len += split_map.m_lblk - ee_block;
+> @@ -3592,6 +3592,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>   		}
+>   	}
+>   
+> +fallback:
+>   	err = ext4_split_extent(handle, inode, ppath, &split_map, split_flag,
+>   				flags);
+>   	if (err > 0)
+> 
