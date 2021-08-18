@@ -5,44 +5,44 @@ X-Spam-Level:
 X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99D3FC4338F
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Aug 2021 14:23:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCBE3C4320A
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Aug 2021 14:24:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7D0F06102A
-	for <linux-ext4@archiver.kernel.org>; Wed, 18 Aug 2021 14:23:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B3A0F610CD
+	for <linux-ext4@archiver.kernel.org>; Wed, 18 Aug 2021 14:24:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239395AbhHROXe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Aug 2021 10:23:34 -0400
+        id S238906AbhHROYh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 Aug 2021 10:24:37 -0400
 Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48674 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239554AbhHROXY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2021 10:23:24 -0400
+        with ESMTP id S239958AbhHROYX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Aug 2021 10:24:23 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D628FC06122F;
-        Wed, 18 Aug 2021 07:19:20 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 38145C0612A3;
+        Wed, 18 Aug 2021 07:22:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=XRJcay04c4+HGP8hA0k71ugb0TyE1umxocLGpm5yt80=; b=iVm0ncHopjP/X9nEmDSlzFnERU
-        JKbD0lCGfy7zwAjuiKHB3s5gAxtodQVEZDAjn+Gfn/4dm2VXdzxQhP8PWZ8Zoe4ReKH21Zv6sH1bW
-        QmEvKCjp501xWmFSz51Bi1HpWBxQScfahXr/7jACyvcd5MpImceC7PByna31Z7Vh19bZGqJvXhnt2
-        xKBMfyWNHJ30rXvh0R9pZfwvfBa/Mzq2K/EVeiHRYbLWyrJpz8s15qSJdsGGh45/sZb+u/bJZ+/NG
-        nkE/R1+VDD3bafiXiyn8PuW9kcnC7Tspn9v0MszsilEv545lvAJKyijYWBr8jaArsDB3DHCMMe2P1
-        mcmP3XxQ==;
+        bh=EItct/4LybJFgbzlVrgpqSv7WDkE+DpQx7uqSXk8vHY=; b=Oi9YlwS38JMx8g2TCuOBCZ/rGs
+        FvpX/QMst217W1jvJ/yiGztjw5E2p9zV9VDhXbodHOXs9Gb2Ka2LUWolbL4+Q0sF+deWk9K6/lRAI
+        RN76vlgkG69i1yiVq0wX/GGS8/8xmU24iFYX7fdR23FRDtBRYs7N2Wvcfs6U2eo6C0tcQ8+USY4bn
+        03ZTm/qeArw87v+PRoTkOmIAuoruSYRtkoZPK/J0QMITKJd1ZX9FxM+eWsrfruc5qodR2tx5vNkWA
+        f6spZbtYv/Xs2ApMtsuX9sNdXziaMqzs4Eqm1GMLiGKD9xdioADPx4Op+s39mNMwQLAnzgS8LDAHY
+        LtaUuS0Q==;
 Received: from [2001:4bb8:188:1b1:5a9e:9f39:5a86:b20c] (helo=localhost)
         by casper.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mGMOU-003uwG-4s; Wed, 18 Aug 2021 14:18:32 +0000
+        id 1mGMRk-003vEu-0m; Wed, 18 Aug 2021 14:21:52 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Gabriel Krisman Bertazi <krisman@collabora.com>
 Cc:     Shreeya Patel <shreeya.patel@collabora.com>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net
-Subject: [PATCH 08/11] unicode: move utf8cursor to utf8-selftest.c
-Date:   Wed, 18 Aug 2021 16:06:48 +0200
-Message-Id: <20210818140651.17181-9-hch@lst.de>
+Subject: [PATCH 11/11] unicode: only export internal symbols for the selftests
+Date:   Wed, 18 Aug 2021 16:06:51 +0200
+Message-Id: <20210818140651.17181-12-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20210818140651.17181-1-hch@lst.de>
 References: <20210818140651.17181-1-hch@lst.de>
@@ -53,72 +53,55 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Only used by the tests, so no need to keep it in the core.
+The exported symbols in utf8-norm.c are not needed for normal
+file system consumers, so move them to conditional _GPL exports
+just for the selftest.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/unicode/utf8-norm.c     | 16 ----------------
- fs/unicode/utf8-selftest.c |  6 ++++++
- fs/unicode/utf8n.h         |  2 --
- 3 files changed, 6 insertions(+), 18 deletions(-)
+ fs/unicode/utf8-norm.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/fs/unicode/utf8-norm.c b/fs/unicode/utf8-norm.c
-index 348d6e97553f..1ac90fa00070 100644
+index 829c7e2ad764..768f8ab448b8 100644
 --- a/fs/unicode/utf8-norm.c
 +++ b/fs/unicode/utf8-norm.c
-@@ -456,22 +456,6 @@ int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
+@@ -17,7 +17,6 @@ int utf8version_is_supported(const struct unicode_map *um, unsigned int version)
+ 	}
+ 	return 0;
  }
- EXPORT_SYMBOL(utf8ncursor);
+-EXPORT_SYMBOL(utf8version_is_supported);
  
--/*
-- * Set up an utf8cursor for use by utf8byte().
-- *
-- *   u8c    : pointer to cursor.
-- *   data   : const struct utf8data to use for normalization.
-- *   s      : NUL-terminated string.
-- *
-- * Returns -1 on error, 0 on success.
-- */
--int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
--	       const char *s)
--{
--	return utf8ncursor(u8c, data, s, (unsigned int)-1);
--}
--EXPORT_SYMBOL(utf8cursor);
--
+ /*
+  * UTF-8 valid ranges.
+@@ -407,7 +406,6 @@ ssize_t utf8nlen(const struct unicode_map *um, enum utf8_normalization n,
+ 	}
+ 	return ret;
+ }
+-EXPORT_SYMBOL(utf8nlen);
+ 
+ /*
+  * Set up an utf8cursor for use by utf8byte().
+@@ -442,7 +440,6 @@ int utf8ncursor(struct utf8cursor *u8c, const struct unicode_map *um,
+ 		return -1;
+ 	return 0;
+ }
+-EXPORT_SYMBOL(utf8ncursor);
+ 
  /*
   * Get one byte from the normalized form of the string described by u8c.
-  *
-diff --git a/fs/unicode/utf8-selftest.c b/fs/unicode/utf8-selftest.c
-index 80fb7c75acb2..04628b50351d 100644
---- a/fs/unicode/utf8-selftest.c
-+++ b/fs/unicode/utf8-selftest.c
-@@ -165,6 +165,12 @@ static ssize_t utf8len(const struct utf8data *data, const char *s)
- 	return utf8nlen(data, s, (size_t)-1);
+@@ -588,4 +585,10 @@ int utf8byte(struct utf8cursor *u8c)
+ 		}
+ 	}
  }
- 
-+static int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
-+		const char *s)
-+{
-+	return utf8ncursor(u8c, data, s, (unsigned int)-1);
-+}
+-EXPORT_SYMBOL(utf8byte);
 +
- static void check_utf8_nfdi(void)
- {
- 	int i;
-diff --git a/fs/unicode/utf8n.h b/fs/unicode/utf8n.h
-index 41182e5464df..736b6460a38c 100644
---- a/fs/unicode/utf8n.h
-+++ b/fs/unicode/utf8n.h
-@@ -65,8 +65,6 @@ struct utf8cursor {
-  * Returns 0 on success.
-  * Returns -1 on failure.
-  */
--extern int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
--		      const char *s);
- extern int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
- 		       const char *s, size_t len);
- 
++#ifdef CONFIG_UNICODE_NORMALIZATION_SELFTEST_MODULE
++EXPORT_SYMBOL_GPL(utf8version_is_supported);
++EXPORT_SYMBOL_GPL(utf8nlen);
++EXPORT_SYMBOL_GPL(utf8ncursor);
++EXPORT_SYMBOL_GPL(utf8byte);
++#endif
 -- 
 2.30.2
 
