@@ -2,207 +2,452 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_CR_TRAILER,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9609C4320A
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Aug 2021 03:58:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F3D5C432BE
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Aug 2021 05:49:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 98DF86112F
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 Aug 2021 03:58:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29206610FA
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 Aug 2021 05:49:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236379AbhHSD70 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 Aug 2021 23:59:26 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46662 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S235893AbhHSD70 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 18 Aug 2021 23:59:26 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 4475C610CB;
-        Thu, 19 Aug 2021 03:58:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1629345530;
-        bh=It3UWJT/EISjJbSXJOa9YOZrmo0c8cMi/Z71oauhW1o=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=B8YJS3s9/SG4ffD2pUndnBEUmZ/rGTKk143b5aSWLidLDRfF3rRHrbS3sG/KdLFoe
-         fO2i8I4B/tdR+nOAn50qXcduL736ue0ayVwSLKnC/382wpgRKNX5yQDev19DIoX1a+
-         UwlH6klunOX5kQtDhqsLRRIrl+3915OVPlaZ7Y9f2us1VPtcFk+i63959XJXFvw/M5
-         QRlP2OK4MdbEHUVxd7bTwXjGnxQc6dfcZsNPZBIVoWma/HKUPKgOERVOqcosqqCvTZ
-         s+IKizsl4Qz4slLXVbqbopf3vCpQcnfx6wBx7Iyx2br0qroybo7gYnk7e+GEniPSC5
-         7Q1M+zJjI5SCg==
-Date:   Wed, 18 Aug 2021 20:58:49 -0700
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Amir Goldstein <amir73il@gmail.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        Jan Kara <jack@suse.com>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Khazhismel Kumykov <khazhy@google.com>,
-        David Howells <dhowells@redhat.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Theodore Tso <tytso@mit.edu>,
-        Matthew Bobrowski <repnop@google.com>, kernel@collabora.com
-Subject: Re: [PATCH v6 18/21] fanotify: Emit generic error info type for
- error event
-Message-ID: <20210819035849.GA12586@magnolia>
-References: <20210812214010.3197279-1-krisman@collabora.com>
- <20210812214010.3197279-19-krisman@collabora.com>
- <20210816214103.GA12664@magnolia>
- <20210817090538.GA26181@quack2.suse.cz>
- <CAOQ4uxgdJpovZ-zzJkLOdQ=YYF3ta46m0_jrt0QFSdJ9GdXR=g@mail.gmail.com>
- <20210818001632.GD12664@magnolia>
- <CAOQ4uxhccRchiajjje3C20UOKwxQUapu=RYPsM1Y0uTnS81Vew@mail.gmail.com>
- <20210818095818.GA28119@quack2.suse.cz>
+        id S229981AbhHSFts (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 Aug 2021 01:49:48 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:22445 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S229998AbhHSFtq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 19 Aug 2021 01:49:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1629352150;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=CDliUIxtA8NI0uOkabpQSEBC+pmEAHkHILaEHG34Qf8=;
+        b=W7+Q7Qiro19Z+6psOssdDPcHrgQox58L+f5EEtnwwf0cFQju/fuUNTCjO1irrHijgVaOLG
+        JTd2ZkhoAcSvc821qpW60Px5lvG+z7VzU6jS8jdpuCBsEotL6RkacgVmLBbKWqukLhTdEf
+        gnWqjiYQf/6aNJCJz1ld540DvJwajtQ=
+Received: from mail-pj1-f70.google.com (mail-pj1-f70.google.com
+ [209.85.216.70]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-35-2BJ_wU3MO6i6o3ql5r4rXA-1; Thu, 19 Aug 2021 01:49:09 -0400
+X-MC-Unique: 2BJ_wU3MO6i6o3ql5r4rXA-1
+Received: by mail-pj1-f70.google.com with SMTP id y3-20020a17090a8b03b02901787416b139so2544682pjn.4
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Aug 2021 22:49:09 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to;
+        bh=CDliUIxtA8NI0uOkabpQSEBC+pmEAHkHILaEHG34Qf8=;
+        b=nMjBQ5boECFnGEKeDVMaj0Zy7a1FXeoSy5SV7BmqCUsqinWM1XTcNHgvyiXlJvihMe
+         5LZvyralNhDriVbgylRr58fpduFn30A3QSvsG7QhTjC+OYFHV2gRZXLjxfAnCfOvVHCR
+         x1iHoOfZVLtteqOG102H7jYkj7MlnTPN9+pUvuofZsYjKqpAMILWnrm55T/+3VF+MnW4
+         KXf1fgX+1oDCXIPecz1HLbRewFXdeBDRgJBd/t7PrrzPzJSmN2iHOWOa0sQ7G5nCWhXE
+         w9KIRlszePzh2rMsgktUw91XiC5FVlNCbQe3tYtRdV0e3zA3LlEj1tV5WR4VnO3RqnNp
+         633w==
+X-Gm-Message-State: AOAM533Wim8STOveIWQsGUQcwYVybfGbghYc2ni1fPVUbDmRB40ga4l+
+        Pc/7iaE1xVTF4kIyzgXASnispfMqiyE7c5i5YzZRgzi38o4fPcAe/9d76GQT/sLZJQMypsef3x+
+        PQj1ch96F78ckSIdb2YJzlt+GuNihTWZVx7G2kA==
+X-Received: by 2002:a17:90a:ead5:: with SMTP id ev21mr5607495pjb.3.1629352148216;
+        Wed, 18 Aug 2021 22:49:08 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJwAZM3JqynkhoPHC3iO6EfsZULuceFo3OiAWG3Q02Sa/pULfUhNQ2K63q8DIbUAM1AGqi5nlgkJvmFjF21LrQ0=
+X-Received: by 2002:a17:90a:ead5:: with SMTP id ev21mr5607422pjb.3.1629352147148;
+ Wed, 18 Aug 2021 22:49:07 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20210818095818.GA28119@quack2.suse.cz>
+References: <20210818084126.4167799-1-bxue@redhat.com> <20210818114517.kqvfzu2vd45vuhze@fedora>
+ <CAHLe9YZcuo2K6ELT0p1c6sfzwkSgikeiyNect4phEoCt8vTPXw@mail.gmail.com> <20210818165942.cdse6punqcawqmft@fedora>
+In-Reply-To: <20210818165942.cdse6punqcawqmft@fedora>
+From:   Boyang Xue <bxue@redhat.com>
+Date:   Thu, 19 Aug 2021 13:48:55 +0800
+Message-ID: <CAHLe9YbdZrYH3E4U60KufrVKvcDf9O4Ow1ugg2HPgSSw6NvctA@mail.gmail.com>
+Subject: Re: [PATCH] ext4: regression test for "tune2fs -l" after ext4 shutdown
+To:     Boyang Xue <bxue@redhat.com>, fstests@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Zirong Lang <zlang@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Aug 18, 2021 at 11:58:18AM +0200, Jan Kara wrote:
-> On Wed 18-08-21 06:24:26, Amir Goldstein wrote:
-> > [...]
-> > 
-> > > > Just keep in mind that the current scheme pre-allocates the single event slot
-> > > > on fanotify_mark() time and (I think) we agreed to pre-allocate
-> > > > sizeof(fsnotify_error_event) + MAX_HDNALE_SZ.
-> > > > If filesystems would want to store some variable length fs specific info,
-> > > > a future implementation will have to take that into account.
+Zorro,
+
+Please check my reply inline below.
+
+On Thu, Aug 19, 2021 at 12:47 AM Zorro Lang <zlang@redhat.com> wrote:
+>
+> On Wed, Aug 18, 2021 at 09:20:44PM +0800, Boyang Xue wrote:
+> > Hi Zorro,
+> >
+> > On Wed, Aug 18, 2021 at 7:32 PM Zorro Lang <zlang@redhat.com> wrote:
 > > >
-> > > <nod> I /think/ for the fs and AG metadata we could preallocate these,
-> > > so long as fsnotify doesn't free them out from under us.
-> > 
-> > fs won't get notified when the event is freed, so fsnotify must
-> > take ownership on the data structure.
-> > I was thinking more along the lines of limiting maximum size for fs
-> > specific info and pre-allocating that size for the event.
-> 
-> Agreed. If there's a sensible upperbound than preallocating this inside
-> fsnotify is likely the least problematic solution.
-> 
-> > > For inodes...
-> > > there are many more of those, so they'd have to be allocated
-> > > dynamically.
-> > 
-> > The current scheme is that the size of the queue for error events
-> > is one and the single slot is pre-allocated.
-> > The reason for pre-allocate is that the assumption is that fsnotify_error()
-> > could be called from contexts where memory allocation would be
-> > inconvenient.
-> > Therefore, we can store the encoded file handle of the first erroneous
-> > inode, but we do not store any more events until user read this
-> > one event.
-> 
-> Right. OTOH I can imagine allowing GFP_NOFS allocations in the error
-> context. At least for ext4 it would be workable (after all ext4 manages to
-> lock & modify superblock in its error handlers, GFP_NOFS allocation isn't
-> harder). But then if events are dynamically allocated there's still the
-> inconvenient question what are you going to do if you need to report fs
-> error and you hit ENOMEM. Just not sending the notification may have nasty
-> consequences and in the world of containerization and virtualization
-> tightly packed machines where ENOMEM happens aren't that unlikely. It is
-> just difficult to make assumptions about filesystems overall so we decided
-> to be better safe and preallocate the event.
-> 
-> Or, we could leave the allocation troubles for the filesystem and
-> fsnotify_sb_error() would be passed already allocated event (this way
-> attaching of fs-specific blobs to the event is handled as well) which it
-> would just queue. Plus we'd need to provide some helper to fill in generic
-> part of the event...
-> 
-> The disadvantage is that if there are filesystems / callsites needing
-> preallocated events, it would be painful for them. OTOH current two users -
-> ext4 & xfs - can handle allocation in the error path AFAIU.
-> 
-> Thinking about this some more, maybe we could have event preallocated (like
-> a "rescue event"). Normally we would dynamically allocate (or get passed
-> from fs) the event and only if the allocation fails, we would queue the
-> rescue event to indicate to listeners that something bad happened, there
-> was error but we could not fully report it.
+> > > On Wed, Aug 18, 2021 at 04:40:56PM +0800, bxue@redhat.com wrote:
+> > > > From: Boyang Xue <bxue@redhat.com>
+> > > >
+> > > > Regression test for:
+> > > >
+> > > > ext4: Fix tune2fs checksum failure for mounted filesystem
+> > >
+> > > Better to specify the commit id number. I saw Ted has applied that patch:
+> > >
+> > > https://lore.kernel.org/linux-ext4/162895105421.460437.8931255765382647790.b4-ty@mit.edu/
+> >
+> > Thanks. I see the commit id e905fbe3fd0fdb90052f6efdf88f50a78833cfe7
+> > in the above URL. I didn't add it since I'm not sure if this id will
+> > be the final id when the commit is finally merged to the mainline
+> > kernel (Linus tree)?
+> >
+> > >
+> > > And maybe you can describe *a little* more in commit log.
+> >
+> > Yes I can add a few words in the commit log, but actually I expect the
+> > reader of this test reads the commit message of the mentioned commit
+> > "ext4: Fix tune2fs checksum failure for mounted filesystem", which I
+> > think is more precise.
+> >
+> > >
+> > > >
+> > > > Signed-off-by: Boyang Xue <bxue@redhat.com>
+> > > > ---
+> > > > Hi,
+> > > >
+> > > > This is a new regression test for the patch
+> > > >
+> > > > ```
+> > > > ext4: Fix tune2fs checksum failure for mounted filesystem
+> > > >
+> > > > Commit 81414b4dd48 ("ext4: remove redundant sb checksum recomputation")
+> > > > removed checksum recalculation after updating superblock free space /
+> > > > inode counters in ext4_fill_super() based on the fact that we will
+> > > > recalculate the checksum on superblock writeout. That is correct
+> > > > assumption but until the writeout happens (which can take a long time)
+> > > > the checksum is incorrect in the buffer cache and if tune2fs is called
+> > > > in that time window it will complain. So return back the checksum
+> > > > recalculation and add a comment explaining the tune2fs peculiarity.
+> > > >
+> > > > Fixes: 81414b4dd48f ("ext4: remove redundant sb checksum recomputation")
+> > > > Reported-by: Boyang Xue <bxue@xxxxxxxxxx>
+> > > > Signed-off-by: Jan Kara <jack@xxxxxxx>
+> > > > ```
+> > > >
+> > > > It's expected to fail on kernels from the kernel-5.11-rc1 to the latest
+> > > > version, where tune2fs fails with:
+> > > >
+> > > > ```
+> > > > tune2fs 1.46.2 (28-Feb-2021)
+> > > > tune2fs: Superblock checksum does not match superblock while trying to
+> > > > open /dev/loop0
+> > > > Couldn't find valid filesystem superblock.
+> > > > ```
+> > > >
+> > > > Please help review this test, Thanks!
+> > > >
+> > > > -Boyang
+> > > >
+> > > >  tests/ext4/309     | 42 ++++++++++++++++++++++++++++++++++++++++++
+> > > >  tests/ext4/309.out |  2 ++
+> > > >  2 files changed, 44 insertions(+)
+> > > >  create mode 100755 tests/ext4/309
+> > > >  create mode 100644 tests/ext4/309.out
+> > > >
+> > > > diff --git a/tests/ext4/309 b/tests/ext4/309
+> > > > new file mode 100755
+> > > > index 00000000..ae335617
+> > > > --- /dev/null
+> > > > +++ b/tests/ext4/309
+> > > > @@ -0,0 +1,42 @@
+> > > > +#! /bin/bash
+> > > > +# SPDX-License-Identifier: GPL-2.0
+> > > > +# Copyright (c) 2021 YOUR NAME HERE.  All Rights Reserved.
+> > >                         ^^^^^^^^^^^^^^
+> > >                        Write your copyright
+> >
+> > I will correct it in the next version. Thanks.
+> >
+> > >
+> > > > +#
+> > > > +# FS QA Test 309
+> > > > +#
+> > > > +# Test that tune2fs doesn't fail after ext4 shutdown
+> > > > +# Regression test for commit:
+> > > > +# ext4: Fix tune2fs checksum failure for mounted filesystem
+> > > > +#
+> > > > +. ./common/preamble
+> > > > +_begin_fstest auto rw quick
+> > > > +
+> > > > +_cleanup()
+> > > > +{
+> > > > +     _scratch_unmount
+> > > > +}
+> > >
+> > > I think the umount isn't necessary, so the specific _cleanup isn't
+> > > needed either.
+> >
+> > The $SCRATCH_DEV was still mounted before this _cleanup(), so I'm
+> > wondering why we shouldn't do _scratch_unmount here? And I see at
+> > least another similar structured test ext4/306 do _scratch_unmount in
+> > _cleanup().
+>
+> The SCRATCH_DEV will be umounted, don't need to do that in the end of each
+> test cases, except you need to do something on the unmounted SCRATCH_DEV
+> in the end.
+>
+> I don't know why ext4/306 has that, maybe due to old reason, or we didn't
+> notice/care that when we reviewed it? And it's not worth sending a patch
+> just for removing this "not wrong but just redundant" line now. Except a
+> patch trys to cleanup all _cleanup().
 
-Yes.
+OK. I will remove the _cleanup() in my next version, unless someone
+else has other opinions.
 
-> But then, even if we'd go for dynamic event allocation by default, we need
-> to efficiently merge events since some fs failures (e.g. resulting in
-> journal abort in ext4) lead to basically all operations with the filesystem
-> to fail and that could easily swamp the notification system with useless
-> events.
+>
+> >
+> > >
+> > > > +
+> > > > +# Import common functions.
+> > > > +. ./common/filter
+> > >
+> > > Do you use any filter helpers below?
+> >
+> > No. I will remove this line in my next version.
+> >
+> > >
+> > > > +
+> > > > +# real QA test starts here
+> > > > +_supported_fs ext4
+> > >
+> > > I'm wondering if this case can be a generic case, there's nothing
+> > > ext4 specified operations, except this line:
+> > >
+> > > "$TUNE2FS_PROG -l $SCRATCH_DEV"
+> > >
+> > > Hmm... if we can change this line to something likes _get_fs_super(),
+> > > it might help to make this test to be a generic test.
+> >
+> > I think this bug is heavily related to "tune2fs", ext4 only. So I
+> > guess an ext4 only test is enough?
+>
+> Just checking. That's fine for me to keep this case as an ext4 only case.
+>
+> >
+> > >
+> > > > +_require_scratch
+> > > > +_require_scratch_shutdown
+> > > > +_require_command "$TUNE2FS_PROG" tune2fs
+> > > > +
+> > > > +echo "Silence is golden"
+> > > > +
+> > > > +_scratch_mkfs >/dev/null 2>&1
+> > > > +_scratch_mount
+> > > > +echo "ext4/309" > $SCRATCH_MNT/309.tmp
+> > >
+> > > It's sure this case will be "ext4/309", although you use "309" won't
+> > > affect anything.
+> >
+> > Yes I can rename it to something like ext4-309.tmp if it looks better.
+>
+> I think something likes: echo "This is a test" > $SCRATCH_MNT/testfile
+> is good enough, don't need the "ext4" or "309" things.
 
-Hm.  Going out on a limb, I would guess that the majority of fs error
-flood events happen if the storage fails catastrophically.  Assuming
-that a catastrophic failure will quickly take the filesystem offline, I
-would say that for XFS we should probably send one last "and then we
-died" event and stop reporting after that.
+OK. I will modify it to
 
-> Current system with preallocated event nicely handles this
-> situation, it is questionable how to extend it for online fsck usecase
-> where we need to queue more than one event (but even there probably needs
-> to be some sensible upper-bound). I'll think about it...
+echo "This is a test" > $SCRATCH_MNT/testfile
 
-At least for XFS, I was figuring that xfs_scrub errors wouldn't be
-reported via fsnotify since the repair tool is already running anyway.
+Unless someone else has other preferences.
 
-> > > Hmm.  For handling accumulated errors, can we still access the
-> > > fanotify_event_info_* object once we've handed it to fanotify?  If the
-> > > user hasn't picked up the event yet, it might be acceptable to set more
-> > > bits in the type mask and bump the error count.  In other words, every
-> > > time userspace actually reads the event, it'll get the latest error
-> > > state.  I /think/ that's where the design of this patchset is going,
-> > > right?
-> > 
-> > Sort of.
-> > fsnotify does have a concept of "merging" new event with an event
-> > already in queue.
-> > 
-> > With most fsnotify events, merge only happens if the info related
-> > to the new event (e.g. sb,inode) is the same as that off the queued
-> > event and the "merge" is only in the event mask
-> > (e.g. FS_OPEN|FS_CLOSE).
-> > 
-> > However, the current scheme for "merge" of an FS_ERROR event is only
-> > bumping err_count, even if the new reported error or inode do not
-> > match the error/inode in the queued event.
-> > 
-> > If we define error event subtypes (e.g. FS_ERROR_WRITEBACK,
-> > FS_ERROR_METADATA), then the error event could contain
-> > a field for subtype mask and user could read the subtype mask
-> > along with the accumulated error count, but this cannot be
-> > done by providing the filesystem access to modify an internal
-> > fsnotify event, so those have to be generic UAPI defined subtypes.
-> > 
-> > If you think that would be useful, then we may want to consider
-> > reserving the subtype mask field in fanotify_event_info_error in
-> > advance.
-> 
-> It depends on what exactly Darrick has in mind but I suspect we'd need a
-> fs-specific merge helper that would look at fs-specific blobs in the event
-> and decide whether events can be merged or not, possibly also handling the
-> merge by updating the blob.
+>
+> >
+> > >
+> > > > +_scratch_shutdown
+> > > > +_scratch_cycle_mount
+> > > > +$TUNE2FS_PROG -l $SCRATCH_DEV >> $seqres.full 2>&1
+> > > > +if [ $? -eq 0 ]; then
+> > > > +     status=0
+> > > > +else
+> > > > +     status=1
+> > > > +fi
+> > >
+> > > Don't need to change the status value, how about write as:
+> > >
+> > > $TUNE2FS_PROG -l $SCRATCH_DEV >/dev/null
+> > >
+> > > The error output will break the golden image directly.
+> >
+> > How did you test that? The error output didn't break the "golden
+> > image" in my test.
+>
+> [root@xx-xxxx-xx xfstests-dev]# ./check ext4/309
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/x86_64 xx-xxxx-xx 5.14.0-rc4-xfs #14 SMP Thu Aug 12 00:56:07 CST 2021
+> MKFS_OPTIONS  -- /dev/mapper/testvg-scratchdev
+> MOUNT_OPTIONS -- -o acl,user_xattr -o context=system_u:object_r:root_t:s0 /dev/mapper/testvg-scratchdev /mnt/scratch
+>
+> ext4/309 5s ... - output mismatch (see /root/git/xfstests-dev/results//ext4/309.out.bad)
+>     --- tests/ext4/309.out      2021-08-18 18:17:15.925427714 +0800
+>     +++ /root/git/xfstests-dev/results//ext4/309.out.bad        2021-08-19 00:17:57.001648868 +0800
+>     @@ -1,2 +1,4 @@
+>      QA output created by 309
+>      Silence is golden
+>     +/usr/sbin/tune2fs: Superblock checksum does not match superblock while trying to open /dev/mapper/testvg-scratchdev
+>     +Couldn't find valid filesystem superblock.
+>     ...
+>     (Run 'diff -u /root/git/xfstests-dev/tests/ext4/309.out /root/git/xfstests-dev/results//ext4/309.out.bad'  to see the entire diff)
+> Ran: ext4/309
+> Failures: ext4/309
+> Failed 1 of 1 tests
+>
+> [root@xx-xxxx-xx xfstests-dev]# git diff
+> ...
+>  _scratch_mkfs >/dev/null 2>&1
+>  _scratch_mount
+> -echo "ext4/309" > $SCRATCH_MNT/309.tmp
+> +echo "This is a test" > $SCRATCH_MNT/testfile
+>  _scratch_shutdown
+> -_scratch_cycle_mount
+> -$TUNE2FS_PROG -l $SCRATCH_DEV >> $seqres.full 2>&1
+> -if [ $? -eq 0 ]; then
+> -       status=0
+> -else
+> -       status=1
+> -fi
+> +_scratch_cycle_mount
+> +$TUNE2FS_PROG -l $SCRATCH_DEV >/dev/null
+>
+> +status=0
+>  exit
 
-Yes.  If the filesystem itself were allowed to manage the lifespan of
-the fsnotify error event object then this would be trivial -- we'll own
-the object, keep it updated as needed, and fsnotify can copy the
-contents to userspace whenever convenient.
+Unless I missed something, I would say that, tune2fs' error output
+went to .out.bad just because you had modified the tune2fs line from
+mine:
 
-(This might be a naïve view of fsnotify...)
+$TUNE2FS_PROG -l $SCRATCH_DEV >> $seqres.full 2>&1
 
-> From the POV of fsnotify that would probably
-> mean merge callback in the event itself. But I guess this needs more
-> details from Darrick and maybe we don't need to decide this at this moment
-> since nobody is close to the point of having code needing to pass fs-blobs
-> with events.
+to yours:
 
-<nod> We ... probably don't need to decide this now.
+$TUNE2FS_PROG -l $SCRATCH_DEV >/dev/null
 
---D
+My original version redirecting stderr and stdout both to $seqres.full
+doesn't break the "golden output". Test log:
+```
+[root@kvm102 repo_xfstests]# ./check ext4/309
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 kvm102 5.14.0-0.rc4.35.xx.x86_64 #1 SMP
+Tue Aug 3 13:02:44 EDT 2021
+MKFS_OPTIONS  -- -b 1024 /dev/vda3
+MOUNT_OPTIONS -- -o acl,user_xattr -o
+context=system_u:object_r:root_t:s0 /dev/vda3 /scratch
 
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+ext4/309        [failed, exit status 1]
+Ran: ext4/309
+Failures: ext4/309
+Failed 1 of 1 tests
+[root@kvm102 repo_xfstests]# cat results/ext4/309.full
+/usr/sbin/tune2fs: Superblock checksum does not match superblock while
+trying to open /dev/vda3
+Couldn't find valid filesystem superblock.
+tune2fs 1.46.2 (28-Feb-2021)
+[root@kvm102 repo_xfstests]# ls results/ext4/309.out.bad
+ls: cannot access 'results/ext4/309.out.bad': No such file or directory
+```
+
+As far as I can understand, there're at least two approaches to mark a
+test pass or fail in xfstests:
+1) Compare the output of the test with the "golden output" (i.e.
+309.out), I guess this is the approach you mentioned.
+2) Exit the test with the value of $status (i.e. status=0 - pass,
+status=non-zero - fail)
+
+I'm using the 2) here, not using 1) with the output of tune2fs
+compared with the 309.out, because the output of tune2fs can be
+different in different runs. An example output of a successful tune2fs
+run is like (sorry for this long paste):
+```
+[root@kvm101 repo_xfstests]# cat results/ext4/309.full
+tune2fs 1.45.6 (20-Mar-2020)
+Filesystem volume name:   <none>
+Last mounted on:          /scratch
+Filesystem UUID:          22975090-96d7-49ee-9b4f-ee6afe046219
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype needs_recovery extent 64bit flex_bg sparse_super large_file
+huge_file dir_nlink extra_isize metadata_csum
+Filesystem flags:         signed_directory_hash
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              720896
+Block count:              11534336
+Reserved block count:     576716
+Free blocks:              11280570
+Free inodes:              720884
+First block:              1
+Block size:               1024
+Fragment size:            1024
+Group descriptor size:    64
+Reserved GDT blocks:      256
+Blocks per group:         8192
+Fragments per group:      8192
+Inodes per group:         512
+Inode blocks per group:   128
+Flex block group size:    16
+Filesystem created:       Thu Aug 19 05:45:26 2021
+Last mount time:          Thu Aug 19 05:45:26 2021
+Last write time:          Thu Aug 19 05:45:26 2021
+Mount count:              2
+Maximum mount count:      -1
+Last checked:             Thu Aug 19 05:45:26 2021
+Check interval:           0 (<none>)
+Lifetime writes:          462 kB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Required extra isize:     32
+Desired extra isize:      32
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      f5af5862-d415-460b-9a6b-97584578600f
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x0f5b9c13
+```
+
+Thanks,
+Boyang
+
+>
+>
+> Thanks,
+> Zorro
+>
+> >
+> > >
+> > > ( cc ext4 mailist, to get more review)
+> > >
+> > > Thanks,
+> > > Zorro
+> >
+> > Thanks for review!
+> >
+> > -Boyang
+> >
+> > >
+> > > > +
+> > > > +exit
+> > > > diff --git a/tests/ext4/309.out b/tests/ext4/309.out
+> > > > new file mode 100644
+> > > > index 00000000..56330d65
+> > > > --- /dev/null
+> > > > +++ b/tests/ext4/309.out
+> > > > @@ -0,0 +1,2 @@
+> > > > +QA output created by 309
+> > > > +Silence is golden
+> > > > --
+> > > > 2.27.0
+> > > >
+> > >
+> >
+>
+
