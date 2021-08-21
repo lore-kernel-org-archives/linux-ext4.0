@@ -7,21 +7,21 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5201C4320E
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Aug 2021 06:44:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BDE7C43214
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Aug 2021 06:44:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE3BB61175
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 Aug 2021 06:44:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 071E861175
+	for <linux-ext4@archiver.kernel.org>; Sat, 21 Aug 2021 06:44:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232143AbhHUGpL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 Aug 2021 02:45:11 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:8757 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232005AbhHUGpK (ORCPT
+        id S232158AbhHUGpM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 Aug 2021 02:45:12 -0400
+Received: from szxga03-in.huawei.com ([45.249.212.189]:14307 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231666AbhHUGpK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Aug 2021 02:45:10 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.55])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Gs89Y2z5DzYrvc;
-        Sat, 21 Aug 2021 14:44:01 +0800 (CST)
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
+        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4Gs89s6slmz88Gs;
+        Sat, 21 Aug 2021 14:44:17 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2176.2; Sat, 21
@@ -30,9 +30,9 @@ From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH v3 4/4] ext4: prevent getting empty inode buffer
-Date:   Sat, 21 Aug 2021 14:54:50 +0800
-Message-ID: <20210821065450.1397451-5-yi.zhang@huawei.com>
+Subject: [PATCH v3 2/4] ext4: remove an unnecessary if statement in __ext4_get_inode_loc()
+Date:   Sat, 21 Aug 2021 14:54:48 +0800
+Message-ID: <20210821065450.1397451-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20210821065450.1397451-1-yi.zhang@huawei.com>
 References: <20210821065450.1397451-1-yi.zhang@huawei.com>
@@ -47,78 +47,199 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In ext4_get_inode_loc(), we may skip IO and get an zero && uptodate
-inode buffer when the inode monopolize an inode block for performance
-reason. For most cases, ext4_mark_iloc_dirty() will fill the inode
-buffer to make it fine, but we could miss this call if something bad
-happened. Finally, __ext4_get_inode_loc_noinmem() may probably get an
-empty inode buffer and trigger ext4 error.
-
-For example, if we remove a nonexistent xattr on inode A,
-ext4_xattr_set_handle() will return ENODATA before invoking
-ext4_mark_iloc_dirty(), it will left an uptodate but zero buffer. We
-will get checksum error message in ext4_iget() when getting inode again.
-
-  EXT4-fs error (device sda): ext4_lookup:1784: inode #131074: comm cat: iget: checksum invalid
-
-Even worse, if we allocate another inode B at the same inode block, it
-will corrupt the inode A on disk when write back inode B.
-
-So this patch postpone the initialization and mark buffer uptodate logic
-until shortly before we fill correct inode data in ext4_do_update_inode()
-if skip read I/O, ensure the buffer is really uptodate.
+The "if (!buffer_uptodate(bh))" hunk covered almost the whole code after
+getting buffer in __ext4_get_inode_loc() which seems unnecessary, remove
+it and switch to check ext4_buffer_uptodate(), it simplify code and make
+it more readable.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 27 ++++++++++++++++++++++++---
- 1 file changed, 24 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 162 +++++++++++++++++++++++-------------------------
+ 1 file changed, 78 insertions(+), 84 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8323d3e8f393..000abb5696b0 100644
+index eb2526a35254..eae1b2d0b550 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4367,9 +4367,12 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
- 		}
- 		brelse(bitmap_bh);
- 		if (i == start + inodes_per_block) {
--			/* all other inodes are free, so skip I/O */
--			memset(bh->b_data, 0, bh->b_size);
--			set_buffer_uptodate(bh);
-+			/*
-+			 * All other inodes are free, skip I/O. Return
-+			 * uninitialized buffer immediately, initialization
-+			 * is postponed until shortly before we fill inode
-+			 * contents.
-+			 */
- 			unlock_buffer(bh);
- 			goto has_buffer;
- 		}
-@@ -5028,6 +5031,24 @@ static int ext4_do_update_inode(handle_t *handle,
- 	gid_t i_gid;
- 	projid_t i_projid;
+@@ -4330,99 +4330,93 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+ 	bh = sb_getblk(sb, block);
+ 	if (unlikely(!bh))
+ 		return -ENOMEM;
+-	if (!buffer_uptodate(bh)) {
+-		lock_buffer(bh);
+-
+-		if (ext4_buffer_uptodate(bh)) {
+-			/* someone brought it uptodate while we waited */
+-			unlock_buffer(bh);
+-			goto has_buffer;
+-		}
++	if (ext4_buffer_uptodate(bh))
++		goto has_buffer;
  
+-		/*
+-		 * If we have all information of the inode in memory and this
+-		 * is the only valid inode in the block, we need not read the
+-		 * block.
+-		 */
+-		if (in_mem) {
+-			struct buffer_head *bitmap_bh;
+-			int i, start;
++	lock_buffer(bh);
 +	/*
-+	 * If the buffer is not uptodate, it means all information of the
-+	 * inode is in memory and we got this buffer without reading the
-+	 * block. We must be cautious that once we mark the buffer as
-+	 * uptodate, we rely on filling in the correct inode data later
-+	 * in this function. Otherwise if we left uptodate buffer without
-+	 * copying proper inode contents, we could corrupt the inode on
-+	 * disk after allocating another inode in the same block.
++	 * If we have all information of the inode in memory and this
++	 * is the only valid inode in the block, we need not read the
++	 * block.
 +	 */
-+	if (!buffer_uptodate(bh)) {
-+		lock_buffer(bh);
-+		if (!buffer_uptodate(bh)) {
++	if (in_mem) {
++		struct buffer_head *bitmap_bh;
++		int i, start;
+ 
+-			start = inode_offset & ~(inodes_per_block - 1);
++		start = inode_offset & ~(inodes_per_block - 1);
+ 
+-			/* Is the inode bitmap in cache? */
+-			bitmap_bh = sb_getblk(sb, ext4_inode_bitmap(sb, gdp));
+-			if (unlikely(!bitmap_bh))
+-				goto make_io;
++		/* Is the inode bitmap in cache? */
++		bitmap_bh = sb_getblk(sb, ext4_inode_bitmap(sb, gdp));
++		if (unlikely(!bitmap_bh))
++			goto make_io;
+ 
+-			/*
+-			 * If the inode bitmap isn't in cache then the
+-			 * optimisation may end up performing two reads instead
+-			 * of one, so skip it.
+-			 */
+-			if (!buffer_uptodate(bitmap_bh)) {
+-				brelse(bitmap_bh);
+-				goto make_io;
+-			}
+-			for (i = start; i < start + inodes_per_block; i++) {
+-				if (i == inode_offset)
+-					continue;
+-				if (ext4_test_bit(i, bitmap_bh->b_data))
+-					break;
+-			}
++		/*
++		 * If the inode bitmap isn't in cache then the
++		 * optimisation may end up performing two reads instead
++		 * of one, so skip it.
++		 */
++		if (!buffer_uptodate(bitmap_bh)) {
+ 			brelse(bitmap_bh);
+-			if (i == start + inodes_per_block) {
+-				/* all other inodes are free, so skip I/O */
+-				memset(bh->b_data, 0, bh->b_size);
+-				set_buffer_uptodate(bh);
+-				unlock_buffer(bh);
+-				goto has_buffer;
+-			}
++			goto make_io;
++		}
++		for (i = start; i < start + inodes_per_block; i++) {
++			if (i == inode_offset)
++				continue;
++			if (ext4_test_bit(i, bitmap_bh->b_data))
++				break;
+ 		}
++		brelse(bitmap_bh);
++		if (i == start + inodes_per_block) {
++			/* all other inodes are free, so skip I/O */
 +			memset(bh->b_data, 0, bh->b_size);
 +			set_buffer_uptodate(bh);
++			unlock_buffer(bh);
++			goto has_buffer;
 +		}
-+		unlock_buffer(bh);
 +	}
-+
- 	spin_lock(&ei->i_raw_lock);
  
- 	/*
+ make_io:
+-		/*
+-		 * If we need to do any I/O, try to pre-readahead extra
+-		 * blocks from the inode table.
+-		 */
+-		blk_start_plug(&plug);
+-		if (EXT4_SB(sb)->s_inode_readahead_blks) {
+-			ext4_fsblk_t b, end, table;
+-			unsigned num;
+-			__u32 ra_blks = EXT4_SB(sb)->s_inode_readahead_blks;
+-
+-			table = ext4_inode_table(sb, gdp);
+-			/* s_inode_readahead_blks is always a power of 2 */
+-			b = block & ~((ext4_fsblk_t) ra_blks - 1);
+-			if (table > b)
+-				b = table;
+-			end = b + ra_blks;
+-			num = EXT4_INODES_PER_GROUP(sb);
+-			if (ext4_has_group_desc_csum(sb))
+-				num -= ext4_itable_unused_count(sb, gdp);
+-			table += num / inodes_per_block;
+-			if (end > table)
+-				end = table;
+-			while (b <= end)
+-				ext4_sb_breadahead_unmovable(sb, b++);
+-		}
++	/*
++	 * If we need to do any I/O, try to pre-readahead extra
++	 * blocks from the inode table.
++	 */
++	blk_start_plug(&plug);
++	if (EXT4_SB(sb)->s_inode_readahead_blks) {
++		ext4_fsblk_t b, end, table;
++		unsigned num;
++		__u32 ra_blks = EXT4_SB(sb)->s_inode_readahead_blks;
++
++		table = ext4_inode_table(sb, gdp);
++		/* s_inode_readahead_blks is always a power of 2 */
++		b = block & ~((ext4_fsblk_t) ra_blks - 1);
++		if (table > b)
++			b = table;
++		end = b + ra_blks;
++		num = EXT4_INODES_PER_GROUP(sb);
++		if (ext4_has_group_desc_csum(sb))
++			num -= ext4_itable_unused_count(sb, gdp);
++		table += num / inodes_per_block;
++		if (end > table)
++			end = table;
++		while (b <= end)
++			ext4_sb_breadahead_unmovable(sb, b++);
++	}
+ 
+-		/*
+-		 * There are other valid inodes in the buffer, this inode
+-		 * has in-inode xattrs, or we don't have this inode in memory.
+-		 * Read the block from disk.
+-		 */
+-		trace_ext4_load_inode(sb, ino);
+-		ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
+-		blk_finish_plug(&plug);
+-		wait_on_buffer(bh);
+-		ext4_simulate_fail_bh(sb, bh, EXT4_SIM_INODE_EIO);
+-		if (!buffer_uptodate(bh)) {
+-			if (ret_block)
+-				*ret_block = block;
+-			brelse(bh);
+-			return -EIO;
+-		}
++	/*
++	 * There are other valid inodes in the buffer, this inode
++	 * has in-inode xattrs, or we don't have this inode in memory.
++	 * Read the block from disk.
++	 */
++	trace_ext4_load_inode(sb, ino);
++	ext4_read_bh_nowait(bh, REQ_META | REQ_PRIO, NULL);
++	blk_finish_plug(&plug);
++	wait_on_buffer(bh);
++	ext4_simulate_fail_bh(sb, bh, EXT4_SIM_INODE_EIO);
++	if (!buffer_uptodate(bh)) {
++		if (ret_block)
++			*ret_block = block;
++		brelse(bh);
++		return -EIO;
+ 	}
+ has_buffer:
+ 	iloc->bh = bh;
 -- 
 2.31.1
 
