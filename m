@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.2 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-7.3 required=3.0 tests=BAYES_00,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
 	SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D45AC4338F
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 01:42:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA079C4338F
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 05:46:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 48078611CB
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 01:42:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C2F026101C
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 05:46:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234572AbhHWBnC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 22 Aug 2021 21:43:02 -0400
-Received: from out30-57.freemail.mail.aliyun.com ([115.124.30.57]:39486 "EHLO
-        out30-57.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S234497AbhHWBnB (ORCPT
+        id S234054AbhHWFrQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 Aug 2021 01:47:16 -0400
+Received: from out30-133.freemail.mail.aliyun.com ([115.124.30.133]:42507 "EHLO
+        out30-133.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S231267AbhHWFrP (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 22 Aug 2021 21:43:01 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R421e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e01424;MF=joseph.qi@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0Ul7OwVr_1629682937;
-Received: from B-D1K7ML85-0059.local(mailfrom:joseph.qi@linux.alibaba.com fp:SMTPD_---0Ul7OwVr_1629682937)
+        Mon, 23 Aug 2021 01:47:15 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R101e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=alimailimapcm10staff010182156082;MF=jefflexu@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0UlD8Sr1_1629697591;
+Received: from admindeMacBook-Pro-2.local(mailfrom:jefflexu@linux.alibaba.com fp:SMTPD_---0UlD8Sr1_1629697591)
           by smtp.aliyun-inc.com(127.0.0.1);
-          Mon, 23 Aug 2021 09:42:17 +0800
+          Mon, 23 Aug 2021 13:46:31 +0800
 Subject: Re: [PATCH] ext4: fix reserved space counter leakage
-To:     Eric Whitney <enwlinux@gmail.com>
-Cc:     Jeffle Xu <jefflexu@linux.alibaba.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To:     Eric Whitney <enwlinux@gmail.com>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
 References: <20210819091351.19297-1-jefflexu@linux.alibaba.com>
  <20210820164556.GA30851@localhost.localdomain>
  <c7a95109-e468-cd25-1042-20e0779a87d4@linux.alibaba.com>
  <e33bc4a3-4378-364e-c834-8bb479872fa4@linux.alibaba.com>
  <20210822215214.GA12669@localhost.localdomain>
-From:   Joseph Qi <joseph.qi@linux.alibaba.com>
-Message-ID: <9cc97eac-ce0b-4492-08f7-32b3884e24d7@linux.alibaba.com>
-Date:   Mon, 23 Aug 2021 09:42:17 +0800
+From:   JeffleXu <jefflexu@linux.alibaba.com>
+Message-ID: <24adeb24-feaa-c32e-a4d2-143ba1f7f9c1@linux.alibaba.com>
+Date:   Mon, 23 Aug 2021 13:46:31 +0800
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.13.0
+ Gecko/20100101 Thunderbird/78.12.0
 MIME-Version: 1.0
 In-Reply-To: <20210822215214.GA12669@localhost.localdomain>
 Content-Type: text/plain; charset=utf-8
@@ -97,6 +97,9 @@ On 8/23/21 5:52 AM, Eric Whitney wrote:
 > Also, Gao Xiang's idea of checking i_reserved_data_blocks in the inode evict
 > path sounds good to me - I'd considered doing that in the past but never
 > actually did it.
+
+Thanks, it will be added in v2.
+
 > 
 >>
 >> BTW, it's a runtime lost, but not about on-disk.
@@ -126,9 +129,9 @@ On 8/23/21 5:52 AM, Eric Whitney wrote:
 > can remain non-zero even after syncfs has been executed on the filesystem.
 > 
 > Does that sound right?
-> 
-Yes, looks better. Thanks for your comments.
-We'll update the commit log in v2.
 
+Thanks, I will update the commit log in v2.
+
+-- 
 Thanks,
-Joseph
+Jeffle
