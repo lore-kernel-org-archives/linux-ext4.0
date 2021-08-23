@@ -2,205 +2,123 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-13.7 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-18.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AB4FEC4338F
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 15:03:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5963FC4338F
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 15:41:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8F27361265
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 15:03:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2FE25613AD
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 Aug 2021 15:41:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231337AbhHWPDm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 23 Aug 2021 11:03:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37976 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231174AbhHWPDl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Aug 2021 11:03:41 -0400
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D4C66C061757;
-        Mon, 23 Aug 2021 08:02:58 -0700 (PDT)
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id 4DC591F42D87
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Shreeya Patel <shreeya.patel@collabora.com>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: [PATCH 05/11] unicode: pass a UNICODE_AGE() tripple to utf8_load
-Organization: Collabora
-References: <20210818140651.17181-1-hch@lst.de>
-        <20210818140651.17181-6-hch@lst.de>
-Date:   Mon, 23 Aug 2021 11:02:52 -0400
-In-Reply-To: <20210818140651.17181-6-hch@lst.de> (Christoph Hellwig's message
-        of "Wed, 18 Aug 2021 16:06:45 +0200")
-Message-ID: <87tujg19wj.fsf@collabora.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.1 (gnu/linux)
+        id S231321AbhHWPmf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 Aug 2021 11:42:35 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:57870 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230314AbhHWPmf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Aug 2021 11:42:35 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 0F2CB22001;
+        Mon, 23 Aug 2021 15:41:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1629733312; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ou52MhRcB/VYgIbLJ9OdaPUENb5pJ36GeqZ6y8cs4pw=;
+        b=mHFD7wG431QodM6SrPc68oA3l3yaUO8XEJ4Q7PGg+9zJHtApoIOFSDZ4AFNOuY0Fy7fp5y
+        CkrE5cZqSLxLzmJMPblOD6PpPPW2cMb9QAfImvRbn8MAoioFVII8CzJJ2B5p+l0B9eJv5E
+        Ba333b+vmWefmlV3V2J9grzHA3auJn8=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1629733312;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ou52MhRcB/VYgIbLJ9OdaPUENb5pJ36GeqZ6y8cs4pw=;
+        b=8oCNv60QiCYa40zMnpqhItABpFJ1G24kXQC/haNLm/Zb666HCFtVmzSGRMwOMrL7ilfsE7
+        Uoxpog6Z89/xRQAg==
+Received: from quack2.suse.cz (unknown [10.100.224.230])
+        by relay2.suse.de (Postfix) with ESMTP id 02E4AA3BB4;
+        Mon, 23 Aug 2021 15:41:52 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id C36FF1F2BA4; Mon, 23 Aug 2021 17:41:51 +0200 (CEST)
+From:   Jan Kara <jack@suse.cz>
+To:     Ted Tso <tytso@mit.edu>
+Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/8] quota: Fold quota_read_all_dquots() into quota_update_limits()
+Date:   Mon, 23 Aug 2021 17:41:22 +0200
+Message-Id: <20210823154128.16615-3-jack@suse.cz>
+X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20210823154128.16615-1-jack@suse.cz>
+References: <20210823154128.16615-1-jack@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1845; h=from:subject; bh=P7jQb3ZXNuPWs0M0khNUm88nO2ChkOKzT3PGfFt2YNE=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBhI8GihdgOLrTUGvgyKLo/9lHgsSXNpuX+TjVHdW+m 661Y0fGJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYSPBogAKCRCcnaoHP2RA2aEPB/ 9zdPkcMlJKxGzpEO0BmaBNu0c3VbFZR72otTj64Pm1AWxyU9PL288d+VnPov7WSeduPBKtXxmevxAw tR0TYFt4ui8Gr7HLMoTvP7EJ3YX/KZ2mnXnz9JJ5DB2fG07VBbKmcfPKzsxYTUd0Xe5RJU0PYPI62W j8W17jQelcHCNhAJk6oJFP7hPE+dsGUzGthbeQhWrb5zmboB/Ui55mfM1mLaloebpJkg1eqEZzX1jE 6T9iEfBSgv5WowKIfJInnXkI+l4UED+Ri1pjuFgBtpWjJEP8ixpFhlo0ULZxfK/OX9sFWQU+Z+opoM Qi0W7Fbb7hR7YZP84xnIbF1FUgHa+l
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Christoph Hellwig <hch@lst.de> writes:
+There's just one caller of quota_read_all_dquots(), fold it into its
+caller quota_update_limits(). No functional changes.
 
-> Don't bother with pointless string parsing when the caller can just pass
-> the version in the format that the core expects.  Also remove the
-> fallback to the latest version that none of the callers actually uses.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/ext4/super.c            | 10 ++++----
->  fs/f2fs/super.c            | 10 ++++----
->  fs/unicode/utf8-core.c     | 50 ++++----------------------------------
->  fs/unicode/utf8-norm.c     | 11 ++-------
->  fs/unicode/utf8-selftest.c | 15 ++++++------
->  fs/unicode/utf8n.h         | 14 ++---------
->  include/linux/unicode.h    | 11 ++++++++-
->  7 files changed, 37 insertions(+), 84 deletions(-)
->
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index a68be582bba5..be418a30b52e 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2016,9 +2016,9 @@ static const struct mount_opts {
->  static const struct ext4_sb_encodings {
->  	__u16 magic;
->  	char *name;
-> -	char *version;
-> +	unsigned int version;
->  } ext4_sb_encoding_map[] = {
-> -	{EXT4_ENC_UTF8_12_1, "utf8", "12.1.0"},
-> +	{EXT4_ENC_UTF8_12_1, "utf8", UNICODE_AGE(12, 1, 0)},
->  };
->  
->  static const struct ext4_sb_encodings *
-> @@ -4308,15 +4308,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  		encoding = utf8_load(encoding_info->version);
->  		if (IS_ERR(encoding)) {
->  			ext4_msg(sb, KERN_ERR,
-> -				 "can't mount with superblock charset: %s-%s "
-> +				 "can't mount with superblock charset: %s-0x%x "
->  				 "not supported by the kernel. flags: 0x%x.",
->  				 encoding_info->name, encoding_info->version,
->  				 encoding_flags);
->  			goto failed_mount;
->  		}
->  		ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
-> -			 "%s-%s with flags 0x%hx", encoding_info->name,
-> -			 encoding_info->version?:"\b", encoding_flags);
-> +			 "%s-0x%x with flags 0x%hx", encoding_info->name,
-> +			 encoding_info->version, encoding_flags);
->  
->  		sb->s_encoding = encoding;
->  		sb->s_encoding_flags = encoding_flags;
-> diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-> index af63ae009582..d107480f88a3 100644
-> --- a/fs/f2fs/super.c
-> +++ b/fs/f2fs/super.c
-> @@ -255,9 +255,9 @@ void f2fs_printk(struct f2fs_sb_info *sbi, const char *fmt, ...)
->  static const struct f2fs_sb_encodings {
->  	__u16 magic;
->  	char *name;
-> -	char *version;
-> +	unsigned int version;
->  } f2fs_sb_encoding_map[] = {
-> -	{F2FS_ENC_UTF8_12_1, "utf8", "12.1.0"},
-> +	{F2FS_ENC_UTF8_12_1, "utf8", UNICODE_AGE(12, 1, 0)},
->  };
->  
->  static const struct f2fs_sb_encodings *
-> @@ -3734,15 +3734,15 @@ static int f2fs_setup_casefold(struct f2fs_sb_info *sbi)
->  		encoding = utf8_load(encoding_info->version);
->  		if (IS_ERR(encoding)) {
->  			f2fs_err(sbi,
-> -				 "can't mount with superblock charset: %s-%s "
-> +				 "can't mount with superblock charset: %s-0x%x "
->  				 "not supported by the kernel. flags: 0x%x.",
->  				 encoding_info->name, encoding_info->version,
->  				 encoding_flags);
->  			return PTR_ERR(encoding);
->  		}
->  		f2fs_info(sbi, "Using encoding defined by superblock: "
-> -			 "%s-%s with flags 0x%hx", encoding_info->name,
-> -			 encoding_info->version?:"\b", encoding_flags);
-> +			 "%s-0x%x with flags 0x%hx", encoding_info->name,
-> +			 encoding_info->version, encoding_flags);
->  
->  		sbi->sb->s_encoding = encoding;
->  		sbi->sb->s_encoding_flags = encoding_flags;
-> diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
-> index 86f42a078d99..dca2865c3bee 100644
-> --- a/fs/unicode/utf8-core.c
-> +++ b/fs/unicode/utf8-core.c
-> @@ -167,59 +167,19 @@ int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
->  	}
->  	return -EINVAL;
->  }
-> -
->  EXPORT_SYMBOL(utf8_normalize);
->  
-> -static int utf8_parse_version(const char *version, unsigned int *maj,
-> -			      unsigned int *min, unsigned int *rev)
-> +struct unicode_map *utf8_load(unsigned int version)
->  {
-> -	substring_t args[3];
-> -	char version_string[12];
-> -	static const struct match_token token[] = {
-> -		{1, "%d.%d.%d"},
-> -		{0, NULL}
-> -	};
-> -
-> -	strncpy(version_string, version, sizeof(version_string));
-> -
-> -	if (match_token(version_string, token, args) != 1)
-> -		return -EINVAL;
-> -
-> -	if (match_int(&args[0], maj) || match_int(&args[1], min) ||
-> -	    match_int(&args[2], rev))
-> -		return -EINVAL;
-> +	struct unicode_map *um;
->  
-> -	return 0;
-> -}
-> -
-> -struct unicode_map *utf8_load(const char *version)
-> -{
-> -	struct unicode_map *um = NULL;
-> -	int unicode_version;
-> -
-> -	if (version) {
-> -		unsigned int maj, min, rev;
-> -
-> -		if (utf8_parse_version(version, &maj, &min, &rev) < 0)
-> -			return ERR_PTR(-EINVAL);
-> -
-> -		if (!utf8version_is_supported(maj, min, rev))
-> -			return ERR_PTR(-EINVAL);
-> -
-> -		unicode_version = UNICODE_AGE(maj, min, rev);
-> -	} else {
-> -		unicode_version = utf8version_latest();
-> -		printk(KERN_WARNING"UTF-8 version not specified. "
-> -		       "Assuming latest supported version (%d.%d.%d).",
-> -		       (unicode_version >> 16) & 0xff,
-> -		       (unicode_version >> 8) & 0xff,
-> -		       (unicode_version & 0xff));
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ lib/support/mkquota.c | 24 ++++++------------------
+ 1 file changed, 6 insertions(+), 18 deletions(-)
 
-I remember this fallback was specifically requested during a review or
-in a discussion, but I honestly cannot remember the reason.
-
-One advantage I can think is if we have a filesystem that requires a
-newer unicode version than the current kernel has, and strict mode flag
-is set, we can fallback to the latest version and still mount the fs
-read/write.
-
-That is not implemented though, so I'm fine with this removal.
-
-Reviewed-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index fbc3833aee98..8e5c61a601cc 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -564,23 +564,6 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+ 	return 0;
+ }
+ 
+-/*
+- * Read all dquots from quota file into memory
+- */
+-static errcode_t quota_read_all_dquots(struct quota_handle *qh,
+-                                       quota_ctx_t qctx,
+-				       int update_limits EXT2FS_ATTR((unused)))
+-{
+-	struct scan_dquots_data scan_data;
+-
+-	scan_data.quota_dict = qctx->quota_dict[qh->qh_type];
+-	scan_data.check_consistency = 0;
+-	scan_data.update_limits = 0;
+-	scan_data.update_usage = 1;
+-
+-	return qh->qh_ops->scan_dquots(qh, scan_dquots_callback, &scan_data);
+-}
+-
+ /*
+  * Write all memory dquots into quota file
+  */
+@@ -607,6 +590,7 @@ static errcode_t quota_write_all_dquots(struct quota_handle *qh,
+ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino,
+ 			      enum quota_type qtype)
+ {
++	struct scan_dquots_data scan_data;
+ 	struct quota_handle *qh;
+ 	errcode_t err;
+ 
+@@ -625,7 +609,11 @@ errcode_t quota_update_limits(quota_ctx_t qctx, ext2_ino_t qf_ino,
+ 		goto out;
+ 	}
+ 
+-	quota_read_all_dquots(qh, qctx, 1);
++	scan_data.quota_dict = qctx->quota_dict[qh->qh_type];
++	scan_data.check_consistency = 0;
++	scan_data.update_limits = 0;
++	scan_data.update_usage = 1;
++	qh->qh_ops->scan_dquots(qh, scan_dquots_callback, &scan_data);
+ 
+ 	err = quota_file_close(qctx, qh);
+ 	if (err) {
 -- 
-Gabriel Krisman Bertazi
+2.26.2
+
