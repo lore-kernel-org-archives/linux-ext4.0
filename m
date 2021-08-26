@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3ED16C432BE
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1721BC4320E
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 2749360184
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0273F60184
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242633AbhHZMy7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Aug 2021 08:54:59 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:18043 "EHLO
+        id S242568AbhHZMzF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Aug 2021 08:55:05 -0400
+Received: from szxga01-in.huawei.com ([45.249.212.187]:8782 "EHLO
         szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242577AbhHZMys (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2021 08:54:48 -0400
+        with ESMTP id S242579AbhHZMyt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2021 08:54:49 -0400
 Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GwN3j4nWgzbj1J;
-        Thu, 26 Aug 2021 20:50:09 +0800 (CST)
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GwN7V3M6LzYtBh;
+        Thu, 26 Aug 2021 20:53:26 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.8; Thu, 26
- Aug 2021 20:53:59 +0800
+ Aug 2021 20:54:00 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH v4 4/6] ext4: factor out ext4_fill_raw_inode()
-Date:   Thu, 26 Aug 2021 21:04:10 +0800
-Message-ID: <20210826130412.3921207-5-yi.zhang@huawei.com>
+Subject: [PATCH v4 6/6] ext4: prevent getting empty inode buffer
+Date:   Thu, 26 Aug 2021 21:04:12 +0800
+Message-ID: <20210826130412.3921207-7-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20210826130412.3921207-1-yi.zhang@huawei.com>
 References: <20210826130412.3921207-1-yi.zhang@huawei.com>
@@ -47,139 +47,95 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Factor out ext4_fill_raw_inode() from ext4_do_update_inode(), which is
-use to fill the in-mem inode contents into the inode table buffer, in
-preparation for initializing the exclusive inode buffer without reading
-the block in __ext4_get_inode_loc().
+In ext4_get_inode_loc(), we may skip IO and get an zero && uptodate
+inode buffer when the inode monopolize an inode block for performance
+reason. For most cases, ext4_mark_iloc_dirty() will fill the inode
+buffer to make it fine, but we could miss this call if something bad
+happened. Finally, __ext4_get_inode_loc_noinmem() may probably get an
+empty inode buffer and trigger ext4 error.
+
+For example, if we remove a nonexistent xattr on inode A,
+ext4_xattr_set_handle() will return ENODATA before invoking
+ext4_mark_iloc_dirty(), it will left an uptodate but zero buffer. We
+will get checksum error message in ext4_iget() when getting inode again.
+
+  EXT4-fs error (device sda): ext4_lookup:1784: inode #131074: comm cat:
+iget: checksum invalid
+
+Even worse, if we allocate another inode B at the same inode block, it
+will corrupt the inode A on disk when write back inode B.
+
+So this patch initialize the inode buffer by filling the in-mem inode
+contents if we skip read I/O, ensure that the buffer is really uptodate.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/inode.c | 85 +++++++++++++++++++++++++++----------------------
- 1 file changed, 47 insertions(+), 38 deletions(-)
+ fs/ext4/inode.c | 22 ++++++++++++++++------
+ 1 file changed, 16 insertions(+), 6 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8323d3e8f393..c7186460c14d 100644
+index 3c36e701e30e..8b37f55b04ad 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4902,9 +4902,8 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 	return ERR_PTR(ret);
- }
- 
--static int ext4_inode_blocks_set(handle_t *handle,
--				struct ext4_inode *raw_inode,
--				struct ext4_inode_info *ei)
-+static int ext4_inode_blocks_set(struct ext4_inode *raw_inode,
-+				 struct ext4_inode_info *ei)
+@@ -4446,8 +4446,8 @@ static int ext4_fill_raw_inode(struct inode *inode, struct ext4_inode *raw_inode
+  * inode.
+  */
+ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+-				struct ext4_iloc *iloc, int in_mem,
+-				ext4_fsblk_t *ret_block)
++				struct inode *inode, struct ext4_iloc *iloc,
++				int in_mem, ext4_fsblk_t *ret_block)
  {
- 	struct inode *inode = &(ei->vfs_inode);
- 	u64 i_blocks = READ_ONCE(inode->i_blocks);
-@@ -5007,37 +5006,16 @@ static void ext4_update_other_inodes_time(struct super_block *sb,
- 	rcu_read_unlock();
- }
+ 	struct ext4_group_desc	*gdp;
+ 	struct buffer_head	*bh;
+@@ -4514,8 +4514,13 @@ static int __ext4_get_inode_loc(struct super_block *sb, unsigned long ino,
+ 		}
+ 		brelse(bitmap_bh);
+ 		if (i == start + inodes_per_block) {
++			struct ext4_inode *raw_inode =
++				(struct ext4_inode *) (bh->b_data + iloc->offset);
++
+ 			/* all other inodes are free, so skip I/O */
+ 			memset(bh->b_data, 0, bh->b_size);
++			if (!ext4_test_inode_state(inode, EXT4_STATE_NEW))
++				ext4_fill_raw_inode(inode, raw_inode);
+ 			set_buffer_uptodate(bh);
+ 			unlock_buffer(bh);
+ 			goto has_buffer;
+@@ -4576,7 +4581,7 @@ static int __ext4_get_inode_loc_noinmem(struct inode *inode,
+ 	ext4_fsblk_t err_blk;
+ 	int ret;
  
--/*
-- * Post the struct inode info into an on-disk inode location in the
-- * buffer-cache.  This gobbles the caller's reference to the
-- * buffer_head in the inode location struct.
-- *
-- * The caller must have write access to iloc->bh.
-- */
--static int ext4_do_update_inode(handle_t *handle,
--				struct inode *inode,
--				struct ext4_iloc *iloc)
-+static int ext4_fill_raw_inode(struct inode *inode, struct ext4_inode *raw_inode)
- {
--	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	struct buffer_head *bh = iloc->bh;
--	struct super_block *sb = inode->i_sb;
--	int err = 0, block;
--	int need_datasync = 0, set_large_file = 0;
- 	uid_t i_uid;
- 	gid_t i_gid;
- 	projid_t i_projid;
-+	int block;
-+	int err;
+-	ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, iloc, 0,
++	ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, NULL, iloc, 0,
+ 					&err_blk);
  
--	spin_lock(&ei->i_raw_lock);
--
--	/*
--	 * For fields not tracked in the in-memory inode, initialise them
--	 * to zero for new inodes.
--	 */
--	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
--		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
--
--	err = ext4_inode_blocks_set(handle, raw_inode, ei);
-+	err = ext4_inode_blocks_set(raw_inode, ei);
+ 	if (ret == -EIO)
+@@ -4592,8 +4597,13 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ 	int ret;
  
- 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
- 	i_uid = i_uid_read(inode);
-@@ -5079,16 +5057,8 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_file_acl_high =
- 			cpu_to_le16(ei->i_file_acl >> 32);
- 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
--	if (READ_ONCE(ei->i_disksize) != ext4_isize(inode->i_sb, raw_inode)) {
--		ext4_isize_set(raw_inode, ei->i_disksize);
--		need_datasync = 1;
--	}
--	if (ei->i_disksize > 0x7fffffffULL) {
--		if (!ext4_has_feature_large_file(sb) ||
--				EXT4_SB(sb)->s_es->s_rev_level ==
--		    cpu_to_le32(EXT4_GOOD_OLD_REV))
--			set_large_file = 1;
--	}
-+	ext4_isize_set(raw_inode, ei->i_disksize);
-+
- 	raw_inode->i_generation = cpu_to_le32(inode->i_generation);
- 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode)) {
- 		if (old_valid_dev(inode->i_rdev)) {
-@@ -5128,6 +5098,45 @@ static int ext4_do_update_inode(handle_t *handle,
- 		raw_inode->i_projid = cpu_to_le32(i_projid);
- 
- 	ext4_inode_csum_set(inode, raw_inode, ei);
-+	return err;
-+}
-+
-+/*
-+ * Post the struct inode info into an on-disk inode location in the
-+ * buffer-cache.  This gobbles the caller's reference to the
-+ * buffer_head in the inode location struct.
-+ *
-+ * The caller must have write access to iloc->bh.
-+ */
-+static int ext4_do_update_inode(handle_t *handle,
-+				struct inode *inode,
-+				struct ext4_iloc *iloc)
-+{
-+	struct ext4_inode *raw_inode = ext4_raw_inode(iloc);
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct buffer_head *bh = iloc->bh;
-+	struct super_block *sb = inode->i_sb;
-+	int err;
-+	int need_datasync = 0, set_large_file = 0;
-+
-+	spin_lock(&ei->i_raw_lock);
-+
-+	/*
-+	 * For fields not tracked in the in-memory inode, initialise them
-+	 * to zero for new inodes.
-+	 */
-+	if (ext4_test_inode_state(inode, EXT4_STATE_NEW))
-+		memset(raw_inode, 0, EXT4_SB(inode->i_sb)->s_inode_size);
-+
-+	if (READ_ONCE(ei->i_disksize) != ext4_isize(inode->i_sb, raw_inode))
-+		need_datasync = 1;
-+	if (ei->i_disksize > 0x7fffffffULL) {
-+		if (!ext4_has_feature_large_file(sb) ||
-+		    EXT4_SB(sb)->s_es->s_rev_level == cpu_to_le32(EXT4_GOOD_OLD_REV))
-+			set_large_file = 1;
+ 	/* We have all inode data except xattrs in memory here. */
+-	ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, iloc,
+-		!ext4_test_inode_state(inode, EXT4_STATE_XATTR), &err_blk);
++	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
++		ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, NULL,
++					   iloc, false, &err_blk);
++	} else {
++		ret = __ext4_get_inode_loc(inode->i_sb, inode->i_ino, inode,
++					   iloc, true, &err_blk);
 +	}
-+
-+	err = ext4_fill_raw_inode(inode, raw_inode);
- 	spin_unlock(&ei->i_raw_lock);
- 	if (err) {
- 		EXT4_ERROR_INODE(inode, "corrupted inode contents");
+ 
+ 	if (ret == -EIO)
+ 		ext4_error_inode_block(inode, err_blk, EIO,
+@@ -4606,7 +4616,7 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+ int ext4_get_fc_inode_loc(struct super_block *sb, unsigned long ino,
+ 			  struct ext4_iloc *iloc)
+ {
+-	return __ext4_get_inode_loc(sb, ino, iloc, 0, NULL);
++	return __ext4_get_inode_loc(sb, ino, NULL, iloc, 0, NULL);
+ }
+ 
+ static bool ext4_should_enable_dax(struct inode *inode)
 -- 
 2.31.1
 
