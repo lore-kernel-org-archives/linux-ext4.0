@@ -2,158 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEC46C432BE
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 11:42:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC5DBC432BE
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B428160FE6
-	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 11:42:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A5ED660184
+	for <linux-ext4@archiver.kernel.org>; Thu, 26 Aug 2021 12:54:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242246AbhHZLn2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 26 Aug 2021 07:43:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48830 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236957AbhHZLn2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2021 07:43:28 -0400
-Received: from mail-pf1-x42e.google.com (mail-pf1-x42e.google.com [IPv6:2607:f8b0:4864:20::42e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D434C061757;
-        Thu, 26 Aug 2021 04:42:41 -0700 (PDT)
-Received: by mail-pf1-x42e.google.com with SMTP id 18so2515865pfh.9;
-        Thu, 26 Aug 2021 04:42:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=VGpf2KcdeJnsNgpEgrUODrQceX1nXKO1eVOyUVEhESQ=;
-        b=A2H/fZSSB02fijH3p1oEwtbOzMOpcqZgSKJOifuk6qHnR6zgB8SZ+i1a86KTIyjn6A
-         L39CUV3SshEtXz8fnbD8zuHPMeS1yztXkyFa8INPtrYQKCrju777ZnxGWUiOTGtJBgK3
-         xzwC4aO4Su9WgjUIpjgkCi78Y540zgTARstCzukgpmSYb0DhFD2OHd5LdvalZazwoFsW
-         dVxUI0RePZeMFNmtepNopBv0BzIch17giQJWY9U2VtQFo9F/dO4d9F13c457UosvJR5g
-         r6nlQAj6UQf6duXGle6j0Dz1TcLQwSijOGycbw6OpeirXhUhG/u9l8WPEkX+zPrttAYv
-         NOdQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=VGpf2KcdeJnsNgpEgrUODrQceX1nXKO1eVOyUVEhESQ=;
-        b=jBrnvP34bX3anKLRI68g2I5y6SpJgRVTigY2bgCp9y65RnivfJTjpZs7FcbKFXDewn
-         M8uoazfmJkVsO8pKBd3Mh9JPOyP+G5pcgXyhaAZs7r5ZHPGSiwVf2a7fkSIHIzUF0AME
-         Om00IFWAv1OoEzdlT5Q+JuILKG9vbxJsFIjj4B5saZ9cI/fcgdd/vcTAxGb0Ao0R9kcu
-         AmZBFnLQIPn7dGCQ8S4fIC8xugqJfzJgP2GMJhuhm1t8YOvGtXDBgd9xQbl5jRnR654m
-         8+7tTVeFzVrvwrjLCSxNCUMR2c1k+aVcI2VvvMVF+M1MB/dAKRJYwUy4PA7d/kp8HJut
-         mrqQ==
-X-Gm-Message-State: AOAM533qLgq8V/fp9aW14WuVn1RFGsIVfxI6WUYF7qp+AYwu7izq1X6K
-        QBGMpva5XIWcugMsW+t1MK8=
-X-Google-Smtp-Source: ABdhPJwcr7WV9uJlsWpHW5Y6OGNnziwx7RS+hZx5BtiVV2NxXvSYE97LesLzR87TgxvPtwqL4m4aDg==
-X-Received: by 2002:a63:d64f:: with SMTP id d15mr3013065pgj.9.1629978160683;
-        Thu, 26 Aug 2021 04:42:40 -0700 (PDT)
-Received: from jianchwadeMacBook-Pro.local ([162.219.34.243])
-        by smtp.gmail.com with ESMTPSA id s15sm5847838pjk.21.2021.08.26.04.42.38
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 26 Aug 2021 04:42:40 -0700 (PDT)
-Subject: Re: [PATCH V3 5/5] ext4: make fallocate retry when err is ENOSPC
-To:     Jan Kara <jack@suse.cz>
-Cc:     Guoqing Jiang <guoqing.jiang@linux.dev>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        tytso@mit.edu, adilger.kernel@dilger.ca
-References: <20210724074124.25731-1-jianchao.wan9@gmail.com>
- <20210724074124.25731-6-jianchao.wan9@gmail.com>
- <0ac551b1-6295-9117-757d-12bee70de588@linux.dev>
- <2888807f-2822-a73d-4c01-f073f8fffae2@gmail.com>
- <20210804155214.GN4578@quack2.suse.cz>
-From:   Wang Jianchao <jianchao.wan9@gmail.com>
-Message-ID: <209ef33f-36b9-fa74-aa6f-306cf7133971@gmail.com>
-Date:   Thu, 26 Aug 2021 19:42:35 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.13.0
+        id S242591AbhHZMys (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 26 Aug 2021 08:54:48 -0400
+Received: from szxga01-in.huawei.com ([45.249.212.187]:18042 "EHLO
+        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S242579AbhHZMyr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Aug 2021 08:54:47 -0400
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
+        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4GwN3g6ZNHzbjGv;
+        Thu, 26 Aug 2021 20:50:07 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
+ (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.8; Thu, 26
+ Aug 2021 20:53:58 +0800
+From:   Zhang Yi <yi.zhang@huawei.com>
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
+Subject: [PATCH v4 0/6] ext4: fix a inode checksum error
+Date:   Thu, 26 Aug 2021 21:04:06 +0800
+Message-ID: <20210826130412.3921207-1-yi.zhang@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-In-Reply-To: <20210804155214.GN4578@quack2.suse.cz>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ dggeme752-chm.china.huawei.com (10.3.19.98)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+We find a checksum error and a inode corruption problem while doing
+stress test, this 6 patches address to fix them. The first patch is
+relate to the error simulation, and the 2-5 patches are prepare to
+do the fix. The last patch fix these two issue.
 
+ - Checksum error
 
-On 2021/8/4 11:52 PM, Jan Kara wrote:
-> On Mon 26-07-21 15:05:41, Wang Jianchao wrote:
->>
->>
->> On 2021/7/26 11:40 AM, Guoqing Jiang wrote:
->>> Hi,
->>>
->>> On 7/24/21 3:41 PM, Wang Jianchao wrote:
->>>> From: Wang Jianchao <wangjianchao@kuaishou.com>
->>>>
->>>> The blocks may be waiting for journal commit to be freed back to
->>>> mb buddy. Let fallocate wait and retry in that case.
->>>>
->>>> Signed-off-by: Wang Jianchao <wangjianchao@kuaishou.com>
->>>> ---
->>>>   fs/ext4/extents.c | 6 +++++-
->>>>   1 file changed, 5 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->>>> index 92ad64b89d9b..ad0b874d3448 100644
->>>> --- a/fs/ext4/extents.c
->>>> +++ b/fs/ext4/extents.c
->>>> @@ -4635,7 +4635,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>>>       struct inode *inode = file_inode(file);
->>>>       loff_t new_size = 0;
->>>>       unsigned int max_blocks;
->>>> -    int ret = 0;
->>>> +    int ret = 0, retries = 0;
->>>>       int flags;
->>>>       ext4_lblk_t lblk;
->>>>       unsigned int blkbits = inode->i_blkbits;
->>>> @@ -4656,6 +4656,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>>>                FALLOC_FL_INSERT_RANGE))
->>>>           return -EOPNOTSUPP;
->>>>   +retry:
->>>>       ext4_fc_start_update(inode);
->>>>         if (mode & FALLOC_FL_PUNCH_HOLE) {
->>>> @@ -4722,6 +4723,9 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->>>>       trace_ext4_fallocate_exit(inode, offset, max_blocks, ret);
->>>>   exit:
->>>>       ext4_fc_stop_update(inode);
->>>> +    if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->>>> +        goto retry;
->>>> +
->>>
->>> Not sure if it is necessary since ext4_alloc_file_blocks already retries allocate.
->>
->> Yes, this patch should be get rid of.  But it is indeed helpful to fix
->> the xfstest generic/371 which does concurrently write/rm and
->> fallocate/rm. I'll figure out some other way to improve that
-> 
-> Note that the retry logic is only a heuristic. It is not guaranteed any
-> number of retries is enough, we just do three to not give up too easily...
-> Your patch effectively raised number of retries to 9 so that may have
-> masked the issue. But I don't think so high number of retries is a sensible
-> choice because that way it may take too long to return ENOSPC.
+    EXT4-fs error (device sda): ext4_lookup:1784: inode #131074: comm cat: iget: checksum invalid
 
-The failure seems due to the background discard which marks the blocks used
-before issue discard. 
+ - Inode corruption
 
-The test make a 256M filesystem which has 59316 4K blocks.
-There are two thread running concurrently,
- - write, rm 80M file
- - fallocate, rm 80M file
+    e2fsck 1.46.0 (29-Jan-2020)
+    Pass 1: Checking inodes, blocks, and sizes
+    Pass 2: Checking directory structure
+    Entry 'foo' in / (2) has deleted/unused inode 17.  Clear<y>? yes
+    Pass 3: Checking directory connectivity
+    Pass 4: Checking reference counts
+    Pass 5: Checking group summary information
+    Inode bitmap differences:  -17
+    Fix<y>? yes
+    Free inodes count wrong for group #0 (32750, counted=32751).
+    Fix<y>? yes
+    Free inodes count wrong (32750, counted=32751).
+    Fix<y>? yes
 
-When the fallocate failed, I can observe there was a 80M on-going background trim
+Changes since v3:
+ - Postpone initialization to ext4_do_update_inode() may cause zeroout
+   newly set xattr entry. So switch to do initialization in
+   __ext4_get_inode_loc().
 
-We seems to need to add a flush_work(sbi->s_discard_work) into ext4_should_retry_alloc()
+Changes since v2:
+ - Instead of using WARN_ON_ONCE to prevent ext4_do_update_inode()
+   return before filling the inode buffer, keep the error and postpone
+   the report after the updating in the third patch.
+ - Fix some language mistacks in the last patch.
 
-Thanks so much
-Jianchao
-> 
-> 								Honza
-> 
+Changes since v1:
+ - Add a patch to prevent ext4_do_update_inode() return before filling
+   the inode buffer.
+ - Do not use BH_New flag to indicate the empty buffer, postpone the
+   zero and uptodate logic into ext4_do_update_inode() before filling
+   the inode buffer.
+
+Thanks,
+Yi.
+
+Zhang Yi (6):
+  ext4: move inode eio simulation behind io completeion
+  ext4: remove an unnecessary if statement in __ext4_get_inode_loc()
+  ext4: make the updating inode data procedure atomic
+  ext4: factor out ext4_fill_raw_inode()
+  ext4: move ext4_fill_raw_inode() related functions
+  ext4: prevent getting empty inode buffer
+
+ fs/ext4/inode.c | 490 +++++++++++++++++++++++++-----------------------
+ 1 file changed, 257 insertions(+), 233 deletions(-)
+
+-- 
+2.31.1
+
