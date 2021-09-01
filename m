@@ -7,38 +7,38 @@ X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E378CC43216
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE8E4C41537
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BFBCB610E9
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9B1C9610C8
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344073AbhIAQlr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Sep 2021 12:41:47 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57888 "EHLO mail.kernel.org"
+        id S1344108AbhIAQls (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Sep 2021 12:41:48 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57854 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1343783AbhIAQlm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S245462AbhIAQlm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 1 Sep 2021 12:41:42 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 8982B610A8;
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 18AB8610A4;
         Wed,  1 Sep 2021 16:40:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1630514445;
-        bh=BQJbl9Xe1+sOKjZIWzSU1gdV3Y+4uUncEZSDflO8xyw=;
+        bh=33RC3YogqXCC1E17dtW915hQmiG+ogGdN4NtjjBgfzA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=JykREafydu6ZMc4srz5AbQavlEBQnoEoMMC8ukWy2TVDBClKpSwDgFqfjV8y6GbRP
-         +tCnFpw60cgbcwWgLoELBahNzHeRvsbdzhJEHv+IfIaENX8os0tZfK3UnxNiwlERJ6
-         W3SZdjjINM2qOLu19hxdmh9lxvE8AG5THK5ZWtXxfU0/tIpaM5Bu0jeGPJt8Ch/K5H
-         +scKKgj+4C4EXuhVorouOWyCxypShyYqXmZadhheCmPwAsSBxD0l+70jPoeln9cF2p
-         Pc316A0SxBnmfIh5m9DBCGDqxDb9GRNacaHZdp0W4oc+QSzeqXtE4u+nuso6EQL0sk
-         7XR3XOWx2OG5A==
+        b=e1SO4KbLU/xzU1M6KMMYOaf9afJ4v/u3OImED28F07LnAtkkEDSyGFpwhjTFY/7mX
+         iLnsv55XhW3ZZhRWFEday3Ioh9fNsCmFZuIM5grmwljJK3F3VujCcabRn8akneb4K8
+         yA0gnSjU0YfE0msbkWjWShnoQ34G00wT4iKn7/QKTtJW2lUyCsFH09lFpjuDYRVR4H
+         B+aQGAqJHVuPhezxASOlzyWbSpqNmogkF7izTuAQC1jRxVAdS1ScrM6LVE1w6B8Fgd
+         5mVgOdhCvRz0LaOJUYdJJvZKIwHqbf3pNCUtK7meDb3dXkt3M7/gnjRsPimOHhxObw
+         gcbGdJpnciuxA==
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     stable@vger.kernel.org
 Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org
-Subject: [PATCH 5.4 4/4] ubifs: report correct st_size for encrypted symlinks
-Date:   Wed,  1 Sep 2021 09:40:41 -0700
-Message-Id: <20210901164041.176238-5-ebiggers@kernel.org>
+Subject: [PATCH 5.4 2/4] ext4: report correct st_size for encrypted symlinks
+Date:   Wed,  1 Sep 2021 09:40:39 -0700
+Message-Id: <20210901164041.176238-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20210901164041.176238-1-ebiggers@kernel.org>
 References: <20210901164041.176238-1-ebiggers@kernel.org>
@@ -50,55 +50,50 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-commit 064c734986011390b4d111f1a99372b7f26c3850 upstream.
+commit 8c4bca10ceafc43b1ca0a9fab5fa27e13cbce99e upstream.
 
 The stat() family of syscalls report the wrong size for encrypted
 symlinks, which has caused breakage in several userspace programs.
 
-Fix this by calling fscrypt_symlink_getattr() after ubifs_getattr() for
+Fix this by calling fscrypt_symlink_getattr() after ext4_getattr() for
 encrypted symlinks.  This function computes the correct size by reading
 and decrypting the symlink target (if it's not already cached).
 
 For more details, see the commit which added fscrypt_symlink_getattr().
 
-Fixes: ca7f85be8d6c ("ubifs: Add support for encrypted symlinks")
+Fixes: f348c252320b ("ext4 crypto: add symlink encryption")
 Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/r/20210702065350.209646-5-ebiggers@kernel.org
+Link: https://lore.kernel.org/r/20210702065350.209646-3-ebiggers@kernel.org
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ubifs/file.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ fs/ext4/symlink.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
-index 8dada89bbe4da..6069c63d833ae 100644
---- a/fs/ubifs/file.c
-+++ b/fs/ubifs/file.c
-@@ -1629,6 +1629,16 @@ static const char *ubifs_get_link(struct dentry *dentry,
- 	return fscrypt_get_symlink(inode, ui->data, ui->data_len, done);
+diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
+index dd05af983092d..a9457fed351ed 100644
+--- a/fs/ext4/symlink.c
++++ b/fs/ext4/symlink.c
+@@ -52,10 +52,19 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
+ 	return paddr;
  }
  
-+static int ubifs_symlink_getattr(const struct path *path, struct kstat *stat,
-+				 u32 request_mask, unsigned int query_flags)
++static int ext4_encrypted_symlink_getattr(const struct path *path,
++					  struct kstat *stat, u32 request_mask,
++					  unsigned int query_flags)
 +{
-+	ubifs_getattr(path, stat, request_mask, query_flags);
++	ext4_getattr(path, stat, request_mask, query_flags);
 +
-+	if (IS_ENCRYPTED(d_inode(path->dentry)))
-+		return fscrypt_symlink_getattr(path, stat);
-+	return 0;
++	return fscrypt_symlink_getattr(path, stat);
 +}
 +
- const struct address_space_operations ubifs_file_address_operations = {
- 	.readpage       = ubifs_readpage,
- 	.writepage      = ubifs_writepage,
-@@ -1654,7 +1664,7 @@ const struct inode_operations ubifs_file_inode_operations = {
- const struct inode_operations ubifs_symlink_inode_operations = {
- 	.get_link    = ubifs_get_link,
- 	.setattr     = ubifs_setattr,
--	.getattr     = ubifs_getattr,
-+	.getattr     = ubifs_symlink_getattr,
- #ifdef CONFIG_UBIFS_FS_XATTR
- 	.listxattr   = ubifs_listxattr,
- #endif
+ const struct inode_operations ext4_encrypted_symlink_inode_operations = {
+ 	.get_link	= ext4_encrypted_get_link,
+ 	.setattr	= ext4_setattr,
+-	.getattr	= ext4_getattr,
++	.getattr	= ext4_encrypted_symlink_getattr,
+ 	.listxattr	= ext4_listxattr,
+ };
+ 
 -- 
 2.33.0
 
