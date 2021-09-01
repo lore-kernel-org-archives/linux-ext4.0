@@ -2,97 +2,149 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 699D9C19F38
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 963ABC432BE
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 18:32:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 558B66108E
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 16:40:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7884F61054
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Sep 2021 18:32:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245462AbhIAQlu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Sep 2021 12:41:50 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57872 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S245557AbhIAQlm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 1 Sep 2021 12:41:42 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 5147A610A1;
-        Wed,  1 Sep 2021 16:40:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1630514445;
-        bh=ElP2laRUl00Wi96e0SI4lSyjrbGNrqur4f5EenyoSTM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qX0XOUEehdEYaI0UHP7IpqMsWavIItgDfgb2G5OnFiX+XpiOjMPU5rML3RMGUSEwu
-         gBJdAxqn0weaiiy9Mb26tMlCL/bdagcVLEd8VrMx1QNl2giItBYMMkVOI1f+2JnXJT
-         5rI1d0p3zom6jcQIe04PhBW8E9FtLQQqyCNAZn6VLgMG9jva9TyA/vpNv8HiIa9mY2
-         9KleRONcBNucvCTCOcVryGzkv/IySONXNzlkCpADd9ds82pFB9exhRNVgFVODWNasY
-         CJn94sT34Edf/OJNJuz+dsx1fMzHm3Mw05rSsKY4AFDKKVc7hL5PpOMlbjVkn96miU
-         D9mfXT2fO2l+g==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     stable@vger.kernel.org
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org
-Subject: [PATCH 5.4 3/4] f2fs: report correct st_size for encrypted symlinks
-Date:   Wed,  1 Sep 2021 09:40:40 -0700
-Message-Id: <20210901164041.176238-4-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20210901164041.176238-1-ebiggers@kernel.org>
-References: <20210901164041.176238-1-ebiggers@kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S240154AbhIASd3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Sep 2021 14:33:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58748 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236651AbhIASd3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Sep 2021 14:33:29 -0400
+Received: from mail-pj1-x1032.google.com (mail-pj1-x1032.google.com [IPv6:2607:f8b0:4864:20::1032])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 753AEC061575
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Sep 2021 11:32:32 -0700 (PDT)
+Received: by mail-pj1-x1032.google.com with SMTP id g13-20020a17090a3c8d00b00196286963b9so343054pjc.3
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Sep 2021 11:32:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=DmpEch5ev3+gTobUZKB+8VTTEvVodWKsEqQ8GZ13Y4s=;
+        b=R7p2LugP07pwnViWKE72FgbMIgEoCiIrYi3+3v0YNMpGr53jmERowx51uipKmKBrvz
+         px0dsxp+i9F5dQOyjctjKAPkZwrKXZmbCsHSm/JjqoBi4pg53J/+ZxFwi2nqlULlVKkK
+         1JZYuuV3uRYqD6r/6MV6MYJXUIhGDcTANCfPVwBiIrjOPEAiJpfOIFqehhrcOf56F2dF
+         nwCUOM5z9B9W9YyiMdQaHEX2S+zBsWlvudHBxv91xM/svz+jJEUu9YoQ7W6P3VmOnlqG
+         vpfbgvvaSKR95xouL/g1+ppWZXogxxhy32SgUoZ+sSHhjO+UEwEWwue4ohm/lLOJhTqf
+         TZyQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=DmpEch5ev3+gTobUZKB+8VTTEvVodWKsEqQ8GZ13Y4s=;
+        b=OqPPCPe5sR7he1RQuhk0G743Z1DIA3eg3pNZys56D7A1hSjJvRBxETK3u1/FJx5WCJ
+         l9gIfJTkCDOaWpR28oWIbGf0kwdPG8kZL5ZgOWan+Fo9OvnGEftVqQVbSzifVxet1Kq4
+         3YQ8a8WnZHv8qJPMaCjV+PHkPK2tGeoTkQptZppy5iaSpwFp++OeIGkTgsIW8PiC+BKg
+         e7UaBYWcod/U7YkczXPo+1MCeZ6mLwdStP4B90gqfZYJ1sxs0fDs9ffsYOCQWUWRxWgt
+         PVYkfHaFniVufjvw5UDwTpeWRhdHdh3FpJXGGUmx0ycG6aHC6J9bY0rp+DLAzRH3xFzE
+         wfCQ==
+X-Gm-Message-State: AOAM532Aw1IxaHcLXiziReqw/O2EJqGmHpNfTIlkwpV7kzOEEj2FD2mZ
+        K2+qIisoRNatVfQijPJYiNV3zA==
+X-Google-Smtp-Source: ABdhPJwusXND+YHpZp1RmnFVhEwpbuM/NlMKHM2MGpjzFDgDQ3c+Hcv9+Wl7u1X1+Vn/e2JXyCEiMg==
+X-Received: by 2002:a17:902:ab98:b029:12b:acc0:e18c with SMTP id f24-20020a170902ab98b029012bacc0e18cmr847025plr.10.1630521151949;
+        Wed, 01 Sep 2021 11:32:31 -0700 (PDT)
+Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id t15sm217159pja.1.2021.09.01.11.32.30
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 01 Sep 2021 11:32:31 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <D621A2D5-954E-4CEC-94CD-CB4D6643934B@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_112E4B44-E5AA-476E-B4FB-7A497A760CDA";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [RFC] replace revoke hash table with rhashtable
+Date:   Wed, 1 Sep 2021 12:32:28 -0600
+In-Reply-To: <96FE09AA-171C-49B1-B434-505C15FEB435@whamcloud.com>
+Cc:     linux-ext4 <linux-ext4@vger.kernel.org>
+To:     Alex Zhuravlev <azhuravlev@whamcloud.com>
+References: <96FE09AA-171C-49B1-B434-505C15FEB435@whamcloud.com>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
 
-commit 461b43a8f92e68e96c4424b31e15f2b35f1bbfa9 upstream.
+--Apple-Mail=_112E4B44-E5AA-476E-B4FB-7A497A760CDA
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=utf-8
 
-The stat() family of syscalls report the wrong size for encrypted
-symlinks, which has caused breakage in several userspace programs.
+On Aug 31, 2021, at 8:49 AM, Alex Zhuravlev <azhuravlev@whamcloud.com> =
+wrote:
+>=20
+> Hi,
+>=20
+> Not so long ago we noticed that journal replay can take quite a lot =
+(hours)
+> in cases where many journaled blocks were freed during a short period.
 
-Fix this by calling fscrypt_symlink_getattr() after f2fs_getattr() for
-encrypted symlinks.  This function computes the correct size by reading
-and decrypting the symlink target (if it's not already cached).
+It may be worthwhile to mention this was a case with a 4GB journal size.
 
-For more details, see the commit which added fscrypt_symlink_getattr().
+> I benchmarked hash table used by revoke code, basically it=E2=80=99s =
+lookup+insert
+> like jbd2 does at replay:
+>=20
+> 1048576 records - 95 seconds
+> 2097152 records - 580 seconds
+>=20
+> Then I benchmarked rhashtable:
+> 1048576 records - 2 seconds
+> 2097152 records - 3 seconds
+> 4194304 records - 7 seconds
+>=20
+> So, here is a patch replacing existing fixed-size hash table with =
+rhashtable, please have a look.
+>=20
+> Thanks, Alex
 
-Fixes: cbaf042a3cc6 ("f2fs crypto: add symlink encryption")
-Cc: stable@vger.kernel.org
-Link: https://lore.kernel.org/r/20210702065350.209646-4-ebiggers@kernel.org
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/f2fs/namei.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+Alex,
+the patch looks good from both a performance standpoint, as well as
+a good reduction in lines (and possibly memory, for the cases where
+there are fewer entries in the hash than the static table size).
 
-diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-index 3a97ac56821ba..81a18ba18e301 100644
---- a/fs/f2fs/namei.c
-+++ b/fs/f2fs/namei.c
-@@ -1256,9 +1256,18 @@ static const char *f2fs_encrypted_get_link(struct dentry *dentry,
- 	return target;
- }
- 
-+static int f2fs_encrypted_symlink_getattr(const struct path *path,
-+					  struct kstat *stat, u32 request_mask,
-+					  unsigned int query_flags)
-+{
-+	f2fs_getattr(path, stat, request_mask, query_flags);
-+
-+	return fscrypt_symlink_getattr(path, stat);
-+}
-+
- const struct inode_operations f2fs_encrypted_symlink_inode_operations = {
- 	.get_link       = f2fs_encrypted_get_link,
--	.getattr	= f2fs_getattr,
-+	.getattr	= f2fs_encrypted_symlink_getattr,
- 	.setattr	= f2fs_setattr,
- #ifdef CONFIG_F2FS_FS_XATTR
- 	.listxattr	= f2fs_listxattr,
--- 
-2.33.0
+I did notice some lines are using 8-space indents instead of tabs.
+That can be fixed if there are any other comments, and you resubmit
+without [RFC].
 
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_112E4B44-E5AA-476E-B4FB-7A497A760CDA
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmEvxzwACgkQcqXauRfM
+H+CjwQ/+Iegi87BY3W1p9e4yC4o8HiCRo4hXAE2hxKVzH1OIwW0atb0wMacNN376
++zFxb5JU6CnIpGnOumzqggmsQ7AVzUwu0E8R8/jYpV8jUoC2/iCqKpkF3HiJAg4U
+L2SOVYTptVHJPG430kuOO28dQnzKpx5jPNRGrWCc9kttiT5YZfShF7jVP3iyfpL6
+qxKr/IgrRDaricIZ/aM8gVJvETW+ClkHA/QSl2MznQ5leNyREIID5BBwaF8ZKs33
+NxQ5Bc7oAaYm5XIkaMsDY4cf4ZWF8jI11Qx9oUrdPiygZzIDvVv+IvF+fCzF+wbk
+sgYbxq3bp/kVn3zXlpaWOdOQzG5O86OgR5yhv6Jn94cvGeVvkfkuUQWq9peG/Xqt
+QDv/gaLwjJkTkgNC8s7QvwjzRWqOF31kJJYPI5Xe834m8iMrs3thLMyjylX7eCWx
+1bBpoFUkPtaGIAkjNh7Rn6kUSTKF6ZcFw0rNWGXr13FP+ZCeu6FiDs7I4We2XBE4
+RoEVNJ/5XlRHHz6Ciz+FPFDVkO3nHMBKLyXj6WiE/GHgbd1r14LwQd1r7FIQgLLn
+LggIavk89WTkufSHki1B3YpDc3VXXrA7dPIJokZ28HsPU+fQ+RNEicSTyT2ePGsn
+sXEPEvyUddKPm8m/zUgFJuVfYwV5HX1C6ij6dMe3mhPmYzxP6WM=
+=md+S
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_112E4B44-E5AA-476E-B4FB-7A497A760CDA--
