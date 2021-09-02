@@ -2,173 +2,103 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B1333C432BE
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Sep 2021 01:14:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 75DB5C4320A
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Sep 2021 08:18:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 88A416108B
-	for <linux-ext4@archiver.kernel.org>; Thu,  2 Sep 2021 01:14:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 58B6960525
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Sep 2021 08:18:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232873AbhIBBPm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Sep 2021 21:15:42 -0400
-Received: from mail109.syd.optusnet.com.au ([211.29.132.80]:48865 "EHLO
-        mail109.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229958AbhIBBPl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Sep 2021 21:15:41 -0400
-Received: from dread.disaster.area (pa49-195-182-146.pa.nsw.optusnet.com.au [49.195.182.146])
-        by mail109.syd.optusnet.com.au (Postfix) with ESMTPS id EBFB185A7C;
-        Thu,  2 Sep 2021 11:14:40 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1mLbJO-007ej5-L3; Thu, 02 Sep 2021 11:14:38 +1000
-Date:   Thu, 2 Sep 2021 11:14:38 +1000
-From:   Dave Chinner <david@fromorbit.com>
+        id S244285AbhIBIT3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 2 Sep 2021 04:19:29 -0400
+Received: from verein.lst.de ([213.95.11.211]:50460 "EHLO verein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233504AbhIBIT2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 2 Sep 2021 04:19:28 -0400
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id 1190E6736F; Thu,  2 Sep 2021 10:18:26 +0200 (CEST)
+Date:   Thu, 2 Sep 2021 10:18:26 +0200
+From:   Christoph Hellwig <hch@lst.de>
 To:     Felix Kuehling <felix.kuehling@amd.com>
 Cc:     Christoph Hellwig <hch@lst.de>,
         "Sierra Guiza, Alejandro (Alex)" <alex.sierra@amd.com>,
         akpm@linux-foundation.org, linux-mm@kvack.org,
         rcampbell@nvidia.com, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, amd-gfx@lists.freedesktop.org,
-        dri-devel@lists.freedesktop.org, jgg@nvidia.com, jglisse@redhat.com
-Subject: Re: [PATCH v1 03/14] mm: add iomem vma selection for memory migration
-Message-ID: <20210902011438.GM2566745@dread.disaster.area>
-References: <20210825034828.12927-4-alex.sierra@amd.com>
- <20210825074602.GA29620@lst.de>
- <c4241eb3-07d2-c85b-0f48-cce4b8369381@amd.com>
- <a9eb2c4a-d8cc-9553-57b7-fd1622679aaa@amd.com>
- <20210830082800.GA6836@lst.de>
- <e40b3b79-f548-b87b-7a85-f654f25ed8dd@amd.com>
- <20210901082925.GA21961@lst.de>
- <11d64457-9d61-f82d-6c98-d68762dce85d@amd.com>
- <20210901220308.GL2566745@dread.disaster.area>
- <e6a9e3cc-9dca-946a-c3fc-f86753fe8fd4@amd.com>
+        dri-devel@lists.freedesktop.org, jgg@nvidia.com,
+        jglisse@redhat.com, Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v1 03/14] mm: add iomem vma selection for memory
+ migration
+Message-ID: <20210902081826.GA16283@lst.de>
+References: <20210825034828.12927-1-alex.sierra@amd.com> <20210825034828.12927-4-alex.sierra@amd.com> <20210825074602.GA29620@lst.de> <c4241eb3-07d2-c85b-0f48-cce4b8369381@amd.com> <a9eb2c4a-d8cc-9553-57b7-fd1622679aaa@amd.com> <20210830082800.GA6836@lst.de> <e40b3b79-f548-b87b-7a85-f654f25ed8dd@amd.com> <20210901082925.GA21961@lst.de> <11d64457-9d61-f82d-6c98-d68762dce85d@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <e6a9e3cc-9dca-946a-c3fc-f86753fe8fd4@amd.com>
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.3 cv=F8MpiZpN c=1 sm=1 tr=0
-        a=QpfB3wCSrn/dqEBSktpwZQ==:117 a=QpfB3wCSrn/dqEBSktpwZQ==:17
-        a=kj9zAlcOel0A:10 a=7QKq2e-ADPsA:10 a=7-415B0cAAAA:8
-        a=vsX3ScuNT_vdrx7wniQA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+In-Reply-To: <11d64457-9d61-f82d-6c98-d68762dce85d@amd.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Sep 01, 2021 at 07:07:34PM -0400, Felix Kuehling wrote:
-> On 2021-09-01 6:03 p.m., Dave Chinner wrote:
-> > On Wed, Sep 01, 2021 at 11:40:43AM -0400, Felix Kuehling wrote:
-> > > Am 2021-09-01 um 4:29 a.m. schrieb Christoph Hellwig:
-> > > > On Mon, Aug 30, 2021 at 01:04:43PM -0400, Felix Kuehling wrote:
-> > > > > > > driver code is not really involved in updating the CPU mappings. Maybe
-> > > > > > > it's something we need to do in the migration helpers.
-> > > > > > It looks like I'm totally misunderstanding what you are adding here
-> > > > > > then.  Why do we need any special treatment at all for memory that
-> > > > > > has normal struct pages and is part of the direct kernel map?
-> > > > > The pages are like normal memory for purposes of mapping them in CPU
-> > > > > page tables and for coherent access from the CPU.
-> > > > That's the user page tables.  What about the kernel direct map?
-> > > > If there is a normal kernel struct page backing there really should
-> > > > be no need for the pgmap.
-> > > I'm not sure. The physical address ranges are in the UEFI system address
-> > > map as special-purpose memory. Does Linux create the struct pages and
-> > > kernel direct map for that without a pgmap call? I didn't see that last
-> > > time I went digging through that code.
-> > > 
-> > > 
-> > > > >  From an application
-> > > > > perspective, we want file-backed and anonymous mappings to be able to
-> > > > > use DEVICE_PUBLIC pages with coherent CPU access. The goal is to
-> > > > > optimize performance for GPU heavy workloads while minimizing the need
-> > > > > to migrate data back-and-forth between system memory and device memory.
-> > > > I don't really understand that part.  file backed pages are always
-> > > > allocated by the file system using the pagecache helpers, that is
-> > > > using the page allocator.  Anonymouns memory also always comes from
-> > > > the page allocator.
-> > > I'm coming at this from my experience with DEVICE_PRIVATE. Both
-> > > anonymous and file-backed pages should be migrateable to DEVICE_PRIVATE
-> > > memory by the migrate_vma_* helpers for more efficient access by our
-> > > GPU. (*) It's part of the basic premise of HMM as I understand it. I
-> > > would expect the same thing to work for DEVICE_PUBLIC memory.
-> > > 
-> > > (*) I believe migrating file-backed pages to DEVICE_PRIVATE doesn't
-> > > currently work, but that's something I'm hoping to fix at some point.
-> > FWIW, I'd love to see the architecture documents that define how
-> > filesystems are supposed to interact with this device private
-> > memory. This whole "hand filesystem controlled memory to other
-> > devices" is a minefield that is trivial to get wrong iand very
-> > difficult to fix - just look at the historical mess that RDMA
-> > to/from file backed and/or DAX pages has been.
-> > 
-> > So, really, from my perspective as a filesystem engineer, I want to
-> > see an actual specification for how this new memory type is going to
-> > interact with filesystem and the page cache so everyone has some
-> > idea of how this is going to work and can point out how it doesn't
-> > work before code that simply doesn't work is pushed out into
-> > production systems and then merged....
+On Wed, Sep 01, 2021 at 11:40:43AM -0400, Felix Kuehling wrote:
+> >>> It looks like I'm totally misunderstanding what you are adding here
+> >>> then.  Why do we need any special treatment at all for memory that
+> >>> has normal struct pages and is part of the direct kernel map?
+> >> The pages are like normal memory for purposes of mapping them in CPU
+> >> page tables and for coherent access from the CPU.
+> > That's the user page tables.  What about the kernel direct map?
+> > If there is a normal kernel struct page backing there really should
+> > be no need for the pgmap.
 > 
-> OK. To be clear, that's not part of this patch series. And I have no
-> authority to push anything in this part of the kernel, so you have nothing
-> to fear. ;)
+> I'm not sure. The physical address ranges are in the UEFI system address
+> map as special-purpose memory. Does Linux create the struct pages and
+> kernel direct map for that without a pgmap call? I didn't see that last
+> time I went digging through that code.
 
-I know this isn't part of the series. but this patchset is laying
-the foundation for future work that will impact subsystems that
-currently have zero visibility and/or knowledge of these changes.
-There must be an overall architectural plan for this functionality,
-regardless of the current state of implementation. It's that overall
-architectural plan I'm asking about here, because I need to
-understand that before I can sanely comment on the page
-cache/filesystem aspect of the proposed functionality...
+So doing some googling finds a patch from Dan that claims to hand EFI
+special purpose memory to the device dax driver.  But when I try to
+follow the version that got merged it looks it is treated simply as an
+MMIO region to be claimed by drivers, which would not get a struct page.
 
-> FWIW, we already have the ability to map file-backed system memory pages
-> into device page tables with HMM and interval notifiers. But we cannot
-> currently migrate them to ZONE_DEVICE pages.
+Dan, did I misunderstand how E820_TYPE_SOFT_RESERVED works?
 
-Sure, but sharing page cache pages allocated and managed by the
-filesystem is not what you are talking about. You're talking about
-migrating page cache data to completely different memory allocated
-by a different memory manager that the filesystems currently have no
-knowledge of or have any way of interfacing with.
+> >> From an application
+> >> perspective, we want file-backed and anonymous mappings to be able to
+> >> use DEVICE_PUBLIC pages with coherent CPU access. The goal is to
+> >> optimize performance for GPU heavy workloads while minimizing the need
+> >> to migrate data back-and-forth between system memory and device memory.
+> > I don't really understand that part.  file backed pages are always
+> > allocated by the file system using the pagecache helpers, that is
+> > using the page allocator.  Anonymouns memory also always comes from
+> > the page allocator.
+> 
+> I'm coming at this from my experience with DEVICE_PRIVATE. Both
+> anonymous and file-backed pages should be migrateable to DEVICE_PRIVATE
+> memory by the migrate_vma_* helpers for more efficient access by our
+> GPU. (*) It's part of the basic premise of HMM as I understand it. I
+> would expect the same thing to work for DEVICE_PUBLIC memory.
 
-So I'm asking basic, fundamental questions about how these special
-device based pages are going to work.  How are these pages different
-to normal pages - does page_lock() still guarantee exclusive access
-to the page state across all hardware that can access it? If not,
-what provides access serialisation for pages that are allocated in
-device memory rather than CPU memory (e.g. for truncate
-serialisation)?  Does the hardware that own these pages raise page
-faults on the CPU when those pages are accessed/dirtied? How does
-demand paging in and out of device memory work (i.e. mapping files
-larger than device memory).  How does IO to/from storage work - can
-the filesystem build normal bios out of these device pages and issue
-IO on them?  Are the additional constraints on IO because p2p DMA is
-needed to move the data from the storage HBA directly into/out of
-the GPU memory?
+Ok, so you want to migrate to and from them.  Not use DEVICE_PUBLIC
+for the actual page cache pages.  That maks a lot more sense.
 
-I can think of lots more complex questions about how filesystems are
-supposed to manage remote device memory in the page cache, but these
-are just some of the basic things that make file-backed mappings
-different to anonymous mappings that I need to understand before I
-can make head or tail of what is being proposed here.....
+> I see DEVICE_PUBLIC as an improved version of DEVICE_PRIVATE that allows
+> the CPU to map the device memory coherently to minimize the need for
+> migrations when CPU and GPU access the same memory concurrently or
+> alternatingly. But we're not going as far as putting that memory
+> entirely under the management of the Linux memory manager and VM
+> subsystem. Our (and HPE's) system architects decided that this memory is
+> not suitable to be used like regular NUMA system memory by the Linux
+> memory manager.
 
-> Beyond that, my understanding
-> of how filesystems and page cache work is rather superficial at this point.
-> I'll keep your name in mind for when I am ready to discuss this in more
-> detail.
+So yes.  It is a Memory Mapped I/O region, which unlike the PCIe BARs
+that people typically deal with is fully cache coherent.  I think this
+does make more sense as a description.
 
-If you don't know what the bigger picture is, then who does?
-Somebody built the design/architecture you are working towards, and
-they had to communicate it to you somehow. I'm asking for that
-information to documented and made available to all the people these
-changes might impact, not whether you personally know how it
-works....
+But to go back to what start this discussion:  If these are memory
+mapped I/O pfn_valid should generally not return true for them.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+And as you already pointed out in reply to Alex we need to tighten the
+selection criteria one way or another.
