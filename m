@@ -2,73 +2,89 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.6 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA355C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Sep 2021 14:38:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 435CFC433F5
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Sep 2021 14:41:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8946E60232
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Sep 2021 14:38:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 271CB60F45
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Sep 2021 14:41:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243608AbhIFOjF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Sep 2021 10:39:05 -0400
-Received: from szxga03-in.huawei.com ([45.249.212.189]:15299 "EHLO
-        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243494AbhIFOi6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Sep 2021 10:38:58 -0400
-Received: from dggeme754-chm.china.huawei.com (unknown [172.30.72.56])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4H39wM5Rd5z8stB;
-        Mon,  6 Sep 2021 22:37:23 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggeme754-chm.china.huawei.com
- (10.3.19.100) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.8; Mon, 6 Sep
- 2021 22:37:51 +0800
-From:   Ye Bin <yebin10@huawei.com>
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>
-CC:     <linux-kernel@vger.kernel.org>, <jack@suse.cz>,
-        Ye Bin <yebin10@huawei.com>
-Subject: [PATCH -next 5/6] ext4: avoid to double free s_mmp_bh
-Date:   Mon, 6 Sep 2021 22:47:53 +0800
-Message-ID: <20210906144754.2601607-6-yebin10@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20210906144754.2601607-1-yebin10@huawei.com>
-References: <20210906144754.2601607-1-yebin10@huawei.com>
+        id S243510AbhIFOmv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Sep 2021 10:42:51 -0400
+Received: from smtp3-1.goneo.de ([85.220.129.38]:57317 "EHLO smtp3-1.goneo.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S238717AbhIFOmu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 6 Sep 2021 10:42:50 -0400
+Received: from [192.168.1.127] (dyndsl-091-096-160-132.ewe-ip-backbone.de [91.96.160.132])
+        by smtp3.goneo.de (Postfix) with ESMTPSA id 2C534203E929;
+        Mon,  6 Sep 2021 16:41:44 +0200 (CEST)
+Subject: Re: [PATCH 1/2] ext4: docs: switch away from list-table
+To:     Jonathan Corbet <corbet@lwn.net>, Akira Yokosawa <akiyks@gmail.com>
+Cc:     jack@suse.cz, linux-doc@vger.kernel.org,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        Mauro Carvalho Chehab <mchehab@kernel.org>
+References: <20210902220854.198850-2-corbet@lwn.net>
+ <b1909f4c-9e07-abd7-89ee-c2e551f9dc5b@gmail.com>
+ <871r65zobl.fsf@meer.lwn.net>
+ <a93af4a2-9b9f-6430-bc3a-dfb2dbf7e56b@gmail.com>
+ <68ae637d-dc8d-cedc-b058-8f4ebb146137@darmarit.de>
+ <87lf49wzyz.fsf@meer.lwn.net>
+From:   Markus Heiser <markus.heiser@darmarit.de>
+Message-ID: <5f3f3e53-0a52-8f87-8bb7-e1cca5c0ccdb@darmarit.de>
+Date:   Mon, 6 Sep 2021 16:41:43 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.13.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- dggeme754-chm.china.huawei.com (10.3.19.100)
-X-CFilter-Loop: Reflected
+In-Reply-To: <87lf49wzyz.fsf@meer.lwn.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If call read_mmp_block failed then s_mmp_bh will be freed in read_mmp_block.
-Kmmpd wait to be killed, ext4_stop_mmpd stop kmmpd and also release s_mmp_bh.
-To avoid double free, just set EXT4_SB(sb)->s_mmp_bh with NULL.
+Am 06.09.21 um 16:17 schrieb Jonathan Corbet:
+> Markus Heiser <markus.heiser@darmarit.de> writes:
+> 
+>> We prefer list tables ...
+>>
+>> """Their advantage is that they are easy to create or modify and that the
+>> diff of a modification is much more meaningful, because it is limited to
+>> the modified content."""
+>>
+>> By example: We have some very large tables with tons of rows and cols.
+>> If you need to extend one column just by one character you have to edit
+>> the whole table and the diff is not readable.
+>>
+>> It is not limited to big tables, e.g. if you patch a simple typo,
+>> you might need touch content not related to your fix.
+>>
+>> At the end it is a trade of, what weights more, readability of the
+>> plain text or readability of the patch / most often I would vote
+>> for the latter.
+> 
+> If the documentation is of any use of all there will be a lot more
+> people reading it than will be reading patches making tweaks to it.
+> Optimizing for patch readability seems like the wrong focus to me.
+> 
+> The ext4 folks can decide what they like best in this specific case.
+> But I think that the advice in favor of list tables is wrong in the
+> general case; they are completely unreadable in their source form, and
+> that goes against one of the key reasons we adopted RST in the first
+> place.
+> 
+> Somebody will surely try to add a list table to the wrong document
+> someday and I'll get to live through another one of those nifty
+> explosions - and I'll have neither reasons nor motivation to defend that
+> policy.
 
-Signed-off-by: Ye Bin <yebin10@huawei.com>
----
- fs/ext4/mmp.c | 1 +
- 1 file changed, 1 insertion(+)
+I do not see a problem changing the policy to use pre-formated tables.
 
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 2a1473e4a9de..eed854bb6194 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -218,6 +218,7 @@ static int kmmpd(void *data)
- 				ext4_error_err(sb, -retval,
- 					       "error reading MMP data: %d",
- 					       retval);
-+				EXT4_SB(sb)->s_mmp_bh = NULL;
- 				goto wait_to_exit;
- 			}
- 
--- 
-2.31.1
+@jon do you like to fix the "list tables" section of doc-guide/sphinx.rst
 
+Thanks,
+
+Markus
