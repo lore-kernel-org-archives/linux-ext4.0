@@ -7,32 +7,32 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72604C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C61B4C433FE
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5DFC0610E9
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AC63B610E9
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351600AbhIHMAL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Sep 2021 08:00:11 -0400
-Received: from szxga01-in.huawei.com ([45.249.212.187]:9016 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348327AbhIHMAJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2021 08:00:09 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.57])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4H4LHg6wB7zVqH2;
-        Wed,  8 Sep 2021 19:58:07 +0800 (CST)
+        id S1351603AbhIHMAI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Sep 2021 08:00:08 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:9406 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1351517AbhIHMAH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2021 08:00:07 -0400
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.53])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4H4LCf0RMSz8xt2;
+        Wed,  8 Sep 2021 19:54:38 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.8; Wed, 8 Sep
- 2021 19:58:59 +0800
+ 2021 19:58:58 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [RFC PATCH 3/3] ext4: prevent partial update of the extent blocks
-Date:   Wed, 8 Sep 2021 20:08:50 +0800
-Message-ID: <20210908120850.4012324-4-yi.zhang@huawei.com>
+Subject: [RFC PATCH 1/3] ext4: check for out-of-order index extents in ext4_valid_extent_entries()
+Date:   Wed, 8 Sep 2021 20:08:48 +0800
+Message-ID: <20210908120850.4012324-2-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20210908120850.4012324-1-yi.zhang@huawei.com>
 References: <20210908120850.4012324-1-yi.zhang@huawei.com>
@@ -47,65 +47,73 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In the most error path of current extents updating operations are not
-roll back partial updates properly when some bad things happens(.e.g in
-ext4_ext_insert_extent()). So we may get an inconsistent extents tree
-if journal has been aborted due to IO error, which may probability lead
-to BUGON later when we accessing these extent entries in errors=continue
-mode. This patch drop extent buffer's verify flag before updatng the
-contents in ext4_ext_get_access(), and reset it after updating in
-__ext4_ext_dirty(). After this patch we could force to check the extent
-buffer if extents tree updating was break off, make sure the extents are
-consistent.
+After commit 5946d089379a ("ext4: check for overlapping extents in
+ext4_valid_extent_entries()"), we can check out the overlapping extent
+entry in leaf extent blocks. But the out-of-order extent entry in index
+extent blocks could also trigger bad things if the filesystem is
+inconsistent. So this patch add a check to figure out the out-of-order
+index extents and return error.
 
 Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
 ---
- fs/ext4/extents.c | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+ fs/ext4/extents.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index d2601194b462..9228de6950a2 100644
+index c0de30f25185..4bb1153c01b3 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -136,15 +136,25 @@ int ext4_datasem_ensure_credits(handle_t *handle, struct inode *inode,
- static int ext4_ext_get_access(handle_t *handle, struct inode *inode,
- 				struct ext4_ext_path *path)
+@@ -357,6 +357,9 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 				     ext4_fsblk_t *pblk, int depth)
  {
-+	int err = 0;
+ 	unsigned short entries;
++	ext4_lblk_t lblock = 0;
++	ext4_lblk_t prev = 0;
 +
- 	if (path->p_bh) {
- 		/* path points to block */
- 		BUFFER_TRACE(path->p_bh, "get_write_access");
--		return ext4_journal_get_write_access(handle, inode->i_sb,
--						     path->p_bh, EXT4_JTR_NONE);
-+		err = ext4_journal_get_write_access(handle, inode->i_sb,
-+						    path->p_bh, EXT4_JTR_NONE);
-+		/*
-+		 * The extent buffer's verified bit will be set again in
-+		 * __ext4_ext_dirty(). We could leave an inconsistent
-+		 * buffer if the extents updating procudure break off du
-+		 * to some error happens, force to check it again.
-+		 */
-+		if (!err)
-+			clear_buffer_verified(path->p_bh);
- 	}
- 	/* path points to leaf/index in inode body */
- 	/* we use in-core data, no need to protect them */
--	return 0;
-+	return err;
- }
+ 	if (eh->eh_entries == 0)
+ 		return 1;
  
- /*
-@@ -165,6 +175,9 @@ static int __ext4_ext_dirty(const char *where, unsigned int line,
- 		/* path points to block */
- 		err = __ext4_handle_dirty_metadata(where, line, handle,
- 						   inode, path->p_bh);
-+		/* Extents updating done, re-set verified flag */
-+		if (!err)
-+			set_buffer_verified(path->p_bh);
+@@ -365,31 +368,35 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 	if (depth == 0) {
+ 		/* leaf entries */
+ 		struct ext4_extent *ext = EXT_FIRST_EXTENT(eh);
+-		ext4_lblk_t lblock = 0;
+-		ext4_lblk_t prev = 0;
+-		int len = 0;
+ 		while (entries) {
+ 			if (!ext4_valid_extent(inode, ext))
+ 				return 0;
+ 
+ 			/* Check for overlapping extents */
+ 			lblock = le32_to_cpu(ext->ee_block);
+-			len = ext4_ext_get_actual_len(ext);
+ 			if ((lblock <= prev) && prev) {
+ 				*pblk = ext4_ext_pblock(ext);
+ 				return 0;
+ 			}
++			prev = lblock + ext4_ext_get_actual_len(ext) - 1;
+ 			ext++;
+ 			entries--;
+-			prev = lblock + len - 1;
+ 		}
  	} else {
- 		/* path points to leaf/index in inode body */
- 		err = ext4_mark_inode_dirty(handle, inode);
+ 		struct ext4_extent_idx *ext_idx = EXT_FIRST_INDEX(eh);
+ 		while (entries) {
+ 			if (!ext4_valid_extent_idx(inode, ext_idx))
+ 				return 0;
++
++			/* Check for overlapping index extents */
++			lblock = le32_to_cpu(ext_idx->ei_block);
++			if ((lblock <= prev) && prev) {
++				*pblk = ext4_idx_pblock(ext_idx);
++				return 0;
++			}
+ 			ext_idx++;
+ 			entries--;
++			prev = lblock;
+ 		}
+ 	}
+ 	return 1;
 -- 
 2.31.1
 
