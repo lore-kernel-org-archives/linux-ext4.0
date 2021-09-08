@@ -2,37 +2,40 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6A89C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6E26C433F5
 	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9FFE861100
+	by mail.kernel.org (Postfix) with ESMTP id B89266113A
 	for <linux-ext4@archiver.kernel.org>; Wed,  8 Sep 2021 11:59:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344680AbhIHMAI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Sep 2021 08:00:08 -0400
-Received: from szxga03-in.huawei.com ([45.249.212.189]:15308 "EHLO
-        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348327AbhIHMAH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2021 08:00:07 -0400
-Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.54])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4H4LJ43S1Rz8srZ;
-        Wed,  8 Sep 2021 19:58:28 +0800 (CST)
+        id S1351605AbhIHMAJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Sep 2021 08:00:09 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:15395 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1351594AbhIHMAI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Sep 2021 08:00:08 -0400
+Received: from dggeme752-chm.china.huawei.com (unknown [172.30.72.56])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4H4LD21VxXzQtjn;
+        Wed,  8 Sep 2021 19:54:58 +0800 (CST)
 Received: from huawei.com (10.175.127.227) by dggeme752-chm.china.huawei.com
  (10.3.19.98) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.8; Wed, 8 Sep
- 2021 19:58:57 +0800
+ 2021 19:58:58 +0800
 From:   Zhang Yi <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
         <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [RFC PATCH 0/3] ext4: enhance extent consistency check
-Date:   Wed, 8 Sep 2021 20:08:47 +0800
-Message-ID: <20210908120850.4012324-1-yi.zhang@huawei.com>
+Subject: [RFC PATCH 2/3] ext4: check for inconsistent extents between index and leaf block
+Date:   Wed, 8 Sep 2021 20:08:49 +0800
+Message-ID: <20210908120850.4012324-3-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20210908120850.4012324-1-yi.zhang@huawei.com>
+References: <20210908120850.4012324-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
@@ -44,72 +47,195 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that in the error patch of extent updating procedure cannot handle
-error and roll-back partial updates properly, so we could access the
-left inconsistent extent buffer later and lead to BUGON in
-errors=continue mode. For example, we could get below BUGON if we
-update leaf extent but failed to update index extent in
-ext4_ext_insert_extent() and try to alloc block again.
+Now that we can check out overlapping extents in leaf block and
+out-of-order index extents in index block. But the .ee_block in the
+first extent of one leaf block should equal to the .ei_block in it's
+parent index extent entry. This patch add a check to verify such
+inconsistent between the index and leaf block.
 
-  kernel BUG at fs/ext4/mballoc.c:4085!
-  invalid opcode: 0000 [#1] SMP PTI
-  CPU: 30 PID: 1177 Comm: xfs_io Not tainted 5.14.0-00006-g555c93b65a81 #543
-  RIP: 0010:ext4_mb_normalize_request.constprop.0+0x72c/0x8a0
-  RSP: 0018:ffffb398c0abb8d8 EFLAGS: 00010202
-  RAX: 0000000000000000 RBX: ffff8d79d3125000 RCX: 0000000000001500
-  RDX: 0000000000001500 RSI: 0000000000000000 RDI: ffffb398c0abba50
-  RBP: 0000000000001500 R08: 0000000000000001 R09: 00000000000015c0
-  R10: 0000000000660000 R11: ffff8d79e21212d8 R12: ffff8d79e21215b8
-  R13: 0000000000001500 R14: ffffb398c0abba50 R15: ffff8d79e21215b8
-  FS:  00007f1bf519f800(0000) GS:ffff8d80e5d80000(0000) knlGS:0000000000000000
-  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-  CR2: 0000560c5b96d000 CR3: 000000010f170000 CR4: 00000000000006e0
-  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-  DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-  Call Trace:
-   ext4_mb_new_blocks+0x8f3/0x1c90
-   ? __read_extent_tree_block+0x20a/0x260
-   ext4_ext_map_blocks+0xb7c/0x1d30
-   ext4_map_blocks+0x15d/0xa30
-   ? __cond_resched+0x1d/0x50
-   ? kmem_cache_alloc+0x206/0x400
-   _ext4_get_block+0xa8/0x170
-   ext4_get_block+0x1a/0x30
-   ext4_block_write_begin+0x179/0x8c0
-   ? ext4_get_block_unwritten+0x20/0x20
-   ? __ext4_journal_start_sb+0x179/0x1d0
-   ext4_write_begin+0x42d/0x910
-   ext4_da_write_begin+0x2eb/0x750
-   generic_perform_write+0xcb/0x280
-   ext4_buffered_write_iter+0xc3/0x1e0
-   ext4_file_write_iter+0x70/0xac0
-   ? _raw_spin_unlock+0x12/0x30
-   ? __handle_mm_fault+0x13e1/0x2520
-   new_sync_write+0x166/0x220
-   vfs_write+0x1d7/0x3b0
-   ksys_pwrite64+0x85/0xf0
-   __x64_sys_pwrite64+0x22/0x30
-   do_syscall_64+0x3b/0x90
-   entry_SYSCALL_64_after_hwframe+0x44/0xae
-  RIP: 0033:0x7f1bf5760378
+Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+---
+ fs/ext4/extents.c | 59 +++++++++++++++++++++++++++++------------------
+ 1 file changed, 36 insertions(+), 23 deletions(-)
 
-This patch set address to enhance extent check in __ext4_ext_check() and
-force check buffer again through clear buffer's verified bit if we
-breaks off extent updating.
-
-Thanks,
-Yi.
-
-
-Zhang Yi (3):
-  ext4: check for out-of-order index extents in
-    ext4_valid_extent_entries()
-  ext4: check for inconsistent extents between index and leaf block
-  ext4: prevent partial update of the extent blocks
-
- fs/ext4/extents.c | 95 +++++++++++++++++++++++++++++++----------------
- 1 file changed, 64 insertions(+), 31 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 4bb1153c01b3..d2601194b462 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -354,7 +354,8 @@ static int ext4_valid_extent_idx(struct inode *inode,
+ 
+ static int ext4_valid_extent_entries(struct inode *inode,
+ 				     struct ext4_extent_header *eh,
+-				     ext4_fsblk_t *pblk, int depth)
++				     ext4_lblk_t lblk, ext4_fsblk_t *pblk,
++				     int depth)
+ {
+ 	unsigned short entries;
+ 	ext4_lblk_t lblock = 0;
+@@ -368,6 +369,14 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 	if (depth == 0) {
+ 		/* leaf entries */
+ 		struct ext4_extent *ext = EXT_FIRST_EXTENT(eh);
++
++		/*
++		 * The logical block in the first entry should equal to
++		 * the number in the index block.
++		 */
++		if (depth != ext_depth(inode) &&
++		    lblk != le32_to_cpu(ext->ee_block))
++			return 0;
+ 		while (entries) {
+ 			if (!ext4_valid_extent(inode, ext))
+ 				return 0;
+@@ -384,6 +393,14 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 		}
+ 	} else {
+ 		struct ext4_extent_idx *ext_idx = EXT_FIRST_INDEX(eh);
++
++		/*
++		 * The logical block in the first entry should equal to
++		 * the number in the parent index block.
++		 */
++		if (depth != ext_depth(inode) &&
++		    lblk != le32_to_cpu(ext_idx->ei_block))
++			return 0;
+ 		while (entries) {
+ 			if (!ext4_valid_extent_idx(inode, ext_idx))
+ 				return 0;
+@@ -404,7 +421,7 @@ static int ext4_valid_extent_entries(struct inode *inode,
+ 
+ static int __ext4_ext_check(const char *function, unsigned int line,
+ 			    struct inode *inode, struct ext4_extent_header *eh,
+-			    int depth, ext4_fsblk_t pblk)
++			    int depth, ext4_fsblk_t pblk, ext4_lblk_t lblk)
+ {
+ 	const char *error_msg;
+ 	int max = 0, err = -EFSCORRUPTED;
+@@ -430,7 +447,7 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+ 		error_msg = "invalid eh_entries";
+ 		goto corrupted;
+ 	}
+-	if (!ext4_valid_extent_entries(inode, eh, &pblk, depth)) {
++	if (!ext4_valid_extent_entries(inode, eh, lblk, &pblk, depth)) {
+ 		error_msg = "invalid extent entries";
+ 		goto corrupted;
+ 	}
+@@ -460,7 +477,7 @@ static int __ext4_ext_check(const char *function, unsigned int line,
+ }
+ 
+ #define ext4_ext_check(inode, eh, depth, pblk)			\
+-	__ext4_ext_check(__func__, __LINE__, (inode), (eh), (depth), (pblk))
++	__ext4_ext_check(__func__, __LINE__, (inode), (eh), (depth), (pblk), 0)
+ 
+ int ext4_ext_check_inode(struct inode *inode)
+ {
+@@ -493,16 +510,18 @@ static void ext4_cache_extents(struct inode *inode,
+ 
+ static struct buffer_head *
+ __read_extent_tree_block(const char *function, unsigned int line,
+-			 struct inode *inode, ext4_fsblk_t pblk, int depth,
+-			 int flags)
++			 struct inode *inode, struct ext4_extent_idx *idx,
++			 int depth, int flags)
+ {
+ 	struct buffer_head		*bh;
+ 	int				err;
+ 	gfp_t				gfp_flags = __GFP_MOVABLE | GFP_NOFS;
++	ext4_fsblk_t			pblk;
+ 
+ 	if (flags & EXT4_EX_NOFAIL)
+ 		gfp_flags |= __GFP_NOFAIL;
+ 
++	pblk = ext4_idx_pblock(idx);
+ 	bh = sb_getblk_gfp(inode->i_sb, pblk, gfp_flags);
+ 	if (unlikely(!bh))
+ 		return ERR_PTR(-ENOMEM);
+@@ -515,8 +534,8 @@ __read_extent_tree_block(const char *function, unsigned int line,
+ 	}
+ 	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
+ 		return bh;
+-	err = __ext4_ext_check(function, line, inode,
+-			       ext_block_hdr(bh), depth, pblk);
++	err = __ext4_ext_check(function, line, inode, ext_block_hdr(bh),
++			       depth, pblk, le32_to_cpu(idx->ei_block));
+ 	if (err)
+ 		goto errout;
+ 	set_buffer_verified(bh);
+@@ -534,8 +553,8 @@ __read_extent_tree_block(const char *function, unsigned int line,
+ 
+ }
+ 
+-#define read_extent_tree_block(inode, pblk, depth, flags)		\
+-	__read_extent_tree_block(__func__, __LINE__, (inode), (pblk),   \
++#define read_extent_tree_block(inode, idx, depth, flags)		\
++	__read_extent_tree_block(__func__, __LINE__, (inode), (idx),	\
+ 				 (depth), (flags))
+ 
+ /*
+@@ -585,8 +604,7 @@ int ext4_ext_precache(struct inode *inode)
+ 			i--;
+ 			continue;
+ 		}
+-		bh = read_extent_tree_block(inode,
+-					    ext4_idx_pblock(path[i].p_idx++),
++		bh = read_extent_tree_block(inode, path[i].p_idx++,
+ 					    depth - i - 1,
+ 					    EXT4_EX_FORCE_CACHE);
+ 		if (IS_ERR(bh)) {
+@@ -891,8 +909,7 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		path[ppos].p_depth = i;
+ 		path[ppos].p_ext = NULL;
+ 
+-		bh = read_extent_tree_block(inode, path[ppos].p_block, --i,
+-					    flags);
++		bh = read_extent_tree_block(inode, path[ppos].p_idx, --i, flags);
+ 		if (IS_ERR(bh)) {
+ 			ret = PTR_ERR(bh);
+ 			goto err;
+@@ -1501,7 +1518,6 @@ static int ext4_ext_search_right(struct inode *inode,
+ 	struct ext4_extent_header *eh;
+ 	struct ext4_extent_idx *ix;
+ 	struct ext4_extent *ex;
+-	ext4_fsblk_t block;
+ 	int depth;	/* Note, NOT eh_depth; depth from top of tree */
+ 	int ee_len;
+ 
+@@ -1568,20 +1584,17 @@ static int ext4_ext_search_right(struct inode *inode,
+ 	 * follow it and find the closest allocated
+ 	 * block to the right */
+ 	ix++;
+-	block = ext4_idx_pblock(ix);
+ 	while (++depth < path->p_depth) {
+ 		/* subtract from p_depth to get proper eh_depth */
+-		bh = read_extent_tree_block(inode, block,
+-					    path->p_depth - depth, 0);
++		bh = read_extent_tree_block(inode, ix, path->p_depth - depth, 0);
+ 		if (IS_ERR(bh))
+ 			return PTR_ERR(bh);
+ 		eh = ext_block_hdr(bh);
+ 		ix = EXT_FIRST_INDEX(eh);
+-		block = ext4_idx_pblock(ix);
+ 		put_bh(bh);
+ 	}
+ 
+-	bh = read_extent_tree_block(inode, block, path->p_depth - depth, 0);
++	bh = read_extent_tree_block(inode, ix, path->p_depth - depth, 0);
+ 	if (IS_ERR(bh))
+ 		return PTR_ERR(bh);
+ 	eh = ext_block_hdr(bh);
+@@ -2960,9 +2973,9 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
+ 			ext_debug(inode, "move to level %d (block %llu)\n",
+ 				  i + 1, ext4_idx_pblock(path[i].p_idx));
+ 			memset(path + i + 1, 0, sizeof(*path));
+-			bh = read_extent_tree_block(inode,
+-				ext4_idx_pblock(path[i].p_idx), depth - i - 1,
+-				EXT4_EX_NOCACHE);
++			bh = read_extent_tree_block(inode, path[i].p_idx,
++						    depth - i - 1,
++						    EXT4_EX_NOCACHE);
+ 			if (IS_ERR(bh)) {
+ 				/* should we reset i_size? */
+ 				err = PTR_ERR(bh);
 -- 
 2.31.1
 
