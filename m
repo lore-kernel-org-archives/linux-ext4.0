@@ -7,40 +7,40 @@ X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10E31C4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40497C43219
 	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:44:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE20560C40
-	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:44:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F4FC60C40
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:44:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241878AbhIJApr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Sep 2021 20:45:47 -0400
-Received: from mail.kernel.org ([198.145.29.99]:46514 "EHLO mail.kernel.org"
+        id S241823AbhIJApn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Sep 2021 20:45:43 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45080 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233546AbhIJAUT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 9 Sep 2021 20:20:19 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id E8589611CE;
-        Fri, 10 Sep 2021 00:19:07 +0000 (UTC)
+        id S232681AbhIJATD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Sep 2021 20:19:03 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 40FB861101;
+        Fri, 10 Sep 2021 00:17:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631233148;
-        bh=rQ1yDeHV+X4An5M1J5eMNbx8BfZ5b1ajquIcRCMKf+k=;
+        s=k20201202; t=1631233073;
+        bh=XxrCZfXstBJEeIR2BSxVA2b5kOQRgagSp2xldrA/lnY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=IHk7l6k+QNyPWhMOrA4P7Qvuj+qVi/f80UImUwEr35S1I2iZ+xbG4ZoorG3+yYwQG
-         Vxej+BATZm4ndSpItgyfapZ+QTSPXYkg9we9eQvy1FqHBw8jyMumsTDCCrD2+c0kY4
-         jlEipe39iGm3im+wOZUk83rV/+JvBM/dOE77vnYkd44CFiZAkVgEBb2ewybiNHdP8x
-         6i1rte9v3cE0pI8ysH4u1x2ummpZs5A4N2zyIHRN5OWPzbUiA9kwxI/w6dj4VS+Ar8
-         GpGpGr8FpL9wCjXW/aa8I3wofSeyGEOyU8h1LXOyXk578/jeVirgqEnSUBlgvLF9mf
-         CpDHUDxxzb+fw==
+        b=bcDBX9yOtgjyCUWXq/ziLJNNadFAAnPyIkhoUKV3YwtfMrHZUsP+HY8/ocRVUx//1
+         /gWRtbgxn8hi1YrxedaUfDQ5Tx+3XI9cUkwh2ac18O2uy2qzzkfRzzLpo38ySZr0Il
+         xqRLEtCLVx6jo5DJYLFI86mALDiWhIR4IpMBbYyLA1fiWf7dtHuI0ewEqzU57vBMtB
+         8w1ReHykYfPe9WvYJTW5ugTXrLwppCB4qYHF5tqaGs3eA4YvQ1pZ6SvlV4BNAInGL0
+         Zk+bFPL4no6RJt+VchRum9NutU6V6B6iBMEmuIu3KlkMZWziSDFG32E6FepJ7dXKud
+         1x3r1VHurY7ow==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.13 33/88] jbd2: fix portability problems caused by unaligned accesses
-Date:   Thu,  9 Sep 2021 20:17:25 -0400
-Message-Id: <20210910001820.174272-33-sashal@kernel.org>
+Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.14 83/99] ext4: Make sure quota files are not grabbed accidentally
+Date:   Thu,  9 Sep 2021 20:15:42 -0400
+Message-Id: <20210910001558.173296-83-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210910001820.174272-1-sashal@kernel.org>
-References: <20210910001820.174272-1-sashal@kernel.org>
+In-Reply-To: <20210910001558.173296-1-sashal@kernel.org>
+References: <20210910001558.173296-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -49,107 +49,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
 
-[ Upstream commit a20d1cebb98bba75f2e34fddc768dd8712c1bded ]
+[ Upstream commit bd2c38cf1726ea913024393a0d11f2e2a3f4c180 ]
 
-This commit applies the e2fsck/recovery.c portions of commit
-1e0c8ca7c08a ("e2fsck: fix portability problems caused by unaligned
-accesses) from the e2fsprogs git tree.
+If ext4 filesystem is corrupted so that quota files are linked from
+directory hirerarchy, bad things can happen. E.g. quota files can get
+corrupted or deleted. Make sure we are not grabbing quota file inodes
+when we expect normal inodes.
 
-The on-disk format for the ext4 journal can have unaigned 32-bit
-integers.  This can happen when replaying a journal using a obsolete
-checksum format (which was never popularly used, since the v3 format
-replaced v2 while the metadata checksum feature was being stablized).
-
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Link: https://lore.kernel.org/r/20210812133122.26360-1-jack@suse.cz
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/jbd2/recovery.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index d47a0d96bf30..4c4209262437 100644
---- a/fs/jbd2/recovery.c
-+++ b/fs/jbd2/recovery.c
-@@ -196,7 +196,7 @@ static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
- static int count_tags(journal_t *journal, struct buffer_head *bh)
- {
- 	char *			tagp;
--	journal_block_tag_t *	tag;
-+	journal_block_tag_t	tag;
- 	int			nr = 0, size = journal->j_blocksize;
- 	int			tag_bytes = journal_tag_bytes(journal);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d8de607849df..2c33c795c4a7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4603,6 +4603,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	struct ext4_iloc iloc;
+ 	struct ext4_inode *raw_inode;
+ 	struct ext4_inode_info *ei;
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 	struct inode *inode;
+ 	journal_t *journal = EXT4_SB(sb)->s_journal;
+ 	long ret;
+@@ -4613,9 +4614,12 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+ 	projid_t i_projid;
  
-@@ -206,14 +206,14 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
- 	tagp = &bh->b_data[sizeof(journal_header_t)];
- 
- 	while ((tagp - bh->b_data + tag_bytes) <= size) {
--		tag = (journal_block_tag_t *) tagp;
-+		memcpy(&tag, tagp, sizeof(tag));
- 
- 		nr++;
- 		tagp += tag_bytes;
--		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
-+		if (!(tag.t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
- 			tagp += 16;
- 
--		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
-+		if (tag.t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
- 			break;
- 	}
- 
-@@ -433,9 +433,9 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
- }
- 
- static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
-+				      journal_block_tag3_t *tag3,
- 				      void *buf, __u32 sequence)
- {
--	journal_block_tag3_t *tag3 = (journal_block_tag3_t *)tag;
- 	__u32 csum32;
- 	__be32 seq;
- 
-@@ -496,7 +496,7 @@ static int do_one_pass(journal_t *journal,
- 	while (1) {
- 		int			flags;
- 		char *			tagp;
--		journal_block_tag_t *	tag;
-+		journal_block_tag_t	tag;
- 		struct buffer_head *	obh;
- 		struct buffer_head *	nbh;
- 
-@@ -613,8 +613,8 @@ static int do_one_pass(journal_t *journal,
- 			       <= journal->j_blocksize - descr_csum_size) {
- 				unsigned long io_block;
- 
--				tag = (journal_block_tag_t *) tagp;
--				flags = be16_to_cpu(tag->t_flags);
-+				memcpy(&tag, tagp, sizeof(tag));
-+				flags = be16_to_cpu(tag.t_flags);
- 
- 				io_block = next_log_block++;
- 				wrap(journal, next_log_block);
-@@ -632,7 +632,7 @@ static int do_one_pass(journal_t *journal,
- 
- 					J_ASSERT(obh != NULL);
- 					blocknr = read_tag_block(journal,
--								 tag);
-+								 &tag);
- 
- 					/* If the block has been
- 					 * revoked, then we're all done
-@@ -647,8 +647,8 @@ static int do_one_pass(journal_t *journal,
- 
- 					/* Look for block corruption */
- 					if (!jbd2_block_tag_csum_verify(
--						journal, tag, obh->b_data,
--						be32_to_cpu(tmp->h_sequence))) {
-+			journal, &tag, (journal_block_tag3_t *)tagp,
-+			obh->b_data, be32_to_cpu(tmp->h_sequence))) {
- 						brelse(obh);
- 						success = -EFSBADCRC;
- 						printk(KERN_ERR "JBD2: Invalid "
+ 	if ((!(flags & EXT4_IGET_SPECIAL) &&
+-	     (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)) ||
++	     ((ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO) ||
++	      ino == le32_to_cpu(es->s_usr_quota_inum) ||
++	      ino == le32_to_cpu(es->s_grp_quota_inum) ||
++	      ino == le32_to_cpu(es->s_prj_quota_inum))) ||
+ 	    (ino < EXT4_ROOT_INO) ||
+-	    (ino > le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))) {
++	    (ino > le32_to_cpu(es->s_inodes_count))) {
+ 		if (flags & EXT4_IGET_HANDLE)
+ 			return ERR_PTR(-ESTALE);
+ 		__ext4_error(sb, function, line, false, EFSCORRUPTED, 0,
 -- 
 2.30.2
 
