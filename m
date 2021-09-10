@@ -4,124 +4,80 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D32DAC433F5
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Sep 2021 18:45:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6ECE6C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:44:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BA36A61100
-	for <linux-ext4@archiver.kernel.org>; Thu,  9 Sep 2021 18:45:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D2AA60C40
+	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:44:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237738AbhIISqt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Sep 2021 14:46:49 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59550 "EHLO mail.kernel.org"
+        id S238386AbhIJApf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Sep 2021 20:45:35 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44882 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237208AbhIISqs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 9 Sep 2021 14:46:48 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id EE7B8610CE;
-        Thu,  9 Sep 2021 18:45:38 +0000 (UTC)
+        id S231754AbhIJASU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Sep 2021 20:18:20 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 87F7C611C4;
+        Fri, 10 Sep 2021 00:16:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631213139;
-        bh=aoyQEZvSd1+vYy9qkBjguGDggRTI0dLHoK9hq7Mx2yY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=KXvkGpIrxCmJIdH1Km0g/8dgNjJHNKJJjqP5enlPVfhL+RYlDftQ7viPPIy8THpR8
-         quKG2AnonGHE5r2rhH8iPJejTdvE+0/IKAS0AlZTE67DfWfmStoSo1STy0uhp3O/3J
-         WzJBeoe1XtOeeVT+d4oRzrcQ82eexPguYWwiRLqDzRxQ4LQqnZ2m9Ag3wmcOquaCWs
-         POCb9PUcH+dYTMwRwMYHI81XtGSSfr9/S5+/s63PsGqNWuoW0q+O6HTBPmUYgojO3i
-         fQEADAswkp/rtccTS8vLlJ49dNtxGcC8gtcM5JdR1CWyxizM4p2g65XnKOJp5rMYZ8
-         SANHIGYjwBAVA==
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org
-Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org
-Subject: [PATCH] fscrypt: remove fscrypt_operations::max_namelen
-Date:   Thu,  9 Sep 2021 11:45:13 -0700
-Message-Id: <20210909184513.139281-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.33.0
+        s=k20201202; t=1631233014;
+        bh=57vFTcOJ+yFREvKnkKYBx44O4OYEhdto7aRuTkiK8wg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=kxasgW6oI59/yloZgM/aD1OlSJE9DfAa+xLWY5YGWONq7UCT7DvFBVaJFOPAFe2CN
+         tNndzXn8e0lX51DxaClPFZ+15tGbp8lKIK0YVfxa85/QKp1ARN0Toca2aj/o2kiQVm
+         +KClQHaP7SidLOeMXd5W1TtFAC1vcTQlSZE2CWACijSUXrkn1akEtHNPgpVihlg4Uz
+         nRKFZq3Skrl4oCpnliXD121FeGU6PWWPmkQKebYKQFhKJjPU7UCKWG5HUUH9wF6rVg
+         kI736CuvPHOt5U7AguslKWqjM8QTtvdPJFWGp7BNkhNCMcU7D85I/bt43o3fYZmZnu
+         WQ5F+yW0SmBEg==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Theodore Ts'o <tytso@mit.edu>, Lukas Czerner <lczerner@redhat.com>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org,
+        clang-built-linux@googlegroups.com
+Subject: [PATCH AUTOSEL 5.14 40/99] jbd2: fix clang warning in recovery.c
+Date:   Thu,  9 Sep 2021 20:14:59 -0400
+Message-Id: <20210910001558.173296-40-sashal@kernel.org>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210910001558.173296-1-sashal@kernel.org>
+References: <20210910001558.173296-1-sashal@kernel.org>
 MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Theodore Ts'o <tytso@mit.edu>
 
-The max_namelen field is unnecessary, as it is set to 255 (NAME_MAX) on
-all filesystems that support fscrypt (or plan to support fscrypt).  For
-simplicity, just use NAME_MAX directly instead.
+[ Upstream commit 390add0cc9f4d7fda89cf3db7651717e82cf0afc ]
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Remove unused variable store which was never used.
+
+This fix is also in e2fsprogs commit 99a2294f85f0 ("e2fsck: value
+stored to err is never read").
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/crypto/fname.c       | 3 +--
- fs/ext4/super.c         | 1 -
- fs/f2fs/super.c         | 1 -
- fs/ubifs/crypto.c       | 1 -
- include/linux/fscrypt.h | 3 ---
- 5 files changed, 1 insertion(+), 8 deletions(-)
+ fs/jbd2/recovery.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index eb538c28df940..a9be4bc74a94a 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -429,8 +429,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
- 
- 	if (fscrypt_has_encryption_key(dir)) {
- 		if (!fscrypt_fname_encrypted_size(&dir->i_crypt_info->ci_policy,
--						  iname->len,
--						  dir->i_sb->s_cop->max_namelen,
-+						  iname->len, NAME_MAX,
- 						  &fname->crypto_buf.len))
- 			return -ENAMETOOLONG;
- 		fname->crypto_buf.name = kmalloc(fname->crypto_buf.len,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 136940af00b88..47212d7c02b84 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1566,7 +1566,6 @@ static const struct fscrypt_operations ext4_cryptops = {
- 	.set_context		= ext4_set_context,
- 	.get_dummy_policy	= ext4_get_dummy_policy,
- 	.empty_dir		= ext4_empty_dir,
--	.max_namelen		= EXT4_NAME_LEN,
- 	.has_stable_inodes	= ext4_has_stable_inodes,
- 	.get_ino_and_lblk_bits	= ext4_get_ino_and_lblk_bits,
- };
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index 78ebc306ee2b5..cf049a042482b 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -2976,7 +2976,6 @@ static const struct fscrypt_operations f2fs_cryptops = {
- 	.set_context		= f2fs_set_context,
- 	.get_dummy_policy	= f2fs_get_dummy_policy,
- 	.empty_dir		= f2fs_empty_dir,
--	.max_namelen		= F2FS_NAME_LEN,
- 	.has_stable_inodes	= f2fs_has_stable_inodes,
- 	.get_ino_and_lblk_bits	= f2fs_get_ino_and_lblk_bits,
- 	.get_num_devices	= f2fs_get_num_devices,
-diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
-index 22be7aeb96c4f..c57b46a352d8f 100644
---- a/fs/ubifs/crypto.c
-+++ b/fs/ubifs/crypto.c
-@@ -82,5 +82,4 @@ const struct fscrypt_operations ubifs_crypt_operations = {
- 	.get_context		= ubifs_crypt_get_context,
- 	.set_context		= ubifs_crypt_set_context,
- 	.empty_dir		= ubifs_crypt_empty_dir,
--	.max_namelen		= UBIFS_MAX_NLEN,
- };
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index e912ed9141d9d..91ea9477e9bd2 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -118,9 +118,6 @@ struct fscrypt_operations {
- 	 */
- 	bool (*empty_dir)(struct inode *inode);
- 
--	/* The filesystem's maximum ciphertext filename length, in bytes */
--	unsigned int max_namelen;
--
- 	/*
- 	 * Check whether the filesystem's inode numbers and UUID are stable,
- 	 * meaning that they will never be changed even by offline operations
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 4c4209262437..ba979fcf1cd3 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -760,7 +760,6 @@ static int do_one_pass(journal_t *journal,
+ 				 */
+ 				jbd_debug(1, "JBD2: Invalid checksum ignored in transaction %u, likely stale data\n",
+ 					  next_commit_ID);
+-				err = 0;
+ 				brelse(bh);
+ 				goto done;
+ 			}
 -- 
-2.33.0
+2.30.2
 
