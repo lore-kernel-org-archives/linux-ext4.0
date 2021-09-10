@@ -7,40 +7,40 @@ X-Spam-Status: No, score=-19.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22F53C4321E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B284C4167B
 	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:45:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0933961179
+	by mail.kernel.org (Postfix) with ESMTP id 2AC8260C40
 	for <linux-ext4@archiver.kernel.org>; Fri, 10 Sep 2021 00:45:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242157AbhIJAqY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 9 Sep 2021 20:46:24 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50270 "EHLO mail.kernel.org"
+        id S232513AbhIJAqM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 9 Sep 2021 20:46:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49644 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234907AbhIJAZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 9 Sep 2021 20:25:19 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id CFC8F611CA;
-        Fri, 10 Sep 2021 00:24:08 +0000 (UTC)
+        id S234828AbhIJAY2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 9 Sep 2021 20:24:28 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id F245D604DC;
+        Fri, 10 Sep 2021 00:23:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631233449;
-        bh=GR9A6HZ22YTvg72+pvlS3j5zhfpfwPq1AWVFXClo4Fc=;
+        s=k20201202; t=1631233398;
+        bh=CoxOSkqCcyFoZ1XMxlcsPS7952y2i7A5qqgWVHcmY+0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=LrIVe3GYAucdlNt7KTJmOLbRiVX8NFmPrl0Bc8xFwlk3DqKfYwvAtdCZvIf9UbM6r
-         azzrlRd9+qyybyoV2SiEcC59VbjigvIGdJHEl+yFYfwkc56SnRVGJZvW+IciSzLaqk
-         4LPrpYwd9Mid8g7MwLWRiE9/wYVyA/OwFufJQq2xFAKniAMeCFonQh9ZjK77HAKPyN
-         oQbHJZ6fZKnsBNvJsMBUhfKdhVcr9n5zDRGoA/WxOjL2fbdL87rc7x3kyj9OtHADa2
-         LISy5KvTIhlPSXMc5nPghNMVCIitg5bOKxKeNGb1XdBwQqi9td1HK9mkoSRPYbh7IP
-         CuPMNoM2yCVKA==
+        b=oiTxuf2n1XTtRd6yidev4DWpt/XXQc+UmzEODZkHMrQtx0GMtLos8zxgWTcfu81a1
+         A3HRjVc0TGl3XxxOfk/2AVd5N89iRs5Jgc7gwuDUxUNms3zGlzfwk3fZPcQGMOZbk1
+         1VRWimixNEEUXqMsj4NMeCw+rdE1eMyqAuU9rMrbvGjzPaL5LxWIRuQhM+rlfxoGHP
+         4uEXqKmtGOFdPb3Feh8HU+1BVXMHa+9AEVI0GDCLTY7DSrjLr9pXbL8PaUb0cdrlru
+         /9fHORrykFDlQNrFeL2M7QlRbh1mR1F44TI410uQMIaElS63HJrq+ZEppbuZiiX6rq
+         wEOm90MNCkRIA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 04/14] jbd2: fix portability problems caused by unaligned accesses
-Date:   Thu,  9 Sep 2021 20:23:53 -0400
-Message-Id: <20210910002403.176887-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 06/19] jbd2: fix portability problems caused by unaligned accesses
+Date:   Thu,  9 Sep 2021 20:22:56 -0400
+Message-Id: <20210910002309.176412-6-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210910002403.176887-1-sashal@kernel.org>
-References: <20210910002403.176887-1-sashal@kernel.org>
+In-Reply-To: <20210910002309.176412-1-sashal@kernel.org>
+References: <20210910002309.176412-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -69,10 +69,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 11 insertions(+), 11 deletions(-)
 
 diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
-index 7f277e49fe88..d3784642858f 100644
+index 02dd3360cb20..1b1a94172c08 100644
 --- a/fs/jbd2/recovery.c
 +++ b/fs/jbd2/recovery.c
-@@ -201,7 +201,7 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
+@@ -200,7 +200,7 @@ static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
  static int count_tags(journal_t *journal, struct buffer_head *bh)
  {
  	char *			tagp;
@@ -81,7 +81,7 @@ index 7f277e49fe88..d3784642858f 100644
  	int			nr = 0, size = journal->j_blocksize;
  	int			tag_bytes = journal_tag_bytes(journal);
  
-@@ -211,14 +211,14 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
+@@ -210,14 +210,14 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
  	tagp = &bh->b_data[sizeof(journal_header_t)];
  
  	while ((tagp - bh->b_data + tag_bytes) <= size) {
@@ -99,7 +99,7 @@ index 7f277e49fe88..d3784642858f 100644
  			break;
  	}
  
-@@ -398,9 +398,9 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+@@ -397,9 +397,9 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
  }
  
  static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
@@ -110,7 +110,7 @@ index 7f277e49fe88..d3784642858f 100644
  	__u32 csum32;
  	__be32 seq;
  
-@@ -459,7 +459,7 @@ static int do_one_pass(journal_t *journal,
+@@ -458,7 +458,7 @@ static int do_one_pass(journal_t *journal,
  	while (1) {
  		int			flags;
  		char *			tagp;
@@ -119,7 +119,7 @@ index 7f277e49fe88..d3784642858f 100644
  		struct buffer_head *	obh;
  		struct buffer_head *	nbh;
  
-@@ -564,8 +564,8 @@ static int do_one_pass(journal_t *journal,
+@@ -563,8 +563,8 @@ static int do_one_pass(journal_t *journal,
  			       <= journal->j_blocksize - descr_csum_size) {
  				unsigned long io_block;
  
@@ -130,7 +130,7 @@ index 7f277e49fe88..d3784642858f 100644
  
  				io_block = next_log_block++;
  				wrap(journal, next_log_block);
-@@ -583,7 +583,7 @@ static int do_one_pass(journal_t *journal,
+@@ -582,7 +582,7 @@ static int do_one_pass(journal_t *journal,
  
  					J_ASSERT(obh != NULL);
  					blocknr = read_tag_block(journal,
@@ -139,7 +139,7 @@ index 7f277e49fe88..d3784642858f 100644
  
  					/* If the block has been
  					 * revoked, then we're all done
-@@ -598,8 +598,8 @@ static int do_one_pass(journal_t *journal,
+@@ -597,8 +597,8 @@ static int do_one_pass(journal_t *journal,
  
  					/* Look for block corruption */
  					if (!jbd2_block_tag_csum_verify(
