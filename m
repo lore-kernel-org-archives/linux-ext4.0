@@ -2,164 +2,132 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 931DAC433FE
-	for <linux-ext4@archiver.kernel.org>; Mon, 13 Sep 2021 17:08:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B139DC4332F
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 00:27:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7808E610A2
-	for <linux-ext4@archiver.kernel.org>; Mon, 13 Sep 2021 17:08:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 941416113E
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 00:27:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242045AbhIMRJj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Sep 2021 13:09:39 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52106 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S241817AbhIMRJg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 13 Sep 2021 13:09:36 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 07222610A2;
-        Mon, 13 Sep 2021 17:08:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1631552900;
-        bh=bQqsBZbSEoBftgvvkgrkyNd5nWA/o1m4OMIgznQcjTw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=QT5lG+pkKYmv0eFa+AMROdYXzD+POKWXiFmTralCSxHFOZ8H9NPK+7PskwyvKbsHR
-         mkEeoRMrQDKPD7r7TzsGvaZqkD1ZGW1Q6ybdURvMTXWXeHVZykTm9BN3rQdyMF0ez1
-         //gtGJktwTYD++awEB+eX/vn+EgR7PYaV311JPbYPDazlhdewBA7glU6sxDTS1ZEmZ
-         f9kHcxNA/T+QKPofLXnkkb+EgbmM8dYh765zaaoN6gGPbgReGtavc/LgXS92PHNXgJ
-         frEBLkKWlfFW8r2uBoLQxPxnrd3IYxe94kL5rLWThipWaoyoNJAC3bAnISxK+d01hL
-         RnMQqCkWBHM5w==
-Date:   Mon, 13 Sep 2021 10:08:19 -0700
-From:   "Darrick J. Wong" <djwong@kernel.org>
-To:     Eryu Guan <guan@eryu.me>
-Cc:     Catherine Hoang <catherine.hoang@oracle.com>,
-        linux-xfs@vger.kernel.org, fstests@vger.kernel.org,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 3/3] xfstests: Move *_dump_log routines to common/xfs
-Message-ID: <20210913170819.GA638503@magnolia>
-References: <20210909174142.357719-1-catherine.hoang@oracle.com>
- <20210909174142.357719-4-catherine.hoang@oracle.com>
- <YT22rajMLkNyhKyr@desktop>
+        id S238126AbhINA26 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Sep 2021 20:28:58 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:55030 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236554AbhINA26 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Sep 2021 20:28:58 -0400
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 1FDF8200AB;
+        Tue, 14 Sep 2021 00:27:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1631579260; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=PFbh9I08qiRIpx/LwQHrN9x2N5uOULjufRHblHpoK4g=;
+        b=uuSgtJ0+FRAjj4cM0Uw3gizAGdSOZ9KZJdQa8Xe47I5rWpB/k4+CBglCk9ze0+ku71h0Kj
+        DLOGlj0TJIV61exkhj/GiPT941q/fF9d5QndRC2KIKAtbsWDv1tpN5woiO3T0qT26hW9qR
+        4D8sFiwSqMqGDl+rMHe/VXOuaFh4drI=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1631579260;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=PFbh9I08qiRIpx/LwQHrN9x2N5uOULjufRHblHpoK4g=;
+        b=0FOlCmgmDR5J/+kI3Q4QjdyDlONqJLexEA9naFbBESq2iYI7TMeUTBl0wf8j5qeuc63GzD
+        MaW4gs77K7fW/GDg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B074513ADE;
+        Tue, 14 Sep 2021 00:27:36 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 4YCuG3jsP2ECawAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 14 Sep 2021 00:27:36 +0000
+From:   NeilBrown <neilb@suse.de>
+To:     Andrew Morton <akpm@linux-foundation.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        Mel Gorman <mgorman@suse.com>
+Date:   Tue, 14 Sep 2021 10:13:04 +1000
+Subject: [PATCH 0/6] congestion_wait() and GFP_NOFAIL
+Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Message-ID: <163157808321.13293.486682642188075090.stgit@noble.brown>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YT22rajMLkNyhKyr@desktop>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-[add ext4 list to cc]
+While working on an NFS issue recently I was informed (or maybe
+"reminded") that congestion_wait() doesn't really do what we think it
+does.   It is indistinguishable from schedule_timeout_uninterruptible().
 
-On Sun, Sep 12, 2021 at 04:13:33PM +0800, Eryu Guan wrote:
-> On Thu, Sep 09, 2021 at 05:41:42PM +0000, Catherine Hoang wrote:
-> > Move _scratch_remount_dump_log and _test_remount_dump_log from
-> > common/inject to common/xfs. These routines do not inject errors and
-> > should be placed with other xfs common functions.
-> > 
-> > Signed-off-by: Catherine Hoang <catherine.hoang@oracle.com>
-> > ---
-> >  common/inject | 26 --------------------------
-> >  common/xfs    | 26 ++++++++++++++++++++++++++
-> >  2 files changed, 26 insertions(+), 26 deletions(-)
-> > 
-> > diff --git a/common/inject b/common/inject
-> > index b5334d4a..6b590804 100644
-> > --- a/common/inject
-> > +++ b/common/inject
-> > @@ -111,29 +111,3 @@ _scratch_inject_error()
-> >  		_fail "Cannot inject error ${type} value ${value}."
-> >  	fi
-> >  }
-> > -
-> > -# Unmount and remount the scratch device, dumping the log
-> > -_scratch_remount_dump_log()
-> > -{
-> > -	local opts="$1"
-> > -
-> > -	if test -n "$opts"; then
-> > -		opts="-o $opts"
-> > -	fi
-> > -	_scratch_unmount
-> > -	_scratch_dump_log
-> 
-> This function is a common function that could handle multiple
-> filesystems, currently it supports xfs, ext4 and f2fs. So it's not a
+Some current users for congestion_wait() would be better suited by
+__GFP_NOFAIL.   In related discussions it was pointed out that the 
+__GFP_NOFAIL documentation could usefully clarify the costs of its use.
 
-I don't think it even works correctly for ext*.  *_dump_log() calls
-dumpe2fs -h, which displays the superblock contents, not the journal
-contents themselves, which is (I think) what this helper is supposed to
-do.
+So this set of patch addresses some of these issues.  The patches are
+all independent and can safely be applied separately in different tress
+as appropriate.
 
-It really ought to do something along the lines of:
+They:
+ - add or improve documentation relating to these issues
+ - make a tiny fix to the page_alloc_bulk_*
+ - replace those calls to congestion_wait() which are simply waiting
+   to retry a memory allocation.
 
-	echo 'logdump -a' | debugfs $SCRATCH_DEV
+These are the easy bits.  There are 5 calls to congestion_wait() and one
+to wait_iff_congested() in mm/ which need consideration.  There are
+multiple calls to congestion_wait in fs/, particularly fs/f2fs/ which
+need to be addressed too.  I'll try to form an opinion about these in
+coming weeks.
 
-Though fixing this is probably something the ext4 developers should look
-at...
+Thanks,
+NeilBrown
 
-> xfs-specific function, and moving it to common/xfs doesn't seem correct.
-> Perhaps we should move it to common/log.
 
-Agreed. ;)
+---
 
---D
+NeilBrown (6):
+      MM: improve documentation for __GFP_NOFAIL
+      MM: annotate congestion_wait() and wait_iff_congested() as ineffective.
+      EXT4: Remove ENOMEM/congestion_wait() loops.
+      EXT4: remove congestion_wait from ext4_bio_write_page, and simplify
+      XFS: remove congestion_wait() loop from kmem_alloc()
+      XFS: remove congestion_wait() loop from xfs_buf_alloc_pages()
 
-> > -	_scratch_mount "$opts"
-> > -}
-> > -
-> > -# Unmount and remount the test device, dumping the log
-> > -_test_remount_dump_log()
-> > -{
-> > -	local opts="$1"
-> > -
-> > -	if test -n "$opts"; then
-> > -		opts="-o $opts"
-> > -	fi
-> > -	_test_unmount
-> > -	_test_dump_log
-> 
-> Same here.
-> 
-> Thanks,
-> Eryu
-> 
-> > -	_test_mount "$opts"
-> > -}
-> > diff --git a/common/xfs b/common/xfs
-> > index bfb1bf1e..cda1f768 100644
-> > --- a/common/xfs
-> > +++ b/common/xfs
-> > @@ -1263,3 +1263,29 @@ _require_scratch_xfs_bigtime()
-> >  		_notrun "bigtime feature not advertised on mount?"
-> >  	_scratch_unmount
-> >  }
-> > +
-> > +# Unmount and remount the scratch device, dumping the log
-> > +_scratch_remount_dump_log()
-> > +{
-> > +	local opts="$1"
-> > +
-> > +	if test -n "$opts"; then
-> > +		opts="-o $opts"
-> > +	fi
-> > +	_scratch_unmount
-> > +	_scratch_dump_log
-> > +	_scratch_mount "$opts"
-> > +}
-> > +
-> > +# Unmount and remount the test device, dumping the log
-> > +_test_remount_dump_log()
-> > +{
-> > +	local opts="$1"
-> > +
-> > +	if test -n "$opts"; then
-> > +		opts="-o $opts"
-> > +	fi
-> > +	_test_unmount
-> > +	_test_dump_log
-> > +	_test_mount "$opts"
-> > +}
-> > -- 
-> > 2.25.1
+
+ fs/ext4/ext4.h              |  2 +-
+ fs/ext4/ext4_jbd2.c         |  8 +++++-
+ fs/ext4/extents.c           | 49 ++++++++++++++-----------------------
+ fs/ext4/extents_status.c    | 35 ++++++++++++++------------
+ fs/ext4/extents_status.h    |  2 +-
+ fs/ext4/indirect.c          |  2 +-
+ fs/ext4/inode.c             |  6 ++---
+ fs/ext4/ioctl.c             |  4 +--
+ fs/ext4/page-io.c           | 13 ++++------
+ fs/ext4/super.c             |  2 +-
+ fs/jbd2/transaction.c       |  8 +++---
+ fs/xfs/kmem.c               | 16 +++---------
+ fs/xfs/xfs_buf.c            |  6 ++---
+ include/linux/backing-dev.h |  7 ++++++
+ mm/backing-dev.c            |  9 +++++++
+ 15 files changed, 86 insertions(+), 83 deletions(-)
+
+--
+Signature
+
