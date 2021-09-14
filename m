@@ -2,149 +2,151 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AFB38C433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 16:45:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11EC4C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 19:11:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9107061159
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 16:45:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F25D460E52
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Sep 2021 19:11:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230033AbhINQq1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Sep 2021 12:46:27 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:38400 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229448AbhINQq0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Sep 2021 12:46:26 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 76C6520141;
-        Tue, 14 Sep 2021 16:45:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.com; s=susede1;
-        t=1631637907; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ozFdqBIwmwyJglrohMvn3NkJIfp+ikVZXcbLX7txgcw=;
-        b=c+tWXz3iFiMt2fBT2y8zj5/DP3kTS+clAtQNQjW/Q0M6SxwQAy6krw8G8j0cJ8C2E/b09i
-        awJaPyl97itLD9c6bLIbr1CN+kU50My+7nVpVgBukC5bx/DrxIAwFzjQQkm1Bg2V8RK7QV
-        BDTYLlCiPqBuvc5JJPd+Ai4Uy25bW3s=
-Received: from suse.com (unknown [10.163.32.246])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id B15CCA3B94;
-        Tue, 14 Sep 2021 16:45:06 +0000 (UTC)
-Date:   Tue, 14 Sep 2021 17:45:04 +0100
-From:   Mel Gorman <mgorman@suse.com>
-To:     NeilBrown <neilb@suse.de>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 6/6] XFS: remove congestion_wait() loop from
- xfs_buf_alloc_pages()
-Message-ID: <20210914164504.GS3828@suse.com>
-References: <163157808321.13293.486682642188075090.stgit@noble.brown>
- <163157838440.13293.12568710689057349786.stgit@noble.brown>
- <20210914020837.GH2361455@dread.disaster.area>
- <163158695921.3992.9776900395549582360@noble.neil.brown.name>
+        id S233028AbhINTMt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Sep 2021 15:12:49 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:51813 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S233038AbhINTMf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Sep 2021 15:12:35 -0400
+Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 18EJBB6o024798
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 14 Sep 2021 15:11:12 -0400
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id D957B15C3424; Tue, 14 Sep 2021 15:11:11 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH 3/3] resize2fs: optimize resize2fs_calculate_summary_stats()
+Date:   Tue, 14 Sep 2021 15:11:04 -0400
+Message-Id: <20210914191104.2283033-3-tytso@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20210914191104.2283033-1-tytso@mit.edu>
+References: <20210914191104.2283033-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-In-Reply-To: <163158695921.3992.9776900395549582360@noble.neil.brown.name>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Sep 14, 2021 at 12:35:59PM +1000, NeilBrown wrote:
-> On Tue, 14 Sep 2021, Dave Chinner wrote:
-> > On Tue, Sep 14, 2021 at 10:13:04AM +1000, NeilBrown wrote:
-> > > Documentation commment in gfp.h discourages indefinite retry loops on
-> > > ENOMEM and says of __GFP_NOFAIL that it
-> > > 
-> > >     is definitely preferable to use the flag rather than opencode
-> > >     endless loop around allocator.
-> > > 
-> > > congestion_wait() is indistinguishable from
-> > > schedule_timeout_uninterruptible() in practice and it is not a good way
-> > > to wait for memory to become available.
-> > > 
-> > > So instead of waiting, allocate a single page using __GFP_NOFAIL, then
-> > > loop around and try to get any more pages that might be needed with a
-> > > bulk allocation.  This single-page allocation will wait in the most
-> > > appropriate way.
-> > > 
-> > > Signed-off-by: NeilBrown <neilb@suse.de>
-> > > ---
-> > >  fs/xfs/xfs_buf.c |    6 +++---
-> > >  1 file changed, 3 insertions(+), 3 deletions(-)
-> > > 
-> > > diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-> > > index 5fa6cd947dd4..1ae3768f6504 100644
-> > > --- a/fs/xfs/xfs_buf.c
-> > > +++ b/fs/xfs/xfs_buf.c
-> > > @@ -372,8 +372,8 @@ xfs_buf_alloc_pages(
-> > >  
-> > >  	/*
-> > >  	 * Bulk filling of pages can take multiple calls. Not filling the entire
-> > > -	 * array is not an allocation failure, so don't back off if we get at
-> > > -	 * least one extra page.
-> > > +	 * array is not an allocation failure, so don't fail or fall back on
-> > > +	 * __GFP_NOFAIL if we get at least one extra page.
-> > >  	 */
-> > >  	for (;;) {
-> > >  		long	last = filled;
-> > > @@ -394,7 +394,7 @@ xfs_buf_alloc_pages(
-> > >  		}
-> > >  
-> > >  		XFS_STATS_INC(bp->b_mount, xb_page_retries);
-> > > -		congestion_wait(BLK_RW_ASYNC, HZ / 50);
-> > > +		bp->b_pages[filled++] = alloc_page(gfp_mask | __GFP_NOFAIL);
-> > 
-> > This smells wrong - the whole point of using the bulk page allocator
-> > in this loop is to avoid the costly individual calls to
-> > alloc_page().
-> > 
-> > What we are implementing here fail-fast semantics for readahead and
-> > fail-never for everything else.  If the bulk allocator fails to get
-> > a page from the fast path free lists, it already falls back to
-> > __alloc_pages(gfp, 0, ...) to allocate a single page. So AFAICT
-> > there's no need to add another call to alloc_page() because we can
-> > just do this instead:
-> > 
-> > 	if (flags & XBF_READ_AHEAD)
-> > 		gfp_mask |= __GFP_NORETRY;
-> > 	else
-> > -		gfp_mask |= GFP_NOFS;
-> > +		gfp_mask |= GFP_NOFS | __GFP_NOFAIL;
-> > 
-> > Which should make the __alloc_pages() call in
-> > alloc_pages_bulk_array() do a __GFP_NOFAIL allocation and hence
-> > provide the necessary never-fail guarantee that is needed here.
-> 
-> That is a nice simplification.
-> Mel Gorman told me
->   https://lore.kernel.org/linux-nfs/20210907153116.GJ3828@suse.com/
-> that alloc_pages_bulk ignores GFP_NOFAIL.  I added that to the
-> documentation comment in an earlier patch.
-> 
-> I had a look at the code and cannot see how it would fail to allocate at
-> least one page.  Maybe Mel can help....
-> 
+Speed up an off-line resize of a 10GB file system to 64TB located on
+tmpfs from 90 seconds to 16 seconds by extracting block group bitmaps
+using a population count function to count the blocks in use instead
+checking each bit in the block bitmap.
 
-If there are already at least one page an the array and the first attempt
-at bulk allocation fails, it'll simply return. It's an odd corner case
-that may never apply but it's possible.  That said, I'm of the opinion that
-__GFP_NOFAIL should not be expanded and instead congestion_wait should be
-deleted and replaced with something triggered by reclaim making progress.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ resize/resize2fs.c | 74 ++++++++++++++--------------------------------
+ 1 file changed, 23 insertions(+), 51 deletions(-)
 
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 5ed0c9ee..f7ffaac5 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -2844,67 +2844,39 @@ errout:
+  */
+ static errcode_t resize2fs_calculate_summary_stats(ext2_filsys fs)
+ {
+-	blk64_t		blk;
++	errcode_t	retval;
++	blk64_t		blk = fs->super->s_first_data_block;
+ 	ext2_ino_t	ino;
+-	unsigned int	group = 0;
+-	unsigned int	count = 0;
++	unsigned int	n, c, group, count;
+ 	blk64_t		total_blocks_free = 0;
+ 	int		total_inodes_free = 0;
+ 	int		group_free = 0;
+ 	int		uninit = 0;
+-	blk64_t		super_blk, old_desc_blk, new_desc_blk;
+-	int		old_desc_blocks;
++	char		*bitmap_buf;
+ 
+ 	/*
+ 	 * First calculate the block statistics
+ 	 */
+-	uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT);
+-	ext2fs_super_and_bgd_loc2(fs, group, &super_blk, &old_desc_blk,
+-				  &new_desc_blk, 0);
+-	if (ext2fs_has_feature_meta_bg(fs->super))
+-		old_desc_blocks = fs->super->s_first_meta_bg;
+-	else
+-		old_desc_blocks = fs->desc_blocks +
+-			fs->super->s_reserved_gdt_blocks;
+-	for (blk = B2C(fs->super->s_first_data_block);
+-	     blk < ext2fs_blocks_count(fs->super);
+-	     blk += EXT2FS_CLUSTER_RATIO(fs)) {
+-		if ((uninit &&
+-		     !(EQ_CLSTR(blk, super_blk) ||
+-		       ((old_desc_blk && old_desc_blocks &&
+-			 GE_CLSTR(blk, old_desc_blk) &&
+-			 LT_CLSTR(blk, old_desc_blk + old_desc_blocks))) ||
+-		       ((new_desc_blk && EQ_CLSTR(blk, new_desc_blk))) ||
+-		       EQ_CLSTR(blk, ext2fs_block_bitmap_loc(fs, group)) ||
+-		       EQ_CLSTR(blk, ext2fs_inode_bitmap_loc(fs, group)) ||
+-		       ((GE_CLSTR(blk, ext2fs_inode_table_loc(fs, group)) &&
+-			 LT_CLSTR(blk, ext2fs_inode_table_loc(fs, group)
+-				  + fs->inode_blocks_per_group))))) ||
+-		    (!ext2fs_fast_test_block_bitmap2(fs->block_map, blk))) {
+-			group_free++;
+-			total_blocks_free++;
+-		}
+-		count++;
+-		if ((count == fs->super->s_clusters_per_group) ||
+-		    EQ_CLSTR(blk, ext2fs_blocks_count(fs->super)-1)) {
+-			ext2fs_bg_free_blocks_count_set(fs, group, group_free);
+-			ext2fs_group_desc_csum_set(fs, group);
+-			group++;
+-			if (group >= fs->group_desc_count)
+-				break;
+-			count = 0;
+-			group_free = 0;
+-			uninit = ext2fs_bg_flags_test(fs, group, EXT2_BG_BLOCK_UNINIT);
+-			ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
+-						  &old_desc_blk,
+-						  &new_desc_blk, 0);
+-			if (ext2fs_has_feature_meta_bg(fs->super))
+-				old_desc_blocks = fs->super->s_first_meta_bg;
+-			else
+-				old_desc_blocks = fs->desc_blocks +
+-					fs->super->s_reserved_gdt_blocks;
++	bitmap_buf = malloc(fs->blocksize);
++	if (!bitmap_buf)
++		return ENOMEM;
++	for (group = 0; group < fs->group_desc_count;
++	     group++) {
++		retval = ext2fs_get_block_bitmap_range2(fs->block_map,
++			C2B(blk), fs->super->s_clusters_per_group, bitmap_buf);
++		if (retval) {
++			free(bitmap_buf);
++			return retval;
+ 		}
+-	}
++		n = ext2fs_bitcount(bitmap_buf,
++				    fs->super->s_clusters_per_group / 8);
++		group_free = fs->super->s_clusters_per_group - n;
++		total_blocks_free += group_free;
++		ext2fs_bg_free_blocks_count_set(fs, group, group_free);
++		ext2fs_group_desc_csum_set(fs, group);
++		blk += EXT2FS_NUM_B2C(fs, fs->super->s_clusters_per_group);
++	}
++	free(bitmap_buf);
+ 	total_blocks_free = C2B(total_blocks_free);
+ 	ext2fs_free_blocks_count_set(fs->super, total_blocks_free);
+ 
 -- 
-Mel Gorman
-SUSE Labs
+2.31.0
+
