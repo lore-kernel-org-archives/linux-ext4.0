@@ -2,134 +2,76 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-17.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70EF5C43217
-	for <linux-ext4@archiver.kernel.org>; Thu, 16 Sep 2021 14:00:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89D53C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 16 Sep 2021 18:54:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5E0B461244
-	for <linux-ext4@archiver.kernel.org>; Thu, 16 Sep 2021 14:00:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6C2B3611EE
+	for <linux-ext4@archiver.kernel.org>; Thu, 16 Sep 2021 18:54:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237892AbhIPOCM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Sep 2021 10:02:12 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:43084 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235536AbhIPOCL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Sep 2021 10:02:11 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 6432B223D1;
-        Thu, 16 Sep 2021 14:00:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1631800850; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=hIJLlufKVyjdYEfqx/HCbz9i/DCGShNqv5yny221QFc=;
-        b=eEqfmxWEZ5htxQkRoY7AQPjWaNdnIDiLFT/xIvKn/MaKhuixgyyqU5FIDwP5/+s0gDoqJW
-        SNFAirWWKef7+QDXyQM6YYeCJ3RC6mpo1h+2pnuFBR02S5Una51nN1zls+olZ1Y07xJz2Q
-        B+QUhIIubw6yj2ED91BNfA0lKAwUQQQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1631800850;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=hIJLlufKVyjdYEfqx/HCbz9i/DCGShNqv5yny221QFc=;
-        b=Pe9sx9/9uGLmjSCYZABFdzaxberI/l6+pyXicOX/+xd7Xis0ewhO+gL0zVQQ4z9EgkzkOh
-        YOk1bWuBQMCZ20Dg==
-Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 3A503A3B90;
-        Thu, 16 Sep 2021 14:00:50 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 02DFA1E0C06; Thu, 16 Sep 2021 16:00:47 +0200 (CEST)
-Date:   Thu, 16 Sep 2021 16:00:46 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     yangerkun <yangerkun@huawei.com>
-Cc:     tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org,
-        yukuai3@huawei.com
-Subject: Re: [PATCH] ext4: update last_pos for the case ext4_htree_fill_tree
- return fail
-Message-ID: <20210916140046.GH10610@quack2.suse.cz>
-References: <20210914111415.3921954-1-yangerkun@huawei.com>
+        id S243374AbhIPS4B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Sep 2021 14:56:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51530 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1344965AbhIPSz6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Sep 2021 14:55:58 -0400
+Received: from mail-pj1-x102e.google.com (mail-pj1-x102e.google.com [IPv6:2607:f8b0:4864:20::102e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D873C00EA8E
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Sep 2021 10:57:57 -0700 (PDT)
+Received: by mail-pj1-x102e.google.com with SMTP id f3-20020a17090a638300b00199097ddf1aso8143883pjj.0
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Sep 2021 10:57:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=qdm7aqM6cPmqGgmk/iB/fYKsk2wFX5hSUYjlnian/V4=;
+        b=Eyd587gVkUJOeuq1UtFdEeW6oEl5ijLE0OtxmuuU5faC6M5PIHd5PMuD7qC4q47XVH
+         mHCGrRYGsMuUO6TlKJPYW6JX93JxiViZ56k7UetqkzMxNsJsBJlRZANu/2f4Y3UrOE9N
+         cutVTM1HNbsv0nzEM4kCBkpboj/7ncwVpTQ/Iu2vvQOgJccDpBvuZdlepx5GUrAFt0zM
+         5w7depS/RIvCgt+2MSV1ClDP6rH/7nQAhBnt4vgtAgWTNAkVOp48Uy/d/yk7e8G+p3kw
+         MWDXTFdWA1KFthL1rwiB4Xzfw4OzVE1CXD6np/jodb4kQSsdyXRLpPyzZrjpA2agVapn
+         ODRw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=qdm7aqM6cPmqGgmk/iB/fYKsk2wFX5hSUYjlnian/V4=;
+        b=2sblcjS9BxyWuJhZHqjLqVSUQFiTnZfmJ6PEBDgHt21rUEUV6p3kehtU4nky8/Fr9P
+         Sl3rZIufIPFrnSej8Ieu/vBZ5FipGMiQYY7sSn7Vu98UV8laDnA01nbOYtXud8rFDwjg
+         gxJ9BuG4WQpoj44r/qSvcc+oMfbQcpoIvImMn6I38y97jrajJTZAVKweGaCEiRA59yBw
+         T4D7v4rF1IemL+N3ux/upiVW2DKVwb1CF/a/V5yTGUWNNwjJD0vt1YbD6xZI4BF66tDY
+         zCnvyoebUch14amDd+yGGFJr0zUNgx/1kAAIbQBZ+g+jCMJMNqP4iYEtGAF+fy7PE4+A
+         XAIw==
+X-Gm-Message-State: AOAM530oi7pP+X+UEwOmXtfNwuFhBEdckTMw6rjxMjAOkhTdr590VMb6
+        RDhqDjOpEiWSbbd5rGWgQcLh6+LHjnY=
+X-Google-Smtp-Source: ABdhPJyNwyl5YcJKzAFNrZAs2W4pC9RnlLgO2w5ZuBkkTLpuV1RGOyw86vkdwIrd6Slrqq6Ny8eobA==
+X-Received: by 2002:a17:90b:1807:: with SMTP id lw7mr3715544pjb.217.1631815076538;
+        Thu, 16 Sep 2021 10:57:56 -0700 (PDT)
+Received: from google.com ([2601:647:4701:18d0:7868:d0fe:c210:2ee])
+        by smtp.gmail.com with ESMTPSA id m26sm3799591pfo.146.2021.09.16.10.57.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 16 Sep 2021 10:57:56 -0700 (PDT)
+Date:   Thu, 16 Sep 2021 10:57:53 -0700
+From:   Leah Rumancik <leah.rumancik@gmail.com>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH 1/3] resize2fs: attempt to keep the # of inodes valid by
+ removing the last bg
+Message-ID: <YUOFoTVNEddokU4A@google.com>
+References: <20210914191104.2283033-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20210914111415.3921954-1-yangerkun@huawei.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20210914191104.2283033-1-tytso@mit.edu>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 14-09-21 19:14:15, yangerkun wrote:
-> Or the ls for ext4 dir can run into a deadloop since info->last_pos !=
-> ctx->pos which will reset the world and start read the entry which has
-> already got before. Details see below:
-> 
-> 1. a dx_dir which has 3 block, block 0 as dx_root block, block 1/2 as
->    leaf block which own the ext4_dir_entry_2
-> 2. block 1 read ok and call_filldir which will fill the dirent and update
->    the ctx->pos
-> 3. block 2 read fail, but we has already fill some dirent, so we will
->    return back to userspace will a positive return val(see ksys_getdents64)
-> 4. the second ext4_dx_readdir will reset the world since info->last_pos
->    != ctx->pos, and will also init the curr_hash which pos to block 1
-> 5. So we will read block1 too, and once block2 still read fail, we can
->    only fill one dirent because the hash of the entry in block1(besides
->    the last one) won't greater than curr_hash
-> 6. this time, we forget update last_pos too since the read for block2
->    will fail, and since we has got the one entry, ksys_getdents64 can
->    return success
-> 7. Latter we will trapped in a loop with step 4~6
-> 
-> Fix it by update last_pos too once ext4_htree_fill_tree return fail.
-> 
-> Signed-off-by: yangerkun <yangerkun@huawei.com>
+Looks good to me. Series compiled and ran without any test regressions
+for me. Some lines are over 80 chars though, could wrap.
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/dir.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index ffb295aa891c..74b172a4adda 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -551,7 +551,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
->  	struct dir_private_info *info = file->private_data;
->  	struct inode *inode = file_inode(file);
->  	struct fname *fname;
-> -	int	ret;
-> +	int ret = 0;
->  
->  	if (!info) {
->  		info = ext4_htree_create_dir_info(file, ctx->pos);
-> @@ -599,7 +599,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
->  						   info->curr_minor_hash,
->  						   &info->next_hash);
->  			if (ret < 0)
-> -				return ret;
-> +				goto finished;
->  			if (ret == 0) {
->  				ctx->pos = ext4_get_htree_eof(file);
->  				break;
-> @@ -630,7 +630,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
->  	}
->  finished:
->  	info->last_pos = ctx->pos;
-> -	return 0;
-> +	return ret < 0 ? ret : 0;
->  }
->  
->  static int ext4_release_dir(struct inode *inode, struct file *filp)
-> -- 
-> 2.31.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Signed-off-by: Leah Rumancik <leah.rumancik@gmail.com>
