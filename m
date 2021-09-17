@@ -2,146 +2,98 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D2C3C433EF
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Sep 2021 03:00:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F7D2C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Sep 2021 08:30:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1D05D61029
-	for <linux-ext4@archiver.kernel.org>; Fri, 17 Sep 2021 03:00:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 248DF61108
+	for <linux-ext4@archiver.kernel.org>; Fri, 17 Sep 2021 08:30:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243572AbhIQDBq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 16 Sep 2021 23:01:46 -0400
-Received: from smtp-out1.suse.de ([195.135.220.28]:56658 "EHLO
+        id S245379AbhIQIcI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Sep 2021 04:32:08 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:41546 "EHLO
         smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243237AbhIQDBi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Sep 2021 23:01:38 -0400
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id DB335223BE;
-        Fri, 17 Sep 2021 03:00:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1631847615; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        with ESMTP id S232295AbhIQIcH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Sep 2021 04:32:07 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 5AFCF22286;
+        Fri, 17 Sep 2021 08:30:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1631867444; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VOYRJb9fJ+cMO6Hj0cgeXpg6pQoK6BH8BG5fqFk6i+M=;
-        b=TRc7wKqSyLeB/iEALRI6D6YqRSG6iz+Dq+XLvWC0q61avt5RPD6l5eo+J9e2cm0RAlLndG
-        bCR/i4dYjEnf68mBhKdVP1g+5WyLBU137hqqn9pFB7hOY9jQh9U2O/3XagwE7D9w6IZHhX
-        bB+fyY7lriilGsSaYPwQeJPgnfg1Glk=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1631847615;
+        bh=5eb8TqjzrqfA6ERLZr5A6LRYLt6Dsy4QQOdugdSe97Q=;
+        b=XdmkuscCNdsJbshxJludjY9UBBxnrbeeje9zR82u+BctBDXam0UMT8SP2fcDBYZ8aK/Smc
+        KK/ENfXXqaYp1ZVw7dgw7fKlvNMDcINECnbmaTL/uw1vFM3xyY9gnITACUu6/fHxERD3Z9
+        M0t8mT0HGmh5SlFuY54Ma1mexoGe2VQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1631867444;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VOYRJb9fJ+cMO6Hj0cgeXpg6pQoK6BH8BG5fqFk6i+M=;
-        b=/lq6dz70EAyTVlxTdVKlR4Bn0HQwVD6XFi1dN/9iHfYMXcFuYHWhp0rAc/wmbsX9/3XzPy
-        3BMcXfR/dH2dKDAg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 732FE13D0B;
-        Fri, 17 Sep 2021 03:00:11 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id X8J7DLsERGHIMwAAMHmgww
-        (envelope-from <neilb@suse.de>); Fri, 17 Sep 2021 03:00:11 +0000
-Subject: [PATCH 6/6] XFS: remove congestion_wait() loop from
- xfs_buf_alloc_pages()
-From:   NeilBrown <neilb@suse.de>
-To:     Andrew Morton <akpm@linux-foundation.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        Mel Gorman <mgorman@suse.de>, Michal Hocko <mhocko@suse.com>,
-        ". Dave Chinner" <david@fromorbit.com>,
-        Jonathan Corbet <corbet@lwn.net>
-Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-        linux-doc@vger.kernel.org
-Date:   Fri, 17 Sep 2021 12:56:57 +1000
-Message-ID: <163184741782.29351.3052773526186670351.stgit@noble.brown>
-In-Reply-To: <163184698512.29351.4735492251524335974.stgit@noble.brown>
-References: <163184698512.29351.4735492251524335974.stgit@noble.brown>
-User-Agent: StGit/0.23
+        bh=5eb8TqjzrqfA6ERLZr5A6LRYLt6Dsy4QQOdugdSe97Q=;
+        b=E/Cq/YykbiDucpkCYq/JzAf9kaune18m05B2tIsNjSE0lmHWgW8/GBS+8vNCJeMe80D3SL
+        8yGpCLimjZj+SGBw==
+Received: from quack2.suse.cz (unknown [10.100.224.230])
+        by relay2.suse.de (Postfix) with ESMTP id 18851A3B84;
+        Fri, 17 Sep 2021 08:30:44 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id EEBB21E0CA7; Fri, 17 Sep 2021 10:30:43 +0200 (CEST)
+Date:   Fri, 17 Sep 2021 10:30:43 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: Shameless plug for the FS Track at LPC next week!
+Message-ID: <20210917083043.GA6547@quack2.suse.cz>
+References: <20210916013916.GD34899@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20210916013916.GD34899@magnolia>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Documentation commment in gfp.h discourages indefinite retry loops on
-ENOMEM and says of __GFP_NOFAIL that it
+Hi!
 
-    is definitely preferable to use the flag rather than opencode
-    endless loop around allocator.
+We did a small update to the schedule:
 
-congestion_wait() is indistinguishable from
-schedule_timeout_uninterruptible() in practice and it is not a good way
-to wait for memory to become available.
+> Christian Brauner will run the second session, discussing what idmapped
+> filesystem mounts are for and the current status of supporting more
+> filesystems.
 
-So add __GFP_NOFAIL to gfp if failure is not an option, and remove the
-congestion_wait().  We now only loop when failure is an option, and
-alloc_bulk_pages_array() made some progres, but not enough.
+We have extended this session as we'd like to discuss and get some feedback
+from users about project quotas and project ids:
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/xfs/xfs_buf.c |   14 ++++++--------
- 1 file changed, 6 insertions(+), 8 deletions(-)
+Project quotas were originally mostly a collaborative feature and later got
+used by some container runtimes to implement limitation of used space on a
+filesystem shared by multiple containers. As a result current semantics of
+project quotas are somewhat surprising and handling of project ids is not
+consistent among filesystems. The main two contending points are:
 
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 5fa6cd947dd4..b19ab52c551b 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -352,7 +352,7 @@ xfs_buf_alloc_pages(
- 	if (flags & XBF_READ_AHEAD)
- 		gfp_mask |= __GFP_NORETRY;
- 	else
--		gfp_mask |= GFP_NOFS;
-+		gfp_mask |= GFP_NOFS | __GFP_NOFAIL;
- 
- 	/* Make sure that we have a page list */
- 	bp->b_page_count = DIV_ROUND_UP(BBTOB(bp->b_length), PAGE_SIZE);
-@@ -372,8 +372,9 @@ xfs_buf_alloc_pages(
- 
- 	/*
- 	 * Bulk filling of pages can take multiple calls. Not filling the entire
--	 * array is not an allocation failure, so don't back off if we get at
--	 * least one extra page.
-+	 * array is not an allocation failure but is worth counting in
-+	 * xb_pages_retries statistics.  If we don't even get one page,
-+	 * then this must be a READ_AHEAD and we should abort.
- 	 */
- 	for (;;) {
- 		long	last = filled;
-@@ -385,16 +386,13 @@ xfs_buf_alloc_pages(
- 			break;
- 		}
- 
--		if (filled != last)
--			continue;
--
--		if (flags & XBF_READ_AHEAD) {
-+		if (filled == last) {
-+			ASSERT(flags & XBF_READ_AHEAD);
- 			xfs_buf_free_pages(bp);
- 			return -ENOMEM;
- 		}
- 
- 		XFS_STATS_INC(bp->b_mount, xb_page_retries);
--		congestion_wait(BLK_RW_ASYNC, HZ / 50);
- 	}
- 	return 0;
- }
+1) Currently the inode owner can set project id of the inode to any
+arbitrary number if he is in init_user_ns. It cannot change project id at
+all in other user namespaces.
 
+2) Should project IDs be mapped in user namespaces or not? User namespace
+code does implement the mapping, VFS quota code maps project ids when using
+them. However e.g. XFS does not map project IDs in its calls setting them
+in the inode. Among other things this results in some funny errors if you
+set project ID to (unsigned)-1.
 
+In the session we'd like to get feedback how project quotas / ids get used
+/ could be used so that we can define the common semantics and make the
+code consistently follow these rules.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
