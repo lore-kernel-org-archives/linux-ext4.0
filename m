@@ -2,87 +2,86 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.3 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,NICE_REPLY_A,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-17.3 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F52CC433EF
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Sep 2021 09:32:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2B64C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Sep 2021 10:27:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 773956124D
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Sep 2021 09:32:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BCE7361107
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Sep 2021 10:27:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245094AbhIXJeB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 24 Sep 2021 05:34:01 -0400
-Received: from szxga03-in.huawei.com ([45.249.212.189]:16296 "EHLO
-        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237056AbhIXJeA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2021 05:34:00 -0400
-Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.54])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4HG6HJ147Rz8tQ3;
-        Fri, 24 Sep 2021 17:31:40 +0800 (CST)
-Received: from dggema766-chm.china.huawei.com (10.1.198.208) by
- dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) id
- 15.1.2308.8; Fri, 24 Sep 2021 17:32:26 +0800
-Received: from [10.174.177.210] (10.174.177.210) by
- dggema766-chm.china.huawei.com (10.1.198.208) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
- 15.1.2308.8; Fri, 24 Sep 2021 17:32:26 +0800
-Message-ID: <af4bcfff-1522-e043-0ba0-46c7ed93c0af@huawei.com>
-Date:   Fri, 24 Sep 2021 17:32:26 +0800
+        id S231859AbhIXK2j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 24 Sep 2021 06:28:39 -0400
+Received: from smtp-out1.suse.de ([195.135.220.28]:36484 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231140AbhIXK2i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Sep 2021 06:28:38 -0400
+Received: from relay1.suse.de (relay1.suse.de [149.44.160.133])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 93BF3223F3;
+        Fri, 24 Sep 2021 10:27:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1632479224; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type;
+        bh=FmSzy+FazphKfQvxXzbH3THJND1SOlFWBDZPvzN7pX0=;
+        b=P6IU17Zz/SJ8MqJmnGVAXEiLwlVbLl9OPkV6dAKqwB1GpS9Kcb3ZucFpkMor9lC7T2racS
+        vMqUeQNHzynbQQk0COif9RKK6wy91PMwkY8L12EVMhE/fM6lGrkBw7g+VWiXgwssIaoP3b
+        Pd769rtvnefX1iF3sFaUXVzaBaEuzaQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1632479224;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type;
+        bh=FmSzy+FazphKfQvxXzbH3THJND1SOlFWBDZPvzN7pX0=;
+        b=yIbGonTJgjC7JFakVAKg/oidslfgEr+JZ8Ozjt05nu9AqBQOWLICBgj9JTNYlOlyj9Favt
+        UDh66kHLsLltV6Bg==
+Received: from quack2.suse.cz (unknown [10.163.43.118])
+        by relay1.suse.de (Postfix) with ESMTP id 853A125D44;
+        Fri, 24 Sep 2021 10:27:04 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 38A5B1E0BF0; Fri, 24 Sep 2021 12:27:04 +0200 (CEST)
+Date:   Fri, 24 Sep 2021 12:27:04 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: [GIT PULL] Two fixes for 5.15-rc3
+Message-ID: <20210924102703.GA19744@quack2.suse.cz>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
- Thunderbird/91.1.0
-Subject: Re: [PATCH 0/2] bugfix for read_extent_tree_block
-To:     <tytso@mit.edu>, <jack@suse.cz>
-CC:     <linux-ext4@vger.kernel.org>, <yukuai3@huawei.com>
-References: <20210904044946.2102404-1-yangerkun@huawei.com>
-From:   yangerkun <yangerkun@huawei.com>
-In-Reply-To: <20210904044946.2102404-1-yangerkun@huawei.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.174.177.210]
-X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- dggema766-chm.china.huawei.com (10.1.198.208)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-gently ping...
+  Hello Linus,
 
-在 2021/9/4 12:49, yangerkun 写道:
-> Our stress testcase with io error can trigger later OOB:
-> 
->      [59898.282466] BUG: KASAN: slab-out-of-bounds in ext4_find_extent+0x2e4/0x480
->      ...
->      [59898.287162] Call Trace:
->      [59898.287575]  dump_stack+0x8b/0xb9
->      [59898.288070]  print_address_description+0x73/0x280
->      [59898.289903]  ext4_find_extent+0x2e4/0x480
->      [59898.290553]  ext4_ext_map_blocks+0x125/0x1470
->      [59898.295481]  ext4_map_blocks+0x5ee/0x940
->      [59898.315984]  ext4_mpage_readpages+0x63c/0xdb0
->      [59898.320231]  read_pages+0xe6/0x370
->      [59898.321589]  __do_page_cache_readahead+0x233/0x2a0
->      [59898.321594]  ondemand_readahead+0x157/0x450
->      [59898.321598]  generic_file_read_iter+0xcb2/0x1550
->      [59898.328828]  __vfs_read+0x233/0x360
->      [59898.328840]  vfs_read+0xa5/0x190
->      [59898.330126]  ksys_read+0xa5/0x150
->      [59898.331405]  do_syscall_64+0x6d/0x1f0
->      [59898.331418]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> 
-> It seem that a xattr block with verified confuse read_extent_tree_block.
-> 
-> The detail of the patch show us how to fix it.
-> 
-> yangerkun (2):
->    ext4: avoid recheck extent for EXT4_EX_FORCE_CACHE
->    ext4: check magic even the extent block bh is verified
-> 
->   fs/ext4/extents.c | 25 ++++++++++++++++++-------
->   1 file changed, 18 insertions(+), 7 deletions(-)
-> 
+  could you please pull from
+
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fixes_for_v5.15-rc3
+
+to get a fix for ext2 sleep in atomic context in case of some fs problems
+and a cleanup of an invalidate_lock initialization.
+
+Top of the tree is 372d1f3e1bfe. The full shortlog is:
+
+Dan Carpenter (1):
+      ext2: fix sleeping in atomic bugs on error
+
+Sebastian Andrzej Siewior (1):
+      mm: Fully initialize invalidate_lock, amend lock class later
+
+The diffstat is
+
+ fs/ext2/balloc.c | 14 ++++++--------
+ fs/inode.c       |  6 ++++--
+ 2 files changed, 10 insertions(+), 10 deletions(-)
+
+							Thanks
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
