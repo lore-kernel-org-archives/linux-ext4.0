@@ -2,98 +2,96 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CC9C0C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Sep 2021 10:54:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B6CBC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Sep 2021 15:45:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B9F1D613D3
-	for <linux-ext4@archiver.kernel.org>; Wed, 29 Sep 2021 10:54:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 37FC961452
+	for <linux-ext4@archiver.kernel.org>; Wed, 29 Sep 2021 15:45:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245609AbhI2K4P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 29 Sep 2021 06:56:15 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:47820 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245599AbhI2K4N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Sep 2021 06:56:13 -0400
-Received: from localhost.localdomain (unknown [IPv6:2401:4900:1c20:3124:6d32:b2f4:daed:4666])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1345382AbhI2Pq7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 29 Sep 2021 11:46:59 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:39132 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S245638AbhI2Pqv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 29 Sep 2021 11:46:51 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1632930309;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=YD/JzDwhuk7rGKkEzFS8gH/oiqrA2eu324rL5fdp0h4=;
+        b=JHWSxY2TsFsxf4kceHPwC6BVWFUHkyy9dGFyRZgFflSIy9eAGO7RjD7NHDJz3/VZAEVW6R
+        hRWnyWQ/TIbvYWewRR3GAbmZEihf+7rhE/N5sKgZDCluq4+eoOAdo5GCVHGRUeVbzPGM+G
+        RCZ/b3021Ar8Jhp7OrvyBBRRPesVxYc=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-169-RydRWjxQMwK58uTqWu6Ekw-1; Wed, 29 Sep 2021 11:45:08 -0400
+X-MC-Unique: RydRWjxQMwK58uTqWu6Ekw-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        (Authenticated sender: shreeya)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 126401F43FB5;
-        Wed, 29 Sep 2021 11:54:29 +0100 (BST)
-From:   Shreeya Patel <shreeya.patel@collabora.com>
-To:     tytso@mit.edu, viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
-        krisman@collabora.com
-Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel@collabora.com,
-        Shreeya Patel <shreeya.patel@collabora.com>
-Subject: [PATCH 2/2] fs: ext4: Fix the inconsistent name exposed by /proc/self/cwd
-Date:   Wed, 29 Sep 2021 16:23:39 +0530
-Message-Id: <8402d1c99877a4fcb152de71005fa9cfb25d86a8.1632909358.git.shreeya.patel@collabora.com>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <cover.1632909358.git.shreeya.patel@collabora.com>
-References: <cover.1632909358.git.shreeya.patel@collabora.com>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 00CAB1006AA3;
+        Wed, 29 Sep 2021 15:45:06 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.33.36.44])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 51DD86A900;
+        Wed, 29 Sep 2021 15:45:03 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+        Kingdom.
+        Registered in England and Wales under Company Registration No. 3798903
+From:   David Howells <dhowells@redhat.com>
+In-Reply-To: <20210927200708.GI9286@twin.jikos.cz>
+References: <20210927200708.GI9286@twin.jikos.cz> <163250387273.2330363.13240781819520072222.stgit@warthog.procyon.org.uk>
+To:     dsterba@suse.cz
+Cc:     dhowells@redhat.com
+Cc:     willy@infradead.org, Chris Mason <clm@fb.com>,
+        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Ilya Dryomov <idryomov@gmail.com>, linux-btrfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [RFC][PATCH v3 0/9] mm: Use DIO for swap and fix NFS swapfiles
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <4005661.1632930302.1@warthog.procyon.org.uk>
+Content-Transfer-Encoding: quoted-printable
+Date:   Wed, 29 Sep 2021 16:45:02 +0100
+Message-ID: <4005662.1632930302@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-/proc/self/cwd is a symlink created by the kernel that uses whatever
-name the dentry has in the dcache. Since the dcache is populated only
-on the first lookup, with the string used in that lookup, cwd will
-have an unexpected case, depending on how the data was first looked-up
-in a case-insesitive filesystem.
+David Sterba <dsterba@suse.cz> wrote:
 
-Steps to reproduce :-
+> > There are additional patches to get rid of noop_direct_IO and replace =
+it
+> > with a feature bitmask, to make btrfs, ext4, xfs and raw blockdevs use=
+ the
+> > new ->swap_rw method and thence remove the direct BIO submission paths=
+ from
+> > swap.
+> > =
 
-root@test-box:/src# mkdir insensitive/foo
-root@test-box:/src# cd insensitive/FOO
-root@test-box:/src/insensitive/FOO# ls -l /proc/self/cwd
-lrwxrwxrwx 1 root root /proc/self/cwd -> /src/insensitive/FOO
+> > I kept the IOCB_SWAP flag, using it to enable REQ_SWAP.  I'm not sure =
+if
+> > that's necessary, but it seems accounting related.
+>
+> There was probably some step missing. The file must not have holes, so
+> either do 'dd' to the right size or use fallocate (which is recommended
+> in manual page btrfs(5) SWAPFILE SUPPORT). There are some fstests
+> exercising swapfile (grep -l _format_swapfile tests/generic/*) so you
+> could try that without having to set up the swapfile manually.
 
-root@test-box:/src/insensitive/FOO# cd ../fOo
-root@test-box:/src/insensitive/fOo# ls -l /proc/self/cwd
-lrwxrwxrwx 1 root root /proc/self/cwd -> /src/insensitive/FOO
+Yeah.  As advised elsewhere, I removed the file and recreated it, doing th=
+e
+chattr before extending the file.  At that point swapon worked.  It didn't
+work though, and various userspace programs started dying.  I'm guessing m=
+y
+btrfs_swap_rw() is wrong somehow.
 
-Above example shows that 'FOO' was the name used on first lookup here and
-it is stored in dcache instead of the original name 'foo'. This results
-in inconsistent name exposed by /proc/self/cwd since it uses the name
-stored in dcache.
-
-To avoid the above inconsistent name issue, handle the inexact-match string
-( a string which is not a byte to byte match, but is an equivalent
-unicode string ) case in ext4_lookup which would store the original name
-in dcache using d_add_ci instead of the inexact-match string name.
-
-Signed-off-by: Shreeya Patel <shreeya.patel@collabora.com>
----
- fs/ext4/namei.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
-
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index da7698341d7d..3598f0e47067 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1801,6 +1801,19 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 	}
- 
- #ifdef CONFIG_UNICODE
-+	if (inode && IS_CASEFOLDED(dir))
-+		if (dentry && strcmp(dentry->d_name.name, de->name)) {
-+			struct dentry *new;
-+			struct qstr ciname;
-+
-+			ciname.len = de->name_len;
-+			ciname.name = kstrndup(de->name, ciname.len, GFP_NOFS);
-+			if (!ciname.name)
-+				return ERR_PTR(-ENOMEM);
-+			new = d_add_ci(dentry, inode, &ciname);
-+			kfree(ciname.name);
-+			return new;
-+	}
- 	if (!inode && IS_CASEFOLDED(dir)) {
- 		/* Eventually we want to call d_add_ci(dentry, NULL)
- 		 * for negative dentries in the encoding case as
--- 
-2.30.2
+David
 
