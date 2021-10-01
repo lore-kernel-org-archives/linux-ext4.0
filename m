@@ -2,139 +2,76 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF217C433F5
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Oct 2021 09:18:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C778C433EF
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Oct 2021 11:49:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 981EB61A05
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Oct 2021 09:18:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0AEAF61A6F
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Oct 2021 11:49:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1352731AbhJAJUV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 1 Oct 2021 05:20:21 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:51854 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229792AbhJAJUS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Oct 2021 05:20:18 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id C4F682042D;
-        Fri,  1 Oct 2021 09:18:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1633079913; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=7PFkK4hkKs1GgSCwanwEAsJw6bVakGEaZx7v2dUtT3s=;
-        b=dTcPf5iC6uNvHsMgzUKFgexC7mLkljbn0dChBRAuMw2ZDoMznY+LmaNpTXYeHCj3fh1KN2
-        zI2oZTX3gbKXYvz5A//vKWqoX3ETFZdHJsorsOqmxDnz925b8kAUMI+3n7A6amIPPRiCWK
-        CpzEzFpjqA0XnaxEq9FwRoed38BJA/o=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1633079913;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=7PFkK4hkKs1GgSCwanwEAsJw6bVakGEaZx7v2dUtT3s=;
-        b=AnIYNwgoMf5kEc8UgjIoYPh2138GJwbggVr7TjiTuV0bdjlHYlQHFMg8WWorhOcDYpt/9o
-        q8Mj1SRKErqAn3Aw==
-Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id B6301A3BC3;
-        Fri,  1 Oct 2021 09:18:33 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 2F1231F2BA4; Fri,  1 Oct 2021 11:18:33 +0200 (CEST)
-Date:   Fri, 1 Oct 2021 11:18:33 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     yangerkun <yangerkun@huawei.com>
-Cc:     tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org,
-        yukuai3@huawei.com
-Subject: Re: [PATCH 2/2] ext4: check magic even the extent block bh is
- verified
-Message-ID: <20211001091833.GB28799@quack2.suse.cz>
-References: <20210904044946.2102404-1-yangerkun@huawei.com>
- <20210904044946.2102404-3-yangerkun@huawei.com>
+        id S1353896AbhJALvg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 1 Oct 2021 07:51:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44808 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1353771AbhJALvf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Oct 2021 07:51:35 -0400
+Received: from mail-ed1-x529.google.com (mail-ed1-x529.google.com [IPv6:2a00:1450:4864:20::529])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ACC37C061775
+        for <linux-ext4@vger.kernel.org>; Fri,  1 Oct 2021 04:49:51 -0700 (PDT)
+Received: by mail-ed1-x529.google.com with SMTP id x7so32678093edd.6
+        for <linux-ext4@vger.kernel.org>; Fri, 01 Oct 2021 04:49:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=deitcher-net.20210112.gappssmtp.com; s=20210112;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=yhjheNI5MEnyZY0tqqwyqqVXxlQtJnGlEnfizEhjEq4=;
+        b=0XtBLWB/JefBKcFrkITj3SyZs6m3cdGCT89Zw7rgtGckcg+4uPRbq+YI7Jj4WOBL08
+         VncqOAkN4GrNioWpdy/jGKjl3uhidEZtUaMd7zXFWgrpvYd34KH9IIuK4jjScUYQzZR/
+         Rqd+FwXk7y5JTgfGPatxqAVgHucs4m6EKhS8O8s+tdBBy5GnYmQErtEW2VWThcQKVx3j
+         uiGUG+IaruLr9q/wZHpWnBkKAIsAcqbUsgxeyXWUu16Aoe//qNgUIci3Zz15dyThjLdB
+         jp+N/PLAMv9vP7PJcVqEfxX1IG7y8h0y3QBwHkyqxzyyd5aUpekQj1FcEBJPRbvHoLKa
+         TtIA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=yhjheNI5MEnyZY0tqqwyqqVXxlQtJnGlEnfizEhjEq4=;
+        b=PWeYqPeePa03kPOM9MEYpmLiQ1/N3lVTDmG/yt7TRwSqy8V+oeiH45Ym6gGISjX/5E
+         4dMOnbPW3a0Y7/jPFQrp60iqTJbJR/TJtqdYcGTJPaAiAiRyE1sTIw7UCzVB08d6Zurg
+         fnTdLTA4bsb6f7RmJmCBGGvz3pkWicvmg1LXYFf2eQuukQ8ujVFtieto97WnVx/kE+7U
+         oQUp77zVkjroOEb7Iy1Plkdpx1wFs2hDcZ6MoPFvbb7SctxtiJWxPZfSFJUOaSHrN8TV
+         GudHa0qJxaTAWPvZDalCp2N9tUmJIZz6RI8BN6+tRx9V2QuEz/gKNJSPHYbYyyXpjjQq
+         1baw==
+X-Gm-Message-State: AOAM533Axbo4LXgW0wx+HAQpCC49DvCnItTBFooIIlG04p9H1L/0Ibqb
+        SyrjIqKaC27UeW5EP+4y0LWSrNX5O427v3T36rtMxhYMtoq4Tg==
+X-Google-Smtp-Source: ABdhPJx3AOyd7Ig9B97vKOTmTk1zK5x2n/qq8MEIfGTFtAE9VkxS+yBttfQHoPKexT6Ni64+erXn5dNnxnowDrKihm8=
+X-Received: by 2002:a17:906:a408:: with SMTP id l8mr5821886ejz.489.1633088989430;
+ Fri, 01 Oct 2021 04:49:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20210904044946.2102404-3-yangerkun@huawei.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+From:   Avi Deitcher <avi@deitcher.net>
+Date:   Fri, 1 Oct 2021 14:49:37 +0300
+Message-ID: <CAF1vpkgE3XopWRqzFqdyCWg0hQB9FtEhbWmz1t=HZPE+WNEQ3A@mail.gmail.com>
+Subject: algorithm for half-md4 used in htree directories
+To:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat 04-09-21 12:49:46, yangerkun wrote:
-> Our stress testing with IO error can trigger follow OOB with a very low
-> probability.
-> 
-> [59898.282466] BUG: KASAN: slab-out-of-bounds in ext4_find_extent+0x2e4/0x480
-> ...
-> [59898.287162] Call Trace:
-> [59898.287575]  dump_stack+0x8b/0xb9
-> [59898.288070]  print_address_description+0x73/0x280
-> [59898.289903]  ext4_find_extent+0x2e4/0x480
-> [59898.290553]  ext4_ext_map_blocks+0x125/0x1470
-> [59898.295481]  ext4_map_blocks+0x5ee/0x940
-> [59898.315984]  ext4_mpage_readpages+0x63c/0xdb0
-> [59898.320231]  read_pages+0xe6/0x370
-> [59898.321589]  __do_page_cache_readahead+0x233/0x2a0
-> [59898.321594]  ondemand_readahead+0x157/0x450
-> [59898.321598]  generic_file_read_iter+0xcb2/0x1550
-> [59898.328828]  __vfs_read+0x233/0x360
-> [59898.328840]  vfs_read+0xa5/0x190
-> [59898.330126]  ksys_read+0xa5/0x150
-> [59898.331405]  do_syscall_64+0x6d/0x1f0
-> [59898.331418]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> 
-> Digging deep and we found it's actually a xattr block which can happened
-> with follow steps:
-> 
-> 1. extent update for file1 and will remove a leaf extent block(block A)
-> 2. we need update the idx extent block too
-> 3. block A has been allocated as a xattr block and will set verified
-> 3. io error happened for this idx block and will the buffer has been
->    released late
-> 4. extent find for file1 will read the idx block and see block A again
-> 5. since the buffer of block A is already verified, we will use it
->    directly, which can lead the upper OOB
-> 
-> Same as __ext4_xattr_check_block, we can check magic even the buffer is
-> verified to fix the problem.
-> 
-> Signed-off-by: yangerkun <yangerkun@huawei.com>
+Hi,
 
-Honestly, I'm not sure if this is worth it. What you suggest will work if
-the magic is overwritten but if we reallocate the block for something else
-but the magic happens to stay intact, we have a problem. The filesystem is
-corrupted at that point with metadata blocks being multiply claimed and
-that's very difficult to deal with. Maybe we should start ignoring
-buffer_verified() bit once the fs is known to have errors and recheck the
-buffer contents on each access? Sure it will be slow but I have little
-sympathy towards people running filesystems with errors... What do people
-think?
+I have been trying to understand the algorithm used for the "half-md4"
+in htree-structured directories. Going through the code (and trying
+not to get into reverse engineering), it looks like it is part of md4
+but not entirely? Yet any subset I take doesn't quite line up with
+what I see in an actual sample.
 
-								Honza
+What is the algorithm it is using to turn an entry of, e.g., "file125"
+into the appropriate hash. I did run a live sample, and try to get
+some form of correlation between the actual md4 hash (16 bytes) of the
+above to the actual entry (4 bytes) shown by debugfs, without much
+luck.
 
-> ---
->  fs/ext4/extents.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 8559e288472f..d2e2ae90bc4a 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -506,6 +506,14 @@ __read_extent_tree_block(const char *function, unsigned int line,
->  			goto errout;
->  	}
->  	if (buffer_verified(bh)) {
-> +		if (unlikely(ext_block_hdr(bh)->eh_magic != EXT4_EXT_MAGIC)) {
-> +			err = -EFSCORRUPTED;
-> +			ext4_error_inode(inode, function, line, 0,
-> +				"invalid magic for verified extent block %llu",
-> +				(unsigned long long)bh->b_blocknr);
-> +			goto errout;
-> +		}
-> +
->  		if (!(flags & EXT4_EX_FORCE_CACHE))
->  			return bh;
->  	} else {
-> -- 
-> 2.31.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+What basic thing am I missing?
+
+Separately, how does the seed play into it?
+
+Thanks
+Avi
