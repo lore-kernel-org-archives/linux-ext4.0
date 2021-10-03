@@ -2,66 +2,118 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48B04C433EF
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 Oct 2021 01:21:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8911CC433F5
+	for <linux-ext4@archiver.kernel.org>; Sun,  3 Oct 2021 12:47:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1FA42619E5
-	for <linux-ext4@archiver.kernel.org>; Sat,  2 Oct 2021 01:21:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D78961207
+	for <linux-ext4@archiver.kernel.org>; Sun,  3 Oct 2021 12:47:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232135AbhJBBX0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 1 Oct 2021 21:23:26 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57991 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S230255AbhJBBXZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Oct 2021 21:23:25 -0400
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1921LXju001968
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 1 Oct 2021 21:21:34 -0400
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id BB75015C34AA; Fri,  1 Oct 2021 21:21:33 -0400 (EDT)
-Date:   Fri, 1 Oct 2021 21:21:33 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     Shreeya Patel <shreeya.patel@collabora.com>,
-        viro@zeniv.linux.org.uk, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, kernel@collabora.com
-Subject: Re: [PATCH 2/2] fs: ext4: Fix the inconsistent name exposed by
- /proc/self/cwd
-Message-ID: <YVe0HS8HM48LDUDS@mit.edu>
-References: <cover.1632909358.git.shreeya.patel@collabora.com>
- <8402d1c99877a4fcb152de71005fa9cfb25d86a8.1632909358.git.shreeya.patel@collabora.com>
- <YVdWW0uyRqYWSgVP@mit.edu>
- <8735pk5zml.fsf@collabora.com>
+        id S230263AbhJCMtD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 3 Oct 2021 08:49:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45458 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230207AbhJCMtC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Oct 2021 08:49:02 -0400
+Received: from mail-ed1-x52d.google.com (mail-ed1-x52d.google.com [IPv6:2a00:1450:4864:20::52d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 933F1C0613EC
+        for <linux-ext4@vger.kernel.org>; Sun,  3 Oct 2021 05:47:14 -0700 (PDT)
+Received: by mail-ed1-x52d.google.com with SMTP id p11so453322edy.10
+        for <linux-ext4@vger.kernel.org>; Sun, 03 Oct 2021 05:47:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=deitcher-net.20210112.gappssmtp.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to;
+        bh=X3xTNBqrAPeWetQyX0mgGNU9IhIdQFU8X083g79QyIg=;
+        b=gAOd7B9Xm6Y3wMNcIY0UE9JB8JKBFNZFTc8vvkVHyVKeFrMHGYERtLNQRAVbgT0tP4
+         01t1wxbBis4uKuc3DP43CZ2TT52juGPu4VBQwZW3Twj/vTQCydqVHEOl9SRwn0Bezh3w
+         2+K8raBnGaI1CnOFNp6swVVkFar/jbpsAS4V9Tw2fKpY7z36K6hZcizvgaMNH8HsTCHs
+         oqnxECGS1T2KiTITKuCvSa2yUYNgqridvAX4TiYewTC4NxrcZ9Ys0RqCU2L+OaNW1H+F
+         oKQQNJ5sBDMDr7zCsfWNzsWavfZnUg+DwEHvlqseXR2Gb/1Ne7qHywfpevsMjhw7mciY
+         XZlQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to;
+        bh=X3xTNBqrAPeWetQyX0mgGNU9IhIdQFU8X083g79QyIg=;
+        b=Hd5rM/Zf0yC9KD57I/iWnuBv9M8hGwiCu2tu/VyCcV/5U62RQ0ZGIlY6dBfT4v3Ps9
+         ZPzVthUkp1+T7ZtH2N0O6oyOtcSAvniXXA+poY4XrAtQ64fe8FAP9HVQVHuF9W0R1WVu
+         fwxhws+5+qI7iXBDucJEW3QQCiX3dqqaDDseYIrFaX8grX7m4mTbI4f7RQvb4TT+ZMft
+         8buiAoyDQJ3qd4jsFWJwSgM8//i5KtcD5xhxaqseHxV2oJR8sTopYLrsNQ+n4YONh55u
+         ildMoK0+mV4IzSA/cf5XESi/GiKPmVDMSTuIPEoRNHropVrDNqd/nO08lPOJa4OPCN7d
+         5aLA==
+X-Gm-Message-State: AOAM533tbjEv3EAEHM3btTVef/wxdzt//eGLp9JGSDEkSMMhCIZLUviK
+        ncB62CyYqNHJ7U8lua99T2EvLINn+YZE7VeUVV8kFWVUoaEuVg==
+X-Google-Smtp-Source: ABdhPJzdIImigDgqE2drzsn9aYTIiuSIn2puxi5uN+ltiADPyTcqsDNvUKjGL1dDxKvCyOudv9BLCkD5KwJJktOQ5rI=
+X-Received: by 2002:a17:906:b1d5:: with SMTP id bv21mr10388075ejb.346.1633265232688;
+ Sun, 03 Oct 2021 05:47:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <8735pk5zml.fsf@collabora.com>
+References: <CAF1vpkgE3XopWRqzFqdyCWg0hQB9FtEhbWmz1t=HZPE+WNEQ3A@mail.gmail.com>
+In-Reply-To: <CAF1vpkgE3XopWRqzFqdyCWg0hQB9FtEhbWmz1t=HZPE+WNEQ3A@mail.gmail.com>
+From:   Avi Deitcher <avi@deitcher.net>
+Date:   Sun, 3 Oct 2021 15:47:01 +0300
+Message-ID: <CAF1vpkgPAy3FJ9mN22OVQ41jQAYoRdoCdqzYwRYYPXD4uucdpg@mail.gmail.com>
+Subject: Re: algorithm for half-md4 used in htree directories
+To:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 01, 2021 at 03:11:30PM -0400, Gabriel Krisman Bertazi wrote:
-> 
-> The dcache name is exposed in more places, like /proc/mounts.  We have a
-> bug reported against flatpak where its initialization code bind mounts a
-> directory that was previously touched with a different case combination,
-> and then checks /proc/mounts in a case-sensitive way to see if the mount
-> succeeded.  This code now regresses on CI directories because the name
-> it asked to bind mount is not found in /proc/mounts.
+I can narrow down the question further. In my live sample, one of the
+entries in the tree is for a directory named "dir155".
 
-Ah, thanks for the context.  That makes sense.
+If I run "dx_hash dir155", I get:
 
-> I think the more reasonable approach is to save the disk exact name on
-> the dcache, because that is the only version that doesn't change based
-> on who won the race for the first lookup.
+# debugfs -R "dx_hash dir155" /var/lib/file.img
+debugfs 1.46.2 (28-Feb-2021)
+Hash of dir155 is 0x16279534 (minor 0x0)
 
-What about the alternative of storing the casefolded name?  The
-advantage of using the casefolded name is that we can always casefold
-the name, where as in the case of a negative dentry, there is no disk
-exact name to use (since by definition there is no on-disk name).
+If I look in the tree with "htree_dump", I get:
 
-      	      	  	    	       - Ted
+# debugfs -R "htree_dump /testdir" /var/lib/file.img
+debugfs 1.46.2 (28-Feb-2021)
+....
+Entry #0: Hash 0x00000000, block 1
+Reading directory block 1, phys 6459
+168 0x00d11d98-b9b6b16b (16) dir155   332 0x009edafe-77de7d72 (16) dir319
+
+That hash for dir155 does not match what dx_hash gave. If I try to
+take the code from fs/ext4/hash.c and build a small program to
+calculate the hash, I get:
+
+$ ./md4 dir155
+MD4: d90278a1 25182ac7 a02e56be c3f30f04
+hash: 0x25182ac6
+minor: 0xa02e56be
+
+Clearly that isn't what is in the tree. What basic am I missing?
+
+On Fri, Oct 1, 2021 at 2:49 PM Avi Deitcher <avi@deitcher.net> wrote:
+>
+> Hi,
+>
+> I have been trying to understand the algorithm used for the "half-md4"
+> in htree-structured directories. Going through the code (and trying
+> not to get into reverse engineering), it looks like it is part of md4
+> but not entirely? Yet any subset I take doesn't quite line up with
+> what I see in an actual sample.
+>
+> What is the algorithm it is using to turn an entry of, e.g., "file125"
+> into the appropriate hash. I did run a live sample, and try to get
+> some form of correlation between the actual md4 hash (16 bytes) of the
+> above to the actual entry (4 bytes) shown by debugfs, without much
+> luck.
+>
+> What basic thing am I missing?
+>
+> Separately, how does the seed play into it?
+>
+> Thanks
+> Avi
+
+
+
+-- 
+Avi Deitcher
+avi@deitcher.net
+Follow me http://twitter.com/avideitcher
+Read me http://blog.atomicinc.com
