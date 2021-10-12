@@ -2,113 +2,84 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 189B8C433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 19:03:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89792C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 19:05:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id F2F2260F23
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 19:03:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6363A60F3A
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 19:05:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234204AbhJLTFk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Oct 2021 15:05:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38832 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232502AbhJLTFj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Oct 2021 15:05:39 -0400
-Received: from mail.skyhub.de (mail.skyhub.de [IPv6:2a01:4f8:190:11c2::b:1457])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86EF8C061745;
-        Tue, 12 Oct 2021 12:03:37 -0700 (PDT)
-Received: from zn.tnic (p200300ec2f194200eaffd58d18ef125f.dip0.t-ipconnect.de [IPv6:2003:ec:2f19:4200:eaff:d58d:18ef:125f])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.skyhub.de (SuperMail on ZX Spectrum 128k) with ESMTPSA id 2D4C41EC047E;
-        Tue, 12 Oct 2021 20:39:53 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=alien8.de; s=dkim;
-        t=1634063993;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:in-reply-to:in-reply-to:  references:references;
-        bh=8Sp+eleeSlkMveboN9yGLXRy3+zpBsRKI2ycgGcwO+c=;
-        b=Dm89jgCV6WyVafkaKnSrbYeHME2ZlsVKpzn3pepunFErqUQj/DXUAmY733EhvfF85Z//tP
-        RYfWJqiFoAUJ4IDFwSavTIVHKru40OpOvQ36Wi8K1yoSd6tJ6NKgpj6apo02zXgFEdR/eZ
-        AtDinE3Ab/7tVUiJpMA/GUateh9TiqY=
-Date:   Tue, 12 Oct 2021 20:39:50 +0200
-From:   Borislav Petkov <bp@alien8.de>
-To:     Eric Whitney <enwlinux@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Subject: Re: kernel BUG at fs/ext4/inode.c:1721!
-Message-ID: <YWXWdlut+IW9eh8B@zn.tnic>
-References: <YWANK0HchPv9m6hA@zn.tnic>
- <20211008173305.GA28198@localhost.localdomain>
- <YWCL2OXaz8/OnBiF@zn.tnic>
- <20211011231124.GB17897@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20211011231124.GB17897@localhost.localdomain>
+        id S231243AbhJLTHP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Oct 2021 15:07:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:59678 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S234764AbhJLTFb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Oct 2021 15:05:31 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id CC15E60E09;
+        Tue, 12 Oct 2021 19:03:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linux-foundation.org;
+        s=korg; t=1634065405;
+        bh=41ZgXWvJqX6cNDtIQEONvKgmB5mmWoA3gdKQ9esdOVk=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=0blFRlQK51dgu5FJKOqFr1L6t3mVBbILK25yhOQvYbDuiPk4p/Xlmnu0gZa3KlXFG
+         piH0prBBWaQ3m2nPz29jPiijWku3bv4yF077HespUJB5jDIWOWf1wBVn/h4JIWCJTW
+         NDX7+IpzU2qmix0bc6QUcCtixPz37PA42oiuSsT8=
+Date:   Tue, 12 Oct 2021 12:03:22 -0700
+From:   Andrew Morton <akpm@linux-foundation.org>
+To:     Jason Gunthorpe <jgg@nvidia.com>
+Cc:     Alex Sierra <alex.sierra@amd.com>, Felix.Kuehling@amd.com,
+        linux-mm@kvack.org, rcampbell@nvidia.com,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        hch@lst.de, jglisse@redhat.com, apopple@nvidia.com
+Subject: Re: [PATCH v1 00/12] MEMORY_DEVICE_COHERENT for CPU-accessible
+ coherent device memory
+Message-Id: <20211012120322.224d88dad0188160a40dd615@linux-foundation.org>
+In-Reply-To: <20211012185629.GZ2744544@nvidia.com>
+References: <20211012171247.2861-1-alex.sierra@amd.com>
+        <20211012113957.53f05928dd60f3686331fede@linux-foundation.org>
+        <20211012185629.GZ2744544@nvidia.com>
+X-Mailer: Sylpheed 3.5.1 (GTK+ 2.24.31; x86_64-pc-linux-gnu)
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Oct 11, 2021 at 07:11:24PM -0400, Eric Whitney wrote:
-> I've tried numerous kernel builds with -rc4 and rerun the full set of xfstests
-> we use when regressing ext4 each rc using a kernel that doesn't enable
-> FS_ENCRYPTION (I normally run with that) without luck.  The code that caused
-> the splat you saw is new and would run when an assertion is violated,
-> suggesting that there may be an unsuspected bug elsewhere in ext4.
+On Tue, 12 Oct 2021 15:56:29 -0300 Jason Gunthorpe <jgg@nvidia.com> wrote:
 
-Hmm.
-
-> Do you recall having seen any evidence of ENOMEM or ENOSPC conditions prior
-> to the failure?
-
-I don't see anything of the sorts in the dmesg I've saved.
-
-> If you're willing to share, please send along your kernel config file and I'll
-> try working with that as well.
-
-Sure, I'll send you the config I used and the dmesg I caught privately -
-you might see something I've missed. Stuff like this, for example:
-
-[   10.254952] Adding 15721468k swap on /dev/nvme0n1p1.  Priority:-2 extents:1 across:15721468k SS
-[   10.275365] EXT4-fs (nvme0n1p2): re-mounted. Opts: errors=remount-ro. Quota mode: disabled.
-[   10.417820] device-mapper: ioctl: 4.45.0-ioctl (2021-03-22) initialised: dm-devel@redhat.com
-[   10.595392] loop: module loaded
-[   10.661742] EXT4-fs (sdc1): mounted filesystem with ordered data mode. Opts: (null). Quota mode: disabled.
-[   10.758774] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null). Quota mode: disabled.
-[   10.930331] r8169 0000:18:00.0 eth0: Link is Up - 100Mbps/Full - flow control rx/tx
-[   10.939298] IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
-[   13.306747] EXT4-fs (sdb1): recovery complete
-[   13.325960] EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts: (null). Quota mode: disabled.
-[   13.353624] EXT4-fs (nvme1n1p1): mounted filesystem with ordered data mode. Opts: (null). Quota mode: disabled.
-[  191.896690] loop0: detected capacity change from 0 to 2048
-[  191.941350] EXT4-fs (dm-0): mounting ext2 file system using the ext4 subsystem
-[  191.948773] EXT4-fs (dm-0): mounted filesystem without journal. Opts: (null). Quota mode: disabled.
-[  282.932355] fuse: init (API version 7.34)
-[ 3159.620840] loop1: detected capacity change from 0 to 4194304
-[ 3160.125963] EXT4-fs (dm-1): mounting ext3 file system using the ext4 subsystem
-[ 3160.203143] EXT4-fs (dm-1): mounted filesystem with ordered data mode. Opts: (null). Quota mode: disabled.
-
-Dunno if using ext4 to mount ext2 and ext3 filesystems would be
-relevant.
-
-> In the meantime, should this bug get in your way, just revert the following
-> patch and you should be able to run without further trouble:
+> > To what other uses will this infrastructure be put?
+> > 
+> > Because I must ask: if this feature is for one single computer which
+> > presumably has a custom kernel, why add it to mainline Linux?
 > 
-> 948ca5f30e1d "ext4: enforce buffer head state assertion in ext4_da_map_blocks"
+> Well, it certainly isn't just "one single computer". Overall I know of
+> about, hmm, ~10 *datacenters* worth of installations that are using
+> similar technology underpinnings.
 > 
-> I'll likely be posting a patch to revert this shortly, since it's going to
-> take some time to sort out what's going on without a reproducer.
+> "Frontier" is the code name for a specific installation but as the
+> technology is proven out there will be many copies made of that same
+> approach.
+> 
+> The previous program "Summit" was done with NVIDIA GPUs and PowerPC
+> CPUs and also included a very similar capability. I think this is a
+> good sign that this coherently attached accelerator will continue to
+> be a theme in computing going foward. IIRC this was done using out of
+> tree kernel patches and NUMA localities.
+> 
+> Specifically with CXL now being standardized and on a path to ubiquity
+> I think we will see an explosion in deployments of coherently attached
+> accelerator memory. This is the high end trickling down to wider
+> usage.
+> 
+> I strongly think many CXL accelerators are going to want to manage
+> their on-accelerator memory in this way as it makes universal sense to
+> want to carefully manage memory access locality to optimize for
+> performance.
 
-Gotcha.
+Thanks.  Can we please get something like the above into the [0/n]
+changelog?  Along with any other high-level info which is relevant?
 
-> Thanks again for your help,
+It's rather important.  "why should I review this", "why should we
+merge this", etc.
 
-Thanks too for taking a look.
-
--- 
-Regards/Gruss,
-    Boris.
-
-https://people.kernel.org/tglx/notes-about-netiquette
