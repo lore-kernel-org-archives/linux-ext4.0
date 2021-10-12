@@ -2,57 +2,86 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C3CFC433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 17:30:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CDB9C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 18:40:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 14DE160EFE
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 17:30:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EB30760EDF
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Oct 2021 18:40:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232060AbhJLRcx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Oct 2021 13:32:53 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:36811 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S231756AbhJLRcw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Oct 2021 13:32:52 -0400
-Received: from cwcc.thunk.org (pool-72-74-133-215.bstnma.fios.verizon.net [72.74.133.215])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 19CHUkqM025388
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 12 Oct 2021 13:30:47 -0400
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 213D215C00CA; Tue, 12 Oct 2021 13:30:46 -0400 (EDT)
-Date:   Tue, 12 Oct 2021 13:30:46 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Avi Deitcher <avi@deitcher.net>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: algorithm for half-md4 used in htree directories
-Message-ID: <YWXGRgfxJZMe9iut@mit.edu>
-References: <CAF1vpkgPAy3FJ9mN22OVQ41jQAYoRdoCdqzYwRYYPXD4uucdpg@mail.gmail.com>
- <3A493D20-568A-4D63-A575-5DEEBFAAF41A@dilger.ca>
- <CAF1vpkigHMdKphnNjDm7=rR6TTxViHGGHi3bb64rsHG7KbqYzQ@mail.gmail.com>
- <CAF1vpkhwSOfGfErUUrp0YU5hSt58TtykTECiJXTcgqDtG0WVVg@mail.gmail.com>
- <YWSck57bsX/LqAKr@mit.edu>
- <CAF1vpkiKx3jArgjNBrid9-MSHBweGsFL0zu0UgDX_dq_hrkUgw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAF1vpkiKx3jArgjNBrid9-MSHBweGsFL0zu0UgDX_dq_hrkUgw@mail.gmail.com>
+        id S234952AbhJLSmP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Oct 2021 14:42:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:50428 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S234947AbhJLSmJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Oct 2021 14:42:09 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id A60DA60EDF;
+        Tue, 12 Oct 2021 18:40:00 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linux-foundation.org;
+        s=korg; t=1634064001;
+        bh=4NlzI4dFxtFWsmK4HNOLFkn2j8KfMJnWPwZWKJPEPAI=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=aLV8P7/TA7iQMJF0qaKt5ZKy+gE2TiiPu2nZqetOP9YyyAcsJo/jiZgNVzTU1lkT+
+         2W/4JR9XszN9+PCKAd86SS6HZy4Utp+IQoI/3t8eWWfSQ4e0sZiWOtAYA0TYppiR0t
+         YJo2Ed+MK8pToXyv2626yPlvlXLxExtGRpdF1Mv4=
+Date:   Tue, 12 Oct 2021 11:39:57 -0700
+From:   Andrew Morton <akpm@linux-foundation.org>
+To:     Alex Sierra <alex.sierra@amd.com>
+Cc:     <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
+        <rcampbell@nvidia.com>, <linux-ext4@vger.kernel.org>,
+        <linux-xfs@vger.kernel.org>, <amd-gfx@lists.freedesktop.org>,
+        <dri-devel@lists.freedesktop.org>, <hch@lst.de>, <jgg@nvidia.com>,
+        <jglisse@redhat.com>, <apopple@nvidia.com>
+Subject: Re: [PATCH v1 00/12] MEMORY_DEVICE_COHERENT for CPU-accessible
+ coherent device memory
+Message-Id: <20211012113957.53f05928dd60f3686331fede@linux-foundation.org>
+In-Reply-To: <20211012171247.2861-1-alex.sierra@amd.com>
+References: <20211012171247.2861-1-alex.sierra@amd.com>
+X-Mailer: Sylpheed 3.5.1 (GTK+ 2.24.31; x86_64-pc-linux-gnu)
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Oct 11, 2021 at 07:58:00PM -0700, Avi Deitcher wrote:
-> Aha. I missed that the seed is injected into buf before passing it
-> into half_md4_transform. I was looking at it as just the empty buffer
-> before the first iteration of the loop (or, in my case, since I was
-> testing with a 6 char filename, the only iteration).
+On Tue, 12 Oct 2021 12:12:35 -0500 Alex Sierra <alex.sierra@amd.com> wrote:
+
+> This patch series introduces MEMORY_DEVICE_COHERENT, a type of memory
+> owned by a device that can be mapped into CPU page tables like
+> MEMORY_DEVICE_GENERIC and can also be migrated like MEMORY_DEVICE_PRIVATE.
+> With MEMORY_DEVICE_COHERENT, we isolate the new memory type from other
+> subsystems as far as possible, though there are some small changes to
+> other subsystems such as filesystem DAX, to handle the new memory type
+> appropriately.
 > 
-> I will repeat my experiment with that and see if I can tease it out.
+> We use ZONE_DEVICE for this instead of NUMA so that the amdgpu
+> allocator can manage it without conflicting with core mm for non-unified
+> memory use cases.
+> 
+> How it works: The system BIOS advertises the GPU device memory (aka VRAM)
+> as SPM (special purpose memory) in the UEFI system address map.
+> The amdgpu driver registers the memory with devmap as
+> MEMORY_DEVICE_COHERENT using devm_memremap_pages.
+> 
+> The initial user for this hardware page migration capability will be
+> the Frontier supercomputer project.
 
-BTW, if you are looking for a userspace implementation of the hash,
-it's available in libext2fs in e2fsprogs.
+To what other uses will this infrastructure be put?
 
-Cheers,
+Because I must ask: if this feature is for one single computer which
+presumably has a custom kernel, why add it to mainline Linux?
 
-					- Ted
+> Our nodes in the lab have .5 TB of
+> system memory plus 256 GB of device memory split across 4 GPUs, all in
+> the same coherent address space. Page migration is expected to improve
+> application efficiency significantly. We will report empirical results
+> as they become available.
+> 
+> This includes patches originally by Ralph Campbell to change ZONE_DEVICE
+> reference counting as requested in previous reviews of this patch series
+> (see https://patchwork.freedesktop.org/series/90706/). We extended
+> hmm_test to cover migration of MEMORY_DEVICE_COHERENT. This patch set
+> builds on HMM and our SVM memory manager already merged in 5.14.
+> We would like to complete review and merge this migration patchset for
+> 5.16.
+
