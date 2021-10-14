@@ -2,134 +2,143 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 746C6C4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Oct 2021 15:39:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E250AC433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Oct 2021 16:25:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5EC08610F8
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Oct 2021 15:39:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C7E9E611C0
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Oct 2021 16:25:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232213AbhJNPlz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 Oct 2021 11:41:55 -0400
-Received: from mail-dm6nam10on2087.outbound.protection.outlook.com ([40.107.93.87]:13216
-        "EHLO NAM10-DM6-obe.outbound.protection.outlook.com"
+        id S232599AbhJNQ1S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 Oct 2021 12:27:18 -0400
+Received: from mail-mw2nam12on2056.outbound.protection.outlook.com ([40.107.244.56]:29792
+        "EHLO NAM12-MW2-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S232017AbhJNPlu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Oct 2021 11:41:50 -0400
+        id S231597AbhJNQ1O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 Oct 2021 12:27:14 -0400
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=cS4lnx1/cBZIGKUIuXbmGNKkETz4x9iZ4Pdq2q3H0m8CE0iwLtlUjQlS3gf+AHHxacHe/lQTreH4qEEPOR3uYW1oRREtS5xINY2BzRdV0UDUC8ZLXTIqEY+cTP+zLFCNp3IOY9igHT7T3FkgrRtH5eddatv3d9w+McFKXJIY5KRTyBkok9ZVkBvVBnClIORqGrdBmM9rtiqVAyETl0H34e2xkEfcbYahDdL9am9IqZ2A9hywkptkIX8TQfd7gwrBYbUALO9wxNJxaDS4jRV3+zl/M6uP4Ht2rFmiOjH0umeXkphoxKV9PePk8lStUYx72wfzh17eOHX3rSSijCoyUg==
+ b=N1mGgsNpnn14K8trujlHhUw1bgwGEfBD3bV793NQu56Fpq4XCKSca9XBc0VYazJ+nCxNEo9v+8ndvfNi7TvTXoLCB9t73984KF78Mn1G9rHKIyIFYN6wRlNkAshs+F3um2goYemGW/2MWgkY4UXPDWyMnONMGOoF4vr2omc2k+7F6a64yiMZxo+SnMmPEMjK86GVohNfsFWEe8SA3wZd85ElvDF9utHGmNlOTQlPZFQaZTD6nNkIap0Sk5PZyCvUSNnNsijjB/j2H4EdLeZmvFtKIIVdXQ8T8gO6wH5eWP51E3gjSeU37pVrx+dekixxylWXptDB4hy0p4Yv8jsbwQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=/bn8qAdDaHiVmdCG6MQFYTmjp/vL9YDLKlxT4aAjtWk=;
- b=Mv1i760n2OsTdL2S5+yvAZnOlh5K/PMocGjIOZzku41x5K15WfNP1PPP8GeS9WcCkp5qYbfaa0SPeI0PeB3nM4wJZ6cRj/25h+rtB/PIn2jJC4RIEdSjedRuVENa59LGa/yMN9yqC5bmBqs/foL/2U1eUlCG+v+pHbH/4fShI4qQoz3v7ZsLzTVGeH1JglNRdRiypyuI75ENCovacz56Mi1bY5o70LNDFxfXMf9y/pvOBVqByEuwaVU9f4nq3gt5wi4u102GB7D+JP48ILP/OnSkK865Esh4fVeIyiItn5H8iQsQmUtJvI1To7RaZLqTpvD82Tw3bMiKjKdEXyu/jw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 165.204.84.17) smtp.rcpttodomain=linux-foundation.org smtp.mailfrom=amd.com;
- dmarc=pass (p=quarantine sp=quarantine pct=100) action=none
- header.from=amd.com; dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
+ bh=LJLeD1hbsiaKJPaIesdymL3FVDDH06thiwOygGVYJFU=;
+ b=Y/fHQDI6WDZgSHK/B1lrlEk21kcbOGH37MdhOP6M+sG5ovVnl9EP3cf6UKrPz8E1mzoKNGeW56kqn4wvUXaJnICTq8U0CDH1i7xLtSruIktYDWLnQj3D77X+z5LjI+W5dC7nHI314RUQZOtJLIRncFAMYhczkbWoYof2O7tzJVWsUaYu2NQTfHUCPCmcZo+1UaAF4eBgMzMR1Yl4mbOo+fs53JTbgGTaB9Pqi9VFgbFpklGO4sJ/Gajwbsq1wR7nBTJp003FYqTe5VItzJJR8ntyz2WWMBo2P8IdU329l2ajoDe9SoloDyjHoWN05J+l7qWvZfCILotiGsWcMHL6zw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
+ dkim=pass header.d=nvidia.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
+ s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=/bn8qAdDaHiVmdCG6MQFYTmjp/vL9YDLKlxT4aAjtWk=;
- b=R9ZBGs/3eD0RRB71PnzbmYMoZkQll5BNmSGbqpBckbpIE47PjSXlj8MYxTdL/6VOu27TjMitZr+c+YGGVb7CeFcd/SjGaayqFIE1T0Zcdp+t++/yhb72hn95WP9yYdnzfU93qmYpdnyeULuGZ0FY7YJfSOhJUGsSXOpSy21lou8=
-Received: from CO2PR04CA0100.namprd04.prod.outlook.com (2603:10b6:104:6::26)
- by DM6PR12MB4579.namprd12.prod.outlook.com (2603:10b6:5:2ac::7) with
+ bh=LJLeD1hbsiaKJPaIesdymL3FVDDH06thiwOygGVYJFU=;
+ b=RmBomT02tsb6GPgW9vHAhezCUXfnGfP6/5XsOsdeenfHLbhmwClkXIUMjJxdl3jWRO6zUHOU+cereHSwVMMR4OFbwrV5fk2neLWWl0YciNHGiFciC1DIFeSC4+9C5TzpObfphoeOa77g96kQYQWr4i+MBp2o3JKILZiIc8UIN8MsurizNoadsn50oFaMeEOwinLJkw/e2aS4jKuHx0pf4kSKVqz4HkaaDxcRZidROPifaX+PonTg01AxnOsENnV/qriABOJZzy45IrMLEAPmikUQIF1c/8+rYpOvG6nxYhemMtHugRq0y0IP4B6XFtsTZ0JRxSFjwBo/nyVeXj2E+g==
+Authentication-Results: amd.com; dkim=none (message not signed)
+ header.d=none;amd.com; dmarc=none action=none header.from=nvidia.com;
+Received: from BL0PR12MB5506.namprd12.prod.outlook.com (2603:10b6:208:1cb::22)
+ by BL1PR12MB5205.namprd12.prod.outlook.com (2603:10b6:208:308::17) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4608.16; Thu, 14 Oct
- 2021 15:39:40 +0000
-Received: from CO1NAM11FT022.eop-nam11.prod.protection.outlook.com
- (2603:10b6:104:6:cafe::15) by CO2PR04CA0100.outlook.office365.com
- (2603:10b6:104:6::26) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4608.15 via Frontend
- Transport; Thu, 14 Oct 2021 15:39:40 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
- smtp.mailfrom=amd.com; linux-foundation.org; dkim=none (message not signed)
- header.d=none;linux-foundation.org; dmarc=pass action=none
- header.from=amd.com;
-Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
- 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
- client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
-Received: from SATLEXMB04.amd.com (165.204.84.17) by
- CO1NAM11FT022.mail.protection.outlook.com (10.13.175.199) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.4608.15 via Frontend Transport; Thu, 14 Oct 2021 15:39:39 +0000
-Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
- (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2308.8; Thu, 14 Oct
- 2021 10:39:38 -0500
-From:   Alex Sierra <alex.sierra@amd.com>
-To:     <akpm@linux-foundation.org>, <Felix.Kuehling@amd.com>,
-        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>
-CC:     <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
-        <hch@lst.de>, <jgg@nvidia.com>, <jglisse@redhat.com>,
-        <apopple@nvidia.com>, <willy@infradead.org>
-Subject: [PATCH v1 0/2] mm: remove extra ZONE_DEVICE struct page refcount
-Date:   Thu, 14 Oct 2021 10:39:26 -0500
-Message-ID: <20211014153928.16805-1-alex.sierra@amd.com>
-X-Mailer: git-send-email 2.32.0
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4608.15; Thu, 14 Oct
+ 2021 16:25:07 +0000
+Received: from BL0PR12MB5506.namprd12.prod.outlook.com
+ ([fe80::e8af:232:915e:2f95]) by BL0PR12MB5506.namprd12.prod.outlook.com
+ ([fe80::e8af:232:915e:2f95%6]) with mapi id 15.20.4608.017; Thu, 14 Oct 2021
+ 16:25:07 +0000
+Date:   Thu, 14 Oct 2021 13:25:06 -0300
+From:   Jason Gunthorpe <jgg@nvidia.com>
+To:     Alex Sierra <alex.sierra@amd.com>
+Cc:     akpm@linux-foundation.org, Felix.Kuehling@amd.com,
+        linux-mm@kvack.org, rcampbell@nvidia.com,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        hch@lst.de, jglisse@redhat.com, apopple@nvidia.com,
+        willy@infradead.org
+Subject: Re: [PATCH v1 1/2] ext4/xfs: add page refcount helper
+Message-ID: <20211014162506.GU2744544@nvidia.com>
+References: <20211014153928.16805-1-alex.sierra@amd.com>
+ <20211014153928.16805-2-alex.sierra@amd.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211014153928.16805-2-alex.sierra@amd.com>
+X-ClientProxiedBy: MN2PR20CA0022.namprd20.prod.outlook.com
+ (2603:10b6:208:e8::35) To BL0PR12MB5506.namprd12.prod.outlook.com
+ (2603:10b6:208:1cb::22)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Originating-IP: [10.180.168.240]
-X-ClientProxiedBy: SATLEXMB04.amd.com (10.181.40.145) To SATLEXMB04.amd.com
- (10.181.40.145)
-X-EOPAttributedMessage: 0
+Received: from mlx.ziepe.ca (142.162.113.129) by MN2PR20CA0022.namprd20.prod.outlook.com (2603:10b6:208:e8::35) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4608.16 via Frontend Transport; Thu, 14 Oct 2021 16:25:07 +0000
+Received: from jgg by mlx with local (Exim 4.94)        (envelope-from <jgg@nvidia.com>)        id 1mb3XW-00EyXB-AR; Thu, 14 Oct 2021 13:25:06 -0300
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: caa3a6e3-5675-483e-9d6e-08d98f28d5ef
-X-MS-TrafficTypeDiagnostic: DM6PR12MB4579:
-X-Microsoft-Antispam-PRVS: <DM6PR12MB45795BA9EB7B10B5A17DBA95FDB89@DM6PR12MB4579.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:4941;
+X-MS-Office365-Filtering-Correlation-Id: 77c38229-15fd-4275-c224-08d98f2f2f96
+X-MS-TrafficTypeDiagnostic: BL1PR12MB5205:
+X-MS-Exchange-Transport-Forked: True
+X-Microsoft-Antispam-PRVS: <BL1PR12MB5205E22E9485A7CC42EE68E7C2B89@BL1PR12MB5205.namprd12.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:669;
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: VXNT7Z9fWgkFHWDdcCVO70GKwG7fiGEZwJKOrrCcswA7Qt+FPao17nlmJywARoaiL+B61aeTNsFJxmHVL+56+83TxoikoWWUe+EhOq2J6xfzzKYMHG7fbF3wa7gKlV2PI+I/i6I6FeT1BtMXUV21Vs1O1J5KBk1LpEy+jgPZ6qCfjmrHwCx9RM6uF8deUXgLVL9WR2YMH3zSeBnMgGtHAUPdFlxuoHaV4UusH575XmLyCH7F/R1NhHQ8dcKdwCL03CNdjGeSFxEZqpCPnR1t7CXQ4N+Woco0tRkQcRb3j56iIFs1Ef6UKpG4IiLFLF5yp1N66FZBJO0CLqyXknI/7m9SFzrtZa8IXBZUZmuin8usmiEs/FNoeI8MHo/HmGkL1DrKuBNTZ0EzIHrYn4zKXH8sqDvb78Fz527z4ErbND7PUuZsRn5fk2EW3hfbDOKpx5//iuAvEZohEO/kQvveHXVkSObsdA/aaBbYU4RG9xfq3g4AOckb/MUTNzLKiAh2kRTiIsQdEBBwmGvY9Uh95HHgeNg9s33d3Tul+Bs+lObfIkTBaIeqwc+ETcezJ+f39YoasGNeWPw7dezM20UpKESYu+1Fr3c9YsuYGQE8hcgoi/G45jOsB3PdSCZyFVCRBiIuTgHLhpxJuBkZ0IrhUICF8GvMvOrHMM8jdiLbNnhAmuX9CU/UMB8JTnk7gsSsEwfdZMO54g5v/Qlrte7gpgG2s+fHEsNGCREdeS0hIF9gQ76CrGQvtQI9f/COH6m+2Ym4bf74MLfybu1Fdgi/wgf0bbitVQnAPhJTNs8RWoq+69R4hxx9OoXbwUjS8SM/8iFDLQRbF2RG9x5YNZv96AU39ayCAis6lheSJ77BDHQ=
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(4636009)(46966006)(36840700001)(336012)(8936002)(36756003)(81166007)(7696005)(110136005)(36860700001)(44832011)(186003)(2616005)(16526019)(7416002)(966005)(47076005)(83380400001)(356005)(508600001)(54906003)(82310400003)(26005)(70586007)(70206006)(6666004)(5660300002)(1076003)(316002)(426003)(4326008)(86362001)(2906002)(8676002)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Oct 2021 15:39:39.8541
+X-Microsoft-Antispam-Message-Info: evhYeFSvxsL5MGiv2yxR+JYtbUuMYMHwLV0Lj9VOI9vW0Ji2RiZ84yCBw7DyABP04axDPQv4b4G6ThumMadJBkXoPivdLBWRkwDXPdH53enfp5COxM8B2vVxIXktK+EW1Q3OkmysZUSTLwpn14B2EDRq9zxwTMiZP/oKq4nHNKe5Hh4hQsJEUch7/J6NaqUHqUZziNm28wyYeKg3dGkhGwVyEeBjjJ+D2UfvDrkRKI+P2kv6BmPIw0+OGN38vKrI+HOlcFHNW9tm83Sy6CBMHI3/5NwB/0D+EJ74uEKqrPMIfRdo+orC9A8POkQe5xNMiLNZYPtGzDlcRk6iBiIUHFX8W+K4bbqHEWhdSB37PXFity8XN4sClklS5XUuEA39oxqLEq/Nj6VsDKjhvNe7F3Z4pi+hPJ3rU36EEqTY5uCc7cc0z8xmty0WKW3et2gRdGO0nyToBxrCihQQHbTkYpFjtMo0e0b/wQ+WDsuLKdxgSszwrrCnq8xJgN3ld8fqyraC2XLSZmLxs6THgVPvacEBfCgYx3daF6J81jNF7vSDe+CWJVI4ME07qP+s/wsnEze/8+OqMllhXokHVttiIqPrYcTrHxmvQVGnJEJkcuo4nLbP7dNggK3USbC363KZbXYiLoEA7F4GSdrHF6/yiA==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BL0PR12MB5506.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(86362001)(6916009)(4744005)(9746002)(66946007)(186003)(66476007)(8676002)(9786002)(8936002)(36756003)(2906002)(66556008)(26005)(38100700002)(4326008)(426003)(1076003)(316002)(508600001)(33656002)(2616005)(7416002)(5660300002)(83380400001);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?mxBqb3KMnRnsZrkEh6dJagidpVJeFEAVHuIapxuWNmYZI1hyH+jtKFPegrIe?=
+ =?us-ascii?Q?TLHK4QA0NV5kozF7YJCTt5DcbDysQpY7mlviHtqjiJk2DoOumAbWIpGfQ/wI?=
+ =?us-ascii?Q?ybV/Le+u/eG01b3O/QY671bw1bCf/+mHTF1WU/B/fLnzk85mRW/r9JyZRJ7N?=
+ =?us-ascii?Q?sTfmFk8yK+nDRd2Shn4dGukX4bmxhyyF8DQb1yjfRm7YGL6haNraafoVobFO?=
+ =?us-ascii?Q?qSorZ8IMUuOt4ZLFJHmr01fKiY2NCN+LV5SyD8AgHmX9bIJ5nOR7S1aH8fbr?=
+ =?us-ascii?Q?hNKpVxcnruTF23q0sIpCELu/00kfsJ6ge0sk4omiEJLwpHhGyKZ2qcwsNXXa?=
+ =?us-ascii?Q?2s5BKrZb6M3plj7L1tOO1uq7KizXVBeLkbG/tNcQqKtXd1AiXxgcOQs9D1Py?=
+ =?us-ascii?Q?w/Yt6eI/n75pJr7/2Sd7wle0NvqmZIw2Pwwwz6XQptH5krb/WhIhelLgst03?=
+ =?us-ascii?Q?20bIq/TKrBxcwaCjKpYgJGiKidIhBXAExSWbcJ3lddZ8we7MVeKcA4eGNJok?=
+ =?us-ascii?Q?JyVM6t0m46cZB/E9LUlx3khbDA+tKwGpw/FLTSGw5OZtHXT/RDZgKjk6rJO4?=
+ =?us-ascii?Q?AtTRP98G0IQBbyegm2I3qxyiqVW/+QBalH42uP02h/1ywjWYLiU/glCUa6Pz?=
+ =?us-ascii?Q?xHBnDogABk05K5/UsO6XpEQ2sD/r+l6D6CotZjmtj7wwdzCVlEVXvmLHG6us?=
+ =?us-ascii?Q?NIU3sevaJjEKe1PN6Vkk9zR16wku79bnbLGlas44RcSiMKxVzKxor18gWqua?=
+ =?us-ascii?Q?eFqyvMU2zpMhD1Fkosbl5pHwHRyYw3IKkmH5k15XoNDiJ+o8sHFKEarYXq0a?=
+ =?us-ascii?Q?vN9CFh2T3Jl2/HxhODsTxt47gdvuoZhqJoPeDRKkcBMo+Ey6zaKboEEMSMr7?=
+ =?us-ascii?Q?EkWTRnv9pXh075q03Iu6zPPHHlMlEJSFHUUESKumtB56jn9eODlHGcGaDP+u?=
+ =?us-ascii?Q?y20fUSNSpERxY3aaYrF5r+1HQjbwXDkCJNwrJUHdv824Q7Wu5VEWN7//QBSY?=
+ =?us-ascii?Q?f1vi9Xq3TfWYK5sanhXYVI9o2TPCgiIhpNUWFXrph3NIZIP3k/hW4obaoOST?=
+ =?us-ascii?Q?gS/QCHmUhyTwYXLDLvpufHOKw0H1mTj297nJsi+ED+JJPhMYW9cfe8llwXVN?=
+ =?us-ascii?Q?g5MagxzcQN0fKzp/iL5vFxjIGlk+Kfvn2eS7e7TPX6zf+Llz99UujhJYTmbR?=
+ =?us-ascii?Q?cVih7JoXKm0PGp1IWYOXW7vYJVpU+0svvBzc8CPzlPz9CrsU8HJn6Qy2hHRq?=
+ =?us-ascii?Q?2NeWxTDKxSN6o+S0PuXe58BA6Ai3PS/xrChD+QI2rrdxEmtekV7+PCIMVLNM?=
+ =?us-ascii?Q?pSmVXIal5oMJei7H0PHA5uWqIXfI4OniVNSS7T+ugkM4hg=3D=3D?=
+X-OriginatorOrg: Nvidia.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 77c38229-15fd-4275-c224-08d98f2f2f96
+X-MS-Exchange-CrossTenant-AuthSource: BL0PR12MB5506.namprd12.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Oct 2021 16:25:07.5773
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: caa3a6e3-5675-483e-9d6e-08d98f28d5ef
-X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
-X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT022.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR12MB4579
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: XtABwBXax3fvVGe6cod0pBj/pxXGSmiQJtAQPtGM/GEgVLYvaotca2aGvdL5+V+5
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL1PR12MB5205
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch cleans up ZONE_DEVICE page refcounting. Quoting Matthew
-Wilcox, "it removes a ton of cruft from every call to put_page()"
-This work was originally done by Ralph Campbell and submitted as RFC.
-As of today, it has been ack by Theodore Ts'o / Darrick J. Wong, and
-reviewed by Christoph Hellwig.
-https://lore.kernel.org/linux-mm/20201001181715.17416-1-rcampbell@nvidia.com/
+On Thu, Oct 14, 2021 at 10:39:27AM -0500, Alex Sierra wrote:
+> From: Ralph Campbell <rcampbell@nvidia.com>
+> 
+> There are several places where ZONE_DEVICE struct pages assume a reference
+> count == 1 means the page is idle and free. Instead of open coding this,
+> add a helper function to hide this detail.
+> 
+> Signed-off-by: Ralph Campbell <rcampbell@nvidia.com>
+> Signed-off-by: Alex Sierra <alex.sierra@amd.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Acked-by: Theodore Ts'o <tytso@mit.edu>
+> Acked-by: Darrick J. Wong <djwong@kernel.org>
+> ---
+> v3:
+> [AS]: rename dax_layout_is_idle_page func to dax_page_unused
+> 
+> v4:
+> [AS]: This ref count functionality was missing on fuse/dax.c.
+> ---
+>  fs/dax.c            |  4 ++--
+>  fs/ext4/inode.c     |  5 +----
+>  fs/fuse/dax.c       |  4 +---
+>  fs/xfs/xfs_file.c   |  4 +---
+>  include/linux/dax.h | 10 ++++++++++
+>  5 files changed, 15 insertions(+), 12 deletions(-)
 
-"MEMORY_DEVICE_COHERENT for CPU-accessible coherent device memory"
-patchset depends on this patchset.
-https://lore.kernel.org/linux-mm/20211012171247.2861-1-alex.sierra@amd.com/
+Reviewed-by: Jason Gunthorpe <jgg@nvidia.com>
 
-Ralph Campbell (2):
-  ext4/xfs: add page refcount helper
-  mm: remove extra ZONE_DEVICE struct page refcount
-
- arch/powerpc/kvm/book3s_hv_uvmem.c     |  2 +-
- drivers/gpu/drm/nouveau/nouveau_dmem.c |  2 +-
- fs/dax.c                               |  8 +--
- fs/ext4/inode.c                        |  5 +-
- fs/fuse/dax.c                          |  4 +-
- fs/xfs/xfs_file.c                      |  4 +-
- include/linux/dax.h                    | 10 ++++
- include/linux/memremap.h               |  7 +--
- include/linux/mm.h                     | 11 ----
- lib/test_hmm.c                         |  2 +-
- mm/internal.h                          |  8 +++
- mm/memcontrol.c                        |  6 +--
- mm/memremap.c                          | 69 +++++++-------------------
- mm/migrate.c                           |  5 --
- mm/page_alloc.c                        |  3 ++
- mm/swap.c                              | 45 ++---------------
- 16 files changed, 60 insertions(+), 131 deletions(-)
-
--- 
-2.32.0
-
+Jason
