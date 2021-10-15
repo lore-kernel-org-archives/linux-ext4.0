@@ -2,171 +2,72 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28869C4332F
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 13:38:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A63C0C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 13:39:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 1316861151
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 13:38:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 922B6611CE
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 13:39:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239895AbhJONkm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Oct 2021 09:40:42 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:60384 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240019AbhJONkT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Oct 2021 09:40:19 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 3ED411FD4E;
-        Fri, 15 Oct 2021 13:38:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1634305092; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ea9AcM4Y9HwPFm+/hy1WuVwQrPcBvNHKRLjoVRnGAs4=;
-        b=O4jV/jTQ3h1LQurUirP8sxUQhR3y9c/GD9Mq1AL08Ie67AE5L4KcE0CF3cBVUgD0rW9AZa
-        uEbN5ak/jvKXc0doHsBVAmwEr1OTui/NmFOF/AmootJt5N1ppzSpTcq77MX+o+pZXjW+1h
-        KnYD9U1JI6UBPQ58Ao8YjXc3o6l2s48=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1634305092;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ea9AcM4Y9HwPFm+/hy1WuVwQrPcBvNHKRLjoVRnGAs4=;
-        b=ZnzEkRxVaeZxnjN+gIiYlwymkaDXuk7a7fG9W9oUUkQ1lSZ2x9aW3NryhmQl+yBf55KopU
-        nbrv0hkyBJauC+BQ==
-Received: from quack2.suse.cz (unknown [10.100.200.198])
-        by relay2.suse.de (Postfix) with ESMTP id 29475A3B8B;
-        Fri, 15 Oct 2021 13:38:12 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 032831E0A40; Fri, 15 Oct 2021 15:38:11 +0200 (CEST)
-Date:   Fri, 15 Oct 2021 15:38:11 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
-        Jan Kara <jack@suse.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Theodore Tso <tytso@mit.edu>,
-        David Howells <dhowells@redhat.com>,
-        Khazhismel Kumykov <khazhy@google.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Matthew Bobrowski <repnop@google.com>, kernel@collabora.com
-Subject: Re: [PATCH v7 23/28] fanotify: Report fid info for file related file
- system errors
-Message-ID: <20211015133811.GO23102@quack2.suse.cz>
-References: <20211014213646.1139469-1-krisman@collabora.com>
- <20211014213646.1139469-24-krisman@collabora.com>
- <CAOQ4uxgR9jGSyGoHvDEPpSpMVHGssnkXJJ5a8HRKD6nxMyMLmA@mail.gmail.com>
+        id S239906AbhJONlJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Oct 2021 09:41:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43406 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S236352AbhJONlH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Oct 2021 09:41:07 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21209C061570;
+        Fri, 15 Oct 2021 06:39:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=KanmlaFBwV6DRdQ41vIsGhe17Tn0ouHRuztKUsQZtZ0=; b=Sp0mzcOz6fCy6w+SFxvFJT113O
+        5glduGFb7LrPQcGlbPxTVXMdHUuiHlqKZMAdoOUuvr7VmdXF1ZROQXYx/SURx8NNGczFxd78OKEWX
+        g1EVnRcaMy66kxGA0Ycz2sVxG+Jq6Xakmu96RSvhrCic177Aboi4kmhdgF1+i/MmTps4PefQxR1U9
+        R0lWGSxbM9vlrOVzh3s4+nOS+3Fdq1Tv3nAaot4M9Z7iIxha6Lnwv+o1M6OB/txkN3fli+COyWBGO
+        MCf3+V04TrhkegQ0Jg+SGb+t7IWveuPWDgrPUju8wVNJF/jSdrYZ56qZJb0uP40KoBw/AcVk6NLsV
+        0KeMg3+w==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1mbNMh-0092n0-E6; Fri, 15 Oct 2021 13:35:28 +0000
+Date:   Fri, 15 Oct 2021 14:35:15 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
+        Mike Snitzer <snitzer@redhat.com>, Song Liu <song@kernel.org>,
+        David Sterba <dsterba@suse.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        Anton Altaparmakov <anton@tuxera.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Kees Cook <keescook@chromium.org>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Jan Kara <jack@suse.com>, linux-block@vger.kernel.org,
+        dm-devel@redhat.com, drbd-dev@lists.linbit.com,
+        linux-bcache@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+        target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
+Subject: Re: [PATCH 02/30] block: add a bdev_nr_bytes helper
+Message-ID: <YWmDk8YQKVPRGBfR@casper.infradead.org>
+References: <20211015132643.1621913-1-hch@lst.de>
+ <20211015132643.1621913-3-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAOQ4uxgR9jGSyGoHvDEPpSpMVHGssnkXJJ5a8HRKD6nxMyMLmA@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20211015132643.1621913-3-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 15-10-21 10:56:38, Amir Goldstein wrote:
-> On Fri, Oct 15, 2021 at 12:39 AM Gabriel Krisman Bertazi
-> <krisman@collabora.com> wrote:
-> >
-> > Plumb the pieces to add a FID report to error records.  Since all error
-> > event memory must be pre-allocated, we pre-allocate the maximum file
-> > handle size possible, such that it should always fit.
-> >
-> > For errors that don't expose a file handle report it with an invalid
-> > FID.
-> >
-> > Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> >
-> > ---
-> > Changes since v6:
-> >   - pass fsid from handle_events
-> > Changes since v5:
-> >   - Use preallocated MAX_HANDLE_SZ FH buffer
-> >   - Report superblock errors with a zerolength INVALID FID (jan, amir)
-> > ---
-> >  fs/notify/fanotify/fanotify.c | 15 +++++++++++++++
-> >  fs/notify/fanotify/fanotify.h |  8 ++++++++
-> >  2 files changed, 23 insertions(+)
-> >
-> > diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-> > index 7032083df62a..8a60c96f5fb2 100644
-> > --- a/fs/notify/fanotify/fanotify.c
-> > +++ b/fs/notify/fanotify/fanotify.c
-> > @@ -611,7 +611,9 @@ static struct fanotify_event *fanotify_alloc_error_event(
-> >  {
-> >         struct fs_error_report *report =
-> >                         fsnotify_data_error_report(data, data_type);
-> > +       struct inode *inode = report->inode;
-> >         struct fanotify_error_event *fee;
-> > +       int fh_len;
-> >
-> >         if (WARN_ON(!report))
-> >                 return NULL;
-> > @@ -622,6 +624,19 @@ static struct fanotify_event *fanotify_alloc_error_event(
-> >
-> >         fee->fae.type = FANOTIFY_EVENT_TYPE_FS_ERROR;
-> >         fee->err_count = 1;
-> > +       fee->fsid = *fsid;
-> > +
-> > +       fh_len = fanotify_encode_fh_len(inode);
-> > +       if (WARN_ON(fh_len > MAX_HANDLE_SZ)) {
-> 
-> WARN_ON_ONCE please and I rather that this sanity check is moved inside
-> fanotify_encode_fh_len() where it will return 0 for encoding failure.
+On Fri, Oct 15, 2021 at 03:26:15PM +0200, Christoph Hellwig wrote:
+> +static inline sector_t bdev_nr_bytes(struct block_device *bdev)
+> +{
+> +	return i_size_read(bdev->bd_inode);
 
-Yeah, that's better.
-
-> > diff --git a/fs/notify/fanotify/fanotify.h b/fs/notify/fanotify/fanotify.h
-> > index 2b032b79d5b0..b58400926f92 100644
-> > --- a/fs/notify/fanotify/fanotify.h
-> > +++ b/fs/notify/fanotify/fanotify.h
-> > @@ -202,6 +202,10 @@ struct fanotify_error_event {
-> >         u32 err_count; /* Suppressed errors count */
-> >
-> >         __kernel_fsid_t fsid; /* FSID this error refers to. */
-> > +       /* object_fh must be followed by the inline handle buffer. */
-> > +       struct fanotify_fh object_fh;
-> > +       /* Reserve space in object_fh.buf[] - access with fanotify_fh_buf() */
-> > +       unsigned char _inline_fh_buf[MAX_HANDLE_SZ];
-> >  };
-> 
-> This struct duplicates most of struct fanotify_fid_event.
-> How about:
-> 
-> #define FANOTIFY_ERROR_FH_LEN \
->              (MAX_HANDLE_SZ - FANOTIFY_INLINE_FH_LEN)
-> 
-> struct fanotify_error_event {
->          u32 err_count; /* Suppressed errors count */
->          struct fanotify_event ffe;
->          /* Reserve space in ffe.object_fh.buf[] - access with
-> fanotify_fh_buf() */
->          unsigned char _fh_buf[FANOTIFY_ERROR_FH_LEN];
-> }
-> 
-> Or leaving out the struct padding and passing
-> FANOTIFY_ERROR_EVENT_SIZE as mempool object size?
-> 
-> #define FANOTIFY_ERROR_EVENT_SIZE \
->             (sizeof(struct fanotify_error_event) + FANOTIFY_ERROR_FH_LEN)
-
-Hrm, I don't like either of these two options too much as IMHO it's rather
-hard to understand what's going on. If we want to avoid the duplication,
-then I see two relatively clean ways to do it:
-
-a) Remove _inline_fh_buf from fanotify_fid_event (probably just leave a
-comment there explaining how space is preallocated) and make sure kmem
-cache for fanotify_fid_event has FANOTIFY_INLINE_FH_LEN in each object for
-the fh, similarly error event would have MAX_HANDLE_SZ in the object.
-
-b) Define a macro that expands to a struct definition with appropriate
-buffer length.
-
-I guess a) seems a bit more obvious to me but I can live with both...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Uh.  loff_t, surely?
