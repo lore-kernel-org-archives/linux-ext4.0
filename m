@@ -2,52 +2,52 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF7F5C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 16:54:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB3AAC433EF
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 16:54:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AC463611ED
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 16:54:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8BC9B611C8
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Oct 2021 16:54:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241789AbhJOQ4O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Oct 2021 12:56:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33262 "EHLO
+        id S241771AbhJOQ4n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Oct 2021 12:56:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33414 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241766AbhJOQ4I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Oct 2021 12:56:08 -0400
-Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A859C061764
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Oct 2021 09:54:02 -0700 (PDT)
-Received: by mail-pg1-x52d.google.com with SMTP id q5so9106070pgr.7
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Oct 2021 09:54:02 -0700 (PDT)
+        with ESMTP id S237491AbhJOQ4n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Oct 2021 12:56:43 -0400
+Received: from mail-pj1-x1030.google.com (mail-pj1-x1030.google.com [IPv6:2607:f8b0:4864:20::1030])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9EC78C061765
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Oct 2021 09:54:36 -0700 (PDT)
+Received: by mail-pj1-x1030.google.com with SMTP id pf6-20020a17090b1d8600b0019fa884ab85so9738376pjb.5
+        for <linux-ext4@vger.kernel.org>; Fri, 15 Oct 2021 09:54:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=chromium.org; s=google;
         h=date:from:to:cc:subject:message-id:references:mime-version
          :content-disposition:in-reply-to;
-        bh=+MbYp/9I6HwSPkAmORgtqKp7aAXKpROAHsI0KkahVSk=;
-        b=ikEdVtNf9eRQss1RELdYd+gQGtRkJJNUyxABmsyhavxmXS/GWW1GmjaIFqcZC+V7d0
-         jxPVuirO3PDa+xeNqLrVJO8s8KcCPrKVcuz5mnU+QJTWjswUytrClmIjf52ECv87VZwj
-         IWYURypnyInULxZ6QO8cmc8sNxz7IQsLEMu78=
+        bh=++j3EKFYagTjYpVDRmVtpilprtSSGPZNL/U6+y1BFYU=;
+        b=PGVMrxoIP54zTy3fYRiGwM3tLAZD1Sg5qwTZ/1sUpFUKPeoK4gaEUh4gDn9vmINL5R
+         K6Diz6OFYGVqe3eH+J4BPfR7/r8fI1+hdPS73Dcjh+YNC+lZ5T7DwLWnu9B82X3frAPd
+         N9HCX5/hrMJFRwzEMhEqi5qndMOp+CdKnJFuY=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:date:from:to:cc:subject:message-id:references
          :mime-version:content-disposition:in-reply-to;
-        bh=+MbYp/9I6HwSPkAmORgtqKp7aAXKpROAHsI0KkahVSk=;
-        b=LTNRvljbTL4Lzvt4jxx37M0DdBzr1QAzHvCmgP2OQ4y3gNKAaL+2ccf6QWkvyiEy76
-         JeVsKm39wsL2LEqODzISq1ofp3uNfqLuQ/y1M/Eqa/0UtorYjboYWqxOz+Pwlq931g9L
-         DAflYKyranJLCMUnHL8OpFlzdO+0MvJqg1nAmpOqirw21mAcnK9p/j7wqFtbfyei5Nwj
-         o8/HEmry4+l7CJLitasFh32/vAEt+VOnDM1f2WenwMvF48ZG8olzD/9T3JWI8QhFJQrP
-         Qj3dKaf38t8KNwFJTRH0dXNWlySqpkmhdtn4piyzgOx8EoC/eag9Pi4rHY1SgBdCVVyj
-         YHUA==
-X-Gm-Message-State: AOAM530iPIbyBWSqf+E3MBO1jeiIJPUAIBC0PdvpuvGw1BN9XhwCHDRT
-        kVsFcHHiO5Lfw3Vic6YhjRDIUQ==
-X-Google-Smtp-Source: ABdhPJxRzD0WBfqSsRnsWWctoiC4ZL/68Vbzs2wYW5pL6AgqTKpTz7zCXFAYZWzBRrc637AgBAl43A==
-X-Received: by 2002:a63:7f0e:: with SMTP id a14mr3656783pgd.390.1634316842164;
-        Fri, 15 Oct 2021 09:54:02 -0700 (PDT)
+        bh=++j3EKFYagTjYpVDRmVtpilprtSSGPZNL/U6+y1BFYU=;
+        b=NhY6Q2y1t+/1wBjNX6Nl2eG8+3GNHbn5PVGGiWIYCRc8r69IQhoRi1riy4oZ1wC7EP
+         EZsMIK+q805V464Q3WPbihmiT0MmNiQ4MvFFx+VBDLSHaZizgsxXBqX3lqVAmz1G0HXy
+         wXam4bsJ4BQmGS8lr9odPzLtunGuEmDPTpWtbahUtj/buVd1lSb8of4bmr9LLehx0S+T
+         nLEHspyWMtUtm5k/vC/8gh9jz3psoy14l04hhSPuvh1SvFmB2xZIsE/CCRsdajt6/ThS
+         Ms2tU4qe1IKUKyXPFZNfNIqCUUGrVmnf8FAYgLzXO5kyfXKzXXfuamH1Ew7pBPQNhxF5
+         M6+w==
+X-Gm-Message-State: AOAM531oapQfJcs5Hx+gSJ2NUfg1HnpLgJdkCh3F4tUsxHMTexOjy6dP
+        +vPOCpevdOUn448hIrZry4UF/w==
+X-Google-Smtp-Source: ABdhPJxiUcnkoooEgdTHhZSK5QlfnfikulhFK8mfbnmCN2PXzxc7k6fawv/6LA10hComZoogNKw4PQ==
+X-Received: by 2002:a17:903:3092:b0:13f:663d:f008 with SMTP id u18-20020a170903309200b0013f663df008mr11973339plc.13.1634316876253;
+        Fri, 15 Oct 2021 09:54:36 -0700 (PDT)
 Received: from www.outflux.net (smtp.outflux.net. [198.145.64.163])
-        by smtp.gmail.com with ESMTPSA id b8sm5387267pfi.103.2021.10.15.09.54.01
+        by smtp.gmail.com with ESMTPSA id t126sm5505715pfc.80.2021.10.15.09.54.35
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 15 Oct 2021 09:54:01 -0700 (PDT)
-Date:   Fri, 15 Oct 2021 09:54:01 -0700
+        Fri, 15 Oct 2021 09:54:35 -0700 (PDT)
+Date:   Fri, 15 Oct 2021 09:54:35 -0700
 From:   Kees Cook <keescook@chromium.org>
 To:     Christoph Hellwig <hch@lst.de>
 Cc:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
@@ -70,20 +70,19 @@ Cc:     Jens Axboe <axboe@kernel.dk>, Coly Li <colyli@suse.de>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: Re: [PATCH 18/30] nfs/blocklayout: use bdev_nr_bytes instead of open
- coding it
-Message-ID: <202110150953.4A7CC49DC@keescook>
+Subject: Re: [PATCH 19/30] nilfs2: use bdev_nr_bytes instead of open coding it
+Message-ID: <202110150954.45A4DFA79@keescook>
 References: <20211015132643.1621913-1-hch@lst.de>
- <20211015132643.1621913-19-hch@lst.de>
+ <20211015132643.1621913-20-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20211015132643.1621913-19-hch@lst.de>
+In-Reply-To: <20211015132643.1621913-20-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 15, 2021 at 03:26:31PM +0200, Christoph Hellwig wrote:
+On Fri, Oct 15, 2021 at 03:26:32PM +0200, Christoph Hellwig wrote:
 > Use the proper helper to read the block device size.
 > 
 > Signed-off-by: Christoph Hellwig <hch@lst.de>
