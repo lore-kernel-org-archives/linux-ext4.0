@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B88F5C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E865C4167D
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A43DD60E54
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2D20161212
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232026AbhJRKPd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:15:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44758 "EHLO
+        id S232087AbhJRKPl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:15:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44730 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231736AbhJRKOh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:37 -0400
+        with ESMTP id S231776AbhJRKOm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:42 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8403DC061745;
-        Mon, 18 Oct 2021 03:12:26 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF058C06176A;
+        Mon, 18 Oct 2021 03:12:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=nOP5ubv8zHIPTFPGGp4mMR4qIBoLNo6J7j7POF84hxo=; b=WDdgm8VMUNVUMbVn2sMmo1G+5L
-        eudstPeymp6AKn6+7DXE/IHIBpUIHRL7C2g7/9HaKr9js7AgajBXO15R1v7Mwdo560m7U7iACplzh
-        jy3PwmC0UtvAzcUXJEnNIxVBBCYzHZzjkJk5dK9seUv679acmvHXkjRbcrjxTaxZw/rLfMTSYUYHv
-        4JqtDqDw65qSiAUND+Umm6mYpaUvoYftrT4X5lq3uD4It5XDVZj0HDcaUjcWZdDaC86//yxY3AHuf
-        /xT0oYxrPWo/LvowhZaAQStnvg2VsyMKOmPGUkJrk8yI7fChJyOAROyhLyWnbasGUgO9pzAoEKmAx
-        /Ftuo4bw==;
+        bh=Ss3ilUyKMuPfHBXzBJ88Vs1wtib02SxYRpGnTBbPDiA=; b=oAbnRWg/YW/pvh0a/EKd2He+y8
+        nhRS61TBq4K/396NBlUVJPiq7U8gOjdM+JVuY0sA6KWIwYTIUOcl5EeE57s1AY7f06lIYlW9O/j4o
+        UMAhvrYBojy6l7jxkCXMVIhDsqhCiPdKDdRXdynprKLz3bF+wOqvzPYluC8tglrc6VSUQTwiLQCOD
+        veucZd4xDpI/b9hqSeZnZr0mHV4dXMogd8BlQMVoXYmdd/TJDxSvjMaWeO+8WO+iqmTPtMrkF6CjB
+        IMmu5I08e32bMALy0zhps5vW3RO4HSUhmaaU8lydFjNoKUiwc2Z2qyuCR8orEZbLXBcDro8LkzLsC
+        HQ2vwtRQ==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcr-00EuNu-H4; Mon, 18 Oct 2021 10:12:13 +0000
+        id 1mcPcw-00EuTH-R5; Mon, 18 Oct 2021 10:12:19 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -51,10 +51,11 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: [PATCH 15/30] hfs: use bdev_nr_sectors instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:15 +0200
-Message-Id: <20211018101130.1838532-16-hch@lst.de>
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
+        Dave Kleikamp <dave.kleikamp@oracle.com>
+Subject: [PATCH 17/30] jfs: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:17 +0200
+Message-Id: <20211018101130.1838532-18-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -69,23 +70,38 @@ Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Kees Cook <keescook@chromium.org>
+Acked-by: Dave Kleikamp <dave.kleikamp@oracle.com>
 ---
- fs/hfs/mdb.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/jfs/resize.c | 2 +-
+ fs/jfs/super.c  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/hfs/mdb.c b/fs/hfs/mdb.c
-index cdf0edeeb2781..5beb826524354 100644
---- a/fs/hfs/mdb.c
-+++ b/fs/hfs/mdb.c
-@@ -36,7 +36,7 @@ static int hfs_get_last_session(struct super_block *sb,
+diff --git a/fs/jfs/resize.c b/fs/jfs/resize.c
+index bde787c354fcc..a42dbb0d3d28a 100644
+--- a/fs/jfs/resize.c
++++ b/fs/jfs/resize.c
+@@ -199,7 +199,7 @@ int jfs_extendfs(struct super_block *sb, s64 newLVSize, int newLogSize)
+ 	txQuiesce(sb);
  
- 	/* default values */
- 	*start = 0;
--	*size = i_size_read(sb->s_bdev->bd_inode) >> 9;
-+	*size = bdev_nr_sectors(sb->s_bdev);
+ 	/* Reset size of direct inode */
+-	sbi->direct_inode->i_size =  i_size_read(sb->s_bdev->bd_inode);
++	sbi->direct_inode->i_size = bdev_nr_bytes(sb->s_bdev);
  
- 	if (HFS_SB(sb)->session >= 0) {
- 		struct cdrom_tocentry te;
+ 	if (sbi->mntflag & JFS_INLINELOG) {
+ 		/*
+diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+index 9030aeaf0f886..9241caa161163 100644
+--- a/fs/jfs/super.c
++++ b/fs/jfs/super.c
+@@ -551,7 +551,7 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
+ 		ret = -ENOMEM;
+ 		goto out_unload;
+ 	}
+-	inode->i_size = i_size_read(sb->s_bdev->bd_inode);
++	inode->i_size = bdev_nr_bytes(sb->s_bdev);
+ 	inode->i_mapping->a_ops = &jfs_metapage_aops;
+ 	inode_fake_hash(inode);
+ 	mapping_set_gfp_mask(inode->i_mapping, GFP_NOFS);
 -- 
 2.30.2
 
