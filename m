@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02D93C4321E
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 07BC5C18E17
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E2E3E60E54
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E861C60E54
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231812AbhJRKOv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:14:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44704 "EHLO
+        id S231995AbhJRKP3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:15:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44680 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231612AbhJRKO0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:26 -0400
+        with ESMTP id S231524AbhJRKOV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:21 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 91CE1C061745;
-        Mon, 18 Oct 2021 03:12:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5850DC06161C;
+        Mon, 18 Oct 2021 03:12:10 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=ufY1F9BE0hyiVrMwVKJsKp268/NwKnrkH8WRQVRWk5I=; b=RyjaMpOyCyue3pLPX/xNtoj3nq
-        rx8YlEZ705/rKwKdJ5j6ftYyft14Nd5lmeU2HOeoDKNZdZqEFb8tcGWjNKmuyQ7TIVDACuaCybOnF
-        Hw7hxgyG0AEyGPi06m5bGMNWRzADYGd7XSzuDPxw411/azHNisWsvQGdWiHfpPSM0P6iWc2qXN240
-        E4XLB+C9Xw7VXkSnHoTpUosw9MXZHaxgjMd76781ZEP3v48okz1audNZi/h9/XY0+D6BH6eZk/uZZ
-        1gf8QCsBdjVwaclvb0GJThzBZPbjtmteLN0beWWqy3sOAdtJb9q4roLF6oQHM10/X0bdNGgCruID/
-        lsO0NOzw==;
+        bh=BEMGsHVLTIykAoNtwRps7ZgL75VOsiTXMqaq61KcMi4=; b=GFVOWoFIJ7rI0uLenhDqNHpAr3
+        N7x5J1Ijsj2ubyEmzpwqUst8DOmvwcPuM+Gal8+Jd6TZysFuFQiqqmtNXvW844AWL7ZEyrF76Dbp1
+        yD63/N5ZQqTRJZ+RllJyZ1whw0ipl0ZKeZKNTWIAy62Gvt4njego0OsAYr+Qz0SrwEuEU3h9oAdEZ
+        gjNvCf6TuVfwVi0EHIM6Hv/oKHT2h4QsnZmioDNpk9wqIoyrQD8+xm9MRJf6SFc0v+rWXpuwYwr8m
+        XPVO87GCFXjQgU6kvZE0nQl9J3lSfwDRgLTcVBcvMDv18wbDCYmiB0A5dHjA8zzsFxSZtnplUsvnX
+        tO+BIFZQ==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcg-00EuDu-HQ; Mon, 18 Oct 2021 10:12:02 +0000
+        id 1mcPcb-00Eu8m-81; Mon, 18 Oct 2021 10:11:57 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -52,10 +52,10 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
-        Chaitanya Kulkarni <kch@nvidia.com>
-Subject: [PATCH 11/30] affs: use bdev_nr_sectors instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:11 +0200
-Message-Id: <20211018101130.1838532-12-hch@lst.de>
+        Jan Kara <jack@suse.cz>, Chaitanya Kulkarni <kch@nvidia.com>
+Subject: [PATCH 09/30] fs: use bdev_nr_bytes instead of open coding it in blkdev_max_block
+Date:   Mon, 18 Oct 2021 12:11:09 +0200
+Message-Id: <20211018101130.1838532-10-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -70,24 +70,25 @@ Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Kees Cook <keescook@chromium.org>
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 ---
- fs/affs/super.c | 2 +-
+ fs/buffer.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index c6c2a513ec92d..c609005a9eaaa 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -389,7 +389,7 @@ static int affs_fill_super(struct super_block *sb, void *data, int silent)
- 	 * blocks, we will have to change it.
- 	 */
+diff --git a/fs/buffer.c b/fs/buffer.c
+index c615387aedcae..156358977249f 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -878,7 +878,7 @@ link_dev_buffers(struct page *page, struct buffer_head *head)
+ static sector_t blkdev_max_block(struct block_device *bdev, unsigned int size)
+ {
+ 	sector_t retval = ~((sector_t)0);
+-	loff_t sz = i_size_read(bdev->bd_inode);
++	loff_t sz = bdev_nr_bytes(bdev);
  
--	size = i_size_read(sb->s_bdev->bd_inode) >> 9;
-+	size = bdev_nr_sectors(sb->s_bdev);
- 	pr_debug("initial blocksize=%d, #blocks=%d\n", 512, size);
- 
- 	affs_set_blocksize(sb, PAGE_SIZE);
+ 	if (sz) {
+ 		unsigned int sizebits = blksize_bits(size);
 -- 
 2.30.2
 
