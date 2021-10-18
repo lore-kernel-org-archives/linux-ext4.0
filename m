@@ -2,108 +2,167 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC568C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 03:54:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3D78C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 04:41:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7FE2360FD9
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 03:54:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8376261278
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 04:41:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229510AbhJRD4r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Oct 2021 23:56:47 -0400
-Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:51673 "EHLO
-        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229445AbhJRD4r (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 17 Oct 2021 23:56:47 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e01424;MF=jefflexu@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0UsUGbVe_1634529274;
-Received: from admindeMacBook-Pro-2.local(mailfrom:jefflexu@linux.alibaba.com fp:SMTPD_---0UsUGbVe_1634529274)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Mon, 18 Oct 2021 11:54:34 +0800
-Subject: Re: Inode 2885482 (000000008e814f64): i_reserved_data_blocks (2) not
- cleared!
-To:     Theodore Ts'o <tytso@mit.edu>,
-        Gao Xiang <hsiangkao@linux.alibaba.com>
-Cc:     "Rantala, Tommi T. (Nokia - FI/Espoo)" <tommi.t.rantala@nokia.com>,
-        "enwlinux@gmail.com" <enwlinux@gmail.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-References: <767ea5bb27e31cc58bea15cd2aec492946679bde.camel@nokia.com>
- <YWhxvOf5EoHMFxtl@B-P7TQMD6M-0146.local> <YWinzKvlbx0XlJKJ@mit.edu>
-From:   JeffleXu <jefflexu@linux.alibaba.com>
-Message-ID: <389353b8-f1f0-1b73-92b9-f1b00644eaf6@linux.alibaba.com>
-Date:   Mon, 18 Oct 2021 11:54:34 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
- Gecko/20100101 Thunderbird/78.14.0
+        id S229565AbhJREnS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Oct 2021 00:43:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54960 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229481AbhJREnS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 00:43:18 -0400
+Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 901BBC061745;
+        Sun, 17 Oct 2021 21:41:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=YezH57xXoPeRC6RlTJfNo/dArufy5KO88T9CE1nCunE=; b=tTaexhN24/qiyoJmnJ6E5C5ZZx
+        U+OLbvsZP0BBytudBPt/UbZNCF21SQ/Sjm+cLP1Vnf5Pn6eu+h3U0V71xIlhrH6cTTBBWuSP6EB//
+        7U9GGNii65ygkwdaDXhooidtR3QmmZ92Fy/ofBrTbwDaEjAUfx0a97ycZSrFcRO8ybMm0mm9taLLH
+        Iu4waFlnUovAAXiSPv0E6Dxuu/yqOgVtvIE7+7VRqT4urJt3sMevOfsYxtGTJHS1Xjhhbe6DOLMs4
+        g5oHWXIw/NW1WD/8ex73wNhE0NstGgspJiYk/4IJ6/bjpV8/rxTvoEjra7J/J4vbsFxRbhO0btBKd
+        nhBWEegg==;
+Received: from 089144211028.atnat0020.highway.a1.net ([89.144.211.28] helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1mcKSK-00E3Fe-Lj; Mon, 18 Oct 2021 04:41:01 +0000
+From:   Christoph Hellwig <hch@lst.de>
+Cc:     Dan Williams <dan.j.williams@intel.com>,
+        Mike Snitzer <snitzer@redhat.com>,
+        Ira Weiny <ira.weiny@intel.com>, dm-devel@redhat.com,
+        linux-xfs@vger.kernel.org, nvdimm@lists.linux.dev,
+        linux-s390@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        virtualization@lists.linux-foundation.org
+Subject: [PATCH 01/11] dm: make the DAX support dependend on CONFIG_FS_DAX
+Date:   Mon, 18 Oct 2021 06:40:44 +0200
+Message-Id: <20211018044054.1779424-2-hch@lst.de>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20211018044054.1779424-1-hch@lst.de>
+References: <20211018044054.1779424-1-hch@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <YWinzKvlbx0XlJKJ@mit.edu>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+To:     unlisted-recipients:; (no To-header on input)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+The device mapper DAX support is all hanging off a block device and thus
+can't be used with device dax.  Make it depend on CONFIG_FS_DAX instead
+of CONFIG_DAX_DRIVER.  This also means that bdev_dax_pgoff only needs to
+be built under CONFIG_FS_DAX now.
 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ drivers/dax/super.c        | 6 ++----
+ drivers/md/dm-linear.c     | 2 +-
+ drivers/md/dm-log-writes.c | 2 +-
+ drivers/md/dm-stripe.c     | 2 +-
+ drivers/md/dm-writecache.c | 2 +-
+ drivers/md/dm.c            | 2 +-
+ 6 files changed, 7 insertions(+), 9 deletions(-)
 
-On 10/15/21 5:57 AM, Theodore Ts'o wrote:
-> On Fri, Oct 15, 2021 at 02:06:52AM +0800, Gao Xiang wrote:
->> On Thu, Oct 14, 2021 at 12:54:14PM +0000, Rantala, Tommi T. (Nokia - FI/Espoo) wrote:
->>> Hi,
->>>
->>> I'm seeing these i_reserved_data_blocks not cleared! messages when using ext4
->>> with nodelalloc, message added in:
->>>
->>>   commit 6fed83957f21eff11c8496e9f24253b03d2bc1dc
->>>   Author: Jeffle Xu <jefflexu@linux.alibaba.com>
->>>   Date:   Mon Aug 23 14:13:58 2021 +0800
->>>
->>>       ext4: fix reserved space counter leakage
->>>
->>> I can quickly reproduce in 5.15.0-rc5-00041-g348949d9a444 by doing some
->>> filesystem I/O while toggling delalloc:
->>>
->>>
->>> while true; do mount -o remount,nodelalloc /; sleep 1; mount -o remount,delalloc /; sleep 1; done &
->>> git clone linux xxx; rm -rf xxx
->>
->> If I understand correctly, switching such option implies
->> sync inodes to write back exist delayed allocation blocks.
-> 
-> Well, no.  What it implies is that all writes after the remount into
-> an unallocated portion of the file will be allocated at the time when
-> the page is dirtied, instead of when the page is written back.  It's
-> possible for some pages to be written using delayed allocation, and
-> some other pages in the legacy "allocate on page dirty" mechanism.
-> This can happen when the file system is remounted; it can also happen
-> when the file system starts getting close to 100% full.  See the
-> comment in ext4_nonda_switch:
-> 
-> 	/*
-> 	 * switch to non delalloc mode if we are running low
-> 	 * on free block. The free block accounting via percpu
-> 	 * counters can get slightly wrong with percpu_counter_batch getting
-> 	 * accumulated on each CPU without updating global counters
-> 	 * Delalloc need an accurate free block accounting. So switch
-> 	 * to non delalloc when we are near to error range.
-> 	 */
-> 
-
-So it seems possible that s_dirtyclusters_counter/i_reserved_data_blocks
-counters are not maintained anymore when filesystem gets remounted from
-'delalloc' to 'nodelalloc', even when you're writing back a (previously)
-delay allocated page cache (when it's still mounted as 'delalloc'). Thus
-it is possible that s_dirtyclusters_counter/i_reserved_data_blocks
-counters are non-zero when the inode is finally evicted and destroyed.
-
-IMHO I think this inconsistency is problematic. For example, when
-filesystem gets remounted from 'delalloc' to 'nodelalloc' and then runs
-for a period, s_dirtyclusters_counter/i_reserved_data_blocks counters
-already gets inconsistent. Then it's remounted back to 'delalloc', in
-which case s_dirtyclusters_counter/i_reserved_data_blocks counters are
-already incorrect.
-
-
-
+diff --git a/drivers/dax/super.c b/drivers/dax/super.c
+index b882cf8106ea3..e20d0cef10a18 100644
+--- a/drivers/dax/super.c
++++ b/drivers/dax/super.c
+@@ -63,7 +63,7 @@ static int dax_host_hash(const char *host)
+ 	return hashlen_hash(hashlen_string("DAX", host)) % DAX_HASH_SIZE;
+ }
+ 
+-#ifdef CONFIG_BLOCK
++#if defined(CONFIG_BLOCK) && defined(CONFIG_FS_DAX)
+ #include <linux/blkdev.h>
+ 
+ int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
+@@ -80,7 +80,6 @@ int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
+ }
+ EXPORT_SYMBOL(bdev_dax_pgoff);
+ 
+-#if IS_ENABLED(CONFIG_FS_DAX)
+ /**
+  * dax_get_by_host() - temporary lookup mechanism for filesystem-dax
+  * @host: alternate name for the device registered by a dax driver
+@@ -219,8 +218,7 @@ bool dax_supported(struct dax_device *dax_dev, struct block_device *bdev,
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(dax_supported);
+-#endif /* CONFIG_FS_DAX */
+-#endif /* CONFIG_BLOCK */
++#endif /* CONFIG_BLOCK && CONFIG_FS_DAX */
+ 
+ enum dax_device_flags {
+ 	/* !alive + rcu grace period == no new operations / mappings */
+diff --git a/drivers/md/dm-linear.c b/drivers/md/dm-linear.c
+index 679b4c0a2eea1..32fbab11bf90c 100644
+--- a/drivers/md/dm-linear.c
++++ b/drivers/md/dm-linear.c
+@@ -163,7 +163,7 @@ static int linear_iterate_devices(struct dm_target *ti,
+ 	return fn(ti, lc->dev, lc->start, ti->len, data);
+ }
+ 
+-#if IS_ENABLED(CONFIG_DAX_DRIVER)
++#if IS_ENABLED(CONFIG_FS_DAX)
+ static long linear_dax_direct_access(struct dm_target *ti, pgoff_t pgoff,
+ 		long nr_pages, void **kaddr, pfn_t *pfn)
+ {
+diff --git a/drivers/md/dm-log-writes.c b/drivers/md/dm-log-writes.c
+index d93a4db235124..6d694526881d0 100644
+--- a/drivers/md/dm-log-writes.c
++++ b/drivers/md/dm-log-writes.c
+@@ -903,7 +903,7 @@ static void log_writes_io_hints(struct dm_target *ti, struct queue_limits *limit
+ 	limits->io_min = limits->physical_block_size;
+ }
+ 
+-#if IS_ENABLED(CONFIG_DAX_DRIVER)
++#if IS_ENABLED(CONFIG_FS_DAX)
+ static int log_dax(struct log_writes_c *lc, sector_t sector, size_t bytes,
+ 		   struct iov_iter *i)
+ {
+diff --git a/drivers/md/dm-stripe.c b/drivers/md/dm-stripe.c
+index 6660b6b53d5bf..f084607220293 100644
+--- a/drivers/md/dm-stripe.c
++++ b/drivers/md/dm-stripe.c
+@@ -300,7 +300,7 @@ static int stripe_map(struct dm_target *ti, struct bio *bio)
+ 	return DM_MAPIO_REMAPPED;
+ }
+ 
+-#if IS_ENABLED(CONFIG_DAX_DRIVER)
++#if IS_ENABLED(CONFIG_FS_DAX)
+ static long stripe_dax_direct_access(struct dm_target *ti, pgoff_t pgoff,
+ 		long nr_pages, void **kaddr, pfn_t *pfn)
+ {
+diff --git a/drivers/md/dm-writecache.c b/drivers/md/dm-writecache.c
+index 18320444fb0a9..4c3a6e33604d3 100644
+--- a/drivers/md/dm-writecache.c
++++ b/drivers/md/dm-writecache.c
+@@ -38,7 +38,7 @@
+ #define BITMAP_GRANULARITY	PAGE_SIZE
+ #endif
+ 
+-#if IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API) && IS_ENABLED(CONFIG_DAX_DRIVER)
++#if IS_ENABLED(CONFIG_ARCH_HAS_PMEM_API) && IS_ENABLED(CONFIG_FS_DAX)
+ #define DM_WRITECACHE_HAS_PMEM
+ #endif
+ 
+diff --git a/drivers/md/dm.c b/drivers/md/dm.c
+index 7870e6460633f..79737aee516b1 100644
+--- a/drivers/md/dm.c
++++ b/drivers/md/dm.c
+@@ -1783,7 +1783,7 @@ static struct mapped_device *alloc_dev(int minor)
+ 	md->disk->private_data = md;
+ 	sprintf(md->disk->disk_name, "dm-%d", minor);
+ 
+-	if (IS_ENABLED(CONFIG_DAX_DRIVER)) {
++	if (IS_ENABLED(CONFIG_FS_DAX)) {
+ 		md->dax_dev = alloc_dax(md, md->disk->disk_name,
+ 					&dm_dax_ops, 0);
+ 		if (IS_ERR(md->dax_dev))
 -- 
-Thanks,
-Jeffle
+2.30.2
+
