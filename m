@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC2A9C4167B
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4F36C41535
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D331C60FD8
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8648261260
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:12:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231706AbhJRKOe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:14:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44644 "EHLO
+        id S231786AbhJRKOq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:14:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44726 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231474AbhJRKOO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:14 -0400
+        with ESMTP id S231658AbhJRKOc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:32 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1ABBEC061714;
-        Mon, 18 Oct 2021 03:12:03 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C338DC061769;
+        Mon, 18 Oct 2021 03:12:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=1gZf+H891s0ly+N+We+WSsOR96hNSH99XqMkm5gKgvI=; b=zwzQ5L7ESlfExe+abASqVs43QL
-        14sEjm/o9bFg/y0KSbqRDAxHJqmS4yGssuMp+LyXmNnjfcWzNr3D0bQp93tQrlA6HkhUX0i+7XFzV
-        pjiq6/lIz2bQIxMCAcKipcbCQiFvH0PiCliLLklv89Z7CRh+wLNy7iZUG7ujwhnm7KmgUd+UR04k+
-        ZsiFETxE1JvEzxCP3lwYqkXQjse4ecAKqhVmb0XvRxVnOiiydnUb0yUKp19jSW+wfZzckyBEFgMsT
-        3exDroYOhR3AggEtDC205WWO8KggW7COLbBVf+5Wlm/6j5ESNehLdtPVc/ZITyhL0Z2HlREFjp2I9
-        1hLhr7eQ==;
+        bh=IR8E02XMGGGYY/7AuAB98aQIqqpNb05KI4jjU1KZi0g=; b=jlyC2wKlv0Dk0mRuurE/joWlZF
+        VpNlBkeeA0PjZ2NajJoDjr9v3EiIwtPF1JteO360FGKJkhfh9OLHtaWcNC/YYVRHzn4igezSYHxT1
+        7XEkIBOlDwUEBTv9B9OT48ouZ/iOk9da/fqLwcy1JfO/lTqQxPh0qQWN/uTAwOGMhGF1R4I0TADUh
+        QWh+vV4ybNP0mjpdri/xlUfWGBm2coE3H8OuZR3R+2pX12iGo1tvmes3bbBGd5Z27Cct7Z7Iczbza
+        Vr7ekLBFYDDUPusgz0/chUWS0Ox+NEfQQloEJw9Li0TnbKMxDsvOhdpn9LUloR0D9XN9N4HEwoK6P
+        KVvyt3rA==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPcT-00Eu4B-82; Mon, 18 Oct 2021 10:11:49 +0000
+        id 1mcPcj-00EuH9-BJ; Mon, 18 Oct 2021 10:12:05 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -51,10 +51,12 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: [PATCH 06/30] md: use bdev_nr_sectors instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:06 +0200
-Message-Id: <20211018101130.1838532-7-hch@lst.de>
+        ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org,
+        Anand Jain <anand.jain@oracle.com>,
+        Chaitanya Kulkarni <kch@nvidia.com>
+Subject: [PATCH 12/30] btrfs: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:12 +0200
+Message-Id: <20211018101130.1838532-13-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -69,104 +71,98 @@ Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Kees Cook <keescook@chromium.org>
-Acked-by: Song Liu <song@kernel.org>
+Reviewed-by: Anand Jain <anand.jain@oracle.com>
+Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
+Acked-by: David Sterba <dsterba@suse.com>
 ---
- drivers/md/md.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+ fs/btrfs/dev-replace.c | 3 +--
+ fs/btrfs/disk-io.c     | 2 +-
+ fs/btrfs/ioctl.c       | 4 ++--
+ fs/btrfs/volumes.c     | 8 ++++----
+ 4 files changed, 8 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/md/md.c b/drivers/md/md.c
-index ec09083ff0eff..0c75ba047ef60 100644
---- a/drivers/md/md.c
-+++ b/drivers/md/md.c
-@@ -890,8 +890,7 @@ static struct md_personality *find_pers(int level, char *clevel)
- /* return the offset of the super block in 512byte sectors */
- static inline sector_t calc_dev_sboffset(struct md_rdev *rdev)
- {
--	sector_t num_sectors = i_size_read(rdev->bdev->bd_inode) / 512;
--	return MD_NEW_SIZE_SECTORS(num_sectors);
-+	return MD_NEW_SIZE_SECTORS(bdev_nr_sectors(rdev->bdev));
- }
- 
- static int alloc_disk_sb(struct md_rdev *rdev)
-@@ -1633,8 +1632,7 @@ static int super_1_load(struct md_rdev *rdev, struct md_rdev *refdev, int minor_
- 	 */
- 	switch(minor_version) {
- 	case 0:
--		sb_start = i_size_read(rdev->bdev->bd_inode) >> 9;
--		sb_start -= 8*2;
-+		sb_start = bdev_nr_sectors(rdev->bdev) - 8 * 2;
- 		sb_start &= ~(sector_t)(4*2-1);
- 		break;
- 	case 1:
-@@ -1789,10 +1787,9 @@ static int super_1_load(struct md_rdev *rdev, struct md_rdev *refdev, int minor_
- 		else
- 			ret = 0;
+diff --git a/fs/btrfs/dev-replace.c b/fs/btrfs/dev-replace.c
+index d029be40ea6f0..fbb8b4457a721 100644
+--- a/fs/btrfs/dev-replace.c
++++ b/fs/btrfs/dev-replace.c
+@@ -283,8 +283,7 @@ static int btrfs_init_dev_replace_tgtdev(struct btrfs_fs_info *fs_info,
  	}
--	if (minor_version) {
--		sectors = (i_size_read(rdev->bdev->bd_inode) >> 9);
--		sectors -= rdev->data_offset;
--	} else
-+	if (minor_version)
-+		sectors = bdev_nr_sectors(rdev->bdev) - rdev->data_offset;
-+	else
- 		sectors = rdev->sb_start;
- 	if (sectors < le64_to_cpu(sb->data_size))
- 		return -EINVAL;
-@@ -2170,8 +2167,7 @@ super_1_rdev_size_change(struct md_rdev *rdev, sector_t num_sectors)
- 		return 0; /* too confusing */
- 	if (rdev->sb_start < rdev->data_offset) {
- 		/* minor versions 1 and 2; superblock before data */
--		max_sectors = i_size_read(rdev->bdev->bd_inode) >> 9;
--		max_sectors -= rdev->data_offset;
-+		max_sectors = bdev_nr_sectors(rdev->bdev) - rdev->data_offset;
- 		if (!num_sectors || num_sectors > max_sectors)
- 			num_sectors = max_sectors;
- 	} else if (rdev->mddev->bitmap_info.offset) {
-@@ -2180,7 +2176,7 @@ super_1_rdev_size_change(struct md_rdev *rdev, sector_t num_sectors)
- 	} else {
- 		/* minor version 0; superblock after data */
- 		sector_t sb_start, bm_space;
--		sector_t dev_size = i_size_read(rdev->bdev->bd_inode) >> 9;
-+		sector_t dev_size = bdev_nr_sectors(rdev->bdev);
  
- 		/* 8K is for superblock */
- 		sb_start = dev_size - 8*2;
-@@ -3384,7 +3380,7 @@ rdev_size_store(struct md_rdev *rdev, const char *buf, size_t len)
- 			if (!sectors)
- 				return -EBUSY;
- 		} else if (!sectors)
--			sectors = (i_size_read(rdev->bdev->bd_inode) >> 9) -
-+			sectors = bdev_nr_sectors(rdev->bdev) -
- 				rdev->data_offset;
- 		if (!my_mddev->pers->resize)
- 			/* Cannot change size for RAID0 or Linear etc */
-@@ -3711,7 +3707,7 @@ static struct md_rdev *md_import_device(dev_t newdev, int super_format, int supe
  
- 	kobject_init(&rdev->kobj, &rdev_ktype);
+-	if (i_size_read(bdev->bd_inode) <
+-	    btrfs_device_get_total_bytes(srcdev)) {
++	if (bdev_nr_bytes(bdev) < btrfs_device_get_total_bytes(srcdev)) {
+ 		btrfs_err(fs_info,
+ 			  "target device is smaller than source device!");
+ 		ret = -EINVAL;
+diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
+index 355ea88d5c5f7..29e7598584c4c 100644
+--- a/fs/btrfs/disk-io.c
++++ b/fs/btrfs/disk-io.c
+@@ -3740,7 +3740,7 @@ struct btrfs_super_block *btrfs_read_dev_one_super(struct block_device *bdev,
+ 	else if (ret)
+ 		return ERR_PTR(ret);
  
--	size = i_size_read(rdev->bdev->bd_inode) >> BLOCK_SIZE_BITS;
-+	size = bdev_nr_bytes(rdev->bdev) >> BLOCK_SIZE_BITS;
- 	if (!size) {
- 		pr_warn("md: %s has zero or unknown size, marking faulty!\n",
- 			bdevname(rdev->bdev,b));
-@@ -6882,7 +6878,7 @@ int md_add_new_disk(struct mddev *mddev, struct mdu_disk_info_s *info)
+-	if (bytenr + BTRFS_SUPER_INFO_SIZE >= i_size_read(bdev->bd_inode))
++	if (bytenr + BTRFS_SUPER_INFO_SIZE >= bdev_nr_bytes(bdev))
+ 		return ERR_PTR(-EINVAL);
  
- 		if (!mddev->persistent) {
- 			pr_debug("md: nonpersistent superblock ...\n");
--			rdev->sb_start = i_size_read(rdev->bdev->bd_inode) / 512;
-+			rdev->sb_start = bdev_nr_sectors(rdev->bdev);
- 		} else
- 			rdev->sb_start = calc_dev_sboffset(rdev);
- 		rdev->sectors = rdev->sb_start;
-@@ -6969,7 +6965,7 @@ static int hot_add_disk(struct mddev *mddev, dev_t dev)
- 	if (mddev->persistent)
- 		rdev->sb_start = calc_dev_sboffset(rdev);
- 	else
--		rdev->sb_start = i_size_read(rdev->bdev->bd_inode) / 512;
-+		rdev->sb_start = bdev_nr_sectors(rdev->bdev);
+ 	page = read_cache_page_gfp(mapping, bytenr >> PAGE_SHIFT, GFP_NOFS);
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index cc61813213d83..36ff713da1b12 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -1730,7 +1730,7 @@ static noinline int btrfs_ioctl_resize(struct file *file,
+ 	}
  
- 	rdev->sectors = rdev->sb_start;
+ 	if (!strcmp(sizestr, "max"))
+-		new_size = device->bdev->bd_inode->i_size;
++		new_size = bdev_nr_bytes(device->bdev);
+ 	else {
+ 		if (sizestr[0] == '-') {
+ 			mod = -1;
+@@ -1771,7 +1771,7 @@ static noinline int btrfs_ioctl_resize(struct file *file,
+ 		ret = -EINVAL;
+ 		goto out_finish;
+ 	}
+-	if (new_size > device->bdev->bd_inode->i_size) {
++	if (new_size > bdev_nr_bytes(device->bdev)) {
+ 		ret = -EFBIG;
+ 		goto out_finish;
+ 	}
+diff --git a/fs/btrfs/volumes.c b/fs/btrfs/volumes.c
+index 2ec3b8ac8fa35..676c7c4e6e59d 100644
+--- a/fs/btrfs/volumes.c
++++ b/fs/btrfs/volumes.c
+@@ -1286,7 +1286,7 @@ static struct btrfs_super_block *btrfs_read_disk_super(struct block_device *bdev
+ 	pgoff_t index;
  
+ 	/* make sure our super fits in the device */
+-	if (bytenr + PAGE_SIZE >= i_size_read(bdev->bd_inode))
++	if (bytenr + PAGE_SIZE >= bdev_nr_bytes(bdev))
+ 		return ERR_PTR(-EINVAL);
+ 
+ 	/* make sure our super fits in the page */
+@@ -2610,8 +2610,8 @@ int btrfs_init_new_device(struct btrfs_fs_info *fs_info, const char *device_path
+ 	device->io_width = fs_info->sectorsize;
+ 	device->io_align = fs_info->sectorsize;
+ 	device->sector_size = fs_info->sectorsize;
+-	device->total_bytes = round_down(i_size_read(bdev->bd_inode),
+-					 fs_info->sectorsize);
++	device->total_bytes =
++		round_down(bdev_nr_bytes(bdev), fs_info->sectorsize);
+ 	device->disk_total_bytes = device->total_bytes;
+ 	device->commit_total_bytes = device->total_bytes;
+ 	set_bit(BTRFS_DEV_STATE_IN_FS_METADATA, &device->dev_state);
+@@ -7236,7 +7236,7 @@ static int read_one_dev(struct extent_buffer *leaf,
+ 
+ 	fill_device_from_item(leaf, dev_item, device);
+ 	if (device->bdev) {
+-		u64 max_total_bytes = i_size_read(device->bdev->bd_inode);
++		u64 max_total_bytes = bdev_nr_bytes(device->bdev);
+ 
+ 		if (device->total_bytes > max_total_bytes) {
+ 			btrfs_err(fs_info,
 -- 
 2.30.2
 
