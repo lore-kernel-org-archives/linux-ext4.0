@@ -2,34 +2,34 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7BC8C4332F
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BBDBC43217
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C205560E90
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 68CD660E90
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Oct 2021 10:13:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232194AbhJRKPx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Oct 2021 06:15:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44854 "EHLO
+        id S232143AbhJRKPu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Oct 2021 06:15:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44758 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231873AbhJRKO5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:57 -0400
+        with ESMTP id S231817AbhJRKOw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Oct 2021 06:14:52 -0400
 Received: from bombadil.infradead.org (unknown [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EF3AC061769;
-        Mon, 18 Oct 2021 03:12:46 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42923C061777;
+        Mon, 18 Oct 2021 03:12:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=2zn8NhPz2uMutIfYtKOd61bO1SYl+3hcc5qagxR0u/o=; b=sjCcMkvC9ZBTWutSeKn5Z4UcH4
-        pzoDtcmnfasKTiRVzEE0vbA15h97PrbOHUCWFYLglsQ+RW2thdZ9zshsX8iC94I44TWl6UuWwabtb
-        9U1dBCucz0CTuSUiB5z7nDPimiqZ02Nz1UJHTLHBnZZZmyaC4cLHdCbedSYKLzrPdoloT5unPv0dX
-        bfShQrXqM5h5HV/hE8k1WNjX0A4Gp+hot8NXpaul/dja1JrTdh2ayYOCWI0HhjToVJFH+wJC5CJjY
-        NZliBIkl2f8iIbx1t+YbvXQTGnD7hkDk7CABBMolFph4HQaN5fCqnrbVgBu/MM67IFIzdLPXXxv+H
-        g3JWwIfQ==;
+        bh=7vy0+8EI8WhVCxcCPpT3E3xZPAv/h7863mIj0HITKC4=; b=dSgrFBalcG5IC5gy8leFi0/QUI
+        8jbCvHeQvsAMp2Vc8XaJNgaFomPjUZxHYyC0Lr8ip+cEGSd3e9dOsE9BLDAOXLiIxKskzuJNVL/fJ
+        9/vz7wC6aJeWCOa866cMrDClVUyh/nPJwEgGnkT7aSULX7H/Rx0e6fz/pzjosefYz2bVFgXRlecrl
+        OK92p3ALP6pCTMlkZ3qBMnoKoRHEVAF7nq96GJlCV7bX4ForSv41tAleJNCMrpQJckjzxO/kA47Wn
+        OAc86dc6jd8RmrmIqLhJBcqnOCCDYnNAaZzrQ6Qs4EG0Do8+0MqgT7yVBLcb6ir4m1vlBzJoKJsMs
+        +PeH0mvg==;
 Received: from [2001:4bb8:199:73c5:c70:4a89:bc61:2] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mcPdC-00EumL-JP; Mon, 18 Oct 2021 10:12:35 +0000
+        id 1mcPd4-00Eubv-MF; Mon, 18 Oct 2021 10:12:27 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
@@ -52,9 +52,9 @@ Cc:     Coly Li <colyli@suse.de>, Mike Snitzer <snitzer@redhat.com>,
         jfs-discussion@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-nilfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
         ntfs3@lists.linux.dev, reiserfs-devel@vger.kernel.org
-Subject: [PATCH 23/30] squashfs: use bdev_nr_bytes instead of open coding it
-Date:   Mon, 18 Oct 2021 12:11:23 +0200
-Message-Id: <20211018101130.1838532-24-hch@lst.de>
+Subject: [PATCH 20/30] ntfs3: use bdev_nr_bytes instead of open coding it
+Date:   Mon, 18 Oct 2021 12:11:20 +0200
+Message-Id: <20211018101130.1838532-21-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20211018101130.1838532-1-hch@lst.de>
 References: <20211018101130.1838532-1-hch@lst.de>
@@ -68,35 +68,31 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 Use the proper helper to read the block device size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Kees Cook <keescook@chromium.org>
-Acked-by: Phillip Lougher <phillip@squashfs.org.uk>
 ---
- fs/squashfs/super.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ntfs3/super.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/squashfs/super.c b/fs/squashfs/super.c
-index 60d6951915f44..bb44ff4c5cc67 100644
---- a/fs/squashfs/super.c
-+++ b/fs/squashfs/super.c
-@@ -16,6 +16,7 @@
+diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
+index 55bbc9200a10e..7ed2cb5e8b1d9 100644
+--- a/fs/ntfs3/super.c
++++ b/fs/ntfs3/super.c
+@@ -918,7 +918,6 @@ static int ntfs_fill_super(struct super_block *sb, void *data, int silent)
+ 	int err;
+ 	struct ntfs_sb_info *sbi;
+ 	struct block_device *bdev = sb->s_bdev;
+-	struct inode *bd_inode = bdev->bd_inode;
+ 	struct request_queue *rq = bdev_get_queue(bdev);
+ 	struct inode *inode = NULL;
+ 	struct ntfs_inode *ni;
+@@ -967,7 +966,7 @@ static int ntfs_fill_super(struct super_block *sb, void *data, int silent)
  
- #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 	/* Parse boot. */
+ 	err = ntfs_init_from_boot(sb, rq ? queue_logical_block_size(rq) : 512,
+-				  bd_inode->i_size);
++				  bdev_nr_bytes(bdev));
+ 	if (err)
+ 		goto out;
  
-+#include <linux/blkdev.h>
- #include <linux/fs.h>
- #include <linux/fs_context.h>
- #include <linux/fs_parser.h>
-@@ -179,8 +180,8 @@ static int squashfs_fill_super(struct super_block *sb, struct fs_context *fc)
- 	/* Check the filesystem does not extend beyond the end of the
- 	   block device */
- 	msblk->bytes_used = le64_to_cpu(sblk->bytes_used);
--	if (msblk->bytes_used < 0 || msblk->bytes_used >
--			i_size_read(sb->s_bdev->bd_inode))
-+	if (msblk->bytes_used < 0 ||
-+	    msblk->bytes_used > bdev_nr_bytes(sb->s_bdev))
- 		goto failed_mount;
- 
- 	/* Check block size for sanity */
 -- 
 2.30.2
 
