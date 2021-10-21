@@ -2,153 +2,239 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 437A1C4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 08:03:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5522C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 257BF611CE
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 08:03:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BFBE461205
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231362AbhJUIF1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Oct 2021 04:05:27 -0400
-Received: from smtp-out2.suse.de ([195.135.220.29]:37380 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231320AbhJUIF0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Oct 2021 04:05:26 -0400
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 458501FDA2;
-        Thu, 21 Oct 2021 08:03:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1634803388; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        id S231195AbhJULrp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Oct 2021 07:47:45 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:49911 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S230452AbhJULrh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 21 Oct 2021 07:47:37 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1634816719;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=+pm/NZLEuV5BEzdZJ9xSVzcAyFs8p5nXmzxCLPlAfyI=;
-        b=RI+cS14EpigLQbiToyCM9aR23GCi18cOA1ZFxJY5dHoKWY6B+DyNUWv8SKvxx8pZ8vbTGv
-        qv25XK5M7wBnnK6T1XPQNT4iUGKdhsRncdYyi1RPyLqxS7QhBpEKjh4dO1dSOoYZpvjaIa
-        Or6IRIU3/ue1ljwgHCYEvYOtsV6Tpi4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1634803388;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=+pm/NZLEuV5BEzdZJ9xSVzcAyFs8p5nXmzxCLPlAfyI=;
-        b=xVvf2bQnUPOKG+957FxH6NuPHIoNLrGq+ZnDMfVe7GI4e0/zjcXs5QQNBbXTSOCTdB8mfQ
-        In2o3sjIF5b4NMBA==
-Received: from quack2.suse.cz (unknown [10.100.224.230])
-        by relay2.suse.de (Postfix) with ESMTP id 93F0FA3C73;
-        Thu, 21 Oct 2021 08:03:06 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id DB2CD1E0BFB; Thu, 21 Oct 2021 10:03:04 +0200 (CEST)
-Date:   Thu, 21 Oct 2021 10:03:04 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Zhengyuan Liu <liuzhengyuang521@gmail.com>
-Cc:     Jan Kara <jack@suse.cz>, viro@zeniv.linux.org.uk,
-        Andrew Morton <akpm@linux-foundation.org>, tytso@mit.edu,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-ext4@vger.kernel.org,
-        =?utf-8?B?5YiY5LqR?= <liuyun01@kylinos.cn>,
-        Zhengyuan Liu <liuzhengyuan@kylinos.cn>
-Subject: Re: Problem with direct IO
-Message-ID: <20211021080304.GB5784@quack2.suse.cz>
-References: <CAOOPZo52azGXN-BzWamA38Gu=EkqZScLufM1VEgDuosPoH6TWA@mail.gmail.com>
- <20211020173729.GF16460@quack2.suse.cz>
- <CAOOPZo43cwh5ujm3n-r9Bih=7gS7Oav0B=J_8AepWDgdeBRkYA@mail.gmail.com>
+        bh=Bd9w+/fI9WJupYUQXWmdB7UuwoXlQm1B39YJnmChGl0=;
+        b=UcjfS/PNbtKSnbg8zkj7riIeDQWQhWHrRR+OCxmJ0o/AtLvdvqnkJKwmjpu2CxZqzf9rm5
+        gOheScVEy4/HcrMazoaAOsDtFdS8PNRtv3vbfYRDIpyHxsHKBO1z1PsxbwiCWksyaNVqpd
+        nhjPoT+Fjo8VFlNumYbJeYntnrCSf2E=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-470-zaJQXMHvMFqAktB0hJSy1Q-1; Thu, 21 Oct 2021 07:45:16 -0400
+X-MC-Unique: zaJQXMHvMFqAktB0hJSy1Q-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 4FD2D8066F1;
+        Thu, 21 Oct 2021 11:45:15 +0000 (UTC)
+Received: from localhost.localdomain (unknown [10.40.194.38])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 65309652AC;
+        Thu, 21 Oct 2021 11:45:14 +0000 (UTC)
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     linux-ext4@vger.kernel.org, tytso@mit.edu
+Cc:     linux-fsdevel@vger.kernel.org
+Subject: [PATCH v3 02/13] ext4: Add fs parameter specifications for mount options
+Date:   Thu, 21 Oct 2021 13:44:57 +0200
+Message-Id: <20211021114508.21407-3-lczerner@redhat.com>
+In-Reply-To: <20211021114508.21407-1-lczerner@redhat.com>
+References: <20211021114508.21407-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAOOPZo43cwh5ujm3n-r9Bih=7gS7Oav0B=J_8AepWDgdeBRkYA@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 21-10-21 10:21:55, Zhengyuan Liu wrote:
-> On Thu, Oct 21, 2021 at 1:37 AM Jan Kara <jack@suse.cz> wrote:
-> > On Wed 13-10-21 09:46:46, Zhengyuan Liu wrote:
-> > > we are encounting following Mysql crash problem while importing tables :
-> > >
-> > >     2021-09-26T11:22:17.825250Z 0 [ERROR] [MY-013622] [InnoDB] [FATAL]
-> > >     fsync() returned EIO, aborting.
-> > >     2021-09-26T11:22:17.825315Z 0 [ERROR] [MY-013183] [InnoDB]
-> > >     Assertion failure: ut0ut.cc:555 thread 281472996733168
-> > >
-> > > At the same time , we found dmesg had following message:
-> > >
-> > >     [ 4328.838972] Page cache invalidation failure on direct I/O.
-> > >     Possible data corruption due to collision with buffered I/O!
-> > >     [ 4328.850234] File: /data/mysql/data/sysbench/sbtest53.ibd PID:
-> > >     625 Comm: kworker/42:1
-> > >
-> > > Firstly, we doubled Mysql has operating the file with direct IO and
-> > > buffered IO interlaced, but after some checking we found it did only
-> > > do direct IO using aio. The problem is exactly from direct-io
-> > > interface (__generic_file_write_iter) itself.
-> > >
-> > > ssize_t __generic_file_write_iter()
-> > > {
-> > > ...
-> > >         if (iocb->ki_flags & IOCB_DIRECT) {
-> > >                 loff_t pos, endbyte;
-> > >
-> > >                 written = generic_file_direct_write(iocb, from);
-> > >                 /*
-> > >                  * If the write stopped short of completing, fall back to
-> > >                  * buffered writes.  Some filesystems do this for writes to
-> > >                  * holes, for example.  For DAX files, a buffered write will
-> > >                  * not succeed (even if it did, DAX does not handle dirty
-> > >                  * page-cache pages correctly).
-> > >                  */
-> > >                 if (written < 0 || !iov_iter_count(from) || IS_DAX(inode))
-> > >                         goto out;
-> > >
-> > >                 status = generic_perform_write(file, from, pos = iocb->ki_pos);
-> > > ...
-> > > }
-> > >
-> > > From above code snippet we can see that direct io could fall back to
-> > > buffered IO under certain conditions, so even Mysql only did direct IO
-> > > it could interleave with buffered IO when fall back occurred. I have
-> > > no idea why FS(ext3) failed the direct IO currently, but it is strange
-> > > __generic_file_write_iter make direct IO fall back to buffered IO, it
-> > > seems  breaking the semantics of direct IO.
-> > >
-> > > The reproduced  environment is:
-> > > Platform:  Kunpeng 920 (arm64)
-> > > Kernel: V5.15-rc
-> > > PAGESIZE: 64K
-> > > Mysql:  V8.0
-> > > Innodb_page_size: default(16K)
-> >
-> > Thanks for report. I agree this should not happen. How hard is this to
-> > reproduce? Any idea whether the fallback to buffered IO happens because
-> > iomap_dio_rw() returns -ENOTBLK or because it returns short write?
-> 
-> It is easy to reproduce in my test environment, as I said in the previous
-> email replied to Andrew this problem is related to kernel page size.
+Create an array of fs_parameter_spec called ext4_param_specs to
+hold the mount option specifications we're going to be using with the
+new mount api.
 
-Ok, can you share a reproducer?
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/super.c | 151 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 151 insertions(+)
 
-> > Can you post output of "dumpe2fs -h <device>" for the filesystem where the
-> > problem happens? Thanks!
-> 
-> Sure, the output is:
-> 
-> # dumpe2fs -h /dev/sda3
-> dumpe2fs 1.45.3 (14-Jul-2019)
-> Filesystem volume name:   <none>
-> Last mounted on:          /data
-> Filesystem UUID:          09a51146-b325-48bb-be63-c9df539a90a1
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index
-> filetype needs_recovery sparse_super large_file
-
-Thanks for the data. OK, a filesystem without extents. Does your test by
-any chance try to do direct IO to a hole in a file? Because that is not
-(and never was) supported without extents. Also the fact that you don't see
-the problem with ext4 (which means extents support) would be pointing in
-that direction.
-
-								Honza
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 88d5d274a868..42f4a3741692 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -46,6 +46,8 @@
+ #include <linux/part_stat.h>
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
++#include <linux/fs_context.h>
++#include <linux/fs_parser.h>
+ 
+ #include "ext4.h"
+ #include "ext4_extents.h"	/* Needed for trace points definition */
+@@ -1681,11 +1683,160 @@ enum {
+ 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+ 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
+ 	Opt_no_prefetch_block_bitmaps, Opt_mb_optimize_scan,
++	Opt_errors, Opt_data, Opt_data_err, Opt_jqfmt, Opt_dax_type,
+ #ifdef CONFIG_EXT4_DEBUG
+ 	Opt_fc_debug_max_replay, Opt_fc_debug_force
+ #endif
+ };
+ 
++static const struct constant_table ext4_param_errors[] = {
++	{"continue",	Opt_err_cont},
++	{"panic",	Opt_err_panic},
++	{"remount-ro",	Opt_err_ro},
++	{}
++};
++
++static const struct constant_table ext4_param_data[] = {
++	{"journal",	Opt_data_journal},
++	{"ordered",	Opt_data_ordered},
++	{"writeback",	Opt_data_writeback},
++	{}
++};
++
++static const struct constant_table ext4_param_data_err[] = {
++	{"abort",	Opt_data_err_abort},
++	{"ignore",	Opt_data_err_ignore},
++	{}
++};
++
++static const struct constant_table ext4_param_jqfmt[] = {
++	{"vfsold",	Opt_jqfmt_vfsold},
++	{"vfsv0",	Opt_jqfmt_vfsv0},
++	{"vfsv1",	Opt_jqfmt_vfsv1},
++	{}
++};
++
++static const struct constant_table ext4_param_dax[] = {
++	{"always",	Opt_dax_always},
++	{"inode",	Opt_dax_inode},
++	{"never",	Opt_dax_never},
++	{}
++};
++
++/* String parameter that allows empty argument */
++#define fsparam_string_empty(NAME, OPT) \
++	__fsparam(fs_param_is_string, NAME, OPT, fs_param_can_be_empty, NULL)
++
++/*
++ * Mount option specification
++ * We don't use fsparam_flag_no because of the way we set the
++ * options and the way we show them in _ext4_show_options(). To
++ * keep the changes to a minimum, let's keep the negative options
++ * separate for now.
++ */
++static const struct fs_parameter_spec ext4_param_specs[] = {
++	fsparam_flag	("bsddf",		Opt_bsd_df),
++	fsparam_flag	("minixdf",		Opt_minix_df),
++	fsparam_flag	("grpid",		Opt_grpid),
++	fsparam_flag	("bsdgroups",		Opt_grpid),
++	fsparam_flag	("nogrpid",		Opt_nogrpid),
++	fsparam_flag	("sysvgroups",		Opt_nogrpid),
++	fsparam_u32	("resgid",		Opt_resgid),
++	fsparam_u32	("resuid",		Opt_resuid),
++	fsparam_u32	("sb",			Opt_sb),
++	fsparam_enum	("errors",		Opt_errors, ext4_param_errors),
++	fsparam_flag	("nouid32",		Opt_nouid32),
++	fsparam_flag	("debug",		Opt_debug),
++	fsparam_flag	("oldalloc",		Opt_removed),
++	fsparam_flag	("orlov",		Opt_removed),
++	fsparam_flag	("user_xattr",		Opt_user_xattr),
++	fsparam_flag	("nouser_xattr",	Opt_nouser_xattr),
++	fsparam_flag	("acl",			Opt_acl),
++	fsparam_flag	("noacl",		Opt_noacl),
++	fsparam_flag	("norecovery",		Opt_noload),
++	fsparam_flag	("noload",		Opt_noload),
++	fsparam_flag	("bh",			Opt_removed),
++	fsparam_flag	("nobh",		Opt_removed),
++	fsparam_u32	("commit",		Opt_commit),
++	fsparam_u32	("min_batch_time",	Opt_min_batch_time),
++	fsparam_u32	("max_batch_time",	Opt_max_batch_time),
++	fsparam_u32	("journal_dev",		Opt_journal_dev),
++	fsparam_bdev	("journal_path",	Opt_journal_path),
++	fsparam_flag	("journal_checksum",	Opt_journal_checksum),
++	fsparam_flag	("nojournal_checksum",	Opt_nojournal_checksum),
++	fsparam_flag	("journal_async_commit",Opt_journal_async_commit),
++	fsparam_flag	("abort",		Opt_abort),
++	fsparam_enum	("data",		Opt_data, ext4_param_data),
++	fsparam_enum	("data_err",		Opt_data_err,
++						ext4_param_data_err),
++	fsparam_string_empty
++			("usrjquota",		Opt_usrjquota),
++	fsparam_string_empty
++			("grpjquota",		Opt_grpjquota),
++	fsparam_enum	("jqfmt",		Opt_jqfmt, ext4_param_jqfmt),
++	fsparam_flag	("grpquota",		Opt_grpquota),
++	fsparam_flag	("quota",		Opt_quota),
++	fsparam_flag	("noquota",		Opt_noquota),
++	fsparam_flag	("usrquota",		Opt_usrquota),
++	fsparam_flag	("prjquota",		Opt_prjquota),
++	fsparam_flag	("barrier",		Opt_barrier),
++	fsparam_u32	("barrier",		Opt_barrier),
++	fsparam_flag	("nobarrier",		Opt_nobarrier),
++	fsparam_flag	("i_version",		Opt_i_version),
++	fsparam_flag	("dax",			Opt_dax),
++	fsparam_enum	("dax",			Opt_dax_type, ext4_param_dax),
++	fsparam_u32	("stripe",		Opt_stripe),
++	fsparam_flag	("delalloc",		Opt_delalloc),
++	fsparam_flag	("nodelalloc",		Opt_nodelalloc),
++	fsparam_flag	("warn_on_error",	Opt_warn_on_error),
++	fsparam_flag	("nowarn_on_error",	Opt_nowarn_on_error),
++	fsparam_flag	("lazytime",		Opt_lazytime),
++	fsparam_flag	("nolazytime",		Opt_nolazytime),
++	fsparam_u32	("debug_want_extra_isize",
++						Opt_debug_want_extra_isize),
++	fsparam_flag	("mblk_io_submit",	Opt_removed),
++	fsparam_flag	("nomblk_io_submit",	Opt_removed),
++	fsparam_flag	("block_validity",	Opt_block_validity),
++	fsparam_flag	("noblock_validity",	Opt_noblock_validity),
++	fsparam_u32	("inode_readahead_blks",
++						Opt_inode_readahead_blks),
++	fsparam_u32	("journal_ioprio",	Opt_journal_ioprio),
++	fsparam_u32	("auto_da_alloc",	Opt_auto_da_alloc),
++	fsparam_flag	("auto_da_alloc",	Opt_auto_da_alloc),
++	fsparam_flag	("noauto_da_alloc",	Opt_noauto_da_alloc),
++	fsparam_flag	("dioread_nolock",	Opt_dioread_nolock),
++	fsparam_flag	("nodioread_nolock",	Opt_dioread_lock),
++	fsparam_flag	("dioread_lock",	Opt_dioread_lock),
++	fsparam_flag	("discard",		Opt_discard),
++	fsparam_flag	("nodiscard",		Opt_nodiscard),
++	fsparam_u32	("init_itable",		Opt_init_itable),
++	fsparam_flag	("init_itable",		Opt_init_itable),
++	fsparam_flag	("noinit_itable",	Opt_noinit_itable),
++#ifdef CONFIG_EXT4_DEBUG
++	fsparam_flag	("fc_debug_force",	Opt_fc_debug_force),
++	fsparam_u32	("fc_debug_max_replay",	Opt_fc_debug_max_replay),
++#endif
++	fsparam_u32	("max_dir_size_kb",	Opt_max_dir_size_kb),
++	fsparam_flag	("test_dummy_encryption",
++						Opt_test_dummy_encryption),
++	fsparam_string	("test_dummy_encryption",
++						Opt_test_dummy_encryption),
++	fsparam_flag	("inlinecrypt",		Opt_inlinecrypt),
++	fsparam_flag	("nombcache",		Opt_nombcache),
++	fsparam_flag	("no_mbcache",		Opt_nombcache),	/* for backward compatibility */
++	fsparam_flag	("prefetch_block_bitmaps",
++						Opt_removed),
++	fsparam_flag	("no_prefetch_block_bitmaps",
++						Opt_no_prefetch_block_bitmaps),
++	fsparam_s32	("mb_optimize_scan",	Opt_mb_optimize_scan),
++	fsparam_string	("check",		Opt_removed),	/* mount option from ext2/3 */
++	fsparam_flag	("nocheck",		Opt_removed),	/* mount option from ext2/3 */
++	fsparam_flag	("reservation",		Opt_removed),	/* mount option from ext2/3 */
++	fsparam_flag	("noreservation",	Opt_removed),	/* mount option from ext2/3 */
++	fsparam_u32	("journal",		Opt_removed),	/* mount option from ext2/3 */
++	{}
++};
++
+ static const match_table_t tokens = {
+ 	{Opt_bsd_df, "bsddf"},
+ 	{Opt_minix_df, "minixdf"},
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.31.1
+
