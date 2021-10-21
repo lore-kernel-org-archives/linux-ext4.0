@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB09C4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 102C2C433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C3558610CB
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E8A64610CB
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Oct 2021 11:45:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230458AbhJULrr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Oct 2021 07:47:47 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:36288 "EHLO
+        id S231199AbhJULrq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Oct 2021 07:47:46 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:38557 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230484AbhJULrj (ORCPT
+        by vger.kernel.org with ESMTP id S230459AbhJULrj (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
         Thu, 21 Oct 2021 07:47:39 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1634816721;
+        s=mimecast20190719; t=1634816719;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=d0ufLXjqsrWKGNqUdsjMXzpY4wLuydAMABg7HZiFqns=;
-        b=UnR7zR7n/3e+UIO+z/W9NAYDmXm83SoNOAdrkgloi4kgNeV5yE11D3rR3aVCZccEuMLArO
-        pMkHJxtNtk1E33pBKU/nPa0BV4G0dvIzSGvWlhzMMiTv7Q0QOaJk0zZ3NZENOaiZfivWgi
-        QEVUXvlEd+pi4DdU9FMExNxLmduggkE=
+        bh=f729deV6SBYmuHP64BKtDJJfyd+xGoEE+ZW4OlBFRAk=;
+        b=fkUyQk+Z6JSWJM0rHZTXnkgV/ec5z7nvfXyL6Ss8E5o4xxsGtgxOK6q9QBEJdrgO+9PQyz
+        2IxgNfFsApkbKdRCPX6ntMM/1+nHlJ9XYPPRdNiBiq7h3Ba5l+sojr/6DLRbbSuFOTUvaS
+        N9W2sRdk0Bqb+Et5CwapVrHb6g/GOow=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-375-8UMSvlN6NZiTgXqdBnfouQ-1; Thu, 21 Oct 2021 07:45:17 -0400
-X-MC-Unique: 8UMSvlN6NZiTgXqdBnfouQ-1
+ us-mta-600-6VqvFNU_PJS_kdjnlTZ3Yw-1; Thu, 21 Oct 2021 07:45:15 -0400
+X-MC-Unique: 6VqvFNU_PJS_kdjnlTZ3Yw-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 8712D1808304;
-        Thu, 21 Oct 2021 11:45:16 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 13E51100CCC1;
+        Thu, 21 Oct 2021 11:45:14 +0000 (UTC)
 Received: from localhost.localdomain (unknown [10.40.194.38])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9E940652AC;
-        Thu, 21 Oct 2021 11:45:15 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E20DB69217;
+        Thu, 21 Oct 2021 11:45:12 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Cc:     linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 03/13] ext4: move option validation to a separate function
-Date:   Thu, 21 Oct 2021 13:44:58 +0200
-Message-Id: <20211021114508.21407-4-lczerner@redhat.com>
+Cc:     linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH v3 01/13] fs_parse: allow parameter value to be empty
+Date:   Thu, 21 Oct 2021 13:44:56 +0200
+Message-Id: <20211021114508.21407-2-lczerner@redhat.com>
 In-Reply-To: <20211021114508.21407-1-lczerner@redhat.com>
 References: <20211021114508.21407-1-lczerner@redhat.com>
 MIME-Version: 1.0
@@ -52,53 +52,113 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Move option validation out of parse_options() into a separate function
-ext4_validate_options().
+Allow parameter value to be empty by spcifying fs_param_can_be_empty
+flag.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/ext4/super.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/fs_parser.c            | 31 +++++++++++++++++++++++--------
+ include/linux/fs_parser.h |  2 +-
+ 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 42f4a3741692..5f6ad0615a2a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -87,6 +87,7 @@ static void ext4_unregister_li_request(struct super_block *sb);
- static void ext4_clear_request_list(void);
- static struct inode *ext4_get_journal_inode(struct super_block *sb,
- 					    unsigned int journal_inum);
-+static int ext4_validate_options(struct super_block *sb);
- 
- /*
-  * Lock ordering
-@@ -2575,10 +2576,9 @@ static int parse_options(char *options, struct super_block *sb,
- 			 struct ext4_parsed_options *ret_opts,
- 			 int is_remount)
+diff --git a/fs/fs_parser.c b/fs/fs_parser.c
+index 3df07c0e32b3..ed40ce5742fd 100644
+--- a/fs/fs_parser.c
++++ b/fs/fs_parser.c
+@@ -199,6 +199,8 @@ int fs_param_is_bool(struct p_log *log, const struct fs_parameter_spec *p,
+ 	int b;
+ 	if (param->type != fs_value_is_string)
+ 		return fs_param_bad_value(log, param);
++	if (!*param->string && (p->flags & fs_param_can_be_empty))
++		return 0;
+ 	b = lookup_constant(bool_names, param->string, -1);
+ 	if (b == -1)
+ 		return fs_param_bad_value(log, param);
+@@ -211,8 +213,11 @@ int fs_param_is_u32(struct p_log *log, const struct fs_parameter_spec *p,
+ 		    struct fs_parameter *param, struct fs_parse_result *result)
  {
--	struct ext4_sb_info __maybe_unused *sbi = EXT4_SB(sb);
--	char *p, __maybe_unused *usr_qf_name, __maybe_unused *grp_qf_name;
- 	substring_t args[MAX_OPT_ARGS];
- 	int token;
-+	char *p;
- 
- 	if (!options)
- 		return 1;
-@@ -2596,7 +2596,14 @@ static int parse_options(char *options, struct super_block *sb,
- 				     is_remount) < 0)
+ 	int base = (unsigned long)p->data;
+-	if (param->type != fs_value_is_string ||
+-	    kstrtouint(param->string, base, &result->uint_32) < 0)
++	if (param->type != fs_value_is_string)
++		return fs_param_bad_value(log, param);
++	if (!*param->string && (p->flags & fs_param_can_be_empty))
++		return 0;
++	if (kstrtouint(param->string, base, &result->uint_32) < 0)
+ 		return fs_param_bad_value(log, param);
+ 	return 0;
+ }
+@@ -221,8 +226,11 @@ EXPORT_SYMBOL(fs_param_is_u32);
+ int fs_param_is_s32(struct p_log *log, const struct fs_parameter_spec *p,
+ 		    struct fs_parameter *param, struct fs_parse_result *result)
+ {
+-	if (param->type != fs_value_is_string ||
+-	    kstrtoint(param->string, 0, &result->int_32) < 0)
++	if (param->type != fs_value_is_string)
++		return fs_param_bad_value(log, param);
++	if (!*param->string && (p->flags & fs_param_can_be_empty))
++		return 0;
++	if (kstrtoint(param->string, 0, &result->int_32) < 0)
+ 		return fs_param_bad_value(log, param);
+ 	return 0;
+ }
+@@ -231,8 +239,11 @@ EXPORT_SYMBOL(fs_param_is_s32);
+ int fs_param_is_u64(struct p_log *log, const struct fs_parameter_spec *p,
+ 		    struct fs_parameter *param, struct fs_parse_result *result)
+ {
+-	if (param->type != fs_value_is_string ||
+-	    kstrtoull(param->string, 0, &result->uint_64) < 0)
++	if (param->type != fs_value_is_string)
++		return fs_param_bad_value(log, param);
++	if (!*param->string && (p->flags & fs_param_can_be_empty))
++		return 0;
++	if (kstrtoull(param->string, 0, &result->uint_64) < 0)
+ 		return fs_param_bad_value(log, param);
+ 	return 0;
+ }
+@@ -244,6 +255,8 @@ int fs_param_is_enum(struct p_log *log, const struct fs_parameter_spec *p,
+ 	const struct constant_table *c;
+ 	if (param->type != fs_value_is_string)
+ 		return fs_param_bad_value(log, param);
++	if (!*param->string && (p->flags & fs_param_can_be_empty))
++		return 0;
+ 	c = __lookup_constant(p->data, param->string);
+ 	if (!c)
+ 		return fs_param_bad_value(log, param);
+@@ -255,7 +268,8 @@ EXPORT_SYMBOL(fs_param_is_enum);
+ int fs_param_is_string(struct p_log *log, const struct fs_parameter_spec *p,
+ 		       struct fs_parameter *param, struct fs_parse_result *result)
+ {
+-	if (param->type != fs_value_is_string || !*param->string)
++	if (param->type != fs_value_is_string ||
++	    (!*param->string && !(p->flags & fs_param_can_be_empty)))
+ 		return fs_param_bad_value(log, param);
+ 	return 0;
+ }
+@@ -275,7 +289,8 @@ int fs_param_is_fd(struct p_log *log, const struct fs_parameter_spec *p,
+ {
+ 	switch (param->type) {
+ 	case fs_value_is_string:
+-		if (kstrtouint(param->string, 0, &result->uint_32) < 0)
++		if ((!*param->string && !(p->flags & fs_param_can_be_empty)) ||
++		    kstrtouint(param->string, 0, &result->uint_32) < 0)
+ 			break;
+ 		if (result->uint_32 <= INT_MAX)
  			return 0;
- 	}
-+	return ext4_validate_options(sb);
-+}
-+
-+static int ext4_validate_options(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- #ifdef CONFIG_QUOTA
-+	char *usr_qf_name, *grp_qf_name;
- 	/*
- 	 * We do the test below only for project quotas. 'usrquota' and
- 	 * 'grpquota' mount options are allowed even without quota feature
+diff --git a/include/linux/fs_parser.h b/include/linux/fs_parser.h
+index aab0ffc6bac6..f103c91139d4 100644
+--- a/include/linux/fs_parser.h
++++ b/include/linux/fs_parser.h
+@@ -42,7 +42,7 @@ struct fs_parameter_spec {
+ 	u8			opt;	/* Option number (returned by fs_parse()) */
+ 	unsigned short		flags;
+ #define fs_param_neg_with_no	0x0002	/* "noxxx" is negative param */
+-#define fs_param_neg_with_empty	0x0004	/* "xxx=" is negative param */
++#define fs_param_can_be_empty	0x0004	/* "xxx=" is allowed */
+ #define fs_param_deprecated	0x0008	/* The param is deprecated */
+ 	const void		*data;
+ };
 -- 
 2.31.1
 
