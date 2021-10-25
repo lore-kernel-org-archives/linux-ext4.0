@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1D2AC433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5D56C433FE
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id C2540610A5
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AE0DF610A6
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236003AbhJYTdI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Oct 2021 15:33:08 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58326 "EHLO
+        id S235600AbhJYTf3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Oct 2021 15:35:29 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:58608 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235364AbhJYTbA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:31:00 -0400
+        with ESMTP id S235781AbhJYTcb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:32:31 -0400
 Received: from localhost (unknown [IPv6:2804:14c:124:8a08::1002])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
         (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 26B8F1F433A7;
-        Mon, 25 Oct 2021 20:28:35 +0100 (BST)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 85D801F433B3;
+        Mon, 25 Oct 2021 20:29:05 +0100 (BST)
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     amir73il@gmail.com, jack@suse.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -28,9 +28,9 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v9 06/31] fanotify: Split fsid check from other fid mode checks
-Date:   Mon, 25 Oct 2021 16:27:21 -0300
-Message-Id: <20211025192746.66445-7-krisman@collabora.com>
+Subject: [PATCH v9 10/31] fsnotify: Retrieve super block from the data field
+Date:   Mon, 25 Oct 2021 16:27:25 -0300
+Message-Id: <20211025192746.66445-11-krisman@collabora.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20211025192746.66445-1-krisman@collabora.com>
 References: <20211025192746.66445-1-krisman@collabora.com>
@@ -40,107 +40,85 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-FAN_FS_ERROR will require fsid, but not necessarily require the
-filesystem to expose a file handle.  Split those checks into different
-functions, so they can be used separately when setting up an event.
+Some file system events (i.e. FS_ERROR) might not be associated with an
+inode or directory.  For these, we can retrieve the super block from the
+data field.  But, since the super_block is available in the data field
+on every event type, simplify the code to always retrieve it from there,
+through a new helper.
 
-While there, update a comment about tmpfs having 0 fsid, which is no
-longer true.
-
+Suggested-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
+--
+Changes since v6:
+  - Always use data field for superblock retrieval
+Changes since v5:
+  - add fsnotify_data_sb handle to retrieve sb from the data field. (jan)
 ---
-Changes since v2:
-  - FAN_ERROR -> FAN_FS_ERROR (Amir)
-  - Update comment (Amir)
+ fs/notify/fsnotify.c             |  7 +++----
+ include/linux/fsnotify_backend.h | 15 +++++++++++++++
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-Changes since v1:
-  (Amir)
-  - Sort hunks to simplify diff.
-Changes since RFC:
-  (Amir)
-  - Rename fanotify_check_path_fsid -> fanotify_test_fsid.
-  - Use dentry directly instead of path.
----
- fs/notify/fanotify/fanotify_user.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
-
-diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fanotify_user.c
-index 6895ec310b5d..adeae6d65e35 100644
---- a/fs/notify/fanotify/fanotify_user.c
-+++ b/fs/notify/fanotify/fanotify_user.c
-@@ -1300,16 +1300,15 @@ SYSCALL_DEFINE2(fanotify_init, unsigned int, flags, unsigned int, event_f_flags)
- 	return fd;
+diff --git a/fs/notify/fsnotify.c b/fs/notify/fsnotify.c
+index 963e6ce75b96..fde3a1115a17 100644
+--- a/fs/notify/fsnotify.c
++++ b/fs/notify/fsnotify.c
+@@ -455,16 +455,16 @@ static void fsnotify_iter_next(struct fsnotify_iter_info *iter_info)
+  *		@file_name is relative to
+  * @file_name:	optional file name associated with event
+  * @inode:	optional inode associated with event -
+- *		either @dir or @inode must be non-NULL.
+- *		if both are non-NULL event may be reported to both.
++ *		If @dir and @inode are both non-NULL, event may be
++ *		reported to both.
+  * @cookie:	inotify rename cookie
+  */
+ int fsnotify(__u32 mask, const void *data, int data_type, struct inode *dir,
+ 	     const struct qstr *file_name, struct inode *inode, u32 cookie)
+ {
+ 	const struct path *path = fsnotify_data_path(data, data_type);
++	struct super_block *sb = fsnotify_data_sb(data, data_type);
+ 	struct fsnotify_iter_info iter_info = {};
+-	struct super_block *sb;
+ 	struct mount *mnt = NULL;
+ 	struct inode *parent = NULL;
+ 	int ret = 0;
+@@ -483,7 +483,6 @@ int fsnotify(__u32 mask, const void *data, int data_type, struct inode *dir,
+ 		 */
+ 		parent = dir;
+ 	}
+-	sb = inode->i_sb;
+ 
+ 	/*
+ 	 * Optimization: srcu_read_lock() has a memory barrier which can
+diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+index b323d0c4b967..035438fe4a43 100644
+--- a/include/linux/fsnotify_backend.h
++++ b/include/linux/fsnotify_backend.h
+@@ -289,6 +289,21 @@ static inline const struct path *fsnotify_data_path(const void *data,
+ 	}
  }
  
--/* Check if filesystem can encode a unique fid */
--static int fanotify_test_fid(struct path *path, __kernel_fsid_t *fsid)
-+static int fanotify_test_fsid(struct dentry *dentry, __kernel_fsid_t *fsid)
- {
- 	__kernel_fsid_t root_fsid;
- 	int err;
- 
- 	/*
--	 * Make sure path is not in filesystem with zero fsid (e.g. tmpfs).
-+	 * Make sure dentry is not of a filesystem with zero fsid (e.g. fuse).
- 	 */
--	err = vfs_get_fsid(path->dentry, fsid);
-+	err = vfs_get_fsid(dentry, fsid);
- 	if (err)
- 		return err;
- 
-@@ -1317,10 +1316,10 @@ static int fanotify_test_fid(struct path *path, __kernel_fsid_t *fsid)
- 		return -ENODEV;
- 
- 	/*
--	 * Make sure path is not inside a filesystem subvolume (e.g. btrfs)
-+	 * Make sure dentry is not of a filesystem subvolume (e.g. btrfs)
- 	 * which uses a different fsid than sb root.
- 	 */
--	err = vfs_get_fsid(path->dentry->d_sb->s_root, &root_fsid);
-+	err = vfs_get_fsid(dentry->d_sb->s_root, &root_fsid);
- 	if (err)
- 		return err;
- 
-@@ -1328,6 +1327,12 @@ static int fanotify_test_fid(struct path *path, __kernel_fsid_t *fsid)
- 	    root_fsid.val[1] != fsid->val[1])
- 		return -EXDEV;
- 
-+	return 0;
++static inline struct super_block *fsnotify_data_sb(const void *data,
++						   int data_type)
++{
++	switch (data_type) {
++	case FSNOTIFY_EVENT_INODE:
++		return ((struct inode *)data)->i_sb;
++	case FSNOTIFY_EVENT_DENTRY:
++		return ((struct dentry *)data)->d_sb;
++	case FSNOTIFY_EVENT_PATH:
++		return ((const struct path *)data)->dentry->d_sb;
++	default:
++		return NULL;
++	}
 +}
 +
-+/* Check if filesystem can encode a unique fid */
-+static int fanotify_test_fid(struct dentry *dentry)
-+{
- 	/*
- 	 * We need to make sure that the file system supports at least
- 	 * encoding a file handle so user can use name_to_handle_at() to
-@@ -1335,8 +1340,8 @@ static int fanotify_test_fid(struct path *path, __kernel_fsid_t *fsid)
- 	 * objects. However, name_to_handle_at() requires that the
- 	 * filesystem also supports decoding file handles.
- 	 */
--	if (!path->dentry->d_sb->s_export_op ||
--	    !path->dentry->d_sb->s_export_op->fh_to_dentry)
-+	if (!dentry->d_sb->s_export_op ||
-+	    !dentry->d_sb->s_export_op->fh_to_dentry)
- 		return -EOPNOTSUPP;
- 
- 	return 0;
-@@ -1487,7 +1492,11 @@ static int do_fanotify_mark(int fanotify_fd, unsigned int flags, __u64 mask,
- 	}
- 
- 	if (fid_mode) {
--		ret = fanotify_test_fid(&path, &__fsid);
-+		ret = fanotify_test_fsid(path.dentry, &__fsid);
-+		if (ret)
-+			goto path_put_and_out;
-+
-+		ret = fanotify_test_fid(path.dentry);
- 		if (ret)
- 			goto path_put_and_out;
- 
+ enum fsnotify_obj_type {
+ 	FSNOTIFY_OBJ_TYPE_INODE,
+ 	FSNOTIFY_OBJ_TYPE_PARENT,
 -- 
 2.33.0
 
