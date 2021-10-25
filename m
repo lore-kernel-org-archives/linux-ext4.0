@@ -2,24 +2,27 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3B34C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:34:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB92CC433FE
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 20:08:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DA7E461156
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:34:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 829AC60C4A
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 20:08:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236886AbhJYTgZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Oct 2021 15:36:25 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58774 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236081AbhJYTdZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:33:25 -0400
+        id S235707AbhJYUKb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Oct 2021 16:10:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33432 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S240198AbhJYUKN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 16:10:13 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 15E55C03AFF1;
+        Mon, 25 Oct 2021 12:27:58 -0700 (PDT)
 Received: from localhost (unknown [IPv6:2804:14c:124:8a08::1002])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
         (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 2695E1F433E3;
-        Mon, 25 Oct 2021 20:31:00 +0100 (BST)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 390DC1F430A9;
+        Mon, 25 Oct 2021 20:27:55 +0100 (BST)
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     amir73il@gmail.com, jack@suse.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -27,85 +30,125 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v9 28/31] fanotify: Allow users to request FAN_FS_ERROR events
-Date:   Mon, 25 Oct 2021 16:27:43 -0300
-Message-Id: <20211025192746.66445-29-krisman@collabora.com>
+        kernel@collabora.com
+Subject: [PATCH v9 00/31] file system-wide error monitoring
+Date:   Mon, 25 Oct 2021 16:27:15 -0300
+Message-Id: <20211025192746.66445-1-krisman@collabora.com>
 X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20211025192746.66445-1-krisman@collabora.com>
-References: <20211025192746.66445-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Wire up the FAN_FS_ERROR event in the fanotify_mark syscall, allowing
-user space to request the monitoring of FAN_FS_ERROR events.
+Hi,
 
-These events are limited to filesystem marks, so check it is the
-case in the syscall handler.
+This is the 9th version of this patch series.  Thank you, Amir, Jan and
+Ted, for the feedback in the previous versions.
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+The main difference in this version is that the pool is no longer
+resizeable nor limited in number of marks, even though we only
+pre-allocate 32 slots.  In addition, ext4 was modified to always return
+non-zero errno, and the documentation was fixed accordingly (No longer
+suggests we return EXT4_ERR* values.
 
----
-Changes since v7:
-  - Move the verification closer to similar code (Amir)
----
- fs/notify/fanotify/fanotify.c      | 2 +-
- fs/notify/fanotify/fanotify_user.c | 4 ++++
- include/linux/fanotify.h           | 6 +++++-
- 3 files changed, 10 insertions(+), 2 deletions(-)
+I also droped the Reviewed-by tags from the ext4 patch, due to the
+changes above.
 
-diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-index af61425e6e3b..b6091775aa6e 100644
---- a/fs/notify/fanotify/fanotify.c
-+++ b/fs/notify/fanotify/fanotify.c
-@@ -822,7 +822,7 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
- 	BUILD_BUG_ON(FAN_OPEN_EXEC_PERM != FS_OPEN_EXEC_PERM);
- 	BUILD_BUG_ON(FAN_FS_ERROR != FS_ERROR);
- 
--	BUILD_BUG_ON(HWEIGHT32(ALL_FANOTIFY_EVENT_BITS) != 19);
-+	BUILD_BUG_ON(HWEIGHT32(ALL_FANOTIFY_EVENT_BITS) != 20);
- 
- 	mask = fanotify_group_event_mask(group, iter_info, mask, data,
- 					 data_type, dir);
-diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fanotify_user.c
-index 97ec5b005b50..77a77064f3c9 100644
---- a/fs/notify/fanotify/fanotify_user.c
-+++ b/fs/notify/fanotify/fanotify_user.c
-@@ -1519,6 +1519,10 @@ static int do_fanotify_mark(int fanotify_fd, unsigned int flags, __u64 mask,
- 	    group->priority == FS_PRIO_0)
- 		goto fput_and_out;
- 
-+	if (mask & FAN_FS_ERROR &&
-+	    mark_type != FAN_MARK_FILESYSTEM)
-+		goto fput_and_out;
-+
- 	/*
- 	 * Events that do not carry enough information to report
- 	 * event->fd require a group that supports reporting fid.  Those
-diff --git a/include/linux/fanotify.h b/include/linux/fanotify.h
-index 52d464802d99..616af2ea20f3 100644
---- a/include/linux/fanotify.h
-+++ b/include/linux/fanotify.h
-@@ -91,9 +91,13 @@ extern struct ctl_table fanotify_table[]; /* for sysctl */
- #define FANOTIFY_INODE_EVENTS	(FANOTIFY_DIRENT_EVENTS | \
- 				 FAN_ATTRIB | FAN_MOVE_SELF | FAN_DELETE_SELF)
- 
-+/* Events that can only be reported with data type FSNOTIFY_EVENT_ERROR */
-+#define FANOTIFY_ERROR_EVENTS	(FAN_FS_ERROR)
-+
- /* Events that user can request to be notified on */
- #define FANOTIFY_EVENTS		(FANOTIFY_PATH_EVENTS | \
--				 FANOTIFY_INODE_EVENTS)
-+				 FANOTIFY_INODE_EVENTS | \
-+				 FANOTIFY_ERROR_EVENTS)
- 
- /* Events that require a permission response from user */
- #define FANOTIFY_PERM_EVENTS	(FAN_OPEN_PERM | FAN_ACCESS_PERM | \
+Please let me know what you think.
+
+This was tested with LTP for regressions and also using the sample code
+on the last patch, with a corrupted image.  I wrote a new ltp test for
+this feature which is being reviewed and is available at:
+
+  https://gitlab.collabora.com/krisman/ltp  -b fan-fs-error
+
+In addition, I wrote a man-page that can be pulled from:
+
+  https://gitlab.collabora.com/krisman/man-pages.git -b fan-fs-error
+
+And is being reviewed at the list.
+
+I also pushed this full series to:
+
+  https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-v8
+
+Thank you
+
+Cc: Darrick J. Wong <djwong@kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: jack@suse.com
+To: amir73il@gmail.com
+Cc: dhowells@redhat.com
+Cc: khazhy@google.com
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-api@vger.kernel.org
+Cc: linux-api@vger.kernel.org
+
+Amir Goldstein (3):
+  fsnotify: pass data_type to fsnotify_name()
+  fsnotify: pass dentry instead of inode data
+  fsnotify: clarify contract for create event hooks
+
+Gabriel Krisman Bertazi (28):
+  fsnotify: Don't insert unmergeable events in hashtable
+  fanotify: Fold event size calculation to its own function
+  fanotify: Split fsid check from other fid mode checks
+  inotify: Don't force FS_IN_IGNORED
+  fsnotify: Add helper to detect overflow_event
+  fsnotify: Add wrapper around fsnotify_add_event
+  fsnotify: Retrieve super block from the data field
+  fsnotify: Protect fsnotify_handle_inode_event from no-inode events
+  fsnotify: Pass group argument to free_event
+  fanotify: Support null inode event in fanotify_dfid_inode
+  fanotify: Allow file handle encoding for unhashed events
+  fanotify: Encode empty file handle when no inode is provided
+  fanotify: Require fid_mode for any non-fd event
+  fsnotify: Support FS_ERROR event type
+  fanotify: Reserve UAPI bits for FAN_FS_ERROR
+  fanotify: Pre-allocate pool of error events
+  fanotify: Support enqueueing of error events
+  fanotify: Support merging of error events
+  fanotify: Wrap object_fh inline space in a creator macro
+  fanotify: Add helpers to decide whether to report FID/DFID
+  fanotify: Report fid entry even for zero-length file_handle
+  fanotify: WARN_ON against too large file handles
+  fanotify: Report fid info for file related file system errors
+  fanotify: Emit generic error info for error event
+  fanotify: Allow users to request FAN_FS_ERROR events
+  ext4: Send notifications on error
+  samples: Add fs error monitoring example
+  docs: Document the FAN_FS_ERROR event
+
+ .../admin-guide/filesystem-monitoring.rst     |  74 +++++++++
+ Documentation/admin-guide/index.rst           |   1 +
+ fs/ext4/super.c                               |   8 +
+ fs/nfsd/filecache.c                           |   3 +
+ fs/notify/fanotify/fanotify.c                 | 117 +++++++++++--
+ fs/notify/fanotify/fanotify.h                 |  54 +++++-
+ fs/notify/fanotify/fanotify_user.c            | 156 +++++++++++++-----
+ fs/notify/fsnotify.c                          |  10 +-
+ fs/notify/group.c                             |   2 +-
+ fs/notify/inotify/inotify_fsnotify.c          |   5 +-
+ fs/notify/inotify/inotify_user.c              |   6 +-
+ fs/notify/notification.c                      |  14 +-
+ include/linux/fanotify.h                      |   9 +-
+ include/linux/fsnotify.h                      |  58 +++++--
+ include/linux/fsnotify_backend.h              |  96 ++++++++++-
+ include/uapi/linux/fanotify.h                 |   8 +
+ kernel/audit_fsnotify.c                       |   3 +-
+ kernel/audit_watch.c                          |   3 +-
+ samples/Kconfig                               |   9 +
+ samples/Makefile                              |   1 +
+ samples/fanotify/Makefile                     |   5 +
+ samples/fanotify/fs-monitor.c                 | 142 ++++++++++++++++
+ 22 files changed, 685 insertions(+), 99 deletions(-)
+ create mode 100644 Documentation/admin-guide/filesystem-monitoring.rst
+ create mode 100644 samples/fanotify/Makefile
+ create mode 100644 samples/fanotify/fs-monitor.c
+
 -- 
 2.33.0
 
