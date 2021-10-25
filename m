@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5D56C433FE
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67090C43219
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id AE0DF610A6
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5536B61106
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:33:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235600AbhJYTf3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Oct 2021 15:35:29 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58608 "EHLO
+        id S236742AbhJYTff (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Oct 2021 15:35:35 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:58640 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235781AbhJYTcb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:32:31 -0400
+        with ESMTP id S235636AbhJYTcf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:32:35 -0400
 Received: from localhost (unknown [IPv6:2804:14c:124:8a08::1002])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
         (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 85D801F433B3;
-        Mon, 25 Oct 2021 20:29:05 +0100 (BST)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 1E6141F433E1;
+        Mon, 25 Oct 2021 20:29:54 +0100 (BST)
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     amir73il@gmail.com, jack@suse.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -28,9 +28,9 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v9 10/31] fsnotify: Retrieve super block from the data field
-Date:   Mon, 25 Oct 2021 16:27:25 -0300
-Message-Id: <20211025192746.66445-11-krisman@collabora.com>
+Subject: [PATCH v9 18/31] fanotify: Reserve UAPI bits for FAN_FS_ERROR
+Date:   Mon, 25 Oct 2021 16:27:33 -0300
+Message-Id: <20211025192746.66445-19-krisman@collabora.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20211025192746.66445-1-krisman@collabora.com>
 References: <20211025192746.66445-1-krisman@collabora.com>
@@ -40,85 +40,42 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Some file system events (i.e. FS_ERROR) might not be associated with an
-inode or directory.  For these, we can retrieve the super block from the
-data field.  But, since the super_block is available in the data field
-on every event type, simplify the code to always retrieve it from there,
-through a new helper.
+FAN_FS_ERROR allows reporting of event type FS_ERROR to userspace, which
+is a mechanism to report file system wide problems via fanotify.  This
+commit preallocate userspace visible bits to match the FS_ERROR event.
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
---
-Changes since v6:
-  - Always use data field for superblock retrieval
-Changes since v5:
-  - add fsnotify_data_sb handle to retrieve sb from the data field. (jan)
 ---
- fs/notify/fsnotify.c             |  7 +++----
- include/linux/fsnotify_backend.h | 15 +++++++++++++++
- 2 files changed, 18 insertions(+), 4 deletions(-)
+ fs/notify/fanotify/fanotify.c | 1 +
+ include/uapi/linux/fanotify.h | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/fs/notify/fsnotify.c b/fs/notify/fsnotify.c
-index 963e6ce75b96..fde3a1115a17 100644
---- a/fs/notify/fsnotify.c
-+++ b/fs/notify/fsnotify.c
-@@ -455,16 +455,16 @@ static void fsnotify_iter_next(struct fsnotify_iter_info *iter_info)
-  *		@file_name is relative to
-  * @file_name:	optional file name associated with event
-  * @inode:	optional inode associated with event -
-- *		either @dir or @inode must be non-NULL.
-- *		if both are non-NULL event may be reported to both.
-+ *		If @dir and @inode are both non-NULL, event may be
-+ *		reported to both.
-  * @cookie:	inotify rename cookie
-  */
- int fsnotify(__u32 mask, const void *data, int data_type, struct inode *dir,
- 	     const struct qstr *file_name, struct inode *inode, u32 cookie)
- {
- 	const struct path *path = fsnotify_data_path(data, data_type);
-+	struct super_block *sb = fsnotify_data_sb(data, data_type);
- 	struct fsnotify_iter_info iter_info = {};
--	struct super_block *sb;
- 	struct mount *mnt = NULL;
- 	struct inode *parent = NULL;
- 	int ret = 0;
-@@ -483,7 +483,6 @@ int fsnotify(__u32 mask, const void *data, int data_type, struct inode *dir,
- 		 */
- 		parent = dir;
- 	}
--	sb = inode->i_sb;
+diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
+index c64d61b673ca..8f152445d75c 100644
+--- a/fs/notify/fanotify/fanotify.c
++++ b/fs/notify/fanotify/fanotify.c
+@@ -752,6 +752,7 @@ static int fanotify_handle_event(struct fsnotify_group *group, u32 mask,
+ 	BUILD_BUG_ON(FAN_ONDIR != FS_ISDIR);
+ 	BUILD_BUG_ON(FAN_OPEN_EXEC != FS_OPEN_EXEC);
+ 	BUILD_BUG_ON(FAN_OPEN_EXEC_PERM != FS_OPEN_EXEC_PERM);
++	BUILD_BUG_ON(FAN_FS_ERROR != FS_ERROR);
  
- 	/*
- 	 * Optimization: srcu_read_lock() has a memory barrier which can
-diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-index b323d0c4b967..035438fe4a43 100644
---- a/include/linux/fsnotify_backend.h
-+++ b/include/linux/fsnotify_backend.h
-@@ -289,6 +289,21 @@ static inline const struct path *fsnotify_data_path(const void *data,
- 	}
- }
+ 	BUILD_BUG_ON(HWEIGHT32(ALL_FANOTIFY_EVENT_BITS) != 19);
  
-+static inline struct super_block *fsnotify_data_sb(const void *data,
-+						   int data_type)
-+{
-+	switch (data_type) {
-+	case FSNOTIFY_EVENT_INODE:
-+		return ((struct inode *)data)->i_sb;
-+	case FSNOTIFY_EVENT_DENTRY:
-+		return ((struct dentry *)data)->d_sb;
-+	case FSNOTIFY_EVENT_PATH:
-+		return ((const struct path *)data)->dentry->d_sb;
-+	default:
-+		return NULL;
-+	}
-+}
-+
- enum fsnotify_obj_type {
- 	FSNOTIFY_OBJ_TYPE_INODE,
- 	FSNOTIFY_OBJ_TYPE_PARENT,
+diff --git a/include/uapi/linux/fanotify.h b/include/uapi/linux/fanotify.h
+index 64553df9d735..2990731ddc8b 100644
+--- a/include/uapi/linux/fanotify.h
++++ b/include/uapi/linux/fanotify.h
+@@ -20,6 +20,7 @@
+ #define FAN_OPEN_EXEC		0x00001000	/* File was opened for exec */
+ 
+ #define FAN_Q_OVERFLOW		0x00004000	/* Event queued overflowed */
++#define FAN_FS_ERROR		0x00008000	/* Filesystem error */
+ 
+ #define FAN_OPEN_PERM		0x00010000	/* File open in perm check */
+ #define FAN_ACCESS_PERM		0x00020000	/* File accessed in perm check */
 -- 
 2.33.0
 
