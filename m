@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12444C433F5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22D27C433FE
 	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:34:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EE71361154
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:34:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 12CB0610CF
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Oct 2021 19:34:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235878AbhJYTgE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Oct 2021 15:36:04 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58648 "EHLO
+        id S235320AbhJYTgT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Oct 2021 15:36:19 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:58606 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235755AbhJYTcj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:32:39 -0400
+        with ESMTP id S235120AbhJYTc3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Oct 2021 15:32:29 -0400
 Received: from localhost (unknown [IPv6:2804:14c:124:8a08::1002])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
         (Authenticated sender: krisman)
-        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 30E891F41B51;
-        Mon, 25 Oct 2021 20:30:14 +0100 (BST)
+        by bhuna.collabora.co.uk (Postfix) with ESMTPSA id 0E0771F433AC;
+        Mon, 25 Oct 2021 20:28:52 +0100 (BST)
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     amir73il@gmail.com, jack@suse.com
 Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
@@ -28,9 +28,9 @@ Cc:     djwong@kernel.org, tytso@mit.edu, david@fromorbit.com,
         linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com, Jan Kara <jack@suse.cz>
-Subject: [PATCH v9 21/31] fanotify: Support merging of error events
-Date:   Mon, 25 Oct 2021 16:27:36 -0300
-Message-Id: <20211025192746.66445-22-krisman@collabora.com>
+Subject: [PATCH v9 08/31] fsnotify: Add helper to detect overflow_event
+Date:   Mon, 25 Oct 2021 16:27:23 -0300
+Message-Id: <20211025192746.66445-9-krisman@collabora.com>
 X-Mailer: git-send-email 2.33.0
 In-Reply-To: <20211025192746.66445-1-krisman@collabora.com>
 References: <20211025192746.66445-1-krisman@collabora.com>
@@ -40,118 +40,48 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Error events (FAN_FS_ERROR) against the same file system can be merged
-by simply iterating the error count.  The hash is taken from the fsid,
-without considering the FH.  This means that only the first error object
-is reported.
+Similarly to fanotify_is_perm_event and friends, provide a helper
+predicate to say whether a mask is of an overflow event.
 
+Suggested-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
 ---
-Changes since v7:
-  - Move fee->fsid assignment here (Amir)
-  - Open code error event merge logic in fanotify_merge (Jan)
----
- fs/notify/fanotify/fanotify.c | 26 ++++++++++++++++++++++++--
- fs/notify/fanotify/fanotify.h |  4 +++-
- 2 files changed, 27 insertions(+), 3 deletions(-)
+ fs/notify/fanotify/fanotify.h    | 3 ++-
+ include/linux/fsnotify_backend.h | 5 +++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/notify/fanotify/fanotify.c b/fs/notify/fanotify/fanotify.c
-index 1f195c95dfcd..cedcb1546804 100644
---- a/fs/notify/fanotify/fanotify.c
-+++ b/fs/notify/fanotify/fanotify.c
-@@ -111,6 +111,16 @@ static bool fanotify_name_event_equal(struct fanotify_name_event *fne1,
- 	return fanotify_info_equal(info1, info2);
- }
- 
-+static bool fanotify_error_event_equal(struct fanotify_error_event *fee1,
-+				       struct fanotify_error_event *fee2)
-+{
-+	/* Error events against the same file system are always merged. */
-+	if (!fanotify_fsid_equal(&fee1->fsid, &fee2->fsid))
-+		return false;
-+
-+	return true;
-+}
-+
- static bool fanotify_should_merge(struct fanotify_event *old,
- 				  struct fanotify_event *new)
- {
-@@ -141,6 +151,9 @@ static bool fanotify_should_merge(struct fanotify_event *old,
- 	case FANOTIFY_EVENT_TYPE_FID_NAME:
- 		return fanotify_name_event_equal(FANOTIFY_NE(old),
- 						 FANOTIFY_NE(new));
-+	case FANOTIFY_EVENT_TYPE_FS_ERROR:
-+		return fanotify_error_event_equal(FANOTIFY_EE(old),
-+						  FANOTIFY_EE(new));
- 	default:
- 		WARN_ON_ONCE(1);
- 	}
-@@ -176,6 +189,10 @@ static int fanotify_merge(struct fsnotify_group *group,
- 			break;
- 		if (fanotify_should_merge(old, new)) {
- 			old->mask |= new->mask;
-+
-+			if (fanotify_is_error_event(old->mask))
-+				FANOTIFY_EE(old)->err_count++;
-+
- 			return 1;
- 		}
- 	}
-@@ -577,7 +594,8 @@ static struct fanotify_event *fanotify_alloc_name_event(struct inode *id,
- static struct fanotify_event *fanotify_alloc_error_event(
- 						struct fsnotify_group *group,
- 						__kernel_fsid_t *fsid,
--						const void *data, int data_type)
-+						const void *data, int data_type,
-+						unsigned int *hash)
- {
- 	struct fs_error_report *report =
- 			fsnotify_data_error_report(data, data_type);
-@@ -591,6 +609,10 @@ static struct fanotify_event *fanotify_alloc_error_event(
- 		return NULL;
- 
- 	fee->fae.type = FANOTIFY_EVENT_TYPE_FS_ERROR;
-+	fee->err_count = 1;
-+	fee->fsid = *fsid;
-+
-+	*hash ^= fanotify_hash_fsid(fsid);
- 
- 	return &fee->fae;
- }
-@@ -664,7 +686,7 @@ static struct fanotify_event *fanotify_alloc_event(struct fsnotify_group *group,
- 		event = fanotify_alloc_perm_event(path, gfp);
- 	} else if (fanotify_is_error_event(mask)) {
- 		event = fanotify_alloc_error_event(group, fsid, data,
--						   data_type);
-+						   data_type, &hash);
- 	} else if (name_event && (file_name || child)) {
- 		event = fanotify_alloc_name_event(id, fsid, file_name, child,
- 						  &hash, gfp);
 diff --git a/fs/notify/fanotify/fanotify.h b/fs/notify/fanotify/fanotify.h
-index ebef952481fa..2b032b79d5b0 100644
+index 4a5e555dc3d2..c42cf8fd7d79 100644
 --- a/fs/notify/fanotify/fanotify.h
 +++ b/fs/notify/fanotify/fanotify.h
-@@ -199,6 +199,9 @@ FANOTIFY_NE(struct fanotify_event *event)
- 
- struct fanotify_error_event {
- 	struct fanotify_event fae;
-+	u32 err_count; /* Suppressed errors count */
-+
-+	__kernel_fsid_t fsid; /* FSID this error refers to. */
- };
- 
- static inline struct fanotify_error_event *
-@@ -332,7 +335,6 @@ static inline struct path *fanotify_event_path(struct fanotify_event *event)
+@@ -315,7 +315,8 @@ static inline struct path *fanotify_event_path(struct fanotify_event *event)
+  */
  static inline bool fanotify_is_hashed_event(u32 mask)
  {
- 	return !(fanotify_is_perm_event(mask) ||
--		 fanotify_is_error_event(mask) ||
- 		 fsnotify_is_overflow_event(mask));
+-	return !fanotify_is_perm_event(mask) && !(mask & FS_Q_OVERFLOW);
++	return !(fanotify_is_perm_event(mask) ||
++		 fsnotify_is_overflow_event(mask));
  }
  
+ static inline unsigned int fanotify_event_hash_bucket(
+diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
+index a2db821e8a8f..749bc85e1d1c 100644
+--- a/include/linux/fsnotify_backend.h
++++ b/include/linux/fsnotify_backend.h
+@@ -510,6 +510,11 @@ static inline void fsnotify_queue_overflow(struct fsnotify_group *group)
+ 	fsnotify_add_event(group, group->overflow_event, NULL, NULL);
+ }
+ 
++static inline bool fsnotify_is_overflow_event(u32 mask)
++{
++	return mask & FS_Q_OVERFLOW;
++}
++
+ static inline bool fsnotify_notify_queue_is_empty(struct fsnotify_group *group)
+ {
+ 	assert_spin_locked(&group->notification_lock);
 -- 
 2.33.0
 
