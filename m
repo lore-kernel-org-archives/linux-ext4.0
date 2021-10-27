@@ -2,48 +2,48 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92F23C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 14:19:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3A2AC433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 14:20:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7ACAE608FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 14:19:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CA5BC60F02
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 14:20:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242521AbhJ0OWC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Oct 2021 10:22:02 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:40043 "EHLO
+        id S242464AbhJ0OWg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Oct 2021 10:22:36 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([216.205.24.124]:52214 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S242504AbhJ0OVp (ORCPT
+        by vger.kernel.org with ESMTP id S236500AbhJ0OW1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 27 Oct 2021 10:21:45 -0400
+        Wed, 27 Oct 2021 10:22:27 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1635344359;
+        s=mimecast20190719; t=1635344401;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=H0PBvbrHJ3FXeUjuwY7tBzjrt7bFtFQZjb8mlXO5K7o=;
-        b=d6tkw4jTbn2oeBi/ndUEwPCo6J/9Q1tIBNmT2vXpgb4RFYIU5ctV/rUT8DqMw5ycRZwb87
-        NBdzeKDRUjZt6z9iFiEBY91Fq6AryMgEu9g49ppab9ii4tc7LMnWORBreb9qqQq65mQqq2
-        IZemRn79oGBlKT969PKZiapkzG/YdTk=
+        bh=T/UT7dcMkNkSLc8+vPaTa9CFSPE76sPAMuQmTJmIEqI=;
+        b=XwPHDxTPD8Fu8BnThq4UjDgA7N3Doqbus4rV8BdS9BfWWmUQPHKvGqPz8EUhGJ03HMnrYR
+        stowoEXD2DtYa5bQ27XPB4f4BeL0RZtFIrDzTJi5OrEhUtIU/tvfXoePobW8/5o49mhNQu
+        OIi9nbvTB2mDodA54tloH8lESyLGd/M=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-403-82Qm9zYIPDmDhNt1wHBLKA-1; Wed, 27 Oct 2021 10:19:16 -0400
-X-MC-Unique: 82Qm9zYIPDmDhNt1wHBLKA-1
+ us-mta-215-VZTkRTytNHS0lx2kkYb5Ew-1; Wed, 27 Oct 2021 10:19:59 -0400
+X-MC-Unique: VZTkRTytNHS0lx2kkYb5Ew-1
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 8A4C1A0BC1;
-        Wed, 27 Oct 2021 14:19:15 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id BA06DA40CC;
+        Wed, 27 Oct 2021 14:19:58 +0000 (UTC)
 Received: from localhost.localdomain (unknown [10.40.194.65])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 731245DF35;
-        Wed, 27 Oct 2021 14:19:14 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E12DC5DF35;
+        Wed, 27 Oct 2021 14:19:18 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
 Cc:     linux-fsdevel@vger.kernel.org,
         Carlos Maiolino <cmaiolino@redhat.com>
-Subject: [PATCH v4 02/13] ext4: Add fs parameter specifications for mount options
-Date:   Wed, 27 Oct 2021 16:18:46 +0200
-Message-Id: <20211027141857.33657-3-lczerner@redhat.com>
+Subject: [PATCH v4 05/13] ext4: Allow sb to be NULL in ext4_msg()
+Date:   Wed, 27 Oct 2021 16:18:49 +0200
+Message-Id: <20211027141857.33657-6-lczerner@redhat.com>
 In-Reply-To: <20211027141857.33657-1-lczerner@redhat.com>
 References: <20211027141857.33657-1-lczerner@redhat.com>
 MIME-Version: 1.0
@@ -53,190 +53,397 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Create an array of fs_parameter_spec called ext4_param_specs to
-hold the mount option specifications we're going to be using with the
-new mount api.
+At the parsing phase of mount in the new mount api sb will not be
+available so allow sb to be NULL in ext4_msg and use that in
+handle_mount_opt().
+
+Also change return value to appropriate -EINVAL where needed.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 ---
- fs/ext4/super.c | 151 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 151 insertions(+)
+ fs/ext4/super.c | 144 ++++++++++++++++++++++++++----------------------
+ 1 file changed, 78 insertions(+), 66 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 88d5d274a868..42f4a3741692 100644
+index 66b8e8850726..b3c545695f2f 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -46,6 +46,8 @@
- #include <linux/part_stat.h>
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-+#include <linux/fs_context.h>
-+#include <linux/fs_parser.h>
+@@ -87,7 +87,7 @@ static void ext4_unregister_li_request(struct super_block *sb);
+ static void ext4_clear_request_list(void);
+ static struct inode *ext4_get_journal_inode(struct super_block *sb,
+ 					    unsigned int journal_inum);
+-static int ext4_validate_options(struct super_block *sb);
++static int ext4_validate_options(struct fs_context *fc);
  
- #include "ext4.h"
- #include "ext4_extents.h"	/* Needed for trace points definition */
-@@ -1681,11 +1683,160 @@ enum {
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
- 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
- 	Opt_no_prefetch_block_bitmaps, Opt_mb_optimize_scan,
-+	Opt_errors, Opt_data, Opt_data_err, Opt_jqfmt, Opt_dax_type,
- #ifdef CONFIG_EXT4_DEBUG
- 	Opt_fc_debug_max_replay, Opt_fc_debug_force
+ /*
+  * Lock ordering
+@@ -907,14 +907,20 @@ void __ext4_msg(struct super_block *sb,
+ 	struct va_format vaf;
+ 	va_list args;
+ 
+-	atomic_inc(&EXT4_SB(sb)->s_msg_count);
+-	if (!___ratelimit(&(EXT4_SB(sb)->s_msg_ratelimit_state), "EXT4-fs"))
+-		return;
++	if (sb) {
++		atomic_inc(&EXT4_SB(sb)->s_msg_count);
++		if (!___ratelimit(&(EXT4_SB(sb)->s_msg_ratelimit_state),
++				  "EXT4-fs"))
++			return;
++	}
+ 
+ 	va_start(args, fmt);
+ 	vaf.fmt = fmt;
+ 	vaf.va = &args;
+-	printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
++	if (sb)
++		printk("%sEXT4-fs (%s): %pV\n", prefix, sb->s_id, &vaf);
++	else
++		printk("%sEXT4-fs: %pV\n", prefix, &vaf);
+ 	va_end(args);
+ }
+ 
+@@ -2279,12 +2285,12 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 	switch (token) {
+ 	case Opt_noacl:
+ 	case Opt_nouser_xattr:
+-		ext4_msg(sb, KERN_WARNING, deprecated_msg, param->key, "3.5");
++		ext4_msg(NULL, KERN_WARNING, deprecated_msg, param->key, "3.5");
+ 		break;
+ 	case Opt_sb:
+ 		return 1;	/* handled by get_sb_block() */
+ 	case Opt_removed:
+-		ext4_msg(sb, KERN_WARNING, "Ignoring removed %s option",
++		ext4_msg(NULL, KERN_WARNING, "Ignoring removed %s option",
+ 			 param->key);
+ 		return 1;
+ 	case Opt_abort:
+@@ -2303,7 +2309,7 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ #ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
+ 		sb->s_flags |= SB_INLINECRYPT;
+ #else
+-		ext4_msg(sb, KERN_ERR, "inline encryption not supported");
++		ext4_msg(NULL, KERN_ERR, "inline encryption not supported");
  #endif
- };
+ 		return 1;
+ 	case Opt_errors:
+@@ -2319,22 +2325,22 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 			break;
  
-+static const struct constant_table ext4_param_errors[] = {
-+	{"continue",	Opt_err_cont},
-+	{"panic",	Opt_err_panic},
-+	{"remount-ro",	Opt_err_ro},
-+	{}
-+};
+ 	if (m->token == Opt_err) {
+-		ext4_msg(sb, KERN_ERR, "Unrecognized mount option \"%s\" "
++		ext4_msg(NULL, KERN_ERR, "Unrecognized mount option \"%s\" "
+ 			 "or missing value", param->key);
+-		return -1;
++		return -EINVAL;
+ 	}
+ 
+ 	if ((m->flags & MOPT_NO_EXT2) && IS_EXT2_SB(sb)) {
+-		ext4_msg(sb, KERN_ERR,
++		ext4_msg(NULL, KERN_ERR,
+ 			 "Mount option \"%s\" incompatible with ext2",
+ 			 param->key);
+-		return -1;
++		return -EINVAL;
+ 	}
+ 	if ((m->flags & MOPT_NO_EXT3) && IS_EXT3_SB(sb)) {
+-		ext4_msg(sb, KERN_ERR,
++		ext4_msg(NULL, KERN_ERR,
+ 			 "Mount option \"%s\" incompatible with ext3",
+ 			 param->key);
+-		return -1;
++		return -EINVAL;
+ 	}
+ 
+ 	if (m->flags & MOPT_EXPLICIT) {
+@@ -2343,28 +2349,28 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		} else if (m->mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) {
+ 			set_opt2(sb, EXPLICIT_JOURNAL_CHECKSUM);
+ 		} else
+-			return -1;
++			return -EINVAL;
+ 	}
+ 	if (m->flags & MOPT_CLEAR_ERR)
+ 		clear_opt(sb, ERRORS_MASK);
+ 	if (token == Opt_noquota && sb_any_quota_loaded(sb)) {
+-		ext4_msg(sb, KERN_ERR, "Cannot change quota "
++		ext4_msg(NULL, KERN_ERR, "Cannot change quota "
+ 			 "options when quota turned on");
+-		return -1;
++		return -EINVAL;
+ 	}
+ 
+ 	if (m->flags & MOPT_NOSUPPORT) {
+-		ext4_msg(sb, KERN_ERR, "%s option not supported",
++		ext4_msg(NULL, KERN_ERR, "%s option not supported",
+ 			 param->key);
+ 	} else if (token == Opt_commit) {
+ 		if (result.uint_32 == 0)
+ 			sbi->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE;
+ 		else if (result.uint_32 > INT_MAX / HZ) {
+-			ext4_msg(sb, KERN_ERR,
++			ext4_msg(NULL, KERN_ERR,
+ 				 "Invalid commit interval %d, "
+ 				 "must be smaller than %d",
+ 				 result.uint_32, INT_MAX / HZ);
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		sbi->s_commit_interval = HZ * result.uint_32;
+ 	} else if (token == Opt_debug_want_extra_isize) {
+@@ -2372,9 +2378,9 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		    (result.uint_32 < 4) ||
+ 		    (result.uint_32 >
+ 		     (sbi->s_inode_size - EXT4_GOOD_OLD_INODE_SIZE))) {
+-			ext4_msg(sb, KERN_ERR,
++			ext4_msg(NULL, KERN_ERR,
+ 				 "Invalid want_extra_isize %d", result.uint_32);
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		sbi->s_want_extra_isize = result.uint_32;
+ 	} else if (token == Opt_max_batch_time) {
+@@ -2385,10 +2391,10 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		if (result.uint_32 &&
+ 		    (result.uint_32 > (1 << 30) ||
+ 		     !is_power_of_2(result.uint_32))) {
+-			ext4_msg(sb, KERN_ERR,
++			ext4_msg(NULL, KERN_ERR,
+ 				 "EXT4-fs: inode_readahead_blks must be "
+ 				 "0 or a power of 2 smaller than 2^31");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		sbi->s_inode_readahead_blks = result.uint_32;
+ 	} else if (token == Opt_init_itable) {
+@@ -2407,24 +2413,24 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 	} else if (token == Opt_resuid) {
+ 		uid = make_kuid(current_user_ns(), result.uint_32);
+ 		if (!uid_valid(uid)) {
+-			ext4_msg(sb, KERN_ERR, "Invalid uid value %d",
++			ext4_msg(NULL, KERN_ERR, "Invalid uid value %d",
+ 				 result.uint_32);
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		sbi->s_resuid = uid;
+ 	} else if (token == Opt_resgid) {
+ 		gid = make_kgid(current_user_ns(), result.uint_32);
+ 		if (!gid_valid(gid)) {
+-			ext4_msg(sb, KERN_ERR, "Invalid gid value %d",
++			ext4_msg(NULL, KERN_ERR, "Invalid gid value %d",
+ 				 result.uint_32);
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		sbi->s_resgid = gid;
+ 	} else if (token == Opt_journal_dev) {
+ 		if (is_remount) {
+-			ext4_msg(sb, KERN_ERR,
++			ext4_msg(NULL, KERN_ERR,
+ 				 "Cannot specify journal on remount");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		ctx->journal_devnum = result.uint_32;
+ 	} else if (token == Opt_journal_path) {
+@@ -2433,16 +2439,16 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		int error;
+ 
+ 		if (is_remount) {
+-			ext4_msg(sb, KERN_ERR,
++			ext4_msg(NULL, KERN_ERR,
+ 				 "Cannot specify journal on remount");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 
+ 		error = fs_lookup_param(fc, param, 1, &path);
+ 		if (error) {
+-			ext4_msg(sb, KERN_ERR, "error: could not find "
++			ext4_msg(NULL, KERN_ERR, "error: could not find "
+ 				 "journal device path");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 
+ 		journal_inode = d_inode(path.dentry);
+@@ -2450,9 +2456,9 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		path_put(&path);
+ 	} else if (token == Opt_journal_ioprio) {
+ 		if (result.uint_32 > 7) {
+-			ext4_msg(sb, KERN_ERR, "Invalid journal IO priority"
++			ext4_msg(NULL, KERN_ERR, "Invalid journal IO priority"
+ 				 " (must be 0-7)");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		ctx->journal_ioprio =
+ 			IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, result.uint_32);
+@@ -2461,11 +2467,11 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 	} else if (m->flags & MOPT_DATAJ) {
+ 		if (is_remount) {
+ 			if (!sbi->s_journal)
+-				ext4_msg(sb, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
++				ext4_msg(NULL, KERN_WARNING, "Remounting file system with no journal so ignoring journalled data option");
+ 			else if (test_opt(sb, DATA_FLAGS) != m->mount_opt) {
+-				ext4_msg(sb, KERN_ERR,
++				ext4_msg(NULL, KERN_ERR,
+ 					 "Cannot change data mode on remount");
+-				return -1;
++				return -EINVAL;
+ 			}
+ 		} else {
+ 			clear_opt(sb, DATA_FLAGS);
+@@ -2475,12 +2481,12 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 	} else if (m->flags & MOPT_QFMT) {
+ 		if (sb_any_quota_loaded(sb) &&
+ 		    sbi->s_jquota_fmt != m->mount_opt) {
+-			ext4_msg(sb, KERN_ERR, "Cannot change journaled "
++			ext4_msg(NULL, KERN_ERR, "Cannot change journaled "
+ 				 "quota options when quota turned on");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		if (ext4_has_feature_quota(sb)) {
+-			ext4_msg(sb, KERN_INFO,
++			ext4_msg(NULL, KERN_INFO,
+ 				 "Quota format mount options ignored "
+ 				 "when QUOTA feature is enabled");
+ 			return 1;
+@@ -2497,18 +2503,18 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 			    (!(sbi->s_mount_opt & EXT4_MOUNT_DAX_ALWAYS) ||
+ 			     (sbi->s_mount_opt2 & EXT4_MOUNT2_DAX_NEVER))) {
+ 			fail_dax_change_remount:
+-				ext4_msg(sb, KERN_ERR, "can't change "
++				ext4_msg(NULL, KERN_ERR, "can't change "
+ 					 "dax mount option while remounting");
+-				return -1;
++				return -EINVAL;
+ 			}
+ 			if (is_remount &&
+ 			    (test_opt(sb, DATA_FLAGS) ==
+ 			     EXT4_MOUNT_JOURNAL_DATA)) {
+-				    ext4_msg(sb, KERN_ERR, "can't mount with "
++				    ext4_msg(NULL, KERN_ERR, "can't mount with "
+ 					     "both data=journal and dax");
+-				    return -1;
++				    return -EINVAL;
+ 			}
+-			ext4_msg(sb, KERN_WARNING,
++			ext4_msg(NULL, KERN_WARNING,
+ 				"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+ 			sbi->s_mount_opt |= EXT4_MOUNT_DAX_ALWAYS;
+ 			sbi->s_mount_opt2 &= ~EXT4_MOUNT2_DAX_NEVER;
+@@ -2534,10 +2540,10 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 			break;
+ 		}
+ #else
+-		ext4_msg(sb, KERN_INFO, "dax option not supported");
++		ext4_msg(NULL, KERN_INFO, "dax option not supported");
+ 		sbi->s_mount_opt2 |= EXT4_MOUNT2_DAX_NEVER;
+ 		sbi->s_mount_opt &= ~EXT4_MOUNT_DAX_ALWAYS;
+-		return -1;
++		return -EINVAL;
+ #endif
+ 	} else if (token == Opt_data_err_abort) {
+ 		sbi->s_mount_opt |= m->mount_opt;
+@@ -2545,9 +2551,9 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		sbi->s_mount_opt &= ~m->mount_opt;
+ 	} else if (token == Opt_mb_optimize_scan) {
+ 		if (result.int_32 != 0 && result.int_32 != 1) {
+-			ext4_msg(sb, KERN_WARNING,
++			ext4_msg(NULL, KERN_WARNING,
+ 				 "mb_optimize_scan should be set to 0 or 1.");
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		ctx->mb_optimize_scan = result.int_32;
+ 	} else {
+@@ -2560,11 +2566,11 @@ static int handle_mount_opt(struct fs_context *fc, struct fs_parameter *param)
+ 		if (m->flags & MOPT_CLEAR)
+ 			set = !set;
+ 		else if (unlikely(!(m->flags & MOPT_SET))) {
+-			ext4_msg(sb, KERN_WARNING,
++			ext4_msg(NULL, KERN_WARNING,
+ 				 "buggy handling of option %s",
+ 				 param->key);
+ 			WARN_ON(1);
+-			return -1;
++			return -EINVAL;
+ 		}
+ 		if (m->flags & MOPT_2) {
+ 			if (set != 0)
+@@ -2632,12 +2638,17 @@ static int parse_options(char *options, struct super_block *sb,
+ 		}
+ 	}
+ 
+-	return ext4_validate_options(sb);
++	ret = ext4_validate_options(&fc);
++	if (ret < 0)
++		return 0;
 +
-+static const struct constant_table ext4_param_data[] = {
-+	{"journal",	Opt_data_journal},
-+	{"ordered",	Opt_data_ordered},
-+	{"writeback",	Opt_data_writeback},
-+	{}
-+};
-+
-+static const struct constant_table ext4_param_data_err[] = {
-+	{"abort",	Opt_data_err_abort},
-+	{"ignore",	Opt_data_err_ignore},
-+	{}
-+};
-+
-+static const struct constant_table ext4_param_jqfmt[] = {
-+	{"vfsold",	Opt_jqfmt_vfsold},
-+	{"vfsv0",	Opt_jqfmt_vfsv0},
-+	{"vfsv1",	Opt_jqfmt_vfsv1},
-+	{}
-+};
-+
-+static const struct constant_table ext4_param_dax[] = {
-+	{"always",	Opt_dax_always},
-+	{"inode",	Opt_dax_inode},
-+	{"never",	Opt_dax_never},
-+	{}
-+};
-+
-+/* String parameter that allows empty argument */
-+#define fsparam_string_empty(NAME, OPT) \
-+	__fsparam(fs_param_is_string, NAME, OPT, fs_param_can_be_empty, NULL)
-+
-+/*
-+ * Mount option specification
-+ * We don't use fsparam_flag_no because of the way we set the
-+ * options and the way we show them in _ext4_show_options(). To
-+ * keep the changes to a minimum, let's keep the negative options
-+ * separate for now.
-+ */
-+static const struct fs_parameter_spec ext4_param_specs[] = {
-+	fsparam_flag	("bsddf",		Opt_bsd_df),
-+	fsparam_flag	("minixdf",		Opt_minix_df),
-+	fsparam_flag	("grpid",		Opt_grpid),
-+	fsparam_flag	("bsdgroups",		Opt_grpid),
-+	fsparam_flag	("nogrpid",		Opt_nogrpid),
-+	fsparam_flag	("sysvgroups",		Opt_nogrpid),
-+	fsparam_u32	("resgid",		Opt_resgid),
-+	fsparam_u32	("resuid",		Opt_resuid),
-+	fsparam_u32	("sb",			Opt_sb),
-+	fsparam_enum	("errors",		Opt_errors, ext4_param_errors),
-+	fsparam_flag	("nouid32",		Opt_nouid32),
-+	fsparam_flag	("debug",		Opt_debug),
-+	fsparam_flag	("oldalloc",		Opt_removed),
-+	fsparam_flag	("orlov",		Opt_removed),
-+	fsparam_flag	("user_xattr",		Opt_user_xattr),
-+	fsparam_flag	("nouser_xattr",	Opt_nouser_xattr),
-+	fsparam_flag	("acl",			Opt_acl),
-+	fsparam_flag	("noacl",		Opt_noacl),
-+	fsparam_flag	("norecovery",		Opt_noload),
-+	fsparam_flag	("noload",		Opt_noload),
-+	fsparam_flag	("bh",			Opt_removed),
-+	fsparam_flag	("nobh",		Opt_removed),
-+	fsparam_u32	("commit",		Opt_commit),
-+	fsparam_u32	("min_batch_time",	Opt_min_batch_time),
-+	fsparam_u32	("max_batch_time",	Opt_max_batch_time),
-+	fsparam_u32	("journal_dev",		Opt_journal_dev),
-+	fsparam_bdev	("journal_path",	Opt_journal_path),
-+	fsparam_flag	("journal_checksum",	Opt_journal_checksum),
-+	fsparam_flag	("nojournal_checksum",	Opt_nojournal_checksum),
-+	fsparam_flag	("journal_async_commit",Opt_journal_async_commit),
-+	fsparam_flag	("abort",		Opt_abort),
-+	fsparam_enum	("data",		Opt_data, ext4_param_data),
-+	fsparam_enum	("data_err",		Opt_data_err,
-+						ext4_param_data_err),
-+	fsparam_string_empty
-+			("usrjquota",		Opt_usrjquota),
-+	fsparam_string_empty
-+			("grpjquota",		Opt_grpjquota),
-+	fsparam_enum	("jqfmt",		Opt_jqfmt, ext4_param_jqfmt),
-+	fsparam_flag	("grpquota",		Opt_grpquota),
-+	fsparam_flag	("quota",		Opt_quota),
-+	fsparam_flag	("noquota",		Opt_noquota),
-+	fsparam_flag	("usrquota",		Opt_usrquota),
-+	fsparam_flag	("prjquota",		Opt_prjquota),
-+	fsparam_flag	("barrier",		Opt_barrier),
-+	fsparam_u32	("barrier",		Opt_barrier),
-+	fsparam_flag	("nobarrier",		Opt_nobarrier),
-+	fsparam_flag	("i_version",		Opt_i_version),
-+	fsparam_flag	("dax",			Opt_dax),
-+	fsparam_enum	("dax",			Opt_dax_type, ext4_param_dax),
-+	fsparam_u32	("stripe",		Opt_stripe),
-+	fsparam_flag	("delalloc",		Opt_delalloc),
-+	fsparam_flag	("nodelalloc",		Opt_nodelalloc),
-+	fsparam_flag	("warn_on_error",	Opt_warn_on_error),
-+	fsparam_flag	("nowarn_on_error",	Opt_nowarn_on_error),
-+	fsparam_flag	("lazytime",		Opt_lazytime),
-+	fsparam_flag	("nolazytime",		Opt_nolazytime),
-+	fsparam_u32	("debug_want_extra_isize",
-+						Opt_debug_want_extra_isize),
-+	fsparam_flag	("mblk_io_submit",	Opt_removed),
-+	fsparam_flag	("nomblk_io_submit",	Opt_removed),
-+	fsparam_flag	("block_validity",	Opt_block_validity),
-+	fsparam_flag	("noblock_validity",	Opt_noblock_validity),
-+	fsparam_u32	("inode_readahead_blks",
-+						Opt_inode_readahead_blks),
-+	fsparam_u32	("journal_ioprio",	Opt_journal_ioprio),
-+	fsparam_u32	("auto_da_alloc",	Opt_auto_da_alloc),
-+	fsparam_flag	("auto_da_alloc",	Opt_auto_da_alloc),
-+	fsparam_flag	("noauto_da_alloc",	Opt_noauto_da_alloc),
-+	fsparam_flag	("dioread_nolock",	Opt_dioread_nolock),
-+	fsparam_flag	("nodioread_nolock",	Opt_dioread_lock),
-+	fsparam_flag	("dioread_lock",	Opt_dioread_lock),
-+	fsparam_flag	("discard",		Opt_discard),
-+	fsparam_flag	("nodiscard",		Opt_nodiscard),
-+	fsparam_u32	("init_itable",		Opt_init_itable),
-+	fsparam_flag	("init_itable",		Opt_init_itable),
-+	fsparam_flag	("noinit_itable",	Opt_noinit_itable),
-+#ifdef CONFIG_EXT4_DEBUG
-+	fsparam_flag	("fc_debug_force",	Opt_fc_debug_force),
-+	fsparam_u32	("fc_debug_max_replay",	Opt_fc_debug_max_replay),
-+#endif
-+	fsparam_u32	("max_dir_size_kb",	Opt_max_dir_size_kb),
-+	fsparam_flag	("test_dummy_encryption",
-+						Opt_test_dummy_encryption),
-+	fsparam_string	("test_dummy_encryption",
-+						Opt_test_dummy_encryption),
-+	fsparam_flag	("inlinecrypt",		Opt_inlinecrypt),
-+	fsparam_flag	("nombcache",		Opt_nombcache),
-+	fsparam_flag	("no_mbcache",		Opt_nombcache),	/* for backward compatibility */
-+	fsparam_flag	("prefetch_block_bitmaps",
-+						Opt_removed),
-+	fsparam_flag	("no_prefetch_block_bitmaps",
-+						Opt_no_prefetch_block_bitmaps),
-+	fsparam_s32	("mb_optimize_scan",	Opt_mb_optimize_scan),
-+	fsparam_string	("check",		Opt_removed),	/* mount option from ext2/3 */
-+	fsparam_flag	("nocheck",		Opt_removed),	/* mount option from ext2/3 */
-+	fsparam_flag	("reservation",		Opt_removed),	/* mount option from ext2/3 */
-+	fsparam_flag	("noreservation",	Opt_removed),	/* mount option from ext2/3 */
-+	fsparam_u32	("journal",		Opt_removed),	/* mount option from ext2/3 */
-+	{}
-+};
-+
- static const match_table_t tokens = {
- 	{Opt_bsd_df, "bsddf"},
- 	{Opt_minix_df, "minixdf"},
++	return 1;
+ }
+ 
+-static int ext4_validate_options(struct super_block *sb)
++static int ext4_validate_options(struct fs_context *fc)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_sb_info *sbi = fc->s_fs_info;
++	struct super_block *sb = sbi->s_sb;
+ #ifdef CONFIG_QUOTA
+ 	char *usr_qf_name, *grp_qf_name;
+ 	/*
+@@ -2646,9 +2657,9 @@ static int ext4_validate_options(struct super_block *sb)
+ 	 * to support legacy quotas in quota files.
+ 	 */
+ 	if (test_opt(sb, PRJQUOTA) && !ext4_has_feature_project(sb)) {
+-		ext4_msg(sb, KERN_ERR, "Project quota feature not enabled. "
++		ext4_msg(NULL, KERN_ERR, "Project quota feature not enabled. "
+ 			 "Cannot enable project quota enforcement.");
+-		return 0;
++		return -EINVAL;
+ 	}
+ 	usr_qf_name = get_qf_name(sb, sbi, USRQUOTA);
+ 	grp_qf_name = get_qf_name(sb, sbi, GRPQUOTA);
+@@ -2660,15 +2671,15 @@ static int ext4_validate_options(struct super_block *sb)
+ 			clear_opt(sb, GRPQUOTA);
+ 
+ 		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
+-			ext4_msg(sb, KERN_ERR, "old and new quota "
++			ext4_msg(NULL, KERN_ERR, "old and new quota "
+ 					"format mixing");
+-			return 0;
++			return -EINVAL;
+ 		}
+ 
+ 		if (!sbi->s_jquota_fmt) {
+-			ext4_msg(sb, KERN_ERR, "journaled quota format "
++			ext4_msg(NULL, KERN_ERR, "journaled quota format "
+ 					"not specified");
+-			return 0;
++			return -EINVAL;
+ 		}
+ 	}
+ #endif
+@@ -2676,11 +2687,12 @@ static int ext4_validate_options(struct super_block *sb)
+ 		int blocksize =
+ 			BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
+ 		if (blocksize < PAGE_SIZE)
+-			ext4_msg(sb, KERN_WARNING, "Warning: mounting with an "
+-				 "experimental mount option 'dioread_nolock' "
+-				 "for blocksize < PAGE_SIZE");
++			ext4_msg(NULL, KERN_WARNING,
++				 "Warning: mounting with an experimental "
++				 "option 'dioread_nolock' for "
++				 "blocksize < PAGE_SIZE");
+ 	}
+-	return 1;
++	return 0;
+ }
+ 
+ static inline void ext4_show_quota_options(struct seq_file *seq,
 -- 
 2.31.1
 
