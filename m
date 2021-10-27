@@ -2,57 +2,57 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA411C433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 06:51:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B353AC433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 09:56:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9CC056023B
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 06:51:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8DAEA610A0
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Oct 2021 09:56:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238562AbhJ0Gxr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Oct 2021 02:53:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51402 "EHLO
+        id S233423AbhJ0J6y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Oct 2021 05:58:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240049AbhJ0Gxq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Oct 2021 02:53:46 -0400
-Received: from mail-io1-xd30.google.com (mail-io1-xd30.google.com [IPv6:2607:f8b0:4864:20::d30])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A3A54C061570
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Oct 2021 23:51:21 -0700 (PDT)
-Received: by mail-io1-xd30.google.com with SMTP id e144so2413714iof.3
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Oct 2021 23:51:21 -0700 (PDT)
+        with ESMTP id S230286AbhJ0J6x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Oct 2021 05:58:53 -0400
+Received: from mail-io1-xd32.google.com (mail-io1-xd32.google.com [IPv6:2607:f8b0:4864:20::d32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80C83C061570
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Oct 2021 02:56:25 -0700 (PDT)
+Received: by mail-io1-xd32.google.com with SMTP id v65so2912947ioe.5
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Oct 2021 02:56:25 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=wq3q1r1Bq8Lf3l3kvTqvUSL7TT/wJ+nebfaosFfNaMM=;
-        b=LwORCAJanRiaTvI7SLVhkt0v8KyAQgy92x0Y5yT0akkWLyq23or4xTWJBIzFEYarRj
-         wdeqOMBO5xDWtk5I1U4ZyOb9ymBtvNRzBxhWK8hTjgAHt1h5028uJoD5+J43fU2nMgjX
-         arS8nNjYtIHi+5nUUpNFLuyfIcywNYh7f2RK/ikMrYtv4P+3nmRF8gShznMUk6t4HF/3
-         fnPYax5PLX5Jfgkkp6er42irqpcmluc7lIQNxMA/V07t2hr8LIDp+l/gou/OQgQdgopK
-         YalHDgq+SJ3cZXULyneaP4JvuPsaGZ4QpdTn5vBARn6ySNQdsf4B/5DDIpNXU+Xbpi/+
-         iSjA==
+        bh=Dx5FzWh2+59FwhLxH/OLbyER5DUWkW4P2Xv38wbcQjU=;
+        b=d7ogYK5tLAAnWI91+5STK2KZv9RY3Vt6QbtNhht/d0Zek5hMvaPweKqhSO3Qs43AeD
+         LnoE8E0AYOfOrJYuypEUzxMJYCGDF/zRPy1Unk66YjqgfbqRZjhG+RGgiOuT38kRDRIy
+         J6zPKebnfAkORuiS0BmjESsFu2zR9p5dnxd0vc3RahRe3sIW8kDvcZI7Ts8G1FX6tm+A
+         Z5SIUBaHHS6Wtstk1WdiuVlAbWSAl2TojvRji6mxM4Fagjbf0wzHnDmwi9M0F8f9/2n9
+         nw1m3w1v3ci3zUu8LfIzUKBxhsdQG3QVYQaba6kmf6nNgINlnqAYqlXAPmSW77Pggn5L
+         F6/g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=wq3q1r1Bq8Lf3l3kvTqvUSL7TT/wJ+nebfaosFfNaMM=;
-        b=Av30JEK60FOZsq/WO5tFk+NUcKw+wcznd7uk3bmXYc7vnlDs00niBOzrYnmKuuUxz/
-         6p5Qels5KPWp7P++PlMiIBhE+GL98hfnPatlwn1OYTy2pX3qUorJpptYMFeEdUT52PIX
-         KHg1pofKXM5l5CbKWfhMEWw7JPdrE4dU/4Y3T2H9AW+Ebi4izMAYdNIrtd7nfRvnQ2Nn
-         L6ng81i9WgZRnmXqXKHh0in6mq5YQVvkKL5Ep9SCirDfqxKT11KA17nVoZo8lCaHlMjr
-         MkPdH0K9/Q6WkIUynlL33SlqWtE5yVst/l/cYFlb92tNyMfwf0AZoD6BL6ov79jRsaAi
-         SPJA==
-X-Gm-Message-State: AOAM532eRDq5z2NH4A2z1McJ/2sAVlEVlqM3TQYqrts+IGcF6hbzGVeb
-        +2im7kkRShX0IFqOsBb0loJdok6sgrYJk2jb+iU=
-X-Google-Smtp-Source: ABdhPJxDENSupnNqRfjT+iu+ricW2IpUD2Ks+WPQ7xtcrTV252/Njrrtkjg6m7xl22Z5vpd8r41EY6u7ckj3XUx1kAA=
-X-Received: by 2002:a02:7f17:: with SMTP id r23mr14083415jac.47.1635317481086;
- Tue, 26 Oct 2021 23:51:21 -0700 (PDT)
+        bh=Dx5FzWh2+59FwhLxH/OLbyER5DUWkW4P2Xv38wbcQjU=;
+        b=Lkr9z5mYwoR19LkxjYIiH8KlgNbhbARtD2+Txmht+NYJ0/t4TK2EghtwfpLvRCyNQK
+         O0hC9Ro6h5hGM+DZ4hSW4qisoW7kfqnP2BOYBafU4LCUX3OieKunWmz0897aLR123Qpv
+         /gMYqHUl0mNyUGWx/ueKq4bad2MAhgOBnaWfhzjJzcqHA4RWO90IvaPgEdwkcjDJS0jz
+         jiy3dzz9+DJL3E5HmljNYMPqWjWyxMhuZQAcLFy1VdI4edOtKsE756CrAOboHY1xiauq
+         Yc4TFBXtwyege7BAPWg6obk7DNArx9Zx1PyiqdeJiKAhYAulpNckpmk1qZKEkLCGMLSm
+         dm8A==
+X-Gm-Message-State: AOAM532NIxlZ6GuBdYU9BORXbl++kajVA6Fe7uReLJ4shZs6sKMI9dK6
+        Tkdn9BsrqTkEWPkirLS/+yhLbwId9w+c4WDLDw4=
+X-Google-Smtp-Source: ABdhPJxAQJ7QqmNYNTgpydiMiD9Fqi3RePMvC6sqsrzeKZZHkBUTxyMa2ToG1l6/IseYxNQSHKNzOAVuSzKdIqydW+Q=
+X-Received: by 2002:a02:270c:: with SMTP id g12mr19016049jaa.75.1635328585201;
+ Wed, 27 Oct 2021 02:56:25 -0700 (PDT)
 MIME-Version: 1.0
-References: <20211026184239.151156-1-krisman@collabora.com> <20211026184239.151156-8-krisman@collabora.com>
-In-Reply-To: <20211026184239.151156-8-krisman@collabora.com>
+References: <20211026184239.151156-1-krisman@collabora.com> <20211026184239.151156-9-krisman@collabora.com>
+In-Reply-To: <20211026184239.151156-9-krisman@collabora.com>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Wed, 27 Oct 2021 09:51:10 +0300
-Message-ID: <CAOQ4uxjWN9zn_YE1s9mODDX3RGZrL5sqCvRZoZ5FXEba_=rAPw@mail.gmail.com>
-Subject: Re: [PATCH v2 07/10] syscalls/fanotify20: Create a corrupted file
+Date:   Wed, 27 Oct 2021 12:56:14 +0300
+Message-ID: <CAOQ4uxh=Wmso0O6aXsE2Y3JAQte5Q0NYaUKJWLvLUuY_u-a__A@mail.gmail.com>
+Subject: Re: [PATCH v2 08/10] syscalls/fanotify20: Test event after filesystem abort
 To:     Gabriel Krisman Bertazi <krisman@collabora.com>
 Cc:     LTP List <ltp@lists.linux.it>, Jan Kara <jack@suse.com>,
         Khazhismel Kumykov <khazhy@google.com>, kernel@collabora.com,
@@ -66,63 +66,53 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 On Tue, Oct 26, 2021 at 9:44 PM Gabriel Krisman Bertazi
 <krisman@collabora.com> wrote:
 >
-> Allocate a test directory and corrupt it with debugfs.  The corruption
-> is done by writing an invalid inode mode.  This file can be later
-> looked up to trigger a corruption error.
+> This test monitors the error triggered after a file system abort.  It
+> works by forcing a remount with the option "abort".  This is an error
+> not related to a file so it is reported against the superblock with a
+> zero size fh.
 >
 > Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-
 > ---
->  testcases/kernel/syscalls/fanotify/fanotify20.c | 17 +++++++++++++++++
->  1 file changed, 17 insertions(+)
+>  testcases/kernel/syscalls/fanotify/fanotify20.c | 13 +++++++++++++
+>  1 file changed, 13 insertions(+)
 >
 > diff --git a/testcases/kernel/syscalls/fanotify/fanotify20.c b/testcases/kernel/syscalls/fanotify/fanotify20.c
-> index 7c4b01720654..298bb303a810 100644
+> index 298bb303a810..5c5ee3c6fb74 100644
 > --- a/testcases/kernel/syscalls/fanotify/fanotify20.c
 > +++ b/testcases/kernel/syscalls/fanotify/fanotify20.c
-> @@ -43,9 +43,12 @@ static char event_buf[BUF_SIZE];
->  int fd_notify;
->
->  #define MOUNT_PATH "test_mnt"
-> +#define BASE_DIR "internal_dir"
-> +#define BAD_DIR BASE_DIR"/bad_dir"
->
->  /* These expected FIDs are common to multiple tests */
->  static struct fanotify_fid_t null_fid;
-> +static struct fanotify_fid_t bad_file_fid;
->
->  static void do_debugfs_request(const char *dev, char *request)
->  {
-> @@ -182,6 +185,18 @@ static void do_test(unsigned int i)
->         check_event(event_buf, read_len, tcase);
+> @@ -57,6 +57,12 @@ static void do_debugfs_request(const char *dev, char *request)
+>         SAFE_CMD(cmd, NULL, NULL);
 >  }
 >
-> +static void pre_corrupt_fs(void)
+> +static void trigger_fs_abort(void)
 > +{
-> +       SAFE_MKDIR(MOUNT_PATH"/"BASE_DIR, 0777);
-> +       SAFE_MKDIR(MOUNT_PATH"/"BAD_DIR, 0777);
-> +
-> +       fanotify_save_fid(MOUNT_PATH"/"BAD_DIR, &bad_file_fid);
-> +
-> +       SAFE_UMOUNT(MOUNT_PATH);
-> +       do_debugfs_request(tst_device->dev, "sif " BAD_DIR " mode 0xff");
-> +       SAFE_MOUNT(tst_device->dev, MOUNT_PATH, tst_device->fs_type, 0, NULL);
+> +       SAFE_MOUNT(tst_device->dev, MOUNT_PATH, tst_device->fs_type,
+> +                  MS_REMOUNT|MS_RDONLY, "abort");
 > +}
 > +
->  static void init_null_fid(void)
->  {
->         /* Use fanotify_save_fid to fill the fsid and overwrite the
-> @@ -201,6 +216,8 @@ static void setup(void)
+>  static struct test_case {
+>         char *name;
+>         int error;
+> @@ -64,6 +70,13 @@ static struct test_case {
+>         struct fanotify_fid_t *fid;
+>         void (*trigger_error)(void);
+>  } testcases[] = {
+> +       {
+> +               .name = "Trigger abort",
+> +               .trigger_error = &trigger_fs_abort,
+> +               .error_count = 1,
+> +               .error = ESHUTDOWN,
+> +               .fid = &null_fid,
+> +       },
+>  };
 >
->         init_null_fid();
->
-> +       pre_corrupt_fs();
-> +
->         fd_notify = SAFE_FANOTIFY_INIT(FAN_CLASS_NOTIF|FAN_REPORT_FID,
->                                        O_RDONLY);
->
-> --
-> 2.33.0
->
+
+I suppose you did not try to run fanotify20 -i 10 ...?
+I guess you will need to end the setup() stage with unmounted fs and perform:
+mount; fanotify_init; fanotify_mark; at beginning of do_test()
+finishing do_test() with closing fanotify fd and unmount.
+I never checked it there are pre-test/post-test callbacks available in LTP,
+but setup/clean are called at start/end of test loop.
+
+Thanks,
+Amir.
