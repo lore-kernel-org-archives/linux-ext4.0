@@ -2,86 +2,69 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62AF3C433F5
-	for <linux-ext4@archiver.kernel.org>; Sun, 31 Oct 2021 23:15:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55F11C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 09:22:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 476F760EB8
-	for <linux-ext4@archiver.kernel.org>; Sun, 31 Oct 2021 23:15:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3B3C9610CC
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 09:22:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230197AbhJaXRh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 31 Oct 2021 19:17:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:51370 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230098AbhJaXRh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 31 Oct 2021 19:17:37 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 6632F60E98;
-        Sun, 31 Oct 2021 23:15:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1635722104;
-        bh=suxkNGmue9aghjYNtvFMsxbmCggQU/mTEGgyuyM6yEo=;
-        h=Date:From:To:Cc:Subject:From;
-        b=fpGO32U+MsTNZbHohxpPwvg1Uq/nPjwDaBlA9NFDdb8JtWAGK6sTrbB+lu3yBYkyF
-         C912kGL8/qX6nG76cT0WwM6WPK707JMNhvnTL1WWkGh2M5LK7Tqxpqo/tLnDABJkLt
-         KquLGV9Z/3RgrdBlXFR2D/SFGhuDx+DdXnJHPEKL4noPzfIGweLhwzdWt36jzXblFS
-         M9bf+mET+ZIt9lAOOjbeyet8ziREuNph58SvdfojegO9FZiaaJKNICUKkzQspjqpEz
-         Ig8eS55+3Rs5M0buwjx5/KDMVkSANT3fdnOoTLsW761BJyErEqIFMlRRFT2g6yS1Yk
-         gJbeRw++6EQtQ==
-Date:   Sun, 31 Oct 2021 16:15:02 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [GIT PULL] fscrypt updates for 5.16
-Message-ID: <YX8jdp73zUDwlB5E@sol.localdomain>
+        id S232784AbhKAJY6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Nov 2021 05:24:58 -0400
+Received: from szxga02-in.huawei.com ([45.249.212.188]:15327 "EHLO
+        szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232512AbhKAJXl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Nov 2021 05:23:41 -0400
+Received: from dggeme754-chm.china.huawei.com (unknown [172.30.72.54])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4HjSFR0t87z90f4;
+        Mon,  1 Nov 2021 17:20:59 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by dggeme754-chm.china.huawei.com
+ (10.3.19.100) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id 15.1.2308.15; Mon, 1
+ Nov 2021 17:21:05 +0800
+From:   Ye Bin <yebin10@huawei.com>
+To:     <jack@suse.comu>, <linux-ext4@vger.kernel.org>
+CC:     <linux-kernel@vger.kernel.org>, Ye Bin <yebin10@huawei.com>
+Subject: [PATCH -next RFC] ext2: Add check if block is step over super block
+Date:   Mon, 1 Nov 2021 17:33:51 +0800
+Message-ID: <20211101093351.1164368-1-yebin10@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.127.227]
+X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
+ dggeme754-chm.china.huawei.com (10.3.19.100)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The following changes since commit e4e737bb5c170df6135a127739a9e6148ee3da82:
+We got an issue that super block is allocated by file system when run syzkaller
+test. We add debug information find that origin image super block's block bitmap
+is zero. There isn't check whether block is step over super block in ext2_new_blocks.
 
-  Linux 5.15-rc2 (2021-09-19 17:28:22 -0700)
+In order not to make things worse, we'd better to add check if block step over
+super block when new blocks.
 
-are available in the Git repository at:
+Signed-off-by: Ye Bin <yebin10@huawei.com>
+---
+ fs/ext2/balloc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-  https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git tags/fscrypt-for-linus
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index c17ccc19b938..b93d52e6a17a 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -1376,7 +1376,8 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
+ 	    in_range(ret_block, le32_to_cpu(gdp->bg_inode_table),
+ 		      EXT2_SB(sb)->s_itb_per_group) ||
+ 	    in_range(ret_block + num - 1, le32_to_cpu(gdp->bg_inode_table),
+-		      EXT2_SB(sb)->s_itb_per_group)) {
++		      EXT2_SB(sb)->s_itb_per_group) ||
++	    in_range(EXT2_SB(sb)->s_sb_block, ret_block, num)) {
+ 		ext2_error(sb, "ext2_new_blocks",
+ 			    "Allocating block in system zone - "
+ 			    "blocks from "E2FSBLK", length %lu",
+-- 
+2.31.1
 
-for you to fetch changes up to b7e072f9b77f4c516df96e0c22ec09f8b2e76ba1:
-
-  fscrypt: improve a few comments (2021-10-25 19:11:50 -0700)
-
-----------------------------------------------------------------
-
-Some cleanups for fs/crypto/:
-
-- Allow 256-bit master keys with AES-256-XTS
-
-- Improve documentation and comments
-
-- Remove unneeded field fscrypt_operations::max_namelen
-
-----------------------------------------------------------------
-Eric Biggers (5):
-      fscrypt: remove fscrypt_operations::max_namelen
-      fscrypt: clean up comments in bio.c
-      fscrypt: improve documentation for inline encryption
-      fscrypt: allow 256-bit master keys with AES-256-XTS
-      fscrypt: improve a few comments
-
- Documentation/block/inline-encryption.rst |  2 +
- Documentation/filesystems/fscrypt.rst     | 83 +++++++++++++++++++++++--------
- fs/crypto/bio.c                           | 32 ++++++------
- fs/crypto/fname.c                         |  3 +-
- fs/crypto/fscrypt_private.h               | 16 ++++--
- fs/crypto/hkdf.c                          | 11 ++--
- fs/crypto/keysetup.c                      | 62 +++++++++++++++++------
- fs/ext4/super.c                           |  1 -
- fs/f2fs/super.c                           |  1 -
- fs/ubifs/crypto.c                         |  1 -
- include/linux/fscrypt.h                   |  3 --
- 11 files changed, 150 insertions(+), 65 deletions(-)
