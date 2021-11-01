@@ -2,200 +2,166 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EDF18C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 09:28:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CE9A0C433F5
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 11:42:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D0A4C61211
-	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 09:28:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B002E610CA
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Nov 2021 11:42:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232907AbhKAJag (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 1 Nov 2021 05:30:36 -0400
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:36871 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S233048AbhKAJ2U (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Nov 2021 05:28:20 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1635758745;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+        id S232334AbhKALpA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Nov 2021 07:45:00 -0400
+Received: from smtp-out2.suse.de ([195.135.220.29]:43496 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S232365AbhKALo5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Nov 2021 07:44:57 -0400
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out2.suse.de (Postfix) with ESMTP id 487171FD6F;
+        Mon,  1 Nov 2021 11:42:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1635766943; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=53OXlpDvni31LvIaln3YOdZGCjMTf4uZ9h8tjAcr9uc=;
-        b=KzbXjnhHXelvrPQJLnOs1RcsOAuyNHmHn53AIaLuijNjU6OJ7b9b0aW6KnB46gdlOcCJUI
-        hbkT3TfAfw5Aej99XUDnXeJ0yM5VI48yQUAItL8gIJ97cUGPRaNrWst0tHTOeHRR3lt50j
-        tlVtqytxxMvJcC0MVlX/sPH4U4RbfZ0=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-304-oEMrv1l3OUeU-98a7vTv4w-1; Mon, 01 Nov 2021 05:25:40 -0400
-X-MC-Unique: oEMrv1l3OUeU-98a7vTv4w-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 2149610A8E00;
-        Mon,  1 Nov 2021 09:25:39 +0000 (UTC)
-Received: from work (unknown [10.40.194.95])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 86EE41007605;
-        Mon,  1 Nov 2021 09:25:29 +0000 (UTC)
-Date:   Mon, 1 Nov 2021 10:25:25 +0100
-From:   Lukas Czerner <lczerner@redhat.com>
-To:     Christian Brauner <christian.brauner@ubuntu.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
-        linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: [PATCH v4 01/13] fs_parse: allow parameter value to be empty
-Message-ID: <20211101092525.pdwtufampfajze5l@work>
-References: <20211027141857.33657-1-lczerner@redhat.com>
- <20211027141857.33657-2-lczerner@redhat.com>
- <20211029084411.zk32u3hflf2vdzmx@wittgenstein>
+        bh=5+UZ2j8LT45fgqOAv0Vr6ez6FSL6G50V8K6dC/keqBw=;
+        b=TpxQF6XkaQ4sHXFLHRKTujdwKdEcQ3Wxqz7N2HhNThXxseVCuEiHp/GrSyujTn3z92eWSl
+        brvTK7RPJ7Xy2uvk0OCSjQK5b08Qgfptl+vYiz2luwB2noLA0pde8QTx3Zo1IMAhFhxSP5
+        a+7SnrlVcp9uVdLb9Q6fDXrA1IM8a1Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1635766943;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=5+UZ2j8LT45fgqOAv0Vr6ez6FSL6G50V8K6dC/keqBw=;
+        b=VcmHWF5BTXOtCHI147RmuzHfL1k+o+u55tYqmccO0oz5vdCGgnb/5ZDnos6+N/oy+b+Sh5
+        75W1t868sxM6+bAQ==
+Received: from quack2.suse.cz (unknown [10.163.28.18])
+        by relay2.suse.de (Postfix) with ESMTP id 0709AA3B81;
+        Mon,  1 Nov 2021 11:42:22 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id CD7281E0922; Mon,  1 Nov 2021 12:42:22 +0100 (CET)
+Date:   Mon, 1 Nov 2021 12:42:22 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     Guenter Roeck <linux@roeck-us.net>, jack@suse.com,
+        amir73il@gmail.com, djwong@kernel.org, tytso@mit.edu,
+        david@fromorbit.com, dhowells@redhat.com, khazhy@google.com,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-api@vger.kernel.org, kernel@collabora.com
+Subject: Re: [PATCH v8 31/32] samples: Add fs error monitoring example
+Message-ID: <20211101114222.GA21679@quack2.suse.cz>
+References: <20211019000015.1666608-1-krisman@collabora.com>
+ <20211019000015.1666608-32-krisman@collabora.com>
+ <20211028151834.GA423440@roeck-us.net>
+ <87fsslasgz.fsf@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20211029084411.zk32u3hflf2vdzmx@wittgenstein>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+In-Reply-To: <87fsslasgz.fsf@collabora.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Oct 29, 2021 at 10:44:11AM +0200, Christian Brauner wrote:
-> On Wed, Oct 27, 2021 at 04:18:45PM +0200, Lukas Czerner wrote:
-> > Allow parameter value to be empty by specifying fs_param_can_be_empty
-> > flag.
+On Thu 28-10-21 15:56:28, Gabriel Krisman Bertazi wrote:
+> Guenter Roeck <linux@roeck-us.net> writes:
 > 
-> Hey Lukas,
+> > On Mon, Oct 18, 2021 at 09:00:14PM -0300, Gabriel Krisman Bertazi wrote:
+> >> Introduce an example of a FAN_FS_ERROR fanotify user to track filesystem
+> >> errors.
+> >> 
+> >> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> >> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> >> Reviewed-by: Jan Kara <jack@suse.cz>
+> >> ---
+> >> Changes since v4:
+> >>   - Protect file_handle defines with ifdef guards
+> >> 
+> >> Changes since v1:
+> >>   - minor fixes
+> >> ---
+> >>  samples/Kconfig               |   9 +++
+> >>  samples/Makefile              |   1 +
+> >>  samples/fanotify/Makefile     |   5 ++
+> >>  samples/fanotify/fs-monitor.c | 142 ++++++++++++++++++++++++++++++++++
+> >>  4 files changed, 157 insertions(+)
+> >>  create mode 100644 samples/fanotify/Makefile
+> >>  create mode 100644 samples/fanotify/fs-monitor.c
+> >> 
+> >> diff --git a/samples/Kconfig b/samples/Kconfig
+> >> index b0503ef058d3..88353b8eac0b 100644
+> >> --- a/samples/Kconfig
+> >> +++ b/samples/Kconfig
+> >> @@ -120,6 +120,15 @@ config SAMPLE_CONNECTOR
+> >>  	  with it.
+> >>  	  See also Documentation/driver-api/connector.rst
+> >>  
+> >> +config SAMPLE_FANOTIFY_ERROR
+> >> +	bool "Build fanotify error monitoring sample"
+> >> +	depends on FANOTIFY
+> >
+> > This needs something like
+> > 	depends on CC_CAN_LINK
+> > or possibly even
+> > 	depends on CC_CAN_LINK && HEADERS_INSTALL
+> > to avoid compilation errors such as
+> >
+> > samples/fanotify/fs-monitor.c:7:10: fatal error: errno.h: No such file or directory
+> >     7 | #include <errno.h>
+> >       |          ^~~~~~~~~
+> > compilation terminated.
+> >
+> > when using a toolchain without C library support, such as those provided
+> > on kernel.org.
 > 
-> what option is this for? Usually this should be handled by passing
-> FSCONFIG_SET_FLAG. Doesn't seem like a good idea to let the string value
-> be optionally empty. I'd rather have the guarantee that it has to be
-> something instead of having to be extra careful because it could be NULL.
-
-Hi Christian,
-
-this is for ext4 mount options usrjquota and grpjquota that will treat
-empty parameter, that is "grpjquota=" and "usrjquota=", as a means to
-disable those. I agree that it's not ideal, but if I don't want to break
-compatibilily when converting ext4 to this new mount API I have to keep
-that option the way it is.
-
-I share your concern, but for the string to be empty, the
-fs_param_can_be_empty flag must be used intentionaly and so the code
-handling this must expect the string to be empty in some cases.
-
-Another option would be to use a flag parameter with the name including
-the egual sign. Not sure if that's currently possible. But that would
-require us to use separtate parameter and it feels even more clunky to
-me especially since we can easly detect empty string instead.
-
-Thanks!
--Lukas
-
+> Thank you, Guenter.
 > 
-> > 
-> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> > Cc: Al Viro <viro@zeniv.linux.org.uk>
-> > Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
-> > ---
-> >  fs/fs_parser.c            | 31 +++++++++++++++++++++++--------
-> >  include/linux/fs_parser.h |  2 +-
-> >  2 files changed, 24 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/fs/fs_parser.c b/fs/fs_parser.c
-> > index 3df07c0e32b3..ed40ce5742fd 100644
-> > --- a/fs/fs_parser.c
-> > +++ b/fs/fs_parser.c
-> > @@ -199,6 +199,8 @@ int fs_param_is_bool(struct p_log *log, const struct fs_parameter_spec *p,
-> >  	int b;
-> >  	if (param->type != fs_value_is_string)
-> >  		return fs_param_bad_value(log, param);
-> > +	if (!*param->string && (p->flags & fs_param_can_be_empty))
-> > +		return 0;
-> >  	b = lookup_constant(bool_names, param->string, -1);
-> >  	if (b == -1)
-> >  		return fs_param_bad_value(log, param);
-> > @@ -211,8 +213,11 @@ int fs_param_is_u32(struct p_log *log, const struct fs_parameter_spec *p,
-> >  		    struct fs_parameter *param, struct fs_parse_result *result)
-> >  {
-> >  	int base = (unsigned long)p->data;
-> > -	if (param->type != fs_value_is_string ||
-> > -	    kstrtouint(param->string, base, &result->uint_32) < 0)
-> > +	if (param->type != fs_value_is_string)
-> > +		return fs_param_bad_value(log, param);
-> > +	if (!*param->string && (p->flags & fs_param_can_be_empty))
-> > +		return 0;
-> > +	if (kstrtouint(param->string, base, &result->uint_32) < 0)
-> >  		return fs_param_bad_value(log, param);
-> >  	return 0;
-> >  }
-> > @@ -221,8 +226,11 @@ EXPORT_SYMBOL(fs_param_is_u32);
-> >  int fs_param_is_s32(struct p_log *log, const struct fs_parameter_spec *p,
-> >  		    struct fs_parameter *param, struct fs_parse_result *result)
-> >  {
-> > -	if (param->type != fs_value_is_string ||
-> > -	    kstrtoint(param->string, 0, &result->int_32) < 0)
-> > +	if (param->type != fs_value_is_string)
-> > +		return fs_param_bad_value(log, param);
-> > +	if (!*param->string && (p->flags & fs_param_can_be_empty))
-> > +		return 0;
-> > +	if (kstrtoint(param->string, 0, &result->int_32) < 0)
-> >  		return fs_param_bad_value(log, param);
-> >  	return 0;
-> >  }
-> > @@ -231,8 +239,11 @@ EXPORT_SYMBOL(fs_param_is_s32);
-> >  int fs_param_is_u64(struct p_log *log, const struct fs_parameter_spec *p,
-> >  		    struct fs_parameter *param, struct fs_parse_result *result)
-> >  {
-> > -	if (param->type != fs_value_is_string ||
-> > -	    kstrtoull(param->string, 0, &result->uint_64) < 0)
-> > +	if (param->type != fs_value_is_string)
-> > +		return fs_param_bad_value(log, param);
-> > +	if (!*param->string && (p->flags & fs_param_can_be_empty))
-> > +		return 0;
-> > +	if (kstrtoull(param->string, 0, &result->uint_64) < 0)
-> >  		return fs_param_bad_value(log, param);
-> >  	return 0;
-> >  }
-> > @@ -244,6 +255,8 @@ int fs_param_is_enum(struct p_log *log, const struct fs_parameter_spec *p,
-> >  	const struct constant_table *c;
-> >  	if (param->type != fs_value_is_string)
-> >  		return fs_param_bad_value(log, param);
-> > +	if (!*param->string && (p->flags & fs_param_can_be_empty))
-> > +		return 0;
-> >  	c = __lookup_constant(p->data, param->string);
-> >  	if (!c)
-> >  		return fs_param_bad_value(log, param);
-> > @@ -255,7 +268,8 @@ EXPORT_SYMBOL(fs_param_is_enum);
-> >  int fs_param_is_string(struct p_log *log, const struct fs_parameter_spec *p,
-> >  		       struct fs_parameter *param, struct fs_parse_result *result)
-> >  {
-> > -	if (param->type != fs_value_is_string || !*param->string)
-> > +	if (param->type != fs_value_is_string ||
-> > +	    (!*param->string && !(p->flags & fs_param_can_be_empty)))
-> >  		return fs_param_bad_value(log, param);
-> >  	return 0;
-> >  }
-> > @@ -275,7 +289,8 @@ int fs_param_is_fd(struct p_log *log, const struct fs_parameter_spec *p,
-> >  {
-> >  	switch (param->type) {
-> >  	case fs_value_is_string:
-> > -		if (kstrtouint(param->string, 0, &result->uint_32) < 0)
-> > +		if ((!*param->string && !(p->flags & fs_param_can_be_empty)) ||
-> > +		    kstrtouint(param->string, 0, &result->uint_32) < 0)
-> >  			break;
-> >  		if (result->uint_32 <= INT_MAX)
-> >  			return 0;
-> > diff --git a/include/linux/fs_parser.h b/include/linux/fs_parser.h
-> > index aab0ffc6bac6..f103c91139d4 100644
-> > --- a/include/linux/fs_parser.h
-> > +++ b/include/linux/fs_parser.h
-> > @@ -42,7 +42,7 @@ struct fs_parameter_spec {
-> >  	u8			opt;	/* Option number (returned by fs_parse()) */
-> >  	unsigned short		flags;
-> >  #define fs_param_neg_with_no	0x0002	/* "noxxx" is negative param */
-> > -#define fs_param_neg_with_empty	0x0004	/* "xxx=" is negative param */
-> > +#define fs_param_can_be_empty	0x0004	/* "xxx=" is allowed */
-> >  #define fs_param_deprecated	0x0008	/* The param is deprecated */
-> >  	const void		*data;
-> >  };
-> > -- 
-> > 2.31.1
-> > 
+> We discussed this, but I wasn't sure how to silence the error and it
+> didn't trigger in the past versions.
 > 
+> The original patch is already in Jan's tree.  Jan, would you pick the
+> pack below to address it?  Feel free to squash it into the original
+> commit, if you think it is saner..
 
+Thanks guys, I've added the patch to my tree. If we had more time, I'd
+probably squash it but given I'd like to send Linus a pull request at the
+end of the week I don't want to touch commits that are already in next.
+
+								Honza
+
+> -- >8 --
+> From: Gabriel Krisman Bertazi <krisman@collabora.com>
+> Date: Thu, 28 Oct 2021 15:34:46 -0300
+> Subject: [PATCH] samples: Make fs-monitor depend on libc and headers
+> 
+> Prevent build errors when headers or libc are not available, such as on
+> kernel build bots, like the below:
+> 
+> samples/fanotify/fs-monitor.c:7:10: fatal error: errno.h: No such file
+> or directory
+>   7 | #include <errno.h>
+>     |          ^~~~~~~~~
+> 
+> Suggested-by: Guenter Roeck <linux@roeck-us.net>
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> ---
+>  samples/Kconfig | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/samples/Kconfig b/samples/Kconfig
+> index 88353b8eac0b..56539b21f2c7 100644
+> --- a/samples/Kconfig
+> +++ b/samples/Kconfig
+> @@ -122,7 +122,7 @@ config SAMPLE_CONNECTOR
+>  
+>  config SAMPLE_FANOTIFY_ERROR
+>  	bool "Build fanotify error monitoring sample"
+> -	depends on FANOTIFY
+> +	depends on FANOTIFY && CC_CAN_LINK && HEADERS_INSTALL
+>  	help
+>  	  When enabled, this builds an example code that uses the
+>  	  FAN_FS_ERROR fanotify mechanism to monitor filesystem
+> -- 
+> 2.33.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
