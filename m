@@ -2,37 +2,37 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34B5FC433EF
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Nov 2021 09:49:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32EFCC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Nov 2021 09:49:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 0761F60720
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Nov 2021 09:49:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 17A53611AF
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Nov 2021 09:49:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231575AbhKCJwE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Nov 2021 05:52:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60080 "EHLO mail.kernel.org"
+        id S231614AbhKCJwZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Nov 2021 05:52:25 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60136 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S230097AbhKCJwE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Nov 2021 05:52:04 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPS id DF72F60720
-        for <linux-ext4@vger.kernel.org>; Wed,  3 Nov 2021 09:49:27 +0000 (UTC)
+        id S230097AbhKCJwZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Nov 2021 05:52:25 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPS id F2EE160720
+        for <linux-ext4@vger.kernel.org>; Wed,  3 Nov 2021 09:49:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1635932967;
-        bh=z0ssZdseCZyJqZ5f/I2amlhxshgSLI0q+kzqJLSQwVE=;
-        h=From:To:Subject:Date:From;
-        b=mHCKanqKL0hVyPiLQ4hHgVeTWBsrw4petY6oHIJ+d3JiXEIb8iJ5TAxawmHGc7QRp
-         x9/Ry+9hDrj+urONNOEpckzKMDRupOLFj5kaE4nbGAaWPpOIGhV/fR2lxP/6j6dJTy
-         RrZx577a0yIBkTZId6f/Ac00zQ22iLpxUDWLuoGP69Luk29qK9uFDdesIynxch0vyC
-         5tGL5NPL0UtJhsiC4LDq9VC9BI/PeKMaD9I7z1XVGWDMJONAlQBefIJ2sMwCh2wDDX
-         uOwY63bpPZ0raaM/MhW8mTehQUFmYZT7+JZ1Qh5ZqCpn6OVL0RvYNKyyP2Q/fCl9yp
-         mPbyfpN939g6A==
+        s=k20201202; t=1635932989;
+        bh=tLB7qLK2LSqQZQ2y20RZu84B1vLBPZi2Fn2sc3GIKFs=;
+        h=From:To:Subject:Date:In-Reply-To:References:From;
+        b=mayC/TvDQm0fpsHFUc1yLiG/wzEYnt6zjs+0eeluBbH+b2iurSXxTc2RaRdEncHxP
+         XPpcn/niV4lbKjqa3altkT5+YuSd6FxS1iixCkKBsOIt2vxOq+GN3LY9IF4R5ajzea
+         mhMW+6D9ygjnQ24qQrSw2kYusaU0p03FPHZk9VyA86buz4EFg3L+wO2pftpbGfPcSZ
+         NXxM4mTSD0oRsmd7G6A1S9UgHTGIRmV/Xf334Ila9NPJJEv2Z8FO0MaOUwArXYVbPg
+         hbbHw3X2OfCEBc6O0ygJi9YamfYH2UJUTBS9zFU/xNwrivFoLIoZ4hhgg69y/ggQLo
+         qBssDzQ12EDug==
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 214927] New: re-mount read-write (mount -oremount,rw) of
- read-only filesystem rejected with EROFS, but block device is nor read-only
-Date:   Wed, 03 Nov 2021 09:49:27 +0000
+Subject: [Bug 214927] re-mount read-write (mount -oremount,rw) of read-only
+ filesystem rejected with EROFS, but block device is not read-only
+Date:   Wed, 03 Nov 2021 09:49:48 +0000
 X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
+X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext3@kernel-bugs.osdl.org
 X-Bugzilla-Product: File System
 X-Bugzilla-Component: ext3
@@ -45,10 +45,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext3@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression
-Message-ID: <bug-214927-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: short_desc
+Message-ID: <bug-214927-13602-GVLCmhFATx@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-214927-13602@https.bugzilla.kernel.org/>
+References: <bug-214927-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -60,57 +60,15 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D214927
 
-            Bug ID: 214927
-           Summary: re-mount read-write (mount -oremount,rw) of read-only
-                    filesystem rejected with EROFS, but block device is
-                    nor read-only
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.12.14-122.91-default (SLES12 SP5)
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-          Assignee: fs_ext3@kernel-bugs.osdl.org
-          Reporter: Ulrich.Windl@rz.uni-regensburg.de
-        Regression: No
+Ulrich.Windl (Ulrich.Windl@rz.uni-regensburg.de) changed:
 
-I think there's a kernel or filesystem bug related to ext3:
-We run a SLES12 SP5 Xen PVM that gets its system disk from a sparse file
-located on a SLES15 SP2 Xen host using OCFS2 (the host is a node in a pacem=
-aker
-cluster).
-
-The OCFS2 filesystem became full or almost full, and thus the ext3
-filesystem(s) experienced write errors, remounting to read-only.
-So far, so good, but:
-The errors behavior of ext 3 was set to "continue", so I wonder why it had =
-been
-set to read-only at all.
-Next, after having extended the OCFS2 filesystem size, any remount-attempt
-fails with:
-
-mount: /: cannot remount /dev/... read-write, is write-protected.
-
-I strace-d the mount command and the mount syscall is returning EROFS
-(Read-only filesystem).
-However in the VM configuration on the host the disk is marked read-write, =
-the
-disk in the VM is flagged read-write, also the VG, LVs, etc. I checked the
-/sys/block/*/ro, too: It's all "0".
-
-I also did an fsck (which succeeded), but still after that the error is the
-same.
-Interestingly I noticed that after a *failed* remount attempt, the filesyst=
-em
-(that is mounted read-only) got the error flag being set again.
-
-The only conclusion I have is that there is at least one kernel bug regardi=
-ng
-the read-only status of the block device.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+            Summary|re-mount read-write (mount  |re-mount read-write (mount
+                   |-oremount,rw) of read-only  |-oremount,rw) of read-only
+                   |filesystem rejected with    |filesystem rejected with
+                   |EROFS, but block device is  |EROFS, but block device is
+                   |nor read-only               |not read-only
 
 --=20
 You may reply to this email to add a comment.
