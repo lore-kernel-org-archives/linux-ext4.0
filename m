@@ -2,135 +2,158 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B51CBC433FE
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Nov 2021 08:34:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CBF48C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Nov 2021 09:28:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9C5076115A
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Nov 2021 08:34:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B7BEC61104
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Nov 2021 09:28:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244215AbhKIIhj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Nov 2021 03:37:39 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60054 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239713AbhKIIgz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2021 03:36:55 -0500
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1619BC0613B9;
-        Tue,  9 Nov 2021 00:34:10 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=dGumlXA8bKenaWXczMrz5P/DlTIFWU6uPrJEsJbZBpA=; b=Ce+9Re7FrclwSe+nEL2ezM+LO2
-        4kPTB/AeeMDNXfabLJp4oiZ67cCSpUhrKxzjZP+ob/SX+cVOYo207D22qv0/Am61QvuKpaDUXqRnV
-        WaXroLBuaJ/pnSTL/TL8HrZN1ri2P3m2NiPIuMF24pMEbz2G5CwkwnCrgfkSSH9+F3c57VJlSR0dT
-        4afAjUP+gtO4JQ1MB3yZQ/qsrmDMmsCNkdotlQXn8YRxVP/2EywmUtgt+KpNH32EWB24MtMdYBqop
-        2Tqx8YAhAiibk6OpbICNHDnOfkjcf7BeCI8ti7Jboagd2CJ7s/3AX+Hd6d+l4S++Asy+fJOUBTGwc
-        DlMRam9g==;
-Received: from [2001:4bb8:19a:7ee7:fb46:2fe1:8652:d9d4] (helo=localhost)
-        by casper.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1mkMZr-000sDM-MC; Tue, 09 Nov 2021 08:34:00 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Dan Williams <dan.j.williams@intel.com>
-Cc:     Mike Snitzer <snitzer@redhat.com>, Ira Weiny <ira.weiny@intel.com>,
-        dm-devel@redhat.com, linux-xfs@vger.kernel.org,
-        nvdimm@lists.linux.dev, linux-s390@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org,
-        virtualization@lists.linux-foundation.org
-Subject: [PATCH 27/29] dax: fix up some of the block device related ifdefs
-Date:   Tue,  9 Nov 2021 09:33:07 +0100
-Message-Id: <20211109083309.584081-28-hch@lst.de>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20211109083309.584081-1-hch@lst.de>
-References: <20211109083309.584081-1-hch@lst.de>
+        id S244899AbhKIJbh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Nov 2021 04:31:37 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:56941 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S244897AbhKIJbh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Nov 2021 04:31:37 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1636450131;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=uZ2CfaW01xVgN1ZygvdOuFHBrDybXxpr4MGBndBh4eg=;
+        b=LiLsE92BEFnSJhOPtQQQRR5IJdC8vOwB0eGY7CAD/uHmb2Z8huX5oX/zWeqksIu4WT6Ii6
+        f01My/adf2oOqsEKMOXt8+uTGLlkkxTVKAAnjdoDfg4gYZclVN8i9Nnr4UxZw053THrjyW
+        oX9xn/Tuv8p3e6sUjwBUASxuF0UPew0=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-430-dVJnCn5qNKe3KOxoMI8KqA-1; Tue, 09 Nov 2021 04:28:49 -0500
+X-MC-Unique: dVJnCn5qNKe3KOxoMI8KqA-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9D02218125C2;
+        Tue,  9 Nov 2021 09:28:48 +0000 (UTC)
+Received: from work (unknown [10.40.195.65])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5918360C17;
+        Tue,  9 Nov 2021 09:28:47 +0000 (UTC)
+Date:   Tue, 9 Nov 2021 10:28:43 +0100
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+Cc:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org, guan@eryu.me
+Subject: Re: [PATCH v2 1/2] common/rc: add _require_kernel_config and
+ _has_kernel_config
+Message-ID: <20211109090855.n3nceaez73laqvze@work>
+References: <20211108151916.27845-1-lczerner@redhat.com>
+ <20211108210423.28980-1-lczerner@redhat.com>
+ <20211108223132.GB24255@magnolia>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by casper.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211108223132.GB24255@magnolia>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The DAX device <-> block device association is only enabled if
-CONFIG_BLOCK is enabled.  Update dax.h to account for that and use
-the right conditions for the fs_put_dax stub as well.
+On Mon, Nov 08, 2021 at 02:31:32PM -0800, Darrick J. Wong wrote:
+> On Mon, Nov 08, 2021 at 10:04:23PM +0100, Lukas Czerner wrote:
+> > Add _require_kernel_config() and _has_kernel_config() helpers to check
+> > whether a specific kernel configuration is enabled on the kernel.
+> > 
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> > v2: Document KCONFIG_PATH in README
+> > 
+> >  README        |  2 ++
+> >  common/config |  1 +
+> >  common/rc     | 29 +++++++++++++++++++++++++++++
+> >  3 files changed, 32 insertions(+)
+> > 
+> > diff --git a/README b/README
+> > index 63f0641a..e9284b22 100644
+> > --- a/README
+> > +++ b/README
+> > @@ -129,6 +129,8 @@ Preparing system for tests:
+> >                 xfs_check to check the filesystem.  As of August 2021,
+> >                 xfs_repair finds all filesystem corruptions found by xfs_check,
+> >                 and more, which means that xfs_check is no longer run by default.
+> > +	     - Set KCONFIG_PATH to specify your preferred location of kernel
+> > +	       config file.
+> 
+> The indentation here looks kind of off, but the core logic looks
+> correct.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- include/linux/dax.h | 41 ++++++++++++++++++++---------------------
- 1 file changed, 20 insertions(+), 21 deletions(-)
+The file uses a mixture of tabs and spaces. In this case I used tabs,
+the bullet point above uses spaces, that's why it looks kind of off in
+the patch. Otherwise I used the same indentation as some other
+bullet points so I don't think there is anything to fix in this patch.
 
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 90f95deff504d..5568d3dca941b 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -108,28 +108,15 @@ static inline bool daxdev_mapping_supported(struct vm_area_struct *vma,
- #endif
- 
- struct writeback_control;
--#if IS_ENABLED(CONFIG_FS_DAX)
-+#if defined(CONFIG_BLOCK) && defined(CONFIG_FS_DAX)
- int dax_add_host(struct dax_device *dax_dev, struct gendisk *disk);
- void dax_remove_host(struct gendisk *disk);
--
-+struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev,
-+		u64 *start_off);
- static inline void fs_put_dax(struct dax_device *dax_dev)
- {
- 	put_dax(dax_dev);
- }
--
--struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev,
--		u64 *start_off);
--int dax_writeback_mapping_range(struct address_space *mapping,
--		struct dax_device *dax_dev, struct writeback_control *wbc);
--
--struct page *dax_layout_busy_page(struct address_space *mapping);
--struct page *dax_layout_busy_page_range(struct address_space *mapping, loff_t start, loff_t end);
--dax_entry_t dax_lock_page(struct page *page);
--void dax_unlock_page(struct page *page, dax_entry_t cookie);
--int dax_zero_range(struct inode *inode, loff_t pos, loff_t len, bool *did_zero,
--		const struct iomap_ops *ops);
--int dax_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
--		const struct iomap_ops *ops);
- #else
- static inline int dax_add_host(struct dax_device *dax_dev, struct gendisk *disk)
- {
-@@ -138,17 +125,29 @@ static inline int dax_add_host(struct dax_device *dax_dev, struct gendisk *disk)
- static inline void dax_remove_host(struct gendisk *disk)
- {
- }
--
--static inline void fs_put_dax(struct dax_device *dax_dev)
--{
--}
--
- static inline struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev,
- 		u64 *start_off)
- {
- 	return NULL;
- }
-+static inline void fs_put_dax(struct dax_device *dax_dev)
-+{
-+}
-+#endif /* CONFIG_BLOCK && CONFIG_FS_DAX */
-+
-+#if IS_ENABLED(CONFIG_FS_DAX)
-+int dax_writeback_mapping_range(struct address_space *mapping,
-+		struct dax_device *dax_dev, struct writeback_control *wbc);
- 
-+struct page *dax_layout_busy_page(struct address_space *mapping);
-+struct page *dax_layout_busy_page_range(struct address_space *mapping, loff_t start, loff_t end);
-+dax_entry_t dax_lock_page(struct page *page);
-+void dax_unlock_page(struct page *page, dax_entry_t cookie);
-+int dax_zero_range(struct inode *inode, loff_t pos, loff_t len, bool *did_zero,
-+		const struct iomap_ops *ops);
-+int dax_truncate_page(struct inode *inode, loff_t pos, bool *did_zero,
-+		const struct iomap_ops *ops);
-+#else
- static inline struct page *dax_layout_busy_page(struct address_space *mapping)
- {
- 	return NULL;
--- 
-2.30.2
+> 
+> With that fixed:
+> Reviewed-by: Darrick J. Wong <djwong@kernel.org>
+
+Thanks for the review.
+-Lukas
+
+> 
+> --D
+> 
+> >  
+> >          - or add a case to the switch in common/config assigning
+> >            these variables based on the hostname of your test
+> > diff --git a/common/config b/common/config
+> > index 164381b7..e0a5c5df 100644
+> > --- a/common/config
+> > +++ b/common/config
+> > @@ -226,6 +226,7 @@ export OPENSSL_PROG="$(type -P openssl)"
+> >  export ACCTON_PROG="$(type -P accton)"
+> >  export E2IMAGE_PROG="$(type -P e2image)"
+> >  export BLKZONE_PROG="$(type -P blkzone)"
+> > +export GZIP_PROG="$(type -P gzip)"
+> >  
+> >  # use 'udevadm settle' or 'udevsettle' to wait for lv to be settled.
+> >  # newer systems have udevadm command but older systems like RHEL5 don't.
+> > diff --git a/common/rc b/common/rc
+> > index 0d261184..84154868 100644
+> > --- a/common/rc
+> > +++ b/common/rc
+> > @@ -4703,6 +4703,35 @@ _require_names_are_bytes() {
+> >          esac
+> >  }
+> >  
+> > +_has_kernel_config()
+> > +{
+> > +	option=$1
+> > +	uname=$(uname -r)
+> > +	config_list="$KCONFIG_PATH
+> > +		     /proc/config.gz
+> > +		     /lib/modules/$uname/build/.config
+> > +		     /boot/config-$uname
+> > +		     /lib/kernel/config-$uname"
+> > +
+> > +	for config in $config_list; do
+> > +		[ ! -f $config ] && continue
+> > +		[ $config = "/proc/config.gz" ] && break
+> > +		grep -qE "^${option}=[my]" $config
+> > +		return
+> > +	done
+> > +
+> > +	[ ! -f $config ] && _notrun "Could not locate kernel config file"
+> > +
+> > +	# We can only get here with /proc/config.gz
+> > +	_require_command "$GZIP_PROG" gzip
+> > +	$GZIP_PROG -cd $config | grep -qE "^${option}=[my]"
+> > +}
+> > +
+> > +_require_kernel_config()
+> > +{
+> > +	_has_kernel_config $1 || _notrun "Installed kernel not built with $1"
+> > +}
+> > +
+> >  init_rc
+> >  
+> >  ################################################################################
+> > -- 
+> > 2.31.1
+> > 
+> 
 
