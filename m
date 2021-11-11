@@ -2,129 +2,115 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2EEBC433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 03:12:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8675CC433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 07:10:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7F16E61168
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 03:12:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 519AE6124C
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 07:10:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231169AbhKKDPj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Nov 2021 22:15:39 -0500
-Received: from mail106.syd.optusnet.com.au ([211.29.132.42]:35849 "EHLO
-        mail106.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229699AbhKKDPi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Nov 2021 22:15:38 -0500
-Received: from dread.disaster.area (pa49-195-103-97.pa.nsw.optusnet.com.au [49.195.103.97])
-        by mail106.syd.optusnet.com.au (Postfix) with ESMTPS id 27FBB865D1E;
-        Thu, 11 Nov 2021 14:12:47 +1100 (AEDT)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1ml0W6-007Nzy-P7; Thu, 11 Nov 2021 14:12:46 +1100
-Date:   Thu, 11 Nov 2021 14:12:46 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Zhongwei Cai <sunrise_l@sjtu.edu.cn>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingkaidong@gmail.com
-Subject: Re: [PATCH] ext4: remove unnecessary ext4_inode_datasync_dirty in
- read path
-Message-ID: <20211111031246.GH418105@dread.disaster.area>
-References: <20211102024258.210439-1-sunrise_l@sjtu.edu.cn>
- <20211103002843.GC418105@dread.disaster.area>
- <ffb199dc-f7ae-ba03-db57-bf7acc3d0636@sjtu.edu.cn>
- <20211104232226.GD418105@dread.disaster.area>
- <01e6abf4-3ae5-ecab-3b7f-876c8a3fcbb4@sjtu.edu.cn>
- <20211109045010.GG418105@dread.disaster.area>
- <4f00db60-478b-698c-fc5b-874d8255af57@sjtu.edu.cn>
+        id S229956AbhKKHNM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 11 Nov 2021 02:13:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41640 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229649AbhKKHNL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Nov 2021 02:13:11 -0500
+Received: from mail-lf1-x134.google.com (mail-lf1-x134.google.com [IPv6:2a00:1450:4864:20::134])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8CEA1C061766
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Nov 2021 23:10:22 -0800 (PST)
+Received: by mail-lf1-x134.google.com with SMTP id z34so11952640lfu.8
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Nov 2021 23:10:22 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance-com.20210112.gappssmtp.com; s=20210112;
+        h=mime-version:from:date:message-id:subject:to:cc
+         :content-transfer-encoding;
+        bh=RyMTikuXuk4CwLPZjgMGVBZcNZ51SDxS//CXZPYeZ/4=;
+        b=TN4c7h2e/UCWifrni1jo+Y6A+vVLO5/t34cy3+aQmxeaRqfzrAD6IgEl965FgWhRrn
+         ZaXX8J4PF/OB8Sl2WREsFKpXQn3MnjVupfntFo/boJizdWQx56UlNxnfceGhlN00SARC
+         +4bNNrseVdc9jirsmKKkWmvMhlHJURDrZ0vKprBoEwWUwaLv+yVtfsJcOtPKNcHzU9KS
+         RCgi33CFEncFpwnItjWzks9wzSgxwDr+lJqJyG8E2QT4FwDWyrFGuK2gRddDgPF3IPAV
+         5TULXcQEVpkTBCuKgJOlUXgFCzS9Erxdql59XgQRvJS0vL+YHvYcqa8+ewg8PKfup7Tv
+         fv7w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to:cc
+         :content-transfer-encoding;
+        bh=RyMTikuXuk4CwLPZjgMGVBZcNZ51SDxS//CXZPYeZ/4=;
+        b=6bxraSzMegZjRTRnUiv8VFs2h7zcZFDreO94/CSxs7+SZRxGZq3TXB/CcPVoj6XYU9
+         +z/RqvYWCyA9eMrB4WEuTci7b5iBDIrIqFn+AZUvSR49LD1DGqW7C2RBgJcFCNEAKKpF
+         lcXgn2ZlfxWHEMo97pEuYp9EKvof7Rbzv1jrCZUOh3bPtxAVZbxw7fPAbFavQ7y0uyfO
+         VeqHeV4s1J5FHH6VGNkifVMz4B8r6HJkHkOu0QSbH9WKb6X+WFRS/YBuA+eXreWiI849
+         lgHFZpaHjRbaz7rv2ZvKASpVDbeOKEnPXVJ8X2Z3Ob95JvbKMq/WrnpPajSww0ar4zD/
+         RRag==
+X-Gm-Message-State: AOAM530C2y0MdNfGMZxtB854gBQRYxOVO5e6Kf7y9qXZCuM3jQE0SAS3
+        JYWrQAutDix8ox1AS74zqJFeJn1ld1iCRVoE2bwh0nMF0okoyw==
+X-Google-Smtp-Source: ABdhPJyM8qNk1VFbeydTuDobQQl+EdB14gfmFVkTBbwYQQyEP8QiF84kDFhRBiTCdaL4kvm1GSdv/KXTmYiCIYT7P1Y=
+X-Received: by 2002:a05:6512:12d3:: with SMTP id p19mr4781494lfg.278.1636614620849;
+ Wed, 10 Nov 2021 23:10:20 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <4f00db60-478b-698c-fc5b-874d8255af57@sjtu.edu.cn>
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.4 cv=epq8cqlX c=1 sm=1 tr=0 ts=618c8a30
-        a=fP9RlOTWD4uZJjPSFnn6Ew==:117 a=fP9RlOTWD4uZJjPSFnn6Ew==:17
-        a=kj9zAlcOel0A:10 a=vIxV3rELxO4A:10 a=7-415B0cAAAA:8
-        a=4D2tzkiLJbWFb9yM_lEA:9 a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+From:   =?UTF-8?B?5bC55qyj?= <yinxin.x@bytedance.com>
+Date:   Thu, 11 Nov 2021 15:10:10 +0800
+Message-ID: <CAK896s5szH8qbDGBDo74hyz5iM4QrjbMJkMjh-f1sZh6K0ozTg@mail.gmail.com>
+Subject: [Question] ext4: different behavior of fsync when use fast commit
+To:     harshadshirwadkar@gmail.com, tytso@mit.edu
+Cc:     linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Nov 10, 2021 at 04:07:57PM +0800, Zhongwei Cai wrote:
-> On 11/9/21 12:50 PM, Dave Chinner wrote:
-> > > 
-> > > Could we add IOMAP_REPORT_DIRTY flag in the flags field of
-> > > struct iomap_iter to indicate whether the IOMAP_F_DIRTY flag
-> > > needs to be set or not?
-> > 
-> > You can try. It might turn out OK, but you're also going to have to
-> > modify all the iomap code that current needs IOMAP_F_DIRTY to first
-> > set that flag, then change all the code that currently sets
-> > IOMAP_F_DIRTY to look at IOMAP_REPORT_DIRTY. i.e you now have to
-> > change iomap, ext4 and XFS to do this.
-> > 
-> I will make a v2 patch with this implementation.
-> 
-> > > Currently the IOMAP_F_DIRTY flag is only checked in
-> > > iomap_swapfile_activate(), dax_iomap_fault() and iomap_dio_rw()
-> > > (To be more specific, only the write path in dax_iomap_fault() and
-> > > iomap_dio_rw()). So it would be unnecessary to set the IOMAP_F_DIRTY
-> > > flag in dax_iomap_rw() called in the previous tests.
-> > 
-> > I think you're trying to optimise the wrong thing - the API is not
-> > the problem, the problem is that the journal->j_state_lock is
-> > contended and the ext4 dirty inode check needs to take it. Fix the
-> > dirty check not to need the journal state lock and the ext4 problem
-> > goes away and there is no need to change the iomap infrastructure.
-> 
-> I'll try to fix it inside ext4, although it seems difficult to do dirty
-> check without journal->j_state_lock.
-> 
-> > > Other file systems that set the IOMAP_F_DIRTY flag efficiently
-> > > could ignore the IOMAP_REPORT_DIRTY flag.
-> > 
-> > No, that's just bad API design. If we are adding IOMAP_REPORT_DIRTY
-> > then the iomap infrastructure should only use that control flag when
-> > it needs to know if the inode is dirty. At this point, it really
-> > becomes mandatory for all filesystems using iomap to support it
-> > because the absence of IOMAP_F_DIRTY because a filesystem doesn't
-> > support it is not the same as "filesystem didn't set it because the
-> > inode is clean".
-> > 
-> Perhaps I have not made it clear that by "ignore" I mean other file
-> systems can set IOMAP_F_DIRTY regardless of whether the
-> IOMAP_REPORT_DIRTY flag is set or not, just like what they are doing
-> now. So we might not need to modify XFS.
+Hi,
 
-I assumed that was exactly what you meant. That's just bad/lazy API
-design. We need to be explicit in the way behaviours are defined,
-not create APIs where callees can set random flags whenever they
-like.
 
-> I think even without the modification I made, the ambiguity that
-> the absence of IOMAP_F_DIRTY can either be file systems not supporting
-> it or be actually "clean inode" may exist since we do not have a flag
-> to indicate whether the file system supports setting IOMAP_F_DIRTY.
+Recently, I=E2=80=98m doing some testing with fast commit feature , and fou=
+nd
+there is a slight difference on fsync compared with the normal
+journaling scheme.
 
-Exactly my point - the current behaviour it's not clearly defined
-(just set it always if you can!) but ext4 needs it to be much more
-explicitly constrained to avoid internal overhead.
+Here is the example:
 
-Hence we need to constrain the IOMAP_F_DIRTY flag behaviour to just
-the iomap operations that need to know if the inode is dirty (i.e.
-filesystems should set IOMAP_F_DIRTY if and only if
-IOMAP_REPORT_DIRTY is passed as a control flag from the iomap core
-and the inode is dirty) and then ensure that *every filesystem
-implements it correctly*.
+-mkdir test/
 
-There are no shortcuts here - the cost of changing generic
-infrastructure is that you have to ensure that all users of
-interface use it properly. That includes filesystems that don't
-currently set IOMAP_F_DIRTY but use iomap interfaces that will now
-set IOMAP_REPORT_DIRTY....
+-create&write test/a.txt
 
-Cheers,
+-fsync test/a.txt
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+-crash (before a full commit)
+
+
+
+If fast commit is used then =E2=80=9Ca.txt=E2=80=9D will lost. While the no=
+rmal
+journaling can recover it.
+
+Refer to the description of fsync [1],  fsync will not guarantee the
+parent directory to be persisted. So I think it is not an issue.
+
+But fast commit did change the behavior of fsync in ext4,  is this as expec=
+ted ?
+
+
+
+For the root cause of this difference, I found that fast commit will
+not add a EXT4_FC_TAG_CREAT tag for directory creation.
+
+In func ext4_fc_commit_dentry_updates(), only directories in s_fc_q
+list can be added with EXT4_FC_TAG_CREAT,but seams the newly created
+directory inode has no change to be added to s_fc_q.
+
+
+
+Shall we just change the =E2=80=9Cenqueue=E2=80=9D param of ext4_fc_track_t=
+emplate()
+to 1 , which in __ext4_fc_track_create()?  And make fast commit record
+all the inode creation, and do the same things as normal journaling.
+
+
+
+[1] https://man7.org/linux/man-pages/man2/fdatasync.2.html
+
+
+
+BR,
+
+Xin Yin
