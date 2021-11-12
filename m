@@ -2,53 +2,56 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DD86C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 21:59:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD2E8C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Nov 2021 08:20:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6301461269
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Nov 2021 21:59:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B7BC161002
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Nov 2021 08:20:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230136AbhKKWCE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 11 Nov 2021 17:02:04 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.129.124]:22240 "EHLO
+        id S233565AbhKLIXU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 Nov 2021 03:23:20 -0500
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:56842 "EHLO
         us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S229520AbhKKWCD (ORCPT
+        by vger.kernel.org with ESMTP id S230464AbhKLIXT (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Nov 2021 17:02:03 -0500
+        Fri, 12 Nov 2021 03:23:19 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1636667954;
+        s=mimecast20190719; t=1636705228;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Y8cZELcdV5W0CoTP950HhsAxzikWq40LoJLfRYZpfw8=;
-        b=eMIiP394sj9hWlIAIHyeuq6YY73fF4CUAlF79iwQex9wmOtCMgiSVBc2YXvzIZKgHDyfXa
-        uJwXvifFv2IRfU0gh2s8n/B/HI9biY7kFvIic58RmmNeaMXTR59dTm3WTP4Tur7f5R5xZO
-        yoArMbh5/RNhFe8uHCYQYT5fBZs5PHQ=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=pXgyNY0O67cszvevDEwNNrDT0bLIa+f4gRzeCjWLIZo=;
+        b=EIJkZ3wzKA3f997Oa+5Bw6fSZZS6627V4O8OsAv2ah+r/czXg3gNsc9tTBFzChMnDotAoE
+        i5fNSYiTVXgSeo08VQb0Mxxr/sk+2HyR/TYQiNAms5+nP79sDQX91hH2KJAOmhKvalBSHS
+        abWZB5RWNJBS5/zPJPHlMJugbCtWm/M=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-197-JvpmIdodOYuaZiFkCq1PLw-1; Thu, 11 Nov 2021 16:59:10 -0500
-X-MC-Unique: JvpmIdodOYuaZiFkCq1PLw-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+ us-mta-508-5jHnKl_HOAKE30p2doce5A-1; Fri, 12 Nov 2021 03:20:24 -0500
+X-MC-Unique: 5jHnKl_HOAKE30p2doce5A-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 8CA1F1030C20;
-        Thu, 11 Nov 2021 21:59:09 +0000 (UTC)
-Received: from localhost.localdomain (unknown [10.40.194.178])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id AC9391980E;
-        Thu, 11 Nov 2021 21:59:08 +0000 (UTC)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id D07E9A40C0;
+        Fri, 12 Nov 2021 08:20:23 +0000 (UTC)
+Received: from localhost.localdomain (unknown [10.40.193.53])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1651519D9D;
+        Fri, 12 Nov 2021 08:20:22 +0000 (UTC)
 From:   Lukas Czerner <lczerner@redhat.com>
 To:     linux-ext4@vger.kernel.org, tytso@mit.edu
-Subject: [PATCH] ext4: implement support for get/set fs label
-Date:   Thu, 11 Nov 2021 22:59:04 +0100
-Message-Id: <20211111215904.21237-1-lczerner@redhat.com>
+Subject: [PATCH v2] ext4: implement support for get/set fs label
+Date:   Fri, 12 Nov 2021 09:20:19 +0100
+Message-Id: <20211112082019.22078-1-lczerner@redhat.com>
+In-Reply-To: <20211111215904.21237-1-lczerner@redhat.com>
+References: <20211111215904.21237-1-lczerner@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Implement suport for FS_IOC_GETFSLABEL and FS_IOC_SETFSLABEL ioctls for
+Implement support for FS_IOC_GETFSLABEL and FS_IOC_SETFSLABEL ioctls for
 online reading and setting of file system label.
 
 ext4_ioctl_getlabel() is simple, just get the label from the primary
@@ -72,6 +75,8 @@ with and without sparse_super/sparse_super2.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
+V2: Fix typo. Place constant in BUILD_BUG_ON comparison on the right side
+
  fs/ext4/ext4.h  |   6 +-
  fs/ext4/ioctl.c | 169 ++++++++++++++++++++++++++++++++++++++++++++++++
  fs/ext4/super.c |   4 +-
@@ -109,7 +114,7 @@ index 3825195539d7..0856afb629e3 100644
  extern int ext4_alloc_flex_bg_array(struct super_block *sb,
  				    ext4_group_t ngroup);
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 606dee9e08a3..367aa80b050d 100644
+index 606dee9e08a3..1199090e0dbb 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
 @@ -850,6 +850,166 @@ static int ext4_ioctl_checkpoint(struct file *filp, unsigned long arg)
@@ -152,7 +157,7 @@ index 606dee9e08a3..367aa80b050d 100644
 +	struct ext4_super_block *es = sbi->s_es;
 +
 +	/* Sanity check, this should never happen */
-+	BUILD_BUG_ON(EXT4_LABEL_MAX > sizeof(es->s_volume_name));
++	BUILD_BUG_ON(sizeof(es->s_volume_name) < EXT4_LABEL_MAX);
 +
 +	if (!capable(CAP_SYS_ADMIN))
 +		return -EPERM;
