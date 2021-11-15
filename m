@@ -2,162 +2,73 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90E01C433FE
-	for <linux-ext4@archiver.kernel.org>; Tue, 16 Nov 2021 00:26:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DC18C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Nov 2021 02:07:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 7AA59619E3
-	for <linux-ext4@archiver.kernel.org>; Tue, 16 Nov 2021 00:26:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 194C761A89
+	for <linux-ext4@archiver.kernel.org>; Tue, 16 Nov 2021 02:07:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346523AbhKPA3g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 15 Nov 2021 19:29:36 -0500
-Received: from mail-dm3nam07on2059.outbound.protection.outlook.com ([40.107.95.59]:29793
-        "EHLO NAM02-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1344592AbhKOTed (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 15 Nov 2021 14:34:33 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=J5b+ov1kXe0u4s68rVk123dq9RXpkksIV2VY3ohzKf2ua8qf7f0b2DW8vpXqqhfrheR1+5AiDOWe00tVB5VWMLT48UxVzhEBVkebz2K/P0HTDxFvL4fwQ4+PeGC4BpXRCCqC5aBKkbgM2U+7DTm5IPd7yGE7S0hdcBfxCauYus13VBC8qjf9osWv7teLMdgPC3STZKrLmWXRq2ZtUZw2y19PRkkhOWWRuClb5XArnhYzGYND7XxEmWvUSvBi9BKHn1HNiH0V3Kh6x8cE/slISpwT46akEDLJeTvJshrORhuPkHXJjbsLyUs8bNpzsrQJ1L4woXuATknsFoKn8NASwQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=ZAbNt4xJJFwfAH985ezN+TQYdpqKMdpffqXzHRYyAOc=;
- b=aiwG2nxfxnllNhkeF1pHON/uvEieTEVVNZHFFIQMn9q4CVtOmssg12asxqOHL6cKVNG7kCJGs4rq7A7407oH1xBRvXIYS/KOo2V8Gy/B7tiDlfguqlGluhi13eq3BbwBxRlcv+y6CgykbqF+6c8PnJfdiySR4ktaPIw2FbN6WWBB2kD8oGcL+2+Qijx0kVIw2XI8q/hqz5IIpvekKx0YZKxrpUmrLcdHWBAmgdX5OBjaWWH3yeGjGAWAIH3Re7yEjpHKICD9oOQGkNoHtRv35N7vieyu+nchH6GRKjqYY02iLhYaMA1B9V6RxzD/PydFfyzwAMbV/FnT5Bj9WCUYfw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 165.204.84.17) smtp.rcpttodomain=linux-foundation.org smtp.mailfrom=amd.com;
- dmarc=pass (p=quarantine sp=quarantine pct=100) action=none
- header.from=amd.com; dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ZAbNt4xJJFwfAH985ezN+TQYdpqKMdpffqXzHRYyAOc=;
- b=PWXHnbpj1XcMwPHFn+ft0M2R7HD1aPuMHQAZavNlSPfoT7gDzmzH1mezpSmlpW6hoByxLhxKdqDofFDYXWlrhJxjfVIPOGz7S0ESS9gyd6BbjA77gU4wPJub0cfDmfclnYZvxhqVa29D+6Yi6wlKXAnzcYQK+Ujx2dQkXD7cw1w=
-Received: from CO1PR15CA0061.namprd15.prod.outlook.com (2603:10b6:101:1f::29)
- by BYAPR12MB3141.namprd12.prod.outlook.com (2603:10b6:a03:da::33) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4690.26; Mon, 15 Nov
- 2021 19:30:45 +0000
-Received: from CO1NAM11FT040.eop-nam11.prod.protection.outlook.com
- (2603:10b6:101:1f:cafe::69) by CO1PR15CA0061.outlook.office365.com
- (2603:10b6:101:1f::29) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4690.26 via Frontend
- Transport; Mon, 15 Nov 2021 19:30:44 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
- smtp.mailfrom=amd.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=amd.com;
-Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
- 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
- client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
-Received: from SATLEXMB04.amd.com (165.204.84.17) by
- CO1NAM11FT040.mail.protection.outlook.com (10.13.174.140) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.4690.15 via Frontend Transport; Mon, 15 Nov 2021 19:30:44 +0000
-Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
- (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.17; Mon, 15 Nov
- 2021 13:30:36 -0600
-From:   Alex Sierra <alex.sierra@amd.com>
-To:     <akpm@linux-foundation.org>, <Felix.Kuehling@amd.com>,
-        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>
-CC:     <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
-        <hch@lst.de>, <jgg@nvidia.com>, <jglisse@redhat.com>,
-        <apopple@nvidia.com>, <willy@infradead.org>
-Subject: [PATCH v1 0/9] Add MEMORY_DEVICE_COHERENT for coherent device memory mapping
-Date:   Mon, 15 Nov 2021 13:30:17 -0600
-Message-ID: <20211115193026.27568-1-alex.sierra@amd.com>
-X-Mailer: git-send-email 2.32.0
+        id S244314AbhKPCJz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 15 Nov 2021 21:09:55 -0500
+Received: from tartarus.angband.pl ([51.83.246.204]:59066 "EHLO
+        tartarus.angband.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S239355AbhKOSAq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2021 13:00:46 -0500
+X-Greylist: delayed 2099 seconds by postgrey-1.27 at vger.kernel.org; Mon, 15 Nov 2021 13:00:46 EST
+Received: from 89-73-149-240.dynamic.chello.pl ([89.73.149.240] helo=barad-dur.angband.pl)
+        by tartarus.angband.pl with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        (Exim 4.94.2)
+        (envelope-from <kilobyte@angband.pl>)
+        id 1mmfed-00BE1m-Io; Mon, 15 Nov 2021 18:20:29 +0100
+Received: from [2a02:a31c:8245:f980::4] (helo=valinor.angband.pl)
+        by barad-dur.angband.pl with esmtp (Exim 4.94.2)
+        (envelope-from <kilobyte@angband.pl>)
+        id 1mmfec-0002Nz-4V; Mon, 15 Nov 2021 18:20:26 +0100
+Received: from kilobyte by valinor.angband.pl with local (Exim 4.95)
+        (envelope-from <kilobyte@valinor.angband.pl>)
+        id 1mmfeY-000F3O-Qg;
+        Mon, 15 Nov 2021 18:20:22 +0100
+From:   Adam Borowski <kilobyte@angband.pl>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Cc:     Adam Borowski <kilobyte@angband.pl>
+Date:   Mon, 15 Nov 2021 18:20:20 +0100
+Message-Id: <20211115172020.57853-1-kilobyte@angband.pl>
+X-Mailer: git-send-email 2.33.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.180.168.240]
-X-ClientProxiedBy: SATLEXMB04.amd.com (10.181.40.145) To SATLEXMB04.amd.com
- (10.181.40.145)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 7f7155dd-5caf-43b2-8b0a-08d9a86e6b20
-X-MS-TrafficTypeDiagnostic: BYAPR12MB3141:
-X-Microsoft-Antispam-PRVS: <BYAPR12MB31413794248582B40CEABD16FD989@BYAPR12MB3141.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:9508;
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: 9YpqkidzCsag3zHzz+gcDqm7AhGMohQr/T8B6PYXyryP1WFEoFn9SzE0mTFrqXohtO2vzcgBX9GCHImyQCCaDo132cFQKKp/+4m1weLcQ1Z8+9rJnWRPqmKBsWcmQMSxHZTKEKLQynkI60kEvIQTSoIu+AP9a0eZmLnZ0lKaIm8dDv3tBBJMtjRHTSNeiPB0RG08FccpYFjwyVC1OKLaZ3uDZwHFA2ye8hxLRo+Ie2MLsis4msJ3mqc8ivdzr7TgIZRdblJHoZJn8/RrfMmqhZOOOLR9o7eVR/Clk0AYRX9Y0c2TghE/I9XjRE2RagABN+o7sH031VFJts341OcPnFzykOpu7BqyNvfifHAhXBwRgVW+GyzBYBaOH0EviqbsccKno+OMPUVFA6e7qJH3CZ4m5HCRMk9NTlzmEndgc/TZqEfo+dP51Piqb6mnEe8tSo14EAaDAfNUbnaYAWDbjqYc1qedShUtcQzVvBmjz5Algv5FffdaPykiX1Z4vHhWY1zAwp7e61I89cCQUGJpf8Q04tsbGNFBQEwx5l8vfXopcZ4IeHhm40v57GAT9nA5npeFChOtPb1Z3OweMIZ1qzsXcjm/2LsHphSibzCXDCo6uFDJEk3JEbxA/VDYoYdBhon2XmYTVW8mjwk6PEcx2JQuNRbvP6+U78KjHGs4aik/MV2NIsQ3RxAfFTPtRRfHrvYBOX2rI+tOSfcKRiZ2A44FqRJgY0Cwgsd2zCOO23g=
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(4636009)(36840700001)(46966006)(336012)(8936002)(2906002)(26005)(47076005)(508600001)(82310400003)(8676002)(86362001)(186003)(44832011)(4326008)(16526019)(7416002)(2616005)(426003)(6666004)(316002)(356005)(81166007)(110136005)(54906003)(36860700001)(5660300002)(36756003)(70206006)(70586007)(83380400001)(1076003)(7696005)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Nov 2021 19:30:44.5210
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7f7155dd-5caf-43b2-8b0a-08d9a86e6b20
-X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
-X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT040.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR12MB3141
+X-SA-Exim-Connect-IP: 89.73.149.240
+X-SA-Exim-Mail-From: kilobyte@angband.pl
+Subject: [PATCH] ext4: drop an always true check
+X-SA-Exim-Version: 4.2.1 (built Sat, 13 Feb 2021 17:57:42 +0000)
+X-SA-Exim-Scanned: Yes (on tartarus.angband.pl)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch series introduces MEMORY_DEVICE_COHERENT, a type of memory
-owned by a device that can be mapped into CPU page tables like
-MEMORY_DEVICE_GENERIC and can also be migrated like
-MEMORY_DEVICE_PRIVATE.
-Christoph, the suggestion to incorporate Ralph Campbell’s refcount
-cleanup patch into our hardware page migration patchset originally came
-from you, but it proved impractical to do things in that order because
-the refcount cleanup introduced a bug with wide ranging structural
-implications. Instead, we amended Ralph’s patch so that it could be
-applied after merging the migration work. As we saw from the recent
-discussion, merging the refcount work is going to take some time and
-cooperation between multiple development groups, while the migration
-work is ready now and is needed now. So we propose to merge this
-patchset first and continue to work with Ralph and others to merge the
-refcount cleanup separately, when it is ready.
-This patch series is mostly self-contained except for a few places where
-it needs to update other subsystems to handle the new memory type.
-System stability and performance are not affected according to our
-ongoing testing, including xfstests.
-How it works: The system BIOS advertises the GPU device memory
-(aka VRAM) as SPM (special purpose memory) in the UEFI system address
-map.
-The amdgpu driver registers the memory with devmap as
-MEMORY_DEVICE_COHERENT using devm_memremap_pages. The initial user for
-this hardware page migration capability is the Frontier supercomputer
-project. This functionality is not AMD-specific. We expect other GPU
-vendors to find this functionality useful, and possibly other hardware
-types in the future.
-Our test nodes in the lab are similar to the Frontier configuration,
-with .5 TB of system memory plus 256 GB of device memory split across
-4 GPUs, all in a single coherent address space. Page migration is
-expected to improve application efficiency significantly. We will
-report empirical results as they become available.
-We extended hmm_test to cover migration of MEMORY_DEVICE_COHERENT. This
-patch set builds on HMM and our SVM memory manager already merged in
-5.15.
+EXT_FIRST_INDEX(ptr) is ptr+12, which can't possibly be null; gcc-12
+warns about this.
 
-Alex Sierra (9):
-  mm: add zone device coherent type memory support
-  mm: add device coherent vma selection for memory migration
-  drm/amdkfd: add SPM support for SVM
-  drm/amdkfd: coherent type as sys mem on migration to ram
-  lib: test_hmm add ioctl to get zone device type
-  lib: test_hmm add module param for zone device type
-  lib: add support for device coherent type in test_hmm
-  tools: update hmm-test to support device coherent type
-  tools: update test_hmm script to support SP config
+Signed-off-by: Adam Borowski <kilobyte@angband.pl>
+---
+ fs/ext4/extents.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
- drivers/gpu/drm/amd/amdkfd/kfd_migrate.c |  34 ++-
- include/linux/memremap.h                 |   8 +
- include/linux/migrate.h                  |   1 +
- include/linux/mm.h                       |   9 +
- lib/test_hmm.c                           | 270 +++++++++++++++++------
- lib/test_hmm_uapi.h                      |  21 +-
- mm/memcontrol.c                          |   6 +-
- mm/memory-failure.c                      |   6 +-
- mm/memremap.c                            |   5 +-
- mm/migrate.c                             |  30 ++-
- tools/testing/selftests/vm/hmm-tests.c   | 156 +++++++++++--
- tools/testing/selftests/vm/test_hmm.sh   |  20 +-
- 12 files changed, 446 insertions(+), 120 deletions(-)
-
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 0ecf819bf189..5aa279742da9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1496,8 +1496,7 @@ static int ext4_ext_search_left(struct inode *inode,
+ 				EXT4_ERROR_INODE(inode,
+ 				  "ix (%d) != EXT_FIRST_INDEX (%d) (depth %d)!",
+ 				  ix != NULL ? le32_to_cpu(ix->ei_block) : 0,
+-				  EXT_FIRST_INDEX(path[depth].p_hdr) != NULL ?
+-		le32_to_cpu(EXT_FIRST_INDEX(path[depth].p_hdr)->ei_block) : 0,
++				  le32_to_cpu(EXT_FIRST_INDEX(path[depth].p_hdr)->ei_block),
+ 				  depth);
+ 				return -EFSCORRUPTED;
+ 			}
 -- 
-2.32.0
+2.33.1
 
