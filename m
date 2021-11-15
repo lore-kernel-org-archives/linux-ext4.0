@@ -2,183 +2,102 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C57FC433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 20:54:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F0F0C433F5
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 21:38:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DB0DD61ABD
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 20:54:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 10D8461B2C
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 21:38:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245313AbhKOU4y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 15 Nov 2021 15:56:54 -0500
-Received: from mail-dm6nam11on2075.outbound.protection.outlook.com ([40.107.223.75]:23392
-        "EHLO NAM11-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1346488AbhKOTeW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 15 Nov 2021 14:34:22 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=jI4HDbHod6WSGpCJHhUMA2pUQf/ooAMeOPre634urTH0N1+gsVuPRbVV56rBhda2rUXZhhL8gVHOb365LAy0674GUSJWEGm4pfsNJiN3eIIOz+i6QpGPNrGX7SCf5k7Vgm7qpoJM81m195rgrhrrGaC/TDvvXqR9j9aPSVVs/mP2lZfoxYk2w9tMMhHxBWsYIIEGi9Cs+5GLnssNK9F1jie+hkeVxfBUy7kRrRF+5+yQcbE0pvaqfg2xnrdn2mLqfX4ZPC5b4m8mp8L1k3gpUSE5lcTBj5mEceOmrvZl1FrHmuOOKMc5FgRs1UWFtCTjC3rHbtc/noC+FjruUbzVOA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=GAF0C1Az5E7eNTp++D6wdqoKFJy/vdeyTKmR/88xqyo=;
- b=kLLTa+D+K0itJb7FVY4Avtv81isNyE72oAFoy1YLac5+yf7yyvAw/p5DKRy5KJ5g8UsNtylck7YXK/lMpttJnPNFeUEbhGfvIwv/P1vfNPcPaacYUjpMVznLHm+cgMVzT2T32ps2ixna7eZaeLj1lO4kuIhSaI8hW0D456YZxhEQe1S8QyGrjQSPPmbtMnXL5UjKnPFDk95bNbLX/NIPGZJqEfWEYfQ9yiH6DZTrv5CDzDoRvHbrclhvtqiSTRpwGlfn7OZIcuCZZHFiAekgCVyna/CHwRga72qOURmdLVHwVNRrv0vXSgn3fpPHhaJCnkveeOs4p3C/4cpUBlKV0g==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 165.204.84.17) smtp.rcpttodomain=linux-foundation.org smtp.mailfrom=amd.com;
- dmarc=pass (p=quarantine sp=quarantine pct=100) action=none
- header.from=amd.com; dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=GAF0C1Az5E7eNTp++D6wdqoKFJy/vdeyTKmR/88xqyo=;
- b=FcaxIHciIP6sPV1sfm2plyd5pTqLpO44lvkA3yIIwJaS0M3pfVdmdsBb+dRSdGYQsrLuxVEpVWLxw20VCUTuJAOPaLvj7rPJN6T4EVzM3dv7dRJFIg6Q1tSrdXzpSGeDCgXEfR2j0vqVAO8tmKvDUgHDd1WtCg+rw74Z/QzZDNk=
-Received: from MWHPR04CA0069.namprd04.prod.outlook.com (2603:10b6:300:6c::31)
- by CH0PR12MB5153.namprd12.prod.outlook.com (2603:10b6:610:b8::17) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4690.26; Mon, 15 Nov
- 2021 19:30:49 +0000
-Received: from CO1NAM11FT011.eop-nam11.prod.protection.outlook.com
- (2603:10b6:300:6c:cafe::ab) by MWHPR04CA0069.outlook.office365.com
- (2603:10b6:300:6c::31) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4690.25 via Frontend
- Transport; Mon, 15 Nov 2021 19:30:49 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
- smtp.mailfrom=amd.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=amd.com;
-Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
- 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
- client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
-Received: from SATLEXMB04.amd.com (165.204.84.17) by
- CO1NAM11FT011.mail.protection.outlook.com (10.13.175.186) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.4690.15 via Frontend Transport; Mon, 15 Nov 2021 19:30:48 +0000
-Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
- (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.17; Mon, 15 Nov
- 2021 13:30:38 -0600
-From:   Alex Sierra <alex.sierra@amd.com>
-To:     <akpm@linux-foundation.org>, <Felix.Kuehling@amd.com>,
-        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>
-CC:     <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
-        <hch@lst.de>, <jgg@nvidia.com>, <jglisse@redhat.com>,
-        <apopple@nvidia.com>, <willy@infradead.org>
-Subject: [PATCH v1 3/9] drm/amdkfd: add SPM support for SVM
-Date:   Mon, 15 Nov 2021 13:30:20 -0600
-Message-ID: <20211115193026.27568-4-alex.sierra@amd.com>
-X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20211115193026.27568-1-alex.sierra@amd.com>
-References: <20211115193026.27568-1-alex.sierra@amd.com>
+        id S1349878AbhKOVlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 15 Nov 2021 16:41:07 -0500
+Received: from smtp-out1.suse.de ([195.135.220.28]:49918 "EHLO
+        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1349852AbhKOV3Y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2021 16:29:24 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 81A092170C;
+        Mon, 15 Nov 2021 21:26:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1637011587;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=RIpISZM3Q4aQS4wDIT1b4W1D2mBknEGSZlwMt5K2VH8=;
+        b=lm9ZldTT0ytxBO7IQDFr85VOMZIxpXAEe711lkdHzGO4AZxb54dbWrZFJCovp81OqNJER/
+        uzMgSLNStiA5SIwBN/2qyE7WRzHegEgDg0aOmQfUL7Yhl0WQgyzK/dy5x9n+e4k3chiUgD
+        4XZOhAewulQ8dFyEhk3Gc2dIZ+eho/k=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1637011587;
+        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+         cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=RIpISZM3Q4aQS4wDIT1b4W1D2mBknEGSZlwMt5K2VH8=;
+        b=EUQMg2d5mgAKL/Mlws3D6trb7w+7EvH+yOi5xl7rkutw7YRMzPzQ60dgLOAREOG2/8QGrS
+        7Ao7sgIwIlsxl2Cg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id CED8D13AE9;
+        Mon, 15 Nov 2021 21:26:26 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id iaD4KILQkmE0IwAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Mon, 15 Nov 2021 21:26:26 +0000
+Date:   Mon, 15 Nov 2021 22:26:24 +0100
+From:   Petr Vorel <pvorel@suse.cz>
+To:     Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     jack@suse.com, amir73il@gmail.com, repnop@google.com,
+        linux-ext4@vger.kernel.org, kernel@collabora.com,
+        khazhy@google.com, ltp@lists.linux.it
+Subject: Re: [LTP] [PATCH v3 0/9] Test the new fanotify FAN_FS_ERROR event
+Message-ID: <YZLQgDMTKBBlY8fN@pevik>
+Reply-To: Petr Vorel <pvorel@suse.cz>
+References: <20211029211732.386127-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Originating-IP: [10.180.168.240]
-X-ClientProxiedBy: SATLEXMB04.amd.com (10.181.40.145) To SATLEXMB04.amd.com
- (10.181.40.145)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: f4175d0a-f378-4685-f5b6-08d9a86e6dca
-X-MS-TrafficTypeDiagnostic: CH0PR12MB5153:
-X-Microsoft-Antispam-PRVS: <CH0PR12MB5153E444956813DC556925BEFD989@CH0PR12MB5153.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:5797;
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: toviR95ND6I78zqfrcWK0rZ+Mp/xEA/wk1q5IL7SKvAyizibENDtKDwW1yo/53MY5mdxxneLX2s/4PxoXG08B5+xvNnKs5tpiqvjpW22yvIfLBzgL8+EsxHHmUtWB9FR6LN+KlT4bjsaBTOWFVePUbf1X/liJOpW1dqB82HruvRWTzIMunvyCmwhPpQid3+9tvP28e5+0v8iVh5NiM9+GHBxB0qVh4pbE/s1OITv2/jaIch45+/SMT928kpHg9RxAh+KvJfSy7Bd4VrnuFYG6TWcl1UvveDicu8JhO0EEFkuTp2w7VSKKYwR74FxNeTArF8TmWZMSb0Kdjdw6B3xlRb0DJyIxTHHrtHwZwn1aA/Wa+GQaGf6uki79aqI5EfubbUFv9S7DXmfPZ3S8NYQWU6Y6D6WDHmsTdeenVCqR2VE8KWihPi2X3pcYxUgV6hKxaoxTY4IsYJ6fHK/VjxPRt0Fy54Acm/WJDJhOXWZu4fkudAdWdj/wd7vPyEmDSL12DToykHbUwd5lHNveLhmoltX9KfmU0/lgEeqVZ57XMvBl/amqNsReuYdlA6zHR2+InsI8U/qzSPRbMMV1QsHdjD9HBYmhM73A7DkwEN/tdVkLSCyzScY0GBXrSgmf8YhfnRdZpMoXxrSZzMTSjhNDYryGj9VJlkpWd+M4WW00MjHwTgm+xeA1gj9TMfyNOtI7y4CIlD0WPP/3IhMT0gUXNrLofJ8GHMF8aqS+dehgTE=
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(4636009)(36840700001)(46966006)(8676002)(83380400001)(426003)(110136005)(336012)(8936002)(508600001)(5660300002)(26005)(81166007)(6666004)(54906003)(356005)(1076003)(316002)(2616005)(2906002)(7416002)(70206006)(36756003)(86362001)(47076005)(7696005)(70586007)(82310400003)(36860700001)(186003)(16526019)(44832011)(4326008)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Nov 2021 19:30:48.9803
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: f4175d0a-f378-4685-f5b6-08d9a86e6dca
-X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
-X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT011.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH0PR12MB5153
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211029211732.386127-1-krisman@collabora.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When CPU is connected throug XGMI, it has coherent
-access to VRAM resource. In this case that resource
-is taken from a table in the device gmc aperture base.
-This resource is used along with the device type, which could
-be DEVICE_PRIVATE or DEVICE_COHERENT to create the device
-page map region.
+Hi Gabriel, all,
 
-Signed-off-by: Alex Sierra <alex.sierra@amd.com>
-Reviewed-by: Felix Kuehling <Felix.Kuehling@amd.com>
----
-v7:
-Remove lookup_resource call, so export symbol for this function
-is not longer required. Patch dropped "kernel: resource:
-lookup_resource as exported symbol"
----
- drivers/gpu/drm/amd/amdkfd/kfd_migrate.c | 29 +++++++++++++++---------
- 1 file changed, 18 insertions(+), 11 deletions(-)
+I merged Matthew's v3 FAN_REPORT_PIDFD, which is for 5.15 kernel.
 
-diff --git a/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c b/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-index aeade32ec298..9e36fe8aea0f 100644
---- a/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-+++ b/drivers/gpu/drm/amd/amdkfd/kfd_migrate.c
-@@ -935,7 +935,7 @@ int svm_migrate_init(struct amdgpu_device *adev)
- {
- 	struct kfd_dev *kfddev = adev->kfd.dev;
- 	struct dev_pagemap *pgmap;
--	struct resource *res;
-+	struct resource *res = NULL;
- 	unsigned long size;
- 	void *r;
+Could you please rebase your changes on the top of current master?
+Unfortunately that means to rename fanotify21.c in all commits.
+
+Also please: s/REQUIRE_MARK_TYPE_SUPPORTED_ON_KERNEL/REQUIRE_MARK_TYPE_SUPPORTED_BY_KERNEL/
+
+and other changes:
+
+diff --git testcases/kernel/syscalls/fanotify/fanotify21.c testcases/kernel/syscalls/fanotify/fanotify21.c
+index 7f0154da5..44882097b 100644
+--- testcases/kernel/syscalls/fanotify/fanotify21.c
++++ testcases/kernel/syscalls/fanotify/fanotify21.c
+@@ -131,7 +131,7 @@ int check_error_event_info_fid(struct fanotify_event_info_fid *fid,
+ 	if (memcmp(&fid->fsid, &ex->fid->fsid, sizeof(fid->fsid))) {
+ 		tst_res(TFAIL, "%s: Received bad FSID type (%x...!=%x...)",
+ 			ex->name, FSID_VAL_MEMBER(fid->fsid, 0),
+-			FSID_VAL_MEMBER(ex->fid->fsid, 0));
++			ex->fid->fsid.val[0]);
  
-@@ -950,28 +950,34 @@ int svm_migrate_init(struct amdgpu_device *adev)
- 	 * should remove reserved size
- 	 */
- 	size = ALIGN(adev->gmc.real_vram_size, 2ULL << 20);
--	res = devm_request_free_mem_region(adev->dev, &iomem_resource, size);
--	if (IS_ERR(res))
--		return -ENOMEM;
-+	if (adev->gmc.xgmi.connected_to_cpu) {
-+		pgmap->range.start = adev->gmc.aper_base;
-+		pgmap->range.end = adev->gmc.aper_base + adev->gmc.aper_size - 1;
-+		pgmap->type = MEMORY_DEVICE_COHERENT;
-+	} else {
-+		res = devm_request_free_mem_region(adev->dev, &iomem_resource, size);
-+		if (IS_ERR(res))
-+			return -ENOMEM;
-+		pgmap->range.start = res->start;
-+		pgmap->range.end = res->end;
-+		pgmap->type = MEMORY_DEVICE_PRIVATE;
-+	}
- 
--	pgmap->type = MEMORY_DEVICE_PRIVATE;
- 	pgmap->nr_range = 1;
--	pgmap->range.start = res->start;
--	pgmap->range.end = res->end;
- 	pgmap->ops = &svm_migrate_pgmap_ops;
- 	pgmap->owner = SVM_ADEV_PGMAP_OWNER(adev);
--	pgmap->flags = MIGRATE_VMA_SELECT_DEVICE_PRIVATE;
--
-+	pgmap->flags = 0;
- 	/* Device manager releases device-specific resources, memory region and
- 	 * pgmap when driver disconnects from device.
- 	 */
- 	r = devm_memremap_pages(adev->dev, pgmap);
- 	if (IS_ERR(r)) {
- 		pr_err("failed to register HMM device memory\n");
--
- 		/* Disable SVM support capability */
- 		pgmap->type = 0;
--		devm_release_mem_region(adev->dev, res->start, resource_size(res));
-+		if (pgmap->type == MEMORY_DEVICE_PRIVATE)
-+			devm_release_mem_region(adev->dev, res->start,
-+						res->end - res->start + 1);
- 		return PTR_ERR(r);
+ 		return 1;
  	}
- 
-@@ -984,3 +990,4 @@ int svm_migrate_init(struct amdgpu_device *adev)
- 
- 	return 0;
- }
-+
--- 
-2.32.0
+@@ -298,7 +298,6 @@ static struct tst_test test = {
+ 	.cleanup = cleanup,
+ 	.mount_device = 1,
+ 	.mntpoint = MOUNT_PATH,
+-	.all_filesystems = 0,
+ 	.needs_root = 1,
+ 	.dev_fs_type = "ext4",
+ 	.needs_cmds = (const char *[]) {
 
+Thanks!
+
+Petr
