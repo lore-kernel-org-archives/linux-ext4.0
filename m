@@ -2,102 +2,172 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F0F0C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 21:38:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2401C41535
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 23:56:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 10D8461B2C
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 21:38:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A832F63241
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Nov 2021 23:56:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349878AbhKOVlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 15 Nov 2021 16:41:07 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:49918 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349852AbhKOV3Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2021 16:29:24 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 81A092170C;
-        Mon, 15 Nov 2021 21:26:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1637011587;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=RIpISZM3Q4aQS4wDIT1b4W1D2mBknEGSZlwMt5K2VH8=;
-        b=lm9ZldTT0ytxBO7IQDFr85VOMZIxpXAEe711lkdHzGO4AZxb54dbWrZFJCovp81OqNJER/
-        uzMgSLNStiA5SIwBN/2qyE7WRzHegEgDg0aOmQfUL7Yhl0WQgyzK/dy5x9n+e4k3chiUgD
-        4XZOhAewulQ8dFyEhk3Gc2dIZ+eho/k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1637011587;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=RIpISZM3Q4aQS4wDIT1b4W1D2mBknEGSZlwMt5K2VH8=;
-        b=EUQMg2d5mgAKL/Mlws3D6trb7w+7EvH+yOi5xl7rkutw7YRMzPzQ60dgLOAREOG2/8QGrS
-        7Ao7sgIwIlsxl2Cg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id CED8D13AE9;
-        Mon, 15 Nov 2021 21:26:26 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id iaD4KILQkmE0IwAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Mon, 15 Nov 2021 21:26:26 +0000
-Date:   Mon, 15 Nov 2021 22:26:24 +0100
-From:   Petr Vorel <pvorel@suse.cz>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     jack@suse.com, amir73il@gmail.com, repnop@google.com,
-        linux-ext4@vger.kernel.org, kernel@collabora.com,
-        khazhy@google.com, ltp@lists.linux.it
-Subject: Re: [LTP] [PATCH v3 0/9] Test the new fanotify FAN_FS_ERROR event
-Message-ID: <YZLQgDMTKBBlY8fN@pevik>
-Reply-To: Petr Vorel <pvorel@suse.cz>
-References: <20211029211732.386127-1-krisman@collabora.com>
+        id S1351326AbhKOX7m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 15 Nov 2021 18:59:42 -0500
+Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:55083 "EHLO
+        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1356851AbhKOX6T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Nov 2021 18:58:19 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1637020524; x=1668556524;
+  h=date:from:to:cc:message-id:references:mime-version:
+   in-reply-to:subject;
+  bh=Ps3MXWaiPS8rZKL+19qnLNuFdf8RVQAY82PrrkVN2LI=;
+  b=UxzOeM2c4WdqiB4iPChNH9NVZ3UTrhiz3Iha3oQbSk0vC5W/GTu/jti3
+   yVZNODuNf0d3qG5LluhFvjKNYkMhLSCbtNj+dSeOdn1fu0G0PMkYKj8EO
+   ytlN4Zcu0GXnpFx8Hh+cswLJU5UN6lEMNNKGcifrwTO4+IPjBJ4hIQJ+h
+   U=;
+X-IronPort-AV: E=Sophos;i="5.87,237,1631577600"; 
+   d="scan'208";a="159312216"
+Subject: Re: Debugging ext4 corruption with nojournal & extents
+Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-iad-1e-204be258.us-east-1.amazon.com) ([10.43.8.2])
+  by smtp-border-fw-33001.sea14.amazon.com with ESMTP; 15 Nov 2021 23:55:23 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan2.iad.amazon.com [10.40.163.34])
+        by email-inbound-relay-iad-1e-204be258.us-east-1.amazon.com (Postfix) with ESMTPS id 74FB6415B8;
+        Mon, 15 Nov 2021 23:55:22 +0000 (UTC)
+Received: from EX13D01UWA002.ant.amazon.com (10.43.160.74) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.26; Mon, 15 Nov 2021 23:55:22 +0000
+Received: from localhost (10.43.160.106) by EX13d01UWA002.ant.amazon.com
+ (10.43.160.74) with Microsoft SMTP Server (TLS) id 15.0.1497.26; Mon, 15 Nov
+ 2021 23:55:21 +0000
+Date:   Mon, 15 Nov 2021 15:55:21 -0800
+From:   Samuel Mendoza-Jonas <samjonas@amazon.com>
+To:     Theodore Ts'o <tytso@mit.edu>
+CC:     <linux-ext4@vger.kernel.org>, <adilger.kernel@dilger.ca>,
+        <benh@amazon.com>
+Message-ID: <20211115235521.hkxhil3xnvteki7m@u87e72aa3c6c25c.ant.amazon.com>
+References: <20211108173520.xp6xphodfhcen2sy@u87e72aa3c6c25c.ant.amazon.com>
+ <YYnnmQjrYii0dOYH@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Disposition: inline
-In-Reply-To: <20211029211732.386127-1-krisman@collabora.com>
+In-Reply-To: <YYnnmQjrYii0dOYH@mit.edu>
+User-Agent: NeoMutt/20171215
+X-Originating-IP: [10.43.160.106]
+X-ClientProxiedBy: EX13D28UWB004.ant.amazon.com (10.43.161.56) To
+ EX13d01UWA002.ant.amazon.com (10.43.160.74)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Gabriel, all,
+On Mon, Nov 08, 2021 at 10:14:33PM -0500, Theodore Ts'o wrote:
+> CAUTION: This email originated from outside of the organization. Do not click links or open attachments unless you can confirm the sender and know the content is safe.
+> 
+> 
+> 
+> On Mon, Nov 08, 2021 at 09:35:20AM -0800, Samuel Mendoza-Jonas wrote:
+> > Based on that what I think is happening is
+> > - A file with separate (i.e. non-inline) extents is synced / written to disk
+> >   (in this case, one of the large "compound" files)
+> > - ext4_end_io_end() kicks off writeback of extent metadata
+> >   - AIUI this marks the related buffers dirty but does not wait on them in the
+> >     no-journal case
+> > - The file is deleted, causing the extents to be "removed" and the blocks where
+> >   they were stored are marked unused
+> > - A new file is created (any file, separate extents not required)
+> > - The new file is allocated the block that was just freed (the physical block
+> >   where the old extents were located)
+> >
+> > Some time between this point and when the file is next read, the dirty extent
+> > buffer hits the disk instead of the intended data for the new file.
+> > A big-hammer hack in __ext4_handle_dirty_metadata() to always sync metadata
+> > blocks appears to avoid the issue but isn't ideal - most likely a better
+> > solution would be to ensure any dirty metadata buffers are synced before the
+> > inode is dropped.
+> >
+> > Overall does this summary sound valid, or have I wandered into the
+> > weeds somewhere?
+> 
+> Hmm... well, I can tell you what's *supposed* to happen.  When the
+> extent block is freed, ext4_free_blocks() gets called with the
+> EXT4_FREE_BLOCKS_FORGET flag set.  ext4_free_blocks() calls
+> ext4_forget() in two places; one when bh passed to ext4_free_blocks()
+> is NULL, and one where it is non-NULL.  And then ext4_free_blocks()
+> calls bforget(), which should cause the dirty extent block to get
+> thrown away.
+> 
+> This *should* have prevented your failure scenario from taking place,
+> since after the call to bforget() the dirty extent buffer *shouldn't*
+> have hit the disk.  If your theory is correct, the somehow either (a)
+> the bforget() wasn't called, or (b) the bforget() didn't work, and
+> then the page writeback for the new page happened first, and then
+> buffer cache writeback happened second, overwriting the intended data
+> for the new file.
+> 
+> Have you tried enabling the blktrace tracer in combination with some
+> of the ext4 tracepoints, to see if you can catch the double write
+> happening?  Another thing to try would be enabling some tracepoints,
+> such as ext4_forget and ext4_free_blocks.  Unfortunately we don't have
+> any tracepoints in fs/ext4/page-io.c to get a tracepoint which
+> includes the physical block ranges coming from the writeback path.
+> And the tracepoints in fs/fs-writeback.c won't have the physical block
+> number (just the inode and logical block numbers).
+> 
+>                                          - Ted
 
-I merged Matthew's v3 FAN_REPORT_PIDFD, which is for 5.15 kernel.
+I got unlucky and my test took about a week to hit the issue - in any
+case, I did manage to pull out some blktrace info. Pulling out some
+interesting bits it looks like there's a point where some amount of
+actual data is being written to that block:
 
-Could you please rebase your changes on the top of current master?
-Unfortunately that means to rename fanotify21.c in all commits.
+253,0    0 35872893 186704.840109354 15324  Q   W 746864240 + 912 [mandb]
+253,0    0 35872934 186704.861662488 15324  C   W 746864240 + 912 [0]
+253,0    1 35959519 187579.674191021 16452  Q  RA 746864240 + 256 [elasticsearch[i]
+253,0    1 35959520 187579.675556807 12335  C  RA 746864240 + 256 [0]
+253,0    3 10900958 188058.929475561 15532  Q   W 746864240 + 784 [kworker/u8:5]
+253,0    1 36047096 188059.058090710  4331  C   W 746864240 + 784 [0]
+253,0    1 36062826 188207.602295365 15865  Q   W 746864240 + 960 [kworker/u8:6]
+253,0    1 36062874 188207.657179910 16261  C   W 746864240 + 960 [0]
+253,0    0 38087456 198349.655260245  4346  Q  WS 746864240 + 8 [elasticsearch[i]
+253,0    0 38087457 198349.655735664  4331  C  WS 746864240 + 8 [0]
+253,0    0 38847537 202142.902362813 22525  Q  RA 746864240 + 88 [elasticsearch[i]
+253,0    0 38847538 202142.902870365 21686  C  RA 746864240 + 88 [0]
+253,0    1 38837970 202413.537374242 21099  Q   W 746864240 + 8 [kworker/u8:6]
+253,0    0 38917625 202413.560449306 21686  C   W 746864240 + 8 [0]
+253,0    3 11752576 202500.553085492 21858  Q   W 746864240 + 8 [esrally]
+253,0    0 38926880 202500.579232976 20195  C   W 746864240 + 8 [0]
+253,0    0 40475924 210529.224170625 19908  Q   W 746864240 + 8 [kworker/u8:2]
+253,0    1 40376745 210529.261411675  4329  C   W 746864240 + 8 [0]
+253,0    1 40410932 210831.620562489 26075  Q   W 746864240 + 8 [elasticsearch[i]
+253,0    0 40507813 210831.652311756 26102  C   W 746864240 + 8 [0]
+253,0    0 40517885 210930.628927045 23308  Q   W 746864240 + 8 [elasticsearch[i]
+253,0    1 40422327 210930.649373285 26075  C   W 746864240 + 8 [0]
+253,0    0 40549442 211195.656050786 26075  Q   W 746864240 + 8 [elasticsearch[i]
+253,0    1 40452319 211195.694039437  4330  C   W 746864240 + 8 [0]
+253,0    2 12367808 211371.325361922  4331  Q WSM 746864240 + 8 [elasticsearch[i]
+253,0    0 40573575 211371.325815019 23887  C WSM 746864240 + 8 [0]
+253,0    0 40573606 211371.595792860  4329  Q WSM 746864240 + 8 [elasticsearch[i]
+253,0    0 40573607 211371.596251886 23887  C WSM 746864240 + 8 [0]
 
-Also please: s/REQUIRE_MARK_TYPE_SUPPORTED_ON_KERNEL/REQUIRE_MARK_TYPE_SUPPORTED_BY_KERNEL/
+Those sync operations are repeated quite a bit which would seem to line
+up with the fsync+check that elasticsearch does, and then some of the
+last operations before detecting the issue are:
 
-and other changes:
+253,0    0 40575124 211388.516004566  4330  Q WSM 746864240 + 8 [elasticsearch[i]
+253,0    1 40477703 211388.516615080 25975  C WSM 746864240 + 8 [0]
+253,0    3 12268358 211388.842309745  4329  Q WSM 746864240 + 8 [elasticsearch[i]
+253,0    1 40478089 211388.842725344  4319  C WSM 746864240 + 8 [0]
+253,0    0 40601789 211508.676476007 19908  Q  WM 746864240 + 8 [kworker/u8:2]
+253,0    0 40601985 211508.763710372 19908  Q   W 746864240 + 8 [kworker/u8:2]
+253,0    1 40508182 211508.945657647 25975  C   W 746864240 + 8 [0]
+253,0    1 40508191 211508.946310947   574  C  WM 746864240 + 8 [0]
+253,0    1 40557027 211648.172734351  4345  Q  RA 746864240 + 8 [elasticsearch[i]
+253,0    1 40557028 211648.173102632 26203  C  RA 746864240 + 8 [0]
 
-diff --git testcases/kernel/syscalls/fanotify/fanotify21.c testcases/kernel/syscalls/fanotify/fanotify21.c
-index 7f0154da5..44882097b 100644
---- testcases/kernel/syscalls/fanotify/fanotify21.c
-+++ testcases/kernel/syscalls/fanotify/fanotify21.c
-@@ -131,7 +131,7 @@ int check_error_event_info_fid(struct fanotify_event_info_fid *fid,
- 	if (memcmp(&fid->fsid, &ex->fid->fsid, sizeof(fid->fsid))) {
- 		tst_res(TFAIL, "%s: Received bad FSID type (%x...!=%x...)",
- 			ex->name, FSID_VAL_MEMBER(fid->fsid, 0),
--			FSID_VAL_MEMBER(ex->fid->fsid, 0));
-+			ex->fid->fsid.val[0]);
- 
- 		return 1;
- 	}
-@@ -298,7 +298,6 @@ static struct tst_test test = {
- 	.cleanup = cleanup,
- 	.mount_device = 1,
- 	.mntpoint = MOUNT_PATH,
--	.all_filesystems = 0,
- 	.needs_root = 1,
- 	.dev_fs_type = "ext4",
- 	.needs_cmds = (const char *[]) {
+Which could be a case of the "extent" being written, and then being read
+by the checking program.
 
-Thanks!
+My script that was watching the tracepoints failed somewhere along the
+way unfortunately, I'll set up the repro again and see if I can line
+them up with the operations seen in the trace.
 
-Petr
+Cheers,
+Sam
