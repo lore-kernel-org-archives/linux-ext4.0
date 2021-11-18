@@ -2,151 +2,107 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50DA4C4332F
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Nov 2021 23:58:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E58AFC433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Nov 2021 23:57:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 307D761AA9
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Nov 2021 23:58:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CFCCE61179
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Nov 2021 23:57:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232406AbhKSABC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Nov 2021 19:01:02 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:39736 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233033AbhKSABB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2021 19:01:01 -0500
+        id S231520AbhKSAA4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Nov 2021 19:00:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33150 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231490AbhKSAAz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Nov 2021 19:00:55 -0500
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2C849C061574
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Nov 2021 15:57:55 -0800 (PST)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 8EE8B1F47098
+        with ESMTPSA id A9F981F47098
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=collabora.com; s=mail;
-        t=1637279879; bh=rwtNSWvQX+7xmt4GpPOTiL9OPrYhl410OyKlms/69DM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Lczo/mflAaBuy9MpBNjiu1SuW4YKg7VGHA/bCkH9Vys8R37xu7W3qcTj2F/iEDNdO
-         17v1fmFGUNlVtm5S/hsnXfG5oAFf61SrA3csMsiRwgJsDHYC3o0Pk/Ggz5B7wb4lw8
-         qyR45NZfZKBw3aVElhADXqKyG3nfXo3/IUbc7D1EkkmR7mx/4+VBsFVvADOXXy/9TJ
-         uuRZkia7WI8pBPBmbmx79lewEY4CLFG83mToVT9KAb37eb+o8sQTV4lFRZ0dfFtWzP
-         Ak/W9uR332SSRUpETuWb5++pozDBHWeXAnMcWqPj07njWDdSkB0+88JVmADS6mt6KH
-         CY1Jt2QbmF1lQ==
+        t=1637279872; bh=PxhtOZi8FpecU5v9kfXKItkwreg65Wwi4desFZ3Y+10=;
+        h=From:To:Cc:Subject:Date:From;
+        b=M4ALlR2cuYk6zx0KDFSifzBYMHFKPlSLS0kB/nhfYjjpgCu//emofUTVvejjv7KeQ
+         61Ybj6YZgJpyq7ut1hbQz1SABNcJC89FNleK94aSlKT2+R8it37wNA1nXIiToNOLxB
+         9fWlb1+yLri+5gfsIUb3do2sw+6zkyvhSz3GMsrkym7XUbQhEayOAAH84ZLhJs6k30
+         Qw/MCWrZ7epo/dxQm5lJ9iyC9s0CzFN+wqmvf/lYBKvbs6H/6OKxGVNGjOGILUCeLq
+         U/zdRIlkd/PGVvgzSTa02x/RX5vJ0zOnCFQX/DgOVtLk7ToMbAc6l6u7CX2daGIvjV
+         Q+iOHspbUjjrg==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     pvorel@suse.cz, jack@suse.com, amir73il@gmail.com,
         repnop@google.com
 Cc:     linux-ext4@vger.kernel.org, kernel@collabora.com,
         khazhy@google.com, ltp@lists.linux.it,
         Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v4 2/9] syscalls: fanotify: Add macro to require specific events
-Date:   Thu, 18 Nov 2021 18:57:37 -0500
-Message-Id: <20211118235744.802584-3-krisman@collabora.com>
+Subject: [PATCH v4 0/9] Test the new fanotify FAN_FS_ERROR event
+Date:   Thu, 18 Nov 2021 18:57:35 -0500
+Message-Id: <20211118235744.802584-1-krisman@collabora.com>
 X-Mailer: git-send-email 2.33.0
-In-Reply-To: <20211118235744.802584-1-krisman@collabora.com>
-References: <20211118235744.802584-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a helper for tests to fail if an event is not available in the
-kernel.  Since some events only work with REPORT_FID or a specific
-class, update the verifier to allow those to be specified.
+Hi,
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Reviewed-by: Matthew Bobrowski <repnop@google.com>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+FAN_FS_ERROR was merged into Linus tree, and the PIDFD testcases reached
+LTP.  Therefore, I'm sending a new version of the FAN_FS_ERROR LTP
+tests.  This is the v4 of this patchset, and it applies the feedback of
+the previous version.
+
+Thanks,
 
 ---
-If I understand correctly, the decision was to leave fanotify10
-unchanged and this is what I've done here.
 
-Changes since v1:
-  - Use SAFE_FANOTIFY_INIT instead of open coding. (Amir)
-  - Use FAN_CLASS_NOTIF for fanotify12 testcase. (Amir)
----
- testcases/kernel/syscalls/fanotify/fanotify.h   | 17 ++++++++++++++---
- testcases/kernel/syscalls/fanotify/fanotify03.c |  4 ++--
- testcases/kernel/syscalls/fanotify/fanotify10.c |  3 ++-
- testcases/kernel/syscalls/fanotify/fanotify12.c |  3 ++-
- 4 files changed, 20 insertions(+), 7 deletions(-)
+Original cover letter:
 
-diff --git a/testcases/kernel/syscalls/fanotify/fanotify.h b/testcases/kernel/syscalls/fanotify/fanotify.h
-index b9f430fe0c35..242245826004 100644
---- a/testcases/kernel/syscalls/fanotify/fanotify.h
-+++ b/testcases/kernel/syscalls/fanotify/fanotify.h
-@@ -287,14 +287,16 @@ static inline void require_fanotify_access_permissions_supported_by_kernel(void)
- 	SAFE_CLOSE(fd);
- }
- 
--static inline int fanotify_events_supported_by_kernel(uint64_t mask)
-+static inline int fanotify_events_supported_by_kernel(uint64_t mask,
-+						      unsigned int init_flags,
-+						      unsigned int mark_flags)
- {
- 	int fd;
- 	int rval = 0;
- 
--	fd = SAFE_FANOTIFY_INIT(FAN_CLASS_CONTENT, O_RDONLY);
-+	fd = SAFE_FANOTIFY_INIT(init_flags, O_RDONLY);
- 
--	if (fanotify_mark(fd, FAN_MARK_ADD, mask, AT_FDCWD, ".") < 0) {
-+	if (fanotify_mark(fd, FAN_MARK_ADD | mark_flags, mask, AT_FDCWD, ".") < 0) {
- 		if (errno == EINVAL) {
- 			rval = -1;
- 		} else {
-@@ -404,4 +406,13 @@ static inline int fanotify_mark_supported_by_kernel(uint64_t flag)
- 				    fanotify_mark_supported_by_kernel(mark_type)); \
- } while (0)
- 
-+#define REQUIRE_FANOTIFY_EVENTS_SUPPORTED_ON_FS(init_flags, mark_type, mask, fname) do { \
-+	if (mark_type)							\
-+		REQUIRE_MARK_TYPE_SUPPORTED_BY_KERNEL(mark_type);	\
-+	if (init_flags)							\
-+		REQUIRE_FANOTIFY_INIT_FLAGS_SUPPORTED_ON_FS(init_flags, fname); \
-+	fanotify_init_flags_err_msg(#mask, __FILE__, __LINE__, tst_brk_, \
-+		fanotify_events_supported_by_kernel(mask, init_flags, mark_type)); \
-+} while (0)
-+
- #endif /* __FANOTIFY_H__ */
-diff --git a/testcases/kernel/syscalls/fanotify/fanotify03.c b/testcases/kernel/syscalls/fanotify/fanotify03.c
-index 26d17e64d1f5..2081f0bd1b57 100644
---- a/testcases/kernel/syscalls/fanotify/fanotify03.c
-+++ b/testcases/kernel/syscalls/fanotify/fanotify03.c
-@@ -323,8 +323,8 @@ static void setup(void)
- 	require_fanotify_access_permissions_supported_by_kernel();
- 
- 	filesystem_mark_unsupported = fanotify_mark_supported_by_kernel(FAN_MARK_FILESYSTEM);
--	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC_PERM);
--
-+	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC_PERM,
-+								      FAN_CLASS_CONTENT, 0);
- 	sprintf(fname, MOUNT_PATH"/fname_%d", getpid());
- 	SAFE_FILE_PRINTF(fname, "1");
- 
-diff --git a/testcases/kernel/syscalls/fanotify/fanotify10.c b/testcases/kernel/syscalls/fanotify/fanotify10.c
-index 92e4d3ff3054..0fa9d1f4f7e4 100644
---- a/testcases/kernel/syscalls/fanotify/fanotify10.c
-+++ b/testcases/kernel/syscalls/fanotify/fanotify10.c
-@@ -509,7 +509,8 @@ cleanup:
- 
- static void setup(void)
- {
--	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC);
-+	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC,
-+								      FAN_CLASS_CONTENT, 0);
- 	filesystem_mark_unsupported = fanotify_mark_supported_by_kernel(FAN_MARK_FILESYSTEM);
- 	fan_report_dfid_unsupported = fanotify_init_flags_supported_on_fs(FAN_REPORT_DFID_NAME,
- 									  MOUNT_PATH);
-diff --git a/testcases/kernel/syscalls/fanotify/fanotify12.c b/testcases/kernel/syscalls/fanotify/fanotify12.c
-index 76f1aca77615..c77dbfd8c23d 100644
---- a/testcases/kernel/syscalls/fanotify/fanotify12.c
-+++ b/testcases/kernel/syscalls/fanotify/fanotify12.c
-@@ -222,7 +222,8 @@ cleanup:
- 
- static void do_setup(void)
- {
--	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC);
-+	exec_events_unsupported = fanotify_events_supported_by_kernel(FAN_OPEN_EXEC,
-+								      FAN_CLASS_NOTIF, 0);
- 
- 	sprintf(fname, "fname_%d", getpid());
- 	SAFE_FILE_PRINTF(fname, "1");
+FAN_FS_ERROR is a new (still unmerged) fanotify event to monitor
+fileystem errors.  This patchset introduces a new LTP test for this
+feature.
+
+Testing file system errors is slightly tricky, in particular because
+they are mostly file system dependent.  Since there are only patches for
+ext4, I choose to make the test around it, since there wouldn't be much
+to do with other file systems.  The second challenge is how we cause the
+file system errors, since there is no error injection for ext4 in Linux.
+In this series, this is done by corrupting specific data in the
+test device with the help of debugfs.
+
+The FAN_FS_ERROR feature is flying around linux-ext4 and fsdevel, and
+the latest version is available on the branch below:
+
+    https://gitlab.collabora.com/krisman/linux -b fanotify-notifications-v9
+
+A proper manpage description is also available on the respective mailing
+list, or in the branch below:
+
+    https://gitlab.collabora.com/krisman/man-pages.git -b fan-fs-error
+
+Please, let me know your thoughts.
+
+Gabriel Krisman Bertazi (9):
+  syscalls: fanotify: Add macro to require specific mark types
+  syscalls: fanotify: Add macro to require specific events
+  syscalls/fanotify22: Introduce FAN_FS_ERROR test
+  syscalls/fanotify22: Validate the generic error info
+  syscalls/fanotify22: Validate incoming FID in FAN_FS_ERROR
+  syscalls/fanotify22: Support submission of debugfs commands
+  syscalls/fanotify22: Create a corrupted file
+  syscalls/fanotify22: Test file event with broken inode
+  syscalls/fanotify22: Test capture of multiple errors
+
+ configure.ac                                  |   3 +-
+ testcases/kernel/syscalls/fanotify/.gitignore |   1 +
+ testcases/kernel/syscalls/fanotify/fanotify.h |  65 +++-
+ .../kernel/syscalls/fanotify/fanotify03.c     |   4 +-
+ .../kernel/syscalls/fanotify/fanotify10.c     |   3 +-
+ .../kernel/syscalls/fanotify/fanotify12.c     |   3 +-
+ .../kernel/syscalls/fanotify/fanotify22.c     | 314 ++++++++++++++++++
+ 7 files changed, 385 insertions(+), 8 deletions(-)
+ create mode 100644 testcases/kernel/syscalls/fanotify/fanotify22.c
+
 -- 
 2.33.0
 
