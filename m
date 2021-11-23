@@ -2,98 +2,208 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9A02C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Nov 2021 21:09:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F28DC433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 23 Nov 2021 01:18:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239934AbhKVVMX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 22 Nov 2021 16:12:23 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:49576 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229634AbhKVVMQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2021 16:12:16 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 1455321891;
-        Mon, 22 Nov 2021 21:09:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1637615349;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=7vSeuM+UkXq+4iVBqwr0QlYFSjV8HldzhJA1G3tz+oo=;
-        b=bdNN9+3GO0t/ZJwNo/ntHweKuPFkX+p0ufufF7NwxPTePnEHyzxF4XEK4+insnKQKMwA3B
-        mIjQPHJSF5zJolRdGKD6xNHBu2Y5IfcBvpxiGSqakUXxeMtjuLIBOCC12m6AyM8R9cjJxD
-        vVqiNnH7KdCWsRkJpVEwgztNYyI0EQo=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1637615349;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=7vSeuM+UkXq+4iVBqwr0QlYFSjV8HldzhJA1G3tz+oo=;
-        b=cJHjmUzwcOspkFtxUaSX1oepCoAfz3PwxihV5hwYkT8pZP2nbCcOQUD91SPVpHSOBQs9R9
-        VX+H72qrkMlJ57AQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3AA3313B68;
-        Mon, 22 Nov 2021 21:09:08 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id 3g8qBfQGnGG7HwAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Mon, 22 Nov 2021 21:09:08 +0000
-Date:   Mon, 22 Nov 2021 22:09:06 +0100
-From:   Petr Vorel <pvorel@suse.cz>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.com>,
-        Matthew Bobrowski <repnop@google.com>,
-        Ext4 <linux-ext4@vger.kernel.org>, kernel@collabora.com,
-        Khazhismel Kumykov <khazhy@google.com>,
-        LTP List <ltp@lists.linux.it>
-Subject: Re: [PATCH v4 0/9] Test the new fanotify FAN_FS_ERROR event
-Message-ID: <YZwG8nfFmR+q915S@pevik>
-Reply-To: Petr Vorel <pvorel@suse.cz>
-References: <20211118235744.802584-1-krisman@collabora.com>
- <CAOQ4uxhbDgdZZ0qphWg1vnW4ZoAkUxcQp631yZO8W49AE18W9g@mail.gmail.com>
- <8735nsuepi.fsf@collabora.com>
- <YZtLDXW01Cz0BfPU@pevik>
- <87mtlwt7p6.fsf@collabora.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <87mtlwt7p6.fsf@collabora.com>
+        id S232316AbhKWBVJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 22 Nov 2021 20:21:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53062 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S231176AbhKWBVJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Nov 2021 20:21:09 -0500
+Received: from mail-pl1-x62d.google.com (mail-pl1-x62d.google.com [IPv6:2607:f8b0:4864:20::62d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F794C061574;
+        Mon, 22 Nov 2021 17:18:02 -0800 (PST)
+Received: by mail-pl1-x62d.google.com with SMTP id b13so15656312plg.2;
+        Mon, 22 Nov 2021 17:18:02 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=from:to:cc:subject:date:message-id;
+        bh=KHR91PZFjoFttvxhIVxVMsutPsz8K1QRHL6iXzq/ohs=;
+        b=mhlpACSRsEfj/sgKl4lYHP3mkJjUENwKogV/8wVZSEtILhdYzNq0zl3mUH4vfB6Ej+
+         tCi49Pti4D+fdCImANd+Q/UWAc42gjUu0bHtqcyktSP0qBJSvOekStiKzh+G2sXIeMRW
+         3Tt4srC2n+440/92cT7PZ0E5r0amJKcvgbT14i6E1AytHfuAK29bJ5FoNmb+teWs3nNo
+         g1ugejpZ0DmBGvopS04T/zj8Gv2+rpOSdJRMKCc66S56ku0f81pyE/+NQ2u1eiQMQ9Lu
+         R4A3gZ9y3Y3OFf3PaCBO6Q7CR9Xs/H14qshdWWgPvS3c0s0D6JiJlGXm0CtS2+gfMBeo
+         GLyQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=KHR91PZFjoFttvxhIVxVMsutPsz8K1QRHL6iXzq/ohs=;
+        b=D4+xGWJs0KQ7tdb/zXFg+8WmwH1hzZrzdgTyn+U03QGGmlbsuUccNFm3W36yvVVRKI
+         sOacFOJAqvCO765Sf/wdnUNX1M5GYh15gBj/2Yp2pjMbGiO8cIzgzAfUlQDHWldJDEKH
+         WoIFPLqKGwrFUmYIzvwJw0gA8VDraEagfKLLjYf2h5EVYKdHnj5hOZj8s9a0n1WbmW47
+         lBf5wVD2VDG0cHApounqBAxtkMxm/i1nB5PBWyXlOUdeQimO+jya5U5rcWHrYDOSL40V
+         Xb+M3gE5ZY0G2gM8SvFlQNb4PoSji4ctE/nWuPXKRjaljeUhpLwRAArvN76I2nPA4uwx
+         8rpA==
+X-Gm-Message-State: AOAM533q56VNVx+s4ROT/1hQlsZ2ClxvH8ZvJR8/BqeIK/ULE7mgV82Z
+        V7Y/5g/IX3kI9M+w2+j/vU0=
+X-Google-Smtp-Source: ABdhPJzVhnAguTRhd0LsOA3bjXmgYYk+RsgDY0BAXXrRv7p995Un17Ri3Oeg7fJhHZ89c+htQeL27g==
+X-Received: by 2002:a17:902:8e87:b0:143:759c:6a2d with SMTP id bg7-20020a1709028e8700b00143759c6a2dmr1937989plb.59.1637630281208;
+        Mon, 22 Nov 2021 17:18:01 -0800 (PST)
+Received: from VM-0-3-centos.localdomain ([101.32.213.191])
+        by smtp.gmail.com with ESMTPSA id t7sm19971415pjs.45.2021.11.22.17.17.59
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 22 Nov 2021 17:18:00 -0800 (PST)
+From:   brookxu <brookxu.cn@gmail.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca
+Cc:     jack@suse.cz, riteshh@linux.ibm.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH v3] ext4: fix a possible ABBA deadlock dued to busy PA
+Date:   Tue, 23 Nov 2021 09:17:57 +0800
+Message-Id: <1637630277-23496-1-git-send-email-brookxu.cn@gmail.com>
+X-Mailer: git-send-email 1.8.3.1
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi all,
-> Petr Vorel <pvorel@suse.cz> writes:
+From: Chunguang Xu <brookxu@tencent.com>
 
-> > Hi all,
+We found on older kernel (3.10) that in the scenario of insufficient
+disk space, system may trigger an ABBA deadlock problem, it seems that
+this problem still exists in latest kernel, try to fix it here. The
+main process triggered by this problem is that task A occupies the PA
+and waits for the jbd2 transaction finish, the jbd2 transaction waits
+for the completion of task B's IO (plug_list), but task B waits for
+the release of PA by task A to finish discard, which indirectly forms
+an ABBA deadlock. The related calltrace is as follows:
 
-> > <snip>
-> >> Hi Amir,
+    Task A
+    vfs_write
+    ext4_mb_new_blocks()
+    ext4_mb_mark_diskspace_used()       JBD2
+    jbd2_journal_get_write_access()  -> jbd2_journal_commit_transaction()
+  ->schedule()                          filemap_fdatawait()
+ |                                              |
+ | Task B                                       |
+ | do_unlinkat()                                |
+ | ext4_evict_inode()                           |
+ | jbd2_journal_begin_ordered_truncate()        |
+ | filemap_fdatawrite_range()                   |
+ | ext4_mb_new_blocks()                         |
+  -ext4_mb_discard_group_preallocations() <-----
 
-> >> I have pushed v4 to :
+Here, try to cancel ext4_mb_discard_group_preallocations() internal
+retry due to PA busy, and do a limited number of retries inside
+ext4_mb_discard_preallocations(), which can circumvent the above
+problems, but also has some advantages:
 
-> >> https://gitlab.collabora.com/krisman/ltp.git -b fan-fs-error_v4
+1. Since the PA is in a busy state, if other groups have free PAs,
+   keeping the current PA may help to reduce fragmentation.
+2. Continue to traverse forward instead of waiting for the current
+   group PA to be released. In most scenarios, the PA discard time
+   can be reduced.
 
-> > FYI I've rebased it on my fix 3b2ea2e00 ("configure.ac: Add struct
-> > fanotify_event_info_pidfd check")
+However, in the case of smaller free space, if only a few groups have
+space, then due to multiple traversals of the group, it may increase
+CPU overhead. But in contrast, I feel that the overall benefit is
+better than the cost.
 
-> > https://github.com/linux-test-project/ltp.git -b gertazi/fanotify21.v4.fixes
+Signed-off-by: Chunguang Xu <brookxu@tencent.com>
+Reported-by: kernel test robot <lkp@intel.com>
+---
+v2: reset busy to zero before goto repeat.
+v3: fix a clang-analyzer warning report by kernel test robot.
 
-> > diff to krisman/fan-fs-error_v4:
+ fs/ext4/mballoc.c | 40 ++++++++++++++++++----------------------
+ 1 file changed, 18 insertions(+), 22 deletions(-)
 
-> Petr,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 215b706..3dd9b9e 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4814,7 +4814,7 @@ static void ext4_mb_new_preallocation(struct ext4_allocation_context *ac)
+  */
+ static noinline_for_stack int
+ ext4_mb_discard_group_preallocations(struct super_block *sb,
+-					ext4_group_t group, int needed)
++				     ext4_group_t group, int *busy)
+ {
+ 	struct ext4_group_info *grp = ext4_get_group_info(sb, group);
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -4822,8 +4822,7 @@ static void ext4_mb_new_preallocation(struct ext4_allocation_context *ac)
+ 	struct list_head list;
+ 	struct ext4_buddy e4b;
+ 	int err;
+-	int busy = 0;
+-	int free, free_total = 0;
++	int free = 0;
+ 
+ 	mb_debug(sb, "discard preallocation for group %u\n", group);
+ 	if (list_empty(&grp->bb_prealloc_list))
+@@ -4846,19 +4845,14 @@ static void ext4_mb_new_preallocation(struct ext4_allocation_context *ac)
+ 		goto out_dbg;
+ 	}
+ 
+-	if (needed == 0)
+-		needed = EXT4_CLUSTERS_PER_GROUP(sb) + 1;
+-
+ 	INIT_LIST_HEAD(&list);
+-repeat:
+-	free = 0;
+ 	ext4_lock_group(sb, group);
+ 	list_for_each_entry_safe(pa, tmp,
+ 				&grp->bb_prealloc_list, pa_group_list) {
+ 		spin_lock(&pa->pa_lock);
+ 		if (atomic_read(&pa->pa_count)) {
+ 			spin_unlock(&pa->pa_lock);
+-			busy = 1;
++			*busy = 1;
+ 			continue;
+ 		}
+ 		if (pa->pa_deleted) {
+@@ -4898,22 +4892,13 @@ static void ext4_mb_new_preallocation(struct ext4_allocation_context *ac)
+ 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+ 	}
+ 
+-	free_total += free;
+-
+-	/* if we still need more blocks and some PAs were used, try again */
+-	if (free_total < needed && busy) {
+-		ext4_unlock_group(sb, group);
+-		cond_resched();
+-		busy = 0;
+-		goto repeat;
+-	}
+ 	ext4_unlock_group(sb, group);
+ 	ext4_mb_unload_buddy(&e4b);
+ 	put_bh(bitmap_bh);
+ out_dbg:
+ 	mb_debug(sb, "discarded (%d) blocks preallocated for group %u bb_free (%d)\n",
+-		 free_total, group, grp->bb_free);
+-	return free_total;
++		 free, group, grp->bb_free);
++	return free;
+ }
+ 
+ /*
+@@ -5455,13 +5440,24 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ {
+ 	ext4_group_t i, ngroups = ext4_get_groups_count(sb);
+ 	int ret;
+-	int freed = 0;
++	int freed = 0, busy = 0;
++	int retry = 0;
+ 
+ 	trace_ext4_mb_discard_preallocations(sb, needed);
++
++	if (needed == 0)
++		needed = EXT4_CLUSTERS_PER_GROUP(sb) + 1;
++ repeat:
+ 	for (i = 0; i < ngroups && needed > 0; i++) {
+-		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
++		ret = ext4_mb_discard_group_preallocations(sb, i, &busy);
+ 		freed += ret;
+ 		needed -= ret;
++		cond_resched();
++	}
++
++	if (needed > 0 && busy && ++retry < 3) {
++		busy = 0;
++		goto repeat;
+ 	}
+ 
+ 	return freed;
+-- 
+1.8.3.1
 
-> Should I send a v5 or is v4 getting picked up and merged with the fixup
-> hunk?
-No need to sent v4, I'll merge it from my branch. This is info for Amir, which
-wanted to use your git tree to base his patchset on (if it wasn't relevant only
-to patches for man-pages).
-
-Kind regards,
-Petr
