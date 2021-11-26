@@ -2,53 +2,48 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 48C95C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Nov 2021 21:13:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BEED7C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Nov 2021 17:12:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1357200AbhKYVQv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Nov 2021 16:16:51 -0500
-Received: from mailbackend.panix.com ([166.84.1.89]:32349 "EHLO
+        id S1348694AbhKZRPN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Nov 2021 12:15:13 -0500
+Received: from mailbackend.panix.com ([166.84.1.89]:39424 "EHLO
         mailbackend.panix.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1357070AbhKYVOv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Nov 2021 16:14:51 -0500
+        with ESMTP id S235976AbhKZRNM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Nov 2021 12:13:12 -0500
 Received: from [192.168.126.80] (ip98-184-250-31.oc.oc.cox.net [98.184.250.31])
-        by mailbackend.panix.com (Postfix) with ESMTPSA id 4J0VtL06xBz2sbg;
-        Thu, 25 Nov 2021 16:11:37 -0500 (EST)
+        by mailbackend.panix.com (Postfix) with ESMTPSA id 4J11T20VG8z2s8g;
+        Fri, 26 Nov 2021 12:09:57 -0500 (EST)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=panix.com; s=panix;
-        t=1637874698; bh=fVNYCI2o8Gl3FzZCspvrDjT0dqKVQsui7DbLR5TdBCE=;
+        t=1637946598; bh=GTIWo+vkIgU91xH2aEgvdisvV1t6NuTWucivVzjGD88=;
         h=Date:From:Reply-To:To:cc:Subject:In-Reply-To:References;
-        b=A7Ls6wj2XBnwsNg2MULnSOPdQxNiIvfc1TqbPbMJBwbHI04fPzby4HhYqHFjrwn/R
-         tlAf210tFs5xMn9gdb7U85XN77OiXCbUp81PCx/xJKGLcJKyHQ+yeItR9LODMNn4np
-         XmY3POWRNhMqhXfN5jYFiGWqm4aMNeqx6RPVRWcU=
-Date:   Thu, 25 Nov 2021 13:11:36 -0800 (PST)
+        b=FR3wRs4snD+sJVhgRXdkjCuO9pDOmRfuJPuD+thdDNttOZ8iYz/py2bPQPPOQtqTx
+         6QaR2l5VRmHVqyMjL3+Qc9WpAZt86i3nkzQxKb0bT7YWJtjbjshd7i01543vKu55RY
+         yQ0c0RSK4B4YUC/Vm63AlW9UbtFE9ck0stSLTrp0=
+Date:   Fri, 26 Nov 2021 09:09:56 -0800 (PST)
 From:   "Kenneth R. Crudup" <kenny@panix.com>
 Reply-To: "Kenneth R. Crudup" <kenny@panix.com>
 To:     Jens Axboe <axboe@kernel.dk>
 cc:     linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nvme@lists.infradead.org
+        linux-ext4@vger.kernel.org, linux-nvme@lists.infradead.org,
+        Shinichiro Kawasaki <shinichiro.kawasaki@wdc.com>,
+        "Kenneth R. Crudup" <kenny@panix.com>
 Subject: Re: Write I/O queue hangup at random on recent Linus' kernels
-In-Reply-To: <17206ea6-506d-b1de-09e8-c935ff308bd6@kernel.dk>
-Message-ID: <66abbccd-aff0-9b6d-5aa3-f0f17eb4b12f@panix.com>
-References: <b3ba57a7-d363-9c17-c4be-9dbe86875@panix.com> <b9c2681f-e63a-4d3b-913d-d8a75e2c2ea0@kernel.dk> <be6a783-97db-c3bf-b16f-e8c62b14755d@panix.com> <17206ea6-506d-b1de-09e8-c935ff308bd6@kernel.dk>
+In-Reply-To: <903be817-4118-f34e-1b35-a0108045590f@kernel.dk>
+Message-ID: <143c4f76-658-887f-5c8-f454785ac99c@panix.com>
+References: <b3ba57a7-d363-9c17-c4be-9dbe86875@panix.com> <b9c2681f-e63a-4d3b-913d-d8a75e2c2ea0@kernel.dk> <be6a783-97db-c3bf-b16f-e8c62b14755d@panix.com> <17206ea6-506d-b1de-09e8-c935ff308bd6@kernel.dk> <903be817-4118-f34e-1b35-a0108045590f@kernel.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Fri, 26 Nov 2021, Jens Axboe wrote:
 
-On Thu, 25 Nov 2021, Jens Axboe wrote:
+> Can you apply this on top of 5.16-rc2 or current -git and see if it fixes
+> it for you?
 
->>> echo 0 > /sys/block/nvme0n1/queue/wbt_lat_usec
-
->> It's been about 48 hours and haven't seen the issue since doing this.
-
-> Great, thanks for verifying. From your report 5.16-rc2 has the issue, is
-> 5.15 fine?
-
-I can check that out sometime in the next few days, but IIRC I pretty sure the
-issue hadn't surfaced before the 3rd or 4th of November. I pull from master
-at least every 2-3 days, so there's at least a timeframe.
+Applied and trying; fingers crossed!
 
 	-Kenny
 
