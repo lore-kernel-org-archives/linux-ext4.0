@@ -2,52 +2,52 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D0D4C433F5
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Nov 2021 18:35:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 792BBC433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Nov 2021 19:16:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240326AbhKZSi4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Nov 2021 13:38:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60174 "EHLO
+        id S233498AbhKZTUE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Nov 2021 14:20:04 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41374 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238037AbhKZSg4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Nov 2021 13:36:56 -0500
-Received: from mail-io1-xd2a.google.com (mail-io1-xd2a.google.com [IPv6:2607:f8b0:4864:20::d2a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1D50C07E5F4
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Nov 2021 10:10:11 -0800 (PST)
-Received: by mail-io1-xd2a.google.com with SMTP id z26so12383235iod.10
-        for <linux-ext4@vger.kernel.org>; Fri, 26 Nov 2021 10:10:11 -0800 (PST)
+        with ESMTP id S229672AbhKZTSC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Nov 2021 14:18:02 -0500
+Received: from mail-il1-x135.google.com (mail-il1-x135.google.com [IPv6:2607:f8b0:4864:20::135])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C486BC061A13
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Nov 2021 10:41:25 -0800 (PST)
+Received: by mail-il1-x135.google.com with SMTP id a11so9662228ilj.6
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Nov 2021 10:41:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=kernel-dk.20210112.gappssmtp.com; s=20210112;
         h=subject:to:cc:references:from:message-id:date:user-agent
          :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=w7CM3ybXkX6FdnmkDgtC04LvePrjVXFwUyZ4uxrkvxw=;
-        b=P8Ix0b+8pqLzJ0JCQMU2IsK8LUujjsUrb3I7IY1MpjfctmRfdlJ4p5tQIRJzkm1aOz
-         NEkeOe/Fpw0bltwzcwIBsjrvsMFs+atSgWqaJBoi1ve+1El4o+XCYCZk7ONPmcUPhr0Q
-         VY2Y363OEpPx+MVKPTIo7svhG2nMbqSLtYfjGO7290AYp504mY/rhBkFJqwLmxNGmdCC
-         IR6hV7/8/Ng6R2bTvHJ81I08OFXyRyKS6gBHjJKWfVSk5khiZDKwJlCNGwfwUBkXrYO0
-         yr6CtDeMftUyZMd+0437LW51xaN8/Ora/MppBtTIvenEiWXu06d1T0X1om2tC4k/M9DP
-         NNCQ==
+        bh=Dn3JlSLQT9unLajVMFXj26hJHVTESOPmLbf77Et5Cto=;
+        b=UNjy/Jv4WKcXZelCIVYlBcimUg0Fp/9Y0SMcJdLYa7It/0ARpXcFAH7DXMGioH/USa
+         FcmTsiNaR5DOOqqdIAZsb7zTEnFac9CelF5GI6Zh5xGDPZbn9pxHhbNl9DwaSQBq3NXB
+         pg6xIt2AKWQBhpjx1jsxoBbD9fq79X6ab0ie1Dd8BIfNxzmtcyEhf2S8gfRCvhN10IyW
+         X5GwEKylzoQhqasSxkkWHOwgjo0POyGVrNFu1RubvkX3RkoXf/T7vBIX8kdZVRwKBbcC
+         6UfQH3R9tnOZrpyKI/ldw8y/aPZA5IKcMF6tutHL8gV9tGsdSNJzbcPEVcwzyZqWLMbb
+         qlLQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:subject:to:cc:references:from:message-id:date
          :user-agent:mime-version:in-reply-to:content-language
          :content-transfer-encoding;
-        bh=w7CM3ybXkX6FdnmkDgtC04LvePrjVXFwUyZ4uxrkvxw=;
-        b=aCkgUlS/nUVNvjo2GcWi6dN391Qo8Wm+walgtcwZiw4Evjm5NofMb5fRebGXX38rlv
-         UgvjUjYnldq+pi6rdWE1Rzh+7hiqdYHVmHHPfhLUpSNiO3DRN3q69alTRsyeRz3LwHEP
-         oZ9lq4FXZzqfUhZMGFjtxKTmI5EhijCYRNUWFOu//hnGLzoh8F5wqbeinRq4Av9c6mRH
-         ZBmYzUu4qgTg7nU0XQINbDASHuK6370TqyhuOhXzcFmaZc+vWPUEuzbGsqwHrer+7fl7
-         MmbXD73jWVJIVZQkO9VrWse/StHIDR10JGHv8Awr2pAzJmcmmbODSLGFcB/i65M/2mU8
-         fPUg==
-X-Gm-Message-State: AOAM532DUPrSD4VHcNTOy/C9kJFdTzKWEvPPDRvufpF6TEnfRUUWxBpF
-        d8/csuWZikFR5R6lveFDnjNXMg==
-X-Google-Smtp-Source: ABdhPJxGCB354MvIlJjaIRBZzlJPUUDQyfSJlCoz2hhDCkTQKLQVSnsDHVTgVFm+cuSMnozo2m/8Xw==
-X-Received: by 2002:a05:6638:3014:: with SMTP id r20mr20589348jak.146.1637950211126;
-        Fri, 26 Nov 2021 10:10:11 -0800 (PST)
+        bh=Dn3JlSLQT9unLajVMFXj26hJHVTESOPmLbf77Et5Cto=;
+        b=B5L7mCRpcXUyxmhJpZlB410baKjO5suD5auPyaCMxkFl+Ivlj4NMKrIP9oIeQa2yLM
+         TXob9V1Nzoj0Hp+Mj0fBvGoT496lRYTkISGF4JaVtz5ppBSC8DUBewZUzyYm8k4TDGXS
+         PxcbTR07PKAOf5HBK9Am3wF9yiQyTT2jxpwPTYyLHwtJfsXDB+HqppVfnI/gJSubQ7sX
+         Gs5tE5FH63l0aGAH+WedL0Htd+YPa+IbKFPjPnc6e3RXKh70tNK2aqHh+01jLEiNbuJY
+         tr4gu5vJHpPtH6n5PBvjmbj9UmyMY8+0CvXVc61znywqcowoMiKjjCZ6nP20ug6IDPgX
+         zqDw==
+X-Gm-Message-State: AOAM532ibpd3yuZRNq+tTo+AxGdk/FaG28x9nTM9NjYZz8Mxhpom/awu
+        2Kz77esBfsLD5Ms1dlwvfHWh7g==
+X-Google-Smtp-Source: ABdhPJzJK9pUIli5rOMIsOCySu1SxFt6BSM8IWUQXMeRmK3cP+2UPpMd/+bu06A3rIg3MRg5+wUwTQ==
+X-Received: by 2002:a92:d38b:: with SMTP id o11mr33208142ilo.35.1637952085029;
+        Fri, 26 Nov 2021 10:41:25 -0800 (PST)
 Received: from [192.168.1.116] ([66.219.217.159])
-        by smtp.gmail.com with ESMTPSA id d137sm3510617iof.16.2021.11.26.10.10.10
+        by smtp.gmail.com with ESMTPSA id n12sm3981499ilk.80.2021.11.26.10.41.24
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 26 Nov 2021 10:10:10 -0800 (PST)
+        Fri, 26 Nov 2021 10:41:24 -0800 (PST)
 Subject: Re: Write I/O queue hangup at random on recent Linus' kernels
 To:     "Kenneth R. Crudup" <kenny@panix.com>
 Cc:     linux-bcache@vger.kernel.org, linux-block@vger.kernel.org,
@@ -59,13 +59,15 @@ References: <b3ba57a7-d363-9c17-c4be-9dbe86875@panix.com>
  <17206ea6-506d-b1de-09e8-c935ff308bd6@kernel.dk>
  <903be817-4118-f34e-1b35-a0108045590f@kernel.dk>
  <986e942b-d430-783b-5b1c-4525d4a94e48@panix.com>
+ <ddc41b84-c414-006a-0840-250281caf1e5@kernel.dk>
+ <1ff86d55-f39d-f88b-b8d-b6dfbd2f1b19@panix.com>
 From:   Jens Axboe <axboe@kernel.dk>
-Message-ID: <ddc41b84-c414-006a-0840-250281caf1e5@kernel.dk>
-Date:   Fri, 26 Nov 2021 11:10:09 -0700
+Message-ID: <a4d728c2-703d-66be-bffd-3bfde0fddf41@kernel.dk>
+Date:   Fri, 26 Nov 2021 11:41:22 -0700
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
  Thunderbird/68.10.0
 MIME-Version: 1.0
-In-Reply-To: <986e942b-d430-783b-5b1c-4525d4a94e48@panix.com>
+In-Reply-To: <1ff86d55-f39d-f88b-b8d-b6dfbd2f1b19@panix.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
@@ -73,25 +75,28 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 11/26/21 10:58 AM, Kenneth R. Crudup wrote:
+On 11/26/21 11:20 AM, Kenneth R. Crudup wrote:
 > 
 > On Fri, 26 Nov 2021, Jens Axboe wrote:
 > 
->> Can you apply this on top of 5.16-rc2 or current -git and see if it fixes
->> it for you?
+>> I'd just do what you usually do, that's usually the best way to gain
+>> confidence in the fix.
+> ...
+>> That said, I'm pretty confident in the fix,
 > 
-> Since it's related to writeback throttling, is there anything I can try to
-> taunt it? I was thinking "iozone" or "bonnie++", but if there's something
-> better, let me know.
+> OK, then I'll just continue my normal workflow.
 
-I'd just do what you usually do, that's usually the best way to gain
-confidence in the fix. But it's related to writeback throttling _and_
-racing with eg iostats grabbing a reference to the request, so it would
-be more likely to trigger with a heavier combination of those two.
+Sounds good.
 
-That said, I'm pretty confident in the fix, so if you'd just use it for
-a day or two, then with the previous amount of hangs you saw on -rc2 it
-should provide a good level of confidence in it.
+> ... but am I the first report of this you've seen? (I sometimes wonder how many
+> people use the master branch as a daily driver; an -rc went out a couple of
+> weeks ago that had a commit that broke suspend that manifested right away.)
+
+https://lore.kernel.org/linux-block/20211126095352.bkbrvtgfcmfj3wkj@shindev/
+
+There's another here from today. But this particular window has a pretty
+narrow window, which often means that most people won't hit it, while the
+people that do hit it all the time...
 
 -- 
 Jens Axboe
