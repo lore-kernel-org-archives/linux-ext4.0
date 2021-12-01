@@ -2,99 +2,76 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A463CC433FE
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Dec 2021 09:53:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA739C433EF
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Dec 2021 14:42:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242360AbhLAJ4d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Dec 2021 04:56:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38858 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235434AbhLAJ4d (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Dec 2021 04:56:33 -0500
-Received: from mail-pl1-x62f.google.com (mail-pl1-x62f.google.com [IPv6:2607:f8b0:4864:20::62f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 17833C061748
-        for <linux-ext4@vger.kernel.org>; Wed,  1 Dec 2021 01:53:13 -0800 (PST)
-Received: by mail-pl1-x62f.google.com with SMTP id v19so17243418plo.7
-        for <linux-ext4@vger.kernel.org>; Wed, 01 Dec 2021 01:53:13 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance-com.20210112.gappssmtp.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=SF1mD5SWLvbt+au3tQQLZWrYTDwiz/pttxfTol9Z/fI=;
-        b=b/Mm9urqTRdhVGB6h0fWJ0QMjbyDSJdXQG26En4LCQRYoJ8jW6tO4ab2oPyeKooSEW
-         88CAdIxf0SHDQ/DKEqFiT4JyWsbptsT0n69sWdmkD6ns/AmdnJfJRjNKBGMH1x/uvd94
-         OrmSBry0lWUlIZa0ALj64izwXInFXOrcrn7Xyp8Acc8vTR/r0pbTn7gNsZc9krupKvyX
-         nTtywYxiJD78N7pddL5zdSitF9r0HgF3yA+eDJeI2gYeq3tsLouIN6lFimllwNbU5dQf
-         5UwtHHnAD7TbqzR02Q6hynRjI4vhPmpWp3C4gcWa6QaVhdBzGg9yWVlfxCVnTRpD5rkx
-         9kHQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=SF1mD5SWLvbt+au3tQQLZWrYTDwiz/pttxfTol9Z/fI=;
-        b=Y0bltWn/AGpruj0cbL+MUxXma3jLcjfniWWfOuOr+WoNabJs5kdn9S+MnBL8ya43Qu
-         CAu4xIoc6rkhgwxAET4sVkMa50FmFAG/GrTST/AXN7M4mLlZ3NxGMOHYYi0xMip2TEXx
-         ++lDxAXgTTsZ9taZIUV3YUo5huO7WhUyp6V/5eNDcTD7H9Xn5xqOyK9dvAaZyLyD/IH6
-         gG2YKdEyD64ea57PiRkduinrkgctCmcCtlUckZYhyeVVDF9aX7jTlnpAmnx6ljXT4Tnr
-         JqqZyJk4EI+qlvukuFcUfa0RSN8G2vqDL+mvEAyNFWiN8doyBNEOLqSf+DDoXSjX4Itt
-         27bw==
-X-Gm-Message-State: AOAM530/jx4ZJTi+tRzfeNUTpZZT2gZnQFMy8im7DqdHoO56pq5xru1g
-        WBmHkGO/kXQB3UmObktDUXmDnpR3s+qLYQ==
-X-Google-Smtp-Source: ABdhPJxxL9L4neI7W9JiWVsl5rNK0SWUzvcQV2lb8jnIYXrVdufA+dU8AdJUGKlQEPbWLzTCTGzxLA==
-X-Received: by 2002:a17:902:f2c2:b0:141:9ce8:930f with SMTP id h2-20020a170902f2c200b001419ce8930fmr5918250plc.68.1638352392636;
-        Wed, 01 Dec 2021 01:53:12 -0800 (PST)
-Received: from yinxin.bytedance.net ([139.177.225.235])
-        by smtp.gmail.com with ESMTPSA id s2sm28426494pfg.124.2021.12.01.01.53.09
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 01 Dec 2021 01:53:11 -0800 (PST)
-From:   Xin Yin <yinxin.x@bytedance.com>
-To:     harshadshirwadkar@gmail.com, tytso@mit.edu,
-        adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Xin Yin <yinxin.x@bytedance.com>
-Subject: [PATCH] ext4: fix fast commit may miss tracking range for FALLOC_FL_ZERO_RANGE
-Date:   Wed,  1 Dec 2021 17:52:58 +0800
-Message-Id: <20211201095258.1966-1-yinxin.x@bytedance.com>
-X-Mailer: git-send-email 2.25.1
+        id S1350001AbhLAOqC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Dec 2021 09:46:02 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56034 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S239125AbhLAOnO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Dec 2021 09:43:14 -0500
+Received: from callcc.thunk.org (c-24-1-67-28.hsd1.il.comcast.net [24.1.67.28])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1B1EdhZk022409
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Wed, 1 Dec 2021 09:39:45 -0500
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 6E74842004A; Wed,  1 Dec 2021 09:39:43 -0500 (EST)
+Date:   Wed, 1 Dec 2021 09:39:43 -0500
+From:   "Theodore Y. Ts'o" <tytso@mit.edu>
+To:     Lukas Czerner <lczerner@redhat.com>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: implement support for get/set fs label
+Message-ID: <YaeJL8bOsGqBWR7P@mit.edu>
+References: <20211111215904.21237-1-lczerner@redhat.com>
+ <20211112082019.22078-1-lczerner@redhat.com>
+ <YaWTuCoIyaDBsUWF@mit.edu>
+ <20211130094950.ixqkxrjne6ldryeg@work>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20211130094950.ixqkxrjne6ldryeg@work>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-when call falloc with FALLOC_FL_ZERO_RANGE, to set an range to unwritten,
-which has been already initialized. If the range is align to blocksize,
-fast commit will not track range for this change.
+On Tue, Nov 30, 2021 at 10:49:50AM +0100, Lukas Czerner wrote:
+> > But after that?  I'd suggest not running the updates for the rest
+> > through the journal at all, and just write them out directly.  Nothing
+> > else will try to read or write the backup superblock blocks, so
+> > there's no reason why we have to be super careful writing out the
+> > rest.  If we crash after we've only updated the first 20 backup
+> > superblocks --- that's probably 18 more than a user will actually use
+> > in the first place.
+> > 
+> > That allows us to simply reserve 3 credits, and we won't need to try
+> > to extend the handle, which means we don't have to implement some kind
+> > of fallback logic in case the handle extension fails.
+> 
+> I think I agree. But in this case should we at least attempt to check
+> and update the backup superblocks in fsck? Not sure if we do that
+> already.
 
-change to track range during allocating blocks.
+Well, after a successful file system check by fsck, we'll update all
+of the backup superblocks.  If we've done a full file system check we
+know that the primary superblock is consistent with the rest of the
+file system, so at that point it's safe to write it to all of the
+backup superblocks in the file system.
 
-Signed-off-by: Xin Yin <yinxin.x@bytedance.com>
----
- fs/ext4/extents.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+But if we haven't done the full file system check, we won't know
+whether it is the primary or the backup superblock which is incorrect.
+I guess we could do the basic superblock checks, and if there are at
+least two additional superblocks, we see if we have do a 2 out of 3
+voting check.  Or if there are differences between the primary and the
+backup we could force a full check.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9229ab1f99c5..4108896d471b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4433,6 +4433,8 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 			ret2 = ext4_journal_stop(handle);
- 			break;
- 		}
-+		ext4_fc_track_range(handle, inode, map.m_lblk,
-+					map.m_lblk + map.m_len - 1);
- 		map.m_lblk += ret;
- 		map.m_len = len = len - ret;
- 		epos = (loff_t)map.m_lblk << inode->i_blkbits;
-@@ -4599,8 +4601,6 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 	ret = ext4_mark_inode_dirty(handle, inode);
- 	if (unlikely(ret))
- 		goto out_handle;
--	ext4_fc_track_range(handle, inode, offset >> inode->i_sb->s_blocksize_bits,
--			(offset + len - 1) >> inode->i_sb->s_blocksize_bits);
- 	/* Zero out partial block at the edges of the range */
- 	ret = ext4_zero_partial_blocks(handle, inode, offset, len);
- 	if (ret >= 0)
--- 
-2.20.1
+I think in practice though, so long as the primary and two backup
+superblocks are part of the jbd2 transaction, that should be good
+enough in terms of recovery since usually most users only use the
+first backup superblock to recover if the primary is damaged.  Whether
+we update the rest of the backup superblocks improves things, but it's
+not really going to make a difference 99.99% of the time.
 
+    	   	    	   	      	     - Ted
