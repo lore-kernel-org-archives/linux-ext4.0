@@ -2,47 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC02BC433F5
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 Dec 2021 20:45:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CE71C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Dec 2021 14:37:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238875AbhLEUsp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 5 Dec 2021 15:48:45 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:60417 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S238373AbhLEUsp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Dec 2021 15:48:45 -0500
-Received: from callcc.thunk.org ([63.85.23.26])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1B5Kiwvs012512
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 5 Dec 2021 15:44:59 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 474674205DB; Sun,  5 Dec 2021 15:44:58 -0500 (EST)
-Date:   Sun, 5 Dec 2021 15:44:58 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Wenqing Liu <liu@cs.fsu.edu>
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: Page fault in fs/ext4/namei.c: do_split when crafted image is
- mounted and operated
-Message-ID: <Ya0kyhDD5zJMQ0oV@mit.edu>
-References: <8b0561482e1c3b765282a109a7a12593@cs.fsu.edu>
+        id S1344372AbhLFOlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Dec 2021 09:41:07 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:34800 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S244773AbhLFOlF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Dec 2021 09:41:05 -0500
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 1EB221FD34;
+        Mon,  6 Dec 2021 14:37:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1638801456; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=OJOFlQjAKHcH0wqO+IJBUf4iHa9DwBG2cjInTKyoM4E=;
+        b=el5TjAHKLWW2wM3zq3SuwP85wmOjdWL2W7Belcj2QLQt76bBXjq9Q8I/LO6iPlcS3+UMdp
+        tRAAqLZcdokJcAwRpre4MobQQw7oj11U2wLevTVI+Frt3WRZ9dPmVq099M40WG3R/aNIuc
+        c1+NgeK/gj9ANXfEE0aoDaoY5Rx8/5A=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1638801456;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=OJOFlQjAKHcH0wqO+IJBUf4iHa9DwBG2cjInTKyoM4E=;
+        b=TLkeKaekyqkOO95lQp68lKsorvQ3apRfoG/W1CMBDU18/bUxZihRAjCRtoyLU2SSabEs0G
+        HtRKTpoAoSkX94Cg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A5D4C13BBC;
+        Mon,  6 Dec 2021 14:37:35 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id kKRAJS8grmH/PwAAMHmgww
+        (envelope-from <lhenriques@suse.de>); Mon, 06 Dec 2021 14:37:35 +0000
+Received: from localhost (brahms [local])
+        by brahms (OpenSMTPD) with ESMTPA id 4b702813;
+        Mon, 6 Dec 2021 14:37:34 +0000 (UTC)
+From:   =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>,
+        Jeroen van Wolffelaar <jeroen@wolffelaar.nl>
+Subject: [PATCH] ext4: set csum seed in tmp inode while migrating to extents
+Date:   Mon,  6 Dec 2021 14:37:33 +0000
+Message-Id: <20211206143733.18918-1-lhenriques@suse.de>
+In-Reply-To: <bug-213357-13602@https.bugzilla.kernel.org>
+References: <bug-213357-13602@https.bugzilla.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <8b0561482e1c3b765282a109a7a12593@cs.fsu.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Dec 04, 2021 at 02:17:52PM -0500, Wenqing Liu wrote:
-> - Overview
-> Page fault in fs/ext4/namei.c: do_split when crafted image is mounted and
-> operated
+When migrating to extents, the temporary inode will have it's own checksum
+seed.  This means that, when swapping the inodes data, the inode checksums
+will be incorrect.
 
-This looks like another dup of these reports:
+This can be fixed by recalculating the extents checksums again.  Or simply
+by copying the seed into the temporary inode.
 
-Message-ID: <CA+AJg7OHrVgbHuRi5Sqyt5v1PzN-OhG8NjKaanLY-_+OZPvkDA@mail.gmail.com>
-Message-ID: <CA+AJg7NwCgxw65JbyWLbbq4aP-vbBzFMEn-=k6DrdTpWMBQbxQ@mail.gmail.com>
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=213357
+Reported-by: Jeroen van Wolffelaar <jeroen@wolffelaar.nl>
+Signed-off-by: Luís Henriques <lhenriques@suse.de>
+---
+ fs/ext4/migrate.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-							- Ted
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 7e0b4f81c6c0..dd4ece38fc83 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -413,7 +413,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	handle_t *handle;
+ 	int retval = 0, i;
+ 	__le32 *i_data;
+-	struct ext4_inode_info *ei;
++	struct ext4_inode_info *ei, *tmp_ei;
+ 	struct inode *tmp_inode = NULL;
+ 	struct migrate_struct lb;
+ 	unsigned long max_entries;
+@@ -503,6 +503,10 @@ int ext4_ext_migrate(struct inode *inode)
+ 	}
+ 
+ 	ei = EXT4_I(inode);
++	tmp_ei = EXT4_I(tmp_inode);
++	/* Use the right seed for checksumming */
++	tmp_ei->i_csum_seed = ei->i_csum_seed;
++
+ 	i_data = ei->i_data;
+ 	memset(&lb, 0, sizeof(lb));
+ 
