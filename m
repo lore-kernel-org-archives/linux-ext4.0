@@ -2,74 +2,67 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C2BCC433F5
-	for <linux-ext4@archiver.kernel.org>; Sun, 19 Dec 2021 02:21:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BB86C433F5
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Dec 2021 04:05:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234175AbhLSCVK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 18 Dec 2021 21:21:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36654 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231683AbhLSCVK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Dec 2021 21:21:10 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19FB7C061574
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Dec 2021 18:21:10 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 92A5460C8A
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Dec 2021 02:21:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A115DC36AE0;
-        Sun, 19 Dec 2021 02:21:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1639880468;
-        bh=WPezyHs1ybtTUsYAsbnfvU/yrttJikVXYxXszwgOADI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=NYeqIzu1LTu9/7JPFim87JT82CZwlCJoW5akKd6waVC9neZDenK8BwKdb3oRInr45
-         JIZARD+lw321LT1YpmXQIUN/hAVOja7lWmHfky9Pt1rWg1TH7BSjow3UJOFWM7rTmR
-         TXhIWsoWHZ2PYqzJkU1KTy+8yW4B+7Wl6aBNB5kPV9wMlTG4u4X7lcSgLpDAOZN6fy
-         78fkssrw4HQuOUYbN6lrjRw9yvbokqwnRflwV/f9qixMAPb8+xdTlOGpIg6JFJ3ZC1
-         4vdS2D0oV1LWbZhU5WcINe4O9nthFIgqC+vwo3yI0kvdySYYqJXrXwuP/zLRH7Q/oC
-         YQ4QEK4YVE7xQ==
-Date:   Sat, 18 Dec 2021 20:21:06 -0600
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Theodore Ts'o <tytso@mit.edu>
+        id S235202AbhLSEFJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 18 Dec 2021 23:05:09 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:49143 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S235197AbhLSEFI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Dec 2021 23:05:08 -0500
+Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1BJ451Bd016034
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 18 Dec 2021 23:05:02 -0500
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 4CCC715C00C8; Sat, 18 Dec 2021 23:05:01 -0500 (EST)
+Date:   Sat, 18 Dec 2021 23:05:01 -0500
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Eric Biggers <ebiggers@kernel.org>
 Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
         Leah Rumancik <leah.rumancik@gmail.com>
 Subject: Re: [PATCH] test-appliance: add ext4/050 to encrypt.exclude
-Message-ID: <Yb6XEo/RcXEZxSai@quark.localdomain>
+Message-ID: <Yb6vbf6M+EYMXvQG@mit.edu>
 References: <20211218040814.632571-1-tytso@mit.edu>
+ <Yb6XEo/RcXEZxSai@quark.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20211218040814.632571-1-tytso@mit.edu>
+In-Reply-To: <Yb6XEo/RcXEZxSai@quark.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Dec 17, 2021 at 11:08:14PM -0500, Theodore Ts'o wrote:
-> The ext4/050 test can't handle encrypted directories, so skip it for
-> now.
+On Sat, Dec 18, 2021 at 08:21:06PM -0600, Eric Biggers wrote:
+> On Fri, Dec 17, 2021 at 11:08:14PM -0500, Theodore Ts'o wrote:
+> > The ext4/050 test can't handle encrypted directories, so skip it for
+> > now.
+> > 
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > ---
+> >  .../test-appliance/files/root/fs/ext4/cfg/encrypt.exclude    | 5 +++++
+> >  1 file changed, 5 insertions(+)
+> > 
+> > diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
+> > index f3c7a959..21a8b45f 100644
+> > --- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
+> > +++ b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
+> > @@ -12,6 +12,11 @@ ext4/028
+> >  # file systems with encryption enabled can't be mounted with ext3
+> >  ext4/044
+> >  
+> > +# This test to make sure ext4 directory entries are appropriately
+> > +# wiped after a file is deleted, or after htree operations is
+> > +# incompatible with an encrypted directory.
+> > +ext4/048
 > 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  .../test-appliance/files/root/fs/ext4/cfg/encrypt.exclude    | 5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff --git a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
-> index f3c7a959..21a8b45f 100644
-> --- a/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
-> +++ b/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt.exclude
-> @@ -12,6 +12,11 @@ ext4/028
->  # file systems with encryption enabled can't be mounted with ext3
->  ext4/044
->  
-> +# This test to make sure ext4 directory entries are appropriately
-> +# wiped after a file is deleted, or after htree operations is
-> +# incompatible with an encrypted directory.
-> +ext4/048
+> The commit message says ext4/050, but the test added to the list is ext4/048.
+> Is ext4/048 the one intended?
 
-The commit message says ext4/050, but the test added to the list is ext4/048.
-Is ext4/048 the one intended?
+Yes, it's the commit message that was incorrect.  Thanks for pointing
+that out.  I'll fix the commit description in my tree.
 
-- Eric
+     	   	    	       		   - Ted
