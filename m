@@ -2,119 +2,119 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06867C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 23 Dec 2021 16:44:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C125DC433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 23 Dec 2021 20:11:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349305AbhLWQo4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Dec 2021 11:44:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48356 "EHLO
+        id S1350184AbhLWULb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Dec 2021 15:11:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38226 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233591AbhLWQoz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Dec 2021 11:44:55 -0500
-Received: from galois.linutronix.de (Galois.linutronix.de [IPv6:2a0a:51c0:0:12e:550::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41B61C061401
-        for <linux-ext4@vger.kernel.org>; Thu, 23 Dec 2021 08:44:54 -0800 (PST)
-From:   Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linutronix.de;
-        s=2020; t=1640277891;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=DqjzpyejmKl3fb8aZGQqkotqBv+cbYCwbKa9BS3bBcE=;
-        b=XM9OgyOlnTsARrpHECG5nN+1B6wAVtiYlz7EnnkBk0O/p1ytVb0svf7SwVa1JVA0pi/KNL
-        CkmdLho0y91/G2hCAbf+zo79HdS7pv7prCHMsDxYKlbMy+K27IV50ytSVJ4t6dWhC2ngQP
-        YWGD/UNbLqqR5KtaGOqx9G4JJ1HUdh4f2OjTqfuza5Uxh3JJRuM/bfGkI3ZHe7Z+Eg77b/
-        89jxpy3dJBvwku5kl3TtME8lJ0OmjsCov69cQRQdtLdyy5LSKwxXOCsopjEJrvRJEHYb9i
-        ecgbTGXGnbffLSStMdFMzLUUdkeFr2vgil+QlL64TVJ9wXddFRqY2cdXMnrBQw==
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=linutronix.de;
-        s=2020e; t=1640277891;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=DqjzpyejmKl3fb8aZGQqkotqBv+cbYCwbKa9BS3bBcE=;
-        b=yh9/7gsnPG4hexn2YPepQuO4FfWlm1Dw5TVdSO9zmlKnJCTmv46PkkmxyoMyQ7wlof4TeT
-        kikV0nx78KqGTlAQ==
-To:     Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
-        Lukas Czerner <lczerner@redhat.com>,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH REPOST REPOST] ext4: Destroy ext4_fc_dentry_cachep kmemcache on module removal.
-Date:   Thu, 23 Dec 2021 17:44:36 +0100
-Message-Id: <20211223164436.2628390-1-bigeasy@linutronix.de>
+        with ESMTP id S233073AbhLWULa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Dec 2021 15:11:30 -0500
+Received: from mail-ed1-x533.google.com (mail-ed1-x533.google.com [IPv6:2a00:1450:4864:20::533])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37019C061401;
+        Thu, 23 Dec 2021 12:11:30 -0800 (PST)
+Received: by mail-ed1-x533.google.com with SMTP id j6so25405070edw.12;
+        Thu, 23 Dec 2021 12:11:30 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=+Z0W+uNVLefCvGenGTWY6S3Ph9n5iOBFk9YTlc8vDc8=;
+        b=eMjsHlFQ7izRRsjczN5qKrPvXKW4HRt16BdOixLAkEnLdLnE/debRO8zo4NmTQAefO
+         ued5YzGRMKGD5zL/kTmn+y+24slEG+iNfAkEq5kWhQTLnarzyQJoY9A+DY8AnNw2ZbSo
+         TdVyinRKlG7VpiIozrCBJ/fg4meV1pUnw41KXqgavn3nTupyiUZHVw13lssjahkM3wDk
+         2C5GBVoEvOU+WsXuZrBx/xGEZdM9VsjLuD3iFLsTx4ORDFsDsmadQw01JeYnLA0lSt6H
+         hS0Kt2KEeeloku77jndCY5i45dAyuDxUWPTggs67SMBu0UXHDHVJhp2zp/Lazc3rjETy
+         /xtQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=+Z0W+uNVLefCvGenGTWY6S3Ph9n5iOBFk9YTlc8vDc8=;
+        b=nNngSZJV9OKAlPrOj1q338nhOrZHVdpR2HZvsffD3M3uJhXGFfDjWhWgFqhdIqpU0a
+         S0m5qdA9danOqKbClzXbCg5mmgomV5k0wy8+yHWWxKbVEEJfVdLsqQdnLAhANFfQXvjY
+         UAYhlhMiolbO3HAqeqGRpwbuPRTN7hLmEO1xC6YTxodn8nMxCJgv1uP+qBqxjciZtb9h
+         +ZcflgZ/001aG/qR+rbtX5ZKngZWkE3nanYJfxkTLQ5M9pCx2YkCvcdAAj7X22VBXRXy
+         pwEHWjPhsGsolohaFBZsR/0umY4iVXAIqOvKVQwq2/Co1uZY1AVr6vpMOPquW6HfPtM1
+         oATw==
+X-Gm-Message-State: AOAM531UkdCKRUY+w2RSlyOwG9T2HdD1qB6Ulr490kQhhWgswWEUrJs9
+        tfDrPRmf+n+BXTE2xsX/bDknMnWNAbnemUkBbx4=
+X-Google-Smtp-Source: ABdhPJwrrW8MmRZCCatjVSXKEr03lsImIO+p9ufdkuSu5Vih456wCAUQfFFq0Kdeb4SrV2hEHjXB/FeGSRC7qOfpvlY=
+X-Received: by 2002:a17:906:f283:: with SMTP id gu3mr3017338ejb.768.1640290288588;
+ Thu, 23 Dec 2021 12:11:28 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+References: <20211223032337.5198-1-yinxin.x@bytedance.com> <20211223032337.5198-2-yinxin.x@bytedance.com>
+In-Reply-To: <20211223032337.5198-2-yinxin.x@bytedance.com>
+From:   harshad shirwadkar <harshadshirwadkar@gmail.com>
+Date:   Thu, 23 Dec 2021 12:11:17 -0800
+Message-ID: <CAD+ocbxF=GdQdVryoSgbf5uJJk7H0uawLoQTKdDCKfnWgbmuxA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] ext4: use ext4_ext_remove_space() for fast commit
+ replay delete range
+To:     Xin Yin <yinxin.x@bytedance.com>
+Cc:     "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The kmemcache for ext4_fc_dentry_cachep remains registered after module
-removal.
+Looks good to me.
 
-Destroy ext4_fc_dentry_cachep kmemcache on module removal.
-
-Fixes: aa75f4d3daaeb ("ext4: main fast-commit commit path")
-Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 Reviewed-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Link: https://lore.kernel.org/r/20211110134640.lyku5vklvdndw6uk@linutronix.=
-de
-Link: https://lore.kernel.org/r/YbiK3JetFFl08bd7@linutronix.de
----
- fs/ext4/ext4.h        | 1 +
- fs/ext4/fast_commit.c | 5 +++++
- fs/ext4/super.c       | 2 ++
- 3 files changed, 8 insertions(+)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9cc55bcda6ba4..2d414dfd60cb6 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2936,6 +2936,7 @@ bool ext4_fc_replay_check_excluded(struct super_block=
- *sb, ext4_fsblk_t block);
- void ext4_fc_replay_cleanup(struct super_block *sb);
- int ext4_fc_commit(journal_t *journal, tid_t commit_tid);
- int __init ext4_fc_init_dentry_cache(void);
-+void ext4_fc_destroy_dentry_cache(void);
-=20
- /* mballoc.c */
- extern const struct seq_operations ext4_mb_seq_groups_ops;
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 0f32b445582ab..4665508efd778 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -2192,3 +2192,8 @@ int __init ext4_fc_init_dentry_cache(void)
-=20
- 	return 0;
- }
-+
-+void ext4_fc_destroy_dentry_cache(void)
-+{
-+	kmem_cache_destroy(ext4_fc_dentry_cachep);
-+}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b72d989b77fb6..55f2fba6a5292 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -7133,6 +7133,7 @@ static int __init ext4_init_fs(void)
- out:
- 	unregister_as_ext2();
- 	unregister_as_ext3();
-+	ext4_fc_destroy_dentry_cache();
- out05:
- 	destroy_inodecache();
- out1:
-@@ -7159,6 +7160,7 @@ static void __exit ext4_exit_fs(void)
- 	unregister_as_ext2();
- 	unregister_as_ext3();
- 	unregister_filesystem(&ext4_fs_type);
-+	ext4_fc_destroy_dentry_cache();
- 	destroy_inodecache();
- 	ext4_exit_mballoc();
- 	ext4_exit_sysfs();
---=20
-2.34.1
-
+On Wed, Dec 22, 2021 at 7:24 PM Xin Yin <yinxin.x@bytedance.com> wrote:
+>
+> For now ,we use ext4_punch_hole() during fast commit replay delete range
+> procedure. But it will be affected by inode->i_size, which may not
+> correct during fast commit replay procedure. The following test will
+> failed.
+>
+> -create & write foo (len 1000K)
+> -falloc FALLOC_FL_ZERO_RANGE foo (range 400K - 600K)
+> -create & fsync bar
+> -falloc FALLOC_FL_PUNCH_HOLE foo (range 300K-500K)
+> -fsync foo
+> -crash before a full commit
+>
+> After the fast_commit reply procedure, the range 400K-500K will not be
+> removed. Because in this case, when calling ext4_punch_hole() the
+> inode->i_size is 0, and it just retruns with doing nothing.
+>
+> Change to use ext4_ext_remove_space() instead of ext4_punch_hole()
+> to remove blocks of inode directly.
+>
+> Signed-off-by: Xin Yin <yinxin.x@bytedance.com>
+> ---
+>  fs/ext4/fast_commit.c | 13 ++++++++-----
+>  1 file changed, 8 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+> index aa05b23f9c14..3deb97b22ca4 100644
+> --- a/fs/ext4/fast_commit.c
+> +++ b/fs/ext4/fast_commit.c
+> @@ -1708,11 +1708,14 @@ ext4_fc_replay_del_range(struct super_block *sb, struct ext4_fc_tl *tl,
+>                 }
+>         }
+>
+> -       ret = ext4_punch_hole(inode,
+> -               le32_to_cpu(lrange.fc_lblk) << sb->s_blocksize_bits,
+> -               le32_to_cpu(lrange.fc_len) <<  sb->s_blocksize_bits);
+> -       if (ret)
+> -               jbd_debug(1, "ext4_punch_hole returned %d", ret);
+> +       down_write(&EXT4_I(inode)->i_data_sem);
+> +       ret = ext4_ext_remove_space(inode, lrange.fc_lblk,
+> +                               lrange.fc_lblk + lrange.fc_len - 1);
+> +       up_write(&EXT4_I(inode)->i_data_sem);
+> +       if (ret) {
+> +               iput(inode);
+> +               return 0;
+> +       }
+>         ext4_ext_replay_shrink_inode(inode,
+>                 i_size_read(inode) >> sb->s_blocksize_bits);
+>         ext4_mark_inode_dirty(NULL, inode);
+> --
+> 2.20.1
+>
