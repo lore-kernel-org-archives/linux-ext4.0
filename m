@@ -2,34 +2,39 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 476C2C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri, 24 Dec 2021 00:28:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 096A8C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 24 Dec 2021 00:28:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1350436AbhLXA2C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 23 Dec 2021 19:28:02 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:41337 "EHLO
+        id S1350470AbhLXA2O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 23 Dec 2021 19:28:14 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:41356 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1350410AbhLXA2B (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Dec 2021 19:28:01 -0500
+        with ESMTP id S1350458AbhLXA2N (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Dec 2021 19:28:13 -0500
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1BO0RqLa003095
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 1BO0RqHR003092
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 23 Dec 2021 19:27:53 -0500
+        Thu, 23 Dec 2021 19:27:54 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 80EE315C339D; Thu, 23 Dec 2021 19:27:52 -0500 (EST)
+        id 7974415C00C8; Thu, 23 Dec 2021 19:27:52 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     harshadshirwadkar@gmail.com, adilger.kernel@dilger.ca,
-        Xin Yin <yinxin.x@bytedance.com>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+To:     Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
         linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: fix fast commit may miss tracking range for FALLOC_FL_ZERO_RANGE
-Date:   Thu, 23 Dec 2021 19:27:51 -0500
-Message-Id: <164030564165.2940033.13491679644853079214.b4-ty@mit.edu>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Lukas Czerner <lczerner@redhat.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Subject: Re: [PATCH REPOST REPOST] ext4: Destroy ext4_fc_dentry_cachep kmemcache on module removal.
+Date:   Thu, 23 Dec 2021 19:27:49 -0500
+Message-Id: <164030564165.2940033.3088049106332520646.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20211221022839.374606-1-yinxin.x@bytedance.com>
-References: <20211221022839.374606-1-yinxin.x@bytedance.com>
+In-Reply-To: <20211223164436.2628390-1-bigeasy@linutronix.de>
+References: <20211223164436.2628390-1-bigeasy@linutronix.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -37,20 +42,18 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, 21 Dec 2021 10:28:39 +0800, Xin Yin wrote:
-> when call falloc with FALLOC_FL_ZERO_RANGE, to set an range to unwritten,
-> which has been already initialized. If the range is align to blocksize,
-> fast commit will not track range for this change.
+On Thu, 23 Dec 2021 17:44:36 +0100, Sebastian Andrzej Siewior wrote:
+> The kmemcache for ext4_fc_dentry_cachep remains registered after module
+> removal.
 > 
-> Also track range for unwritten range in ext4_map_blocks().
+> Destroy ext4_fc_dentry_cachep kmemcache on module removal.
 > 
 > 
-> [...]
 
 Applied, thanks!
 
-[1/1] ext4: fix fast commit may miss tracking range for FALLOC_FL_ZERO_RANGE
-      commit: f6c90a2bcabcfc56d91aa5091b76ce8082de7d68
+[1/1] ext4: Destroy ext4_fc_dentry_cachep kmemcache on module removal.
+      commit: 46336e7e7275d2714f8abeb5fd62595931f8e9aa
 
 Best regards,
 -- 
