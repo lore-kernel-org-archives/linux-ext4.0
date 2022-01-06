@@ -2,54 +2,58 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7638C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jan 2022 13:19:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A13C7C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jan 2022 15:45:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239460AbiAFNT6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 6 Jan 2022 08:19:58 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:55036 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S231453AbiAFNT6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2022 08:19:58 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1641475197;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+        id S240598AbiAFPpq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 6 Jan 2022 10:45:46 -0500
+Received: from smtp-out2.suse.de ([195.135.220.29]:47142 "EHLO
+        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S229726AbiAFPpp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Jan 2022 10:45:45 -0500
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out2.suse.de (Postfix) with ESMTP id E4FDC1F397;
+        Thu,  6 Jan 2022 15:45:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1641483944; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=1VC3NszYeeyQ6yGxye/bZ9Wi+jchr9+jRHTDBUck7iI=;
-        b=GT9u0SZeh9ys4whWuME4iZ5NR2hgpruZP1iy0LeDAqsD2ut7DsqrNeNGq0M8ZMGGL2aC9B
-        YgUvkDCRjjBT1590hflgd3hhBeGKAYmS48eHF7tWAT7q/Ek7dS4yTyM6YGz40riGCrUQa8
-        iX0mqoCuGPesGp+sxAgBVT3DeAQOxCw=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-646-gZnLDsG7MdGgCRIRwIxnYA-1; Thu, 06 Jan 2022 08:19:54 -0500
-X-MC-Unique: gZnLDsG7MdGgCRIRwIxnYA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        bh=0D8k15AC2kJCmh5/5LxYORIwcshmjlIwNOGY6Usb7qg=;
+        b=u/AhkTT+TFkoFbh+H9Hek0uY0UkEyQP+Tvl8EWe2qetVhnVCE3r78qhS9icjmWG2BGOl18
+        a+oyb47ekYq3dVeixbzTGE2FfJ4w/3rlyDruS43TxBXPEBcdMYtnXlGbbUoZgvbnGEbG4i
+        Ow8bRFloI6AGTvYxAxsxMVCH8mNYNnU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1641483944;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=0D8k15AC2kJCmh5/5LxYORIwcshmjlIwNOGY6Usb7qg=;
+        b=/rXl3cBETdEc98uNS9XEYrQ0IneAovlBdi4VuG+qxOeEE47VYDmythV+6ISD9+ZyvyobpZ
+        UwlC0iMXBdKlWACw==
+Received: from quack3.suse.cz (unknown [10.163.43.118])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 25FB21006AA4;
-        Thu,  6 Jan 2022 13:19:53 +0000 (UTC)
-Received: from work (unknown [10.40.194.183])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id AE2BC7E668;
-        Thu,  6 Jan 2022 13:19:51 +0000 (UTC)
-Date:   Thu, 6 Jan 2022 14:19:48 +0100
-From:   Lukas Czerner <lczerner@redhat.com>
+        by relay2.suse.de (Postfix) with ESMTPS id D8088A3B84;
+        Thu,  6 Jan 2022 15:45:44 +0000 (UTC)
+Received: by localhost (Postfix, from userid 1000)
+        id 95DBDA0856; Thu,  6 Jan 2022 11:57:49 +0100 (CET)
+Date:   Thu, 6 Jan 2022 11:57:49 +0100
+From:   Jan Kara <jack@suse.cz>
 To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>, jack@suse.cz
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lczerner@redhat.com, jack@suse.cz
 Subject: Re: [PATCH] ext4: don't use the orphan list when migrating an inode
-Message-ID: <20220106131948.xlwfs73lfyhe6454@work>
+Message-ID: <20220106105749.xldggivlpey3itlz@quack3.lan>
 References: <20220106050505.474719-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <20220106050505.474719-1-tytso@mit.edu>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Jan 06, 2022 at 12:05:05AM -0500, Theodore Ts'o wrote:
+On Thu 06-01-22 00:05:05, Theodore Ts'o wrote:
 > We probably want to remove the indirect block to extents migration
 > feature after a deprecation window, but until then, let's fix a
 > potential data loss problem caused by the fact that we put the
@@ -64,14 +68,15 @@ On Thu, Jan 06, 2022 at 12:05:05AM -0500, Theodore Ts'o wrote:
 > which is not a disaster.  It will be easily fixed the next time we run
 > fsck, and it's better than potentially having blocks getting claimed
 > by two different files, and losing data as a result.
-
-Looks good to me. Thanks!
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-
 > 
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+Looks good. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
 > ---
 >  fs/ext4/migrate.c | 19 ++++---------------
 >  1 file changed, 4 insertions(+), 15 deletions(-)
@@ -132,4 +137,6 @@ Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 > -- 
 > 2.31.0
 > 
-
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
