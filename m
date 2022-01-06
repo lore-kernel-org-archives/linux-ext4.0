@@ -2,36 +2,36 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24023C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jan 2022 04:42:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 76ADDC433EF
+	for <linux-ext4@archiver.kernel.org>; Thu,  6 Jan 2022 04:42:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233688AbiAFEmA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 5 Jan 2022 23:42:00 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39509 "EHLO
+        id S233920AbiAFEmE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 5 Jan 2022 23:42:04 -0500
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39523 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S229729AbiAFEl7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jan 2022 23:41:59 -0500
+        with ESMTP id S233915AbiAFEmD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Jan 2022 23:42:03 -0500
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2064ftFE003548
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2064ftL7003554
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Wed, 5 Jan 2022 23:41:55 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 0A6A415C00E3; Wed,  5 Jan 2022 23:41:55 -0500 (EST)
+        id 18A1A15C33AF; Wed,  5 Jan 2022 23:41:55 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     cgel.zte@gmail.com
+To:     Jan Kara <jack@suse.cz>,
+        =?UTF-8?q?Lu=C3=ADs=20Henriques?= <lhenriques@suse.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
 Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        luo penghao <luo.penghao@zte.com.cn>,
-        Zeal Robot <zealci@zte.com.cn>
-Subject: Re: [PATCH linux-next] ext4: Remove redundant o_start statements
-Date:   Wed,  5 Jan 2022 23:41:50 -0500
-Message-Id: <164144408579.468293.9021095894366334797.b4-ty@mit.edu>
+        Jeroen van Wolffelaar <jeroen@wolffelaar.nl>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2] ext4: set csum seed in tmp inode while migrating to extents
+Date:   Wed,  5 Jan 2022 23:41:53 -0500
+Message-Id: <164144408579.468293.3012506216318605150.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20211208075157.404535-1-luo.penghao@zte.com.cn>
-References: <20211208075157.404535-1-luo.penghao@zte.com.cn>
+In-Reply-To: <20211214175058.19511-1-lhenriques@suse.de>
+References: <20211214175058.19511-1-lhenriques@suse.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -39,20 +39,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 8 Dec 2021 07:51:57 +0000, cgel.zte@gmail.com wrote:
-> From: luo penghao <luo.penghao@zte.com.cn>
+On Tue, 14 Dec 2021 17:50:58 +0000, Luís Henriques wrote:
+> When migrating to extents, the temporary inode will have it's own checksum
+> seed.  This means that, when swapping the inodes data, the inode checksums
+> will be incorrect.
 > 
-> The if will goto out of the loop, and until the end of the
-> function execution, o_start will not be used again.
-> 
-> The clang_analyzer complains as follows:
+> This can be fixed by recalculating the extents checksums again.  Or simply
+> by copying the seed into the temporary inode.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Remove redundant o_start statements
-      commit: b687e7ba0849122bf862639b98256a0b984a940a
+[1/1] ext4: set csum seed in tmp inode while migrating to extents
+      commit: 304f3f7a2817c03a05efabd6d4ae3f5e85b0da73
 
 Best regards,
 -- 
