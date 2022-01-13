@@ -2,58 +2,59 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 371F9C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jan 2022 03:26:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AEE61C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jan 2022 03:26:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232059AbiAMD0w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jan 2022 22:26:52 -0500
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:62706 "EHLO
+        id S232079AbiAMD0y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jan 2022 22:26:54 -0500
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:54806 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S231983AbiAMD0p (ORCPT
+        by vger.kernel.org with ESMTP id S232040AbiAMD0s (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Jan 2022 22:26:45 -0500
-Received: from pps.filterd (m0098420.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20D2PUeu008922;
-        Thu, 13 Jan 2022 03:26:38 GMT
+        Wed, 12 Jan 2022 22:26:48 -0500
+Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20D2qo3K026132;
+        Thu, 13 Jan 2022 03:26:44 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=v78yGgeDZFl5IT6BvF4m4QZiJgGeCfcZrZNKYT09JYc=;
- b=G2+SQEhSo7neb20hY6ee5JdRSrTVudmdPKk+FSM1H4LTPJHPURphE6rPQ06XVUxWOa2l
- cH+c8G5W7cC8MTV6rJtZmrMfxmckr+RO3OY59cFUd5nEeBGCMe8UvMm092kwmClDbYan
- m7WkXw/XRE2MhgkuhC/Otzy1mLyqzNp0H8BAh7EVWnHPDmlxTjItwOwxKt3tTKX+612z
- DXAqpKVp3p6iTS/ctCbJMnrR1iVsQEk4RdJHOgk+AijDW7oEv5LEJpX8On1GaCXS/x+6
- 6UP+L/o06VE88AyZVKdoH8oX06i9q5YBgCc46kLBkqJNRTDOSCPJrln1I4Wl4EHXRRNT UQ== 
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=DVMWYk/SJRApyN/h1TV5KER0hps4EgWw7ET13qCmni8=;
+ b=Kc2TN7/vXI3PM40dTrX6porHlQ9AVZQ+VOXZfl/md/B6v/wsZRjOtmrKZwx5SDfceJzG
+ XWxPBmk3q357iECLuBmLAfCJi5se5n/S4w3C+NzxhsVT7/0TumbK7i5Y6icL9Gxmt9Ag
+ AIrTSYoJpsh4OzsEA8Obgf0AhR0bvHQQOTO+3Ryy+J6mNWoVOYhHDJFWog8ijjhS3SuZ
+ TynR3qZwGnQDLHZqRmEMAbLCXPRMb9lHRxKrv+4iw/37lpW1Ux3zrLEO8fMlgtvbkmNW
+ hQUxetqOXVhH/UvZyuVPJ48sZKdWM0vKui0hgyp4MAx+LU1JcjYgTIeulHv7zTc0lsv6 MQ== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3dj79pvgff-1
+        by mx0b-001b2d01.pphosted.com with ESMTP id 3djbpg0eee-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:38 +0000
-Received: from m0098420.ppops.net (m0098420.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 20D3Fnxc025792;
-        Thu, 13 Jan 2022 03:26:38 GMT
-Received: from ppma03fra.de.ibm.com (6b.4a.5195.ip4.static.sl-reverse.com [149.81.74.107])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3dj79pvgf7-1
+        Thu, 13 Jan 2022 03:26:43 +0000
+Received: from m0098416.ppops.net (m0098416.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 20D3NcLV029307;
+        Thu, 13 Jan 2022 03:26:43 GMT
+Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 3djbpg0ee3-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:38 +0000
-Received: from pps.filterd (ppma03fra.de.ibm.com [127.0.0.1])
-        by ppma03fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 20D3D19h032232;
-        Thu, 13 Jan 2022 03:26:36 GMT
-Received: from b06cxnps3075.portsmouth.uk.ibm.com (d06relay10.portsmouth.uk.ibm.com [9.149.109.195])
-        by ppma03fra.de.ibm.com with ESMTP id 3df289prba-1
+        Thu, 13 Jan 2022 03:26:43 +0000
+Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
+        by ppma02fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 20D3C9Uc029236;
+        Thu, 13 Jan 2022 03:26:41 GMT
+Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
+        by ppma02fra.de.ibm.com with ESMTP id 3df28aerfk-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:36 +0000
-Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
-        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 20D3QXBv39321980
+        Thu, 13 Jan 2022 03:26:41 +0000
+Received: from d06av26.portsmouth.uk.ibm.com (d06av26.portsmouth.uk.ibm.com [9.149.105.62])
+        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 20D3QdoU47448434
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 13 Jan 2022 03:26:34 GMT
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id C8315A405E;
-        Thu, 13 Jan 2022 03:26:33 +0000 (GMT)
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 57E3EA4053;
-        Thu, 13 Jan 2022 03:26:33 +0000 (GMT)
+        Thu, 13 Jan 2022 03:26:39 GMT
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 1203CAE056;
+        Thu, 13 Jan 2022 03:26:39 +0000 (GMT)
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id C5092AE051;
+        Thu, 13 Jan 2022 03:26:37 +0000 (GMT)
 Received: from localhost (unknown [9.43.54.234])
-        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Thu, 13 Jan 2022 03:26:33 +0000 (GMT)
+        by d06av26.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Thu, 13 Jan 2022 03:26:37 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -61,60 +62,73 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>, tytso@mit.edu,
         Eric Whitney <enwlinux@gmail.com>,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCH 0/6] ext4/jbd2: inline_data fixes and some cleanups
-Date:   Thu, 13 Jan 2022 08:56:23 +0530
-Message-Id: <cover.1642044249.git.riteshh@linux.ibm.com>
+Subject: [PATCH 2/6] ext4: Remove redundant max inline_size check in ext4_da_write_inline_data_begin()
+Date:   Thu, 13 Jan 2022 08:56:25 +0530
+Message-Id: <fc7f7b3ad709da48c49ab14a2ce86e00a7defe0e.1642044249.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: OUiwFAEpHtx9vm1RPxXf2QLgpI1xRwT1
-X-Proofpoint-GUID: AS_53x8ubC0iSzGfxZtRZMv5-c1Pqgde
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+In-Reply-To: <cover.1642044249.git.riteshh@linux.ibm.com>
+References: <cover.1642044249.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: m0tQry8WTKc6XNQ2g6eBz5A72J_z3kJz
+X-Proofpoint-GUID: lOwRXwz2KvowKjW7BCbxJHvRoRp916oq
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.790,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2022-01-13_01,2022-01-11_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0
- lowpriorityscore=0 suspectscore=0 spamscore=0 clxscore=1011
- priorityscore=1501 malwarescore=0 phishscore=0 adultscore=0
- mlxlogscore=486 impostorscore=0 mlxscore=0 classifier=spam adjust=0
- reason=mlx scancount=1 engine=8.12.0-2110150000
- definitions=main-2201130013
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ lowpriorityscore=0 bulkscore=0 phishscore=0 spamscore=0 impostorscore=0
+ mlxscore=0 malwarescore=0 mlxlogscore=768 adultscore=0 suspectscore=0
+ clxscore=1015 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2110150000 definitions=main-2201130013
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hellos,
+ext4_prepare_inline_data() already checks for ext4_get_max_inline_size()
+and returns -ENOSPC. So there is no need to check it twice within
+ext4_da_write_inline_data_begin(). This patch removes the extra check.
 
-Patch[1]: fixes BUG_ON with inline_data which was reported [1] with generic/475.
+It also makes it more clean.
 
-Patch[2]: is mostly cleanup found during code review of inline_data code.
+No functionality change in this patch.
 
-Patch[3]: is a possible memory corruption fix in case of krealloc failure.
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ fs/ext4/inline.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
-Patch[4-5]: Cleanups.
-
-Patch[6]: Needs careful review. As it gets rid of t_handle_lock spinlock
-in jbd2_journal_wait_updates(). From the code review I found it to be not
-required. But let me know if I missed anything here.
-
-[1]: https://lore.kernel.org/linux-ext4/20210527192418.GA2633@localhost.localdomain/
-
-Ritesh Harjani (6):
-  ext4: Fix error handling in ext4_restore_inline_data()
-  ext4: Remove redundant max inline_size check in ext4_da_write_inline_data_begin()
-  ext4: Fix error handling in ext4_fc_record_modified_inode()
-  jbd2: Cleanup unused functions declarations from jbd2.h
-  jbd2: Refactor wait logic for transaction updates into a common function
-  jbd2: No need to use t_handle_lock in jbd2_journal_wait_updates
-
- fs/ext4/fast_commit.c | 64 ++++++++++++++++++++-----------------------
- fs/ext4/inline.c      | 23 +++++++++-------
- fs/jbd2/commit.c      | 19 ++-----------
- fs/jbd2/transaction.c | 24 ++--------------
- include/linux/jbd2.h  | 34 +++++++++++++++++------
- 5 files changed, 74 insertions(+), 90 deletions(-)
-
---
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 31741e8a462e..c52b0037983d 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -913,7 +913,7 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
+ 				    struct page **pagep,
+ 				    void **fsdata)
+ {
+-	int ret, inline_size;
++	int ret;
+ 	handle_t *handle;
+ 	struct page *page;
+ 	struct ext4_iloc iloc;
+@@ -930,14 +930,9 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
+ 		goto out;
+ 	}
+ 
+-	inline_size = ext4_get_max_inline_size(inode);
+-
+-	ret = -ENOSPC;
+-	if (inline_size >= pos + len) {
+-		ret = ext4_prepare_inline_data(handle, inode, pos + len);
+-		if (ret && ret != -ENOSPC)
+-			goto out_journal;
+-	}
++	ret = ext4_prepare_inline_data(handle, inode, pos + len);
++	if (ret && ret != -ENOSPC)
++		goto out_journal;
+ 
+ 	/*
+ 	 * We cannot recurse into the filesystem as the transaction
+-- 
 2.31.1
 
