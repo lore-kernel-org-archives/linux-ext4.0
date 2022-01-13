@@ -2,261 +2,230 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C457C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jan 2022 03:27:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 34992C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 13 Jan 2022 03:27:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232095AbiAMD1D (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 12 Jan 2022 22:27:03 -0500
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:8650 "EHLO
+        id S232112AbiAMD1J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 12 Jan 2022 22:27:09 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:48282 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S232064AbiAMD0y (ORCPT
+        by vger.kernel.org with ESMTP id S232099AbiAMD06 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Jan 2022 22:26:54 -0500
-Received: from pps.filterd (m0098404.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20D2rtKw031844;
-        Thu, 13 Jan 2022 03:26:46 GMT
+        Wed, 12 Jan 2022 22:26:58 -0500
+Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20D2wa9j017497;
+        Thu, 13 Jan 2022 03:26:51 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding; s=pp1;
- bh=So5zsErXFfIz2qcy42dL31E8n2hfsDHOp76u8qE6AnI=;
- b=g4+Rq5+5LZT5gC0T3DEmHgmuP5oP0lIzY9DPv2yYxnfeJbr0Cz7Z3UES+vNikNX4mqUk
- qDF2qvdj6e/GI+RGxEVnvEV55Ivh73mqqYYTYZeR3e3QdYo1yL8yPPq1ctUex0Xd3jNF
- HYNWLXiUTXy3zlzKCLSJagpT3isjrDpt6oLec5t+fuUYq6oonQgnptx20525PLQwuYQ9
- VcvwlhKnXVTG8fyrmR95/ED56tFQ39sqEKmlyCu2FB7GkZgIquLM/WmK2rZziuDveQ27
- ex0eM3cV7gj7mxOeDtyyrcmsB3uwTRmrb23X2M2jQKhLCzfwdOMcO9YBLRPxttd6FnWm Og== 
+ bh=ww2jh4d+fdt9LEZUsFmss7RosoPwGKnkRb9wtuX1Egg=;
+ b=ckSr75zOC++ttRQzRCuWfIHBXyw5kwjAcxqbjV2oUOjAjbmuLtv0qWxmoU6aDFgKO9XF
+ xn8Uqg0Yp9suTM23aMh/D6Q5B3d37jGjnhXrjoXbOdgy8BAbNXU3ewnn5dG4NvVX+DC0
+ Hq5095CcBpe8r3qeDkUO+e2OfaLUqUq5S40QE5BoYwNk5SwLoEvQlsfSH2o0hxntfYM2
+ hQ9M7oDc7xNU1dMRccIEJyJLAwKhJE8LD+FVQTQVKchkJZJACqfzsiZIIInnAgFHky9h
+ DjBGr3EUC9MTQTvk9ko93znMt13sFTVsDLaGWhm4y6I6tkJNrKfycTJUggePiDpt1rPn ng== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3djbprrd3k-1
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3djbs5rc62-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:46 +0000
-Received: from m0098404.ppops.net (m0098404.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 20D3QBEx015446;
-        Thu, 13 Jan 2022 03:26:46 GMT
-Received: from ppma05fra.de.ibm.com (6c.4a.5195.ip4.static.sl-reverse.com [149.81.74.108])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3djbprrd39-1
+        Thu, 13 Jan 2022 03:26:51 +0000
+Received: from m0098393.ppops.net (m0098393.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 20D3MOeo025411;
+        Thu, 13 Jan 2022 03:26:50 GMT
+Received: from ppma03fra.de.ibm.com (6b.4a.5195.ip4.static.sl-reverse.com [149.81.74.107])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3djbs5rc5n-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:45 +0000
-Received: from pps.filterd (ppma05fra.de.ibm.com [127.0.0.1])
-        by ppma05fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 20D3D6hY008473;
-        Thu, 13 Jan 2022 03:26:43 GMT
-Received: from b06cxnps3075.portsmouth.uk.ibm.com (d06relay10.portsmouth.uk.ibm.com [9.149.109.195])
-        by ppma05fra.de.ibm.com with ESMTP id 3df289pt07-1
+        Thu, 13 Jan 2022 03:26:50 +0000
+Received: from pps.filterd (ppma03fra.de.ibm.com [127.0.0.1])
+        by ppma03fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 20D3D19l032232;
+        Thu, 13 Jan 2022 03:26:48 GMT
+Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
+        by ppma03fra.de.ibm.com with ESMTP id 3df289prby-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 13 Jan 2022 03:26:43 +0000
-Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
-        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 20D3QenM37290242
+        Thu, 13 Jan 2022 03:26:48 +0000
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
+        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 20D3QkQL44106162
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 13 Jan 2022 03:26:40 GMT
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id BAB3AA4040;
-        Thu, 13 Jan 2022 03:26:40 +0000 (GMT)
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 4A561A4055;
-        Thu, 13 Jan 2022 03:26:40 +0000 (GMT)
+        Thu, 13 Jan 2022 03:26:46 GMT
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 163F4A405C;
+        Thu, 13 Jan 2022 03:26:46 +0000 (GMT)
+Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 9E3E2A4054;
+        Thu, 13 Jan 2022 03:26:45 +0000 (GMT)
 Received: from localhost (unknown [9.43.54.234])
-        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Thu, 13 Jan 2022 03:26:40 +0000 (GMT)
+        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Thu, 13 Jan 2022 03:26:45 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Jan Kara <jack@suse.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>, tytso@mit.edu,
         Eric Whitney <enwlinux@gmail.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>,
-        luo penghao <luo.penghao@zte.com.cn>,
-        Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 3/6] ext4: Fix error handling in ext4_fc_record_modified_inode()
-Date:   Thu, 13 Jan 2022 08:56:26 +0530
-Message-Id: <4b779e7ac657f94f8680a8944bff191f7474db5b.1642044249.git.riteshh@linux.ibm.com>
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [PATCH 5/6] jbd2: Refactor wait logic for transaction updates into a common function
+Date:   Thu, 13 Jan 2022 08:56:28 +0530
+Message-Id: <95fa94cbeb4bb0275430a6721a588bd738d5a9aa.1642044249.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <cover.1642044249.git.riteshh@linux.ibm.com>
 References: <cover.1642044249.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: l2QlaYEOTSmum5V1JbTsGMVSXdbkURye
-X-Proofpoint-GUID: vuBysyb28ePs_jjF8rpKe0pPNnpEseB_
+X-Proofpoint-ORIG-GUID: anh63y-uxqlYk8v1vubB4TnmAtu3xVm1
+X-Proofpoint-GUID: tE5esPJINrJ8pHeZRLi0WwBQAaVrpga0
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.790,Hydra:6.0.425,FMLib:17.11.62.513
- definitions=2022-01-12_08,2022-01-11_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 impostorscore=0
- malwarescore=0 mlxscore=0 clxscore=1015 adultscore=0 suspectscore=0
- phishscore=0 priorityscore=1501 lowpriorityscore=0 spamscore=0
- mlxlogscore=999 bulkscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2110150000 definitions=main-2201130013
+ definitions=2022-01-13_01,2022-01-11_01,2021-12-02_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 suspectscore=0 spamscore=0
+ mlxlogscore=814 priorityscore=1501 impostorscore=0 phishscore=0
+ lowpriorityscore=0 clxscore=1015 mlxscore=0 adultscore=0 malwarescore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2110150000 definitions=main-2201130013
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Current code does not fully takes care of krealloc() error case,
-which could lead to silent memory corruption or a kernel bug.
-This patch fixes that.
+No functionality change as such in this patch. This only refactors the
+common piece of code which waits for t_updates to finish into a common
+function named as jbd2_journal_wait_updates(journal_t *)
 
-Also it cleans up some duplicated error handling logic from various functions
-in fast_commit.c file.
-
-Reported-by: luo penghao <luo.penghao@zte.com.cn>
-Suggested-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 ---
- fs/ext4/fast_commit.c | 64 ++++++++++++++++++++-----------------------
- 1 file changed, 29 insertions(+), 35 deletions(-)
+ fs/jbd2/commit.c      | 19 +++----------------
+ fs/jbd2/transaction.c | 24 +++---------------------
+ include/linux/jbd2.h  | 31 ++++++++++++++++++++++++++++++-
+ 3 files changed, 36 insertions(+), 38 deletions(-)
 
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index 5ae8026a0c56..4541c8468c01 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -1392,14 +1392,15 @@ static int ext4_fc_record_modified_inode(struct super_block *sb, int ino)
- 		if (state->fc_modified_inodes[i] == ino)
- 			return 0;
- 	if (state->fc_modified_inodes_used == state->fc_modified_inodes_size) {
--		state->fc_modified_inodes_size +=
--			EXT4_FC_REPLAY_REALLOC_INCREMENT;
- 		state->fc_modified_inodes = krealloc(
--					state->fc_modified_inodes, sizeof(int) *
--					state->fc_modified_inodes_size,
--					GFP_KERNEL);
-+				state->fc_modified_inodes,
-+				sizeof(int) * (state->fc_modified_inodes_size +
-+				EXT4_FC_REPLAY_REALLOC_INCREMENT),
-+				GFP_KERNEL);
- 		if (!state->fc_modified_inodes)
- 			return -ENOMEM;
-+		state->fc_modified_inodes_size +=
-+			EXT4_FC_REPLAY_REALLOC_INCREMENT;
- 	}
- 	state->fc_modified_inodes[state->fc_modified_inodes_used++] = ino;
- 	return 0;
-@@ -1431,7 +1432,9 @@ static int ext4_fc_replay_inode(struct super_block *sb, struct ext4_fc_tl *tl,
- 	}
- 	inode = NULL;
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3cc4ab2ba7f4..428364f107be 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -484,22 +484,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
+ 					      stats.run.rs_locked);
  
--	ext4_fc_record_modified_inode(sb, ino);
-+	ret = ext4_fc_record_modified_inode(sb, ino);
-+	if (ret)
-+		goto out;
+-	spin_lock(&commit_transaction->t_handle_lock);
+-	while (atomic_read(&commit_transaction->t_updates)) {
+-		DEFINE_WAIT(wait);
++	// waits for any t_updates to finish
++	jbd2_journal_wait_updates(journal);
  
- 	raw_fc_inode = (struct ext4_inode *)
- 		(val + offsetof(struct ext4_fc_inode, fc_raw_inode));
-@@ -1621,6 +1624,8 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 	}
- 
- 	ret = ext4_fc_record_modified_inode(sb, inode->i_ino);
-+	if (ret)
-+		goto out;
- 
- 	start = le32_to_cpu(ex->ee_block);
- 	start_pblk = ext4_ext_pblock(ex);
-@@ -1638,18 +1643,14 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 		map.m_pblk = 0;
- 		ret = ext4_map_blocks(NULL, inode, &map, 0);
- 
--		if (ret < 0) {
--			iput(inode);
--			return 0;
+-		prepare_to_wait(&journal->j_wait_updates, &wait,
+-					TASK_UNINTERRUPTIBLE);
+-		if (atomic_read(&commit_transaction->t_updates)) {
+-			spin_unlock(&commit_transaction->t_handle_lock);
+-			write_unlock(&journal->j_state_lock);
+-			schedule();
+-			write_lock(&journal->j_state_lock);
+-			spin_lock(&commit_transaction->t_handle_lock);
 -		}
-+		if (ret < 0)
-+			goto out;
- 
- 		if (ret == 0) {
- 			/* Range is not mapped */
- 			path = ext4_find_extent(inode, cur, NULL, 0);
--			if (IS_ERR(path)) {
--				iput(inode);
--				return 0;
--			}
-+			if (IS_ERR(path))
-+				goto out;
- 			memset(&newex, 0, sizeof(newex));
- 			newex.ee_block = cpu_to_le32(cur);
- 			ext4_ext_store_pblock(
-@@ -1663,10 +1664,8 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 			up_write((&EXT4_I(inode)->i_data_sem));
- 			ext4_ext_drop_refs(path);
- 			kfree(path);
--			if (ret) {
--				iput(inode);
--				return 0;
--			}
-+			if (ret)
-+				goto out;
- 			goto next;
- 		}
- 
-@@ -1679,10 +1678,8 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 			ret = ext4_ext_replay_update_ex(inode, cur, map.m_len,
- 					ext4_ext_is_unwritten(ex),
- 					start_pblk + cur - start);
--			if (ret) {
--				iput(inode);
--				return 0;
--			}
-+			if (ret)
-+				goto out;
- 			/*
- 			 * Mark the old blocks as free since they aren't used
- 			 * anymore. We maintain an array of all the modified
-@@ -1702,10 +1699,8 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 			ext4_ext_is_unwritten(ex), map.m_pblk);
- 		ret = ext4_ext_replay_update_ex(inode, cur, map.m_len,
- 					ext4_ext_is_unwritten(ex), map.m_pblk);
--		if (ret) {
--			iput(inode);
--			return 0;
--		}
-+		if (ret)
-+			goto out;
- 		/*
- 		 * We may have split the extent tree while toggling the state.
- 		 * Try to shrink the extent tree now.
-@@ -1717,6 +1712,7 @@ static int ext4_fc_replay_add_range(struct super_block *sb,
- 	}
- 	ext4_ext_replay_shrink_inode(inode, i_size_read(inode) >>
- 					sb->s_blocksize_bits);
-+out:
- 	iput(inode);
- 	return 0;
- }
-@@ -1746,6 +1742,8 @@ ext4_fc_replay_del_range(struct super_block *sb, struct ext4_fc_tl *tl,
- 	}
- 
- 	ret = ext4_fc_record_modified_inode(sb, inode->i_ino);
-+	if (ret)
-+		goto out;
- 
- 	jbd_debug(1, "DEL_RANGE, inode %ld, lblk %d, len %d\n",
- 			inode->i_ino, le32_to_cpu(lrange.fc_lblk),
-@@ -1755,10 +1753,8 @@ ext4_fc_replay_del_range(struct super_block *sb, struct ext4_fc_tl *tl,
- 		map.m_len = remaining;
- 
- 		ret = ext4_map_blocks(NULL, inode, &map, 0);
--		if (ret < 0) {
--			iput(inode);
--			return 0;
--		}
-+		if (ret < 0)
-+			goto out;
- 		if (ret > 0) {
- 			remaining -= ret;
- 			cur += ret;
-@@ -1773,15 +1769,13 @@ ext4_fc_replay_del_range(struct super_block *sb, struct ext4_fc_tl *tl,
- 	ret = ext4_ext_remove_space(inode, lrange.fc_lblk,
- 				lrange.fc_lblk + lrange.fc_len - 1);
- 	up_write(&EXT4_I(inode)->i_data_sem);
--	if (ret) {
--		iput(inode);
--		return 0;
+-		finish_wait(&journal->j_wait_updates, &wait);
 -	}
-+	if (ret)
-+		goto out;
- 	ext4_ext_replay_shrink_inode(inode,
- 		i_size_read(inode) >> sb->s_blocksize_bits);
- 	ext4_mark_inode_dirty(NULL, inode);
-+out:
- 	iput(inode);
+-	spin_unlock(&commit_transaction->t_handle_lock);
+ 	commit_transaction->t_state = T_SWITCH;
+ 	write_unlock(&journal->j_state_lock);
+ 
+@@ -817,7 +804,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	commit_transaction->t_state = T_COMMIT_DFLUSH;
+ 	write_unlock(&journal->j_state_lock);
+ 
+-	/* 
++	/*
+ 	 * If the journal is not located on the file system device,
+ 	 * then we must flush the file system device before we issue
+ 	 * the commit record
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 6a3caedd2285..89a955ab1557 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -449,7 +449,7 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 	}
+ 
+ 	/* OK, account for the buffers that this operation expects to
+-	 * use and add the handle to the running transaction. 
++	 * use and add the handle to the running transaction.
+ 	 */
+ 	update_t_max_wait(transaction, ts);
+ 	handle->h_transaction = transaction;
+@@ -863,27 +863,9 @@ void jbd2_journal_lock_updates(journal_t *journal)
+ 		write_lock(&journal->j_state_lock);
+ 	}
+ 
+-	/* Wait until there are no running updates */
+-	while (1) {
+-		transaction_t *transaction = journal->j_running_transaction;
++	/* Wait until there are no running t_updates */
++	jbd2_journal_wait_updates(journal);
+ 
+-		if (!transaction)
+-			break;
 -
- 	return 0;
+-		spin_lock(&transaction->t_handle_lock);
+-		prepare_to_wait(&journal->j_wait_updates, &wait,
+-				TASK_UNINTERRUPTIBLE);
+-		if (!atomic_read(&transaction->t_updates)) {
+-			spin_unlock(&transaction->t_handle_lock);
+-			finish_wait(&journal->j_wait_updates, &wait);
+-			break;
+-		}
+-		spin_unlock(&transaction->t_handle_lock);
+-		write_unlock(&journal->j_state_lock);
+-		schedule();
+-		finish_wait(&journal->j_wait_updates, &wait);
+-		write_lock(&journal->j_state_lock);
+-	}
+ 	write_unlock(&journal->j_state_lock);
+ 
+ 	/*
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f76598265896..34b051aa9009 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -594,7 +594,7 @@ struct transaction_s
+ 	 */
+ 	unsigned long		t_log_start;
+ 
+-	/* 
++	/*
+ 	 * Number of buffers on the t_buffers list [j_list_lock, no locks
+ 	 * needed for jbd2 thread]
+ 	 */
+@@ -1757,6 +1757,35 @@ static inline unsigned long jbd2_log_space_left(journal_t *journal)
+ 	return max_t(long, free, 0);
  }
  
++/*
++ * Waits for any outstanding t_updates to finish.
++ * This is called with write j_state_lock held.
++ */
++static inline void jbd2_journal_wait_updates(journal_t *journal)
++{
++	transaction_t *commit_transaction = journal->j_running_transaction;
++
++	if (!commit_transaction)
++		return;
++
++	spin_lock(&commit_transaction->t_handle_lock);
++	while (atomic_read(&commit_transaction->t_updates)) {
++		DEFINE_WAIT(wait);
++
++		prepare_to_wait(&journal->j_wait_updates, &wait,
++					TASK_UNINTERRUPTIBLE);
++		if (atomic_read(&commit_transaction->t_updates)) {
++			spin_unlock(&commit_transaction->t_handle_lock);
++			write_unlock(&journal->j_state_lock);
++			schedule();
++			write_lock(&journal->j_state_lock);
++			spin_lock(&commit_transaction->t_handle_lock);
++		}
++		finish_wait(&journal->j_wait_updates, &wait);
++	}
++	spin_unlock(&commit_transaction->t_handle_lock);
++}
++
+ /*
+  * Definitions which augment the buffer_head layer
+  */
 -- 
 2.31.1
 
