@@ -2,166 +2,145 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 929D4C433F5
-	for <linux-ext4@archiver.kernel.org>; Fri, 14 Jan 2022 09:40:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47E02C433F5
+	for <linux-ext4@archiver.kernel.org>; Mon, 17 Jan 2022 08:23:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237969AbiANJk3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 14 Jan 2022 04:40:29 -0500
-Received: from mail-mw2nam10on2052.outbound.protection.outlook.com ([40.107.94.52]:17985
-        "EHLO NAM10-MW2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S229785AbiANJk2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Jan 2022 04:40:28 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=Z5DFEDsSswtNRslgi+Nt7RbAdf2wAQJw5pLBFAzAxDwjp59cd1x0RGXYB8i3wKvUHaI23WeIYQV+nuOx9VAwyjNoAwZ64TZFqNrMyTwFjSPtkLgrIc/rLSoOixddy5hGtSiRdDwq93IT6a0uHQAkecqaNLUIlyepgYr94r5GYIBPD1QMnQjC4PNmCYR18H5FXKc+gpCfNR1IwmarOdRvs91tMocKoJtqVjhIRDQY94umNoGBDWmOzpzYdObWywsEjyPrDW0HUjkT/Z7ZUXEuieCyHHN9LUAERA1wITX4/ZObapctH4hHnVxf702m1ni4tUIpkyThY5ZNfqc1oGIwTw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=CJsh1GHG8Y0rSzleOsDiY978kXJGT7wzcc2NDiow/os=;
- b=T4WZAIAMKtnyERk7rKezE2rcENCi1aNRGIJKZ4BeOkjKdp6qNmZVSaeoKc8LL/rFkTehst2y5/z8U9ExtA1+6RsWkdi31HXMTGA8gSi3I5jygqrXXMrPJcBssdvl+PtL7jX74DNDcR2gl1ARdrVQZ0Pcj4LUnGwOo/Ftq7G5idwF7S3gEtSZhRoWncFs4IbJzYKWo2CqENeNer941TD4OQiQSSUKJv7RXKCoAKoYLk3A2xEWoe7x0U+Occ7Kf+wnpwbItW+gdrDG/1vVQnVFi2rVHgM8UWkl0GoYBMh0AKw1Fja/OXOOPp3LENapee8pQKyPGM/opLWQXtgdnM+UeQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=CJsh1GHG8Y0rSzleOsDiY978kXJGT7wzcc2NDiow/os=;
- b=R/MQNFYiBoNYoGdlZs3Uoxo43q96MWtksq+6Q+Z20amduFX3es1zhZXLvj7+b2DmlPvsSHki/hfA35dV4DIzNuAPeZ28OETy8j6iGLKLfbXsVZ2UPl35rsvd99n7Y+nYkiVlqj4SmQied1e7RyKiXrJN5pGuYnJd/Bq66YBPb03BRbs0ltqs4Ai0e2vqLV7V3bcF3fPBWyfFP3vK+AujKlZAnOXIFdpZm5u4ZG13fBnI7KjyoWDN0dcCyBjgTCYs4qLQo7XEOgfbjeyTuxYXGmaOXmlanD4DRjxwo4ylj/zpV8OwFKdbHW0wiiy5EorOvfHq/175pUSCyLsX/6Vi9Q==
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=nvidia.com;
-Received: from CO6PR12MB5444.namprd12.prod.outlook.com (2603:10b6:5:35e::8) by
- DM5PR1201MB0203.namprd12.prod.outlook.com (2603:10b6:4:56::15) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.4888.11; Fri, 14 Jan 2022 09:40:26 +0000
-Received: from CO6PR12MB5444.namprd12.prod.outlook.com
- ([fe80::b120:5877:dc4b:1a7e]) by CO6PR12MB5444.namprd12.prod.outlook.com
- ([fe80::b120:5877:dc4b:1a7e%7]) with mapi id 15.20.4888.012; Fri, 14 Jan 2022
- 09:40:26 +0000
-Subject: Re: [PATCH v3 12/13] ext4: switch to the new mount api
-From:   Jon Hunter <jonathanh@nvidia.com>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
-        linux-fsdevel@vger.kernel.org,
-        "linux-tegra@vger.kernel.org" <linux-tegra@vger.kernel.org>
-References: <20211021114508.21407-1-lczerner@redhat.com>
- <20211021114508.21407-13-lczerner@redhat.com>
- <286d36c9-e9ab-b896-e23c-2a95c6385817@nvidia.com>
- <20220113120807.xlyg4wmbbhajuftu@work>
- <0535c04a-db7c-fa10-149e-91110eb18804@nvidia.com>
- <afa501e4-802d-e8a2-4272-4b67572c6d14@nvidia.com>
-Message-ID: <2d22b1b7-0091-260a-b86e-ad55a26e320e@nvidia.com>
-Date:   Fri, 14 Jan 2022 09:40:19 +0000
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.14.0
-In-Reply-To: <afa501e4-802d-e8a2-4272-4b67572c6d14@nvidia.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: AM4PR0202CA0002.eurprd02.prod.outlook.com
- (2603:10a6:200:89::12) To CO6PR12MB5444.namprd12.prod.outlook.com
- (2603:10b6:5:35e::8)
+        id S238046AbiAQIXb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 17 Jan 2022 03:23:31 -0500
+Received: from mail-io1-f71.google.com ([209.85.166.71]:49901 "EHLO
+        mail-io1-f71.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235407AbiAQIXa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jan 2022 03:23:30 -0500
+Received: by mail-io1-f71.google.com with SMTP id g16-20020a05660203d000b005f7b3b0642eso9158617iov.16
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Jan 2022 00:23:30 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
+        bh=QxKMT5LAEmZnn1r9W6tJTXOl8V4rMwLHQiGSEFo1LBI=;
+        b=aqijjs3iJh2SR4a3hFJefwslzVMRMRnCRVvpoX9ilvAEw2ZHqkzNSZqaeAOL/WKoSO
+         xYpOwrXIrCldaCg/Af41AkCuwiJ9jz7kBUKT8m4nSWX0ndgosKdL00kf9FODHfwKBFTL
+         tIgnQ6RIKaouU8KgzwRDLqCXiCGyMW78KPCuFaG46vge+YKxLLMYIvzOv0tuByOq+tSK
+         7c0udIrVf1p3ealdp2Y2wRVxGIR+/7xL9u4HZLXyKQy7VtNtMd3AtGDb3GlV+lRQmt73
+         AzSfBhkIv+8g86tCrMt9lG36G3ua8Gs0Es07JozhnYKcF50sI9/fmAo9PQNcpg5hS/KJ
+         35LQ==
+X-Gm-Message-State: AOAM531NCNPuirto2QQVjvTiR0fDKbz9vt2BOCTj+9LPRxYBToGDnEcv
+        5xmxuVOu51QtElo0Pk4UE8U7Msr5/b2kWpN6KfGF0SI/HMSI
+X-Google-Smtp-Source: ABdhPJymNz+PB5dyl0t/6clsWCsNl1aXfQ2IWqsnKuGaxrLcEhBn6C53z43D7zU3uErX+5g6St0xkeMCJeyiUxJ792SY7E922wiP
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: f260c436-bd03-4a61-3c6f-08d9d741e501
-X-MS-TrafficTypeDiagnostic: DM5PR1201MB0203:EE_
-X-Microsoft-Antispam-PRVS: <DM5PR1201MB0203EF5E9BF4B1A35C7D2266D9549@DM5PR1201MB0203.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:8882;
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: U/dQPik6Bvwe0MScDoLlJ6AHfaLDL/FahhaSg1xQcaKgeK3YT3SfSxLdVmryNeCdXzjQV4cJYZHY54O9xrgbGUzn/rWfsiVFTGVAvwHXrLTrukdiuZ4++TKGkSyQD8fLS56gItkuBW2CF7t+CSJl4TC1iIbKc2qXmrRadbJ9ZyR3iyQoF9pTXkEmQwAnQmGtjph9V8tmt69Fxz1jE/t1+gt8EkP9GwJG4dJd6hYA+IXz0lsw5Tm74TUSOo0mHxHSu299nbrlvybMTKd1gYPpEcABJNDe/iXxXAm5H+867BHVE8rnkW7dZ7PaYUmjWYB3vM0dEWiT0TFbvE5StXObaSKoeW4a1CMaIfE4TefCDcO3MIcu+rpjZn4/Jmk/u78biOntoB1xjclwE+EKmzZLuSNmBj9LR/1f3mvN5yE2ccKPgVfR/O64Q5GvCvfCM8O51h7AuNh3z2tkXoE36t6mm8072uwi9Vu51smuXn/OxxYxdqa73VUUI5LD4C8QPwn2x+xjMwg4qPO381pVCpq5vR5leYb+qR6kaprVNbAzrC/4yLcylly8lscPUP5tighHxvvPIH9jYL6s8CQbIsCz2PkDm2fzMQBHlCrwe9K88ptThH68fUEEtE1S1YPdBeSS/trnIDQL0F2rUNu8odgT3KyrktuGiBH+zSg81BHu+3GQtiIpeMrRmFL2n9dSwkLfRCNKqjGhBOpQ355n70biUf0vIPu38Ig90JdRa8ZzaQSffbj+9wpVZvmuEnxxoFba
-X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CO6PR12MB5444.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(4636009)(366004)(66476007)(8676002)(53546011)(38100700002)(36756003)(66946007)(55236004)(2616005)(83380400001)(8936002)(26005)(6666004)(4326008)(6512007)(5660300002)(6486002)(186003)(316002)(66556008)(6916009)(6506007)(31686004)(508600001)(2906002)(86362001)(31696002)(45980500001)(43740500002);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?Y1dJZnQvS0VMdUh2K2w3UHVuWUJ4dWVLOExraHVkOHQzbXpkaGtaUHVtUW5t?=
- =?utf-8?B?dmdZb1NvQzBTaVNxczJDMlhWNmR2cEljUDlZYTFDL2VPcUk0d1BsZGpkQi9s?=
- =?utf-8?B?VVlMOVJweDU2c2YxYU1WTXlXdlYzckM1Q3pDS1ZxSWRQVkY4d3Qyclc0UENv?=
- =?utf-8?B?cGFqYm1ZTVpVRWhTb1hTVUZSVUpESW9sOTVFcUxuY1FwQlllR3grNjF0eUx2?=
- =?utf-8?B?L3R3WVlHWEZvRjlFbHFZN0pnQ0VtWWhUMTZweTJ6UWtiaEExZ00xbFgraEFF?=
- =?utf-8?B?L0lCSXE5NFNlU1I5SzFSTkgrZ0JCM1l3RmFLQi81Z0h3ZittUHhySUZRZjkv?=
- =?utf-8?B?d2FnZCtzWGNSditFbWlOK2ErOUZ2MmRsSmNLRHRJMWRSOWtFTkNwRk1oNFVv?=
- =?utf-8?B?ZUFhSyswOVRaeHkrNzQrSldlQ1RoNjVIdG9LK29KWE10eUxOdmlXU3BoS2tk?=
- =?utf-8?B?UFduWnNra2hqK1dNemxjVjJTcTJWeUlRZjNWVGRDQnlXYjRNNkpKeEYyaTVi?=
- =?utf-8?B?c3lVcXNlSzR3bHdjUUs3RndpOTVoNndzemhCMnJwd3dyQloyekd4bXRxSkFq?=
- =?utf-8?B?MkQ1ekJveTNCZjdSdXdIaTNERHhjVXRabEQwUVhRbHlvWFVVcmVGYXlDUEN1?=
- =?utf-8?B?YVpxazZXT1g5VHliVHlSVTFPaUx2NVJmcmthQ1NDbWhaZ1l2QVIvTzdhbzI5?=
- =?utf-8?B?TFVnbDRsdzRpSUYzOUU2V2tnZ2pTT1JBNDIrUG9VNVQvMXZsbXZoZDNVWU9m?=
- =?utf-8?B?T1ZOeGh5OHp6ZFd4STAvSWJoWVRKREx3MkEwQjM0a0RFdzJjZEVmcFQ3NGY1?=
- =?utf-8?B?SXN4QnhKQ3NYV0xMRFlCVTNqYnA1dGk3N1p2V1BSNCtOSjAraFE4QjFqbVJv?=
- =?utf-8?B?YUFyV0pTTlBTaSt4TUVZSEpOcis1aXc5aFpwMlJQblhLY3FQUnNhdFErR3lK?=
- =?utf-8?B?RHFjWXdZYlp1N053L3g5MXBsaDdtZ0paSUU2RzlPNk1BOFBmQ1ZWa3o0b2o4?=
- =?utf-8?B?N1R2cEJzVlIvRHZxa2lmc3BXVVlkZU5zQTNsWlBoeDlFM21OUmNFWU91SHlu?=
- =?utf-8?B?SDdqcVFjaVVFUkkxOUZHdldVTkxLVWxGNWx1SmM1RG5VOE55d0RNdFliNWpr?=
- =?utf-8?B?TmUramdqNzZ5Q0YxSktQdU9GMUQ5QlU5SnRSdXpIQ2JQdXRaSVdVamNUUlY3?=
- =?utf-8?B?THlXN1VQSmw4endOUnFudTg0MkFpTWtKZE9kT0tKWVF3SVpNR0JVNGpaeGZ2?=
- =?utf-8?B?MTBhYWhDQnc3d2JkZElTOHlIbm1sZXBFWGR3SkJaOHp0eklySVptRVR1Mlkz?=
- =?utf-8?B?RUJSRDJhUU5XaG4rTWErSkJXalYrZ2JnVStnZytCRksxckR4cFZVQ0RjSnI2?=
- =?utf-8?B?RXFRN0lwcnJQSFE4Q3dxdTYrSHFUQUxWU05GVFVud0lhWGxkaExoSERzUUcy?=
- =?utf-8?B?WGRXNE1pbEhUbUFYZ2xrOW5zSkp0MWNzRmpmc0Y1TWFoeTBFN1A5Wm4xT3FM?=
- =?utf-8?B?MnpkRllqd2F0c2lEV2VzZ2RCRnBpTUdWb0lhcTNWYzVydXFyVlhZQlBRYmdz?=
- =?utf-8?B?QXFKT29xOW42VDZGbEhoRnZtMXBTaUFFY0VnZ2l6WVpNbnozNzdFcXU3M0hO?=
- =?utf-8?B?RGFMMmtBMmVVcEhueFdTRm9OK201T1AxTnE1NTgyT1lTdnQwM2N1b1BoSlZk?=
- =?utf-8?B?YWpNQmhQK1BTQ29YQzVDOGRiZkQ3c1k1a24vVG5wdHVhZUdKakNsd3ZoaE8w?=
- =?utf-8?B?VW9uSzFkZjBCS2p3ZjM0RHBGQ1haSGN0ZUlpcERwR2R0K085OUllOGIzV2p2?=
- =?utf-8?B?R2EyNWdLRjZPTzdESXB4dU9nalRVSFprK0h5STg2WFpVbXBjbzhuTTI5cXRQ?=
- =?utf-8?B?cTBISGpWYURpSGFzajBFWVZ5MHo1NHQwL3liTmlicE1UZGR4R0pIWHhKalJ1?=
- =?utf-8?B?NjVVbzJiazlKU1BoWkZCRC9UNUxwK0ZDYU9PdXNKbjQyN1NyMlRNR2hHUm96?=
- =?utf-8?B?NmhOT0NPK0hLUDFYSzc4VmxLN2ZmeUlHTFRBWWJNV3lFRk54akpTVUFZcFND?=
- =?utf-8?B?UU9TRzdOdy9WTzB2WFpaallWaG5NY1pDVkFQWXkyMU5RaWxLZUQ3bTdoWDlh?=
- =?utf-8?B?a1p1aDFSODY4aUprbjR6eUYvTlZYNW9lRmwwS2NGNHR0Y3VQK0NlSnd3M081?=
- =?utf-8?Q?u4OAC9pK8DC2fojaGjyeSbk=3D?=
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: f260c436-bd03-4a61-3c6f-08d9d741e501
-X-MS-Exchange-CrossTenant-AuthSource: CO6PR12MB5444.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Jan 2022 09:40:26.5638
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: ELy8PmWR7Uc5vQ7OOoVX+oiVTPPvUch59J32H0EU5G5+/R9p6B0aS2oMbrxIJJnNv5w1+T0VHO7JYPrLGuNCXg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR1201MB0203
+X-Received: by 2002:a05:6638:22bb:: with SMTP id z27mr454733jas.199.1642407810434;
+ Mon, 17 Jan 2022 00:23:30 -0800 (PST)
+Date:   Mon, 17 Jan 2022 00:23:30 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <0000000000001e0ba105d5c2dede@google.com>
+Subject: [syzbot] general protection fault in ext4_fill_super
+From:   syzbot <syzbot+138c9e58e3cb22eae3b4@syzkaller.appspotmail.com>
+To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, llvm@lists.linux.dev,
+        nathan@kernel.org, ndesaulniers@google.com,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Hello,
 
-On 13/01/2022 16:10, Jon Hunter wrote:
+syzbot found the following issue on:
 
-...
+HEAD commit:    daadb3bd0e8d Merge tag 'locking_core_for_v5.17_rc1' of git..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=122fc6f7b00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=ec2807b2e9360dbb
+dashboard link: https://syzkaller.appspot.com/bug?extid=138c9e58e3cb22eae3b4
+compiler:       Debian clang version 11.0.1-2, GNU ld (GNU Binutils for Debian) 2.35.2
 
-> OK, I see what is happening. It appears that our test harness always 
-> tries to mount a device called /dev/mmcblk1. Prior to this change there 
-> was not kernel error generated and looking at the logs I would see ...
-> 
-> mount: /mnt: special device /dev/mmcblk1 does not exist.
-> 
-> Following this change, now a kernel warning is generated and I see ...
-> 
-> [  137.078994] /dev/mmcblk1: Can't open blockdev
-> mount: /mnt: special device /dev/mmcblk1 does not exist.
-> 
-> So there is a change in behaviour but at the same time the error looks 
-> correct. So sorry for the false-positive.
+Unfortunately, I don't have any reproducer for this issue yet.
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+138c9e58e3cb22eae3b4@syzkaller.appspotmail.com
+
+RBP: 00007f283db0b1d0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000002
+R13: 00007fffb1b01d5f R14: 00007f283db0b300 R15: 0000000000022000
+ </TASK>
+general protection fault, probably for non-canonical address 0xdffffc0000000012: 0000 [#1] PREEMPT SMP KASAN
+KASAN: null-ptr-deref in range [0x0000000000000090-0x0000000000000097]
+CPU: 0 PID: 32175 Comm: syz-executor.3 Not tainted 5.16.0-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+RIP: 0010:ext4_fill_super+0x240/0x770 fs/ext4/super.c:5551
+Code: 3b 4c 89 6c 24 20 49 8d bd a8 06 00 00 be 2f 00 00 00 ba 21 00 00 00 e8 5e 6d d8 01 4d 8d af 90 00 00 00 4d 89 ec 49 c1 ec 03 <41> 80 3c 2c 00 74 08 4c 89 ef e8 11 4e 97 ff 49 c7 45 00 01 00 00
+RSP: 0018:ffffc9000b5cfbe8 EFLAGS: 00010206
+RAX: ffff8880234c46ac RBX: ffff888090bc7cf0 RCX: 0000000000040000
+RDX: ffffc9000abd9000 RSI: 000000000003ffff RDI: 0000000000040000
+RBP: dffffc0000000000 R08: ffffffff8411122e R09: fffffbfff197f727
+R10: fffffbfff197f727 R11: 0000000000000000 R12: 0000000000000012
+R13: 0000000000000090 R14: ffff888071347b00 R15: 0000000000000000
+FS:  00007f283db0b700(0000) GS:ffff8880b9a00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f6db90cb558 CR3: 000000008fafc000 CR4: 00000000003506f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ get_tree_bdev+0x406/0x630 fs/super.c:1295
+ vfs_get_tree+0x86/0x270 fs/super.c:1500
+ do_new_mount fs/namespace.c:2994 [inline]
+ path_mount+0x1986/0x2c30 fs/namespace.c:3324
+ do_mount fs/namespace.c:3337 [inline]
+ __do_sys_mount fs/namespace.c:3545 [inline]
+ __se_sys_mount+0x308/0x3c0 fs/namespace.c:3522
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x44/0xd0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x44/0xae
+RIP: 0033:0x7f283f195eb9
+Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 bc ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f283db0b168 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffda RBX: 00007f283f2a8f60 RCX: 00007f283f195eb9
+RDX: 0000000020000240 RSI: 0000000020000000 RDI: 0000000020000100
+RBP: 00007f283db0b1d0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000002
+R13: 00007fffb1b01d5f R14: 00007f283db0b300 R15: 0000000000022000
+ </TASK>
+Modules linked in:
+---[ end trace 2017ba6e0452af99 ]---
+RIP: 0010:ext4_fill_super+0x240/0x770 fs/ext4/super.c:5551
+Code: 3b 4c 89 6c 24 20 49 8d bd a8 06 00 00 be 2f 00 00 00 ba 21 00 00 00 e8 5e 6d d8 01 4d 8d af 90 00 00 00 4d 89 ec 49 c1 ec 03 <41> 80 3c 2c 00 74 08 4c 89 ef e8 11 4e 97 ff 49 c7 45 00 01 00 00
+RSP: 0018:ffffc9000b5cfbe8 EFLAGS: 00010206
+RAX: ffff8880234c46ac RBX: ffff888090bc7cf0 RCX: 0000000000040000
+RDX: ffffc9000abd9000 RSI: 000000000003ffff RDI: 0000000000040000
+RBP: dffffc0000000000 R08: ffffffff8411122e R09: fffffbfff197f727
+R10: fffffbfff197f727 R11: 0000000000000000 R12: 0000000000000012
+R13: 0000000000000090 R14: ffff888071347b00 R15: 0000000000000000
+FS:  00007f283db0b700(0000) GS:ffff8880b9a00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f8eb615a718 CR3: 000000008fafc000 CR4: 00000000003506f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+----------------
+Code disassembly (best guess):
+   0:	3b 4c 89 6c          	cmp    0x6c(%rcx,%rcx,4),%ecx
+   4:	24 20                	and    $0x20,%al
+   6:	49 8d bd a8 06 00 00 	lea    0x6a8(%r13),%rdi
+   d:	be 2f 00 00 00       	mov    $0x2f,%esi
+  12:	ba 21 00 00 00       	mov    $0x21,%edx
+  17:	e8 5e 6d d8 01       	callq  0x1d86d7a
+  1c:	4d 8d af 90 00 00 00 	lea    0x90(%r15),%r13
+  23:	4d 89 ec             	mov    %r13,%r12
+  26:	49 c1 ec 03          	shr    $0x3,%r12
+* 2a:	41 80 3c 2c 00       	cmpb   $0x0,(%r12,%rbp,1) <-- trapping instruction
+  2f:	74 08                	je     0x39
+  31:	4c 89 ef             	mov    %r13,%rdi
+  34:	e8 11 4e 97 ff       	callq  0xff974e4a
+  39:	49                   	rex.WB
+  3a:	c7                   	.byte 0xc7
+  3b:	45 00 01             	add    %r8b,(%r9)
 
 
-Looking some more, previously, mount_bdev was being called and this has ...
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-         bdev = blkdev_get_by_path(dev_name, mode, fs_type);
-         if (IS_ERR(bdev))
-                 return ERR_CAST(bdev);
-
-And now we are calling get_tree_bdev() and this has ...
-
-         bdev = blkdev_get_by_path(fc->source, mode, fc->fs_type);
-         if (IS_ERR(bdev)) {
-                 errorf(fc, "%s: Can't open blockdev", fc->source);
-                 return PTR_ERR(bdev);
-         }
-
-Hence, the difference. I was interested to know what had changed.
-
-Cheers
-Jon
-
--- 
-nvpublic
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
