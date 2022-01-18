@@ -2,166 +2,111 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A719C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 17 Jan 2022 14:38:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68891C433F5
+	for <linux-ext4@archiver.kernel.org>; Tue, 18 Jan 2022 02:36:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237140AbiAQOiR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 17 Jan 2022 09:38:17 -0500
-Received: from smtp-out2.suse.de ([195.135.220.29]:48694 "EHLO
-        smtp-out2.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237148AbiAQOiK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jan 2022 09:38:10 -0500
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 14CE21F385;
-        Mon, 17 Jan 2022 14:38:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1642430289; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=wvUap+DwKBiunMat6fSEU/DhZVQmc4GhjOocn0eF9F0=;
-        b=zAarisL5NN5+v9qyJxFdGX7etOauLFTpfdV5yQVvoXbBIkxO1W/kTNELbDmujo2xOxdHg4
-        u2w1xT4rMAgmXEkqiKEYVsvCDR4qdEcTYe5Iql4SHKhYHFHGY+sme4T+J1G5q8i8+lALej
-        xNCytpw4HjuY2tKCjIhLkcEtDsI/0lc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1642430289;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=wvUap+DwKBiunMat6fSEU/DhZVQmc4GhjOocn0eF9F0=;
-        b=oC1GEgl2WZAvCkL8tz8vZQn/WUd0qxBZeCixIX8Ay9CGDGI+E+0Ge4w9fMnI4O1GMSWgJU
-        aqJbtMr7iy0vW7Bw==
-Received: from quack3.suse.cz (unknown [10.163.28.18])
+        id S1343823AbiARCgj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 17 Jan 2022 21:36:39 -0500
+Received: from dfw.source.kernel.org ([139.178.84.217]:48624 "EHLO
+        dfw.source.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1345610AbiARCbq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jan 2022 21:31:46 -0500
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id EC5E8A3B88;
-        Mon, 17 Jan 2022 14:38:08 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 8E87DA05E4; Mon, 17 Jan 2022 15:38:07 +0100 (CET)
-Date:   Mon, 17 Jan 2022 15:38:07 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jan Kara <jack@suse.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, tytso@mit.edu,
-        Eric Whitney <enwlinux@gmail.com>
-Subject: Re: [PATCH 6/6] jbd2: No need to use t_handle_lock in
- jbd2_journal_wait_updates
-Message-ID: <20220117143807.6fil45qvutvswa7z@quack3.lan>
-References: <cover.1642044249.git.riteshh@linux.ibm.com>
- <e7e0f8c54306591a3a9c8fead1e0e54358052ab6.1642044249.git.riteshh@linux.ibm.com>
- <20220113112749.d5tfszcksvxvshnn@quack3.lan>
- <20220113123842.3rpfcyecylt5n3wo@riteshh-domain>
- <20220117125527.ienv3drg5whiryrr@riteshh-domain>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id DAA72611DC;
+        Tue, 18 Jan 2022 02:31:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55B84C36AF6;
+        Tue, 18 Jan 2022 02:31:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1642473105;
+        bh=oI1tILeYJHphG+rnfp4DSdnyYZnshvVn8lVEbfxuC8M=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Veg8lTV2LtL5jIq4nppknO3PMfvYSNF91OYnEO2mLAENjEXvsqpEyE7iQ9OOL9gPC
+         ij4fERTuhPck19MXZ78JI7P5HZH3JAszCtFNP9Bcfw6nFKZo/ui/RuMnN86tNAd6mB
+         SxVaT+uPoBMt4R/uMWkOSbHnVMTBLKDoWyBbMzcZ75UYuXpicnwTyq26px1VGTYsu8
+         XnW0Ut+DFSab0zH4aNMGd2me8d7ECkCuUmcK/K5rOiJXsshppeu4oQHx81/LuW5VfD
+         mLla1J30Yc7KGr9Rtb35puJ++UnP/x+7ULqxcvs8fyjIouftD202mp3lz/B0Fo96tY
+         +nlUI/h8MX4Iw==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Lukas Czerner <lczerner@redhat.com>,
+        Laurent GUERBY <laurent@guerby.net>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.16 217/217] ext4: allow to change s_last_trim_minblks via sysfs
+Date:   Mon, 17 Jan 2022 21:19:40 -0500
+Message-Id: <20220118021940.1942199-217-sashal@kernel.org>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20220118021940.1942199-1-sashal@kernel.org>
+References: <20220118021940.1942199-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220117125527.ienv3drg5whiryrr@riteshh-domain>
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 17-01-22 18:25:27, Ritesh Harjani wrote:
-> On 22/01/13 06:08PM, Ritesh Harjani wrote:
-> > On 22/01/13 12:27PM, Jan Kara wrote:
-> > > On Thu 13-01-22 08:56:29, Ritesh Harjani wrote:
-> > > > Since jbd2_journal_wait_updates() uses waitq based on t_updates atomic_t
-> > > > variable. So from code review it looks like we don't need to use
-> > > > t_handle_lock spinlock for checking t_updates value.
-> > > > Hence this patch gets rid of the spinlock protection in
-> > > > jbd2_journal_wait_updates()
-> > > >
-> > > > Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-> > >
-> > > This patch looks good. Feel free to add:
-> > >
-> > > Reviewed-by: Jan Kara <jack@suse.cz>
-> > >
-> > > Actually looking at it, t_handle_lock seems to be very much unused. I agree
-> 
-> Thanks Jan for your help in this.
-> I have dropped this patch from v2 in order to discuss few more things and I felt
-> killing t_handle_lock completely can be sent in a seperate patch series.
+From: Lukas Czerner <lczerner@redhat.com>
 
-Yes, probably a good choice.
+[ Upstream commit 4a69aecbfb30a3fc85bf8028386c047d5607a97a ]
 
-> > I too had this thought in mind. Thanks for taking a deeper look into it :)
-> >
-> > >
-> > > we don't need it when waiting for outstanding handles but the only
-> > > remaining uses are:
-> > >
-> > > 1) jbd2_journal_extend() where it is not needed either - we use
-> > > atomic_add_return() to manipulate t_outstanding_credits and hold
-> > > j_state_lock for reading which provides us enough exclusion.
-> 
-> I looked into jbd2_journal_extend and yes, we don't need t_handle_lock
-> for updating transaction->t_outstanding_credits, since it already happens with
-> atomic API calls.
-> 
-> Now I do see we update handle->h_**_credits in that function.
-> But I think this is per process (based on task_struct, current->journal_info)
-> and doesn't need a lock protection right?
+Ext4 has an optimization mechanism for batched disacrd (FITRIM) that
+should help speed up subsequent calls of FITRIM ioctl by skipping the
+groups that were previously trimmed. However because the FITRIM allows
+to set the minimum size of an extent to trim, ext4 stores the last
+minimum extent size and only avoids trimming the group if it was
+previously trimmed with minimum extent size equal to, or smaller than
+the current call.
 
-Yes, handle is per process so no lock is needed there.
+There is currently no way to bypass the optimization without
+umount/mount cycle. This becomes a problem when the file system is
+live migrated to a different storage, because the optimization will
+prevent possibly useful discard calls to the storage.
 
-> > > 2) update_t_max_wait() - this is the only valid use of t_handle_lock but we
-> > > can just switch it to cmpxchg loop with a bit of care. Something like:
-> > >
-> > > 	unsigned long old;
-> > >
-> > > 	ts = jbd2_time_diff(ts, transaction->t_start);
-> > > 	old = transaction->t_max_wait;
-> > > 	while (old < ts)
-> > > 		old = cmpxchg(&transaction->t_max_wait, old, ts);
-> 
-> I think there might be a simpler and more straight forward way for updating
-> t_max_wait.
-> 
-> I did look into the t_max_wait logic and where all we are updating it.
-> 
-> t_max_wait is the max wait time in starting (&attaching) a _new_ running
-> transaction by a handle. Is this understaning correct?
+Fix it by exporting the s_last_trim_minblks via sysfs interface which
+will allow us to set the minimum size to the number of blocks larger
+than subsequent FITRIM call, effectively bypassing the optimization.
 
-Correct. It is the maximum time we had to wait for a new transaction to be
-created.
+By setting the s_last_trim_minblks to ULONG_MAX the optimization will be
+effectively cleared regardless of the previous state, or file system
+configuration.
 
-> From code I don't see t_max_wait getting updated for the time taken in order
-> to start the handle by a existing running transaction.
-> 
-> Here is how -
-> update_t_max_wait() will only update t_max_wait if the
-> transaction->t_start is after ts
-> (ts is nothing but when start_this_handle() was called).
-> 
-> 1. This means that for transaction->t_start to be greater than ts, it has to be
->    the new transaction that gets started right (in start_this_handle() func)?
->
-> 2. Second place where transaction->t_start is updated is just after the start of
->    commit phase 7. But this only means that this transaction has become the
->    commit transaction. That means someone has to alloc a new running transaction
->    which again is case-1.
-> 
-> Now I think this spinlock was added since multiple processes can start a handle
-> in parallel and attach a running transaction.
-> 
-> Also this was then moved within CONFIG_JBD2_DEBUG since to avoid spinlock
-> contention on a SMP system in starting multiple handles by different processes.
-> 
-> Now looking at all of above, I think we can move update_t_max_wait()
-> inside jbd2_get_transaction() in start_this_handle(). Because that is where
-> a new transaction will be started and transaction->t_start will be greater then
-> ts. This also is protected within j_state_lock write_lock, so we don't need
-> spinlock.
+For example:
+getconf ULONG_MAX > /sys/fs/ext4/dm-1/last_trim_minblks
 
-All above is correct upto this point. The catch is there can be (and often
-are) more processes in start_this_handle() waiting in
-wait_transaction_switching() and then racing to create the new transaction.
-The process calling jbd2_get_transaction() is not necessarily the one which
-entered start_this_handle() first and thus t_max_wait would not be really
-the maximum time someone had to wait.
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Reported-by: Laurent GUERBY <laurent@guerby.net>
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Link: https://lore.kernel.org/r/20211103145122.17338-2-lczerner@redhat.com
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/sysfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-								Honza
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index 2314f74465924..95d8a996d2d89 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -245,6 +245,7 @@ EXT4_ATTR(last_error_time, 0444, last_error_time);
+ EXT4_ATTR(journal_task, 0444, journal_task);
+ EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
+ EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
++EXT4_RW_ATTR_SBI_UL(last_trim_minblks, s_last_trim_minblks);
+ 
+ static unsigned int old_bump_val = 128;
+ EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
+@@ -295,6 +296,7 @@ static struct attribute *ext4_attrs[] = {
+ #endif
+ 	ATTR_LIST(mb_prefetch),
+ 	ATTR_LIST(mb_prefetch_limit),
++	ATTR_LIST(last_trim_minblks),
+ 	NULL,
+ };
+ ATTRIBUTE_GROUPS(ext4);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.34.1
+
