@@ -2,132 +2,127 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D84DC433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 18 Jan 2022 09:04:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E0F3C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 18 Jan 2022 15:00:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345182AbiARJEL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 18 Jan 2022 04:04:11 -0500
-Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:23999 "EHLO
-        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S240479AbiARJD7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Jan 2022 04:03:59 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1642496637;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=4cpLiQMcErJzWhIDXR2AnM/EUlXksHxp14JrWbBjQIE=;
-        b=WqdKxcr5lT6ivbzdEoiUDIMYa84T4qvryIB5SuwKUN89e0gZsfFwopBty5eY0zIrDh8NVz
-        YmM893g5v0VIegSeSvbD+Ed7CRRqcAQMRnwuySyyL1JIcUZkbjRio7UJfpgqWjseAaCA8x
-        OPR0dte1m/VOVaOr/MWg1Ca4wkwEth8=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-88-9HdYWgXePzK5ge8P5fcNsA-1; Tue, 18 Jan 2022 04:03:53 -0500
-X-MC-Unique: 9HdYWgXePzK5ge8P5fcNsA-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id AFA8610168C0;
-        Tue, 18 Jan 2022 09:03:51 +0000 (UTC)
-Received: from work (unknown [10.40.194.252])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id BC4CD1F2FA;
-        Tue, 18 Jan 2022 09:03:49 +0000 (UTC)
-Date:   Tue, 18 Jan 2022 10:03:46 +0100
-From:   Lukas Czerner <lczerner@redhat.com>
-To:     Sasha Levin <sashal@kernel.org>
-Cc:     linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        Laurent GUERBY <laurent@guerby.net>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH AUTOSEL 5.10 116/116] ext4: allow to change
- s_last_trim_minblks via sysfs
-Message-ID: <20220118090346.nw4ckd5smuvui2rp@work>
-References: <20220118024007.1950576-1-sashal@kernel.org>
- <20220118024007.1950576-116-sashal@kernel.org>
+        id S242695AbiARPAf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 18 Jan 2022 10:00:35 -0500
+Received: from mail-il1-f198.google.com ([209.85.166.198]:34800 "EHLO
+        mail-il1-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S234745AbiARPAe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Jan 2022 10:00:34 -0500
+Received: by mail-il1-f198.google.com with SMTP id a18-20020a923312000000b002b384dccc91so13884582ilf.1
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Jan 2022 07:00:34 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
+        bh=j5wUom1MNv/KYtuHOQzJ0aBGj9CsWbo4IzoCjBRZRY4=;
+        b=iFsmbx89Rybfe6iLEM3OLbSEParvdAZVPi7cVtx1VIwzu5jMUXcWtl+vvGQkpw8CRe
+         6/U0394uR6O5rhX1l/BP0++4hQ6z3Mi3NSik+nEVXl1OwWjCYQM1J8bH4quxCdzP3E/v
+         0pMUvTJQTXDw1loSysfmPqssTO0cEnZS/37U6lCVUTgQTKuXtRfNoCYsLO4ba963/cHx
+         WO8T4DRCR2lrHDqcFmAq3D2W6sLvgrWIDqW1UpZzyMpGrlZN9EJv0HMejuJLinStyMVl
+         xlbNtmuoQfgkTaboPyBZoO3AUitDzcSaxxS3HFoOZJrlyWq0a29uz4qSLZ0YnVx7+U2q
+         LLEw==
+X-Gm-Message-State: AOAM530AssGMyCHRbZkQeh7SZJ9GIso+ydp6IMUpzsl7gtV0QtnNLukA
+        QfS87WPxtHGaRbYeM3OjQ0sEdpORZy/i6TS521kPkQxM+mGo
+X-Google-Smtp-Source: ABdhPJzxwGHLnyIMalpvFYJgau08HciU89xtYGfzxsRsnCjWXgOfEw2JLFUdgu8o4E21WDhE7X7P/wOpBTaGZ4LkkaPC+3HPaYfR
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220118024007.1950576-116-sashal@kernel.org>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Received: by 2002:a02:2207:: with SMTP id o7mr3257680jao.99.1642518034121;
+ Tue, 18 Jan 2022 07:00:34 -0800 (PST)
+Date:   Tue, 18 Jan 2022 07:00:34 -0800
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <000000000000f6092905d5dc875d@google.com>
+Subject: [syzbot] kernel BUG in jbd2_journal_get_create_access
+From:   syzbot <syzbot+f6645952f81bfbe3907f@syzkaller.appspotmail.com>
+To:     jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Why was this selected? It is a new feature not a fix, it's not marked
-for a stable kernel and moreover it's incomplete
-(2327fb2e23416cfb2795ccca2f77d4d65925be99 is a prerequisite).
+Hello,
 
-I have the same question for the patches for 5.15 and 5.16.
+syzbot found the following issue on:
 
-I think we should either drop it, or at the very least include the above
-mentioned commit as well.
+HEAD commit:    fb3b0673b7d5 Merge tag 'mailbox-v5.17' of git://git.linaro..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=15c5a3f7b00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=10dbcfb2ca32737b
+dashboard link: https://syzkaller.appspot.com/bug?extid=f6645952f81bfbe3907f
+compiler:       Debian clang version 11.0.1-2, GNU ld (GNU Binutils for Debian) 2.35.2
 
-Thanks!
--Lukas
+Unfortunately, I don't have any reproducer for this issue yet.
 
-On Mon, Jan 17, 2022 at 09:40:07PM -0500, Sasha Levin wrote:
-> From: Lukas Czerner <lczerner@redhat.com>
-> 
-> [ Upstream commit 4a69aecbfb30a3fc85bf8028386c047d5607a97a ]
-> 
-> Ext4 has an optimization mechanism for batched disacrd (FITRIM) that
-> should help speed up subsequent calls of FITRIM ioctl by skipping the
-> groups that were previously trimmed. However because the FITRIM allows
-> to set the minimum size of an extent to trim, ext4 stores the last
-> minimum extent size and only avoids trimming the group if it was
-> previously trimmed with minimum extent size equal to, or smaller than
-> the current call.
-> 
-> There is currently no way to bypass the optimization without
-> umount/mount cycle. This becomes a problem when the file system is
-> live migrated to a different storage, because the optimization will
-> prevent possibly useful discard calls to the storage.
-> 
-> Fix it by exporting the s_last_trim_minblks via sysfs interface which
-> will allow us to set the minimum size to the number of blocks larger
-> than subsequent FITRIM call, effectively bypassing the optimization.
-> 
-> By setting the s_last_trim_minblks to ULONG_MAX the optimization will be
-> effectively cleared regardless of the previous state, or file system
-> configuration.
-> 
-> For example:
-> getconf ULONG_MAX > /sys/fs/ext4/dm-1/last_trim_minblks
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Reported-by: Laurent GUERBY <laurent@guerby.net>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> Link: https://lore.kernel.org/r/20211103145122.17338-2-lczerner@redhat.com
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Sasha Levin <sashal@kernel.org>
-> ---
->  fs/ext4/sysfs.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-> index f24bef3be48a3..4192b4af10602 100644
-> --- a/fs/ext4/sysfs.c
-> +++ b/fs/ext4/sysfs.c
-> @@ -250,6 +250,7 @@ EXT4_ATTR(last_error_time, 0444, last_error_time);
->  EXT4_ATTR(journal_task, 0444, journal_task);
->  EXT4_RW_ATTR_SBI_UI(mb_prefetch, s_mb_prefetch);
->  EXT4_RW_ATTR_SBI_UI(mb_prefetch_limit, s_mb_prefetch_limit);
-> +EXT4_RW_ATTR_SBI_UL(last_trim_minblks, s_last_trim_minblks);
->  
->  static unsigned int old_bump_val = 128;
->  EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
-> @@ -299,6 +300,7 @@ static struct attribute *ext4_attrs[] = {
->  #endif
->  	ATTR_LIST(mb_prefetch),
->  	ATTR_LIST(mb_prefetch_limit),
-> +	ATTR_LIST(last_trim_minblks),
->  	NULL,
->  };
->  ATTRIBUTE_GROUPS(ext4);
-> -- 
-> 2.34.1
-> 
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+f6645952f81bfbe3907f@syzkaller.appspotmail.com
 
+------------[ cut here ]------------
+kernel BUG at fs/jbd2/transaction.c:1284!
+invalid opcode: 0000 [#1] PREEMPT SMP KASAN
+CPU: 1 PID: 3618 Comm: syz-executor.3 Not tainted 5.16.0-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+RIP: 0010:jbd2_journal_get_create_access+0x443/0x450 fs/jbd2/transaction.c:1281
+Code: ff ff ff 48 89 ef e8 6c cc 91 ff e9 24 ff ff ff e8 42 63 46 ff 0f 0b e8 3b 63 46 ff 0f 0b e8 34 63 46 ff 0f 0b e8 2d 63 46 ff <0f> 0b 66 2e 0f 1f 84 00 00 00 00 00 90 55 41 57 41 56 41 55 41 54
+RSP: 0018:ffffc9000288f890 EFLAGS: 00010293
+RAX: ffffffff823e5703 RBX: ffff88805e7d6600 RCX: ffff88807d450000
+RDX: 0000000000000000 RSI: 0000000000000003 RDI: 0000000000000002
+RBP: 0000000000000003 R08: ffffffff823e5454 R09: 0000000000000003
+R10: fffff52000511f01 R11: 0000000000000004 R12: dffffc0000000000
+R13: ffff88805b4e26e0 R14: ffff88805e7d6480 R15: ffff88801d5560f0
+FS:  0000555556d51400(0000) GS:ffff8880b9b00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00000000200003c0 CR3: 0000000061c29000 CR4: 00000000003506e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ __ext4_journal_get_create_access+0xaf/0x550 fs/ext4/ext4_jbd2.c:324
+ ext4_getblk+0x3d6/0x700 fs/ext4/inode.c:873
+ ext4_bread+0x2a/0x170 fs/ext4/inode.c:902
+ ext4_append+0x1a6/0x370 fs/ext4/namei.c:67
+ ext4_init_new_dir+0x337/0xa10 fs/ext4/namei.c:2893
+ ext4_mkdir+0x4b8/0xc00 fs/ext4/namei.c:2939
+ vfs_mkdir+0x2f6/0x4d0 fs/namei.c:3883
+ do_mkdirat+0x277/0x530 fs/namei.c:3909
+ __do_sys_mkdir fs/namei.c:3929 [inline]
+ __se_sys_mkdir fs/namei.c:3927 [inline]
+ __x64_sys_mkdir+0x6a/0x80 fs/namei.c:3927
+ do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+ do_syscall_64+0x44/0xd0 arch/x86/entry/common.c:80
+ entry_SYSCALL_64_after_hwframe+0x44/0xae
+RIP: 0033:0x7f5d854ff0f7
+Code: 73 01 c3 48 c7 c1 bc ff ff ff f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 b8 53 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 bc ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007ffca6f9cc88 EFLAGS: 00000206 ORIG_RAX: 0000000000000053
+RAX: ffffffffffffffda RBX: 00007ffca6f9cd10 RCX: 00007f5d854ff0f7
+RDX: 0000000000000000 RSI: 00000000000001ff RDI: 00007ffca6f9cd10
+RBP: 00007ffca6f9ccec R08: 0000000000000000 R09: 0000000000000005
+R10: 00007ffca6f9ca25 R11: 0000000000000206 R12: 0000000000000032
+R13: 000000000005ac17 R14: 0000000000000003 R15: 00007ffca6f9cd50
+ </TASK>
+Modules linked in:
+---[ end trace 24a9214ffe9eda3d ]---
+RIP: 0010:jbd2_journal_get_create_access+0x443/0x450 fs/jbd2/transaction.c:1281
+Code: ff ff ff 48 89 ef e8 6c cc 91 ff e9 24 ff ff ff e8 42 63 46 ff 0f 0b e8 3b 63 46 ff 0f 0b e8 34 63 46 ff 0f 0b e8 2d 63 46 ff <0f> 0b 66 2e 0f 1f 84 00 00 00 00 00 90 55 41 57 41 56 41 55 41 54
+RSP: 0018:ffffc9000288f890 EFLAGS: 00010293
+RAX: ffffffff823e5703 RBX: ffff88805e7d6600 RCX: ffff88807d450000
+RDX: 0000000000000000 RSI: 0000000000000003 RDI: 0000000000000002
+RBP: 0000000000000003 R08: ffffffff823e5454 R09: 0000000000000003
+R10: fffff52000511f01 R11: 0000000000000004 R12: dffffc0000000000
+R13: ffff88805b4e26e0 R14: ffff88805e7d6480 R15: ffff88801d5560f0
+FS:  0000555556d51400(0000) GS:ffff8880b9b00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00000000200003c0 CR3: 0000000061c29000 CR4: 00000000003506e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
