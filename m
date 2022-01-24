@@ -2,53 +2,54 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2EBFC433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jan 2022 18:23:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D45D4C433F5
+	for <linux-ext4@archiver.kernel.org>; Mon, 24 Jan 2022 22:17:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241799AbiAXSX3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 24 Jan 2022 13:23:29 -0500
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:58042 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S235901AbiAXSX2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jan 2022 13:23:28 -0500
-Received: from callcc.thunk.org (guestnat-104-133-8-106.corp.google.com [104.133.8.106] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 20OINM5s029075
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 24 Jan 2022 13:23:23 -0500
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 7201342011A; Mon, 24 Jan 2022 13:23:21 -0500 (EST)
-Date:   Mon, 24 Jan 2022 13:23:21 -0500
-From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Lyu Tao <tao.lyu@epfl.ch>
-Cc:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: How does EXT4 ensures two processes don't modify and synchronize
- one page at the same time.
-Message-ID: <Ye7umfsRLkxAeUEv@mit.edu>
-References: <6fdeab9535134fc18e86968b10e726c6@epfl.ch>
+        id S1583242AbiAXWR1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 24 Jan 2022 17:17:27 -0500
+Received: from labell.ml ([167.99.13.163]:56448 "EHLO labell.ml"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1579527AbiAXWFx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Jan 2022 17:05:53 -0500
+X-Greylist: delayed 1777 seconds by postgrey-1.27 at vger.kernel.org; Mon, 24 Jan 2022 17:05:53 EST
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=labell.ml;
+         s=mail; h=Content-Transfer-Encoding:Content-Type:MIME-Version:Message-ID:
+        Date:Subject:To:From:Reply-To:Sender:Cc:Content-ID:Content-Description:
+        Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:
+        In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:List-Subscribe:
+        List-Post:List-Owner:List-Archive;
+        bh=K6BHiwXq8obe6tHCM2P9GZwbL0dccUziuvhvfPhRDqs=; b=ME+UNN6V+sm5DPPU3IzOyWNUH/
+        jh7MXEQrGOLvln0x7OIPgp7sppTkQA6fQR0TSr5mQNO43PVXVhg8xE/O8PPfr4xLH6+g+nVNDkCrS
+        2RPr6WMmHHUPIrzH1aiFzn4rJyJ0iG9ANN7sRJ9+jawJxAvZQq+ytPBQOfVwpJVe+YcA=;
+Received: from ip224.ip-5-39-25.eu ([5.39.25.224])
+        by labell.ml with esmtpsa (TLS1.2:ECDHE_RSA_AES_256_GCM_SHA384:256)
+        (Exim 4.90_1)
+        (envelope-from <info@labell.ml>)
+        id 1nC7TD-0001MB-9A
+        for linux-ext4@vger.kernel.org; Mon, 24 Jan 2022 22:05:51 +0000
+Reply-To: luisfernandezconsultant@gmail.com
+From:   Luis Fernandez <info@labell.ml>
+To:     linux-ext4@vger.kernel.org
+Subject: Re: Mutual Investment Proposal
+Date:   24 Jan 2022 14:05:51 -0800
+Message-ID: <20220124140550.EDCDD89B9128C259@labell.ml>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <6fdeab9535134fc18e86968b10e726c6@epfl.ch>
+Content-Type: text/plain;
+        charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jan 24, 2022 at 05:17:34PM +0000, Lyu Tao wrote:
-> 
-> I'm new to file system area and have a naive question about the global sync.
-> 
-> Let's suppose there are two process are writing to the same file. If
-> one process issues a sync() syscall, which mechanism can ensures the
-> two processes don't modify and synchronize one page at the same
-> time.
+Good Day,
 
-That's not what the sync() system call purports to do.  To quote from
-the sync(2) man page:
+My name is Luis Fernandez, I am contacting you because we have=20
+investors that have the capacity to invest in any massive project=20
+in your country or invest in your existing project that requires=20
+funding.
+Kindly get back to me for more details.
 
-       sync() causes all pending modifications to filesystem metadata
-       and cached file data to be written to the underlying
-       filesystems.
 
-						- Ted
+Regards
+
+Luis Fernandez
