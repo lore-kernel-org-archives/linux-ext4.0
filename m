@@ -2,106 +2,69 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B4AC8C433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jan 2022 06:12:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62489C433FE
+	for <linux-ext4@archiver.kernel.org>; Tue, 25 Jan 2022 07:46:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235976AbiAYGMg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 25 Jan 2022 01:12:36 -0500
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40952 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S238834AbiAYGCb (ORCPT
+        id S1447045AbiAYHqT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 25 Jan 2022 02:46:19 -0500
+Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:58607 "EHLO
+        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1446753AbiAYHna (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Jan 2022 01:02:31 -0500
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 20P4lQrm001512;
-        Tue, 25 Jan 2022 06:02:15 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : in-reply-to : references : content-transfer-encoding
- : mime-version; s=pp1; bh=5p8Wp2r2xAze9kpL5AFF4CamRzAPWdC2kdc2nmOiCnQ=;
- b=HICX7BuJk2omG6xwdVNyX47LLvKITYV4Ma2DkBpT1F0mOayURAjQSz0Uw2uG9t8y8/UA
- Q0LSTi1LV/gfVJLqHYcKYssoFRI9Zuon+vf9neyV+uGkitt2TdTGkrM1iYX3AmAtsF5N
- 1RQta/Zo8CtWOFI2VswQFc7DUp6kIZZecTDg5q05cogAfwE2UTKSzQEUWCDpUeJ1w1Zf
- rdVZv9B9LGnBWvjuzvKRLIx2z6w/9luhcHWpf4V7SPHEacWj78lWhEfcQO7yUgrXZqys
- Ixpg9iQeko4oAD6dEE7pQ3PIVqr2mVWu/x/0+zwHv4Bs6N8DBMAS6cy+aveuKbuWPhCO yw== 
-Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3dtag7197c-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 25 Jan 2022 06:02:14 +0000
-Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
-        by ppma03ams.nl.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 20P5xj5U032149;
-        Tue, 25 Jan 2022 06:02:12 GMT
-Received: from b06cxnps3074.portsmouth.uk.ibm.com (d06relay09.portsmouth.uk.ibm.com [9.149.109.194])
-        by ppma03ams.nl.ibm.com with ESMTP id 3dr9j92h63-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 25 Jan 2022 06:02:12 +0000
-Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
-        by b06cxnps3074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 20P62ASq43647338
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 25 Jan 2022 06:02:10 GMT
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 2B7E6A4055;
-        Tue, 25 Jan 2022 06:02:10 +0000 (GMT)
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 97291A4040;
-        Tue, 25 Jan 2022 06:02:09 +0000 (GMT)
-Received: from localhost (unknown [9.43.18.116])
-        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Tue, 25 Jan 2022 06:02:09 +0000 (GMT)
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-To:     fstests <fstests@vger.kernel.org>, linux-ext4@vger.kernel.org
-Cc:     Zhang Yi <yi.zhang@huawei.com>, tytso@mit.edu,
-        Jan Kara <jack@suse.cz>, chenlong <chenlongcl.chen@huawei.com>,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [RFC 1/1] ext4/054: Remove auto and quick group
-Date:   Tue, 25 Jan 2022 11:32:02 +0530
-Message-Id: <1e04c57094d871869997220fc5539dfe2ffa1884.1643089143.git.riteshh@linux.ibm.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1643089143.git.riteshh@linux.ibm.com>
+        Tue, 25 Jan 2022 02:43:30 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R171e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04394;MF=eguan@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0V2pJgaO_1643096605;
+Received: from localhost(mailfrom:eguan@linux.alibaba.com fp:SMTPD_---0V2pJgaO_1643096605)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Tue, 25 Jan 2022 15:43:26 +0800
+Date:   Tue, 25 Jan 2022 15:43:25 +0800
+From:   Eryu Guan <eguan@linux.alibaba.com>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     fstests <fstests@vger.kernel.org>, linux-ext4@vger.kernel.org,
+        Zhang Yi <yi.zhang@huawei.com>, tytso@mit.edu,
+        Jan Kara <jack@suse.cz>, chenlong <chenlongcl.chen@huawei.com>
+Subject: Re: [RFC 0/1] ext4/054: Should we remove auto and quick group?
+Message-ID: <20220125074325.GB12255@e18g06458.et15sqa>
 References: <cover.1643089143.git.riteshh@linux.ibm.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: TFrCSFaUSRdfl4WrvakNaFc-V0i2ry_P
-X-Proofpoint-GUID: TFrCSFaUSRdfl4WrvakNaFc-V0i2ry_P
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
 MIME-Version: 1.0
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
- definitions=2022-01-25_01,2022-01-24_02,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 lowpriorityscore=0
- spamscore=0 impostorscore=0 mlxlogscore=994 bulkscore=0 adultscore=0
- clxscore=1015 phishscore=0 malwarescore=0 suspectscore=0
- priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2201110000 definitions=main-2201250040
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <cover.1643089143.git.riteshh@linux.ibm.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It seems this test creates a crafted corrupted image by modifying ext4
-extent block structure of an inode to test some ext4 extent consistency
-fixes done at [1].
-This IMO, should not be in auto and quick group, since it could cause BUG_ON()
-and happens only with some crafted corrupted image (or with fault injection
-testing with errors=continue mount option).
+On Tue, Jan 25, 2022 at 11:32:01AM +0530, Ritesh Harjani wrote:
+> Hello Zhang/Ted,
+> 
+> Looks like the issue fixed by patches at [1], were observed with fault injection
+> testing and with errors=continue mount option. But were not cc'd to stable.
+> 
+> Do you think those should be cc'd to stable tree?
+> 
+> Meanwhile, I was thinking we should anyway remove auto and quick group from this
+> test as it could trigger a bug on in older kernel targets. Thoughts?
 
-[1]: https://lore.kernel.org/all/20210908120850.4012324-1-yi.zhang@huawei.com/
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
----
- tests/ext4/054 | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+IMO, ext4/054 is a targeted regression test and should be in auto group,
+which ensures the bug doesn't get re-introduced in future.
 
-diff --git a/tests/ext4/054 b/tests/ext4/054
-index 9a11719f..21fa4e0a 100755
---- a/tests/ext4/054
-+++ b/tests/ext4/054
-@@ -12,7 +12,7 @@
- #    ext4_valid_extent_entries())
+I think you could just skip this test to fit your kernel version, e.g.
 
- . ./common/preamble
--_begin_fstest auto quick dangerous_fuzzers
-+_begin_fstest dangerous_fuzzers
+echo ext4/054 > ext4.exclude
+./check -X ext4.exclude
 
- # Import common functions
- . ./common/filter
---
-2.31.1
+Thanks,
+Eryu
 
+> 
+> 
+> [1]: https://lore.kernel.org/all/20210908120850.4012324-1-yi.zhang@huawei.com/
+> 
+> Ritesh Harjani (1):
+>   ext4/054: Remove auto and quick group
+> 
+>  tests/ext4/054 | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> --
+> 2.31.1
