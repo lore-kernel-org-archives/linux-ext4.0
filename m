@@ -2,226 +2,218 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CBBDC43217
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jan 2022 02:49:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16F13C43217
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jan 2022 03:10:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233504AbiA0Ctu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 26 Jan 2022 21:49:50 -0500
-Received: from smtp-out1.suse.de ([195.135.220.28]:55256 "EHLO
-        smtp-out1.suse.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231881AbiA0Ctt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jan 2022 21:49:49 -0500
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id BC4B62190B;
-        Thu, 27 Jan 2022 02:49:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1643251787; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OVO5L5oh76QqfW3n1oDvBos2Yawv0E43OsrqMmz97u8=;
-        b=JOFvU7iAGyn/v6BD3Bp+bh089vjSIxSCwY01PObM+BmenfkUZ1j2GJfL9RHxbWRZM/l98u
-        qo/UEFC5lfk1D4MRdyMUcjwh6hIji/NTYfIRlm9cB6k65ocg8RHieVXuXzdIix2W/WWAJB
-        +fCFtWOMn+6HtfPTgy8eWKnyVdE1o0E=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1643251787;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=OVO5L5oh76QqfW3n1oDvBos2Yawv0E43OsrqMmz97u8=;
-        b=IBhAkB2hVQaF92fXW6Y2P175TbQ6CFUUnjY/M7g7xzSXg9kQBD90kXkX3iZRhhBhPwaHez
-        ofEg50iSvDeTM4BA==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id B085A13E46;
-        Thu, 27 Jan 2022 02:49:40 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id DVgjG0QI8mF9LAAAMHmgww
-        (envelope-from <neilb@suse.de>); Thu, 27 Jan 2022 02:49:40 +0000
-Subject: [PATCH 9/9] Remove congestion tracking framework.
-From:   NeilBrown <neilb@suse.de>
-To:     Andrew Morton <akpm@linux-foundation.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Paolo Valente <paolo.valente@linaro.org>,
-        Jens Axboe <axboe@kernel.dk>
-Cc:     linux-mm@kvack.org, linux-nilfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org
-Date:   Thu, 27 Jan 2022 13:46:29 +1100
-Message-ID: <164325158960.29787.17588717894058708630.stgit@noble.brown>
-In-Reply-To: <164325106958.29787.4865219843242892726.stgit@noble.brown>
-References: <164325106958.29787.4865219843242892726.stgit@noble.brown>
-User-Agent: StGit/0.23
+        id S235600AbiA0DKL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 26 Jan 2022 22:10:11 -0500
+Received: from mail-dm6nam11on2084.outbound.protection.outlook.com ([40.107.223.84]:21441
+        "EHLO NAM11-DM6-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S235511AbiA0DKE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 26 Jan 2022 22:10:04 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=EazSu/kbhx2c+x0P29prix7boVv40QEEcsr1GIKo6YrSOCZ9zP+Y8LThIEbB1tnw3J876JuMoiWloBuCDSrSqVh/ylUOCCc2CUBJKVe6i+8gEAaptoKjLXxd16FE0/cgvf/MieVxkDKC8SvWSd3xxW/DEWvG4zCQQ2DR2s5izk/gUnmoFGfSBtZ8qFF9YAVB5PJO+9/YNWTiQLF3BOLA38LKM/y4QxQX0e95PGlKILo80CDVBN/3NT+QC1lq1Zec34v78aiMvUFsm5vbkiYypc0fuAqY4J7EkQrhHaLPJ76OFu7Mi8kWo5SNE4Mqyo8Kry2fRBa3DoNK/YVHo2calw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=echqpR4vSwoF6VTqdjBRSvMm9RVhcVS/z9aiXSLA7Eo=;
+ b=SmoQUors0y69Juljkl20xDOxA0BE03DzuieaOY8A9UcSTZ+DWUfQmarTgqxGEXMW/bCv/f3ykfjiSfHIyG296Xs5eOzzbs3oVu3JLddfuM6jRqGdJsrwDn5wYFlouVSKuxLH6SVT4NGSxK5LpYRtYPxkEoLPYcK2XNDdFm1L7H7CDd5l3k0Jgoh6cEHeCXi9+vn1LhXxULM7fexsuRZ0jBzJH96IV3QWWarZNkGUvPb6d2rjD4A6KIV0iiLN7MtvV4PU1XT7x1vpJZw+w374q7p/4+ZolOksnqw1xw8kOsXzAoPu1yKZLhNQ6zmOKOQMCdgDb0y2Oih2RyVTI6KVEg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
+ 165.204.84.17) smtp.rcpttodomain=linux-foundation.org smtp.mailfrom=amd.com;
+ dmarc=pass (p=quarantine sp=quarantine pct=100) action=none
+ header.from=amd.com; dkim=none (message not signed); arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=echqpR4vSwoF6VTqdjBRSvMm9RVhcVS/z9aiXSLA7Eo=;
+ b=eF0oT8aIvyNbEf8P9mRQUuVG/NoMM2Kb+TBieGYIJwU84RyJbFkwiFp8UCIoXcPGyQP2EA0r+NbrRMeNm+3HExK+cNKd2eHO17HbvFt0mOAbn8Xfd1YY1YjIYDSZEecbzgTJCWbuhib9N/1GUJ8QezkvS/Mk2j2s000emwCaOYQ=
+Received: from CO2PR05CA0087.namprd05.prod.outlook.com (2603:10b6:104:1::13)
+ by BN7PR12MB2770.namprd12.prod.outlook.com (2603:10b6:408:32::14) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4909.17; Thu, 27 Jan
+ 2022 03:10:01 +0000
+Received: from CO1NAM11FT066.eop-nam11.prod.protection.outlook.com
+ (2603:10b6:104:1:cafe::85) by CO2PR05CA0087.outlook.office365.com
+ (2603:10b6:104:1::13) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4930.17 via Frontend
+ Transport; Thu, 27 Jan 2022 03:10:00 +0000
+X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
+ smtp.mailfrom=amd.com; dkim=none (message not signed)
+ header.d=none;dmarc=pass action=none header.from=amd.com;
+Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
+ 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
+ client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
+Received: from SATLEXMB04.amd.com (165.204.84.17) by
+ CO1NAM11FT066.mail.protection.outlook.com (10.13.175.18) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.20.4930.15 via Frontend Transport; Thu, 27 Jan 2022 03:10:00 +0000
+Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
+ (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.18; Wed, 26 Jan
+ 2022 21:09:58 -0600
+From:   Alex Sierra <alex.sierra@amd.com>
+To:     <akpm@linux-foundation.org>, <Felix.Kuehling@amd.com>,
+        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
+        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>
+CC:     <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
+        <hch@lst.de>, <jgg@nvidia.com>, <jglisse@redhat.com>,
+        <apopple@nvidia.com>, <willy@infradead.org>
+Subject: [PATCH v4 00/10] Add MEMORY_DEVICE_COHERENT for coherent device memory mapping
+Date:   Wed, 26 Jan 2022 21:09:39 -0600
+Message-ID: <20220127030949.19396-1-alex.sierra@amd.com>
+X-Mailer: git-send-email 2.32.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.180.168.240]
+X-ClientProxiedBy: SATLEXMB03.amd.com (10.181.40.144) To SATLEXMB04.amd.com
+ (10.181.40.145)
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: ec8902e5-b213-44ab-2380-08d9e1428167
+X-MS-TrafficTypeDiagnostic: BN7PR12MB2770:EE_
+X-Microsoft-Antispam-PRVS: <BN7PR12MB277038D90D656EF0C05064D9FD219@BN7PR12MB2770.namprd12.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:10000;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: 9+GdVnhbmrRllv9+d949E4IQN5p2Nj8GTzTCR1/QEBds+mXglwfQTwprvh/Y4rxloej/5vhRWtYLu8k29KPDg9/mv9XhIlzxOg6wglTLQ78aiCme4n7G0Y+cmwuG8UuueBWl7stgBaK54tK1FYLryy6HH6bFGSv48HWmfVB48758a6+uPfbqQQc42glUFrAZk7qGgZbOLTfeJZULg/PsfWbMkIlT4mgioEihmJGi0KUzfteuB6wha/He/OAHRZSTUSm6Qtn51FuYE+2uStyQKPquOPB9j0lUnLD0yu2RnpqDN6ZyQCM62BQKlNKp/K50yrT+Mh9RH5oqxtah2rb2BkkN9KHfXr3R6B/bTNWPDF0LnoHY9dW0kU0MlTioBDEj4gy2f4/DIrcwES3qQQIQQTvLLa8GjUgljAZ/vJM3Dwr8F42HR+kHNyROvKpvYbGCbkuY3UzIDM+HwVb73Cdezl9TbVjeu8DiN12iZV9qaiAZwFU3xZ4eCK/B1jncld20V/S4d7K7rXhJdnKr86+0FOmfSGx6FpeLZ/dPFPVhZCuDrORqvMMOJBDo4Azy/tr+VCSFYZQ4j7YpBZOcJZt3lc08MRJc4BA+dsr/1LC25ibb7M4FNsxMmgOvoBF4IJVj3CHZ86ynY8Wv4wGd/qIfZpuvCezalaiqRsl8kvx5jMsSLHKuMqDJjcx2CN32CrKdOx0GIg8cCk1ohl7dfPMSoChgJ8kNQYKQhDFqRCPms1KT8o625+cLc9ELR8G94GU4wjAJ1eRjmlRqT6i0QHSUCq7Jf4yVUcYd21UZIdPgz78=
+X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(4636009)(36840700001)(46966006)(40470700004)(356005)(83380400001)(6666004)(336012)(26005)(2616005)(47076005)(70586007)(40460700003)(8676002)(316002)(110136005)(44832011)(54906003)(508600001)(1076003)(36756003)(36860700001)(7416002)(4326008)(7696005)(2906002)(81166007)(70206006)(5660300002)(8936002)(186003)(16526019)(82310400004)(426003)(86362001)(36900700001);DIR:OUT;SFP:1101;
+X-OriginatorOrg: amd.com
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 27 Jan 2022 03:10:00.2872
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: ec8902e5-b213-44ab-2380-08d9e1428167
+X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
+X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT066.eop-nam11.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BN7PR12MB2770
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This framework is no longer used - so discard it.
+This patch series introduces MEMORY_DEVICE_COHERENT, a type of memory
+owned by a device that can be mapped into CPU page tables like
+MEMORY_DEVICE_GENERIC and can also be migrated like
+MEMORY_DEVICE_PRIVATE.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/backing-dev-defs.h |    8 -----
- include/linux/backing-dev.h      |    2 -
- include/trace/events/writeback.h |   28 -------------------
- mm/backing-dev.c                 |   57 --------------------------------------
- 4 files changed, 95 deletions(-)
+Christoph, the suggestion to incorporate Ralph Campbell’s refcount
+cleanup patch into our hardware page migration patchset originally came
+from you, but it proved impractical to do things in that order because
+the refcount cleanup introduced a bug with wide ranging structural
+implications. Instead, we amended Ralph’s patch so that it could be
+applied after merging the migration work. As we saw from the recent
+discussion, merging the refcount work is going to take some time and
+cooperation between multiple development groups, while the migration
+work is ready now and is needed now. So we propose to merge this
+patchset first and continue to work with Ralph and others to merge the
+refcount cleanup separately, when it is ready.
 
-diff --git a/include/linux/backing-dev-defs.h b/include/linux/backing-dev-defs.h
-index 993c5628a726..e863c88df95f 100644
---- a/include/linux/backing-dev-defs.h
-+++ b/include/linux/backing-dev-defs.h
-@@ -207,14 +207,6 @@ struct backing_dev_info {
- #endif
- };
- 
--enum {
--	BLK_RW_ASYNC	= 0,
--	BLK_RW_SYNC	= 1,
--};
--
--void clear_bdi_congested(struct backing_dev_info *bdi, int sync);
--void set_bdi_congested(struct backing_dev_info *bdi, int sync);
--
- struct wb_lock_cookie {
- 	bool locked;
- 	unsigned long flags;
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 2d764566280c..87ce24d238f3 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -135,8 +135,6 @@ static inline bool writeback_in_progress(struct bdi_writeback *wb)
- 
- struct backing_dev_info *inode_to_bdi(struct inode *inode);
- 
--long congestion_wait(int sync, long timeout);
--
- static inline bool mapping_can_writeback(struct address_space *mapping)
- {
- 	return inode_to_bdi(mapping->host)->capabilities & BDI_CAP_WRITEBACK;
-diff --git a/include/trace/events/writeback.h b/include/trace/events/writeback.h
-index a345b1e12daf..86b2a82da546 100644
---- a/include/trace/events/writeback.h
-+++ b/include/trace/events/writeback.h
-@@ -735,34 +735,6 @@ TRACE_EVENT(writeback_sb_inodes_requeue,
- 	)
- );
- 
--DECLARE_EVENT_CLASS(writeback_congest_waited_template,
--
--	TP_PROTO(unsigned int usec_timeout, unsigned int usec_delayed),
--
--	TP_ARGS(usec_timeout, usec_delayed),
--
--	TP_STRUCT__entry(
--		__field(	unsigned int,	usec_timeout	)
--		__field(	unsigned int,	usec_delayed	)
--	),
--
--	TP_fast_assign(
--		__entry->usec_timeout	= usec_timeout;
--		__entry->usec_delayed	= usec_delayed;
--	),
--
--	TP_printk("usec_timeout=%u usec_delayed=%u",
--			__entry->usec_timeout,
--			__entry->usec_delayed)
--);
--
--DEFINE_EVENT(writeback_congest_waited_template, writeback_congestion_wait,
--
--	TP_PROTO(unsigned int usec_timeout, unsigned int usec_delayed),
--
--	TP_ARGS(usec_timeout, usec_delayed)
--);
--
- DECLARE_EVENT_CLASS(writeback_single_inode_template,
- 
- 	TP_PROTO(struct inode *inode,
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index eae96dfe0261..7176af65b103 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -1005,60 +1005,3 @@ const char *bdi_dev_name(struct backing_dev_info *bdi)
- 	return bdi->dev_name;
- }
- EXPORT_SYMBOL_GPL(bdi_dev_name);
--
--static wait_queue_head_t congestion_wqh[2] = {
--		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[0]),
--		__WAIT_QUEUE_HEAD_INITIALIZER(congestion_wqh[1])
--	};
--static atomic_t nr_wb_congested[2];
--
--void clear_bdi_congested(struct backing_dev_info *bdi, int sync)
--{
--	wait_queue_head_t *wqh = &congestion_wqh[sync];
--	enum wb_congested_state bit;
--
--	bit = sync ? WB_sync_congested : WB_async_congested;
--	if (test_and_clear_bit(bit, &bdi->wb.congested))
--		atomic_dec(&nr_wb_congested[sync]);
--	smp_mb__after_atomic();
--	if (waitqueue_active(wqh))
--		wake_up(wqh);
--}
--EXPORT_SYMBOL(clear_bdi_congested);
--
--void set_bdi_congested(struct backing_dev_info *bdi, int sync)
--{
--	enum wb_congested_state bit;
--
--	bit = sync ? WB_sync_congested : WB_async_congested;
--	if (!test_and_set_bit(bit, &bdi->wb.congested))
--		atomic_inc(&nr_wb_congested[sync]);
--}
--EXPORT_SYMBOL(set_bdi_congested);
--
--/**
-- * congestion_wait - wait for a backing_dev to become uncongested
-- * @sync: SYNC or ASYNC IO
-- * @timeout: timeout in jiffies
-- *
-- * Waits for up to @timeout jiffies for a backing_dev (any backing_dev) to exit
-- * write congestion.  If no backing_devs are congested then just wait for the
-- * next write to be completed.
-- */
--long congestion_wait(int sync, long timeout)
--{
--	long ret;
--	unsigned long start = jiffies;
--	DEFINE_WAIT(wait);
--	wait_queue_head_t *wqh = &congestion_wqh[sync];
--
--	prepare_to_wait(wqh, &wait, TASK_UNINTERRUPTIBLE);
--	ret = io_schedule_timeout(timeout);
--	finish_wait(wqh, &wait);
--
--	trace_writeback_congestion_wait(jiffies_to_usecs(timeout),
--					jiffies_to_usecs(jiffies - start));
--
--	return ret;
--}
--EXPORT_SYMBOL(congestion_wait);
+This patch series is mostly self-contained except for a few places where
+it needs to update other subsystems to handle the new memory type.
 
+System stability and performance are not affected according to our
+ongoing testing, including xfstests.
+
+How it works: The system BIOS advertises the GPU device memory
+(aka VRAM) as SPM (special purpose memory) in the UEFI system address
+map.
+
+The amdgpu driver registers the memory with devmap as
+MEMORY_DEVICE_COHERENT using devm_memremap_pages. The initial user for
+this hardware page migration capability is the Frontier supercomputer
+project. This functionality is not AMD-specific. We expect other GPU
+vendors to find this functionality useful, and possibly other hardware
+types in the future.
+
+Our test nodes in the lab are similar to the Frontier configuration,
+with .5 TB of system memory plus 256 GB of device memory split across
+4 GPUs, all in a single coherent address space. Page migration is
+expected to improve application efficiency significantly. We will
+report empirical results as they become available.
+
+We extended hmm_test to cover migration of MEMORY_DEVICE_COHERENT. This
+patch set builds on HMM and our SVM memory manager already merged in
+5.15.
+
+v2:
+- test_hmm is now able to create private and coherent device mirror
+instances in the same driver probe. This adds more usability to the hmm
+test by not having to remove the kernel module for each device type
+test (private/coherent type). This is done by passing the module
+parameters spm_addr_dev0 & spm_addr_dev1. In this case, it will create
+four instances of device_mirror. The first two correspond to private
+device type, the last two to coherent type. Then, they can be easily
+accessed from user space through /dev/hmm_mirror<num_device>. Usually
+num_device 0 and 1 are for private, and 2 and 3 for coherent types.
+
+- Coherent device type pages at gup are now migrated back to system
+memory if they have been long term pinned (FOLL_LONGTERM). The reason
+is these pages could eventually interfere with their own device memory
+manager. A new hmm_gup_test has been added to the hmm-test to test this
+functionality. It makes use of the gup_test module to long term pin
+user pages that have been migrate to device memory first.
+
+- Other patch corrections made by Felix, Alistair and Christoph.
+
+v3:
+- Based on last v2 feedback we got from Alistair, we've decided to
+remove migration logic for FOLL_LONGTERM coherent device type pages at
+gup for now. Ideally, this should be done through the kernel mm,
+instead of calling the device driver to do it. Currently, there's no
+support for migrating device pages based on pfn, mainly because
+migrate_pages() relies on pages being LRU pages. Alistair mentioned, he
+has started to work on adding this migrate device pages logic. For now,
+we fail on get_user_pages call with FOLL_LONGTERM for DEVICE_COHERENT
+pages.
+
+- Also, hmm_gup_test has been removed from hmm-test. We plan to include
+it again after this migration work is ready.
+
+- Addressed Liam Howlett's feedback changes.
+
+v4:
+- Addressed Alistair Popple's last v3 feedback.
+
+- Use the same system entry path for coherent device pages at
+migrate_vma_insert_page.
+
+- Add coherent device type support for try_to_migrate /
+try_to_migrate_one.
+
+- Include number of coherent device pages successfully migrated back to
+system at test_hmm. Made the proper changes to hmm-test to read/check
+this number.
+
+Alex Sierra (10):
+  mm: add zone device coherent type memory support
+  mm: add device coherent vma selection for memory migration
+  mm/gup: fail get_user_pages for LONGTERM dev coherent type
+  drm/amdkfd: add SPM support for SVM
+  drm/amdkfd: coherent type as sys mem on migration to ram
+  lib: test_hmm add ioctl to get zone device type
+  lib: test_hmm add module param for zone device type
+  lib: add support for device coherent type in test_hmm
+  tools: update hmm-test to support device coherent type
+  tools: update test_hmm script to support SP config
+
+ drivers/gpu/drm/amd/amdkfd/kfd_migrate.c |  34 ++-
+ include/linux/memremap.h                 |   8 +
+ include/linux/migrate.h                  |   1 +
+ include/linux/mm.h                       |  16 +
+ lib/test_hmm.c                           | 356 +++++++++++++++++------
+ lib/test_hmm_uapi.h                      |  22 +-
+ mm/gup.c                                 |   7 +
+ mm/memcontrol.c                          |   6 +-
+ mm/memory-failure.c                      |   8 +-
+ mm/memremap.c                            |  14 +-
+ mm/migrate.c                             |  56 ++--
+ mm/rmap.c                                |  20 +-
+ tools/testing/selftests/vm/hmm-tests.c   | 123 ++++++--
+ tools/testing/selftests/vm/test_hmm.sh   |  24 +-
+ 14 files changed, 529 insertions(+), 166 deletions(-)
+
+-- 
+2.32.0
 
