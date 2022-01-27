@@ -2,78 +2,104 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 365B3C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jan 2022 15:34:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32DB1C4332F
+	for <linux-ext4@archiver.kernel.org>; Thu, 27 Jan 2022 22:10:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237828AbiA0PeQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 27 Jan 2022 10:34:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36644 "EHLO
+        id S233703AbiA0WK0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 27 Jan 2022 17:10:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44968 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229985AbiA0PeP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jan 2022 10:34:15 -0500
-Received: from mail-wm1-x334.google.com (mail-wm1-x334.google.com [IPv6:2a00:1450:4864:20::334])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C306C061714
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jan 2022 07:34:15 -0800 (PST)
-Received: by mail-wm1-x334.google.com with SMTP id l12-20020a7bc34c000000b003467c58cbdfso6197016wmj.2
-        for <linux-ext4@vger.kernel.org>; Thu, 27 Jan 2022 07:34:15 -0800 (PST)
+        with ESMTP id S229507AbiA0WKZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Jan 2022 17:10:25 -0500
+Received: from mail-lj1-x22c.google.com (mail-lj1-x22c.google.com [IPv6:2a00:1450:4864:20::22c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E0EDC061714;
+        Thu, 27 Jan 2022 14:10:25 -0800 (PST)
+Received: by mail-lj1-x22c.google.com with SMTP id b14so6432113ljb.0;
+        Thu, 27 Jan 2022 14:10:25 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=embecosm.com; s=google;
-        h=subject:from:to:cc:references:message-id:date:user-agent
-         :mime-version:in-reply-to:content-language:content-transfer-encoding;
-        bh=DNE+5BFtlKi2Kr5x/uLwXLqdr57iuRQ85gAjFIgeb+Q=;
-        b=FNH1UVpBVLyYTqPTeY9w124cr19PvxcVA41tqaP0xiAya41dqgfEYKDr5IDsnd5Mo/
-         Bt9+7c3/nsZi6X9shbasDYXvfpikPbTdzMqeQGpgzP6D7DIwsfDJYnSn+WcVVV5xCKyh
-         8II+IHtevtDc0Rc6m0xzW6doqAatkBNkNXRaXvoeayqlbK8EX4r0gDe7yD85yZR0Rrtp
-         +1Qfz0p2dQAqXrxSOsDX5TxT/eDUGsblNwZF4O4VPAHFjtNl2f2iDw0A5CHJgB6SQdfB
-         EGdzdH6DrDa5Im5PdUR/TT0DhzUePLjTTxAtBwGaSXy/5tKjb6HOzJ8yk1cuea3CtlFt
-         f5rA==
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=pkUjSb/fdfaa3FAu68ePw4JIYSvRfOC6qyjCilb3MLA=;
+        b=RZypLcBcYIUdWY9vV42TppO4LaQPblBv+kCbhi7sSIeity0kCuHxjxBkOW+017vQfl
+         mGJzLUkiIibnMnTTVFBLt50VetVg1KzsVDl5jUao0XF5T7oAmS+N8pzAB7j2FNpZGYiq
+         xbHy2XvQvsScldzehtVeFOoApJ3rHFqpSLvhJxxrFdkCY4SBOyNaqvrt+GIQFpxxuFFh
+         CmyJh/SQOY6vLReOapEDPt77zxgz4JT8F/AZF2zWXE0KCoQ1ChkpEBN24khQj5g1i9qq
+         aguCWoq8pgm51d0p5z0SrS13R+0j/TGLyIS5NFK+7PHw2xgpowySjWS1of9EUGPSq6jn
+         /AOQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:subject:from:to:cc:references:message-id:date
-         :user-agent:mime-version:in-reply-to:content-language
-         :content-transfer-encoding;
-        bh=DNE+5BFtlKi2Kr5x/uLwXLqdr57iuRQ85gAjFIgeb+Q=;
-        b=lE+lIBpBvVAUNm/7d8vLzeuMMPI71Q1iZSTqsorRdlxZKoSYN4dGzi+o2EvuQJGVva
-         sMOQihi7K4SoXyZBsvGwbBpRLsFVtUWv36pbsfQ2dI3p7Imc8ANbUwu1IApByEPhjQDy
-         rLXyyC28kckebYCiVJLlbalnTbw+xfI55pUlheHWRNIWzIt1DVFIKRtITvbB0br0NhNV
-         GqqQ6Fm/aoCPP55vy9KkBqIVagVeM1Um0Xk7RKbIjOmyyb/uYKTqrlXW8+v86PpnHm/g
-         MhMFCXS+l/u1QYgplZMD2yy1QPAKQ806vO82O2Nfa0hFJtKmfoOstuTBtiD3PtA2hB5m
-         xu7Q==
-X-Gm-Message-State: AOAM532KTfyX4rj4ABoxedWhHpkgzzurut/iDqwREV+ehH5EDzG36ts2
-        Fpd/9hJHDjQwBlmt3gPqO8HSHg==
-X-Google-Smtp-Source: ABdhPJzN8mEQmC9/NB1YIK8aAMojdtMHjSg6rYIWkIbstaSuTFlfDIlsmGdWAN2IZtYjXTRobCt3Qg==
-X-Received: by 2002:a05:600c:264d:: with SMTP id 13mr3681311wmy.85.1643297653690;
-        Thu, 27 Jan 2022 07:34:13 -0800 (PST)
-Received: from [192.168.88.236] (79-69-186-222.dynamic.dsl.as9105.com. [79.69.186.222])
-        by smtp.gmail.com with ESMTPSA id r2sm3650409wrz.99.2022.01.27.07.34.13
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 27 Jan 2022 07:34:13 -0800 (PST)
-Subject: Re: Help! How to delete an 8094-byte PATH?
-From:   Maxim Blinov <maxim.blinov@embecosm.com>
-To:     Matthew Wilcox <willy@infradead.org>,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     linux-ext4@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-References: <d4a67b38-3026-59be-06a8-3a9a5f908eb4@embecosm.com>
- <20220127122039.45kxmnm3s7kflo6h@riteshh-domain>
- <YfKg3DQS0h2lPo3z@casper.infradead.org>
- <a57e2fde-f430-952d-9878-d7a5307cb2db@embecosm.com>
-Message-ID: <e2ab3266-3dfe-3fb2-0bfe-fd2c2b10e635@embecosm.com>
-Date:   Thu, 27 Jan 2022 15:34:12 +0000
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.11.0
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=pkUjSb/fdfaa3FAu68ePw4JIYSvRfOC6qyjCilb3MLA=;
+        b=tfMmVXe40SSgzi1gp75b3U8T5saZ6sZiNg6gAv2dC0KikkIBgFISBUuR2tThVGspTw
+         aravKdUXGq3zPkeylhkxfFugDTTrTL9ovBFHJLqlb8fMIAdVxzWnSPEdQS0Qorlj+E4F
+         Ja+j24Fsky1MVRHsiUPpT5ZHbtv3ukeE3lqaEc6HyQ6TIgrNcu9eE7nlGWLNHXEiu5Tk
+         sErDd5tW7ug4rKwW6CNTObgMD4y7GmuXnbUJLG0uCMMkNrWQUoN+50B5RSAfy6ZCY5Nf
+         +5iovHwdqhSShoYvqEc4tNqacTehQMnkPclg2xrwupMRELVCN8LXcoYM+AUVBXZ3dUpR
+         09vQ==
+X-Gm-Message-State: AOAM530D/tqL6MhFDKXFf5sG2IzJRcf+9Bzs1m3Acmw814enhXbrSQDO
+        3v5uoIek5bVj0cso6gM9x41dbZxlExK4LW4hSGw=
+X-Google-Smtp-Source: ABdhPJy9dJl6L/bnRQi8tK1Am+5DPjPBZvatcTyLSMpbpD4vy19hTtp8mGF/Cl1TBx2f3Cw7TL+lgScx4mlljQ4behg=
+X-Received: by 2002:a2e:5d3:: with SMTP id 202mr3981304ljf.330.1643321423317;
+ Thu, 27 Jan 2022 14:10:23 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <a57e2fde-f430-952d-9878-d7a5307cb2db@embecosm.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <164325106958.29787.4865219843242892726.stgit@noble.brown> <164325158955.29787.4769373293473421057.stgit@noble.brown>
+In-Reply-To: <164325158955.29787.4769373293473421057.stgit@noble.brown>
+From:   Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Date:   Fri, 28 Jan 2022 07:10:11 +0900
+Message-ID: <CAKFNMom4Z76ti4fp69UeKYf0d4x635OR7Q_CjVnBj+vQSuhESg@mail.gmail.com>
+Subject: Re: [PATCH 2/9] Remove bdi_congested() and wb_congested() and related functions
+To:     NeilBrown <neilb@suse.de>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        Paolo Valente <paolo.valente@linaro.org>,
+        Jens Axboe <axboe@kernel.dk>, Linux MM <linux-mm@kvack.org>,
+        linux-nilfs <linux-nilfs@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
+        LKML <linux-kernel@vger.kernel.org>, linux-block@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-...Oh dear, I think I may have been extremely stupid: This entire time I
-thought I was typing into the QEMU VM, but in actual fact I was typing
-into the docker container that contained it.
+On Thu, Jan 27, 2022 at 11:47 AM NeilBrown <neilb@suse.de> wrote:
+>
+> These functions are no longer useful as the only bdis that report
+> congestion are in ceph, fuse, and nfs.  None of those bdis can be the
+> target of the calls in drbd, ext2, nilfs2, or xfs.
+>
+> Removing the test on bdi_write_contested() in current_may_throttle()
+> could cause a small change in behaviour, but only when PF_LOCAL_THROTTLE
+> is set.
+>
+> So replace the calls by 'false' and simplify the code - and remove the
+> functions.
+>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  drivers/block/drbd/drbd_int.h |    3 ---
+>  drivers/block/drbd/drbd_req.c |    3 +--
+>  fs/ext2/ialloc.c              |    2 --
+>  fs/nilfs2/segbuf.c            |   11 -----------
+>  fs/xfs/xfs_buf.c              |    3 ---
+>  include/linux/backing-dev.h   |   26 --------------------------
+>  mm/vmscan.c                   |    4 +---
+>  7 files changed, 2 insertions(+), 50 deletions(-)
 
-So this wasn't an ext4 issue at all, but a limitation of whatever
-filesystem docker containers use.
+for nilfs2 bits,
+
+Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com>
+
+Thanks,
+Ryusuke Konishi
