@@ -2,185 +2,149 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DD7BCC4332F
-	for <linux-ext4@archiver.kernel.org>; Sun, 30 Jan 2022 14:37:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0357C433F5
+	for <linux-ext4@archiver.kernel.org>; Mon, 31 Jan 2022 06:32:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347220AbiA3Ohm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 30 Jan 2022 09:37:42 -0500
-Received: from mga03.intel.com ([134.134.136.65]:33655 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237542AbiA3Ohl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 30 Jan 2022 09:37:41 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1643553461; x=1675089461;
-  h=date:from:to:cc:subject:message-id:mime-version:
-   content-transfer-encoding;
-  bh=1RhTymFhgmHwFr3rDMujoLw8pUYDPUYk91A3/dgQrZU=;
-  b=O2FqBHgJgNLyifupq3QscU7Il2mtsFAHb7pQmTa8pqja8nHbHXnrVpIb
-   0UpcZOmnqlHl5DxqIVI8JstEhZXKstxi514DMbzlZLiT3d8A9zajmuv1l
-   x8n5811n/gWZCWKEijLT6DcryX0iz91t65DK5+8F7jcp4Y9g/F2mt618y
-   Lsv/08Nqk6JjGqdVINinkKKK2PI8ZxCh83lN0NxUbfl7yF6W+hJiLyo99
-   y4DGoKJQ4gaj7AHkwIdHJkRyFMhEv0Ixm1IkvDMcpm+0nfBkSyh0CLopB
-   MQRnVNdya+MnNuMzxGw3bJxpzy7F3OkhxJGuzm5AGauAyMFiKkorgly1O
-   Q==;
-X-IronPort-AV: E=McAfee;i="6200,9189,10242"; a="247302145"
-X-IronPort-AV: E=Sophos;i="5.88,328,1635231600"; 
-   d="scan'208";a="247302145"
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 30 Jan 2022 06:37:40 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.88,328,1635231600"; 
-   d="scan'208";a="582361303"
-Received: from lkp-server01.sh.intel.com (HELO 276f1b88eecb) ([10.239.97.150])
-  by fmsmga008.fm.intel.com with ESMTP; 30 Jan 2022 06:37:39 -0800
-Received: from kbuild by 276f1b88eecb with local (Exim 4.92)
-        (envelope-from <lkp@intel.com>)
-        id 1nEBKk-000Qc5-Ku; Sun, 30 Jan 2022 14:37:38 +0000
-Date:   Sun, 30 Jan 2022 22:36:58 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-Subject: [tytso-ext4:dev] BUILD SUCCESS
- b36c9466ce982906a6420e6af0fca73d1c0931b5
-Message-ID: <61f6a28a.BZMawGH9rHdTTlVb%lkp@intel.com>
-User-Agent: Heirloom mailx 12.5 6/20/10
+        id S236244AbiAaGcs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 31 Jan 2022 01:32:48 -0500
+Received: from mail-co1nam11on2046.outbound.protection.outlook.com ([40.107.220.46]:52128
+        "EHLO NAM11-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S235726AbiAaGcq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 31 Jan 2022 01:32:46 -0500
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=gvVvXSGe1qDwwi4cpkR2oNbLmtvBwqr6BP2iu3Wy/IeeRyXBJPwzIKHaWYyuhe/nx4Os/JxNM6sGQrBcTGACpaTIXddG5sM8hmmCVBx3nHH1TUaPyIjf+HWAcpcGnCYZgwzUy9qnLVBK3Jnbrgvtmod3Z9/lSPUouQRiqW1eeJstzQuO1HwHZN9gfWtzbTLnGWTSl3krixs4Ar91wJRkYglsSdmiZ3ZOLneg3nbEwk7+8JEq6TbW8NJ/FuGwt3e12HHNiUM7SRjUEFnZMmiG/Xj8EJL6B4Jy5CGHWoHe37YiSBMhWDv+4Kf4iM60EBTVR3xlT2wOx5DauDEZS6EKkQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=XF1tQEnt7Y+Wzg/b2wgNlDuGIXR9GwjBxX2hjzQN5u0=;
+ b=eYMQ8asDzK8XMp23tX/YThG+Bsn3tx2rRV2v6G1yjaZiLga2PrLgv/L4JQryvSDS54j0huA+WCRPL9wylqe3yE56I2mHwomnrXQDY55uJaO0SdHwhx3YZ59ZNcTOUSjrQHAaAjGHWUAzU1fxFpNTLp5ezek1hbg2LTSV22D3h0joBNQsdiJJwcCskRP8Ik+LDSWypELzziLSf2On83D3oQWX7PtWOuxIhT5Isvbhc746+VNauIyHJYBIPnd1L1I3HsPQalEcRqdJCnMO9UeBuV79B5sGTuoSGRm/XnGEytWpmZIyX5V0jEvMGC1ZkHey/wefkhw0p32OTPeIiyYSyQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
+ 12.22.5.236) smtp.rcpttodomain=lists.freedesktop.org
+ smtp.mailfrom=nvidia.com; dmarc=pass (p=reject sp=reject pct=100) action=none
+ header.from=nvidia.com; dkim=none (message not signed); arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=XF1tQEnt7Y+Wzg/b2wgNlDuGIXR9GwjBxX2hjzQN5u0=;
+ b=Ux6NmGP5qf9vgSppOlaq9fc/g+gq6GYnMpoFYjo4odz22TZkW9y0Guv1GBGfYXwTMIcHYoUbdpDWwgElmzeMD98/wl2DYvh3tZJxx+GlDHH2qWJwDfNdhwiU3OP8BiSqKRmMf8uj2+qxDLTAuDobImq5UbhFTewhFB9pKF8caNcSZoTB38OatbW/idHXOcu2I7Zdr+VJjZn5OGpH5eOPodlqDoRR90CcPp5dGhsVyAAMlVENfUh4pvXY7PrD/VLIS2Gcl758s42l832d4tYuuPOFqkkMrBHIdqzlbrMrkvkk50EkPcGHP8h1dtJawYxY3RbTxplv5bXbkoN6PiAPFA==
+Received: from MW4PR04CA0261.namprd04.prod.outlook.com (2603:10b6:303:88::26)
+ by DM6PR12MB4634.namprd12.prod.outlook.com (2603:10b6:5:165::32) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4930.20; Mon, 31 Jan
+ 2022 06:32:44 +0000
+Received: from CO1NAM11FT009.eop-nam11.prod.protection.outlook.com
+ (2603:10b6:303:88:cafe::56) by MW4PR04CA0261.outlook.office365.com
+ (2603:10b6:303:88::26) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4930.15 via Frontend
+ Transport; Mon, 31 Jan 2022 06:32:44 +0000
+X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 12.22.5.236)
+ smtp.mailfrom=nvidia.com; dkim=none (message not signed)
+ header.d=none;dmarc=pass action=none header.from=nvidia.com;
+Received-SPF: Pass (protection.outlook.com: domain of nvidia.com designates
+ 12.22.5.236 as permitted sender) receiver=protection.outlook.com;
+ client-ip=12.22.5.236; helo=mail.nvidia.com;
+Received: from mail.nvidia.com (12.22.5.236) by
+ CO1NAM11FT009.mail.protection.outlook.com (10.13.175.61) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
+ 15.20.4930.15 via Frontend Transport; Mon, 31 Jan 2022 06:32:43 +0000
+Received: from rnnvmail201.nvidia.com (10.129.68.8) by DRHQMAIL109.nvidia.com
+ (10.27.9.19) with Microsoft SMTP Server (TLS) id 15.0.1497.18; Mon, 31 Jan
+ 2022 06:32:42 +0000
+Received: from nvdebian.localnet (10.126.230.35) by rnnvmail201.nvidia.com
+ (10.129.68.8) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.986.9; Sun, 30 Jan 2022
+ 22:32:39 -0800
+From:   Alistair Popple <apopple@nvidia.com>
+To:     <akpm@linux-foundation.org>, <Felix.Kuehling@amd.com>,
+        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
+        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
+        Alex Sierra <alex.sierra@amd.com>
+CC:     <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
+        <hch@lst.de>, <jgg@nvidia.com>, <jglisse@redhat.com>,
+        <willy@infradead.org>
+Subject: Re: [PATCH v5 02/10] mm: add device coherent vma selection for memory migration
+Date:   Mon, 31 Jan 2022 17:32:09 +1100
+Message-ID: <1761055.EOaAWAZ9kn@nvdebian>
+In-Reply-To: <20220128200825.8623-3-alex.sierra@amd.com>
+References: <20220128200825.8623-1-alex.sierra@amd.com> <20220128200825.8623-3-alex.sierra@amd.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset="us-ascii"
+X-Originating-IP: [10.126.230.35]
+X-ClientProxiedBy: drhqmail202.nvidia.com (10.126.190.181) To
+ rnnvmail201.nvidia.com (10.129.68.8)
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: 428c4fc8-8571-4807-f705-08d9e4837d0b
+X-MS-TrafficTypeDiagnostic: DM6PR12MB4634:EE_
+X-Microsoft-Antispam-PRVS: <DM6PR12MB46346FF5B38114C79CD567BDDF259@DM6PR12MB4634.namprd12.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:7219;
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: hJ1PUShyShlk0fTp1g6E9VvXoeCpImw9IfsEelKsS1vDeIyljNzz+JYQCM6/VZBNoXKg3aqRVk75OSlViqBNNr+GYk1HR1bN1ltaGAn1vtqaT7XiKk6JeTTl3YOo8Yzy9TSv57UBuyKNgR+zrA4/jEZXlIFhyWh624BEWWCrU2ib1/mA6EPOHMSLKMA8uqZA4IVr/+kKRrMkcZJfugf8kBiJR1vF6k3M3iD3qTY1D3Xx5R949yqKLlHZRpk5LH2I4B+ZJ6OD9XjHnVCATaogoJYEOFlkgp3eP6yi4D90VV5OIWkLyFH+DIZCt73hqbeHJLdaPVRxxQC+oq0TQzFwBH9DlWFJtO9oROls6YBqVlyg5Wj+0y8TZhcbnJiKUybBYbmPyJz7htAaNBoxLunlJX5+y3lB3OXDpkL4KTQKANUtLl+ZQ0zXfAytVyFbSzeRG5OjbFEekt350tME5LPwn2vTfKdrHjPo8BUWsULQtrH6tu78+hUP7LdTSOPxaAThPd+OSL9AVmTiaAiGnH43DqihISC9RPMn6Nzh+zRB0ZEVftU0UZ7OnJIjOV+cUlE5tHSKFV8UVpyDqStPGzE5wuFr4H2A5kSaewf3rSveKoIhHS8ZspxhQCoC2IeQDMqG8hLMt0VfGTuNKSFFQgwyUANw4Hc7kebdVHjFYsFOtNmzrIkRn4DXIQ7pXBmRnilkA3/6K2qROG/XzS+WrEZ8kpzv+WoK7CxD/i36uqe7n2P6dCs8ybduBTZL9AVnlPMK
+X-Forefront-Antispam-Report: CIP:12.22.5.236;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:mail.nvidia.com;PTR:InfoNoRecords;CAT:NONE;SFS:(13230001)(4636009)(46966006)(36840700001)(40470700004)(356005)(4326008)(2906002)(9576002)(6666004)(81166007)(9686003)(7416002)(8676002)(5660300002)(8936002)(33716001)(82310400004)(86362001)(70206006)(508600001)(40460700003)(110136005)(47076005)(36860700001)(54906003)(16526019)(70586007)(186003)(26005)(426003)(336012)(316002)(39026012)(36900700001)(20210929001);DIR:OUT;SFP:1101;
+X-OriginatorOrg: Nvidia.com
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 31 Jan 2022 06:32:43.8327
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 428c4fc8-8571-4807-f705-08d9e4837d0b
+X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=43083d15-7273-40c1-b7db-39efd9ccc17a;Ip=[12.22.5.236];Helo=[mail.nvidia.com]
+X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT009.eop-nam11.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR12MB4634
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-tree/branch: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-branch HEAD: b36c9466ce982906a6420e6af0fca73d1c0931b5  fs/ext4: fix comments mentioning i_mutex
+On Saturday, 29 January 2022 7:08:17 AM AEDT Alex Sierra wrote:
 
-elapsed time: 724m
+[...]
 
-configs tested: 112
-configs skipped: 3
+>  struct migrate_vma {
+> diff --git a/mm/migrate.c b/mm/migrate.c
+> index cd137aedcfe5..d3cc3589e1e8 100644
+> --- a/mm/migrate.c
+> +++ b/mm/migrate.c
+> @@ -2264,7 +2264,8 @@ static int migrate_vma_collect_pmd(pmd_t *pmdp,
+>  			if (is_writable_device_private_entry(entry))
+>  				mpfn |= MIGRATE_PFN_WRITE;
+>  		} else {
+> -			if (!(migrate->flags & MIGRATE_VMA_SELECT_SYSTEM))
+> +			if (!(migrate->flags & MIGRATE_VMA_SELECT_SYSTEM) &&
+> +			    !(migrate->flags & MIGRATE_VMA_SELECT_DEVICE_COHERENT))
+>  				goto next;
+>  			pfn = pte_pfn(pte);
+>  			if (is_zero_pfn(pfn)) {
 
-The following configs have been built successfully.
-More configs may be tested in the coming days.
+Sorry, but I still don't think this is quite right.
 
-gcc tested configs:
-arm                                 defconfig
-arm64                            allyesconfig
-arm64                               defconfig
-arm                              allyesconfig
-arm                              allmodconfig
-i386                          randconfig-c001
-powerpc                 mpc8540_ads_defconfig
-m68k                          amiga_defconfig
-arm                           u8500_defconfig
-sparc64                             defconfig
-powerpc                        cell_defconfig
-sh                  sh7785lcr_32bit_defconfig
-arm                           sama5_defconfig
-parisc                generic-32bit_defconfig
-xtensa                           allyesconfig
-powerpc                 mpc834x_itx_defconfig
-arm                             rpc_defconfig
-arc                        nsim_700_defconfig
-sh                        dreamcast_defconfig
-arm                      integrator_defconfig
-nds32                               defconfig
-nds32                             allnoconfig
-arc                    vdk_hs38_smp_defconfig
-m68k                         amcore_defconfig
-powerpc                     tqm8541_defconfig
-arm                        spear6xx_defconfig
-xtensa                           alldefconfig
-m68k                                defconfig
-powerpc                    adder875_defconfig
-powerpc                       eiger_defconfig
-mips                 decstation_r4k_defconfig
-powerpc                      pcm030_defconfig
-sh                               allmodconfig
-sh                          polaris_defconfig
-sh                         microdev_defconfig
-arm                        cerfcube_defconfig
-h8300                    h8300h-sim_defconfig
-sh                           se7206_defconfig
-powerpc                      ppc6xx_defconfig
-powerpc                 mpc834x_mds_defconfig
-sh                          rsk7264_defconfig
-sh                             espt_defconfig
-sh                           se7712_defconfig
-i386                                defconfig
-m68k                             allmodconfig
-arm                  randconfig-c002-20220130
-ia64                             allmodconfig
-ia64                                defconfig
-ia64                             allyesconfig
-m68k                             allyesconfig
-nios2                               defconfig
-arc                              allyesconfig
-nios2                            allyesconfig
-csky                                defconfig
-alpha                               defconfig
-alpha                            allyesconfig
-h8300                            allyesconfig
-arc                                 defconfig
-parisc                              defconfig
-s390                             allyesconfig
-s390                             allmodconfig
-parisc                           allyesconfig
-s390                                defconfig
-i386                             allyesconfig
-sparc                            allyesconfig
-sparc                               defconfig
-i386                   debian-10.3-kselftests
-i386                              debian-10.3
-mips                             allyesconfig
-mips                             allmodconfig
-powerpc                          allyesconfig
-powerpc                          allmodconfig
-powerpc                           allnoconfig
-x86_64                        randconfig-a006
-x86_64                        randconfig-a004
-x86_64                        randconfig-a002
-i386                          randconfig-a012
-i386                          randconfig-a014
-i386                          randconfig-a016
-riscv                randconfig-r042-20220130
-arc                  randconfig-r043-20220130
-s390                 randconfig-r044-20220130
-riscv                    nommu_k210_defconfig
-riscv                            allyesconfig
-riscv                    nommu_virt_defconfig
-riscv                             allnoconfig
-riscv                               defconfig
-riscv                          rv32_defconfig
-riscv                            allmodconfig
-x86_64                    rhel-8.3-kselftests
-um                           x86_64_defconfig
-um                             i386_defconfig
-x86_64                           allyesconfig
-x86_64                              defconfig
-x86_64                               rhel-8.3
-x86_64                          rhel-8.3-func
-x86_64                                  kexec
+When specifying MIGRATE_VMA_SELECT_DEVICE_COHERENT we are looking for pages to
+migrate from the device back to system memory. But as currently written I think
+this can also select the zero pfn when MIGRATE_VMA_SELECT_DEVICE_COHERENT is
+specified. As far as I know that can never point to device memory so migration
+of a zero pfn should be also be skipped in that case.
 
-clang tested configs:
-riscv                randconfig-c006-20220130
-x86_64                        randconfig-c007
-arm                  randconfig-c002-20220130
-powerpc              randconfig-c003-20220130
-mips                 randconfig-c004-20220130
-s390                 randconfig-c005-20220130
-i386                          randconfig-c001
-arm                          moxart_defconfig
-mips                   sb1250_swarm_defconfig
-hexagon                             defconfig
-powerpc                 mpc8315_rdb_defconfig
-i386                          randconfig-a002
-i386                          randconfig-a006
-i386                          randconfig-a004
-x86_64                        randconfig-a012
-x86_64                        randconfig-a014
-x86_64                        randconfig-a016
+We should only migrate the zero pfn if MIGRATE_VMA_SELECT_SYSTEM is specified.
 
----
-0-DAY CI Kernel Test Service, Intel Corporation
-https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
+> @@ -2273,6 +2274,13 @@ static int migrate_vma_collect_pmd(pmd_t *pmdp,
+>  				goto next;
+>  			}
+>  			page = vm_normal_page(migrate->vma, addr, pte);
+> +			if (page && !is_zone_device_page(page) &&
+> +			    !(migrate->flags & MIGRATE_VMA_SELECT_SYSTEM))
+> +				goto next;
+> +			if (page && is_device_coherent_page(page) &&
+> +			    (!(migrate->flags & MIGRATE_VMA_SELECT_DEVICE_COHERENT) ||
+> +			     page->pgmap->owner != migrate->pgmap_owner))
+> +				goto next;
+>  			mpfn = migrate_pfn(pfn) | MIGRATE_PFN_MIGRATE;
+>  			mpfn |= pte_write(pte) ? MIGRATE_PFN_WRITE : 0;
+>  		}
+> 
+
+
+
+
