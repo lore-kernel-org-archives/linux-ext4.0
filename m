@@ -2,141 +2,109 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C76D3C433EF
-	for <linux-ext4@archiver.kernel.org>; Sat,  5 Feb 2022 14:10:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97EE5C433F5
+	for <linux-ext4@archiver.kernel.org>; Sat,  5 Feb 2022 14:10:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1380103AbiBEOKy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1380111AbiBEOKy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Sat, 5 Feb 2022 09:10:54 -0500
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:50284 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1380101AbiBEOKt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2022 09:10:49 -0500
-Received: from pps.filterd (m0098420.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 215B3qEx012245;
-        Sat, 5 Feb 2022 14:10:45 GMT
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40396 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1380104AbiBEOKu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Feb 2022 09:10:50 -0500
+Received: from pps.filterd (m0098399.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 215B7WVB006898;
+        Sat, 5 Feb 2022 14:10:39 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
  : date : message-id : in-reply-to : references : mime-version :
  content-transfer-encoding; s=pp1;
- bh=DuGudSqE6S8R83bPkCtMC6kcBgA6R9CxDU/Id7eFzog=;
- b=SSxlRjjZyykqP25VqM9i5+QV52dqaRY3DH3mTm7ghVRK6FFY94gIFcQRpy2IEdMEp6ox
- 5rw+OC/LK1qwWlYVZO8YeHbFUKTmSo344Z0ZgWW4T2DcsCzwt/kbCcVeFzXp/vjkfzKu
- M5CNFPfJPkd6R+JTx5DAbjb8IbVN7Jm8Zumo0H8M9CgzXHGJpUt0LbnfzyeV2sUGtZKs
- 3QsNuPfIIqSQufeO2kQzVF9cemf2QrPqhOhDO0IqgQPlLHEC+0TVW3ShqeqGFZlnGeZx
- 7kQSerIPqzOGNT8BFnY6zR2EmLT9ssbWGDBpQZlI6WzbVob24cIii55uZJynRYBmNlrz tQ== 
+ bh=aI4vEeTNOg9v1dM63azd4oTJbPVlwfR5PDX//Ogqchk=;
+ b=sjNLgI1sUZRL2LMhP0mDmbOClbwzc2bgenieP8AtOVbHaFl0P9tTwx8SJbBiyV1/3Kvs
+ qk5gMAactf4I/tbCWntdPUVKMymIpEtYvaDRndzQzWhGyKglF3LKffMJ3Cgm8LVoFWB4
+ YieOUnbmfBf6FW/a3KWDSYlNaHGsqEcgWnjJlLr/bitaE/VbEwR6T5Chh6vs/Z3B4YCI
+ Er9476RiAxMk7hNUcvB3tIlhlxn35yzCU1ylCgejWD4Clw/nuT8I222fde3WsE+ulaRm
+ y8tynY5Orcl+RUmm4h5V3tfmZXzLmso3VpGWjb4mWC+Ujmh3phIgcCbpMS7S63V0E1Yn GQ== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3e1hw9xtqy-1
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3e1hvby3q6-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 05 Feb 2022 14:10:45 +0000
-Received: from m0098420.ppops.net (m0098420.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 215EAj9O027355;
-        Sat, 5 Feb 2022 14:10:45 GMT
-Received: from ppma01fra.de.ibm.com (46.49.7a9f.ip4.static.sl-reverse.com [159.122.73.70])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3e1hw9xtqj-1
+        Sat, 05 Feb 2022 14:10:39 +0000
+Received: from m0098399.ppops.net (m0098399.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 215EAdvV023132;
+        Sat, 5 Feb 2022 14:10:39 GMT
+Received: from ppma03fra.de.ibm.com (6b.4a.5195.ip4.static.sl-reverse.com [149.81.74.107])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3e1hvby3pt-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 05 Feb 2022 14:10:44 +0000
-Received: from pps.filterd (ppma01fra.de.ibm.com [127.0.0.1])
-        by ppma01fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 215E3lxj001307;
-        Sat, 5 Feb 2022 14:10:43 GMT
-Received: from b06avi18626390.portsmouth.uk.ibm.com (b06avi18626390.portsmouth.uk.ibm.com [9.149.26.192])
-        by ppma01fra.de.ibm.com with ESMTP id 3e1gv8t0wa-1
+        Sat, 05 Feb 2022 14:10:38 +0000
+Received: from pps.filterd (ppma03fra.de.ibm.com [127.0.0.1])
+        by ppma03fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 215E2rtr026680;
+        Sat, 5 Feb 2022 14:10:36 GMT
+Received: from b06cxnps3074.portsmouth.uk.ibm.com (d06relay09.portsmouth.uk.ibm.com [9.149.109.194])
+        by ppma03fra.de.ibm.com with ESMTP id 3e1gv8t0tu-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 05 Feb 2022 14:10:42 +0000
+        Sat, 05 Feb 2022 14:10:36 +0000
 Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
-        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 215E0gNN49676752
+        by b06cxnps3074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 215EAY3M32244050
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 5 Feb 2022 14:00:42 GMT
+        Sat, 5 Feb 2022 14:10:34 GMT
 Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 41F1CA4059;
-        Sat,  5 Feb 2022 14:10:40 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 2E2A1A4055;
+        Sat,  5 Feb 2022 14:10:34 +0000 (GMT)
 Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 9A6A0A4055;
-        Sat,  5 Feb 2022 14:10:39 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 1CB6DA4040;
+        Sat,  5 Feb 2022 14:10:33 +0000 (GMT)
 Received: from localhost (unknown [9.43.12.205])
         by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Sat,  5 Feb 2022 14:10:39 +0000 (GMT)
+        Sat,  5 Feb 2022 14:10:32 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
         Jan Kara <jack@suse.cz>,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv1 8/9] ext4: Add strict range checks while freeing blocks
-Date:   Sat,  5 Feb 2022 19:39:57 +0530
-Message-Id: <7d16dee931f42fa415ffe86fc3968b4b3d7269c8.1644062450.git.riteshh@linux.ibm.com>
+Subject: [PATCHv1 6/9] ext4: No need to test for block bitmap bits in ext4_mb_mark_bb()
+Date:   Sat,  5 Feb 2022 19:39:55 +0530
+Message-Id: <40b6efa3a8333ec411d05fe5390f0977f7576d64.1644062450.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <cover.1644062450.git.riteshh@linux.ibm.com>
 References: <cover.1644062450.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: FTGdeqo5REIdYiIvzyuamWXGWfW96X0i
-X-Proofpoint-GUID: WijiMSnog_80SOflcXKA3eg27YWP0izf
+X-Proofpoint-GUID: pZZh8IPiGJt26LKF67pM7wq_67aL9OQO
+X-Proofpoint-ORIG-GUID: 6R7XRIpKBxBlTnT09cmA6EYi4Pb-ST6Z
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2022-02-05_10,2022-02-03_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
- suspectscore=0 phishscore=0 clxscore=1015 mlxscore=0 mlxlogscore=624
- impostorscore=0 bulkscore=0 spamscore=0 malwarescore=0 priorityscore=1501
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2201110000 definitions=main-2202050095
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 clxscore=1015 suspectscore=0
+ adultscore=0 lowpriorityscore=0 bulkscore=0 mlxlogscore=718 malwarescore=0
+ priorityscore=1501 mlxscore=0 spamscore=0 phishscore=0 impostorscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2201110000
+ definitions=main-2202050095
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently ext4_mb_clear_bb() & ext4_group_add_blocks() only checks
-whether the given block ranges (which is to be freed) belongs to any FS
-metadata blocks or not, of the block's respective block group.
-But to detect any FS error early, it is better to add more strict
-checkings in those functions which checks whether the given blocks
-belongs to any critical FS metadata or not within system-zone.
+We don't need the return value of mb_test_and_clear_bits() in ext4_mb_mark_bb()
+So simply use mb_clear_bits() instead.
 
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/mballoc.c | 16 +++-------------
- 1 file changed, 3 insertions(+), 13 deletions(-)
+ fs/ext4/mballoc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 23313963bb56..9f2b3a057918 100644
+index f80af108d05e..23313963bb56 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -5930,13 +5930,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 		goto error_return;
- 	}
- 
--	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
--	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
--	    in_range(block, ext4_inode_table(sb, gdp),
--		     sbi->s_itb_per_group) ||
--	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
--		     sbi->s_itb_per_group)) {
--
-+	if (!ext4_inode_block_valid(inode, block, count)) {
- 		ext4_error(sb, "Freeing blocks in system zone - "
- 			   "Block = %llu, count = %lu", block, count);
- 		/* err = 0. ext4_std_error should be a no op */
-@@ -6007,7 +6001,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
- 						 NULL);
- 			if (err && err != -EOPNOTSUPP)
- 				ext4_msg(sb, KERN_WARNING, "discard request in"
--					 " group:%d block:%d count:%lu failed"
-+					 " group:%u block:%d count:%lu failed"
- 					 " with %d", block_group, bit, count,
- 					 err);
- 		} else
-@@ -6220,11 +6214,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
- 		goto error_return;
- 	}
- 
--	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
--	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
--	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
--	    in_range(block + count - 1, ext4_inode_table(sb, desc),
--		     sbi->s_itb_per_group)) {
-+	if (!ext4_sb_block_valid(sb, NULL, block, count)) {
- 		ext4_error(sb, "Adding blocks in system zones - "
- 			   "Block = %llu, count = %lu",
- 			   block, count);
+@@ -3941,7 +3941,7 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
+ 		if (state)
+ 			mb_set_bits(bitmap_bh->b_data, blkoff, clen);
+ 		else
+-			mb_test_and_clear_bits(bitmap_bh->b_data, blkoff, clen);
++			mb_clear_bits(bitmap_bh->b_data, blkoff, clen);
+ 		if (ext4_has_group_desc_csum(sb) &&
+ 		    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
 -- 
 2.31.1
 
