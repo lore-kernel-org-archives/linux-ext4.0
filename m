@@ -2,50 +2,51 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17396C433EF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 265B8C4332F
 	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 07:16:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232746AbiBGHPo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Feb 2022 02:15:44 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45870 "EHLO
+        id S232518AbiBGHPn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Feb 2022 02:15:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45828 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238533AbiBGG4v (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 01:56:51 -0500
+        with ESMTP id S238346AbiBGG4q (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 01:56:46 -0500
+X-Greylist: delayed 61 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 06 Feb 2022 22:56:45 PST
 Received: from esa5.hgst.iphmx.com (esa5.hgst.iphmx.com [216.71.153.144])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 587C5C043184;
-        Sun,  6 Feb 2022 22:56:50 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43774C043181;
+        Sun,  6 Feb 2022 22:56:44 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
   d=wdc.com; i=@wdc.com; q=dns/txt; s=dkim.wdc.com;
-  t=1644217010; x=1675753010;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=d4ENreMGrlKCk5cIjSx96VRXwooXyBj4UXgKGLLw7K0=;
-  b=bLbm+UA3QjgYnLrvUfzpVCVOqHuSFFrjnV0WHRyEoviA95VBwIseOam3
-   kbFSjmxYyA3zgsPJrJpzzogD4W9/RzCG9Oc7zcHsY6Rl2ulRIZ6+dDu8+
-   55NtmkOF5b6ggrelNgxTCR118Nf3O8IbUu5zskWaOnlMDr1UQU7yXqVre
-   BG3OX9ngixALOvpYtirelMyrSFKSpGx6GJst5RsNUj2PqJ7vCS57Y+yto
-   jMD/tf52ZMlDZWBVvYoVw8QORpRk2Hcf4PDEV12vdPz5/fL7hd4eG3ffR
-   Tdb9oIeRiW8uzda2YTXmK7tKx+DCb6IbJbgrl0YBzk6QXOtaCyl8TzEX0
-   g==;
+  t=1644217004; x=1675753004;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=i499PSgK1wGpdERKxIqW9U6J6nKA+RZnj0LglIyJ4e8=;
+  b=aJ3mniad3wULk8CObYXYJA1MYT7Xvj2YY3U4ARdqc2BO0LQqAsy06n38
+   qi4L08AoJv0f3bWBze1EZpMN8rAF1y0yW2efxWoD6VqVQnM4cpo6lzFdk
+   QE9r+QkvcdWvJKxoG0dgClJc4xIR8FWETr/QaQxCERuFdLF22ifs27u/n
+   U1kpW7MN82zXLQFsaI+DR/dzH7gnMtBNcy/9nXJGlq+8nxFjIB1H3ziCA
+   2bNetL3qaUr7nP+7AM8wiR4xUulvp2JmIOoPtfjVqyh3YEwpL31Sp5vuq
+   oecALBzGCmaisX07c2Um2dLTBmSnc2eipgvE0P0wOEZ9vgzaQHUJSQUVt
+   Q==;
 X-IronPort-AV: E=Sophos;i="5.88,349,1635177600"; 
-   d="scan'208";a="192305058"
+   d="scan'208";a="192305055"
 Received: from uls-op-cesaip01.wdc.com (HELO uls-op-cesaep01.wdc.com) ([199.255.45.14])
-  by ob1.hgst.iphmx.com with ESMTP; 07 Feb 2022 14:55:44 +0800
-IronPort-SDR: AzHJ6gb0GNt+dfP9Spn3Ih6ZsGdIJG2OFuQ7GIAjpgYp7Od9R8Jlis2RbaEsAedP+V2SMkAlr5
- mxjLUOeig/KWg7WQsrvQcCPL2b+OQmue51j3IyabafNvtjnySRPxAOX4v+dMEUUYHtITjuCx7z
- +WRFRVpgO99X7CeKV6/CbDpzG+M3JbENGomnNjFSZGRWkyS5xy0oy7VWFrhuOnfAoshmdcnVJJ
- JVRZipFVlmpd2Z+Z+wcat+Qi4Izg2LTYtHKUaDYCeqZQvxo4R6/7oiQ9BBtkXoxgIa6fPpJ7oo
- fCGwkB6kR1w7RhJQgx2N8fOb
+  by ob1.hgst.iphmx.com with ESMTP; 07 Feb 2022 14:55:42 +0800
+IronPort-SDR: HYZBC/bnxUzpw2ytP/ahNr67xP8fX4cEOD4pWf8SBqotPsAPiHEitFuPgC8a1+IyTKoiZOXLWA
+ 88CDg2udSsPA+rC4UBiWX3nUQzl+7WnQJtk28TIL8BFM2uleZNd20LzoImbZ6tOlWDVfGpHGuz
+ zCcLkxZT7wrRbfu5VcDCco4OjOxmOW0hO/YfJVmULZed/+/2sHcztlehOgSg6v+rPmqXkK39AB
+ AILafvTXdPuun4s62fwCqCF1iyxUW9cvnKJF+juRVpcVZzFj3AwhS3QzSTdEI9rVaDGuWznvhQ
+ LCnvd1kOlRVTVeVrjBT/QvHx
 Received: from uls-op-cesaip01.wdc.com ([10.248.3.36])
-  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 06 Feb 2022 22:28:46 -0800
-IronPort-SDR: JlXGmo5R+Rrf+nwIvfXNcaofNNbbLBybjeVFPFgCsGHnHQqYSyTQWkz2QfCwaXHqTznXdh9WZJ
- UH5PFq8fTrULCAh4VanxcswQOq5VyruByqfZHz0t1fqMLU9koybaBuJLLFmkrA92+s+IhzPWPp
- vyJFcsEUAcXuTMxQYJOqxEuPRyjbpvY4/9fyyxj+hqeW3MadbQ0Np+goQYBKxvf3fBQj77Ukr6
- 9TojSxEw+WqoshTtevL/qkZ4LYscIlyAeoRGS299903p1Yz4d/rDKzeg1EeRgVoPv9OMmJly7Q
- Ke0=
+  by uls-op-cesaep01.wdc.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 06 Feb 2022 22:28:44 -0800
+IronPort-SDR: iPexuFmbMmmdkk3GO+0cfGVz3A6AhYnt+hrUJ9SuVpFNo6vogp9R0/ecWhm0G3hXwpGyz0NeNG
+ WDf04YEKX04jxY+NJZYRRHOEwBaCNSL9hhPLu7sdLKERDp12OI8eBCewrqf32vItNABS1l51mE
+ HvkBKQbTBGbQnK+zwhWVg1fMkQ20vkspouY4RtLyIKwxfeSLXLjgZhbPQCKocD2eFhX/LVwjAD
+ 1i0FU3fAQSm181qrzK92p66NJ4VGKVV80aMyB8flVSYISM6StrwMHCRb2Ph5e9MzccX3yjAw3b
+ BbM=
 WDCIronportException: Internal
 Received: from shindev.dhcp.fujisawa.hgst.com (HELO shindev.fujisawa.hgst.com) ([10.149.52.173])
-  by uls-op-cesaip01.wdc.com with ESMTP; 06 Feb 2022 22:55:45 -0800
+  by uls-op-cesaip01.wdc.com with ESMTP; 06 Feb 2022 22:55:42 -0800
 From:   Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
 To:     fstests@vger.kernel.org, linux-btrfs@vger.kernel.org
 Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -53,104 +54,130 @@ Cc:     linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         Johannes Thumshirn <johannes.thumshirn@wdc.com>,
         Damien Le Moal <damien.lemoal@opensource.wdc.com>,
         Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
-Subject: [PATCH 2/7] generic/{171,172,173,174,204}: check _scratch_mkfs_sized return code
-Date:   Mon,  7 Feb 2022 15:55:36 +0900
-Message-Id: <20220207065541.232685-3-shinichiro.kawasaki@wdc.com>
+Subject: [PATCH 0/7] fstests: fix _scratch_mkfs_sized failure handling
+Date:   Mon,  7 Feb 2022 15:55:34 +0900
+Message-Id: <20220207065541.232685-1-shinichiro.kawasaki@wdc.com>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220207065541.232685-1-shinichiro.kawasaki@wdc.com>
-References: <20220207065541.232685-1-shinichiro.kawasaki@wdc.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The test cases generic/{171,172,173,174,204} call _scratch_mkfs before
-_scratch_mkfs_sized, and they do not check return code of
-_scratch_mkfs_sized. Even if _scratch_mkfs_sized failed, _scratch_mount
-after it cannot detect the sized mkfs failure because _scratch_mkfs
-already created a file system on the device. This results in unexpected
-test condition of the test cases.
+Let me repost again adding CC to ext4 and xfs lists, since the series includes
+changes unique to those filesystems. Sorry for repeating same posts to fstests
+list and btrfs list. Reviews and comments will be appreciated.
 
-To avoid the unexpected test condition, check return code of
-_scratch_mkfs_sized in the test cases.
 
-Suggested-by: Naohiro Aota <naohiro.aota@wdc.com>
-Signed-off-by: Shin'ichiro Kawasaki <shinichiro.kawasaki@wdc.com>
----
- tests/generic/171 | 2 +-
- tests/generic/172 | 2 +-
- tests/generic/173 | 2 +-
- tests/generic/174 | 2 +-
- tests/generic/204 | 3 ++-
- 5 files changed, 6 insertions(+), 5 deletions(-)
+When generic/204 is run for btrfs-zoned filesystem on zoned block devices with
+GB size order, it takes very long time to complete. The test case creates 115MiB
+filesystem on the scratch device and fills files in it within decent run time.
+However, with btrfs-zoned condition, the test case creates filesystem as large
+as the device size and it takes very long time to fill it all. Three causes were
+identified for the long run time, and this series addresses them.
 
-diff --git a/tests/generic/171 b/tests/generic/171
-index fb2a6f14..f823a454 100755
---- a/tests/generic/171
-+++ b/tests/generic/171
-@@ -42,7 +42,7 @@ sz_bytes=$((nr_blks * 8 * blksz))
- if [ $sz_bytes -lt $((32 * 1048576)) ]; then
- 	sz_bytes=$((32 * 1048576))
- fi
--_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1
-+_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1 || _fail "mkfs failed"
- _scratch_mount >> $seqres.full 2>&1
- rm -rf $testdir
- mkdir $testdir
-diff --git a/tests/generic/172 b/tests/generic/172
-index ab5122fa..383824b9 100755
---- a/tests/generic/172
-+++ b/tests/generic/172
-@@ -40,7 +40,7 @@ umount $SCRATCH_MNT
- 
- file_size=$((768 * 1024 * 1024))
- fs_size=$((1024 * 1024 * 1024))
--_scratch_mkfs_sized $fs_size >> $seqres.full 2>&1
-+_scratch_mkfs_sized $fs_size >> $seqres.full 2>&1 || _fail "mkfs failed"
- _scratch_mount >> $seqres.full 2>&1
- rm -rf $testdir
- mkdir $testdir
-diff --git a/tests/generic/173 b/tests/generic/173
-index 0eb313e2..e1493278 100755
---- a/tests/generic/173
-+++ b/tests/generic/173
-@@ -42,7 +42,7 @@ sz_bytes=$((nr_blks * 8 * blksz))
- if [ $sz_bytes -lt $((32 * 1048576)) ]; then
- 	sz_bytes=$((32 * 1048576))
- fi
--_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1
-+_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1 || _fail "mkfs failed"
- _scratch_mount >> $seqres.full 2>&1
- rm -rf $testdir
- mkdir $testdir
-diff --git a/tests/generic/174 b/tests/generic/174
-index 1505453e..c7a177b8 100755
---- a/tests/generic/174
-+++ b/tests/generic/174
-@@ -43,7 +43,7 @@ sz_bytes=$((nr_blks * 8 * blksz))
- if [ $sz_bytes -lt $((32 * 1048576)) ]; then
- 	sz_bytes=$((32 * 1048576))
- fi
--_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1
-+_scratch_mkfs_sized $sz_bytes >> $seqres.full 2>&1 || _fail "mkfs failed"
- _scratch_mount >> $seqres.full 2>&1
- rm -rf $testdir
- mkdir $testdir
-diff --git a/tests/generic/204 b/tests/generic/204
-index a3dabb71..b5deb443 100755
---- a/tests/generic/204
-+++ b/tests/generic/204
-@@ -35,7 +35,8 @@ _scratch_mkfs 2> /dev/null | _filter_mkfs 2> $tmp.mkfs > /dev/null
- [ $FSTYP = "xfs" ] && MKFS_OPTIONS="$MKFS_OPTIONS -l size=16m -i maxpct=50"
- 
- SIZE=`expr 115 \* 1024 \* 1024`
--_scratch_mkfs_sized $SIZE $dbsize 2> /dev/null > $tmp.mkfs.raw
-+_scratch_mkfs_sized $SIZE $dbsize 2> /dev/null > $tmp.mkfs.raw \
-+	|| _fail "mkfs failed"
- cat $tmp.mkfs.raw | _filter_mkfs 2> $tmp.mkfs > /dev/null
- _scratch_mount
- 
+The first cause is mixed mode option that _scratch_mkfs_sized helper function
+adds to mkfs.btrfs. This option was added for both regular btrfs and
+zoned-btrfs. However, zoned-btrfs does not support mixed mode. The mkfs with
+mixed mode fails and results in _scratch_mkfs_sized failure. The mixed mode
+shall not be specified for btrfs-zoned filesystem.
+
+The second cause is no check of return code from _scratch_mkfs_sized. The test
+case generic/204 calls both _scratch_mkfs and _scratch_mkfs_sized, and does not
+check return code from them. If _scratch_mkfs succeeds and _scratch_mkfs_sized
+fails, the scratch device still has valid filesystem created by _scratch_mkfs.
+Following test workload can be executed without failure, but the filesystem
+does not have the size specified for _scratch_mkfs_sized. The return code of
+_scratch_mkfs_sized shall be checked to catch the mkfs failure.
+
+The third cause is unnecessary call of the _scratch_mkfs helper function in the
+test case generic/204. This helper function is called together with _filter_mkfs
+helper function to obtain block size of the test target filesystem. However, the
+_filter_mkfs function works only for xfs, and does nothing for other filesystems
+including btrfs. Such preparation unique to xfs shall be done only for xfs.
+
+In this series, the first patch addresses the first cause. Following three
+patches address the second cause. They cover not only generic/204 but also
+other test cases which have the same problem. The last three patches address the
+third problem. Two of them are preparation patches to clarify that the function
+_filter_mkfs is xfs unique. And the last patch modifies generic/204 so that xfs
+unique test preparation are run only for xfs.
+
+Shin'ichiro Kawasaki (7):
+  common/rc: fix btrfs mixed mode usage in _scratch_mkfs_sized
+  generic/{171,172,173,174,204}: check _scratch_mkfs_sized return code
+  ext4/021: check _scratch_mkfs_sized return code
+  xfs/015: check _scratch_mkfs_sized return code
+  common: rename _filter_mkfs to _xfs_filter_mkfs
+  common: move _xfs_filter_mkfs from common/filter to common/xfs
+  generic/204: do xfs unique preparation only for xfs
+
+ common/attr       |  2 +-
+ common/filter     | 53 -----------------------------------------------
+ common/rc         |  8 +++----
+ common/xfs        | 45 +++++++++++++++++++++++++++++++++++++++-
+ tests/ext4/021    |  2 +-
+ tests/generic/171 |  2 +-
+ tests/generic/172 |  2 +-
+ tests/generic/173 |  2 +-
+ tests/generic/174 |  2 +-
+ tests/generic/204 | 26 ++++++++++++++---------
+ tests/xfs/004     |  2 +-
+ tests/xfs/007     |  2 +-
+ tests/xfs/010     |  2 +-
+ tests/xfs/013     |  2 +-
+ tests/xfs/015     |  4 ++--
+ tests/xfs/016     |  2 +-
+ tests/xfs/029     |  2 +-
+ tests/xfs/030     |  2 +-
+ tests/xfs/031     |  6 +++---
+ tests/xfs/033     |  4 ++--
+ tests/xfs/041     |  2 +-
+ tests/xfs/044     |  2 +-
+ tests/xfs/050     |  2 +-
+ tests/xfs/052     |  2 +-
+ tests/xfs/058     |  2 +-
+ tests/xfs/067     |  2 +-
+ tests/xfs/070     |  2 +-
+ tests/xfs/071     |  2 +-
+ tests/xfs/073     |  2 +-
+ tests/xfs/076     |  2 +-
+ tests/xfs/078     |  2 +-
+ tests/xfs/092     |  2 +-
+ tests/xfs/104     |  6 +++---
+ tests/xfs/108     |  2 +-
+ tests/xfs/109     |  2 +-
+ tests/xfs/110     |  2 +-
+ tests/xfs/111     |  2 +-
+ tests/xfs/144     |  2 +-
+ tests/xfs/153     |  2 +-
+ tests/xfs/163     |  4 ++--
+ tests/xfs/168     |  6 +++---
+ tests/xfs/176     |  2 +-
+ tests/xfs/178     |  2 +-
+ tests/xfs/186     |  2 +-
+ tests/xfs/189     |  2 +-
+ tests/xfs/250     |  2 +-
+ tests/xfs/259     |  2 +-
+ tests/xfs/276     |  2 +-
+ tests/xfs/279     |  2 +-
+ tests/xfs/288     |  2 +-
+ tests/xfs/292     |  4 ++--
+ tests/xfs/299     |  4 ++--
+ tests/xfs/335     |  2 +-
+ tests/xfs/336     |  2 +-
+ tests/xfs/337     |  2 +-
+ tests/xfs/341     |  2 +-
+ tests/xfs/342     |  2 +-
+ tests/xfs/443     |  2 +-
+ tests/xfs/448     |  2 +-
+ tests/xfs/490     |  2 +-
+ tests/xfs/502     |  2 +-
+ tests/xfs/513     |  2 +-
+ tests/xfs/530     |  2 +-
+ tests/xfs/533     |  2 +-
+ 64 files changed, 135 insertions(+), 139 deletions(-)
+
 -- 
 2.34.1
 
