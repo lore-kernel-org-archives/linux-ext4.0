@@ -2,69 +2,71 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24D30C4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35245C43217
 	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 16:53:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240182AbiBGQwT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Feb 2022 11:52:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43402 "EHLO
+        id S241236AbiBGQwU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Feb 2022 11:52:20 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46826 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1357959AbiBGQia (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 11:38:30 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B94BEC0401D6;
-        Mon,  7 Feb 2022 08:38:28 -0800 (PST)
+        with ESMTP id S1385752AbiBGQoc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 11:44:32 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7BAA0C0401D1;
+        Mon,  7 Feb 2022 08:44:32 -0800 (PST)
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 745381F37E;
-        Mon,  7 Feb 2022 16:38:27 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTP id 39DAC210FC;
+        Mon,  7 Feb 2022 16:44:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1644251907; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1644252271; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=o/420w16nsE6lWgjgD88rElcSZES7Jd8PA84QTQiG/Y=;
-        b=B18jtoZPQZY0cIuIkAJNpEw57lGfW/7NDSivAgEyimeBXgBew51XvCIxsF3ecCgss2tmLj
-        0vIudERPDOfdyBZiRoNFBL+oirkTOVXgiy9hfi1EnFJa41cDNGt2XzcQJDMpXDx+wxrNtU
-        nBK1loiN0SBXVNXoAiyVIu09Qknho98=
+        bh=X2qfQ85F6qBmLLZXRvS29YBDakkQ4Y2OXaCE1kHP8c0=;
+        b=in42Be8MVnU/2nXcW8a29H9Gs4NZaTq+A4mpXFsiPWkVA0OJm6kP6Xr+SyoySeETwuaAm2
+        I8Fbxk/UJzX1EQT7yYzaPG9zrk1qF15OWUy4FvT7ar4Tk5UwU0LDlVE3t5nqbFV+WDFHhd
+        zCFp3pC+u0nYN3J483nZvF1diLeJ+Ag=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1644251907;
+        s=susede2_ed25519; t=1644252271;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=o/420w16nsE6lWgjgD88rElcSZES7Jd8PA84QTQiG/Y=;
-        b=1fxgZWgZ17xgSkoXsmDxWqQ2Lkpl14VXCsaYJzCoAwIJgHYpNM530mFJjQoRtz7aTrq6Mt
-        ElznV8UhG2lMAvAw==
+        bh=X2qfQ85F6qBmLLZXRvS29YBDakkQ4Y2OXaCE1kHP8c0=;
+        b=D4v6q1rFPFSYP886Axaft6uRpB3Un4GnftS7UsyUxoEEDeNUtvSoVkRBb0JokZv3Mif/Oq
+        ddOvUIZCFdmhn5CQ==
 Received: from quack3.suse.cz (unknown [10.100.224.230])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 4F955A3B83;
-        Mon,  7 Feb 2022 16:38:27 +0000 (UTC)
+        by relay2.suse.de (Postfix) with ESMTPS id 29E3FA3B89;
+        Mon,  7 Feb 2022 16:44:31 +0000 (UTC)
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 0D69CA05BB; Mon,  7 Feb 2022 17:38:27 +0100 (CET)
-Date:   Mon, 7 Feb 2022 17:38:27 +0100
+        id 924EAA05BB; Mon,  7 Feb 2022 17:44:30 +0100 (CET)
+Date:   Mon, 7 Feb 2022 17:44:30 +0100
 From:   Jan Kara <jack@suse.cz>
 To:     Ritesh Harjani <riteshh@linux.ibm.com>
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: Re: [PATCHv1 5/9] ext4: Rename ext4_set_bits to mb_set_bits
-Message-ID: <20220207163827.rxz3x37d73nqqufk@quack3.lan>
+Subject: Re: [PATCHv1 8/9] ext4: Add strict range checks while freeing blocks
+Message-ID: <20220207164430.pakzk7ycsmqovohh@quack3.lan>
 References: <cover.1644062450.git.riteshh@linux.ibm.com>
- <2751fcbeb66524472f33828d01a296191daa8fc6.1644062450.git.riteshh@linux.ibm.com>
+ <7d16dee931f42fa415ffe86fc3968b4b3d7269c8.1644062450.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <2751fcbeb66524472f33828d01a296191daa8fc6.1644062450.git.riteshh@linux.ibm.com>
+In-Reply-To: <7d16dee931f42fa415ffe86fc3968b4b3d7269c8.1644062450.git.riteshh@linux.ibm.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat 05-02-22 19:39:54, Ritesh Harjani wrote:
-> ext4_set_bits() should actually be mb_set_bits() for uniform API naming
-> convention.
-> This is via below cmd -
+On Sat 05-02-22 19:39:57, Ritesh Harjani wrote:
+> Currently ext4_mb_clear_bb() & ext4_group_add_blocks() only checks
+> whether the given block ranges (which is to be freed) belongs to any FS
+> metadata blocks or not, of the block's respective block group.
+> But to detect any FS error early, it is better to add more strict
+> checkings in those functions which checks whether the given blocks
+> belongs to any critical FS metadata or not within system-zone.
 > 
-> grep -nr "ext4_set_bits" fs/ext4/ | cut -d ":" -f 1 | xargs sed -i 's/ext4_set_bits/mb_set_bits/g'
-> 
+> Suggested-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 
 Looks good. Feel free to add:
@@ -74,114 +76,51 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/ext4/ext4.h    |  2 +-
->  fs/ext4/mballoc.c | 14 +++++++-------
->  fs/ext4/resize.c  |  4 ++--
->  3 files changed, 10 insertions(+), 10 deletions(-)
+>  fs/ext4/mballoc.c | 16 +++-------------
+>  1 file changed, 3 insertions(+), 13 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 09d8f60ebf0f..8c1d0e352f47 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1279,7 +1279,7 @@ struct ext4_inode_info {
->  #define ext4_find_next_zero_bit		find_next_zero_bit_le
->  #define ext4_find_next_bit		find_next_bit_le
-> 
-> -extern void ext4_set_bits(void *bm, int cur, int len);
-> +extern void mb_set_bits(void *bm, int cur, int len);
-> 
->  /*
->   * Maximal mount counts between two filesystem checks
 > diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 91058f81a0c6..f80af108d05e 100644
+> index 23313963bb56..9f2b3a057918 100644
 > --- a/fs/ext4/mballoc.c
 > +++ b/fs/ext4/mballoc.c
-> @@ -1689,7 +1689,7 @@ static int mb_test_and_clear_bits(void *bm, int cur, int len)
->  	return zero_bit;
->  }
-> 
-> -void ext4_set_bits(void *bm, int cur, int len)
-> +void mb_set_bits(void *bm, int cur, int len)
->  {
->  	__u32 *addr;
-> 
-> @@ -1996,7 +1996,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
->  	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
-> 
->  	mb_update_avg_fragment_size(e4b->bd_sb, e4b->bd_info);
-> -	ext4_set_bits(e4b->bd_bitmap, ex->fe_start, len0);
-> +	mb_set_bits(e4b->bd_bitmap, ex->fe_start, len0);
->  	mb_check_buddy(e4b);
-> 
->  	return ret;
-> @@ -3825,7 +3825,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  		 * We leak some of the blocks here.
->  		 */
->  		ext4_lock_group(sb, ac->ac_b_ex.fe_group);
-> -		ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
-> +		mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
->  			      ac->ac_b_ex.fe_len);
->  		ext4_unlock_group(sb, ac->ac_b_ex.fe_group);
->  		err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-> @@ -3844,7 +3844,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  		}
+> @@ -5930,13 +5930,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+>  		goto error_return;
 >  	}
->  #endif
-> -	ext4_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
-> +	mb_set_bits(bitmap_bh->b_data, ac->ac_b_ex.fe_start,
->  		      ac->ac_b_ex.fe_len);
->  	if (ext4_has_group_desc_csum(sb) &&
->  	    (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))) {
-> @@ -3939,7 +3939,7 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
-> 
->  		clen_changed = clen - already;
->  		if (state)
-> -			ext4_set_bits(bitmap_bh->b_data, blkoff, clen);
-> +			mb_set_bits(bitmap_bh->b_data, blkoff, clen);
->  		else
->  			mb_test_and_clear_bits(bitmap_bh->b_data, blkoff, clen);
->  		if (ext4_has_group_desc_csum(sb) &&
-> @@ -4459,7 +4459,7 @@ static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
-> 
->  	while (n) {
->  		entry = rb_entry(n, struct ext4_free_data, efd_node);
-> -		ext4_set_bits(bitmap, entry->efd_start_cluster, entry->efd_count);
-> +		mb_set_bits(bitmap, entry->efd_start_cluster, entry->efd_count);
->  		n = rb_next(n);
+>  
+> -	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
+> -	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
+> -	    in_range(block, ext4_inode_table(sb, gdp),
+> -		     sbi->s_itb_per_group) ||
+> -	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
+> -		     sbi->s_itb_per_group)) {
+> -
+> +	if (!ext4_inode_block_valid(inode, block, count)) {
+>  		ext4_error(sb, "Freeing blocks in system zone - "
+>  			   "Block = %llu, count = %lu", block, count);
+>  		/* err = 0. ext4_std_error should be a no op */
+> @@ -6007,7 +6001,7 @@ static void ext4_mb_clear_bb(handle_t *handle, struct inode *inode,
+>  						 NULL);
+>  			if (err && err != -EOPNOTSUPP)
+>  				ext4_msg(sb, KERN_WARNING, "discard request in"
+> -					 " group:%d block:%d count:%lu failed"
+> +					 " group:%u block:%d count:%lu failed"
+>  					 " with %d", block_group, bit, count,
+>  					 err);
+>  		} else
+> @@ -6220,11 +6214,7 @@ int ext4_group_add_blocks(handle_t *handle, struct super_block *sb,
+>  		goto error_return;
 >  	}
->  	return;
-> @@ -4500,7 +4500,7 @@ void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
->  		if (unlikely(len == 0))
->  			continue;
->  		BUG_ON(groupnr != group);
-> -		ext4_set_bits(bitmap, start, len);
-> +		mb_set_bits(bitmap, start, len);
->  		preallocated += len;
->  	}
->  	mb_debug(sb, "preallocated %d for group %u\n", preallocated, group);
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index ee8f02f406cb..f507f34be602 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -483,7 +483,7 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
->  		}
->  		ext4_debug("mark block bitmap %#04llx (+%llu/%u)\n",
->  			   first_cluster, first_cluster - start, count2);
-> -		ext4_set_bits(bh->b_data, first_cluster - start, count2);
-> +		mb_set_bits(bh->b_data, first_cluster - start, count2);
-> 
->  		err = ext4_handle_dirty_metadata(handle, NULL, bh);
->  		brelse(bh);
-> @@ -632,7 +632,7 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
->  		if (overhead != 0) {
->  			ext4_debug("mark backup superblock %#04llx (+0)\n",
->  				   start);
-> -			ext4_set_bits(bh->b_data, 0,
-> +			mb_set_bits(bh->b_data, 0,
->  				      EXT4_NUM_B2C(sbi, overhead));
->  		}
->  		ext4_mark_bitmap_end(EXT4_B2C(sbi, group_data[i].blocks_count),
-> --
+>  
+> -	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
+> -	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
+> -	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
+> -	    in_range(block + count - 1, ext4_inode_table(sb, desc),
+> -		     sbi->s_itb_per_group)) {
+> +	if (!ext4_sb_block_valid(sb, NULL, block, count)) {
+>  		ext4_error(sb, "Adding blocks in system zones - "
+>  			   "Block = %llu, count = %lu",
+>  			   block, count);
+> -- 
 > 2.31.1
 > 
 -- 
