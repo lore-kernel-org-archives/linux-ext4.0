@@ -2,286 +2,251 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 13FB4C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 06:17:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10CC9C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 06:17:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233528AbiBGGQc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Feb 2022 01:16:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44086 "EHLO
+        id S1344768AbiBGGRh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Feb 2022 01:17:37 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45766 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241327AbiBGET7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2022 23:19:59 -0500
-Received: from NAM10-DM6-obe.outbound.protection.outlook.com (mail-dm6nam10on2056.outbound.protection.outlook.com [40.107.93.56])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0ACE8C061A73;
-        Sun,  6 Feb 2022 20:19:58 -0800 (PST)
+        with ESMTP id S1351697AbiBGE10 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Feb 2022 23:27:26 -0500
+Received: from NAM02-SN1-obe.outbound.protection.outlook.com (mail-sn1anam02on2076.outbound.protection.outlook.com [40.107.96.76])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A95F0C043181;
+        Sun,  6 Feb 2022 20:27:25 -0800 (PST)
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=jN2uCGMTsLJmBvGQ+sP8/TWMoZ9YQABqaXGIx01JGC+B4jo89h7iAlu0Bt0KquRjf+SY1m6s4uhkkc4s4zs2WXweyxW4Sf8PFLyYmjFtbyAF4q8dSyWg6CycD4is9V1vv57SVrQvutkekwFkbGdjs2aHZpt5CK/lKpi+sh1uCo0FEnt09RIdkEDr9Pabv2YV+MjNwdOeackLMKvryhUjkXLx7Ejekr58WfyiJLC86q6z3d6CuXzJ/+C6I0LptoxeMR46v2yUiz0Zeo1VQRnicLSxkEQZjF5GWHB0DqPb2QO2P6WMt1Fs1lHAT9l8bXLHY2jBtHdeh/jPvifc6Fy5Jg==
+ b=ogA0w9wa8TkhN5HTcNTR+JGgJS7h3bF+Ded9d2sr7/zsUsy7otMPIG7lkZrg7GF7CRbyPhn5gNuGaMNUqKjRPWlTr/rK0rEYrHc2IDDB1GoBCaUzq0tRIPgg16/ZmJ4vH5TDo/yuH9uatATp6nl5Ra2W0hLIlbQXzxClocIuqtE+0pAogkp/+J5aOVdi+04eJw9t99HBhppdIT82w5aGblk+YesWL1z4vCx2RaucRTwg73Dj5q2zHLlLt6KTHAINULVpcilXARUDTlgxPaw1bV1GmFq6zCutyYI7pqWDemrI94YmqYv0GnQoP7nISMzu/YLfsu1w5lqq+WppW+XEyw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=58q3SUYYcRBjqn2nhtqFaVfHOSkcmtUauefhKpCTCjg=;
- b=EY7OaVj3j8vwYZK+znGyRZRQoUrbmI2uKCE447nBPaYKJ1MxNz86ywBS/YmI/Q4nUlbvCvlrixnfZtSfeu9DmtuAd/3nFpU7+nHZ3R0HWgBvZrAc1IxYBeJenfH9dDNn4mb6YLiH574IYDozW4nRiv75BTIt4VbVfhsRB9+JJHn0Mk8p8k/r4GFMb5zg7Oa2Zr+TMzYO8YiZ1e1YW/QIeZmMjUmQmoJPp2omsKWjS5UKsMPE787y70oD0WeMIH155cddYOjXItWh1EZws5QuFHyKpMz/ip4xoKIUoCPj5Qxmm7p1N/QyS3tEEZBxJFHSEGO7CaNzc7YVpW+AZEejKg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 12.22.5.234) smtp.rcpttodomain=lst.de smtp.mailfrom=nvidia.com; dmarc=pass
- (p=reject sp=reject pct=100) action=none header.from=nvidia.com; dkim=none
- (message not signed); arc=none
+ bh=PWYhz0Sv1Rkjnmi/uR+BbDa+rT94UmYsyQ+O00QdUhU=;
+ b=USFoxUpcNrN81VtksTj0smRIKCaCkPCGFOPhVYL0LC0NMIWgpHosVYgXf8OseJvkioAls/qs+wIDdM8pbBWcXfmAl507/ZMCcv4LD7Xepk+sZwrpTNx4OOGBjzvmDAcaO8rNdsEoEsMUiitixP7PtGBcmHYTYSDkNynnuY+s2mp8kxeOIcnTmPEInTb1sDbl+xoSh8Z4VQba9f7Pr+4VC3TlZCgjHdLa9vBXv3y/nW3uU7T2W6lhx1CjVzcoxP+dNvn7emp786tIFoQnOa5jmb67vFcU7yegPkSukKDpu+7lFdbjEcJnj8Ijyy338nmZpoBBvUTvs0MIgaA9uLUIgA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=none; dmarc=none;
+ dkim=none; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
  s=selector2;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=58q3SUYYcRBjqn2nhtqFaVfHOSkcmtUauefhKpCTCjg=;
- b=hzRq/8q6VWO0XWyC9X1qpdowRGTl3yWTBKWFn8sYdXnvykWo55Xkmzw7nc2CIZVtON4buIUNmWMbFnfuAB7c4v/arNn29yGMqxw2MX94Tg4fKQOMjME97MikpXaAU/QosLqqL6cJujfh1TNj5eCqFpyKtC5QMli9l3DJ4J2lSZTlJVzAEbfGkWejH4lnVsUqFElCqcQcu+M6GQz51y9ymY2r9PssbYAc9kVK8O/HXbZ2qr2W/2fE42xqBCBpo767qxlJDo+vZHn9RMB/fSCccPKv/MxSpz17xlF3OgsP14XxMnSbPOxidRNL3FpV+KYNJPoVKk+kA5mYFxUihx4y2g==
-Received: from BN9PR03CA0482.namprd03.prod.outlook.com (2603:10b6:408:130::7)
- by BY5PR12MB4818.namprd12.prod.outlook.com (2603:10b6:a03:1b4::14) with
+ bh=PWYhz0Sv1Rkjnmi/uR+BbDa+rT94UmYsyQ+O00QdUhU=;
+ b=R6iAs1xt6CUxucLkLJOssho0VrV3mI5OGfBu4GyKM/5G3ALQFPcnr8OD/pCgUCM/p0TwhN6fn52At+b7TQBDGHEEkoxnzI1oDlHq5dTAhsuBmzZG6ulUqjLdPlHLBTLvJ06G5wJ7Zn88ooD4jph1GW5MUSySVbmJ2vJaIBPNgSHi5qS5EL5tsh6DGDwvJrnJkjn5NYmxZC9p2S4OSGdD5b+4VBsCT4hXvhiuuStBTlAquGDxEJUBU5FMXVmsMHaX1xN6ILglomAN7BIU8tZPsQbk0ysJrV0qakfzEyGLjvpnFrdZF0jdkHLTjs4QpKbNg7j18hFmfHJ1xzmtBk4hAQ==
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=nvidia.com;
+Received: from BYAPR12MB3176.namprd12.prod.outlook.com (2603:10b6:a03:134::26)
+ by BL0PR12MB4705.namprd12.prod.outlook.com (2603:10b6:208:88::12) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4951.11; Mon, 7 Feb
- 2022 04:19:52 +0000
-Received: from BN8NAM11FT059.eop-nam11.prod.protection.outlook.com
- (2603:10b6:408:130:cafe::a6) by BN9PR03CA0482.outlook.office365.com
- (2603:10b6:408:130::7) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4951.12 via Frontend
- Transport; Mon, 7 Feb 2022 04:19:51 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 12.22.5.234)
- smtp.mailfrom=nvidia.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=nvidia.com;
-Received-SPF: Pass (protection.outlook.com: domain of nvidia.com designates
- 12.22.5.234 as permitted sender) receiver=protection.outlook.com;
- client-ip=12.22.5.234; helo=mail.nvidia.com;
-Received: from mail.nvidia.com (12.22.5.234) by
- BN8NAM11FT059.mail.protection.outlook.com (10.13.177.120) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
- 15.20.4951.12 via Frontend Transport; Mon, 7 Feb 2022 04:19:51 +0000
-Received: from rnnvmail201.nvidia.com (10.129.68.8) by DRHQMAIL101.nvidia.com
- (10.27.9.10) with Microsoft SMTP Server (TLS) id 15.0.1497.18; Mon, 7 Feb
- 2022 04:19:49 +0000
-Received: from nvdebian.localnet (10.126.230.35) by rnnvmail201.nvidia.com
- (10.129.68.8) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.986.9; Sun, 6 Feb 2022
- 20:19:46 -0800
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4951.14; Mon, 7 Feb
+ 2022 04:27:24 +0000
+Received: from BYAPR12MB3176.namprd12.prod.outlook.com
+ ([fe80::1528:82a2:aa0:7aa6]) by BYAPR12MB3176.namprd12.prod.outlook.com
+ ([fe80::1528:82a2:aa0:7aa6%5]) with mapi id 15.20.4951.018; Mon, 7 Feb 2022
+ 04:27:24 +0000
 From:   Alistair Popple <apopple@nvidia.com>
-To:     <akpm@linux-foundation.org>, <linux-mm@kvack.org>,
-        Felix Kuehling <felix.kuehling@amd.com>
-CC:     <rcampbell@nvidia.com>, <linux-ext4@vger.kernel.org>,
-        <linux-xfs@vger.kernel.org>, <amd-gfx@lists.freedesktop.org>,
-        <dri-devel@lists.freedesktop.org>, <hch@lst.de>, <jgg@nvidia.com>,
-        <jglisse@redhat.com>, <willy@infradead.org>, <alex.sierra@amd.com>,
-        <jhubbard@nvidia.com>
-Subject: Re: [PATCH 2/3] mm/gup.c: Migrate device coherent pages when pinning instead of failing
-Date:   Mon, 7 Feb 2022 15:19:44 +1100
-Message-ID: <2160866.MLLZV48HG3@nvdebian>
-In-Reply-To: <49253aca-5c0b-84d4-4b2a-13426b1064ec@amd.com>
-References: <cover.516a938ce97eb805791da6e2df508eb0dce413b8.1643698773.git-series.apopple@nvidia.com> <d4d399492b2ba09f4c551fa2261fbd22172886d8.1643698773.git-series.apopple@nvidia.com> <49253aca-5c0b-84d4-4b2a-13426b1064ec@amd.com>
+To:     akpm@linux-foundation.org, linux-mm@kvack.org
+Cc:     Felix.Kuehling@amd.com, rcampbell@nvidia.com,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        hch@lst.de, jgg@nvidia.com, jglisse@redhat.com,
+        willy@infradead.org, alex.sierra@amd.com, jhubbard@nvidia.com,
+        Alistair Popple <apopple@nvidia.com>
+Subject: [PATCH v2 3/3] tools: add hmm gup test for long term pinned device pages
+Date:   Mon,  7 Feb 2022 15:26:48 +1100
+Message-Id: <6a2145be66877fd3a08c9acec4ec3d53d82a864f.1644207242.git-series.apopple@nvidia.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <cover.0d3c846b1c6c294e055ff7ebe221fab9964c1436.1644207242.git-series.apopple@nvidia.com>
+References: <cover.0d3c846b1c6c294e055ff7ebe221fab9964c1436.1644207242.git-series.apopple@nvidia.com>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: SJ0P220CA0002.NAMP220.PROD.OUTLOOK.COM
+ (2603:10b6:a03:41b::10) To BYAPR12MB3176.namprd12.prod.outlook.com
+ (2603:10b6:a03:134::26)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-X-Originating-IP: [10.126.230.35]
-X-ClientProxiedBy: rnnvmail201.nvidia.com (10.129.68.8) To
- rnnvmail201.nvidia.com (10.129.68.8)
-X-EOPAttributedMessage: 0
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 327cb50a-3f6b-488a-3351-08d9e9f115e0
-X-MS-TrafficTypeDiagnostic: BY5PR12MB4818:EE_
-X-Microsoft-Antispam-PRVS: <BY5PR12MB4818CC6924D77108996A085ADF2C9@BY5PR12MB4818.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:6108;
+X-MS-Office365-Filtering-Correlation-Id: bb3447cc-a0e0-4b4a-f24b-08d9e9f2239d
+X-MS-TrafficTypeDiagnostic: BL0PR12MB4705:EE_
+X-Microsoft-Antispam-PRVS: <BL0PR12MB470597566078582EFD88CFE4DF2C9@BL0PR12MB4705.namprd12.prod.outlook.com>
+X-MS-Oob-TLC-OOBClassifiers: OLM:7691;
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: Ic4VkvzabhKe9rzCZLg1MKIXum1YiAcNnvj3fWFsYlkoRU/w9jBEYqQ0g7vWd2xRdMf2TqLZBroCOYmIEoe1Z2m7HaVkZU28WUjiOVsMrqNMPYqFTtpWCorPUuGm+PSGyu2Xv5Q6kqBtpJV8cwS3yB/5/I+bV+nY4SGzYlQLb/wdIPJ4TPPehVTKlLHNmGwnJNu7g5NDVOD+WNI0lB97UCu32MxRZCrovkcGayNKbj63WsxCdA8Wi7U5kir080AqCgmLEtHyRAt4g03va6NXP0jOELiT73FzRAE9ojfSA5CVO/NYozfFZ/zCEisVnKzkQUjXVofFHJ+phWelhWmxsLkyr3uy1AlimBOML7UMpyqyiekWogJ6xzCBxyMEiTVp9AQp873a2fAvi/4eE45N9bBmHvW5xJnqbp9vklNoEbNAyYwDhSeAGYow8ZUsuAwCVJSYL4PNIlAaQ/SXpyrSn4wHt9I5bVE0H8B+g/ViozN4spMcJORiHdKLywVE2bDHO7+/c5KBfhbqVi8ZtIUXWSNsrRWsHYlsWZ+FCsH8KsQwd62OR5JHXA8CXYQwz8ohoMt9uWxe6KndvYy3gPvUD3NNFof/5Cxal8hjCqBEivndf9j2BYWK2Hly96mwIadO7rIm/bGUJtqOEjkptu6KnE3y0coaRjfOqDAJwPkHRQlPSvJc4Fi6+elHUSYAFFswkqWnMr9tvC70FRN95CqyzQ==
-X-Forefront-Antispam-Report: CIP:12.22.5.234;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:mail.nvidia.com;PTR:InfoNoRecords;CAT:NONE;SFS:(13230001)(4636009)(46966006)(36840700001)(40470700004)(9686003)(2906002)(33656002)(16526019)(82310400004)(356005)(47076005)(107886003)(83380400001)(81166007)(33716001)(86362001)(336012)(8936002)(40460700003)(7416002)(426003)(508600001)(5660300002)(70586007)(110136005)(54906003)(70206006)(26005)(8676002)(186003)(316002)(4326008)(9576002)(36860700001)(36900700001);DIR:OUT;SFP:1101;
+X-Microsoft-Antispam-Message-Info: SjFFvZzVhXBpJlIKvdwicyXL6IWHU9q4DDN5A2hsR8kdgn7oVV/9nT0IThYCP4tQv6Cl21TPmW7LienhI8LIWXoosFem69lc2WxIG4VXzIjds3cKW4C0AIbg/498WTk9XMmogy7WKegl8f0LVpgpNa85AwGY15PcNxXBw70OZP5km8XECSUyxLEfeY4ps7B2/W4if4Jx12gdXra/DBX774qpj9Vg9uptq5+zQwPQBsY9jB01F2hS86dz96K6YnnbbIEf0AJmC2BWuzExUfdfp5gQL/vNowb+Q5gmF91hD0n0FlcWYJEwCrA+Y/vTIh9LRv4eMQGC4eb8bxqTOiWJjndXOvZtePJhqbQdt1T2yi2UiWeFAlJ5w/fqx9Azq9RZiHlXO66G74OmnbPRsqSb5h0GbaWN2XG4otHZuN5Z+1nWKhNGpz6EBwLhTxSthWBzBtAp+HAWFQzK0soerbtiOGH7SAHSfwkQaoWrSMKXm0zZ+qY18nfLHBOVclXEmGCW1lkUHoDUGD2FFCgwL4xCrolGsyeoFuzS87shBtFeVmCrK6Xb2isEdyVgN+ZrxKbetyl4BT3nWNmHVygjoVaouQDM0ssFrS97pOFWNAvBJo3wpUY0qP3c+Pl/HMsFh+froZPfSo1xmWhX9gwborLStQ==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BYAPR12MB3176.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(4636009)(366004)(86362001)(107886003)(6486002)(2906002)(508600001)(26005)(186003)(6666004)(6506007)(2616005)(6512007)(316002)(66946007)(8936002)(36756003)(83380400001)(7416002)(38100700002)(5660300002)(4326008)(66476007)(66556008)(8676002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?us-ascii?Q?mry0VoqQoqGL4dKymdquKqr4N7+JrRbPoGs00o1HBKqPdLG0wKA9W/Un5Xi9?=
+ =?us-ascii?Q?2Ww27XtNJWl/2tAEThMP6yRzourqhtu+4c/Uvd90+UgZQBBWTRjZ0uuZD2Zu?=
+ =?us-ascii?Q?TBp/IxZtZyGXuojPOK8Mw5wYyzZQncvAWpiDdTUfHW+InegvIu4JEIQdQpqi?=
+ =?us-ascii?Q?D5de2sXU7gwhzCuq0k/Bxb0YADKCPDRUJ86i+TPdoEWWbM1ShbJKgxEBxy7S?=
+ =?us-ascii?Q?cLkLTrcHxRWFDIACFJlAufHkPYHbnv8dbOes5/uMoqSS7anV9RniElVqX0Hj?=
+ =?us-ascii?Q?GTAtjvonQexEkhJ99C+q0iKDl2+MVgLE0IeUjJmYA6SsnSbEZptQg+zcJbEe?=
+ =?us-ascii?Q?8lwy518V7h9bsrHRPE6mnMrRJyiKrRHyRLLuUIgowzMRfJ/dzrsYlNFuuaoH?=
+ =?us-ascii?Q?hU3v90dDVmHaGzxwtZ7QWbayao902MB0vy0FL6sDP13+CEzonyFA9jMhLHet?=
+ =?us-ascii?Q?DmIp5ctNttHtmvWwHuyp5b1yNwh6bI6vgmQelHxK6BHn/FJ3biGVn/m5u1Ca?=
+ =?us-ascii?Q?VVD2Hnqnz1L9dwcWvlmGIUvOGR85FCHBx6NmHVkW68YaYD/8o+IsZyvRUovA?=
+ =?us-ascii?Q?VkuVh+L5FGHp4u06DvTKDMYlkioQ0tP9ftH0P4xVp7Hd+/CvZEFXQfanrTzW?=
+ =?us-ascii?Q?6B803rWL/N1QphGUi0AnJZhonLYNbSgQydrIz3G6ArXhYf5y3velegcikxrV?=
+ =?us-ascii?Q?2fW990WkhFzUXh0b1Ge4vM5HSyfnWRo8cXgsAiNh85g4ozNtitiIqz/I5aOL?=
+ =?us-ascii?Q?UTdo9u5DN9ef2ZAYLFlp7X/AC83T6Ko/n1n1h7xARGmvglXCZOHKMEx9LFZ1?=
+ =?us-ascii?Q?uJGurn78z60Ccm4POfhFl/Ez+W6EMipsWpDek7zlUYb9AjXL2A7YLy4k+G2B?=
+ =?us-ascii?Q?LGu6BYA4yz5dVVa2BmI1J3FcGsv8w47hMa3QD9YlHGmxw91RgRHCR1DdH21p?=
+ =?us-ascii?Q?Hjm/vOJnIqono/ZzU2ujY/uRNuu6YJy0Ixlg5vwO4CTvsDsQ7c54hdYEtVaX?=
+ =?us-ascii?Q?m0o9xlX+xHfKW2R9mDjQLi8gHob5HLejDS8AUDtCQnLnZsYnCF9oMHqqpFTL?=
+ =?us-ascii?Q?CTzyN6JvvTMW4mAOtTrVAnj0z/nG3qjvrdHiw8D8eEOUYl2Gew8ZeFa4UcrC?=
+ =?us-ascii?Q?5Dr5mGu76C0xm4TWvgDfQPDXJazEIzmk2bTJ6yj58hR5wb/ccAEQi0MpsvJg?=
+ =?us-ascii?Q?l7jJPV/l1xczaExecCPIAPzvrT9MtzbA52x77lGZpTMYFRSbN8b0g0iv0mTo?=
+ =?us-ascii?Q?DkgYJXvYhe7mIDOxiW6mHFmYk+IWA6Dh0rd12MN+CX5qcAZ5iG6M2lr6ZOvv?=
+ =?us-ascii?Q?VJC7wvdJhyWrebPv0V34sFiGwQsoV3yoBwQPIRDj36oTVRKXSfXHJaiARsrz?=
+ =?us-ascii?Q?I30YRUg/dVBvyxSaKXHChjm5TW/H6neDzBCElDlDJTLM8YLGAJCPhXoB2H0i?=
+ =?us-ascii?Q?GvToS1iLQCxVVcBqmgbkh0ZPEmOGh4UqN2ALkoFABOr8F8YnSqVBplCC9irA?=
+ =?us-ascii?Q?MOmUQ+Db7uBZ79u0GQJDb/LSnD4bGxCZH8zhRrFo7CS27UwEUm3IYWyt3cqR?=
+ =?us-ascii?Q?F+oc4BCCemhKsJOdaCSUbZ8ebl9NCg0cFeNdl9qr0GC262A5d2D6H5dJP/4N?=
+ =?us-ascii?Q?j6k1L5FfPXRJIYURtYKfGcE=3D?=
 X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Feb 2022 04:19:51.1322
+X-MS-Exchange-CrossTenant-Network-Message-Id: bb3447cc-a0e0-4b4a-f24b-08d9e9f2239d
+X-MS-Exchange-CrossTenant-AuthSource: BYAPR12MB3176.namprd12.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 07 Feb 2022 04:27:23.9328
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 327cb50a-3f6b-488a-3351-08d9e9f115e0
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=43083d15-7273-40c1-b7db-39efd9ccc17a;Ip=[12.22.5.234];Helo=[mail.nvidia.com]
-X-MS-Exchange-CrossTenant-AuthSource: BN8NAM11FT059.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR12MB4818
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: tykI1F9MB78yKbRXZkREQtCbJuUNUybhay+Y4lcYBcJuwuaoZqJbB4U7zyzngManKzCPJZVDxqTxiMxdhwJX0g==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR12MB4705
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wednesday, 2 February 2022 2:03:01 AM AEDT Felix Kuehling wrote:
-> 
-> Am 2022-02-01 um 02:05 schrieb Alistair Popple:
-> > Currently any attempts to pin a device coherent page will fail. This is
-> > because device coherent pages need to be managed by a device driver, and
-> > pinning them would prevent a driver from migrating them off the device.
-> >
-> > However this is no reason to fail pinning of these pages. These are
-> > coherent and accessible from the CPU so can be migrated just like
-> > pinning ZONE_MOVABLE pages. So instead of failing all attempts to pin
-> > them first try migrating them out of ZONE_DEVICE.
-> >
-> > Signed-off-by: Alistair Popple <apopple@nvidia.com>
-> 
-> Thank you for working on this. I have two questions inline.
-> 
-> Other than that, patches 1 and 2 are
-> 
-> Acked-by: Felix Kuehling <Felix.Kuehling@amd.com>
-> 
-> 
-> > ---
-> >   mm/gup.c | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++------
-> >   1 file changed, 95 insertions(+), 10 deletions(-)
-> >
-> > diff --git a/mm/gup.c b/mm/gup.c
-> > index f596b93..2cbef54 100644
-> > --- a/mm/gup.c
-> > +++ b/mm/gup.c
-> > @@ -1834,6 +1834,60 @@ struct page *get_dump_page(unsigned long addr)
-> >   
-> >   #ifdef CONFIG_MIGRATION
-> >   /*
-> > + * Migrates a device coherent page back to normal memory. Caller should have a
-> > + * reference on page which will be copied to the new page if migration is
-> > + * successful or dropped on failure.
-> > + */
-> > +static struct page *migrate_device_page(struct page *page,
-> > +					unsigned int gup_flags)
-> > +{
-> > +	struct page *dpage;
-> > +	struct migrate_vma args;
-> > +	unsigned long src_pfn, dst_pfn = 0;
-> > +
-> > +	lock_page(page);
-> > +	src_pfn = migrate_pfn(page_to_pfn(page)) | MIGRATE_PFN_MIGRATE;
-> > +	args.src = &src_pfn;
-> > +	args.dst = &dst_pfn;
-> > +	args.cpages = 1;
-> > +	args.npages = 1;
-> > +	args.vma = NULL;
-> > +	migrate_vma_setup(&args);
-> > +	if (!(src_pfn & MIGRATE_PFN_MIGRATE))
-> > +		return NULL;
-> > +
-> > +	dpage = alloc_pages(GFP_USER | __GFP_NOWARN, 0);
-> 
-> Don't you need to check dpage for NULL before the try_grab_page call below?
+From: Alex Sierra <alex.sierra@amd.com>
 
-Yes, thanks for pointing that out. Will fix for v2.
+The intention is to test device coherent type pages that have been
+called through get user pages with PIN_LONGTERM flag set. These pages
+should get migrated back to normal system memory.
 
-> > +
-> > +	/*
-> > +	 * get/pin the new page now so we don't have to retry gup after
-> > +	 * migrating. We already have a reference so this should never fail.
-> > +	 */
-> > +	if (WARN_ON_ONCE(!try_grab_page(dpage, gup_flags))) {
-> > +		__free_pages(dpage, 0);
-> > +		dpage = NULL;
-> > +	}
-> > +
-> > +	if (dpage) {
-> > +		lock_page(dpage);
-> > +		dst_pfn = migrate_pfn(page_to_pfn(dpage));
-> > +	}
-> > +
-> > +	migrate_vma_pages(&args);
-> > +	if (src_pfn & MIGRATE_PFN_MIGRATE)
-> > +		copy_highpage(dpage, page);
-> 
-> Can't dpage can be NULL here as well?
+Signed-off-by: Alex Sierra <alex.sierra@amd.com>
+Signed-off-by: Alistair Popple <apopple@nvidia.com>
+Reviewed-by: Felix Kuehling <Felix.Kuehling@amd.com> 
+---
 
-No - migrate_vma_pages() will clear src_pfn & MIGRATE_PFN_MIGRATE if no
-destination page is provided in dst_pfn.
+Changes for v2:
+ - Added Felix's Reviewed-by (thanks!)
 
-> Regards,
->    Felix
-> 
-> 
-> > +	migrate_vma_finalize(&args);
-> > +	if (dpage && !(src_pfn & MIGRATE_PFN_MIGRATE)) {
-> > +		if (gup_flags & FOLL_PIN)
-> > +			unpin_user_page(dpage);
-> > +		else
-> > +			put_page(dpage);
-> > +		dpage = NULL;
-> > +	}
-> > +
-> > +	return dpage;
-> > +}
-> > +
-> > +/*
-> >    * Check whether all pages are pinnable, if so return number of pages.  If some
-> >    * pages are not pinnable, migrate them, and unpin all pages. Return zero if
-> >    * pages were migrated, or if some pages were not successfully isolated.
-> > @@ -1861,15 +1915,40 @@ static long check_and_migrate_movable_pages(unsigned long nr_pages,
-> >   			continue;
-> >   		prev_head = head;
-> >   		/*
-> > -		 * If we get a movable page, since we are going to be pinning
-> > -		 * these entries, try to move them out if possible.
-> > +		 * Device coherent pages are managed by a driver and should not
-> > +		 * be pinned indefinitely as it prevents the driver moving the
-> > +		 * page. So when trying to pin with FOLL_LONGTERM instead try
-> > +		 * migrating page out of device memory.
-> >   		 */
-> >   		if (is_dev_private_or_coherent_page(head)) {
-> > +			/*
-> > +			 * device private pages will get faulted in during gup
-> > +			 * so it shouldn't be possible to see one here.
-> > +			 */
-> >   			WARN_ON_ONCE(is_device_private_page(head));
-> > -			ret = -EFAULT;
-> > -			goto unpin_pages;
-> > +			WARN_ON_ONCE(PageCompound(head));
-> > +
-> > +			/*
-> > +			 * migration will fail if the page is pinned, so convert
-> > +			 * the pin on the source page to a normal reference.
-> > +			 */
-> > +			if (gup_flags & FOLL_PIN) {
-> > +				get_page(head);
-> > +				unpin_user_page(head);
-> > +			}
-> > +
-> > +			pages[i] = migrate_device_page(head, gup_flags);
-> > +			if (!pages[i]) {
-> > +				ret = -EBUSY;
-> > +				break;
-> > +			}
-> > +			continue;
-> >   		}
-> >   
-> > +		/*
-> > +		 * If we get a movable page, since we are going to be pinning
-> > +		 * these entries, try to move them out if possible.
-> > +		 */
-> >   		if (!is_pinnable_page(head)) {
-> >   			if (PageHuge(head)) {
-> >   				if (!isolate_huge_page(head, &movable_page_list))
-> > @@ -1897,16 +1976,22 @@ static long check_and_migrate_movable_pages(unsigned long nr_pages,
-> >   	 * If list is empty, and no isolation errors, means that all pages are
-> >   	 * in the correct zone.
-> >   	 */
-> > -	if (list_empty(&movable_page_list) && !isolation_error_count)
-> > +	if (!ret && list_empty(&movable_page_list) && !isolation_error_count)
-> >   		return nr_pages;
-> >   
-> > -unpin_pages:
-> > -	if (gup_flags & FOLL_PIN) {
-> > -		unpin_user_pages(pages, nr_pages);
-> > -	} else {
-> > -		for (i = 0; i < nr_pages; i++)
-> > +	for (i = 0; i < nr_pages; i++)
-> > +		if (!pages[i])
-> > +			continue;
-> > +		else if (gup_flags & FOLL_PIN)
-> > +			unpin_user_page(pages[i]);
-> > +		else
-> >   			put_page(pages[i]);
-> > +
-> > +	if (ret && !list_empty(&movable_page_list)) {
-> > +		putback_movable_pages(&movable_page_list);
-> > +		return ret;
-> >   	}
-> > +
-> >   	if (!list_empty(&movable_page_list)) {
-> >   		ret = migrate_pages(&movable_page_list, alloc_migration_target,
-> >   				    NULL, (unsigned long)&mtc, MIGRATE_SYNC,
-> 
+ tools/testing/selftests/vm/Makefile    |  2 +-
+ tools/testing/selftests/vm/hmm-tests.c | 81 +++++++++++++++++++++++++++-
+ 2 files changed, 82 insertions(+), 1 deletion(-)
 
-
-
-
+diff --git a/tools/testing/selftests/vm/Makefile b/tools/testing/selftests/vm/Makefile
+index 96714d2..32032c7 100644
+--- a/tools/testing/selftests/vm/Makefile
++++ b/tools/testing/selftests/vm/Makefile
+@@ -143,7 +143,7 @@ $(OUTPUT)/mlock-random-test $(OUTPUT)/memfd_secret: LDLIBS += -lcap
+ 
+ $(OUTPUT)/gup_test: ../../../../mm/gup_test.h
+ 
+-$(OUTPUT)/hmm-tests: local_config.h
++$(OUTPUT)/hmm-tests: local_config.h ../../../../mm/gup_test.h
+ 
+ # HMM_EXTRA_LIBS may get set in local_config.mk, or it may be left empty.
+ $(OUTPUT)/hmm-tests: LDLIBS += $(HMM_EXTRA_LIBS)
+diff --git a/tools/testing/selftests/vm/hmm-tests.c b/tools/testing/selftests/vm/hmm-tests.c
+index 84ec8c4..11b83a8 100644
+--- a/tools/testing/selftests/vm/hmm-tests.c
++++ b/tools/testing/selftests/vm/hmm-tests.c
+@@ -36,6 +36,7 @@
+  * in the usual include/uapi/... directory.
+  */
+ #include "../../../../lib/test_hmm_uapi.h"
++#include "../../../../mm/gup_test.h"
+ 
+ struct hmm_buffer {
+ 	void		*ptr;
+@@ -60,6 +61,8 @@ enum {
+ #define NTIMES		10
+ 
+ #define ALIGN(x, a) (((x) + (a - 1)) & (~((a) - 1)))
++/* Just the flags we need, copied from mm.h: */
++#define FOLL_WRITE	0x01	/* check pte is writable */
+ 
+ FIXTURE(hmm)
+ {
+@@ -1766,4 +1769,82 @@ TEST_F(hmm, exclusive_cow)
+ 	hmm_buffer_free(buffer);
+ }
+ 
++/*
++ * Test get user device pages through gup_test. Setting PIN_LONGTERM flag.
++ * This should trigger a migration back to system memory for both, private
++ * and coherent type pages.
++ * This test makes use of gup_test module. Make sure GUP_TEST_CONFIG is added
++ * to your configuration before you run it.
++ */
++TEST_F(hmm, hmm_gup_test)
++{
++	struct hmm_buffer *buffer;
++	struct gup_test gup;
++	int gup_fd;
++	unsigned long npages;
++	unsigned long size;
++	unsigned long i;
++	int *ptr;
++	int ret;
++	unsigned char *m;
++
++	gup_fd = open("/sys/kernel/debug/gup_test", O_RDWR);
++	if (gup_fd == -1)
++		SKIP(return, "Skipping test, could not find gup_test driver");
++
++	npages = 4;
++	ASSERT_NE(npages, 0);
++	size = npages << self->page_shift;
++
++	buffer = malloc(sizeof(*buffer));
++	ASSERT_NE(buffer, NULL);
++
++	buffer->fd = -1;
++	buffer->size = size;
++	buffer->mirror = malloc(size);
++	ASSERT_NE(buffer->mirror, NULL);
++
++	buffer->ptr = mmap(NULL, size,
++			   PROT_READ | PROT_WRITE,
++			   MAP_PRIVATE | MAP_ANONYMOUS,
++			   buffer->fd, 0);
++	ASSERT_NE(buffer->ptr, MAP_FAILED);
++
++	/* Initialize buffer in system memory. */
++	for (i = 0, ptr = buffer->ptr; i < size / sizeof(*ptr); ++i)
++		ptr[i] = i;
++
++	/* Migrate memory to device. */
++	ret = hmm_migrate_sys_to_dev(self->fd, buffer, npages);
++	ASSERT_EQ(ret, 0);
++	ASSERT_EQ(buffer->cpages, npages);
++	/* Check what the device read. */
++	for (i = 0, ptr = buffer->mirror; i < size / sizeof(*ptr); ++i)
++		ASSERT_EQ(ptr[i], i);
++
++	gup.nr_pages_per_call = npages;
++	gup.addr = (unsigned long)buffer->ptr;
++	gup.gup_flags = FOLL_WRITE;
++	gup.size = size;
++	/*
++	 * Calling gup_test ioctl. It will try to PIN_LONGTERM these device pages
++	 * causing a migration back to system memory for both, private and coherent
++	 * type pages.
++	 */
++	if (ioctl(gup_fd, PIN_LONGTERM_BENCHMARK, &gup)) {
++		perror("ioctl on PIN_LONGTERM_BENCHMARK\n");
++		goto out_test;
++	}
++
++	/* Take snapshot to make sure pages have been migrated to sys memory */
++	ret = hmm_dmirror_cmd(self->fd, HMM_DMIRROR_SNAPSHOT, buffer, npages);
++	ASSERT_EQ(ret, 0);
++	ASSERT_EQ(buffer->cpages, npages);
++	m = buffer->mirror;
++	for (i = 0; i < npages; i++)
++		ASSERT_EQ(m[i], HMM_DMIRROR_PROT_WRITE);
++out_test:
++	close(gup_fd);
++	hmm_buffer_free(buffer);
++}
+ TEST_HARNESS_MAIN
+-- 
+git-series 0.9.1
