@@ -2,106 +2,107 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6008EC433F5
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 10:34:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16E02C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Feb 2022 10:35:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234897AbiBGKd6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 7 Feb 2022 05:33:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53266 "EHLO
+        id S233130AbiBGKe1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Feb 2022 05:34:27 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57864 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355431AbiBGKSg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 05:18:36 -0500
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6DD01C043188;
-        Mon,  7 Feb 2022 02:18:31 -0800 (PST)
-Received: from pps.filterd (m0127361.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 2177CVSc017264;
-        Mon, 7 Feb 2022 08:26:18 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=cHdBGum3ViKORuq1lsnz9xMyPvBGrxWN8z1Btb2lq4A=;
- b=kxsuJql3QhlcVEghccC7RYtyjSajLT4f1T01wvbDjagYJopC0sEkW9pyzsYJ8k6DR79n
- KTu639EUa6iDz/LzdPz4lUU6yR2TsFo+dQkB5LB0YMIH0mIFhao1sNanCnIGW9ktOgqZ
- y55iJSFiVzFcPpgz2PhsTomlSdSZaZnZUiXNja94XS7p+8DfeRWnpcNtb9gUVSyXcNGx
- pihJ/GV8nAUAt06o4Mx6RW5sLJd3uXuD1P4FjHJ85xZkBpQd7J+0cNuvwCoH4Ri+E4oo
- U8/ajyCnLbvhnEwoTw5bzdfkhjjEZ5b8JEVv8JPIUf7jEwTYAeeACLLIO6HMELpFECRR +Q== 
-Received: from ppma01fra.de.ibm.com (46.49.7a9f.ip4.static.sl-reverse.com [159.122.73.70])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e236edp2r-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 07 Feb 2022 08:26:18 +0000
-Received: from pps.filterd (ppma01fra.de.ibm.com [127.0.0.1])
-        by ppma01fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 2178E3IU014418;
-        Mon, 7 Feb 2022 08:26:16 GMT
-Received: from b06cxnps3074.portsmouth.uk.ibm.com (d06relay09.portsmouth.uk.ibm.com [9.149.109.194])
-        by ppma01fra.de.ibm.com with ESMTP id 3e1gv918sn-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 07 Feb 2022 08:26:16 +0000
-Received: from d06av23.portsmouth.uk.ibm.com (d06av23.portsmouth.uk.ibm.com [9.149.105.59])
-        by b06cxnps3074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 2178QAZq40370484
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 7 Feb 2022 08:26:10 GMT
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id BD244A404D;
-        Mon,  7 Feb 2022 08:26:10 +0000 (GMT)
-Received: from d06av23.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 349DDA4053;
-        Mon,  7 Feb 2022 08:26:07 +0000 (GMT)
-Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.26.84])
-        by d06av23.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Mon,  7 Feb 2022 08:26:06 +0000 (GMT)
-From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
-To:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-Cc:     Ojaswin Mujoo <ojaswin@linux.ibm.com>, riteshh@linux.ibm.com
-Subject: [PATCH 0/2] tests/ext4: Ensure resizes with sparse_super2 are handled correctly
-Date:   Mon,  7 Feb 2022 13:55:32 +0530
-Message-Id: <cover.1644217569.git.ojaswin@linux.ibm.com>
-X-Mailer: git-send-email 2.27.0
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: cct_J2zfpV8jyUrNlZEIR73lUJLXeKec
-X-Proofpoint-GUID: cct_J2zfpV8jyUrNlZEIR73lUJLXeKec
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+        with ESMTP id S239969AbiBGKaw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Feb 2022 05:30:52 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 60975C043181
+        for <linux-ext4@vger.kernel.org>; Mon,  7 Feb 2022 02:30:51 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1644229850;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=3cyRyCr5+eamib5wZIABy4k0pAM0GRsoTKR73ge8vW8=;
+        b=J2fuIImWfLzNTFAohZVOd4YyNgnSNtbZM2xe8dz6fMd+iMd3vXW6PDNcsbWZCDeoNooeQ2
+        gQXjwtI5Zt+r223vupHu5FLn7Ciwompb2pTzGDK8VKQ2Z3Jv/2zJcNMbLOW20+Iab1nBzf
+        F7q9HJdqVISZ+uauPAOpdbgjYKmEyxs=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-253-UDBsiRaoM2S6ps60GOiWsQ-1; Mon, 07 Feb 2022 05:30:48 -0500
+X-MC-Unique: UDBsiRaoM2S6ps60GOiWsQ-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 209C21800D50;
+        Mon,  7 Feb 2022 10:30:47 +0000 (UTC)
+Received: from work (unknown [10.40.194.180])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id DE8AE7D704;
+        Mon,  7 Feb 2022 10:30:12 +0000 (UTC)
+Date:   Mon, 7 Feb 2022 11:30:09 +0100
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     syzbot <syzbot+138c9e58e3cb22eae3b4@syzkaller.appspotmail.com>
+Cc:     adilger.kernel@dilger.ca, cmaiolino@redhat.com,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        llvm@lists.linux.dev, nathan@kernel.org, ndesaulniers@google.com,
+        syzkaller-bugs@googlegroups.com, tytso@mit.edu
+Subject: Re: [syzbot] general protection fault in ext4_fill_super
+Message-ID: <20220207103009.id72sr4dtghgzp5f@work>
+References: <0000000000001e0ba105d5c2dede@google.com>
+ <000000000000fbf22d05d74d08fb@google.com>
 MIME-Version: 1.0
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
- definitions=2022-02-07_03,2022-02-03_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 suspectscore=0
- lowpriorityscore=0 clxscore=1011 adultscore=0 priorityscore=1501
- mlxscore=0 phishscore=0 spamscore=0 malwarescore=0 impostorscore=0
- bulkscore=0 mlxlogscore=635 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2201110000 definitions=main-2202070053
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <000000000000fbf22d05d74d08fb@google.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-As detailed in the patch [1], kernel currently does not support resizes
-with sparse_super2 enabled.  Before the above patch, if we used the
-EXT4_IOC_RESIZE_FS ioctl directly, wiht sparse_super2 enabled, the
-kernel used to still try the resize and ultimatley leave the fs in an
-inconsistent state. This also led to corruption and kernel BUGs.
+On Sat, Feb 05, 2022 at 02:39:06PM -0800, syzbot wrote:
+> syzbot has bisected this issue to:
+> 
+> commit cebe85d570cf84804e848332d6721bc9e5300e07
+> Author: Lukas Czerner <lczerner@redhat.com>
+> Date:   Wed Oct 27 14:18:56 2021 +0000
+> 
+>     ext4: switch to the new mount api
+> 
+> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=14902978700000
+> start commit:   0457e5153e0e Merge tag 'for-linus' of git://git.kernel.org..
+> git tree:       upstream
+> final oops:     https://syzkaller.appspot.com/x/report.txt?x=16902978700000
+> console output: https://syzkaller.appspot.com/x/log.txt?x=12902978700000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=cd57c0f940a9a1ec
+> dashboard link: https://syzkaller.appspot.com/bug?extid=138c9e58e3cb22eae3b4
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17f7004fb00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=178cf108700000
+> 
+> Reported-by: syzbot+138c9e58e3cb22eae3b4@syzkaller.appspotmail.com
+> Fixes: cebe85d570cf ("ext4: switch to the new mount api")
+> 
+> For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+> 
 
-This patchset adds a test for ext4 to ensure that the kernel handles
-resizes with sparse_super2 correctly, and returns -EOPNOTSUPP. 
+I believe that this has been fixed with upstream commit
 
-Summary:
+commit 7c268d4ce2d3761f666a9950b029c8902bfab710
+Author: Lukas Czerner <lczerner@redhat.com>
+Date:   Wed Jan 19 14:02:09 2022 +0100
 
-Patch 1: Fix the src/ext4_resize.c script to return accurate error codes.
-Patch 2: Add the ext4 test for checking resize functionality
+    ext4: fix potential NULL pointer dereference in ext4_fill_super()
 
-[1]
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=b1489186cc8391e0c1e342f9fbc3eedf6b944c61
+    By mistake we fail to return an error from ext4_fill_super() in case
+    that ext4_alloc_sbi() fails to allocate a new sbi. Instead we just set
+    the ret variable and allow the function to continue which will later
+    lead to a NULL pointer dereference. Fix it by returning -ENOMEM in the
+    case ext4_alloc_sbi() fails.
 
-Ojaswin Mujoo (2):
-  src/ext4_resize.c: Refactor code and ensure accurate errno is returned
-  ext4: Test to ensure resize with sparse_super2 is handled correctly
+    Fixes: cebe85d570cf ("ext4: switch to the new mount api")
+    Reported-by: kernel test robot <lkp@intel.com>
+    Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+    Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+    Link: https://lore.kernel.org/r/20220119130209.40112-1-lczerner@redhat.com
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+    Cc: stable@kernel.org
 
- src/ext4_resize.c  |  46 +++++++++++++-------
- tests/ext4/056     | 102 +++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/056.out |   2 +
- 3 files changed, 136 insertions(+), 14 deletions(-)
- create mode 100755 tests/ext4/056
- create mode 100644 tests/ext4/056.out
-
--- 
-2.27.0
+Thanks!
+-Lukas
 
