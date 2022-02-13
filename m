@@ -2,215 +2,201 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 49D6EC433FE
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Feb 2022 14:34:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F639C433EF
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Feb 2022 18:03:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236538AbiBMOen (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 13 Feb 2022 09:34:43 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:44180 "EHLO
+        id S237516AbiBMSDt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 13 Feb 2022 13:03:49 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:54788 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236511AbiBMOen (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Feb 2022 09:34:43 -0500
-Received: from mx0a-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 47CB25F8C4;
-        Sun, 13 Feb 2022 06:34:37 -0800 (PST)
-Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21DDx5UQ029940;
-        Sun, 13 Feb 2022 14:34:21 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
- subject : message-id : references : content-type : in-reply-to :
- mime-version; s=pp1; bh=0/mWjykeDvQHjBAUDiwDZccLK7VANuQtfTfov5zVoeQ=;
- b=ey6x0O6jb8cOdUeuYvSQvnjLdfY9Ls15A7HwEgkvu2CR9ZgdmHhSYvdK/WdZ9W+kA1XE
- h41p6ov3vzXFdebwoSDsAMsAfpSoL3L5ps5qkks+aWENwjxyhKzRjPaGXXUsGm99L7ny
- 1j9ADhb1ex0ElJMPWkwt0VNzAkxCljBaLfFzwqAMEWCvP5Z2d8tsdKiu5yRVIQvcEOyl
- spDLKZ9duW6T2uPRHU4MGdgenZq94mV3c1nlUeZSPgr3C5GEBaRzWFkko3LSS3mvq5+J
- C+rvh60xBI5pDAGjjJ1M6QYARfInt4KJECVRq+17DKohRYdnpWWacl5X0rBUd2ZammlW Mg== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3e73bhrd7j-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 13 Feb 2022 14:34:21 +0000
-Received: from m0098416.ppops.net (m0098416.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 21DERvKx026205;
-        Sun, 13 Feb 2022 14:34:20 GMT
-Received: from ppma04fra.de.ibm.com (6a.4a.5195.ip4.static.sl-reverse.com [149.81.74.106])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 3e73bhrd79-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 13 Feb 2022 14:34:20 +0000
-Received: from pps.filterd (ppma04fra.de.ibm.com [127.0.0.1])
-        by ppma04fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21DEXrTh010639;
-        Sun, 13 Feb 2022 14:34:18 GMT
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
-        by ppma04fra.de.ibm.com with ESMTP id 3e64h9eag5-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 13 Feb 2022 14:34:18 +0000
-Received: from d06av22.portsmouth.uk.ibm.com (d06av22.portsmouth.uk.ibm.com [9.149.105.58])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21DEYGOt42271228
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 13 Feb 2022 14:34:16 GMT
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id E66844C044;
-        Sun, 13 Feb 2022 14:34:15 +0000 (GMT)
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id DA0B74C040;
-        Sun, 13 Feb 2022 14:34:13 +0000 (GMT)
-Received: from localhost (unknown [9.43.64.124])
-        by d06av22.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Sun, 13 Feb 2022 14:34:12 +0000 (GMT)
-Date:   Sun, 13 Feb 2022 20:04:10 +0530
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-To:     syzbot <syzbot+a8e049cd3abd342936b6@syzkaller.appspotmail.com>
-Cc:     djwong@kernel.org, fgheet255t@gmail.com, hch@infradead.org,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com
-Subject: Re: [syzbot] WARNING in iomap_iter
-Message-ID: <20220213143410.qdqxlixuzgtq56yl@riteshh-domain>
-References: <000000000000f2075605d04f9964@google.com>
- <00000000000011f55805d7d8352c@google.com>
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <00000000000011f55805d7d8352c@google.com>
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: WyJVjGNFhbaGhToKIApbY2xPE5vJzbbY
-X-Proofpoint-GUID: I_GXi0zxWlhDIoSDpncX8FWN0uAAvBT-
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+        with ESMTP id S233062AbiBMSDs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Feb 2022 13:03:48 -0500
+Received: from mail-pj1-x102b.google.com (mail-pj1-x102b.google.com [IPv6:2607:f8b0:4864:20::102b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 575225A5AB;
+        Sun, 13 Feb 2022 10:03:42 -0800 (PST)
+Received: by mail-pj1-x102b.google.com with SMTP id t4-20020a17090a510400b001b8c4a6cd5dso13597765pjh.5;
+        Sun, 13 Feb 2022 10:03:42 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=message-id:date:mime-version:user-agent:subject:content-language:to
+         :references:from:in-reply-to;
+        bh=DYwaU/Q5WyrKiRKoqCGyqe8F/8o+lZmqqLGmDWVpM4M=;
+        b=WGb2IJjvRXGCGSf23wb/hKlVOzS2B1fbjdpoNoqy/LPOMXshL6rM5Tb2p3RUQ45WER
+         GsVLMiJ2lWWi/fNp3MLObQrDujt1iuq1TVDPw933iHpI9bznHwcoWE5edDF8z9lf8ErZ
+         bEeURiTb2sVDSj+AqqbNk4VL4jndj1s3EBueycQi3xHU7CRMC34ZlqCdF89+YBzGRwro
+         pg+uOmglohqFXsxGUlV82JliFRoX/H6eu/Bg/FbT0F5HMo1UADOPfSGJdmdfF0FTeNlw
+         iI9WH8XahqVZSIe2f3nGnoRRPm+qKXQqswd8USle9+9YR9IWcjJkC1o6c0/mK/p71SyI
+         UOpQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:references:from:in-reply-to;
+        bh=DYwaU/Q5WyrKiRKoqCGyqe8F/8o+lZmqqLGmDWVpM4M=;
+        b=fmn3vvfF43N6lfyEXZveWzEhqpgUpnb4e2AdRLkcFevd8NGO7hHsYA3jLTWYyIsOtN
+         hbfn60QrgEN46MGnLt3D8lWb7oFu1eihGmjUALYVxwgbmvQbjUFJqulDpPF95HhILnxa
+         HJbAYBlc7JOGpo4aTWEt4lrHR3PbFFwqTYqkKJkaD0YKcurYFsGJ9pIrVvBej3z0SNLi
+         uINVei+1F6hcWpW3zsIhc88A5Mp4AHAEx9SBrPQuoRY8CbEbk0TKdw7BNyRbhxBV8/0L
+         u4W9dq+npXHNslJNsNibUmtAkT1UxuBtUjX9UUZRpLOFukgzxm3k3yhjAcLjbi1awJPo
+         6Hsw==
+X-Gm-Message-State: AOAM531dKr7XcqXCRKyf1tWEIzhHGiqxiDzsrnFEtr6EQivl2zba/8Ec
+        pywgFK+IrbSV2MHYGv3j1iE=
+X-Google-Smtp-Source: ABdhPJzo8dmr6ANuwwG9309zjXl36QLClVbpSRZefvqsQCr/79H9xiCgvC3guibiaLfP6rovR8pCcA==
+X-Received: by 2002:a17:90a:1a50:: with SMTP id 16mr2350957pjl.82.1644775421825;
+        Sun, 13 Feb 2022 10:03:41 -0800 (PST)
+Received: from [192.168.1.46] (bb42-60-144-185.singnet.com.sg. [42.60.144.185])
+        by smtp.gmail.com with ESMTPSA id d22sm3679331pgv.18.2022.02.13.10.03.39
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 13 Feb 2022 10:03:41 -0800 (PST)
+Content-Type: multipart/mixed; boundary="------------b0E0UhftInl7b1THt7IAGy56"
+Message-ID: <e58c5085-c351-a7a6-fe97-3da6eb1a804f@gmail.com>
+Date:   Mon, 14 Feb 2022 02:03:37 +0800
 MIME-Version: 1.0
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
- definitions=2022-02-13_05,2022-02-11_01,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0 phishscore=0
- spamscore=0 priorityscore=1501 mlxlogscore=999 adultscore=0
- impostorscore=0 clxscore=1011 bulkscore=0 suspectscore=0
- lowpriorityscore=0 mlxscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2201110000 definitions=main-2202130099
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
+ Thunderbird/91.6.0
+Subject: Re: [syzbot] kernel BUG in ext4_es_cache_extent
+Content-Language: en-US
+To:     syzbot <syzbot+c7358a3cd05ee786eb31@syzkaller.appspotmail.com>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, tytso@mit.edu
+References: <0000000000003d898d05d759c00a@google.com>
+From:   Phi Nguyen <phind.uet@gmail.com>
+In-Reply-To: <0000000000003d898d05d759c00a@google.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 22/02/12 12:41PM, syzbot wrote:
-> syzbot has found a reproducer for the following issue on:
->
-> HEAD commit:    83e396641110 Merge tag 'soc-fixes-5.17-1' of git://git.ker..
+This is a multi-part message in MIME format.
+--------------b0E0UhftInl7b1THt7IAGy56
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+
+On 2/6/2022 9:49 PM, syzbot wrote:
+> Hello,
+> 
+> syzbot found the following issue on:
+> 
+> HEAD commit:    9f7fb8de5d9b Merge tag 'spi-fix-v5.17-rc2' of git://git.ke..
 > git tree:       upstream
-> console output: https://syzkaller.appspot.com/x/log.txt?x=11fe01a4700000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=88e0a6a3dbf057cf
-> dashboard link: https://syzkaller.appspot.com/bug?extid=a8e049cd3abd342936b6
-> compiler:       Debian clang version 11.0.1-2, GNU ld (GNU Binutils for Debian) 2.35.2
-> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=14f8cad2700000
-> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=132c16ba700000
-
-FYI - I could reproduce with above C reproduer on my setup 5.17-rc3.
-I was also able to hit it with XFS <below stack shows that>
-
-So here is some initial analysis on this one. I haven't completely debugged it
-though. I am just putting my observations here for others too.
-
-It seems iomap_dio_rw is getting called with a negative iocb->ki_pos value.
-(I haven't yet looked into when can this happen. Is it due to negative loop
-device mapping range offset or something?)
-
-i.e.
-(gdb) p iocb->ki_pos
-$101 = -2147483648
-(gdb) p /x iocb->ki_pos
-$102 = 0xffffffff80000000
-(gdb)
-
-This when passed to ->iomap_begin() sometimes is resulting into iomap->offset
-which is a positive value and hence hitting below warn_on_once in
-iomap_iter_done().
-
-		WARN_ON_ONCE(iter->iomap.offset > iter->pos)
-
-1. So I think the question here is what does it mean when xfs/ext4_file_read_iter()
-   is called with negative iocb->ki_pos value?
-2. Also when can iocb->ki_pos be negative?
-
-<Stack Track on XFS>
-======================
-
-[  998.417802] ------------[ cut here ]------------
-[  998.420195] WARNING: CPU: 0 PID: 1579 at fs/iomap/iter.c:33
-iomap_iter+0x301/0x320
-[  998.424610] Modules linked in:
-[  998.425683] CPU: 0 PID: 1579 Comm: kworker/u2:5 Tainted:
-G        W         5.17.0-rc3+ #0
-[  998.428085] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
-1.13.0-1ubuntu1 04
-[  998.430830] Workqueue: loop0 loop_rootcg_workfn
-[  998.432300] RIP: 0010:iomap_iter+0x301/0x320
-[  998.433647] Code: 89 f2 e8 72 f1 ff ff 65 ff 0d bb d0 ce 7e 0f 85 c4 fe ff ff
-e8 2f 3e cdc
-[  998.438518] RSP: 0018:ffffc90000c13b30 EFLAGS: 00010307
-[  998.440490] RAX: 0000000000010000 RBX: ffffc90000c13bc0 RCX: 000000000000000c
-[  998.442576] RDX: ffffffff80000000 RSI: 0000000000001000 RDI: 0000000000000000
-[  998.444625] RBP: ffffc90000c13b50 R08: 0000000000000003 R09: ffff88814ceb9b00
-[  998.446768] R10: ffff88815122e000 R11: 000000000000000f R12: ffffffff82657c90
-[  998.453038] R13: ffffc90000c13be8 R14: ffffc90000c13c30 R15: ffffffff82657c90
-[  998.455533] FS:  0000000000000000(0000) GS:ffff88852bc00000(0000)
-knlGS:0000000000000000
-[  998.458136] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  998.460069] CR2: 00007ffff4443000 CR3: 0000000105e7e000 CR4: 00000000000006f0
-[  998.462447] Call Trace:
-[  998.463108]  <TASK>
-[  998.464510]  __iomap_dio_rw+0x25b/0x840
-[  998.466005]  iomap_dio_rw+0xe/0x30
-[  998.467476]  xfs_file_dio_read+0xb9/0xf0
-[  998.469044]  xfs_file_read_iter+0xc1/0xe0
-[  998.470623]  lo_rw_aio+0x27a/0x2a0
-[  998.472042]  loop_process_work+0x2c7/0x8c0
-[  998.473621]  ? finish_task_switch+0xbc/0x260
-[  998.475232]  ? __switch_to+0x2cf/0x480
-[  998.476832]  loop_rootcg_workfn+0x1b/0x20
-[  998.478431]  process_one_work+0x1b7/0x380
-[  998.479958]  worker_thread+0x4d/0x380
-[  998.481440]  ? process_one_work+0x380/0x380
-[  998.482992]  kthread+0xff/0x130
-[  998.484420]  ? kthread_complete_and_exit+0x20/0x20
-[  998.486122]  ret_from_fork+0x22/0x30
-[  998.487616]  </TASK>
-[  998.488199] ---[ end trace 0000000000000000 ]---
-
-
--ritesh
-
->
+> console output: https://syzkaller.appspot.com/x/log.txt?x=148d0304700000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=b4a89edfcc8f7c74
+> dashboard link: https://syzkaller.appspot.com/bug?extid=c7358a3cd05ee786eb31
+> compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=124e0abfb00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1758f610700000
+> 
+> Bisection is inconclusive: the issue happens on the oldest tested release.
+> 
+> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=12758738700000
+> final oops:     https://syzkaller.appspot.com/x/report.txt?x=11758738700000
+> console output: https://syzkaller.appspot.com/x/log.txt?x=16758738700000
+> 
 > IMPORTANT: if you fix the issue, please add the following tag to the commit:
-> Reported-by: syzbot+a8e049cd3abd342936b6@syzkaller.appspotmail.com
->
+> Reported-by: syzbot+c7358a3cd05ee786eb31@syzkaller.appspotmail.com
+> 
+> loop0: detected capacity change from 0 to 1051
+> EXT4-fs (loop0): ext4_check_descriptors: Checksum for group 0 failed (60935!=0)
+> EXT4-fs (loop0): mounted filesystem without journal. Quota mode: writeback.
 > ------------[ cut here ]------------
-> WARNING: CPU: 1 PID: 10 at fs/iomap/iter.c:33 iomap_iter_done fs/iomap/iter.c:33 [inline]
-> WARNING: CPU: 1 PID: 10 at fs/iomap/iter.c:33 iomap_iter+0x7ca/0x890 fs/iomap/iter.c:78
-> Modules linked in:
-> CPU: 1 PID: 10 Comm: kworker/u4:1 Not tainted 5.17.0-rc3-syzkaller-00247-g83e396641110 #0
+> kernel BUG at fs/ext4/extents_status.c:899!
+> invalid opcode: 0000 [#1] PREEMPT SMP KASAN
+> CPU: 1 PID: 3587 Comm: syz-executor288 Not tainted 5.17.0-rc2-syzkaller-00039-g9f7fb8de5d9b #0
 > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
-> Workqueue: loop0 loop_rootcg_workfn
-> RIP: 0010:iomap_iter_done fs/iomap/iter.c:33 [inline]
-> RIP: 0010:iomap_iter+0x7ca/0x890 fs/iomap/iter.c:78
-> Code: e8 3b 81 83 ff eb 0c e8 34 81 83 ff eb 05 e8 2d 81 83 ff 44 89 e8 48 83 c4 40 5b 41 5c 41 5d 41 5e 41 5f 5d c3 e8 16 81 83 ff <0f> 0b e9 9e fe ff ff e8 0a 81 83 ff 0f 0b e9 d0 fe ff ff e8 fe 80
-> RSP: 0018:ffffc90000cf73c8 EFLAGS: 00010293
-> RAX: ffffffff82022d4a RBX: ffffffff80000000 RCX: ffff888011fe9d00
-> RDX: 0000000000000000 RSI: ffffffff80000000 RDI: 00000fff80000000
-> RBP: 00000fff80000000 R08: ffffffff82022be1 R09: ffffed100fd4dc19
-> R10: ffffed100fd4dc19 R11: 0000000000000000 R12: ffffc90000cf75c8
-> R13: 1ffff9200019eebe R14: 1ffff9200019eeb9 R15: ffffc90000cf75f0
-> FS:  0000000000000000(0000) GS:ffff8880b9b00000(0000) knlGS:0000000000000000
+> RIP: 0010:ext4_es_cache_extent+0x4e8/0x550 fs/ext4/extents_status.c:899
+> Code: 00 48 c7 c7 e0 6c c1 89 c6 05 71 25 6f 0b 01 e8 b0 b6 f6 06 e9 5a ff ff ff e8 94 9d 68 ff 0f 0b e9 d7 fc ff ff e8 88 9d 68 ff <0f> 0b e8 81 9d 68 ff 0f 0b e9 13 fe ff ff e8 25 df af ff e9 c2 fb
+> RSP: 0018:ffffc90001abee80 EFLAGS: 00010293
+> RAX: 0000000000000000 RBX: 00000000000013de RCX: 0000000000000000
+> RDX: ffff88807deb0000 RSI: ffffffff820fd0f8 RDI: 0000000000000003
+> RBP: ffff888074e6f048 R08: 00000000ffffffff R09: 0000000000000000
+> R10: ffffffff820fce3c R11: 0000000000000000 R12: 0000000000000001
+> R13: 00000000ffffffff R14: 1ffff92000357dd1 R15: 00008f1cffffffff
+> FS:  0000555556ad6300(0000) GS:ffff8880b9d00000(0000) knlGS:0000000000000000
 > CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007fbf80df2b88 CR3: 000000007e8f6000 CR4: 00000000003506e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> CR2: 00007f117149e4b0 CR3: 000000007cc1f000 CR4: 0000000000350ee0
 > Call Trace:
->  <TASK>
->  __iomap_dio_rw+0xa8e/0x1e00 fs/iomap/direct-io.c:589
->  iomap_dio_rw+0x38/0x80 fs/iomap/direct-io.c:680
->  ext4_dio_read_iter fs/ext4/file.c:77 [inline]
->  ext4_file_read_iter+0x52f/0x6c0 fs/ext4/file.c:128
->  lo_rw_aio+0xc75/0x1060
->  loop_handle_cmd drivers/block/loop.c:1846 [inline]
->  loop_process_work+0x6a4/0x22b0 drivers/block/loop.c:1886
->  process_one_work+0x850/0x1130 kernel/workqueue.c:2307
->  worker_thread+0xab1/0x1300 kernel/workqueue.c:2454
->  kthread+0x2a3/0x2d0 kernel/kthread.c:377
->  ret_from_fork+0x1f/0x30
->  </TASK>
->
+>   <TASK>
+>   ext4_cache_extents+0x13e/0x2d0 fs/ext4/extents.c:518
+>   ext4_find_extent+0x8f6/0xd10 fs/ext4/extents.c:916
+>   ext4_ext_map_blocks+0x1e2/0x5f30 fs/ext4/extents.c:4098
+>   ext4_map_blocks+0x9ca/0x18a0 fs/ext4/inode.c:563
+>   ext4_getblk+0x553/0x6b0 fs/ext4/inode.c:849
+>   ext4_bread_batch+0x7c/0x550 fs/ext4/inode.c:923
+>   __ext4_find_entry+0x482/0x1050 fs/ext4/namei.c:1600
+>   ext4_lookup_entry fs/ext4/namei.c:1701 [inline]
+>   ext4_lookup fs/ext4/namei.c:1769 [inline]
+>   ext4_lookup+0x4fc/0x730 fs/ext4/namei.c:1760
+>   __lookup_slow+0x24c/0x480 fs/namei.c:1707
+>   lookup_slow fs/namei.c:1724 [inline]
+>   walk_component+0x40f/0x6a0 fs/namei.c:2020
+>   link_path_walk.part.0+0x7ef/0xf70 fs/namei.c:2347
+>   link_path_walk fs/namei.c:2272 [inline]
+>   path_openat+0x266/0x2940 fs/namei.c:3605
+>   do_filp_open+0x1aa/0x400 fs/namei.c:3636
+>   do_sys_openat2+0x16d/0x4d0 fs/open.c:1214
+>   do_sys_open fs/open.c:1230 [inline]
+>   __do_sys_openat fs/open.c:1246 [inline]
+>   __se_sys_openat fs/open.c:1241 [inline]
+>   __x64_sys_openat+0x13f/0x1f0 fs/open.c:1241
+>   do_syscall_x64 arch/x86/entry/common.c:50 [inline]
+>   do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
+>   entry_SYSCALL_64_after_hwframe+0x44/0xae
+> RIP: 0033:0x7f8e44f22f19
+> Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 c0 ff ff ff f7 d8 64 89 01 48
+> RSP: 002b:00007fff98aa3238 EFLAGS: 00000246 ORIG_RAX: 0000000000000101
+> RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f8e44f22f19
+> RDX: 000000000000c880 RSI: 0000000020000100 RDI: 0000000000000005
+> RBP: 00007f8e44ee27b0 R08: 0000000800000015 R09: 0000000000000000
+> R10: 0000000000000000 R11: 0000000000000246 R12: 00007f8e44ee2840
+> R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+>   </TASK>
+> Modules linked in:
+> ---[ end trace 0000000000000000 ]---
+> RIP: 0010:ext4_es_cache_extent+0x4e8/0x550 fs/ext4/extents_status.c:899
+> Code: 00 48 c7 c7 e0 6c c1 89 c6 05 71 25 6f 0b 01 e8 b0 b6 f6 06 e9 5a ff ff ff e8 94 9d 68 ff 0f 0b e9 d7 fc ff ff e8 88 9d 68 ff <0f> 0b e8 81 9d 68 ff 0f 0b e9 13 fe ff ff e8 25 df af ff e9 c2 fb
+> RSP: 0018:ffffc90001abee80 EFLAGS: 00010293
+> RAX: 0000000000000000 RBX: 00000000000013de RCX: 0000000000000000
+> RDX: ffff88807deb0000 RSI: ffffffff820fd0f8 RDI: 0000000000000003
+> RBP: ffff888074e6f048 R08: 00000000ffffffff R09: 0000000000000000
+> R10: ffffffff820fce3c R11: 0000000000000000 R12: 0000000000000001
+> R13: 00000000ffffffff R14: 1ffff92000357dd1 R15: 00008f1cffffffff
+> FS:  0000555556ad6300(0000) GS:ffff8880b9d00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f117149e4b0 CR3: 000000007cc1f000 CR4: 0000000000350ee0
+> 
+> 
+> ---
+> This report is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+> 
+> syzbot will keep track of this issue. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+> For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+> syzbot can test patches for this issue, for details see:
+> https://goo.gl/tpsmEJ#testing-patches
+> 
+
+The non-journal mounted fs is corrupted, syzbot was able to mount it 
+because a [fast commit] patch exclude its inodes from verification process.
+
+#syz test: 
+git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master
+
+--------------b0E0UhftInl7b1THt7IAGy56
+Content-Type: text/plain; charset=UTF-8; name="ext4_es_cache_extent.patch"
+Content-Disposition: attachment; filename="ext4_es_cache_extent.patch"
+Content-Transfer-Encoding: base64
+
+ZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaW5vZGUuYyBiL2ZzL2V4dDQvaW5vZGUuYwppbmRleCAw
+MWM5ZTRmNzQzYmEuLjM4NWY0YWU3MTU3MyAxMDA2NDQKLS0tIGEvZnMvZXh0NC9pbm9kZS5j
+CisrKyBiL2ZzL2V4dDQvaW5vZGUuYwpAQCAtNDkxMiw3ICs0OTEyLDcgQEAgc3RydWN0IGlu
+b2RlICpfX2V4dDRfaWdldChzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLCB1bnNpZ25lZCBsb25n
+IGlubywKIAkJZ290byBiYWRfaW5vZGU7CiAJfSBlbHNlIGlmICghZXh0NF9oYXNfaW5saW5l
+X2RhdGEoaW5vZGUpKSB7CiAJCS8qIHZhbGlkYXRlIHRoZSBibG9jayByZWZlcmVuY2VzIGlu
+IHRoZSBpbm9kZSAqLwotCQlpZiAoIShFWFQ0X1NCKHNiKS0+c19tb3VudF9zdGF0ZSAmIEVY
+VDRfRkNfUkVQTEFZKSAmJgorCQlpZiAoIShqb3VybmFsICYmIEVYVDRfU0Ioc2IpLT5zX21v
+dW50X3N0YXRlICYgRVhUNF9GQ19SRVBMQVkpICYmCiAJCQkoU19JU1JFRyhpbm9kZS0+aV9t
+b2RlKSB8fCBTX0lTRElSKGlub2RlLT5pX21vZGUpIHx8CiAJCQkoU19JU0xOSyhpbm9kZS0+
+aV9tb2RlKSAmJgogCQkJIWV4dDRfaW5vZGVfaXNfZmFzdF9zeW1saW5rKGlub2RlKSkpKSB7
+Cg==
+
+--------------b0E0UhftInl7b1THt7IAGy56--
