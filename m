@@ -2,58 +2,57 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E719FC433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 07:49:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB9C0C433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 07:52:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229977AbiBPHtx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Feb 2022 02:49:53 -0500
-Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:38214 "EHLO
+        id S231253AbiBPHwM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Feb 2022 02:52:12 -0500
+Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:55780 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229521AbiBPHtw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 02:49:52 -0500
+        with ESMTP id S231167AbiBPHwL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 02:52:11 -0500
 Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86DAC305;
-        Tue, 15 Feb 2022 23:49:40 -0800 (PST)
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21G69Cn0027786;
-        Wed, 16 Feb 2022 07:03:17 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C5050199D66;
+        Tue, 15 Feb 2022 23:51:51 -0800 (PST)
+Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21G6gMF6026170;
+        Wed, 16 Feb 2022 07:03:02 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : in-reply-to : references : mime-version :
- content-transfer-encoding; s=pp1;
- bh=HObx5w/gi9lmLjsoTSt6Ac4sTLbXkAYMw1Z1rqqvGPU=;
- b=oBtPyXcW5ZYACGGjHTxUM9d7lBOKuHqcWKwgq5Kqvl5VFtYyDsJ/OMO2ZpP8gI7DP8FU
- D7Q6rE0A2EvzLiEpkXlovcTZxW3vg+0EJkoI7RDmROpZhh0daFrNGXQiFo/LQlTaoI8P
- 5JUL9UuppVnYGwPnCxzyCK+/q/xvAa6A/6RD3Xd5qxbxSE661/0tSxlILN4SRtVACKuL
- dtbzj7dVKO24qGBzfUjOyGmj6ZMMhWyE3gS71Dc2E4Ii9XwCJfRbCvzLE27/oFj7hKaW
- wBbtoj9L0/LVt99UPlOBtdzkDLTwKoVdE0tKByCuVxYvQLa56HgOA6lzaIYO7Z1lTJAU Bg== 
+ : date : message-id : content-transfer-encoding : mime-version; s=pp1;
+ bh=btNZXY3xxivb+OrNznhfAD3oDtbupGNk5Hd6K3mKbNs=;
+ b=FUOcuBciKRCMXR8EM//X/s6c3vHnhAcN2Vg0aYPYDyBoaSsCUfBmRADRjWeSqJRhLFO6
+ jM5WxxPGFfmaxz1FUXaLcVhx28acP0Epz69sFf6O28tW0uoxQEpK7FNMn33Hj9Rzjic8
+ Tim8kfQyPreQrXaGd2vbl5ZN8a8lCJnw6iK+Ms1xTNFKvCl+/1ZHvxjvo6Z8s8J9l398
+ oN34qhJnnpgAq7DsJDKzix9j5rTsHEAEnCwnFrrXFU+tphQFppabh5ICYTtp5DPV4Obx
+ OaWxLia1EuAND3krOrCYJhhrSiLh0iqCMhRva+COrXYjjKqwzWDtS75iXay1W52xSDmR Qg== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8udmh6sk-1
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8v7m8bpj-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:03:17 +0000
-Received: from m0098410.ppops.net (m0098410.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 21G6LH0f004196;
-        Wed, 16 Feb 2022 07:03:17 GMT
-Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8udmh6rw-1
+        Wed, 16 Feb 2022 07:03:02 +0000
+Received: from m0098396.ppops.net (m0098396.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 21G6jWcL005407;
+        Wed, 16 Feb 2022 07:03:02 GMT
+Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8v7m8bnr-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:03:16 +0000
-Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
-        by ppma03ams.nl.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21G72lpn004570;
-        Wed, 16 Feb 2022 07:03:14 GMT
-Received: from b06cxnps4074.portsmouth.uk.ibm.com (d06relay11.portsmouth.uk.ibm.com [9.149.109.196])
-        by ppma03ams.nl.ibm.com with ESMTP id 3e64ha5hd9-1
+        Wed, 16 Feb 2022 07:03:01 +0000
+Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
+        by ppma02fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21G72cGf021835;
+        Wed, 16 Feb 2022 07:02:59 GMT
+Received: from b06avi18878370.portsmouth.uk.ibm.com (b06avi18878370.portsmouth.uk.ibm.com [9.149.26.194])
+        by ppma02fra.de.ibm.com with ESMTP id 3e64h9v18j-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:03:14 +0000
+        Wed, 16 Feb 2022 07:02:59 +0000
 Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
-        by b06cxnps4074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21G73C8Q43123080
+        by b06avi18878370.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21G72usB40042812
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 16 Feb 2022 07:03:12 GMT
+        Wed, 16 Feb 2022 07:02:56 GMT
 Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 2B6865205A;
-        Wed, 16 Feb 2022 07:03:12 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id AF9D552063;
+        Wed, 16 Feb 2022 07:02:56 +0000 (GMT)
 Received: from localhost (unknown [9.43.85.173])
-        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id B113552059;
-        Wed, 16 Feb 2022 07:03:11 +0000 (GMT)
+        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id 424EE5204E;
+        Wed, 16 Feb 2022 07:02:56 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
@@ -61,60 +60,72 @@ Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
         Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
         linux-fsdevel@vger.kernel.org,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv2 9/9] ext4: Add extra check in ext4_mb_mark_bb() to prevent against possible corruption
-Date:   Wed, 16 Feb 2022 12:32:51 +0530
-Message-Id: <53cbb6f2573db162a57f935365050d8b1df202ee.1644992610.git.riteshh@linux.ibm.com>
+Subject: [PATCHv2 0/9] ext4: fast_commit fixes, stricter block checking & cleanups
+Date:   Wed, 16 Feb 2022 12:32:42 +0530
+Message-Id: <cover.1644992609.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1644992609.git.riteshh@linux.ibm.com>
-References: <cover.1644992609.git.riteshh@linux.ibm.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: fCKu7Rfk1ad2HiSzXBh2lFLeatT9Mm3z
-X-Proofpoint-GUID: ff-8BKh-ohjSAGWbAlu6bsJEaNjkOgtG
+X-Proofpoint-ORIG-GUID: CfvKUO41AtNlxfmBFLu-lZ3A3XerL9ZQ
+X-Proofpoint-GUID: 74BZf4gZpVEiuDbX1E66X0yWveCSK8GZ
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+MIME-Version: 1.0
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2022-02-16_02,2022-02-14_04,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0 mlxscore=0
- malwarescore=0 clxscore=1015 priorityscore=1501 bulkscore=0 adultscore=0
- phishscore=0 impostorscore=0 spamscore=0 mlxlogscore=608 suspectscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2201110000
- definitions=main-2202160038
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 mlxlogscore=999
+ clxscore=1011 lowpriorityscore=0 suspectscore=0 bulkscore=0 spamscore=0
+ priorityscore=1501 adultscore=0 malwarescore=0 impostorscore=0
+ phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2201110000 definitions=main-2202160038
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch adds an extra checks in ext4_mb_mark_bb() function
-to make sure we mark & report error if we were to mark/clear any
-of the critical FS metadata specific bitmaps (&bail out) to prevent
-from any accidental corruption.
+Hello,
 
-Suggested-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/mballoc.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Please find the v2 of this patch series which addresses the review comments from
+Jan on PATCH-2 & PATCH-7. No changes other than that.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0a95bdb1e07b..5f0bc6d0aabe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3918,6 +3918,14 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 			EXT4_BLOCKS_PER_GROUP(sb) - EXT4_C2B(sbi, blkoff));
- 		clen = EXT4_NUM_B2C(sbi, thisgrp_len);
- 
-+		if (!ext4_sb_block_valid(sb, NULL, block, thisgrp_len)) {
-+			ext4_error(sb, "Marking blocks in system zone - "
-+				   "Block = %llu, len = %u",
-+				   block, thisgrp_len);
-+			bitmap_bh = NULL;
-+			break;
-+		}
-+
- 		bitmap_bh = ext4_read_block_bitmap(sb, group);
- 		if (IS_ERR(bitmap_bh)) {
- 			err = PTR_ERR(bitmap_bh);
--- 
+Summary
+========
+This patch series aimes at fixing some of the issues identified in fast_commit
+with flex_bg. This also adds some stricter checking of blocks to be freed in
+ext4_mb_clear_bb(), ext4_group_add_blocks() & ext4_mb_mark_bb()
+
+Testing
+=========
+I have run xfstests with -g log,metadata,auto group with 4k & 4k_fc
+configs. I have not found any regression due to these patches alone.
+
+But I have found few issues like generic/047 occasionally failing even w/o this
+patch series. I do have some fixes for those too in my tree. I will send those
+fixes later after figuring out few more things around couple other failures.
+
+
+References
+===========
+[v1]: https://lore.kernel.org/all/cover.1644062450.git.riteshh@linux.ibm.com/
+[RFC]: https://lore.kernel.org/all/a9770b46522c03989bdd96f63f7d0bfb2cf499ab.1643642105.git.riteshh@linux.ibm.com/
+
+Ritesh Harjani (9):
+  ext4: Correct cluster len and clusters changed accounting in ext4_mb_mark_bb
+  ext4: Fixes ext4_mb_mark_bb() with flex_bg with fast_commit
+  ext4: Refactor ext4_free_blocks() to pull out ext4_mb_clear_bb()
+  ext4: Use in_range() for range checking in ext4_fc_replay_check_excluded
+  ext4: Rename ext4_set_bits to mb_set_bits
+  ext4: No need to test for block bitmap bits in ext4_mb_mark_bb()
+  ext4: Add ext4_sb_block_valid() refactored out of ext4_inode_block_valid()
+  ext4: Add strict range checks while freeing blocks
+  ext4: Add extra check in ext4_mb_mark_bb() to prevent against possible corruption
+
+ fs/ext4/block_validity.c |  26 +--
+ fs/ext4/ext4.h           |   5 +-
+ fs/ext4/fast_commit.c    |   4 +-
+ fs/ext4/mballoc.c        | 342 ++++++++++++++++++++++-----------------
+ fs/ext4/resize.c         |   4 +-
+ 5 files changed, 220 insertions(+), 161 deletions(-)
+
+--
 2.31.1
 
