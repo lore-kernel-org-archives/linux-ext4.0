@@ -2,140 +2,190 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CB55C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 02:36:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 64E4CC433FE
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 04:15:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343786AbiBPCgz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Feb 2022 21:36:55 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41846 "EHLO
+        id S1343801AbiBPEPk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Feb 2022 23:15:40 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:45302 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233597AbiBPCgy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Feb 2022 21:36:54 -0500
-Received: from NAM04-DM6-obe.outbound.protection.outlook.com (mail-dm6nam08on2070.outbound.protection.outlook.com [40.107.102.70])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12724FCA;
-        Tue, 15 Feb 2022 18:36:43 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=AOq+DMp+km0e8HC2+YOpSh5Gwp4M8cd1XIaXl0eMzd685Hsf37HUX9Ftcy0eh1dj8vybK/8scw5odBI8P+Vvj18G6FrHCWjBfXCS3Xph9SOq5wdqs/HKcUiOO0X5/xGivCU78J0xJoSwv45K/uoy6iSGUd1XGxEz1U355va7aXkLxmtw59FUQXipkRrBDrtu751ACxKN82eBXH8fM+ApB/4/7y12/0WaPyHh/I4hEu5v9Yt8oYZmejX8+aplxY1ZKlQVjrJX8eoyMdUxgPBOa9TZr2/u05G4QSA3MPdMoD0Vf5Y0MD7LKbPX9+pezHf6H4fOBmIKqZg/6mjecMinJQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=W6u4KSkTaAdZ3Y1/l8px2yzaaALzD3TCdjvTMQCo2v4=;
- b=Du6fNXqD+8bNhVh4c4+cIp+kHee4jgxmCrjhH4gi2YYlzIuDc4FTpf9w9Y4n+7lWfzU/keUjEwEArJ3e4TjKSJlFxlwzn/RjC0m+E4rGxZz/hxzo3xZblPeyXlA0oLU6iJqr3zKgOvAX+SVI+1Gkl5Hr/p3qvw5pvfol2F6o1rQOra+rXcZatJaeMMMzMBu+1rs3j1w/zB2ARfyq+qfjOrQBAgj36TCHv0gVOSNDyX1fuU4o30BomCX3qqpUs3fvmSM6iTFkbBwK4/j0YZ+I0OVhAQ8jPZhRxe/0Tig8ayBwAQrdxc3EC8OHL4N83L3/C+lk9S4QoLHCDXK1DyETFw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 12.22.5.238) smtp.rcpttodomain=lists.freedesktop.org
- smtp.mailfrom=nvidia.com; dmarc=pass (p=reject sp=reject pct=100) action=none
- header.from=nvidia.com; dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=W6u4KSkTaAdZ3Y1/l8px2yzaaALzD3TCdjvTMQCo2v4=;
- b=tgfdDFWWlxNy5M/lNqnnti0A+xqc4dBOgi3czZyG1cSrQPsbrNka3/ktzS6Obtma9gjQzrVWQf/C15gJVzzyd2v8TOVcoo3Hn+voKYABKN/5pPzOz+m7RHaXKJ5BizU4RPoJonmhB8ZQ5VoF5dz0oykJKDJaag4EN2hopO6FqqOM8PLWltWIxa/OMIxMQOOcL/9QziAhfy+rwrfwZwSUmfGDgSDkByMKoGrlHHQrnVIwn7yen0IL7QEdiO3N4Gbvcp9Z2VugXAi/YQWijRpKlKUd+KQWunHs070aZk6WMl6NhGgiLD5qsisRF+o7XkeELqFunl08kt0kl6mEqr0X/Q==
-Received: from BN6PR1201CA0021.namprd12.prod.outlook.com
- (2603:10b6:405:4c::31) by SA0PR12MB4559.namprd12.prod.outlook.com
- (2603:10b6:806:9e::23) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4975.17; Wed, 16 Feb
- 2022 02:36:41 +0000
-Received: from BN8NAM11FT036.eop-nam11.prod.protection.outlook.com
- (2603:10b6:405:4c:cafe::d) by BN6PR1201CA0021.outlook.office365.com
- (2603:10b6:405:4c::31) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.4995.15 via Frontend
- Transport; Wed, 16 Feb 2022 02:36:40 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 12.22.5.238)
- smtp.mailfrom=nvidia.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=nvidia.com;
-Received-SPF: Pass (protection.outlook.com: domain of nvidia.com designates
- 12.22.5.238 as permitted sender) receiver=protection.outlook.com;
- client-ip=12.22.5.238; helo=mail.nvidia.com;
-Received: from mail.nvidia.com (12.22.5.238) by
- BN8NAM11FT036.mail.protection.outlook.com (10.13.177.168) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
- 15.20.4975.11 via Frontend Transport; Wed, 16 Feb 2022 02:36:40 +0000
-Received: from rnnvmail201.nvidia.com (10.129.68.8) by DRHQMAIL105.nvidia.com
- (10.27.9.14) with Microsoft SMTP Server (TLS) id 15.0.1497.18; Wed, 16 Feb
- 2022 02:36:40 +0000
-Received: from nvdebian.localnet (10.126.230.35) by rnnvmail201.nvidia.com
- (10.129.68.8) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.986.9; Tue, 15 Feb 2022
- 18:36:35 -0800
-From:   Alistair Popple <apopple@nvidia.com>
-To:     Jason Gunthorpe <jgg@nvidia.com>
-CC:     Felix Kuehling <felix.kuehling@amd.com>,
-        Christoph Hellwig <hch@lst.de>,
-        David Hildenbrand <david@redhat.com>,
-        Alex Sierra <alex.sierra@amd.com>, <akpm@linux-foundation.org>,
-        <linux-mm@kvack.org>, <rcampbell@nvidia.com>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        <amd-gfx@lists.freedesktop.org>, <dri-devel@lists.freedesktop.org>,
-        <jglisse@redhat.com>, <willy@infradead.org>
-Subject: Re: [PATCH v6 01/10] mm: add zone device coherent type memory support
-Date:   Wed, 16 Feb 2022 13:36:30 +1100
-Message-ID: <6156515.kVgMqSaHHm@nvdebian>
-In-Reply-To: <20220216020357.GD4160@nvidia.com>
-References: <beb38138-2266-1ff8-cc82-8fe914bed862@redhat.com> <877d9vd10u.fsf@nvdebian.thelocal> <20220216020357.GD4160@nvidia.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-X-Originating-IP: [10.126.230.35]
-X-ClientProxiedBy: rnnvmail201.nvidia.com (10.129.68.8) To
- rnnvmail201.nvidia.com (10.129.68.8)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: ba4567b3-3ec2-4bce-f67a-08d9f0f529bb
-X-MS-TrafficTypeDiagnostic: SA0PR12MB4559:EE_
-X-Microsoft-Antispam-PRVS: <SA0PR12MB4559DE6B57412D6F45E1243BDF359@SA0PR12MB4559.namprd12.prod.outlook.com>
-X-MS-Oob-TLC-OOBClassifiers: OLM:10000;
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: zsrOwL6/Kf3cPfkQvFEIIPX5y/jZRCIMCj36Vr2HhNJpmB0Cezj7+ECiJ5DSu3OQedMMcp787FeP3t23OKux5BTWCtIyuD3Ef28tTVFtJCby+h3qiEhTucR2pMWd8iLBjxfE4wZYTV4coDfZ0iCi11yl3zkdkL1/+qw+OGBYQUiMo7/SHj8JaLBt5EGYXx6E7WjAlK8hvZoHrHog3gYlE1g6+tNSfjq4IXKwNsuGmC7mDncAuM6s5whOhrlEWEJTUq6HrUEyUcj1J5Jra1UPOjzc0rx+A9X7wUydwJa+CoYXYdM13ic/Dmn/zdUWtPfCRnEhrHoIHFWFdWtOQ8cv/RHahJIAHyBALv4wwnGAAZr5abdww51T66Chfif8Voq354Gxm80hiw3mRQhOikEZ2/iNBS6Gt0W0PlA+t1z4INZrk4W2VJxm/dK+MboJeX81ezEFlgmZe4+aSeB5jqoRcZpXjEP13SRNYsBsrqIu1rHNjbcMHuPBOe9cFNRuTgPoyKxwLRs8+Gb21P2TDPGLe0c24DOQQKN9QGdgYwzA+w4j9jQpsqWtFxd5+AiZ3mi2oNvrYrcy6/c8P6FTjUESC7iAhiDRLw2+E7X/GKT89RDt9w5x+Ark1e1zpqOXt+WTmn1Qha6Rru8NJyJ5u2zzObNeyD23RjwvVglbdNoZj2jnqfJLfvh+QBAyoXrNJ198JtS/HYfJ7475xbAfpL/bNg==
-X-Forefront-Antispam-Report: CIP:12.22.5.238;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:mail.nvidia.com;PTR:InfoNoRecords;CAT:NONE;SFS:(13230001)(4636009)(36840700001)(40470700004)(46966006)(356005)(70206006)(54906003)(82310400004)(426003)(6636002)(16526019)(9686003)(26005)(8936002)(316002)(40460700003)(47076005)(336012)(186003)(8676002)(81166007)(70586007)(6862004)(9576002)(83380400001)(86362001)(4326008)(2906002)(5660300002)(33716001)(508600001)(6666004)(36860700001)(7416002)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 16 Feb 2022 02:36:40.5755
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: ba4567b3-3ec2-4bce-f67a-08d9f0f529bb
-X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=43083d15-7273-40c1-b7db-39efd9ccc17a;Ip=[12.22.5.238];Helo=[mail.nvidia.com]
-X-MS-Exchange-CrossTenant-AuthSource: BN8NAM11FT036.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SA0PR12MB4559
+        with ESMTP id S245630AbiBPEPi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Feb 2022 23:15:38 -0500
+X-Greylist: delayed 206 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 15 Feb 2022 20:15:24 PST
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id C44EFFFFA0
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Feb 2022 20:15:24 -0800 (PST)
+Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
+        by 156.147.23.52 with ESMTP; 16 Feb 2022 13:15:23 +0900
+X-Original-SENDERIP: 156.147.1.127
+X-Original-MAILFROM: byungchul.park@lge.com
+Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
+        by 156.147.1.127 with ESMTP; 16 Feb 2022 13:15:23 +0900
+X-Original-SENDERIP: 10.177.244.38
+X-Original-MAILFROM: byungchul.park@lge.com
+From:   Byungchul Park <byungchul.park@lge.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Cc:     torvalds@linux-foundation.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        chris@chris-wilson.co.uk, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, willy@infradead.org,
+        david@fromorbit.com, amir73il@gmail.com, bfields@fieldses.org,
+        gregkh@linuxfoundation.org, kernel-team@lge.com,
+        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+        ngupta@vflare.org, linux-block@vger.kernel.org, axboe@kernel.dk,
+        paolo.valente@linaro.org, josef@toxicpanda.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        jack@suse.cz, jlayton@kernel.org, dan.j.williams@intel.com,
+        hch@infradead.org, djwong@kernel.org,
+        dri-devel@lists.freedesktop.org, airlied@linux.ie,
+        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+        hamohammed.sa@gmail.com
+Subject: Report in ext4_da_write_begin()
+Date:   Wed, 16 Feb 2022 13:15:14 +0900
+Message-Id: <1644984918-27955-2-git-send-email-byungchul.park@lge.com>
+X-Mailer: git-send-email 1.9.1
+In-Reply-To: <1644984918-27955-1-git-send-email-byungchul.park@lge.com>
+References: <1644984711-26423-1-git-send-email-byungchul.park@lge.com>
+ <1644984918-27955-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wednesday, 16 February 2022 1:03:57 PM AEDT Jason Gunthorpe wrote:
-> On Wed, Feb 16, 2022 at 12:23:44PM +1100, Alistair Popple wrote:
-> 
-> > Device private and device coherent pages are not marked with pte_devmap and they
-> > are backed by a struct page. The only way of inserting them is via migrate_vma.
-> > The refcount is decremented in zap_pte_range() on munmap() with special handling
-> > for device private pages. Looking at it again though I wonder if there is any
-> > special treatment required in zap_pte_range() for device coherent pages given
-> > they count as present pages.
-> 
-> This is what I guessed, but we shouldn't be able to just drop
-> pte_devmap on these pages without any other work?? Granted it does
-> very little already..
-
-Yes, I agree we need to check this more closely. For device private pages
-not having pte_devmap is fine, because they are non-present swap entries so
-they always get special handling in the swap entry paths but the same isn't
-true for coherent device pages.
-
-> I thought at least gup_fast needed to be touched or did this get
-> handled by scanning the page list after the fact?
-
-Right, for gup I think the only special handling required is to prevent
-pinning. I had assumed that check_and_migrate_movable_pages() would still get
-called for gup_fast but unless I've missed something I don't think it does.
-That means gup_fast could still pin movable and coherent pages. Technically
-that is ok for coherent pages, but it's undesirable.
-
- - Alistair
-
-> Jason
-> 
-
-
-
-
+[    6.881473] ===================================================
+[    6.881474] DEPT: Circular dependency has been detected.
+[    6.881475] 5.17.0-rc1-00014-gcf3441bb2012 #2 Tainted: G        W        
+[    6.881476] ---------------------------------------------------
+[    6.881476] summary
+[    6.881477] ---------------------------------------------------
+[    6.881478] *** DEADLOCK ***
+[    6.881478] 
+[    6.881478] context A
+[    6.881479]     [S] (unknown)(&(&journal->j_wait_commit)->dmap:0)
+[    6.881480]     [W] __raw_read_lock(&journal->j_state_lock:8)
+[    6.881481]     [E] event(&(&journal->j_wait_commit)->dmap:0)
+[    6.881482] 
+[    6.881483] context B
+[    6.881483]     [S] __raw_write_lock(&journal->j_state_lock:8)
+[    6.881484]     [W] wait(&(&journal->j_wait_commit)->dmap:0)
+[    6.881485]     [E] write_unlock(&journal->j_state_lock:8)
+[    6.881486] 
+[    6.881487] [S]: start of the event context
+[    6.881487] [W]: the wait blocked
+[    6.881488] [E]: the event not reachable
+[    6.881489] ---------------------------------------------------
+[    6.881489] context A's detail
+[    6.881490] ---------------------------------------------------
+[    6.881490] context A
+[    6.881491]     [S] (unknown)(&(&journal->j_wait_commit)->dmap:0)
+[    6.881492]     [W] __raw_read_lock(&journal->j_state_lock:8)
+[    6.881493]     [E] event(&(&journal->j_wait_commit)->dmap:0)
+[    6.881494] 
+[    6.881495] [S] (unknown)(&(&journal->j_wait_commit)->dmap:0):
+[    6.881496] (N/A)
+[    6.881496] 
+[    6.881497] [W] __raw_read_lock(&journal->j_state_lock:8):
+[    6.881498] [<ffffffff8133cd87>] start_this_handle+0xa7/0x5e0
+[    6.881500] stacktrace:
+[    6.881500]       _raw_read_lock+0x57/0xd0
+[    6.881502]       start_this_handle+0xa7/0x5e0
+[    6.881504]       jbd2__journal_start+0xe6/0x220
+[    6.881506]       __ext4_journal_start_sb+0x11c/0x150
+[    6.881508]       ext4_truncate+0x167/0x4b0
+[    6.881509]       ext4_da_write_begin+0x19c/0x2a0
+[    6.881511]       generic_perform_write+0xa6/0x1c0
+[    6.881512]       ext4_buffered_write_iter+0x89/0x100
+[    6.881515]       ext4_file_write_iter+0x4a/0x7f0
+[    6.881516]       new_sync_write+0x100/0x190
+[    6.881518]       vfs_write+0x134/0x360
+[    6.881521]       ksys_write+0x4d/0xc0
+[    6.881522]       do_syscall_64+0x3a/0x90
+[    6.881523]       entry_SYSCALL_64_after_hwframe+0x44/0xae
+[    6.881525] 
+[    6.881526] [E] event(&(&journal->j_wait_commit)->dmap:0):
+[    6.881527] [<ffffffff810baa53>] __wake_up_common+0x93/0x1a0
+[    6.881529] stacktrace:
+[    6.881529]       dept_event+0x12b/0x1f0
+[    6.881531]       __wake_up_common+0xb0/0x1a0
+[    6.881532]       __wake_up_common_lock+0x65/0x90
+[    6.881533]       __jbd2_log_start_commit+0x8a/0xa0
+[    6.881535]       jbd2_log_start_commit+0x24/0x40
+[    6.881536]       __jbd2_journal_force_commit+0x91/0xb0
+[    6.881538]       jbd2_journal_force_commit_nested+0x5/0x10
+[    6.881540]       ext4_should_retry_alloc+0x5b/0xb0
+[    6.881541]       ext4_da_write_begin+0xf2/0x2a0
+[    6.881543]       generic_perform_write+0xa6/0x1c0
+[    6.881544]       ext4_buffered_write_iter+0x89/0x100
+[    6.881546]       ext4_file_write_iter+0x4a/0x7f0
+[    6.881548]       new_sync_write+0x100/0x190
+[    6.881550]       vfs_write+0x134/0x360
+[    6.881552]       ksys_write+0x4d/0xc0
+[    6.881553]       do_syscall_64+0x3a/0x90
+[    6.881555] ---------------------------------------------------
+[    6.881556] context B's detail
+[    6.881556] ---------------------------------------------------
+[    6.881557] context B
+[    6.881558]     [S] __raw_write_lock(&journal->j_state_lock:8)
+[    6.881559]     [W] wait(&(&journal->j_wait_commit)->dmap:0)
+[    6.881560]     [E] write_unlock(&journal->j_state_lock:8)
+[    6.881561] 
+[    6.881561] [S] __raw_write_lock(&journal->j_state_lock:8):
+[    6.881562] [<ffffffff81346e9e>] kjournald2+0x7e/0x260
+[    6.881564] stacktrace:
+[    6.881564]       _raw_write_lock+0x6e/0x90
+[    6.881566]       kjournald2+0x7e/0x260
+[    6.881567]       kthread+0xe3/0x110
+[    6.881569]       ret_from_fork+0x22/0x30
+[    6.881571] 
+[    6.881572] [W] wait(&(&journal->j_wait_commit)->dmap:0):
+[    6.881573] [<ffffffff810bb017>] prepare_to_wait+0x47/0xd0
+[    6.881574] stacktrace:
+[    6.881575]       kjournald2+0x164/0x260
+[    6.881576]       kthread+0xe3/0x110
+[    6.881578]       ret_from_fork+0x22/0x30
+[    6.881579] 
+[    6.881580] [E] write_unlock(&journal->j_state_lock:8):
+[    6.881581] [<ffffffff8134700b>] kjournald2+0x1eb/0x260
+[    6.881582] stacktrace:
+[    6.881583]       _raw_write_unlock+0x30/0x70
+[    6.881585]       kjournald2+0x1eb/0x260
+[    6.881586]       kthread+0xe3/0x110
+[    6.881588]       ret_from_fork+0x22/0x30
+[    6.881589] ---------------------------------------------------
+[    6.881590] information that might be helpful
+[    6.881590] ---------------------------------------------------
+[    6.881591] CPU: 2 PID: 628 Comm: rs:main Q:Reg Tainted: G        W         5.17.0-rc1-00014-gcf3441bb2012 #2
+[    6.881593] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
+[    6.881594] Call Trace:
+[    6.881595]  <TASK>
+[    6.881596]  dump_stack_lvl+0x44/0x57
+[    6.881597]  print_circle+0x384/0x510
+[    6.881599]  ? __kernel_text_address+0x9/0x30
+[    6.881601]  ? print_circle+0x510/0x510
+[    6.881603]  cb_check_dl+0x58/0x60
+[    6.881605]  bfs+0xdc/0x1b0
+[    6.881607]  add_dep+0x94/0x120
+[    6.881609]  do_event.isra.22+0x284/0x300
+[    6.881611]  ? __wake_up_common+0x93/0x1a0
+[    6.881612]  dept_event+0x12b/0x1f0
+[    6.881615]  __wake_up_common+0xb0/0x1a0
+[    6.881617]  __wake_up_common_lock+0x65/0x90
+[    6.881619]  __jbd2_log_start_commit+0x8a/0xa0
+[    6.881621]  jbd2_log_start_commit+0x24/0x40
+[    6.881622]  __jbd2_journal_force_commit+0x91/0xb0
+[    6.881624]  jbd2_journal_force_commit_nested+0x5/0x10
+[    6.881626]  ext4_should_retry_alloc+0x5b/0xb0
+[    6.881628]  ext4_da_write_begin+0xf2/0x2a0
+[    6.881630]  generic_perform_write+0xa6/0x1c0
+[    6.881633]  ext4_buffered_write_iter+0x89/0x100
+[    6.881636]  ext4_file_write_iter+0x4a/0x7f0
+[    6.881638]  new_sync_write+0x100/0x190
+[    6.881642]  vfs_write+0x134/0x360
+[    6.881644]  ksys_write+0x4d/0xc0
+[    6.881645]  ? trace_hardirqs_on+0x38/0xe0
+[    6.881648]  do_syscall_64+0x3a/0x90
+[    6.881650]  entry_SYSCALL_64_after_hwframe+0x44/0xae
