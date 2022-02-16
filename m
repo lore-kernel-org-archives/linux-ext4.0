@@ -2,133 +2,122 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC8F5C433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 07:26:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9502FC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 07:28:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229816AbiBPH1F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Feb 2022 02:27:05 -0500
-Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:58626 "EHLO
+        id S230071AbiBPH2p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Feb 2022 02:28:45 -0500
+Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:36732 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229651AbiBPH1F (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 02:27:05 -0500
+        with ESMTP id S229651AbiBPH2n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 02:28:43 -0500
 Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0251B2DD63;
-        Tue, 15 Feb 2022 23:26:54 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E01215A32;
+        Tue, 15 Feb 2022 23:28:32 -0800 (PST)
 Received: from pps.filterd (m0098399.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21G5ep9H024639;
-        Wed, 16 Feb 2022 07:00:53 GMT
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21G6CxUi012974;
+        Wed, 16 Feb 2022 07:00:58 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=jtH1pPjry3jraE5+mHy3i2+OKX8n0us0+3wvxhnh7/4=;
- b=RfeUdSe3ttw/3fPwZGbtZ4lMBem+xuIEhL5ZFcH4/Dvg4hTUgW0gGeieO3Cfb0D8xSHO
- bb1NdyLnRrEnkuxgVIFirdAgKgXE6xim2TR9zO1JJnkhNY8ZHpGtg2vmoxAqyPqLW/7X
- 9zbfUem+bHZKvsDiu1l/qWPYed+j/HdEzW3m39Oi+k6D/TZh5UaST8UYkYTbUzFsuPJm
- YNtvaoIwuiN6xaASdROXdXCsv7txrrm2XM5W+/+uorhkJPgXJKvW1Z5YzdENceI+76oW
- Wo9zXniKL0lLnvlN7kwVgmAHcs8ZRygvxPqDlQ/dMwWoJSBo6uU5tuDYHKq9JpUH0wyf uA== 
-Received: from ppma06fra.de.ibm.com (48.49.7a9f.ip4.static.sl-reverse.com [159.122.73.72])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8spgb5cf-1
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=j2vv7zVutDpVpmewSeDfg/m0oj+u/BkEkjga7tkasRU=;
+ b=ijx7UphFa+me0vV3rgd8h1jEJ93t1oK5x2kdii73YuxqclnblZze6dCNJi+GPjlFD1fV
+ 2RYSTLk99RyygbttM4VqoBjOLoCfOegrqtphNVPF3HVkb1nHiA01hAozmyF7tG/TDOvV
+ 3u5h0AuK6L6WrDrr/J4/sbaqIlKu78hZqs3hPNC9+08rTf/0dnlANZHH4gGdZAroZAls
+ hMt+1bQTUahPB0a9cKUG5BdnvwGvlZPGXSBTVrswvvFjGLe2uQubgLZOxEruGPrEGn1t
+ LCYJJJLYnFkrCGtKQ9EDZKq75gU8mjk5VEw3G5m+w399SPaVaY7tkfNk1s31ZCbrcXpn 4A== 
+Received: from ppma01fra.de.ibm.com (46.49.7a9f.ip4.static.sl-reverse.com [159.122.73.70])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8spgb5e6-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:00:52 +0000
-Received: from pps.filterd (ppma06fra.de.ibm.com [127.0.0.1])
-        by ppma06fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21G6rvK8029514;
-        Wed, 16 Feb 2022 07:00:50 GMT
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
-        by ppma06fra.de.ibm.com with ESMTP id 3e645jv1rf-1
+        Wed, 16 Feb 2022 07:00:57 +0000
+Received: from pps.filterd (ppma01fra.de.ibm.com [127.0.0.1])
+        by ppma01fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21G6q7kE022070;
+        Wed, 16 Feb 2022 07:00:54 GMT
+Received: from b06avi18626390.portsmouth.uk.ibm.com (b06avi18626390.portsmouth.uk.ibm.com [9.149.26.192])
+        by ppma01fra.de.ibm.com with ESMTP id 3e64h9ky9k-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:00:50 +0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21G70lre42205588
+        Wed, 16 Feb 2022 07:00:53 +0000
+Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
+        by b06avi18626390.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21G6oSxg43188530
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 16 Feb 2022 07:00:48 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id D953DA405B;
-        Wed, 16 Feb 2022 07:00:47 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 67AB6A4054;
-        Wed, 16 Feb 2022 07:00:47 +0000 (GMT)
+        Wed, 16 Feb 2022 06:50:28 GMT
+Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 564F95204E;
+        Wed, 16 Feb 2022 07:00:51 +0000 (GMT)
 Received: from localhost (unknown [9.43.85.173])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Wed, 16 Feb 2022 07:00:47 +0000 (GMT)
+        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id E574852063;
+        Wed, 16 Feb 2022 07:00:50 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-fsdevel@vger.kernel.org,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv2 REBASED 0/2] jbd2: Kill t_handle_lock transaction spinlock
-Date:   Wed, 16 Feb 2022 12:30:34 +0530
-Message-Id: <cover.1644992076.git.riteshh@linux.ibm.com>
+Subject: [PATCHv2 REBASED 2/2] jbd2: Remove CONFIG_JBD2_DEBUG to update t_max_wait
+Date:   Wed, 16 Feb 2022 12:30:36 +0530
+Message-Id: <ad7319a601fd501079310747ce87d908e0944763.1644992076.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: 9X8wXBpTY6itGfgz1CeVG0IEdk2_SSjp
-X-Proofpoint-ORIG-GUID: 9X8wXBpTY6itGfgz1CeVG0IEdk2_SSjp
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+In-Reply-To: <cover.1644992076.git.riteshh@linux.ibm.com>
+References: <cover.1644992076.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-GUID: LqmwldJ2SPCHkJIkwvTIriLQ38uEDIl6
+X-Proofpoint-ORIG-GUID: LqmwldJ2SPCHkJIkwvTIriLQ38uEDIl6
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
  definitions=2022-02-16_02,2022-02-14_04,2021-12-02_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 lowpriorityscore=0
  malwarescore=0 adultscore=0 priorityscore=1501 mlxscore=0 clxscore=1015
- bulkscore=0 phishscore=0 impostorscore=0 spamscore=0 mlxlogscore=643
+ bulkscore=0 phishscore=0 impostorscore=0 spamscore=0 mlxlogscore=631
  suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2201110000 definitions=main-2202160038
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+CONFIG_JBD2_DEBUG and jbd2_journal_enable_debug knobs were added in
+update_t_max_wait(), since earlier it used to take a spinlock for updating
+t_max_wait, which could cause a bottleneck while starting a txn
+(start_this_handle()).
+Since in previous patch, we have killed t_handle_lock completely, we
+could get rid of this debug config and knob to let t_max_wait be updated
+by default again.
 
-This is mainly just rebasing the patch series on top of recent use-after-free
-fix submitted [4], due to conflict in function jbd2_journal_wait_updates().
-No other changes apart from that.
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-
-Testing
-========
-I have again tested xfstests with -g log,metadata,auto group with 4k bs
-config (COFIG_KASAN disabled). I haven't found any regression due to these
-patches in my testing.
-
-
-Original cover letter
-======================
-This small patch series kills the age-old t_handle_lock transaction spinlock,
-which on careful inspection, came out to be not very useful anymore.
-At some of the places it isn't required at all now and for the rest
-(e.g. update_t_max_wait()), we could make use of atomic cmpxchg to make the
-code path lockless.
-
-This was tested with fstests with -g quick and -g log on my qemu setup.
-I had also done some extensive fsmark testing to see that we don't see any
-bottleneck resulting from removal of CONFIG_JBD2_DEBUG to update t_max_wait
-in patch-2. None of my test showed any bottleneck.
-
-Note that there had been several patches in the past over time which had led to
-t_handle_lock becoming obselete now e.g. [1-2]
-In this work, couple of the code paths to remove this spinlock were observed
-while doing code review and to get completely rid of it was something which was
-suggested by Jan [3].
-Thanks to Jan for thorough review and suggestions :)
-
-
-References
-===========
-[v1]: https://lore.kernel.org/all/cover.1642953021.git.riteshh@linux.ibm.com/
-[1]: https://lore.kernel.org/linux-ext4/1280939957-3277-4-git-send-email-tytso@mit.edu/
-[2]: https://lore.kernel.org/linux-ext4/20120103153245.GE31457@quack.suse.cz/
-[3]: https://lore.kernel.org/linux-ext4/20220113112749.d5tfszcksvxvshnn@quack3.lan/
-[4]: https://lore.kernel.org/all/948c2fed518ae739db6a8f7f83f1d58b504f87d0.1644497105.git.ritesh.list@gmail.com/
-
-
-Ritesh Harjani (2):
-  jbd2: Kill t_handle_lock transaction spinlock
-  jbd2: Remove CONFIG_JBD2_DEBUG to update t_max_wait
-
- fs/jbd2/transaction.c | 35 ++++++++++++-----------------------
- include/linux/jbd2.h  |  3 ---
- 2 files changed, 12 insertions(+), 26 deletions(-)
-
---
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 83801a8be078..73ed02f061e1 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -141,20 +141,19 @@ static void jbd2_get_transaction(journal_t *journal,
+  * t_max_wait is carefully updated here with use of atomic compare exchange.
+  * Note that there could be multiplre threads trying to do this simultaneously
+  * hence using cmpxchg to avoid any use of locks in this case.
++ * With this t_max_wait can be updated w/o enabling jbd2_journal_enable_debug.
+  */
+ static inline void update_t_max_wait(transaction_t *transaction,
+ 				     unsigned long ts)
+ {
+-#ifdef CONFIG_JBD2_DEBUG
+ 	unsigned long oldts, newts;
+-	if (jbd2_journal_enable_debug &&
+-	    time_after(transaction->t_start, ts)) {
++
++	if (time_after(transaction->t_start, ts)) {
+ 		newts = jbd2_time_diff(ts, transaction->t_start);
+ 		oldts = READ_ONCE(transaction->t_max_wait);
+ 		while (oldts < newts)
+ 			oldts = cmpxchg(&transaction->t_max_wait, oldts, newts);
+ 	}
+-#endif
+ }
+ 
+ /*
+-- 
 2.31.1
 
