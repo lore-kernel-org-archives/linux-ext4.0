@@ -2,130 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CB9C0C433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 07:52:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4087BC433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Feb 2022 08:31:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231253AbiBPHwM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 16 Feb 2022 02:52:12 -0500
-Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:55780 "EHLO
+        id S229506AbiBPIbm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 16 Feb 2022 03:31:42 -0500
+Received: from gmail-smtp-in.l.google.com ([23.128.96.19]:39954 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231167AbiBPHwL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 02:52:11 -0500
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C5050199D66;
-        Tue, 15 Feb 2022 23:51:51 -0800 (PST)
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 21G6gMF6026170;
-        Wed, 16 Feb 2022 07:03:02 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=btNZXY3xxivb+OrNznhfAD3oDtbupGNk5Hd6K3mKbNs=;
- b=FUOcuBciKRCMXR8EM//X/s6c3vHnhAcN2Vg0aYPYDyBoaSsCUfBmRADRjWeSqJRhLFO6
- jM5WxxPGFfmaxz1FUXaLcVhx28acP0Epz69sFf6O28tW0uoxQEpK7FNMn33Hj9Rzjic8
- Tim8kfQyPreQrXaGd2vbl5ZN8a8lCJnw6iK+Ms1xTNFKvCl+/1ZHvxjvo6Z8s8J9l398
- oN34qhJnnpgAq7DsJDKzix9j5rTsHEAEnCwnFrrXFU+tphQFppabh5ICYTtp5DPV4Obx
- OaWxLia1EuAND3krOrCYJhhrSiLh0iqCMhRva+COrXYjjKqwzWDtS75iXay1W52xSDmR Qg== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8v7m8bpj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:03:02 +0000
-Received: from m0098396.ppops.net (m0098396.ppops.net [127.0.0.1])
-        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 21G6jWcL005407;
-        Wed, 16 Feb 2022 07:03:02 GMT
-Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3e8v7m8bnr-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:03:01 +0000
-Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
-        by ppma02fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 21G72cGf021835;
-        Wed, 16 Feb 2022 07:02:59 GMT
-Received: from b06avi18878370.portsmouth.uk.ibm.com (b06avi18878370.portsmouth.uk.ibm.com [9.149.26.194])
-        by ppma02fra.de.ibm.com with ESMTP id 3e64h9v18j-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 16 Feb 2022 07:02:59 +0000
-Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
-        by b06avi18878370.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 21G72usB40042812
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 16 Feb 2022 07:02:56 GMT
-Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id AF9D552063;
-        Wed, 16 Feb 2022 07:02:56 +0000 (GMT)
-Received: from localhost (unknown [9.43.85.173])
-        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id 424EE5204E;
-        Wed, 16 Feb 2022 07:02:56 +0000 (GMT)
-From:   Ritesh Harjani <riteshh@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
-        linux-fsdevel@vger.kernel.org,
-        Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv2 0/9] ext4: fast_commit fixes, stricter block checking & cleanups
-Date:   Wed, 16 Feb 2022 12:32:42 +0530
-Message-Id: <cover.1644992609.git.riteshh@linux.ibm.com>
-X-Mailer: git-send-email 2.31.1
-X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: CfvKUO41AtNlxfmBFLu-lZ3A3XerL9ZQ
-X-Proofpoint-GUID: 74BZf4gZpVEiuDbX1E66X0yWveCSK8GZ
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+        with ESMTP id S231330AbiBPIbl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Feb 2022 03:31:41 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0EC952A520F
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Feb 2022 00:31:17 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1645000267;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=dMr7qMjbySmB3FKzyMaIvMtNvTUPHIVGxBY8lAVP/YQ=;
+        b=Css8yhuH6bPauD/GhKsMyoxVUh41GM4/Y8tVvtOFz+I+u0YYoP60x5eo1u5ww4ivRD215p
+        qEHbB0OX7bf8OG5AiF8k2HzPITogxfAoyXFSGw+WRXy+RdSuB8PUkg+d9BVtdrHYhTgHdC
+        4PycnhRUGkvGnpPgnp5kFJqd/v6QjOw=
+Received: from mail-wr1-f72.google.com (mail-wr1-f72.google.com
+ [209.85.221.72]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-50-JJzjbWSCPKKVFWrqUgCtuw-1; Wed, 16 Feb 2022 03:31:06 -0500
+X-MC-Unique: JJzjbWSCPKKVFWrqUgCtuw-1
+Received: by mail-wr1-f72.google.com with SMTP id t14-20020adfa2ce000000b001e1ad2deb3dso774286wra.0
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Feb 2022 00:31:05 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:date:mime-version:user-agent
+         :content-language:to:cc:references:from:organization:subject
+         :in-reply-to:content-transfer-encoding;
+        bh=dMr7qMjbySmB3FKzyMaIvMtNvTUPHIVGxBY8lAVP/YQ=;
+        b=T6k8sdMNUYECXgCGPO2gLOmalFxDd2WK3g3JPEDgIMStMUPkDWb146r6U4ue6atkEv
+         2wHv/X22r36cC77rT89OhBV9uV5wowgoW8doktDWBDWx9P81S+MinH65wXkxj/phzVHf
+         VRrNEobJgTGmbybP+bpHVv5AohfKlFhcIusqBo90so++Bn3Lm5qo9i/pFPw+i56evteF
+         t/lcTC7e1XWluydjX7ZGog/8HBeXGGobAwd1HKhp/AJmsoRzDCmJd5/9RMYH5bdI6Nwg
+         a72NqyfjHWVXfkP8Q+yBO4Zp1yRfq1QrAJXfL0e2VbNMxD1Bhmx0J4Dy06I7vcUnQirm
+         /5nQ==
+X-Gm-Message-State: AOAM531jRcvk2jc4R4nWSL+6QZZzMt/9cZeVyvZ4UEW8RPdTlKy0ULuZ
+        FxWqf6p3tGSQjhS3oazt5HkHNv/wPO3L17SHlDVbS7NSsTHSjriWaWkhgoaWXytfoe0g+iPlvDR
+        rB9SaDa33BfsqBAL2c4pFrw==
+X-Received: by 2002:a5d:6a03:0:b0:1e4:4055:7e35 with SMTP id m3-20020a5d6a03000000b001e440557e35mr1391869wru.495.1645000264839;
+        Wed, 16 Feb 2022 00:31:04 -0800 (PST)
+X-Google-Smtp-Source: ABdhPJzw1zMgqtvBG1B1Fs/z6twGtOuFvl241Tm8Z6QUAB1L998Nv+s1BS79V+EKfFEFJWSxdpuYnw==
+X-Received: by 2002:a5d:6a03:0:b0:1e4:4055:7e35 with SMTP id m3-20020a5d6a03000000b001e440557e35mr1391848wru.495.1645000264537;
+        Wed, 16 Feb 2022 00:31:04 -0800 (PST)
+Received: from ?IPV6:2003:cb:c70b:600:4ff7:25c:5aad:2711? (p200300cbc70b06004ff7025c5aad2711.dip0.t-ipconnect.de. [2003:cb:c70b:600:4ff7:25c:5aad:2711])
+        by smtp.gmail.com with ESMTPSA id y17sm17260030wma.5.2022.02.16.00.31.03
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 16 Feb 2022 00:31:04 -0800 (PST)
+Message-ID: <98d8bbc5-ffc2-8966-fdc1-a844874e7ae8@redhat.com>
+Date:   Wed, 16 Feb 2022 09:31:03 +0100
 MIME-Version: 1.0
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.62.513
- definitions=2022-02-16_02,2022-02-14_04,2021-12-02_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxscore=0 mlxlogscore=999
- clxscore=1011 lowpriorityscore=0 suspectscore=0 bulkscore=0 spamscore=0
- priorityscore=1501 adultscore=0 malwarescore=0 impostorscore=0
- phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2201110000 definitions=main-2202160038
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.4.0
+Content-Language: en-US
+To:     Alistair Popple <apopple@nvidia.com>,
+        Jason Gunthorpe <jgg@nvidia.com>
+Cc:     Felix Kuehling <felix.kuehling@amd.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Alex Sierra <alex.sierra@amd.com>, akpm@linux-foundation.org,
+        linux-mm@kvack.org, rcampbell@nvidia.com,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        jglisse@redhat.com, willy@infradead.org
+References: <beb38138-2266-1ff8-cc82-8fe914bed862@redhat.com>
+ <877d9vd10u.fsf@nvdebian.thelocal> <20220216020357.GD4160@nvidia.com>
+ <6156515.kVgMqSaHHm@nvdebian>
+From:   David Hildenbrand <david@redhat.com>
+Organization: Red Hat
+Subject: Re: [PATCH v6 01/10] mm: add zone device coherent type memory support
+In-Reply-To: <6156515.kVgMqSaHHm@nvdebian>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+On 16.02.22 03:36, Alistair Popple wrote:
+> On Wednesday, 16 February 2022 1:03:57 PM AEDT Jason Gunthorpe wrote:
+>> On Wed, Feb 16, 2022 at 12:23:44PM +1100, Alistair Popple wrote:
+>>
+>>> Device private and device coherent pages are not marked with pte_devmap and they
+>>> are backed by a struct page. The only way of inserting them is via migrate_vma.
+>>> The refcount is decremented in zap_pte_range() on munmap() with special handling
+>>> for device private pages. Looking at it again though I wonder if there is any
+>>> special treatment required in zap_pte_range() for device coherent pages given
+>>> they count as present pages.
+>>
+>> This is what I guessed, but we shouldn't be able to just drop
+>> pte_devmap on these pages without any other work?? Granted it does
+>> very little already..
+> 
+> Yes, I agree we need to check this more closely. For device private pages
+> not having pte_devmap is fine, because they are non-present swap entries so
+> they always get special handling in the swap entry paths but the same isn't
+> true for coherent device pages.
 
-Please find the v2 of this patch series which addresses the review comments from
-Jan on PATCH-2 & PATCH-7. No changes other than that.
+I'm curious, how does the refcount of a PageAnon() DEVICE_COHERENT page
+look like when mapped? I'd assume it's also (currently) still offset by
+one, meaning, if it's mapped into a single page table it's always at
+least 2.
 
-Summary
-========
-This patch series aimes at fixing some of the issues identified in fast_commit
-with flex_bg. This also adds some stricter checking of blocks to be freed in
-ext4_mb_clear_bb(), ext4_group_add_blocks() & ext4_mb_mark_bb()
+Just a note that if my assumption is correct and if we'd have such a
+page mapped R/O, do_wp_page() would always have to copy it
+unconditionally and would not be able to reuse it on write faults.
+(while I'm working on improving the reuse logic, I think there is also
+work in progress to avoid this additional reference on some ZONE_DEVICE
+stuff -- I'd assume that would include DEVICE_COHERENT ?)
 
-Testing
-=========
-I have run xfstests with -g log,metadata,auto group with 4k & 4k_fc
-configs. I have not found any regression due to these patches alone.
+> 
+>> I thought at least gup_fast needed to be touched or did this get
+>> handled by scanning the page list after the fact?
+> 
+> Right, for gup I think the only special handling required is to prevent
+> pinning. I had assumed that check_and_migrate_movable_pages() would still get
+> called for gup_fast but unless I've missed something I don't think it does.
+> That means gup_fast could still pin movable and coherent pages. Technically
+> that is ok for coherent pages, but it's undesirable.
 
-But I have found few issues like generic/047 occasionally failing even w/o this
-patch series. I do have some fixes for those too in my tree. I will send those
-fixes later after figuring out few more things around couple other failures.
+We really should have the same pinning rules for GUP vs. GUP-fast.
+is_pinnable_page() should be the right place for such checks (similarly
+as indicated in my reply to the migration series).
 
+-- 
+Thanks,
 
-References
-===========
-[v1]: https://lore.kernel.org/all/cover.1644062450.git.riteshh@linux.ibm.com/
-[RFC]: https://lore.kernel.org/all/a9770b46522c03989bdd96f63f7d0bfb2cf499ab.1643642105.git.riteshh@linux.ibm.com/
-
-Ritesh Harjani (9):
-  ext4: Correct cluster len and clusters changed accounting in ext4_mb_mark_bb
-  ext4: Fixes ext4_mb_mark_bb() with flex_bg with fast_commit
-  ext4: Refactor ext4_free_blocks() to pull out ext4_mb_clear_bb()
-  ext4: Use in_range() for range checking in ext4_fc_replay_check_excluded
-  ext4: Rename ext4_set_bits to mb_set_bits
-  ext4: No need to test for block bitmap bits in ext4_mb_mark_bb()
-  ext4: Add ext4_sb_block_valid() refactored out of ext4_inode_block_valid()
-  ext4: Add strict range checks while freeing blocks
-  ext4: Add extra check in ext4_mb_mark_bb() to prevent against possible corruption
-
- fs/ext4/block_validity.c |  26 +--
- fs/ext4/ext4.h           |   5 +-
- fs/ext4/fast_commit.c    |   4 +-
- fs/ext4/mballoc.c        | 342 ++++++++++++++++++++++-----------------
- fs/ext4/resize.c         |   4 +-
- 5 files changed, 220 insertions(+), 161 deletions(-)
-
---
-2.31.1
+David / dhildenb
 
