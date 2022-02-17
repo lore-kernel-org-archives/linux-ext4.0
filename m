@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E3EF1C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 10:58:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D5E2C4167B
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 10:58:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239656AbiBQK65 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Feb 2022 05:58:57 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:35890 "EHLO
+        id S239661AbiBQK67 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Feb 2022 05:58:59 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:35888 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239571AbiBQK6o (ORCPT
+        with ESMTP id S239570AbiBQK6o (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 05:58:44 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 9C591DFA1
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2022 02:58:06 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id BC19C2A5983
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2022 02:58:02 -0800 (PST)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 17 Feb 2022 19:57:59 +0900
+        by 156.147.23.53 with ESMTP; 17 Feb 2022 19:58:00 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 17 Feb 2022 19:57:59 +0900
+        by 156.147.1.125 with ESMTP; 17 Feb 2022 19:58:00 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH 04/16] dept: Apply Dept to spinlock
-Date:   Thu, 17 Feb 2022 19:57:40 +0900
-Message-Id: <1645095472-26530-5-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH 14/16] dept: Apply SDT to wait(waitqueue)
+Date:   Thu, 17 Feb 2022 19:57:50 +0900
+Message-Id: <1645095472-26530-15-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
 References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
@@ -56,120 +56,123 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by spinlock.
+Makes SDT able to track dependencies by wait(waitqueue).
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h            | 18 +++++++++++++++---
- include/linux/spinlock.h           | 24 ++++++++++++++++++++++++
- include/linux/spinlock_types_raw.h | 13 +++++++++++++
- 3 files changed, 52 insertions(+), 3 deletions(-)
+ include/linux/wait.h |  6 +++++-
+ kernel/sched/wait.c  | 16 ++++++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index c56f6b6..1da8b95 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -582,9 +582,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- #define lock_acquire_shared(l, s, t, n, i)		lock_acquire(l, s, t, 1, 1, n, i)
- #define lock_acquire_shared_recursive(l, s, t, n, i)	lock_acquire(l, s, t, 2, 1, n, i)
+diff --git a/include/linux/wait.h b/include/linux/wait.h
+index 851e07d..2133998 100644
+--- a/include/linux/wait.h
++++ b/include/linux/wait.h
+@@ -7,6 +7,7 @@
+ #include <linux/list.h>
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
++#include <linux/dept_sdt.h>
  
--#define spin_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
--#define spin_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
--#define spin_release(l, i)			lock_release(l, i)
-+#define spin_acquire(l, s, t, i)					\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_spin_lock(&(l)->dmap, s, t, NULL, "spin_unlock", i);	\
-+} while (0)
-+#define spin_acquire_nest(l, s, t, n, i)				\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, n, i);				\
-+	dept_spin_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "spin_unlock", i); \
-+} while (0)
-+#define spin_release(l, i)						\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_spin_unlock(&(l)->dmap, i);				\
-+} while (0)
+ #include <asm/current.h>
+ #include <uapi/linux/wait.h>
+@@ -37,6 +38,7 @@ struct wait_queue_entry {
+ struct wait_queue_head {
+ 	spinlock_t		lock;
+ 	struct list_head	head;
++	struct dept_map		dmap;
+ };
+ typedef struct wait_queue_head wait_queue_head_t;
  
- #define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define rwlock_acquire_read(l, s, t, i)					\
-diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
-index 5c0c517..eaffc9f 100644
---- a/include/linux/spinlock.h
-+++ b/include/linux/spinlock.h
-@@ -95,6 +95,30 @@
- # include <linux/spinlock_up.h>
- #endif
+@@ -56,7 +58,8 @@ struct wait_queue_head {
  
-+#ifdef CONFIG_DEPT
-+#define dept_spin_lock(m, ne, t, n, e_fn, ip)				\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	} else if (n) {							\
-+		dept_warn_on(dept_top_map() != (n));			\
-+	} else {							\
-+		dept_wait(m, 1UL, ip, __func__, ne);			\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	}								\
-+} while (0)
-+#define dept_spin_unlock(m, ip)						\
-+do {									\
-+	dept_event(m, 1UL, ip, __func__);				\
-+	dept_ecxt_exit(m, ip);						\
-+} while (0)
-+#else
-+#define dept_spin_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_spin_unlock(m, ip)			do { } while (0)
-+#endif
+ #define __WAIT_QUEUE_HEAD_INITIALIZER(name) {					\
+ 	.lock		= __SPIN_LOCK_UNLOCKED(name.lock),			\
+-	.head		= LIST_HEAD_INIT(name.head) }
++	.head		= LIST_HEAD_INIT(name.head),				\
++	.dmap		= DEPT_SDT_MAP_INIT(name) }
+ 
+ #define DECLARE_WAIT_QUEUE_HEAD(name) \
+ 	struct wait_queue_head name = __WAIT_QUEUE_HEAD_INITIALIZER(name)
+@@ -67,6 +70,7 @@ struct wait_queue_head {
+ 	do {									\
+ 		static struct lock_class_key __key;				\
+ 										\
++		sdt_map_init(&(wq_head)->dmap);					\
+ 		__init_waitqueue_head((wq_head), #wq_head, &__key);		\
+ 	} while (0)
+ 
+diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
+index eca3810..fc5a16a 100644
+--- a/kernel/sched/wait.c
++++ b/kernel/sched/wait.c
+@@ -105,6 +105,7 @@ static int __wake_up_common(struct wait_queue_head *wq_head, unsigned int mode,
+ 		if (flags & WQ_FLAG_BOOKMARK)
+ 			continue;
+ 
++		sdt_event(&wq_head->dmap);
+ 		ret = curr->func(curr, mode, wake_flags, key);
+ 		if (ret < 0)
+ 			break;
+@@ -268,6 +269,9 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
+ 		__add_wait_queue(wq_head, wq_entry);
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
 +
- #ifdef CONFIG_DEBUG_SPINLOCK
-   extern void __raw_spin_lock_init(raw_spinlock_t *lock, const char *name,
- 				   struct lock_class_key *key, short inner);
-diff --git a/include/linux/spinlock_types_raw.h b/include/linux/spinlock_types_raw.h
-index 91cb36b..5a9b25d 100644
---- a/include/linux/spinlock_types_raw.h
-+++ b/include/linux/spinlock_types_raw.h
-@@ -26,16 +26,28 @@
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
+ }
+ EXPORT_SYMBOL(prepare_to_wait);
  
- #define SPINLOCK_OWNER_INIT	((void *)-1L)
- 
-+#ifdef CONFIG_DEPT
-+# define RAW_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
-+# define SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
-+# define LOCAL_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
-+#else
-+# define RAW_SPIN_DMAP_INIT(lockname)
-+# define SPIN_DMAP_INIT(lockname)
-+# define LOCAL_SPIN_DMAP_INIT(lockname)
-+#endif
+@@ -286,6 +290,10 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
+ 	}
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
 +
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- # define RAW_SPIN_DEP_MAP_INIT(lockname)		\
- 	.dep_map = {					\
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_SPIN,	\
-+		RAW_SPIN_DMAP_INIT(lockname)		\
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
++
+ 	return was_empty;
+ }
+ EXPORT_SYMBOL(prepare_to_wait_exclusive);
+@@ -331,6 +339,9 @@ long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_en
  	}
- # define SPIN_DEP_MAP_INIT(lockname)			\
- 	.dep_map = {					\
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_CONFIG,	\
-+		SPIN_DMAP_INIT(lockname)		\
- 	}
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
  
- # define LOCAL_SPIN_DEP_MAP_INIT(lockname)		\
-@@ -43,6 +55,7 @@
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_CONFIG,	\
- 		.lock_type = LD_LOCK_PERCPU,		\
-+		LOCAL_SPIN_DMAP_INIT(lockname)		\
- 	}
- #else
- # define RAW_SPIN_DEP_MAP_INIT(lockname)
++	if (!ret && state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
++
+ 	return ret;
+ }
+ EXPORT_SYMBOL(prepare_to_wait_event);
+@@ -352,7 +363,9 @@ int do_wait_intr(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
+ 
+ 	spin_unlock(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock(&wq->lock);
+ 
+ 	return 0;
+@@ -369,7 +382,9 @@ int do_wait_intr_irq(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
+ 
+ 	spin_unlock_irq(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock_irq(&wq->lock);
+ 
+ 	return 0;
+@@ -389,6 +404,7 @@ void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_en
+ {
+ 	unsigned long flags;
+ 
++	sdt_wait_finish();
+ 	__set_current_state(TASK_RUNNING);
+ 	/*
+ 	 * We can check for list emptiness outside the lock
 -- 
 1.9.1
 
