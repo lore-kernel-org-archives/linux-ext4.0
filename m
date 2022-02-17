@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E87EC433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 10:58:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0396C43217
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 10:58:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239484AbiBQK6V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Feb 2022 05:58:21 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:34588 "EHLO
+        id S239506AbiBQK60 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Feb 2022 05:58:26 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:35008 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236373AbiBQK6T (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 05:58:19 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 700EC13EB5
+        with ESMTP id S239469AbiBQK6U (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 05:58:20 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 16BB8295FF7
         for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2022 02:58:00 -0800 (PST)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 17 Feb 2022 19:57:58 +0900
+        by 156.147.23.52 with ESMTP; 17 Feb 2022 19:57:59 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 17 Feb 2022 19:57:58 +0900
+        by 156.147.1.125 with ESMTP; 17 Feb 2022 19:57:59 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,143 +46,131 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH 00/16] DEPT(Dependency Tracker)
-Date:   Thu, 17 Feb 2022 19:57:36 +0900
-Message-Id: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH 05/16] dept: Apply Dept to mutex families
+Date:   Thu, 17 Feb 2022 19:57:41 +0900
+Message-Id: <1645095472-26530-6-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
+In-Reply-To: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
+References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Linus and folks,
+Makes Dept able to track dependencies by mutex families.
 
-I've been developing a tool for detecting deadlock possibilities by
-tracking wait/event rather than lock(?) acquisition order to try to
-cover all synchonization machanisms. It's done on v5.17-rc1 tag.
+Signed-off-by: Byungchul Park <byungchul.park@lge.com>
+---
+ include/linux/lockdep.h | 18 +++++++++++++++---
+ include/linux/mutex.h   | 31 +++++++++++++++++++++++++++++++
+ include/linux/rtmutex.h |  7 +++++++
+ 3 files changed, 53 insertions(+), 3 deletions(-)
 
-https://github.com/lgebyungchulpark/linux-dept/commits/dept1.12_on_v5.17-rc1
-
-Benifit:
-
-	0. Works with all lock primitives.
-	1. Works with wait_for_completion()/complete().
-	2. Works with 'wait' on PG_locked.
-	3. Works with 'wait' on PG_writeback.
-	4. Works with swait/wakeup.
-	5. Works with waitqueue.
-	6. Multiple reports are allowed.
-	7. Deduplication control on multiple reports.
-	8. Withstand false positives thanks to 6.
-	9. Easy to tag any wait/event.
-
-Future work:
-
-	0. To make it more stable.
-	1. To separates Dept from Lockdep.
-	2. To improves performance in terms of time and space.
-	3. To use Dept as a dependency engine for Lockdep.
-	4. To add any missing tags of wait/event in the kernel.
-	5. To deduplicate stack trace.
-
-I've got several reports from the tool. Some of them look like false
-alarms and some others look like real deadlock possibility. Because of
-my unfamiliarity of the domain, it's hard to confirm if it's a real one.
-Let me add the reports on this email thread.
-
-How to interpret the report is:
-
-	1. E(event) in each context cannot be triggered because of the
-	   W(wait) that cannot be woken.
-	2. The stack trace helping find the problematic code is located
-	   in each conext's detail.
-
-Changes from RFC:
-
-	1. Prevent adding a wait tag at prepare_to_wait() but __schedule().
-	2. Use try version at lockdep_acquire_cpus_lock() annotation.
-	3. Distinguish each syscall context from another.
-
-Thanks,
-Byungchul
-
-Byungchul Park (16):
-  llist: Move llist_{head,node} definition to types.h
-  dept: Implement Dept(Dependency Tracker)
-  dept: Embed Dept data in Lockdep
-  dept: Apply Dept to spinlock
-  dept: Apply Dept to mutex families
-  dept: Apply Dept to rwlock
-  dept: Apply Dept to wait_for_completion()/complete()
-  dept: Apply Dept to seqlock
-  dept: Apply Dept to rwsem
-  dept: Add proc knobs to show stats and dependency graph
-  dept: Introduce split map concept and new APIs for them
-  dept: Apply Dept to wait/event of PG_{locked,writeback}
-  dept: Apply SDT to swait
-  dept: Apply SDT to wait(waitqueue)
-  locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
-  dept: Distinguish each syscall context from another
-
- include/linux/completion.h         |   42 +-
- include/linux/dept.h               |  523 +++++++
- include/linux/dept_page.h          |   78 ++
- include/linux/dept_sdt.h           |   62 +
- include/linux/hardirq.h            |    3 +
- include/linux/irqflags.h           |   33 +-
- include/linux/llist.h              |    8 -
- include/linux/lockdep.h            |  156 ++-
- include/linux/lockdep_types.h      |    3 +
- include/linux/mutex.h              |   31 +
- include/linux/page-flags.h         |   45 +-
- include/linux/pagemap.h            |    7 +-
- include/linux/percpu-rwsem.h       |   10 +-
- include/linux/rtmutex.h            |    7 +
- include/linux/rwlock.h             |   48 +
- include/linux/rwlock_api_smp.h     |    8 +-
- include/linux/rwlock_types.h       |    7 +
- include/linux/rwsem.h              |   31 +
- include/linux/sched.h              |    7 +
- include/linux/seqlock.h            |   59 +-
- include/linux/spinlock.h           |   24 +
- include/linux/spinlock_types_raw.h |   13 +
- include/linux/swait.h              |    4 +
- include/linux/types.h              |    8 +
- include/linux/wait.h               |    6 +-
- init/init_task.c                   |    2 +
- init/main.c                        |    4 +
- kernel/Makefile                    |    1 +
- kernel/cpu.c                       |    2 +-
- kernel/dependency/Makefile         |    5 +
- kernel/dependency/dept.c           | 2702 ++++++++++++++++++++++++++++++++++++
- kernel/dependency/dept_hash.h      |   10 +
- kernel/dependency/dept_internal.h  |   26 +
- kernel/dependency/dept_object.h    |   13 +
- kernel/dependency/dept_proc.c      |   93 ++
- kernel/entry/common.c              |    3 +
- kernel/exit.c                      |    1 +
- kernel/fork.c                      |    2 +
- kernel/locking/lockdep.c           |   12 +-
- kernel/module.c                    |    2 +
- kernel/sched/completion.c          |   12 +-
- kernel/sched/core.c                |    3 +
- kernel/sched/swait.c               |   10 +
- kernel/sched/wait.c                |   16 +
- kernel/softirq.c                   |    6 +-
- kernel/trace/trace_preemptirq.c    |   19 +-
- lib/Kconfig.debug                  |   21 +
- mm/filemap.c                       |   68 +
- mm/page_ext.c                      |    5 +
- 49 files changed, 4204 insertions(+), 57 deletions(-)
- create mode 100644 include/linux/dept.h
- create mode 100644 include/linux/dept_page.h
- create mode 100644 include/linux/dept_sdt.h
- create mode 100644 kernel/dependency/Makefile
- create mode 100644 kernel/dependency/dept.c
- create mode 100644 kernel/dependency/dept_hash.h
- create mode 100644 kernel/dependency/dept_internal.h
- create mode 100644 kernel/dependency/dept_object.h
- create mode 100644 kernel/dependency/dept_proc.c
-
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 1da8b95..4c6c2a1 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -613,9 +613,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
+ #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
+ #define seqcount_release(l, i)			lock_release(l, i)
+ 
+-#define mutex_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+-#define mutex_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
+-#define mutex_release(l, i)			lock_release(l, i)
++#define mutex_acquire(l, s, t, i)					\
++do {									\
++	lock_acquire_exclusive(l, s, t, NULL, i);			\
++	dept_mutex_lock(&(l)->dmap, s, t, NULL, "mutex_unlock", i);	\
++} while (0)
++#define mutex_acquire_nest(l, s, t, n, i)				\
++do {									\
++	lock_acquire_exclusive(l, s, t, n, i);				\
++	dept_mutex_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "mutex_unlock", i);\
++} while (0)
++#define mutex_release(l, i)						\
++do {									\
++	lock_release(l, i);						\
++	dept_mutex_unlock(&(l)->dmap, i);				\
++} while (0)
+ 
+ #define rwsem_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+ #define rwsem_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
+diff --git a/include/linux/mutex.h b/include/linux/mutex.h
+index 8f226d4..536ef42 100644
+--- a/include/linux/mutex.h
++++ b/include/linux/mutex.h
+@@ -20,11 +20,18 @@
+ #include <linux/osq_lock.h>
+ #include <linux/debug_locks.h>
+ 
++#ifdef CONFIG_DEPT
++# define DMAP_MUTEX_INIT(lockname)	.dmap = { .name = #lockname },
++#else
++# define DMAP_MUTEX_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ # define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
+ 		, .dep_map = {					\
+ 			.name = #lockname,			\
+ 			.wait_type_inner = LD_WAIT_SLEEP,	\
++			DMAP_MUTEX_INIT(lockname)		\
+ 		}
+ #else
+ # define __DEP_MAP_MUTEX_INITIALIZER(lockname)
+@@ -75,6 +82,30 @@ struct mutex {
+ #endif
+ };
+ 
++#ifdef CONFIG_DEPT
++#define dept_mutex_lock(m, ne, t, n, e_fn, ip)				\
++do {									\
++	if (t) {							\
++		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
++		dept_ask_event(m);					\
++	} else if (n) {							\
++		dept_warn_on(dept_top_map() != (n));			\
++	} else {							\
++		dept_wait(m, 1UL, ip, __func__, ne);			\
++		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
++		dept_ask_event(m);					\
++	}								\
++} while (0)
++#define dept_mutex_unlock(m, ip)					\
++do {									\
++	dept_event(m, 1UL, ip, __func__);				\
++	dept_ecxt_exit(m, ip);						\
++} while (0)
++#else
++#define dept_mutex_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
++#define dept_mutex_unlock(m, ip)		do { } while (0)
++#endif
++
+ #ifdef CONFIG_DEBUG_MUTEXES
+ 
+ #define __DEBUG_MUTEX_INITIALIZER(lockname)				\
+diff --git a/include/linux/rtmutex.h b/include/linux/rtmutex.h
+index 7d04988..60cebb0 100644
+--- a/include/linux/rtmutex.h
++++ b/include/linux/rtmutex.h
+@@ -76,11 +76,18 @@ static inline void rt_mutex_debug_task_free(struct task_struct *tsk) { }
+ 	__rt_mutex_init(mutex, __func__, &__key); \
+ } while (0)
+ 
++#ifdef CONFIG_DEPT
++#define DMAP_RT_MUTEX_INIT(mutexname)	.dmap = { .name = #mutexname },
++#else
++#define DMAP_RT_MUTEX_INIT(mutexname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)	\
+ 	.dep_map = {					\
+ 		.name = #mutexname,			\
+ 		.wait_type_inner = LD_WAIT_SLEEP,	\
++		DMAP_RT_MUTEX_INIT(mutexname)		\
+ 	}
+ #else
+ #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)
 -- 
 1.9.1
 
