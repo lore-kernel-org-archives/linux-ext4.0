@@ -2,111 +2,168 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2956EC433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 19:42:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1071C4321E
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 19:47:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240308AbiBQTmh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Feb 2022 14:42:37 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:60622 "EHLO
+        id S245420AbiBQTr2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Feb 2022 14:47:28 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:45412 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233736AbiBQTmg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 14:42:36 -0500
-Received: from mail-il1-f200.google.com (mail-il1-f200.google.com [209.85.166.200])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D35C41FB4
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2022 11:42:20 -0800 (PST)
-Received: by mail-il1-f200.google.com with SMTP id g15-20020a92520f000000b002bec6a02012so2588992ilb.18
-        for <linux-ext4@vger.kernel.org>; Thu, 17 Feb 2022 11:42:20 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
-        bh=oHZ6M7Lv0xuBWWdM74RtqU4sI7szp5blC1rto5K947I=;
-        b=S2t4TyNYj8cynH5bgAG810XlawMX0KzA/AnkkMo9sPM+Ot47ZTWwqecKZ1h9rMhqSG
-         VMW4RzDUFoDfHUnYu3P10zc7FIegUIvlN71b0/C/G1mY+rrHm07NOXzFNTaNHjUc3lHW
-         rro3tXw97dfrztvOwMU+5rrcsYNR4XV4UUPLaDo9W9Oh/yUyNgjAILfIXPcejDuYF3EV
-         GZJi6SExQioKxoymbDop72JlKtozIm7iK54xJSfaTmJgucovSHyMZbz0Y8TYhqlNk/Rb
-         Y99vWMGjF+Q0sV6VZN/fxdEdw1im82oI/nZfWTNjcyiCC8ZO/QErf2CqShDu7X4QZ41P
-         6tiw==
-X-Gm-Message-State: AOAM531/iGMVDLm05ZTHEFtlpkHPbih2VCEXU3RUUFDg4jN33Ai38aTK
-        oMqMfKmham/qld/uWJu8ZwoVBCXCW70VMWQdkxKNUbymeMqf
-X-Google-Smtp-Source: ABdhPJz80SQnywFdQpEy2KPPfyvmcjGVpbH06ipurJKOMxu+9rhn0L8anGUqkCCss4kOZoABcZfafMgtuGZ9h3hRhpmWPTg4bSZD
+        with ESMTP id S245402AbiBQTrY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 14:47:24 -0500
+Received: from mga17.intel.com (mga17.intel.com [192.55.52.151])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC6C226549;
+        Thu, 17 Feb 2022 11:47:09 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1645127229; x=1676663229;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=WYl42eI4HYLz25VSfvzg7qJMtNusab7DF8CglpN8QQE=;
+  b=P14ifbhDmv3+7yV1aYSWImV5iz7xj3A8Ef7qCFnKLDcOdxkhSu1clDVn
+   12Eg2dnBHl7Ql3NFL7PoKZlmZT1Niibn+pj1Ldd7WLLczTA8g6jZR8hAW
+   TfoOj40Bpwebpbpyy9t4huttgDheS6I8m1pw+xzjzo5WZqhLqNY9Q+GxC
+   eDB5/5b0qldLOUxmQntVPpe8jdX+GD2k6A2AQoJlvtdYO5IpzzjnUtyW4
+   whFl3UJkaIEqodOnCOe9seNu/UV6SLQmFTlz0nRcZpl/vLOuAtSSdZlIP
+   XpPgNZsaix5MU9JrGMWXoyxMgAWhiL+bKMNQEjaYt6iAENzGvsFUB1OPF
+   Q==;
+X-IronPort-AV: E=McAfee;i="6200,9189,10261"; a="231586439"
+X-IronPort-AV: E=Sophos;i="5.88,376,1635231600"; 
+   d="scan'208";a="231586439"
+Received: from fmsmga006.fm.intel.com ([10.253.24.20])
+  by fmsmga107.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 17 Feb 2022 11:47:09 -0800
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="5.88,376,1635231600"; 
+   d="scan'208";a="774876619"
+Received: from lkp-server01.sh.intel.com (HELO 6f05bf9e3301) ([10.239.97.150])
+  by fmsmga006.fm.intel.com with ESMTP; 17 Feb 2022 11:47:02 -0800
+Received: from kbuild by 6f05bf9e3301 with local (Exim 4.92)
+        (envelope-from <lkp@intel.com>)
+        id 1nKmk1-0000UD-7a; Thu, 17 Feb 2022 19:47:01 +0000
+Date:   Fri, 18 Feb 2022 03:46:26 +0800
+From:   kernel test robot <lkp@intel.com>
+To:     Byungchul Park <byungchul.park@lge.com>,
+        torvalds@linux-foundation.org
+Cc:     kbuild-all@lists.01.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        chris@chris-wilson.co.uk, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+        bfields@fieldses.org, gregkh@linuxfoundation.org,
+        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
+        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org
+Subject: Re: [PATCH 07/16] dept: Apply Dept to
+ wait_for_completion()/complete()
+Message-ID: <202202180000.zICbPUhq-lkp@intel.com>
+References: <1645095472-26530-8-git-send-email-byungchul.park@lge.com>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:54e:b0:2be:8108:c0dc with SMTP id
- i14-20020a056e02054e00b002be8108c0dcmr3083780ils.65.1645126939755; Thu, 17
- Feb 2022 11:42:19 -0800 (PST)
-Date:   Thu, 17 Feb 2022 11:42:19 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <000000000000daca5605d83bf62b@google.com>
-Subject: [syzbot] WARNING in ext4_evict_inode (3)
-From:   syzbot <syzbot+8c7921ce857a731af281@syzkaller.appspotmail.com>
-To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1645095472-26530-8-git-send-email-byungchul.park@lge.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Hi Byungchul,
 
-syzbot found the following issue on:
+Thank you for the patch! Perhaps something to improve:
 
-HEAD commit:    42964a18f81c Merge tag 'objtool_urgent_for_v5.17_rc4' of g..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=1008ed74700000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=5707221760c00a20
-dashboard link: https://syzkaller.appspot.com/bug?extid=8c7921ce857a731af281
-compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
+[auto build test WARNING on tip/sched/core]
+[also build test WARNING on linux/master linus/master v5.17-rc4]
+[cannot apply to tip/locking/core hnaz-mm/master next-20220217]
+[If your patch is applied to the wrong git tree, kindly drop us a note.
+And when submitting patch, we suggest to use '--base' as documented in
+https://git-scm.com/docs/git-format-patch]
 
-Unfortunately, I don't have any reproducer for this issue yet.
+url:    https://github.com/0day-ci/linux/commits/Byungchul-Park/DEPT-Dependency-Tracker/20220217-190040
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git 3624ba7b5e2acc02b01301ea5fd3534971eb9896
+config: arc-allyesconfig (https://download.01.org/0day-ci/archive/20220218/202202180000.zICbPUhq-lkp@intel.com/config)
+compiler: arceb-elf-gcc (GCC) 11.2.0
+reproduce (this is a W=1 build):
+        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+        chmod +x ~/bin/make.cross
+        # https://github.com/0day-ci/linux/commit/8ef6cb09cb67a0c5cd7ba4f25f4825d0a5b269b0
+        git remote add linux-review https://github.com/0day-ci/linux
+        git fetch --no-tags linux-review Byungchul-Park/DEPT-Dependency-Tracker/20220217-190040
+        git checkout 8ef6cb09cb67a0c5cd7ba4f25f4825d0a5b269b0
+        # save the config file to linux build tree
+        mkdir build_dir
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-11.2.0 make.cross O=build_dir ARCH=arc SHELL=/bin/bash drivers/scsi/qla2xxx/
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+8c7921ce857a731af281@syzkaller.appspotmail.com
+If you fix the issue, kindly add following tag as appropriate
+Reported-by: kernel test robot <lkp@intel.com>
 
-------------[ cut here ]------------
-WARNING: CPU: 2 PID: 3682 at fs/ext4/inode.c:231 ext4_evict_inode+0xf9a/0x1950 fs/ext4/inode.c:231
-Modules linked in:
-CPU: 2 PID: 3682 Comm: syz-executor.2 Not tainted 5.17.0-rc3-syzkaller-00329-g42964a18f81c #0
-Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.14.0-2 04/01/2014
-RIP: 0010:ext4_evict_inode+0xf9a/0x1950 fs/ext4/inode.c:231
-Code: 28 41 bc 01 00 00 00 48 89 04 24 e9 62 f6 ff ff c7 44 24 24 06 00 00 00 c7 44 24 20 06 00 00 00 e9 e1 f6 ff ff e8 36 25 63 ff <0f> 0b e9 c8 f5 ff ff e8 fa 23 aa ff e9 60 f1 ff ff 48 89 cf e8 ed
-RSP: 0018:ffffc9000276fc98 EFLAGS: 00010293
-RAX: 0000000000000000 RBX: 1ffff920004edf99 RCX: 0000000000000000
-RDX: ffff88805e45e2c0 RSI: ffffffff8214ddea RDI: 0000000000000003
-RBP: ffff8880235bf6a0 R08: 0000000000000000 R09: 0000000000000000
-R10: ffffffff8214d3b0 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000001 R14: ffff88801acac830 R15: ffff888026d92728
-FS:  00005555566dc400(0000) GS:ffff88802cb00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00005555565fb708 CR3: 000000005e443000 CR4: 0000000000150ee0
-Call Trace:
- <TASK>
- evict+0x2ed/0x6b0 fs/inode.c:664
- iput_final fs/inode.c:1744 [inline]
- iput.part.0+0x562/0x820 fs/inode.c:1770
- iput+0x58/0x70 fs/inode.c:1760
- do_unlinkat+0x418/0x650 fs/namei.c:4225
- __do_sys_unlink fs/namei.c:4266 [inline]
- __se_sys_unlink fs/namei.c:4264 [inline]
- __x64_sys_unlink+0xc6/0x110 fs/namei.c:4264
- do_syscall_x64 arch/x86/entry/common.c:50 [inline]
- do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
- entry_SYSCALL_64_after_hwframe+0x44/0xae
-RIP: 0033:0x7f1762356997
-Code: 73 01 c3 48 c7 c1 b8 ff ff ff f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 b8 57 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 b8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007ffca9eba208 EFLAGS: 00000206 ORIG_RAX: 0000000000000057
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00007f1762356997
-RDX: 00007ffca9eba240 RSI: 00007ffca9eba240 RDI: 00007ffca9eba2d0
-RBP: 00007ffca9eba2d0 R08: 0000000000000001 R09: 00007ffca9eba0a0
-R10: 00005555566dd903 R11: 0000000000000206 R12: 00007f17623b01ea
-R13: 00007ffca9ebb390 R14: 00005555566dd810 R15: 00007ffca9ebb3d0
- </TASK>
+All warnings (new ones prefixed by >>):
 
+   drivers/scsi/qla2xxx/qla_dfs.c: In function 'qla2x00_dfs_tgt_port_database_show':
+>> drivers/scsi/qla2xxx/qla_dfs.c:227:1: warning: the frame size of 1028 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+     227 | }
+         | ^
+
+
+vim +227 drivers/scsi/qla2xxx/qla_dfs.c
+
+36c7845282eef01 Quinn Tran       2016-02-04  174  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  175  static int
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  176  qla2x00_dfs_tgt_port_database_show(struct seq_file *s, void *unused)
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  177  {
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  178  	scsi_qla_host_t *vha = s->private;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  179  	struct qla_hw_data *ha = vha->hw;
+4e5a05d1ecd92ce Arun Easi        2020-09-03  180  	struct gid_list_info *gid_list;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  181  	dma_addr_t gid_list_dma;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  182  	fc_port_t fc_port;
+4e5a05d1ecd92ce Arun Easi        2020-09-03  183  	char *id_iter;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  184  	int rc, i;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  185  	uint16_t entries, loop_id;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  186  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  187  	seq_printf(s, "%s\n", vha->host_str);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  188  	gid_list = dma_alloc_coherent(&ha->pdev->dev,
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  189  				      qla2x00_gid_list_size(ha),
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  190  				      &gid_list_dma, GFP_KERNEL);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  191  	if (!gid_list) {
+83548fe2fcbb78a Quinn Tran       2017-06-02  192  		ql_dbg(ql_dbg_user, vha, 0x7018,
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  193  		       "DMA allocation failed for %u\n",
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  194  		       qla2x00_gid_list_size(ha));
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  195  		return 0;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  196  	}
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  197  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  198  	rc = qla24xx_gidlist_wait(vha, gid_list, gid_list_dma,
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  199  				  &entries);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  200  	if (rc != QLA_SUCCESS)
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  201  		goto out_free_id_list;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  202  
+4e5a05d1ecd92ce Arun Easi        2020-09-03  203  	id_iter = (char *)gid_list;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  204  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  205  	seq_puts(s, "Port Name	Port ID		Loop ID\n");
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  206  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  207  	for (i = 0; i < entries; i++) {
+4e5a05d1ecd92ce Arun Easi        2020-09-03  208  		struct gid_list_info *gid =
+4e5a05d1ecd92ce Arun Easi        2020-09-03  209  			(struct gid_list_info *)id_iter;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  210  		loop_id = le16_to_cpu(gid->loop_id);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  211  		memset(&fc_port, 0, sizeof(fc_port_t));
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  212  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  213  		fc_port.loop_id = loop_id;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  214  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  215  		rc = qla24xx_gpdb_wait(vha, &fc_port, 0);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  216  		seq_printf(s, "%8phC  %02x%02x%02x  %d\n",
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  217  			   fc_port.port_name, fc_port.d_id.b.domain,
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  218  			   fc_port.d_id.b.area, fc_port.d_id.b.al_pa,
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  219  			   fc_port.loop_id);
+4e5a05d1ecd92ce Arun Easi        2020-09-03  220  		id_iter += ha->gid_list_info_size;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  221  	}
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  222  out_free_id_list:
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  223  	dma_free_coherent(&ha->pdev->dev, qla2x00_gid_list_size(ha),
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  224  			  gid_list, gid_list_dma);
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  225  
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  226  	return 0;
+c423437e3ff41b8 Himanshu Madhani 2017-03-15 @227  }
+c423437e3ff41b8 Himanshu Madhani 2017-03-15  228  
 
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+0-DAY CI Kernel Test Service, Intel Corporation
+https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
