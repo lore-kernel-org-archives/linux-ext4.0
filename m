@@ -2,62 +2,62 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6362C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 19:47:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B981C4167D
+	for <linux-ext4@archiver.kernel.org>; Thu, 17 Feb 2022 19:47:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245426AbiBQTra (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 17 Feb 2022 14:47:30 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:45452 "EHLO
+        id S245428AbiBQTrb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 17 Feb 2022 14:47:31 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:45510 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245403AbiBQTrY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 14:47:24 -0500
-Received: from mga03.intel.com (mga03.intel.com [134.134.136.65])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D4D582654B;
+        with ESMTP id S245407AbiBQTrZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Feb 2022 14:47:25 -0500
+Received: from mga02.intel.com (mga02.intel.com [134.134.136.20])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0157F2654C;
         Thu, 17 Feb 2022 11:47:09 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1645127229; x=1676663229;
+  t=1645127230; x=1676663230;
   h=date:from:to:cc:subject:message-id:references:
    mime-version:in-reply-to;
-  bh=F3ghFFmf9Z70ke5xUFrYTznu4LR/z5ek87I9Llnq9wE=;
-  b=cKpiHU/2nbX+/oJHEq4DF/FW1yTnm5O2Ke8WaBa6WMQklB8rs7SAtFGp
-   gz2aOrIrl9IoVFISmVC0BZjuHJG0qF8izlyzjF/lB2pxXVS/33HyqCavA
-   CGbFO/a/Ho8+quwvZljO25HLOv7qJsOH0xxpmtZOwvcFrjhZD6ioNskjF
-   1s/qXepB6bHL7+pWO5EOM//snM3f9TPIBqujUmc0GvriP+yXCNGssazSw
-   mU5Ycqvf/q2V+4EC+aHdm93pkexy6iPoUNxBXmy3KGoUjbKrsHIttWK7V
-   yBQnpnBSPZIMZZNETjtKBSv6IfJOGLgmdIOM8MlW5DcszMPuCRLzocj/m
-   Q==;
-X-IronPort-AV: E=McAfee;i="6200,9189,10261"; a="250903382"
+  bh=TdGisY6DgZWxTVhGQt4rIy2LWkkZcMGDYbmhdspXFUw=;
+  b=Dvl6Dc3Ygu3k9jkGn0hYqK0/mk2beQ51fXssvtdZN2vDOKKmkGxmCM4K
+   5ko1VrNtp9xXu3lAsvFasd8mytQlcywqYV+OlX9dFitiqCogVbbb86cGL
+   aBNi/H4K7C3mRvrQYgSQ5lspL3zQMNnwTUQ7/oqGMP1295f8eGArW7iNg
+   Jxdr633unpNrBdcuQY8hk7/wTXAhAx+3FbzHcOCZ2TPFUvgMjoIUPwram
+   bNLR3hYEx6QmKGLxRjjpL8TtcNG5Peg1+xxdkbCLbSWwoJvZmMMu6weri
+   dfN+BeSj4P6UmWtIFds+kpmFg0l6+PU6mHT/pOC+YGTlKnEN3G1sY183E
+   A==;
+X-IronPort-AV: E=McAfee;i="6200,9189,10261"; a="238363454"
 X-IronPort-AV: E=Sophos;i="5.88,376,1635231600"; 
-   d="scan'208";a="250903382"
-Received: from orsmga004.jf.intel.com ([10.7.209.38])
-  by orsmga103.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 17 Feb 2022 11:47:09 -0800
+   d="scan'208";a="238363454"
+Received: from fmsmga003.fm.intel.com ([10.253.24.29])
+  by orsmga101.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 17 Feb 2022 11:47:08 -0800
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="5.88,376,1635231600"; 
-   d="scan'208";a="637327206"
+   d="scan'208";a="626224968"
 Received: from lkp-server01.sh.intel.com (HELO 6f05bf9e3301) ([10.239.97.150])
-  by orsmga004.jf.intel.com with ESMTP; 17 Feb 2022 11:47:02 -0800
+  by FMSMGA003.fm.intel.com with ESMTP; 17 Feb 2022 11:47:01 -0800
 Received: from kbuild by 6f05bf9e3301 with local (Exim 4.92)
         (envelope-from <lkp@intel.com>)
-        id 1nKmk1-0000UI-9C; Thu, 17 Feb 2022 19:47:01 +0000
-Date:   Fri, 18 Feb 2022 03:46:28 +0800
+        id 1nKmk1-0000Tr-1I; Thu, 17 Feb 2022 19:47:01 +0000
+Date:   Fri, 18 Feb 2022 03:46:15 +0800
 From:   kernel test robot <lkp@intel.com>
 To:     Byungchul Park <byungchul.park@lge.com>,
         torvalds@linux-foundation.org
 Cc:     kbuild-all@lists.01.org, damien.lemoal@opensource.wdc.com,
         linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org, mingo@redhat.com,
-        linux-kernel@vger.kernel.org, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        chris@chris-wilson.co.uk, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-        bfields@fieldses.org, gregkh@linuxfoundation.org,
-        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
-        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org
+        linux-kernel@vger.kernel.org, will@kernel.org, tglx@linutronix.de,
+        rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
+        daniel.vetter@ffwll.ch, chris@chris-wilson.co.uk,
+        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
+        tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+        amir73il@gmail.com, bfields@fieldses.org,
+        gregkh@linuxfoundation.org, kernel-team@lge.com,
+        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+        minchan@kernel.org, hannes@cmpxchg.org
 Subject: Re: [PATCH 02/16] dept: Implement Dept(Dependency Tracker)
-Message-ID: <202202180059.SibYSAt1-lkp@intel.com>
+Message-ID: <202202172345.rVBMAj8W-lkp@intel.com>
 References: <1645095472-26530-3-git-send-email-byungchul.park@lge.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -81,8 +81,8 @@ https://git-scm.com/docs/git-format-patch]
 
 url:    https://github.com/0day-ci/linux/commits/Byungchul-Park/DEPT-Dependency-Tracker/20220217-190040
 base:   https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git 3624ba7b5e2acc02b01301ea5fd3534971eb9896
-config: xtensa-allyesconfig (https://download.01.org/0day-ci/archive/20220218/202202180059.SibYSAt1-lkp@intel.com/config)
-compiler: xtensa-linux-gcc (GCC) 11.2.0
+config: sh-allmodconfig (https://download.01.org/0day-ci/archive/20220217/202202172345.rVBMAj8W-lkp@intel.com/config)
+compiler: sh4-linux-gcc (GCC) 11.2.0
 reproduce (this is a W=1 build):
         wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
         chmod +x ~/bin/make.cross
@@ -92,53 +92,100 @@ reproduce (this is a W=1 build):
         git checkout 4d0434b0b917f4374a09f3b75cbcadf148cfa711
         # save the config file to linux build tree
         mkdir build_dir
-        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-11.2.0 make.cross O=build_dir ARCH=xtensa SHELL=/bin/bash drivers/net/ethernet/sfc/falcon/
+        COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-11.2.0 make.cross O=build_dir ARCH=sh SHELL=/bin/bash kernel/dependency/
 
 If you fix the issue, kindly add following tag as appropriate
 Reported-by: kernel test robot <lkp@intel.com>
 
 All warnings (new ones prefixed by >>):
 
-   In file included from include/linux/delay.h:23,
-                    from drivers/net/ethernet/sfc/falcon/falcon.c:9:
-   drivers/net/ethernet/sfc/falcon/falcon.c: In function 'falcon_spi_slow_wait':
->> drivers/net/ethernet/sfc/falcon/falcon.c:750:58: warning: '?:' using integer constants in boolean context [-Wint-in-bool-context]
-     750 |                                     TASK_UNINTERRUPTIBLE : TASK_INTERRUPTIBLE);
-   include/linux/sched.h:205:21: note: in definition of macro '__set_current_state'
-     205 |                 if (state_value == TASK_RUNNING)                        \
-         |                     ^~~~~~~~~~~
+>> kernel/dependency/dept.c:2105:6: warning: no previous prototype for '__dept_wait' [-Wmissing-prototypes]
+    2105 | void __dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
+         |      ^~~~~~~~~~~
+   In file included from include/asm-generic/bug.h:22,
+                    from arch/sh/include/asm/bug.h:112,
+                    from include/linux/bug.h:5,
+                    from include/linux/thread_info.h:13,
+                    from include/asm-generic/current.h:5,
+                    from ./arch/sh/include/generated/asm/current.h:1,
+                    from include/linux/sched.h:12,
+                    from kernel/dependency/dept.c:86:
+   kernel/dependency/dept_hash.h: In function 'dept_init':
+>> include/linux/kern_levels.h:5:25: warning: format '%zu' expects argument of type 'size_t', but argument 3 has type 'long unsigned int' [-Wformat=]
+       5 | #define KERN_SOH        "\001"          /* ASCII Start Of Header */
+         |                         ^~~~~~
+   include/linux/printk.h:418:25: note: in definition of macro 'printk_index_wrap'
+     418 |                 _p_func(_fmt, ##__VA_ARGS__);                           \
+         |                         ^~~~
+   include/linux/printk.h:519:9: note: in expansion of macro 'printk'
+     519 |         printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+         |         ^~~~~~
+   include/linux/kern_levels.h:14:25: note: in expansion of macro 'KERN_SOH'
+      14 | #define KERN_INFO       KERN_SOH "6"    /* informational */
+         |                         ^~~~~~~~
+   include/linux/printk.h:519:16: note: in expansion of macro 'KERN_INFO'
+     519 |         printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+         |                ^~~~~~~~~
+   kernel/dependency/dept.c:2579:9: note: in expansion of macro 'pr_info'
+    2579 |         pr_info("... hash list head used by %s: %zu KB\n",              \
+         |         ^~~~~~~
+   kernel/dependency/dept_hash.h:9:1: note: in expansion of macro 'HASH'
+       9 | HASH(dep, 12)
+         | ^~~~
+>> include/linux/kern_levels.h:5:25: warning: format '%zu' expects argument of type 'size_t', but argument 3 has type 'long unsigned int' [-Wformat=]
+       5 | #define KERN_SOH        "\001"          /* ASCII Start Of Header */
+         |                         ^~~~~~
+   include/linux/printk.h:418:25: note: in definition of macro 'printk_index_wrap'
+     418 |                 _p_func(_fmt, ##__VA_ARGS__);                           \
+         |                         ^~~~
+   include/linux/printk.h:519:9: note: in expansion of macro 'printk'
+     519 |         printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+         |         ^~~~~~
+   include/linux/kern_levels.h:14:25: note: in expansion of macro 'KERN_SOH'
+      14 | #define KERN_INFO       KERN_SOH "6"    /* informational */
+         |                         ^~~~~~~~
+   include/linux/printk.h:519:16: note: in expansion of macro 'KERN_INFO'
+     519 |         printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+         |                ^~~~~~~~~
+   kernel/dependency/dept.c:2579:9: note: in expansion of macro 'pr_info'
+    2579 |         pr_info("... hash list head used by %s: %zu KB\n",              \
+         |         ^~~~~~~
+   kernel/dependency/dept_hash.h:10:1: note: in expansion of macro 'HASH'
+      10 | HASH(class, 12)
+         | ^~~~
 
 
-vim +750 drivers/net/ethernet/sfc/falcon/falcon.c
+vim +/__dept_wait +2105 kernel/dependency/dept.c
 
-4a5b504d0c582db drivers/net/sfc/falcon.c                 Ben Hutchings 2008-09-01  738  
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  739  static int
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  740  falcon_spi_slow_wait(struct falcon_mtd_partition *part, bool uninterruptible)
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  741  {
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  742  	const struct falcon_spi_device *spi = part->spi;
-5a6681e22c14090 drivers/net/ethernet/sfc/falcon/falcon.c Edward Cree   2016-11-28  743  	struct ef4_nic *efx = part->common.mtd.priv;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  744  	u8 status;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  745  	int rc, i;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  746  
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  747  	/* Wait up to 4s for flash/EEPROM to finish a slow operation. */
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  748  	for (i = 0; i < 40; i++) {
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  749  		__set_current_state(uninterruptible ?
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28 @750  				    TASK_UNINTERRUPTIBLE : TASK_INTERRUPTIBLE);
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  751  		schedule_timeout(HZ / 10);
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  752  		rc = falcon_spi_cmd(efx, spi, SPI_RDSR, -1, NULL,
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  753  				    &status, sizeof(status));
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  754  		if (rc)
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  755  			return rc;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  756  		if (!(status & SPI_STATUS_NRDY))
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  757  			return 0;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  758  		if (signal_pending(current))
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  759  			return -EINTR;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  760  	}
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  761  	pr_err("%s: timed out waiting for %s\n",
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  762  	       part->common.name, part->common.dev_type_name);
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  763  	return -ETIMEDOUT;
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  764  }
-45a3fd55acc8989 drivers/net/ethernet/sfc/falcon.c        Ben Hutchings 2012-11-28  765  
+  2104	
+> 2105	void __dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
+  2106			 const char *w_fn, int ne)
+  2107	{
+  2108		int e;
+  2109	
+  2110		/*
+  2111		 * Be as conservative as possible. In case of mulitple waits for
+  2112		 * a single dept_map, we are going to keep only the last wait's
+  2113		 * wgen for simplicity - keeping all wgens seems overengineering.
+  2114		 *
+  2115		 * Of course, it might cause missing some dependencies that
+  2116		 * would rarely, probabily never, happen but it helps avoid
+  2117		 * false positive report.
+  2118		 */
+  2119		for_each_set_bit(e, &w_f, DEPT_MAX_SUBCLASSES_EVT) {
+  2120			struct dept_class *c;
+  2121			struct dept_key *k;
+  2122	
+  2123			k = m->keys ?: &m->keys_local;
+  2124			c = check_new_class(&m->keys_local, k,
+  2125					    map_sub(m, e), m->name);
+  2126			if (!c)
+  2127				continue;
+  2128	
+  2129			add_wait(c, ip, w_fn, ne);
+  2130		}
+  2131	}
+  2132	
 
 ---
 0-DAY CI Kernel Test Service, Intel Corporation
