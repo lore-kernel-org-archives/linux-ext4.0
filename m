@@ -2,18 +2,18 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24964C433FE
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 11:00:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DA64C433FE
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 11:00:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237062AbiBSLAQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 19 Feb 2022 06:00:16 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:42262 "EHLO
+        id S242139AbiBSLAW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 19 Feb 2022 06:00:22 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41840 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242182AbiBSK7O (ORCPT
+        with ESMTP id S242188AbiBSK7O (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:14 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 62FAE692B1
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:45 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7CBFD6A029
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:46 -0800 (PST)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
         by 156.147.23.53 with ESMTP; 19 Feb 2022 19:58:45 +0900
 X-Original-SENDERIP: 156.147.1.151
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v2 16/18] locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
-Date:   Sat, 19 Feb 2022 19:58:29 +0900
-Message-Id: <1645268311-24222-17-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v2 18/18] dept: Distinguish each work from another
+Date:   Sat, 19 Feb 2022 19:58:31 +0900
+Message-Id: <1645268311-24222-19-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
 References: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
@@ -56,33 +56,81 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-cb92173d1f0 (locking/lockdep, cpu/hotplug: Annotate AP thread) was
-introduced to make lockdep_assert_cpus_held() work in AP thread.
+Workqueue already provides concurrency control. By that, any wait in a
+work doesn't prevents events in other works with the control enabled.
+Thus, each work would better be considered a different context.
 
-However, the annotation is too strong for that purpose. We don't have to
-use more than try lock annotation for that.
-
-Furthermore, now that Dept was introduced, false positive alarms was
-reported by that. Replaced it with try lock annotation.
+So let Dept assign a different context id to each work.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/cpu.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/dept.h     |  2 ++
+ kernel/dependency/dept.c | 10 ++++++++++
+ kernel/workqueue.c       |  3 +++
+ 3 files changed, 15 insertions(+)
 
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index 407a256..1f92a42 100644
---- a/kernel/cpu.c
-+++ b/kernel/cpu.c
-@@ -355,7 +355,7 @@ int lockdep_is_cpus_held(void)
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index 1a1c307..55c5ed5 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -486,6 +486,7 @@ struct dept_task {
+ extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
+ extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
+ extern void dept_kernel_enter(void);
++extern void dept_work_enter(void);
  
- static void lockdep_acquire_cpus_lock(void)
- {
--	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 0, _THIS_IP_);
-+	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 1, _THIS_IP_);
+ /*
+  * for users who want to manage external keys
+@@ -527,6 +528,7 @@ struct dept_task {
+ #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
+ #define dept_ask_event_split_map(me, mc)		do { } while (0)
+ #define dept_kernel_enter()				do { } while (0)
++#define dept_work_enter()				do { } while (0)
+ #define dept_key_init(k)				do { (void)(k); } while (0)
+ #define dept_key_destroy(k)				do { (void)(k); } while (0)
+ #endif
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index c369a8e..ee3faa2 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1873,6 +1873,16 @@ void dept_disable_hardirq(unsigned long ip)
+ 	dept_exit(flags);
  }
  
- static void lockdep_release_cpus_lock(void)
++/*
++ * Assign a different context id to each work.
++ */
++void dept_work_enter(void)
++{
++	struct dept_task *dt = dept_task();
++
++	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
++}
++
+ void dept_kernel_enter(void)
+ {
+ 	struct dept_task *dt = dept_task();
+diff --git a/kernel/workqueue.c b/kernel/workqueue.c
+index 33f1106..f5d762c 100644
+--- a/kernel/workqueue.c
++++ b/kernel/workqueue.c
+@@ -51,6 +51,7 @@
+ #include <linux/sched/isolation.h>
+ #include <linux/nmi.h>
+ #include <linux/kvm_para.h>
++#include <linux/dept.h>
+ 
+ #include "workqueue_internal.h"
+ 
+@@ -2217,6 +2218,8 @@ static void process_one_work(struct worker *worker, struct work_struct *work)
+ 
+ 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
+ #endif
++	dept_work_enter();
++
+ 	/* ensure we're on the correct CPU */
+ 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
+ 		     raw_smp_processor_id() != pool->cpu);
 -- 
 1.9.1
 
