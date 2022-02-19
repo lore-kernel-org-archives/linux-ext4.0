@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1030C4167E
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10257C3526C
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242080AbiBSK7I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 19 Feb 2022 05:59:08 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41634 "EHLO
+        id S242290AbiBSK7j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 19 Feb 2022 05:59:39 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41488 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242050AbiBSK7E (ORCPT
+        with ESMTP id S242019AbiBSK7E (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:04 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 048F7692A9
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:42 -0800 (PST)
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id AD8F2674F8
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:41 -0800 (PST)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.52 with ESMTP; 19 Feb 2022 19:58:41 +0900
+        by 156.147.23.53 with ESMTP; 19 Feb 2022 19:58:41 +0900
 X-Original-SENDERIP: 156.147.1.151
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v2 05/18] dept: Apply Dept to spinlock
-Date:   Sat, 19 Feb 2022 19:58:18 +0900
-Message-Id: <1645268311-24222-6-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v2 03/18] dept: Embed Dept data in Lockdep
+Date:   Sat, 19 Feb 2022 19:58:16 +0900
+Message-Id: <1645268311-24222-4-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
 References: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
@@ -56,122 +56,220 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by spinlock.
+Dept should work independently from Lockdep. However, there's no choise
+but to rely on Lockdep code and its instances for now.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h            | 18 +++++++++++++++---
- include/linux/spinlock.h           | 26 ++++++++++++++++++++++++++
- include/linux/spinlock_types_raw.h | 13 +++++++++++++
- 3 files changed, 54 insertions(+), 3 deletions(-)
+ include/linux/lockdep.h       | 71 ++++++++++++++++++++++++++++++++++++++++---
+ include/linux/lockdep_types.h |  3 ++
+ kernel/locking/lockdep.c      | 12 ++++----
+ 3 files changed, 76 insertions(+), 10 deletions(-)
 
 diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index c1a56fe..529ea18 100644
+index 467b942..c56f6b6 100644
 --- a/include/linux/lockdep.h
 +++ b/include/linux/lockdep.h
-@@ -584,9 +584,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- #define lock_acquire_shared(l, s, t, n, i)		lock_acquire(l, s, t, 1, 1, n, i)
- #define lock_acquire_shared_recursive(l, s, t, n, i)	lock_acquire(l, s, t, 2, 1, n, i)
+@@ -20,6 +20,33 @@
+ extern int prove_locking;
+ extern int lock_stat;
  
--#define spin_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
--#define spin_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
--#define spin_release(l, i)			lock_release(l, i)
-+#define spin_acquire(l, s, t, i)					\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_spin_lock(&(l)->dmap, s, t, NULL, "spin_unlock", i);	\
++#ifdef CONFIG_DEPT
++static inline void dept_after_copy_map(struct dept_map *to,
++				       struct dept_map *from)
++{
++	int i;
++
++	if (from->keys == &from->keys_local)
++		to->keys = &to->keys_local;
++
++	if (!to->keys)
++		return;
++
++	/*
++	 * Since the class cache can be modified concurrently we could observe
++	 * half pointers (64bit arch using 32bit copy insns). Therefore clear
++	 * the caches and take the performance hit.
++	 *
++	 * XXX it doesn't work well with lockdep_set_class_and_subclass(), since
++	 *     that relies on cache abuse.
++	 */
++	for (i = 0; i < DEPT_MAX_SUBCLASSES_CACHE; i++)
++		to->keys->classes[i] = NULL;
++}
++#else
++#define dept_after_copy_map(t, f)	do { } while (0)
++#endif
++
+ #ifdef CONFIG_LOCKDEP
+ 
+ #include <linux/linkage.h>
+@@ -43,6 +70,8 @@ static inline void lockdep_copy_map(struct lockdep_map *to,
+ 	 */
+ 	for (i = 0; i < NR_LOCKDEP_CACHING_CLASSES; i++)
+ 		to->class_cache[i] = NULL;
++
++	dept_after_copy_map(&to->dmap, &from->dmap);
+ }
+ 
+ /*
+@@ -176,8 +205,19 @@ struct held_lock {
+ 	current->lockdep_recursion -= LOCKDEP_OFF;	\
+ } while (0)
+ 
+-extern void lockdep_register_key(struct lock_class_key *key);
+-extern void lockdep_unregister_key(struct lock_class_key *key);
++extern void __lockdep_register_key(struct lock_class_key *key);
++extern void __lockdep_unregister_key(struct lock_class_key *key);
++
++#define lockdep_register_key(k)				\
++do {							\
++	__lockdep_register_key(k);			\
++	dept_key_init(&(k)->dkey);			\
 +} while (0)
-+#define spin_acquire_nest(l, s, t, n, i)				\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, n, i);				\
-+	dept_spin_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "spin_unlock", i); \
-+} while (0)
-+#define spin_release(l, i)						\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_spin_unlock(&(l)->dmap, i);				\
++#define lockdep_unregister_key(k)			\
++do {							\
++	__lockdep_unregister_key(k);			\
++	dept_key_destroy(&(k)->dkey);			\
 +} while (0)
  
- #define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define rwlock_acquire_read(l, s, t, i)					\
-diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
-index 5c0c517..6b5c3f4 100644
---- a/include/linux/spinlock.h
-+++ b/include/linux/spinlock.h
-@@ -95,6 +95,32 @@
- # include <linux/spinlock_up.h>
+ /*
+  * These methods are used by specific locking variants (spinlocks,
+@@ -185,9 +225,18 @@ struct held_lock {
+  * to lockdep:
+  */
+ 
+-extern void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
++extern void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 	struct lock_class_key *key, int subclass, u8 inner, u8 outer, u8 lock_type);
+ 
++#define lockdep_init_map_type(l, n, k, s, i, o, t)		\
++do {								\
++	__lockdep_init_map_type(l, n, k, s, i, o, t);		\
++	if ((k) == &__lockdep_no_validate__)			\
++		dept_map_nocheck(&(l)->dmap);			\
++	else							\
++		dept_map_init(&(l)->dmap, &(k)->dkey, s, n);	\
++} while (0)
++
+ static inline void
+ lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
+ 		       struct lock_class_key *key, int subclass, u8 inner, u8 outer)
+@@ -431,13 +480,27 @@ enum xhlock_context_t {
+ 	XHLOCK_CTX_NR,
+ };
+ 
++#ifdef CONFIG_DEPT
++/*
++ * TODO: I found the case to use an address of other than a real key as
++ * _key, for instance, in workqueue. So for now, we cannot use the
++ * assignment like '.dmap.keys = &(_key)->dkey' unless it's fixed.
++ */
++#define STATIC_DEPT_MAP_INIT(_name, _key) .dmap = {		\
++	.name = (_name),					\
++	.keys = NULL },
++#else
++#define STATIC_DEPT_MAP_INIT(_name, _key)
++#endif
++
+ #define lockdep_init_map_crosslock(m, n, k, s) do {} while (0)
+ /*
+  * To initialize a lockdep_map statically use this macro.
+  * Note that _name must not be NULL.
+  */
+ #define STATIC_LOCKDEP_MAP_INIT(_name, _key) \
+-	{ .name = (_name), .key = (void *)(_key), }
++	{ .name = (_name), .key = (void *)(_key), \
++	STATIC_DEPT_MAP_INIT(_name, _key) }
+ 
+ static inline void lockdep_invariant_state(bool force) {}
+ static inline void lockdep_free_task(struct task_struct *task) {}
+diff --git a/include/linux/lockdep_types.h b/include/linux/lockdep_types.h
+index d224308..50c8879 100644
+--- a/include/linux/lockdep_types.h
++++ b/include/linux/lockdep_types.h
+@@ -11,6 +11,7 @@
+ #define __LINUX_LOCKDEP_TYPES_H
+ 
+ #include <linux/types.h>
++#include <linux/dept.h>
+ 
+ #define MAX_LOCKDEP_SUBCLASSES		8UL
+ 
+@@ -76,6 +77,7 @@ struct lock_class_key {
+ 		struct hlist_node		hash_entry;
+ 		struct lockdep_subclass_key	subkeys[MAX_LOCKDEP_SUBCLASSES];
+ 	};
++	struct dept_key				dkey;
+ };
+ 
+ extern struct lock_class_key __lockdep_no_validate__;
+@@ -185,6 +187,7 @@ struct lockdep_map {
+ 	int				cpu;
+ 	unsigned long			ip;
  #endif
++	struct dept_map			dmap;
+ };
  
-+#ifdef CONFIG_DEPT
-+#define dept_spin_lock(m, ne, t, n, e_fn, ip)				\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	} else if (n) {							\
-+		dept_skip(m);						\
-+	} else {							\
-+		dept_wait(m, 1UL, ip, __func__, ne);			\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	}								\
-+} while (0)
-+#define dept_spin_unlock(m, ip)						\
-+do {									\
-+	if (!dept_unskip_if_skipped(m)) {				\
-+		dept_event(m, 1UL, ip, __func__);			\
-+		dept_ecxt_exit(m, ip);					\
-+	}								\
-+} while (0)
-+#else
-+#define dept_spin_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_spin_unlock(m, ip)			do { } while (0)
-+#endif
-+
- #ifdef CONFIG_DEBUG_SPINLOCK
-   extern void __raw_spin_lock_init(raw_spinlock_t *lock, const char *name,
- 				   struct lock_class_key *key, short inner);
-diff --git a/include/linux/spinlock_types_raw.h b/include/linux/spinlock_types_raw.h
-index 91cb36b..279e821 100644
---- a/include/linux/spinlock_types_raw.h
-+++ b/include/linux/spinlock_types_raw.h
-@@ -26,16 +26,28 @@
+ struct pin_cookie { unsigned int val; };
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index 4a882f8..a85468d 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -1184,7 +1184,7 @@ static inline struct hlist_head *keyhashentry(const struct lock_class_key *key)
+ }
  
- #define SPINLOCK_OWNER_INIT	((void *)-1L)
+ /* Register a dynamically allocated key. */
+-void lockdep_register_key(struct lock_class_key *key)
++void __lockdep_register_key(struct lock_class_key *key)
+ {
+ 	struct hlist_head *hash_head;
+ 	struct lock_class_key *k;
+@@ -1207,7 +1207,7 @@ void lockdep_register_key(struct lock_class_key *key)
+ restore_irqs:
+ 	raw_local_irq_restore(flags);
+ }
+-EXPORT_SYMBOL_GPL(lockdep_register_key);
++EXPORT_SYMBOL_GPL(__lockdep_register_key);
  
-+#ifdef CONFIG_DEPT
-+# define RAW_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
-+# define SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
-+# define LOCAL_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
-+#else
-+# define RAW_SPIN_DMAP_INIT(lockname)
-+# define SPIN_DMAP_INIT(lockname)
-+# define LOCAL_SPIN_DMAP_INIT(lockname)
-+#endif
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- # define RAW_SPIN_DEP_MAP_INIT(lockname)		\
- 	.dep_map = {					\
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_SPIN,	\
-+		RAW_SPIN_DMAP_INIT(lockname)		\
+ /* Check whether a key has been registered as a dynamic key. */
+ static bool is_dynamic_key(const struct lock_class_key *key)
+@@ -4771,7 +4771,7 @@ static inline int check_wait_context(struct task_struct *curr,
+ /*
+  * Initialize a lock instance's lock-class mapping info:
+  */
+-void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
++void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 			    struct lock_class_key *key, int subclass,
+ 			    u8 inner, u8 outer, u8 lock_type)
+ {
+@@ -4831,7 +4831,7 @@ void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 		raw_local_irq_restore(flags);
  	}
- # define SPIN_DEP_MAP_INIT(lockname)			\
- 	.dep_map = {					\
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_CONFIG,	\
-+		SPIN_DMAP_INIT(lockname)		\
- 	}
+ }
+-EXPORT_SYMBOL_GPL(lockdep_init_map_type);
++EXPORT_SYMBOL_GPL(__lockdep_init_map_type);
  
- # define LOCAL_SPIN_DEP_MAP_INIT(lockname)		\
-@@ -43,6 +55,7 @@
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_CONFIG,	\
- 		.lock_type = LD_LOCK_PERCPU,		\
-+		LOCAL_SPIN_DMAP_INIT(lockname)		\
- 	}
- #else
- # define RAW_SPIN_DEP_MAP_INIT(lockname)
+ struct lock_class_key __lockdep_no_validate__;
+ EXPORT_SYMBOL_GPL(__lockdep_no_validate__);
+@@ -6291,7 +6291,7 @@ void lockdep_reset_lock(struct lockdep_map *lock)
+ }
+ 
+ /* Unregister a dynamically allocated key. */
+-void lockdep_unregister_key(struct lock_class_key *key)
++void __lockdep_unregister_key(struct lock_class_key *key)
+ {
+ 	struct hlist_head *hash_head = keyhashentry(key);
+ 	struct lock_class_key *k;
+@@ -6326,7 +6326,7 @@ void lockdep_unregister_key(struct lock_class_key *key)
+ 	/* Wait until is_dynamic_key() has finished accessing k->hash_entry. */
+ 	synchronize_rcu();
+ }
+-EXPORT_SYMBOL_GPL(lockdep_unregister_key);
++EXPORT_SYMBOL_GPL(__lockdep_unregister_key);
+ 
+ void __init lockdep_init(void)
+ {
 -- 
 1.9.1
 
