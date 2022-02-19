@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BA84C43219
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C964C46467
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242256AbiBSK72 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 19 Feb 2022 05:59:28 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:42416 "EHLO
+        id S242272AbiBSK7a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 19 Feb 2022 05:59:30 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41922 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242167AbiBSK7N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:13 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 3E49C674FC
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:44 -0800 (PST)
+        with ESMTP id S242160AbiBSK7M (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:12 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id EECAB674F1
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:46 -0800 (PST)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.52 with ESMTP; 19 Feb 2022 19:58:44 +0900
+        by 156.147.23.51 with ESMTP; 19 Feb 2022 19:58:45 +0900
 X-Original-SENDERIP: 156.147.1.151
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.151 with ESMTP; 19 Feb 2022 19:58:44 +0900
+        by 156.147.1.151 with ESMTP; 19 Feb 2022 19:58:45 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v2 13/18] dept: Apply Dept to wait/event of PG_{locked,writeback}
-Date:   Sat, 19 Feb 2022 19:58:26 +0900
-Message-Id: <1645268311-24222-14-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v2 17/18] dept: Distinguish each syscall context from another
+Date:   Sat, 19 Feb 2022 19:58:30 +0900
+Message-Id: <1645268311-24222-18-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
 References: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
@@ -56,373 +56,378 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by PG_{locked,writeback}. For
-instance, (un)lock_page() generates that type of dependency.
+It enters kernel mode on each syscall and each syscall handling should
+be considered independently from the point of view of Dept. Otherwise,
+Dept may wrongly track dependencies across different syscalls.
+
+That might be a real dependency from user mode. However, now that Dept
+just started to work, conservatively let Dept not track dependencies
+across different syscalls.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/dept_page.h       | 78 +++++++++++++++++++++++++++++++++++++++++
- include/linux/page-flags.h      | 45 ++++++++++++++++++++++--
- include/linux/pagemap.h         |  7 +++-
- init/main.c                     |  2 ++
- kernel/dependency/dept_object.h |  2 +-
- lib/Kconfig.debug               |  1 +
- mm/filemap.c                    | 68 +++++++++++++++++++++++++++++++++++
- mm/page_ext.c                   |  5 +++
- 8 files changed, 204 insertions(+), 4 deletions(-)
- create mode 100644 include/linux/dept_page.h
+ include/linux/dept.h     | 39 ++++++++++++++++------------
+ kernel/dependency/dept.c | 67 ++++++++++++++++++++++++------------------------
+ kernel/entry/common.c    |  3 +++
+ 3 files changed, 60 insertions(+), 49 deletions(-)
 
-diff --git a/include/linux/dept_page.h b/include/linux/dept_page.h
-new file mode 100644
-index 0000000..d2d093d
---- /dev/null
-+++ b/include/linux/dept_page.h
-@@ -0,0 +1,78 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#ifndef __LINUX_DEPT_PAGE_H
-+#define __LINUX_DEPT_PAGE_H
-+
-+#ifdef CONFIG_DEPT
-+#include <linux/dept.h>
-+
-+extern struct page_ext_operations dept_pglocked_ops;
-+extern struct page_ext_operations dept_pgwriteback_ops;
-+extern struct dept_map_common pglocked_mc;
-+extern struct dept_map_common pgwriteback_mc;
-+
-+extern void dept_page_init(void);
-+extern struct dept_map_each *get_pglocked_me(struct page *page);
-+extern struct dept_map_each *get_pgwriteback_me(struct page *page);
-+
-+#define dept_pglocked_wait(f)					\
-+do {								\
-+	struct dept_map_each *me = get_pglocked_me(&(f)->page);	\
-+								\
-+	if (likely(me))						\
-+		dept_wait_split_map(me, &pglocked_mc, _RET_IP_, \
-+				    __func__, 0);		\
-+} while (0)
-+
-+#define dept_pglocked_set_bit(f)				\
-+do {								\
-+	struct dept_map_each *me = get_pglocked_me(&(f)->page);	\
-+								\
-+	if (likely(me))						\
-+		dept_ask_event_split_map(me, &pglocked_mc);	\
-+} while (0)
-+
-+#define dept_pglocked_event(f)					\
-+do {								\
-+	struct dept_map_each *me = get_pglocked_me(&(f)->page);	\
-+								\
-+	if (likely(me))						\
-+		dept_event_split_map(me, &pglocked_mc, _RET_IP_,\
-+				     __func__);			\
-+} while (0)
-+
-+#define dept_pgwriteback_wait(f)				\
-+do {								\
-+	struct dept_map_each *me = get_pgwriteback_me(&(f)->page);\
-+								\
-+	if (likely(me))						\
-+		dept_wait_split_map(me, &pgwriteback_mc, _RET_IP_,\
-+				    __func__, 0);		\
-+} while (0)
-+
-+#define dept_pgwriteback_set_bit(f)				\
-+do {								\
-+	struct dept_map_each *me = get_pgwriteback_me(&(f)->page);\
-+								\
-+	if (likely(me))						\
-+		dept_ask_event_split_map(me, &pgwriteback_mc);\
-+} while (0)
-+
-+#define dept_pgwriteback_event(f)				\
-+do {								\
-+	struct dept_map_each *me = get_pgwriteback_me(&(f)->page);\
-+								\
-+	if (likely(me))						\
-+		dept_event_split_map(me, &pgwriteback_mc, _RET_IP_,\
-+				     __func__);			\
-+} while (0)
-+#else
-+#define dept_page_init()		do { } while (0)
-+#define dept_pglocked_wait(f)		do { } while (0)
-+#define dept_pglocked_set_bit(f)	do { } while (0)
-+#define dept_pglocked_event(f)		do { } while (0)
-+#define dept_pgwriteback_wait(f)	do { } while (0)
-+#define dept_pgwriteback_set_bit(f)	do { } while (0)
-+#define dept_pgwriteback_event(f)	do { } while (0)
-+#endif
-+
-+#endif /* __LINUX_DEPT_PAGE_H */
-diff --git a/include/linux/page-flags.h b/include/linux/page-flags.h
-index 1c3b6e5..066b6a5 100644
---- a/include/linux/page-flags.h
-+++ b/include/linux/page-flags.h
-@@ -411,7 +411,6 @@ static unsigned long *folio_flags(struct folio *folio, unsigned n)
- #define TESTSCFLAG_FALSE(uname, lname)					\
- 	TESTSETFLAG_FALSE(uname, lname) TESTCLEARFLAG_FALSE(uname, lname)
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index e2d4aea..1a1c307 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -25,11 +25,16 @@
+ #define DEPT_MAX_SUBCLASSES_USR		(DEPT_MAX_SUBCLASSES / DEPT_MAX_SUBCLASSES_EVT)
+ #define DEPT_MAX_SUBCLASSES_CACHE	2
  
--__PAGEFLAG(Locked, locked, PF_NO_TAIL)
- PAGEFLAG(Waiters, waiters, PF_ONLY_HEAD) __CLEARPAGEFLAG(Waiters, waiters, PF_ONLY_HEAD)
- PAGEFLAG(Error, error, PF_NO_TAIL) TESTCLEARFLAG(Error, error, PF_NO_TAIL)
- PAGEFLAG(Referenced, referenced, PF_HEAD)
-@@ -459,7 +458,6 @@ static unsigned long *folio_flags(struct folio *folio, unsigned n)
-  * risky: they bypass page accounting.
-  */
- TESTPAGEFLAG(Writeback, writeback, PF_NO_TAIL)
--	TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
- PAGEFLAG(MappedToDisk, mappedtodisk, PF_NO_TAIL)
- 
- /* PG_readahead is only used for reads; PG_reclaim is only for writes */
-@@ -542,6 +540,49 @@ static __always_inline bool PageSwapCache(struct page *page)
- PAGEFLAG_FALSE(SkipKASanPoison, skip_kasan_poison)
- #endif
- 
-+#ifdef CONFIG_DEPT
-+TESTPAGEFLAG(Locked, locked, PF_NO_TAIL)
-+__CLEARPAGEFLAG(Locked, locked, PF_NO_TAIL)
-+TESTCLEARFLAG(Writeback, writeback, PF_NO_TAIL)
+-#define DEPT_SIRQ			0
+-#define DEPT_HIRQ			1
+-#define DEPT_IRQS_NR			2
+-#define DEPT_SIRQF			(1UL << DEPT_SIRQ)
+-#define DEPT_HIRQF			(1UL << DEPT_HIRQ)
++enum {
++	DEPT_CXT_SIRQ = 0,
++	DEPT_CXT_HIRQ,
++	DEPT_CXT_IRQS_NR,
++	DEPT_CXT_PROCESS = DEPT_CXT_IRQS_NR,
++	DEPT_CXTS_NR
++};
 +
-+#include <linux/dept_page.h>
-+
-+static __always_inline
-+void __folio_set_locked(struct folio *folio)
-+{
-+	dept_pglocked_set_bit(folio);
-+	__set_bit(PG_locked, folio_flags(folio, FOLIO_PF_NO_TAIL));
-+}
-+
-+static __always_inline void __SetPageLocked(struct page *page)
-+{
-+	dept_pglocked_set_bit(page_folio(page));
-+	__set_bit(PG_locked, &PF_NO_TAIL(page, 1)->flags);
-+}
-+
-+static __always_inline
-+bool folio_test_set_writeback(struct folio *folio)
-+{
-+	bool ret = test_and_set_bit(PG_writeback, folio_flags(folio, FOLIO_PF_NO_TAIL));
-+
-+	if (!ret)
-+		dept_pgwriteback_set_bit(folio);
-+	return ret;
-+}
-+
-+static __always_inline int TestSetPageWriteback(struct page *page)
-+{
-+	int ret = test_and_set_bit(PG_writeback, &PF_NO_TAIL(page, 1)->flags);
-+
-+	if (!ret)
-+		dept_pgwriteback_set_bit(page_folio(page));
-+	return ret;
-+}
-+#else
-+__PAGEFLAG(Locked, locked, PF_NO_TAIL)
-+TESTSCFLAG(Writeback, writeback, PF_NO_TAIL)
-+#endif
-+
- /*
-  * PageReported() is used to track reported free pages within the Buddy
-  * allocator. We can use the non-atomic version of the test and set
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 270bf51..9ff11a1 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -15,6 +15,7 @@
- #include <linux/bitops.h>
- #include <linux/hardirq.h> /* for in_interrupt() */
- #include <linux/hugetlb_inline.h>
-+#include <linux/dept_page.h>
++#define DEPT_SIRQF			(1UL << DEPT_CXT_SIRQ)
++#define DEPT_HIRQF			(1UL << DEPT_CXT_HIRQ)
  
- struct folio_batch;
- 
-@@ -761,7 +762,11 @@ bool __folio_lock_or_retry(struct folio *folio, struct mm_struct *mm,
- 
- static inline bool folio_trylock(struct folio *folio)
- {
--	return likely(!test_and_set_bit_lock(PG_locked, folio_flags(folio, 0)));
-+	int ret = test_and_set_bit_lock(PG_locked, folio_flags(folio, 0));
-+
-+	if (likely(!ret))
-+		dept_pglocked_set_bit(folio);
-+	return likely(!ret);
- }
- 
- /*
-diff --git a/init/main.c b/init/main.c
-index ca96e11..4818c75 100644
---- a/init/main.c
-+++ b/init/main.c
-@@ -100,6 +100,7 @@
- #include <linux/kcsan.h>
- #include <linux/init_syscalls.h>
- #include <linux/stackdepot.h>
-+#include <linux/pagemap.h>
- 
- #include <asm/io.h>
- #include <asm/bugs.h>
-@@ -1072,6 +1073,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
- 
- 	lockdep_init();
- 	dept_init();
-+	dept_page_init();
- 
+ struct dept_ecxt;
+ struct dept_iecxt {
+@@ -95,8 +100,8 @@ struct dept_class {
  	/*
- 	 * Need to run this when irqs are enabled, because it wants
-diff --git a/kernel/dependency/dept_object.h b/kernel/dependency/dept_object.h
-index ad5ff57..f3f1cfe 100644
---- a/kernel/dependency/dept_object.h
-+++ b/kernel/dependency/dept_object.h
-@@ -6,7 +6,7 @@
-  * nr: # of the object that should be kept in the pool.
-  */
- 
--OBJECT(dep, 1024 * 8)
-+OBJECT(dep, 1024 * 16)
- OBJECT(class, 1024 * 4)
- OBJECT(stack, 1024 * 32)
- OBJECT(ecxt, 1024 * 4)
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 309b275..c7c2510 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -1242,6 +1242,7 @@ config DEPT
- 	select DEBUG_RWSEMS
- 	select DEBUG_WW_MUTEX_SLOWPATH
- 	select DEBUG_LOCK_ALLOC
-+	select PAGE_EXTENSION
- 	select TRACE_IRQFLAGS
- 	select STACKTRACE
- 	select FRAME_POINTER if !MIPS && !PPC && !ARM && !S390 && !MICROBLAZE && !ARC && !X86
-diff --git a/mm/filemap.c b/mm/filemap.c
-index ad8c39d..4f004c4 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1148,6 +1148,11 @@ static void folio_wake_bit(struct folio *folio, int bit_nr)
- 	unsigned long flags;
- 	wait_queue_entry_t bookmark;
- 
-+	if (bit_nr == PG_locked)
-+		dept_pglocked_event(folio);
-+	else if (bit_nr == PG_writeback)
-+		dept_pgwriteback_event(folio);
-+
- 	key.folio = folio;
- 	key.bit_nr = bit_nr;
- 	key.page_match = 0;
-@@ -1227,6 +1232,10 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
- 	if (wait->flags & WQ_FLAG_EXCLUSIVE) {
- 		if (test_and_set_bit(bit_nr, &folio->flags))
- 			return false;
-+		else if (bit_nr == PG_locked)
-+			dept_pglocked_set_bit(folio);
-+		else if (bit_nr == PG_writeback)
-+			dept_pgwriteback_set_bit(folio);
- 	} else if (test_bit(bit_nr, &folio->flags))
- 		return false;
- 
-@@ -1248,6 +1257,11 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 	bool delayacct = false;
- 	unsigned long pflags;
- 
-+	if (bit_nr == PG_locked)
-+		dept_pglocked_wait(folio);
-+	else if (bit_nr == PG_writeback)
-+		dept_pgwriteback_wait(folio);
-+
- 	if (bit_nr == PG_locked &&
- 	    !folio_test_uptodate(folio) && folio_test_workingset(folio)) {
- 		if (!folio_test_swapbacked(folio)) {
-@@ -1340,6 +1354,11 @@ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 		if (unlikely(test_and_set_bit(bit_nr, folio_flags(folio, 0))))
- 			goto repeat;
- 
-+		if (bit_nr == PG_locked)
-+			dept_pglocked_set_bit(folio);
-+		else if (bit_nr == PG_writeback)
-+			dept_pgwriteback_set_bit(folio);
-+
- 		wait->flags |= WQ_FLAG_DONE;
- 		break;
- 	}
-@@ -3960,3 +3979,52 @@ bool filemap_release_folio(struct folio *folio, gfp_t gfp)
- 	return try_to_free_buffers(&folio->page);
- }
- EXPORT_SYMBOL(filemap_release_folio);
-+
-+#ifdef CONFIG_DEPT
-+static bool need_dept_pglocked(void)
-+{
-+	return true;
-+}
-+
-+struct page_ext_operations dept_pglocked_ops = {
-+	.size = sizeof(struct dept_map_each),
-+	.need = need_dept_pglocked,
-+};
-+
-+struct dept_map_each *get_pglocked_me(struct page *p)
-+{
-+	struct page_ext *e = lookup_page_ext(p);
-+
-+	return e ? (void *)e + dept_pglocked_ops.offset : NULL;
-+}
-+EXPORT_SYMBOL(get_pglocked_me);
-+
-+static bool need_dept_pgwriteback(void)
-+{
-+	return true;
-+}
-+
-+struct page_ext_operations dept_pgwriteback_ops = {
-+	.size = sizeof(struct dept_map_each),
-+	.need = need_dept_pgwriteback,
-+};
-+
-+struct dept_map_each *get_pgwriteback_me(struct page *p)
-+{
-+	struct page_ext *e = lookup_page_ext(p);
-+
-+	return e ? (void *)e + dept_pgwriteback_ops.offset : NULL;
-+}
-+EXPORT_SYMBOL(get_pgwriteback_me);
-+
-+struct dept_map_common pglocked_mc;
-+EXPORT_SYMBOL(pglocked_mc);
-+struct dept_map_common pgwriteback_mc;
-+EXPORT_SYMBOL(pgwriteback_mc);
-+
-+void dept_page_init(void)
-+{
-+	dept_split_map_common_init(&pglocked_mc, NULL, "pglocked");
-+	dept_split_map_common_init(&pgwriteback_mc, NULL, "pgwriteback");
-+}
-+#endif
-diff --git a/mm/page_ext.c b/mm/page_ext.c
-index 2e66d93..b7f5b0d 100644
---- a/mm/page_ext.c
-+++ b/mm/page_ext.c
-@@ -9,6 +9,7 @@
- #include <linux/page_owner.h>
- #include <linux/page_idle.h>
- #include <linux/page_table_check.h>
-+#include <linux/dept_page.h>
- 
- /*
-  * struct page extension
-@@ -79,6 +80,10 @@ static bool need_page_idle(void)
- #ifdef CONFIG_PAGE_TABLE_CHECK
- 	&page_table_check_ops,
- #endif
-+#ifdef CONFIG_DEPT
-+	&dept_pglocked_ops,
-+	&dept_pgwriteback_ops,
-+#endif
+ 	 * for tracking IRQ dependencies
+ 	 */
+-	struct dept_iecxt		iecxt[DEPT_IRQS_NR];
+-	struct dept_iwait		iwait[DEPT_IRQS_NR];
++	struct dept_iecxt		iecxt[DEPT_CXT_IRQS_NR];
++	struct dept_iwait		iwait[DEPT_CXT_IRQS_NR];
  };
  
- unsigned long page_ext_size = sizeof(struct page_ext);
+ struct dept_stack {
+@@ -150,8 +155,8 @@ struct dept_ecxt {
+ 	/*
+ 	 * where the IRQ-enabled happened
+ 	 */
+-	unsigned long			enirq_ip[DEPT_IRQS_NR];
+-	struct dept_stack		*enirq_stack[DEPT_IRQS_NR];
++	unsigned long			enirq_ip[DEPT_CXT_IRQS_NR];
++	struct dept_stack		*enirq_stack[DEPT_CXT_IRQS_NR];
+ 
+ 	/*
+ 	 * where the event context started
+@@ -194,8 +199,8 @@ struct dept_wait {
+ 	/*
+ 	 * where the IRQ wait happened
+ 	 */
+-	unsigned long			irq_ip[DEPT_IRQS_NR];
+-	struct dept_stack		*irq_stack[DEPT_IRQS_NR];
++	unsigned long			irq_ip[DEPT_CXT_IRQS_NR];
++	struct dept_stack		*irq_stack[DEPT_CXT_IRQS_NR];
+ 
+ 	/*
+ 	 * where the wait happened
+@@ -400,19 +405,19 @@ struct dept_task {
+ 	int				wait_hist_pos;
+ 
+ 	/*
+-	 * sequential id to identify each IRQ context
++	 * sequential id to identify each context
+ 	 */
+-	unsigned int			irq_id[DEPT_IRQS_NR];
++	unsigned int			cxt_id[DEPT_CXTS_NR];
+ 
+ 	/*
+ 	 * for tracking IRQ-enabled points with cross-event
+ 	 */
+-	unsigned int			wgen_enirq[DEPT_IRQS_NR];
++	unsigned int			wgen_enirq[DEPT_CXT_IRQS_NR];
+ 
+ 	/*
+ 	 * for keeping up-to-date IRQ-enabled points
+ 	 */
+-	unsigned long			enirq_ip[DEPT_IRQS_NR];
++	unsigned long			enirq_ip[DEPT_CXT_IRQS_NR];
+ 
+ 	/*
+ 	 * current effective IRQ-enabled flag
+@@ -448,7 +453,7 @@ struct dept_task {
+ 	.dept_task.wait_hist = { { .wait = NULL, } },			\
+ 	.dept_task.ecxt_held_pos = 0,					\
+ 	.dept_task.wait_hist_pos = 0,					\
+-	.dept_task.irq_id = { 0 },					\
++	.dept_task.cxt_id = { 0 },					\
+ 	.dept_task.wgen_enirq = { 0 },					\
+ 	.dept_task.enirq_ip = { 0 },					\
+ 	.dept_task.recursive = 0,					\
+@@ -480,6 +485,7 @@ struct dept_task {
+ extern void dept_wait_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *w_fn, int ne);
+ extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
+ extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
++extern void dept_kernel_enter(void);
+ 
+ /*
+  * for users who want to manage external keys
+@@ -520,6 +526,7 @@ struct dept_task {
+ #define dept_wait_split_map(me, mc, ip, w_fn, ne)	do { } while (0)
+ #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
+ #define dept_ask_event_split_map(me, mc)		do { } while (0)
++#define dept_kernel_enter()				do { } while (0)
+ #define dept_key_init(k)				do { (void)(k); } while (0)
+ #define dept_key_destroy(k)				do { (void)(k); } while (0)
+ #endif
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 84409759..c369a8e 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -212,9 +212,9 @@ static inline struct dept_class *dep_tc(struct dept_dep *d)
+ 
+ static inline const char *irq_str(int irq)
+ {
+-	if (irq == DEPT_SIRQ)
++	if (irq == DEPT_CXT_SIRQ)
+ 		return "softirq";
+-	if (irq == DEPT_HIRQ)
++	if (irq == DEPT_CXT_HIRQ)
+ 		return "hardirq";
+ 	return "(unknown)";
+ }
+@@ -374,7 +374,7 @@ static void initialize_class(struct dept_class *c)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++) {
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 		struct dept_iecxt *ie = &c->iecxt[i];
+ 		struct dept_iwait *iw = &c->iwait[i];
+ 
+@@ -399,7 +399,7 @@ static void initialize_ecxt(struct dept_ecxt *e)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++) {
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 		e->enirq_stack[i] = NULL;
+ 		e->enirq_ip[i] = 0UL;
+ 	}
+@@ -414,7 +414,7 @@ static void initialize_wait(struct dept_wait *w)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++) {
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 		w->irq_stack[i] = NULL;
+ 		w->irq_ip[i] = 0UL;
+ 	}
+@@ -453,7 +453,7 @@ static void destroy_ecxt(struct dept_ecxt *e)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++)
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
+ 		if (e->enirq_stack[i])
+ 			put_stack(e->enirq_stack[i]);
+ 	if (e->class)
+@@ -469,7 +469,7 @@ static void destroy_wait(struct dept_wait *w)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++)
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
+ 		if (w->irq_stack[i])
+ 			put_stack(w->irq_stack[i]);
+ 	if (w->class)
+@@ -614,7 +614,7 @@ static void print_diagram(struct dept_dep *d)
+ 	const char *c_fn = e->ecxt_fn ?: "(unknown)";
+ 
+ 	irqf = e->enirqf & w->irqf;
+-	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
++	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
+ 		if (!firstline)
+ 			pr_warn("\nor\n\n");
+ 		firstline = false;
+@@ -645,7 +645,7 @@ static void print_dep(struct dept_dep *d)
+ 	const char *c_fn = e->ecxt_fn ?: "(unknown)";
+ 
+ 	irqf = e->enirqf & w->irqf;
+-	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
++	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
+ 		pr_warn("%s has been enabled:\n", irq_str(irq));
+ 		print_ip_stack(e->enirq_ip[irq], e->enirq_stack[irq]);
+ 		pr_warn("\n");
+@@ -871,7 +871,7 @@ static void bfs(struct dept_class *c, bfs_f *cb, void *in, void **out)
+  */
+ 
+ static inline unsigned long cur_enirqf(void);
+-static inline int cur_irq(void);
++static inline int cur_cxt(void);
+ static inline unsigned int cur_ctxt_id(void);
+ 
+ static inline struct dept_iecxt *iecxt(struct dept_class *c, int irq)
+@@ -1397,7 +1397,7 @@ static void add_dep(struct dept_ecxt *e, struct dept_wait *w)
+ 	if (d) {
+ 		check_dl_bfs(d);
+ 
+-		for (i = 0; i < DEPT_IRQS_NR; i++) {
++		for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 			struct dept_iwait *fiw = iwait(fc, i);
+ 			struct dept_iecxt *found_ie;
+ 			struct dept_iwait *found_iw;
+@@ -1433,7 +1433,7 @@ static void add_wait(struct dept_class *c, unsigned long ip,
+ 	struct dept_task *dt = dept_task();
+ 	struct dept_wait *w;
+ 	unsigned int wg = 0U;
+-	int irq;
++	int cxt;
+ 	int i;
+ 
+ 	w = new_wait();
+@@ -1445,9 +1445,9 @@ static void add_wait(struct dept_class *c, unsigned long ip,
+ 	w->wait_fn = w_fn;
+ 	w->wait_stack = get_current_stack();
+ 
+-	irq = cur_irq();
+-	if (irq < DEPT_IRQS_NR)
+-		add_iwait(c, irq, w);
++	cxt = cur_cxt();
++	if (cxt == DEPT_CXT_HIRQ || cxt == DEPT_CXT_SIRQ)
++		add_iwait(c, cxt, w);
+ 
+ 	/*
+ 	 * Avoid adding dependency between user aware nested ecxt and
+@@ -1512,7 +1512,7 @@ static void add_ecxt(void *obj, struct dept_class *c, unsigned long ip,
+ 	eh->nest = ne;
+ 
+ 	irqf = cur_enirqf();
+-	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR)
++	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR)
+ 		add_iecxt(c, irq, e, false);
+ 
+ 	del_ecxt(e);
+@@ -1639,7 +1639,7 @@ static void do_event(void *obj, struct dept_class *c, unsigned int wg,
+ 			break;
+ 	}
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++) {
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 		struct dept_ecxt *e;
+ 
+ 		if (before(dt->wgen_enirq[i], wg))
+@@ -1681,7 +1681,7 @@ static void disconnect_class(struct dept_class *c)
+ 		call_rcu(&d->rh, del_dep_rcu);
+ 	}
+ 
+-	for (i = 0; i < DEPT_IRQS_NR; i++) {
++	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
+ 		stale_iecxt(iecxt(c, i));
+ 		stale_iwait(iwait(c, i));
+ 	}
+@@ -1706,27 +1706,21 @@ static inline unsigned long cur_enirqf(void)
+ 	return 0UL;
+ }
+ 
+-static inline int cur_irq(void)
++static inline int cur_cxt(void)
+ {
+ 	if (lockdep_softirq_context(current))
+-		return DEPT_SIRQ;
++		return DEPT_CXT_SIRQ;
+ 	if (lockdep_hardirq_context())
+-		return DEPT_HIRQ;
+-	return DEPT_IRQS_NR;
++		return DEPT_CXT_HIRQ;
++	return DEPT_CXT_PROCESS;
+ }
+ 
+ static inline unsigned int cur_ctxt_id(void)
+ {
+ 	struct dept_task *dt = dept_task();
+-	int irq = cur_irq();
++	int cxt = cur_cxt();
+ 
+-	/*
+-	 * Normal process context
+-	 */
+-	if (irq == DEPT_IRQS_NR)
+-		return 0U;
+-
+-	return dt->irq_id[irq] | (1UL << irq);
++	return dt->cxt_id[cxt] | (1UL << cxt);
+ }
+ 
+ static void enirq_transition(int irq)
+@@ -1776,7 +1770,7 @@ static void enirq_update(unsigned long ip)
+ 	/*
+ 	 * Do enirq_transition() only on an OFF -> ON transition.
+ 	 */
+-	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
++	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
+ 		if (prev & (1UL << irq))
+ 			continue;
+ 
+@@ -1879,6 +1873,13 @@ void dept_disable_hardirq(unsigned long ip)
+ 	dept_exit(flags);
+ }
+ 
++void dept_kernel_enter(void)
++{
++	struct dept_task *dt = dept_task();
++
++	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
++}
++
+ /*
+  * Ensure it's the outmost softirq context.
+  */
+@@ -1886,7 +1887,7 @@ void dept_softirq_enter(void)
+ {
+ 	struct dept_task *dt = dept_task();
+ 
+-	dt->irq_id[DEPT_SIRQ] += (1UL << DEPT_IRQS_NR);
++	dt->cxt_id[DEPT_CXT_SIRQ] += (1UL << DEPT_CXTS_NR);
+ }
+ 
+ /*
+@@ -1896,7 +1897,7 @@ void dept_hardirq_enter(void)
+ {
+ 	struct dept_task *dt = dept_task();
+ 
+-	dt->irq_id[DEPT_HIRQ] += (1UL << DEPT_IRQS_NR);
++	dt->cxt_id[DEPT_CXT_HIRQ] += (1UL << DEPT_CXTS_NR);
+ }
+ 
+ /*
+diff --git a/kernel/entry/common.c b/kernel/entry/common.c
+index bad7136..1826508 100644
+--- a/kernel/entry/common.c
++++ b/kernel/entry/common.c
+@@ -6,6 +6,7 @@
+ #include <linux/livepatch.h>
+ #include <linux/audit.h>
+ #include <linux/tick.h>
++#include <linux/dept.h>
+ 
+ #include "common.h"
+ 
+@@ -102,6 +103,7 @@ noinstr long syscall_enter_from_user_mode(struct pt_regs *regs, long syscall)
+ 	long ret;
+ 
+ 	__enter_from_user_mode(regs);
++	dept_kernel_enter();
+ 
+ 	instrumentation_begin();
+ 	local_irq_enable();
+@@ -114,6 +116,7 @@ noinstr long syscall_enter_from_user_mode(struct pt_regs *regs, long syscall)
+ noinstr void syscall_enter_from_user_mode_prepare(struct pt_regs *regs)
+ {
+ 	__enter_from_user_mode(regs);
++	dept_kernel_enter();
+ 	instrumentation_begin();
+ 	local_irq_enable();
+ 	instrumentation_end();
 -- 
 1.9.1
 
