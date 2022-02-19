@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C964C46467
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DD71C4332F
+	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 10:59:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242272AbiBSK7a (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 19 Feb 2022 05:59:30 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41922 "EHLO
+        id S242084AbiBSK7c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 19 Feb 2022 05:59:32 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41568 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242160AbiBSK7M (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:12 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id EECAB674F1
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:46 -0800 (PST)
+        with ESMTP id S242064AbiBSK7G (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:06 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8B3E06948A
+        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:42 -0800 (PST)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.51 with ESMTP; 19 Feb 2022 19:58:45 +0900
+        by 156.147.23.53 with ESMTP; 19 Feb 2022 19:58:42 +0900
 X-Original-SENDERIP: 156.147.1.151
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.151 with ESMTP; 19 Feb 2022 19:58:45 +0900
+        by 156.147.1.151 with ESMTP; 19 Feb 2022 19:58:42 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v2 17/18] dept: Distinguish each syscall context from another
-Date:   Sat, 19 Feb 2022 19:58:30 +0900
-Message-Id: <1645268311-24222-18-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v2 07/18] dept: Apply Dept to rwlock
+Date:   Sat, 19 Feb 2022 19:58:20 +0900
+Message-Id: <1645268311-24222-8-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
 References: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
@@ -56,378 +56,183 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It enters kernel mode on each syscall and each syscall handling should
-be considered independently from the point of view of Dept. Otherwise,
-Dept may wrongly track dependencies across different syscalls.
-
-That might be a real dependency from user mode. However, now that Dept
-just started to work, conservatively let Dept not track dependencies
-across different syscalls.
+Makes Dept able to track dependencies by rwlock.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/dept.h     | 39 ++++++++++++++++------------
- kernel/dependency/dept.c | 67 ++++++++++++++++++++++++------------------------
- kernel/entry/common.c    |  3 +++
- 3 files changed, 60 insertions(+), 49 deletions(-)
+ include/linux/lockdep.h        | 25 ++++++++++++++++----
+ include/linux/rwlock.h         | 52 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/rwlock_api_smp.h |  8 +++----
+ include/linux/rwlock_types.h   |  7 ++++++
+ 4 files changed, 83 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index e2d4aea..1a1c307 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -25,11 +25,16 @@
- #define DEPT_MAX_SUBCLASSES_USR		(DEPT_MAX_SUBCLASSES / DEPT_MAX_SUBCLASSES_EVT)
- #define DEPT_MAX_SUBCLASSES_CACHE	2
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 6653a4f..b93a707 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -600,16 +600,31 @@ static inline void print_irqtrace_events(struct task_struct *curr)
+ 	dept_spin_unlock(&(l)->dmap, i);				\
+ } while (0)
  
--#define DEPT_SIRQ			0
--#define DEPT_HIRQ			1
--#define DEPT_IRQS_NR			2
--#define DEPT_SIRQF			(1UL << DEPT_SIRQ)
--#define DEPT_HIRQF			(1UL << DEPT_HIRQ)
-+enum {
-+	DEPT_CXT_SIRQ = 0,
-+	DEPT_CXT_HIRQ,
-+	DEPT_CXT_IRQS_NR,
-+	DEPT_CXT_PROCESS = DEPT_CXT_IRQS_NR,
-+	DEPT_CXTS_NR
-+};
-+
-+#define DEPT_SIRQF			(1UL << DEPT_CXT_SIRQ)
-+#define DEPT_HIRQF			(1UL << DEPT_CXT_HIRQ)
- 
- struct dept_ecxt;
- struct dept_iecxt {
-@@ -95,8 +100,8 @@ struct dept_class {
- 	/*
- 	 * for tracking IRQ dependencies
- 	 */
--	struct dept_iecxt		iecxt[DEPT_IRQS_NR];
--	struct dept_iwait		iwait[DEPT_IRQS_NR];
-+	struct dept_iecxt		iecxt[DEPT_CXT_IRQS_NR];
-+	struct dept_iwait		iwait[DEPT_CXT_IRQS_NR];
- };
- 
- struct dept_stack {
-@@ -150,8 +155,8 @@ struct dept_ecxt {
- 	/*
- 	 * where the IRQ-enabled happened
- 	 */
--	unsigned long			enirq_ip[DEPT_IRQS_NR];
--	struct dept_stack		*enirq_stack[DEPT_IRQS_NR];
-+	unsigned long			enirq_ip[DEPT_CXT_IRQS_NR];
-+	struct dept_stack		*enirq_stack[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * where the event context started
-@@ -194,8 +199,8 @@ struct dept_wait {
- 	/*
- 	 * where the IRQ wait happened
- 	 */
--	unsigned long			irq_ip[DEPT_IRQS_NR];
--	struct dept_stack		*irq_stack[DEPT_IRQS_NR];
-+	unsigned long			irq_ip[DEPT_CXT_IRQS_NR];
-+	struct dept_stack		*irq_stack[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * where the wait happened
-@@ -400,19 +405,19 @@ struct dept_task {
- 	int				wait_hist_pos;
- 
- 	/*
--	 * sequential id to identify each IRQ context
-+	 * sequential id to identify each context
- 	 */
--	unsigned int			irq_id[DEPT_IRQS_NR];
-+	unsigned int			cxt_id[DEPT_CXTS_NR];
- 
- 	/*
- 	 * for tracking IRQ-enabled points with cross-event
- 	 */
--	unsigned int			wgen_enirq[DEPT_IRQS_NR];
-+	unsigned int			wgen_enirq[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * for keeping up-to-date IRQ-enabled points
- 	 */
--	unsigned long			enirq_ip[DEPT_IRQS_NR];
-+	unsigned long			enirq_ip[DEPT_CXT_IRQS_NR];
- 
- 	/*
- 	 * current effective IRQ-enabled flag
-@@ -448,7 +453,7 @@ struct dept_task {
- 	.dept_task.wait_hist = { { .wait = NULL, } },			\
- 	.dept_task.ecxt_held_pos = 0,					\
- 	.dept_task.wait_hist_pos = 0,					\
--	.dept_task.irq_id = { 0 },					\
-+	.dept_task.cxt_id = { 0 },					\
- 	.dept_task.wgen_enirq = { 0 },					\
- 	.dept_task.enirq_ip = { 0 },					\
- 	.dept_task.recursive = 0,					\
-@@ -480,6 +485,7 @@ struct dept_task {
- extern void dept_wait_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *w_fn, int ne);
- extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
- extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
-+extern void dept_kernel_enter(void);
- 
- /*
-  * for users who want to manage external keys
-@@ -520,6 +526,7 @@ struct dept_task {
- #define dept_wait_split_map(me, mc, ip, w_fn, ne)	do { } while (0)
- #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
- #define dept_ask_event_split_map(me, mc)		do { } while (0)
-+#define dept_kernel_enter()				do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
- #endif
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 84409759..c369a8e 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -212,9 +212,9 @@ static inline struct dept_class *dep_tc(struct dept_dep *d)
- 
- static inline const char *irq_str(int irq)
- {
--	if (irq == DEPT_SIRQ)
-+	if (irq == DEPT_CXT_SIRQ)
- 		return "softirq";
--	if (irq == DEPT_HIRQ)
-+	if (irq == DEPT_CXT_HIRQ)
- 		return "hardirq";
- 	return "(unknown)";
- }
-@@ -374,7 +374,7 @@ static void initialize_class(struct dept_class *c)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		struct dept_iecxt *ie = &c->iecxt[i];
- 		struct dept_iwait *iw = &c->iwait[i];
- 
-@@ -399,7 +399,7 @@ static void initialize_ecxt(struct dept_ecxt *e)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		e->enirq_stack[i] = NULL;
- 		e->enirq_ip[i] = 0UL;
- 	}
-@@ -414,7 +414,7 @@ static void initialize_wait(struct dept_wait *w)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		w->irq_stack[i] = NULL;
- 		w->irq_ip[i] = 0UL;
- 	}
-@@ -453,7 +453,7 @@ static void destroy_ecxt(struct dept_ecxt *e)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++)
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
- 		if (e->enirq_stack[i])
- 			put_stack(e->enirq_stack[i]);
- 	if (e->class)
-@@ -469,7 +469,7 @@ static void destroy_wait(struct dept_wait *w)
- {
- 	int i;
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++)
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++)
- 		if (w->irq_stack[i])
- 			put_stack(w->irq_stack[i]);
- 	if (w->class)
-@@ -614,7 +614,7 @@ static void print_diagram(struct dept_dep *d)
- 	const char *c_fn = e->ecxt_fn ?: "(unknown)";
- 
- 	irqf = e->enirqf & w->irqf;
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		if (!firstline)
- 			pr_warn("\nor\n\n");
- 		firstline = false;
-@@ -645,7 +645,7 @@ static void print_dep(struct dept_dep *d)
- 	const char *c_fn = e->ecxt_fn ?: "(unknown)";
- 
- 	irqf = e->enirqf & w->irqf;
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		pr_warn("%s has been enabled:\n", irq_str(irq));
- 		print_ip_stack(e->enirq_ip[irq], e->enirq_stack[irq]);
- 		pr_warn("\n");
-@@ -871,7 +871,7 @@ static void bfs(struct dept_class *c, bfs_f *cb, void *in, void **out)
-  */
- 
- static inline unsigned long cur_enirqf(void);
--static inline int cur_irq(void);
-+static inline int cur_cxt(void);
- static inline unsigned int cur_ctxt_id(void);
- 
- static inline struct dept_iecxt *iecxt(struct dept_class *c, int irq)
-@@ -1397,7 +1397,7 @@ static void add_dep(struct dept_ecxt *e, struct dept_wait *w)
- 	if (d) {
- 		check_dl_bfs(d);
- 
--		for (i = 0; i < DEPT_IRQS_NR; i++) {
-+		for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 			struct dept_iwait *fiw = iwait(fc, i);
- 			struct dept_iecxt *found_ie;
- 			struct dept_iwait *found_iw;
-@@ -1433,7 +1433,7 @@ static void add_wait(struct dept_class *c, unsigned long ip,
- 	struct dept_task *dt = dept_task();
- 	struct dept_wait *w;
- 	unsigned int wg = 0U;
--	int irq;
-+	int cxt;
- 	int i;
- 
- 	w = new_wait();
-@@ -1445,9 +1445,9 @@ static void add_wait(struct dept_class *c, unsigned long ip,
- 	w->wait_fn = w_fn;
- 	w->wait_stack = get_current_stack();
- 
--	irq = cur_irq();
--	if (irq < DEPT_IRQS_NR)
--		add_iwait(c, irq, w);
-+	cxt = cur_cxt();
-+	if (cxt == DEPT_CXT_HIRQ || cxt == DEPT_CXT_SIRQ)
-+		add_iwait(c, cxt, w);
- 
- 	/*
- 	 * Avoid adding dependency between user aware nested ecxt and
-@@ -1512,7 +1512,7 @@ static void add_ecxt(void *obj, struct dept_class *c, unsigned long ip,
- 	eh->nest = ne;
- 
- 	irqf = cur_enirqf();
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR)
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR)
- 		add_iecxt(c, irq, e, false);
- 
- 	del_ecxt(e);
-@@ -1639,7 +1639,7 @@ static void do_event(void *obj, struct dept_class *c, unsigned int wg,
- 			break;
- 	}
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		struct dept_ecxt *e;
- 
- 		if (before(dt->wgen_enirq[i], wg))
-@@ -1681,7 +1681,7 @@ static void disconnect_class(struct dept_class *c)
- 		call_rcu(&d->rh, del_dep_rcu);
- 	}
- 
--	for (i = 0; i < DEPT_IRQS_NR; i++) {
-+	for (i = 0; i < DEPT_CXT_IRQS_NR; i++) {
- 		stale_iecxt(iecxt(c, i));
- 		stale_iwait(iwait(c, i));
- 	}
-@@ -1706,27 +1706,21 @@ static inline unsigned long cur_enirqf(void)
- 	return 0UL;
- }
- 
--static inline int cur_irq(void)
-+static inline int cur_cxt(void)
- {
- 	if (lockdep_softirq_context(current))
--		return DEPT_SIRQ;
-+		return DEPT_CXT_SIRQ;
- 	if (lockdep_hardirq_context())
--		return DEPT_HIRQ;
--	return DEPT_IRQS_NR;
-+		return DEPT_CXT_HIRQ;
-+	return DEPT_CXT_PROCESS;
- }
- 
- static inline unsigned int cur_ctxt_id(void)
- {
- 	struct dept_task *dt = dept_task();
--	int irq = cur_irq();
-+	int cxt = cur_cxt();
- 
--	/*
--	 * Normal process context
--	 */
--	if (irq == DEPT_IRQS_NR)
--		return 0U;
+-#define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
++#define rwlock_acquire(l, s, t, i)					\
++do {									\
++	lock_acquire_exclusive(l, s, t, NULL, i);			\
++	dept_rwlock_wlock(&(l)->dmap, s, t, NULL, "write_unlock", i);	\
++} while (0)
+ #define rwlock_acquire_read(l, s, t, i)					\
+ do {									\
+-	if (read_lock_is_recursive())					\
++	if (read_lock_is_recursive()) {				\
+ 		lock_acquire_shared_recursive(l, s, t, NULL, i);	\
+-	else								\
++		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 0);\
++	} else {							\
+ 		lock_acquire_shared(l, s, t, NULL, i);			\
++		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 1);\
++	}								\
++} while (0)
++#define rwlock_release(l, i)						\
++do {									\
++	lock_release(l, i);						\
++	dept_rwlock_wunlock(&(l)->dmap, i);				\
++} while (0)
++#define rwlock_release_read(l, i)					\
++do {									\
++	lock_release(l, i);						\
++	dept_rwlock_runlock(&(l)->dmap, i);				\
+ } while (0)
 -
--	return dt->irq_id[irq] | (1UL << irq);
-+	return dt->cxt_id[cxt] | (1UL << cxt);
- }
+-#define rwlock_release(l, i)			lock_release(l, i)
  
- static void enirq_transition(int irq)
-@@ -1776,7 +1770,7 @@ static void enirq_update(unsigned long ip)
- 	/*
- 	 * Do enirq_transition() only on an OFF -> ON transition.
- 	 */
--	for_each_set_bit(irq, &irqf, DEPT_IRQS_NR) {
-+	for_each_set_bit(irq, &irqf, DEPT_CXT_IRQS_NR) {
- 		if (prev & (1UL << irq))
- 			continue;
+ #define seqcount_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+ #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
+diff --git a/include/linux/rwlock.h b/include/linux/rwlock.h
+index 8f416c5..768ad9e 100644
+--- a/include/linux/rwlock.h
++++ b/include/linux/rwlock.h
+@@ -28,6 +28,58 @@
+ 	do { *(lock) = __RW_LOCK_UNLOCKED(lock); } while (0)
+ #endif
  
-@@ -1879,6 +1873,13 @@ void dept_disable_hardirq(unsigned long ip)
- 	dept_exit(flags);
- }
- 
-+void dept_kernel_enter(void)
-+{
-+	struct dept_task *dt = dept_task();
++#ifdef CONFIG_DEPT
++#define DEPT_EVT_RWLOCK_R		1UL
++#define DEPT_EVT_RWLOCK_W		(1UL << 1)
++#define DEPT_EVT_RWLOCK_RW		(DEPT_EVT_RWLOCK_R | DEPT_EVT_RWLOCK_W)
 +
-+	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
-+}
++#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)			\
++do {									\
++	if (t) {							\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	} else if (n) {							\
++		dept_skip(m);						\
++	} else {							\
++		dept_wait(m, DEPT_EVT_RWLOCK_RW, ip, __func__, ne);	\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	}								\
++} while (0)
++#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)			\
++do {									\
++	if (t) {							\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	} else if (n) {							\
++		dept_skip(m);						\
++	} else {							\
++		dept_wait(m, (q) ? DEPT_EVT_RWLOCK_RW : DEPT_EVT_RWLOCK_W, ip, __func__, ne);\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	}								\
++} while (0)
++#define dept_rwlock_wunlock(m, ip)					\
++do {									\
++	if (!dept_unskip_if_skipped(m)) {				\
++		dept_event(m, DEPT_EVT_RWLOCK_W, ip, __func__);		\
++		dept_ecxt_exit(m, ip);					\
++	}								\
++} while (0)
++#define dept_rwlock_runlock(m, ip)					\
++do {									\
++	if (!dept_unskip_if_skipped(m)) {				\
++		dept_event(m, DEPT_EVT_RWLOCK_R, ip, __func__);		\
++		dept_ecxt_exit(m, ip);					\
++	}								\
++} while (0)
++#else
++#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)	do { } while (0)
++#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)	do { } while (0)
++#define dept_rwlock_wunlock(m, ip)			do { } while (0)
++#define dept_rwlock_runlock(m, ip)			do { } while (0)
++#endif
 +
- /*
-  * Ensure it's the outmost softirq context.
-  */
-@@ -1886,7 +1887,7 @@ void dept_softirq_enter(void)
- {
- 	struct dept_task *dt = dept_task();
+ #ifdef CONFIG_DEBUG_SPINLOCK
+  extern void do_raw_read_lock(rwlock_t *lock) __acquires(lock);
+  extern int do_raw_read_trylock(rwlock_t *lock);
+diff --git a/include/linux/rwlock_api_smp.h b/include/linux/rwlock_api_smp.h
+index dceb0a5..a222cf1 100644
+--- a/include/linux/rwlock_api_smp.h
++++ b/include/linux/rwlock_api_smp.h
+@@ -228,7 +228,7 @@ static inline void __raw_write_unlock(rwlock_t *lock)
  
--	dt->irq_id[DEPT_SIRQ] += (1UL << DEPT_IRQS_NR);
-+	dt->cxt_id[DEPT_CXT_SIRQ] += (1UL << DEPT_CXTS_NR);
+ static inline void __raw_read_unlock(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	preempt_enable();
  }
- 
- /*
-@@ -1896,7 +1897,7 @@ void dept_hardirq_enter(void)
+@@ -236,7 +236,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
+ static inline void
+ __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
  {
- 	struct dept_task *dt = dept_task();
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	local_irq_restore(flags);
+ 	preempt_enable();
+@@ -244,7 +244,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
  
--	dt->irq_id[DEPT_HIRQ] += (1UL << DEPT_IRQS_NR);
-+	dt->cxt_id[DEPT_CXT_HIRQ] += (1UL << DEPT_CXTS_NR);
+ static inline void __raw_read_unlock_irq(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	local_irq_enable();
+ 	preempt_enable();
+@@ -252,7 +252,7 @@ static inline void __raw_read_unlock_irq(rwlock_t *lock)
+ 
+ static inline void __raw_read_unlock_bh(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
  }
+diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
+index 1948442..74804b7 100644
+--- a/include/linux/rwlock_types.h
++++ b/include/linux/rwlock_types.h
+@@ -5,11 +5,18 @@
+ # error "Do not include directly, include spinlock_types.h"
+ #endif
  
- /*
-diff --git a/kernel/entry/common.c b/kernel/entry/common.c
-index bad7136..1826508 100644
---- a/kernel/entry/common.c
-+++ b/kernel/entry/common.c
-@@ -6,6 +6,7 @@
- #include <linux/livepatch.h>
- #include <linux/audit.h>
- #include <linux/tick.h>
-+#include <linux/dept.h>
- 
- #include "common.h"
- 
-@@ -102,6 +103,7 @@ noinstr long syscall_enter_from_user_mode(struct pt_regs *regs, long syscall)
- 	long ret;
- 
- 	__enter_from_user_mode(regs);
-+	dept_kernel_enter();
- 
- 	instrumentation_begin();
- 	local_irq_enable();
-@@ -114,6 +116,7 @@ noinstr long syscall_enter_from_user_mode(struct pt_regs *regs, long syscall)
- noinstr void syscall_enter_from_user_mode_prepare(struct pt_regs *regs)
- {
- 	__enter_from_user_mode(regs);
-+	dept_kernel_enter();
- 	instrumentation_begin();
- 	local_irq_enable();
- 	instrumentation_end();
++#ifdef CONFIG_DEPT
++# define RW_DMAP_INIT(lockname) .dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
++#else
++# define RW_DMAP_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ # define RW_DEP_MAP_INIT(lockname)					\
+ 	.dep_map = {							\
+ 		.name = #lockname,					\
+ 		.wait_type_inner = LD_WAIT_CONFIG,			\
++		RW_DMAP_INIT(lockname)					\
+ 	}
+ #else
+ # define RW_DEP_MAP_INIT(lockname)
 -- 
 1.9.1
 
