@@ -2,135 +2,198 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DA64C433FE
-	for <linux-ext4@archiver.kernel.org>; Sat, 19 Feb 2022 11:00:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B61DEC433FE
+	for <linux-ext4@archiver.kernel.org>; Sun, 20 Feb 2022 16:25:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242139AbiBSLAW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 19 Feb 2022 06:00:22 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41840 "EHLO
+        id S241213AbiBTQZW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 20 Feb 2022 11:25:22 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:54308 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242188AbiBSK7O (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 19 Feb 2022 05:59:14 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7CBFD6A029
-        for <linux-ext4@vger.kernel.org>; Sat, 19 Feb 2022 02:58:46 -0800 (PST)
-Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.53 with ESMTP; 19 Feb 2022 19:58:45 +0900
-X-Original-SENDERIP: 156.147.1.151
-X-Original-MAILFROM: byungchul.park@lge.com
-Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.151 with ESMTP; 19 Feb 2022 19:58:45 +0900
-X-Original-SENDERIP: 10.177.244.38
-X-Original-MAILFROM: byungchul.park@lge.com
-From:   Byungchul Park <byungchul.park@lge.com>
-To:     torvalds@linux-foundation.org
-Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        mingo@redhat.com, linux-kernel@vger.kernel.org,
-        peterz@infradead.org, will@kernel.org, tglx@linutronix.de,
-        rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
-        daniel.vetter@ffwll.ch, chris@chris-wilson.co.uk,
-        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
-        tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
-        amir73il@gmail.com, bfields@fieldses.org,
-        gregkh@linuxfoundation.org, kernel-team@lge.com,
-        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-        ngupta@vflare.org, linux-block@vger.kernel.org, axboe@kernel.dk,
-        paolo.valente@linaro.org, josef@toxicpanda.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
-        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, airlied@linux.ie,
-        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-        hamohammed.sa@gmail.com
-Subject: [PATCH v2 18/18] dept: Distinguish each work from another
-Date:   Sat, 19 Feb 2022 19:58:31 +0900
-Message-Id: <1645268311-24222-19-git-send-email-byungchul.park@lge.com>
-X-Mailer: git-send-email 1.9.1
-In-Reply-To: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
-References: <1645268311-24222-1-git-send-email-byungchul.park@lge.com>
+        with ESMTP id S239743AbiBTQZW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Feb 2022 11:25:22 -0500
+Received: from out20-97.mail.aliyun.com (out20-97.mail.aliyun.com [115.124.20.97])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C1E03466C;
+        Sun, 20 Feb 2022 08:24:59 -0800 (PST)
+X-Alimail-AntiSpam: AC=CONTINUE;BC=0.07436842|-1;CH=green;DM=|CONTINUE|false|;DS=CONTINUE|ham_system_inform|0.0362374-0.00153733-0.962225;FP=0|0|0|0|0|-1|-1|-1;HT=ay29a033018047212;MF=guan@eryu.me;NM=1;PH=DS;RN=4;RT=4;SR=0;TI=SMTPD_---.MsqFXXe_1645374297;
+Received: from localhost(mailfrom:guan@eryu.me fp:SMTPD_---.MsqFXXe_1645374297)
+          by smtp.aliyun-inc.com(10.147.44.129);
+          Mon, 21 Feb 2022 00:24:57 +0800
+Date:   Mon, 21 Feb 2022 00:24:56 +0800
+From:   Eryu Guan <guan@eryu.me>
+To:     Ojaswin Mujoo <ojaswin@linux.ibm.com>
+Cc:     fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
+        riteshh@linux.ibm.com
+Subject: Re: [PATCH 2/2] ext4: Test to ensure resize with sparse_super2 is
+ handled correctly
+Message-ID: <YhJrWA9VaG73H5KC@desktop>
+References: <cover.1644217569.git.ojaswin@linux.ibm.com>
+ <aead63bfa6cca5a8a1c8225075f48a29d06df1ae.1644217569.git.ojaswin@linux.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aead63bfa6cca5a8a1c8225075f48a29d06df1ae.1644217569.git.ojaswin@linux.ibm.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Workqueue already provides concurrency control. By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
+On Mon, Feb 07, 2022 at 01:55:34PM +0530, Ojaswin Mujoo wrote:
+> Kernel currently doesn't support resize of EXT4 mounted
+> with sparse_super2 option enabled. Earlier, it used to leave the resize
+> incomplete and the fs would be left in an inconsistent state, however commit
+> b1489186cc83[1] fixed this to avoid the fs corruption by clearly returning
+> -ENOTSUPP.
+> 
+> Test to ensure that kernel handles resizing with sparse_super2 correctly. Run
+> resize for multiple iterations because this leads to kernel crash due to
+> fs corruption, which we want to detect.
+> 
+> Related commit in mainline:
+> 
+> [1] commit b1489186cc8391e0c1e342f9fbc3eedf6b944c61
+> 
+> 	ext4: add check to prevent attempting to resize an fs with sparse_super2
+> 
+> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> ---
+>  tests/ext4/056     | 102 +++++++++++++++++++++++++++++++++++++++++++++
+>  tests/ext4/056.out |   2 +
+>  2 files changed, 104 insertions(+)
+>  create mode 100755 tests/ext4/056
+>  create mode 100644 tests/ext4/056.out
+> 
+> diff --git a/tests/ext4/056 b/tests/ext4/056
+> new file mode 100755
+> index 00000000..9185621d
+> --- /dev/null
+> +++ b/tests/ext4/056
+> @@ -0,0 +1,102 @@
+> +#! /bin/bash
+> +# SPDX-License-Identifier: GPL-2.0
+> +# Copyright (c) 2022 IBM. All Rights Reserved.
+> +#
+> +# We don't currently support resize of EXT4 filesystems mounted
+> +# with sparse_super2 option enabled. Earlier, kernel used to leave the resize
+> +# incomplete and the fs would be left into an incomplete state, however commit
+> +# b1489186cc83 fixed this to avoid the fs corruption by clearly returning
+> +# -ENOTSUPP.
+> +#
+> +# This test ensures that kernel handles resizing with sparse_super2 correctly
+> +#
+> +# Related commit in mainline:
+> +#
+> +# commit b1489186cc8391e0c1e342f9fbc3eedf6b944c61
+> +# ext4: add check to prevent attempting to resize an fs with sparse_super2
+> +#
+> +
+> +. ./common/preamble
+> +_begin_fstest auto ioctl resize quick
+> +
+> +# real QA test starts here
+> +
+> +INITIAL_FS_SIZE=1G
+> +RESIZED_FS_SIZE=$((2*1024*1024*1024))  # 2G
+> +ONLINE_RESIZE_BLOCK_LIMIT=$((256*1024*1024))
+> +
+> +_supported_fs ext4
+> +_require_scratch_size $(($RESIZED_FS_SIZE/1024))
+> +_require_test_program "ext4_resize"
+> +
+> +_log()
+> +{
+> +	echo "$seq: $*" >> $seqres.full 2>&1
+> +}
 
-So let Dept assign a different context id to each work.
+Leading under score is used for common functions, local functions don't
+need it.
 
-Signed-off-by: Byungchul Park <byungchul.park@lge.com>
----
- include/linux/dept.h     |  2 ++
- kernel/dependency/dept.c | 10 ++++++++++
- kernel/workqueue.c       |  3 +++
- 3 files changed, 15 insertions(+)
+> +
+> +do_resize()
+> +{
+> +
+> +	$MKFS_PROG `_scratch_mkfs_options -t ext4 -E resize=$ONLINE_RESIZE_BLOCK_LIMIT \
+> +		-O sparse_super2` $INITIAL_FS_SIZE >> $seqres.full 2>&1 \
+> +		|| _fail "$MKFS_PROG failed. Exiting"
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 1a1c307..55c5ed5 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -486,6 +486,7 @@ struct dept_task {
- extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
- extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
- extern void dept_kernel_enter(void);
-+extern void dept_work_enter(void);
- 
- /*
-  * for users who want to manage external keys
-@@ -527,6 +528,7 @@ struct dept_task {
- #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
- #define dept_ask_event_split_map(me, mc)		do { } while (0)
- #define dept_kernel_enter()				do { } while (0)
-+#define dept_work_enter()				do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
- #endif
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index c369a8e..ee3faa2 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1873,6 +1873,16 @@ void dept_disable_hardirq(unsigned long ip)
- 	dept_exit(flags);
- }
- 
-+/*
-+ * Assign a different context id to each work.
-+ */
-+void dept_work_enter(void)
-+{
-+	struct dept_task *dt = dept_task();
-+
-+	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
-+}
-+
- void dept_kernel_enter(void)
- {
- 	struct dept_task *dt = dept_task();
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index 33f1106..f5d762c 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -51,6 +51,7 @@
- #include <linux/sched/isolation.h>
- #include <linux/nmi.h>
- #include <linux/kvm_para.h>
-+#include <linux/dept.h>
- 
- #include "workqueue_internal.h"
- 
-@@ -2217,6 +2218,8 @@ static void process_one_work(struct worker *worker, struct work_struct *work)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
-+	dept_work_enter();
-+
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
--- 
-1.9.1
+I think we could use _mkfs_dev here.
 
+> +
+> +	_scratch_mount || _fail "Failed to mount scratch partition. Exiting"
+> +
+> +	BS=$(_get_block_size $SCRATCH_MNT)
+> +	NEW_BLOCKS=$(($RESIZED_FS_SIZE/$BS))
+> +
+> +	local RESIZE_RET
+> +	local EOPNOTSUPP=95
+> +
+> +	$here/src/ext4_resize $SCRATCH_MNT $NEW_BLOCKS >> $seqres.full 2>&1
+> +	RESIZE_RET=$?
+> +
+> +	# Use $RESIZE_RET for logging
+> +	if [ $RESIZE_RET = 0 ]
+> +	then
+> +		_log "Resizing succeeded but FS might still be corrupt."
+
+I don't think _log is needed here, just echo message to stdout and this
+will break golden image and fail the test.
+
+> +	elif [ $RESIZE_RET = $EOPNOTSUPP ]
+> +	then
+> +		_log "Resize operation not supported with sparse_super2"
+> +		_log "Threw expected error $RESIZE_RET (EOPNOTSUPP)"
+> +
+> +	else
+> +		_log "Output of resize = $RESIZE_RET. Expected $EOPNOTSUPP (EOPNOTSUPP)"
+> +		_log "You might be missing kernel patch b1489186cc83"
+> +	fi
+> +
+> +	# unount after ioctl sometimes fails with "device busy" so add a small delay
+> +	sleep 0.1
+> +
+> +	_scratch_unmount >> $seqres.full 2>&1 || _fail "$UMOUNT_PROG failed. Exiting"
+> +}
+> +
+> +run_test()
+> +{
+> +	local FSCK_RET
+> +	local ITERS=8
+> +
+> +	for i in $(seq 1 $ITERS)
+> +	do
+> +		_log "----------- Iteration: $i ------------"
+> +		do_resize
+> +	done
+> +
+> +	_log "-------- Iterations Complete ---------"
+> +	_log "Checking if FS is in consistent state"
+> +	_check_scratch_fs
+> +	FSCK_RET=$?
+> +
+> +	return $FSCK_RET
+> +}
+> +
+> +run_test
+> +status=$?
+> +
+> +if [ "$status" -eq "0" ]
+> +then
+> +	echo "Test Succeeded!" | tee -a $seqres.full
+> +fi
+
+This is not needed, just echo "Silence is golden" at the beginning of
+the test, so any additional output will fail the test.
+
+Thanks,
+Eryu
+
+> +
+> +exit
+> diff --git a/tests/ext4/056.out b/tests/ext4/056.out
+> new file mode 100644
+> index 00000000..41706284
+> --- /dev/null
+> +++ b/tests/ext4/056.out
+> @@ -0,0 +1,2 @@
+> +QA output created by 056
+> +Test Succeeded!
+> -- 
+> 2.27.0
