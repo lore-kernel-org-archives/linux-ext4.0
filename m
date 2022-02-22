@@ -2,150 +2,144 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89896C433F5
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 02:48:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FD7AC433F5
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 03:17:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239274AbiBVCtG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Feb 2022 21:49:06 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:59550 "EHLO
+        id S239834AbiBVDSR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Feb 2022 22:18:17 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:40288 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234481AbiBVCtF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Feb 2022 21:49:05 -0500
-Received: from out30-133.freemail.mail.aliyun.com (out30-133.freemail.mail.aliyun.com [115.124.30.133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A24124F37
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Feb 2022 18:48:40 -0800 (PST)
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04394;MF=hsiangkao@linux.alibaba.com;NM=1;PH=DS;RN=8;SR=0;TI=SMTPD_---0V5Ar.ID_1645498115;
-Received: from B-P7TQMD6M-0146.local(mailfrom:hsiangkao@linux.alibaba.com fp:SMTPD_---0V5Ar.ID_1645498115)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Tue, 22 Feb 2022 10:48:37 +0800
-Date:   Tue, 22 Feb 2022 10:48:35 +0800
-From:   Gao Xiang <hsiangkao@linux.alibaba.com>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Shyam Prasad N <nspmangalore@gmail.com>,
-        David Howells <dhowells@redhat.com>,
-        Steve French <smfrench@gmail.com>, linux-ext4@vger.kernel.org,
-        Jeffle Xu <jefflexu@linux.alibaba.com>,
-        bo.liu@linux.alibaba.com, tao.peng@linux.alibaba.com
-Subject: Re: Regarding ext4 extent allocation strategy
-Message-ID: <YhRPA/pco44fCa2S@B-P7TQMD6M-0146.local>
-References: <CANT5p=o3i4kWQuMFF5zKQp04JnWEQnYuo+cvyH8asGMvTVBBkw@mail.gmail.com>
- <YO17ZNOcq+9PajfQ@mit.edu>
- <Yg8P9uvExJ2B/J3T@B-P7TQMD6M-0146.local>
+        with ESMTP id S233775AbiBVDSQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Feb 2022 22:18:16 -0500
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2908F73;
+        Mon, 21 Feb 2022 19:17:51 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 0FB2C210FF;
+        Tue, 22 Feb 2022 03:17:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1645499870; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=GhZHme0nl7A4JBQ0S74qk0HiW5RevCCShdffmTtXtEE=;
+        b=ljl5hpqnn8XItaz2pgS0/dFbp8Or7nFEcXyK3PPQX3y1pOij2ACiitVFo1ZW1KHULTSA32
+        YPbDwlZKpapBzbobU/O0VXr6WOOcd4WDNGQESKT4qQihx0Fj189ZP5Cn2KjOfrjZWle1nr
+        sSBZtznZf5z+aAaHk0OnFJ6IwVJ/iwo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1645499870;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=GhZHme0nl7A4JBQ0S74qk0HiW5RevCCShdffmTtXtEE=;
+        b=ZXJr3TPlVf5poY4reMjaSwIa54LBqaPVcDT+//ErMovmrjU1PnyR6RQJgfl+heyxghO0fc
+        BsR4trFirlMhFPDw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 323C613BA7;
+        Tue, 22 Feb 2022 03:17:41 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 6vPPN9VVFGJPWgAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 22 Feb 2022 03:17:41 +0000
+Subject: [PATCH 00/11]  Remove remaining parts of congestion tracking code.
+From:   NeilBrown <neilb@suse.de>
+To:     Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
+        Wu Fengguang <fengguang.wu@intel.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Philipp Reisner <philipp.reisner@linbit.com>,
+        Lars Ellenberg <lars.ellenberg@linbit.com>,
+        Paolo Valente <paolo.valente@linaro.org>,
+        Jens Axboe <axboe@kernel.dk>
+Cc:     linux-doc@vger.kernel.org, linux-mm@kvack.org,
+        linux-nilfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-kernel@vger.kernel.org
+Date:   Tue, 22 Feb 2022 14:17:17 +1100
+Message-ID: <164549971112.9187.16871723439770288255.stgit@noble.brown>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <Yg8P9uvExJ2B/J3T@B-P7TQMD6M-0146.local>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ted,
+Here is another refresh of my "remove congestion tracking" series.
 
-Sorry for pinging so quickly since it's quite important for the
-container on-demand use cases (maybe other on-demand distribution
-use cases as well.) We still prefer this cachefiles way since
-its data plane won't cross kernel-userspace boundary when data is
-ready (and that's the common cases after data is fetched from
-network.)
+I removed the small tweaks to read-ahead code because they raised
+questions and are actually required for this series.
 
-Many thanks again!
-Gao Xiang
+Everything else is the same.
 
-On Fri, Feb 18, 2022 at 11:18:14AM +0800, Gao Xiang wrote:
-> Hi Ted and David,
-> 
-> On Tue, Jul 13, 2021 at 07:39:16AM -0400, Theodore Y. Ts'o wrote:
-> > On Tue, Jul 13, 2021 at 12:22:14PM +0530, Shyam Prasad N wrote:
-> > > 
-> > > Our team in Microsoft, which works on the Linux SMB3 client kernel
-> > > filesystem has recently been exploring the use of fscache on top of
-> > > ext4 for caching the network filesystem data for some customer
-> > > workloads.
-> > > 
-> > > However, the maintainer of fscache (David Howells) recently warned us
-> > > that a few other extent based filesystem developers pointed out a
-> > > theoretical bug in the current implementation of fscache/cachefiles.
-> > > It currently does not maintain a separate metadata for the cached data
-> > > it holds, but instead uses the sparseness of the underlying filesystem
-> > > to track the ranges of the data that is being cached.
-> > > The bug that has been pointed out with this is that the underlying
-> > > filesystems could bridge holes between data ranges with zeroes or
-> > > punch hole in data ranges that contain zeroes. (@David please add if I
-> > > missed something).
-> > > 
-> > > David has already begun working on the fix to this by maintaining the
-> > > metadata of the cached ranges in fscache itself.
-> > > However, since it could take some time for this fix to be approved and
-> > > then backported by various distros, I'd like to understand if there is
-> > > a potential problem in using fscache on top of ext4 without the fix.
-> > > If ext4 doesn't do any such optimizations on the data ranges, or has a
-> > > way to disable such optimizations, I think we'll be okay to use the
-> > > older versions of fscache even without the fix mentioned above.
-> > 
-> > Yes, the tuning knob you are looking for is:
-> > 
-> > What:		/sys/fs/ext4/<disk>/extent_max_zeroout_kb
-> > Date:		August 2012
-> > Contact:	"Theodore Ts'o" <tytso@mit.edu>
-> > Description:
-> > 		The maximum number of kilobytes which will be zeroed
-> > 		out in preference to creating a new uninitialized
-> > 		extent when manipulating an inode's extent tree.  Note
-> > 		that using a larger value will increase the
-> > 		variability of time necessary to complete a random
-> > 		write operation (since a 4k random write might turn
-> > 		into a much larger write due to the zeroout
-> > 		operation).
-> > 
-> > (From Documentation/ABI/testing/sysfs-fs-ext4)
-> > 
-> > The basic idea here is that with a random workload, with HDD's, the
-> > cost of writing a 16k random write is not much more than the time to
-> > write a 4k random write; that is, the cost of HDD seeks dominates.
-> > There is also a cost in having a many additional entries in the extent
-> > tree.  So if we have a fallocated region, e.g:
-> > 
-> >     +-------------+---+---+---+----------+---+---+---------+
-> > ... + Uninit (U)  | W | U | W |   Uninit | W | U | Written | ...
-> >     +-------------+---+---+---+----------+---+---+---------+
-> > 
-> > It's more efficient to have the extent tree look like this
-> > 
-> >     +-------------+-----------+----------+---+---+---------+
-> > ... + Uninit (U)  |  Written  |   Uninit | W | U | Written | ...
-> >     +-------------+-----------+----------+---+---+---------+
-> > 
-> > And just simply write zeros to the first "U" in the above figure.
-> > 
-> > The default value of extent_max_zeroout_kb is 32k.  This optimization
-> > can be disabled by setting extent_max_zeroout_kb to 0.  The downside
-> > of this is a potential degredation of a random write workload (using
-> > for example the fio benchmark program) on that file system.
-> > 
-> 
-> As far as I understand what cachefile does, it just truncates a sparse
-> file with a big hole, and do direct IO _only_ all the time to fill the
-> holes.
-> 
-> But the description above is all around (un)written extents, which
-> already have physical blocks allocated, but just without data
-> initialization. So we could zero out the middle extent and merge
-> these extents into one bigger written extent.
-> 
-> However, IMO, it's not the case of what the current cachefiles
-> behavior is... I think rare local fs allocates blocks with direct
-> i/o due to real holes, zero out and merge extents since at least it
-> touches disk quota.
-> 
-> David pointed this message yesterday since we're doing on-demand read
-> feature by using cachefiles as well. But I still fail to understand why
-> the current cachefile behavior is wrong.
-> 
-> Could you kindly leave more hints about this? Many thanks!
-> 
-> Thanks,
-> Gao Xiang
-> 
-> > Cheers,
-> > 
-> > 						- Ted
+Andrew: please drop the version of this that is currently in your tree
+even if you don't take this.  The changes to fuse/nfs/ceph are not
+appropriate and I wouldn't want them to land by mistake.
+
+Thanks,
+NeilBrown
+
+---
+
+NeilBrown (11):
+      DOC: convert 'subsection' to 'section' in gfp.h
+      MM: document and polish read-ahead code.
+      MM: improve cleanup when ->readpages doesn't process all pages.
+      fuse: remove reliance on bdi congestion
+      nfs: remove reliance on bdi congestion
+      ceph: remove reliance on bdi congestion
+      Remove inode_congested()
+      Remove bdi_congested() and wb_congested() and related functions
+      f2fs: replace congestion_wait() calls with io_schedule_timeout()
+      block/bfq-iosched.c: use "false" rather than "BLK_RW_ASYNC"
+      Remove congestion tracking framework.
+
+
+ Documentation/core-api/mm-api.rst |  19 ++++-
+ Documentation/filesystems/vfs.rst |  16 ++--
+ block/bfq-iosched.c               |   2 +-
+ drivers/block/drbd/drbd_int.h     |   3 -
+ drivers/block/drbd/drbd_req.c     |   3 +-
+ fs/ceph/addr.c                    |  22 +++---
+ fs/ceph/super.c                   |   1 +
+ fs/ceph/super.h                   |   1 +
+ fs/ext2/ialloc.c                  |   5 --
+ fs/f2fs/compress.c                |   4 +-
+ fs/f2fs/data.c                    |   3 +-
+ fs/f2fs/f2fs.h                    |   6 ++
+ fs/f2fs/segment.c                 |   8 +-
+ fs/f2fs/super.c                   |   6 +-
+ fs/fs-writeback.c                 |  37 ---------
+ fs/fuse/control.c                 |  17 -----
+ fs/fuse/dev.c                     |   8 --
+ fs/fuse/file.c                    |  17 +++++
+ fs/nfs/write.c                    |  14 +++-
+ fs/nilfs2/segbuf.c                |  15 ----
+ fs/xfs/xfs_buf.c                  |   3 -
+ include/linux/backing-dev-defs.h  |   8 --
+ include/linux/backing-dev.h       |  50 ------------
+ include/linux/fs.h                |   9 ++-
+ include/linux/nfs_fs_sb.h         |   1 +
+ include/trace/events/writeback.h  |  28 -------
+ mm/backing-dev.c                  |  57 --------------
+ mm/fadvise.c                      |   5 +-
+ mm/readahead.c                    | 122 ++++++++++++++++++++++++++++--
+ mm/vmscan.c                       |  21 +----
+ 30 files changed, 212 insertions(+), 299 deletions(-)
+
+--
+Signature
+
