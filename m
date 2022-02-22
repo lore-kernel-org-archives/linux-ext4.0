@@ -2,258 +2,112 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D1232C433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 03:21:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C53B1C433F5
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 08:27:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240587AbiBVDU1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Feb 2022 22:20:27 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:49932 "EHLO
+        id S229801AbiBVI2A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Feb 2022 03:28:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36288 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240729AbiBVDUX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Feb 2022 22:20:23 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E0AC17AAF;
-        Mon, 21 Feb 2022 19:19:47 -0800 (PST)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 642C3210E8;
-        Tue, 22 Feb 2022 03:19:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1645499986; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        with ESMTP id S229810AbiBVI1t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2022 03:27:49 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 455319BBB3;
+        Tue, 22 Feb 2022 00:27:25 -0800 (PST)
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out2.suse.de (Postfix) with ESMTP id F1AA31F397;
+        Tue, 22 Feb 2022 08:27:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1645518444; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=a+gOCl3Uu5a57JUf3+D8LPhOyA2XikSkYVnvXfrL++o=;
-        b=Fuf3P/4XtdeE3L1qOoOVj29UXHcNj/udX+uqzlAmfU9TQ4gOakVNPvLm6WV9XHNw2Twhqn
-        sG3YK3wsUpMYJGo5O1VFjH1kAV5JG3f+AvZTMT067gsfyTQVn3Z6dnqPXJqzeFAHMMe5N/
-        Hl8f7OyU8NiyeLs25lu+BmR4ahBJxiI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1645499986;
+        bh=dKa9YzG6WdPDW42WrXRDZOX/ZgG302zZsU6kzGjfuRk=;
+        b=Td2+1nGSGsZ5KMAOXZdDV1sjvAKTWie8Ea7gXdjxrT1MQOLxRE4sf1yFUF0ozBZVaxx57G
+        F2w6B+J4F1f3Eg7LYwOH4bUr084LTNnx3qdml8GVzZw7C34nAkA10vZYP/GcPXeYqmArAE
+        wCViF/uK3oZXRCgtuFDkWlfv6CnR2eU=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1645518444;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=a+gOCl3Uu5a57JUf3+D8LPhOyA2XikSkYVnvXfrL++o=;
-        b=e0iVNMN1hvdpMzQkKCVY9Hbh++qZa15xUJrFknVhOW91N6Iz2FkJ0V9zCPlTRBgCmToxme
-        HItshZI/s+Hha9Dw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=dKa9YzG6WdPDW42WrXRDZOX/ZgG302zZsU6kzGjfuRk=;
+        b=NGZGyoSgJN2YJMiLD1FSYJmywAnquy44CmumlY0Lj78LVdd0HvqzHfi6xzzURKNLWHg+/L
+        L+QdSHBoxKlpW+CA==
+Received: from quack3.suse.cz (unknown [10.100.200.198])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id F0FE913BA7;
-        Tue, 22 Feb 2022 03:19:36 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id xgsvKkhWFGIFWwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 22 Feb 2022 03:19:36 +0000
-Subject: [PATCH 08/11] Remove bdi_congested() and wb_congested() and related
- functions
-From:   NeilBrown <neilb@suse.de>
-To:     Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        Wu Fengguang <fengguang.wu@intel.com>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Ryusuke Konishi <konishi.ryusuke@gmail.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        Paolo Valente <paolo.valente@linaro.org>,
-        Jens Axboe <axboe@kernel.dk>
-Cc:     linux-doc@vger.kernel.org, linux-mm@kvack.org,
-        linux-nilfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
-        ceph-devel@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-kernel@vger.kernel.org
-Date:   Tue, 22 Feb 2022 14:17:17 +1100
-Message-ID: <164549983742.9187.2570198746005819592.stgit@noble.brown>
-In-Reply-To: <164549971112.9187.16871723439770288255.stgit@noble.brown>
-References: <164549971112.9187.16871723439770288255.stgit@noble.brown>
-User-Agent: StGit/0.23
+        by relay2.suse.de (Postfix) with ESMTPS id DE5A8A3B88;
+        Tue, 22 Feb 2022 08:27:23 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 9F9B5A0606; Tue, 22 Feb 2022 09:27:23 +0100 (CET)
+Date:   Tue, 22 Feb 2022 09:27:23 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Byungchul Park <byungchul.park@lge.com>
+Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        chris@chris-wilson.co.uk, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+        bfields@fieldses.org, gregkh@linuxfoundation.org,
+        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
+        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
+        vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
+        dennis@kernel.org, cl@linux.com, penberg@kernel.org,
+        rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
+        linux-block@vger.kernel.org, axboe@kernel.dk,
+        paolo.valente@linaro.org, josef@toxicpanda.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
+        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+        dri-devel@lists.freedesktop.org, airlied@linux.ie,
+        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+        hamohammed.sa@gmail.com
+Subject: Re: Report 1 in ext4 and journal based on v5.17-rc1
+Message-ID: <20220222082723.rddf4typah3wegrc@quack3.lan>
+References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
+ <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-These functions are no longer useful as no BDIs report congestions any
-more.
+On Thu 17-02-22 20:10:03, Byungchul Park wrote:
+> [    7.009608] ===================================================
+> [    7.009613] DEPT: Circular dependency has been detected.
+> [    7.009614] 5.17.0-rc1-00014-g8a599299c0cb-dirty #30 Tainted: G        W
+> [    7.009616] ---------------------------------------------------
+> [    7.009617] summary
+> [    7.009618] ---------------------------------------------------
+> [    7.009618] *** DEADLOCK ***
+> [    7.009618]
+> [    7.009619] context A
+> [    7.009619]     [S] (unknown)(&(bit_wait_table + i)->dmap:0)
+> [    7.009621]     [W] down_write(&ei->i_data_sem:0)
+> [    7.009623]     [E] event(&(bit_wait_table + i)->dmap:0)
+> [    7.009624]
+> [    7.009625] context B
+> [    7.009625]     [S] down_read(&ei->i_data_sem:0)
+> [    7.009626]     [W] wait(&(bit_wait_table + i)->dmap:0)
+> [    7.009627]     [E] up_read(&ei->i_data_sem:0)
+> [    7.009628]
 
-Removing the test on bdi_write_contested() in current_may_throttle()
-could cause a small change in behaviour, but only when PF_LOCAL_THROTTLE
-is set.
+Looking into this I have noticed that Dept here tracks bitlocks (buffer
+locks in particular) but it apparently treats locks on all buffers as one
+locking class so it conflates lock on superblock buffer with a lock on
+extent tree block buffer. These are wastly different locks with different
+locking constraints. So to avoid false positives in filesystems we will
+need to add annotations to differentiate locks on different buffers (based
+on what the block is used for). Similarly how we e.g. annotate i_rwsem for
+different inodes.
 
-So replace the calls by 'false' and simplify the code - and remove the
-functions.
-
-Acked-by: Ryusuke Konishi <konishi.ryusuke@gmail.com> (for nilfs bits)
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- drivers/block/drbd/drbd_int.h |    3 ---
- drivers/block/drbd/drbd_req.c |    3 +--
- fs/ext2/ialloc.c              |    5 -----
- fs/nilfs2/segbuf.c            |   15 ---------------
- fs/xfs/xfs_buf.c              |    3 ---
- include/linux/backing-dev.h   |   26 --------------------------
- mm/vmscan.c                   |    4 +---
- 7 files changed, 2 insertions(+), 57 deletions(-)
-
-diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
-index f27d5b0f9a0b..f804b1bfb3e6 100644
---- a/drivers/block/drbd/drbd_int.h
-+++ b/drivers/block/drbd/drbd_int.h
-@@ -638,9 +638,6 @@ enum {
- 	STATE_SENT,		/* Do not change state/UUIDs while this is set */
- 	CALLBACK_PENDING,	/* Whether we have a call_usermodehelper(, UMH_WAIT_PROC)
- 				 * pending, from drbd worker context.
--				 * If set, bdi_write_congested() returns true,
--				 * so shrink_page_list() would not recurse into,
--				 * and potentially deadlock on, this drbd worker.
- 				 */
- 	DISCONNECT_SENT,
- 
-diff --git a/drivers/block/drbd/drbd_req.c b/drivers/block/drbd/drbd_req.c
-index 3235532ae077..2e5fb7e442e3 100644
---- a/drivers/block/drbd/drbd_req.c
-+++ b/drivers/block/drbd/drbd_req.c
-@@ -909,8 +909,7 @@ static bool remote_due_to_read_balancing(struct drbd_device *device, sector_t se
- 
- 	switch (rbm) {
- 	case RB_CONGESTED_REMOTE:
--		return bdi_read_congested(
--			device->ldev->backing_bdev->bd_disk->bdi);
-+		return 0;
- 	case RB_LEAST_PENDING:
- 		return atomic_read(&device->local_cnt) >
- 			atomic_read(&device->ap_pending_cnt) + atomic_read(&device->rs_pending_cnt);
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index df14e750e9fe..998dd2ac8008 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -170,11 +170,6 @@ static void ext2_preread_inode(struct inode *inode)
- 	unsigned long offset;
- 	unsigned long block;
- 	struct ext2_group_desc * gdp;
--	struct backing_dev_info *bdi;
--
--	bdi = inode_to_bdi(inode);
--	if (bdi_rw_congested(bdi))
--		return;
- 
- 	block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
- 	gdp = ext2_get_group_desc(inode->i_sb, block_group, NULL);
-diff --git a/fs/nilfs2/segbuf.c b/fs/nilfs2/segbuf.c
-index 43287b0d3e9b..c4510f79037f 100644
---- a/fs/nilfs2/segbuf.c
-+++ b/fs/nilfs2/segbuf.c
-@@ -343,17 +343,6 @@ static int nilfs_segbuf_submit_bio(struct nilfs_segment_buffer *segbuf,
- 	struct bio *bio = wi->bio;
- 	int err;
- 
--	if (segbuf->sb_nbio > 0 &&
--	    bdi_write_congested(segbuf->sb_super->s_bdi)) {
--		wait_for_completion(&segbuf->sb_bio_event);
--		segbuf->sb_nbio--;
--		if (unlikely(atomic_read(&segbuf->sb_err))) {
--			bio_put(bio);
--			err = -EIO;
--			goto failed;
--		}
--	}
--
- 	bio->bi_end_io = nilfs_end_bio_write;
- 	bio->bi_private = segbuf;
- 	bio_set_op_attrs(bio, mode, mode_flags);
-@@ -365,10 +354,6 @@ static int nilfs_segbuf_submit_bio(struct nilfs_segment_buffer *segbuf,
- 	wi->nr_vecs = min(wi->max_pages, wi->rest_blocks);
- 	wi->start = wi->end;
- 	return 0;
--
-- failed:
--	wi->bio = NULL;
--	return err;
- }
- 
- /**
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index b45e0d50a405..b7ebcfe6b8d3 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -843,9 +843,6 @@ xfs_buf_readahead_map(
- {
- 	struct xfs_buf		*bp;
- 
--	if (bdi_read_congested(target->bt_bdev->bd_disk->bdi))
--		return;
--
- 	xfs_buf_read_map(target, map, nmaps,
- 		     XBF_TRYLOCK | XBF_ASYNC | XBF_READ_AHEAD, &bp, ops,
- 		     __this_address);
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 860b675c2929..2d764566280c 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -135,11 +135,6 @@ static inline bool writeback_in_progress(struct bdi_writeback *wb)
- 
- struct backing_dev_info *inode_to_bdi(struct inode *inode);
- 
--static inline int wb_congested(struct bdi_writeback *wb, int cong_bits)
--{
--	return wb->congested & cong_bits;
--}
--
- long congestion_wait(int sync, long timeout);
- 
- static inline bool mapping_can_writeback(struct address_space *mapping)
-@@ -391,27 +386,6 @@ static inline void wb_blkcg_offline(struct blkcg *blkcg)
- 
- #endif	/* CONFIG_CGROUP_WRITEBACK */
- 
--static inline int bdi_congested(struct backing_dev_info *bdi, int cong_bits)
--{
--	return wb_congested(&bdi->wb, cong_bits);
--}
--
--static inline int bdi_read_congested(struct backing_dev_info *bdi)
--{
--	return bdi_congested(bdi, 1 << WB_sync_congested);
--}
--
--static inline int bdi_write_congested(struct backing_dev_info *bdi)
--{
--	return bdi_congested(bdi, 1 << WB_async_congested);
--}
--
--static inline int bdi_rw_congested(struct backing_dev_info *bdi)
--{
--	return bdi_congested(bdi, (1 << WB_sync_congested) |
--				  (1 << WB_async_congested));
--}
--
- const char *bdi_dev_name(struct backing_dev_info *bdi);
- 
- #endif	/* _LINUX_BACKING_DEV_H */
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index e38de6456cdc..5e1469887afa 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -2364,9 +2364,7 @@ static unsigned int move_pages_to_lru(struct lruvec *lruvec,
-  */
- static int current_may_throttle(void)
- {
--	return !(current->flags & PF_LOCAL_THROTTLE) ||
--		current->backing_dev_info == NULL ||
--		bdi_write_congested(current->backing_dev_info);
-+	return !(current->flags & PF_LOCAL_THROTTLE);
- }
- 
- /*
-
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
