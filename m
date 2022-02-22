@@ -2,112 +2,59 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C53B1C433F5
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 08:27:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF88FC433FE
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Feb 2022 15:46:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229801AbiBVI2A (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Feb 2022 03:28:00 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36288 "EHLO
+        id S233387AbiBVPrJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Feb 2022 10:47:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229810AbiBVI1t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2022 03:27:49 -0500
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 455319BBB3;
-        Tue, 22 Feb 2022 00:27:25 -0800 (PST)
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id F1AA31F397;
-        Tue, 22 Feb 2022 08:27:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1645518444; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=dKa9YzG6WdPDW42WrXRDZOX/ZgG302zZsU6kzGjfuRk=;
-        b=Td2+1nGSGsZ5KMAOXZdDV1sjvAKTWie8Ea7gXdjxrT1MQOLxRE4sf1yFUF0ozBZVaxx57G
-        F2w6B+J4F1f3Eg7LYwOH4bUr084LTNnx3qdml8GVzZw7C34nAkA10vZYP/GcPXeYqmArAE
-        wCViF/uK3oZXRCgtuFDkWlfv6CnR2eU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1645518444;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=dKa9YzG6WdPDW42WrXRDZOX/ZgG302zZsU6kzGjfuRk=;
-        b=NGZGyoSgJN2YJMiLD1FSYJmywAnquy44CmumlY0Lj78LVdd0HvqzHfi6xzzURKNLWHg+/L
-        L+QdSHBoxKlpW+CA==
-Received: from quack3.suse.cz (unknown [10.100.200.198])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id DE5A8A3B88;
-        Tue, 22 Feb 2022 08:27:23 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 9F9B5A0606; Tue, 22 Feb 2022 09:27:23 +0100 (CET)
-Date:   Tue, 22 Feb 2022 09:27:23 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Byungchul Park <byungchul.park@lge.com>
-Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com,
-        linux-kernel@vger.kernel.org, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        chris@chris-wilson.co.uk, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-        bfields@fieldses.org, gregkh@linuxfoundation.org,
-        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
-        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
-        vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
-        dennis@kernel.org, cl@linux.com, penberg@kernel.org,
-        rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
-        linux-block@vger.kernel.org, axboe@kernel.dk,
-        paolo.valente@linaro.org, josef@toxicpanda.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
-        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, airlied@linux.ie,
-        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-        hamohammed.sa@gmail.com
-Subject: Re: Report 1 in ext4 and journal based on v5.17-rc1
-Message-ID: <20220222082723.rddf4typah3wegrc@quack3.lan>
-References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
- <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
+        with ESMTP id S231300AbiBVPrH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2022 10:47:07 -0500
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A76E1A804;
+        Tue, 22 Feb 2022 07:46:39 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=Huls1rFGB2qZ4Fp0OAzd0z5j8dCiIe4CcnDjsirdHE0=; b=NY5NPM4j7DAPbkK2cuMwVlfa9+
+        pLtx2zKV51IUpxN7o0axOaaHbuz+beKtzWxc4XEL07ug7leB4Yspk738ozlaaKjWJovbBXQBqXNyf
+        om34hTqCcGkdiUHf+j/bfamzv5QoP6KfFuYt2iBA9s5Y4ATbsQwK9gN/MJN48svGIBCqS9zotUV+L
+        CTqIQMCatfRCPBM05BCxZnW65Ugl3HjvA8UkzHDlR4rS9aSSxve7S5y2Tl0bO4fthkP8GFtlc0YjN
+        xl33J386SdqkhSC5ccdG2hBr/4vQv6x6zo+nDpY9jP1EcQLa4ccie6/aCoShiKC0TTSycbGcHjdEa
+        XD5+2vxA==;
+Received: from [2001:4bb8:198:f8fc:c22a:ebfc:be8d:63c2] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1nMXN6-00ANW4-Kb; Tue, 22 Feb 2022 15:46:37 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+        Ryusuke Konishi <konishi.ryusuke@gmail.com>
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nilfs@vger.kernel.org
+Subject: simple file system cleanups for the new bio_alloc calling conventions
+Date:   Tue, 22 Feb 2022 16:46:31 +0100
+Message-Id: <20220222154634.597067-1-hch@lst.de>
+X-Mailer: git-send-email 2.30.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu 17-02-22 20:10:03, Byungchul Park wrote:
-> [    7.009608] ===================================================
-> [    7.009613] DEPT: Circular dependency has been detected.
-> [    7.009614] 5.17.0-rc1-00014-g8a599299c0cb-dirty #30 Tainted: G        W
-> [    7.009616] ---------------------------------------------------
-> [    7.009617] summary
-> [    7.009618] ---------------------------------------------------
-> [    7.009618] *** DEADLOCK ***
-> [    7.009618]
-> [    7.009619] context A
-> [    7.009619]     [S] (unknown)(&(bit_wait_table + i)->dmap:0)
-> [    7.009621]     [W] down_write(&ei->i_data_sem:0)
-> [    7.009623]     [E] event(&(bit_wait_table + i)->dmap:0)
-> [    7.009624]
-> [    7.009625] context B
-> [    7.009625]     [S] down_read(&ei->i_data_sem:0)
-> [    7.009626]     [W] wait(&(bit_wait_table + i)->dmap:0)
-> [    7.009627]     [E] up_read(&ei->i_data_sem:0)
-> [    7.009628]
+Hi all,
 
-Looking into this I have noticed that Dept here tracks bitlocks (buffer
-locks in particular) but it apparently treats locks on all buffers as one
-locking class so it conflates lock on superblock buffer with a lock on
-extent tree block buffer. These are wastly different locks with different
-locking constraints. So to avoid false positives in filesystems we will
-need to add annotations to differentiate locks on different buffers (based
-on what the block is used for). Similarly how we e.g. annotate i_rwsem for
-different inodes.
+this fixes up the remaining fairly trivial file system bio alloctions to
+directly pass the bdev to bio_alloc.  f2fs and btrfs will need more work and
+will be handled separately.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+This is against Jens' for-5.18/block branch.  It would probably make sense to
+also merge it through that.
+
+Diffstat:
+ ext4/page-io.c  |    7 +++----
+ mpage.c         |   50 +++++++++++++++++++++-----------------------------
+ nilfs2/segbuf.c |   20 +++++++++-----------
+ 3 files changed, 33 insertions(+), 44 deletions(-)
