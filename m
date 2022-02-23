@@ -2,27 +2,27 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BAAE7C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed, 23 Feb 2022 01:41:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB33FC43217
+	for <linux-ext4@archiver.kernel.org>; Wed, 23 Feb 2022 03:30:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236600AbiBWBl1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Feb 2022 20:41:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35748 "EHLO
+        id S237894AbiBWDa4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Feb 2022 22:30:56 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56364 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236591AbiBWBl0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2022 20:41:26 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 928BF4E3AF
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2022 17:40:58 -0800 (PST)
-Received: from unknown (HELO lgeamrelo02.lge.com) (156.147.1.126)
-        by 156.147.23.52 with ESMTP; 23 Feb 2022 10:40:56 +0900
-X-Original-SENDERIP: 156.147.1.126
+        with ESMTP id S230404AbiBWDay (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Feb 2022 22:30:54 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id AC8BB4AE27
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Feb 2022 19:30:26 -0800 (PST)
+Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
+        by 156.147.23.51 with ESMTP; 23 Feb 2022 12:30:24 +0900
+X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
-        by 156.147.1.126 with ESMTP; 23 Feb 2022 10:40:56 +0900
+        by 156.147.1.125 with ESMTP; 23 Feb 2022 12:30:24 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
-Date:   Wed, 23 Feb 2022 10:40:44 +0900
+Date:   Wed, 23 Feb 2022 12:30:12 +0900
 From:   Byungchul Park <byungchul.park@lge.com>
 To:     Jan Kara <jack@suse.cz>
 Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
@@ -49,7 +49,7 @@ Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
 Subject: Re: Report 1 in ext4 and journal based on v5.17-rc1
-Message-ID: <20220223014044.GB26277@X58A-UD3R>
+Message-ID: <20220223033012.GC26277@X58A-UD3R>
 References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
  <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
  <20220222082723.rddf4typah3wegrc@quack3.lan>
@@ -90,17 +90,22 @@ On Tue, Feb 22, 2022 at 09:27:23AM +0100, Jan Kara wrote:
 > locking constraints. So to avoid false positives in filesystems we will
 > need to add annotations to differentiate locks on different buffers (based
 > on what the block is used for). Similarly how we e.g. annotate i_rwsem for
-
-Exactly yes. All synchronization objects should be classfied by what it
-is used for. Even though it's already classified by the location of the
-code initializing the object - roughly and normally saying we can expect
-those have the same constraint, we are actually assigning different
-constraints according to the subtle design esp. in file systems.
-
-It would also help the code have better documentation ;-) I'm willing to
-add annotations for that to fs.
-
 > different inodes.
+
+Hi Jan Kara,
+
+I just understood why some guys in this space got mad at Dept reports.
+I barely got reports from the lock you mentioned with my system -
+precisely speaking only one, even though I've been rebooting my system
+many times. But another report that someone gave for me showed there
+were a lot of reports from the lock.
+
+Your comment and the report are so much helpful. I need to assign
+each's own class first for the buffer locks. Thank you very much.
+
+Thanks,
+Byungchul
+
 > 
 > 								Honza
 > -- 
