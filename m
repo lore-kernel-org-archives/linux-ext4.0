@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F401BC4332F
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B16CC4167E
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234648AbiB1J6S (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 04:58:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60328 "EHLO
+        id S234689AbiB1J6X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 04:58:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60228 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234591AbiB1J6I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:08 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 715D525FE
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:19 -0800 (PST)
+        with ESMTP id S234627AbiB1J6K (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:10 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8A45219C16
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:20 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 28 Feb 2022 18:57:19 +0900
+        by 156.147.23.52 with ESMTP; 28 Feb 2022 18:57:19 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v3 06/21] dept: Apply Dept to mutex families
-Date:   Mon, 28 Feb 2022 18:56:45 +0900
-Message-Id: <1646042220-28952-7-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v3 10/21] dept: Apply Dept to rwsem
+Date:   Mon, 28 Feb 2022 18:56:49 +0900
+Message-Id: <1646042220-28952-11-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 References: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
@@ -56,73 +56,101 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by mutex families.
+Makes Dept able to track dependencies by rwsem.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h | 18 +++++++++++++++---
- include/linux/mutex.h   | 33 +++++++++++++++++++++++++++++++++
- include/linux/rtmutex.h |  7 +++++++
- 3 files changed, 55 insertions(+), 3 deletions(-)
+ include/linux/lockdep.h      | 24 ++++++++++++++++++++----
+ include/linux/percpu-rwsem.h | 10 +++++++++-
+ include/linux/rwsem.h        | 33 +++++++++++++++++++++++++++++++++
+ 3 files changed, 62 insertions(+), 5 deletions(-)
 
 diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 529ea18..6653a4f 100644
+index b93a707..37af50c 100644
 --- a/include/linux/lockdep.h
 +++ b/include/linux/lockdep.h
-@@ -615,9 +615,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
- #define seqcount_release(l, i)			lock_release(l, i)
+@@ -646,10 +646,26 @@ static inline void print_irqtrace_events(struct task_struct *curr)
+ 	dept_mutex_unlock(&(l)->dmap, i);				\
+ } while (0)
  
--#define mutex_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
--#define mutex_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
--#define mutex_release(l, i)			lock_release(l, i)
-+#define mutex_acquire(l, s, t, i)					\
+-#define rwsem_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+-#define rwsem_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
+-#define rwsem_acquire_read(l, s, t, i)		lock_acquire_shared(l, s, t, NULL, i)
+-#define rwsem_release(l, i)			lock_release(l, i)
++#define rwsem_acquire(l, s, t, i)					\
 +do {									\
 +	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_mutex_lock(&(l)->dmap, s, t, NULL, "mutex_unlock", i);	\
++	dept_rwsem_lock(&(l)->dmap, s, t, NULL, "up_write", i);		\
 +} while (0)
-+#define mutex_acquire_nest(l, s, t, n, i)				\
++#define rwsem_acquire_nest(l, s, t, n, i)				\
 +do {									\
 +	lock_acquire_exclusive(l, s, t, n, i);				\
-+	dept_mutex_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "mutex_unlock", i);\
++	dept_rwsem_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "up_write", i);\
 +} while (0)
-+#define mutex_release(l, i)						\
++#define rwsem_acquire_read(l, s, t, i)					\
++do {									\
++	lock_acquire_shared(l, s, t, NULL, i);				\
++	dept_rwsem_lock(&(l)->dmap, s, t, NULL, "up_read", i);		\
++} while (0)
++#define rwsem_release(l, i)						\
 +do {									\
 +	lock_release(l, i);						\
-+	dept_mutex_unlock(&(l)->dmap, i);				\
++	dept_rwsem_unlock(&(l)->dmap, i);				\
 +} while (0)
  
- #define rwsem_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define rwsem_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
-diff --git a/include/linux/mutex.h b/include/linux/mutex.h
-index 8f226d4..204f976 100644
---- a/include/linux/mutex.h
-+++ b/include/linux/mutex.h
-@@ -20,11 +20,18 @@
- #include <linux/osq_lock.h>
- #include <linux/debug_locks.h>
- 
-+#ifdef CONFIG_DEPT
-+# define DMAP_MUTEX_INIT(lockname)	.dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
-+#else
-+# define DMAP_MUTEX_INIT(lockname)
-+#endif
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- # define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
- 		, .dep_map = {					\
- 			.name = #lockname,			\
- 			.wait_type_inner = LD_WAIT_SLEEP,	\
-+			DMAP_MUTEX_INIT(lockname)		\
- 		}
- #else
- # define __DEP_MAP_MUTEX_INITIALIZER(lockname)
-@@ -75,6 +82,32 @@ struct mutex {
+ #define lock_map_acquire(l)			lock_acquire_exclusive(l, 0, 0, NULL, _THIS_IP_)
+ #define lock_map_acquire_read(l)		lock_acquire_shared_recursive(l, 0, 0, NULL, _THIS_IP_)
+diff --git a/include/linux/percpu-rwsem.h b/include/linux/percpu-rwsem.h
+index 5fda40f..ac2b1a5 100644
+--- a/include/linux/percpu-rwsem.h
++++ b/include/linux/percpu-rwsem.h
+@@ -20,8 +20,16 @@ struct percpu_rw_semaphore {
  #endif
  };
  
 +#ifdef CONFIG_DEPT
-+#define dept_mutex_lock(m, ne, t, n, e_fn, ip)				\
++#define __PERCPU_RWSEM_DMAP_INIT(lockname) .dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) }
++#else
++#define __PERCPU_RWSEM_DMAP_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+-#define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname },
++#define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)	.dep_map = {	\
++	.name = #lockname,					\
++	__PERCPU_RWSEM_DMAP_INIT(lockname) },
+ #else
+ #define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)
+ #endif
+diff --git a/include/linux/rwsem.h b/include/linux/rwsem.h
+index f934876..dc7977a 100644
+--- a/include/linux/rwsem.h
++++ b/include/linux/rwsem.h
+@@ -16,11 +16,18 @@
+ #include <linux/atomic.h>
+ #include <linux/err.h>
+ 
++#ifdef CONFIG_DEPT
++# define RWSEM_DMAP_INIT(lockname)	.dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
++#else
++# define RWSEM_DMAP_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ # define __RWSEM_DEP_MAP_INIT(lockname)			\
+ 	.dep_map = {					\
+ 		.name = #lockname,			\
+ 		.wait_type_inner = LD_WAIT_SLEEP,	\
++		RWSEM_DMAP_INIT(lockname)		\
+ 	},
+ #else
+ # define __RWSEM_DEP_MAP_INIT(lockname)
+@@ -32,6 +39,32 @@
+ #include <linux/osq_lock.h>
+ #endif
+ 
++#ifdef CONFIG_DEPT
++#define dept_rwsem_lock(m, ne, t, n, e_fn, ip)				\
 +do {									\
 +	if (t) {							\
 +		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
@@ -135,7 +163,7 @@ index 8f226d4..204f976 100644
 +		dept_ask_event(m);					\
 +	}								\
 +} while (0)
-+#define dept_mutex_unlock(m, ip)					\
++#define dept_rwsem_unlock(m, ip)					\
 +do {									\
 +	if (!dept_unskip_if_skipped(m)) {				\
 +		dept_event(m, 1UL, ip, __func__);			\
@@ -143,36 +171,13 @@ index 8f226d4..204f976 100644
 +	}								\
 +} while (0)
 +#else
-+#define dept_mutex_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_mutex_unlock(m, ip)		do { } while (0)
++#define dept_rwsem_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
++#define dept_rwsem_unlock(m, ip)		do { } while (0)
 +#endif
 +
- #ifdef CONFIG_DEBUG_MUTEXES
- 
- #define __DEBUG_MUTEX_INITIALIZER(lockname)				\
-diff --git a/include/linux/rtmutex.h b/include/linux/rtmutex.h
-index 7d04988..712d6e6 100644
---- a/include/linux/rtmutex.h
-+++ b/include/linux/rtmutex.h
-@@ -76,11 +76,18 @@ static inline void rt_mutex_debug_task_free(struct task_struct *tsk) { }
- 	__rt_mutex_init(mutex, __func__, &__key); \
- } while (0)
- 
-+#ifdef CONFIG_DEPT
-+#define DMAP_RT_MUTEX_INIT(mutexname)	.dmap = { .name = #mutexname, .skip_cnt = ATOMIC_INIT(0) },
-+#else
-+#define DMAP_RT_MUTEX_INIT(mutexname)
-+#endif
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)	\
- 	.dep_map = {					\
- 		.name = #mutexname,			\
- 		.wait_type_inner = LD_WAIT_SLEEP,	\
-+		DMAP_RT_MUTEX_INIT(mutexname)		\
- 	}
- #else
- #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)
+ /*
+  * For an uncontended rwsem, count and owner are the only fields a task
+  * needs to touch when acquiring the rwsem. So they are put next to each
 -- 
 1.9.1
 
