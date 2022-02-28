@@ -2,213 +2,274 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6176C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:28:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35FC8C4332F
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234310AbiB1J30 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 04:29:26 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36170 "EHLO
+        id S231304AbiB1J6B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 04:58:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59740 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230070AbiB1J30 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:29:26 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 595774504A
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:28:46 -0800 (PST)
+        with ESMTP id S234211AbiB1J6A (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:00 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0A9322F039
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:19 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 28 Feb 2022 18:28:44 +0900
+        by 156.147.23.52 with ESMTP; 28 Feb 2022 18:57:18 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
-Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:28:44 +0900
+Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
+        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:57:18 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
-Date:   Mon, 28 Feb 2022 18:28:26 +0900
 From:   Byungchul Park <byungchul.park@lge.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com,
-        linux-kernel@vger.kernel.org, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        chris@chris-wilson.co.uk, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-        bfields@fieldses.org, gregkh@linuxfoundation.org,
-        kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
-        mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
-        vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
-        dennis@kernel.org, cl@linux.com, penberg@kernel.org,
-        rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
-        linux-block@vger.kernel.org, axboe@kernel.dk,
+To:     torvalds@linux-foundation.org
+Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        mingo@redhat.com, linux-kernel@vger.kernel.org,
+        peterz@infradead.org, will@kernel.org, tglx@linutronix.de,
+        rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
+        daniel.vetter@ffwll.ch, chris@chris-wilson.co.uk,
+        duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
+        tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+        amir73il@gmail.com, bfields@fieldses.org,
+        gregkh@linuxfoundation.org, kernel-team@lge.com,
+        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+        ngupta@vflare.org, linux-block@vger.kernel.org,
         paolo.valente@linaro.org, josef@toxicpanda.com,
         linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.com, jlayton@kernel.org, dan.j.williams@intel.com,
-        hch@infradead.org, djwong@kernel.org,
+        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
+        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: Re: Report 2 in ext4 and journal based on v5.17-rc1
-Message-ID: <20220228092826.GA5201@X58A-UD3R>
-References: <1645095472-26530-1-git-send-email-byungchul.park@lge.com>
- <1645096204-31670-1-git-send-email-byungchul.park@lge.com>
- <1645096204-31670-2-git-send-email-byungchul.park@lge.com>
- <20220221190204.q675gtsb6qhylywa@quack3.lan>
- <20220223003534.GA26277@X58A-UD3R>
- <20220223144859.na2gjgl5efgw5zhn@quack3.lan>
- <20220224011102.GA29726@X58A-UD3R>
- <20220224102239.n7nzyyekuacgpnzg@quack3.lan>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220224102239.n7nzyyekuacgpnzg@quack3.lan>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Subject: [PATCH v3 03/21] dept: Embed Dept data in Lockdep
+Date:   Mon, 28 Feb 2022 18:56:42 +0900
+Message-Id: <1646042220-28952-4-git-send-email-byungchul.park@lge.com>
+X-Mailer: git-send-email 1.9.1
+In-Reply-To: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
+References: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Feb 24, 2022 at 11:22:39AM +0100, Jan Kara wrote:
-> On Thu 24-02-22 10:11:02, Byungchul Park wrote:
-> > On Wed, Feb 23, 2022 at 03:48:59PM +0100, Jan Kara wrote:
-> > > > KJOURNALD2(kthread)	TASK1(ksys_write)	TASK2(ksys_write)
-> > > > 
-> > > > wait A
-> > > > --- stuck
-> > > > 			wait B
-> > > > 			--- stuck
-> > > > 						wait C
-> > > > 						--- stuck
-> > > > 
-> > > > wake up B		wake up C		wake up A
-> > > > 
-> > > > where:
-> > > > A is a wait_queue, j_wait_commit
-> > > > B is a wait_queue, j_wait_transaction_locked
-> > > > C is a rwsem, mapping.invalidate_lock
-> > > 
-> > > I see. But a situation like this is not necessarily a guarantee of a
-> > > deadlock, is it? I mean there can be task D that will eventually call say
-> > > 'wake up B' and unblock everything and this is how things were designed to
-> > > work? Multiple sources of wakeups are quite common I'd say... What does
-> > 
-> > Yes. At the very beginning when I desgined Dept, I was thinking whether
-> > to support multiple wakeup sources or not for a quite long time.
-> > Supporting it would be a better option to aovid non-critical reports.
-> > However, I thought anyway we'd better fix it - not urgent tho - if
-> > there's any single circle dependency. That's why I decided not to
-> > support it for now and wanted to gather the kernel guys' opinions. Thing
-> > is which policy we should go with.
-> 
-> I see. So supporting only a single wakeup source is fine for locks I guess.
-> But for general wait queues or other synchronization mechanisms, I'm afraid
-> it will lead to quite some false positive reports. Just my 2c.
+Dept should work independently from Lockdep. However, there's no choise
+but to rely on Lockdep code and its instances for now.
 
-Thank you for your feedback.
-
-I realized we've been using "false positive" differently. There exist
-the three types of code in terms of dependency and deadlock. It's worth
-noting that dependencies are built from between waits and events in Dept.
-
+Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
+ include/linux/lockdep.h       | 71 ++++++++++++++++++++++++++++++++++++++++---
+ include/linux/lockdep_types.h |  3 ++
+ kernel/locking/lockdep.c      | 12 ++++----
+ 3 files changed, 76 insertions(+), 10 deletions(-)
 
-case 1. Code with an actual circular dependency, but not deadlock.
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 467b942..c56f6b6 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -20,6 +20,33 @@
+ extern int prove_locking;
+ extern int lock_stat;
+ 
++#ifdef CONFIG_DEPT
++static inline void dept_after_copy_map(struct dept_map *to,
++				       struct dept_map *from)
++{
++	int i;
++
++	if (from->keys == &from->keys_local)
++		to->keys = &to->keys_local;
++
++	if (!to->keys)
++		return;
++
++	/*
++	 * Since the class cache can be modified concurrently we could observe
++	 * half pointers (64bit arch using 32bit copy insns). Therefore clear
++	 * the caches and take the performance hit.
++	 *
++	 * XXX it doesn't work well with lockdep_set_class_and_subclass(), since
++	 *     that relies on cache abuse.
++	 */
++	for (i = 0; i < DEPT_MAX_SUBCLASSES_CACHE; i++)
++		to->keys->classes[i] = NULL;
++}
++#else
++#define dept_after_copy_map(t, f)	do { } while (0)
++#endif
++
+ #ifdef CONFIG_LOCKDEP
+ 
+ #include <linux/linkage.h>
+@@ -43,6 +70,8 @@ static inline void lockdep_copy_map(struct lockdep_map *to,
+ 	 */
+ 	for (i = 0; i < NR_LOCKDEP_CACHING_CLASSES; i++)
+ 		to->class_cache[i] = NULL;
++
++	dept_after_copy_map(&to->dmap, &from->dmap);
+ }
+ 
+ /*
+@@ -176,8 +205,19 @@ struct held_lock {
+ 	current->lockdep_recursion -= LOCKDEP_OFF;	\
+ } while (0)
+ 
+-extern void lockdep_register_key(struct lock_class_key *key);
+-extern void lockdep_unregister_key(struct lock_class_key *key);
++extern void __lockdep_register_key(struct lock_class_key *key);
++extern void __lockdep_unregister_key(struct lock_class_key *key);
++
++#define lockdep_register_key(k)				\
++do {							\
++	__lockdep_register_key(k);			\
++	dept_key_init(&(k)->dkey);			\
++} while (0)
++#define lockdep_unregister_key(k)			\
++do {							\
++	__lockdep_unregister_key(k);			\
++	dept_key_destroy(&(k)->dkey);			\
++} while (0)
+ 
+ /*
+  * These methods are used by specific locking variants (spinlocks,
+@@ -185,9 +225,18 @@ struct held_lock {
+  * to lockdep:
+  */
+ 
+-extern void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
++extern void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 	struct lock_class_key *key, int subclass, u8 inner, u8 outer, u8 lock_type);
+ 
++#define lockdep_init_map_type(l, n, k, s, i, o, t)		\
++do {								\
++	__lockdep_init_map_type(l, n, k, s, i, o, t);		\
++	if ((k) == &__lockdep_no_validate__)			\
++		dept_map_nocheck(&(l)->dmap);			\
++	else							\
++		dept_map_init(&(l)->dmap, &(k)->dkey, s, n);	\
++} while (0)
++
+ static inline void
+ lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
+ 		       struct lock_class_key *key, int subclass, u8 inner, u8 outer)
+@@ -431,13 +480,27 @@ enum xhlock_context_t {
+ 	XHLOCK_CTX_NR,
+ };
+ 
++#ifdef CONFIG_DEPT
++/*
++ * TODO: I found the case to use an address of other than a real key as
++ * _key, for instance, in workqueue. So for now, we cannot use the
++ * assignment like '.dmap.keys = &(_key)->dkey' unless it's fixed.
++ */
++#define STATIC_DEPT_MAP_INIT(_name, _key) .dmap = {		\
++	.name = (_name),					\
++	.keys = NULL },
++#else
++#define STATIC_DEPT_MAP_INIT(_name, _key)
++#endif
++
+ #define lockdep_init_map_crosslock(m, n, k, s) do {} while (0)
+ /*
+  * To initialize a lockdep_map statically use this macro.
+  * Note that _name must not be NULL.
+  */
+ #define STATIC_LOCKDEP_MAP_INIT(_name, _key) \
+-	{ .name = (_name), .key = (void *)(_key), }
++	{ .name = (_name), .key = (void *)(_key), \
++	STATIC_DEPT_MAP_INIT(_name, _key) }
+ 
+ static inline void lockdep_invariant_state(bool force) {}
+ static inline void lockdep_free_task(struct task_struct *task) {}
+diff --git a/include/linux/lockdep_types.h b/include/linux/lockdep_types.h
+index d224308..50c8879 100644
+--- a/include/linux/lockdep_types.h
++++ b/include/linux/lockdep_types.h
+@@ -11,6 +11,7 @@
+ #define __LINUX_LOCKDEP_TYPES_H
+ 
+ #include <linux/types.h>
++#include <linux/dept.h>
+ 
+ #define MAX_LOCKDEP_SUBCLASSES		8UL
+ 
+@@ -76,6 +77,7 @@ struct lock_class_key {
+ 		struct hlist_node		hash_entry;
+ 		struct lockdep_subclass_key	subkeys[MAX_LOCKDEP_SUBCLASSES];
+ 	};
++	struct dept_key				dkey;
+ };
+ 
+ extern struct lock_class_key __lockdep_no_validate__;
+@@ -185,6 +187,7 @@ struct lockdep_map {
+ 	int				cpu;
+ 	unsigned long			ip;
+ #endif
++	struct dept_map			dmap;
+ };
+ 
+ struct pin_cookie { unsigned int val; };
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index 4a882f8..a85468d 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -1184,7 +1184,7 @@ static inline struct hlist_head *keyhashentry(const struct lock_class_key *key)
+ }
+ 
+ /* Register a dynamically allocated key. */
+-void lockdep_register_key(struct lock_class_key *key)
++void __lockdep_register_key(struct lock_class_key *key)
+ {
+ 	struct hlist_head *hash_head;
+ 	struct lock_class_key *k;
+@@ -1207,7 +1207,7 @@ void lockdep_register_key(struct lock_class_key *key)
+ restore_irqs:
+ 	raw_local_irq_restore(flags);
+ }
+-EXPORT_SYMBOL_GPL(lockdep_register_key);
++EXPORT_SYMBOL_GPL(__lockdep_register_key);
+ 
+ /* Check whether a key has been registered as a dynamic key. */
+ static bool is_dynamic_key(const struct lock_class_key *key)
+@@ -4771,7 +4771,7 @@ static inline int check_wait_context(struct task_struct *curr,
+ /*
+  * Initialize a lock instance's lock-class mapping info:
+  */
+-void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
++void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 			    struct lock_class_key *key, int subclass,
+ 			    u8 inner, u8 outer, u8 lock_type)
+ {
+@@ -4831,7 +4831,7 @@ void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
+ 		raw_local_irq_restore(flags);
+ 	}
+ }
+-EXPORT_SYMBOL_GPL(lockdep_init_map_type);
++EXPORT_SYMBOL_GPL(__lockdep_init_map_type);
+ 
+ struct lock_class_key __lockdep_no_validate__;
+ EXPORT_SYMBOL_GPL(__lockdep_no_validate__);
+@@ -6291,7 +6291,7 @@ void lockdep_reset_lock(struct lockdep_map *lock)
+ }
+ 
+ /* Unregister a dynamically allocated key. */
+-void lockdep_unregister_key(struct lock_class_key *key)
++void __lockdep_unregister_key(struct lock_class_key *key)
+ {
+ 	struct hlist_head *hash_head = keyhashentry(key);
+ 	struct lock_class_key *k;
+@@ -6326,7 +6326,7 @@ void lockdep_unregister_key(struct lock_class_key *key)
+ 	/* Wait until is_dynamic_key() has finished accessing k->hash_entry. */
+ 	synchronize_rcu();
+ }
+-EXPORT_SYMBOL_GPL(lockdep_unregister_key);
++EXPORT_SYMBOL_GPL(__lockdep_unregister_key);
+ 
+ void __init lockdep_init(void)
+ {
+-- 
+1.9.1
 
-   A circular dependency can be broken by a rescue wakeup source e.g.
-   timeout. It's not a deadlock. If it's okay that the contexts
-   participating in the circular dependency and others waiting for the
-   events in the circle are stuck until it gets broken. Otherwise, say,
-   if it's not meant, then it's anyway problematic.
-
-   1-1. What if we judge this code is problematic?
-   1-2. What if we judge this code is good?
-
-case 2. Code with an actual circular dependency, and deadlock.
-
-   There's no other wakeup source than those within the circular
-   dependency. Literally deadlock. It's problematic and critical.
-
-   2-1. What if we judge this code is problematic?
-   2-2. What if we judge this code is good?
-
-case 3. Code with no actual circular dependency, and not deadlock.
-
-   Must be good.
-
-   3-1. What if we judge this code is problematic?
-   3-2. What if we judge this code is good?
-
----
-
-I call only 3-1 "false positive" circular dependency. And you call 1-1
-and 3-1 "false positive" deadlock.
-
-I've been wondering if the kernel guys esp. Linus considers code with
-any circular dependency is problematic or not, even if it won't lead to
-a deadlock, say, case 1. Even though I designed Dept based on what I
-believe is right, of course, I'm willing to change the design according
-to the majority opinion.
-
-However, I would never allow case 1 if I were the owner of the kernel
-for better stability, even though the code works anyway okay for now.
-
-Thanks,
-Byungchul
-
-> > > Dept do to prevent false reports in cases like this?
-> > > 
-> > > > The above is the simplest form. And it's worth noting that Dept focuses
-> > > > on wait and event itself rather than grabing and releasing things like
-> > > > lock. The following is the more descriptive form of it.
-> > > > 
-> > > > KJOURNALD2(kthread)	TASK1(ksys_write)	TASK2(ksys_write)
-> > > > 
-> > > > wait @j_wait_commit
-> > > > 			ext4_truncate_failed_write()
-> > > > 			   down_write(mapping.invalidate_lock)
-> > > > 
-> > > > 			   ext4_truncate()
-> > > > 			      ...
-> > > > 			      wait @j_wait_transaction_locked
-> > > > 
-> > > > 						ext_truncate_failed_write()
-> > > > 						   down_write(mapping.invalidate_lock)
-> > > > 
-> > > > 						ext4_should_retry_alloc()
-> > > > 						   ...
-> > > > 						   __jbd2_log_start_commit()
-> > > > 						      wake_up(j_wait_commit)
-> > > > jbd2_journal_commit_transaction()
-> > > >    wake_up(j_wait_transaction_locked)
-> > > > 			   up_write(mapping.invalidate_lock)
-> > > > 
-> > > > I hope this would help you understand the report.
-> > > 
-> > > I see, thanks for explanation! So the above scenario is impossible because
-> > 
-> > My pleasure.
-> > 
-> > > for anyone to block on @j_wait_transaction_locked the transaction must be
-> > > committing, which is done only by kjournald2 kthread and so that thread
-> > > cannot be waiting at @j_wait_commit. Essentially blocking on
-> > > @j_wait_transaction_locked means @j_wait_commit wakeup was already done.
-> > 
-> > kjournal2 repeatedly does the wait and the wake_up so the above scenario
-> > looks possible to me even based on what you explained. Maybe I should
-> > understand how the journal things work more for furhter discussion. Your
-> > explanation is so helpful. Thank you really.
-> 
-> OK, let me provide you with more details for better understanding :) In
-> jbd2 we have an object called 'transaction'. This object can go through
-> many states but for our case is important that transaction is moved to
-> T_LOCKED state and out of it only while jbd2_journal_commit_transaction()
-> function is executing and waiting on j_wait_transaction_locked waitqueue is
-> exactly waiting for a transaction to get out of T_LOCKED state. Function
-> jbd2_journal_commit_transaction() is executed only by kjournald. Hence
-> anyone can see transaction in T_LOCKED state only if kjournald is running
-> inside jbd2_journal_commit_transaction() and thus kjournald cannot be
-> sleeping on j_wait_commit at the same time. Does this explain things?
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
