@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C00A1C4167D
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E5A59C3527A
 	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:58:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234762AbiB1J6d (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 04:58:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33474 "EHLO
+        id S234769AbiB1J6f (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 04:58:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32890 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234702AbiB1J6Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:24 -0500
+        with ESMTP id S234697AbiB1J6X (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:23 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 855482A72F
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:26 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 539EB2A71C
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:25 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.53 with ESMTP; 28 Feb 2022 18:57:21 +0900
+        by 156.147.23.53 with ESMTP; 28 Feb 2022 18:57:18 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:57:21 +0900
+        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:57:18 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v3 20/21] dept: Add nocheck version of init_completion()
-Date:   Mon, 28 Feb 2022 18:56:59 +0900
-Message-Id: <1646042220-28952-21-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v3 04/21] dept: Add a API for skipping dependency check temporarily
+Date:   Mon, 28 Feb 2022 18:56:43 +0900
+Message-Id: <1646042220-28952-5-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 References: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
@@ -56,65 +56,158 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For completions who don't want to get tracked by Dept, added
-init_completion_nocheck() to disable Dept on it.
+Dept would skip check for dmaps marked by dept_map_nocheck() permanently.
+However, sometimes it needs to skip check for some dmaps temporarily and
+back to normal, for instance, lock acquisition with a nest lock.
+
+Lock usage check with regard to nest lock could be performed by Lockdep,
+however, dependency check is not necessary for that case. So prepared
+for it by adding two new APIs, dept_skip() and dept_unskip_if_skipped().
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/completion.h | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ include/linux/dept.h     |  9 +++++++++
+ include/linux/dept_sdt.h |  2 +-
+ include/linux/lockdep.h  |  4 +++-
+ kernel/dependency/dept.c | 49 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 62 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index a1ad5a8..9bd3bc9 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -30,6 +30,7 @@ struct completion {
- };
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index c3fb3cf..c0bbb8e 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -352,6 +352,11 @@ struct dept_map {
+ 	unsigned int			wgen;
+ 
+ 	/*
++	 * for skipping dependency check temporarily
++	 */
++	atomic_t			skip_cnt;
++
++	/*
+ 	 * whether this map should be going to be checked or not
+ 	 */
+ 	bool				nocheck;
+@@ -444,6 +449,8 @@ struct dept_task {
+ extern void dept_ask_event(struct dept_map *m);
+ extern void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip, const char *e_fn);
+ extern void dept_ecxt_exit(struct dept_map *m, unsigned long ip);
++extern void dept_skip(struct dept_map *m);
++extern bool dept_unskip_if_skipped(struct dept_map *m);
+ 
+ /*
+  * for users who want to manage external keys
+@@ -475,6 +482,8 @@ struct dept_task {
+ #define dept_ask_event(m)			do { } while (0)
+ #define dept_event(m, e_f, ip, e_fn)		do { (void)(e_fn); } while (0)
+ #define dept_ecxt_exit(m, ip)			do { } while (0)
++#define dept_skip(m)				do { } while (0)
++#define dept_unskip_if_skipped(m)		(false)
+ #define dept_key_init(k)			do { (void)(k); } while (0)
+ #define dept_key_destroy(k)			do { (void)(k); } while (0)
+ #endif
+diff --git a/include/linux/dept_sdt.h b/include/linux/dept_sdt.h
+index 375c4c3..e9d558d 100644
+--- a/include/linux/dept_sdt.h
++++ b/include/linux/dept_sdt.h
+@@ -13,7 +13,7 @@
+ #include <linux/dept.h>
  
  #ifdef CONFIG_DEPT
-+#define dept_wfc_nocheck(m)			dept_map_nocheck(m)
- #define dept_wfc_init(m, k, s, n)		dept_map_init(m, k, s, n)
- #define dept_wfc_reinit(m)			dept_map_reinit(m)
- #define dept_wfc_wait(m, ip)						\
-@@ -41,6 +42,7 @@ struct completion {
- #define dept_wfc_enter(m, ip)			dept_ecxt_enter(m, 1UL, ip, "completion_context_enter", "complete", 0)
- #define dept_wfc_exit(m, ip)			dept_ecxt_exit(m, ip)
- #else
-+#define dept_wfc_nocheck(m)			do { } while (0)
- #define dept_wfc_init(m, k, s, n)		do { (void)(n); (void)(k); } while (0)
- #define dept_wfc_reinit(m)			do { } while (0)
- #define dept_wfc_wait(m, ip)			do { } while (0)
-@@ -55,10 +57,11 @@ struct completion {
- #define WFC_DEPT_MAP_INIT(work)
- #endif
+-#define DEPT_SDT_MAP_INIT(dname)	{ .name = #dname }
++#define DEPT_SDT_MAP_INIT(dname)	{ .name = #dname, .skip_cnt = ATOMIC_INIT(0) }
  
-+#define init_completion_nocheck(x) __init_completion(x, NULL, #x, false)
- #define init_completion(x)					\
- 	do {							\
- 		static struct dept_key __dkey;			\
--		__init_completion(x, &__dkey, #x);		\
-+		__init_completion(x, &__dkey, #x, true);	\
- 	} while (0)
- 
- #define init_completion_map(x, m) init_completion(x)
-@@ -117,10 +120,15 @@ static inline void complete_release(struct completion *x) {}
+ /*
+  * SDT(Single-event Dependency Tracker) APIs
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index c56f6b6..c1a56fe 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -488,7 +488,9 @@ enum xhlock_context_t {
   */
- static inline void __init_completion(struct completion *x,
- 				     struct dept_key *dkey,
--				     const char *name)
-+				     const char *name, bool check)
- {
- 	x->done = 0;
--	dept_wfc_init(&x->dmap, dkey, 0, name);
-+
-+	if (check)
-+		dept_wfc_init(&x->dmap, dkey, 0, name);
-+	else
-+		dept_wfc_nocheck(&x->dmap);
-+
- 	init_swait_queue_head(&x->wait);
+ #define STATIC_DEPT_MAP_INIT(_name, _key) .dmap = {		\
+ 	.name = (_name),					\
+-	.keys = NULL },
++	.keys = NULL,						\
++	.skip_cnt = ATOMIC_INIT(0),				\
++	},
+ #else
+ #define STATIC_DEPT_MAP_INIT(_name, _key)
+ #endif
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index ec3f131..3f22c5b 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1943,6 +1943,7 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub,
+ 	m->name = n;
+ 	m->wgen = 0U;
+ 	m->nocheck = false;
++	atomic_set(&m->skip_cnt, 0);
+ exit:
+ 	dept_exit(flags);
  }
+@@ -1963,6 +1964,7 @@ void dept_map_reinit(struct dept_map *m)
  
+ 	clean_classes_cache(&m->keys_local);
+ 	m->wgen = 0U;
++	atomic_set(&m->skip_cnt, 0);
+ 
+ 	dept_exit(flags);
+ }
+@@ -2346,6 +2348,53 @@ void dept_ecxt_exit(struct dept_map *m, unsigned long ip)
+ }
+ EXPORT_SYMBOL_GPL(dept_ecxt_exit);
+ 
++void dept_skip(struct dept_map *m)
++{
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
++
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	if (m->nocheck)
++		return;
++
++	flags = dept_enter();
++
++	atomic_inc(&m->skip_cnt);
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_skip);
++
++/*
++ * Return true if successfully unskip, otherwise false.
++ */
++bool dept_unskip_if_skipped(struct dept_map *m)
++{
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
++	bool ret = false;
++
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return false;
++
++	if (m->nocheck)
++		return false;
++
++	flags = dept_enter();
++
++	if (!atomic_read(&m->skip_cnt))
++		goto exit;
++
++	atomic_dec(&m->skip_cnt);
++	ret = true;
++exit:
++	dept_exit(flags);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(dept_unskip_if_skipped);
++
+ void dept_task_exit(struct task_struct *t)
+ {
+ 	struct dept_task *dt = &t->dept_task;
 -- 
 1.9.1
 
