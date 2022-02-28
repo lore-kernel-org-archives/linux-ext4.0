@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35FC8C4332F
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B418FC433FE
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231304AbiB1J6B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 04:58:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59740 "EHLO
+        id S234614AbiB1J6J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 04:58:09 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60292 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234211AbiB1J6A (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:00 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0A9322F039
+        with ESMTP id S234520AbiB1J6H (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:07 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id D30161012
         for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:19 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.52 with ESMTP; 28 Feb 2022 18:57:18 +0900
+        by 156.147.23.51 with ESMTP; 28 Feb 2022 18:57:18 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,230 +46,176 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v3 03/21] dept: Embed Dept data in Lockdep
-Date:   Mon, 28 Feb 2022 18:56:42 +0900
-Message-Id: <1646042220-28952-4-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v3 00/21] DEPT(Dependency Tracker)
+Date:   Mon, 28 Feb 2022 18:56:39 +0900
+Message-Id: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
-In-Reply-To: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
-References: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dept should work independently from Lockdep. However, there's no choise
-but to rely on Lockdep code and its instances for now.
+I didn't want to bother you so I was planning to send the next spin
+after making more progress. However, PATCH v2 reports too many false
+positives because Dept tracked the bit_wait_table[] wrong way - I
+apologize for that. So I decided to send PATCH v3 first before going
+further for those who want to run Dept for now.
 
-Signed-off-by: Byungchul Park <byungchul.park@lge.com>
+There might still be some false positives but not overwhelming.
+
 ---
- include/linux/lockdep.h       | 71 ++++++++++++++++++++++++++++++++++++++++---
- include/linux/lockdep_types.h |  3 ++
- kernel/locking/lockdep.c      | 12 ++++----
- 3 files changed, 76 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 467b942..c56f6b6 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -20,6 +20,33 @@
- extern int prove_locking;
- extern int lock_stat;
- 
-+#ifdef CONFIG_DEPT
-+static inline void dept_after_copy_map(struct dept_map *to,
-+				       struct dept_map *from)
-+{
-+	int i;
-+
-+	if (from->keys == &from->keys_local)
-+		to->keys = &to->keys_local;
-+
-+	if (!to->keys)
-+		return;
-+
-+	/*
-+	 * Since the class cache can be modified concurrently we could observe
-+	 * half pointers (64bit arch using 32bit copy insns). Therefore clear
-+	 * the caches and take the performance hit.
-+	 *
-+	 * XXX it doesn't work well with lockdep_set_class_and_subclass(), since
-+	 *     that relies on cache abuse.
-+	 */
-+	for (i = 0; i < DEPT_MAX_SUBCLASSES_CACHE; i++)
-+		to->keys->classes[i] = NULL;
-+}
-+#else
-+#define dept_after_copy_map(t, f)	do { } while (0)
-+#endif
-+
- #ifdef CONFIG_LOCKDEP
- 
- #include <linux/linkage.h>
-@@ -43,6 +70,8 @@ static inline void lockdep_copy_map(struct lockdep_map *to,
- 	 */
- 	for (i = 0; i < NR_LOCKDEP_CACHING_CLASSES; i++)
- 		to->class_cache[i] = NULL;
-+
-+	dept_after_copy_map(&to->dmap, &from->dmap);
- }
- 
- /*
-@@ -176,8 +205,19 @@ struct held_lock {
- 	current->lockdep_recursion -= LOCKDEP_OFF;	\
- } while (0)
- 
--extern void lockdep_register_key(struct lock_class_key *key);
--extern void lockdep_unregister_key(struct lock_class_key *key);
-+extern void __lockdep_register_key(struct lock_class_key *key);
-+extern void __lockdep_unregister_key(struct lock_class_key *key);
-+
-+#define lockdep_register_key(k)				\
-+do {							\
-+	__lockdep_register_key(k);			\
-+	dept_key_init(&(k)->dkey);			\
-+} while (0)
-+#define lockdep_unregister_key(k)			\
-+do {							\
-+	__lockdep_unregister_key(k);			\
-+	dept_key_destroy(&(k)->dkey);			\
-+} while (0)
- 
- /*
-  * These methods are used by specific locking variants (spinlocks,
-@@ -185,9 +225,18 @@ struct held_lock {
-  * to lockdep:
-  */
- 
--extern void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
-+extern void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
- 	struct lock_class_key *key, int subclass, u8 inner, u8 outer, u8 lock_type);
- 
-+#define lockdep_init_map_type(l, n, k, s, i, o, t)		\
-+do {								\
-+	__lockdep_init_map_type(l, n, k, s, i, o, t);		\
-+	if ((k) == &__lockdep_no_validate__)			\
-+		dept_map_nocheck(&(l)->dmap);			\
-+	else							\
-+		dept_map_init(&(l)->dmap, &(k)->dkey, s, n);	\
-+} while (0)
-+
- static inline void
- lockdep_init_map_waits(struct lockdep_map *lock, const char *name,
- 		       struct lock_class_key *key, int subclass, u8 inner, u8 outer)
-@@ -431,13 +480,27 @@ enum xhlock_context_t {
- 	XHLOCK_CTX_NR,
- };
- 
-+#ifdef CONFIG_DEPT
-+/*
-+ * TODO: I found the case to use an address of other than a real key as
-+ * _key, for instance, in workqueue. So for now, we cannot use the
-+ * assignment like '.dmap.keys = &(_key)->dkey' unless it's fixed.
-+ */
-+#define STATIC_DEPT_MAP_INIT(_name, _key) .dmap = {		\
-+	.name = (_name),					\
-+	.keys = NULL },
-+#else
-+#define STATIC_DEPT_MAP_INIT(_name, _key)
-+#endif
-+
- #define lockdep_init_map_crosslock(m, n, k, s) do {} while (0)
- /*
-  * To initialize a lockdep_map statically use this macro.
-  * Note that _name must not be NULL.
-  */
- #define STATIC_LOCKDEP_MAP_INIT(_name, _key) \
--	{ .name = (_name), .key = (void *)(_key), }
-+	{ .name = (_name), .key = (void *)(_key), \
-+	STATIC_DEPT_MAP_INIT(_name, _key) }
- 
- static inline void lockdep_invariant_state(bool force) {}
- static inline void lockdep_free_task(struct task_struct *task) {}
-diff --git a/include/linux/lockdep_types.h b/include/linux/lockdep_types.h
-index d224308..50c8879 100644
---- a/include/linux/lockdep_types.h
-+++ b/include/linux/lockdep_types.h
-@@ -11,6 +11,7 @@
- #define __LINUX_LOCKDEP_TYPES_H
- 
- #include <linux/types.h>
-+#include <linux/dept.h>
- 
- #define MAX_LOCKDEP_SUBCLASSES		8UL
- 
-@@ -76,6 +77,7 @@ struct lock_class_key {
- 		struct hlist_node		hash_entry;
- 		struct lockdep_subclass_key	subkeys[MAX_LOCKDEP_SUBCLASSES];
- 	};
-+	struct dept_key				dkey;
- };
- 
- extern struct lock_class_key __lockdep_no_validate__;
-@@ -185,6 +187,7 @@ struct lockdep_map {
- 	int				cpu;
- 	unsigned long			ip;
- #endif
-+	struct dept_map			dmap;
- };
- 
- struct pin_cookie { unsigned int val; };
-diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index 4a882f8..a85468d 100644
---- a/kernel/locking/lockdep.c
-+++ b/kernel/locking/lockdep.c
-@@ -1184,7 +1184,7 @@ static inline struct hlist_head *keyhashentry(const struct lock_class_key *key)
- }
- 
- /* Register a dynamically allocated key. */
--void lockdep_register_key(struct lock_class_key *key)
-+void __lockdep_register_key(struct lock_class_key *key)
- {
- 	struct hlist_head *hash_head;
- 	struct lock_class_key *k;
-@@ -1207,7 +1207,7 @@ void lockdep_register_key(struct lock_class_key *key)
- restore_irqs:
- 	raw_local_irq_restore(flags);
- }
--EXPORT_SYMBOL_GPL(lockdep_register_key);
-+EXPORT_SYMBOL_GPL(__lockdep_register_key);
- 
- /* Check whether a key has been registered as a dynamic key. */
- static bool is_dynamic_key(const struct lock_class_key *key)
-@@ -4771,7 +4771,7 @@ static inline int check_wait_context(struct task_struct *curr,
- /*
-  * Initialize a lock instance's lock-class mapping info:
-  */
--void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
-+void __lockdep_init_map_type(struct lockdep_map *lock, const char *name,
- 			    struct lock_class_key *key, int subclass,
- 			    u8 inner, u8 outer, u8 lock_type)
- {
-@@ -4831,7 +4831,7 @@ void lockdep_init_map_type(struct lockdep_map *lock, const char *name,
- 		raw_local_irq_restore(flags);
- 	}
- }
--EXPORT_SYMBOL_GPL(lockdep_init_map_type);
-+EXPORT_SYMBOL_GPL(__lockdep_init_map_type);
- 
- struct lock_class_key __lockdep_no_validate__;
- EXPORT_SYMBOL_GPL(__lockdep_no_validate__);
-@@ -6291,7 +6291,7 @@ void lockdep_reset_lock(struct lockdep_map *lock)
- }
- 
- /* Unregister a dynamically allocated key. */
--void lockdep_unregister_key(struct lock_class_key *key)
-+void __lockdep_unregister_key(struct lock_class_key *key)
- {
- 	struct hlist_head *hash_head = keyhashentry(key);
- 	struct lock_class_key *k;
-@@ -6326,7 +6326,7 @@ void lockdep_unregister_key(struct lock_class_key *key)
- 	/* Wait until is_dynamic_key() has finished accessing k->hash_entry. */
- 	synchronize_rcu();
- }
--EXPORT_SYMBOL_GPL(lockdep_unregister_key);
-+EXPORT_SYMBOL_GPL(__lockdep_unregister_key);
- 
- void __init lockdep_init(void)
- {
+Hi Linus and folks,
+
+I've been developing a tool for detecting deadlock possibilities by
+tracking wait/event rather than lock(?) acquisition order to try to
+cover all synchonization machanisms. It's done on v5.17-rc1 tag.
+
+https://github.com/lgebyungchulpark/linux-dept/commits/dept1.14_on_v5.17-rc1
+
+Benifit:
+
+	0. Works with all lock primitives.
+	1. Works with wait_for_completion()/complete().
+	2. Works with 'wait' on PG_locked.
+	3. Works with 'wait' on PG_writeback.
+	4. Works with swait/wakeup.
+	5. Works with waitqueue.
+	6. Multiple reports are allowed.
+	7. Deduplication control on multiple reports.
+	8. Withstand false positives thanks to 6.
+	9. Easy to tag any wait/event.
+
+Future work:
+
+	0. To make it more stable.
+	1. To separates Dept from Lockdep.
+	2. To improves performance in terms of time and space.
+	3. To use Dept as a dependency engine for Lockdep.
+	4. To add any missing tags of wait/event in the kernel.
+	5. To deduplicate stack trace.
+
+How to interpret reports:
+
+	1. E(event) in each context cannot be triggered because of the
+	   W(wait) that cannot be woken.
+	2. The stack trace helping find the problematic code is located
+	   in each conext's detail.
+
+Thanks,
+Byungchul
+
+---
+
+Changes from v2:
+
+	1. Disable Dept on bit_wait_table[] in sched/wait_bit.c
+	   reporting a lot of false positives, which is my fault.
+	   Wait/event for bit_wait_table[] should've been tagged in a
+	   higher layer for better work, which is a future work.
+	   (feedback from Jan Kara)
+	2. Disable Dept on crypto_larval's completion to prevent a false
+	   positive.
+
+Changes from v1:
+
+	1. Fix coding style and typo. (feedback from Steven)
+	2. Distinguish each work context from another in workqueue.
+	3. Skip checking lock acquisition with nest_lock, which is about
+	   correct lock usage that should be checked by Lockdep.
+
+Changes from RFC:
+
+	1. Prevent adding a wait tag at prepare_to_wait() but __schedule().
+	   (feedback from Linus and Matthew)
+	2. Use try version at lockdep_acquire_cpus_lock() annotation.
+	3. Distinguish each syscall context from another.
+
+Byungchul Park (21):
+  llist: Move llist_{head,node} definition to types.h
+  dept: Implement Dept(Dependency Tracker)
+  dept: Embed Dept data in Lockdep
+  dept: Add a API for skipping dependency check temporarily
+  dept: Apply Dept to spinlock
+  dept: Apply Dept to mutex families
+  dept: Apply Dept to rwlock
+  dept: Apply Dept to wait_for_completion()/complete()
+  dept: Apply Dept to seqlock
+  dept: Apply Dept to rwsem
+  dept: Add proc knobs to show stats and dependency graph
+  dept: Introduce split map concept and new APIs for them
+  dept: Apply Dept to wait/event of PG_{locked,writeback}
+  dept: Apply SDT to swait
+  dept: Apply SDT to wait(waitqueue)
+  locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
+  dept: Distinguish each syscall context from another
+  dept: Distinguish each work from another
+  dept: Disable Dept within the wait_bit layer by default
+  dept: Add nocheck version of init_completion()
+  dept: Disable Dept on struct crypto_larval's completion for now
+
+ crypto/api.c                       |    7 +-
+ include/linux/completion.h         |   50 +-
+ include/linux/dept.h               |  535 +++++++
+ include/linux/dept_page.h          |   78 ++
+ include/linux/dept_sdt.h           |   62 +
+ include/linux/hardirq.h            |    3 +
+ include/linux/irqflags.h           |   33 +-
+ include/linux/llist.h              |    8 -
+ include/linux/lockdep.h            |  158 ++-
+ include/linux/lockdep_types.h      |    3 +
+ include/linux/mutex.h              |   33 +
+ include/linux/page-flags.h         |   45 +-
+ include/linux/pagemap.h            |    7 +-
+ include/linux/percpu-rwsem.h       |   10 +-
+ include/linux/rtmutex.h            |    7 +
+ include/linux/rwlock.h             |   52 +
+ include/linux/rwlock_api_smp.h     |    8 +-
+ include/linux/rwlock_types.h       |    7 +
+ include/linux/rwsem.h              |   33 +
+ include/linux/sched.h              |    7 +
+ include/linux/seqlock.h            |   59 +-
+ include/linux/spinlock.h           |   26 +
+ include/linux/spinlock_types_raw.h |   13 +
+ include/linux/swait.h              |    4 +
+ include/linux/types.h              |    8 +
+ include/linux/wait.h               |    6 +-
+ init/init_task.c                   |    2 +
+ init/main.c                        |    4 +
+ kernel/Makefile                    |    1 +
+ kernel/cpu.c                       |    2 +-
+ kernel/dependency/Makefile         |    4 +
+ kernel/dependency/dept.c           | 2712 ++++++++++++++++++++++++++++++++++++
+ kernel/dependency/dept_hash.h      |   10 +
+ kernel/dependency/dept_internal.h  |   26 +
+ kernel/dependency/dept_object.h    |   13 +
+ kernel/dependency/dept_proc.c      |   92 ++
+ kernel/entry/common.c              |    3 +
+ kernel/exit.c                      |    1 +
+ kernel/fork.c                      |    2 +
+ kernel/locking/lockdep.c           |   12 +-
+ kernel/module.c                    |    2 +
+ kernel/sched/completion.c          |   12 +-
+ kernel/sched/core.c                |    3 +
+ kernel/sched/swait.c               |   10 +
+ kernel/sched/wait.c                |   16 +
+ kernel/sched/wait_bit.c            |    5 +-
+ kernel/softirq.c                   |    6 +-
+ kernel/trace/trace_preemptirq.c    |   19 +-
+ kernel/workqueue.c                 |    3 +
+ lib/Kconfig.debug                  |   21 +
+ mm/filemap.c                       |   68 +
+ mm/page_ext.c                      |    5 +
+ 52 files changed, 4257 insertions(+), 59 deletions(-)
+ create mode 100644 include/linux/dept.h
+ create mode 100644 include/linux/dept_page.h
+ create mode 100644 include/linux/dept_sdt.h
+ create mode 100644 kernel/dependency/Makefile
+ create mode 100644 kernel/dependency/dept.c
+ create mode 100644 kernel/dependency/dept_hash.h
+ create mode 100644 kernel/dependency/dept_internal.h
+ create mode 100644 kernel/dependency/dept_object.h
+ create mode 100644 kernel/dependency/dept_proc.c
+
 -- 
 1.9.1
 
