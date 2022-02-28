@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B418FC433FE
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E54E2C4167B
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 09:57:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234614AbiB1J6J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 04:58:09 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60292 "EHLO
+        id S234637AbiB1J6O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 04:58:14 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60230 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234520AbiB1J6H (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:07 -0500
+        with ESMTP id S234603AbiB1J6J (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 04:58:09 -0500
 Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id D30161012
-        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:19 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7DD5EAE45
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 01:57:20 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 28 Feb 2022 18:57:18 +0900
+        by 156.147.23.51 with ESMTP; 28 Feb 2022 18:57:19 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:57:18 +0900
+        by 156.147.1.121 with ESMTP; 28 Feb 2022 18:57:19 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,176 +46,193 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v3 00/21] DEPT(Dependency Tracker)
-Date:   Mon, 28 Feb 2022 18:56:39 +0900
-Message-Id: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v3 07/21] dept: Apply Dept to rwlock
+Date:   Mon, 28 Feb 2022 18:56:46 +0900
+Message-Id: <1646042220-28952-8-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
+In-Reply-To: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
+References: <1646042220-28952-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-I didn't want to bother you so I was planning to send the next spin
-after making more progress. However, PATCH v2 reports too many false
-positives because Dept tracked the bit_wait_table[] wrong way - I
-apologize for that. So I decided to send PATCH v3 first before going
-further for those who want to run Dept for now.
+Makes Dept able to track dependencies by rwlock.
 
-There might still be some false positives but not overwhelming.
-
+Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
+ include/linux/lockdep.h        | 25 ++++++++++++++++----
+ include/linux/rwlock.h         | 52 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/rwlock_api_smp.h |  8 +++----
+ include/linux/rwlock_types.h   |  7 ++++++
+ 4 files changed, 83 insertions(+), 9 deletions(-)
 
-Hi Linus and folks,
-
-I've been developing a tool for detecting deadlock possibilities by
-tracking wait/event rather than lock(?) acquisition order to try to
-cover all synchonization machanisms. It's done on v5.17-rc1 tag.
-
-https://github.com/lgebyungchulpark/linux-dept/commits/dept1.14_on_v5.17-rc1
-
-Benifit:
-
-	0. Works with all lock primitives.
-	1. Works with wait_for_completion()/complete().
-	2. Works with 'wait' on PG_locked.
-	3. Works with 'wait' on PG_writeback.
-	4. Works with swait/wakeup.
-	5. Works with waitqueue.
-	6. Multiple reports are allowed.
-	7. Deduplication control on multiple reports.
-	8. Withstand false positives thanks to 6.
-	9. Easy to tag any wait/event.
-
-Future work:
-
-	0. To make it more stable.
-	1. To separates Dept from Lockdep.
-	2. To improves performance in terms of time and space.
-	3. To use Dept as a dependency engine for Lockdep.
-	4. To add any missing tags of wait/event in the kernel.
-	5. To deduplicate stack trace.
-
-How to interpret reports:
-
-	1. E(event) in each context cannot be triggered because of the
-	   W(wait) that cannot be woken.
-	2. The stack trace helping find the problematic code is located
-	   in each conext's detail.
-
-Thanks,
-Byungchul
-
----
-
-Changes from v2:
-
-	1. Disable Dept on bit_wait_table[] in sched/wait_bit.c
-	   reporting a lot of false positives, which is my fault.
-	   Wait/event for bit_wait_table[] should've been tagged in a
-	   higher layer for better work, which is a future work.
-	   (feedback from Jan Kara)
-	2. Disable Dept on crypto_larval's completion to prevent a false
-	   positive.
-
-Changes from v1:
-
-	1. Fix coding style and typo. (feedback from Steven)
-	2. Distinguish each work context from another in workqueue.
-	3. Skip checking lock acquisition with nest_lock, which is about
-	   correct lock usage that should be checked by Lockdep.
-
-Changes from RFC:
-
-	1. Prevent adding a wait tag at prepare_to_wait() but __schedule().
-	   (feedback from Linus and Matthew)
-	2. Use try version at lockdep_acquire_cpus_lock() annotation.
-	3. Distinguish each syscall context from another.
-
-Byungchul Park (21):
-  llist: Move llist_{head,node} definition to types.h
-  dept: Implement Dept(Dependency Tracker)
-  dept: Embed Dept data in Lockdep
-  dept: Add a API for skipping dependency check temporarily
-  dept: Apply Dept to spinlock
-  dept: Apply Dept to mutex families
-  dept: Apply Dept to rwlock
-  dept: Apply Dept to wait_for_completion()/complete()
-  dept: Apply Dept to seqlock
-  dept: Apply Dept to rwsem
-  dept: Add proc knobs to show stats and dependency graph
-  dept: Introduce split map concept and new APIs for them
-  dept: Apply Dept to wait/event of PG_{locked,writeback}
-  dept: Apply SDT to swait
-  dept: Apply SDT to wait(waitqueue)
-  locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
-  dept: Distinguish each syscall context from another
-  dept: Distinguish each work from another
-  dept: Disable Dept within the wait_bit layer by default
-  dept: Add nocheck version of init_completion()
-  dept: Disable Dept on struct crypto_larval's completion for now
-
- crypto/api.c                       |    7 +-
- include/linux/completion.h         |   50 +-
- include/linux/dept.h               |  535 +++++++
- include/linux/dept_page.h          |   78 ++
- include/linux/dept_sdt.h           |   62 +
- include/linux/hardirq.h            |    3 +
- include/linux/irqflags.h           |   33 +-
- include/linux/llist.h              |    8 -
- include/linux/lockdep.h            |  158 ++-
- include/linux/lockdep_types.h      |    3 +
- include/linux/mutex.h              |   33 +
- include/linux/page-flags.h         |   45 +-
- include/linux/pagemap.h            |    7 +-
- include/linux/percpu-rwsem.h       |   10 +-
- include/linux/rtmutex.h            |    7 +
- include/linux/rwlock.h             |   52 +
- include/linux/rwlock_api_smp.h     |    8 +-
- include/linux/rwlock_types.h       |    7 +
- include/linux/rwsem.h              |   33 +
- include/linux/sched.h              |    7 +
- include/linux/seqlock.h            |   59 +-
- include/linux/spinlock.h           |   26 +
- include/linux/spinlock_types_raw.h |   13 +
- include/linux/swait.h              |    4 +
- include/linux/types.h              |    8 +
- include/linux/wait.h               |    6 +-
- init/init_task.c                   |    2 +
- init/main.c                        |    4 +
- kernel/Makefile                    |    1 +
- kernel/cpu.c                       |    2 +-
- kernel/dependency/Makefile         |    4 +
- kernel/dependency/dept.c           | 2712 ++++++++++++++++++++++++++++++++++++
- kernel/dependency/dept_hash.h      |   10 +
- kernel/dependency/dept_internal.h  |   26 +
- kernel/dependency/dept_object.h    |   13 +
- kernel/dependency/dept_proc.c      |   92 ++
- kernel/entry/common.c              |    3 +
- kernel/exit.c                      |    1 +
- kernel/fork.c                      |    2 +
- kernel/locking/lockdep.c           |   12 +-
- kernel/module.c                    |    2 +
- kernel/sched/completion.c          |   12 +-
- kernel/sched/core.c                |    3 +
- kernel/sched/swait.c               |   10 +
- kernel/sched/wait.c                |   16 +
- kernel/sched/wait_bit.c            |    5 +-
- kernel/softirq.c                   |    6 +-
- kernel/trace/trace_preemptirq.c    |   19 +-
- kernel/workqueue.c                 |    3 +
- lib/Kconfig.debug                  |   21 +
- mm/filemap.c                       |   68 +
- mm/page_ext.c                      |    5 +
- 52 files changed, 4257 insertions(+), 59 deletions(-)
- create mode 100644 include/linux/dept.h
- create mode 100644 include/linux/dept_page.h
- create mode 100644 include/linux/dept_sdt.h
- create mode 100644 kernel/dependency/Makefile
- create mode 100644 kernel/dependency/dept.c
- create mode 100644 kernel/dependency/dept_hash.h
- create mode 100644 kernel/dependency/dept_internal.h
- create mode 100644 kernel/dependency/dept_object.h
- create mode 100644 kernel/dependency/dept_proc.c
-
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 6653a4f..b93a707 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -600,16 +600,31 @@ static inline void print_irqtrace_events(struct task_struct *curr)
+ 	dept_spin_unlock(&(l)->dmap, i);				\
+ } while (0)
+ 
+-#define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
++#define rwlock_acquire(l, s, t, i)					\
++do {									\
++	lock_acquire_exclusive(l, s, t, NULL, i);			\
++	dept_rwlock_wlock(&(l)->dmap, s, t, NULL, "write_unlock", i);	\
++} while (0)
+ #define rwlock_acquire_read(l, s, t, i)					\
+ do {									\
+-	if (read_lock_is_recursive())					\
++	if (read_lock_is_recursive()) {				\
+ 		lock_acquire_shared_recursive(l, s, t, NULL, i);	\
+-	else								\
++		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 0);\
++	} else {							\
+ 		lock_acquire_shared(l, s, t, NULL, i);			\
++		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 1);\
++	}								\
++} while (0)
++#define rwlock_release(l, i)						\
++do {									\
++	lock_release(l, i);						\
++	dept_rwlock_wunlock(&(l)->dmap, i);				\
++} while (0)
++#define rwlock_release_read(l, i)					\
++do {									\
++	lock_release(l, i);						\
++	dept_rwlock_runlock(&(l)->dmap, i);				\
+ } while (0)
+-
+-#define rwlock_release(l, i)			lock_release(l, i)
+ 
+ #define seqcount_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+ #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
+diff --git a/include/linux/rwlock.h b/include/linux/rwlock.h
+index 8f416c5..768ad9e 100644
+--- a/include/linux/rwlock.h
++++ b/include/linux/rwlock.h
+@@ -28,6 +28,58 @@
+ 	do { *(lock) = __RW_LOCK_UNLOCKED(lock); } while (0)
+ #endif
+ 
++#ifdef CONFIG_DEPT
++#define DEPT_EVT_RWLOCK_R		1UL
++#define DEPT_EVT_RWLOCK_W		(1UL << 1)
++#define DEPT_EVT_RWLOCK_RW		(DEPT_EVT_RWLOCK_R | DEPT_EVT_RWLOCK_W)
++
++#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)			\
++do {									\
++	if (t) {							\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	} else if (n) {							\
++		dept_skip(m);						\
++	} else {							\
++		dept_wait(m, DEPT_EVT_RWLOCK_RW, ip, __func__, ne);	\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	}								\
++} while (0)
++#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)			\
++do {									\
++	if (t) {							\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	} else if (n) {							\
++		dept_skip(m);						\
++	} else {							\
++		dept_wait(m, (q) ? DEPT_EVT_RWLOCK_RW : DEPT_EVT_RWLOCK_W, ip, __func__, ne);\
++		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
++		dept_ask_event(m);					\
++	}								\
++} while (0)
++#define dept_rwlock_wunlock(m, ip)					\
++do {									\
++	if (!dept_unskip_if_skipped(m)) {				\
++		dept_event(m, DEPT_EVT_RWLOCK_W, ip, __func__);		\
++		dept_ecxt_exit(m, ip);					\
++	}								\
++} while (0)
++#define dept_rwlock_runlock(m, ip)					\
++do {									\
++	if (!dept_unskip_if_skipped(m)) {				\
++		dept_event(m, DEPT_EVT_RWLOCK_R, ip, __func__);		\
++		dept_ecxt_exit(m, ip);					\
++	}								\
++} while (0)
++#else
++#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)	do { } while (0)
++#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)	do { } while (0)
++#define dept_rwlock_wunlock(m, ip)			do { } while (0)
++#define dept_rwlock_runlock(m, ip)			do { } while (0)
++#endif
++
+ #ifdef CONFIG_DEBUG_SPINLOCK
+  extern void do_raw_read_lock(rwlock_t *lock) __acquires(lock);
+  extern int do_raw_read_trylock(rwlock_t *lock);
+diff --git a/include/linux/rwlock_api_smp.h b/include/linux/rwlock_api_smp.h
+index dceb0a5..a222cf1 100644
+--- a/include/linux/rwlock_api_smp.h
++++ b/include/linux/rwlock_api_smp.h
+@@ -228,7 +228,7 @@ static inline void __raw_write_unlock(rwlock_t *lock)
+ 
+ static inline void __raw_read_unlock(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	preempt_enable();
+ }
+@@ -236,7 +236,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
+ static inline void
+ __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	local_irq_restore(flags);
+ 	preempt_enable();
+@@ -244,7 +244,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
+ 
+ static inline void __raw_read_unlock_irq(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	local_irq_enable();
+ 	preempt_enable();
+@@ -252,7 +252,7 @@ static inline void __raw_read_unlock_irq(rwlock_t *lock)
+ 
+ static inline void __raw_read_unlock_bh(rwlock_t *lock)
+ {
+-	rwlock_release(&lock->dep_map, _RET_IP_);
++	rwlock_release_read(&lock->dep_map, _RET_IP_);
+ 	do_raw_read_unlock(lock);
+ 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
+ }
+diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
+index 1948442..74804b7 100644
+--- a/include/linux/rwlock_types.h
++++ b/include/linux/rwlock_types.h
+@@ -5,11 +5,18 @@
+ # error "Do not include directly, include spinlock_types.h"
+ #endif
+ 
++#ifdef CONFIG_DEPT
++# define RW_DMAP_INIT(lockname) .dmap = { .name = #lockname, .skip_cnt = ATOMIC_INIT(0) },
++#else
++# define RW_DMAP_INIT(lockname)
++#endif
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ # define RW_DEP_MAP_INIT(lockname)					\
+ 	.dep_map = {							\
+ 		.name = #lockname,					\
+ 		.wait_type_inner = LD_WAIT_CONFIG,			\
++		RW_DMAP_INIT(lockname)					\
+ 	}
+ #else
+ # define RW_DEP_MAP_INIT(lockname)
 -- 
 1.9.1
 
