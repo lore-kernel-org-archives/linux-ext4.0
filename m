@@ -2,177 +2,191 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E4C2C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 23:58:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DC7FC4332F
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Feb 2022 23:58:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231827AbiB1X7Q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Feb 2022 18:59:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36860 "EHLO
+        id S231722AbiB1X7R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Feb 2022 18:59:17 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36806 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231772AbiB1X7K (ORCPT
+        with ESMTP id S231748AbiB1X7K (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Feb 2022 18:59:10 -0500
-Received: from mail-pf1-x42f.google.com (mail-pf1-x42f.google.com [IPv6:2607:f8b0:4864:20::42f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4C2F13573F;
-        Mon, 28 Feb 2022 15:58:23 -0800 (PST)
-Received: by mail-pf1-x42f.google.com with SMTP id d187so12535614pfa.10;
-        Mon, 28 Feb 2022 15:58:23 -0800 (PST)
+Received: from mail-pl1-x635.google.com (mail-pl1-x635.google.com [IPv6:2607:f8b0:4864:20::635])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD8FB5B88F
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 15:58:21 -0800 (PST)
+Received: by mail-pl1-x635.google.com with SMTP id s1so12050432plg.12
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Feb 2022 15:58:21 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=g+Z88nKMaMfnoSMNb28nSkaCjqMBUKAv77UuVBn2dOA=;
-        b=Y/eAj4zOI32uQO07S2u9fw4pyH5VUHMWjTICZaR2LXS1QNnXSUZWy8gwZObI0JlAuT
-         eV7p0ri47A+rjBcmwwR0YL1tP8tc7DgO9DSTYR3BFkxLcKOec3g/0ZKKLLrLHbLuSTDJ
-         1t3XLM3wv3r6DoCOg4FiXvLqtLPe8epceOXb7JXhjc2NQ9H14MlP/qxYUVORZzEsy0vc
-         PxP/F2Uslq/UxPlOvY9swJgpq7Easigg3RYr0FLqZ4wHbLvFMQMaiQbEIwmCazkhxHUp
-         AyEhW8Shpi8rx1XYpm/lisIWpPZQpD1WPyXPU8sLHszlNGHtFo+kWUoz7BuMO94Uy5WG
-         PIzA==
+        d=dilger-ca.20210112.gappssmtp.com; s=20210112;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=YyxDWmDN7sg056gSnE2Uv/JCnGhxSkXEZ0o6G25koMQ=;
+        b=Y6lVCe4+uUIcgcOfuQV5YmlLYkKnzd/nPw90RyOW1kxEWAo0htJwq18JIkkrqd1Vge
+         42tz7+e0ClfN2oNGrR+CT90jw0DYTXG6ymj90dA/Jm+nnOI0aMiAKWTYPlpv1NutVwLC
+         wRq2atz4BW5u33lz9uUBQtV0mr5VyukA96doqrgBgNfOBSFdkc6pgM27g0YN/gONwBbC
+         Vvsiul5owrz95ndyIt+8vtTx7PCudXSJFVcUi3xmFMT+zqPaWUgJNqup3RtLL1me+aM+
+         TCySwxuskJUzjuCmuWPvR3QYvlZdIszJJjVUenr/ygTuGER4EQgPpbJKeiQbK6esq9Bc
+         eqgw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=g+Z88nKMaMfnoSMNb28nSkaCjqMBUKAv77UuVBn2dOA=;
-        b=AULGKj2BVtFbAM/FzRRDayUf/auvy+2DI17IWtzY7gmJnPfD5GyAnwz2eWc2f/mF7N
-         b7UUShmnOTThUZ70Th4+AUGNdNJYIV0gMDcrbhNZ6CjsSlZvolkX3K4FBt0QJTP+bnyq
-         1kq2tQDBznaaJWsLaElZRYLcW+dOIKR0HIkIKv2jH+queYShf9pKhkHWScw+q/ZhitI9
-         hid759xLDpzTGv6K9JebsmgLDqi0dX9IDxlBre8fvLIbCzEBbhL9lG4zEB1J7SI8BPpK
-         lLsWwE0yhpZFcqSowc6EBf14TsPpuC5GPHmfMn1bGN9cq9LT3UXvh1Wz7QKd7Q95IuQp
-         1wQA==
-X-Gm-Message-State: AOAM530iur5uNhuZ7tX48sge3ndcu3JYB2RprNQQrgGz5mhDJuhqvjfb
-        yuAxezClpinjU3nlVyqQ61I=
-X-Google-Smtp-Source: ABdhPJxBLejg9ODYXcpvvGlLqL7Xi68l/FsoGoG/EIgU1d8hoBFNE9JpZGiFHfRFdlAWUyzpUpx/8Q==
-X-Received: by 2002:a63:790d:0:b0:373:cc0b:5b6a with SMTP id u13-20020a63790d000000b00373cc0b5b6amr19448962pgc.119.1646092703220;
-        Mon, 28 Feb 2022 15:58:23 -0800 (PST)
-Received: from localhost.localdomain (c-67-174-241-145.hsd1.ca.comcast.net. [67.174.241.145])
-        by smtp.gmail.com with ESMTPSA id on15-20020a17090b1d0f00b001b9d1b5f901sm396963pjb.47.2022.02.28.15.58.19
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 28 Feb 2022 15:58:22 -0800 (PST)
-From:   Yang Shi <shy828301@gmail.com>
-To:     vbabka@suse.cz, kirill.shutemov@linux.intel.com,
-        songliubraving@fb.com, linmiaohe@huawei.com, riel@surriel.com,
-        willy@infradead.org, ziy@nvidia.com, akpm@linux-foundation.org,
-        tytso@mit.edu, adilger.kernel@dilger.ca, darrick.wong@oracle.com
-Cc:     linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 6/8] mm: khugepaged: move some khugepaged_* functions to khugepaged.c
-Date:   Mon, 28 Feb 2022 15:57:39 -0800
-Message-Id: <20220228235741.102941-7-shy828301@gmail.com>
-X-Mailer: git-send-email 2.26.3
-In-Reply-To: <20220228235741.102941-1-shy828301@gmail.com>
-References: <20220228235741.102941-1-shy828301@gmail.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=YyxDWmDN7sg056gSnE2Uv/JCnGhxSkXEZ0o6G25koMQ=;
+        b=Kp7ecV4WYCz+5YUviLbv+ebGtiQY54lHgHxs4lcrs/b18E/u0zqjmjld0Ln1TJADUa
+         8i5OmJHJIqC7FM0hd5+PyUlrqgK93EMoyLXU4nGZRLIWaklt9QXc1GL+brs2WhqG3mTN
+         f6YRvxNN7jdfCTSZHuk1QJ5sQLb63B5K6Zt4FJQIRC4TZmY1pmI7GZJOVdl9m1kAnGh2
+         JcV6l+sTwQ/d6BHq0zcphB+t+fEBE1kubFKn1GXjUyLR5QqdH3fKnJMJQEBA17P5keO7
+         7SgIt2JaQxuZBw2xU9nTBfsPommsiP7WRjQPq0cCZg4yPaJ5NoQodsXftS0i1FQh5lbe
+         +N7w==
+X-Gm-Message-State: AOAM5322aFPFcjlzPK7+3RTyj7Gg/hEwyNdew14efGJyKa2t+amKAJnA
+        lXVq8S+BsAY0CKe1B7/UU1JoxA==
+X-Google-Smtp-Source: ABdhPJybUnuTa4R87jf/KkaoAJYqvV8W2d7Ve0XGK+ZUtGR4TUfCjYlOQ7FAz6UZtDK49jKVgZNC9A==
+X-Received: by 2002:a17:902:f712:b0:149:d41a:baa8 with SMTP id h18-20020a170902f71200b00149d41abaa8mr22530563plo.115.1646092701179;
+        Mon, 28 Feb 2022 15:58:21 -0800 (PST)
+Received: from cabot.adilger.int (S01061cabc081bf83.cg.shawcable.net. [70.77.221.9])
+        by smtp.gmail.com with ESMTPSA id g19-20020a056a00079300b004bca2737f34sm13709894pfu.187.2022.02.28.15.58.20
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 28 Feb 2022 15:58:20 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <49C6329B-BF16-4819-98F8-AE98F985676E@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_54BDB8F3-D8BD-4B9A-A11F-0F8E3C50916C";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] e2fsck: map PROMPT_* values to prompt messages
+Date:   Mon, 28 Feb 2022 16:58:19 -0700
+In-Reply-To: <20211211005111.GC69182@magnolia>
+Cc:     Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To:     "Darrick J. Wong" <djwong@kernel.org>
+References: <20211208075112.85649-1-adilger@dilger.ca>
+ <20211208164238.GA69182@magnolia>
+ <07CD099E-959E-4F85-B7B6-72F025E64545@dilger.ca>
+ <20211211005111.GC69182@magnolia>
+X-Mailer: Apple Mail (2.3273)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This move also makes the following patches easier.  The following patches
-will call khugepaged_enter() for regular filesystems to make readonly FS
-THP collapse more consistent.  They need to use some macros defined in
-huge_mm.h, for example, HPAGE_PMD_*, but it seems not preferred to
-polute filesystems code with including unnecessary header files.  With
-this move the filesystems code just need include khugepaged.h, which is
-quite small and the use is quite specific, to call khugepaged_enter()
-to hook mm with khugepaged.
 
-And the khugepaged_* functions actually are wrappers for some non-inline
-functions, so it seems the benefits are not too much to keep them inline.
+--Apple-Mail=_54BDB8F3-D8BD-4B9A-A11F-0F8E3C50916C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-This also helps to reuse hugepage_vma_check() for khugepaged_enter() so
-that we could remove some duplicate checks.
+On Dec 10, 2021, at 5:51 PM, Darrick J. Wong <djwong@kernel.org> wrote:
+> On Thu, Dec 09, 2021 at 02:55:26PM -0700, Andreas Dilger wrote:
+>> On Dec 8, 2021, at 9:42 AM, Darrick J. Wong <djwong@kernel.org> =
+wrote:
+>>>=20
+>>> On Wed, Dec 08, 2021 at 12:51:12AM -0700, Andreas Dilger wrote:
+>>>> It isn't totally clear when searching the code for PROMPT_*
+>>>> constants from problem codes where these messages come from.
+>>>> Similarly, there isn't a direct mapping from the prompt string
+>>>> to the constant.
+>>>>=20
+>>>> Add comments that make this mapping more clear.
+>>>>=20
+>>>> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+>>>> ---
+>>>> e2fsck/problem.c | 46 =
++++++++++++++++++++++++-----------------------
+>>>> 1 file changed, 23 insertions(+), 23 deletions(-)
+>>>>=20
+>>>> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+>>>> index 757b5d56..2d02468c 100644
+>>>> --- a/e2fsck/problem.c
+>>>> +++ b/e2fsck/problem.c
+>>>> @@ -50,29 +50,29 @@
+>>>> * to fix a problem.
+>>>> */
+>>>> static const char *prompt[] =3D {
+>>>> -	N_("(no prompt)"),	/* 0 */
+>>>> -	N_("Fix"),		/* 1 */
+>>>> -	N_("Clear"),		/* 2 */
+>>>> -	N_("Relocate"),		/* 3 */
+>>>> -	N_("Allocate"),		/* 4 */
+>>>> -	N_("Expand"),		/* 5 */
+>>>> -	N_("Connect to /lost+found"), /* 6 */
+>>>> -	N_("Create"),		/* 7 */
+>>>> -	N_("Salvage"),		/* 8 */
+>>>> -	N_("Truncate"),		/* 9 */
+>>>> -	N_("Clear inode"),	/* 10 */
+>>>> -	N_("Abort"),		/* 11 */
+>>>> -	N_("Split"),		/* 12 */
+>>>> -	N_("Continue"),		/* 13 */
+>>>> -	N_("Clone multiply-claimed blocks"), /* 14 */
+>>>> -	N_("Delete file"),	/* 15 */
+>>>> -	N_("Suppress messages"),/* 16 */
+>>>> -	N_("Unlink"),		/* 17 */
+>>>> -	N_("Clear HTree index"),/* 18 */
+>>>> -	N_("Recreate"),		/* 19 */
+>>>> -	N_("Optimize"),		/* 20 */
+>>>> -	N_("Clear flag"),	/* 21 */
+>>>> -	"",			/* 22 */
+>>>> +	N_("(no prompt)"),			/* PROMPT_NONE		=
+=3D  0 */
+>>>=20
+>>> Why not make it even clearer and mismerge proof:
+>>>=20
+>>> static const char *prompt[] =3D {
+>>> 	[0]		=3D N_("(no prompt")),	/* null value test */
+>>> 	[PROMPT_FIX]	=3D N_("Fix"),		/* 1 */
+>>> 	[PROMPT_CLEAR]	=3D N_("Clear"),		/* 2 */
+>>> 	...
+>>> };
+>>=20
+>> I thought about that too, but then I thought the "[index] =3D foo" =
+designated
+>> initializer is GNU or at least C99-specific, and I wondered if that =
+was
+>> going to cause portability problems for some ancient system that =
+e2fsprogs
+>> is building on...  I figured adding comments is relatively safe, and =
+these
+>> values change so rarely that more complexity in the patch was not a =
+win.
+>=20
+> <shrug> Yeah, I thought it was safe enough to use -std=3Dgnu90 =
+features,
+> but I guess it's really up to Ted to decide if he'd prefer a =
+structural
+> fix or not.  Evidently this syntax is /still/ being argued in the C++
+> committees, which ... yay. :(
 
-Signed-off-by: Yang Shi <shy828301@gmail.com>
----
- include/linux/khugepaged.h | 33 ++++++---------------------------
- mm/khugepaged.c            | 20 ++++++++++++++++++++
- 2 files changed, 26 insertions(+), 27 deletions(-)
+Ted, thoughts on this?
 
-diff --git a/include/linux/khugepaged.h b/include/linux/khugepaged.h
-index 0423d3619f26..54e169116d49 100644
---- a/include/linux/khugepaged.h
-+++ b/include/linux/khugepaged.h
-@@ -16,6 +16,12 @@ extern void __khugepaged_enter(struct mm_struct *mm);
- extern void __khugepaged_exit(struct mm_struct *mm);
- extern void khugepaged_enter_vma_merge(struct vm_area_struct *vma,
- 				       unsigned long vm_flags);
-+extern void khugepaged_fork(struct mm_struct *mm,
-+			    struct mm_struct *oldmm);
-+extern void khugepaged_exit(struct mm_struct *mm);
-+extern void khugepaged_enter(struct vm_area_struct *vma,
-+			     unsigned long vm_flags);
-+
- extern void khugepaged_min_free_kbytes_update(void);
- #ifdef CONFIG_SHMEM
- extern void collapse_pte_mapped_thp(struct mm_struct *mm, unsigned long addr);
-@@ -33,36 +39,9 @@ static inline void collapse_pte_mapped_thp(struct mm_struct *mm,
- #define khugepaged_always()				\
- 	(transparent_hugepage_flags &			\
- 	 (1<<TRANSPARENT_HUGEPAGE_FLAG))
--#define khugepaged_req_madv()					\
--	(transparent_hugepage_flags &				\
--	 (1<<TRANSPARENT_HUGEPAGE_REQ_MADV_FLAG))
- #define khugepaged_defrag()					\
- 	(transparent_hugepage_flags &				\
- 	 (1<<TRANSPARENT_HUGEPAGE_DEFRAG_KHUGEPAGED_FLAG))
--
--static inline void khugepaged_fork(struct mm_struct *mm, struct mm_struct *oldmm)
--{
--	if (test_bit(MMF_VM_HUGEPAGE, &oldmm->flags))
--		__khugepaged_enter(mm);
--}
--
--static inline void khugepaged_exit(struct mm_struct *mm)
--{
--	if (test_bit(MMF_VM_HUGEPAGE, &mm->flags))
--		__khugepaged_exit(mm);
--}
--
--static inline void khugepaged_enter(struct vm_area_struct *vma,
--				   unsigned long vm_flags)
--{
--	if (!test_bit(MMF_VM_HUGEPAGE, &vma->vm_mm->flags))
--		if ((khugepaged_always() ||
--		     (shmem_file(vma->vm_file) && shmem_huge_enabled(vma)) ||
--		     (khugepaged_req_madv() && (vm_flags & VM_HUGEPAGE))) &&
--		    !(vm_flags & VM_NOHUGEPAGE) &&
--		    !test_bit(MMF_DISABLE_THP, &vma->vm_mm->flags))
--			__khugepaged_enter(vma->vm_mm);
--}
- #else /* CONFIG_TRANSPARENT_HUGEPAGE */
- static inline void khugepaged_fork(struct mm_struct *mm, struct mm_struct *oldmm)
- {
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index b87af297e652..4cb4379ecf25 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -557,6 +557,26 @@ void __khugepaged_exit(struct mm_struct *mm)
- 	}
- }
- 
-+void khugepaged_fork(struct mm_struct *mm, struct mm_struct *oldmm)
-+{
-+	if (test_bit(MMF_VM_HUGEPAGE, &oldmm->flags))
-+		__khugepaged_enter(mm);
-+}
-+
-+void khugepaged_exit(struct mm_struct *mm)
-+{
-+	if (test_bit(MMF_VM_HUGEPAGE, &mm->flags))
-+		__khugepaged_exit(mm);
-+}
-+
-+void khugepaged_enter(struct vm_area_struct *vma, unsigned long vm_flags)
-+{
-+	if (!test_bit(MMF_VM_HUGEPAGE, &vma->vm_mm->flags) &&
-+	    khugepaged_enabled())
-+		if (hugepage_vma_check(vma, vm_flags))
-+			__khugepaged_enter(vma->vm_mm);
-+}
-+
- static void release_pte_page(struct page *page)
- {
- 	mod_node_page_state(page_pgdat(page),
--- 
-2.26.3
+Cheers, Andreas
 
+
+
+
+
+
+--Apple-Mail=_54BDB8F3-D8BD-4B9A-A11F-0F8E3C50916C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAmIdYZsACgkQcqXauRfM
+H+B//w//TfztlhtYLIuXsfUHOgeL2KIwtEsWFSnTEoHy6FtlKHDy7TidPsRdMIOc
+oY98D3Up/EZiceMe0ykMQLb13DVHWfyXeNmn7Vuyglbx00poholsi9+oe9XXfTIR
+SHoFggSbIq2rqTGKaIOLY7XuMSuBEBnL3u0ika/aC9W+Csj2IEC7UjM9Yg43SRQh
+pZA/QxC2ENtQcJT6Po4575zZopJMiK5VzihMj8CpIiRtFG90LbZQ+lpoon8NpmxU
+ubVRXxZC0En6LewBKJOTlB/8hVnU6vm/V1HS0GH6BQaZB5tHNnWokHEZk9oSSPM4
+FhLe7+dkmoZ9gQ3WmUWwt7KOLei7bVYFXSqqCfZ+4CNXmxTj4wCwuQd+tK+TcHsY
+4TeOwpKa5ffBwv4LaNWqkPURYUwtjZbqRmSI+vIyE1F+OykhRtGpEgl8gIGKgEks
++TC6uQMlNlwz5bTxiMgx40PGqpC+NP3gm5Fh7CyjHtZ4DM05y+wL0Hgbg1GqG1om
+al3eNiH6qFDe/ZBVd9G4O1Xqv3MzreMIKdTxyiwxIyOGfaUORuY2knZsLn5FEm8Q
+kMjKflGHUaL0HoKIfKDT7zUSPMWwaGMAZB0QFNw8x3UKx0KcjcAMp4BVPZVg4bra
+9ELYS/f8D/JXJh9+AGLtrMKPX1B94tQNCplrBMHpTaOO+o7tD88=
+=i92A
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_54BDB8F3-D8BD-4B9A-A11F-0F8E3C50916C--
