@@ -2,37 +2,36 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DDC9C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:41:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B626C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:41:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230467AbiCCAm1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Mar 2022 19:42:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51336 "EHLO
+        id S230468AbiCCAm2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Mar 2022 19:42:28 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51708 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230451AbiCCAmW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:42:22 -0500
+        with ESMTP id S230466AbiCCAm1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:42:27 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EB6B33EBB;
-        Wed,  2 Mar 2022 16:41:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 384CE403EB
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Mar 2022 16:41:43 -0800 (PST)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230fT8a019240
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230fTQO019234
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Wed, 2 Mar 2022 19:41:30 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id A35AA15C3448; Wed,  2 Mar 2022 19:41:29 -0500 (EST)
+        id 9C4EE15C0038; Wed,  2 Mar 2022 19:41:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ritesh Harjani <riteshh@linux.ibm.com>, linux-ext4@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCHv2 REBASED 0/2] jbd2: Kill t_handle_lock transaction spinlock
-Date:   Wed,  2 Mar 2022 19:41:26 -0500
-Message-Id: <164626805478.621144.16176363008693188429.b4-ty@mit.edu>
+To:     Lukas Czerner <lczerner@redhat.com>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Ye Bin <yebin10@huawei.com>
+Subject: Re: [PATCH] ext4: fix remount with 'abort' option
+Date:   Wed,  2 Mar 2022 19:41:23 -0500
+Message-Id: <164626805478.621144.15168980198456730624.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <cover.1644992076.git.riteshh@linux.ibm.com>
-References: <cover.1644992076.git.riteshh@linux.ibm.com>
+In-Reply-To: <20220201131345.77591-1-lczerner@redhat.com>
+References: <YcSYvk5DdGjjB9q/@mit.edu> <20220201131345.77591-1-lczerner@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -40,26 +39,20 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 16 Feb 2022 12:30:34 +0530, Ritesh Harjani wrote:
-> This is mainly just rebasing the patch series on top of recent use-after-free
-> fix submitted [4], due to conflict in function jbd2_journal_wait_updates().
-> No other changes apart from that.
-> 
-> 
-> Testing
-> ========
-> I have again tested xfstests with -g log,metadata,auto group with 4k bs
-> config (COFIG_KASAN disabled). I haven't found any regression due to these
-> patches in my testing.
+On Tue, 1 Feb 2022 14:13:45 +0100, Lukas Czerner wrote:
+> After commit 6e47a3cc68fc ("ext4: get rid of super block and sbi from
+> handle_mount_ops()") the 'abort' options stopped working. This is
+> because we're using ctx_set_mount_flags() helper that's expecting an
+> argument with the appropriate bit set, but instead got
+> EXT4_MF_FS_ABORTED which is a bit position. ext4_set_mount_flag() is
+> using set_bit() while ctx_set_mount_flags() was using bitwise OR.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/2] jbd2: Kill t_handle_lock transaction spinlock
-      commit: f7f497cb702462e8505ff3d8d4e7722ad95626a1
-[2/2] jbd2: Remove CONFIG_JBD2_DEBUG to update t_max_wait
-      commit: 2d4429205882817100e5e88870ce0663d30c77af
+[1/1] ext4: fix remount with 'abort' option
+      commit: e3952fcce1aad934f1322843b564ff86256444b2
 
 Best regards,
 -- 
