@@ -2,53 +2,78 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A6DEC433F5
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:40:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 26FF7C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:41:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230441AbiCCAlT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Mar 2022 19:41:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47446 "EHLO
+        id S230461AbiCCAmZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Mar 2022 19:42:25 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51312 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230422AbiCCAlS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:41:18 -0500
+        with ESMTP id S230450AbiCCAmW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:42:22 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C33484F9E4
-        for <linux-ext4@vger.kernel.org>; Wed,  2 Mar 2022 16:40:33 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C21DC2018A;
+        Wed,  2 Mar 2022 16:41:37 -0800 (PST)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230eKGf018837
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230fTBg019238
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 2 Mar 2022 19:40:21 -0500
+        Wed, 2 Mar 2022 19:41:30 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 6E1D215C0038; Wed,  2 Mar 2022 19:40:20 -0500 (EST)
-Date:   Wed, 2 Mar 2022 19:40:20 -0500
+        id A194615C3444; Wed,  2 Mar 2022 19:41:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org, Ye Bin <yebin10@huawei.com>
-Subject: Re: [PATCH] ext4: fix remount with 'abort' option
-Message-ID: <YiAOdGqf7/smyQL7@mit.edu>
-References: <YcSYvk5DdGjjB9q/@mit.edu>
- <20220201131345.77591-1-lczerner@redhat.com>
- <20220302094337.jv4d2vy4sldzbq6v@work>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>, linux-ext4@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.cz>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+Subject: Re: [PATCHv2 0/9] ext4: fast_commit fixes, stricter block checking & cleanups
+Date:   Wed,  2 Mar 2022 19:41:25 -0500
+Message-Id: <164626805478.621144.4983790124922912795.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <cover.1644992609.git.riteshh@linux.ibm.com>
+References: <cover.1644992609.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220302094337.jv4d2vy4sldzbq6v@work>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Mar 02, 2022 at 10:43:37AM +0100, Lukas Czerner wrote:
-> Hi Ted,
+On Wed, 16 Feb 2022 12:32:42 +0530, Ritesh Harjani wrote:
+> Please find the v2 of this patch series which addresses the review comments from
+> Jan on PATCH-2 & PATCH-7. No changes other than that.
 > 
-> this problem is still generating warnings. Can you please take this in
-> when you have time?
+> Summary
+> ========
+> This patch series aimes at fixing some of the issues identified in fast_commit
+> with flex_bg. This also adds some stricter checking of blocks to be freed in
+> ext4_mb_clear_bb(), ext4_group_add_blocks() & ext4_mb_mark_bb()
+> 
+> [...]
 
-Oops, sorry.  I processed a bunch of patches last week, and had even
-pushed them them out to ext4.git on git.kernel.org, but I had
-forgotten to run "b4 ty".  (I was waiting for the regression tests to
-finish, and then forgot to send out the e-mail ack's.)  I'll send
-them out now.
+Applied, thanks!
 
-					- Ted
+[1/9] ext4: Correct cluster len and clusters changed accounting in ext4_mb_mark_bb
+      commit: a5c0e2fdf7cea535ba03259894dc184e5a4c2800
+[2/9] ext4: Fixes ext4_mb_mark_bb() with flex_bg with fast_commit
+      commit: bfdc502a4a4c058bf4cbb1df0c297761d528f54d
+[3/9] ext4: Refactor ext4_free_blocks() to pull out ext4_mb_clear_bb()
+      commit: 8ac3939db99f99667b8eb670cf4baf292896e72d
+[4/9] ext4: Use in_range() for range checking in ext4_fc_replay_check_excluded
+      commit: dbaafbadc5c3dad4010099d0ff135204a8dbff49
+[5/9] ext4: Rename ext4_set_bits to mb_set_bits
+      commit: 123e3016ee9b3674a819537bc4c3174e25cd48fc
+[6/9] ext4: No need to test for block bitmap bits in ext4_mb_mark_bb()
+      commit: bd8247eee1a2b22e2270b3933ab8dca9316b3718
+[7/9] ext4: Add ext4_sb_block_valid() refactored out of ext4_inode_block_valid()
+      commit: 6bc6c2bdf1baca6522b8d9ba976257d722423085
+[8/9] ext4: Add strict range checks while freeing blocks
+      commit: a00b482b82fb098956a5bed22bd7873e56f152f1
+[9/9] ext4: Add extra check in ext4_mb_mark_bb() to prevent against possible corruption
+      commit: 8c91c57907d3ad8f88a12097213bb0920eb453b8
+
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
