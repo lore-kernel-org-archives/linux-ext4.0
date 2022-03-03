@@ -2,37 +2,37 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A4FFC4332F
-	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:41:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DDC9C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu,  3 Mar 2022 00:41:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230464AbiCCAm0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 2 Mar 2022 19:42:26 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51402 "EHLO
+        id S230467AbiCCAm1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 2 Mar 2022 19:42:27 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51336 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230452AbiCCAmX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:42:23 -0500
+        with ESMTP id S230451AbiCCAmW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Mar 2022 19:42:22 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F822443D0
-        for <linux-ext4@vger.kernel.org>; Wed,  2 Mar 2022 16:41:38 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EB6B33EBB;
+        Wed,  2 Mar 2022 16:41:38 -0800 (PST)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230fTWx019236
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 2230fT8a019240
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Wed, 2 Mar 2022 19:41:30 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 9F87315C33A4; Wed,  2 Mar 2022 19:41:29 -0500 (EST)
+        id A35AA15C3448; Wed,  2 Mar 2022 19:41:29 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ritesh Harjani <riteshh@linux.ibm.com>, linux-ext4@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        syzbot+afa2ca5171d93e44b348@syzkaller.appspotmail.com,
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: Fix use-after-free of transaction_t race
-Date:   Wed,  2 Mar 2022 19:41:24 -0500
-Message-Id: <164626805478.621144.10561349500023646398.b4-ty@mit.edu>
+Subject: Re: [PATCHv2 REBASED 0/2] jbd2: Kill t_handle_lock transaction spinlock
+Date:   Wed,  2 Mar 2022 19:41:26 -0500
+Message-Id: <164626805478.621144.16176363008693188429.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <948c2fed518ae739db6a8f7f83f1d58b504f87d0.1644497105.git.ritesh.list@gmail.com>
-References: <948c2fed518ae739db6a8f7f83f1d58b504f87d0.1644497105.git.ritesh.list@gmail.com>
+In-Reply-To: <cover.1644992076.git.riteshh@linux.ibm.com>
+References: <cover.1644992076.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -40,20 +40,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 10 Feb 2022 21:07:11 +0530, Ritesh Harjani wrote:
-> jbd2_journal_wait_updates() is called with j_state_lock held. But if
-> there is a commit in progress, then this transaction might get committed
-> and freed via jbd2_journal_commit_transaction() ->
-> jbd2_journal_free_transaction(), when we release j_state_lock.
-> So check for journal->j_running_transaction everytime we release and
-> acquire j_state_lock to avoid use-after-free issue.
+On Wed, 16 Feb 2022 12:30:34 +0530, Ritesh Harjani wrote:
+> This is mainly just rebasing the patch series on top of recent use-after-free
+> fix submitted [4], due to conflict in function jbd2_journal_wait_updates().
+> No other changes apart from that.
+> 
+> 
+> Testing
+> ========
+> I have again tested xfstests with -g log,metadata,auto group with 4k bs
+> config (COFIG_KASAN disabled). I haven't found any regression due to these
+> patches in my testing.
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] jbd2: Fix use-after-free of transaction_t race
-      commit: cc16eecae687912238ee6efbff71ad31e2bc414e
+[1/2] jbd2: Kill t_handle_lock transaction spinlock
+      commit: f7f497cb702462e8505ff3d8d4e7722ad95626a1
+[2/2] jbd2: Remove CONFIG_JBD2_DEBUG to update t_max_wait
+      commit: 2d4429205882817100e5e88870ce0663d30c77af
 
 Best regards,
 -- 
