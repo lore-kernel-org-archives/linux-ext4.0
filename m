@@ -2,73 +2,103 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DB2EC433F5
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 18:01:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C11AC433F5
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 19:14:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241505AbiCDSCb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Mar 2022 13:02:31 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59728 "EHLO
+        id S229720AbiCDTPl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Mar 2022 14:15:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53004 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241480AbiCDSCZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 13:02:25 -0500
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 230A11D06E0;
-        Fri,  4 Mar 2022 10:01:34 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=YZfuEEYnhVbo8r/s4SQj/tw1f3BGsvg3FGGkCFbsay4=; b=PlV4dFSwZ3gvToZvQqdUYoTDMT
-        QDi5Jmng39OdDzsyfY2Dy1gX1wRT+TyqvMM5jNjm4fa48l8btcuilcN2RgFfaI+8Fu9YC5LN4sxif
-        2U4DTcSzbwhAlZ3zssvvA4dpLfJB35SBoEVp4fmy5VxZV/sax8ohnPqCX0W/+rO1lLXkNmaS1RlsS
-        Q7aIJmtYkKCIJ9jUlf/4fXRSq1uG4LcI1/4OVB4uVCnl0dRFMvdTj2/V8uDDb8WN+wl1VeloFiq+3
-        Kp7iO9pF5RtyheUVpwnvwINIq6fRsa0gfj/APaXl6YKPzgTnl7sxjeBtRwIBDKrrCmGAuolbPY+VH
-        Kri+l+ig==;
-Received: from [2001:4bb8:180:5296:cded:8d4b:ace6:f3c] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nQCF9-00BUyz-SA; Fri, 04 Mar 2022 18:01:32 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>
-Cc:     Song Liu <song@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        linux-block@vger.kernel.org, dm-devel@redhat.com,
-        linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [PATCH 09/10] ext4: stop using bio_devname
-Date:   Fri,  4 Mar 2022 19:01:04 +0100
-Message-Id: <20220304180105.409765-10-hch@lst.de>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20220304180105.409765-1-hch@lst.de>
-References: <20220304180105.409765-1-hch@lst.de>
+        with ESMTP id S229529AbiCDTPi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 14:15:38 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7D5811F1601;
+        Fri,  4 Mar 2022 11:14:43 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id CD5ACB82B66;
+        Fri,  4 Mar 2022 19:14:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D197C340EE;
+        Fri,  4 Mar 2022 19:14:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1646421280;
+        bh=z9QOAPrGETQ++HWZY4bwoQ4oWyQg3KZKh7KMFBI9D3k=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=WfZBXhh7cjSx2qbz7lyWNwyYegtc9BVoVASPBl+AYWSzGRgv/lZrbKWP96hd5yKsr
+         sywrXu/hIEvE8UpLbSggbSUenfSEL143wXvWyl2AKiKPE5x3PvCVH1llOmPP/UH0F+
+         KvDKVIy2mG+ICjhAVP6GhOXjDlGHUBIKLkxTa+JPGfIgQZJkk5YwjG+GdC8RrHfQ/y
+         pcqcE1vFzhoU5skSDKZ6APVVNM+SeVRterRiquSWy1mP0jlJQhJY2wVwHxMhjgVsyy
+         36EKJ2NOW8UYdHfiHLakr6VypzkBPNalh8bZIqMKevUtnaKAQBaVjXelfkn5GM0ekY
+         zVb1qMo7OXvwA==
+Received: by mail-yw1-f170.google.com with SMTP id 00721157ae682-2dbc48104beso102387777b3.5;
+        Fri, 04 Mar 2022 11:14:40 -0800 (PST)
+X-Gm-Message-State: AOAM532FSOkPnuyEM8uiVMsLj/xL55Jgk2c0T0qLeOILqA8uDKCRcFEB
+        RpsJr3qAcjMAJBMEb15gcnyGXLayslYUAKbnz4E=
+X-Google-Smtp-Source: ABdhPJz1k+z6CdB1ZzQOzZSIjJIBSsGyOVyzuwjsvPhhdopH3DUGx0z8p5JWInYwnZDE3MO0ZqNgFRCZZrFdU5/nPZ4=
+X-Received: by 2002:a81:23ce:0:b0:2dc:b20:cc73 with SMTP id
+ j197-20020a8123ce000000b002dc0b20cc73mr51033ywj.130.1646421279615; Fri, 04
+ Mar 2022 11:14:39 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <20220304180105.409765-1-hch@lst.de> <20220304180105.409765-7-hch@lst.de>
+In-Reply-To: <20220304180105.409765-7-hch@lst.de>
+From:   Song Liu <song@kernel.org>
+Date:   Fri, 4 Mar 2022 11:14:28 -0800
+X-Gmail-Original-Message-ID: <CAPhsuW4br23hby-nmQsx9=wTn3tgV+OCXh0kMBLQR7Nhc6zdzg@mail.gmail.com>
+Message-ID: <CAPhsuW4br23hby-nmQsx9=wTn3tgV+OCXh0kMBLQR7Nhc6zdzg@mail.gmail.com>
+Subject: Re: [PATCH 06/10] md-multipath: stop using bio_devname
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>, "Theodore Ts'o" <tytso@mit.edu>,
+        linux-block@vger.kernel.org, dm-devel@redhat.com,
+        linux-raid <linux-raid@vger.kernel.org>,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use the %pg format specifier to save on stack consuption and code size.
+On Fri, Mar 4, 2022 at 10:01 AM Christoph Hellwig <hch@lst.de> wrote:
+>
+> Use the %pg format specifier to save on stack consuption and code size.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/ext4/page-io.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+Acked-by: Song Liu <song@kernel.org>
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index 1253982268730..18373fa529225 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -323,10 +323,9 @@ static void ext4_end_bio(struct bio *bio)
- {
- 	ext4_io_end_t *io_end = bio->bi_private;
- 	sector_t bi_sector = bio->bi_iter.bi_sector;
--	char b[BDEVNAME_SIZE];
- 
--	if (WARN_ONCE(!io_end, "io_end is NULL: %s: sector %Lu len %u err %d\n",
--		      bio_devname(bio, b),
-+	if (WARN_ONCE(!io_end, "io_end is NULL: %pg: sector %Lu len %u err %d\n",
-+		      bio->bi_bdev,
- 		      (long long) bio->bi_iter.bi_sector,
- 		      (unsigned) bio_sectors(bio),
- 		      bio->bi_status)) {
--- 
-2.30.2
-
+> ---
+>  drivers/md/md-multipath.c | 9 ++++-----
+>  1 file changed, 4 insertions(+), 5 deletions(-)
+>
+> diff --git a/drivers/md/md-multipath.c b/drivers/md/md-multipath.c
+> index c056a7d707b09..bc38a6133cda3 100644
+> --- a/drivers/md/md-multipath.c
+> +++ b/drivers/md/md-multipath.c
+> @@ -294,7 +294,6 @@ static void multipathd(struct md_thread *thread)
+>
+>         md_check_recovery(mddev);
+>         for (;;) {
+> -               char b[BDEVNAME_SIZE];
+>                 spin_lock_irqsave(&conf->device_lock, flags);
+>                 if (list_empty(head))
+>                         break;
+> @@ -306,13 +305,13 @@ static void multipathd(struct md_thread *thread)
+>                 bio->bi_iter.bi_sector = mp_bh->master_bio->bi_iter.bi_sector;
+>
+>                 if ((mp_bh->path = multipath_map (conf))<0) {
+> -                       pr_err("multipath: %s: unrecoverable IO read error for block %llu\n",
+> -                              bio_devname(bio, b),
+> +                       pr_err("multipath: %pg: unrecoverable IO read error for block %llu\n",
+> +                              bio->bi_bdev,
+>                                (unsigned long long)bio->bi_iter.bi_sector);
+>                         multipath_end_bh_io(mp_bh, BLK_STS_IOERR);
+>                 } else {
+> -                       pr_err("multipath: %s: redirecting sector %llu to another IO path\n",
+> -                              bio_devname(bio, b),
+> +                       pr_err("multipath: %pg: redirecting sector %llu to another IO path\n",
+> +                              bio->bi_bdev,
+>                                (unsigned long long)bio->bi_iter.bi_sector);
+>                         *bio = *(mp_bh->master_bio);
+>                         bio->bi_iter.bi_sector +=
+> --
+> 2.30.2
+>
