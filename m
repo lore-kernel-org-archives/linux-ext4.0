@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24740C4167D
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 07:08:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD7B6C433F5
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 07:08:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238796AbiCDHIw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Mar 2022 02:08:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36668 "EHLO
+        id S238842AbiCDHIy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Mar 2022 02:08:54 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39074 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231328AbiCDHIm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 02:08:42 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A34E2190B6D
+        with ESMTP id S238693AbiCDHIt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 02:08:49 -0500
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id F2412190C0B
         for <linux-ext4@vger.kernel.org>; Thu,  3 Mar 2022 23:07:08 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.52 with ESMTP; 4 Mar 2022 16:07:07 +0900
+        by 156.147.23.51 with ESMTP; 4 Mar 2022 16:07:07 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v4 09/24] dept: Apply Dept to seqlock
-Date:   Fri,  4 Mar 2022 16:06:28 +0900
-Message-Id: <1646377603-19730-10-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v4 12/24] dept: Introduce split map concept and new APIs for them
+Date:   Fri,  4 Mar 2022 16:06:31 +0900
+Message-Id: <1646377603-19730-13-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1646377603-19730-1-git-send-email-byungchul.park@lge.com>
 References: <1646377603-19730-1-git-send-email-byungchul.park@lge.com>
@@ -56,140 +56,263 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by seqlock with adding wait
-annotation on read side of seqlock.
+There is a case where all maps used for a type of wait/event is so large
+in size. For instance, struct page can be a type for (un)lock_page().
+The additional memory size for the maps would be 'the # of pages *
+sizeof(struct dept_map)' if each struct page keeps its map all the way,
+which might be too big to accept in some system.
+
+It'd better to have split map, one is for each instance and the other
+is for the type which is commonly used, and new APIs using them. So
+introduced split map and new APIs for them.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/seqlock.h | 59 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 58 insertions(+), 1 deletion(-)
+ include/linux/dept.h     |  80 ++++++++++++++++++++++---------
+ kernel/dependency/dept.c | 122 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 180 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/seqlock.h b/include/linux/seqlock.h
-index 37ded6b..6e8ecd7 100644
---- a/include/linux/seqlock.h
-+++ b/include/linux/seqlock.h
-@@ -23,6 +23,25 @@
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index c0bbb8e..e2d4aea 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -362,6 +362,30 @@ struct dept_map {
+ 	bool				nocheck;
+ };
  
- #include <asm/processor.h>
- 
-+#ifdef CONFIG_DEPT
-+#define DEPT_EVT_ALL		((1UL << DEPT_MAX_SUBCLASSES_EVT) - 1)
-+#define dept_seq_wait(m, ip)	dept_wait(m, DEPT_EVT_ALL, ip, __func__, 0)
-+#define dept_seq_writebegin(m, ip)				\
-+do {								\
-+	dept_ecxt_enter(m, 1UL, ip, __func__, "write_seqcount_end", 0);\
-+	dept_ask_event(m);					\
-+} while (0)
-+#define dept_seq_writeend(m, ip)				\
-+do {								\
-+	dept_event(m, 1UL, ip, __func__);			\
-+	dept_ecxt_exit(m, ip);					\
-+} while (0)
-+#else
-+#define dept_seq_wait(m, ip)		do { } while (0)
-+#define dept_seq_writebegin(m, ip)	do { } while (0)
-+#define dept_seq_writeend(m, ip)	do { } while (0)
-+#endif
++struct dept_map_each {
++	/*
++	 * wait timestamp associated to this map
++	 */
++	unsigned int wgen;
++};
 +
++struct dept_map_common {
++	const char *name;
++	struct dept_key *keys;
++	int sub_usr;
++
++	/*
++	 * It's local copy for fast acces to the associated classes. And
++	 * Also used for dept_key instance for statically defined map.
++	 */
++	struct dept_key keys_local;
++
++	/*
++	 * whether this map should be going to be checked or not
++	 */
++	bool nocheck;
++};
++
+ struct dept_task {
+ 	/*
+ 	 * all event contexts that have entered and before exiting
+@@ -451,6 +475,11 @@ struct dept_task {
+ extern void dept_ecxt_exit(struct dept_map *m, unsigned long ip);
+ extern void dept_skip(struct dept_map *m);
+ extern bool dept_unskip_if_skipped(struct dept_map *m);
++extern void dept_split_map_each_init(struct dept_map_each *me);
++extern void dept_split_map_common_init(struct dept_map_common *mc, struct dept_key *k, const char *n);
++extern void dept_wait_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *w_fn, int ne);
++extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
++extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
+ 
  /*
-  * The seqlock seqcount_t interface does not prescribe a precise sequence of
-  * read begin/retry/end. For readers, typically there is a call to
-@@ -148,7 +167,7 @@ static inline void seqcount_lockdep_reader_access(const seqcount_t *s)
-  * This lock-unlock technique must be implemented for all of PREEMPT_RT
-  * sleeping locks.  See Documentation/locking/locktypes.rst
-  */
--#if defined(CONFIG_LOCKDEP) || defined(CONFIG_PREEMPT_RT)
-+#if defined(CONFIG_LOCKDEP) || defined(CONFIG_DEPT) || defined(CONFIG_PREEMPT_RT)
- #define __SEQ_LOCK(expr)	expr
- #else
- #define __SEQ_LOCK(expr)
-@@ -203,6 +222,22 @@ static inline void seqcount_lockdep_reader_access(const seqcount_t *s)
- 	__SEQ_LOCK(locktype	*lock);					\
- } seqcount_##lockname##_t;						\
- 									\
-+static __always_inline void						\
-+__seqprop_##lockname##_wait(const seqcount_##lockname##_t *s)		\
-+{									\
-+	__SEQ_LOCK(dept_seq_wait(&(lockmember)->dep_map.dmap, _RET_IP_));\
-+}									\
-+									\
-+static __always_inline void						\
-+__seqprop_##lockname##_writebegin(const seqcount_##lockname##_t *s)	\
-+{									\
-+}									\
-+									\
-+static __always_inline void						\
-+__seqprop_##lockname##_writeend(const seqcount_##lockname##_t *s)	\
-+{									\
-+}									\
-+									\
- static __always_inline seqcount_t *					\
- __seqprop_##lockname##_ptr(seqcount_##lockname##_t *s)			\
- {									\
-@@ -271,6 +306,21 @@ static inline void __seqprop_assert(const seqcount_t *s)
- 	lockdep_assert_preemption_disabled();
+  * for users who want to manage external keys
+@@ -460,31 +489,38 @@ struct dept_task {
+ #else /* !CONFIG_DEPT */
+ struct dept_key  { };
+ struct dept_map  { };
++struct dept_map_each    { };
++struct dept_map_commmon { };
+ struct dept_task { };
+ 
+ #define DEPT_TASK_INITIALIZER(t)
+ 
+-#define dept_on()				do { } while (0)
+-#define dept_off()				do { } while (0)
+-#define dept_init()				do { } while (0)
+-#define dept_task_init(t)			do { } while (0)
+-#define dept_task_exit(t)			do { } while (0)
+-#define dept_free_range(s, sz)			do { } while (0)
+-#define dept_map_init(m, k, s, n)		do { (void)(n); (void)(k); } while (0)
+-#define dept_map_reinit(m)			do { } while (0)
+-#define dept_map_nocheck(m)			do { } while (0)
+-
+-#define dept_wait(m, w_f, ip, w_fn, ne)		do { (void)(w_fn); } while (0)
+-#define dept_stage_wait(m, w_f, w_fn, ne)	do { (void)(w_fn); } while (0)
+-#define dept_ask_event_wait_commit(ip)		do { } while (0)
+-#define dept_clean_stage()			do { } while (0)
+-#define dept_ecxt_enter(m, e_f, ip, c_fn, e_fn, ne) do { (void)(c_fn); (void)(e_fn); } while (0)
+-#define dept_ask_event(m)			do { } while (0)
+-#define dept_event(m, e_f, ip, e_fn)		do { (void)(e_fn); } while (0)
+-#define dept_ecxt_exit(m, ip)			do { } while (0)
+-#define dept_skip(m)				do { } while (0)
+-#define dept_unskip_if_skipped(m)		(false)
+-#define dept_key_init(k)			do { (void)(k); } while (0)
+-#define dept_key_destroy(k)			do { (void)(k); } while (0)
++#define dept_on()					do { } while (0)
++#define dept_off()					do { } while (0)
++#define dept_init()					do { } while (0)
++#define dept_task_init(t)				do { } while (0)
++#define dept_task_exit(t)				do { } while (0)
++#define dept_free_range(s, sz)				do { } while (0)
++#define dept_map_init(m, k, s, n)			do { (void)(n); (void)(k); } while (0)
++#define dept_map_reinit(m)				do { } while (0)
++#define dept_map_nocheck(m)				do { } while (0)
++
++#define dept_wait(m, w_f, ip, w_fn, ne)			do { (void)(w_fn); } while (0)
++#define dept_stage_wait(m, w_f, w_fn, ne)		do { (void)(w_fn); } while (0)
++#define dept_ask_event_wait_commit(ip)			do { } while (0)
++#define dept_clean_stage()				do { } while (0)
++#define dept_ecxt_enter(m, e_f, ip, c_fn, e_fn, ne)	do { (void)(c_fn); (void)(e_fn); } while (0)
++#define dept_ask_event(m)				do { } while (0)
++#define dept_event(m, e_f, ip, e_fn)			do { (void)(e_fn); } while (0)
++#define dept_ecxt_exit(m, ip)				do { } while (0)
++#define dept_skip(m)					do { } while (0)
++#define dept_unskip_if_skipped(m)			(false)
++#define dept_split_map_each_init(me)			do { } while (0)
++#define dept_split_map_common_init(mc, k, n)		do { (void)(n); (void)(k); } while (0)
++#define dept_wait_split_map(me, mc, ip, w_fn, ne)	do { } while (0)
++#define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
++#define dept_ask_event_split_map(me, mc)		do { } while (0)
++#define dept_key_init(k)				do { (void)(k); } while (0)
++#define dept_key_destroy(k)				do { (void)(k); } while (0)
+ #endif
+ #endif /* __LINUX_DEPT_H */
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 4142c78..6a47149 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -2325,6 +2325,128 @@ void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip,
  }
+ EXPORT_SYMBOL_GPL(dept_event);
  
-+static inline void __seqprop_wait(seqcount_t *s)
++void dept_split_map_each_init(struct dept_map_each *me)
 +{
-+	dept_seq_wait(&s->dep_map.dmap, _RET_IP_);
-+}
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
 +
-+static inline void __seqprop_writebegin(seqcount_t *s)
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	flags = dept_enter();
++
++	me->wgen = 0U;
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_split_map_each_init);
++
++void dept_split_map_common_init(struct dept_map_common *mc,
++				struct dept_key *k, const char *n)
 +{
-+	dept_seq_writebegin(&s->dep_map.dmap, _RET_IP_);
-+}
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
 +
-+static inline void __seqprop_writeend(seqcount_t *s)
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	flags = dept_enter();
++
++	if (mc->keys != k)
++		mc->keys = k;
++	clean_classes_cache(&mc->keys_local);
++
++	/*
++	 * sub_usr is not used with split map.
++	 */
++	mc->sub_usr = 0;
++	mc->name = n;
++	mc->nocheck = false;
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_split_map_common_init);
++
++void dept_wait_split_map(struct dept_map_each *me,
++			 struct dept_map_common *mc,
++			 unsigned long ip, const char *w_fn, int ne)
 +{
-+	dept_seq_writeend(&s->dep_map.dmap, _RET_IP_);
-+}
++	struct dept_task *dt = dept_task();
++	struct dept_class *c;
++	struct dept_key *k;
++	unsigned long flags;
 +
- #define __SEQ_RT	IS_ENABLED(CONFIG_PREEMPT_RT)
- 
- SEQCOUNT_LOCKNAME(raw_spinlock, raw_spinlock_t,  false,    s->lock,        raw_spin, raw_spin_lock(s->lock))
-@@ -311,6 +361,9 @@ static inline void __seqprop_assert(const seqcount_t *s)
- #define seqprop_sequence(s)		__seqprop(s, sequence)
- #define seqprop_preemptible(s)		__seqprop(s, preemptible)
- #define seqprop_assert(s)		__seqprop(s, assert)
-+#define seqprop_dept_wait(s)		__seqprop(s, wait)
-+#define seqprop_dept_writebegin(s)	__seqprop(s, writebegin)
-+#define seqprop_dept_writeend(s)	__seqprop(s, writeend)
- 
- /**
-  * __read_seqcount_begin() - begin a seqcount_t read section w/o barrier
-@@ -360,6 +413,7 @@ static inline void __seqprop_assert(const seqcount_t *s)
- #define read_seqcount_begin(s)						\
- ({									\
- 	seqcount_lockdep_reader_access(seqprop_ptr(s));			\
-+	seqprop_dept_wait(s);						\
- 	raw_read_seqcount_begin(s);					\
- })
- 
-@@ -512,6 +566,7 @@ static inline void do_raw_write_seqcount_end(seqcount_t *s)
- 		preempt_disable();					\
- 									\
- 	do_write_seqcount_begin_nested(seqprop_ptr(s), subclass);	\
-+	seqprop_dept_writebegin(s);					\
- } while (0)
- 
- static inline void do_write_seqcount_begin_nested(seqcount_t *s, int subclass)
-@@ -538,6 +593,7 @@ static inline void do_write_seqcount_begin_nested(seqcount_t *s, int subclass)
- 		preempt_disable();					\
- 									\
- 	do_write_seqcount_begin(seqprop_ptr(s));			\
-+	seqprop_dept_writebegin(s);					\
- } while (0)
- 
- static inline void do_write_seqcount_begin(seqcount_t *s)
-@@ -554,6 +610,7 @@ static inline void do_write_seqcount_begin(seqcount_t *s)
-  */
- #define write_seqcount_end(s)						\
- do {									\
-+	seqprop_dept_writeend(s);					\
- 	do_write_seqcount_end(seqprop_ptr(s));				\
- 									\
- 	if (seqprop_preemptible(s))					\
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	if (mc->nocheck)
++		return;
++
++	flags = dept_enter();
++
++	k = mc->keys ?: &mc->keys_local;
++	c = check_new_class(&mc->keys_local, k, 0, mc->name);
++	if (c)
++		add_wait(c, ip, w_fn, ne);
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_wait_split_map);
++
++void dept_ask_event_split_map(struct dept_map_each *me,
++			      struct dept_map_common *mc)
++{
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
++	unsigned int wg;
++
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	if (mc->nocheck)
++		return;
++
++	flags = dept_enter();
++
++	/*
++	 * Avoid zero wgen.
++	 */
++	wg = atomic_inc_return(&wgen) ?: atomic_inc_return(&wgen);
++	WRITE_ONCE(me->wgen, wg);
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_ask_event_split_map);
++
++void dept_event_split_map(struct dept_map_each *me,
++			  struct dept_map_common *mc,
++			  unsigned long ip, const char *e_fn)
++{
++	struct dept_task *dt = dept_task();
++	struct dept_class *c;
++	struct dept_key *k;
++	unsigned long flags;
++
++	if (READ_ONCE(dept_stop) || dt->recursive)
++		return;
++
++	if (mc->nocheck)
++		return;
++
++	flags = dept_enter();
++
++	k = mc->keys ?: &mc->keys_local;
++	c = check_new_class(&mc->keys_local, k, 0, mc->name);
++	if (c) {
++		add_ecxt((void *)me, c, 0UL, NULL, e_fn, 0);
++		do_event((void *)me, c, READ_ONCE(me->wgen), ip);
++		pop_ecxt((void *)me);
++	}
++
++	dept_exit(flags);
++}
++EXPORT_SYMBOL_GPL(dept_event_split_map);
++
+ void dept_ecxt_exit(struct dept_map *m, unsigned long ip)
+ {
+ 	struct dept_task *dt = dept_task();
 -- 
 1.9.1
 
