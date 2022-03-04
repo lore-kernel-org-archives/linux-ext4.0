@@ -2,39 +2,39 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBB6CC4332F
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 18:01:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EB86C43219
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 18:01:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241493AbiCDSCZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Mar 2022 13:02:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59504 "EHLO
+        id S241470AbiCDSC0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Mar 2022 13:02:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59498 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241458AbiCDSCO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 13:02:14 -0500
+        with ESMTP id S241440AbiCDSCY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 13:02:24 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 498801C4B2A;
-        Fri,  4 Mar 2022 10:01:25 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B92811C8861;
+        Fri,  4 Mar 2022 10:01:28 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=/DgQnFlNZ9XU3MUiWD3W/xSOCpM12Wnovh2/HHtJAns=; b=gFJUv/iqGPUrFqOo4zKYr7SM6n
-        0HB+IUMBpdrhBvNbI24UPggkNktOF69JinOcS8v+LK33M36D7afdoQCU7H2YyfU7GDwl3fq3nKa7b
-        4Yu+dZUy8FBkP6Ac4RE50C4a2dsHnn9Y3bGhugN40FAe4qojkeu8A5t6AbF4Hb24QsTOkTeCNE1k9
-        C8SD2sMpW2RQya1hRm+22AC/MHC0yhcrUCajz0XcF/l4IKT08uHCZN6agm1+x+U3t72kpaFE0gsS0
-        DnwVH4lsUfw5kgiBgXPYc4ZT7Y2Lb1BJEsYKLa1TCbzQoMV9dIeCutamH6V9SvAruUbpL0cElRPJS
-        5Pmiz80A==;
+        bh=FG7ZP/ghVPa2lKPUR2l6I91okITwu/uLFXi8KaHWabo=; b=QzGD5bJuCRbXT2tw/3aWebtOiC
+        /Hb40K/YrsOSWkIcp9OG9pQPiUEeYHZAvWV7iPmeR5/oNsyx/W+G9zx3DQheTYyN04itzCBv9vZcq
+        XATIpnXem/DZqsM+y4jypiWOCPY4FiwrPBGt3oZvi0ZluI5J2dcLYyETSK7+YjfxtE0N1FGdiF1Y0
+        hnBVBRxjLM2ivbsduEf6g503/b/lbyHYN0J1DpI/jyIsxnB4cvGIjGj/Zz9iqsK9PZacxj4SLzCcS
+        5csWZoy9iFL8Ozl/rVRikm9PTPJjDUdWBmzbeoavMjgQLWkm8ceHLl0pPxGTZCJRx6ranK3x0CDNV
+        /0+QyPaw==;
 Received: from [2001:4bb8:180:5296:cded:8d4b:ace6:f3c] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nQCEz-00BUpr-2n; Fri, 04 Mar 2022 18:01:21 +0000
+        id 1nQCF4-00BUtw-JU; Fri, 04 Mar 2022 18:01:27 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Song Liu <song@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-block@vger.kernel.org, dm-devel@redhat.com,
         linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [PATCH 05/10] dm-integrity: stop using bio_devname
-Date:   Fri,  4 Mar 2022 19:01:00 +0100
-Message-Id: <20220304180105.409765-6-hch@lst.de>
+Subject: [PATCH 07/10] raid1: stop using bio_devname
+Date:   Fri,  4 Mar 2022 19:01:02 +0100
+Message-Id: <20220304180105.409765-8-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220304180105.409765-1-hch@lst.de>
 References: <20220304180105.409765-1-hch@lst.de>
@@ -49,28 +49,31 @@ Use the %pg format specifier to save on stack consuption and code size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/md/dm-integrity.c | 5 ++---
+ drivers/md/raid1.c | 5 ++---
  1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/md/dm-integrity.c b/drivers/md/dm-integrity.c
-index eb4b5e52bd6ff..c58a5111cb575 100644
---- a/drivers/md/dm-integrity.c
-+++ b/drivers/md/dm-integrity.c
-@@ -1788,12 +1788,11 @@ static void integrity_metadata(struct work_struct *w)
- 						checksums_ptr - checksums, dio->op == REQ_OP_READ ? TAG_CMP : TAG_WRITE);
- 			if (unlikely(r)) {
- 				if (r > 0) {
--					char b[BDEVNAME_SIZE];
- 					sector_t s;
+diff --git a/drivers/md/raid1.c b/drivers/md/raid1.c
+index c180c188da574..97574575ad0b4 100644
+--- a/drivers/md/raid1.c
++++ b/drivers/md/raid1.c
+@@ -2069,15 +2069,14 @@ static int fix_sync_read_error(struct r1bio *r1_bio)
+ 		} while (!success && d != r1_bio->read_disk);
  
- 					s = sector - ((r + ic->tag_size - 1) / ic->tag_size);
--					DMERR_LIMIT("%s: Checksum failed at sector 0x%llx",
--						    bio_devname(bio, b), s);
-+					DMERR_LIMIT("%pg: Checksum failed at sector 0x%llx",
-+						    bio->bi_bdev, s);
- 					r = -EILSEQ;
- 					atomic64_inc(&ic->number_of_mismatches);
- 					dm_audit_log_bio(DM_MSG_PREFIX, "integrity-checksum",
+ 		if (!success) {
+-			char b[BDEVNAME_SIZE];
+ 			int abort = 0;
+ 			/* Cannot read from anywhere, this block is lost.
+ 			 * Record a bad block on each device.  If that doesn't
+ 			 * work just disable and interrupt the recovery.
+ 			 * Don't fail devices as that won't really help.
+ 			 */
+-			pr_crit_ratelimited("md/raid1:%s: %s: unrecoverable I/O read error for block %llu\n",
+-					    mdname(mddev), bio_devname(bio, b),
++			pr_crit_ratelimited("md/raid1:%s: %pg: unrecoverable I/O read error for block %llu\n",
++					    mdname(mddev), bio->bi_bdev,
+ 					    (unsigned long long)r1_bio->sector);
+ 			for (d = 0; d < conf->raid_disks * 2; d++) {
+ 				rdev = conf->mirrors[d].rdev;
 -- 
 2.30.2
 
