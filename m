@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9536C43219
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 07:08:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D447C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 07:08:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234259AbiCDHJ3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Mar 2022 02:09:29 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36676 "EHLO
+        id S238823AbiCDHJd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Mar 2022 02:09:33 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38438 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238729AbiCDHIt (ORCPT
+        with ESMTP id S238710AbiCDHIt (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 02:08:49 -0500
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id EC646190C09
-        for <linux-ext4@vger.kernel.org>; Thu,  3 Mar 2022 23:07:08 -0800 (PST)
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8417B18F23D
+        for <linux-ext4@vger.kernel.org>; Thu,  3 Mar 2022 23:07:09 -0800 (PST)
 Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.51 with ESMTP; 4 Mar 2022 16:07:07 +0900
+        by 156.147.23.53 with ESMTP; 4 Mar 2022 16:07:08 +0900
 X-Original-SENDERIP: 156.147.1.121
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 4 Mar 2022 16:07:07 +0900
+        by 156.147.1.121 with ESMTP; 4 Mar 2022 16:07:08 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH v4 11/24] dept: Add proc knobs to show stats and dependency graph
-Date:   Fri,  4 Mar 2022 16:06:30 +0900
-Message-Id: <1646377603-19730-12-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH v4 15/24] dept: Apply SDT to wait(waitqueue)
+Date:   Fri,  4 Mar 2022 16:06:34 +0900
+Message-Id: <1646377603-19730-16-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1646377603-19730-1-git-send-email-byungchul.park@lge.com>
 References: <1646377603-19730-1-git-send-email-byungchul.park@lge.com>
@@ -56,248 +56,123 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It'd be useful to show Dept internal stats and dependency graph on
-runtime via proc for better information. Introduced the knobs.
+Makes SDT able to track dependencies by wait(waitqueue).
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/dependency/Makefile        |  1 +
- kernel/dependency/dept.c          | 24 ++++------
- kernel/dependency/dept_internal.h | 26 +++++++++++
- kernel/dependency/dept_proc.c     | 92 +++++++++++++++++++++++++++++++++++++++
- 4 files changed, 128 insertions(+), 15 deletions(-)
- create mode 100644 kernel/dependency/dept_internal.h
- create mode 100644 kernel/dependency/dept_proc.c
+ include/linux/wait.h |  6 +++++-
+ kernel/sched/wait.c  | 16 ++++++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/dependency/Makefile b/kernel/dependency/Makefile
-index b5cfb8a..92f1654 100644
---- a/kernel/dependency/Makefile
-+++ b/kernel/dependency/Makefile
-@@ -1,3 +1,4 @@
- # SPDX-License-Identifier: GPL-2.0
+diff --git a/include/linux/wait.h b/include/linux/wait.h
+index 851e07d..2133998 100644
+--- a/include/linux/wait.h
++++ b/include/linux/wait.h
+@@ -7,6 +7,7 @@
+ #include <linux/list.h>
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
++#include <linux/dept_sdt.h>
  
- obj-$(CONFIG_DEPT) += dept.o
-+obj-$(CONFIG_DEPT) += dept_proc.o
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 3f22c5b..4142c78 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -73,6 +73,7 @@
- #include <linux/hash.h>
- #include <linux/dept.h>
- #include <linux/utsname.h>
-+#include "dept_internal.h"
+ #include <asm/current.h>
+ #include <uapi/linux/wait.h>
+@@ -37,6 +38,7 @@ struct wait_queue_entry {
+ struct wait_queue_head {
+ 	spinlock_t		lock;
+ 	struct list_head	head;
++	struct dept_map		dmap;
+ };
+ typedef struct wait_queue_head wait_queue_head_t;
  
- static int dept_stop;
- static int dept_per_cpu_ready;
-@@ -233,20 +234,13 @@ static inline struct dept_task *dept_task(void)
-  *       have been freed will be placed.
-  */
+@@ -56,7 +58,8 @@ struct wait_queue_head {
  
--enum object_t {
--#define OBJECT(id, nr) OBJECT_##id,
--	#include "dept_object.h"
--#undef  OBJECT
--	OBJECT_NR,
--};
--
- #define OBJECT(id, nr)							\
- static struct dept_##id spool_##id[nr];					\
- static DEFINE_PER_CPU(struct llist_head, lpool_##id);
- 	#include "dept_object.h"
- #undef  OBJECT
+ #define __WAIT_QUEUE_HEAD_INITIALIZER(name) {					\
+ 	.lock		= __SPIN_LOCK_UNLOCKED(name.lock),			\
+-	.head		= LIST_HEAD_INIT(name.head) }
++	.head		= LIST_HEAD_INIT(name.head),				\
++	.dmap		= DEPT_SDT_MAP_INIT(name) }
  
--static struct dept_pool pool[OBJECT_NR] = {
-+struct dept_pool dept_pool[OBJECT_NR] = {
- #define OBJECT(id, nr) {						\
- 	.name = #id,							\
- 	.obj_sz = sizeof(struct dept_##id),				\
-@@ -276,7 +270,7 @@ static void *from_pool(enum object_t t)
- 	if (DEPT_WARN_ON(!irqs_disabled()))
- 		return NULL;
+ #define DECLARE_WAIT_QUEUE_HEAD(name) \
+ 	struct wait_queue_head name = __WAIT_QUEUE_HEAD_INITIALIZER(name)
+@@ -67,6 +70,7 @@ struct wait_queue_head {
+ 	do {									\
+ 		static struct lock_class_key __key;				\
+ 										\
++		sdt_map_init(&(wq_head)->dmap);					\
+ 		__init_waitqueue_head((wq_head), #wq_head, &__key);		\
+ 	} while (0)
  
--	p = &pool[t];
-+	p = &dept_pool[t];
- 
- 	/*
- 	 * Try local pool first.
-@@ -306,7 +300,7 @@ static void *from_pool(enum object_t t)
- 
- static void to_pool(void *o, enum object_t t)
- {
--	struct dept_pool *p = &pool[t];
-+	struct dept_pool *p = &dept_pool[t];
- 	struct llist_head *h;
- 
- 	preempt_disable();
-@@ -1986,7 +1980,7 @@ void dept_map_nocheck(struct dept_map *m)
- }
- EXPORT_SYMBOL_GPL(dept_map_nocheck);
- 
--static LIST_HEAD(classes);
-+LIST_HEAD(dept_classes);
- 
- static inline bool within(const void *addr, void *start, unsigned long size)
- {
-@@ -2013,7 +2007,7 @@ void dept_free_range(void *start, unsigned int sz)
- 	while (unlikely(!dept_lock()))
- 		cpu_relax();
- 
--	list_for_each_entry_safe(c, n, &classes, all_node) {
-+	list_for_each_entry_safe(c, n, &dept_classes, all_node) {
- 		if (!within((void *)c->key, start, sz) &&
- 		    !within(c->name, start, sz))
+diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
+index eca3810..fc5a16a 100644
+--- a/kernel/sched/wait.c
++++ b/kernel/sched/wait.c
+@@ -105,6 +105,7 @@ static int __wake_up_common(struct wait_queue_head *wq_head, unsigned int mode,
+ 		if (flags & WQ_FLAG_BOOKMARK)
  			continue;
-@@ -2082,7 +2076,7 @@ static struct dept_class *check_new_class(struct dept_key *local,
- 	c->sub = sub;
- 	c->key = (unsigned long)(k->subkeys + sub);
- 	hash_add_class(c);
--	list_add(&c->all_node, &classes);
-+	list_add(&c->all_node, &dept_classes);
- unlock:
- 	dept_unlock();
- caching:
-@@ -2537,8 +2531,8 @@ static void migrate_per_cpu_pool(void)
- 		struct llist_head *from;
- 		struct llist_head *to;
  
--		from = &pool[i].boot_pool;
--		to = per_cpu_ptr(pool[i].lpool, boot_cpu);
-+		from = &dept_pool[i].boot_pool;
-+		to = per_cpu_ptr(dept_pool[i].lpool, boot_cpu);
- 		move_llist(to, from);
- 	}
++		sdt_event(&wq_head->dmap);
+ 		ret = curr->func(curr, mode, wake_flags, key);
+ 		if (ret < 0)
+ 			break;
+@@ -268,6 +269,9 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
+ 		__add_wait_queue(wq_head, wq_entry);
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
++
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
  }
-diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
-new file mode 100644
-index 0000000..007c1ee
---- /dev/null
-+++ b/kernel/dependency/dept_internal.h
-@@ -0,0 +1,26 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Dept(DEPendency Tracker) - runtime dependency tracker internal header
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
+ EXPORT_SYMBOL(prepare_to_wait);
+ 
+@@ -286,6 +290,10 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
+ 	}
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
 +
-+#ifndef __DEPT_INTERNAL_H
-+#define __DEPT_INTERNAL_H
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
 +
-+#ifdef CONFIG_DEPT
+ 	return was_empty;
+ }
+ EXPORT_SYMBOL(prepare_to_wait_exclusive);
+@@ -331,6 +339,9 @@ long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_en
+ 	}
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
+ 
++	if (!ret && state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
 +
-+enum object_t {
-+#define OBJECT(id, nr) OBJECT_##id,
-+	#include "dept_object.h"
-+#undef  OBJECT
-+	OBJECT_NR,
-+};
-+
-+extern struct list_head dept_classes;
-+extern struct dept_pool dept_pool[];
-+
-+#endif
-+#endif /* __DEPT_INTERNAL_H */
-diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
-new file mode 100644
-index 0000000..c069354
---- /dev/null
-+++ b/kernel/dependency/dept_proc.c
-@@ -0,0 +1,92 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Procfs knobs for Dept(DEPendency Tracker)
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (C) 2021 LG Electronics, Inc. , Byungchul Park
-+ */
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
-+#include <linux/dept.h>
-+#include "dept_internal.h"
-+
-+static void *l_next(struct seq_file *m, void *v, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_next(v, &dept_classes, pos);
-+}
-+
-+static void *l_start(struct seq_file *m, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_start_head(&dept_classes, *pos);
-+}
-+
-+static void l_stop(struct seq_file *m, void *v)
-+{
-+}
-+
-+static int l_show(struct seq_file *m, void *v)
-+{
-+	struct dept_class *fc = list_entry(v, struct dept_class, all_node);
-+	struct dept_dep *d;
-+
-+	if (v == &dept_classes) {
-+		seq_puts(m, "All classes:\n\n");
-+		return 0;
-+	}
-+
-+	seq_printf(m, "[%p] %s\n", (void *)fc->key, fc->name);
-+
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	list_for_each_entry(d, &fc->dep_head, dep_node) {
-+		struct dept_class *tc = d->wait->class;
-+
-+		seq_printf(m, " -> [%p] %s\n", (void *)tc->key, tc->name);
-+	}
-+	seq_puts(m, "\n");
-+
-+	return 0;
-+}
-+
-+static const struct seq_operations dept_deps_ops = {
-+	.start	= l_start,
-+	.next	= l_next,
-+	.stop	= l_stop,
-+	.show	= l_show,
-+};
-+
-+static int dept_stats_show(struct seq_file *m, void *v)
-+{
-+	int r;
-+
-+	seq_puts(m, "Availability in the static pools:\n\n");
-+#define OBJECT(id, nr)							\
-+	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
-+	if (r < 0)							\
-+		r = 0;							\
-+	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
-+	#include "dept_object.h"
-+#undef  OBJECT
-+
-+	return 0;
-+}
-+
-+static int __init dept_proc_init(void)
-+{
-+	proc_create_seq("dept_deps", S_IRUSR, NULL, &dept_deps_ops);
-+	proc_create_single("dept_stats", S_IRUSR, NULL, dept_stats_show);
-+	return 0;
-+}
-+
-+__initcall(dept_proc_init);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(prepare_to_wait_event);
+@@ -352,7 +363,9 @@ int do_wait_intr(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
+ 
+ 	spin_unlock(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock(&wq->lock);
+ 
+ 	return 0;
+@@ -369,7 +382,9 @@ int do_wait_intr_irq(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
+ 
+ 	spin_unlock_irq(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock_irq(&wq->lock);
+ 
+ 	return 0;
+@@ -389,6 +404,7 @@ void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_en
+ {
+ 	unsigned long flags;
+ 
++	sdt_wait_finish();
+ 	__set_current_state(TASK_RUNNING);
+ 	/*
+ 	 * We can check for list emptiness outside the lock
 -- 
 1.9.1
 
