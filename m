@@ -2,39 +2,39 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D8CBC4167B
-	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 18:01:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 289F0C43217
+	for <linux-ext4@archiver.kernel.org>; Fri,  4 Mar 2022 18:01:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241484AbiCDSC2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 4 Mar 2022 13:02:28 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59496 "EHLO
+        id S241495AbiCDSC3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 4 Mar 2022 13:02:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59494 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241466AbiCDSCS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 13:02:18 -0500
+        with ESMTP id S241475AbiCDSCY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Mar 2022 13:02:24 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B7F1A1C65D0;
-        Fri,  4 Mar 2022 10:01:27 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA9841CFA12;
+        Fri,  4 Mar 2022 10:01:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=FfOImJllLJqmphH4LRFKDUX/RFMK65Kob49l+6sR3wE=; b=nKzOU/Cy42CV4CGN1okxM6keyy
-        wcxMDRWNVQ5ygLlkQWYYVVPZIN/6LSKjfMFJmgWMn4IGLkT1Wz9w8LZOI+XLMrCX3KgzfytUR595A
-        HJA2wz/7dNT+mGjb/M6iTmPu4zizZRj9ZHcoMBkBAjhI4eczNxztNTtSf7SXM/VRyr+xxwSb5Bzn7
-        6IOeHRSPbLhtXBGf+7UUqEQs9WpKJj2aVzRsLEMnvB+BYeUuSP1GkJzRx0s3tAWkoyOL3YU0tlEBI
-        vkhcK1I/krHbfAsnL0ZW787zKWN2YO3s8kattoGllWV6pBnSB8a4guY/K5STxdDtMZIkAvoBXZRve
-        38xtOOUg==;
+        bh=BaIHIZlLazxRYvfXMbsewKFh2wR3b0EOd5xjfmUnWbk=; b=Vg9argHFmqvLJAjvcusF4BWl6D
+        sCOKpJ5ArqMM94ijLAYBUPCe9oW+EWq4QJCkqQbHA1fyCW8dCg2YHTpUaaQ+tn4uf7qoe+2cVM0uT
+        ZKG2vfrkQ9sPTof1RZVgw5hNRV/QZw0KRtCm8qIZp85DEPQnnjFk2axIPoSgInwJh2i+Aa8410OnJ
+        m6EWlnKZ6OIqSthmRJ0EoE7pyVBBRITaMlDz0k2FY86oXKSAE3FA6lEE+8tZlJJlOK03xbilRwZ0O
+        IXmhwk4BXur05kEi9MP9MUfL2Gd06zpusFnp2Yl2uVXurxLj5lsYsiA2Xl+p4cQZrj6Qk1+uSETfS
+        +tSdF14A==;
 Received: from [2001:4bb8:180:5296:cded:8d4b:ace6:f3c] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nQCF1-00BUru-RD; Fri, 04 Mar 2022 18:01:24 +0000
+        id 1nQCF7-00BUwa-6Z; Fri, 04 Mar 2022 18:01:29 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Song Liu <song@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
         linux-block@vger.kernel.org, dm-devel@redhat.com,
         linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [PATCH 06/10] md-multipath: stop using bio_devname
-Date:   Fri,  4 Mar 2022 19:01:01 +0100
-Message-Id: <20220304180105.409765-7-hch@lst.de>
+Subject: [PATCH 08/10] raid5-ppl: stop using bio_devname
+Date:   Fri,  4 Mar 2022 19:01:03 +0100
+Message-Id: <20220304180105.409765-9-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220304180105.409765-1-hch@lst.de>
 References: <20220304180105.409765-1-hch@lst.de>
@@ -49,39 +49,57 @@ Use the %pg format specifier to save on stack consuption and code size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/md/md-multipath.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ drivers/md/raid5-ppl.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/md/md-multipath.c b/drivers/md/md-multipath.c
-index c056a7d707b09..bc38a6133cda3 100644
---- a/drivers/md/md-multipath.c
-+++ b/drivers/md/md-multipath.c
-@@ -294,7 +294,6 @@ static void multipathd(struct md_thread *thread)
+diff --git a/drivers/md/raid5-ppl.c b/drivers/md/raid5-ppl.c
+index 93d9364a930e3..845db0ba7c17f 100644
+--- a/drivers/md/raid5-ppl.c
++++ b/drivers/md/raid5-ppl.c
+@@ -416,12 +416,10 @@ static void ppl_log_endio(struct bio *bio)
  
- 	md_check_recovery(mddev);
- 	for (;;) {
--		char b[BDEVNAME_SIZE];
- 		spin_lock_irqsave(&conf->device_lock, flags);
- 		if (list_empty(head))
- 			break;
-@@ -306,13 +305,13 @@ static void multipathd(struct md_thread *thread)
- 		bio->bi_iter.bi_sector = mp_bh->master_bio->bi_iter.bi_sector;
+ static void ppl_submit_iounit_bio(struct ppl_io_unit *io, struct bio *bio)
+ {
+-	char b[BDEVNAME_SIZE];
+-
+-	pr_debug("%s: seq: %llu size: %u sector: %llu dev: %s\n",
++	pr_debug("%s: seq: %llu size: %u sector: %llu dev: %pg\n",
+ 		 __func__, io->seq, bio->bi_iter.bi_size,
+ 		 (unsigned long long)bio->bi_iter.bi_sector,
+-		 bio_devname(bio, b));
++		 bio->bi_bdev);
  
- 		if ((mp_bh->path = multipath_map (conf))<0) {
--			pr_err("multipath: %s: unrecoverable IO read error for block %llu\n",
--			       bio_devname(bio, b),
-+			pr_err("multipath: %pg: unrecoverable IO read error for block %llu\n",
-+			       bio->bi_bdev,
- 			       (unsigned long long)bio->bi_iter.bi_sector);
- 			multipath_end_bh_io(mp_bh, BLK_STS_IOERR);
- 		} else {
--			pr_err("multipath: %s: redirecting sector %llu to another IO path\n",
--			       bio_devname(bio, b),
-+			pr_err("multipath: %pg: redirecting sector %llu to another IO path\n",
-+			       bio->bi_bdev,
- 			       (unsigned long long)bio->bi_iter.bi_sector);
- 			*bio = *(mp_bh->master_bio);
- 			bio->bi_iter.bi_sector +=
+ 	submit_bio(bio);
+ }
+@@ -589,9 +587,8 @@ static void ppl_flush_endio(struct bio *bio)
+ 	struct ppl_log *log = io->log;
+ 	struct ppl_conf *ppl_conf = log->ppl_conf;
+ 	struct r5conf *conf = ppl_conf->mddev->private;
+-	char b[BDEVNAME_SIZE];
+ 
+-	pr_debug("%s: dev: %s\n", __func__, bio_devname(bio, b));
++	pr_debug("%s: dev: %pg\n", __func__, bio->bi_bdev);
+ 
+ 	if (bio->bi_status) {
+ 		struct md_rdev *rdev;
+@@ -634,7 +631,6 @@ static void ppl_do_flush(struct ppl_io_unit *io)
+ 
+ 		if (bdev) {
+ 			struct bio *bio;
+-			char b[BDEVNAME_SIZE];
+ 
+ 			bio = bio_alloc_bioset(bdev, 0, GFP_NOIO,
+ 					       REQ_OP_WRITE | REQ_PREFLUSH,
+@@ -642,8 +638,7 @@ static void ppl_do_flush(struct ppl_io_unit *io)
+ 			bio->bi_private = io;
+ 			bio->bi_end_io = ppl_flush_endio;
+ 
+-			pr_debug("%s: dev: %s\n", __func__,
+-				 bio_devname(bio, b));
++			pr_debug("%s: dev: %ps\n", __func__, bio->bi_bdev);
+ 
+ 			submit_bio(bio);
+ 			flushed_disks++;
 -- 
 2.30.2
 
