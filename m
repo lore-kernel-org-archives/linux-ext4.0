@@ -2,134 +2,141 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87C7EC433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  7 Mar 2022 03:08:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2851C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon,  7 Mar 2022 05:46:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234942AbiCGDJM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 6 Mar 2022 22:09:12 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45038 "EHLO
+        id S232784AbiCGFrB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 7 Mar 2022 00:47:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55324 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229823AbiCGDJL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Mar 2022 22:09:11 -0500
-Received: from NAM12-MW2-obe.outbound.protection.outlook.com (mail-mw2nam12on2075.outbound.protection.outlook.com [40.107.244.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD7D41EC60;
-        Sun,  6 Mar 2022 19:08:18 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=H+IZV6Mfl46WaKaBrawPZyIWrmDh3doj0B2x4nYV6+HLwyWbCgkyMTnALfMEmICR2QtfZTpZ4/RNWEU75d3UarEySCFapnw8WhZffjSKVrYy4iWIRwyXpqRK4whfku+ITBqot4mi2+44uZFAIqgjyGm088Z47b+jJKasylMnoMai1+O5QuWPy/+oTpe8OIM6PJ8OqykI0qVqiRXhUG0eOEDQTSe6ym1uOM79m8z2+MyscvRIn5moOwmbdkdkmTasxJwZzFhMJDylxevzeTpaDw+4e0UDiUrUNzSbtJItu29XQuDZxyDeMeFB0STZWkZG8NPcIJWi2nsDmVq4PawLAw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=+UNjSo6K0ixjAUs6vpajGrqAdKmv2OyjMdNojVm1JnM=;
- b=Quqo9EQp2rMQ3yYjyIu1m5SKLlaw0+6QfqkS+y9Rm+RJELOe9hhqYjKiTYG+nxlcsgpVLqGfl7aVR+vDobUvgl2jYr4OoSqx9WWH7ccqYlowrP12hnEM/xNhMBAGST2N6XPoo3Qj+3qJ7ru+suJXA779wBqbbe3gMcYKmgGrLGknmlk3hk1cAnZbjqaqFnK5dK2VdIwe3dQK5Xo/skHHEhW/yfdhjSHgYXv/4FriDJKTabJcHm7oAGWHi67L9w/P/f6BjI7YMarsdafsFYwRmKQCbO6n6AYZbpvI6wozITQo001EdJDtCnV+u2WiBVLcIGV6T0C3/ut5uI4ASQLWtA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
- dkim=pass header.d=nvidia.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+UNjSo6K0ixjAUs6vpajGrqAdKmv2OyjMdNojVm1JnM=;
- b=E/6nSny0hlcF0WjlTb1Nm/An+jvay4ghsuD3rzKRr1MAbE1mXCuWXmquyRRZt+I0Tjp7l6pm/U26HyPOkbt5gdH05UBN0L2+XKPjSHVI0k5yIkOTl2GAnkIoWG/CHb18/AGf9Wi/M1Gbzdp+H13vdMy9JjRXnbrcZgpl2GzwAifnu0HUUZiG8H8VE4royulXNRh3cg3c6ftpQWe6XJnuMIKQrOGm9cUQjBVsL1i++pftvSYi6SlWdsF+YYnddFTZBwgEoM/4ZypsggIFzWm/ihm3jroKDuqiB/EqT5c41t6h7j5KKwXjmyR37LBfHbWYitwvnKsFODRJ03cgsVMH9Q==
-Received: from MW2PR12MB4667.namprd12.prod.outlook.com (2603:10b6:302:12::28)
- by MWHPR12MB1853.namprd12.prod.outlook.com (2603:10b6:300:113::21) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5038.14; Mon, 7 Mar
- 2022 03:08:17 +0000
-Received: from MW2PR12MB4667.namprd12.prod.outlook.com
- ([fe80::204b:bbcb:d388:64a2]) by MW2PR12MB4667.namprd12.prod.outlook.com
- ([fe80::204b:bbcb:d388:64a2%4]) with mapi id 15.20.5038.026; Mon, 7 Mar 2022
- 03:08:17 +0000
-From:   Chaitanya Kulkarni <chaitanyak@nvidia.com>
-To:     Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>
-CC:     Song Liu <song@kernel.org>, Theodore Ts'o <tytso@mit.edu>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "dm-devel@redhat.com" <dm-devel@redhat.com>,
-        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 09/10] ext4: stop using bio_devname
-Thread-Topic: [PATCH 09/10] ext4: stop using bio_devname
-Thread-Index: AQHYL/HuUDXzwrzyXUuMHFGoQlnyHayzQUqA
-Date:   Mon, 7 Mar 2022 03:08:17 +0000
-Message-ID: <59a8cd9e-2b65-d318-27eb-c1b28bf576c6@nvidia.com>
-References: <20220304180105.409765-1-hch@lst.de>
- <20220304180105.409765-10-hch@lst.de>
-In-Reply-To: <20220304180105.409765-10-hch@lst.de>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-user-agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
- Thunderbird/91.3.0
-authentication-results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=nvidia.com;
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: af74e447-da39-42af-b694-08d9ffe7ba25
-x-ms-traffictypediagnostic: MWHPR12MB1853:EE_
-x-microsoft-antispam-prvs: <MWHPR12MB185318DFAE1BE35857EAF36FA3089@MWHPR12MB1853.namprd12.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: 8Vj0C/RpDb0ULFgU4tT34TG+U0XOQPzoT5KZR4yX+lEfp7enkmq6uC1HmEEoSlG1GXmyY70QHSpBPzjtn3nRwyR1y30veaS2OXOSSId3djFiNVjGZXbuyy7dPJMJwjxtatKCa3xVrLYLDUG/O4bbsZ/L1GyRJg/H6J/t7Lk2yDuc3qhYg9Wj7z+0P8yM/m0X7cSLV6LAAyeSlQdSER0YSR0seIptyZ71HdryBFLpcEVItofPoUg1Oie2K8Neuupi9AL8uiRlpo+iqR7GjHvKFqlW2w5nj1mpJGJvQGY8FYqp91yG3G7hQd8Tr21MVqs7BBiLMPbA+0CDziaqfZ5AYOOMLxnOOHpjOcFRigD3vgZsJmK5L/Ah/b6kQnVSzUd3PNtTnPB4Snzt18i21c01U5fPslSXD4kih/xGLxD8e188fmq9QbfJMwwZZpWYkXw7ec/arvn42YxmeetxQ8kh2R+5X49oqXb8qyauieNlvkkeOMMKzcE7K7bIw5V+ml4uwa1sM7wwFHL8YaH3jV7cHEw5m/H0GQd90dj/10ZpN31naliCSqlKjsDA0r4VdF7wftKUAARU7s3PcOyWdvPmvV/emOTot8Xq2TipkqgLbUSqeEIrZoyjLQEC2D829lhVdtCBVOGM3i+TzV8hZ5WZb2SFOKuKNEJ97JR1YmEf0bq54ePt9NpYoHUyTWDOci2Js0Cuqnvd9LPTezJ+spmmynqwJebBu4qK/WWGLo5V3mlB3l3HuyugendbxAAgTbW1EkpMWLteSdFfw6efLdwRdw==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MW2PR12MB4667.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(4636009)(366004)(66556008)(4326008)(8936002)(31686004)(53546011)(66476007)(66946007)(64756008)(66446008)(8676002)(54906003)(186003)(5660300002)(36756003)(110136005)(31696002)(6486002)(86362001)(122000001)(2906002)(71200400001)(2616005)(6506007)(6512007)(508600001)(558084003)(76116006)(38070700005)(316002)(91956017)(38100700002)(45980500001)(43740500002);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?utf-8?B?K29vUW8vQ3lNYkxITVNEUFlML2ZoZ2pPd0IyNzhsRW42MXBWcUdJOTc0cmRV?=
- =?utf-8?B?YTc3dGw2R2V3NDhxNjUyUUgwTjdVbi9YVjBxdWxrRjM0QkY1QldsZGFldGhF?=
- =?utf-8?B?TGJnSjE1czl1UjNHR3hvNXpCUDBEdlpSdUdKVUF1czJHcUdXU1NXK2xyVjRh?=
- =?utf-8?B?V0sySmR0RmZoQVNPNTdJTXRZUUlxQUVka0lmTG40aGM2c0UyVDdDTXJQOXo0?=
- =?utf-8?B?YkNGRURkOU9RL29zbXd0MTA4akV1SWZwVnNmNEFzMlNqalVEN2tOaXFNVk9w?=
- =?utf-8?B?L3NZaGZFQWpCNmU3YWdvM3p4V0JHNTJkcTNIV3IvMm1rZzJYQWRCY2xjayt4?=
- =?utf-8?B?RXFLMlBod2RHV1o5NzltSFp3MXlwVkJsazhyU3hjYWJXZHQ1VzRuTE8wU0VR?=
- =?utf-8?B?dHNMSE0zL1IxeTVXUEozUmV0aUlHL1NyVytnMUsrVnhUemtHMFd3RDJQSnor?=
- =?utf-8?B?b09JZHFKcFQvejFNNk9Fak43VC94TlRMcGI3RjVhOERnZ3VVbzVySExWWUpk?=
- =?utf-8?B?OUJvSGtLYWVQbFNDeml1SzgyL3pVRGt4R0svSUcrd2hwLzZwQ0tOS1lTWjk5?=
- =?utf-8?B?aUVKVVhFV3F5eFF2N3FCWmkxUFRGYVVwbWpxQWs3VnJlRkVWZ0hWL3dvRWFN?=
- =?utf-8?B?ZVdqNHpoSUszY25vZllpZmRldjJXWUhJSk9NbU1wNVhQM1FKa1dUVnFCMzdL?=
- =?utf-8?B?NUxJcGlzdzV5YnlVL2lBNlZBMGM2NW5NOUdQdHFpa2dLamVjWWtEVit6WW1S?=
- =?utf-8?B?SWR6Z01yUW5aMWZodjl2UlE5U2owdWZMSmpYdFFxR3NHc2U2RFdqWlpFSU4z?=
- =?utf-8?B?MkxtZ2ZsSmZYQTRydWtXa0d6ODY1NUltZmdFMFhXWkFQSWdUbXJYR3Iyc3R2?=
- =?utf-8?B?MVNlZWNxM3JCK3VxTVdBSnB1MDBBNFA2eEROcExwa2JvTHhPcjJ5QkMwMi91?=
- =?utf-8?B?b3lMc3Bpenk5L29SSmo0RHV1L1lRRDE4b1JMZzNGMHh3dFhCbzhGOHdLVVd2?=
- =?utf-8?B?a09XWEdCbXZ0NVFZQW1VL1pZMlc2SDFoZjJvdnd0MVhhSGhkdnJiVDhEVEU5?=
- =?utf-8?B?aGx4Z2xxY1dQclJOUFBtYlFBeFlZamRCcXNsUCtYc2ZSc2xQSWM1YkRRS2tz?=
- =?utf-8?B?OHY2Qk5zdXh1ZHBmVjdtRmN4UkhuRXA0ZzQ5Rm95VVVHNXJNQi9TWkdWMTUv?=
- =?utf-8?B?M2cvK2J4eVR6WlRxK2hzOTV2KzczNmIzZXBwakpLVTBIbHdRT1FDMHdBcnpN?=
- =?utf-8?B?NVpxSi9Da0pMY1cwQzNPbDUvZ2J5aXhRQ3l1YnM4R2ZjcnQ0dUVQOWZhQUNa?=
- =?utf-8?B?d0ZGSWN4V0FJSVlOdm9VU1VOcTFEMDFlVWZLNWZ4UnFyT2ZKcjJRT1FjSXVl?=
- =?utf-8?B?aFVYdWJvdUlJc01yL2hFc1I5SlJTK0VtbFZCdnBTTkZ4YXoxNlBWaGZqUWNK?=
- =?utf-8?B?dFM2bzl5eVQ2WmxDMCttcU8vc08rSVprTW0vZnRoZXBCVTcvOHFNV0RGbk41?=
- =?utf-8?B?TUY2K2NZUGVYT2g3emJ4UzRhcFBIbVdTVHRvUE1FcG15bEhIS0N4MlYxcE9N?=
- =?utf-8?B?R1JUcmkxQTNUQWlzMUxHSmNRaGFVZWlUMnNKV2dTVThhUzBEYzdJL3VvNVhM?=
- =?utf-8?B?R3VuTUhnWENSZWJlaHRGMXd2K1JOREYreHU3Y25yYUR2Uk1xMkFhZGowVHhK?=
- =?utf-8?B?M0tlSUduOHllNjJ6NlczNW5vVGliN1BpRjJteGlaamdBSU02MVhWR0xKTVhs?=
- =?utf-8?B?ak1jUkNnV1p0Zk9tZFlmQzVEZHYwVitjL21JcnpBeFFRUmRsL1BVWDJ4ZVZG?=
- =?utf-8?B?V1lNTjlpOFM5WjNBU0F3alJWNUhRQzlvOFRnYTg4RVlRNFRSVDliV2F5djdU?=
- =?utf-8?B?Nk9wLzZudk5tSTJ5bnFWWFIvVVIyRitqWm95bzBkc0RQYlFtYmxaVzU5a1V0?=
- =?utf-8?B?Z2RHc28xRzdCM1ZIcm5Dc2FXZU1yRmE3SThURDlBdHdSSHFXQVUwaHBMTEw5?=
- =?utf-8?B?cHBTRS8xNVV4a3NVWTB6STMzT1hDSDY0T2tQb0kxeUt1NDBqQ2dRMVgvN2gv?=
- =?utf-8?B?T0N6WExWSGZkaTJBbDBONEJ0c2JBSVpiQlVaQ2dNZ2lUeVJieXptZDFhTEFC?=
- =?utf-8?B?NlVHS2FvMkdabTNHUEs5NHdPNUZvWnl3VFVCRUZpcC9TQTFZcHZQSllnNXhN?=
- =?utf-8?B?eUF5ZW5LVnJMbE5EQnY1VjdGWGJjZGVpU0V6Z0FlK1R4SERFVU1jK0pSSkRp?=
- =?utf-8?B?QkNra1JRNml4VVY2cVg2L25iZHRnPT0=?=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <75DE906AC86E314FBD6CB6729966FF3C@namprd12.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        with ESMTP id S230482AbiCGFrA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Mar 2022 00:47:00 -0500
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5480357144
+        for <linux-ext4@vger.kernel.org>; Sun,  6 Mar 2022 21:46:07 -0800 (PST)
+Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22750BZY004002;
+        Mon, 7 Mar 2022 05:46:03 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ content-transfer-encoding : in-reply-to; s=pp1;
+ bh=i1dyMHfU/TEag9hCuT2DkXPd894y8ye+i+H44b9I4os=;
+ b=J586Lzq/5Z6y/siN2yFkK4yja/MV7zt91MocFoJeHS4TV01HRa1jmJi/RAdnB3DE1Sx7
+ /8B0O2FkPMEG2nVOmwR8Gu4hn+Fq0rpdmQ23oVrQOUak7BC9iAfLsipo2jLVUULAz1ss
+ T/cbNCcdGWdmGZ/adElGPj61DQ5268u/NCHRpQLyTg9Wc47Ex3+7b+NOoFaSxDn87HVm
+ crEX1q8XUlUh1dmC1sAI+rmG2MzFUGumBnRPhbOIvAGPFA0K9g8ON0qlOs3GQEtbtb5C
+ CwsCcIdtQ10Yp//GmTtBob3mbwKMBfNOkOejO4LLLtsvnLjXcCSbboDNq9dkxGHw1Y+0 fQ== 
+Received: from ppma03ams.nl.ibm.com (62.31.33a9.ip4.static.sl-reverse.com [169.51.49.98])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3emt6tmya6-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 07 Mar 2022 05:46:03 +0000
+Received: from pps.filterd (ppma03ams.nl.ibm.com [127.0.0.1])
+        by ppma03ams.nl.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 2275d28u003287;
+        Mon, 7 Mar 2022 05:46:01 GMT
+Received: from b06cxnps4075.portsmouth.uk.ibm.com (d06relay12.portsmouth.uk.ibm.com [9.149.109.197])
+        by ppma03ams.nl.ibm.com with ESMTP id 3ekyg8upbg-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 07 Mar 2022 05:46:01 +0000
+Received: from d06av24.portsmouth.uk.ibm.com (mk.ibm.com [9.149.105.60])
+        by b06cxnps4075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 2275jxVG56164756
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 7 Mar 2022 05:45:59 GMT
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 65B1C42042;
+        Mon,  7 Mar 2022 05:45:59 +0000 (GMT)
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id E9C814203F;
+        Mon,  7 Mar 2022 05:45:58 +0000 (GMT)
+Received: from localhost (unknown [9.43.104.130])
+        by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Mon,  7 Mar 2022 05:45:58 +0000 (GMT)
+Date:   Mon, 7 Mar 2022 11:15:57 +0530
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     Tadeusz Struk <tadeusz.struk@linaro.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+Subject: Re: BUG in ext4_ind_remove_space
+Message-ID: <20220307054557.v4qqm4ushmm55v4y@riteshh-domain>
+References: <48308b02-149b-1c47-115a-1a268dac6e24@linaro.org>
+ <20220225171016.zwhp62b3yzgewk6l@riteshh-domain>
+ <25749d7d-7036-0b71-3dd8-7b04dcc430e4@linaro.org>
+ <346904fd-112a-8d57-9221-b5c729ea6056@linaro.org>
+ <20220303145651.ackek7wotphg26gm@riteshh-domain>
+ <995d8b3c-44ee-e190-42ae-75f2562b8d6b@linaro.org>
+ <20220303200804.hugwhtqovxiutkfd@riteshh-domain>
 MIME-Version: 1.0
-X-OriginatorOrg: Nvidia.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: MW2PR12MB4667.namprd12.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: af74e447-da39-42af-b694-08d9ffe7ba25
-X-MS-Exchange-CrossTenant-originalarrivaltime: 07 Mar 2022 03:08:17.3947
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 43083d15-7273-40c1-b7db-39efd9ccc17a
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: +VVsUfYMbpDamF9q4rdiY/dxE3SlLifbBSTF5Cyo4zlHOOr/ucdgIdaDMvTzLvjtLvZ2eSwOri5c9UopVyFgOw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MWHPR12MB1853
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20220303200804.hugwhtqovxiutkfd@riteshh-domain>
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: 0vAHiXmwJKUToPfZ7Bl5qP1P7Qxz8C8L
+X-Proofpoint-GUID: 0vAHiXmwJKUToPfZ7Bl5qP1P7Qxz8C8L
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.64.514
+ definitions=2022-03-07_01,2022-03-04_01,2022-02-23_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 adultscore=0 spamscore=0
+ impostorscore=0 priorityscore=1501 bulkscore=0 mlxscore=0 phishscore=0
+ clxscore=1015 malwarescore=0 lowpriorityscore=0 suspectscore=0
+ mlxlogscore=940 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2202240000 definitions=main-2203070033
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-T24gMy80LzIyIDEwOjAxLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90ZToNCj4gVXNlIHRoZSAlcGcg
-Zm9ybWF0IHNwZWNpZmllciB0byBzYXZlIG9uIHN0YWNrIGNvbnN1cHRpb24gYW5kIGNvZGUgc2l6
-ZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPg0K
-PiAtLS0NCg0KDQpMb29rcyBnb29kLg0KDQpSZXZpZXdlZC1ieTogQ2hhaXRhbnlhIEt1bGthcm5p
-IDxrY2hAbnZpZGlhLmNvbT4NCg0KDQo=
+On 22/03/04 01:38AM, Ritesh Harjani wrote:
+> On 22/03/03 07:37AM, Tadeusz Struk wrote:
+> > On 3/3/22 06:56, Ritesh Harjani wrote:
+> > > On 22/03/02 03:14PM, Tadeusz Struk wrote:
+> > > > On 2/25/22 11:19, Tadeusz Struk wrote:
+> > > > > > I can verify this sometime next week when I get back to it.
+> > > > > > But thanks for reporting the issue :)
+> > > > >
+> > > > > Next week is perfectly fine. Thanks for looking into it.
+> > > >
+> > > > Hi Ritesh,
+> > > > Did you have chance to look into this?
+> > > > If you want I can send a patch that fixes the off by 1 calculation error.
+> > >
+> > > Hi Tadeusz,
+> > >
+> > > I wanted to look at that path a bit more before sending that patch.
+> > > Last analysis by me was more of a cursory look at the kernel dmesg log which you
+> > > had shared.
+> > >
+> > > In case if you want to pursue that issue and spend time on it, then feel free to
+> > > do it.
+> > >
+> > > I got pulled into number of other things last week and this week. So didn't get
+> > > a chance to look into it yet. I hope to look into this soon (if no one else
+> > > picks up :))
+> >
+> > I'm not familiar with the internals of ext4 implementation so I would rather
+> > have someone who knows it look at it.
+>
+> No problem. I am willing to look into this anyways.
+> btw, this issue could be seen easily with below cmd on non-extent ext4 FS.
+>
+> sudo xfs_io -f -c "truncate 0x4010040c000" -c "fsync" -c "fpunch 0x1000000 0xffefffff000" testfile
+
+Just FYI - The change which we discussed to fix the max_block to max_end_block, is not correct.
+Since it will still leave 1 block at the end after punch operation, if the file has s_bitmap_maxbytes size.
+This is due to the fact that, "end" is expected to be 1 block after the end of last block.
+
+Will try look into it to see how can we fix this.
+
+1210 /**
+1211  *      ext4_ind_remove_space - remove space from the range
+1212  *      @handle: JBD handle for this transaction
+1213  *      @inode: inode we are dealing with
+1214  *      @start: First block to remove
+1215  *      @end:   One block after the last block to remove (exclusive)
+1216  *
+1217  *      Free the blocks in the defined range (end is exclusive endpoint of
+1218  *      range). This is used by ext4_punch_hole().
+1219  */
+1220 int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+1221                           ext4_lblk_t start, ext4_lblk_t end)
+
+-ritesh
