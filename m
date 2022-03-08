@@ -2,183 +2,138 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 764AFC433F5
-	for <linux-ext4@archiver.kernel.org>; Tue,  8 Mar 2022 16:33:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8085C433F5
+	for <linux-ext4@archiver.kernel.org>; Tue,  8 Mar 2022 17:58:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348368AbiCHQeq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 8 Mar 2022 11:34:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57766 "EHLO
+        id S1348862AbiCHR7u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 8 Mar 2022 12:59:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58342 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348364AbiCHQem (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Mar 2022 11:34:42 -0500
-Received: from mail-pj1-x102c.google.com (mail-pj1-x102c.google.com [IPv6:2607:f8b0:4864:20::102c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 89E7033890
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Mar 2022 08:33:40 -0800 (PST)
-Received: by mail-pj1-x102c.google.com with SMTP id c16-20020a17090aa61000b001befad2bfaaso2906325pjq.1
-        for <linux-ext4@vger.kernel.org>; Tue, 08 Mar 2022 08:33:40 -0800 (PST)
+        with ESMTP id S240062AbiCHR7t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Mar 2022 12:59:49 -0500
+Received: from mail-pj1-x1035.google.com (mail-pj1-x1035.google.com [IPv6:2607:f8b0:4864:20::1035])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 124A931209
+        for <linux-ext4@vger.kernel.org>; Tue,  8 Mar 2022 09:58:51 -0800 (PST)
+Received: by mail-pj1-x1035.google.com with SMTP id k5-20020a17090a3cc500b001befa0d3102so2292705pjd.1
+        for <linux-ext4@vger.kernel.org>; Tue, 08 Mar 2022 09:58:51 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=kPll1P7V9GBIOrJxOdF6hEwzL3wAJVuFpTywJr8/a3g=;
-        b=BmOJ4Bh/pmOC6MzAQi/MFdX085SkkoDLAJ7XhMTZQDlsfmud9sr/BzoS9xG2/MIz6Y
-         1Qz2qUI0dT8O/xvLvWma1Sq21X3Pl2aFiXnKTXCtPkagjZzm1rsuKG2mgmovRs8wMmao
-         vrIUsvdMGUEnpHXBDkS84l9jpRygXzm4rAPiOUAqRPfZVW59ohg1xOCcpolGcdQWZnwm
-         4aJ1X2busQIdq1Ugh2jsAcCPrkUwiuSz+doEQngDbJKsb5ipklciJqnvWnyWQO2rmbWn
-         xFyMflPzeepCNH214uNl00dQbFcisPHVBAfQARCRdfdfj3CXB4Fl5l9RatY3rTY4iuqd
-         V25Q==
+        d=linaro.org; s=google;
+        h=message-id:date:mime-version:user-agent:subject:content-language:to
+         :cc:references:from:in-reply-to:content-transfer-encoding;
+        bh=4XioSStp2t+dBCfYd1EpGILjRD3W6ozQmbqKvHcXZ+o=;
+        b=zcG+lG7pnMs9K3TfyHxJ/3SrGwTFn/IX6uM9Ard3OtshulZ9jr3+Nu/OHwX4OczRSN
+         Jvxs3hO8xFMGy7BMJ100jmWKj46lPzmhOfwWPqmv0eb84n++xlO2ORV9c8Z9+McIoNoS
+         Q0Ht2Dw930P/wyQ1O1l6ck58RQMSfFUSQZBv+1GDfZu5jrkZ4yOLwr5Q1Jm3O5Enm2yR
+         HVlNYrG/O9URPVWioGpXfNJxdJSMD31ioFM7tgSMDI7cc4AQFm9NiDmm6/vo3xxQgRxr
+         KFt2fzJLX2h6VFQNAPxqbDx7ZKOV1m7Ti5aBcMdbH7JqZLAL7c4Eskqjotfwa2xaud0g
+         6G4w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=kPll1P7V9GBIOrJxOdF6hEwzL3wAJVuFpTywJr8/a3g=;
-        b=7+agyOLCJzF3eWAar9Dul3rDB0ebMkwLt7vJyu7bToiQ2NaxCh/9vT+m6Gl8vRetn9
-         vYKmdhIoXCMH9xPktHQ2IzzOEp1FhFylYHo6fUBQBf8n9H4F2Z6bgvz99HPBA+X1A599
-         fB6AghzELvi6qE/Lclukmhq8UQa3yIheT8SFMmEScFIiJYkHvADT+cEJUydT8wX8znYA
-         s7AmRE9DOAdApov6xmE6w3p2c/1pdgE+pgAyycoKDeQZgN5197iQxAaaQIZ9vkwBtwtV
-         RhRGph0TREh9D8LAPfzMBJ7vVZ6+J7i3fWx4PQNpzt6bymH6s1YkNko9CZVTWueQ5X8R
-         T/aw==
-X-Gm-Message-State: AOAM533ibGaHD4fSyXJmC5HQw/54d4lxK9za0fwlJ2sWZZTorlkyMKpl
-        6y4+ovql7Fphi/a9kuwJb2VNBogDnWrU99Cc
-X-Google-Smtp-Source: ABdhPJy5v2C/nV8LTZveqZywnla5y/zoVWLDDZkbauEXXvbsRH0uXQJ+QB9roQ1wkPccyx8u6PUP2g==
-X-Received: by 2002:a17:903:228a:b0:151:ed55:39c8 with SMTP id b10-20020a170903228a00b00151ed5539c8mr10555071plh.53.1646757219470;
-        Tue, 08 Mar 2022 08:33:39 -0800 (PST)
-Received: from harshads-520.kir.corp.google.com ([2620:15c:17:10:c24c:d8e5:a9be:227])
-        by smtp.googlemail.com with ESMTPSA id m8-20020a17090a158800b001bf2cec0377sm4517720pja.3.2022.03.08.08.33.38
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 08 Mar 2022 08:33:38 -0800 (PST)
-From:   Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-X-Google-Original-From: Harshad Shirwadkar <harshads@google.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     riteshh@linux.ibm.com, jack@suse.cz, tytso@mit.edu,
-        Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Subject: [PATCH v2 4/5] ext4: drop i_fc_updates from inode fc info
-Date:   Tue,  8 Mar 2022 08:33:18 -0800
-Message-Id: <20220308163319.1183625-5-harshads@google.com>
-X-Mailer: git-send-email 2.35.1.616.g0bdcbb4464-goog
-In-Reply-To: <20220308163319.1183625-1-harshads@google.com>
-References: <20220308163319.1183625-1-harshads@google.com>
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:cc:references:from:in-reply-to
+         :content-transfer-encoding;
+        bh=4XioSStp2t+dBCfYd1EpGILjRD3W6ozQmbqKvHcXZ+o=;
+        b=4xp5ea49ocGE5LQcsXnnTTSHRfAFssyFg4ecOKDqSYo2i4BYYNH3+OHbo3eAjSZ0y/
+         iVs37nV13gMB1j6P/VjhAcnMlQcQlTDcerb68LFPORmR8CnKuojtsKZnR0Vc28N0Fc9j
+         h15SDrT9eDhwP8mxhmzHHCECm2SwqADDvE8RHao/JbThNQ86Zz7hNJNMSzMmWfbFTlRn
+         yX3LxFTKcOTCinnw3uByFK76i1eFEdv+fvcIfNRX9iqgelBQfME3Mp8BSvU23Mp9ADJs
+         gGwJ982/1wvX3LtPyDCWXGAXGtV/gv1hJkFfvODalsGEfoKTJqVglghArB00Lx1pUinD
+         a7wA==
+X-Gm-Message-State: AOAM533mt0UCQp7QBBb6I9qaFrbSk+kGU83x3z45xKbwlIWjDydFRbbo
+        dkc85uWUIoPgAXcc7DdlEIQtxg==
+X-Google-Smtp-Source: ABdhPJypPeog7mP9z+ekOnFO58FrxR8mVY95qOKmqwI6aAy+NN6S986J00PqQzSFFbYKHXLIGHqplw==
+X-Received: by 2002:a17:90a:d3d3:b0:1bf:2e8d:3175 with SMTP id d19-20020a17090ad3d300b001bf2e8d3175mr6126125pjw.2.1646762330552;
+        Tue, 08 Mar 2022 09:58:50 -0800 (PST)
+Received: from [192.168.254.17] ([50.39.160.154])
+        by smtp.gmail.com with ESMTPSA id x6-20020a17090aa38600b001bce781ce03sm3581460pjp.18.2022.03.08.09.58.50
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 08 Mar 2022 09:58:50 -0800 (PST)
+Message-ID: <3a901543-60cf-6658-cb9f-45e567ae2151@linaro.org>
+Date:   Tue, 8 Mar 2022 09:58:49 -0800
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.5.0
+Subject: Re: BUG in ext4_ind_remove_space
+Content-Language: en-US
+To:     Ritesh Harjani <riteshh@linux.ibm.com>
+Cc:     Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+References: <48308b02-149b-1c47-115a-1a268dac6e24@linaro.org>
+ <20220225171016.zwhp62b3yzgewk6l@riteshh-domain>
+ <25749d7d-7036-0b71-3dd8-7b04dcc430e4@linaro.org>
+ <346904fd-112a-8d57-9221-b5c729ea6056@linaro.org>
+ <20220303145651.ackek7wotphg26gm@riteshh-domain>
+ <995d8b3c-44ee-e190-42ae-75f2562b8d6b@linaro.org>
+ <20220303200804.hugwhtqovxiutkfd@riteshh-domain>
+ <20220307054557.v4qqm4ushmm55v4y@riteshh-domain>
+From:   Tadeusz Struk <tadeusz.struk@linaro.org>
+In-Reply-To: <20220307054557.v4qqm4ushmm55v4y@riteshh-domain>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+On 3/6/22 21:45, Ritesh Harjani wrote:
+> On 22/03/04 01:38AM, Ritesh Harjani wrote:
+>> On 22/03/03 07:37AM, Tadeusz Struk wrote:
+>>> On 3/3/22 06:56, Ritesh Harjani wrote:
+>>>> On 22/03/02 03:14PM, Tadeusz Struk wrote:
+>>>>> On 2/25/22 11:19, Tadeusz Struk wrote:
+>>>>>>> I can verify this sometime next week when I get back to it.
+>>>>>>> But thanks for reporting the issue :)
+>>>>>>
+>>>>>> Next week is perfectly fine. Thanks for looking into it.
+>>>>>
+>>>>> Hi Ritesh,
+>>>>> Did you have chance to look into this?
+>>>>> If you want I can send a patch that fixes the off by 1 calculation error.
+>>>>
+>>>> Hi Tadeusz,
+>>>>
+>>>> I wanted to look at that path a bit more before sending that patch.
+>>>> Last analysis by me was more of a cursory look at the kernel dmesg log which you
+>>>> had shared.
+>>>>
+>>>> In case if you want to pursue that issue and spend time on it, then feel free to
+>>>> do it.
+>>>>
+>>>> I got pulled into number of other things last week and this week. So didn't get
+>>>> a chance to look into it yet. I hope to look into this soon (if no one else
+>>>> picks up :))
+>>>
+>>> I'm not familiar with the internals of ext4 implementation so I would rather
+>>> have someone who knows it look at it.
+>>
+>> No problem. I am willing to look into this anyways.
+>> btw, this issue could be seen easily with below cmd on non-extent ext4 FS.
+>>
+>> sudo xfs_io -f -c "truncate 0x4010040c000" -c "fsync" -c "fpunch 0x1000000 0xffefffff000" testfile
+> 
+> Just FYI - The change which we discussed to fix the max_block to max_end_block, is not correct.
+> Since it will still leave 1 block at the end after punch operation, if the file has s_bitmap_maxbytes size.
+> This is due to the fact that, "end" is expected to be 1 block after the end of last block.
+> 
+> Will try look into it to see how can we fix this.
+> 
+> 1210 /**
+> 1211  *      ext4_ind_remove_space - remove space from the range
+> 1212  *      @handle: JBD handle for this transaction
+> 1213  *      @inode: inode we are dealing with
+> 1214  *      @start: First block to remove
+> 1215  *      @end:   One block after the last block to remove (exclusive)
+> 1216  *
+> 1217  *      Free the blocks in the defined range (end is exclusive endpoint of
+> 1218  *      range). This is used by ext4_punch_hole().
+> 1219  */
+> 1220 int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+> 1221                           ext4_lblk_t start, ext4_lblk_t end)
+> 
 
-The new logic introduced in this series does not require tracking number
-of active handles open on an inode. So, drop it.
+Hi Ritesh,
+Thanks for update. Let me know if I can be of any help to you.
 
-Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
----
- fs/ext4/ext4.h        |  5 ----
- fs/ext4/fast_commit.c | 70 -------------------------------------------
- 2 files changed, 75 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fb6d65f1176f..6861a3127a42 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1059,9 +1059,6 @@ struct ext4_inode_info {
- 	/* End of lblk range that needs to be committed in this fast commit */
- 	ext4_lblk_t i_fc_lblk_len;
- 
--	/* Number of ongoing updates on this inode */
--	atomic_t  i_fc_updates;
--
- 	/* Fast commit wait queue for this inode */
- 	wait_queue_head_t i_fc_wait;
- 
-@@ -2930,8 +2927,6 @@ void __ext4_fc_track_create(handle_t *handle, struct inode *inode,
- void ext4_fc_track_create(handle_t *handle, struct dentry *dentry);
- void ext4_fc_track_inode(handle_t *handle, struct inode *inode);
- void ext4_fc_mark_ineligible(struct super_block *sb, int reason, handle_t *handle);
--void ext4_fc_start_update(struct inode *inode);
--void ext4_fc_stop_update(struct inode *inode);
- void ext4_fc_del(struct inode *inode);
- bool ext4_fc_replay_check_excluded(struct super_block *sb, ext4_fsblk_t block);
- void ext4_fc_replay_cleanup(struct super_block *sb);
-diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-index eedcf8b4d47b..eea19e3ea9ba 100644
---- a/fs/ext4/fast_commit.c
-+++ b/fs/ext4/fast_commit.c
-@@ -201,76 +201,6 @@ void ext4_fc_init_inode(struct inode *inode)
- 	INIT_LIST_HEAD(&ei->i_fc_list);
- 	INIT_LIST_HEAD(&ei->i_fc_dilist);
- 	init_waitqueue_head(&ei->i_fc_wait);
--	atomic_set(&ei->i_fc_updates, 0);
--}
--
--/* This function must be called with sbi->s_fc_lock held. */
--static void ext4_fc_wait_committing_inode(struct inode *inode)
--__releases(&EXT4_SB(inode->i_sb)->s_fc_lock)
--{
--	wait_queue_head_t *wq;
--	struct ext4_inode_info *ei = EXT4_I(inode);
--
--#if (BITS_PER_LONG < 64)
--	DEFINE_WAIT_BIT(wait, &ei->i_state_flags,
--			EXT4_STATE_FC_COMMITTING);
--	wq = bit_waitqueue(&ei->i_state_flags,
--				EXT4_STATE_FC_COMMITTING);
--#else
--	DEFINE_WAIT_BIT(wait, &ei->i_flags,
--			EXT4_STATE_FC_COMMITTING);
--	wq = bit_waitqueue(&ei->i_flags,
--				EXT4_STATE_FC_COMMITTING);
--#endif
--	lockdep_assert_held(&EXT4_SB(inode->i_sb)->s_fc_lock);
--	prepare_to_wait(wq, &wait.wq_entry, TASK_UNINTERRUPTIBLE);
--	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
--	schedule();
--	finish_wait(wq, &wait.wq_entry);
--}
--
--/*
-- * Inform Ext4's fast about start of an inode update
-- *
-- * This function is called by the high level call VFS callbacks before
-- * performing any inode update. This function blocks if there's an ongoing
-- * fast commit on the inode in question.
-- */
--void ext4_fc_start_update(struct inode *inode)
--{
--	struct ext4_inode_info *ei = EXT4_I(inode);
--
--	if (!test_opt2(inode->i_sb, JOURNAL_FAST_COMMIT) ||
--	    (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY))
--		return;
--
--restart:
--	spin_lock(&EXT4_SB(inode->i_sb)->s_fc_lock);
--	if (list_empty(&ei->i_fc_list))
--		goto out;
--
--	if (ext4_test_inode_state(inode, EXT4_STATE_FC_COMMITTING)) {
--		ext4_fc_wait_committing_inode(inode);
--		goto restart;
--	}
--out:
--	atomic_inc(&ei->i_fc_updates);
--	spin_unlock(&EXT4_SB(inode->i_sb)->s_fc_lock);
--}
--
--/*
-- * Stop inode update and wake up waiting fast commits if any.
-- */
--void ext4_fc_stop_update(struct inode *inode)
--{
--	struct ext4_inode_info *ei = EXT4_I(inode);
--
--	if (!test_opt2(inode->i_sb, JOURNAL_FAST_COMMIT) ||
--	    (EXT4_SB(inode->i_sb)->s_mount_state & EXT4_FC_REPLAY))
--		return;
--
--	if (atomic_dec_and_test(&ei->i_fc_updates))
--		wake_up_all(&ei->i_fc_wait);
- }
- 
- /*
 -- 
-2.35.1.616.g0bdcbb4464-goog
-
+Thanks,
+Tadeusz
