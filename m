@@ -2,98 +2,114 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 49399C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 10 Mar 2022 10:18:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CAB1C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 10 Mar 2022 15:59:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241144AbiCJKTw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 10 Mar 2022 05:19:52 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34812 "EHLO
+        id S239443AbiCJQAm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 10 Mar 2022 11:00:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36436 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232377AbiCJKTu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Mar 2022 05:19:50 -0500
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21E47114FD2
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Mar 2022 02:18:37 -0800 (PST)
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id EACB7210ED;
-        Thu, 10 Mar 2022 10:18:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1646907515; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=n4PlAHdokU/XCpIbq0HompyPwgwmsXwntf2B5M21hcs=;
-        b=xWEyiwcQnJ5KIDpp5KmJ0RND3UP9bdE5ur/rXcSN2h0L0iwQNkJsjoTEorGSYlrHpKEp7h
-        WeLMDkkysJArRPQ3K7UmrPfekPlZyw0sIH3FZNn3pwLClpw7M/gq8fl3rkObDtXnpwysNq
-        SGQ93Omu/qsoCY6wm1V3beve+OH1v7U=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1646907515;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=n4PlAHdokU/XCpIbq0HompyPwgwmsXwntf2B5M21hcs=;
-        b=hDbCjwGt79NYeuZl+PXXpjgepBz/qTcg10koeQ0YAUelTH+EDoJXQtm5BVtHY2WmeYGZrG
-        NNzX4a88NbWCgnAw==
-Received: from quack3.suse.cz (unknown [10.100.224.230])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id DEF6CA3B81;
-        Thu, 10 Mar 2022 10:18:35 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 68C27A0610; Thu, 10 Mar 2022 11:18:35 +0100 (CET)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Warn when dirtying page without buffers in data=journal mode
-Date:   Thu, 10 Mar 2022 11:18:32 +0100
-Message-Id: <20220310101832.5645-1-jack@suse.cz>
-X-Mailer: git-send-email 2.34.1
+        with ESMTP id S231837AbiCJQAk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Mar 2022 11:00:40 -0500
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED3ED340F2;
+        Thu, 10 Mar 2022 07:59:39 -0800 (PST)
+Received: from pps.filterd (m0187473.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22AENcBh035460;
+        Thu, 10 Mar 2022 15:59:34 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=4Rr2mMJMR5V3oQ0VcnPpsrOimkfn5aQCVEtI9Hg+4vw=;
+ b=swylWQCcShqVCZ2EsLWAa2erSdpzmtk4WVaOLhVEkMSFRtSIYNlxXLMDI4YvhytodkdT
+ kZXaD5UTnfBd3RBE+byB8W4HTwFFFhJoPhjJlvS4XD+Zyyk9iftUAZsbUnDC35n1OckW
+ aT3xITgvlMqGZ6X88ho6C/O2QDNXGdn2LrR2H+kRk6LvA+UZjZAp32XovwZyUST6yf6B
+ afrzBtCw2lH7Eocy770ZOmsmk53UbA9Qg3LOITR3CFVpwSvZlMeHcOMrvR8++9nzVhd9
+ 8LaxuuKSHhK9GWJT+j1AJgItszAvuJCS+yEdZ7Sd4vrMtqQuZ/9g1JgGkycW1GbSVyQz 5g== 
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3eqgr0dv7y-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 10 Mar 2022 15:59:34 +0000
+Received: from m0187473.ppops.net (m0187473.ppops.net [127.0.0.1])
+        by pps.reinject (8.16.0.43/8.16.0.43) with SMTP id 22AFDjhK024228;
+        Thu, 10 Mar 2022 15:59:34 GMT
+Received: from ppma02fra.de.ibm.com (47.49.7a9f.ip4.static.sl-reverse.com [159.122.73.71])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3eqgr0dv6x-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 10 Mar 2022 15:59:34 +0000
+Received: from pps.filterd (ppma02fra.de.ibm.com [127.0.0.1])
+        by ppma02fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 22AFw5qo017132;
+        Thu, 10 Mar 2022 15:59:31 GMT
+Received: from b06cxnps4074.portsmouth.uk.ibm.com (d06relay11.portsmouth.uk.ibm.com [9.149.109.196])
+        by ppma02fra.de.ibm.com with ESMTP id 3ekyg9382p-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 10 Mar 2022 15:59:31 +0000
+Received: from d06av25.portsmouth.uk.ibm.com (d06av25.portsmouth.uk.ibm.com [9.149.105.61])
+        by b06cxnps4074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 22AFxS1Y57540906
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 10 Mar 2022 15:59:29 GMT
+Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id CF17F11C054;
+        Thu, 10 Mar 2022 15:59:28 +0000 (GMT)
+Received: from d06av25.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 67F7A11C052;
+        Thu, 10 Mar 2022 15:59:28 +0000 (GMT)
+Received: from localhost (unknown [9.43.36.239])
+        by d06av25.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Thu, 10 Mar 2022 15:59:28 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [PATCHv2 01/10] ext4: Remove unused enum EXT4_FC_COMMIT_FAILED
+Date:   Thu, 10 Mar 2022 21:28:55 +0530
+Message-Id: <95009b6d7d50b6bbbec8e7f9bb0eb57750e7f1cb.1646922487.git.riteshh@linux.ibm.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <cover.1646922487.git.riteshh@linux.ibm.com>
+References: <cover.1646922487.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1874; h=from:subject; bh=E5+XbH4zTAxdnimwCkvRkwuJi6x6iZkBdBwH5zF2LbA=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiKdBxpg4+s7G4WVxB9gdLJclDtY6grSykPmyhwSpn kRV03CWJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYinQcQAKCRCcnaoHP2RA2YfWB/ 90a3aeC0kfEeOyH42hJ7y1W+wh8W7wa3lLKDvxRvqcPVX1dZueZ6KW5rtdSMk/AJSQ//u2+bZx5iMs aN7Le9jiDlzLcSMETZMGdKFr65PohBvVuzE+OMe2jii3hfc+DWanQE2DKxHGVLKPlowEZ91Bk5Uh6J TADWvfjeZQDKi2O4zReXmryU/x80k0FLTGR8SP0nVmdRJ9ES8cxmgyGnOc5W88eZfEZ1ax97HRXszm ifmCkW9fQklh4o7lqQrGizGVeQbRxFf1IZt4isXt6s0BMDdbv7V+Z5a03+AcgfG7ok/rTazTjjiwtY IU+HOT5csKNw8z/mcSBGKaDgK55uR6
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-GUID: ltUTsG5P82g8PjIyCFSpgIUKY9ufGcmY
+X-Proofpoint-ORIG-GUID: sYy4SbI9zqnGyy7--2M8su6sjqFcSPZ7
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.816,Hydra:6.0.425,FMLib:17.11.64.514
+ definitions=2022-03-10_06,2022-03-09_01,2022-02-23_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 mlxlogscore=725
+ mlxscore=0 adultscore=0 lowpriorityscore=0 suspectscore=0 malwarescore=0
+ spamscore=0 clxscore=1015 impostorscore=0 priorityscore=1501 bulkscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2202240000
+ definitions=main-2203100084
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Recently I've got a report of BUG_ON trigerring during transaction
-commit in ext4_journalled_writepage_callback() because we've spotted a
-dirty page without buffers. Add WARN_ON_ONCE to
-ext4_journalled_set_page_dirty() to catch the problematic condition
-earlier where we have better chance of understanding which code path is
-creating dirty data without preparing the page properly. Also update the
-comment with current information when we are at it.
+Below commit removed all references of EXT4_FC_COMMIT_FAILED.
+commit 0915e464cb274 ("ext4: simplify updating of fast commit stats")
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Just remove it since it is not used anymore.
+
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
 ---
- fs/ext4/inode.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/fast_commit.h | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 01c9e4f743ba..f8f15fd25c6f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3541,10 +3541,11 @@ const struct iomap_ops ext4_iomap_report_ops = {
+diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
+index 02afa52e8e41..80414dcba6e1 100644
+--- a/fs/ext4/fast_commit.h
++++ b/fs/ext4/fast_commit.h
+@@ -93,7 +93,6 @@ enum {
+ 	EXT4_FC_REASON_RENAME_DIR,
+ 	EXT4_FC_REASON_FALLOC_RANGE,
+ 	EXT4_FC_REASON_INODE_JOURNAL_DATA,
+-	EXT4_FC_COMMIT_FAILED,
+ 	EXT4_FC_REASON_MAX
  };
  
- /*
-- * Pages can be marked dirty completely asynchronously from ext4's journalling
-- * activity.  By filemap_sync_pte(), try_to_unmap_one(), etc.  We cannot do
-- * much here because ->set_page_dirty is called under VFS locks.  The page is
-- * not necessarily locked.
-+ * Whenever the page is being dirtied, corresponding buffers should already be
-+ * attached to the transaction (we take care of this in ext4_page_mkwrite() and
-+ * ext4_write_begin()). However we cannot move buffers to dirty transaction
-+ * lists here because ->set_page_dirty is called under VFS locks and the page
-+ * is not necessarily locked.
-  *
-  * We cannot just dirty the page and leave attached buffers clean, because the
-  * buffers' dirty state is "definitive".  We cannot just set the buffers dirty
-@@ -3555,6 +3556,7 @@ const struct iomap_ops ext4_iomap_report_ops = {
-  */
- static int ext4_journalled_set_page_dirty(struct page *page)
- {
-+	WARN_ON_ONCE(!page_has_buffers(page));
- 	SetPageChecked(page);
- 	return __set_page_dirty_nobuffers(page);
- }
 -- 
-2.34.1
+2.31.1
 
