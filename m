@@ -2,35 +2,38 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4304C433F5
-	for <linux-ext4@archiver.kernel.org>; Sun, 13 Mar 2022 04:45:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D4C1C433F5
+	for <linux-ext4@archiver.kernel.org>; Sun, 13 Mar 2022 04:45:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232987AbiCMEq6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 12 Mar 2022 23:46:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49378 "EHLO
+        id S233568AbiCMErA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 12 Mar 2022 23:47:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49508 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229796AbiCMEq5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Mar 2022 23:46:57 -0500
+        with ESMTP id S229796AbiCMEq7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Mar 2022 23:46:59 -0500
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02ED7606F0
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Mar 2022 20:45:50 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0623A606F0;
+        Sat, 12 Mar 2022 20:45:52 -0800 (PST)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 22D4jkHg009260
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 22D4jkP7009262
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Sat, 12 Mar 2022 23:45:46 -0500
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 044C515C3E99; Sat, 12 Mar 2022 23:45:46 -0500 (EST)
+        id 0829A15C3E9B; Sat, 12 Mar 2022 23:45:46 -0500 (EST)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Jan Kara <jack@suse.cz>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: Warn when dirtying page without buffers in data=journal mode
-Date:   Sat, 12 Mar 2022 23:45:39 -0500
-Message-Id: <164714672856.1260831.8397472020365050278.b4-ty@mit.edu>
+To:     Ritesh Harjani <riteshh@linux.ibm.com>, linux-ext4@vger.kernel.org
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        linux-kernel@vger.kernel.org,
+        Harshad Shirwadkar <harshadshirwadkar@gmail.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCHv3 00/10] ext4: Improve FC trace events
+Date:   Sat, 12 Mar 2022 23:45:41 -0500
+Message-Id: <164714672856.1260831.16671323737369796834.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220310101832.5645-1-jack@suse.cz>
-References: <20220310101832.5645-1-jack@suse.cz>
+In-Reply-To: <cover.1647057583.git.riteshh@linux.ibm.com>
+References: <cover.1647057583.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -38,21 +41,40 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 10 Mar 2022 11:18:32 +0100, Jan Kara wrote:
-> Recently I've got a report of BUG_ON trigerring during transaction
-> commit in ext4_journalled_writepage_callback() because we've spotted a
-> dirty page without buffers. Add WARN_ON_ONCE to
-> ext4_journalled_set_page_dirty() to catch the problematic condition
-> earlier where we have better chance of understanding which code path is
-> creating dirty data without preparing the page properly. Also update the
-> comment with current information when we are at it.
+On Sat, 12 Mar 2022 11:09:45 +0530, Ritesh Harjani wrote:
+> Please find the v3 of this patch series. I have included Reviewed-by tag
+> on all patches, except in [5-7] which were later added to address review
+> comments from Jan [1].
+> 
+> Changes since v2
+> ================
+> v2 -> v3
+> 1. Defined TRACE_DEFINE_ENUM(EXT4_FC_REASON_MAX) in [Patch 02/10]
 > 
 > [...]
 
 Applied, thanks!
 
-[1/1] ext4: Warn when dirtying page without buffers in data=journal mode
-      commit: 2bb8dd401a4f96973d6a9de4218d7f01fbd497ee
+[01/10] ext4: Remove unused enum EXT4_FC_COMMIT_FAILED
+        commit: c864ccd182d6ff2730a0f5b636c6b7c48f6f4f7f
+[02/10] ext4: Fix ext4_fc_stats trace point
+        commit: 7af1974af0a9ba8a8ed2e3e947d87dd4d9a78d27
+[03/10] ext4: Convert ext4_fc_track_dentry type events to use event class
+        commit: 8cb5a30372ef5cf2b1d258fce1711d80f834740a
+[04/10] ext4: Do not call FC trace event in ext4_fc_commit() if FS does not support FC
+        commit: 7f142440847480838e0c4b3092f24455cec111a7
+[05/10] ext4: Return early for non-eligible fast_commit track events
+        commit: 9d5623d7ef8765f21f629e4ac636c19ec245e254
+[06/10] ext4: Add new trace event in ext4_fc_cleanup
+        commit: 810e6a2b0cc2394947aa72c5bd47b4ba3cc538d1
+[07/10] ext4: Add transaction tid info in fc_track events
+        commit: 9f7165eeb47e71e539f258cc8105f909074a2b87
+[08/10] ext4: Add commit_tid info in jbd debug log
+        commit: 20bc9c03722db8bfa82506056b1b54b481beea72
+[09/10] ext4: Add commit tid info in ext4_fc_commit_start/stop trace events
+        commit: d0852d55b0ca3dc1573df46874b847b72dfbe70a
+[10/10] ext4: Fix remaining two trace events to use same printk convention
+        commit: 6a5fb2ca06cfec5159457283cdd92ce42d68137d
 
 Best regards,
 -- 
