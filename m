@@ -2,114 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7B9DC433EF
-	for <linux-ext4@archiver.kernel.org>; Tue, 15 Mar 2022 14:29:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85619C433F5
+	for <linux-ext4@archiver.kernel.org>; Tue, 15 Mar 2022 14:29:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349179AbiCOOaZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Mar 2022 10:30:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35698 "EHLO
+        id S1349210AbiCOOa3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Mar 2022 10:30:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36070 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349168AbiCOOaV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 10:30:21 -0400
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1851454FA5;
-        Tue, 15 Mar 2022 07:29:08 -0700 (PDT)
-Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22FEBntF025147;
-        Tue, 15 Mar 2022 14:29:08 GMT
+        with ESMTP id S1349186AbiCOOa0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 10:30:26 -0400
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 949625520A;
+        Tue, 15 Mar 2022 07:29:13 -0700 (PDT)
+Received: from pps.filterd (m0098399.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.1.2/8.16.1.2) with SMTP id 22FDC4QX014500;
+        Tue, 15 Mar 2022 14:29:13 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=from : to : cc : subject
- : date : message-id : content-transfer-encoding : mime-version; s=pp1;
- bh=Gp5DiJeUrH8zW1k2ACTM5dIm57d7tSl3Rc4KMsW70y4=;
- b=Z5nLS2BM5wGVTrDAFhHoL4PbntbnaobbnomJnxS+4QbvymHYasRku6ZXCYp8mTX5gXuk
- l550+0vo5fqrlDUfEcbZo1yQBGN3LxtjnfFnQqyhF7PSEM/TZUMSfVc4ydgp/0uCN4XG
- CSVb1uGsl28Px1KHJO+33wyLQ3dojUrwfNaeIcJmJFDXNSEc+nSvJDj3OF5e+DtON40n
- GGCrh74HgdFPZ5oLGvioPzuxGP9OxnA1O/LAWFaOzXM8RmLMBZNZkGIJ/+I7rv5Z6hNn
- bnZjBAMs3XEFVwaFuw2dxqTQm2MSZjxoBn6PToo77jfikEu6GGOpuVIhMY6rgyHWX6iA VA== 
-Received: from ppma05fra.de.ibm.com (6c.4a.5195.ip4.static.sl-reverse.com [149.81.74.108])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 3etvbm8eqg-1
+ : date : message-id : in-reply-to : references : mime-version :
+ content-transfer-encoding; s=pp1;
+ bh=3EXxyCI0HB+4wSF/cZmEZ8owPZNvxiI2fMDKOB98uBg=;
+ b=XSfK2iXx4/oxoUCPxxT0O2/Gn9xKN6pn99XKGaldc8hNQCsPBDaqkVCeCy8RTCkSlacp
+ nRRDGq4fMKXh+tjSrnNiXXX4c5afZFBt9vdXOuYn8KFrd8wLeL1AuGo3OjwHgf2UyVqI
+ JgpQBxcKWumPe9TcGONTZhfZb6ijB0eZeK9tdF4bOpOH1OrrMDOB8oDGjTO5YmblJO4P
+ pNZn8eJpZev7QZp0X5cf6hhvXEc7HO2TQ1ls+rieX6wB5qmzvROGip+wPa5l6TTHY8/4
+ ohKKD80jjt1S8ToE/ZGKfppL81S1bUTeW/Ywc1G/QhmuYXcs7iUPqbRe0wIV/sBKJUPX Kw== 
+Received: from ppma03fra.de.ibm.com (6b.4a.5195.ip4.static.sl-reverse.com [149.81.74.107])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 3etufj9wfu-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 15 Mar 2022 14:29:08 +0000
-Received: from pps.filterd (ppma05fra.de.ibm.com [127.0.0.1])
-        by ppma05fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 22FERUJG015197;
-        Tue, 15 Mar 2022 14:29:06 GMT
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
-        by ppma05fra.de.ibm.com with ESMTP id 3erk58nu10-1
+        Tue, 15 Mar 2022 14:29:13 +0000
+Received: from pps.filterd (ppma03fra.de.ibm.com [127.0.0.1])
+        by ppma03fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 22FE9H89024788;
+        Tue, 15 Mar 2022 14:29:10 GMT
+Received: from b06cxnps3075.portsmouth.uk.ibm.com (d06relay10.portsmouth.uk.ibm.com [9.149.109.195])
+        by ppma03fra.de.ibm.com with ESMTP id 3erk58nu6s-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 15 Mar 2022 14:29:06 +0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 22FET4Bk45875638
+        Tue, 15 Mar 2022 14:29:10 +0000
+Received: from d06av26.portsmouth.uk.ibm.com (d06av26.portsmouth.uk.ibm.com [9.149.105.62])
+        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 22FET8Wu50069834
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 15 Mar 2022 14:29:04 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id E758AA4060;
-        Tue, 15 Mar 2022 14:29:03 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 55B99A405C;
-        Tue, 15 Mar 2022 14:29:03 +0000 (GMT)
+        Tue, 15 Mar 2022 14:29:08 GMT
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 6E150AE04D;
+        Tue, 15 Mar 2022 14:29:08 +0000 (GMT)
+Received: from d06av26.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id E4A2FAE045;
+        Tue, 15 Mar 2022 14:29:07 +0000 (GMT)
 Received: from localhost (unknown [9.43.32.151])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Tue, 15 Mar 2022 14:29:02 +0000 (GMT)
+        by d06av26.portsmouth.uk.ibm.com (Postfix) with ESMTP;
+        Tue, 15 Mar 2022 14:29:07 +0000 (GMT)
 From:   Ritesh Harjani <riteshh@linux.ibm.com>
 To:     fstests <fstests@vger.kernel.org>
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: [PATCHv2 0/4] generic: Add some tests around journal replay/recoveryloop
-Date:   Tue, 15 Mar 2022 19:58:55 +0530
-Message-Id: <cover.1647342932.git.riteshh@linux.ibm.com>
+Subject: [PATCHv2 2/4] common/punch: Add block_size argument to _filter_fiemap_**
+Date:   Tue, 15 Mar 2022 19:58:57 +0530
+Message-Id: <074f560c97fba2be9ff367ab9b4b7963ba23fe4b.1647342932.git.riteshh@linux.ibm.com>
 X-Mailer: git-send-email 2.31.1
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: kYFfgd5CwRRV6r-FWWWeEJFZD0GNw14T
-X-Proofpoint-ORIG-GUID: kYFfgd5CwRRV6r-FWWWeEJFZD0GNw14T
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-UnRewURL: 0 URL was un-rewritten
+In-Reply-To: <cover.1647342932.git.riteshh@linux.ibm.com>
+References: <cover.1647342932.git.riteshh@linux.ibm.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: axTh6xouKiiJXxcFxMNE4Pkp__nzDRpP
+X-Proofpoint-GUID: axTh6xouKiiJXxcFxMNE4Pkp__nzDRpP
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.205,Aquarius:18.0.850,Hydra:6.0.425,FMLib:17.11.64.514
  definitions=2022-03-15_03,2022-03-15_01,2022-02-23_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 adultscore=0
- priorityscore=1501 clxscore=1015 phishscore=0 mlxlogscore=924
- lowpriorityscore=0 malwarescore=0 spamscore=0 impostorscore=0
- suspectscore=0 mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 mlxlogscore=999
+ malwarescore=0 phishscore=0 spamscore=0 suspectscore=0 clxscore=1015
+ priorityscore=1501 impostorscore=0 mlxscore=0 lowpriorityscore=0
+ adultscore=0 bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2202240000 definitions=main-2203150092
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+Add block_size paramter to _filter_fiemap_flags() and
+_filter_hole_fiemap(). This is used in next patches
 
-Sending v2 with tests/ext4/ converted to tests/generic/
-(although I had not received any review comments on v1).
-It seems all of the tests which I had sent in v1 are not ext4 specific anyways.
-So in v2, I have made those into tests/generic/.
+Also this fixes some of the end of line whitespace issues while we are
+at it.
 
-These are some of the tests which when tested with ext4 fast_commit feature
-w/o kernel fixes, could cause tests failures and/or KASAN bug (generic/486).
+Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+---
+ common/punch | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-I gave these tests a run with default xfs, btrfs and f2fs configs (along with
-ext4). No surprises observed.
+diff --git a/common/punch b/common/punch
+index b6b8a0b9..f99e21ad 100644
+--- a/common/punch
++++ b/common/punch
+@@ -109,6 +109,7 @@ _filter_fiemap()
 
-[v1]: https://lore.kernel.org/all/cover.1644070604.git.riteshh@linux.ibm.com/
+ _filter_fiemap_flags()
+ {
++	block_size=$1
+ 	$AWK_PROG '
+ 		$3 ~ /hole/ {
+ 			print $1, $2, $3;
+@@ -135,23 +136,24 @@ _filter_fiemap_flags()
+ 			}
+ 			print $1, $2, flag_str
+ 		}' |
+-	_coalesce_extents
++	_coalesce_extents $block_size
+ }
 
-Ritesh Harjani (4):
-  generic/468: Add another falloc test entry
-  common/punch: Add block_size argument to _filter_fiemap_**
-  generic/676: Add a new shutdown recovery test
-  generic/677: Add a test to check unwritten extents tracking
+-# Filters fiemap output to only print the
++# Filters fiemap output to only print the
+ # file offset column and whether or not
+ # it is an extent or a hole
+ _filter_hole_fiemap()
+ {
++	block_size=$1
+ 	$AWK_PROG '
+ 		$3 ~ /hole/ {
+-			print $1, $2, $3;
++			print $1, $2, $3;
+ 			next;
+-		}
++		}
+ 		$5 ~ /0x[[:xdigit:]]+/ {
+ 			print $1, $2, "extent";
+ 		}' |
+-	_coalesce_extents
++	_coalesce_extents $block_size
+ }
 
- common/punch          | 12 +++++---
- tests/generic/468     |  4 +++
- tests/generic/468.out |  2 ++
- tests/generic/676     | 72 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/676.out |  7 +++++
- tests/generic/677     | 64 ++++++++++++++++++++++++++++++++++++++
- tests/generic/677.out |  6 ++++
- 7 files changed, 162 insertions(+), 5 deletions(-)
- create mode 100755 tests/generic/676
- create mode 100644 tests/generic/676.out
- create mode 100755 tests/generic/677
- create mode 100644 tests/generic/677.out
-
+ #     10000 Unwritten preallocated extent
 --
 2.31.1
 
