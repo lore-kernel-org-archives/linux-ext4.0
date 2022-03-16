@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0220CC43217
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:29:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 18693C433FE
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:29:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353407AbiCPCaW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Mar 2022 22:30:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55650 "EHLO
+        id S1353321AbiCPCa2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Mar 2022 22:30:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55660 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1353301AbiCPC3q (ORCPT
+        with ESMTP id S1353305AbiCPC3q (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 22:29:46 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 07FBA5E75C
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 73C7C5E75D
         for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2022 19:27:17 -0700 (PDT)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.52 with ESMTP; 16 Mar 2022 11:27:10 +0900
+        by 156.147.23.53 with ESMTP; 16 Mar 2022 11:27:09 +0900
 X-Original-SENDERIP: 156.147.1.151
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.151 with ESMTP; 16 Mar 2022 11:27:10 +0900
+        by 156.147.1.151 with ESMTP; 16 Mar 2022 11:27:09 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH RFC v5 06/21] dept: Apply Dept to rwlock
-Date:   Wed, 16 Mar 2022 11:26:18 +0900
-Message-Id: <1647397593-16747-7-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v5 04/21] dept: Apply Dept to spinlock
+Date:   Wed, 16 Mar 2022 11:26:16 +0900
+Message-Id: <1647397593-16747-5-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
 References: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
@@ -56,181 +56,121 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by rwlock.
+Makes Dept able to track dependencies by spinlock.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h        | 25 ++++++++++++++++-----
- include/linux/rwlock.h         | 50 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/rwlock_api_smp.h |  8 +++----
- include/linux/rwlock_types.h   |  7 ++++++
- 4 files changed, 81 insertions(+), 9 deletions(-)
+ include/linux/lockdep.h            | 18 +++++++++++++++---
+ include/linux/spinlock.h           | 25 +++++++++++++++++++++++++
+ include/linux/spinlock_types_raw.h | 13 +++++++++++++
+ 3 files changed, 53 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 42237fc..91f8783 100644
+index 2aab445..01e7427 100644
 --- a/include/linux/lockdep.h
 +++ b/include/linux/lockdep.h
-@@ -599,16 +599,31 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- 	dept_spin_unlock(&(l)->dmap, i);				\
- } while (0)
+@@ -583,9 +583,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
+ #define lock_acquire_shared(l, s, t, n, i)		lock_acquire(l, s, t, 1, 1, n, i)
+ #define lock_acquire_shared_recursive(l, s, t, n, i)	lock_acquire(l, s, t, 2, 1, n, i)
  
--#define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
-+#define rwlock_acquire(l, s, t, i)					\
+-#define spin_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+-#define spin_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
+-#define spin_release(l, i)			lock_release(l, i)
++#define spin_acquire(l, s, t, i)					\
 +do {									\
 +	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_rwlock_wlock(&(l)->dmap, s, t, NULL, "write_unlock", i);	\
++	dept_spin_lock(&(l)->dmap, s, t, NULL, "spin_unlock", i);	\
 +} while (0)
- #define rwlock_acquire_read(l, s, t, i)					\
- do {									\
--	if (read_lock_is_recursive())					\
-+	if (read_lock_is_recursive()) {				\
- 		lock_acquire_shared_recursive(l, s, t, NULL, i);	\
--	else								\
-+		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 0);\
-+	} else {							\
- 		lock_acquire_shared(l, s, t, NULL, i);			\
-+		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 1);\
-+	}								\
++#define spin_acquire_nest(l, s, t, n, i)				\
++do {									\
++	lock_acquire_exclusive(l, s, t, n, i);				\
++	dept_spin_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "spin_unlock", i); \
 +} while (0)
-+#define rwlock_release(l, i)						\
++#define spin_release(l, i)						\
 +do {									\
 +	lock_release(l, i);						\
-+	dept_rwlock_wunlock(&(l)->dmap, i);				\
++	dept_spin_unlock(&(l)->dmap, i);				\
 +} while (0)
-+#define rwlock_release_read(l, i)					\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_rwlock_runlock(&(l)->dmap, i);				\
- } while (0)
--
--#define rwlock_release(l, i)			lock_release(l, i)
  
- #define seqcount_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
-diff --git a/include/linux/rwlock.h b/include/linux/rwlock.h
-index 8f416c5..cd4c6b0 100644
---- a/include/linux/rwlock.h
-+++ b/include/linux/rwlock.h
-@@ -28,6 +28,56 @@
- 	do { *(lock) = __RW_LOCK_UNLOCKED(lock); } while (0)
+ #define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
+ #define rwlock_acquire_read(l, s, t, i)					\
+diff --git a/include/linux/spinlock.h b/include/linux/spinlock.h
+index 5c0c517..0e2c28d 100644
+--- a/include/linux/spinlock.h
++++ b/include/linux/spinlock.h
+@@ -95,6 +95,31 @@
+ # include <linux/spinlock_up.h>
  #endif
  
 +#ifdef CONFIG_DEPT
-+#define DEPT_EVT_RWLOCK_R		1UL
-+#define DEPT_EVT_RWLOCK_W		(1UL << 1)
-+#define DEPT_EVT_RWLOCK_RW		(DEPT_EVT_RWLOCK_R | DEPT_EVT_RWLOCK_W)
-+
-+#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)			\
++#define dept_spin_lock(m, ne, t, n, e_fn, ip)				\
 +do {									\
 +	if (t) {							\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
 +		dept_ask_event(m);					\
 +	} else if (n) {							\
 +		dept_ecxt_enter_nokeep(m);				\
 +		dept_ask_event(m);					\
 +	} else {							\
-+		dept_wait(m, DEPT_EVT_RWLOCK_RW, ip, __func__, ne);	\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
++		dept_wait(m, 1UL, ip, __func__, ne);			\
++		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
 +		dept_ask_event(m);					\
 +	}								\
 +} while (0)
-+#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)			\
++#define dept_spin_unlock(m, ip)						\
 +do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
-+		dept_ask_event(m);					\
-+	} else if (n) {							\
-+		dept_ecxt_enter_nokeep(m);				\
-+		dept_ask_event(m);					\
-+	} else {							\
-+		dept_wait(m, (q) ? DEPT_EVT_RWLOCK_RW : DEPT_EVT_RWLOCK_W, ip, __func__, ne);\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
-+		dept_ask_event(m);					\
-+	}								\
-+} while (0)
-+#define dept_rwlock_wunlock(m, ip)					\
-+do {									\
-+	dept_event(m, DEPT_EVT_RWLOCK_W, ip, __func__);			\
-+	dept_ecxt_exit(m, DEPT_EVT_RWLOCK_W, ip);			\
-+} while (0)
-+#define dept_rwlock_runlock(m, ip)					\
-+do {									\
-+	dept_event(m, DEPT_EVT_RWLOCK_R, ip, __func__);			\
-+	dept_ecxt_exit(m, DEPT_EVT_RWLOCK_R, ip);			\
++	dept_event(m, 1UL, ip, __func__);				\
++	dept_ecxt_exit(m, 1UL, ip);					\
 +} while (0)
 +#else
-+#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)	do { } while (0)
-+#define dept_rwlock_wunlock(m, ip)			do { } while (0)
-+#define dept_rwlock_runlock(m, ip)			do { } while (0)
++#define dept_spin_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
++#define dept_spin_unlock(m, ip)			do { } while (0)
 +#endif
 +
  #ifdef CONFIG_DEBUG_SPINLOCK
-  extern void do_raw_read_lock(rwlock_t *lock) __acquires(lock);
-  extern int do_raw_read_trylock(rwlock_t *lock);
-diff --git a/include/linux/rwlock_api_smp.h b/include/linux/rwlock_api_smp.h
-index dceb0a5..a222cf1 100644
---- a/include/linux/rwlock_api_smp.h
-+++ b/include/linux/rwlock_api_smp.h
-@@ -228,7 +228,7 @@ static inline void __raw_write_unlock(rwlock_t *lock)
+   extern void __raw_spin_lock_init(raw_spinlock_t *lock, const char *name,
+ 				   struct lock_class_key *key, short inner);
+diff --git a/include/linux/spinlock_types_raw.h b/include/linux/spinlock_types_raw.h
+index 91cb36b..5a9b25d 100644
+--- a/include/linux/spinlock_types_raw.h
++++ b/include/linux/spinlock_types_raw.h
+@@ -26,16 +26,28 @@
  
- static inline void __raw_read_unlock(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	preempt_enable();
- }
-@@ -236,7 +236,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
- static inline void
- __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	local_irq_restore(flags);
- 	preempt_enable();
-@@ -244,7 +244,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
- 
- static inline void __raw_read_unlock_irq(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	local_irq_enable();
- 	preempt_enable();
-@@ -252,7 +252,7 @@ static inline void __raw_read_unlock_irq(rwlock_t *lock)
- 
- static inline void __raw_read_unlock_bh(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
- }
-diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
-index 1948442..6dddc5b 100644
---- a/include/linux/rwlock_types.h
-+++ b/include/linux/rwlock_types.h
-@@ -5,11 +5,18 @@
- # error "Do not include directly, include spinlock_types.h"
- #endif
+ #define SPINLOCK_OWNER_INIT	((void *)-1L)
  
 +#ifdef CONFIG_DEPT
-+# define RW_DMAP_INIT(lockname) .dmap = { .name = #lockname },
++# define RAW_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
++# define SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
++# define LOCAL_SPIN_DMAP_INIT(lockname)	.dmap = { .name = #lockname },
 +#else
-+# define RW_DMAP_INIT(lockname)
++# define RAW_SPIN_DMAP_INIT(lockname)
++# define SPIN_DMAP_INIT(lockname)
++# define LOCAL_SPIN_DMAP_INIT(lockname)
 +#endif
 +
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
- # define RW_DEP_MAP_INIT(lockname)					\
- 	.dep_map = {							\
- 		.name = #lockname,					\
- 		.wait_type_inner = LD_WAIT_CONFIG,			\
-+		RW_DMAP_INIT(lockname)					\
+ # define RAW_SPIN_DEP_MAP_INIT(lockname)		\
+ 	.dep_map = {					\
+ 		.name = #lockname,			\
+ 		.wait_type_inner = LD_WAIT_SPIN,	\
++		RAW_SPIN_DMAP_INIT(lockname)		\
+ 	}
+ # define SPIN_DEP_MAP_INIT(lockname)			\
+ 	.dep_map = {					\
+ 		.name = #lockname,			\
+ 		.wait_type_inner = LD_WAIT_CONFIG,	\
++		SPIN_DMAP_INIT(lockname)		\
+ 	}
+ 
+ # define LOCAL_SPIN_DEP_MAP_INIT(lockname)		\
+@@ -43,6 +55,7 @@
+ 		.name = #lockname,			\
+ 		.wait_type_inner = LD_WAIT_CONFIG,	\
+ 		.lock_type = LD_LOCK_PERCPU,		\
++		LOCAL_SPIN_DMAP_INIT(lockname)		\
  	}
  #else
- # define RW_DEP_MAP_INIT(lockname)
+ # define RAW_SPIN_DEP_MAP_INIT(lockname)
 -- 
 1.9.1
 
