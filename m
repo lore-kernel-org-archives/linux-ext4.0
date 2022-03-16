@@ -2,17 +2,17 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1CC4C43219
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:27:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58C69C43217
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:27:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353080AbiCPC2c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Mar 2022 22:28:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55214 "EHLO
+        id S1352603AbiCPC2e (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Mar 2022 22:28:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55218 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352603AbiCPC21 (ORCPT
+        with ESMTP id S1352511AbiCPC21 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 22:28:27 -0400
 Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 2E5955E74F
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 91AE15DA7C
         for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2022 19:27:10 -0700 (PDT)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
         by 156.147.23.52 with ESMTP; 16 Mar 2022 11:27:09 +0900
@@ -46,132 +46,198 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH RFC v5 05/21] dept: Apply Dept to mutex families
-Date:   Wed, 16 Mar 2022 11:26:17 +0900
-Message-Id: <1647397593-16747-6-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v5 00/21] DEPT(Dependency Tracker)
+Date:   Wed, 16 Mar 2022 11:26:12 +0900
+Message-Id: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
-In-Reply-To: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
-References: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by mutex families.
+I'm gonna re-add RFC for a while at Ted's request. But hard testing is
+needed to find false alarms for now that there's no false alarm with my
+system. I'm gonna look for other systems that might produce false
+alarms. And it'd be appreciated if you share it when you see any alarms
+with yours.
 
-Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h | 18 +++++++++++++++---
- include/linux/mutex.h   | 32 ++++++++++++++++++++++++++++++++
- include/linux/rtmutex.h |  7 +++++++
- 3 files changed, 54 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 01e7427..42237fc 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -614,9 +614,21 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
- #define seqcount_release(l, i)			lock_release(l, i)
- 
--#define mutex_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
--#define mutex_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
--#define mutex_release(l, i)			lock_release(l, i)
-+#define mutex_acquire(l, s, t, i)					\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_mutex_lock(&(l)->dmap, s, t, NULL, "mutex_unlock", i);	\
-+} while (0)
-+#define mutex_acquire_nest(l, s, t, n, i)				\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, n, i);				\
-+	dept_mutex_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "mutex_unlock", i);\
-+} while (0)
-+#define mutex_release(l, i)						\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_mutex_unlock(&(l)->dmap, i);				\
-+} while (0)
- 
- #define rwsem_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define rwsem_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
-diff --git a/include/linux/mutex.h b/include/linux/mutex.h
-index 8f226d4..c321911 100644
---- a/include/linux/mutex.h
-+++ b/include/linux/mutex.h
-@@ -20,11 +20,18 @@
- #include <linux/osq_lock.h>
- #include <linux/debug_locks.h>
- 
-+#ifdef CONFIG_DEPT
-+# define DMAP_MUTEX_INIT(lockname)	.dmap = { .name = #lockname },
-+#else
-+# define DMAP_MUTEX_INIT(lockname)
-+#endif
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- # define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
- 		, .dep_map = {					\
- 			.name = #lockname,			\
- 			.wait_type_inner = LD_WAIT_SLEEP,	\
-+			DMAP_MUTEX_INIT(lockname)		\
- 		}
- #else
- # define __DEP_MAP_MUTEX_INITIALIZER(lockname)
-@@ -75,6 +82,31 @@ struct mutex {
- #endif
- };
- 
-+#ifdef CONFIG_DEPT
-+#define dept_mutex_lock(m, ne, t, n, e_fn, ip)				\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	} else if (n) {							\
-+		dept_ecxt_enter_nokeep(m);				\
-+		dept_ask_event(m);					\
-+	} else {							\
-+		dept_wait(m, 1UL, ip, __func__, ne);			\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+		dept_ask_event(m);					\
-+	}								\
-+} while (0)
-+#define dept_mutex_unlock(m, ip)					\
-+do {									\
-+	dept_event(m, 1UL, ip, __func__);				\
-+	dept_ecxt_exit(m, 1UL, ip);					\
-+} while (0)
-+#else
-+#define dept_mutex_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_mutex_unlock(m, ip)		do { } while (0)
-+#endif
-+
- #ifdef CONFIG_DEBUG_MUTEXES
- 
- #define __DEBUG_MUTEX_INITIALIZER(lockname)				\
-diff --git a/include/linux/rtmutex.h b/include/linux/rtmutex.h
-index 7d04988..60cebb0 100644
---- a/include/linux/rtmutex.h
-+++ b/include/linux/rtmutex.h
-@@ -76,11 +76,18 @@ static inline void rt_mutex_debug_task_free(struct task_struct *tsk) { }
- 	__rt_mutex_init(mutex, __func__, &__key); \
- } while (0)
- 
-+#ifdef CONFIG_DEPT
-+#define DMAP_RT_MUTEX_INIT(mutexname)	.dmap = { .name = #mutexname },
-+#else
-+#define DMAP_RT_MUTEX_INIT(mutexname)
-+#endif
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)	\
- 	.dep_map = {					\
- 		.name = #mutexname,			\
- 		.wait_type_inner = LD_WAIT_SLEEP,	\
-+		DMAP_RT_MUTEX_INIT(mutexname)		\
- 	}
- #else
- #define __DEP_MAP_RT_MUTEX_INITIALIZER(mutexname)
+Hi Linus and folks,
+
+I've been developing a tool for detecting deadlock possibilities by
+tracking wait/event rather than lock(?) acquisition order to try to
+cover all synchonization machanisms. It's done on v5.17-rc7 tag.
+
+https://github.com/lgebyungchulpark/linux-dept/commits/dept1.18_on_v5.17-rc7
+
+Benifit:
+
+	0. Works with all lock primitives.
+	1. Works with wait_for_completion()/complete().
+	2. Works with 'wait' on PG_locked.
+	3. Works with 'wait' on PG_writeback.
+	4. Works with swait/wakeup.
+	5. Works with waitqueue.
+	6. Multiple reports are allowed.
+	7. Deduplication control on multiple reports.
+	8. Withstand false positives thanks to 6.
+	9. Easy to tag any wait/event.
+
+Future work:
+
+	0. To make it more stable.
+	1. To separates Dept from Lockdep.
+	2. To improves performance in terms of time and space.
+	3. To use Dept as a dependency engine for Lockdep.
+	4. To add any missing tags of wait/event in the kernel.
+	5. To deduplicate stack trace.
+
+How to interpret reports:
+
+	1. E(event) in each context cannot be triggered because of the
+	   W(wait) that cannot be woken.
+	2. The stack trace helping find the problematic code is located
+	   in each conext's detail.
+
+Thanks,
+Byungchul
+
+---
+
+Changes from v4:
+
+	1. Fix some bugs that produce false alarms.
+	2. Distinguish each syscall context from another *for arm64*.
+	3. Make it not warn it but just print it in case Dept ring
+	   buffer gets exhausted. (feedback from Hyeonggon)
+	4. Explicitely describe "EXPERIMENTAL" and "Dept might produce
+	   false positive reports" in Kconfig. (feedback from Ted)
+
+Changes from v3:
+
+	1. Dept shouldn't create dependencies between different depths
+	   of a class that were indicated by *_lock_nested(). Dept
+	   normally doesn't but it does once another lock class comes
+	   in. So fixed it. (feedback from Hyeonggon)
+	2. Dept considered a wait as a real wait once getting to
+	   __schedule() even if it has been set to TASK_RUNNING by wake
+	   up sources in advance. Fixed it so that Dept doesn't consider
+	   the case as a real wait. (feedback from Jan Kara)
+	3. Stop tracking dependencies with a map once the event
+	   associated with the map has been handled. Dept will start to
+	   work with the map again, on the next sleep.
+
+Changes from v2:
+
+	1. Disable Dept on bit_wait_table[] in sched/wait_bit.c
+	   reporting a lot of false positives, which is my fault.
+	   Wait/event for bit_wait_table[] should've been tagged in a
+	   higher layer for better work, which is a future work.
+	   (feedback from Jan Kara)
+	2. Disable Dept on crypto_larval's completion to prevent a false
+	   positive.
+
+Changes from v1:
+
+	1. Fix coding style and typo. (feedback from Steven)
+	2. Distinguish each work context from another in workqueue.
+	3. Skip checking lock acquisition with nest_lock, which is about
+	   correct lock usage that should be checked by Lockdep.
+
+Changes from RFC:
+
+	1. Prevent adding a wait tag at prepare_to_wait() but __schedule().
+	   (feedback from Linus and Matthew)
+	2. Use try version at lockdep_acquire_cpus_lock() annotation.
+	3. Distinguish each syscall context from another.
+
+Byungchul Park (21):
+  llist: Move llist_{head,node} definition to types.h
+  dept: Implement Dept(Dependency Tracker)
+  dept: Embed Dept data in Lockdep
+  dept: Apply Dept to spinlock
+  dept: Apply Dept to mutex families
+  dept: Apply Dept to rwlock
+  dept: Apply Dept to wait_for_completion()/complete()
+  dept: Apply Dept to seqlock
+  dept: Apply Dept to rwsem
+  dept: Add proc knobs to show stats and dependency graph
+  dept: Introduce split map concept and new APIs for them
+  dept: Apply Dept to wait/event of PG_{locked,writeback}
+  dept: Apply SDT to swait
+  dept: Apply SDT to wait(waitqueue)
+  locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
+  dept: Distinguish each syscall context from another
+  dept: Distinguish each work from another
+  dept: Disable Dept within the wait_bit layer by default
+  dept: Add nocheck version of init_completion()
+  dept: Disable Dept on struct crypto_larval's completion for now
+  dept: Don't create dependencies between different depths in any case
+
+ arch/arm64/kernel/syscall.c        |    2 +
+ arch/x86/entry/common.c            |    4 +
+ crypto/api.c                       |    7 +-
+ include/linux/completion.h         |   50 +-
+ include/linux/dept.h               |  544 +++++++
+ include/linux/dept_page.h          |   78 +
+ include/linux/dept_sdt.h           |   62 +
+ include/linux/hardirq.h            |    3 +
+ include/linux/irqflags.h           |   33 +-
+ include/linux/llist.h              |    8 -
+ include/linux/lockdep.h            |  157 ++-
+ include/linux/lockdep_types.h      |    3 +
+ include/linux/mutex.h              |   32 +
+ include/linux/page-flags.h         |   45 +-
+ include/linux/pagemap.h            |    7 +-
+ include/linux/percpu-rwsem.h       |   10 +-
+ include/linux/rtmutex.h            |    7 +
+ include/linux/rwlock.h             |   50 +
+ include/linux/rwlock_api_smp.h     |    8 +-
+ include/linux/rwlock_types.h       |    7 +
+ include/linux/rwsem.h              |   32 +
+ include/linux/sched.h              |    7 +
+ include/linux/seqlock.h            |   68 +-
+ include/linux/spinlock.h           |   25 +
+ include/linux/spinlock_types_raw.h |   13 +
+ include/linux/swait.h              |    4 +
+ include/linux/types.h              |    8 +
+ include/linux/wait.h               |    6 +-
+ init/init_task.c                   |    2 +
+ init/main.c                        |    4 +
+ kernel/Makefile                    |    1 +
+ kernel/cpu.c                       |    2 +-
+ kernel/dependency/Makefile         |    4 +
+ kernel/dependency/dept.c           | 2743 ++++++++++++++++++++++++++++++++++++
+ kernel/dependency/dept_hash.h      |   10 +
+ kernel/dependency/dept_internal.h  |   26 +
+ kernel/dependency/dept_object.h    |   13 +
+ kernel/dependency/dept_proc.c      |   92 ++
+ kernel/exit.c                      |    1 +
+ kernel/fork.c                      |    2 +
+ kernel/locking/lockdep.c           |   12 +-
+ kernel/module.c                    |    2 +
+ kernel/sched/completion.c          |   12 +-
+ kernel/sched/core.c                |    8 +
+ kernel/sched/swait.c               |   10 +
+ kernel/sched/wait.c                |   16 +
+ kernel/sched/wait_bit.c            |    5 +-
+ kernel/softirq.c                   |    6 +-
+ kernel/trace/trace_preemptirq.c    |   19 +-
+ kernel/workqueue.c                 |    3 +
+ lib/Kconfig.debug                  |   27 +
+ mm/filemap.c                       |   68 +
+ mm/page_ext.c                      |    5 +
+ 53 files changed, 4313 insertions(+), 60 deletions(-)
+ create mode 100644 include/linux/dept.h
+ create mode 100644 include/linux/dept_page.h
+ create mode 100644 include/linux/dept_sdt.h
+ create mode 100644 kernel/dependency/Makefile
+ create mode 100644 kernel/dependency/dept.c
+ create mode 100644 kernel/dependency/dept_hash.h
+ create mode 100644 kernel/dependency/dept_internal.h
+ create mode 100644 kernel/dependency/dept_object.h
+ create mode 100644 kernel/dependency/dept_proc.c
+
 -- 
 1.9.1
 
