@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE46BC43217
-	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:28:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62D5CC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 16 Mar 2022 02:28:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353250AbiCPC3x (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 15 Mar 2022 22:29:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55588 "EHLO
+        id S1353239AbiCPC34 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 15 Mar 2022 22:29:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55554 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1353245AbiCPC3N (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 22:29:13 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 92C945F250
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2022 19:27:13 -0700 (PDT)
+        with ESMTP id S239046AbiCPC3A (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Mar 2022 22:29:00 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 73B395EDEC
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Mar 2022 19:27:12 -0700 (PDT)
 Received: from unknown (HELO lgemrelse7q.lge.com) (156.147.1.151)
-        by 156.147.23.52 with ESMTP; 16 Mar 2022 11:27:11 +0900
+        by 156.147.23.51 with ESMTP; 16 Mar 2022 11:27:11 +0900
 X-Original-SENDERIP: 156.147.1.151
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com
-Subject: [PATCH RFC v5 17/21] dept: Distinguish each work from another
-Date:   Wed, 16 Mar 2022 11:26:29 +0900
-Message-Id: <1647397593-16747-18-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v5 13/21] dept: Apply SDT to swait
+Date:   Wed, 16 Mar 2022 11:26:25 +0900
+Message-Id: <1647397593-16747-14-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
 References: <1647397593-16747-1-git-send-email-byungchul.park@lge.com>
@@ -56,81 +56,105 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Workqueue already provides concurrency control. By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
-
-So let Dept assign a different context id to each work.
+Makes SDT able to track dependencies by swait.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/dept.h     |  2 ++
- kernel/dependency/dept.c | 10 ++++++++++
- kernel/workqueue.c       |  3 +++
- 3 files changed, 15 insertions(+)
+ include/linux/swait.h |  4 ++++
+ kernel/sched/swait.c  | 10 ++++++++++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/include/linux/dept.h b/include/linux/dept.h
-index 672a762..3d24a52 100644
---- a/include/linux/dept.h
-+++ b/include/linux/dept.h
-@@ -491,6 +491,7 @@ struct dept_task {
- extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
- extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
- extern void dept_kernel_enter(void);
-+extern void dept_work_enter(void);
+diff --git a/include/linux/swait.h b/include/linux/swait.h
+index 6a8c22b..dbdf2ce 100644
+--- a/include/linux/swait.h
++++ b/include/linux/swait.h
+@@ -6,6 +6,7 @@
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
+ #include <linux/wait.h>
++#include <linux/dept_sdt.h>
+ #include <asm/current.h>
  
- static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
- {
-@@ -535,6 +536,7 @@ static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
- #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
- #define dept_ask_event_split_map(me, mc)		do { } while (0)
- #define dept_kernel_enter()				do { } while (0)
-+#define dept_work_enter()				do { } while (0)
- #define dept_ecxt_enter_nokeep(m)			do { } while (0)
- #define dept_key_init(k)				do { (void)(k); } while (0)
- #define dept_key_destroy(k)				do { (void)(k); } while (0)
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 8d8d8eb..10801783 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -1886,6 +1886,16 @@ void dept_disable_hardirq(unsigned long ip)
- 	dept_exit(flags);
+ /*
+@@ -43,6 +44,7 @@
+ struct swait_queue_head {
+ 	raw_spinlock_t		lock;
+ 	struct list_head	task_list;
++	struct dept_map		dmap;
+ };
+ 
+ struct swait_queue {
+@@ -61,6 +63,7 @@ struct swait_queue {
+ #define __SWAIT_QUEUE_HEAD_INITIALIZER(name) {				\
+ 	.lock		= __RAW_SPIN_LOCK_UNLOCKED(name.lock),		\
+ 	.task_list	= LIST_HEAD_INIT((name).task_list),		\
++	.dmap		= DEPT_SDT_MAP_INIT(name),			\
  }
  
-+/*
-+ * Assign a different context id to each work.
-+ */
-+void dept_work_enter(void)
-+{
-+	struct dept_task *dt = dept_task();
+ #define DECLARE_SWAIT_QUEUE_HEAD(name)					\
+@@ -72,6 +75,7 @@ extern void __init_swait_queue_head(struct swait_queue_head *q, const char *name
+ #define init_swait_queue_head(q)				\
+ 	do {							\
+ 		static struct lock_class_key __key;		\
++		sdt_map_init(&(q)->dmap);			\
+ 		__init_swait_queue_head((q), #q, &__key);	\
+ 	} while (0)
+ 
+diff --git a/kernel/sched/swait.c b/kernel/sched/swait.c
+index e1c655f..4ca7d6e 100644
+--- a/kernel/sched/swait.c
++++ b/kernel/sched/swait.c
+@@ -27,6 +27,7 @@ void swake_up_locked(struct swait_queue_head *q)
+ 		return;
+ 
+ 	curr = list_first_entry(&q->task_list, typeof(*curr), task_list);
++	sdt_event(&q->dmap);
+ 	wake_up_process(curr->task);
+ 	list_del_init(&curr->task_list);
+ }
+@@ -69,6 +70,7 @@ void swake_up_all(struct swait_queue_head *q)
+ 	while (!list_empty(&tmp)) {
+ 		curr = list_first_entry(&tmp, typeof(*curr), task_list);
+ 
++		sdt_event(&q->dmap);
+ 		wake_up_state(curr->task, TASK_NORMAL);
+ 		list_del_init(&curr->task_list);
+ 
+@@ -97,6 +99,9 @@ void prepare_to_swait_exclusive(struct swait_queue_head *q, struct swait_queue *
+ 	__prepare_to_swait(q, wait);
+ 	set_current_state(state);
+ 	raw_spin_unlock_irqrestore(&q->lock, flags);
 +
-+	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
-+}
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&q->dmap);
+ }
+ EXPORT_SYMBOL(prepare_to_swait_exclusive);
+ 
+@@ -119,12 +124,16 @@ long prepare_to_swait_event(struct swait_queue_head *q, struct swait_queue *wait
+ 	}
+ 	raw_spin_unlock_irqrestore(&q->lock, flags);
+ 
++	if (!ret && state & TASK_NORMAL)
++		sdt_wait_prepare(&q->dmap);
 +
- void dept_kernel_enter(void)
+ 	return ret;
+ }
+ EXPORT_SYMBOL(prepare_to_swait_event);
+ 
+ void __finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
  {
- 	struct dept_task *dt = dept_task();
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index 33f1106..f5d762c 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -51,6 +51,7 @@
- #include <linux/sched/isolation.h>
- #include <linux/nmi.h>
- #include <linux/kvm_para.h>
-+#include <linux/dept.h>
++	sdt_wait_finish();
+ 	__set_current_state(TASK_RUNNING);
+ 	if (!list_empty(&wait->task_list))
+ 		list_del_init(&wait->task_list);
+@@ -134,6 +143,7 @@ void finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
+ {
+ 	unsigned long flags;
  
- #include "workqueue_internal.h"
++	sdt_wait_finish();
+ 	__set_current_state(TASK_RUNNING);
  
-@@ -2217,6 +2218,8 @@ static void process_one_work(struct worker *worker, struct work_struct *work)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
-+	dept_work_enter();
-+
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
+ 	if (!list_empty_careful(&wait->task_list)) {
 -- 
 1.9.1
 
