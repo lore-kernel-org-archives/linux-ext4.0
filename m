@@ -2,35 +2,35 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 005EBC43217
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Mar 2022 19:48:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC9EFC4321E
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Mar 2022 19:48:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343952AbiC1TuW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Mar 2022 15:50:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50046 "EHLO
+        id S1343985AbiC1Tu0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Mar 2022 15:50:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51220 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343767AbiC1Trq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2022 15:47:46 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4298A69498;
-        Mon, 28 Mar 2022 12:43:31 -0700 (PDT)
+        with ESMTP id S1343822AbiC1TrK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2022 15:47:10 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0C1731DF4;
+        Mon, 28 Mar 2022 12:43:23 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 4795A61291;
-        Mon, 28 Mar 2022 19:43:29 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1361C3410F;
-        Mon, 28 Mar 2022 19:43:27 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id B79A2B81211;
+        Mon, 28 Mar 2022 19:43:11 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 98BB7C340F0;
+        Mon, 28 Mar 2022 19:43:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1648496608;
-        bh=ZZJ2Y9OuUBQ1gJaIssElG4wArHFWqk1f3tUsMF6/rtM=;
+        s=k20201202; t=1648496590;
+        bh=EcoUAFUxsI6UQTwk1O+Jd/36NjRrs2ewxCB69VV04XI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=n6DQyNVyHh81ZNJJF9M0E4EcVQ9mgj68OVN7DcsuMgh6fjVrBZLNbkboSsWg8e9ue
-         0mxy7F2JmCw/RIM47oy016jExGVlxE5/XU6leLsz/bF0LhPnMLZfqPaPTT+TOymHhy
-         JdLDDFBhYoUNBc5rY96d63hVO9fJ42N4zjFbhF25M/yQKxTHwePRWg0P1rwgcruHaK
-         5FcB4txQjFEGvk0Dewed4SU341dqO43wLkbEW3wc1rIC7tiQ5O8rbEULfGHjE2+X9L
-         MQXri/ek/m6RZXayVDoVcVOGzjl9lfT07qIIL262xhs76swpL9Flvda2IGQ9A7SVlp
-         XYZ1ejLOJ8e3w==
+        b=mH/i87PGEiNAGZTZP/UHddI7X5RT9V20lyXvdtD/ONzmOYa6pFvJXZGGFNLyMPBmk
+         9Zz/gUplOVWykxDvrKiKW/pfw4YJoVmns6NDa+S7JXsIXFnrQs5TR9ge+N0+lN8C5e
+         5wP1bQBUh/GvypWSHchbhy4sTnVIrLVcNeBKfzZ1eF/XKvKc6pZs3aMc7cabFgJd8e
+         qXO5/+en0kX+YO7g2tRehRdQDLQF4EddA7zlTUnP48kYeBC2cJSh/5d8V8GMXV+b5u
+         M/szcQNtvgL/dhETr5GkO8YYp3hdIoJoqXoosYLHFOr0ZJaMD6PQB+MNZPjCEgfeEq
+         9ZQ0WvonG13xQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Theodore Ts'o <tytso@mit.edu>,
@@ -38,12 +38,12 @@ Cc:     Theodore Ts'o <tytso@mit.edu>,
         Lee Jones <lee.jones@linaro.org>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 4/8] ext4: don't BUG if someone dirty pages without asking ext4 first
-Date:   Mon, 28 Mar 2022 15:43:18 -0400
-Message-Id: <20220328194322.1586401-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.15 07/16] ext4: don't BUG if someone dirty pages without asking ext4 first
+Date:   Mon, 28 Mar 2022 15:42:50 -0400
+Message-Id: <20220328194300.1586178-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220328194322.1586401-1-sashal@kernel.org>
-References: <20220328194322.1586401-1-sashal@kernel.org>
+In-Reply-To: <20220328194300.1586178-1-sashal@kernel.org>
+References: <20220328194300.1586178-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -86,10 +86,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 25 insertions(+)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d59474a54189..96546df39bcf 100644
+index 22a5140546fb..fff52292c01e 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2023,6 +2023,15 @@ static int ext4_writepage(struct page *page,
+@@ -1992,6 +1992,15 @@ static int ext4_writepage(struct page *page,
  	else
  		len = PAGE_SIZE;
  
@@ -105,7 +105,7 @@ index d59474a54189..96546df39bcf 100644
  	page_bufs = page_buffers(page);
  	/*
  	 * We cannot do block allocation or other extent handling in this
-@@ -2626,6 +2635,22 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+@@ -2595,6 +2604,22 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
  			wait_on_page_writeback(page);
  			BUG_ON(PageWriteback(page));
  
