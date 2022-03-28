@@ -2,127 +2,138 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12ECBC433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Mar 2022 19:48:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F9DDC43217
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Mar 2022 19:48:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344001AbiC1Tu2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Mar 2022 15:50:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49976 "EHLO
+        id S1344013AbiC1Tua (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Mar 2022 15:50:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50060 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343983AbiC1TsD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2022 15:48:03 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4516E69723;
-        Mon, 28 Mar 2022 12:43:41 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C7B1F612AB;
-        Mon, 28 Mar 2022 19:43:26 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 60D6BC3410F;
-        Mon, 28 Mar 2022 19:43:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1648496606;
-        bh=zxWq7PkrMpndvDnwYkItpxVvHPTOTfn5VcI31JDhtUg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Fe1fk9oJfLlvyrxkwzx5Nd+jp8XQkESPuifPE2bREgEVkEnYphbAZo0wAJJ3Z0RcP
-         jJe2v3zIa1YlItAye5oEtZg+GIhu2MPPOYPF5EkOC6d7ox3KPWJD+OvjsODx8e0u8S
-         2UEQQP9EMUApVb5/ttm+qvoQMR8/vL26sY+ArrfwTkUj7eNgbOalwo4leWSjbG4jTL
-         APb6J3rUSSQkbD8AGoNF4NoRqeSwiyhFnLD+DOqTiqHdRrq7BnqpLMKlBP6o8rJlz1
-         I94PjTsCLaAIweJ3Ezl9BV8QVkpmEMVgBBgI8d+kRHirqmPJ6lKidq8RzEEpjHcDla
-         NFJJiLsxg+6uw==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Ritesh Harjani <riteshh@linux.ibm.com>, Jan Kara <jack@suse.cz>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 2/8] ext4: correct cluster len and clusters changed accounting in ext4_mb_mark_bb
-Date:   Mon, 28 Mar 2022 15:43:16 -0400
-Message-Id: <20220328194322.1586401-2-sashal@kernel.org>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20220328194322.1586401-1-sashal@kernel.org>
-References: <20220328194322.1586401-1-sashal@kernel.org>
+        with ESMTP id S1344120AbiC1TsN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Mar 2022 15:48:13 -0400
+Received: from mail-io1-f70.google.com (mail-io1-f70.google.com [209.85.166.70])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B29F069CD8
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2022 12:44:00 -0700 (PDT)
+Received: by mail-io1-f70.google.com with SMTP id u18-20020a5d8712000000b0064c7a7c497aso2238404iom.18
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Mar 2022 12:43:59 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:date:in-reply-to:message-id:subject
+         :from:to:cc;
+        bh=m2uN4NlVyz2bf6er2V8/N42952/hiadRCIADaej82As=;
+        b=zumtaw5IFIdeRLY41RSoTGqspDC8CMArmjw9xhXpvmjY1Esb/ulO/enYyj4AvE9BKT
+         MuVzy+1kTNOwCLlsQ4129GJw0TAsyrR1UKvS2cfcXyHVju8JU8JPB2IQ66kRD9cIpabr
+         1mvP/x7fppAt6dk9B7c11POa3AWRFidzovcvc3kj9eRD5v1qz/5E/CzRHi7kk8/g6nr5
+         2qTDHJlfekD+tZY4ZHVwC3urTfl+Og+Tl36joa+5xAEyMG0mb7coARzNcYEQoOxSqzZ3
+         JJunTt5x65LM9qinb4/r7gU5ODjLnnTwdEtN1sXi0G6m0J6DOS8376TE41mQy4fTgqXf
+         R33w==
+X-Gm-Message-State: AOAM530kIAdwBaiLEXzTpaJF4PL3WhOTozWwxMhrSH1VD/CVfqQKGbsG
+        6QJWIClraeQXdeEaLOMI14EpzwsGzcPEZtx3ezldM4H7DYKz
+X-Google-Smtp-Source: ABdhPJzWRUbxX3GwZManMLzH51Tc/vIus9FE7DMLvKBgTqTXqjMkQGlprdOtDmqTtjBJCmtze//ETM5zqaK+QVVMkeROVGYMgC7Y
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+X-Received: by 2002:a05:6e02:1d15:b0:2c8:5edc:4362 with SMTP id
+ i21-20020a056e021d1500b002c85edc4362mr6494255ila.308.1648496622459; Mon, 28
+ Mar 2022 12:43:42 -0700 (PDT)
+Date:   Mon, 28 Mar 2022 12:43:42 -0700
+In-Reply-To: <20220328194338.1586587-1-sashal@kernel.org>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <00000000000098643805db4c8734@google.com>
+Subject: Re: [PATCH AUTOSEL 4.19 1/2] ext4: don't BUG if someone dirty pages
+ without asking ext4 first
+From:   syzbot 
+        <syzbot+d59332e2db681cf18f0318a06e994ebbb529a8db@syzkaller.appspotmail.com>
+To:     Sasha Levin <sashal@kernel.org>
+Cc:     adilger.kernel@dilger.ca, lee.jones@linaro.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        sashal@kernel.org, stable@vger.kernel.org, tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Ritesh Harjani <riteshh@linux.ibm.com>
+> From: Theodore Ts'o <tytso@mit.edu>
+>
+> [ Upstream commit cc5095747edfb054ca2068d01af20be3fcc3634f ]
+>
+> [un]pin_user_pages_remote is dirtying pages without properly warning
+> the file system in advance.  A related race was noted by Jan Kara in
+> 2018[1]; however, more recently instead of it being a very hard-to-hit
+> race, it could be reliably triggered by process_vm_writev(2) which was
+> discovered by Syzbot[2].
+>
+> This is technically a bug in mm/gup.c, but arguably ext4 is fragile in
+> that if some other kernel subsystem dirty pages without properly
+> notifying the file system using page_mkwrite(), ext4 will BUG, while
+> other file systems will not BUG (although data will still be lost).
+>
+> So instead of crashing with a BUG, issue a warning (since there may be
+> potential data loss) and just mark the page as clean to avoid
+> unprivileged denial of service attacks until the problem can be
+> properly fixed.  More discussion and background can be found in the
+> thread starting at [2].
+>
+> [1] https://lore.kernel.org/linux-mm/20180103100430.GE4911@quack2.suse.cz
+> [2] https://lore.kernel.org/r/Yg0m6IjcNmfaSokM@google.com
+>
+> Reported-by: syzbot+d59332e2db681cf18f0318a06e994ebbb529a8db@syzkaller.appspotmail.com
+> Reported-by: Lee Jones <lee.jones@linaro.org>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Link: https://lore.kernel.org/r/YiDS9wVfq4mM2jGK@mit.edu
+> Signed-off-by: Sasha Levin <sashal@kernel.org>
+> ---
+>  fs/ext4/inode.c | 25 +++++++++++++++++++++++++
+>  1 file changed, 25 insertions(+)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 7959aae4857e..96cf0f57ca95 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2148,6 +2148,15 @@ static int ext4_writepage(struct page *page,
+>  	else
+>  		len = PAGE_SIZE;
+>  
+> +	/* Should never happen but for bugs in other kernel subsystems */
+> +	if (!page_has_buffers(page)) {
+> +		ext4_warning_inode(inode,
+> +		   "page %lu does not have buffers attached", page->index);
+> +		ClearPageDirty(page);
+> +		unlock_page(page);
+> +		return 0;
+> +	}
+> +
+>  	page_bufs = page_buffers(page);
+>  	/*
+>  	 * We cannot do block allocation or other extent handling in this
+> @@ -2697,6 +2706,22 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+>  			wait_on_page_writeback(page);
+>  			BUG_ON(PageWriteback(page));
+>  
+> +			/*
+> +			 * Should never happen but for buggy code in
+> +			 * other subsystems that call
+> +			 * set_page_dirty() without properly warning
+> +			 * the file system first.  See [1] for more
+> +			 * information.
+> +			 *
+> +			 * [1] https://lore.kernel.org/linux-mm/20180103100430.GE4911@quack2.suse.cz
+> +			 */
+> +			if (!page_has_buffers(page)) {
+> +				ext4_warning_inode(mpd->inode, "page %lu does not have buffers attached", page->index);
+> +				ClearPageDirty(page);
+> +				unlock_page(page);
+> +				continue;
+> +			}
+> +
+>  			if (mpd->map.m_len == 0)
+>  				mpd->first_page = page->index;
+>  			mpd->next_page = page->index + 1;
+> -- 
+> 2.34.1
+>
 
-[ Upstream commit a5c0e2fdf7cea535ba03259894dc184e5a4c2800 ]
-
-ext4_mb_mark_bb() currently wrongly calculates cluster len (clen) and
-flex_group->free_clusters. This patch fixes that.
-
-Identified based on code review of ext4_mb_mark_bb() function.
-
-Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Link: https://lore.kernel.org/r/a0b035d536bafa88110b74456853774b64c8ac40.1644992609.git.riteshh@linux.ibm.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/ext4/mballoc.c | 19 ++++++++++++-------
- 1 file changed, 12 insertions(+), 7 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 110c25824a67..41a115c53bf6 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3320,10 +3320,11 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_group_t group;
- 	ext4_grpblk_t blkoff;
--	int i, clen, err;
-+	int i, err;
- 	int already;
-+	unsigned int clen, clen_changed;
- 
--	clen = EXT4_B2C(sbi, len);
-+	clen = EXT4_NUM_B2C(sbi, len);
- 
- 	ext4_get_group_no_and_offset(sb, block, &group, &blkoff);
- 	bitmap_bh = ext4_read_block_bitmap(sb, group);
-@@ -3344,6 +3345,7 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 		if (!mb_test_bit(blkoff + i, bitmap_bh->b_data) == !state)
- 			already++;
- 
-+	clen_changed = clen - already;
- 	if (state)
- 		ext4_set_bits(bitmap_bh->b_data, blkoff, clen);
- 	else
-@@ -3356,9 +3358,9 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 						group, gdp));
- 	}
- 	if (state)
--		clen = ext4_free_group_clusters(sb, gdp) - clen + already;
-+		clen = ext4_free_group_clusters(sb, gdp) - clen_changed;
- 	else
--		clen = ext4_free_group_clusters(sb, gdp) + clen - already;
-+		clen = ext4_free_group_clusters(sb, gdp) + clen_changed;
- 
- 	ext4_free_group_clusters_set(sb, gdp, clen);
- 	ext4_block_bitmap_csum_set(sb, group, gdp, bitmap_bh);
-@@ -3368,10 +3370,13 @@ void ext4_mb_mark_bb(struct super_block *sb, ext4_fsblk_t block,
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, group);
-+		struct flex_groups *fg = sbi_array_rcu_deref(sbi,
-+					   s_flex_groups, flex_group);
- 
--		atomic64_sub(len,
--			     &sbi_array_rcu_deref(sbi, s_flex_groups,
--						  flex_group)->free_clusters);
-+		if (state)
-+			atomic64_sub(clen_changed, &fg->free_clusters);
-+		else
-+			atomic64_add(clen_changed, &fg->free_clusters);
- 	}
- 
- 	err = ext4_handle_dirty_metadata(NULL, NULL, bitmap_bh);
--- 
-2.34.1
+I see the command but can't find the corresponding bug.
+The email is sent to  syzbot+HASH@syzkaller.appspotmail.com address
+but the HASH does not correspond to any known bug.
+Please double check the address.
 
