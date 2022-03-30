@@ -2,77 +2,168 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD987C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Mar 2022 15:55:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1F00C4332F
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Mar 2022 21:24:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348538AbiC3P5j (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Mar 2022 11:57:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48242 "EHLO
+        id S233530AbiC3V0V (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 30 Mar 2022 17:26:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59994 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344260AbiC3P5i (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Mar 2022 11:57:38 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A403411172;
-        Wed, 30 Mar 2022 08:55:53 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=HMOfcZjpKd4HXdTf9ncMsCYUAoRwb/T1kB389y4bGdM=; b=vGlnpbNoOXVcnZwa9UF4XeaYjg
-        WhSwj4N324o9z4cmAPpBHKLuGFaSQDMnT2YLY1wfdVblptnzehIXDuv9lkPIlElrn2MrE7VX7Glft
-        UACY82x8M8Jv6swJSFUDw7eh4N+BahXF+TuslARHWS8UJQqPM+YPM8gcr6yZa32K49JMRWPeJL+z5
-        PX0lW2IbmXB+otVjy8FmuXPTYqXNiQHPtYVvcNvP02ykgn7Kk2sHeYMjQbJ1QTfY99WjV9cRWRtnJ
-        GqqqB2jqMAzL0gJ2pAsmJnSEVnlL60AGLGdKckmYakWKDAttkG47zhFguWE7IYditonyLJoTItjnH
-        Dp600qZg==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nZafi-00Gh5T-DI; Wed, 30 Mar 2022 15:55:46 +0000
-Date:   Wed, 30 Mar 2022 08:55:46 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>,
-        Brian Foster <bfoster@redhat.com>,
-        Linux-MM <linux-mm@kvack.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Hugh Dickins <hughd@google.com>,
-        Namjae Jeon <namjae.jeon@samsung.com>,
-        Ashish Sangwan <a.sangwan@samsung.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: writeback completion soft lockup BUG in folio_wake_bit()
-Message-ID: <YkR9gu4Ye2uydkTd@infradead.org>
-References: <YjDj3lvlNJK/IPiU@bfoster>
- <YjJPu/3tYnuKK888@casper.infradead.org>
- <CAHk-=wgPTWoXCa=JembExs8Y7fw7YUi9XR0zn1xaxWLSXBN_vg@mail.gmail.com>
- <YjNN5SzHELGig+U4@casper.infradead.org>
- <CAHk-=wiZvOpaP0DVyqOnspFqpXRaT6q53=gnA2psxnf5dbt7bw@mail.gmail.com>
- <YjOlJL7xwktKoLFN@casper.infradead.org>
- <20220318131600.iv7ct2m4o52plkhl@quack3.lan>
- <CAHk-=wiky+cT7xF_2S94ToEjm=XNX73CsFHaQJH3tzYQ+Vb1mw@mail.gmail.com>
- <YjYDaBnN36zggeGa@mit.edu>
+        with ESMTP id S232691AbiC3V0U (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Mar 2022 17:26:20 -0400
+Received: from NAM10-MW2-obe.outbound.protection.outlook.com (mail-mw2nam10on2047.outbound.protection.outlook.com [40.107.94.47])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3429339B83;
+        Wed, 30 Mar 2022 14:24:34 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=kPIJRmEYR3oEf5QR0Rc15ULPsaFQPVhtoKfyDYT8uI8dWDoTb6E11i0L0WL4BTI273gW6i+toBK+FKLirDWQVprritN2/Z5HHVq/18S6zPbleMZDt1UEL0x9KWliL7Z0GcvajhVNyzrHFbKn5yOkQSsBWeim0ByqP40Ahl5hYo6SFA2LH33OP9fL3b2lxKfZsl6rFzdjLNmLVq8zT2sceyYDiW+jO1pXkMT+5iwMwvhsVmrXcgzm8IdjuHgiM/xzr+p1glNnQ3yYh0RotSwnHeu20te9VipjcZGhHxGKxUUarh/pSrGPM1mhvvnrFjQS7+MPk+l1M/LHAEE01oQsDA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=nLIUZyRPEKUSzuG4lWIjaPQdPPxc6MOaIPQjEpwOAVI=;
+ b=AZ8u2p39KOS9q3ASIBirKlXEbERNZXSO6v9AJD1VBSKcInwGT4JNvzb01E9f3qbwm7MRLIFYy53T2bzG/kIMPMjyT7b86gvXEhGYfK+XQ3sKqeY75tFLbrgGZS2TqR7mJ444f4rGRnJNfa6fuDaukgdGLUSZ0/wzt2hqjTtoXJm3BTJltASXkuKHNFBgvNYCxVS9GtUFDzcHIS+ttkypJc59FRrVlahFivTWM9i7XMf2dFI8XqYDlLVyXVt5V2tMlS55/UHYlZALFYgxf0YtZARuz/nVw7+bvpVQqGpzuzM/95skd/tKXutYjDwHD/W3RbIVVzPOsxFLt1VjFjXZyw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
+ 165.204.84.17) smtp.rcpttodomain=nvidia.com smtp.mailfrom=amd.com; dmarc=pass
+ (p=quarantine sp=quarantine pct=100) action=none header.from=amd.com;
+ dkim=none (message not signed); arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=nLIUZyRPEKUSzuG4lWIjaPQdPPxc6MOaIPQjEpwOAVI=;
+ b=uaUsVzNUrP53LAInUxzb/xTDSaOmhaw/Ev5E5OKcL4HlWhTqiJ+HKZmgy/km29YkeDKyH9LODCs8B2ajxFVN49wHdTXSzxRTOwMKLsMmPfWdC5nfIdq4d7CBDVBe0/VQwXv0Z5vCP84TNMQ7OgC1z5Ms016PVJ7uLHYAWaQu6e4=
+Received: from MW4PR03CA0012.namprd03.prod.outlook.com (2603:10b6:303:8f::17)
+ by DM5PR12MB1292.namprd12.prod.outlook.com (2603:10b6:3:73::9) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.5102.19; Wed, 30 Mar 2022 21:24:32 +0000
+Received: from CO1NAM11FT013.eop-nam11.prod.protection.outlook.com
+ (2603:10b6:303:8f:cafe::c3) by MW4PR03CA0012.outlook.office365.com
+ (2603:10b6:303:8f::17) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5123.13 via Frontend
+ Transport; Wed, 30 Mar 2022 21:24:32 +0000
+X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
+ smtp.mailfrom=amd.com; dkim=none (message not signed)
+ header.d=none;dmarc=pass action=none header.from=amd.com;
+Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
+ 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
+ client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
+Received: from SATLEXMB04.amd.com (165.204.84.17) by
+ CO1NAM11FT013.mail.protection.outlook.com (10.13.174.227) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.20.5123.19 via Frontend Transport; Wed, 30 Mar 2022 21:24:31 +0000
+Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
+ (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 30 Mar
+ 2022 16:24:30 -0500
+From:   Alex Sierra <alex.sierra@amd.com>
+To:     <jgg@nvidia.com>
+CC:     <david@redhat.com>, <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
+        <rcampbell@nvidia.com>, <linux-ext4@vger.kernel.org>,
+        <linux-xfs@vger.kernel.org>, <amd-gfx@lists.freedesktop.org>,
+        <dri-devel@lists.freedesktop.org>, <hch@lst.de>,
+        <jglisse@redhat.com>, <apopple@nvidia.com>, <willy@infradead.org>,
+        <akpm@linux-foundation.org>
+Subject: [PATCH] drm/amdkfd: Add SVM API support capability bits
+Date:   Wed, 30 Mar 2022 16:24:20 -0500
+Message-ID: <20220330212420.12003-1-alex.sierra@amd.com>
+X-Mailer: git-send-email 2.32.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YjYDaBnN36zggeGa@mit.edu>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Originating-IP: [10.180.168.240]
+X-ClientProxiedBy: SATLEXMB03.amd.com (10.181.40.144) To SATLEXMB04.amd.com
+ (10.181.40.145)
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: d8cfbc1c-0d29-4964-fc14-08da1293ae5b
+X-MS-TrafficTypeDiagnostic: DM5PR12MB1292:EE_
+X-Microsoft-Antispam-PRVS: <DM5PR12MB129275290485D25A510CF4F4FD1F9@DM5PR12MB1292.namprd12.prod.outlook.com>
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: aupQPbJRX2JzI8WvZf0zE+nSjLTyRAlKukftwyodn5s4jQEj71Y9zV+8v3Mx4m5d9f2X+SffVwGNyCb0Vutznub6qgvS4lE4f/f/8TizBGFLFftaL83fZdhXDc3Ux1RjcgOWCyLo7QXCrriZWbcOql3VQTmjQ6dsx6l9vYFNT1ZlbYp04eE+ggw2IEB9LrhqQKI44pXJ0e4xXPoFX9hBFwVJS/GKaXJLTlBNgAK7NXNjzVH31Y8FXtCQJRZrfrwSGMnl0TqvjSm6DKr1++wH9R9tVg82eUtlFH9Bi4RPWZYsjQouEywSp/jmE9paVAZLdqKK4BSsNvammDRLmyNZjYrBBAEiPWFLU/V++V9szMXbTfTGbenN4rBTWtKAwRzyXxhsGBhS8AsyEAoBF0m3tahpvXSPiM6ZMD/VwQnW8Y9ATjYsjTnI3qfJ6DHRWUjGprzWBRKPpz1MSeuusx24HsEWGUQfASRrE+aCNvhrHSBLVrq6b5H1BJ8zjETxXHthc7ysKu7v6jg921SIVnYmmIHuW8SD+ErrAKvSWc5a67RcCYW7/UCsih/jKxKwHkP9KVeBQjNO1ZN+W8zq9GJT5u6U2weVFcb6OvcF4EwqAyD1IyTBwWYkSViUQXyFE8+dv9PW6YCVe5csjps8VDuWH3rzyQVhr/nph2WvElbMMG2/DcK0uHibDxl+mAMRgeuEFpOt27otBNAvstQ9Y8GhXw==
+X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230001)(4636009)(46966006)(36840700001)(40470700004)(4326008)(6666004)(426003)(336012)(70206006)(82310400004)(7416002)(2906002)(7696005)(70586007)(54906003)(86362001)(40460700003)(508600001)(316002)(5660300002)(8676002)(44832011)(8936002)(6916009)(356005)(36756003)(2616005)(83380400001)(36860700001)(26005)(16526019)(1076003)(47076005)(186003)(81166007)(36900700001);DIR:OUT;SFP:1101;
+X-OriginatorOrg: amd.com
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 30 Mar 2022 21:24:31.9384
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: d8cfbc1c-0d29-4964-fc14-08da1293ae5b
+X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
+X-MS-Exchange-CrossTenant-AuthSource: CO1NAM11FT013.eop-nam11.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR12MB1292
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Mar 19, 2022 at 12:23:04PM -0400, Theodore Ts'o wrote:
-> So the thing that I've been waiting to do for a while is to replace
-> the whole data=ordered vs data=writeback and dioread_nolock and
-> dioread_lock is a complete reworking of the ext4 buffered writeback
-> path, where we write the data blocks *first*, and only then update the
-> ext4 metadata.
+From: Philip Yang <Philip.Yang@amd.com>
 
-> *) Determining where the new allocated data blockblocks should be, and
->    preventing those blocks from being used for any other purposes, but
->    *not* updating the file system metadata to reflect that change.
-> 
-> *) Submit the data block write
-> 
-> *) On write completion, update the metadata blocks in a kernel thread.
+SVMAPISupported property added to HSA_CAPABILITY, the value match
+HSA_CAPABILITY defined in Thunk spec:
 
-I think that would be easily done by switching to the iomap buffered
-I/O code, which is very much built around that model.
+SVMAPISupported: it will not be supported on older kernels that don't
+have HMM or on systems with GFXv8 or older GPUs without support for
+48-bit virtual addresses.
+
+CoherentHostAccess property added to HSA_MEMORYPROPERTY, the value match
+HSA_MEMORYPROPERTY defined in Thunk spec:
+
+CoherentHostAccess: whether or not device memory can be coherently
+accessed by the host CPU.
+
+Signed-off-by: Philip Yang <Philip.Yang@amd.com>
+Reviewed-by: Felix Kuehling <Felix.Kuehling@amd.com>
+Signed-off-by: Felix Kuehling <Felix.Kuehling@amd.com>
+Signed-off-by: Alex Deucher <alexander.deucher@amd.com>
+---
+ drivers/gpu/drm/amd/amdkfd/kfd_topology.c |  6 ++++++
+ drivers/gpu/drm/amd/amdkfd/kfd_topology.h | 10 ++++++----
+ 2 files changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/gpu/drm/amd/amdkfd/kfd_topology.c b/drivers/gpu/drm/amd/amdkfd/kfd_topology.c
+index cdef608db4f4..083ac9babfa8 100644
+--- a/drivers/gpu/drm/amd/amdkfd/kfd_topology.c
++++ b/drivers/gpu/drm/amd/amdkfd/kfd_topology.c
+@@ -1419,6 +1419,12 @@ int kfd_topology_add_device(struct kfd_dev *gpu)
+ 		dev->node_props.capability |= (adev->ras_features != 0) ?
+ 			HSA_CAP_RASEVENTNOTIFY : 0;
+ 
++	/* SVM API and HMM page migration work together, device memory type
++	 * is initialized to not 0 when page migration register device memory.
++	 */
++	if (adev->kfd.dev->pgmap.type != 0)
++		dev->node_props.capability |= HSA_CAP_SVMAPI_SUPPORTED;
++
+ 	kfd_debug_print_topology();
+ 
+ 	if (!res)
+diff --git a/drivers/gpu/drm/amd/amdkfd/kfd_topology.h b/drivers/gpu/drm/amd/amdkfd/kfd_topology.h
+index b8b68087bd7a..6bd6380b0ee0 100644
+--- a/drivers/gpu/drm/amd/amdkfd/kfd_topology.h
++++ b/drivers/gpu/drm/amd/amdkfd/kfd_topology.h
+@@ -53,8 +53,9 @@
+ #define HSA_CAP_ASIC_REVISION_MASK		0x03c00000
+ #define HSA_CAP_ASIC_REVISION_SHIFT		22
+ #define HSA_CAP_SRAM_EDCSUPPORTED		0x04000000
++#define HSA_CAP_SVMAPI_SUPPORTED		0x08000000
+ 
+-#define HSA_CAP_RESERVED			0xf80f8000
++#define HSA_CAP_RESERVED			0xf00f8000
+ 
+ struct kfd_node_properties {
+ 	uint64_t hive_id;
+@@ -98,9 +99,10 @@ struct kfd_node_properties {
+ #define HSA_MEM_HEAP_TYPE_GPU_LDS	4
+ #define HSA_MEM_HEAP_TYPE_GPU_SCRATCH	5
+ 
+-#define HSA_MEM_FLAGS_HOT_PLUGGABLE	0x00000001
+-#define HSA_MEM_FLAGS_NON_VOLATILE	0x00000002
+-#define HSA_MEM_FLAGS_RESERVED		0xfffffffc
++#define HSA_MEM_FLAGS_HOT_PLUGGABLE		0x00000001
++#define HSA_MEM_FLAGS_NON_VOLATILE		0x00000002
++#define HSA_MEM_FLAGS_COHERENTHOSTACCESS	0x00000004
++#define HSA_MEM_FLAGS_RESERVED			0xfffffff8
+ 
+ struct kfd_mem_properties {
+ 	struct list_head	list;
+-- 
+2.32.0
+
