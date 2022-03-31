@@ -2,67 +2,73 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CC3FAC433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Mar 2022 06:37:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0E77C433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Mar 2022 08:54:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231231AbiCaGjl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 31 Mar 2022 02:39:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53064 "EHLO
+        id S232185AbiCaIzq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 31 Mar 2022 04:55:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34142 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231229AbiCaGjj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2022 02:39:39 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E204109A53;
-        Wed, 30 Mar 2022 23:37:51 -0700 (PDT)
-Received: from canpemm500009.china.huawei.com (unknown [172.30.72.54])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4KTYWZ2KXYz1GDG6;
-        Thu, 31 Mar 2022 14:37:30 +0800 (CST)
-Received: from [10.108.234.194] (10.108.234.194) by
- canpemm500009.china.huawei.com (7.192.105.203) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256) id
- 15.1.2308.21; Thu, 31 Mar 2022 14:37:48 +0800
-Message-ID: <34889f32-7dd9-125e-2f7a-734faa395d20@huawei.com>
-Date:   Thu, 31 Mar 2022 14:37:48 +0800
+        with ESMTP id S230375AbiCaIzp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2022 04:55:45 -0400
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF910996AF;
+        Thu, 31 Mar 2022 01:53:47 -0700 (PDT)
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id 2E81268AA6; Thu, 31 Mar 2022 10:53:42 +0200 (CEST)
+Date:   Thu, 31 Mar 2022 10:53:41 +0200
+From:   Christoph Hellwig <hch@lst.de>
+To:     Alex Sierra <alex.sierra@amd.com>
+Cc:     jgg@nvidia.com, david@redhat.com, Felix.Kuehling@amd.com,
+        linux-mm@kvack.org, rcampbell@nvidia.com,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        hch@lst.de, jglisse@redhat.com, apopple@nvidia.com,
+        willy@infradead.org, akpm@linux-foundation.org
+Subject: Re: [PATCH v2 1/3] mm: add vm_normal_lru_pages for LRU handled
+ pages only
+Message-ID: <20220331085341.GA22102@lst.de>
+References: <20220330212537.12186-1-alex.sierra@amd.com> <20220330212537.12186-2-alex.sierra@amd.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
- Thunderbird/91.3.2
-Content-Language: en-US
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <corbet@lwn.net>
-CC:     <linux-ext4@vger.kernel.org>, <linux-doc@vger.kernel.org>
-From:   "wangjianjian (C)" <wangjianjian3@huawei.com>
-Subject: [PATCH] ext4, doc: Fix incorrect h_reserved size
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.108.234.194]
-X-ClientProxiedBy: dggeme701-chm.china.huawei.com (10.1.199.97) To
- canpemm500009.china.huawei.com (7.192.105.203)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220330212537.12186-2-alex.sierra@amd.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-According to document and code, ext4_xattr_header's size is 32 bytes, so
-h_reserved size should be 3.
+> -	page = vm_normal_page(vma, addr, pte);
+> +	page = vm_normal_lru_page(vma, addr, pte);
 
-Signed-off-by: Wang Jianjian <wangjianjian3@huawei.com>
----
-  Documentation/filesystems/ext4/attributes.rst | 2 +-
-  1 file changed, 1 insertion(+), 1 deletion(-)
+Why can't this deal with ZONE_DEVICE pages?  It certainly has
+nothing do with a LRU I think.  In fact being able to have
+stats that count say the number of device pages here would
+probably be useful at some point.
 
-diff --git a/Documentation/filesystems/ext4/attributes.rst 
-b/Documentation/filesystems/ext4/attributes.rst
-index 54386a010a8d..871d2da7a0a9 100644
---- a/Documentation/filesystems/ext4/attributes.rst
-+++ b/Documentation/filesystems/ext4/attributes.rst
-@@ -76,7 +76,7 @@ The beginning of an extended attribute block is in
-       - Checksum of the extended attribute block.
-     * - 0x14
-       - \_\_u32
--     - h\_reserved[2]
-+     - h\_reserved[3]
-       - Zero.
+In general I find the vm_normal_lru_page vs vm_normal_page
+API highly confusing.  An explicit check for zone device pages
+in the dozen or so spots that care has a much better documentation
+value, especially if accompanied by comments where it isn't entirely
+obvious.
 
-  The checksum is calculated against the FS UUID, the 64-bit block number
---
-2.32.0
+>  		page = follow_page(vma, addr,
+> -				FOLL_GET | FOLL_MIGRATION | FOLL_REMOTE);
+> +				FOLL_GET | FOLL_MIGRATION | FOLL_REMOTE | FOLL_LRU);
 
+Overly long line here.
+
+> +/*
+> + * NOTE: Technically this should goto check_pfn label. However, page->_mapcount
+> + * is never incremented for device pages that are mmap through DAX mechanism
+> + * using pmem driver mounted into ext4 filesystem. When these pages are unmap,
+> + * zap_pte_range is called and vm_normal_page return a valid page with
+> + * page_mapcount() = 0, before page_remove_rmap is called.
+> + */
+
+Please properly indent comments.
+
+> + * zone, as long as the pte's are present and vm_normal_lru_page() succeeds. These
+>   * pages also get pinned.
+
+Another overly long line here.
