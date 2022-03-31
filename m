@@ -2,126 +2,103 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DF92C433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Mar 2022 08:55:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 525A3C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Mar 2022 08:55:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233410AbiCaI5C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 31 Mar 2022 04:57:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38308 "EHLO
+        id S233413AbiCaI5K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 31 Mar 2022 04:57:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38704 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233406AbiCaI5B (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2022 04:57:01 -0400
-X-Greylist: delayed 106 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 31 Mar 2022 01:55:13 PDT
-Received: from thsbbfxrt02p.thalesgroup.com (thsbbfxrt02p.thalesgroup.com [192.93.158.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 36B5FFFFB3
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Mar 2022 01:55:13 -0700 (PDT)
-Received: from thsbbfxrt02p.thalesgroup.com (localhost [127.0.0.1])
-        by localhost (Postfix) with SMTP id 4KTcXQ1grDzJpVH
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Mar 2022 10:53:26 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=thalesgroup.com;
-        s=xrt20181201; t=1648716806;
-        bh=JQEpwSS6cVOhtk5ep51CccV2EkyNcjT7IXkfYkSXZ88=;
-        h=From:To:Subject:Date:Message-ID:Content-Transfer-Encoding:
-         MIME-Version:From;
-        b=203bG2gR1+0kqexNpw0blhFXn/OXr+yqxfwQrlMVsq2Yk5aJ8LmFjPnUIpA8/fbjO
-         jZl/Fd/yiw4cd/yrD2kU+83QZQ3xVfhpzowqg7c2ze5FAjVy107nZ+W4RZ/NjXHObD
-         eS62YzVsqf2VU1fc5ApUXBD+cEOP4Ua+xj/0cULrhbvgGiKGMdbSReCrwvAUEJUsQ9
-         hZ0NnYT7Kv/Qao1xnmz5SMsX9GxV2FbcolnBj1MZ0hffKE9Ur3vaqQTKnr0yD4OaCf
-         I52d1QVoEPB+VU/k56+1TGylUSFDRjrvFbcOjR9Xa5du1zAMKIrTCUNBuE7VcuPTjD
-         08kyX0C1oMCiw==
-From:   HARDERS Bernd <Bernd.Harders@thalesgroup.com>
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-CC:     PFLANZ Roger <Roger.Pflanz@thalesgroup.com>
-Subject: Realtime behavior of named pipes
-Thread-Topic: Realtime behavior of named pipes
-Thread-Index: AdhE3JK5EaRAW4DnSuy167PS98wfow==
-Date:   Thu, 31 Mar 2022 08:53:22 +0000
-Message-ID: <bca722097ded477dbf62d5896bf01656@THSUMIDEUMSG03P.deu.umi.grp>
-Accept-Language: de-DE, en-US
-Content-Language: de-DE
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-transport-fromentityheader: Hosted
-x-pmwin-version: 4.0.1, Antivirus-Engine: 3.84.0, Antivirus-Data: 5.91
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S233366AbiCaI5H (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Mar 2022 04:57:07 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 5E721101F1C
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Mar 2022 01:55:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1648716918;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=0ZeceZ4MowtZcfgVk5LvYuyjG8NKEFJQ6vum/zhYc1I=;
+        b=ApwXBKu75dvtElJOA1N1lRPWo6oHNElUX+bKgH1OLfO4gxNL/4cpKkkUm5ZM+YQkqjTCcR
+        q+a0//mpAEYuKQgzpHdjI0gbfMTp0vZ290SjicwqK3UyF2bnGwkA/O6cB8n/xejzW8Hyyp
+        nL/vy3MDNRqqRZ5KrY7BUR25Naq3KEc=
+Received: from mail-wm1-f70.google.com (mail-wm1-f70.google.com
+ [209.85.128.70]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-118-oQrZmmoQMLWRTnsdG8_plA-1; Thu, 31 Mar 2022 04:55:16 -0400
+X-MC-Unique: oQrZmmoQMLWRTnsdG8_plA-1
+Received: by mail-wm1-f70.google.com with SMTP id 2-20020a1c0202000000b0038c71e8c49cso1142232wmc.1
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Mar 2022 01:55:16 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:message-id:date:mime-version:user-agent:subject
+         :content-language:to:cc:references:from:organization:in-reply-to
+         :content-transfer-encoding;
+        bh=0ZeceZ4MowtZcfgVk5LvYuyjG8NKEFJQ6vum/zhYc1I=;
+        b=h4wxggfIgR9/pqI8q/QTCpCx5TfxvJRhQXo5PC0pdf1K79MKZh7zOezzKqrbb2QKJa
+         H4Cjj0Az2is6fOKnd4XxlJ9TW+8ccLTEl1kEuy5lMD012/vT64T37M9AhnyxZ6FQ/VuO
+         rPwSb48jNcOwaGmVYmzhywGRPuMrtOzLx969TmEF/UICZWPNrqSu1e32NXG+sLg3Uj0r
+         P16hgvZBjJ5ktE4ucDUXLH+rWEnyv2MGL/x5GTpCzQwDCGh2+OqleKPtPkZIDZ45MDHZ
+         Gw0a9hfyCNEEEqkjpWm7kq0hw/9hNAUtyXbfF19d+VuwvmST+nM5aoKalBXRMFM9kHz2
+         6jhg==
+X-Gm-Message-State: AOAM533aG3LIkO9Ooq1ZuCXsAFzA1HhDtJq1/DYbm4YoTcuAi8dzyr2k
+        Y9V9oWlEHnMdZ3wiN/YtfOOF8gYBq1q5o+awwx2brWEDkVX/sEXNRCJj3wiF+qyoKMreWF9JZHa
+        b/Exw3NzrAmXovSylNf9tdg==
+X-Received: by 2002:a5d:6dac:0:b0:205:ccac:c676 with SMTP id u12-20020a5d6dac000000b00205ccacc676mr3304070wrs.156.1648716915695;
+        Thu, 31 Mar 2022 01:55:15 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJyDW0zeqDZxqpReSRP+T3IGc5ZHXjnkjH5M+CBXHuSyrckPORChwL0jc6rBUWSqN1K/5sw+sA==
+X-Received: by 2002:a5d:6dac:0:b0:205:ccac:c676 with SMTP id u12-20020a5d6dac000000b00205ccacc676mr3304051wrs.156.1648716915512;
+        Thu, 31 Mar 2022 01:55:15 -0700 (PDT)
+Received: from ?IPV6:2003:cb:c707:ac00:381c:2e8b:3b48:488e? (p200300cbc707ac00381c2e8b3b48488e.dip0.t-ipconnect.de. [2003:cb:c707:ac00:381c:2e8b:3b48:488e])
+        by smtp.gmail.com with ESMTPSA id l20-20020a05600c1d1400b0038cba2f88c0sm9231563wms.26.2022.03.31.01.55.14
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 31 Mar 2022 01:55:14 -0700 (PDT)
+Message-ID: <709b459a-3c71-49b1-7ac1-3144ae0fa89a@redhat.com>
+Date:   Thu, 31 Mar 2022 10:55:13 +0200
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101
+ Thunderbird/91.6.2
+Subject: Re: [PATCH v2 1/3] mm: add vm_normal_lru_pages for LRU handled pages
+ only
+Content-Language: en-US
+To:     Christoph Hellwig <hch@lst.de>, Alex Sierra <alex.sierra@amd.com>
+Cc:     jgg@nvidia.com, Felix.Kuehling@amd.com, linux-mm@kvack.org,
+        rcampbell@nvidia.com, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, amd-gfx@lists.freedesktop.org,
+        dri-devel@lists.freedesktop.org, jglisse@redhat.com,
+        apopple@nvidia.com, willy@infradead.org, akpm@linux-foundation.org
+References: <20220330212537.12186-1-alex.sierra@amd.com>
+ <20220330212537.12186-2-alex.sierra@amd.com> <20220331085341.GA22102@lst.de>
+From:   David Hildenbrand <david@redhat.com>
+Organization: Red Hat
+In-Reply-To: <20220331085341.GA22102@lst.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,=20
+On 31.03.22 10:53, Christoph Hellwig wrote:
+>> -	page = vm_normal_page(vma, addr, pte);
+>> +	page = vm_normal_lru_page(vma, addr, pte);
+> 
+> Why can't this deal with ZONE_DEVICE pages?  It certainly has
+> nothing do with a LRU I think.  In fact being able to have
+> stats that count say the number of device pages here would
+> probably be useful at some point.
+> 
+> In general I find the vm_normal_lru_page vs vm_normal_page
+> API highly confusing.  An explicit check for zone device pages
+> in the dozen or so spots that care has a much better documentation
+> value, especially if accompanied by comments where it isn't entirely
+> obvious.
 
-my name is Bernd Harders, I'm working for the thales company and I just hav=
-e analyzed a real-time issue in context of named pipes, ext4 and jbd2, usin=
-g ftrace and trace compass.
+What's your thought on FOLL_LRU?
 
-While the issue can be fixed by moving the pipe to the ramfs, I want to und=
-erstand what's going on under the hood.=20
-I'm also interested in the question, if this issue belongs to the use of th=
-e very old RedHat7 and kernel 3.10, or if this behavior is still to be expe=
-ctable.=20
+-- 
+Thanks,
 
-Here comes a short description of the behavior:
-
-We have two high priority realtime threads, which communicate and synchroni=
-ze in a high frequent manner using a named pipe. The named pipe directory e=
-ntry is located on an ext4 partition, a lvm is in use.=20
-
-I found that in seldom cases the threads are blocked  for milliseconds, whi=
-le a block_io, forced by the jbd2/dm thread is active. In this case there i=
-s no deterministic latency anymore, because it seems that the duration of t=
-he blocking also depends on other block_io's. =20
-
-Our idea is that this behavior is related to timestamp updates in the direc=
-tory, forcing the journaling activities.=20
-
-While I can totally understand that io to a file is blocked, when journalin=
-g is doing its work, it is not obviously clear why this also happen on the =
-pipe, because as I'm told the pipe io internally works to memory. We only w=
-rite and read an integer value per transfer, so there is no need for tempor=
-ary file io storage.
-
-I'm looking forward to any explanations.
-
-Best regards
-Bernd Harders
-
-{OPEN}
-
-
-=A0
-Bernd Harders
-Senior Software Engineer
-Naval Systems
-Thales Deutschland
-Switchboard Phone: +49 431-88737-344
-Mobile: +49 172 828 14 50
-
-E-Mail:=A0=A0 bernd.harders@thalesgroup.com
-
-Thales Deutschland GmbH
-Am Kiel-Kanal 3 - 24106 Kiel - Germany
-=A0
-[DEU] Achtung: Neue Anschrift!=20
-[ENG] Attention: New address!
-www.thalesgroup.com
-=A0
-
-
-
-
-
-
-
-
-
-Sitz der Gesellschaft/Domicile of the Company: Stuttgart
-Amtsgericht/District Court: Stuttgart HRB 728793
-Gesch=E4ftsf=FChrer/Managing Directors:
-Oliver D=F6rre (Vorsitzender/Chairman), Dr. Henning Biebinger, Dirk J.H. de=
- Bruijn, Dr. Yves Joannic
-Aufsichtsratsvorsitzender/Chairman of the Supervisory Board: Bernhard Gerwe=
-rt
-
+David / dhildenb
 
