@@ -2,193 +2,154 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 944AFC4707F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3D8EC47080
 	for <linux-ext4@archiver.kernel.org>; Tue,  5 Apr 2022 13:32:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235300AbiDENZk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Apr 2022 09:25:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60894 "EHLO
+        id S243280AbiDENZu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Apr 2022 09:25:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39214 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1379544AbiDELlQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2022 07:41:16 -0400
-Received: from mail-pl1-x636.google.com (mail-pl1-x636.google.com [IPv6:2607:f8b0:4864:20::636])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 54C581A393;
-        Tue,  5 Apr 2022 03:56:55 -0700 (PDT)
-Received: by mail-pl1-x636.google.com with SMTP id p17so10565307plo.9;
-        Tue, 05 Apr 2022 03:56:55 -0700 (PDT)
+        with ESMTP id S1380307AbiDELm1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Apr 2022 07:42:27 -0400
+Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 434B010856B;
+        Tue,  5 Apr 2022 04:06:08 -0700 (PDT)
+Received: by mail-pj1-x102f.google.com with SMTP id n6-20020a17090a670600b001caa71a9c4aso2283625pjj.1;
+        Tue, 05 Apr 2022 04:06:08 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=date:from:to:cc:subject:message-id:references:mime-version
          :content-disposition:in-reply-to;
-        bh=CL+rlW0biTGcQRMHFXRgRIiZX1fnXH3A57TaaOiS5iI=;
-        b=f+MOtNqsZYHhQEI/ixNsW/LpZsv10Ao8YHcSUwq4UTfBcns2KVa3dzlrUIWPSmD3QR
-         X76YALvaGtpMIheiK64LgIL/14oFaaCcTqVSuzt3C7/bdwbgZ5MdYKSOvWP+/whxq3DA
-         /mWy1b25VPzQe2iASlXLT2ix1vUc7jnweNadgQf89WXEiZRkE+Gj48t+qdGV06Y8a52g
-         Rl60Jn4Jw3RXBmN7f2fRp82K+QW3Q8UMlndLGWcScBUHiDx0oRWthwzwtWgIcYg64ZMu
-         v7yaSLGQCuuafHmjAWNnoMmkLIm15JY9aeQOHy98b37hYuy2gci+by2dzP3AZ+9CS0S9
-         VZYQ==
+        bh=j+wdwc12qZE95ySH1HQbeXjyc++REo1b0Qnn4+adVIU=;
+        b=oyqGsBmX4L/1uWroip4K3nOnUsttJQZgmtBBEVFGABLA0uy540SVJnya8J+/ZQlD9v
+         2psG8zgbaY0B/n6IZ+umEj0I++63NRbRO2W7c5G07Utd+0AeREqW0YoB1CtZRRKtdIwA
+         8+3ZQiwGjXXw0Ox3pPmA89oE6JPeMuMPlMSM3RO68s1+NN761Pb2eISCgM8HFq8pZnoZ
+         JP5/qMDP6eWVJ1d0ZkWjb1wl1j3Ut5RV+KT7BqDk9VTvkyeKIdFjZdlUV1tLZ207P7fe
+         LHLmb6ZfequP++myGlAWLGaY6x0uXWow4ARM9xDCe3FeRwVlMCSLP0Cnt8AVISx5vAgx
+         8CSg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:date:from:to:cc:subject:message-id:references
          :mime-version:content-disposition:in-reply-to;
-        bh=CL+rlW0biTGcQRMHFXRgRIiZX1fnXH3A57TaaOiS5iI=;
-        b=gcn+pp5cWjEoC6Ht1yUy8RfGPqJxxUAgPxzguann/FdrpClyYCpTu4kH4q/Ov/6Yrb
-         4QGUsNpJ6khO2omXpclL2AogMFuOLfDLOsLtIDdWa8PnJTYjX1hCn1rOwIGgBcwDFmhO
-         y6c4eiTwBnAHSpguL6j00o+RNQOfyPaS1is6oV/VfrE+8/CITIOvK/+NnqKPmexYr0pN
-         qgsHP/j3miULjn4i2PPCGwIH+c9qJAVVppjtYRuLrgBY8YEYCoM1FI6ZtD8uK7uOTkw0
-         mWWaRWPqb3Bq9Rh/gsSMXwHn4RLEyRc2K3md5HHbRHAc7WZVDGnVYPJUzrf//3E+aa27
-         d9Ww==
-X-Gm-Message-State: AOAM532oyVMCwvSj8D74NJjIJZnr1bUEUN1IOZjNJixoBQ2Hi7DftdKX
-        7+4fGaGIKRbJ2d+hmEr7V5CKMdQhBfU=
-X-Google-Smtp-Source: ABdhPJzjuM4MJCB4f+Fpd/ScvvqsWePzNdt6A57DWFkSxVo6jh91MYFnZwZz49o3Rk7bAGpGCHys4w==
-X-Received: by 2002:a17:902:f149:b0:156:87ad:4698 with SMTP id d9-20020a170902f14900b0015687ad4698mr2997661plb.5.1649156215372;
-        Tue, 05 Apr 2022 03:56:55 -0700 (PDT)
+        bh=j+wdwc12qZE95ySH1HQbeXjyc++REo1b0Qnn4+adVIU=;
+        b=XGo8jUjIacCdoH9PW5ZZdRigZE4LHaBvsL/N/iHhRbPjl3wo7zcLSaE5nlL2IxGrJk
+         3vm0IVSuuueQ70jqlwqOi1COpDzwpdu7pyowh/llWa8k6A7Wh44Zj7DRuRmFx572DilT
+         1/piVftky467DPeT/DBbzc9m1SgNumFlbvRa2UZgrv0ySQqxdf2Kur846113vBrIISXZ
+         HrUHVDF4hIGnqgTPqop3hdxa4jn9xVYxKqu6V4IfWVwX22+C/r84IuWoanmcSTOMp717
+         B8Ejm2mLbbgBpBWk7aj8QGpVBCbR90YxtLt34SQ0vybdlSZn1UOE4PMj56L7qWTQnPav
+         MhAw==
+X-Gm-Message-State: AOAM5339/H2qR7gCSGo6gVFIuvyXmTYWleW8pF2ZwUnZK7RxPQ+OXnVj
+        wlHANaKhu508QEkkW+drr+g=
+X-Google-Smtp-Source: ABdhPJwk0WLNGCgMfjAwxXQM/T9tlq11D27bsR0ixlddFb/2PsrH4Bo2ARZ0+4WnC1xPSuP1iE/JnQ==
+X-Received: by 2002:a17:90b:4a88:b0:1c7:9bc:a72e with SMTP id lp8-20020a17090b4a8800b001c709bca72emr3375196pjb.112.1649156767474;
+        Tue, 05 Apr 2022 04:06:07 -0700 (PDT)
 Received: from localhost ([2406:7400:63:792d:bde9:ddd5:53e9:ed83])
-        by smtp.gmail.com with ESMTPSA id k6-20020a056a00134600b004faba67f9d4sm16057911pfu.197.2022.04.05.03.56.54
+        by smtp.gmail.com with ESMTPSA id bt18-20020a056a00439200b004faad3ae59esm15040322pfb.95.2022.04.05.04.06.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 05 Apr 2022 03:56:55 -0700 (PDT)
-Date:   Tue, 5 Apr 2022 16:26:50 +0530
+        Tue, 05 Apr 2022 04:06:07 -0700 (PDT)
+Date:   Tue, 5 Apr 2022 16:36:03 +0530
 From:   Ritesh Harjani <ritesh.list@gmail.com>
 To:     Dave Chinner <david@fromorbit.com>
 Cc:     fstests <fstests@vger.kernel.org>, linux-ext4@vger.kernel.org,
         linux-fsdevel@vger.kernel.org,
         "Darrick J . Wong" <djwong@kernel.org>,
         Ritesh Harjani <riteshh@linux.ibm.com>
-Subject: Re: [PATCHv3 4/4] generic/679: Add a test to check unwritten extents
- tracking
-Message-ID: <20220405105650.laibodfotwssnine@riteshh-domain>
+Subject: Re: [PATCHv3 1/4] generic/468: Add another falloc test entry
+Message-ID: <20220405110603.qqxyivpo4vzj5tlt@riteshh-domain>
 References: <cover.1648730443.git.ritesh.list@gmail.com>
- <c9a40292799a83e52924b7b748701b3b0aa31c46.1648730443.git.ritesh.list@gmail.com>
- <20220403234318.GU1609613@dread.disaster.area>
+ <75f4c780e8402a8f993cb987e85a31e4895f13de.1648730443.git.ritesh.list@gmail.com>
+ <20220403232823.GS1609613@dread.disaster.area>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20220403234318.GU1609613@dread.disaster.area>
+In-Reply-To: <20220403232823.GS1609613@dread.disaster.area>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 22/04/04 09:43AM, Dave Chinner wrote:
-> On Thu, Mar 31, 2022 at 06:24:23PM +0530, Ritesh Harjani wrote:
+On 22/04/04 09:28AM, Dave Chinner wrote:
+> On Thu, Mar 31, 2022 at 06:24:20PM +0530, Ritesh Harjani wrote:
 > > From: Ritesh Harjani <riteshh@linux.ibm.com>
 > >
-> > With these sequence of operation (in certain cases like with ext4 fast_commit)
-> > could miss to track unwritten extents during replay phase
-> > (after sudden FS shutdown).
+> > Add another falloc test entry which could hit a kernel bug
+> > with ext4 fast_commit feature w/o below kernel commit [1].
 > >
-> > This fstest adds a test case to test this.
+> > <log>
+> > [  410.888496][ T2743] BUG: KASAN: use-after-free in ext4_mb_mark_bb+0x26a/0x6c0
+> > [  410.890432][ T2743] Read of size 8 at addr ffff888171886000 by task mount/2743
 > >
-> > 5e4d0eba1ccaf19f
-> > ext4: fix fast commit may miss tracking range for FALLOC_FL_ZERO_RANGE
+> > This happens when falloc -k size is huge which spans across more than
+> > 1 flex block group in ext4. This causes a bug in fast_commit replay
+> > code which is fixed by kernel commit at [1].
+> >
+> > [1]: https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=bfdc502a4a4c058bf4cbb1df0c297761d528f54d
 > >
 > > Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
 > > ---
-> >  tests/generic/679     | 65 +++++++++++++++++++++++++++++++++++++++++++
-> >  tests/generic/679.out |  6 ++++
-> >  2 files changed, 71 insertions(+)
-> >  create mode 100755 tests/generic/679
-> >  create mode 100644 tests/generic/679.out
+> >  tests/generic/468     | 8 ++++++++
+> >  tests/generic/468.out | 2 ++
+> >  2 files changed, 10 insertions(+)
 > >
-> > diff --git a/tests/generic/679 b/tests/generic/679
-> > new file mode 100755
-> > index 00000000..4f35a9cd
-> > --- /dev/null
-> > +++ b/tests/generic/679
-> > @@ -0,0 +1,65 @@
-> > +#! /bin/bash
-> > +# SPDX-License-Identifier: GPL-2.0
-> > +# Copyright (c) 2022 IBM Corporation.  All Rights Reserved.
-> > +#
-> > +# FS QA Test 679
-> > +#
-> > +# Test below sequence of operation which (w/o below kernel patch) in case of
-> > +# ext4 with fast_commit may misss to track unwritten extents.
-> > +# commit 5e4d0eba1ccaf19f
-> > +# ext4: fix fast commit may miss tracking range for FALLOC_FL_ZERO_RANGE
-> > +#
-> > +. ./common/preamble
-> > +_begin_fstest auto quick log shutdown recoveryloop
-> > +
-> > +# Override the default cleanup function.
-> > +_cleanup()
-> > +{
-> > +	cd /
-> > +	rm -r -f $tmp.*
-> > +}
+> > diff --git a/tests/generic/468 b/tests/generic/468
+> > index 95752d3b..5e73cff9 100755
+> > --- a/tests/generic/468
+> > +++ b/tests/generic/468
+> > @@ -34,6 +34,13 @@ _scratch_mkfs >/dev/null 2>&1
+> >  _require_metadata_journaling $SCRATCH_DEV
+> >  _scratch_mount
+> >
+> > +# blocksize and fact are used in the last case of the fsync/fdatasync test.
+> > +# This is mainly trying to test recovery operation in case where the data
+> > +# blocks written, exceeds the default flex group size (32768*4096*16) in ext4.
+> > +blocks=32768
+> > +blocksize=4096
 >
-> Same as default.
-
-ohk. So the same _cleanup() function definition is available in common/preamble
-now. So I guess, we can just remove this definition from here completely.
-
-Got it. Thanks for pointing out.
-
+> Block size can change based on mkfs parameters. You should extract
+> this dynamically from the filesystem the test is being run on.
 >
-> > +
-> > +# Import common functions.
-> > +. ./common/filter
-> > +. ./common/punch
-> > +
-> > +# real QA test starts here
-> > +
-> > +# Modify as appropriate.
-> > +_supported_fs generic
-> > +_require_scratch
-> > +_require_xfs_io_command "fzero"
-> > +_require_xfs_io_command "fiemap"
-> > +_require_scratch_shutdown
-> > +
-> > +t1=$SCRATCH_MNT/t1
-> > +
-> > +_scratch_mkfs > $seqres.full 2>&1
-> > +
-> > +_scratch_mount >> $seqres.full 2>&1
-> > +
-> > +bs=$(_get_file_block_size $SCRATCH_MNT)
-> > +
-> > +# create and write data to t1
-> > +$XFS_IO_PROG -f -c "pwrite 0 $((100*$bs))" $t1 | _filter_xfs_io_numbers
-> > +
-> > +# fsync t1
-> > +$XFS_IO_PROG -c "fsync" $t1
-> > +
-> > +# fzero certain range in between
-> > +$XFS_IO_PROG -c "fzero -k  $((40*$bs)) $((20*$bs))" $t1
-> > +
-> > +# fsync t1
-> > +$XFS_IO_PROG -c "fsync" $t1
-> > +
-> > +# shutdown FS now for replay of journal to kick during next mount
-> > +_scratch_shutdown -v >> $seqres.full 2>&1
-> > +
-> > +_scratch_cycle_mount
-> > +
-> > +# check fiemap reported is valid or not
-> > +$XFS_IO_PROG -c "fiemap -v" $t1 | _filter_fiemap_flags $bs
-> > +
-> > +# success, all done
-> > +status=0
-> > +exit
-> > diff --git a/tests/generic/679.out b/tests/generic/679.out
-> > new file mode 100644
-> > index 00000000..4d3c3377
-> > --- /dev/null
-> > +++ b/tests/generic/679.out
-> > @@ -0,0 +1,6 @@
-> > +QA output created by 679
-> > +wrote XXXX/XXXX bytes at offset XXXX
-> > +XXX Bytes, X ops; XX:XX:XX.X (XXX YYY/sec and XXX ops/sec)
-> > +0: [0..39]: none
-> > +1: [40..59]: unwritten
-> > +2: [60..99]: nonelast
+
+Yes, but we still have kept just 4096 because, anything bigger than that like
+65536 might require a bigger disk size itself to test. The overall size
+requirement of the disk will then become ~36G (32768 * 65536 * 18)
+Hence I went ahead with 4096 which is good enough for testing.
+
+But sure, I will add a comment explaining why we have hardcoded it to 4096
+so that others don't get confused. Larger than this size disk anyway doesn't get
+tested much right?
+
+
+> > +fact=18
 >
-> This is a subset of the the previous test, and looks like it should
-> be tested first before adding the second file and punch operation
-> the previous test adds to this write/zero operations. IOWs, they
-> look like they could easily be combined into a single test without
-> losing anything except having an extra test that has to be run...
+> What is "fact" supposed to mean?
+>
+> Indeed, wouldn't this simply be better as something like:
+>
+> larger_than_ext4_fg_size=$((32768 * $blksize * 18))
+>
+> And then
+>
+> >  testfile=$SCRATCH_MNT/testfile
+> >
+> >  # check inode metadata after shutdown
+> > @@ -85,6 +92,7 @@ for i in fsync fdatasync; do
+> >  	test_falloc $i "-k " 1024
+> >  	test_falloc $i "-k " 4096
+> >  	test_falloc $i "-k " 104857600
+> > +	test_falloc $i "-k " $(($blocks*$blocksize*$fact))
+>
+> 	test_falloc $i "-k " $larger_than_ext4_fg_size
+>
 
-Sure, will look into combining the two in one common generic fstest.
+Yes, looks good to me. Thanks for suggestion.
 
-Thanks for the review
+
+> And just scrub all the sizes from the golden output?
+>
+
+This won't be needed since I still would like to go with 4096 blocksize,
+to avoid a large disk size requirement which anyway won't be tested much.
+
+If this sounds good to you, I will fix rest of the changes as discussed in
+the next revision.
+
 -ritesh
