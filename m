@@ -2,109 +2,128 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DFD45C433F5
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 15:38:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D892AC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 18:45:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235169AbiDFPka (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Apr 2022 11:40:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39498 "EHLO
+        id S231377AbiDFSrY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Apr 2022 14:47:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59350 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236196AbiDFPkU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 11:40:20 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F05713C702
-        for <linux-ext4@vger.kernel.org>; Wed,  6 Apr 2022 05:55:45 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 236CmZRl002521
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 6 Apr 2022 08:48:36 -0400
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 5539815C3EC0; Wed,  6 Apr 2022 08:48:35 -0400 (EDT)
-Date:   Wed, 6 Apr 2022 08:48:35 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     "Kiselev, Oleg" <okiselev@amazon.com>
-Cc:     linux-ext4 <linux-ext4@vger.kernel.org>
-Subject: Re: e2fsprogs builds and installs obsolete version of blkid
-Message-ID: <Yk2MI/UNYWDNFVx+@mit.edu>
-References: <4EF2E5CC-E4E7-4463-893C-274EA9535EC1@amazon.com>
+        with ESMTP id S229510AbiDFSpL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 14:45:11 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D2EFB25496A
+        for <linux-ext4@vger.kernel.org>; Wed,  6 Apr 2022 10:17:17 -0700 (PDT)
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out2.suse.de (Postfix) with ESMTP id 772741F858;
+        Wed,  6 Apr 2022 17:17:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1649265436; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=HKuBPiX8aNrG+G1JnAzE78OK8ra/uCqa7p54WFa69xI=;
+        b=aaoEnnTJU09Npcmm3LWiV8yRuGjWbJhAsIUfK6xjYd2faopb/BNsIA+xFf7mTrlptjHdEz
+        lTrR0xLUtRWltDjZHEuWJovC01eQXyKLku4CzAaf2sJH/wXp40lPNWMgSzln7qXUpZplEL
+        zpBGtNBjotda+g8ZComxa1mLoLNqq7c=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1649265436;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=HKuBPiX8aNrG+G1JnAzE78OK8ra/uCqa7p54WFa69xI=;
+        b=uq8W//2HUDvJEFQoqjJLoLdczOmUFJTm6p7wXSv4GUWecG6o4XzBAzK+D7K0HMYdCdBdpz
+        qmBwUtL32iN2+9DA==
+Received: from quack3.suse.cz (unknown [10.163.43.118])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by relay2.suse.de (Postfix) with ESMTPS id 33F20A3B89;
+        Wed,  6 Apr 2022 17:17:16 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id A8817A061D; Wed,  6 Apr 2022 19:17:15 +0200 (CEST)
+Date:   Wed, 6 Apr 2022 19:17:15 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Zhang Yi <yi.zhang@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yukuai3@huawei.com,
+        yebin10@huawei.com
+Subject: Re: [RFC PATCH] ext4: convert symlink external data block mapping to
+ bdev
+Message-ID: <20220406171715.35euuzocoe4ljepe@quack3.lan>
+References: <20220406084503.1961686-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <4EF2E5CC-E4E7-4463-893C-274EA9535EC1@amazon.com>
+In-Reply-To: <20220406084503.1961686-1-yi.zhang@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 05, 2022 at 11:15:22PM +0000, Kiselev, Oleg wrote:
-> The e2fsprogs contains a version 1.0.0 of `blkid`.  This version
-> does not support flags that the current kernel install scripts pass
-> to `blkid`.  By building and installing e2fsprogs I ended up
-> replacing blkid 2.30.2 with 1.0.0, which broke kernel packaging.
-> This is easily fixed by doing `yum reinstall util-linux`, which
-> reinstalls the correct version blkid.
+On Wed 06-04-22 16:45:03, Zhang Yi wrote:
+> Symlink's external data block is one kind of metadata block, and now
+> that almost all ext4 metadata block's page cache (e.g. directory blocks,
+> quota blocks...) belongs to bdev backing inode except the symlink. It
+> is essentially worked in data=journal mode like other regular file's
+> data block because probably in order to make it simple for generic VFS
+> code handling symlinks or some other historical reasons, but the logic
+> of creating external data block in ext4_symlink() is complicated. and it
+> also make things confused if user do not want to let the filesystem
+> worked in data=journal mode. This patch convert the final exceptional
+> case and make things clean, move the mapping of the symlink's external
+> data block to bdev like any other metadata block does.
 > 
-> This mess could be avoided if e2fsprogs either included a more
-> modern version of blkid, or perhaps did not include blkid at all,
-> since a more current version of this utility is maintained and
-> installed through other packages.
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> ---
+> This RFC patch follow the talking of whether if we could unify the
+> journal mode of ext4 metadata blocks[1], it stop using the data=journal
+> mode for the final exception case of symlink's external data block. Any
+> comments are welcome, thanks.
 > 
-> (Finding https://forums.centos.org/viewtopic.php?t=69655 helped a lot in figuring out why my kernel build started failing all of a sudden)
+> [1]. https://lore.kernel.org/linux-ext4/20220321151141.hypnhr6o4vng2sa6@quack3.lan/T/#m84b942a6bb838ba60ae8afd906ebbb987a577488
+> 
+>  fs/ext4/inode.c   |   9 +---
+>  fs/ext4/namei.c   | 123 +++++++++++++++++++++-------------------------
+>  fs/ext4/symlink.c |  44 ++++++++++++++---
+>  3 files changed, 93 insertions(+), 83 deletions(-)
 
-The blkid and uuid libraries were moved from e2fsprogs from util-linux
-on most Linux distributions.  However, these libraries are still
-needed to compile e2fsprogs, and they are needed for non-Linux
-operating systems, including FreeBSD, Illumos, etc., and some Linux
-systems, such as Android.  That's why they haven't been removed.
+Hum, we don't save on code but I'd say the result is somewhat more
+standard. So I guess this makes some sense. Let's see what Ted thinks...
 
-If you install the RHEL/Fedora packages libblkid-devel and
-libuuid-devel before you run run e2fsprogs's configure script, then it
-will use the system versions of libblkid and libuuid, which will do
-the right thing.
+Otherwise I've found just one small bug below.
 
-(For Debian / Ubuntu the packages names are libblkid-dev and uuid-dev,
-but for these distributions it's better to just run
-"dpkg-buildpackage" since that will automatically build the Debian
-packages with all of the correct configure options via the
-debian/rules file, and the Build-Depends: declaration in
-debian/control will automatically enforce that you have all of the
-correct build prerequites installed.)
+> @@ -3270,26 +3296,8 @@ static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
+>  	if (err)
+>  		return err;
+>  
+> -	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
+> -		/*
+> -		 * For non-fast symlinks, we just allocate inode and put it on
+> -		 * orphan list in the first transaction => we need bitmap,
+> -		 * group descriptor, sb, inode block, quota blocks, and
+> -		 * possibly selinux xattr blocks.
+> -		 */
+> -		credits = 4 + EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb) +
+> -			  EXT4_XATTR_TRANS_BLOCKS;
+> -	} else {
+> -		/*
+> -		 * Fast symlink. We have to add entry to directory
+> -		 * (EXT4_DATA_TRANS_BLOCKS + EXT4_INDEX_EXTRA_TRANS_BLOCKS),
+> -		 * allocate new inode (bitmap, group descriptor, inode block,
+> -		 * quota blocks, sb is already counted in previous macros).
+> -		 */
+> -		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+> -			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
+> -	}
+> -
+> +	credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
+> +		  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
 
-If you hand done the simple thing that most novice users do, which is
-to just run "./configure ; make", then the binaries will statically
-link the old versions of blkid and uuid and that will work as well.
-You just ran into the case where (a) you knew enough to enable ELF
-share libraries, but (b) didn't know enough to install the system
-libraries instead, and (c) then did a "make install" instead of using
-a package manager to mediate installation of the programs.
+This does not seem like enough credits - we may need to allocate inode, add
+entry to directory, allocate & initialize symlink block. So I think you
+need to add 4 for block allocation + init in case of non-fast symlink. And
+please keep the comment explaining what is actually counted in the number
+of credits...
 
-I'm sorry that happened to you, but it's a relatively rare
-combination, and the fact remains that there are other users of
-e2fsprogs besides Linux, and unfortunately, many open source packages,
-including util-linux and systemd, suffer from the "All The World Runs
-Linux" disease, which seems to be an updated form of the disease, "All
-the World's a Vax"[1].  (This is also why it would take more work than
-it's worth to try to backport newer versions of blkid into e2fsprogs.)
-
-Cheers,
-
-      	   	       	    	      - Ted
-
-[1] From: https://www.lysator.liu.se/c/ten-commandments.html
-
-    Commandment #10:
-       Thou shalt foreswear, renounce, and abjure the vile heresy which
-       claimeth that ``All the world's a VAX'', and have no commerce with
-       the benighted heathens who cling to this barbarous belief, that
-       the days of thy program may be long even though the days of thy
-       current machine be short.
-    
-    This particular heresy bids fair to be replaced by ``All the
-    world's a Sun'' or ``All the world's a 386'' (this latter being a
-    particularly revolting invention of Satan), but the words apply to
-    all such without limitation. Beware, in particular, of the subtle
-    and terrible ``All the world's a 32-bit machine'', which is almost
-    true today but shall cease to be so before thy resume grows too
-    much longer.
-
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
