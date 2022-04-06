@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCF68C433EF
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:13:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBDD1C433F5
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:13:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353517AbiDFJPs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Apr 2022 05:15:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52954 "EHLO
+        id S1358862AbiDFJPw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Apr 2022 05:15:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46706 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358083AbiDFJDR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:03:17 -0400
+        with ESMTP id S1349398AbiDFJCq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:02:46 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 114384793B9;
-        Tue,  5 Apr 2022 23:06:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6EDFB48EC7E;
+        Tue,  5 Apr 2022 23:05:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=P8BTzfbZzMhTwk+O/5Q9S2IjdA/Er5Nl5Yd1FdZzPNs=; b=jmLLAFsmpP/kGZ+yrDJsbaGT90
-        3PwfbbG3wYKmDjHmMy+UJOFVGL4TGDhECV3MOyV3UV8eSqcB0oTUed5n8oqNZktxd33ScowUP7QGh
-        zbHFLMbrLKGeYKPMV8S63E/RRGEzhJrhrEAo36bmKxr9IL3fiqhq4h4HV/PV2BMnFoSisR8vXTGSe
-        pm93ugKsrwSXqQ5J/PUF18cWu1plS4ueu1I2pDS3596vDa7E3hJWQLYJIHPBT5CXRTFQ5Q3FfKMQJ
-        gbNfl56sQdKYZDUFA7Rmbrh+TTmjlhI2tnHxRO3P8MOrLI7+hAjFr/PXAnmPHqK5dQh0zlvNaSpaR
-        rj8Pm/Qw==;
+        bh=sINtR+pRAAWqBCMZRslKVJyakyubEJXVW4tI3wGLsb0=; b=gBrZsvegbTHoIEG5qdijcHzNWW
+        PfzclL3zzl2tB5xhm8Sj7w6skVV8SvvJytC4EH0RoMlbB62c3vMVvjooDHTIWQ3smYKaAuMQ4cOli
+        spZhkrdfcyNNrOGeIUuTpGtX63bYCgqfiIr52xJMA9AGK42nQUGH/2eHVQ3foGEH/zFa8lWfGs7Pp
+        Ay5KyAHLP9DhsOCOpCtbHRVbRjzyQdYUTq4TkVLaYR9+Sga+ljLLLtQo5Hukpu2Q5UAw6RMQTfLQg
+        vt8zwwfekDfQOHpKLK7/INfKF40CQ8temfgKOOdrhB506dWycfStoRSbi1wi6owABwmVkNNzYqcsL
+        kVwVOMFA==;
 Received: from 213-225-3-188.nat.highway.a1.net ([213.225.3.188] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nbyo2-003vK1-1x; Wed, 06 Apr 2022 06:06:14 +0000
+        id 1nbynD-003ul3-Rn; Wed, 06 Apr 2022 06:05:24 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
@@ -43,9 +43,9 @@ Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
         cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
         linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
         ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-Subject: [PATCH 14/27] block: add a bdev_max_zone_append_sectors helper
-Date:   Wed,  6 Apr 2022 08:05:03 +0200
-Message-Id: <20220406060516.409838-15-hch@lst.de>
+Subject: [PATCH 01/27] target: remove an incorrect unmap zeroes data deduction
+Date:   Wed,  6 Apr 2022 08:04:50 +0200
+Message-Id: <20220406060516.409838-2-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220406060516.409838-1-hch@lst.de>
 References: <20220406060516.409838-1-hch@lst.de>
@@ -56,67 +56,31 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add a helper to check the max supported sectors for zone append based on
-the block_device instead of having to poke into the block layer internal
-request_queue.
+For block devices the target code implements UNMAP as calls to
+blkdev_issue_discard, which does not guarantee zeroing just because
+Write Zeroes is supported.
 
+Note that this does not affect the file backed path which uses
+fallocate to punch holes.
+
+Fixes: 2237498f0b5c ("target/iblock: Convert WRITE_SAME to blkdev_issue_zeroout")
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/nvme/target/zns.c | 3 +--
- fs/zonefs/super.c         | 3 +--
- include/linux/blkdev.h    | 6 ++++++
- 3 files changed, 8 insertions(+), 4 deletions(-)
+ drivers/target/target_core_device.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/drivers/nvme/target/zns.c b/drivers/nvme/target/zns.c
-index e34718b095504..82b61acf7a72b 100644
---- a/drivers/nvme/target/zns.c
-+++ b/drivers/nvme/target/zns.c
-@@ -34,8 +34,7 @@ static int validate_conv_zones_cb(struct blk_zone *z,
- 
- bool nvmet_bdev_zns_enable(struct nvmet_ns *ns)
- {
--	struct request_queue *q = ns->bdev->bd_disk->queue;
--	u8 zasl = nvmet_zasl(queue_max_zone_append_sectors(q));
-+	u8 zasl = nvmet_zasl(bdev_max_zone_append_sectors(ns->bdev));
- 	struct gendisk *bd_disk = ns->bdev->bd_disk;
- 	int ret;
- 
-diff --git a/fs/zonefs/super.c b/fs/zonefs/super.c
-index 3614c7834007d..7a63807b736c4 100644
---- a/fs/zonefs/super.c
-+++ b/fs/zonefs/super.c
-@@ -678,13 +678,12 @@ static ssize_t zonefs_file_dio_append(struct kiocb *iocb, struct iov_iter *from)
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	struct zonefs_inode_info *zi = ZONEFS_I(inode);
- 	struct block_device *bdev = inode->i_sb->s_bdev;
--	unsigned int max;
-+	unsigned int max = bdev_max_zone_append_sectors(bdev);
- 	struct bio *bio;
- 	ssize_t size;
- 	int nr_pages;
- 	ssize_t ret;
- 
--	max = queue_max_zone_append_sectors(bdev_get_queue(bdev));
- 	max = ALIGN_DOWN(max << SECTOR_SHIFT, inode->i_sb->s_blocksize);
- 	iov_iter_truncate(from, max);
- 
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index a433798c3343e..f8c50b77543eb 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -1188,6 +1188,12 @@ static inline unsigned int queue_max_zone_append_sectors(const struct request_qu
- 	return min(l->max_zone_append_sectors, l->max_sectors);
+diff --git a/drivers/target/target_core_device.c b/drivers/target/target_core_device.c
+index 44bb380e7390c..fa866acef5bb2 100644
+--- a/drivers/target/target_core_device.c
++++ b/drivers/target/target_core_device.c
+@@ -850,7 +850,6 @@ bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
+ 	attrib->unmap_granularity = q->limits.discard_granularity / block_size;
+ 	attrib->unmap_granularity_alignment = q->limits.discard_alignment /
+ 								block_size;
+-	attrib->unmap_zeroes_data = !!(q->limits.max_write_zeroes_sectors);
+ 	return true;
  }
- 
-+static inline unsigned int
-+bdev_max_zone_append_sectors(struct block_device *bdev)
-+{
-+	return queue_max_zone_append_sectors(bdev_get_queue(bdev));
-+}
-+
- static inline unsigned queue_logical_block_size(const struct request_queue *q)
- {
- 	int retval = 512;
+ EXPORT_SYMBOL(target_configure_unmap_from_queue);
 -- 
 2.30.2
 
