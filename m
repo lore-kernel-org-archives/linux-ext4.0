@@ -2,150 +2,183 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B731C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:14:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E2EF1C433FE
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 10:39:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230224AbiDFJQu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Apr 2022 05:16:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39700 "EHLO
+        id S1344956AbiDFKlU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Apr 2022 06:41:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50886 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1349404AbiDFJCq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:02:46 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64CAF48F70C;
-        Tue,  5 Apr 2022 23:05:30 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=qk698qFB+7DuJ4AJ2sY5VQ7AD5pdtTim73QQqZ92loQ=; b=vV1BbnA55cPPAZB3254BK506im
-        Old6T+yuUYVQppmY4OvzxURFILotMc/oCVviEkRv2abUE0J0i0GHlFCQmQE6zN4zzMN0LyyGdxCxm
-        a3zAC2ibzPxxmh2esPJ31vQhU4t1hgSd4oolbLVJ30XUyZxO92DdwG6hQFMXNMNhWN7rcep7w4tlS
-        VBiExL3j/1rs3vSKxNFaeesN2dWuawOYgyTbMBu//+gVZzz/ekohyJi6Ui5YQzYrI1BTFh69BMJ40
-        8U0V0qb3pKlFpPgDI+reF/WlPNRxgS+0CgrkGxB17h8Jk2cVEx0UzjeLM8HRoV8yqMFF4OEOqQS3q
-        gljNqowQ==;
-Received: from 213-225-3-188.nat.highway.a1.net ([213.225.3.188] helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nbynH-003umG-Rn; Wed, 06 Apr 2022 06:05:28 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jens Axboe <axboe@kernel.dk>
-Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-um@lists.infradead.org,
-        linux-block@vger.kernel.org, drbd-dev@lists.linbit.com,
-        nbd@other.debian.org, ceph-devel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        xen-devel@lists.xenproject.org, linux-bcache@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-nvme@lists.infradead.org,
-        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-Subject: [PATCH 02/27] target: pass a block_device to target_configure_unmap_from_queue
-Date:   Wed,  6 Apr 2022 08:04:51 +0200
-Message-Id: <20220406060516.409838-3-hch@lst.de>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20220406060516.409838-1-hch@lst.de>
+        with ESMTP id S239971AbiDFKkB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 06:40:01 -0400
+Received: from mail1.bemta34.messagelabs.com (mail1.bemta34.messagelabs.com [195.245.231.4])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2CBC04F994D;
+        Wed,  6 Apr 2022 00:05:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fujitsu.com;
+        s=170520fj; t=1649228714; i=@fujitsu.com;
+        bh=05cGtA6yxrBEXr8TsKfNblRw+Bdby9YhP92PsT290U4=;
+        h=Date:To:Cc:Subject:Message-ID:Reply-To:References:MIME-Version:
+         Content-Type:In-Reply-To:From;
+        b=BJDFFQHg7gw8WYACPIsS5IO7QZ2Et0/snRy0O1P7sPcx3klPBjnAcFB0x5vQmkc7B
+         wdj7sgZsarcq07EkkN9Uk7cWaXRM4BHIkDNaIuDnoDW/xdWPN+yfeRQ0VLd0GPd0XX
+         YqbordNSTrdttI2gAjHO+G0BfdXM58RE64W8BbUe7mviFWROX5XjUVwj2GTsNCRtCK
+         2WJ4V8hKwe8nmUuYA+n39zIapfnu0J3NGApl7UCEEBLyvU7tS2BrmjwMlFpa9b2hDX
+         gUaY7GvBudukN14SBUkBadO1YF+sMHYk2wGdlkRTCLILZZ+pMjV2no6kK1JlP7i/NG
+         hrGSl+X1ARJQg==
+X-Brightmail-Tracker: H4sIAAAAAAAAA1WSf1CTdRzH+T4bzx5hDz38iq9L8ljCH3ibDDW
+  +ilh6lk8nFJfJJVfZgyy2GsjteThnXAdKKIcRKiTHVFDHrwFhB6OIOQ60BDwhGM6BFxWyGU4R
+  kwqMX+1p54/+e3/u9fq8P/98CEFAPS4hlDpOqc1gNFLcR7h5E8HI6mITUqJcB19GDaPFOHowc
+  gJDvQ3jOLLcP+WNxmx1QmRs+BFDg3/kY+jKtzcwZLm5GlnH60SovOJnHFnPb0cXLb1C9Evjkj
+  f6YakYIPOhGhGaL1uHKmucInSksh2gY+fyBOiovQ1HRfXxqH2+TYTmnF9jyDjeiqH2e/0ilF8
+  9iaHavgoczZhKsFdD6aG+LLr54QkR3VKVQ3/+22GcLhmuBfRESzmgzWenMfryg+tC2jySi9MD
+  Nfdw2vZ3noCe6rDh9HTzi4lksrc6I2Wf7kNv1dRoF5Y56KNrt1zGc8E8UQiWEQGUCcBbV94sB
+  D7ubASwqMMkKASEe8iChp/EvCOkVkFLpRnwOYiSQqerD/C+gGoiYZfTIeL9QCoZLt6O5x2Sio
+  Z/3jJgnv6X4BnbAs77JDVLwuq2CW8PyIZHf50Uehb8YW+5478soCLh8OIdjO8UUC/A2kWCj8u
+  oJJh/XMobkFoB54wzOJ+D3fVNhl7AKzi1BrqKGI8SAW39zYJjIFD/TL/+mX790/6zQFAPNqZo
+  1WkqLp1Ra2SKqCiZQrFetjZGptggZz6VMXJllmy/kuVk0XJmPytXsqycPZC+V5Mqz1ByzcD9Q
+  qlseGAbKDA+kl8CywlMGkz6KhJSAvxS9qUeUDGsao82S6NkL4EVBCGFZBxyM3+tMk2p+0itcT
+  /iYwwJsTSIrNroxiSbyaSz6jQPugrCJCHkyAY3oHigysp4svb4ha0gVBJIAi8vrwBxplKbrub
+  +z10ghADSQHIHXy9WZ3BP2l3uw5j78P1rb/CHOeYpkuRiOVWl7x8SfveXV2mR5OTzV3PqoheN
+  8ht3LNyuk9zUZwMLSQn2nG7ZBY2j9fXj4/Xh6J+Y0PeSaktax4Y6d4cFOZ7z//LgrtqvDm/2t
+  W9dWnvb3L/tiNrwdkfbzTDCd94gjg5/95FjbO+gZtI+y5ozcZk43XrBOln9+2vFBZvW567Z9r
+  1f6qzuA8KkHzrTOXG3xfXJW3si49dl55zK18VVrPzm9FJB8kxZ07XEPMeA3frKF82dFysL5hq
+  Dd6++a1ie0POwZ2DnaGwMN709Qp+4yh63My4WdkU4sod7ulc6TeLr3X51WxpLqKCwyK0maam1
+  qj6pbOGdEGdhiVl3Pu3jc0Nb9JxUyKoYRaRAyzL/Akr/LJA9BAAA
+X-Env-Sender: Alan.Robinson@fujitsu.com
+X-Msg-Ref: server-8.tower-548.messagelabs.com!1649228712!85085!1
+X-Originating-IP: [62.60.8.97]
+X-SYMC-ESS-Client-Auth: outbound-route-from=pass
+X-StarScan-Received: 
+X-StarScan-Version: 9.85.5; banners=-,-,-
+X-VirusChecked: Checked
+Received: (qmail 31866 invoked from network); 6 Apr 2022 07:05:12 -0000
+Received: from unknown (HELO n03ukasimr01.n03.fujitsu.local) (62.60.8.97)
+  by server-8.tower-548.messagelabs.com with ECDHE-RSA-AES256-GCM-SHA384 encrypted SMTP; 6 Apr 2022 07:05:12 -0000
+Received: from n03ukasimr01.n03.fujitsu.local (localhost [127.0.0.1])
+        by n03ukasimr01.n03.fujitsu.local (Postfix) with ESMTP id 3681F100190;
+        Wed,  6 Apr 2022 08:05:12 +0100 (BST)
+Received: from nera.osd.abg.fsc.net (unknown [172.17.20.8])
+        by n03ukasimr01.n03.fujitsu.local (Postfix) with SMTP id 07836100181;
+        Wed,  6 Apr 2022 08:05:10 +0100 (BST)
+Received: by nera.osd.abg.fsc.net (Postfix, from userid 5004)
+        id B86E417478B; Wed,  6 Apr 2022 09:04:46 +0200 (CEST)
+Date:   Wed, 6 Apr 2022 09:04:46 +0200
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Jens Axboe <axboe@kernel.dk>,
+        "jfs-discussion@lists.sourceforge.net" 
+        <jfs-discussion@lists.sourceforge.net>,
+        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
+        "virtualization@lists.linux-foundation.org" 
+        <virtualization@lists.linux-foundation.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        "dm-devel@redhat.com" <dm-devel@redhat.com>,
+        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
+        "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>,
+        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        "xen-devel@lists.xenproject.org" <xen-devel@lists.xenproject.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-um@lists.infradead.org" <linux-um@lists.infradead.org>,
+        "nbd@other.debian.org" <nbd@other.debian.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
+        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+        "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+        "linux-f2fs-devel@lists.sourceforge.net" 
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "ntfs3@lists.linux.dev" <ntfs3@lists.linux.dev>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
+Subject: Re: [PATCH 15/27] block: use bdev_alignment_offset in
+ part_alignment_offset_show
+Message-ID: <20220406070446.GA1722@ts.fujitsu.com>
+Reply-To: Alan.Robinson@fujitsu.com
+Mail-Followup-To: Alan.Robinson@fujitsu.com, Christoph Hellwig <hch@lst.de>,
+        Jens Axboe <axboe@kernel.dk>,
+        "jfs-discussion@lists.sourceforge.net" <jfs-discussion@lists.sourceforge.net>,
+        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
+        "virtualization@lists.linux-foundation.org" <virtualization@lists.linux-foundation.org>,
+        "linux-mm@kvack.org" <linux-mm@kvack.org>,
+        "dm-devel@redhat.com" <dm-devel@redhat.com>,
+        "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>,
+        "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>,
+        "linux-nilfs@vger.kernel.org" <linux-nilfs@vger.kernel.org>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
+        "xen-devel@lists.xenproject.org" <xen-devel@lists.xenproject.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-um@lists.infradead.org" <linux-um@lists.infradead.org>,
+        "nbd@other.debian.org" <nbd@other.debian.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-bcache@vger.kernel.org" <linux-bcache@vger.kernel.org>,
+        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
+        "linux-raid@vger.kernel.org" <linux-raid@vger.kernel.org>,
+        "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+        "linux-f2fs-devel@lists.sourceforge.net" <linux-f2fs-devel@lists.sourceforge.net>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "ocfs2-devel@oss.oracle.com" <ocfs2-devel@oss.oracle.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "ntfs3@lists.linux.dev" <ntfs3@lists.linux.dev>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>
 References: <20220406060516.409838-1-hch@lst.de>
+ <0b7ae3df301c4fdd8d37f773d8d1eb93@FR3P281MB0843.DEUP281.PROD.OUTLOOK.COM>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0b7ae3df301c4fdd8d37f773d8d1eb93@FR3P281MB0843.DEUP281.PROD.OUTLOOK.COM>
+X-sent-by-me: robin@sanpedro
+User-Agent: Mutt/1.9.3 (2018-01-21)
+From:   Alan.Robinson@fujitsu.com (Alan Robinson)
+X-Virus-Scanned: ClamAV using ClamSMTP
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The target code is a consumer of the block layer and should generally
-work on struct block_device.
+Hi Christoph,
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- drivers/target/target_core_device.c  | 5 +++--
- drivers/target/target_core_file.c    | 7 ++++---
- drivers/target/target_core_iblock.c  | 2 +-
- include/target/target_core_backend.h | 4 ++--
- 4 files changed, 10 insertions(+), 8 deletions(-)
+On Wed, Apr 06, 2022 at 06:05:04AM +0000, Christoph Hellwig wrote:
+> From: Christoph Hellwig <hch@lst.de>
+> Subject: [PATCH 15/27] block: use bdev_alignment_offset in
+>  part_alignment_offset_show
+> 
+> Replace the open coded offset calculation with the proper helper.
+> This is an ABI change in that the -1 for a misaligned partition is
+> properly propagated, which can be considered a bug fix and maches
 
-diff --git a/drivers/target/target_core_device.c b/drivers/target/target_core_device.c
-index fa866acef5bb2..3a1ec705cd80b 100644
---- a/drivers/target/target_core_device.c
-+++ b/drivers/target/target_core_device.c
-@@ -834,9 +834,10 @@ struct se_device *target_alloc_device(struct se_hba *hba, const char *name)
-  * in ATA and we need to set TPE=1
-  */
- bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
--				       struct request_queue *q)
-+				       struct block_device *bdev)
- {
--	int block_size = queue_logical_block_size(q);
-+	struct request_queue *q = bdev_get_queue(bdev);
-+	int block_size = bdev_logical_block_size(bdev);
- 
- 	if (!blk_queue_discard(q))
- 		return false;
-diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
-index 8190b840065f3..8d191fdc33217 100644
---- a/drivers/target/target_core_file.c
-+++ b/drivers/target/target_core_file.c
-@@ -134,10 +134,11 @@ static int fd_configure_device(struct se_device *dev)
- 	 */
- 	inode = file->f_mapping->host;
- 	if (S_ISBLK(inode->i_mode)) {
--		struct request_queue *q = bdev_get_queue(I_BDEV(inode));
-+		struct block_device *bdev = I_BDEV(inode);
-+		struct request_queue *q = bdev_get_queue(bdev);
- 		unsigned long long dev_size;
- 
--		fd_dev->fd_block_size = bdev_logical_block_size(I_BDEV(inode));
-+		fd_dev->fd_block_size = bdev_logical_block_size(bdev);
- 		/*
- 		 * Determine the number of bytes from i_size_read() minus
- 		 * one (1) logical sector from underlying struct block_device
-@@ -150,7 +151,7 @@ static int fd_configure_device(struct se_device *dev)
- 			dev_size, div_u64(dev_size, fd_dev->fd_block_size),
- 			fd_dev->fd_block_size);
- 
--		if (target_configure_unmap_from_queue(&dev->dev_attrib, q))
-+		if (target_configure_unmap_from_queue(&dev->dev_attrib, bdev))
- 			pr_debug("IFILE: BLOCK Discard support available,"
- 				 " disabled by default\n");
- 		/*
-diff --git a/drivers/target/target_core_iblock.c b/drivers/target/target_core_iblock.c
-index 87ede165ddba4..b886ce1770bfd 100644
---- a/drivers/target/target_core_iblock.c
-+++ b/drivers/target/target_core_iblock.c
-@@ -119,7 +119,7 @@ static int iblock_configure_device(struct se_device *dev)
- 	dev->dev_attrib.hw_max_sectors = queue_max_hw_sectors(q);
- 	dev->dev_attrib.hw_queue_depth = q->nr_requests;
- 
--	if (target_configure_unmap_from_queue(&dev->dev_attrib, q))
-+	if (target_configure_unmap_from_queue(&dev->dev_attrib, bd))
- 		pr_debug("IBLOCK: BLOCK Discard support available,"
- 			 " disabled by default\n");
- 
-diff --git a/include/target/target_core_backend.h b/include/target/target_core_backend.h
-index 675f3a1fe6139..773963a1e0b53 100644
---- a/include/target/target_core_backend.h
-+++ b/include/target/target_core_backend.h
-@@ -14,7 +14,7 @@
- #define TRANSPORT_FLAG_PASSTHROUGH_ALUA		0x2
- #define TRANSPORT_FLAG_PASSTHROUGH_PGR          0x4
- 
--struct request_queue;
-+struct block_device;
- struct scatterlist;
- 
- struct target_backend_ops {
-@@ -117,7 +117,7 @@ sense_reason_t passthrough_parse_cdb(struct se_cmd *cmd,
- bool target_sense_desc_format(struct se_device *dev);
- sector_t target_to_linux_sector(struct se_device *dev, sector_t lb);
- bool target_configure_unmap_from_queue(struct se_dev_attrib *attrib,
--				       struct request_queue *q);
-+				       struct block_device *bdev);
- 
- static inline bool target_dev_configured(struct se_device *se_dev)
- {
--- 
-2.30.2
+s/maches/matches/
+
+> what is done on the whole device.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  block/partitions/core.c | 6 +-----
+>  1 file changed, 1 insertion(+), 5 deletions(-)
+> 
+> diff --git a/block/partitions/core.c b/block/partitions/core.c
+> index 2ef8dfa1e5c85..240b3fff521e4 100644
+> --- a/block/partitions/core.c
+> +++ b/block/partitions/core.c
+> @@ -200,11 +200,7 @@ static ssize_t part_ro_show(struct device *dev,
+>  static ssize_t part_alignment_offset_show(struct device *dev,
+>  					  struct device_attribute *attr, char *buf)
+>  {
+> -	struct block_device *bdev = dev_to_bdev(dev);
+> -
+> -	return sprintf(buf, "%u\n",
+> -		queue_limit_alignment_offset(&bdev_get_queue(bdev)->limits,
+> -				bdev->bd_start_sect));
+> +	return sprintf(buf, "%u\n", bdev_alignment_offset(dev_to_bdev(dev)));
+
+Should this now be %d instead of %u, there are one or two examples of
+both in the rest of the patch series.
+
+Alan
 
