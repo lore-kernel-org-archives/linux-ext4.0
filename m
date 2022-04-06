@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EF10C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:11:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1320DC433F5
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:11:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230085AbiDFJNp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Apr 2022 05:13:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53042 "EHLO
+        id S238370AbiDFJNw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Apr 2022 05:13:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52348 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1358536AbiDFJDW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:03:22 -0400
+        with ESMTP id S1352018AbiDFJCs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:02:48 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F25FD48F719;
-        Tue,  5 Apr 2022 23:06:25 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 253A848F713;
+        Tue,  5 Apr 2022 23:05:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=TxXl3MdplxU9MCO/Q7D4FJYRsok6DDTDVaSg962eOWw=; b=rucC9iJZF0nT1xLRSKT9tqQoP5
-        nL0SBYR/iPNSHB6wdcFxgaOg4ge9C2M4FP2p1JxUqmGG9zNBcpvn8l2ImaqSWUruwic5SBL+1Ka0A
-        N9OC/cngiat+LW2SmmgQgik6umVCvLvTWe7LVYau+JKoIVcB5LAd/jZAV15/t6fN+UTCCe2AFXibt
-        E1V1T10hMp3lTxlmDK2XsJoN/x/84A5CsbNWzJR1vr4eEH4n9FywvazpXPuwcYDJ3oSJzJmHtYcSR
-        fBAUwkO6DmJcsI89V/f7f2YpyrUwGe49T4osq7oE4lAOjncY7dpUANpsFS6qbMzskbxkKi/9ab/Dz
-        RphmF5Bw==;
+        bh=cTLTfYr7duFMbl13zCRXcRUBgEmH7Snqn+WlWdpEWNo=; b=ZV/CVrUb4qbpXBUImFAvqmY7OC
+        YR/KmNB2+lAjq+EqA8oBYfyehyx3Nq+YwtV4TxCIA5A8L2WVXtNlev4guWoUuadGmFOwtgMiNwq9i
+        yqX5G6E2+zNceTQVJtjM3l08MHhteYnLHXffM4/jtc5yfz/GeuE8HPUJ4reOje5U615tM7p768ryF
+        Y/h9+5h+K+8NlHUqGExK7MtGefB5aNgyMmSmLlNaZTgeiyQAt5+xaIpSgQ/+zSSJmDjA+IoRmYh1L
+        IwncIh14NoCZ6DbOmIaikx8OL30Ru/YZRUBoYvofpcHUxFXkbbQXdd7v+XeVl55WVE6NwYrNNaEln
+        SKW/g4CA==;
 Received: from 213-225-3-188.nat.highway.a1.net ([213.225.3.188] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nbyo9-003vQV-AV; Wed, 06 Apr 2022 06:06:22 +0000
+        id 1nbynT-003usA-Kd; Wed, 06 Apr 2022 06:05:40 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
@@ -43,9 +43,9 @@ Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
         cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
         linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
         ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-Subject: [PATCH 16/27] drbd: use bdev_alignment_offset instead of queue_alignment_offset
-Date:   Wed,  6 Apr 2022 08:05:05 +0200
-Message-Id: <20220406060516.409838-17-hch@lst.de>
+Subject: [PATCH 05/27] drbd: use bdev based limit helpers in drbd_send_sizes
+Date:   Wed,  6 Apr 2022 08:04:54 +0200
+Message-Id: <20220406060516.409838-6-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220406060516.409838-1-hch@lst.de>
 References: <20220406060516.409838-1-hch@lst.de>
@@ -56,27 +56,50 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The bdev version does the right thing for partitions, so use that.
+Use the bdev based limits helpers where they exist.
 
-Fixes: 9104d31a759f ("drbd: introduce WRITE_SAME support")
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/block/drbd/drbd_main.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/block/drbd/drbd_main.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/block/drbd/drbd_main.c b/drivers/block/drbd/drbd_main.c
-index d20d84ee7a88e..9d43aadde19ad 100644
+index 74b1b2424efff..d20d84ee7a88e 100644
 --- a/drivers/block/drbd/drbd_main.c
 +++ b/drivers/block/drbd/drbd_main.c
-@@ -939,7 +939,7 @@ int drbd_send_sizes(struct drbd_peer_device *peer_device, int trigger_reply, enu
+@@ -924,7 +924,9 @@ int drbd_send_sizes(struct drbd_peer_device *peer_device, int trigger_reply, enu
+ 
+ 	memset(p, 0, packet_size);
+ 	if (get_ldev_if_state(device, D_NEGOTIATING)) {
+-		struct request_queue *q = bdev_get_queue(device->ldev->backing_bdev);
++		struct block_device *bdev = device->ldev->backing_bdev;
++		struct request_queue *q = bdev_get_queue(bdev);
++
+ 		d_size = drbd_get_max_capacity(device->ldev);
+ 		rcu_read_lock();
+ 		u_size = rcu_dereference(device->ldev->disk_conf)->disk_size;
+@@ -933,16 +935,15 @@ int drbd_send_sizes(struct drbd_peer_device *peer_device, int trigger_reply, enu
+ 		max_bio_size = queue_max_hw_sectors(q) << 9;
+ 		max_bio_size = min(max_bio_size, DRBD_MAX_BIO_SIZE);
+ 		p->qlim->physical_block_size =
+-			cpu_to_be32(queue_physical_block_size(q));
++			cpu_to_be32(bdev_physical_block_size(bdev));
  		p->qlim->logical_block_size =
- 			cpu_to_be32(bdev_logical_block_size(bdev));
+-			cpu_to_be32(queue_logical_block_size(q));
++			cpu_to_be32(bdev_logical_block_size(bdev));
  		p->qlim->alignment_offset =
--			cpu_to_be32(queue_alignment_offset(q));
-+			cpu_to_be32(bdev_alignment_offset(bdev));
- 		p->qlim->io_min = cpu_to_be32(bdev_io_min(bdev));
- 		p->qlim->io_opt = cpu_to_be32(bdev_io_opt(bdev));
+ 			cpu_to_be32(queue_alignment_offset(q));
+-		p->qlim->io_min = cpu_to_be32(queue_io_min(q));
+-		p->qlim->io_opt = cpu_to_be32(queue_io_opt(q));
++		p->qlim->io_min = cpu_to_be32(bdev_io_min(bdev));
++		p->qlim->io_opt = cpu_to_be32(bdev_io_opt(bdev));
  		p->qlim->discard_enabled = blk_queue_discard(q);
+-		p->qlim->write_same_capable =
+-			!!q->limits.max_write_same_sectors;
++		p->qlim->write_same_capable = 0;
+ 		put_ldev(device);
+ 	} else {
+ 		struct request_queue *q = device->rq_queue;
 -- 
 2.30.2
 
