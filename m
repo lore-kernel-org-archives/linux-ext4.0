@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01F59C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:12:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E014C433F5
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Apr 2022 09:12:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234187AbiDFJOc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Apr 2022 05:14:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52082 "EHLO
+        id S241161AbiDFJOn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Apr 2022 05:14:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52480 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1389884AbiDFJEN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:04:13 -0400
+        with ESMTP id S1354378AbiDFJCu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Apr 2022 05:02:50 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 445DF485E5D;
-        Tue,  5 Apr 2022 23:06:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4878B45C21D;
+        Tue,  5 Apr 2022 23:05:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=M87611C6i/ov1/eZb42tZHfhB+4TDGyoM3tVyFqdBW8=; b=K8zhFyJNpfgn61EWvQNSpZGhoz
-        IsW4d6jPg/o8RKdUEsY2I/0tp3DUigRRARrtQZS25XHPg6Ev8uZ5v/1QUVxcxn0UGRSq3QsUvtq8v
-        m/wMNTUuZ0otna4wKyCKR9KuxhJuJrTxMCeQTsVHCLUaBLTq/yY7C/2YjXGPofV9QR6/pigrTQvyL
-        +7FqGR+5akCXPC49M0KmVYykqYBaCN6qbVITFsaW/p3jcsFmAJQrrYOqAHtx2ogkbDQplnGNGSG9t
-        hp4bnoEMlp1dxurHyPf38IfpaJHQv16bHjbw1cMsHDW5/ZArceH5PRjetepYbBzoAtUPy5j6Xetj9
-        Onlv8nZg==;
+        bh=OGJvHxXgCvw9/l2/0Y6T0ivupEa5/VICLVgDi4pj6zk=; b=SGjGHiHxXhTBb30pFVsmtYoofW
+        AXRkPwj9L+IToaoBSWN/RSxSSuBK+pJDBU/ojpwlgCD+rUR4zw9pN8EFDE29pkKOW63auHTvvxwCA
+        PC6e0Da7Eiu1hFS/uIysLLSexy3aaIErbCMYeQH3HFSJ8bABmb6owDVYICpwPc9JKy6Ef8YTyDd/h
+        SpNQxuUWxQhBUfv6Iv5iH1SH6hdeTIk5hPArvSrbVe9a1T+UDbpIkKauh2JPDG7p1MdAcg6ES2qNP
+        pANlA2vT9XhPzqH+DYD3Rh3z9Pdg8L6xQ3HlNdFcmLcX+EpDCJ45aTaIIck6oVGd/w30i6T7ad6VR
+        N9+UdC5Q==;
 Received: from 213-225-3-188.nat.highway.a1.net ([213.225.3.188] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nbyoS-003vjO-9L; Wed, 06 Apr 2022 06:06:41 +0000
+        id 1nbyni-003v3I-Ik; Wed, 06 Apr 2022 06:05:55 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
@@ -43,9 +43,9 @@ Cc:     dm-devel@redhat.com, linux-xfs@vger.kernel.org,
         cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
         linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
         ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-Subject: [PATCH 21/27] block: move {bdev,queue_limit}_discard_alignment out of line
-Date:   Wed,  6 Apr 2022 08:05:10 +0200
-Message-Id: <20220406060516.409838-22-hch@lst.de>
+Subject: [PATCH 09/27] mm: use bdev_is_zoned in claim_swapfile
+Date:   Wed,  6 Apr 2022 08:04:58 +0200
+Message-Id: <20220406060516.409838-10-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220406060516.409838-1-hch@lst.de>
 References: <20220406060516.409838-1-hch@lst.de>
@@ -56,110 +56,26 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-No need to inline these fairly larger helpers.  Also fix the return value
-to be unsigned, just like the field in struct queue_limits.
+Use the bdev based helper instead of poking into the queue.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- block/blk-settings.c   | 35 +++++++++++++++++++++++++++++++++++
- include/linux/blkdev.h | 34 +---------------------------------
- 2 files changed, 36 insertions(+), 33 deletions(-)
+ mm/swapfile.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/block/blk-settings.c b/block/blk-settings.c
-index 94410a13c0dee..fd83d674afd0a 100644
---- a/block/blk-settings.c
-+++ b/block/blk-settings.c
-@@ -478,6 +478,30 @@ static int queue_limit_alignment_offset(struct queue_limits *lim,
- 	return (granularity + lim->alignment_offset - alignment) % granularity;
- }
- 
-+static unsigned int queue_limit_discard_alignment(struct queue_limits *lim,
-+		sector_t sector)
-+{
-+	unsigned int alignment, granularity, offset;
-+
-+	if (!lim->max_discard_sectors)
-+		return 0;
-+
-+	/* Why are these in bytes, not sectors? */
-+	alignment = lim->discard_alignment >> SECTOR_SHIFT;
-+	granularity = lim->discard_granularity >> SECTOR_SHIFT;
-+	if (!granularity)
-+		return 0;
-+
-+	/* Offset of the partition start in 'granularity' sectors */
-+	offset = sector_div(sector, granularity);
-+
-+	/* And why do we do this modulus *again* in blkdev_issue_discard()? */
-+	offset = (granularity + alignment - offset) % granularity;
-+
-+	/* Turn it back into bytes, gaah */
-+	return offset << SECTOR_SHIFT;
-+}
-+
- static unsigned int blk_round_down_sectors(unsigned int sectors, unsigned int lbs)
- {
- 	sectors = round_down(sectors, lbs >> SECTOR_SHIFT);
-@@ -924,3 +948,14 @@ int bdev_alignment_offset(struct block_device *bdev)
- 	return q->limits.alignment_offset;
- }
- EXPORT_SYMBOL_GPL(bdev_alignment_offset);
-+
-+unsigned int bdev_discard_alignment(struct block_device *bdev)
-+{
-+	struct request_queue *q = bdev_get_queue(bdev);
-+
-+	if (bdev_is_partition(bdev))
-+		return queue_limit_discard_alignment(&q->limits,
-+				bdev->bd_start_sect);
-+	return q->limits.discard_alignment;
-+}
-+EXPORT_SYMBOL_GPL(bdev_discard_alignment);
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 5a9b7aeda010b..34b1cfd067421 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -1252,39 +1252,7 @@ bdev_zone_write_granularity(struct block_device *bdev)
- }
- 
- int bdev_alignment_offset(struct block_device *bdev);
--
--static inline int queue_limit_discard_alignment(struct queue_limits *lim, sector_t sector)
--{
--	unsigned int alignment, granularity, offset;
--
--	if (!lim->max_discard_sectors)
--		return 0;
--
--	/* Why are these in bytes, not sectors? */
--	alignment = lim->discard_alignment >> SECTOR_SHIFT;
--	granularity = lim->discard_granularity >> SECTOR_SHIFT;
--	if (!granularity)
--		return 0;
--
--	/* Offset of the partition start in 'granularity' sectors */
--	offset = sector_div(sector, granularity);
--
--	/* And why do we do this modulus *again* in blkdev_issue_discard()? */
--	offset = (granularity + alignment - offset) % granularity;
--
--	/* Turn it back into bytes, gaah */
--	return offset << SECTOR_SHIFT;
--}
--
--static inline int bdev_discard_alignment(struct block_device *bdev)
--{
--	struct request_queue *q = bdev_get_queue(bdev);
--
--	if (bdev_is_partition(bdev))
--		return queue_limit_discard_alignment(&q->limits,
--				bdev->bd_start_sect);
--	return q->limits.discard_alignment;
--}
-+unsigned int bdev_discard_alignment(struct block_device *bdev);
- 
- static inline unsigned int bdev_write_zeroes_sectors(struct block_device *bdev)
- {
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 63c61f8b26118..4c7537162af5e 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2761,7 +2761,7 @@ static int claim_swapfile(struct swap_info_struct *p, struct inode *inode)
+ 		 * write only restriction.  Hence zoned block devices are not
+ 		 * suitable for swapping.  Disallow them here.
+ 		 */
+-		if (blk_queue_is_zoned(p->bdev->bd_disk->queue))
++		if (bdev_is_zoned(p->bdev))
+ 			return -EINVAL;
+ 		p->flags |= SWP_BLKDEV;
+ 	} else if (S_ISREG(inode->i_mode)) {
 -- 
 2.30.2
 
