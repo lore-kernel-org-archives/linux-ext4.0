@@ -2,123 +2,63 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D141C43217
-	for <linux-ext4@archiver.kernel.org>; Thu,  7 Apr 2022 15:32:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88A7FC4167E
+	for <linux-ext4@archiver.kernel.org>; Thu,  7 Apr 2022 15:40:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344928AbiDGPdu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 7 Apr 2022 11:33:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48244 "EHLO
+        id S1344951AbiDGPmP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 7 Apr 2022 11:42:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37226 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345136AbiDGPdM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Apr 2022 11:33:12 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E413B43;
-        Thu,  7 Apr 2022 08:31:05 -0700 (PDT)
+        with ESMTP id S1344927AbiDGPmO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Apr 2022 11:42:14 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B6831EADD
+        for <linux-ext4@vger.kernel.org>; Thu,  7 Apr 2022 08:40:14 -0700 (PDT)
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 34AC9215FE;
-        Thu,  7 Apr 2022 15:30:59 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTP id 4BCAB1F85A;
+        Thu,  7 Apr 2022 15:40:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1649345459;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=VK52HHYwZ5mydc6ONgZ3weVRrNtBzOOpSIr7pOvXQbs=;
-        b=WySqupirn7YZPnIWLV0GfVAqxihpYRle8XEAkyNVF3WBqDMBwi92kUG3G7Geq80fpEpqDG
-        ac7ABA9wFAVhQVApAGDNJmbt/DMKsm4fE53BT+WEDXzbauuxegcpY8cjYEPD+30zCAK/0V
-        /KcfIrKcEqFeLeaqKdylieoJrRuFiL8=
+        t=1649346013; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type;
+        bh=N+DzGQPcliJDva1YLDnGs/eM1s7b7lr8flF4Rlq+iXQ=;
+        b=PNGvbpRm/hT+Ia897ufYbZd8s5PXSoRZBa8fKv2XpbbI8Kx1tFozMBny6GntHygG/xY5jd
+        UaFs9xx5+gKZr69yMA16GSm1I6ykueiFPXuZgG1tMCfEDn5tKLPS/QAJxCzAHgUAyNxVd6
+        wBS9xxhJ6nqs5lrXYIBLcSgnsC8RJek=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1649345459;
-        h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
-         cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=VK52HHYwZ5mydc6ONgZ3weVRrNtBzOOpSIr7pOvXQbs=;
-        b=dPYi+hdX0iWuGGA7k7dxuydFXSe1+2WyOjXtxXeAslnPVSFPemFb/xuBKsBNhRAOcY4W1X
-        dBEDeLvzeSqw+rCw==
-Received: from ds.suse.cz (ds.suse.cz [10.100.12.205])
-        by relay2.suse.de (Postfix) with ESMTP id 19364A3B83;
-        Thu,  7 Apr 2022 15:30:59 +0000 (UTC)
-Received: by ds.suse.cz (Postfix, from userid 10065)
-        id A6C86DA80E; Thu,  7 Apr 2022 17:26:56 +0200 (CEST)
-Date:   Thu, 7 Apr 2022 17:26:56 +0200
-From:   David Sterba <dsterba@suse.cz>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Jens Axboe <axboe@kernel.dk>, dm-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-um@lists.infradead.org, linux-block@vger.kernel.org,
-        drbd-dev@lists.linbit.com, nbd@other.debian.org,
-        ceph-devel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        xen-devel@lists.xenproject.org, linux-bcache@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-nvme@lists.infradead.org,
-        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-Subject: Re: [PATCH 26/27] block: uncouple REQ_OP_SECURE_ERASE from
- REQ_OP_DISCARD
-Message-ID: <20220407152656.GM15609@twin.jikos.cz>
-Reply-To: dsterba@suse.cz
-Mail-Followup-To: dsterba@suse.cz, Christoph Hellwig <hch@lst.de>,
-        Jens Axboe <axboe@kernel.dk>, dm-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-um@lists.infradead.org, linux-block@vger.kernel.org,
-        drbd-dev@lists.linbit.com, nbd@other.debian.org,
-        ceph-devel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        xen-devel@lists.xenproject.org, linux-bcache@vger.kernel.org,
-        linux-raid@vger.kernel.org, linux-mmc@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-nvme@lists.infradead.org,
-        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
-        target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, jfs-discussion@lists.sourceforge.net,
-        linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
-        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
-References: <20220406060516.409838-1-hch@lst.de>
- <20220406060516.409838-27-hch@lst.de>
+        s=susede2_ed25519; t=1649346013;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type;
+        bh=N+DzGQPcliJDva1YLDnGs/eM1s7b7lr8flF4Rlq+iXQ=;
+        b=vy5VXwyw/U4VPT9bP44Nqnc5OzHck+Og40FVz4mHBOVm9wlrzzFsk4CiSOrb3YCk7w0G8V
+        cQgMqp0n8pjSXgDg==
+Received: from quack3.suse.cz (unknown [10.163.43.118])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by relay2.suse.de (Postfix) with ESMTPS id 3D047A3B89;
+        Thu,  7 Apr 2022 15:40:13 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id C800DA061A; Thu,  7 Apr 2022 17:40:12 +0200 (CEST)
+Date:   Thu, 7 Apr 2022 17:40:12 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Eric Whitney <enwlinux@gmail.com>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Subject: Loop device fixes
+Message-ID: <20220407154012.wm7f73qw3epuim3r@quack3.lan>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20220406060516.409838-27-hch@lst.de>
-User-Agent: Mutt/1.5.23.1-rc1 (2014-03-12)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 06, 2022 at 08:05:15AM +0200, Christoph Hellwig wrote:
-> Secure erase is a very different operation from discard in that it is
-> a data integrity operation vs hint.  Fully split the limits and helper
-> infrastructure to make the separation more clear.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  block/blk-core.c                    |  2 +-
->  block/blk-lib.c                     | 64 ++++++++++++++++++++---------
->  block/blk-mq-debugfs.c              |  1 -
->  block/blk-settings.c                | 16 +++++++-
->  block/fops.c                        |  2 +-
->  block/ioctl.c                       | 43 +++++++++++++++----
->  drivers/block/drbd/drbd_receiver.c  |  5 ++-
->  drivers/block/rnbd/rnbd-clt.c       |  4 +-
->  drivers/block/rnbd/rnbd-srv-dev.h   |  2 +-
->  drivers/block/xen-blkback/blkback.c | 15 +++----
->  drivers/block/xen-blkback/xenbus.c  |  5 +--
->  drivers/block/xen-blkfront.c        |  5 ++-
->  drivers/md/bcache/alloc.c           |  2 +-
->  drivers/md/dm-table.c               |  8 ++--
->  drivers/md/dm-thin.c                |  4 +-
->  drivers/md/md.c                     |  2 +-
->  drivers/md/raid5-cache.c            |  6 +--
->  drivers/mmc/core/queue.c            |  2 +-
->  drivers/nvme/target/io-cmd-bdev.c   |  2 +-
->  drivers/target/target_core_file.c   |  2 +-
->  drivers/target/target_core_iblock.c |  2 +-
+Hello!
 
-For
+Christoph's loop device fixes were posted here:
 
->  fs/btrfs/extent-tree.c              |  4 +-
+https://lore.kernel.org/all/20220330052917.2566582-1-hch@lst.de
 
-Acked-by: David Sterba <dsterba@suse.com>
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
