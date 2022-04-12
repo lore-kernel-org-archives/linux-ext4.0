@@ -2,74 +2,85 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FC37C433F5
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Apr 2022 14:38:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65BE1C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Apr 2022 16:01:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1353665AbiDLOlL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Apr 2022 10:41:11 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52774 "EHLO
+        id S242487AbiDLQEB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Apr 2022 12:04:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42288 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232530AbiDLOlK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2022 10:41:10 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9DA185F4C5
-        for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2022 07:38:52 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.57])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4Kd7XT4bY3zBs86;
-        Tue, 12 Apr 2022 22:34:33 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
- (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Tue, 12 Apr
- 2022 22:38:50 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>, <yebin10@huawei.com>,
-        <liuzhiqiang26@huawei.com>, <liangyun2@huawei.com>
-Subject: [RFC PATCH] ext4: add unmount filesystem message
-Date:   Tue, 12 Apr 2022 22:53:20 +0800
-Message-ID: <20220412145320.2669897-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S229591AbiDLQEA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Apr 2022 12:04:00 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C7D94E3AE
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Apr 2022 09:01:42 -0700 (PDT)
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        (Authenticated sender: krisman)
+        with ESMTPSA id 237BB1F43E3F
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
+        s=mail; t=1649779301;
+        bh=UmlI0ov6iXSmCIfRCqDAvCY7sRzc+oGQlKSZMdiln+Y=;
+        h=From:To:Cc:Subject:References:Date:In-Reply-To:From;
+        b=Q2STFlVjvq+ku1t6e7DttaNVvdpzSsrBULgBg+tzLjS6+OX6OIsUN3cSFX8bhvXhC
+         wBNuqOqxr96RxKVUlO8jFk9KX42v3Ek3kPUBZ9BsE6hJNsHEL2XCrxPIdsb48Jpcq5
+         EZQLyDmRPM9tJH5jGKjaFb6/7AZMQJvgSKPP9LiASALeZdci+PXdg6xaxlKjHz0xOu
+         6wrOBq3BtbM+uiwpvNiLy0QJLfj3H+0oYz99iw0OVY3KAMSEckc/sf1SCukZ9oZ785
+         ADK5Nk+GXMznl2lgCwxvVL/6PsVGRvg+aiiLKX5ALzbCJDoSA18Qs3B89o7l7Yf5sO
+         YdPUHKUsave0g==
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     Zhang Yi <yi.zhang@huawei.com>
+Cc:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <jack@suse.cz>, <yukuai3@huawei.com>,
+        <yebin10@huawei.com>, <liuzhiqiang26@huawei.com>,
+        <liangyun2@huawei.com>
+Subject: Re: [RFC PATCH] ext4: add unmount filesystem message
+Organization: Collabora
+References: <20220412145320.2669897-1-yi.zhang@huawei.com>
+Date:   Tue, 12 Apr 2022 12:01:37 -0400
+In-Reply-To: <20220412145320.2669897-1-yi.zhang@huawei.com> (Zhang Yi's
+        message of "Tue, 12 Apr 2022 22:53:20 +0800")
+Message-ID: <87pmlmcmu6.fsf@collabora.com>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/27.2 (gnu/linux)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- canpemm500005.china.huawei.com (7.192.104.229)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that we have kernel message at mount time, system administrator
-could acquire the mount time, device and options easily. But we don't
-have corresponding unmounting message at umount time, so we cannot know
-if someone umount a filesystem easily. Some of the modern filesystems
-(e.g. xfs) have the umounting kernel message, so add one for ext4
-filesystem for convenience.
+Zhang Yi <yi.zhang@huawei.com> writes:
 
- EXT4-fs (sdb): mounted filesystem with ordered data mode. Quota mode: none.
- EXT4-fs (sdb): unmounting filesystem.
+> Now that we have kernel message at mount time, system administrator
+> could acquire the mount time, device and options easily. But we don't
+> have corresponding unmounting message at umount time, so we cannot know
+> if someone umount a filesystem easily. Some of the modern filesystems
+> (e.g. xfs) have the umounting kernel message, so add one for ext4
+> filesystem for convenience.
+>
+>  EXT4-fs (sdb): mounted filesystem with ordered data mode. Quota mode: none.
+>  EXT4-fs (sdb): unmounting filesystem.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/ext4/super.c | 3 +++
- 1 file changed, 3 insertions(+)
+I don't think sysadmins should be relying on the kernel log for this,
+since the information can easily be overwritten by new messages there.
+Is there a reason why you can't just monitor /proc/self/mountinfo?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 81749eaddf4c..bdecf62f4b55 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1199,6 +1199,9 @@ static void ext4_put_super(struct super_block *sb)
- 	int aborted = 0;
- 	int i, err;
- 
-+	if (___ratelimit(&ext4_mount_msg_ratelimit, "EXT4-fs unmount"))
-+		ext4_msg(sb, KERN_INFO, "unmounting filesystem.");
-+
- 	ext4_unregister_li_request(sb);
- 	ext4_quota_off_umount(sb);
- 
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> ---
+>  fs/ext4/super.c | 3 +++
+>  1 file changed, 3 insertions(+)
+>
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 81749eaddf4c..bdecf62f4b55 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1199,6 +1199,9 @@ static void ext4_put_super(struct super_block *sb)
+>  	int aborted = 0;
+>  	int i, err;
+>  
+> +	if (___ratelimit(&ext4_mount_msg_ratelimit, "EXT4-fs unmount"))
+> +		ext4_msg(sb, KERN_INFO, "unmounting filesystem.");
+> +
+>  	ext4_unregister_li_request(sb);
+>  	ext4_quota_off_umount(sb);
+
 -- 
-2.31.1
-
+Gabriel Krisman Bertazi
