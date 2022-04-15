@@ -2,69 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99A99C433F5
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Apr 2022 02:55:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65204C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Apr 2022 02:55:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348863AbiDOC50 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 Apr 2022 22:57:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41096 "EHLO
+        id S1348866AbiDOC51 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 Apr 2022 22:57:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41110 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1348183AbiDOC5Z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2022 22:57:25 -0400
+        with ESMTP id S1348839AbiDOC50 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Apr 2022 22:57:26 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F24BF33EA9
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2022 19:54:58 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3EE4C3669D
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Apr 2022 19:54:59 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 23F2sjl2023989
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 23F2sjIP023992
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Thu, 14 Apr 2022 22:54:45 -0400
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 0F34715C3EAF; Thu, 14 Apr 2022 22:54:45 -0400 (EDT)
+        id 1217715C3EB4; Thu, 14 Apr 2022 22:54:45 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     Fariya F <fariya.fatima03@gmail.com>,
         "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org
-Subject: [PATCH 1/3] ext4: fix overhead calculation to account for the reserved gdt blocks
-Date:   Thu, 14 Apr 2022 22:54:38 -0400
-Message-Id: <20220415025440.2342107-1-tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: update the cached overhead value in the superblock
+Date:   Thu, 14 Apr 2022 22:54:40 -0400
+Message-Id: <20220415025440.2342107-3-tytso@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <CACA3K+iNFkLLuXJ7W5N70sVC+RVVszx-xVQojNUE8NqfWFuSVg@mail.gmail.com>
+In-Reply-To: <20220415025440.2342107-1-tytso@mit.edu>
 References: <CACA3K+iNFkLLuXJ7W5N70sVC+RVVszx-xVQojNUE8NqfWFuSVg@mail.gmail.com>
+ <20220415025440.2342107-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The kernel calculation was underestimating the overhead by not taking
-into account the reserved gdt blocks.  With this change, the overhead
-calculated by the kernel matches the overhead calculation in mke2fs.
+If we (re-)calculate the file system overhead amount and it's
+different from the on-disk s_overhead_clusters value, update the
+on-disk version since this can take potentially quite a while on
+bigalloc file systems.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@kernel.org
 ---
- fs/ext4/super.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/ext4.h  |  1 +
+ fs/ext4/ioctl.c | 16 ++++++++++++++++
+ fs/ext4/super.c |  2 ++
+ 3 files changed, 19 insertions(+)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 48dc2c3247ad..a743b1e3b89e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3068,6 +3068,7 @@ int ext4_fileattr_set(struct user_namespace *mnt_userns,
+ 		      struct dentry *dentry, struct fileattr *fa);
+ int ext4_fileattr_get(struct dentry *dentry, struct fileattr *fa);
+ extern void ext4_reset_inode_seed(struct inode *inode);
++int ext4_update_overhead(struct super_block *sb);
+ 
+ /* migrate.c */
+ extern int ext4_ext_migrate(struct inode *);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 992229ca2d83..ba44fa1be70a 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1652,3 +1652,19 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ 	return ext4_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+ }
+ #endif
++
++static void set_overhead(struct ext4_super_block *es, const void *arg)
++{
++	es->s_overhead_clusters = cpu_to_le32(*((unsigned long *) arg));
++}
++
++int ext4_update_overhead(struct super_block *sb)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	if (sb_rdonly(sb) || sbi->s_overhead == 0 ||
++	    sbi->s_overhead == le32_to_cpu(sbi->s_es->s_overhead_clusters))
++		return 0;
++
++	return ext4_update_superblocks_fn(sb, set_overhead, &sbi->s_overhead);
++}
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f2a5e78f93a9..23a9b2c086ed 100644
+index d08820fdfdee..1847b46af808 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -4177,9 +4177,11 @@ static int count_overhead(struct super_block *sb, ext4_group_t grp,
- 	ext4_fsblk_t		first_block, last_block, b;
- 	ext4_group_t		i, ngroups = ext4_get_groups_count(sb);
- 	int			s, j, count = 0;
-+	int			has_super = ext4_bg_has_super(sb, grp);
+@@ -5618,6 +5618,8 @@ static int ext4_fill_super(struct super_block *sb, struct fs_context *fc)
+ 		ext4_msg(sb, KERN_INFO, "mounted filesystem with%s. "
+ 			 "Quota mode: %s.", descr, ext4_quota_mode(sb));
  
- 	if (!ext4_has_feature_bigalloc(sb))
--		return (ext4_bg_has_super(sb, grp) + ext4_bg_num_gdb(sb, grp) +
-+		return (has_super + ext4_bg_num_gdb(sb, grp) +
-+			(has_super ? le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) : 0) +
- 			sbi->s_itb_per_group + 2);
++	/* Update the s_overhead_clusters if necessary */
++	ext4_update_overhead(sb);
+ 	return 0;
  
- 	first_block = le32_to_cpu(sbi->s_es->s_first_data_block) +
+ free_sbi:
 -- 
 2.31.0
 
