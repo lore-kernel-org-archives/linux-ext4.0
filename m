@@ -2,70 +2,80 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5BCCC433F5
-	for <linux-ext4@archiver.kernel.org>; Sat, 16 Apr 2022 05:18:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5EADC433F5
+	for <linux-ext4@archiver.kernel.org>; Sat, 16 Apr 2022 08:58:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229719AbiDPFVM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 16 Apr 2022 01:21:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35756 "EHLO
+        id S230460AbiDPJAq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 16 Apr 2022 05:00:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35950 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229548AbiDPFVL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Apr 2022 01:21:11 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:e::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C26A6EB089;
-        Fri, 15 Apr 2022 22:18:40 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=g+ujJVVDoFg2B4P01ECtm57Vr62I/0DX7wK8TNkFwYU=; b=EKriTvTdng77iAKQoyYG6B5/VV
-        5OVUPDyFrE6pmPGmccjCI5RnxYElNCQzLnaOMjV1+aazGiETaUlqPpnoE4cupYU/skXt1620cyZxr
-        Q3csBuph9OxtbU1UA4xK0S1pCOd/jE5Sg+f5RR8p9Y6DRiZcXma5uBVVaEz9HrC/Riy4fSh2pzHp4
-        4JrNXR2FCjceXhTJF1oObVnIBVl3OQH9hrO13WcPRT39+BSsBeD881zufHquRmsvHKrHjqG3ZTtT2
-        62qJYsZ2RxvQ6XO4iWJtROJgGsfO4E7TET5bxE2MkxjBxBF1IEAQQrLfmU2S8KXzK7fF0gg2kVxmw
-        z+z7FeMA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nfapQ-00CGcz-82; Sat, 16 Apr 2022 05:18:36 +0000
-Date:   Fri, 15 Apr 2022 22:18:36 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Ming Lei <ming.lei@redhat.com>
-Cc:     Eric Wheeler <linux-block@lists.ewheeler.net>,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: loop: it looks like REQ_OP_FLUSH could return before IO
- completion.
-Message-ID: <YlpRrLmwe/TJucjz@infradead.org>
-References: <af3e552a-6c77-b295-19e1-d7a1e39b31f3@ewheeler.net>
- <YjfFHvTCENCC29WS@T590>
- <c03de7ac-63e9-2680-ca5b-8be62e4e177f@ewheeler.net>
- <bd5f9817-c65e-7915-18b-9c68bb34488e@ewheeler.net>
- <YldqnL79xH5NJGKW@T590>
- <5b3cb173-484e-db3-8224-911a324de7dd@ewheeler.net>
- <YlmBTtGdTH2xW1qT@T590>
+        with ESMTP id S229704AbiDPJAp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Apr 2022 05:00:45 -0400
+Received: from ms.lwn.net (ms.lwn.net [IPv6:2600:3c01:e000:3a1::42])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 626FCFA202
+        for <linux-ext4@vger.kernel.org>; Sat, 16 Apr 2022 01:58:14 -0700 (PDT)
+Received: from localhost (mdns.lwn.net [45.79.72.68])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ms.lwn.net (Postfix) with ESMTPSA id 963902CC;
+        Sat, 16 Apr 2022 08:58:11 +0000 (UTC)
+DKIM-Filter: OpenDKIM Filter v2.11.0 ms.lwn.net 963902CC
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=lwn.net; s=20201203;
+        t=1650099492; bh=OhkediGcyvdQTScZxtwjgXYdQ0PSAnpundIuOBxllNg=;
+        h=From:To:Cc:Subject:In-Reply-To:References:Date:From;
+        b=MyipeEeFbwS2Ds2yQBHwTfSagmzpaOURNBjU50SNz4FlPw/vjcAne/KHqUJdFtFhl
+         eohzz7Jjqfh5D7Nx2ZjqpURf2AVxnkrH4KuD/n4gTuPX2rmVzF8C0o+g2XeqRcZ0rA
+         wYDSX6RhhOcLI+pZNcKEWu+FFlOW09/Ph5z3ruQYTA5w0reUbD13mUk20AkAAspwG+
+         CcPu6t+1uqNp8kD5QBWf3I4rez54xy8VKtdE0rpmpsy7GEM8/gA//W3j56NHqXSI+r
+         LXngFgBYVrGbF4kAx453c04sDnFaQPTT3d6VdQVdF4P3lWDLFMnEumw9firF9dTnh+
+         +pxZo7RhCfiyA==
+From:   Jonathan Corbet <corbet@lwn.net>
+To:     "wangjianjian (C)" <wangjianjian3@huawei.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca
+Cc:     linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org
+Subject: Re: [PATCH] ext4, doc: Fix incorrect h_reserved size
+In-Reply-To: <34889f32-7dd9-125e-2f7a-734faa395d20@huawei.com>
+References: <34889f32-7dd9-125e-2f7a-734faa395d20@huawei.com>
+Date:   Sat, 16 Apr 2022 02:58:08 -0600
+Message-ID: <87ee1x2yn3.fsf@meer.lwn.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YlmBTtGdTH2xW1qT@T590>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Apr 15, 2022 at 10:29:34PM +0800, Ming Lei wrote:
-> If ext4 expects the following order, it is ext4's responsibility to
-> maintain the order, and block layer may re-order all these IOs at will,
-> so do not expect IOs are issued to device in submission order
+"wangjianjian (C)" <wangjianjian3@huawei.com> writes:
 
-Yes, and it has been so since REQ_FLUSH (which later became
-REQ_OP_FLUSH) replaced REQ_BARRIER 12 years ago:
+> According to document and code, ext4_xattr_header's size is 32 bytes, so
+> h_reserved size should be 3.
+>
+> Signed-off-by: Wang Jianjian <wangjianjian3@huawei.com>
+> ---
+>  =C2=A0Documentation/filesystems/ext4/attributes.rst | 2 +-
+>  =C2=A01 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/Documentation/filesystems/ext4/attributes.rst=20
+> b/Documentation/filesystems/ext4/attributes.rst
+> index 54386a010a8d..871d2da7a0a9 100644
+> --- a/Documentation/filesystems/ext4/attributes.rst
+> +++ b/Documentation/filesystems/ext4/attributes.rst
+> @@ -76,7 +76,7 @@ The beginning of an extended attribute block is in
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 - Checksum of the extended attribute bloc=
+k.
+>  =C2=A0=C2=A0=C2=A0 * - 0x14
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 - \_\_u32
+> -=C2=A0=C2=A0=C2=A0=C2=A0 - h\_reserved[2]
+> +=C2=A0=C2=A0=C2=A0=C2=A0 - h\_reserved[3]
+>  =C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 - Zero.
+>
 
-commit 28e7d1845216538303bb95d679d8fd4de50e2f1a
-Author: Tejun Heo <tj@kernel.org>
-Date:   Fri Sep 3 11:56:16 2010 +0200
+So this patch looks whitespace-damaged, please be sure that you can send
+applyable patches to the list.
 
-block: drop barrier ordering by queue draining
-    
-    Filesystems will take all the responsibilities for ordering requests
-    around commit writes and will only indicate how the commit writes
-    themselves should be handled by block layers.  This patch drops
-    barrier ordering by queue draining from block layer.
+Beyond that, though, while you're in the neighborhood, please fix the
+unnecessary underscore escaping (i.e. s/\_/_/).
 
+Thanks,
+
+jon
