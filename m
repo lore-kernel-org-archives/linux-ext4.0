@@ -2,390 +2,150 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ADE52C433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Apr 2022 06:23:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E597C43217
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Apr 2022 06:33:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236536AbiDRGZ4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Apr 2022 02:25:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36028 "EHLO
+        id S233209AbiDRGgZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Apr 2022 02:36:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49858 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230296AbiDRGZz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2022 02:25:55 -0400
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FAAF18B20
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Apr 2022 23:23:16 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.56])
-        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4KhcL02fXYz1GCXr;
-        Mon, 18 Apr 2022 14:22:32 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
- (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Mon, 18 Apr
- 2022 14:23:13 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>, <yebin10@huawei.com>
-Subject: [RFC PATCH v3] ext4: convert symlink external data block mapping to bdev
-Date:   Mon, 18 Apr 2022 14:37:35 +0800
-Message-ID: <20220418063735.2067766-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S236809AbiDRGgT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2022 02:36:19 -0400
+Received: from APC01-SG2-obe.outbound.protection.outlook.com (mail-sgaapc01on2109.outbound.protection.outlook.com [40.107.215.109])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D95B319006;
+        Sun, 17 Apr 2022 23:33:39 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=Dy2Nkf86T1xsbd/cEL4UjILNCXtIacA/Xa3BvUEn1lMbtxMlvbgnMM8x3GPFEnVwK1MQtN0y2Q+BrKAcsdlNzpJLjHxVe42ndNHBj71K2CbEZEoGU3BREVHQ6ghIy8rHToEELzBnC+jljC10/N32/OSBn1skccHXt/7BxXzQkpjZaT3/qfuVKKNYI+9WWfAYRq5OD/2a/kh04tnKPZYG6HnP4Dl4NRX7WvFHu3m0EQ23Rkz8tOONj40FCuV3yfLuJt7rZTNckeb6VvabCs3Wo5p9xIBbdykXtPuA8GOTONg7ipM/zQESKc7XWGx2K3/AKNatBL+cXDFk2uDvOq9wNA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=ZhdYI/9gYLCgCfVSx4z+o8d9/bPAdlvoI7l6YTNvx7I=;
+ b=d38MA0ftHRb8C2lZOkqnT67BLmLZixnPglZILRxBPFa1zfET1pRsWR1OsAgjbpUV6IdNlDlxenxAklnb/0nUytDUBtDkLnfS57fxBIFAqTsKeYSvEeC/bTb/z9ek2W7CG6jpvb6yI4VN6I4b3AkUBVjYufuV1ZSHgjtreqegl0jSjAg26rbAAE1dUBwJYSUIdmBhHinuK5gEU+KjgZGUZzfJ4+Uwi2UX5WUdWH7U56bQxwm8gZ1VsVhOiWWaK5D7ozuYCD7Ez/g/TD5fJ5EGIQcYiDei4Cys4e+K1AeTBY2VSZDkmYGEBSRiJCJKhZ6ubZ0EXj5V3tQejukV0K//nQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=vivo.com; dmarc=pass action=none header.from=vivo.com;
+ dkim=pass header.d=vivo.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=vivo0.onmicrosoft.com;
+ s=selector2-vivo0-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=ZhdYI/9gYLCgCfVSx4z+o8d9/bPAdlvoI7l6YTNvx7I=;
+ b=lOO637ScQ5NraBXj7zYXOeDy5IOxv6/hG3rKgYN6KJ2ychTd5vzq5KMB2yvhcsGYZtlTNq3WNiCrXZeDZErAOTeJ1gvigMpfq9theTT7IPZU1kwyDirJMklZtrl9FLagaHXiA++eWUSZI2VE4GcDxpR5cRK1L12D2u+xwdS4wic=
+Authentication-Results: dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=vivo.com;
+Received: from KL1PR0601MB4003.apcprd06.prod.outlook.com (2603:1096:820:26::6)
+ by SG2PR06MB3095.apcprd06.prod.outlook.com (2603:1096:4:75::15) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5164.20; Mon, 18 Apr
+ 2022 06:33:33 +0000
+Received: from KL1PR0601MB4003.apcprd06.prod.outlook.com
+ ([fe80::f0c7:9081:8b5a:7e7e]) by KL1PR0601MB4003.apcprd06.prod.outlook.com
+ ([fe80::f0c7:9081:8b5a:7e7e%8]) with mapi id 15.20.5164.025; Mon, 18 Apr 2022
+ 06:33:33 +0000
+From:   Fengnan Chang <changfengnan@vivo.com>
+To:     jaegeuk@kernel.org, chao@kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, axboe@kernel.dk
+Cc:     linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+        linux-block@vger.kernel.org, Fengnan Chang <changfengnan@vivo.com>
+Subject: [PATCH 2/3] f2fs: notify when device not supprt inlinecrypt
+Date:   Mon, 18 Apr 2022 14:33:11 +0800
+Message-Id: <20220418063312.63181-2-changfengnan@vivo.com>
+X-Mailer: git-send-email 2.32.0
+In-Reply-To: <20220418063312.63181-1-changfengnan@vivo.com>
+References: <20220418063312.63181-1-changfengnan@vivo.com>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: TYAPR01CA0068.jpnprd01.prod.outlook.com
+ (2603:1096:404:2b::32) To KL1PR0601MB4003.apcprd06.prod.outlook.com
+ (2603:1096:820:26::6)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- canpemm500005.china.huawei.com (7.192.104.229)
-X-CFilter-Loop: Reflected
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: f7ae8274-cc36-42b5-6484-08da21055c35
+X-MS-TrafficTypeDiagnostic: SG2PR06MB3095:EE_
+X-Microsoft-Antispam-PRVS: <SG2PR06MB3095B2DA6690F2D6223A1645BBF39@SG2PR06MB3095.apcprd06.prod.outlook.com>
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: Hu/ZhkNqm+HBwwUO5zp4JgP8UGdO4QHco3wtjigTPMj3oc1yzWFpOUoSWyHUbBZWgFlRjJ8W4F0RBP+7/D23FMf/2LLK911YurP3hbkJN0eXskERdlAsMsUJHEtLhqagUIwTsuD2Cyxv+5VN78k2BhzPxU/TTzwu34RILh64/SzxuFui5EHPfiw0lZo1lQUslsRK2RkYA/8TGtxrwItxSdx3oc2doY2t0ZaNNiwI932+binSZCtyNKLijcG7sJhoEp3YimPD5bkwC3fk09wXGfFBqd1OTOdIhcNXyvSaORDCREU3e9FVJ+VL9huMQF7JglZyB52b9kW2wBMADlJCk6Igmqfy1YfrivxaHQHGq+vJU4xzGUzLtAgaRg+OeRNaerp1TQWg8wqcsYAztzQJor0Ea+jYKmmNsJNB3AKYnGbzSsDGZn2N6Y9rVxBCoQYd8adL+gnX9N5eaCjCvZY7gGDvJj4cwRw+sKhgR9HDXlwIp/iVwMSQcM7z8xqQqSKkNvkrx/o/fqnTkMlr+cTShGlMnnpPGRQKS9kWzwz4gRaddrfBVxBARlvTd4bplZUV+rqj3nWMHKC85WRO/NTHAchWa/y7GtKImlPiZKmSc/N0HSwY/lxrg55hfKYun1Ri
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:KL1PR0601MB4003.apcprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(4636009)(366004)(8676002)(4326008)(66946007)(2906002)(6506007)(52116002)(66556008)(6666004)(66476007)(2616005)(508600001)(5660300002)(107886003)(86362001)(1076003)(8936002)(6486002)(186003)(6512007)(26005)(36756003)(316002)(83380400001)(38350700002)(38100700002);DIR:OUT;SFP:1102;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: J8oDQzLinSzH34kT5ZZfzh/fKh65Sc0S97Tk74OLvLfb+iZQsQSRswsv1V8lMUsn1rvT+sLNVpvuwxgTKwKj+WlG7Je+zWYQx8dQm2uu/wpVSPZCdjMJpKQyLeT248+bn9I7B3OnMwDMa8nughkyrP49giYM21lJu/xkhe5wvKjJAhPLKlJo12+E3uUlU5YAPR+yX0G3tvGHHVLgCRDcz3utdVEnNy6hwiamCgEcCix+QKU1HcnSjOUbGKkUDaOMHLUUzzk2spvtxuuv3wV2SysCQrZAkuXGH1gmUrYifIn1oe213VlmadfLUOUfVH1rueVkXMyShgcueb4qk2fBpYDyE2UlAvEjbAFlnP/o08IbxVw2D8ZDM+MtB+rVWUBRBCx2OY/lZbfihNKVNUgmON2iqENkozSTsuxa31eb9T4=
+X-OriginatorOrg: vivo.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: f7ae8274-cc36-42b5-6484-08da21055c35
+X-MS-Exchange-CrossTenant-AuthSource: KL1PR0601MB4003.apcprd06.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 18 Apr 2022 06:33:33.3933
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 923e42dc-48d5-4cbe-b582-1a797a6412ed
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: cmjQnIiSY6fHahzpF7EZobAqR5W0d2ng5187BYmwweQHOPXjQZPH/ygyei15LPM0Z23rQmhhTFGy+9OHz1ZqOQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SG2PR06MB3095
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Symlink's external data block is one kind of metadata block, and now
-that almost all ext4 metadata block's page cache (e.g. directory blocks,
-quota blocks...) belongs to bdev backing inode except the symlink. It
-is essentially worked in data=journal mode like other regular file's
-data block because probably in order to make it simple for generic VFS
-code handling symlinks or some other historical reasons, but the logic
-of creating external data block in ext4_symlink() is complicated. and it
-also make things confused if user do not want to let the filesystem
-worked in data=journal mode. This patch convert the final exceptional
-case and make things clean, move the mapping of the symlink's external
-data block to bdev like any other metadata block does.
+Notify when mount filesystem with -o inlinecrypt option, but the device
+not support inlinecrypt.
 
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Fengnan Chang <changfengnan@vivo.com>
 ---
-v3-v2:
- - Retry if it fail in close-to-ENOSPC conditions.
- - Use ext4_add_nondir() to add dir entry for no-fast symlink.
- - Fix RCU walking for symlinks.
- - Ensure nul-terminate when in ext4_get_link().
-v2->v1:
- - Add comment to explain the credits of creating symlink.
+ fs/f2fs/f2fs.h  | 18 ++++++++++++++++++
+ fs/f2fs/super.c |  7 +++++++
+ 2 files changed, 25 insertions(+)
 
-[v2]: https://lore.kernel.org/linux-ext4/20220412083941.2242143-1-yi.zhang@huawei.com/
-[v1]: https://lore.kernel.org/linux-ext4/20220406084503.1961686-1-yi.zhang@huawei.com/
-
- fs/ext4/inode.c   |   9 +---
- fs/ext4/namei.c   | 123 +++++++++++++++++++++-------------------------
- fs/ext4/symlink.c |  54 +++++++++++++++++---
- 3 files changed, 103 insertions(+), 83 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 13740f2d0e61..a6339cefbb1e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -199,8 +199,7 @@ void ext4_evict_inode(struct inode *inode)
- 		 */
- 		if (inode->i_ino != EXT4_JOURNAL_INO &&
- 		    ext4_should_journal_data(inode) &&
--		    (S_ISLNK(inode->i_mode) || S_ISREG(inode->i_mode)) &&
--		    inode->i_data.nrpages) {
-+		    S_ISREG(inode->i_mode) && inode->i_data.nrpages) {
- 			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
- 			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 38cbed0f544e..dc27a708c283 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -27,6 +27,7 @@
  
-@@ -2944,8 +2943,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ #include <linux/fscrypt.h>
+ #include <linux/fsverity.h>
++#include <linux/blk-crypto.h>
  
- 	index = pos >> PAGE_SHIFT;
+ struct pagevec;
  
--	if (ext4_nonda_switch(inode->i_sb) || S_ISLNK(inode->i_mode) ||
--	    ext4_verity_in_progress(inode)) {
-+	if (ext4_nonda_switch(inode->i_sb) || ext4_verity_in_progress(inode)) {
- 		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
- 		return ext4_write_begin(file, mapping, pos,
- 					len, flags, pagep, fsdata);
-@@ -4977,7 +4975,6 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 		}
- 		if (IS_ENCRYPTED(inode)) {
- 			inode->i_op = &ext4_encrypted_symlink_inode_operations;
--			ext4_set_aops(inode);
- 		} else if (ext4_inode_is_fast_symlink(inode)) {
- 			inode->i_link = (char *)ei->i_data;
- 			inode->i_op = &ext4_fast_symlink_inode_operations;
-@@ -4985,9 +4982,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
- 				sizeof(ei->i_data) - 1);
- 		} else {
- 			inode->i_op = &ext4_symlink_inode_operations;
--			ext4_set_aops(inode);
- 		}
--		inode_nohighmem(inode);
- 	} else if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
- 	      S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
- 		inode->i_op = &ext4_special_inode_operations;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index e37da8d5cd0c..dbb6294914bc 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3249,6 +3249,32 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	return retval;
+@@ -4395,6 +4396,23 @@ static inline bool f2fs_realtime_discard_enable(struct f2fs_sb_info *sbi)
+ 					f2fs_hw_should_discard(sbi);
  }
  
-+static int ext4_init_symlink_block(handle_t *handle, struct inode *inode,
-+				   struct fscrypt_str *disk_link)
++#ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
++static inline bool f2fs_hw_support_crypto(struct f2fs_sb_info *sbi)
 +{
-+	struct buffer_head *bh;
-+	char *kaddr;
-+	int err = 0;
++	int i;
 +
-+	bh = ext4_bread(handle, inode, 0, EXT4_GET_BLOCKS_CREATE);
-+	if (IS_ERR(bh))
-+		return PTR_ERR(bh);
++	if (!f2fs_is_multi_device(sbi))
++		if (!blk_crypto_supported(bdev_get_queue(sbi->sb->s_bdev)))
++			return false;
 +
-+	BUFFER_TRACE(bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, inode->i_sb, bh, EXT4_JTR_NONE);
-+	if (err)
-+		goto out;
++	for (i = 0; i < sbi->s_ndevs; i++)
++		if (!blk_crypto_supported(bdev_get_queue(FDEV(i).bdev)))
++			return false;
 +
-+	kaddr = (char *)bh->b_data;
-+	memcpy(kaddr, disk_link->name, disk_link->len);
-+	inode->i_size = disk_link->len - 1;
-+	EXT4_I(inode)->i_disksize = inode->i_size;
-+	err = ext4_handle_dirty_metadata(handle, inode, bh);
-+out:
-+	brelse(bh);
-+	return err;
++	return true;
 +}
++#endif
 +
- static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
- 			struct dentry *dentry, const char *symname)
+ static inline bool f2fs_hw_is_readonly(struct f2fs_sb_info *sbi)
  {
-@@ -3257,6 +3283,7 @@ static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
- 	int err, len = strlen(symname);
- 	int credits;
- 	struct fscrypt_str disk_link;
-+	int retries = 0;
- 
- 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
- 		return -EIO;
-@@ -3270,26 +3297,15 @@ static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
- 	if (err)
- 		return err;
- 
--	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
--		/*
--		 * For non-fast symlinks, we just allocate inode and put it on
--		 * orphan list in the first transaction => we need bitmap,
--		 * group descriptor, sb, inode block, quota blocks, and
--		 * possibly selinux xattr blocks.
--		 */
--		credits = 4 + EXT4_MAXQUOTAS_INIT_BLOCKS(dir->i_sb) +
--			  EXT4_XATTR_TRANS_BLOCKS;
--	} else {
--		/*
--		 * Fast symlink. We have to add entry to directory
--		 * (EXT4_DATA_TRANS_BLOCKS + EXT4_INDEX_EXTRA_TRANS_BLOCKS),
--		 * allocate new inode (bitmap, group descriptor, inode block,
--		 * quota blocks, sb is already counted in previous macros).
--		 */
--		credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--			  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
--	}
--
-+	/*
-+	 * EXT4_INDEX_EXTRA_TRANS_BLOCKS for addition of entry into the
-+	 * directory. +3 for inode, inode bitmap, group descriptor allocation.
-+	 * EXT4_DATA_TRANS_BLOCKS for the data block allocation and
-+	 * modification.
-+	 */
-+	credits = EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
-+		  EXT4_INDEX_EXTRA_TRANS_BLOCKS + 3;
-+retry:
- 	inode = ext4_new_inode_start_handle(mnt_userns, dir, S_IFLNK|S_IRWXUGO,
- 					    &dentry->d_name, 0, NULL,
- 					    EXT4_HT_DIR, credits);
-@@ -3297,7 +3313,8 @@ static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
- 	if (IS_ERR(inode)) {
- 		if (handle)
- 			ext4_journal_stop(handle);
--		return PTR_ERR(inode);
-+		err = PTR_ERR(inode);
-+		goto out_retry;
+ 	int i;
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 4368f90571bd..624d8791b82d 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1275,6 +1275,13 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
  	}
+ #endif
  
- 	if (IS_ENCRYPTED(inode)) {
-@@ -3305,75 +3322,45 @@ static int ext4_symlink(struct user_namespace *mnt_userns, struct inode *dir,
- 		if (err)
- 			goto err_drop_inode;
- 		inode->i_op = &ext4_encrypted_symlink_inode_operations;
-+	} else {
-+		if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
-+			inode->i_op = &ext4_symlink_inode_operations;
-+		} else {
-+			inode->i_op = &ext4_fast_symlink_inode_operations;
-+			inode->i_link = (char *)&EXT4_I(inode)->i_data;
-+		}
- 	}
- 
- 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
--		if (!IS_ENCRYPTED(inode))
--			inode->i_op = &ext4_symlink_inode_operations;
--		inode_nohighmem(inode);
--		ext4_set_aops(inode);
--		/*
--		 * We cannot call page_symlink() with transaction started
--		 * because it calls into ext4_write_begin() which can wait
--		 * for transaction commit if we are running out of space
--		 * and thus we deadlock. So we have to stop transaction now
--		 * and restart it when symlink contents is written.
--		 *
--		 * To keep fs consistent in case of crash, we have to put inode
--		 * to orphan list in the mean time.
--		 */
--		drop_nlink(inode);
--		err = ext4_orphan_add(handle, inode);
--		if (handle)
--			ext4_journal_stop(handle);
--		handle = NULL;
--		if (err)
--			goto err_drop_inode;
--		err = __page_symlink(inode, disk_link.name, disk_link.len, 1);
--		if (err)
--			goto err_drop_inode;
--		/*
--		 * Now inode is being linked into dir (EXT4_DATA_TRANS_BLOCKS
--		 * + EXT4_INDEX_EXTRA_TRANS_BLOCKS), inode is also modified
--		 */
--		handle = ext4_journal_start(dir, EXT4_HT_DIR,
--				EXT4_DATA_TRANS_BLOCKS(dir->i_sb) +
--				EXT4_INDEX_EXTRA_TRANS_BLOCKS + 1);
--		if (IS_ERR(handle)) {
--			err = PTR_ERR(handle);
--			handle = NULL;
--			goto err_drop_inode;
--		}
--		set_nlink(inode, 1);
--		err = ext4_orphan_del(handle, inode);
-+		/* alloc symlink block and fill it */
-+		err = ext4_init_symlink_block(handle, inode, &disk_link);
- 		if (err)
- 			goto err_drop_inode;
- 	} else {
- 		/* clear the extent format for fast symlink */
- 		ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
--		if (!IS_ENCRYPTED(inode)) {
--			inode->i_op = &ext4_fast_symlink_inode_operations;
--			inode->i_link = (char *)&EXT4_I(inode)->i_data;
--		}
- 		memcpy((char *)&EXT4_I(inode)->i_data, disk_link.name,
- 		       disk_link.len);
- 		inode->i_size = disk_link.len - 1;
-+		EXT4_I(inode)->i_disksize = inode->i_size;
- 	}
--	EXT4_I(inode)->i_disksize = inode->i_size;
- 	err = ext4_add_nondir(handle, dentry, &inode);
- 	if (handle)
- 		ext4_journal_stop(handle);
- 	if (inode)
- 		iput(inode);
--	goto out_free_encrypted_link;
-+	goto out_retry;
- 
- err_drop_inode:
--	if (handle)
--		ext4_journal_stop(handle);
- 	clear_nlink(inode);
-+	ext4_orphan_add(handle, inode);
- 	unlock_new_inode(inode);
-+	if (handle)
-+		ext4_journal_stop(handle);
- 	iput(inode);
--out_free_encrypted_link:
-+out_retry:
-+	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
-+		goto retry;
- 	if (disk_link.name != (unsigned char *)symname)
- 		kfree(disk_link.name);
- 	return err;
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index 69109746e6e2..af9a613ed3b2 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -27,7 +27,7 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
- 					   struct inode *inode,
- 					   struct delayed_call *done)
- {
--	struct page *cpage = NULL;
-+	struct buffer_head *bh = NULL;
- 	const void *caddr;
- 	unsigned int max_size;
- 	const char *paddr;
-@@ -39,16 +39,19 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
- 		caddr = EXT4_I(inode)->i_data;
- 		max_size = sizeof(EXT4_I(inode)->i_data);
- 	} else {
--		cpage = read_mapping_page(inode->i_mapping, 0, NULL);
--		if (IS_ERR(cpage))
--			return ERR_CAST(cpage);
--		caddr = page_address(cpage);
-+		bh = ext4_bread(NULL, inode, 0, 0);
-+		if (IS_ERR(bh))
-+			return ERR_CAST(bh);
-+		if (!bh) {
-+			EXT4_ERROR_INODE(inode, "bad symlink.");
-+			return ERR_PTR(-EFSCORRUPTED);
-+		}
-+		caddr = bh->b_data;
- 		max_size = inode->i_sb->s_blocksize;
- 	}
- 
- 	paddr = fscrypt_get_symlink(inode, caddr, max_size, done);
--	if (cpage)
--		put_page(cpage);
-+	brelse(bh);
- 	return paddr;
- }
- 
-@@ -62,6 +65,41 @@ static int ext4_encrypted_symlink_getattr(struct user_namespace *mnt_userns,
- 	return fscrypt_symlink_getattr(path, stat);
- }
- 
-+static void ext4_free_link(void *bh)
-+{
-+	brelse(bh);
-+}
-+
-+static const char *ext4_get_link(struct dentry *dentry, struct inode *inode,
-+				 struct delayed_call *callback)
-+{
-+	struct buffer_head *bh;
-+
-+	if (!dentry) {
-+		bh = ext4_getblk(NULL, inode, 0, 0);
-+		if (!bh || IS_ERR(bh))
-+			goto error_out;
-+		if (!ext4_buffer_uptodate(bh))
-+			return ERR_PTR(-ECHILD);
-+	} else {
-+		bh = ext4_bread(NULL, inode, 0, 0);
-+		if (!bh || IS_ERR(bh))
-+			goto error_out;
++#ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
++	if ((sb->s_flags & SB_INLINECRYPT) && !f2fs_hw_support_crypto(sbi)) {
++		f2fs_info(sbi, "mounting with \"inlinecrypt\" option, but the device does not support inlinecrypt");
++		sb->s_flags &= ~SB_INLINECRYPT;
 +	}
++#endif
 +
-+	set_delayed_call(callback, ext4_free_link, bh);
-+	nd_terminate_link(bh->b_data, inode->i_size,
-+			  inode->i_sb->s_blocksize - 1);
-+	return bh->b_data;
-+
-+error_out:
-+	if (!bh) {
-+		EXT4_ERROR_INODE(inode, "bad symlink.");
-+		return ERR_PTR(-EFSCORRUPTED);
-+	}
-+	return ERR_CAST(bh);
-+}
-+
- const struct inode_operations ext4_encrypted_symlink_inode_operations = {
- 	.get_link	= ext4_encrypted_get_link,
- 	.setattr	= ext4_setattr,
-@@ -70,7 +108,7 @@ const struct inode_operations ext4_encrypted_symlink_inode_operations = {
- };
- 
- const struct inode_operations ext4_symlink_inode_operations = {
--	.get_link	= page_get_link,
-+	.get_link	= ext4_get_link,
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
+ 	if (F2FS_IO_SIZE_BITS(sbi) && !f2fs_lfs_mode(sbi)) {
+ 		f2fs_err(sbi, "Should set mode=lfs with %uKB-sized IO",
+ 			 F2FS_IO_SIZE_KB(sbi));
 -- 
-2.31.1
+2.32.0
 
