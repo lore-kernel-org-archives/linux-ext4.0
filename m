@@ -2,53 +2,55 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BC7AC43217
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7592FC433F5
 	for <linux-ext4@archiver.kernel.org>; Mon, 18 Apr 2022 06:33:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236134AbiDRGg2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Apr 2022 02:36:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49856 "EHLO
+        id S236810AbiDRGg3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Apr 2022 02:36:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49778 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236810AbiDRGgT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2022 02:36:19 -0400
+        with ESMTP id S236813AbiDRGgV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Apr 2022 02:36:21 -0400
 Received: from APC01-SG2-obe.outbound.protection.outlook.com (mail-sgaapc01on2109.outbound.protection.outlook.com [40.107.215.109])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5865018E3F;
-        Sun, 17 Apr 2022 23:33:38 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CB28519007;
+        Sun, 17 Apr 2022 23:33:40 -0700 (PDT)
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=AcPfzZbC8JhMvuB7ob9+flrf1S080/02bJ3ZUisd60icEziQyqwxfKNxYkAmZi3WrclWmew/k6UcNRYLCU0o8jouQEp2lJl5QjdC6OjJ4hw+q+ZXI+Qi87vnCgG+G+6wVTG4ohxUZc6Nf16UWio9UMGMf1VocjWutcsxG+a9XN2pfSbS/PxMlSrZl5WToI+HQ7l9fRkKM4jqFtp9yuJPl8E8JO7amhlVi221kS1TyhihB0L7LGOWtceLwDTW8QNkHMD+JqZBLjN6U27mxPNvvD2LOfY4o6Nlmz7EM14xcremC/fALLgnDlQMyxh9KWcPyJ9bHJbQwwafrkGh8fQfiQ==
+ b=cKO7Ce/RYFyB88bpO0GkMaarYlkRYqPNY1RbhUPADi+z3XNmy6n2EXO1HtyvN8Gx5EldscXLYJsfa69FqjHdU5Wp38Iic0A2S4X+bnNBhPbA0O6ZMdfuCt5OJRspyA0a6PT+e+7GkXB3sHOdYgbrWJj55mbn0ausVmezKm6GznhEoIGqF3HFVURmzAzokMvG+8wa6dsoE5rKPlf2Y4xrvvNCnn4s2FHgdrpwvjg6N0dqqJ8j9TNtZReiEW95I220vjdFO8ZEsCphfuAJqJCD1j5XSLKTkgpH4S7NfuNu+3iGEAF+F4WuJIwQVqc6bclqUeoo/zem+q8s7C0oTgLlLQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=o6hmehXcFAR1LpNSYALI3vQiOl2uusEqiuGD9Jahh80=;
- b=GRXBjo+uJrJa8q2GJy/dzrGVtZ5nRrWKJ4765xb+VJKIB1nqd7TFDv/jeylOddI28SSAMKG9IPt6S2xaXlmELdcYBXL9BTMCEcsQYoN2MIomc6oyw4tJrDuL0FjhZrDFDepQ7r8Gw0z9VOW301hvXGXd9UPaAIeoL0dWdcJIiLQ+25W8rgSfrPKkgtgZQDdZ2GVfPrK8x1iRC/tPQBeGI0DCHC1c9BbnveXzhojDjOl72xaxXsBIOEwZTywGT9vKdz0ICSbHe9dP1SF/zXMCa/U6l1LAZv1gRx4vd6SVRRWf3VCnHbi4lNnnc24GoBVTFYu8+B6eGAc4QK82vabjvQ==
+ bh=lmPWqmtS7iPD3Gnh0idgaebWXHkUMfU5HptJ3FmgFUM=;
+ b=V9QaefoHQk2JumAu51SnFIBDoBY1d14+yaKmf+sTTlYDial2zLYLRgQW3d1YiClag7089/5K2PhO8cRH2gED1fJFWXLvYDsQpOEKGsqz3AvJbtmuU93BzEkf0d8MINYwosOU6XarLuM3kxLGxXHg08vPxOup1+Kqh7ShdhCZMU8IUBJT7UkplgnVrxMxMdJZ3qOYhc6k30r6OHRwyc+wXvb0WyGLtlN3xbMmOUILpry9zaELScqyYd+JLNIS+Y4YEB8orEHaeyk6TzLizEbCShmlLh3T3RjrtSK6mCDxwGNgE0P/AmRe08Gqgs8BJGY6qNpwfn/kTuaezPo9cipk2A==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=vivo.com; dmarc=pass action=none header.from=vivo.com;
  dkim=pass header.d=vivo.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=vivo0.onmicrosoft.com;
  s=selector2-vivo0-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=o6hmehXcFAR1LpNSYALI3vQiOl2uusEqiuGD9Jahh80=;
- b=Zmm8gMwWBio+KObS2c5tlNVxrD3rAOPmll0XjWLdwEutHxtjfB6TT6HGQzRMzYyidKPVUeT6uHRJck6S0GhH5tXbx1TW9niqymzzfQWOdU3N8C2TGevRVHIIC5+1f85UTEwKxO1Xte4R4yNCh+TbDAg5SKXFdjzKfUUpZko3qmA=
+ bh=lmPWqmtS7iPD3Gnh0idgaebWXHkUMfU5HptJ3FmgFUM=;
+ b=C/L3WjGfxZn2hFp5DKUtWSHJnyuciZNTM/Yi6nrZZH8o0qAfDf7TDPoiJJ/kKBy6q7KjH4dWzJ/wNlXcpd6o/lEsYRHziajoPI/ubdBgTk66mUxBkhAEL7UKb/f4l2wHRV/E2ZwRU61kkyQIvbJ6/Zjp0Lq3yJp6v+c3upRflbQ=
 Authentication-Results: dkim=none (message not signed)
  header.d=none;dmarc=none action=none header.from=vivo.com;
 Received: from KL1PR0601MB4003.apcprd06.prod.outlook.com (2603:1096:820:26::6)
  by SG2PR06MB3095.apcprd06.prod.outlook.com (2603:1096:4:75::15) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5164.20; Mon, 18 Apr
- 2022 06:33:31 +0000
+ 2022 06:33:35 +0000
 Received: from KL1PR0601MB4003.apcprd06.prod.outlook.com
  ([fe80::f0c7:9081:8b5a:7e7e]) by KL1PR0601MB4003.apcprd06.prod.outlook.com
  ([fe80::f0c7:9081:8b5a:7e7e%8]) with mapi id 15.20.5164.025; Mon, 18 Apr 2022
- 06:33:31 +0000
+ 06:33:35 +0000
 From:   Fengnan Chang <changfengnan@vivo.com>
 To:     jaegeuk@kernel.org, chao@kernel.org, tytso@mit.edu,
         adilger.kernel@dilger.ca, axboe@kernel.dk
 Cc:     linux-f2fs-devel@lists.sourceforge.net, linux-ext4@vger.kernel.org,
         linux-block@vger.kernel.org, Fengnan Chang <changfengnan@vivo.com>
-Subject: [PATCH 1/3] blk-crypto: introduce blk_crypto_supported
-Date:   Mon, 18 Apr 2022 14:33:10 +0800
-Message-Id: <20220418063312.63181-1-changfengnan@vivo.com>
+Subject: [PATCH 3/3] ext4: notify when device not supprt inlinecrypt
+Date:   Mon, 18 Apr 2022 14:33:12 +0800
+Message-Id: <20220418063312.63181-3-changfengnan@vivo.com>
 X-Mailer: git-send-email 2.32.0
+In-Reply-To: <20220418063312.63181-1-changfengnan@vivo.com>
+References: <20220418063312.63181-1-changfengnan@vivo.com>
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
 X-ClientProxiedBy: TYAPR01CA0068.jpnprd01.prod.outlook.com
@@ -56,80 +58,70 @@ X-ClientProxiedBy: TYAPR01CA0068.jpnprd01.prod.outlook.com
  (2603:1096:820:26::6)
 MIME-Version: 1.0
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 275c9f2c-9563-402f-e781-08da21055aff
+X-MS-Office365-Filtering-Correlation-Id: a4762591-fc7f-4d43-6dfc-08da21055d66
 X-MS-TrafficTypeDiagnostic: SG2PR06MB3095:EE_
-X-Microsoft-Antispam-PRVS: <SG2PR06MB3095496E51532255E4B98027BBF39@SG2PR06MB3095.apcprd06.prod.outlook.com>
+X-Microsoft-Antispam-PRVS: <SG2PR06MB3095EE50EA3F4D13F789B000BBF39@SG2PR06MB3095.apcprd06.prod.outlook.com>
 X-MS-Exchange-SenderADCheck: 1
 X-MS-Exchange-AntiSpam-Relay: 0
 X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: DbhLy57t/AZDdVLR9nfWPspjUnb8vKGQmkj1sD4GmjsuEOz0g9wA7tIgd0ti83EgkGoChr1Eea6ZXjQHh12NdomYEUPxon9zg6J6BaectlgTokHSetTMkPD0Fha4HKcUulViaQKfpMTljFmdr5zxArH+ApWpPbM9Nn5W8asIe/98lX0p48+gJiuhjwTO7UJ4wofvIMWTSVPoGA51lOD/YX9Slruro4ER/kg/kmZMLXYcyjfu1N6yy6hb+BLBEBIjqrliS3EagJZUmeRLsKdf54UZWP58pQgFTXeTXJyiWJiQ/WKY049ShmT0aETTaDyBddr0hWYg4a6xM0OYtJsAYa1VSgu7kE4jm002Xs7O8xBbkIFZSVV8vCY574O5LV47qniLlH5iS2XcR8PtKHQF+YujO4zmgSd6N31Xw5ctnDPx0ZbpM7x0sF7EVJ0TVH8nwIIYDige8kuPop4xKVuMbyu9JKGK+VgNrcBX5W0oWrPS1iWeBGbtK3lEvfXH1QS9NgRHJZQDFhnLg4/h8mWsKLXvPmitS73tkqxhxBGdm//2hifCrvLbB343pb1mZTeAW7NMW1KWd2TdfI5AaTO3j8nv8ZLRHL0MICn44k1C7xhavf2lKcrQTkZj02GXLfAc
+X-Microsoft-Antispam-Message-Info: sseW0M3Kk4hb3ypYTyW6FPA1nW5r4IyDTKKDa/H3YtlwXl+/DgIsJuo93+nBSumPbNip8pb01Ma4XdfoO5FWlYoGDN7tikcpfYJCP9IYfI0EiqxPTBG/opa4VZUHXAZMsXmUYmMUKypit5Wk32nJTm7WJeEisW/CbOz5P8+/Dimnt+2DKBIAntCjtx4f+mcoXVojLuM4iQGilHx76Yp7YLNTJr8o1YPkdeEaE273drt9RDJnQ6VzUBU9Kvqr4WuddSwx2iL8p45TIQMfSKQWshtFB5K5cPuMeWyVpW8hDkCg1rTaEv19klk+raR9lAjvQ03Pm6yLUJcE6Qc1iJ0Wt6bZgAKl3VfwqiEx06uSZkT99CPmGuUnEaznirn2d70PlBK3XYWzeA2KnJmpwRK73Fo86hRgwrVRnbi1VXwfQQK9QvBBkqT8CTCoGz6lz0rZ/BbAzjOFU6+hP3PjFLgc6cuR/3bEITRcsaHxO3bQHX6fraT76417xBySDGGMQR+USskx7Sm+7GzW6qiHamwrv/H6rhReMOT1EVMI1mu78BxPpYh67NjdMFBdfX8ReKwK166XVIIFovfAMGUMndQ0XFkFm8EMp5n3Xy9nB+dM1RYnAd7m2Mc+9/scFCXTmcw3
 X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:KL1PR0601MB4003.apcprd06.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230001)(4636009)(366004)(8676002)(4326008)(66946007)(2906002)(6506007)(52116002)(66556008)(6666004)(66476007)(2616005)(508600001)(5660300002)(107886003)(86362001)(1076003)(8936002)(6486002)(186003)(6512007)(26005)(36756003)(316002)(83380400001)(38350700002)(38100700002);DIR:OUT;SFP:1102;
 X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0: 8YvNsZ76UAWTwWhwKdqi9HKmYTrVoalNn2b9TVbYtiklqkjMkZbHjpwVki2g3hbg/gEfct2BzX/OtpkEZMu0yrW/h23daZQlIKJH0EWCMGM6kxUn4Nx/h04WBiI0AXZcK5g73/yPTu3Hp+uluDoP3uR9afNmuXTkZL/baIZByRPjiINkQCj5y/0fqkRxXPeNax+QAWiHfIIAYWMZj0d8nx73WVqLvWV5Er7PFvvkLlGeHOvYz7dkpzUPdv74bsHAYduzqvOE7gHYlG+LDde/WxFcG59ywwX+yVu5WCOBFNKMCGULNHvfcmDCdTE4xbUIS42EonaG3/5MNw+JZ8t3mqb7BbwYr3P487naTYmyjzDMcPPu+Q/2GME5l7Wj+cGXOtZiL1rTKiotJJrOsHuOJJXf7Gc1jcpNuCl9gWLHFPw=
+X-MS-Exchange-AntiSpam-MessageData-0: MXgTOAXw+GKgHjF8rbzXwyBdLuCfQjIdKEpnkbNFzB7BcqpdlZOuAur937EQVZDgCzZHAnYLcDYqR8qk2ZIMcPD5V+WNo7EznpAnBJ+oA0rjatP938pTc6SuArKhF8W4/igT/f/1pB4F/xpe4xikAlKdjMx/sU08XdghnrwnWWdjYpQo51X5IrBhHM4MWuPrfMrxw4FW4s/msHG+4jrxKSbWTp7AHR4VKT0wkSIgaaPiZbStdgin/SEXhCzA5+yX+W6b0GAfiKAP1bmTEvoHMjfLFmXPRvEd4WIVFhXoa1dL5JNVP/00G0T3RWUzxw3HQGIG/OaiVO4dW2I2G/acRoHBYUQId+22Vo2j5fgPsWz6DJZcHyK65an3GOR6JuVd/3lmX2GI5FNcWB9qcXeruSMyFx2ggxcPii0C6WH2asA=
 X-OriginatorOrg: vivo.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 275c9f2c-9563-402f-e781-08da21055aff
+X-MS-Exchange-CrossTenant-Network-Message-Id: a4762591-fc7f-4d43-6dfc-08da21055d66
 X-MS-Exchange-CrossTenant-AuthSource: KL1PR0601MB4003.apcprd06.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 18 Apr 2022 06:33:31.3633
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 18 Apr 2022 06:33:35.4549
  (UTC)
 X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
 X-MS-Exchange-CrossTenant-Id: 923e42dc-48d5-4cbe-b582-1a797a6412ed
 X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: +pmkrF13/4rvMYPjdeNKgGz20eV9aw0wQ0BeZRtS7o79ynbV2iOgA5G0LfDxfEnPc7dykAMCfki8pok6bYmcyg==
+X-MS-Exchange-CrossTenant-UserPrincipalName: UIrz7dDR7YMVwf7FqZ7P7Px9QO/ul1bzASoJ2B3EAeftllGgHaNV5//V5pxrwL6MT0lWNgoD/1hf04y70L+Tag==
 X-MS-Exchange-Transport-CrossTenantHeadersStamped: SG2PR06MB3095
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Introduce blk_crypto_supported, Filesystems may use this to check wheather
-storage device support inline encryption.
+Notify when mount filesystem with -o inlinecrypt option, but the device
+not support inlinecrypt.
 
 Signed-off-by: Fengnan Chang <changfengnan@vivo.com>
 ---
- block/blk-crypto.c         | 6 +++++-
- include/linux/blk-crypto.h | 5 +++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ fs/ext4/super.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/block/blk-crypto.c b/block/blk-crypto.c
-index a496aaef85ba..bef0833f9621 100644
---- a/block/blk-crypto.c
-+++ b/block/blk-crypto.c
-@@ -363,7 +363,11 @@ bool blk_crypto_config_supported(struct request_queue *q,
- 	return IS_ENABLED(CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK) ||
- 	       __blk_crypto_cfg_supported(q->crypto_profile, cfg);
- }
--
-+bool blk_crypto_supported(struct request_queue *q)
-+{
-+	return IS_ENABLED(CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK) ||
-+	       q->crypto_profile;
-+}
- /**
-  * blk_crypto_start_using_key() - Start using a blk_crypto_key on a device
-  * @key: A key to use on the device
-diff --git a/include/linux/blk-crypto.h b/include/linux/blk-crypto.h
-index 69b24fe92cbf..6806cef24d0f 100644
---- a/include/linux/blk-crypto.h
-+++ b/include/linux/blk-crypto.h
-@@ -103,6 +103,7 @@ int blk_crypto_evict_key(struct request_queue *q,
- bool blk_crypto_config_supported(struct request_queue *q,
- 				 const struct blk_crypto_config *cfg);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 81749eaddf4c..f91454d3a877 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -48,6 +48,7 @@
+ #include <linux/fsnotify.h>
+ #include <linux/fs_context.h>
+ #include <linux/fs_parser.h>
++#include <linux/blk-crypto.h>
  
-+bool blk_crypto_supported(struct request_queue *q);
- #else /* CONFIG_BLK_INLINE_ENCRYPTION */
+ #include "ext4.h"
+ #include "ext4_extents.h"	/* Needed for trace points definition */
+@@ -5466,6 +5467,17 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 				 "the device does not support discard");
+ 	}
  
- static inline bool bio_has_crypt_ctx(struct bio *bio)
-@@ -110,6 +111,10 @@ static inline bool bio_has_crypt_ctx(struct bio *bio)
- 	return false;
- }
++#ifdef CONFIG_FS_ENCRYPTION_INLINE_CRYPT
++	if (sb->s_flags & SB_INLINECRYPT) {
++		struct request_queue *q = bdev_get_queue(sb->s_bdev);
++
++		if (!blk_crypto_supported(q)) {
++			ext4_msg(sb, KERN_WARNING,
++			 "mounting with \"inlinecrypt\" option, but the device does not support inlinecrypt");
++			sb->s_flags &= ~SB_INLINECRYPT;
++		}
++	}
++#endif
++
+ 	if (es->s_error_count)
+ 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
  
-+static inline bool blk_crypto_supported(struct request_queue *q)
-+{
-+	return false;
-+}
- #endif /* CONFIG_BLK_INLINE_ENCRYPTION */
- 
- int __bio_crypt_clone(struct bio *dst, struct bio *src, gfp_t gfp_mask);
 -- 
 2.32.0
 
