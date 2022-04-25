@@ -2,42 +2,42 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1965CC433F5
-	for <linux-ext4@archiver.kernel.org>; Sun, 24 Apr 2022 15:35:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63D0BC433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Apr 2022 04:12:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231666AbiDXPiG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 24 Apr 2022 11:38:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48552 "EHLO
+        id S240927AbiDYEPZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Apr 2022 00:15:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43298 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238322AbiDXP0n (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Apr 2022 11:26:43 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8E1A11F60D
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2022 08:23:42 -0700 (PDT)
+        with ESMTP id S241015AbiDYEPH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Apr 2022 00:15:07 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E464E6E
+        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2022 21:12:04 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 49EDFB80E13
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2022 15:23:41 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 016F5C385A7
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Apr 2022 15:23:39 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1269E6100A
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Apr 2022 04:12:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 708DCC385AD
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Apr 2022 04:12:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1650813820;
-        bh=vEx6xfS/KnLQdpBhm//UGhfMRYr8Lyt1i1p3j0ZoXzc=;
+        s=k20201202; t=1650859923;
+        bh=G8LVGWOshUroQS+5AQRyCd2PifSquO7wdNh5MPIXWKc=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=CV/cghfYetHBvSR0Tx18+Jeuf0QkMwGMf6B3azH2vKfa8/eZIXQe9ttd6d69KEGqX
-         9EShkWz8MoTWmXjWf/7oXXWeOjNCgJen5ww03YzEwyZiVTww7XCWPQSXiITcd4QRnf
-         xHIHbdnA5wpJlw+ncTMaKed0T6HlpKnD8+qz5SOluDtkW/Ax7ATP9dli98sGpWI2cC
-         RgkH1AH5SWoZTivDoFe4z3PI4oQuTkHKt9jC+i1hzw7W6rlyEmxIDAgbJS/P6Le2RM
-         175TYmnbAnplBc/0Y4skjb4TX1G4r0Nkgu05X9OS67o8tvuNtxl7/sv7cUes3txUFJ
-         K/otX6OqfjTPA==
+        b=vIjuj5d+sXuN/dxQlIsF6psmrskDOzCGaQkrq8UDgJlqB0u+Mknz9eQQI1uFP6GZj
+         Qlzo1L//PMyDm/7X/r5sdKmYlNWmrJ5Bqz6rcs5k9xhrwff75HRpkUu74zfmWs8frA
+         3jJZ5GLT3aF48nT9Vb3emQDouKEbMws53usJtDLDzUiL2A5Drov0AoKS7c96TLtpAx
+         wd09j6PDac0vdFrUIqBtWqZBRyWtdf3hI8mppsyhkl/hKTyFBtP5whBuWyn2zYgFi7
+         7eannFKX+pnbc98ZCmB7H004yROEmfxUTb1xuDnF+IAVwroaRz+/FV0dgukexv+EWm
+         WQwPvpU7yD3Iw==
 Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id D02D1C05FD6; Sun, 24 Apr 2022 15:23:39 +0000 (UTC)
+        id 501C5C05FCE; Mon, 25 Apr 2022 04:12:03 +0000 (UTC)
 From:   bugzilla-daemon@kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 215879] EXT4-fs error - __ext4_find_entry:1612: inode #2: comm
  systemd: reading directory lblock 0
-Date:   Sun, 24 Apr 2022 15:23:39 +0000
+Date:   Mon, 25 Apr 2022 04:12:03 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -46,14 +46,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: high
-X-Bugzilla-Who: ionut_n2001@yahoo.com
+X-Bugzilla-Who: tytso@mit.edu
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-215879-13602-xCPkgBQh6d@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-215879-13602-hayy4Pm3Jk@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-215879-13602@https.bugzilla.kernel.org/>
 References: <bug-215879-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -67,10 +67,35 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=3D215879
 
---- Comment #1 from sander44 (ionut_n2001@yahoo.com) ---
-Created attachment 300795
-  --> https://bugzilla.kernel.org/attachment.cgi?id=3D300795&action=3Dedit
-config kernel
+Theodore Tso (tytso@mit.edu) changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #3 from Theodore Tso (tytso@mit.edu) ---
+We should really improve the error message; what this indicates is that whi=
+le
+trying to read from a directory, ext4 received an I/O error from the storage
+device:
+
+                wait_on_buffer(bh);
+                if (!buffer_uptodate(bh)) {
+                        EXT4_ERROR_INODE_ERR(dir, EIO,
+                                             "reading directory lblock %lu",
+                                             (unsigned long) block);
+                        brelse(bh);
+                        ret =3D ERR_PTR(-EIO);
+                        goto cleanup_and_exit;
+                }
+
+I'm not sure why systemd is trying to read so many directories, and why you
+aren't seeing any I/O error messages logged on the console.  At a guess, the
+block device has completely failed, and there were messages about the unfol=
+ding
+disaster that has since scrolled off your screen.
+
+Bottom line, this is very likely an hardware problem of some sort.
 
 --=20
 You may reply to this email to add a comment.
