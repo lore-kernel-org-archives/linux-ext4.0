@@ -2,200 +2,130 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5AFFC433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Apr 2022 16:06:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9892C433FE
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Apr 2022 16:24:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241467AbiD0QJ6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Apr 2022 12:09:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52560 "EHLO
+        id S242335AbiD0Q1u (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Apr 2022 12:27:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43144 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242592AbiD0QJq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Apr 2022 12:09:46 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6C325487037
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Apr 2022 09:05:41 -0700 (PDT)
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id BDA36210FC;
-        Wed, 27 Apr 2022 15:58:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1651075108; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=MFrw8cN8Cf7Eguyxjf0dxcCq/u3Z76a1MNXexWpFSC4=;
-        b=wl2+DQTUAt7rBPQ7y9Km5BKseAb091TXQL9WwmvmnBN1unaPTfulki/36PVhH7y9dnZe9q
-        awiDZFN4I5VWlx7GJFYz3A19Va+oTnB73KlOBbdSM3LLU/E5CpP91cbWAwC7+S8G86dZJe
-        IssZNpnVa+9RueUOTburNbEaeTH1boU=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1651075108;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=MFrw8cN8Cf7Eguyxjf0dxcCq/u3Z76a1MNXexWpFSC4=;
-        b=F/SVn0BqbxRNlfwjM4HC5OprK8uYcIyc+B9WJHDWv2ts4AcV2crXlsUxdjBI2fMbaZotvI
-        XpZkl4vhe1eyeRAQ==
-Received: from quack3.suse.cz (unknown [10.100.224.230])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 6CF512C141;
-        Wed, 27 Apr 2022 15:58:28 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 85AD6A061C; Wed, 27 Apr 2022 17:58:25 +0200 (CEST)
-Date:   Wed, 27 Apr 2022 17:58:25 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, riteshh@linux.ibm.com, jack@suse.cz,
-        tytso@mit.edu
-Subject: Re: [PATCH v3 1/6] ext4: convert i_fc_lock to spinlock
-Message-ID: <20220427155825.qxorb7fmwoj2zxql@quack3.lan>
-References: <20220419173143.3564144-1-harshads@google.com>
- <20220419173143.3564144-2-harshads@google.com>
+        with ESMTP id S242936AbiD0Q1B (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Apr 2022 12:27:01 -0400
+Received: from smtp-fw-6002.amazon.com (smtp-fw-6002.amazon.com [52.95.49.90])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 05E9D266DB7
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Apr 2022 09:21:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1651076512; x=1682612512;
+  h=date:from:to:cc:message-id:references:mime-version:
+   in-reply-to:subject;
+  bh=Cbg75PUlXZajnRxt3xMCnhVcFuPLrtdlN4tn+AcY6xI=;
+  b=c1HLNC1wvUEKlQgmJVyjh9Miw02XPBzl1FqX8bxGqWbr9Nq6syTmXXlN
+   PCU9qfS4qgTj1PyKRF0jp/Yq2Yu7S3lQd7sB9p/ZGXUAm+jCuJ/0FILzl
+   9V/9PGQxZlPCJqJ+RkffWDcvYblhDIk/Ao4Enm6OJC95Wk2u7fLYsque+
+   Y=;
+X-IronPort-AV: E=Sophos;i="5.90,293,1643673600"; 
+   d="scan'208";a="196791255"
+Subject: Re: [PATCH] jbd2: Fix use-after-free of transaction_t race
+Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-iad-1a-2d7489a4.us-east-1.amazon.com) ([10.43.8.2])
+  by smtp-border-fw-6002.iad6.amazon.com with ESMTP; 27 Apr 2022 16:21:48 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan2.iad.amazon.com [10.40.163.34])
+        by email-inbound-relay-iad-1a-2d7489a4.us-east-1.amazon.com (Postfix) with ESMTPS id 57982951B2;
+        Wed, 27 Apr 2022 16:21:47 +0000 (UTC)
+Received: from EX13D01UWA002.ant.amazon.com (10.43.160.74) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.118) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.32; Wed, 27 Apr 2022 16:21:47 +0000
+Received: from localhost (10.43.161.193) by EX13d01UWA002.ant.amazon.com
+ (10.43.160.74) with Microsoft SMTP Server (TLS) id 15.0.1497.32; Wed, 27 Apr
+ 2022 16:21:46 +0000
+Date:   Wed, 27 Apr 2022 09:21:46 -0700
+From:   Samuel Mendoza-Jonas <samjonas@amazon.com>
+To:     Jan Kara <jack@suse.cz>
+CC:     Ritesh Harjani <riteshh@linux.ibm.com>,
+        <linux-ext4@vger.kernel.org>,
+        <syzbot+afa2ca5171d93e44b348@syzkaller.appspotmail.com>
+Message-ID: <20220427162146.3nj3czri4krdpy3c@u46989501580c5c.ant.amazon.com>
+References: <948c2fed518ae739db6a8f7f83f1d58b504f87d0.1644497105.git.ritesh.list@gmail.com>
+ <20220426183124.phrwsl77bch5uljx@u46989501580c5c.ant.amazon.com>
+ <20220427111726.3wdyxbqoxs7skdzf@quack3.lan>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="us-ascii"
 Content-Disposition: inline
-In-Reply-To: <20220419173143.3564144-2-harshads@google.com>
+In-Reply-To: <20220427111726.3wdyxbqoxs7skdzf@quack3.lan>
+X-Originating-IP: [10.43.161.193]
+X-ClientProxiedBy: EX13D10UWA003.ant.amazon.com (10.43.160.248) To
+ EX13d01UWA002.ant.amazon.com (10.43.160.74)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 19-04-22 10:31:38, Harshad Shirwadkar wrote:
-> From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+On Wed, Apr 27, 2022 at 01:17:26PM +0200, Jan Kara wrote:
+> CAUTION: This email originated from outside of the organization. Do not click links or open attachments unless you can confirm the sender and know the content is safe.
 > 
-> Convert ext4_inode_info->i_fc_lock to spinlock to avoid sleeping
-> in invalid contexts.
 > 
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/ext4.h        |  7 +++++--
->  fs/ext4/fast_commit.c | 22 ++++++++++------------
->  fs/ext4/super.c       |  2 +-
->  3 files changed, 16 insertions(+), 15 deletions(-)
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 1d79012c5a5b..46ca0979e73b 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1065,8 +1065,11 @@ struct ext4_inode_info {
->  	/* Fast commit wait queue for this inode */
->  	wait_queue_head_t i_fc_wait;
->  
-> -	/* Protect concurrent accesses on i_fc_lblk_start, i_fc_lblk_len */
-> -	struct mutex i_fc_lock;
-> +	/*
-> +	 * Protect concurrent accesses on i_fc_lblk_start, i_fc_lblk_len
-> +	 * and inode's EXT4_FC_STATE_COMMITTING state bit.
-> +	 */
-> +	spinlock_t i_fc_lock;
->  
->  	/*
->  	 * i_disksize keeps track of what the inode size is ON DISK, not
-> diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
-> index 3d72565ec6e8..c278060a15bc 100644
-> --- a/fs/ext4/fast_commit.c
-> +++ b/fs/ext4/fast_commit.c
-> @@ -380,7 +380,7 @@ static int ext4_fc_track_template(
->  	int ret;
->  
->  	tid = handle->h_transaction->t_tid;
-> -	mutex_lock(&ei->i_fc_lock);
-> +	spin_lock(&ei->i_fc_lock);
->  	if (tid == ei->i_sync_tid) {
->  		update = true;
->  	} else {
-> @@ -388,7 +388,7 @@ static int ext4_fc_track_template(
->  		ei->i_sync_tid = tid;
->  	}
->  	ret = __fc_track_fn(inode, args, update);
-> -	mutex_unlock(&ei->i_fc_lock);
-> +	spin_unlock(&ei->i_fc_lock);
->  
->  	if (!enqueue)
->  		return ret;
-> @@ -420,11 +420,11 @@ static int __track_dentry_update(struct inode *inode, void *arg, bool update)
->  	struct dentry *dentry = dentry_update->dentry;
->  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
->  
-> -	mutex_unlock(&ei->i_fc_lock);
-> +	spin_unlock(&ei->i_fc_lock);
->  	node = kmem_cache_alloc(ext4_fc_dentry_cachep, GFP_NOFS);
->  	if (!node) {
->  		ext4_fc_mark_ineligible(inode->i_sb, EXT4_FC_REASON_NOMEM, NULL);
-> -		mutex_lock(&ei->i_fc_lock);
-> +		spin_lock(&ei->i_fc_lock);
->  		return -ENOMEM;
->  	}
->  
-> @@ -437,7 +437,7 @@ static int __track_dentry_update(struct inode *inode, void *arg, bool update)
->  			kmem_cache_free(ext4_fc_dentry_cachep, node);
->  			ext4_fc_mark_ineligible(inode->i_sb,
->  				EXT4_FC_REASON_NOMEM, NULL);
-> -			mutex_lock(&ei->i_fc_lock);
-> +			spin_lock(&ei->i_fc_lock);
->  			return -ENOMEM;
->  		}
->  		memcpy((u8 *)node->fcd_name.name, dentry->d_name.name,
-> @@ -471,7 +471,7 @@ static int __track_dentry_update(struct inode *inode, void *arg, bool update)
->  		list_add_tail(&node->fcd_dilist, &ei->i_fc_dilist);
->  	}
->  	spin_unlock(&sbi->s_fc_lock);
-> -	mutex_lock(&ei->i_fc_lock);
-> +	spin_lock(&ei->i_fc_lock);
->  
->  	return 0;
->  }
-> @@ -611,10 +611,8 @@ static int __track_range(struct inode *inode, void *arg, bool update)
->  	struct __track_range_args *__arg =
->  		(struct __track_range_args *)arg;
->  
-> -	if (inode->i_ino < EXT4_FIRST_INO(inode->i_sb)) {
-> -		ext4_debug("Special inode %ld being modified\n", inode->i_ino);
-> +	if (inode->i_ino < EXT4_FIRST_INO(inode->i_sb))
->  		return -ECANCELED;
-> -	}
->  
->  	oldstart = ei->i_fc_lblk_start;
->  
-> @@ -906,15 +904,15 @@ static int ext4_fc_write_inode_data(struct inode *inode, u32 *crc)
->  	struct ext4_extent *ex;
->  	int ret;
->  
-> -	mutex_lock(&ei->i_fc_lock);
-> +	spin_lock(&ei->i_fc_lock);
->  	if (ei->i_fc_lblk_len == 0) {
-> -		mutex_unlock(&ei->i_fc_lock);
-> +		spin_unlock(&ei->i_fc_lock);
->  		return 0;
->  	}
->  	old_blk_size = ei->i_fc_lblk_start;
->  	new_blk_size = ei->i_fc_lblk_start + ei->i_fc_lblk_len - 1;
->  	ei->i_fc_lblk_len = 0;
-> -	mutex_unlock(&ei->i_fc_lock);
-> +	spin_unlock(&ei->i_fc_lock);
->  
->  	cur_lblk_off = old_blk_size;
->  	jbd_debug(1, "%s: will try writing %d to %d for inode %ld\n",
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index ae98b07285d2..d6fc12782657 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1347,7 +1347,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->  	atomic_set(&ei->i_unwritten, 0);
->  	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
->  	ext4_fc_init_inode(&ei->vfs_inode);
-> -	mutex_init(&ei->i_fc_lock);
-> +	spin_lock_init(&ei->i_fc_lock);
->  	return &ei->vfs_inode;
->  }
->  
-> -- 
-> 2.36.0.rc0.470.gd361397f0d-goog
+> On Tue 26-04-22 11:31:24, Samuel Mendoza-Jonas wrote:
+> > On Thu, Feb 10, 2022 at 09:07:11PM +0530, Ritesh Harjani wrote:
+> > > jbd2_journal_wait_updates() is called with j_state_lock held. But if
+> > > there is a commit in progress, then this transaction might get committed
+> > > and freed via jbd2_journal_commit_transaction() ->
+> > > jbd2_journal_free_transaction(), when we release j_state_lock.
+> > > So check for journal->j_running_transaction everytime we release and
+> > > acquire j_state_lock to avoid use-after-free issue.
+> > >
+> > > Fixes: 4f98186848707f53 ("jbd2: refactor wait logic for transaction updates into a common function")
+> > > Reported-and-tested-by: syzbot+afa2ca5171d93e44b348@syzkaller.appspotmail.com
+> > > Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+> >
+> > Hi Ritesh,
+> >
+> > Looking at the refactor in the commit this fixes, I believe the same
+> > issue is present prior to the refactor, so this would apply before 5.17
+> > as well.
+> > I've posted a backport for 4.9-4.19 and 5.4-5.16 to stable here:
+> > https://lore.kernel.org/stable/20220426182702.716304-1-samjonas@amazon.com/T/#t
+> >
+> > Please have a look and let me know if you agree.
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> Actually the refactor was indeed the cause for use-after-free. The original
+> code in jbd2_journal_lock_updates() was like:
+> 
+>        /* Wait until there are no running updates */
+>        while (1) {
+>                transaction_t *transaction = journal->j_running_transaction;
+> 
+>                if (!transaction)
+>                        break;
+>                spin_lock(&transaction->t_handle_lock);
+>                prepare_to_wait(&journal->j_wait_updates, &wait,
+>                                TASK_UNINTERRUPTIBLE);
+>                if (!atomic_read(&transaction->t_updates)) {
+>                        spin_unlock(&transaction->t_handle_lock);
+>                        finish_wait(&journal->j_wait_updates, &wait);
+>                        break;
+>                }
+>                spin_unlock(&transaction->t_handle_lock);
+>                write_unlock(&journal->j_state_lock);
+>                schedule();
+>                finish_wait(&journal->j_wait_updates, &wait);
+>                write_lock(&journal->j_state_lock);
+>        }
+> 
+> So you can see the code was indeed careful enough to not touch
+> t_handle_lock after sleeping. The code in jbd2_journal_commit_transaction()
+> did touch t_handle_lock but there it didn't matter because nobody else
+> besides the task running jbd2_journal_commit_transaction() can free the
+> transaction...
+> 
+
+Right you are, I misinterpreted the interaction with
+jbd2_journal_commit_transaction(). Thanks for verifying, I'll follow up
+stable to disregard those backports.
+
+Cheers,
+Sam
+
+>                                                                 Honza
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
