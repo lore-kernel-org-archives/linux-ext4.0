@@ -2,64 +2,78 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16079C43219
-	for <linux-ext4@archiver.kernel.org>; Thu, 28 Apr 2022 18:31:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73246C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Apr 2022 22:10:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351091AbiD1SfG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 28 Apr 2022 14:35:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37078 "EHLO
+        id S1352793AbiD1WOB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 Apr 2022 18:14:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42536 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351070AbiD1SfC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Apr 2022 14:35:02 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D51CBC849
-        for <linux-ext4@vger.kernel.org>; Thu, 28 Apr 2022 11:31:46 -0700 (PDT)
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id ED3DF21870;
-        Thu, 28 Apr 2022 18:31:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1651170704; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=B+EW8l3F8irlpyDH8ASBGnaXBLEGcgPgm/I4WqI1ip0=;
-        b=YkOFgli1EzeTPzsE1K3Qe+d20EIS6Iv2maXlMkvcycYEn6VaqPVoFYGPAjh8fSfn+IW0Lj
-        +oa+fqW9D16E/DngX8UlNA7siYz4uWBE7RL6RD75Pnq9nHUBAK81QHea7SIc6YXq9s7ili
-        gRSMa1g3qXphbQdazmun1+hNefpZ9I0=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1651170704;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=B+EW8l3F8irlpyDH8ASBGnaXBLEGcgPgm/I4WqI1ip0=;
-        b=LjObfy6ia6besCd0YvtS8q3rmVfCUzHyFZoCD0/9I8l+QDuUrpkf/9P2vtvxuyxDnbe/X1
-        8EYuEAoY3Kb6O1BA==
-Received: from quack3.suse.cz (unknown [10.100.224.230])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id C0AC12C142;
-        Thu, 28 Apr 2022 18:31:44 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id B6A1EA061A; Thu, 28 Apr 2022 20:31:43 +0200 (CEST)
-From:   Jan Kara <jack@suse.cz>
-To:     Ted Tso <tytso@mit.edu>
-Cc:     <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/2] ext4: Fix crash when adding entry to corrupted directory
-Date:   Thu, 28 Apr 2022 20:31:36 +0200
-Message-Id: <20220428180355.15209-1-jack@suse.cz>
-X-Mailer: git-send-email 2.34.1
+        with ESMTP id S1352812AbiD1WN5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Apr 2022 18:13:57 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF70A5B3D7
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Apr 2022 15:10:41 -0700 (PDT)
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        (Authenticated sender: krisman)
+        with ESMTPSA id F32B91F4247A
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
+        s=mail; t=1651183840;
+        bh=bcfClgonf+RR4NyaZu4xkE6VsQ2rDh7rY79Hk2fkr/0=;
+        h=From:To:Cc:Subject:Date:From;
+        b=n6W+0k1R5Hnp5cLFsP8gLdcYlA2KDLKx12h/b1DC2byjWE3xs7D8z1Y5f9bYLlQxA
+         6ejaZiPS6Idg8XOKU+bX8ZnlFB7KeW5vTK5tZyqoIa6L9khwCwC62OYQia7VVHT7ak
+         JpfJFecAaLc4QnIncRvaGmyRbOn9YoxS6i7Ri99GO2aTgStTeHKxGXT1zXd+6AuMA0
+         f1QZJ2aQ0lgcAHhM4fXFselCaI2h0qlzpO8JD2kGjv/JNnw8RaPBStiZ74jkJ5k/hu
+         ijQc1Qrvw3ZbPGh/SUODOxLDc9Rme8ZYdBmn2ta63HXnob4d9eZSRFcrw1SWP8qw+9
+         95dcCFsUrplQw==
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        ebiggers@kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel@collabora.com
+Subject: [PATCH v2 0/7] Clean up the case-insenstive lookup path
+Date:   Thu, 28 Apr 2022 18:10:20 -0400
+Message-Id: <20220428221027.269084-1-krisman@collabora.com>
+X-Mailer: git-send-email 2.35.1
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=424; h=from:subject:message-id; bh=wR5TsJzAR0r7sQ3bXyWPgttoDGZuJABgxOSnhEVKc6M=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiat1+nRc1d52MP49aP2DEe7gatxHI3UTTsUdQeTxz dkOUn1CJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYmrdfgAKCRCcnaoHP2RA2egPB/ 4xlwppqqO0Koo8KjqnulPRMjgDwlSvNAcqUct6s3Eb0LrJKIA3+IMX8b0IznlEISlg4uXqEsYRHVi1 wW6gb4WRYzk/flXksAlX8naFO6XuyaqdtaU4cw+nYexiK+MbKGMyT0rKve91GRBjClXtQjuXTwW986 WkgOzWAsGyY/swbYEuq8z+zkjXgysMsSUoHgIl01v8bWT7985HMrF4R438M+dYmITWMk3+fVop4tIf HUgNBSVR0wpaSpc9TzXDLB5wrXq2+m3L5zcrj2woNkCmUo3SBKjXKNplbt7A9Ij85Wd2VLOU86gGcF hTM7dKjRIqzsPGBmC5E8F1uohOwOvi
-X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hello,
+This is the v2 of this series.  it applies Eric's comments and extend
+the series to complete the merge of generic_ci_match for ext4 and f2fs.
 
-two patches in this series try to fix a crash when adding directory entry to a
-directory with corrupted h-tree. Since I don't have the filesystem image
-causing the crash, I'm not sure what was the cause but the stacktrace suggests
-we have corrupted one h-tree node while modifying another one so likely
-there was a cycle created in the h-tree. This series checks for it and bails
-out early.
+The case-insensitive implementations in f2fs and ext4 have quite a bit
+of duplicated code.  This series simplifies the ext4 version, with the
+goal of extracting ext4_ci_compare into a helper library that can be
+used by both filesystems.
 
-								Honza
+While there, I noticed we can leverage the utf8 functions to detect
+encoded names that are corrupted in the filesystem. The final patch
+adds an ext4 error on that scenario, to mark the filesystem as
+corrupted.
+
+This series survived passes of xfstests -g quick.
+
+Gabriel Krisman Bertazi (7):
+  ext4: Match the f2fs ci_compare implementation
+  ext4: Simplify the handling of cached insensitive names
+  ext4: Implement ci comparison using unicode_name
+  ext4: Simplify hash check on ext4_match
+  ext4: Log error when lookup of encoded dentry fails
+  ext4: Move ext4_match_ci into libfs
+  f2fs: Reuse generic_ci_match for ci comparisons
+
+ fs/ext4/ext4.h     |   2 +-
+ fs/ext4/namei.c    | 110 ++++++++++++++-------------------------------
+ fs/f2fs/dir.c      |  58 ++----------------------
+ fs/libfs.c         |  60 +++++++++++++++++++++++++
+ include/linux/fs.h |   8 ++++
+ 5 files changed, 106 insertions(+), 132 deletions(-)
+
+-- 
+2.35.1
+
