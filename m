@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83FCFC433EF
-	for <linux-ext4@archiver.kernel.org>; Fri, 29 Apr 2022 18:27:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 874FCC433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 29 Apr 2022 18:27:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1379998AbiD2SbD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Apr 2022 14:31:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58904 "EHLO
+        id S1380002AbiD2SbK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Apr 2022 14:31:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59352 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1379997AbiD2SbB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2022 14:31:01 -0400
+        with ESMTP id S1379999AbiD2SbI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Apr 2022 14:31:08 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e3e3])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9BDFF88782
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2022 11:27:42 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 864C5D0A9A
+        for <linux-ext4@vger.kernel.org>; Fri, 29 Apr 2022 11:27:49 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 4C8411F46913
+        with ESMTPSA id 34B121F4690E
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1651256861;
-        bh=+//e5827eefeWpIcBCF4RB2dm+rfATwVzFjeR6DrOFs=;
+        s=mail; t=1651256868;
+        bh=vyo85rNwnnFuylcqfkeboay433CDn2ax39QHFWTvwF8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=aVugPg7f9vZ0AhRhAqPlb0ReU4pYJP9FwsEZ+3RSbue87CGl3Ag/UDc/C2O1XUm7f
-         lH7sWk0L/dDu9xDsCtejRHIZ4/TduOpXMF2fBZMDezImKOo0jy2Kc2R9m5JsOfr8Dt
-         YU7mH5WMxYjFoI0K5RHinrDI/csjHUIvfWDXGFw2g2mih7Erfdkio0jCj5WTyI7vs+
-         BXJes9fAfdqmMCqsdwzHEGssEqrTKK1ztN33nz4dN5ULYB/sfg43ni0rL6ggPoMo4c
-         FY4qz5zDxgMgA/egSixyBJuzmB5HORNC6VnGazsP/2P21jg/hdlh7HjyMBCisD9Yyj
-         T4Rbqx1CekjOg==
+        b=RCO+2/FxtCBYHu2qhWtiVijJUlzxz/TWeSsMvp75eB/bjEvtQBsqXHtBCpGTXF4Qn
+         +yjh2228/DQAdAWqhStXBZrI1QryIL1Ww+NviYYyloUURGneyypXTdtYA/66pRKuj8
+         YXkcgZhdILFdXIFcuJE4BYINPZYtdiCN70NlZbg3n7f8+DSO4bIDSjyK8ghMhPZP1F
+         2/ZB5y7x0er6kUqKrbWvf3gbt7hGgn0gXYq4Taex3m5je5O/DaoMDq/cCvN6sTQYUr
+         LG4MrQrmnK8nSfZ/6vlCpEAJO84/OhLq/pKpR0i5UNRgfbsqUQqsBpcEtkLFVqij6J
+         1viXzoquRIqoQ==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         ebiggers@kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com
-Subject: [PATCH v3 2/7] ext4: Simplify the handling of cached insensitive names
-Date:   Fri, 29 Apr 2022 14:27:23 -0400
-Message-Id: <20220429182728.14008-3-krisman@collabora.com>
+Subject: [PATCH v3 4/7] ext4: Simplify hash check on ext4_match
+Date:   Fri, 29 Apr 2022 14:27:25 -0400
+Message-Id: <20220429182728.14008-5-krisman@collabora.com>
 X-Mailer: git-send-email 2.35.1
 In-Reply-To: <20220429182728.14008-1-krisman@collabora.com>
 References: <20220429182728.14008-1-krisman@collabora.com>
@@ -45,90 +45,44 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Keeping it as qstr avoids the unnecessary conversion in ext4_match
+The existence of fname->cf_name.name requires s_encoding & IS_CASEFOLDED,
+therefore this can be simplified.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-
---
-Changes since v1:
-  - Simplify hunk (eric)
 ---
- fs/ext4/ext4.h  |  2 +-
- fs/ext4/namei.c | 22 +++++++++++-----------
- 2 files changed, 12 insertions(+), 12 deletions(-)
+ fs/ext4/namei.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a743b1e3b89e..93a28fcb2e22 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2490,7 +2490,7 @@ struct ext4_filename {
- 	struct fscrypt_str crypto_buf;
- #endif
- #if IS_ENABLED(CONFIG_UNICODE)
--	struct fscrypt_str cf_name;
-+	struct qstr cf_name;
- #endif
- };
- 
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index c363f637057d..c1a8a09369d1 100644
+index 5102652b5af4..e450e52eef48 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
-@@ -1382,7 +1382,8 @@ static int ext4_match_ci(const struct inode *parent, const struct qstr *name,
- int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
- 				  struct ext4_filename *name)
- {
--	struct fscrypt_str *cf_name = &name->cf_name;
-+	struct qstr *cf_name = &name->cf_name;
-+	unsigned char *buf;
- 	struct dx_hash_info *hinfo = &name->hinfo;
- 	int len;
+@@ -1440,19 +1440,13 @@ static bool ext4_match(struct inode *parent,
+ #endif
  
-@@ -1392,18 +1393,18 @@ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
- 		return 0;
- 	}
+ #if IS_ENABLED(CONFIG_UNICODE)
+-	if (parent->i_sb->s_encoding && IS_CASEFOLDED(parent) &&
+-	    (!IS_ENCRYPTED(parent) || fscrypt_has_encryption_key(parent))) {
+-		if (fname->cf_name.name) {
+-			if (IS_ENCRYPTED(parent)) {
+-				if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
+-					fname->hinfo.minor_hash !=
+-						EXT4_DIRENT_MINOR_HASH(de)) {
+-
+-					return false;
+-				}
+-			}
+-		}
++	if (IS_ENCRYPTED(parent) && fname->cf_name.name) {
++		if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
++		    fname->hinfo.minor_hash != EXT4_DIRENT_MINOR_HASH(de))
++			return false;
++	}
  
--	cf_name->name = kmalloc(EXT4_NAME_LEN, GFP_NOFS);
--	if (!cf_name->name)
-+	buf = kmalloc(EXT4_NAME_LEN, GFP_NOFS);
-+	if (!buf)
- 		return -ENOMEM;
++	if (parent->i_sb->s_encoding && IS_CASEFOLDED(parent)) {
+ 		u.folded_name = &fname->cf_name;
+ 		u.usr_name = fname->usr_fname;
  
--	len = utf8_casefold(dir->i_sb->s_encoding,
--			    iname, cf_name->name,
--			    EXT4_NAME_LEN);
-+	len = utf8_casefold(dir->i_sb->s_encoding, iname, buf, EXT4_NAME_LEN);
- 	if (len <= 0) {
--		kfree(cf_name->name);
--		cf_name->name = NULL;
-+		kfree(buf);
-+		buf = NULL;
- 	}
-+	cf_name->name = buf;
- 	cf_name->len = (unsigned) len;
-+
- 	if (!IS_ENCRYPTED(dir))
- 		return 0;
- 
-@@ -1442,8 +1443,6 @@ static bool ext4_match(struct inode *parent,
- 	if (parent->i_sb->s_encoding && IS_CASEFOLDED(parent) &&
- 	    (!IS_ENCRYPTED(parent) || fscrypt_has_encryption_key(parent))) {
- 		if (fname->cf_name.name) {
--			struct qstr cf = {.name = fname->cf_name.name,
--					  .len = fname->cf_name.len};
- 			if (IS_ENCRYPTED(parent)) {
- 				if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
- 					fname->hinfo.minor_hash !=
-@@ -1452,7 +1451,8 @@ static bool ext4_match(struct inode *parent,
- 					return false;
- 				}
- 			}
--			ret = ext4_match_ci(parent, &cf, de->name,
-+
-+			ret = ext4_match_ci(parent, &fname->cf_name, de->name,
- 					    de->name_len, true);
- 		} else {
- 			ret = ext4_match_ci(parent, fname->usr_fname,
 -- 
 2.35.1
 
