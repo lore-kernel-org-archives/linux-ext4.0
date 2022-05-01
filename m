@@ -2,42 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3164DC433F5
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Apr 2022 19:22:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AE78C433EF
+	for <linux-ext4@archiver.kernel.org>; Sun,  1 May 2022 05:12:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238196AbiD3TZW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 30 Apr 2022 15:25:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38338 "EHLO
+        id S240400AbiEAFQQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 1 May 2022 01:16:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40808 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233453AbiD3TZW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 30 Apr 2022 15:25:22 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D58AA1116F;
-        Sat, 30 Apr 2022 12:21:56 -0700 (PDT)
+        with ESMTP id S232817AbiEAFQP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 1 May 2022 01:16:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF655506F0;
+        Sat, 30 Apr 2022 22:12:47 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 85189B807EE;
-        Sat, 30 Apr 2022 19:21:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 10FD2C385AA;
-        Sat, 30 Apr 2022 19:21:54 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7BF06611AA;
+        Sun,  1 May 2022 05:12:47 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A219EC385B2;
+        Sun,  1 May 2022 05:12:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1651346514;
-        bh=nX1uiu7ILFDh2m6ItjnZSs4OJrSqppdj7AGMW93Sbjc=;
-        h=From:To:Cc:Subject:Date:From;
-        b=RYu3J+EItbIUAXPJxDV2VaWoI2ED/jS/kKoTTEyDPc564hbe1lPawBWMmqMINfshO
-         IHRnS3wW1UtQO5Lseqp/cmqNx9iaVwpKTTZpf7l5xX/6rW/b8uekU7ZERwvvYMb/6A
-         LLdsdQcaUiMA1Cp81oXyHupxpPi4oqFiaFLG/SBPCVb1m3MZUjuRbvWYezonV9sWjZ
-         wkZaJze2RZst76PfeI+COhWo/GbAD3aNXtMeIp0U0fIdj5BXi9jXOlmyF+hlSvLpr6
-         p+hh/SATZ2t98L7JWiFoiQfgckpCuqHzSEBgkypQYnuNMbSX2M6ha8oKfsQj6P5FkR
-         /PbsTm3vwRoGw==
+        s=k20201202; t=1651381966;
+        bh=nAmBt61GKAfsWjQfkolSXWscTvEpi56hFaS0lvkymzQ=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=bHuEseytMNqKSviC9FuPd+k1bTCjEacx1KTn/1Fv2Q4hZs3WnN7urP3xit4Z7h+lQ
+         QoTFJpdXGS1WWry4Qk6n/vofkicHjG6nR7QkIo3xnzVoNC99XjC9lo7QhGr7Ig+eWf
+         Fi//JrXYD5+IBWhohGOfFwLIqwI55jFpUPFGNo2VZ5HGIaDEWH5DPCVXcf5KN+J3j8
+         0Dx2J03UOgaewhIeRwNaXvpTxEn3s3e/qkzayiAfTDs4bSC7N9832/VTZfVsMX05O5
+         XjFe7bnIypIenkmzZc48g5/6kHgszEe/srrmCj1M64ZXkR6f0NJmdlNyB08kFx/0u8
+         gURKokmoAG1rg==
 From:   Eric Biggers <ebiggers@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     Lukas Czerner <lczerner@redhat.com>, linux-ext4@vger.kernel.org
-Subject: [xfstests PATCH] ext4/053: fix the rejected mount option testing
-Date:   Sat, 30 Apr 2022 12:21:30 -0700
-Message-Id: <20220430192130.131842-1-ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Cc:     Lukas Czerner <lczerner@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 1/7] ext4: only allow test_dummy_encryption when supported
+Date:   Sat, 30 Apr 2022 22:08:51 -0700
+Message-Id: <20220501050857.538984-2-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.36.0
+In-Reply-To: <20220501050857.538984-1-ebiggers@kernel.org>
+References: <20220501050857.538984-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -46,280 +51,140 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-'not_mnt OPTIONS' seems to have been intended to test that the
-filesystem cannot be mounted at all with the given OPTIONS, meaning that
-the mount fails as opposed to the options being ignored.  However, this
-doesn't actually work, as shown by the fact that the test case 'not_mnt
-test_dummy_encryption=v3' is passing in the !CONFIG_FS_ENCRYPTION case.
-Actually ext4 ignores this mount option when !CONFIG_FS_ENCRYPTION.
-(The ext4 behavior might be changed, but that is besides the point.)
+Make the test_dummy_encryption mount option require that the encrypt
+feature flag be already enabled on the filesystem, rather than
+automatically enabling it.  Practically, this means that "-O encrypt"
+will need to be included in MKFS_OPTIONS when running xfstests with the
+test_dummy_encryption mount option.  (ext4/053 also needs an update.)
 
-The problem is that the do_mnt() helper function is being misused in a
-context where a mount failure is expected, and it does some additional
-remount tests that don't make sense in that context.  So if the mount
-unexpectedly succeeds, then one of these later tests can still "fail",
-causing the unexpected success to be shadowed by a later failure, which
-causes the overall test case to pass since it expects a failure.
+Moreover, as long as the preconditions for test_dummy_encryption are
+being tightened anyway, take the opportunity to start rejecting it when
+!CONFIG_FS_ENCRYPTION rather than ignoring it.
 
-Fix this by reworking not_mnt() and not_remount_noumount() to use
-simple_mount() in cases where they are expecting a failure.  Also fix
-up some of the naming and calling conventions to be less confusing.
-Finally, make sure to test that remounting fails too, not just mounting.
+The motivation for requiring the encrypt feature flag is that:
+
+- Having the filesystem auto-enable feature flags is problematic, as it
+  bypasses the usual sanity checks.  The specific issue which came up
+  recently is that in kernel versions where ext4 supports casefold but
+  not encrypt+casefold (v5.1 through v5.10), the kernel will happily add
+  the encrypt flag to a filesystem that has the casefold flag, making it
+  unmountable -- but only for subsequent mounts, not the initial one.
+  This confused the casefold support detection in xfstests, causing
+  generic/556 to fail rather than be skipped.
+
+- The xfstests-bld test runners (kvm-xfstests et al.) already use the
+  required mkfs flag, so they will not be affected by this change.  Only
+  users of test_dummy_encryption alone will be affected.  But, this
+  option has always been for testing only, so it should be fine to
+  require that the few users of this option update their test scripts.
+
+- f2fs already requires it (for its equivalent feature flag).
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- tests/ext4/053 | 148 ++++++++++++++++++++++++++-----------------------
- 1 file changed, 78 insertions(+), 70 deletions(-)
+ fs/ext4/super.c | 59 +++++++++++++++++++++++++++++++------------------
+ 1 file changed, 37 insertions(+), 22 deletions(-)
 
-diff --git a/tests/ext4/053 b/tests/ext4/053
-index e1e79592..bf6e3f6b 100755
---- a/tests/ext4/053
-+++ b/tests/ext4/053
-@@ -225,6 +225,9 @@ do_mnt() {
- 	return $ret
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1466fbdbc8e34..64ce17714e193 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2427,11 +2427,12 @@ static int ext4_parse_param(struct fs_context *fc, struct fs_parameter *param)
+ 		ctx->spec |= EXT4_SPEC_DUMMY_ENCRYPTION;
+ 		ctx->test_dummy_enc_arg = kmemdup_nul(param->string, param->size,
+ 						      GFP_KERNEL);
++		return 0;
+ #else
+ 		ext4_msg(NULL, KERN_WARNING,
+-			 "Test dummy encryption mount option ignored");
++			 "test_dummy_encryption option not supported");
++		return -EINVAL;
+ #endif
+-		return 0;
+ 	case Opt_dax:
+ 	case Opt_dax_type:
+ #ifdef CONFIG_FS_DAX
+@@ -2786,12 +2787,43 @@ static int ext4_check_quota_consistency(struct fs_context *fc,
+ #endif
  }
  
-+# Test that mounting or remounting with the specified mount option(s) fails
-+# (meaning that the mount or remount fails, as opposed to the mount option(s)
-+# just being ignored).
- not_mnt() {
- 	# We don't need -t not not_ variant
- 	if [ "$1" == "-t" ]; then
-@@ -232,13 +235,21 @@ not_mnt() {
- 	fi
- 
- 	print_log "SHOULD FAIL mounting $fstype \"$1\" "
--	do_mnt $@
--	if [ $? -eq 0 ]; then
-+	if simple_mount -o $1 $SCRATCH_DEV $SCRATCH_MNT; then
-+		print_log "(mount unexpectedly succeeded)"
- 		fail
--	else
--		ok
-+		$UMOUNT_PROG $SCRATCH_MNT
-+		return
- 	fi
--	$UMOUNT_PROG $SCRATCH_MNT 2> /dev/null
-+	ok
++static int ext4_check_test_dummy_encryption(const struct fs_context *fc,
++					    struct super_block *sb)
++{
++	const struct ext4_fs_context *ctx = fc->fs_private;
++	const struct ext4_sb_info *sbi = EXT4_SB(sb);
 +
-+	if ! simple_mount $SCRATCH_DEV $SCRATCH_MNT; then
-+		print_log "(normal mount unexpectedly failed)"
-+		fail
-+		return
-+	fi
-+	not_remount $1
-+	$UMOUNT_PROG $SCRATCH_MNT
- }
++	if (!IS_ENABLED(CONFIG_FS_ENCRYPTION) ||
++	    !(ctx->spec & EXT4_SPEC_DUMMY_ENCRYPTION))
++		return 0;
++
++	if (!ext4_has_feature_encrypt(sb)) {
++		ext4_msg(NULL, KERN_WARNING,
++			 "test_dummy_encryption requires encrypt feature");
++		return -EINVAL;
++	}
++	/*
++	 * This mount option is just for testing, and it's not worthwhile to
++	 * implement the extra complexity (e.g. RCU protection) that would be
++	 * needed to allow it to be set or changed during remount.  We do allow
++	 * it to be specified during remount, but only if there is no change.
++	 */
++	if (fc->purpose == FS_CONTEXT_FOR_RECONFIGURE &&
++	    !DUMMY_ENCRYPTION_ENABLED(sbi)) {
++		ext4_msg(NULL, KERN_WARNING,
++			 "Can't set test_dummy_encryption on remount");
++		return -EINVAL;
++	}
++	return 0;
++}
++
+ static int ext4_check_opt_consistency(struct fs_context *fc,
+ 				      struct super_block *sb)
+ {
+ 	struct ext4_fs_context *ctx = fc->fs_private;
+ 	struct ext4_sb_info *sbi = fc->s_fs_info;
+ 	int is_remount = fc->purpose == FS_CONTEXT_FOR_RECONFIGURE;
++	int err;
  
- mnt_only() {
-@@ -321,43 +332,40 @@ remount() {
- 	$UMOUNT_PROG $SCRATCH_MNT 2> /dev/null
- }
+ 	if ((ctx->opt_flags & MOPT_NO_EXT2) && IS_EXT2_SB(sb)) {
+ 		ext4_msg(NULL, KERN_ERR,
+@@ -2821,20 +2853,9 @@ static int ext4_check_opt_consistency(struct fs_context *fc,
+ 				 "for blocksize < PAGE_SIZE");
+ 	}
  
--# $1 - options to mount with, or -r argument
--# $2 - options to remount with
--not_remount_noumount() {
--	remount_only=0
--	# If -r is specified we're going to do remount only
--	if [ "$1" == "-r" ]; then
--		remount_only=1
--		# Dont need shift since first argument would
--		# have been consumed by mount anyway
--	fi
+-#ifdef CONFIG_FS_ENCRYPTION
+-	/*
+-	 * This mount option is just for testing, and it's not worthwhile to
+-	 * implement the extra complexity (e.g. RCU protection) that would be
+-	 * needed to allow it to be set or changed during remount.  We do allow
+-	 * it to be specified during remount, but only if there is no change.
+-	 */
+-	if ((ctx->spec & EXT4_SPEC_DUMMY_ENCRYPTION) &&
+-	    is_remount && !sbi->s_dummy_enc_policy.policy) {
+-		ext4_msg(NULL, KERN_WARNING,
+-			 "Can't set test_dummy_encryption on remount");
+-		return -1;
+-	}
+-#endif
++	err = ext4_check_test_dummy_encryption(fc, sb);
++	if (err)
++		return err;
+ 
+ 	if ((ctx->spec & EXT4_SPEC_DATAJ) && is_remount) {
+ 		if (!sbi->s_journal) {
+@@ -5279,12 +5300,6 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 		goto failed_mount_wq;
+ 	}
+ 
+-	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !sb_rdonly(sb) &&
+-	    !ext4_has_feature_encrypt(sb)) {
+-		ext4_set_feature_encrypt(sb);
+-		ext4_commit_super(sb);
+-	}
 -
--	if [ $remount_only -eq 0 ]; then
--		print_log "mounting $fstype \"$1\" "
--		do_mnt $1
--		[ $? -ne 0 ] && fail && return
--	fi
--	print_log "SHOULD FAIL remounting $fstype \"$2\" "
--	do_mnt remount,$2 $3
--	if [ $? -eq 0 ]; then
-+# Test that the filesystem cannot be remounted with option(s) $1 (meaning that
-+# the remount fails, as opposed to the mount option(s) just being ignored).  The
-+# filesystem must already be mounted, and it is not unmounted afterwards.
-+not_remount() {
-+	print_log "SHOULD FAIL remounting $fstype \"$1\" "
-+	# Try specifying both dev and mnt.
-+	if simple_mount -o remount,$1 $SCRATCH_DEV $SCRATCH_MNT; then
-+		print_log "(remount unexpectedly succeeded)"
- 		fail
--	else
--		ok
-+		return
- 	fi
-+	ok
- 
--	# Now just specify mnt
--	print_log "SHOULD FAIL remounting $fstype (MNT ONLY) \"$2\" "
--	do_mnt -n remount,$2 $3
--	if [ $? -eq 0 ]; then
-+	# Try specifying mnt only.
-+	print_log "SHOULD FAIL remounting $fstype (MNT ONLY) \"$1\" "
-+	if simple_mount -o remount,$1 $SCRATCH_MNT; then
-+		print_log "(remount unexpectedly succeeded)"
- 		fail
--	else
--		ok
-+		return
- 	fi
-+	ok
- }
- 
--not_remount() {
--	not_remount_noumount $*
--	$UMOUNT_PROG $SCRATCH_MNT 2> /dev/null
-+# Mount the filesystem with option(s) $1, then test that it cannot be remounted
-+# with option(s) $2 (meaning that the remount fails, as opposed to the mount
-+# option(s) just being ignored).
-+mnt_then_not_remount() {
-+	print_log "mounting $fstype \"$1\" "
-+	if ! do_mnt $1; then
-+		fail
-+		return
-+	fi
-+	not_remount $2
-+	$UMOUNT_PROG $SCRATCH_MNT
- }
- 
- 
-@@ -514,7 +522,7 @@ for fstype in ext2 ext3 ext4; do
- 		mnt test_dummy_encryption ^test_dummy_encryption
- 		mnt test_dummy_encryption=v1 ^test_dummy_encryption=v1
- 		mnt test_dummy_encryption=v2 ^test_dummy_encryption=v2
--		not_mnt test_dummy_encryption=v3
-+		mnt test_dummy_encryption=v3 ^test_dummy_encryption=v3
- 		not_mnt test_dummy_encryption=
- 	fi
- 
-@@ -567,14 +575,14 @@ for fstype in ext2 ext3 ext4; do
- 		mnt dax=never
- 		mnt dax=inode
- 
--		not_remount lazytime dax
--		not_remount dax=always dax=never
-+		mnt_then_not_remount lazytime dax
-+		mnt_then_not_remount dax=always dax=never
- 
- 		if [[ $fstype != "ext2" ]]; then
--			not_remount data=journal dax
--			not_remount data=journal dax=always
--			not_remount data=journal dax=never
--			not_remount data=journal dax=inode
-+			mnt_then_not_remount data=journal dax
-+			mnt_then_not_remount data=journal dax=always
-+			mnt_then_not_remount data=journal dax=never
-+			mnt_then_not_remount data=journal dax=inode
- 		fi
- 	fi
- 
-@@ -584,20 +592,20 @@ for fstype in ext2 ext3 ext4; do
- 	remount usrquota usrjquota=q.u,jqfmt=vfsv0
- 	remount grpquota grpjquota=q.g,jqfmt=vfsv0
- 
--	not_remount usrquota grpjquota=q.g,jqfmt=vfsv0
--	not_remount grpquota usrjquota=q.u,jqfmt=vfsv0
-+	mnt_then_not_remount usrquota grpjquota=q.g,jqfmt=vfsv0
-+	mnt_then_not_remount grpquota usrjquota=q.u,jqfmt=vfsv0
- 
- 	remount quota usrjquota=q.u,jqfmt=vfsv0
--	not_remount quota grpjquota=q.g,jqfmt=vfsv0
-+	mnt_then_not_remount quota grpjquota=q.g,jqfmt=vfsv0
- 
- 	remount usrjquota=q.u,jqfmt=vfsv0 grpjquota=q.g
--	not_remount usrjquota=q.u,jqfmt=vfsv0 usrjquota=q.ua
--	not_remount grpjquota=q.g,jqfmt=vfsv0 grpjquota=q.ga
-+	mnt_then_not_remount usrjquota=q.u,jqfmt=vfsv0 usrjquota=q.ua
-+	mnt_then_not_remount grpjquota=q.g,jqfmt=vfsv0 grpjquota=q.ga
- 
- 	remount usrjquota=q.u,jqfmt=vfsv0 usrquota usrjquota=q.u,jqfmt=vfsv0
- 	remount grpjquota=q.g,jqfmt=vfsv0 grpquota grpjquota=q.g,jqfmt=vfsv0
--	not_remount usrjquota=q.u,jqfmt=vfsv0 grpquota
--	not_remount grpjquota=q.g,jqfmt=vfsv0 usrquota
-+	mnt_then_not_remount usrjquota=q.u,jqfmt=vfsv0 grpquota
-+	mnt_then_not_remount grpjquota=q.g,jqfmt=vfsv0 usrquota
- 
- 	remount grpjquota=q.g,jqfmt=vfsv0 grpjquota= ^grpjquota=
- 	remount usrjquota=q.u,jqfmt=vfsv0 usrjquota= ^usrjquota=
-@@ -608,12 +616,12 @@ for fstype in ext2 ext3 ext4; do
- 
- 	if [[ $fstype != "ext2" ]]; then
- 		remount noload data=journal norecovery
--		not_remount data=journal data=ordered
--		not_remount data=journal data=writeback
--		not_remount data=ordered data=journal
--		not_remount data=ordered data=writeback
--		not_remount data=writeback data=journal
--		not_remount data=writeback data=ordered
-+		mnt_then_not_remount data=journal data=ordered
-+		mnt_then_not_remount data=journal data=writeback
-+		mnt_then_not_remount data=ordered data=journal
-+		mnt_then_not_remount data=ordered data=writeback
-+		mnt_then_not_remount data=writeback data=journal
-+		mnt_then_not_remount data=writeback data=ordered
- 	fi
- 
- 	do_mkfs -O journal_dev $LOOP_LOGDEV ${LOGSIZE}k
-@@ -621,9 +629,9 @@ for fstype in ext2 ext3 ext4; do
- 	mnt defaults
- 	mnt journal_path=$LOOP_LOGDEV ignored
- 	mnt journal_dev=$LOGDEV_DEVNUM ignored
--	not_mnt journal_path=${LOOP_LOGDEV}_nonexistent ignored
--	not_mnt journal_dev=123456 ignored
--	not_mnt journal_dev=999999999999999 ignored
-+	not_mnt journal_path=${LOOP_LOGDEV}_nonexistent
-+	not_mnt journal_dev=123456
-+	not_mnt journal_dev=999999999999999
- 
- 	do_mkfs -E quotatype=prjquota $SCRATCH_DEV ${SIZE}k
- 	mnt prjquota
-@@ -636,11 +644,11 @@ for fstype in ext2 ext3 ext4; do
- 	quotacheck -vugm $SCRATCH_MNT >> $seqres.full 2>&1
- 	quotaon -vug $SCRATCH_MNT >> $seqres.full 2>&1
- 
--	not_remount_noumount -r grpjquota=
--	not_remount_noumount -r usrjquota=aaquota.user
--	not_remount_noumount -r grpjquota=aaquota.group
--	not_remount_noumount -r jqfmt=vfsv1
--	not_remount_noumount -r noquota
-+	not_remount grpjquota=
-+	not_remount usrjquota=aaquota.user
-+	not_remount grpjquota=aaquota.group
-+	not_remount jqfmt=vfsv1
-+	not_remount noquota
- 	mnt_only remount,usrquota,grpquota ^usrquota,^grpquota
- 	$UMOUNT_PROG $SCRATCH_MNT > /dev/null 2>&1
- 
-@@ -654,10 +662,10 @@ for fstype in ext2 ext3 ext4; do
- 	quotacheck -vugm $SCRATCH_MNT >> $seqres.full 2>&1
- 	quotaon -vug $SCRATCH_MNT >> $seqres.full 2>&1
- 
--	not_remount_noumount -r noquota
--	not_remount_noumount -r usrjquota=aquota.user
--	not_remount_noumount -r grpjquota=aquota.group
--	not_remount_noumount -r jqfmt=vfsv1
-+	not_remount noquota
-+	not_remount usrjquota=aquota.user
-+	not_remount grpjquota=aquota.group
-+	not_remount jqfmt=vfsv1
- 	mnt_only remount,grpjquota= grpquota,^grpjquota
- 	mnt_only remount,usrjquota= usrquota,^usrjquota
- 	mnt_only remount,usrquota,grpquota usrquota,grpquota
-@@ -674,9 +682,9 @@ for fstype in ext2 ext3 ext4; do
- 	mnt prjquota
- 	mnt usrquota
- 	mnt grpquota
--	not_remount defaults usrjquota=aquota.user
--	not_remount defaults grpjquota=aquota.user
--	not_remount defaults jqfmt=vfsv1
-+	mnt_then_not_remount defaults usrjquota=aquota.user
-+	mnt_then_not_remount defaults grpjquota=aquota.user
-+	mnt_then_not_remount defaults jqfmt=vfsv1
- 	remount defaults grpjquota=,usrjquota= ignored
- 
- done #for fstype in ext2 ext3 ext4; do
-
-base-commit: fbc6486be09c93a68d3863ebf7e3ed851fc4721c
+ 	/*
+ 	 * Get the # of file system overhead blocks from the
+ 	 * superblock if present.
 -- 
 2.36.0
 
