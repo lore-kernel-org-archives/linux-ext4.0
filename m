@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C04BEC4167E
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:49:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E33ECC4321E
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:49:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346756AbiEDIx3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:53:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51892 "EHLO
+        id S1346787AbiEDIxb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:53:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51890 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346620AbiEDIxJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:09 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 2885A25286
-        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:21 -0700 (PDT)
+        with ESMTP id S1346684AbiEDIxX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:23 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id AD18A24F22
+        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:22 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:20 +0900
+        by 156.147.23.51 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:19 +0900
+        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 05/21] dept: Apply Dept to rwlock
-Date:   Wed,  4 May 2022 17:17:33 +0900
-Message-Id: <1651652269-15342-6-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 16/21] dept: Distinguish each work from another
+Date:   Wed,  4 May 2022 17:17:44 +0900
+Message-Id: <1651652269-15342-17-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,162 +56,81 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by rwlock.
+Workqueue already provides concurrency control. By that, any wait in a
+work doesn't prevents events in other works with the control enabled.
+Thus, each work would better be considered a different context.
+
+So let Dept assign a different context id to each work.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h        | 25 ++++++++++++++++++++-----
- include/linux/rwlock.h         | 42 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/rwlock_api_smp.h |  8 ++++----
- include/linux/rwlock_types.h   |  1 +
- 4 files changed, 67 insertions(+), 9 deletions(-)
+ include/linux/dept.h     |  2 ++
+ kernel/dependency/dept.c | 10 ++++++++++
+ kernel/workqueue.c       |  3 +++
+ 3 files changed, 15 insertions(+)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 99569acb..b59d8f3 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -588,16 +588,31 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- 	dept_spin_unlock(&(l)->dmap, i);				\
- } while (0)
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index c020b17..1a3858c 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -503,6 +503,7 @@ struct dept_task {
+ extern void dept_event_split_map(struct dept_map_each *me, struct dept_map_common *mc, unsigned long ip, const char *e_fn);
+ extern void dept_ask_event_split_map(struct dept_map_each *me, struct dept_map_common *mc);
+ extern void dept_kernel_enter(void);
++extern void dept_work_enter(void);
  
--#define rwlock_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
-+#define rwlock_acquire(l, s, t, i)					\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_rwlock_wlock(&(l)->dmap, s, t, NULL, "write_unlock", i);	\
-+} while (0)
- #define rwlock_acquire_read(l, s, t, i)					\
- do {									\
--	if (read_lock_is_recursive())					\
-+	if (read_lock_is_recursive()) {				\
- 		lock_acquire_shared_recursive(l, s, t, NULL, i);	\
--	else								\
-+		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 0);\
-+	} else {							\
- 		lock_acquire_shared(l, s, t, NULL, i);			\
-+		dept_rwlock_rlock(&(l)->dmap, s, t, NULL, "read_unlock", i, 1);\
-+	}								\
-+} while (0)
-+#define rwlock_release(l, i)						\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_rwlock_wunlock(&(l)->dmap, i);				\
-+} while (0)
-+#define rwlock_release_read(l, i)					\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_rwlock_runlock(&(l)->dmap, i);				\
- } while (0)
--
--#define rwlock_release(l, i)			lock_release(l, i)
+ static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
+ {
+@@ -556,6 +557,7 @@ static inline void dept_ecxt_enter_nokeep(struct dept_map *m)
+ #define dept_event_split_map(me, mc, ip, e_fn)		do { } while (0)
+ #define dept_ask_event_split_map(me, mc)		do { } while (0)
+ #define dept_kernel_enter()				do { } while (0)
++#define dept_work_enter()				do { } while (0)
+ #define dept_ecxt_enter_nokeep(m)			do { } while (0)
+ #define dept_key_init(k)				do { (void)(k); } while (0)
+ #define dept_key_destroy(k)				do { (void)(k); } while (0)
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 18e5951..6707313 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1844,6 +1844,16 @@ void dept_enirq_transition(unsigned long ip)
+ 	dept_exit(flags);
+ }
  
- #define seqcount_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
- #define seqcount_acquire_read(l, s, t, i)	lock_acquire_shared_recursive(l, s, t, NULL, i)
-diff --git a/include/linux/rwlock.h b/include/linux/rwlock.h
-index 8f416c5..bbab144 100644
---- a/include/linux/rwlock.h
-+++ b/include/linux/rwlock.h
-@@ -28,6 +28,48 @@
- 	do { *(lock) = __RW_LOCK_UNLOCKED(lock); } while (0)
++/*
++ * Assign a different context id to each work.
++ */
++void dept_work_enter(void)
++{
++	struct dept_task *dt = dept_task();
++
++	dt->cxt_id[DEPT_CXT_PROCESS] += (1UL << DEPT_CXTS_NR);
++}
++
+ void dept_kernel_enter(void)
+ {
+ 	struct dept_task *dt = dept_task();
+diff --git a/kernel/workqueue.c b/kernel/workqueue.c
+index 0d2514b..334654c 100644
+--- a/kernel/workqueue.c
++++ b/kernel/workqueue.c
+@@ -51,6 +51,7 @@
+ #include <linux/sched/isolation.h>
+ #include <linux/nmi.h>
+ #include <linux/kvm_para.h>
++#include <linux/dept.h>
+ 
+ #include "workqueue_internal.h"
+ 
+@@ -2199,6 +2200,8 @@ static void process_one_work(struct worker *worker, struct work_struct *work)
+ 
+ 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
  #endif
- 
-+#ifdef CONFIG_DEPT
-+#define DEPT_EVT_RWLOCK_R		1UL
-+#define DEPT_EVT_RWLOCK_W		(1UL << 1)
-+#define DEPT_EVT_RWLOCK_RW		(DEPT_EVT_RWLOCK_R | DEPT_EVT_RWLOCK_W)
++	dept_work_enter();
 +
-+#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)			\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
-+	} else if (n) {							\
-+		dept_ecxt_enter_nokeep(m);				\
-+	} else {							\
-+		dept_wait(m, DEPT_EVT_RWLOCK_RW, ip, __func__, ne);	\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_W, ip, __func__, e_fn, ne);\
-+	}								\
-+} while (0)
-+#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)			\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
-+	} else if (n) {							\
-+		dept_ecxt_enter_nokeep(m);				\
-+	} else {							\
-+		dept_wait(m, (q) ? DEPT_EVT_RWLOCK_RW : DEPT_EVT_RWLOCK_W, ip, __func__, ne);\
-+		dept_ecxt_enter(m, DEPT_EVT_RWLOCK_R, ip, __func__, e_fn, ne);\
-+	}								\
-+} while (0)
-+#define dept_rwlock_wunlock(m, ip)					\
-+do {									\
-+	dept_ecxt_exit(m, DEPT_EVT_RWLOCK_W, ip);			\
-+} while (0)
-+#define dept_rwlock_runlock(m, ip)					\
-+do {									\
-+	dept_ecxt_exit(m, DEPT_EVT_RWLOCK_R, ip);			\
-+} while (0)
-+#else
-+#define dept_rwlock_wlock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_rwlock_rlock(m, ne, t, n, e_fn, ip, q)	do { } while (0)
-+#define dept_rwlock_wunlock(m, ip)			do { } while (0)
-+#define dept_rwlock_runlock(m, ip)			do { } while (0)
-+#endif
-+
- #ifdef CONFIG_DEBUG_SPINLOCK
-  extern void do_raw_read_lock(rwlock_t *lock) __acquires(lock);
-  extern int do_raw_read_trylock(rwlock_t *lock);
-diff --git a/include/linux/rwlock_api_smp.h b/include/linux/rwlock_api_smp.h
-index dceb0a5..a222cf1 100644
---- a/include/linux/rwlock_api_smp.h
-+++ b/include/linux/rwlock_api_smp.h
-@@ -228,7 +228,7 @@ static inline void __raw_write_unlock(rwlock_t *lock)
- 
- static inline void __raw_read_unlock(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	preempt_enable();
- }
-@@ -236,7 +236,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
- static inline void
- __raw_read_unlock_irqrestore(rwlock_t *lock, unsigned long flags)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	local_irq_restore(flags);
- 	preempt_enable();
-@@ -244,7 +244,7 @@ static inline void __raw_read_unlock(rwlock_t *lock)
- 
- static inline void __raw_read_unlock_irq(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	local_irq_enable();
- 	preempt_enable();
-@@ -252,7 +252,7 @@ static inline void __raw_read_unlock_irq(rwlock_t *lock)
- 
- static inline void __raw_read_unlock_bh(rwlock_t *lock)
- {
--	rwlock_release(&lock->dep_map, _RET_IP_);
-+	rwlock_release_read(&lock->dep_map, _RET_IP_);
- 	do_raw_read_unlock(lock);
- 	__local_bh_enable_ip(_RET_IP_, SOFTIRQ_LOCK_OFFSET);
- }
-diff --git a/include/linux/rwlock_types.h b/include/linux/rwlock_types.h
-index 1948442..27b4b78 100644
---- a/include/linux/rwlock_types.h
-+++ b/include/linux/rwlock_types.h
-@@ -10,6 +10,7 @@
- 	.dep_map = {							\
- 		.name = #lockname,					\
- 		.wait_type_inner = LD_WAIT_CONFIG,			\
-+		.dmap = DEPT_MAP_INITIALIZER(lockname)			\
- 	}
- #else
- # define RW_DEP_MAP_INIT(lockname)
+ 	/* ensure we're on the correct CPU */
+ 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
+ 		     raw_smp_processor_id() != pool->cpu);
 -- 
 1.9.1
 
