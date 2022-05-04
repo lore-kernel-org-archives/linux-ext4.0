@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71E10C46467
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:50:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FBFAC433EF
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346802AbiEDIxg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:53:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51906 "EHLO
+        id S1346709AbiEDIzf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:55:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53024 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346658AbiEDIxD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:03 -0400
+        with ESMTP id S1346810AbiEDIxo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:44 -0400
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id E1ADF24F35
-        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0811625C4A
+        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:23 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:20 +0900
+        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:20 +0900
+        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 08/21] dept: Apply Dept to rwsem
-Date:   Wed,  4 May 2022 17:17:36 +0900
-Message-Id: <1651652269-15342-9-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 17/21] dept: Disable Dept within the wait_bit layer by default
+Date:   Wed,  4 May 2022 17:17:45 +0900
+Message-Id: <1651652269-15342-18-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,105 +56,43 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes Dept able to track dependencies by rwsem.
+The struct wait_queue_head array, bit_wait_table[] in sched/wait_bit.c
+are shared by all its users, which unfortunately vary in terms of class.
+So each should've been assigned its own class to avoid false positives.
+
+It'd better let Dept work at a higher layer than wait_bit. So disabled
+Dept within the wait_bit layer by default.
+
+It's worth noting that Dept is still working with the other struct
+wait_queue_head ones that are mostly well-classified.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/lockdep.h      | 24 ++++++++++++++++++++----
- include/linux/percpu-rwsem.h |  4 +++-
- include/linux/rwsem.h        | 22 ++++++++++++++++++++++
- 3 files changed, 45 insertions(+), 5 deletions(-)
+ kernel/sched/wait_bit.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index b59d8f3..b0e097f 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -634,10 +634,26 @@ static inline void print_irqtrace_events(struct task_struct *curr)
- 	dept_mutex_unlock(&(l)->dmap, i);				\
- } while (0)
- 
--#define rwsem_acquire(l, s, t, i)		lock_acquire_exclusive(l, s, t, NULL, i)
--#define rwsem_acquire_nest(l, s, t, n, i)	lock_acquire_exclusive(l, s, t, n, i)
--#define rwsem_acquire_read(l, s, t, i)		lock_acquire_shared(l, s, t, NULL, i)
--#define rwsem_release(l, i)			lock_release(l, i)
-+#define rwsem_acquire(l, s, t, i)					\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, NULL, i);			\
-+	dept_rwsem_lock(&(l)->dmap, s, t, NULL, "up_write", i);		\
-+} while (0)
-+#define rwsem_acquire_nest(l, s, t, n, i)				\
-+do {									\
-+	lock_acquire_exclusive(l, s, t, n, i);				\
-+	dept_rwsem_lock(&(l)->dmap, s, t, (n) ? &(n)->dmap : NULL, "up_write", i);\
-+} while (0)
-+#define rwsem_acquire_read(l, s, t, i)					\
-+do {									\
-+	lock_acquire_shared(l, s, t, NULL, i);				\
-+	dept_rwsem_lock(&(l)->dmap, s, t, NULL, "up_read", i);		\
-+} while (0)
-+#define rwsem_release(l, i)						\
-+do {									\
-+	lock_release(l, i);						\
-+	dept_rwsem_unlock(&(l)->dmap, i);				\
-+} while (0)
- 
- #define lock_map_acquire(l)			lock_acquire_exclusive(l, 0, 0, NULL, _THIS_IP_)
- #define lock_map_acquire_read(l)		lock_acquire_shared_recursive(l, 0, 0, NULL, _THIS_IP_)
-diff --git a/include/linux/percpu-rwsem.h b/include/linux/percpu-rwsem.h
-index 5fda40f..9a0603d 100644
---- a/include/linux/percpu-rwsem.h
-+++ b/include/linux/percpu-rwsem.h
-@@ -21,7 +21,9 @@ struct percpu_rw_semaphore {
- };
- 
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
--#define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)	.dep_map = { .name = #lockname },
-+#define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)	.dep_map = {	\
-+	.name = #lockname,					\
-+	.dmap = DEPT_MAP_INITIALIZER(lockname) },
- #else
- #define __PERCPU_RWSEM_DEP_MAP_INIT(lockname)
- #endif
-diff --git a/include/linux/rwsem.h b/include/linux/rwsem.h
-index efa5c32..ed4c34e 100644
---- a/include/linux/rwsem.h
-+++ b/include/linux/rwsem.h
-@@ -21,6 +21,7 @@
- 	.dep_map = {					\
- 		.name = #lockname,			\
- 		.wait_type_inner = LD_WAIT_SLEEP,	\
-+		.dmap = DEPT_MAP_INITIALIZER(lockname)	\
- 	},
- #else
- # define __RWSEM_DEP_MAP_INIT(lockname)
-@@ -32,6 +33,27 @@
- #include <linux/osq_lock.h>
- #endif
- 
-+#ifdef CONFIG_DEPT
-+#define dept_rwsem_lock(m, ne, t, n, e_fn, ip)				\
-+do {									\
-+	if (t) {							\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+	} else if (n) {							\
-+		dept_ecxt_enter_nokeep(m);				\
-+	} else {							\
-+		dept_wait(m, 1UL, ip, __func__, ne);			\
-+		dept_ecxt_enter(m, 1UL, ip, __func__, e_fn, ne);	\
-+	}								\
-+} while (0)
-+#define dept_rwsem_unlock(m, ip)					\
-+do {									\
-+	dept_ecxt_exit(m, 1UL, ip);					\
-+} while (0)
-+#else
-+#define dept_rwsem_lock(m, ne, t, n, e_fn, ip)	do { } while (0)
-+#define dept_rwsem_unlock(m, ip)		do { } while (0)
-+#endif
-+
+diff --git a/kernel/sched/wait_bit.c b/kernel/sched/wait_bit.c
+index d4788f8..df93e33 100644
+--- a/kernel/sched/wait_bit.c
++++ b/kernel/sched/wait_bit.c
+@@ -3,6 +3,7 @@
  /*
-  * For an uncontended rwsem, count and owner are the only fields a task
-  * needs to touch when acquiring the rwsem. So they are put next to each
+  * The implementation of the wait_bit*() and related waiting APIs:
+  */
++#include <linux/dept.h>
+ 
+ #define WAIT_TABLE_BITS 8
+ #define WAIT_TABLE_SIZE (1 << WAIT_TABLE_BITS)
+@@ -246,6 +247,8 @@ void __init wait_bit_init(void)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < WAIT_TABLE_SIZE; i++)
++	for (i = 0; i < WAIT_TABLE_SIZE; i++) {
+ 		init_waitqueue_head(bit_wait_table + i);
++		dept_map_nocheck(&(bit_wait_table + i)->dmap);
++	}
+ }
 -- 
 1.9.1
 
