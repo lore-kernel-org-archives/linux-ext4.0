@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A135C4332F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69EC0C433FE
 	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:54:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347390AbiEDIzw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:55:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52574 "EHLO
+        id S1347394AbiEDIzy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:55:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346746AbiEDIxY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:24 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 338FF25591
-        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:21 -0700 (PDT)
+        with ESMTP id S1346882AbiEDIxx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:53 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7B23325E8F
+        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:28 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.51 with ESMTP; 4 May 2022 17:19:20 +0900
+        by 156.147.23.52 with ESMTP; 4 May 2022 17:19:22 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:20 +0900
+        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:22 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 09/21] dept: Add proc knobs to show stats and dependency graph
-Date:   Wed,  4 May 2022 17:17:37 +0900
-Message-Id: <1651652269-15342-10-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 19/21] dept: Differentiate onstack maps from others of different tasks in class
+Date:   Wed,  4 May 2022 17:17:47 +0900
+Message-Id: <1651652269-15342-20-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,248 +56,420 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-It'd be useful to show Dept internal stats and dependency graph on
-runtime via proc for better information. Introduced the knobs.
+Dept assumes that maps might belong to the same class if the running
+code is the same for possibility detection. However, maps on stack would
+never belong to a common class between different tasks because each task
+has its own instance on stack.
+
+So differentiated onstack maps from others in class, to avoid false
+positive alarms.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/dependency/Makefile        |  1 +
- kernel/dependency/dept.c          | 24 ++++------
- kernel/dependency/dept_internal.h | 26 +++++++++++
- kernel/dependency/dept_proc.c     | 92 +++++++++++++++++++++++++++++++++++++++
- 4 files changed, 128 insertions(+), 15 deletions(-)
- create mode 100644 kernel/dependency/dept_internal.h
- create mode 100644 kernel/dependency/dept_proc.c
+ include/linux/dept.h     |   3 +
+ kernel/dependency/dept.c | 166 ++++++++++++++++++++++++++++++++++++++---------
+ kernel/exit.c            |   8 ++-
+ 3 files changed, 147 insertions(+), 30 deletions(-)
 
-diff --git a/kernel/dependency/Makefile b/kernel/dependency/Makefile
-index b5cfb8a..92f1654 100644
---- a/kernel/dependency/Makefile
-+++ b/kernel/dependency/Makefile
-@@ -1,3 +1,4 @@
- # SPDX-License-Identifier: GPL-2.0
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index 1a3858c..3027121 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -72,6 +72,7 @@ struct dept_class {
+ 	 */
+ 	const char			*name;
+ 	unsigned long			key;
++	unsigned long			key2;
+ 	int				sub;
  
- obj-$(CONFIG_DEPT) += dept.o
-+obj-$(CONFIG_DEPT) += dept_proc.o
+ 	/*
+@@ -343,6 +344,7 @@ struct dept_key {
+ struct dept_map {
+ 	const char			*name;
+ 	struct dept_key			*keys;
++	unsigned long			key2;
+ 	int				sub_usr;
+ 
+ 	/*
+@@ -366,6 +368,7 @@ struct dept_map {
+ {									\
+ 	.name = #n,							\
+ 	.keys = NULL,							\
++	.key2 = 0UL,							\
+ 	.sub_usr = 0,							\
+ 	.keys_local = { .classes = { 0 } },				\
+ 	.wgen = 0U,							\
 diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 1e90284..4670eec 100644
+index 6707313..2bc6259 100644
 --- a/kernel/dependency/dept.c
 +++ b/kernel/dependency/dept.c
 @@ -73,6 +73,7 @@
  #include <linux/hash.h>
  #include <linux/dept.h>
  #include <linux/utsname.h>
-+#include "dept_internal.h"
++#include <linux/sched/task_stack.h>
+ #include "dept_internal.h"
  
  static int dept_stop;
- static int dept_per_cpu_ready;
-@@ -235,20 +236,13 @@ static inline struct dept_task *dept_task(void)
-  *       have been freed will be placed.
-  */
+@@ -523,12 +524,12 @@ static unsigned long key_dep(struct dept_dep *d)
  
--enum object_t {
--#define OBJECT(id, nr) OBJECT_##id,
--	#include "dept_object.h"
--#undef  OBJECT
--	OBJECT_NR,
--};
--
- #define OBJECT(id, nr)							\
- static struct dept_##id spool_##id[nr];					\
- static DEFINE_PER_CPU(struct llist_head, lpool_##id);
- 	#include "dept_object.h"
- #undef  OBJECT
+ static bool cmp_class(struct dept_class *c1, struct dept_class *c2)
+ {
+-	return c1->key == c2->key;
++	return c1->key == c2->key && c1->key2 == c2->key2;
+ }
  
--static struct dept_pool pool[OBJECT_NR] = {
-+struct dept_pool dept_pool[OBJECT_NR] = {
- #define OBJECT(id, nr) {						\
- 	.name = #id,							\
- 	.obj_sz = sizeof(struct dept_##id),				\
-@@ -278,7 +272,7 @@ static void *from_pool(enum object_t t)
- 	if (DEPT_WARN_ON(!irqs_disabled()))
+ static unsigned long key_class(struct dept_class *c)
+ {
+-	return c->key;
++	return c->key2 ? mix(c->key, c->key2) : c->key;
+ }
+ 
+ #define HASH(id, bits)							\
+@@ -571,14 +572,38 @@ static inline struct dept_dep *lookup_dep(struct dept_class *fc,
+ 	return hash_lookup_dep(&onetime_d);
+ }
+ 
+-static inline struct dept_class *lookup_class(unsigned long key)
++static inline struct dept_class *lookup_class(unsigned long key,
++					      unsigned long key2)
+ {
+-	struct dept_class onetime_c = { .key = key };
++	struct dept_class onetime_c = { .key = key, .key2 = key2 };
+ 
+ 	return hash_lookup_class(&onetime_c);
+ }
+ 
+ /*
++ * NOTE: Must be called with dept_lock held.
++ */
++static void obtain_classes_from_hlist(struct hlist_head *to,
++			bool (*cmp)(struct dept_class *c, void *data),
++			void *data)
++{
++	struct dept_class *c;
++	struct hlist_node *n;
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(table_class); i++) {
++		struct hlist_head *h = table_class + i;
++
++		hlist_for_each_entry_safe(c, n, h, hash_node) {
++			if (cmp(c, data)) {
++				hlist_del_rcu(&c->hash_node);
++				hlist_add_head_rcu(&c->hash_node, to);
++			}
++		}
++	}
++}
++
++/*
+  * Report
+  * =====================================================================
+  * DEPT prints useful information to help debuging on detection of
+@@ -1899,6 +1924,7 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub,
+ 		   const char *n)
+ {
+ 	unsigned long flags;
++	bool onstack;
+ 
+ 	if (unlikely(READ_ONCE(dept_stop) || in_nmi()))
+ 		return;
+@@ -1908,6 +1934,16 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub,
+ 		return;
+ 	}
+ 
++	onstack = object_is_on_stack(m);
++
++	/*
++	 * Require an explicit key for onstack maps.
++	 */
++	if (onstack && !k) {
++		m->nocheck = true;
++		return;
++	}
++
+ 	/*
+ 	 * Allow recursive entrance.
+ 	 */
+@@ -1917,6 +1953,7 @@ void dept_map_init(struct dept_map *m, struct dept_key *k, int sub,
+ 
+ 	m->sub_usr = sub;
+ 	m->keys = k;
++	m->key2 = onstack ? (unsigned long)current : 0UL;
+ 	m->name = n;
+ 	m->wgen = 0U;
+ 	m->nocheck = false;
+@@ -2031,7 +2068,7 @@ static inline int map_sub(struct dept_map *m, int e)
+ 
+ static struct dept_class *check_new_class(struct dept_key *local,
+ 					  struct dept_key *k, int sub,
+-					  const char *n)
++					  unsigned long k2, const char *n)
+ {
+ 	struct dept_class *c = NULL;
+ 
+@@ -2047,14 +2084,14 @@ static struct dept_class *check_new_class(struct dept_key *local,
+ 	if (c)
+ 		return c;
+ 
+-	c = lookup_class((unsigned long)k->subkeys + sub);
++	c = lookup_class((unsigned long)k->subkeys + sub, k2);
+ 	if (c)
+ 		goto caching;
+ 
+ 	if (unlikely(!dept_lock()))
  		return NULL;
  
--	p = &pool[t];
-+	p = &dept_pool[t];
+-	c = lookup_class((unsigned long)k->subkeys + sub);
++	c = lookup_class((unsigned long)k->subkeys + sub, k2);
+ 	if (unlikely(c))
+ 		goto unlock;
  
- 	/*
- 	 * Try local pool first.
-@@ -308,7 +302,7 @@ static void *from_pool(enum object_t t)
+@@ -2065,6 +2102,7 @@ static struct dept_class *check_new_class(struct dept_key *local,
+ 	c->name = n;
+ 	c->sub = sub;
+ 	c->key = (unsigned long)(k->subkeys + sub);
++	c->key2 = k2;
+ 	hash_add_class(c);
+ 	list_add(&c->all_node, &dept_classes);
+ unlock:
+@@ -2099,8 +2137,8 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+ 		struct dept_key *k;
  
- static void to_pool(void *o, enum object_t t)
- {
--	struct dept_pool *p = &pool[t];
-+	struct dept_pool *p = &dept_pool[t];
- 	struct llist_head *h;
+ 		k = m->keys ?: &m->keys_local;
+-		c = check_new_class(&m->keys_local, k,
+-				    map_sub(m, e), m->name);
++		c = check_new_class(&m->keys_local, k, map_sub(m, e),
++				    m->key2, m->name);
+ 		if (!c)
+ 			continue;
  
- 	preempt_disable();
-@@ -1960,7 +1954,7 @@ void dept_map_nocheck(struct dept_map *m)
+@@ -2298,7 +2336,8 @@ void dept_ecxt_enter(struct dept_map *m, unsigned long e_f, unsigned long ip,
+ 	DEPT_WARN_ON(1UL << e != e_f);
+ 
+ 	k = m->keys ?: &m->keys_local;
+-	c = check_new_class(&m->keys_local, k, map_sub(m, e), m->name);
++	c = check_new_class(&m->keys_local, k, map_sub(m, e),
++			    m->key2, m->name);
+ 
+ 	if (c && add_ecxt((void *)m, c, ip, c_fn, e_fn, ne))
+ 		goto exit;
+@@ -2376,7 +2415,8 @@ void dept_event(struct dept_map *m, unsigned long e_f, unsigned long ip,
+ 	DEPT_WARN_ON(1UL << e != e_f);
+ 
+ 	k = m->keys ?: &m->keys_local;
+-	c = check_new_class(&m->keys_local, k, map_sub(m, e), m->name);
++	c = check_new_class(&m->keys_local, k, map_sub(m, e),
++			    m->key2, m->name);
+ 
+ 	if (c && add_ecxt((void *)m, c, 0UL, NULL, e_fn, 0)) {
+ 		do_event((void *)m, c, READ_ONCE(m->wgen), ip);
+@@ -2427,7 +2467,8 @@ void dept_ecxt_exit(struct dept_map *m, unsigned long e_f,
+ 	DEPT_WARN_ON(1UL << e != e_f);
+ 
+ 	k = m->keys ?: &m->keys_local;
+-	c = check_new_class(&m->keys_local, k, map_sub(m, e), m->name);
++	c = check_new_class(&m->keys_local, k, map_sub(m, e),
++			    m->key2, m->name);
+ 
+ 	if (c && pop_ecxt((void *)m, c))
+ 		goto exit;
+@@ -2504,7 +2545,7 @@ void dept_wait_split_map(struct dept_map_each *me,
+ 	flags = dept_enter();
+ 
+ 	k = mc->keys ?: &mc->keys_local;
+-	c = check_new_class(&mc->keys_local, k, 0, mc->name);
++	c = check_new_class(&mc->keys_local, k, 0, 0UL, mc->name);
+ 	if (c)
+ 		add_wait(c, ip, w_fn, ne);
+ 
+@@ -2568,7 +2609,7 @@ void dept_event_split_map(struct dept_map_each *me,
+ 	flags = dept_enter();
+ 
+ 	k = mc->keys ?: &mc->keys_local;
+-	c = check_new_class(&mc->keys_local, k, 0, mc->name);
++	c = check_new_class(&mc->keys_local, k, 0, 0UL, mc->name);
+ 
+ 	if (c && add_ecxt((void *)me, c, 0UL, NULL, e_fn, 0)) {
+ 		do_event((void *)me, c, READ_ONCE(me->wgen), ip);
+@@ -2584,12 +2625,64 @@ void dept_event_split_map(struct dept_map_each *me,
  }
- EXPORT_SYMBOL_GPL(dept_map_nocheck);
+ EXPORT_SYMBOL_GPL(dept_event_split_map);
  
--static LIST_HEAD(classes);
-+LIST_HEAD(dept_classes);
- 
- static inline bool within(const void *addr, void *start, unsigned long size)
++static bool cmp_class_key2(struct dept_class *c, void *k2)
++{
++	return c->key2 == (unsigned long)k2;
++}
++
++static void per_task_key_destroy(void)
++{
++	struct dept_class *c;
++	struct hlist_node *n;
++	HLIST_HEAD(h);
++
++	/*
++	 * per_task_key_destroy() should not fail.
++	 *
++	 * FIXME: Should be fixed if per_task_key_destroy() causes
++	 * deadlock with dept_lock().
++	 */
++	while (unlikely(!dept_lock()))
++		cpu_relax();
++
++	obtain_classes_from_hlist(&h, cmp_class_key2, current);
++
++	hlist_for_each_entry_safe(c, n, &h, hash_node) {
++		hash_del_class(c);
++		disconnect_class(c);
++		list_del(&c->all_node);
++		inval_class(c);
++
++		/*
++		 * Actual deletion will happen on the rcu callback
++		 * that has been added in disconnect_class().
++		 */
++		del_class(c);
++	}
++
++	dept_unlock();
++}
++
+ void dept_task_exit(struct task_struct *t)
  {
-@@ -1992,7 +1986,7 @@ void dept_free_range(void *start, unsigned int sz)
+-	struct dept_task *dt = &t->dept_task;
++	struct dept_task *dt = dept_task();
++	unsigned long flags;
+ 	int i;
+ 
+-	raw_local_irq_disable();
++	if (unlikely(READ_ONCE(dept_stop) || in_nmi()))
++		return;
++
++	if (dt->recursive) {
++		DEPT_STOP("Entered task_exit() while Dept is working.\n");
++		return;
++	}
++
++	if (t != current) {
++		DEPT_STOP("Never expect task_exit() done by others.\n");
++		return;
++	}
++
++	flags = dept_enter();
+ 
+ 	if (dt->stack)
+ 		put_stack(dt->stack);
+@@ -2601,9 +2694,17 @@ void dept_task_exit(struct task_struct *t)
+ 		if (dt->wait_hist[i].wait)
+ 			put_wait(dt->wait_hist[i].wait);
+ 
++	per_task_key_destroy();
++
+ 	dept_off();
++	dept_exit(flags);
+ 
+-	raw_local_irq_enable();
++	/*
++	 * Wait until even lockless hash_lookup_class() for the class
++	 * returns NULL.
++	 */
++	might_sleep();
++	synchronize_rcu();
+ }
+ 
+ void dept_task_init(struct task_struct *t)
+@@ -2611,10 +2712,18 @@ void dept_task_init(struct task_struct *t)
+ 	memset(&t->dept_task, 0x0, sizeof(struct dept_task));
+ }
+ 
++static bool cmp_class_key1(struct dept_class *c, void *k1)
++{
++	return c->key == (unsigned long)k1;
++}
++
+ void dept_key_init(struct dept_key *k)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	unsigned long flags;
++	struct dept_class *c;
++	struct hlist_node *n;
++	HLIST_HEAD(h);
+ 	int sub;
+ 
+ 	if (unlikely(READ_ONCE(dept_stop) || in_nmi()))
+@@ -2636,13 +2745,11 @@ void dept_key_init(struct dept_key *k)
  	while (unlikely(!dept_lock()))
  		cpu_relax();
  
--	list_for_each_entry_safe(c, n, &classes, all_node) {
-+	list_for_each_entry_safe(c, n, &dept_classes, all_node) {
- 		if (!within((void *)c->key, start, sz) &&
- 		    !within(c->name, start, sz))
- 			continue;
-@@ -2061,7 +2055,7 @@ static struct dept_class *check_new_class(struct dept_key *local,
- 	c->sub = sub;
- 	c->key = (unsigned long)(k->subkeys + sub);
- 	hash_add_class(c);
--	list_add(&c->all_node, &classes);
-+	list_add(&c->all_node, &dept_classes);
- unlock:
- 	dept_unlock();
- caching:
-@@ -2585,8 +2579,8 @@ static void migrate_per_cpu_pool(void)
- 		struct llist_head *from;
- 		struct llist_head *to;
+-	for (sub = 0; sub < DEPT_MAX_SUBCLASSES; sub++) {
+-		struct dept_class *c;
+-
+-		c = lookup_class((unsigned long)k->subkeys + sub);
+-		if (!c)
+-			continue;
++	for (sub = 0; sub < DEPT_MAX_SUBCLASSES; sub++)
++		obtain_classes_from_hlist(&h, cmp_class_key1,
++					  k->subkeys + sub);
  
--		from = &pool[i].boot_pool;
--		to = per_cpu_ptr(pool[i].lpool, boot_cpu);
-+		from = &dept_pool[i].boot_pool;
-+		to = per_cpu_ptr(dept_pool[i].lpool, boot_cpu);
- 		move_llist(to, from);
- 	}
++	hlist_for_each_entry_safe(c, n, &h, hash_node) {
+ 		DEPT_STOP("The class(%s/%d) has not been removed.\n",
+ 			  c->name, sub);
+ 		break;
+@@ -2657,6 +2764,9 @@ void dept_key_destroy(struct dept_key *k)
+ {
+ 	struct dept_task *dt = dept_task();
+ 	unsigned long flags;
++	struct dept_class *c;
++	struct hlist_node *n;
++	HLIST_HEAD(h);
+ 	int sub;
+ 
+ 	if (unlikely(READ_ONCE(dept_stop) || in_nmi()))
+@@ -2678,13 +2788,11 @@ void dept_key_destroy(struct dept_key *k)
+ 	while (unlikely(!dept_lock()))
+ 		cpu_relax();
+ 
+-	for (sub = 0; sub < DEPT_MAX_SUBCLASSES; sub++) {
+-		struct dept_class *c;
+-
+-		c = lookup_class((unsigned long)k->subkeys + sub);
+-		if (!c)
+-			continue;
++	for (sub = 0; sub < DEPT_MAX_SUBCLASSES; sub++)
++		obtain_classes_from_hlist(&h, cmp_class_key1,
++					  k->subkeys + sub);
+ 
++	hlist_for_each_entry_safe(c, n, &h, hash_node) {
+ 		hash_del_class(c);
+ 		disconnect_class(c);
+ 		list_del(&c->all_node);
+diff --git a/kernel/exit.c b/kernel/exit.c
+index bac41ee..d381fd4 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -738,6 +738,13 @@ void __noreturn do_exit(long code)
+ 	struct task_struct *tsk = current;
+ 	int group_dead;
+ 
++	/*
++	 * dept_task_exit() requires might_sleep() because it needs to
++	 * wait on the grace period after cleaning the objects that have
++	 * been coupled with the current task_struct.
++	 */
++	dept_task_exit(tsk);
++
+ 	WARN_ON(tsk->plug);
+ 
+ 	kcov_task_exit(tsk);
+@@ -844,7 +851,6 @@ void __noreturn do_exit(long code)
+ 	exit_tasks_rcu_finish();
+ 
+ 	lockdep_free_task(tsk);
+-	dept_task_exit(tsk);
+ 	do_task_dead();
  }
-diff --git a/kernel/dependency/dept_internal.h b/kernel/dependency/dept_internal.h
-new file mode 100644
-index 00000000..007c1ee
---- /dev/null
-+++ b/kernel/dependency/dept_internal.h
-@@ -0,0 +1,26 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Dept(DEPendency Tracker) - runtime dependency tracker internal header
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2020 LG Electronics, Inc., Byungchul Park
-+ */
-+
-+#ifndef __DEPT_INTERNAL_H
-+#define __DEPT_INTERNAL_H
-+
-+#ifdef CONFIG_DEPT
-+
-+enum object_t {
-+#define OBJECT(id, nr) OBJECT_##id,
-+	#include "dept_object.h"
-+#undef  OBJECT
-+	OBJECT_NR,
-+};
-+
-+extern struct list_head dept_classes;
-+extern struct dept_pool dept_pool[];
-+
-+#endif
-+#endif /* __DEPT_INTERNAL_H */
-diff --git a/kernel/dependency/dept_proc.c b/kernel/dependency/dept_proc.c
-new file mode 100644
-index 00000000..c069354
---- /dev/null
-+++ b/kernel/dependency/dept_proc.c
-@@ -0,0 +1,92 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Procfs knobs for Dept(DEPendency Tracker)
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (C) 2021 LG Electronics, Inc. , Byungchul Park
-+ */
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
-+#include <linux/dept.h>
-+#include "dept_internal.h"
-+
-+static void *l_next(struct seq_file *m, void *v, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_next(v, &dept_classes, pos);
-+}
-+
-+static void *l_start(struct seq_file *m, loff_t *pos)
-+{
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	return seq_list_start_head(&dept_classes, *pos);
-+}
-+
-+static void l_stop(struct seq_file *m, void *v)
-+{
-+}
-+
-+static int l_show(struct seq_file *m, void *v)
-+{
-+	struct dept_class *fc = list_entry(v, struct dept_class, all_node);
-+	struct dept_dep *d;
-+
-+	if (v == &dept_classes) {
-+		seq_puts(m, "All classes:\n\n");
-+		return 0;
-+	}
-+
-+	seq_printf(m, "[%p] %s\n", (void *)fc->key, fc->name);
-+
-+	/*
-+	 * XXX: Serialize list traversal if needed. The following might
-+	 * give a wrong information on contention.
-+	 */
-+	list_for_each_entry(d, &fc->dep_head, dep_node) {
-+		struct dept_class *tc = d->wait->class;
-+
-+		seq_printf(m, " -> [%p] %s\n", (void *)tc->key, tc->name);
-+	}
-+	seq_puts(m, "\n");
-+
-+	return 0;
-+}
-+
-+static const struct seq_operations dept_deps_ops = {
-+	.start	= l_start,
-+	.next	= l_next,
-+	.stop	= l_stop,
-+	.show	= l_show,
-+};
-+
-+static int dept_stats_show(struct seq_file *m, void *v)
-+{
-+	int r;
-+
-+	seq_puts(m, "Availability in the static pools:\n\n");
-+#define OBJECT(id, nr)							\
-+	r = atomic_read(&dept_pool[OBJECT_##id].obj_nr);		\
-+	if (r < 0)							\
-+		r = 0;							\
-+	seq_printf(m, "%s\t%d/%d(%d%%)\n", #id, r, nr, (r * 100) / (nr));
-+	#include "dept_object.h"
-+#undef  OBJECT
-+
-+	return 0;
-+}
-+
-+static int __init dept_proc_init(void)
-+{
-+	proc_create_seq("dept_deps", S_IRUSR, NULL, &dept_deps_ops);
-+	proc_create_single("dept_stats", S_IRUSR, NULL, dept_stats_show);
-+	return 0;
-+}
-+
-+__initcall(dept_proc_init);
+ 
 -- 
 1.9.1
 
