@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A10D2C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25BFEC4167D
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238135AbiEDI4J (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:56:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52538 "EHLO
+        id S1345017AbiEDI4O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:56:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52630 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346765AbiEDIx3 (ORCPT
+        with ESMTP id S1346620AbiEDIx3 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:29 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 13F1C255AA
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 6DA6125C44
         for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:22 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.52 with ESMTP; 4 May 2022 17:19:21 +0900
+        by 156.147.23.51 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 12/21] dept: Apply SDT to swait
-Date:   Wed,  4 May 2022 17:17:40 +0900
-Message-Id: <1651652269-15342-13-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 14/21] locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
+Date:   Wed,  4 May 2022 17:17:42 +0900
+Message-Id: <1651652269-15342-15-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,105 +56,33 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes SDT able to track dependencies by swait.
+cb92173d1f0 ("locking/lockdep, cpu/hotplug: Annotate AP thread") was
+introduced to make lockdep_assert_cpus_held() work in AP thread.
+
+However, the annotation is too strong for that purpose. We don't have to
+use more than try lock annotation for that.
+
+Furthermore, now that Dept was introduced, false positive alarms was
+reported by that. Replaced it with try lock annotation.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/swait.h |  4 ++++
- kernel/sched/swait.c  | 10 ++++++++++
- 2 files changed, 14 insertions(+)
+ kernel/cpu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/swait.h b/include/linux/swait.h
-index 6a8c22b..8080b29 100644
---- a/include/linux/swait.h
-+++ b/include/linux/swait.h
-@@ -6,6 +6,7 @@
- #include <linux/stddef.h>
- #include <linux/spinlock.h>
- #include <linux/wait.h>
-+#include <linux/dept_sdt.h>
- #include <asm/current.h>
+diff --git a/kernel/cpu.c b/kernel/cpu.c
+index d0a9aa0..cb6e66c 100644
+--- a/kernel/cpu.c
++++ b/kernel/cpu.c
+@@ -355,7 +355,7 @@ int lockdep_is_cpus_held(void)
  
- /*
-@@ -43,6 +44,7 @@
- struct swait_queue_head {
- 	raw_spinlock_t		lock;
- 	struct list_head	task_list;
-+	struct dept_map		dmap;
- };
- 
- struct swait_queue {
-@@ -61,6 +63,7 @@ struct swait_queue {
- #define __SWAIT_QUEUE_HEAD_INITIALIZER(name) {				\
- 	.lock		= __RAW_SPIN_LOCK_UNLOCKED(name.lock),		\
- 	.task_list	= LIST_HEAD_INIT((name).task_list),		\
-+	.dmap		= DEPT_MAP_INITIALIZER(name),			\
- }
- 
- #define DECLARE_SWAIT_QUEUE_HEAD(name)					\
-@@ -72,6 +75,7 @@ extern void __init_swait_queue_head(struct swait_queue_head *q, const char *name
- #define init_swait_queue_head(q)				\
- 	do {							\
- 		static struct lock_class_key __key;		\
-+		sdt_map_init(&(q)->dmap);			\
- 		__init_swait_queue_head((q), #q, &__key);	\
- 	} while (0)
- 
-diff --git a/kernel/sched/swait.c b/kernel/sched/swait.c
-index 76b9b79..4f713c0 100644
---- a/kernel/sched/swait.c
-+++ b/kernel/sched/swait.c
-@@ -26,6 +26,7 @@ void swake_up_locked(struct swait_queue_head *q)
- 		return;
- 
- 	curr = list_first_entry(&q->task_list, typeof(*curr), task_list);
-+	sdt_event(&q->dmap);
- 	wake_up_process(curr->task);
- 	list_del_init(&curr->task_list);
- }
-@@ -68,6 +69,7 @@ void swake_up_all(struct swait_queue_head *q)
- 	while (!list_empty(&tmp)) {
- 		curr = list_first_entry(&tmp, typeof(*curr), task_list);
- 
-+		sdt_event(&q->dmap);
- 		wake_up_state(curr->task, TASK_NORMAL);
- 		list_del_init(&curr->task_list);
- 
-@@ -96,6 +98,9 @@ void prepare_to_swait_exclusive(struct swait_queue_head *q, struct swait_queue *
- 	__prepare_to_swait(q, wait);
- 	set_current_state(state);
- 	raw_spin_unlock_irqrestore(&q->lock, flags);
-+
-+	if (state & TASK_NORMAL)
-+		sdt_wait_prepare(&q->dmap);
- }
- EXPORT_SYMBOL(prepare_to_swait_exclusive);
- 
-@@ -118,12 +123,16 @@ long prepare_to_swait_event(struct swait_queue_head *q, struct swait_queue *wait
- 	}
- 	raw_spin_unlock_irqrestore(&q->lock, flags);
- 
-+	if (!ret && state & TASK_NORMAL)
-+		sdt_wait_prepare(&q->dmap);
-+
- 	return ret;
- }
- EXPORT_SYMBOL(prepare_to_swait_event);
- 
- void __finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
+ static void lockdep_acquire_cpus_lock(void)
  {
-+	sdt_wait_finish();
- 	__set_current_state(TASK_RUNNING);
- 	if (!list_empty(&wait->task_list))
- 		list_del_init(&wait->task_list);
-@@ -133,6 +142,7 @@ void finish_swait(struct swait_queue_head *q, struct swait_queue *wait)
- {
- 	unsigned long flags;
+-	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 0, _THIS_IP_);
++	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 1, _THIS_IP_);
+ }
  
-+	sdt_wait_finish();
- 	__set_current_state(TASK_RUNNING);
- 
- 	if (!list_empty_careful(&wait->task_list)) {
+ static void lockdep_release_cpus_lock(void)
 -- 
 1.9.1
 
