@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87390C4332F
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8818C4167B
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346657AbiEDI4P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:56:15 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53090 "EHLO
+        id S1346688AbiEDI4R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:56:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53080 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346836AbiEDIxq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:46 -0400
+        with ESMTP id S1346826AbiEDIxp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:45 -0400
 Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7553625C6E
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8E32125C5B
         for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:23 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:22 +0900
+        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:22 +0900
+        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 21/21] dept: Unstage wait when tagging a normal sleep wait
-Date:   Wed,  4 May 2022 17:17:49 +0900
-Message-Id: <1651652269-15342-22-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 13/21] dept: Apply SDT to wait(waitqueue)
+Date:   Wed,  4 May 2022 17:17:41 +0900
+Message-Id: <1651652269-15342-14-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,111 +56,123 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Staging a wait and commit have been introduced to handle conditional
-sleeps that can be determined in __schedule() whether it actually goes
-to sleep or not. With this feature, actual wait tagging is delayed
-until __schedule().
-
-Unfortunately, an ambiguity arises when a normal sleep wait that doesn't
-require staging and commit, is involved in the middle of handling a
-conditional sleep e.g. between prepare_to_wait_*() and __schedule(),
-which is a very rare case tho.
-
-So let it give up handling the conditional sleep by unstaging it
-unconditionally when a normal sleep wait gets involved, to avoid the
-ambiguity.
+Makes SDT able to track dependencies by wait(waitqueue).
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/dependency/dept.c | 55 +++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 40 insertions(+), 15 deletions(-)
+ include/linux/wait.h |  6 +++++-
+ kernel/sched/wait.c  | 16 ++++++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 14dc33b..ce6d5b3 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -2166,6 +2166,21 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+diff --git a/include/linux/wait.h b/include/linux/wait.h
+index 851e07d..e637585 100644
+--- a/include/linux/wait.h
++++ b/include/linux/wait.h
+@@ -7,6 +7,7 @@
+ #include <linux/list.h>
+ #include <linux/stddef.h>
+ #include <linux/spinlock.h>
++#include <linux/dept_sdt.h>
+ 
+ #include <asm/current.h>
+ #include <uapi/linux/wait.h>
+@@ -37,6 +38,7 @@ struct wait_queue_entry {
+ struct wait_queue_head {
+ 	spinlock_t		lock;
+ 	struct list_head	head;
++	struct dept_map		dmap;
+ };
+ typedef struct wait_queue_head wait_queue_head_t;
+ 
+@@ -56,7 +58,8 @@ struct wait_queue_head {
+ 
+ #define __WAIT_QUEUE_HEAD_INITIALIZER(name) {					\
+ 	.lock		= __SPIN_LOCK_UNLOCKED(name.lock),			\
+-	.head		= LIST_HEAD_INIT(name.head) }
++	.head		= LIST_HEAD_INIT(name.head),				\
++	.dmap		= DEPT_MAP_INITIALIZER(name) }
+ 
+ #define DECLARE_WAIT_QUEUE_HEAD(name) \
+ 	struct wait_queue_head name = __WAIT_QUEUE_HEAD_INITIALIZER(name)
+@@ -67,6 +70,7 @@ struct wait_queue_head {
+ 	do {									\
+ 		static struct lock_class_key __key;				\
+ 										\
++		sdt_map_init(&(wq_head)->dmap);					\
+ 		__init_waitqueue_head((wq_head), #wq_head, &__key);		\
+ 	} while (0)
+ 
+diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
+index 9860bb9..d67d0dc4 100644
+--- a/kernel/sched/wait.c
++++ b/kernel/sched/wait.c
+@@ -104,6 +104,7 @@ static int __wake_up_common(struct wait_queue_head *wq_head, unsigned int mode,
+ 		if (flags & WQ_FLAG_BOOKMARK)
+ 			continue;
+ 
++		sdt_event(&wq_head->dmap);
+ 		ret = curr->func(curr, mode, wake_flags, key);
+ 		if (ret < 0)
+ 			break;
+@@ -267,6 +268,9 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
+ 		__add_wait_queue(wq_head, wq_entry);
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
++
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
+ }
+ EXPORT_SYMBOL(prepare_to_wait);
+ 
+@@ -285,6 +289,10 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
  	}
+ 	set_current_state(state);
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
++
++	if (state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
++
+ 	return was_empty;
  }
+ EXPORT_SYMBOL(prepare_to_wait_exclusive);
+@@ -330,6 +338,9 @@ long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_en
+ 	}
+ 	spin_unlock_irqrestore(&wq_head->lock, flags);
  
-+static inline void stage_map(struct dept_task *dt, struct dept_map *m)
-+{
-+	dt->stage_m = m;
-+}
++	if (!ret && state & TASK_NORMAL)
++		sdt_wait_prepare(&wq_head->dmap);
 +
-+static inline void unstage_map(struct dept_task *dt)
-+{
-+	dt->stage_m = NULL;
-+}
-+
-+static inline struct dept_map *staged_map(struct dept_task *dt)
-+{
-+	return dt->stage_m;
-+}
-+
- void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
- 	       const char *w_fn, int ne, bool sleep)
- {
-@@ -2183,27 +2198,24 @@ void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
- 
- 	flags = dept_enter();
- 
-+	/*
-+	 * There's no way to distinguish between a staged wait and this
-+	 * one, in the middle of handling a wait that requires staging
-+	 * and commit in __schedule().
-+	 *
-+	 * The wait that has been tagged dept_wait() with sleep == true
-+	 * should ignore the staged wait in __schedule() if it exists,
-+	 * to avoid the ambiguity. It can be done by unstaging it.
-+	 */
-+	if (sleep)
-+		unstage_map(dt);
-+
- 	__dept_wait(m, w_f, ip, w_fn, ne, sleep);
- 
- 	dept_exit(flags);
+ 	return ret;
  }
- EXPORT_SYMBOL_GPL(dept_wait);
+ EXPORT_SYMBOL(prepare_to_wait_event);
+@@ -351,7 +362,9 @@ int do_wait_intr(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
  
--static inline void stage_map(struct dept_task *dt, struct dept_map *m)
--{
--	dt->stage_m = m;
--}
--
--static inline void unstage_map(struct dept_task *dt)
--{
--	dt->stage_m = NULL;
--}
--
--static inline struct dept_map *staged_map(struct dept_task *dt)
--{
--	return dt->stage_m;
--}
--
- void dept_stage_wait(struct dept_map *m, unsigned long w_f,
- 		     const char *w_fn, int ne)
+ 	spin_unlock(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock(&wq->lock);
+ 
+ 	return 0;
+@@ -368,7 +381,9 @@ int do_wait_intr_irq(wait_queue_head_t *wq, wait_queue_entry_t *wait)
+ 		return -ERESTARTSYS;
+ 
+ 	spin_unlock_irq(&wq->lock);
++	sdt_wait_prepare(&wq->dmap);
+ 	schedule();
++	sdt_wait_finish();
+ 	spin_lock_irq(&wq->lock);
+ 
+ 	return 0;
+@@ -388,6 +403,7 @@ void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_en
  {
-@@ -2565,6 +2577,19 @@ void dept_wait_split_map(struct dept_map_each *me,
+ 	unsigned long flags;
  
- 	flags = dept_enter();
- 
-+	/*
-+	 * There's no way to distinguish between a staged wait and this
-+	 * one, in the middle of handling a wait that requires staging
-+	 * and commit in __schedule().
-+	 *
-+	 * The wait that has been tagged dept_wait_split_map() with
-+	 * sleep == true should ignore the staged wait in __schedule()
-+	 * if it exists, to avoid the ambiguity. It can be done by
-+	 * unstaging it.
-+	 */
-+	if (sleep)
-+		unstage_map(dt);
-+
- 	k = mc->keys ?: &mc->keys_local;
- 	c = check_new_class(&mc->keys_local, k, 0, 0UL, mc->name);
- 	if (c)
++	sdt_wait_finish();
+ 	__set_current_state(TASK_RUNNING);
+ 	/*
+ 	 * We can check for list emptiness outside the lock
 -- 
 1.9.1
 
