@@ -2,24 +2,24 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25BFEC4167D
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87390C4332F
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345017AbiEDI4O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:56:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52630 "EHLO
+        id S1346657AbiEDI4P (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:56:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53090 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346620AbiEDIx3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:29 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 6DA6125C44
-        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:22 -0700 (PDT)
+        with ESMTP id S1346836AbiEDIxq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:46 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7553625C6E
+        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:23 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.51 with ESMTP; 4 May 2022 17:19:21 +0900
+        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:22 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:21 +0900
+        by 156.147.1.125 with ESMTP; 4 May 2022 17:19:22 +0900
 X-Original-SENDERIP: 10.177.244.38
 X-Original-MAILFROM: byungchul.park@lge.com
 From:   Byungchul Park <byungchul.park@lge.com>
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 14/21] locking/lockdep, cpu/hotplus: Use a weaker annotation in AP thread
-Date:   Wed,  4 May 2022 17:17:42 +0900
-Message-Id: <1651652269-15342-15-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 21/21] dept: Unstage wait when tagging a normal sleep wait
+Date:   Wed,  4 May 2022 17:17:49 +0900
+Message-Id: <1651652269-15342-22-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,33 +56,111 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-cb92173d1f0 ("locking/lockdep, cpu/hotplug: Annotate AP thread") was
-introduced to make lockdep_assert_cpus_held() work in AP thread.
+Staging a wait and commit have been introduced to handle conditional
+sleeps that can be determined in __schedule() whether it actually goes
+to sleep or not. With this feature, actual wait tagging is delayed
+until __schedule().
 
-However, the annotation is too strong for that purpose. We don't have to
-use more than try lock annotation for that.
+Unfortunately, an ambiguity arises when a normal sleep wait that doesn't
+require staging and commit, is involved in the middle of handling a
+conditional sleep e.g. between prepare_to_wait_*() and __schedule(),
+which is a very rare case tho.
 
-Furthermore, now that Dept was introduced, false positive alarms was
-reported by that. Replaced it with try lock annotation.
+So let it give up handling the conditional sleep by unstaging it
+unconditionally when a normal sleep wait gets involved, to avoid the
+ambiguity.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- kernel/cpu.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/dependency/dept.c | 55 +++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 40 insertions(+), 15 deletions(-)
 
-diff --git a/kernel/cpu.c b/kernel/cpu.c
-index d0a9aa0..cb6e66c 100644
---- a/kernel/cpu.c
-+++ b/kernel/cpu.c
-@@ -355,7 +355,7 @@ int lockdep_is_cpus_held(void)
- 
- static void lockdep_acquire_cpus_lock(void)
- {
--	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 0, _THIS_IP_);
-+	rwsem_acquire(&cpu_hotplug_lock.dep_map, 0, 1, _THIS_IP_);
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 14dc33b..ce6d5b3 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -2166,6 +2166,21 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+ 	}
  }
  
- static void lockdep_release_cpus_lock(void)
++static inline void stage_map(struct dept_task *dt, struct dept_map *m)
++{
++	dt->stage_m = m;
++}
++
++static inline void unstage_map(struct dept_task *dt)
++{
++	dt->stage_m = NULL;
++}
++
++static inline struct dept_map *staged_map(struct dept_task *dt)
++{
++	return dt->stage_m;
++}
++
+ void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
+ 	       const char *w_fn, int ne, bool sleep)
+ {
+@@ -2183,27 +2198,24 @@ void dept_wait(struct dept_map *m, unsigned long w_f, unsigned long ip,
+ 
+ 	flags = dept_enter();
+ 
++	/*
++	 * There's no way to distinguish between a staged wait and this
++	 * one, in the middle of handling a wait that requires staging
++	 * and commit in __schedule().
++	 *
++	 * The wait that has been tagged dept_wait() with sleep == true
++	 * should ignore the staged wait in __schedule() if it exists,
++	 * to avoid the ambiguity. It can be done by unstaging it.
++	 */
++	if (sleep)
++		unstage_map(dt);
++
+ 	__dept_wait(m, w_f, ip, w_fn, ne, sleep);
+ 
+ 	dept_exit(flags);
+ }
+ EXPORT_SYMBOL_GPL(dept_wait);
+ 
+-static inline void stage_map(struct dept_task *dt, struct dept_map *m)
+-{
+-	dt->stage_m = m;
+-}
+-
+-static inline void unstage_map(struct dept_task *dt)
+-{
+-	dt->stage_m = NULL;
+-}
+-
+-static inline struct dept_map *staged_map(struct dept_task *dt)
+-{
+-	return dt->stage_m;
+-}
+-
+ void dept_stage_wait(struct dept_map *m, unsigned long w_f,
+ 		     const char *w_fn, int ne)
+ {
+@@ -2565,6 +2577,19 @@ void dept_wait_split_map(struct dept_map_each *me,
+ 
+ 	flags = dept_enter();
+ 
++	/*
++	 * There's no way to distinguish between a staged wait and this
++	 * one, in the middle of handling a wait that requires staging
++	 * and commit in __schedule().
++	 *
++	 * The wait that has been tagged dept_wait_split_map() with
++	 * sleep == true should ignore the staged wait in __schedule()
++	 * if it exists, to avoid the ambiguity. It can be done by
++	 * unstaging it.
++	 */
++	if (sleep)
++		unstage_map(dt);
++
+ 	k = mc->keys ?: &mc->keys_local;
+ 	c = check_new_class(&mc->keys_local, k, 0, 0UL, mc->name);
+ 	if (c)
 -- 
 1.9.1
 
