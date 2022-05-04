@@ -2,20 +2,20 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D8818C4167B
-	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:52:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49E0AC433F5
+	for <linux-ext4@archiver.kernel.org>; Wed,  4 May 2022 08:54:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346688AbiEDI4R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 4 May 2022 04:56:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53080 "EHLO
+        id S1347310AbiEDIzv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 4 May 2022 04:55:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52540 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346826AbiEDIxp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:45 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo13.lge.com [156.147.23.53])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 8E32125C5B
-        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:23 -0700 (PDT)
+        with ESMTP id S1346766AbiEDIx3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 May 2022 04:53:29 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id B922D255B2
+        for <linux-ext4@vger.kernel.org>; Wed,  4 May 2022 01:49:22 -0700 (PDT)
 Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.53 with ESMTP; 4 May 2022 17:19:21 +0900
+        by 156.147.23.51 with ESMTP; 4 May 2022 17:19:21 +0900
 X-Original-SENDERIP: 156.147.1.125
 X-Original-MAILFROM: byungchul.park@lge.com
 Received: from unknown (HELO localhost.localdomain) (10.177.244.38)
@@ -46,9 +46,9 @@ Cc:     damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
         dri-devel@lists.freedesktop.org, airlied@linux.ie,
         rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
         hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: [PATCH RFC v6 13/21] dept: Apply SDT to wait(waitqueue)
-Date:   Wed,  4 May 2022 17:17:41 +0900
-Message-Id: <1651652269-15342-14-git-send-email-byungchul.park@lge.com>
+Subject: [PATCH RFC v6 18/21] dept: Disable Dept on struct crypto_larval's completion for now
+Date:   Wed,  4 May 2022 17:17:46 +0900
+Message-Id: <1651652269-15342-19-git-send-email-byungchul.park@lge.com>
 X-Mailer: git-send-email 1.9.1
 In-Reply-To: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
 References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
@@ -56,123 +56,36 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Makes SDT able to track dependencies by wait(waitqueue).
+struct crypto_larval's completion is used for multiple purposes e.g.
+waiting for test to complete or waiting for probe to complete.
+
+The completion variable needs to be split according to what it's used
+for. Otherwise, Dept cannot distinguish one from another and doesn't
+work properly. Now that it isn't, disable Dept on it.
 
 Signed-off-by: Byungchul Park <byungchul.park@lge.com>
 ---
- include/linux/wait.h |  6 +++++-
- kernel/sched/wait.c  | 16 ++++++++++++++++
- 2 files changed, 21 insertions(+), 1 deletion(-)
+ crypto/api.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/wait.h b/include/linux/wait.h
-index 851e07d..e637585 100644
---- a/include/linux/wait.h
-+++ b/include/linux/wait.h
-@@ -7,6 +7,7 @@
- #include <linux/list.h>
- #include <linux/stddef.h>
- #include <linux/spinlock.h>
-+#include <linux/dept_sdt.h>
+diff --git a/crypto/api.c b/crypto/api.c
+index 69508ae..305d24c 100644
+--- a/crypto/api.c
++++ b/crypto/api.c
+@@ -115,7 +115,12 @@ struct crypto_larval *crypto_larval_alloc(const char *name, u32 type, u32 mask)
+ 	larval->alg.cra_destroy = crypto_larval_destroy;
  
- #include <asm/current.h>
- #include <uapi/linux/wait.h>
-@@ -37,6 +38,7 @@ struct wait_queue_entry {
- struct wait_queue_head {
- 	spinlock_t		lock;
- 	struct list_head	head;
-+	struct dept_map		dmap;
- };
- typedef struct wait_queue_head wait_queue_head_t;
+ 	strlcpy(larval->alg.cra_name, name, CRYPTO_MAX_ALG_NAME);
+-	init_completion(&larval->completion);
++	/*
++	 * TODO: Split ->completion according to what it's used for e.g.
++	 * ->test_completion, ->probe_completion and the like, so that
++	 *  Dept can track its dependency properly.
++	 */
++	init_completion_nocheck(&larval->completion);
  
-@@ -56,7 +58,8 @@ struct wait_queue_head {
- 
- #define __WAIT_QUEUE_HEAD_INITIALIZER(name) {					\
- 	.lock		= __SPIN_LOCK_UNLOCKED(name.lock),			\
--	.head		= LIST_HEAD_INIT(name.head) }
-+	.head		= LIST_HEAD_INIT(name.head),				\
-+	.dmap		= DEPT_MAP_INITIALIZER(name) }
- 
- #define DECLARE_WAIT_QUEUE_HEAD(name) \
- 	struct wait_queue_head name = __WAIT_QUEUE_HEAD_INITIALIZER(name)
-@@ -67,6 +70,7 @@ struct wait_queue_head {
- 	do {									\
- 		static struct lock_class_key __key;				\
- 										\
-+		sdt_map_init(&(wq_head)->dmap);					\
- 		__init_waitqueue_head((wq_head), #wq_head, &__key);		\
- 	} while (0)
- 
-diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
-index 9860bb9..d67d0dc4 100644
---- a/kernel/sched/wait.c
-+++ b/kernel/sched/wait.c
-@@ -104,6 +104,7 @@ static int __wake_up_common(struct wait_queue_head *wq_head, unsigned int mode,
- 		if (flags & WQ_FLAG_BOOKMARK)
- 			continue;
- 
-+		sdt_event(&wq_head->dmap);
- 		ret = curr->func(curr, mode, wake_flags, key);
- 		if (ret < 0)
- 			break;
-@@ -267,6 +268,9 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
- 		__add_wait_queue(wq_head, wq_entry);
- 	set_current_state(state);
- 	spin_unlock_irqrestore(&wq_head->lock, flags);
-+
-+	if (state & TASK_NORMAL)
-+		sdt_wait_prepare(&wq_head->dmap);
+ 	return larval;
  }
- EXPORT_SYMBOL(prepare_to_wait);
- 
-@@ -285,6 +289,10 @@ void __wake_up_pollfree(struct wait_queue_head *wq_head)
- 	}
- 	set_current_state(state);
- 	spin_unlock_irqrestore(&wq_head->lock, flags);
-+
-+	if (state & TASK_NORMAL)
-+		sdt_wait_prepare(&wq_head->dmap);
-+
- 	return was_empty;
- }
- EXPORT_SYMBOL(prepare_to_wait_exclusive);
-@@ -330,6 +338,9 @@ long prepare_to_wait_event(struct wait_queue_head *wq_head, struct wait_queue_en
- 	}
- 	spin_unlock_irqrestore(&wq_head->lock, flags);
- 
-+	if (!ret && state & TASK_NORMAL)
-+		sdt_wait_prepare(&wq_head->dmap);
-+
- 	return ret;
- }
- EXPORT_SYMBOL(prepare_to_wait_event);
-@@ -351,7 +362,9 @@ int do_wait_intr(wait_queue_head_t *wq, wait_queue_entry_t *wait)
- 		return -ERESTARTSYS;
- 
- 	spin_unlock(&wq->lock);
-+	sdt_wait_prepare(&wq->dmap);
- 	schedule();
-+	sdt_wait_finish();
- 	spin_lock(&wq->lock);
- 
- 	return 0;
-@@ -368,7 +381,9 @@ int do_wait_intr_irq(wait_queue_head_t *wq, wait_queue_entry_t *wait)
- 		return -ERESTARTSYS;
- 
- 	spin_unlock_irq(&wq->lock);
-+	sdt_wait_prepare(&wq->dmap);
- 	schedule();
-+	sdt_wait_finish();
- 	spin_lock_irq(&wq->lock);
- 
- 	return 0;
-@@ -388,6 +403,7 @@ void finish_wait(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_en
- {
- 	unsigned long flags;
- 
-+	sdt_wait_finish();
- 	__set_current_state(TASK_RUNNING);
- 	/*
- 	 * We can check for list emptiness outside the lock
 -- 
 1.9.1
 
