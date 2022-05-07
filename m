@@ -2,232 +2,155 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DD78C433FE
-	for <linux-ext4@archiver.kernel.org>; Fri,  6 May 2022 12:48:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BFCFDC433F5
+	for <linux-ext4@archiver.kernel.org>; Sat,  7 May 2022 07:21:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1392164AbiEFMwd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 6 May 2022 08:52:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50516 "EHLO
+        id S1446067AbiEGHZF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 7 May 2022 03:25:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60702 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231349AbiEFMwc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 6 May 2022 08:52:32 -0400
-Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A58571409B;
-        Fri,  6 May 2022 05:48:47 -0700 (PDT)
-Received: from canpemm500010.china.huawei.com (unknown [172.30.72.54])
-        by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4Kvqxt625BzXdjX;
-        Fri,  6 May 2022 20:44:02 +0800 (CST)
-Received: from [10.174.178.185] (10.174.178.185) by
- canpemm500010.china.huawei.com (7.192.105.118) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Fri, 6 May 2022 20:48:44 +0800
-Subject: Re: [PATCH -next] ext4: fix bug_on in ext4_writepages
-To:     Jan Kara <jack@suse.cz>
-References: <20220505135708.2629657-1-yebin10@huawei.com>
- <20220505154713.nig6rj76p2gl5mm7@quack3.lan> <6274797D.6050303@huawei.com>
- <20220506085034.akzobmffzosg7rem@quack3.lan>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <lczerner@redhat.com>
-From:   yebin <yebin10@huawei.com>
-Message-ID: <6275192C.5080300@huawei.com>
-Date:   Fri, 6 May 2022 20:48:44 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
- Thunderbird/38.1.0
+        with ESMTP id S1446038AbiEGHY6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 7 May 2022 03:24:58 -0400
+Received: from mail-pg1-x534.google.com (mail-pg1-x534.google.com [IPv6:2607:f8b0:4864:20::534])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F35F33883;
+        Sat,  7 May 2022 00:21:11 -0700 (PDT)
+Received: by mail-pg1-x534.google.com with SMTP id 202so7862914pgc.9;
+        Sat, 07 May 2022 00:21:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=rNQz935Rwo42XgI1l8Va40p/MEeV4p6HEVCQ52VDnf4=;
+        b=P42+8ex/HBpVSeUhi79CcZsiB1rEwx7SjPsWOzHKtYtuDRjT+7g81hnQb9Bg+3nrwT
+         De8dQlU9BcgwoEV9wdnbeE3D82XEoM9rdMizKhVMhmThyQPs7pG6yQdXOZHUILyVEB8B
+         MZOMaM5Nag+I9ca+mSFwEkbaCfc+mVQpZN8W0UFxaI3P1zlBAo3OLxIQcU7yZiXAhU1h
+         Jiaawf+dpE+KAoqOYTid6KwfvlqOs8L3T25b9+uILvT8+qC03iIX5R5P7pBVqRxRlV1/
+         2L77a/eKzFW5m+4Q8qaNXGrcogU5pQhNHMvwFRhhaVI7cMNifBapsGydQXtopBhbDEvv
+         tGKw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=rNQz935Rwo42XgI1l8Va40p/MEeV4p6HEVCQ52VDnf4=;
+        b=dbeW4iM7xzP1pedpoDFeZtPSpmc86HZmgQb1X3b5lrJZdzI+tplsVsUWaqsF8L1s8A
+         2U5tF6esDkokfGvo/YHHeEeec6aJgpFOSQsbfcC/MQkEGcSX5c6FVHf+p0IAokhhPB+q
+         l4FClkS0nKcw4/jXpPICClyeLZ89tcDKSfVADmhw1kbEBSWgGwHU2IfmpJuqLMTtJCrk
+         PNN3GDEiLwWAtr5iU9coSPpxe6mLDsAFWt5TUq8XBXVcrXTGHRmuddlv7L2GujvJklTK
+         nC7flNwS/oLwTTv+whKqvnsq60zWSNjk4GLU7zCTih+92OwvzA6oXuZtj6nRsBqwc11D
+         eWlA==
+X-Gm-Message-State: AOAM533mkWrE91d5Fv8TF+MsfcWOY5uSudTeBV1ZFoloI+2u15sES9gD
+        tRsM1an+HHlHXwUaVI9RE7Q=
+X-Google-Smtp-Source: ABdhPJy8wngBA9nCSkNphuykt/x5APcFu3ZWQNW14hKz2s7Rb0bLuKnbzsVQiG9xcQts5UZOdrCb6w==
+X-Received: by 2002:a65:6093:0:b0:373:9c75:19ec with SMTP id t19-20020a656093000000b003739c7519ecmr5972095pgu.539.1651908071104;
+        Sat, 07 May 2022 00:21:11 -0700 (PDT)
+Received: from hyeyoo ([114.29.24.243])
+        by smtp.gmail.com with ESMTPSA id 1-20020a170902c20100b0015ec44d25dasm2956759pll.235.2022.05.07.00.20.53
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 07 May 2022 00:21:10 -0700 (PDT)
+Date:   Sat, 7 May 2022 16:20:50 +0900
+From:   Hyeonggon Yoo <42.hyeyoo@gmail.com>
+To:     Byungchul Park <byungchul.park@lge.com>
+Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        chris@chris-wilson.co.uk, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
+        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
+        gregkh@linuxfoundation.org, kernel-team@lge.com,
+        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+        ngupta@vflare.org, linux-block@vger.kernel.org,
+        paolo.valente@linaro.org, josef@toxicpanda.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
+        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+        dri-devel@lists.freedesktop.org, airlied@linux.ie,
+        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+        hamohammed.sa@gmail.com
+Subject: Re: [PATCH RFC v6 00/21] DEPT(Dependency Tracker)
+Message-ID: <YnYd0hd+yTvVQxm5@hyeyoo>
+References: <CAHk-=whnPePcffsNQM+YSHMGttLXvpf8LbBQ8P7HEdqFXaV7Lg@mail.gmail.com>
+ <1651795895-8641-1-git-send-email-byungchul.park@lge.com>
 MIME-Version: 1.0
-In-Reply-To: <20220506085034.akzobmffzosg7rem@quack3.lan>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.174.178.185]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- canpemm500010.china.huawei.com (7.192.105.118)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1651795895-8641-1-git-send-email-byungchul.park@lge.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-
-On 2022/5/6 16:50, Jan Kara wrote:
-> On Fri 06-05-22 09:27:25, yebin wrote:
->> On 2022/5/5 23:47, Jan Kara wrote:
->>> On Thu 05-05-22 21:57:08, Ye Bin wrote:
->>>> we got issue as follows:
->>>> EXT4-fs error (device loop0): ext4_mb_generate_buddy:1141: group 0, block bitmap and bg descriptor inconsistent: 25 vs 31513 free cls
->>>> ------------[ cut here ]------------
->>>> kernel BUG at fs/ext4/inode.c:2708!
->>>> invalid opcode: 0000 [#1] PREEMPT SMP KASAN PTI
->>>> CPU: 2 PID: 2147 Comm: rep Not tainted 5.18.0-rc2-next-20220413+ #155
->>>> RIP: 0010:ext4_writepages+0x1977/0x1c10
->>>> RSP: 0018:ffff88811d3e7880 EFLAGS: 00010246
->>>> RAX: 0000000000000000 RBX: 0000000000000001 RCX: ffff88811c098000
->>>> RDX: 0000000000000000 RSI: ffff88811c098000 RDI: 0000000000000002
->>>> RBP: ffff888128140f50 R08: ffffffffb1ff6387 R09: 0000000000000000
->>>> R10: 0000000000000007 R11: ffffed10250281ea R12: 0000000000000001
->>>> R13: 00000000000000a4 R14: ffff88811d3e7bb8 R15: ffff888128141028
->>>> FS:  00007f443aed9740(0000) GS:ffff8883aef00000(0000) knlGS:0000000000000000
->>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>>> CR2: 0000000020007200 CR3: 000000011c2a4000 CR4: 00000000000006e0
->>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->>>> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
->>>> Call Trace:
->>>>    <TASK>
->>>>    do_writepages+0x130/0x3a0
->>>>    filemap_fdatawrite_wbc+0x83/0xa0
->>>>    filemap_flush+0xab/0xe0
->>>>    ext4_alloc_da_blocks+0x51/0x120
->>>>    __ext4_ioctl+0x1534/0x3210
->>>>    __x64_sys_ioctl+0x12c/0x170
->>>>    do_syscall_64+0x3b/0x90
->>>>
->>>> It may happen as follows:
->>>> 1. write inline_data inode
->>>> vfs_write
->>>>     new_sync_write
->>>>       ext4_file_write_iter
->>>>         ext4_buffered_write_iter
->>>>           generic_perform_write
->>>> 	  ext4_da_write_begin
->>>> 	    ext4_da_write_inline_data_begin -> If inline data size too
->>>> 	    small will allocate block to write, then mapping will has
->>>> 	    dirty page
->>>> 	    	ext4_da_convert_inline_data_to_extent ->clear EXT4_STATE_MAY_INLINE_DATA
->>>> 2. fallocate
->>>> do_vfs_ioctl
->>>>     ioctl_preallocate
->>>>       vfs_fallocate
->>>>         ext4_fallocate
->>>>           ext4_convert_inline_data
->>>> 	  ext4_convert_inline_data_nolock
->>>> 	    ext4_map_blocks -> fail will goto restore data
->>>> 	    ext4_restore_inline_data
->>>> 	      ext4_create_inline_data
->>>> 	      ext4_write_inline_data
->>>> 	      ext4_set_inode_state -> set inode EXT4_STATE_MAY_INLINE_DATA
->>>> 3. writepages
->>>> __ext4_ioctl
->>>>     ext4_alloc_da_blocks
->>>>       filemap_flush
->>>>         filemap_fdatawrite_wbc
->>>>           do_writepages
->>>> 	  ext4_writepages
->>>> 	    if (ext4_has_inline_data(inode))
->>>> 	      BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
->>>>
->>>> To solved this issue, record origin 'EXT4_STATE_MAY_INLINE_DATA' flag, then pass
->>>> value to 'ext4_restore_inline_data', 'ext4_restore_inline_data' will
->>>> decide to if recovery 'EXT4_STATE_MAY_INLINE_DATA' flag according to parameter.
->>>>
->>>> Signed-off-by: Ye Bin <yebin10@huawei.com>
->>> I think this will get also fixed by a patch from your colleague I've
->>> reviewed here [1], won't it?
->>>
->>> [1] https://lore.kernel.org/all/20220428165725.mvjh6mx7gr5vekqe@quack3.lan
->>>
->> The issue I fixed is not the same as the isuue my colleague fixed.
-> OK, maybe I've jumped to conclusion too early but the fix I've referenced
-> above will protect ext4_convert_inline_data() in ext4_fallocate() with
-> inode->i_rwsem so I think the race you describe with ext4_da_write_begin()
-> cannot happen. The inline conversion path with be entered either from
-> ext4_da_write_begin() or from ext4_fallocate() but not from both. If I'm
-> missing something, please explain how you think the problem happens with
-> the above fix applied... Thanks!
+On Fri, May 06, 2022 at 09:11:35AM +0900, Byungchul Park wrote:
+> Linus wrote:
+> >
+> > On Wed, May 4, 2022 at 1:19 AM Byungchul Park <byungchul.park@lge.com> wrote:
+> > >
+> > > Hi Linus and folks,
+> > >
+> > > I've been developing a tool for detecting deadlock possibilities by
+> > > tracking wait/event rather than lock(?) acquisition order to try to
+> > > cover all synchonization machanisms.
+> > 
+> > So what is the actual status of reports these days?
+> > 
+> > Last time I looked at some reports, it gave a lot of false positives
+> > due to mis-understanding prepare_to_sleep().
+> 
+> Yes, it was. I handled the case in the following way:
+> 
+> 1. Stage the wait at prepare_to_sleep(), which might be used at commit.
+>    Which has yet to be an actual wait that Dept considers.
+> 2. If the condition for sleep is true, the wait will be committed at
+>    __schedule(). The wait becomes an actual one that Dept considers.
+> 3. If the condition is false and the task gets back to TASK_RUNNING,
+>    clean(=reset) the staged wait.
+> 
+> That way, Dept only works with what actually hits to __schedule() for
+> the waits through sleep.
+> 
+> > For this all to make sense, it would need to not have false positives
+> > (or at least a very small number of them together with a way to sanely
+> 
+> Yes. I agree with you. I got rid of them that way I described above.
 >
-> 								Honza
-It's happen as follows:
-step1:
-ext4_file_write_iter
-   ext4_buffered_write_iter
-     generic_perform_write
-       ext4_da_write_begin
-         if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
-           ext4_da_write_inline_data_begin
-             ext4_da_convert_inline_data_to_extent
-               __block_write_begin
-               ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-             ->clear EXT4_STATE_MAY_INLINE_DATA flag,  If inline data 
-size too
-         small will allocate block to write, then mapping will has dirty 
-page
 
-       ext4_da_write_end
-         generic_write_end
+IMHO DEPT should not report what lockdep allows (Not talking about
+wait events). I mean lockdep allows some kind of nested locks but
+DEPT reports them.
 
-step2：
-vfs_fallocate
-   ext4_fallocate
-     ext4_convert_inline_data
-       if (ext4_has_inline_data(inode))  -> This condition is satisfied
-         ext4_convert_inline_data_nolock
-           ext4_map_blocks -> fail will goto restore data
-           ext4_restore_inline_data
-            ext4_create_inline_data
-            ext4_write_inline_data
-            ext4_set_inode_state -> set inode EXT4_STATE_MAY_INLINE_DATA
-step3:
-do_writepages
-   ext4_writepages
-     if (ext4_has_inline_data(inode))
-       BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+When I was collecting reports from DEPT on varous configurations,
+Most of them was report of down_write_nested(), which is allowed in
+lockdep.
 
-As we call "ext4_destroy_inline_data" to destory inline data when delay 
-allocation.
-So，if we call fallocate before writepages while ext4_map_blocks return 
-failed,
-will lead to above issue.
-This issue does not require concurrency conditions.
+DEPT should not report at least what we know it's not a real deadlock.
+Otherwise there will be reports that is never fixed, which is quite
+unpleasant and reporters cannot examine all of them if it's real deadlock
+or not.
 
->>>> ---
->>>>    fs/ext4/inline.c | 13 +++++++++----
->>>>    1 file changed, 9 insertions(+), 4 deletions(-)
->>>>
->>>> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
->>>> index 9c076262770d..407061c79adc 100644
->>>> --- a/fs/ext4/inline.c
->>>> +++ b/fs/ext4/inline.c
->>>> @@ -1125,8 +1125,8 @@ static int ext4_update_inline_dir(handle_t *handle, struct inode *dir,
->>>>    }
->>>>    static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
->>>> -				     struct ext4_iloc *iloc,
->>>> -				     void *buf, int inline_size)
->>>> +				     struct ext4_iloc *iloc, void *buf,
->>>> +				     int inline_size, bool has_data)
->>>>    {
->>>>    	int ret;
->>>> @@ -1138,7 +1138,8 @@ static void ext4_restore_inline_data(handle_t *handle, struct inode *inode,
->>>>    		return;
->>>>    	}
->>>>    	ext4_write_inline_data(inode, iloc, buf, 0, inline_size);
->>>> -	ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->>>> +	if (has_data)
->>>> +		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->>>>    }
->>>>    static int ext4_finish_convert_inline_dir(handle_t *handle,
->>>> @@ -1194,6 +1195,7 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
->>>>    	struct buffer_head *data_bh = NULL;
->>>>    	struct ext4_map_blocks map;
->>>>    	int inline_size;
->>>> +	bool has_data;
->>>>    	inline_size = ext4_get_inline_size(inode);
->>>>    	buf = kmalloc(inline_size, GFP_NOFS);
->>>> @@ -1222,6 +1224,8 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
->>>>    	if (error)
->>>>    		goto out;
->>>> +	has_data = !!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
->>>> +
->>>>    	map.m_lblk = 0;
->>>>    	map.m_len = 1;
->>>>    	map.m_flags = 0;
->>>> @@ -1262,7 +1266,8 @@ static int ext4_convert_inline_data_nolock(handle_t *handle,
->>>>    	unlock_buffer(data_bh);
->>>>    out_restore:
->>>>    	if (error)
->>>> -		ext4_restore_inline_data(handle, inode, iloc, buf, inline_size);
->>>> +		ext4_restore_inline_data(handle, inode, iloc, buf,
->>>> +					 inline_size, has_data);
->>>>    out:
->>>>    	brelse(data_bh);
->>>> -- 
->>>> 2.31.1
->>>>
+> > get rid of them), and also have a track record of finding things that
+> > lockdep doesn't.
+> 
+> I have some reports that wait_for_completion or waitqueue is involved.
+> It's worth noting those are not tracked by Lockdep. I'm checking if
+> those are true positive or not. I will share those reports once I get
+> more convinced for that.
+> 
+> > Maybe such reports have been sent out with the current situation, and
+> > I haven't seen them.
+> 
+> Dept reports usually have been sent to me privately, not in LKML. As I
+> told you, I'm planning to share them.
+> 
+> 	Byungchul
+> 
+> > 
+> >                  Linus
+> > 
 
+-- 
+Thanks,
+Hyeonggon
