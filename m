@@ -2,141 +2,130 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ADCC9C35294
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 May 2022 01:30:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66A5BC433EF
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 May 2022 06:27:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233296AbiEIBds (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 May 2022 21:33:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50778 "EHLO
+        id S229942AbiEIGbN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 May 2022 02:31:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39238 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235106AbiEIBbi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 May 2022 21:31:38 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id A8DF913CFC
-        for <linux-ext4@vger.kernel.org>; Sun,  8 May 2022 18:23:38 -0700 (PDT)
-Received: from unknown (HELO lgeamrelo04.lge.com) (156.147.1.127)
-        by 156.147.23.52 with ESMTP; 9 May 2022 10:23:37 +0900
-X-Original-SENDERIP: 156.147.1.127
-X-Original-MAILFROM: byungchul.park@lge.com
-Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
-        by 156.147.1.127 with ESMTP; 9 May 2022 10:23:37 +0900
-X-Original-SENDERIP: 10.177.244.38
-X-Original-MAILFROM: byungchul.park@lge.com
-Date:   Mon, 9 May 2022 10:22:02 +0900
-From:   Byungchul Park <byungchul.park@lge.com>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     Damien Le Moal <damien.lemoal@opensource.wdc.com>,
-        linux-ide@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Ingo Molnar <mingo@redhat.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Will Deacon <will@kernel.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Joel Fernandes <joel@joelfernandes.org>,
-        Sasha Levin <sashal@kernel.org>,
-        Daniel Vetter <daniel.vetter@ffwll.ch>,
-        Chris Wilson <chris@chris-wilson.co.uk>, duyuyang@gmail.com,
-        johannes.berg@intel.com, Tejun Heo <tj@kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Amir Goldstein <amir73il@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        kernel-team@lge.com, Linux-MM <linux-mm@kvack.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Michal Hocko <mhocko@kernel.org>,
-        Minchan Kim <minchan@kernel.org>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Vladimir Davydov <vdavydov.dev@gmail.com>, sj@kernel.org,
-        Jerome Glisse <jglisse@redhat.com>,
-        Dennis Zhou <dennis@kernel.org>,
-        Christoph Lameter <cl@linux.com>,
-        Pekka Enberg <penberg@kernel.org>,
-        David Rientjes <rientjes@google.com>,
-        Vlastimil Babka <vbabka@suse.cz>, ngupta@vflare.org,
-        linux-block <linux-block@vger.kernel.org>,
-        paolo.valente@linaro.org, Josef Bacik <josef@toxicpanda.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
-        jack@suse.com, Jeff Layton <jlayton@kernel.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        dri-devel <dri-devel@lists.freedesktop.org>,
-        Dave Airlie <airlied@linux.ie>, rodrigosiqueiramelo@gmail.com,
-        melissa.srw@gmail.com, hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: Re: [PATCH RFC v6 00/21] DEPT(Dependency Tracker)
-Message-ID: <20220509012202.GB6047@X58A-UD3R>
-References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
- <CAHk-=whnPePcffsNQM+YSHMGttLXvpf8LbBQ8P7HEdqFXaV7Lg@mail.gmail.com>
+        with ESMTP id S235261AbiEIG16 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2022 02:27:58 -0400
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6F2FC17EC2A;
+        Sun,  8 May 2022 23:24:05 -0700 (PDT)
+Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 24913ULR023542;
+        Mon, 9 May 2022 06:22:57 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=date : from : to : cc :
+ subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=pp1; bh=EUzciikRinO769+UPV9+5CaGF8IJ3vz6NtwLfqJarCs=;
+ b=R0lntO0fsG6s5mi6rKgJO2Hnd9PMz1IPd57GnsFqu1uY8qDN8qHbvVomKp12dttiMA/q
+ +UfgnDND4Xw8REPSsc0jQeBswH5LiIgPZSJ+j6KycC0T5N7tkfQUfImu8vm+9Tf/TTOw
+ 5N4plEZQRM9pdi9tk4wV78kyR7BgYvVPSdeZEHLMKOXExVBSWd8UV7fUSgeelByXHBmc
+ T5Q8LKJcXc7DMmWTW9rFC1ksNECrU8WExj34a1XYmMnKrGDEq7xDqfVhINT9XSSaFvr4
+ NPsWPrLy388G/zYNMYjWd6p8MOqbjbseSDAlcOhsD82QE+JNWwpiImqSijHcDghAARZ2 WA== 
+Received: from ppma06fra.de.ibm.com (48.49.7a9f.ip4.static.sl-reverse.com [159.122.73.72])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3fx256b9sq-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 09 May 2022 06:22:57 +0000
+Received: from pps.filterd (ppma06fra.de.ibm.com [127.0.0.1])
+        by ppma06fra.de.ibm.com (8.16.1.2/8.16.1.2) with SMTP id 2496021N004374;
+        Mon, 9 May 2022 06:22:50 GMT
+Received: from b06cxnps4076.portsmouth.uk.ibm.com (d06relay13.portsmouth.uk.ibm.com [9.149.109.198])
+        by ppma06fra.de.ibm.com with ESMTP id 3fwg1hsjf2-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 09 May 2022 06:22:50 +0000
+Received: from d06av24.portsmouth.uk.ibm.com (d06av24.portsmouth.uk.ibm.com [9.149.105.60])
+        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 2496Mm3x52625870
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 9 May 2022 06:22:48 GMT
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 14D4C4203F;
+        Mon,  9 May 2022 06:22:48 +0000 (GMT)
+Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 1657142041;
+        Mon,  9 May 2022 06:22:46 +0000 (GMT)
+Received: from li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com (unknown [9.43.35.189])
+        by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTPS;
+        Mon,  9 May 2022 06:22:45 +0000 (GMT)
+Date:   Mon, 9 May 2022 11:52:42 +0530
+From:   Ojaswin Mujoo <ojaswin@linux.ibm.com>
+To:     fstests@vger.kernel.org
+Cc:     riteshh@linux.ibm.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] common/rc: Modify _require_batched_discard to improve
+ test coverage
+Message-ID: <YnizMg+ALwVJYNLS@li-bb2b2a4c-3307-11b2-a85c-8fa5c3a69313.ibm.com>
+References: <20220401055713.634842-1-ojaswin@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAHk-=whnPePcffsNQM+YSHMGttLXvpf8LbBQ8P7HEdqFXaV7Lg@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20220401055713.634842-1-ojaswin@linux.ibm.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-GUID: wYsTgguTGl8YPMEWgt8VXt3DtmAafGiO
+X-Proofpoint-ORIG-GUID: wYsTgguTGl8YPMEWgt8VXt3DtmAafGiO
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.858,Hydra:6.0.486,FMLib:17.11.64.514
+ definitions=2022-05-09_01,2022-05-06_01,2022-02-23_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 mlxscore=0
+ adultscore=0 clxscore=1011 impostorscore=0 bulkscore=0 mlxlogscore=490
+ priorityscore=1501 malwarescore=0 spamscore=0 suspectscore=0
+ lowpriorityscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2202240000 definitions=main-2205090035
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, May 04, 2022 at 11:17:02AM -0700, Linus Torvalds wrote:
-> On Wed, May 4, 2022 at 1:19 AM Byungchul Park <byungchul.park@lge.com> wrote:
-> >
-> > Hi Linus and folks,
-> >
-> > I've been developing a tool for detecting deadlock possibilities by
-> > tracking wait/event rather than lock(?) acquisition order to try to
-> > cover all synchonization machanisms.
+Greetings,
+
+Please do let me know if there are any reviews or comments on this patch.
+
+Thank you,
+Ojaswin
+
+On Fri, Apr 01, 2022 at 11:27:13AM +0530, Ojaswin Mujoo wrote:
+> A recent ext4 patch discussed [1] that some devices (eg LVMs) can
+> have a discard granularity as big as 42MB which makes it larger
+> than the group size of ext4 FS with 1k BS. This causes the FITRIM
+> IOCTL to fail on filesystems like ext4.
 > 
-> So what is the actual status of reports these days?
-
-I'd like to mention one important thing here. Reportability would get
-stronger if the more wait-event pairs get tagged everywhere DEPT can
-work.
-
-Everything e.g. HW-SW interface, any retry logic and so on can be a
-wait-event pair if they work wait or event anyway. For example, polling
-on an IO mapped read register and initiating the HW to go for the event
-also can be a pair. Definitely those make DEPT more useful.
-
----
-
-The way to use the APIs:
-
-1. Define SDT(Simple Dependency Tracker)
-
-   DEFINE_DEPT_SDT(my_hw_event); <- add this
-
-2. Tag on the waits
-
-   sdt_wait(&my_hw_event); <- add this
-   ... retry logic until my hw work done ... <- the original code
-
-3. Tag on the events
-
-   sdt_event(&my_hw_event); <- add this
-   run_my_hw(); <- the original code
-
----
-
-These are all we should do. I believe DEPT would be a very useful tool
-once all wait-event pairs get tagged by the developers in all subsystems
-and device drivers.
-
-	Byungchul
-
-> Last time I looked at some reports, it gave a lot of false positives
-> due to mis-understanding prepare_to_sleep().
+> This case was not correctly handle by "_require_batched_discard" as
+> it incorrectly interpreted the FITRIM failure as fs not supporting
+> the IOCTL. This caused the tests like generic/260 to incorectly
+> report "not run" instead of "failed" in case of large discard
+> granularity.
 > 
-> For this all to make sense, it would need to not have false positives
-> (or at least a very small number of them together with a way to sanely
-> get rid of them), and also have a track record of finding things that
-> lockdep doesn't.
+> Fix "_require_batched_discard" to use a more accurate method
+> to determine if discard is supported.
 > 
-> Maybe such reports have been sent out with the current situation, and
-> I haven't seen them.
+> [1] commit 173b6e383d2
+>     ext4: avoid trim error on fs with small groups
 > 
->                  Linus
+> Signed-off-by: Ojaswin Mujoo <ojaswin@linux.ibm.com>
+> ---
+>  common/rc | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/common/rc b/common/rc
+> index e2d3d72a..97386342 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -3858,7 +3858,13 @@ _require_batched_discard()
+>  		exit 1
+>  	fi
+>  	_require_fstrim
+> -	$FSTRIM_PROG $1 > /dev/null 2>&1 || _notrun "FITRIM not supported on $1"
+> +
+> +	$FSTRIM_PROG $1 2>&1 | grep -q "not supported"
+> +	RET=$?
+> +	if [ "$RET" = "0" ]
+> +	then
+> +		_notrun "FITRIM not supported on $1"
+> +	fi
+>  }
+>  
+>  _require_dumpe2fs()
+> -- 
+> 2.27.0
+> 
