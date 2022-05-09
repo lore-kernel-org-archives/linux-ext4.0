@@ -2,154 +2,182 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99666C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 May 2022 01:26:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D250C4167D
+	for <linux-ext4@archiver.kernel.org>; Mon,  9 May 2022 01:29:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233710AbiEIB3v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 8 May 2022 21:29:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38604 "EHLO
+        id S233073AbiEIBdr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 8 May 2022 21:33:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41952 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234809AbiEIAWJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 May 2022 20:22:09 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id B5AADE000
-        for <linux-ext4@vger.kernel.org>; Sun,  8 May 2022 17:18:15 -0700 (PDT)
-Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
-        by 156.147.23.52 with ESMTP; 9 May 2022 09:18:13 +0900
-X-Original-SENDERIP: 156.147.1.121
-X-Original-MAILFROM: byungchul.park@lge.com
-Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
-        by 156.147.1.121 with ESMTP; 9 May 2022 09:18:13 +0900
-X-Original-SENDERIP: 10.177.244.38
-X-Original-MAILFROM: byungchul.park@lge.com
-Date:   Mon, 9 May 2022 09:16:37 +0900
-From:   Byungchul Park <byungchul.park@lge.com>
-To:     Hyeonggon Yoo <42.hyeyoo@gmail.com>
-Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com,
-        linux-kernel@vger.kernel.org, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        chris@chris-wilson.co.uk, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
-        willy@infradead.org, david@fromorbit.com, amir73il@gmail.com,
-        gregkh@linuxfoundation.org, kernel-team@lge.com,
-        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-        ngupta@vflare.org, linux-block@vger.kernel.org,
-        paolo.valente@linaro.org, josef@toxicpanda.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
-        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, airlied@linux.ie,
-        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-        hamohammed.sa@gmail.com
-Subject: Re: [PATCH RFC v6 00/21] DEPT(Dependency Tracker)
-Message-ID: <20220509001637.GA6047@X58A-UD3R>
-References: <CAHk-=whnPePcffsNQM+YSHMGttLXvpf8LbBQ8P7HEdqFXaV7Lg@mail.gmail.com>
- <1651795895-8641-1-git-send-email-byungchul.park@lge.com>
- <YnYd0hd+yTvVQxm5@hyeyoo>
+        with ESMTP id S234292AbiEIBbK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 May 2022 21:31:10 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1084513F63;
+        Sun,  8 May 2022 18:25:19 -0700 (PDT)
+Received: from dggpeml500020.china.huawei.com (unknown [172.30.72.56])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4KxNh16Np0zGpg9;
+        Mon,  9 May 2022 09:22:25 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500020.china.huawei.com (7.185.36.88) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Mon, 9 May 2022 09:25:12 +0800
+Message-ID: <83ed1d6f-84f9-0e47-ddb1-b8cafc12338a@huawei.com>
+Date:   Mon, 9 May 2022 09:25:11 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <YnYd0hd+yTvVQxm5@hyeyoo>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
+ Thunderbird/91.8.1
+Subject: Re: [PATCH v3] ext4: fix race condition between ext4_write and
+ ext4_convert_inline_data
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <yebin10@huawei.com>, <yukuai3@huawei.com>,
+        <stable@vger.kernel.org>, Hulk Robot <hulkci@huawei.com>,
+        Baokun Li <libaokun1@huawei.com>
+References: <20220428134031.4153381-1-libaokun1@huawei.com>
+From:   "libaokun (A)" <libaokun1@huawei.com>
+In-Reply-To: <20220428134031.4153381-1-libaokun1@huawei.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ dggpeml500020.china.huawei.com (7.185.36.88)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, May 07, 2022 at 04:20:50PM +0900, Hyeonggon Yoo wrote:
-> On Fri, May 06, 2022 at 09:11:35AM +0900, Byungchul Park wrote:
-> > Linus wrote:
-> > >
-> > > On Wed, May 4, 2022 at 1:19 AM Byungchul Park <byungchul.park@lge.com> wrote:
-> > > >
-> > > > Hi Linus and folks,
-> > > >
-> > > > I've been developing a tool for detecting deadlock possibilities by
-> > > > tracking wait/event rather than lock(?) acquisition order to try to
-> > > > cover all synchonization machanisms.
-> > > 
-> > > So what is the actual status of reports these days?
-> > > 
-> > > Last time I looked at some reports, it gave a lot of false positives
-> > > due to mis-understanding prepare_to_sleep().
-> > 
-> > Yes, it was. I handled the case in the following way:
-> > 
-> > 1. Stage the wait at prepare_to_sleep(), which might be used at commit.
-> >    Which has yet to be an actual wait that Dept considers.
-> > 2. If the condition for sleep is true, the wait will be committed at
-> >    __schedule(). The wait becomes an actual one that Dept considers.
-> > 3. If the condition is false and the task gets back to TASK_RUNNING,
-> >    clean(=reset) the staged wait.
-> > 
-> > That way, Dept only works with what actually hits to __schedule() for
-> > the waits through sleep.
-> > 
-> > > For this all to make sense, it would need to not have false positives
-> > > (or at least a very small number of them together with a way to sanely
-> > 
-> > Yes. I agree with you. I got rid of them that way I described above.
-> >
-> 
-> IMHO DEPT should not report what lockdep allows (Not talking about
+A gentle ping.
 
-No.
+在 2022/4/28 21:40, Baokun Li 写道:
+> Hulk Robot reported a BUG_ON:
+>   ==================================================================
+>   EXT4-fs error (device loop3): ext4_mb_generate_buddy:805: group 0,
+>   block bitmap and bg descriptor inconsistent: 25 vs 31513 free clusters
+>   kernel BUG at fs/ext4/ext4_jbd2.c:53!
+>   invalid opcode: 0000 [#1] SMP KASAN PTI
+>   CPU: 0 PID: 25371 Comm: syz-executor.3 Not tainted 5.10.0+ #1
+>   RIP: 0010:ext4_put_nojournal fs/ext4/ext4_jbd2.c:53 [inline]
+>   RIP: 0010:__ext4_journal_stop+0x10e/0x110 fs/ext4/ext4_jbd2.c:116
+>   [...]
+>   Call Trace:
+>    ext4_write_inline_data_end+0x59a/0x730 fs/ext4/inline.c:795
+>    generic_perform_write+0x279/0x3c0 mm/filemap.c:3344
+>    ext4_buffered_write_iter+0x2e3/0x3d0 fs/ext4/file.c:270
+>    ext4_file_write_iter+0x30a/0x11c0 fs/ext4/file.c:520
+>    do_iter_readv_writev+0x339/0x3c0 fs/read_write.c:732
+>    do_iter_write+0x107/0x430 fs/read_write.c:861
+>    vfs_writev fs/read_write.c:934 [inline]
+>    do_pwritev+0x1e5/0x380 fs/read_write.c:1031
+>   [...]
+>   ==================================================================
+>
+> Above issue may happen as follows:
+>             cpu1                     cpu2
+> __________________________|__________________________
+> do_pwritev
+>   vfs_writev
+>    do_iter_write
+>     ext4_file_write_iter
+>      ext4_buffered_write_iter
+>       generic_perform_write
+>        ext4_da_write_begin
+>                             vfs_fallocate
+>                              ext4_fallocate
+>                               ext4_convert_inline_data
+>                                ext4_convert_inline_data_nolock
+>                                 ext4_destroy_inline_data_nolock
+>                                  clear EXT4_STATE_MAY_INLINE_DATA
+>                                 ext4_map_blocks
+>                                  ext4_ext_map_blocks
+>                                   ext4_mb_new_blocks
+>                                    ext4_mb_regular_allocator
+>                                     ext4_mb_good_group_nolock
+>                                      ext4_mb_init_group
+>                                       ext4_mb_init_cache
+>                                        ext4_mb_generate_buddy  --> error
+>         ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)
+>                                  ext4_restore_inline_data
+>                                   set EXT4_STATE_MAY_INLINE_DATA
+>         ext4_block_write_begin
+>        ext4_da_write_end
+>         ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)
+>         ext4_write_inline_data_end
+>          handle=NULL
+>          ext4_journal_stop(handle)
+>           __ext4_journal_stop
+>            ext4_put_nojournal(handle)
+>             ref_cnt = (unsigned long)handle
+>             BUG_ON(ref_cnt == 0)  ---> BUG_ON
+>
+> The lock held by ext4_convert_inline_data is xattr_sem, but the lock
+> held by generic_perform_write is i_rwsem. Therefore, the two locks can
+> be concurrent.
+>
+> To solve above issue, we add inode_lock() for ext4_convert_inline_data().
+> At the same time, move ext4_convert_inline_data() in front of
+> ext4_punch_hole(), remove similar handling from ext4_punch_hole().
+>
+> Fixes: 0c8d414f163f ("ext4: let fallocate handle inline data correctly")
+> Cc: stable@vger.kernel.org
+> Reported-by: Hulk Robot <hulkci@huawei.com>
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
+> ---
+> V1->V2:
+> 	Increase the range of the inode_lock.
+> V2->V3:
+> 	Move the lock outside the ext4_convert_inline_data().
+> 	And reorganize ext4_fallocate().
+>
+>   fs/ext4/extents.c | 10 ++++++----
+>   fs/ext4/inode.c   |  9 ---------
+>   2 files changed, 6 insertions(+), 13 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index e473fde6b64b..474479ce76e0 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4693,15 +4693,17 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>   		     FALLOC_FL_INSERT_RANGE))
+>   		return -EOPNOTSUPP;
+>   
+> +	inode_lock(inode);
+> +	ret = ext4_convert_inline_data(inode);
+> +	inode_unlock(inode);
+> +	if (ret)
+> +		goto exit;
+> +
+>   	if (mode & FALLOC_FL_PUNCH_HOLE) {
+>   		ret = ext4_punch_hole(file, offset, len);
+>   		goto exit;
+>   	}
+>   
+> -	ret = ext4_convert_inline_data(inode);
+> -	if (ret)
+> -		goto exit;
+> -
+>   	if (mode & FALLOC_FL_COLLAPSE_RANGE) {
+>   		ret = ext4_collapse_range(file, offset, len);
+>   		goto exit;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 646ece9b3455..4779673d733e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3967,15 +3967,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>   
+>   	trace_ext4_punch_hole(inode, offset, length, 0);
+>   
+> -	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+> -	if (ext4_has_inline_data(inode)) {
+> -		filemap_invalidate_lock(mapping);
+> -		ret = ext4_convert_inline_data(inode);
+> -		filemap_invalidate_unlock(mapping);
+> -		if (ret)
+> -			return ret;
+> -	}
+> -
+>   	/*
+>   	 * Write out all dirty pages to avoid race conditions
+>   	 * Then release them.
 
-> wait events). I mean lockdep allows some kind of nested locks but
-> DEPT reports them.
 
-You have already asked exactly same question in another thread of
-LKML. That time I answered to it but let me explain it again.
-
----
-
-CASE 1.
-
-   lock L with depth n
-   lock_nested L' with depth n + 1
-   ...
-   unlock L'
-   unlock L
-
-This case is allowed by Lockdep.
-This case is allowed by DEPT cuz it's not a deadlock.
-
-CASE 2.
-
-   lock L with depth n
-   lock A
-   lock_nested L' with depth n + 1
-   ...
-   unlock L'
-   unlock A
-   unlock L
-
-This case is allowed by Lockdep.
-This case is *NOT* allowed by DEPT cuz it's a *DEADLOCK*.
-
----
-
-The following scenario would explain why CASE 2 is problematic.
-
-   THREAD X			THREAD Y
-
-   lock L with depth n
-				lock L' with depth n
-   lock A
-				lock A
-   lock_nested L' with depth n + 1
-				lock_nested L'' with depth n + 1
-   ...				...
-   unlock L'			unlock L''
-   unlock A			unlock A
-   unlock L			unlock L'
-
-Yes. I need to check if the report you shared with me is a true one, but
-it's not because DEPT doesn't work with *_nested() APIs.
-
-	Byungchul
