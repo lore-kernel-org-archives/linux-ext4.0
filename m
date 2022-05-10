@@ -2,80 +2,121 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D03FC433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  9 May 2022 23:44:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D88F3C43217
+	for <linux-ext4@archiver.kernel.org>; Tue, 10 May 2022 00:33:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232948AbiEIXsh (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 9 May 2022 19:48:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43642 "EHLO
+        id S233771AbiEJAht (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 9 May 2022 20:37:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33844 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233160AbiEIXrb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2022 19:47:31 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BCD52CE230;
-        Mon,  9 May 2022 16:40:31 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 68BEBB819D6;
-        Mon,  9 May 2022 23:40:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DDCDFC385C2;
-        Mon,  9 May 2022 23:40:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652139629;
-        bh=RLRAqi8NcpOLCm0sad+42+BXu2XUKaGuSgWzJjtxch0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=OB6Bv54N3c1nd1ASVso50lKwDGHnTt3gojR/6u9cXxTNXqkrPFwKTRS22ATNcXBvU
-         FupdC/uG4ukZCXgG2H3BNJpxkeS8LLVNxEoyQ2oSocyxx4kH/d0y3mXElKwwvIPtHe
-         dUDzt35YsU5vqDWLVD6p/TTs61j/q6G+YoBgJBuENC0jDB0r4IdlyRaI8+FwAgXL8y
-         SWkEEEi7WUg2UseIzsD8TmxEY1Uwb+iSOZ9mgm9c9snZ8emFvzxv4f4Zmyt6NUfQOi
-         TzMZlseoamQ7+mj8VAL+eVvudLGA3viK3ePWFp7W1RLT3znPRwKTk3rkEthqPAsOpF
-         0nMruR3yXmo4g==
-Date:   Mon, 9 May 2022 16:40:27 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc:     Jeff Layton <jlayton@kernel.org>,
-        Lukas Czerner <lczerner@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: Re: [PATCH v2 5/7] ext4: fix up test_dummy_encryption handling for
- new mount API
-Message-ID: <Ynmma+tkA2myRvz6@sol.localdomain>
-References: <20220501050857.538984-1-ebiggers@kernel.org>
- <20220501050857.538984-6-ebiggers@kernel.org>
+        with ESMTP id S233747AbiEJAhs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 May 2022 20:37:48 -0400
+Received: from lgeamrelo11.lge.com (lgeamrelo11.lge.com [156.147.23.51])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 89E4A2AC6FD
+        for <linux-ext4@vger.kernel.org>; Mon,  9 May 2022 17:33:51 -0700 (PDT)
+Received: from unknown (HELO lgemrelse6q.lge.com) (156.147.1.121)
+        by 156.147.23.51 with ESMTP; 10 May 2022 09:33:49 +0900
+X-Original-SENDERIP: 156.147.1.121
+X-Original-MAILFROM: byungchul.park@lge.com
+Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
+        by 156.147.1.121 with ESMTP; 10 May 2022 09:33:49 +0900
+X-Original-SENDERIP: 10.177.244.38
+X-Original-MAILFROM: byungchul.park@lge.com
+Date:   Tue, 10 May 2022 09:32:13 +0900
+From:   Byungchul Park <byungchul.park@lge.com>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
+        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, peterz@infradead.org,
+        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
+        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
+        chris@chris-wilson.co.uk, duyuyang@gmail.com,
+        johannes.berg@intel.com, tj@kernel.org, willy@infradead.org,
+        david@fromorbit.com, amir73il@gmail.com, bfields@fieldses.org,
+        gregkh@linuxfoundation.org, kernel-team@lge.com,
+        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
+        ngupta@vflare.org, linux-block@vger.kernel.org,
+        paolo.valente@linaro.org, josef@toxicpanda.com,
+        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
+        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+        dri-devel@lists.freedesktop.org, airlied@linux.ie,
+        rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
+        hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
+Subject: Re: [PATCH RFC v6 00/21] DEPT(Dependency Tracker)
+Message-ID: <20220510003213.GD6047@X58A-UD3R>
+References: <1651652269-15342-1-git-send-email-byungchul.park@lge.com>
+ <YnmCE2iwa0MSqocr@mit.edu>
+ <YnmVgVQ7usoXnJ1N@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20220501050857.538984-6-ebiggers@kernel.org>
+In-Reply-To: <YnmVgVQ7usoXnJ1N@mit.edu>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-A couple corrections I'll include in the next version:
+On Mon, May 09, 2022 at 06:28:17PM -0400, Theodore Ts'o wrote:
+> Oh, one other problem with DEPT --- it's SLOW --- the overhead is
+> enormous.  Using kvm-xfstests[1] running "kvm-xfstests smoke", here
+> are some sample times:
 
-On Sat, Apr 30, 2022 at 10:08:55PM -0700, Eric Biggers wrote:
-> +	if (fc->purpose == FS_CONTEXT_FOR_RECONFIGURE) {
-> +		if (fscrypt_dummy_policies_equal(&sbi->s_dummy_enc_policy,
-> +						 &ctx->dummy_enc_policy))
-> +			return 0;
->  		ext4_msg(NULL, KERN_WARNING,
-> -			 "Can't set test_dummy_encryption on remount");
-> +			 "Can't set or change test_dummy_encryption on remount");
->  		return -EINVAL;
->  	}
+Yes, right. DEPT has never been optimized. It rather turns on
+CONFIG_LOCKDEP and even CONFIG_PROVE_LOCKING when CONFIG_DEPT gets on
+because of porting issue. I have no choice but to rely on those to
+develop DEPT out of tree. Of course, that's what I don't like.
 
-I think this needs to be 'fc->purpose == FS_CONTEXT_FOR_RECONFIGURE ||
-fscrypt_is_dummy_policy_set(&sbi->s_dummy_enc_policy)', since ext4 can parse
-mount options from both s_mount_opts and the regular mount options.
+Plus, for now, I'm focusing on removing false positives. Once it's
+considered settled down, I will work on performance optimizaition. But
+it should still keep relying on Lockdep CONFIGs and adding additional
+overhead on it until DEPT can be developed in the tree.
 
-> +static void ext4_apply_test_dummy_encryption(struct ext4_fs_context *ctx,
-> +                                            struct super_block *sb)
-> +{
-> +	if (!fscrypt_is_dummy_policy_set(&ctx->dummy_enc_policy))
-> +		return;
+> 			LOCKDEP		DEPT
+> Time to first test	49 seconds	602 seconds
+> ext4/001      		2 s		22 s
+> ext4/003		2 s		8 s
+> ext4/005		0 s		7 s
+> ext4/020		1 s		8 s
+> ext4/021		11 s		17 s
+> ext4/023		0 s		83 s
+> generic/001		4 s		76 s
+> generic/002		0 s		11 s
+> generic/003		10 s		19 s
+> 
+> There are some large variations; in some cases, some xfstests take 10x
+> as much time or more to run.  In fact, when I first started the
+> kvm-xfstests run with DEPT, I thought something had hung and that
+> tests would never start.  (In fact, with gce-xfstests the default
+> watchdog "something has gone terribly wrong with the kexec" had fired,
+> and I didn't get any test results using gce-xfstests at all.  If DEPT
+> goes in without any optimizations, I'm going to have to adjust the
+> watchdogs timers for gce-xfstests.)
 
-To handle remounts correctly, this needs to be
-'!fscrypt_is_dummy_policy_set(&ctx->dummy_enc_policy) ||
-fscrypt_is_dummy_policy_set(&EXT4_SB(sb)->s_dummy_enc_policy)'.
+Thank you for informing it. I will go for the optimization as well.
 
-- Eric
+> The bottom line is that at the moment, between the false positives,
+> and the significant overhead imposed by DEPT, I would suggest that if
+> DEPT ever does go in, that it should be possible to disable DEPT and
+> only use the existing CONFIG_PROVE_LOCKING version of LOCKDEP, just
+> because DEPT is S - L - O - W.
+> 
+> [1] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
+> 
+> 						- Ted
+> 
+> P.S.  Darrick and I both have disabled using LOCKDEP by default
+> because it slows down ext4 -g auto testing by a factor 2, and xfs -g
+> auto testing by a factor of 3.  So the fact that DEPT is a factor of
+> 2x to 10x or more slower than LOCKDEP when running various xfstests
+> tests should be a real concern.
+
+DEPT is tracking way more objects than Lockdep so it's inevitable to be
+slower, but let me try to make it have the similar performance to
+Lockdep.
+
+	Byungchul
