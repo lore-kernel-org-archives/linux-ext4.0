@@ -2,91 +2,93 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40BA1C433EF
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 May 2022 08:27:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F3548C433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 May 2022 08:45:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243646AbiEKI1I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 11 May 2022 04:27:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39806 "EHLO
+        id S243900AbiEKIpa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 May 2022 04:45:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48796 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243656AbiEKI1G (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2022 04:27:06 -0400
+        with ESMTP id S235410AbiEKIp3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2022 04:45:29 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 02B765469D
-        for <linux-ext4@vger.kernel.org>; Wed, 11 May 2022 01:27:04 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 7DBF71FE1D9
+        for <linux-ext4@vger.kernel.org>; Wed, 11 May 2022 01:45:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1652257623;
+        s=mimecast20190719; t=1652258726;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=Cql7hWPMpwkxr2WZ63RnHCoEyq5kNLOgvXpNPmzbk1w=;
-        b=T5yxDdYRv1vA9bf3QbPExNuyyzFRKgOtXfrNVBkx0KOO+3AvzXXbRyHxYnGxyuPdGpE/+V
-        RhorvSaaaEOYFhYq96uMUabvglr/xkxObxUsKHr/14XFLklXra+549HqFLEAy2KpKcgWlQ
-        farkcMJzr3dlK1mBd9DYoWsAwlvb7zM=
+        bh=PuXaOU3NnRKmgPtIyKPrxsMW3p/EiJXw3Bu9v33q5n0=;
+        b=MT7+UqOCeCJNZbOe4JyfbyGzXtJI95SPtELsv5IKzplCp5op8D39SWV10NVgE3VSK0BVO0
+        4iWiBUQJMTJioIGzWjL4/Z0l2DovDR4psvvJls1N+nDePHLX9v9wf8fRgQaBIYolHbojUd
+        1zKS7kjx+b3D/8AYgvpRwedHFTYQRUQ=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-270-uUAJ_SBVNFmDrRLw2nkpqQ-1; Wed, 11 May 2022 04:27:00 -0400
-X-MC-Unique: uUAJ_SBVNFmDrRLw2nkpqQ-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
+ us-mta-270-tNGE-ZDJPWqBLXUkT02_NQ-1; Wed, 11 May 2022 04:45:23 -0400
+X-MC-Unique: tNGE-ZDJPWqBLXUkT02_NQ-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 21267800882;
-        Wed, 11 May 2022 08:27:00 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 06A178047D6;
+        Wed, 11 May 2022 08:45:23 +0000 (UTC)
 Received: from fedora (unknown [10.40.194.0])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 717591460E2C;
-        Wed, 11 May 2022 08:26:59 +0000 (UTC)
-Date:   Wed, 11 May 2022 10:26:57 +0200
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 17F41C2810D;
+        Wed, 11 May 2022 08:45:21 +0000 (UTC)
+Date:   Wed, 11 May 2022 10:45:19 +0200
 From:   Lukas Czerner <lczerner@redhat.com>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-ext4@vger.kernel.org, fstests@vger.kernel.org
-Subject: Re: [PATCH] ext4: reject the 'commit' option on ext2 filesystems
-Message-ID: <20220511082657.paviz6qq5aj7i7ti@fedora>
-References: <20220510183232.172615-1-ebiggers@kernel.org>
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     Eric Biggers <ebiggers@kernel.org>, fstests@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: [xfstests PATCH 1/2] ext4/053: update the test_dummy_encryption
+ tests
+Message-ID: <20220511084519.aneysdmu2dburqus@fedora>
+References: <20220501051928.540278-1-ebiggers@kernel.org>
+ <20220501051928.540278-2-ebiggers@kernel.org>
+ <Ym/Sk7D17iCeQIJa@mit.edu>
+ <YnASjrPbudBXCYfK@sol.localdomain>
+ <Ynp8b+Gocx3A/NbW@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20220510183232.172615-1-ebiggers@kernel.org>
-X-Scanned-By: MIMEDefang 2.85 on 10.11.54.7
+In-Reply-To: <Ynp8b+Gocx3A/NbW@mit.edu>
+X-Scanned-By: MIMEDefang 2.85 on 10.11.54.8
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, May 10, 2022 at 11:32:32AM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
+On Tue, May 10, 2022 at 10:53:35AM -0400, Theodore Ts'o wrote:
+> On Mon, May 02, 2022 at 10:19:10AM -0700, Eric Biggers wrote:
+> > 
+> > We could gate them on the kernel version, similar to the whole ext4/053 which
+> > already only runs on kernel version 5.12.  (Kernel versions checks suck, but
+> > maybe it's the right choice for this very-nit-picky test.)  Alternatively, I
+> > could just backport "ext4: only allow test_dummy_encryption when supported" to
+> > 5.15, which would be the only relevant LTS kernel version.
 > 
-> The 'commit' option is only applicable for ext3 and ext4 filesystems,
-> and has never been accepted by the ext2 filesystem driver, so the ext4
-> driver shouldn't allow it on ext2 filesystems.
-> 
-> This fixes a failure in xfstest ext4/053.
-> 
-> Fixes: 8dc0aa8cf0f7 ("ext4: check incompatible mount options while mounting ext2/3")
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> If we don't need the "only allow test_dummy_encryption when supported"
+> in any Android, Distro, or LTS kernel --- which seems to be a
+> reasonable assumption, that seems to be OK.  Lukas, do you agree?
 
-Good catch, thanks.
+Yes I think this a reasonable approach.
 
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+> 
+> In the long term I suspect there will be times when we want to
+> backport mount option handling changes to older kernels, and we're
+> going to be hit this issue again, but as the saying goes, "sufficient
+> unto the day is the evil thereof".
 
-> ---
->  fs/ext4/super.c | 1 +
->  1 file changed, 1 insertion(+)
+That is true and while it is a bit annoying to deal with I think that we
+generally have to keep the user facing mount option behaviour stable.
+The 053 test is helping with that for the price of some nuisance when
+we actually want to change the behaviour. For now I think it's a
+worthwhile trade-off.
+
+-Lukas
+
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 1847b46af8083..69d67724df24f 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1913,6 +1913,7 @@ static const struct mount_opts {
->  	 MOPT_EXT4_ONLY | MOPT_CLEAR},
->  	{Opt_warn_on_error, EXT4_MOUNT_WARN_ON_ERROR, MOPT_SET},
->  	{Opt_nowarn_on_error, EXT4_MOUNT_WARN_ON_ERROR, MOPT_CLEAR},
-> +	{Opt_commit, 0, MOPT_NO_EXT2},
->  	{Opt_nojournal_checksum, EXT4_MOUNT_JOURNAL_CHECKSUM,
->  	 MOPT_EXT4_ONLY | MOPT_CLEAR},
->  	{Opt_journal_checksum, EXT4_MOUNT_JOURNAL_CHECKSUM,
-> 
-> base-commit: 23e3d7f7061f8682c751c46512718f47580ad8f0
-> -- 
-> 2.36.1
+>      	 				- Ted
+> 				
 > 
 
