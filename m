@@ -2,111 +2,146 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 571E0C433FE
-	for <linux-ext4@archiver.kernel.org>; Wed, 11 May 2022 01:18:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28E01C433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 11 May 2022 06:25:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240192AbiEKBSV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 10 May 2022 21:18:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51370 "EHLO
+        id S241095AbiEKGZS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 11 May 2022 02:25:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57368 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237149AbiEKBSS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 May 2022 21:18:18 -0400
-Received: from lgeamrelo11.lge.com (lgeamrelo12.lge.com [156.147.23.52])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id B43675798C
-        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2022 18:18:16 -0700 (PDT)
-Received: from unknown (HELO lgeamrelo01.lge.com) (156.147.1.125)
-        by 156.147.23.52 with ESMTP; 11 May 2022 10:18:15 +0900
-X-Original-SENDERIP: 156.147.1.125
-X-Original-MAILFROM: byungchul.park@lge.com
-Received: from unknown (HELO X58A-UD3R) (10.177.244.38)
-        by 156.147.1.125 with ESMTP; 11 May 2022 10:18:14 +0900
-X-Original-SENDERIP: 10.177.244.38
-X-Original-MAILFROM: byungchul.park@lge.com
-Date:   Wed, 11 May 2022 10:16:37 +0900
-From:   Byungchul Park <byungchul.park@lge.com>
-To:     tytso@mit.edu
-Cc:     torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-        linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, mingo@redhat.com,
-        linux-kernel@vger.kernel.org, peterz@infradead.org,
-        will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-        joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-        chris@chris-wilson.co.uk, duyuyang@gmail.com,
-        johannes.berg@intel.com, tj@kernel.org, willy@infradead.org,
-        david@fromorbit.com, amir73il@gmail.com,
-        gregkh@linuxfoundation.org, kernel-team@lge.com,
-        linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
-        minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
-        sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-        penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-        ngupta@vflare.org, linux-block@vger.kernel.org,
-        paolo.valente@linaro.org, josef@toxicpanda.com,
-        linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        jack@suse.cz, jack@suse.com, jlayton@kernel.org,
-        dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
-        dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
-        melissa.srw@gmail.com, hamohammed.sa@gmail.com, 42.hyeyoo@gmail.com
-Subject: Re: [PATCH RFC v6 00/21] DEPT(Dependency Tracker)
-Message-ID: <20220511011637.GC18445@X58A-UD3R>
-References: <YnnAnzPFZZte/UR8@mit.edu>
- <1652161060-26531-1-git-send-email-byungchul.park@lge.com>
+        with ESMTP id S241359AbiEKGZP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 May 2022 02:25:15 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0953C227808
+        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2022 23:25:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1652250313;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=o3abCV31hEIagI/Cf2hwMAxBja66bv5qyGLhg7RJLWc=;
+        b=eGZx7RL4IH10HlDBPFg5K7FGmA71OdE4jXh3DBaWoNQDN4I/PCaWM1LYbyO09IeGHURHiv
+        0xsPimy9sqIeoncbLjlfqjRA4BRmo0q3p51tUlf4VJBnhAPylqsh5qd3WkCdtCykMMyQf5
+        rOAARruYqpIW6UJZSQIfAf1PDRZRIsM=
+Received: from mail-qv1-f71.google.com (mail-qv1-f71.google.com
+ [209.85.219.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-563-nLMKRiw4NUqwYOKrJvGLzw-1; Wed, 11 May 2022 02:25:11 -0400
+X-MC-Unique: nLMKRiw4NUqwYOKrJvGLzw-1
+Received: by mail-qv1-f71.google.com with SMTP id bu6-20020ad455e6000000b004563a74e3f9so1232767qvb.9
+        for <linux-ext4@vger.kernel.org>; Tue, 10 May 2022 23:25:11 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id
+         :mail-followup-to:references:mime-version:content-disposition
+         :in-reply-to;
+        bh=o3abCV31hEIagI/Cf2hwMAxBja66bv5qyGLhg7RJLWc=;
+        b=fZeuwW+S/gVTdhJPZBHQS3lVhzGjqpA4GrJc70WDSS9j34tRS5+7SNiKMuY4boMwJb
+         q+x8bd6IcRDepyvijewrh9ktYSNQNsmbM1H1g6AYUG2pzXWr7QwD7yrMDfwzAxH0Tjcc
+         2henSmzszSZtVDx5u+QJ6405+18tifNGisAYm5T+NFxRsVPgL/LMgPw7iXeVzZ/roVak
+         Y1EWmbJm/mDBVOsyMZFq9CP8yXzBPuINtgPKG+yY8bG54NF+RURR2kzf1G8DQdtZVq8/
+         lzKcGnd70j9m6bNhatf49GBZPqoMCAlP0fTaDE1L4AN81kwpBm4vXOuH0e176uMyk8OI
+         Oj4Q==
+X-Gm-Message-State: AOAM530UdZZlmLSmpbUY0AdXqFQ5AwuwzfRqaZhkjq7k1H5vI9ccXsRY
+        J7KVVN4pAr5pzzjAdbXu5DXm8aW9eox7Bl5Xgy17BneQ8UHadapvOUCnTzwkERWPkP3/3fAvK5C
+        F1YpuhpzmNRwdeqtiSsgtqA==
+X-Received: by 2002:a05:620a:40c8:b0:6a0:922b:2d82 with SMTP id g8-20020a05620a40c800b006a0922b2d82mr9969597qko.252.1652250311106;
+        Tue, 10 May 2022 23:25:11 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJykqVcKNhhyYS6Y76lvSPlfcHxP/l7/GoT5qBFEzzRZOvzT2VGfolaTnc8xcziW6QWY+55cQA==
+X-Received: by 2002:a05:620a:40c8:b0:6a0:922b:2d82 with SMTP id g8-20020a05620a40c800b006a0922b2d82mr9969586qko.252.1652250310816;
+        Tue, 10 May 2022 23:25:10 -0700 (PDT)
+Received: from zlang-mailbox ([209.132.188.80])
+        by smtp.gmail.com with ESMTPSA id h8-20020ac85148000000b002f3ef928fbbsm626311qtn.72.2022.05.10.23.25.08
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 May 2022 23:25:10 -0700 (PDT)
+Date:   Wed, 11 May 2022 14:25:04 +0800
+From:   Zorro Lang <zlang@redhat.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>, fstests@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: [xfstests PATCH] ext4/053: fix the rejected mount option testing
+Message-ID: <20220511062504.c4ed7rhdyqfe54y6@zlang-mailbox>
+Mail-Followup-To: Eric Biggers <ebiggers@kernel.org>,
+        Lukas Czerner <lczerner@redhat.com>, fstests@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+References: <20220430192130.131842-1-ebiggers@kernel.org>
+ <Ynmmy+bWp0Q1/747@sol.localdomain>
+ <20220510094308.mhzvcgq5wrat5qao@fedora>
+ <20220510154359.xfhmumcmb4o37qdy@zlang-mailbox>
+ <Ynqwotv9lQvt3TV3@sol.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1652161060-26531-1-git-send-email-byungchul.park@lge.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <Ynqwotv9lQvt3TV3@sol.localdomain>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, May 10, 2022 at 02:37:40PM +0900, Byungchul Park wrote:
-> Ted wrote:
-> > On Tue, May 10, 2022 at 09:32:13AM +0900, Byungchul Park wrote:
-> > > DEPT is tracking way more objects than Lockdep so it's inevitable to be
-> > > slower, but let me try to make it have the similar performance to
-> > > Lockdep.
+On Tue, May 10, 2022 at 11:36:18AM -0700, Eric Biggers wrote:
+> On Tue, May 10, 2022 at 11:43:59PM +0800, Zorro Lang wrote:
+> > On Tue, May 10, 2022 at 11:43:08AM +0200, Lukas Czerner wrote:
+> > > On Mon, May 09, 2022 at 04:42:03PM -0700, Eric Biggers wrote:
+> > > > On Sat, Apr 30, 2022 at 12:21:30PM -0700, Eric Biggers wrote:
+> > > > > From: Eric Biggers <ebiggers@google.com>
+> > > > > 
+> > > > > 'not_mnt OPTIONS' seems to have been intended to test that the
+> > > > > filesystem cannot be mounted at all with the given OPTIONS, meaning that
+> > > > > the mount fails as opposed to the options being ignored.  However, this
+> > > > > doesn't actually work, as shown by the fact that the test case 'not_mnt
+> > > > > test_dummy_encryption=v3' is passing in the !CONFIG_FS_ENCRYPTION case.
+> > > > > Actually ext4 ignores this mount option when !CONFIG_FS_ENCRYPTION.
+> > > > > (The ext4 behavior might be changed, but that is besides the point.)
+> > > > > 
+> > > > > The problem is that the do_mnt() helper function is being misused in a
+> > > > > context where a mount failure is expected, and it does some additional
+> > > > > remount tests that don't make sense in that context.  So if the mount
+> > > > > unexpectedly succeeds, then one of these later tests can still "fail",
+> > > > > causing the unexpected success to be shadowed by a later failure, which
+> > > > > causes the overall test case to pass since it expects a failure.
+> > > > > 
+> > > > > Fix this by reworking not_mnt() and not_remount_noumount() to use
+> > > > > simple_mount() in cases where they are expecting a failure.  Also fix
+> > > > > up some of the naming and calling conventions to be less confusing.
+> > > > > Finally, make sure to test that remounting fails too, not just mounting.
+> > > > > 
+> > > > > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > > > > ---
+> > > > >  tests/ext4/053 | 148 ++++++++++++++++++++++++++-----------------------
+> > > > >  1 file changed, 78 insertions(+), 70 deletions(-)
+> > > > 
+> > > > Lukas, any thoughts on this patch?  You're the author of this test.
+> > > > 
+> > > > - Eric
+> > > 
+> > > Haven't tested it myself but the change looks fine, thanks.
 > > 
-> > In order to eliminate some of these false positives, I suspect it's
-> > going to increase the number of object classes that DEPT will need to
-> > track even *more*.  At which point, the cost/benefit of DEPT may get
-> > called into question, especially if all of the false positives can't
-> > be suppressed.
+> > Thanks for you help to review this patch. There's an new failure[1] after we
+> > merged this patch:
+> >   "SHOULD FAIL remounting ext2 "commit=7" (remount unexpectedly succeeded) FAILED"
+> > 
+> > As this test generally passed, so before I give "Oops" to others, I hope to
+> > check with you that if this's an expected failure we need to fix in kernel
+> > or in this case itself?
+> > 
 > 
-> Look. Let's talk in general terms. There's no way to get rid of the
-> false positives all the way. It's a decision issue for *balancing*
-> between considering potential cases and only real ones. Definitely,
-> potential is not real. The more potential things we consider, the higher
-> the chances are, that false positives appear.
-> 
-> But yes. The advantage we'd take by detecting potential ones should be
-> higher than the risk of being bothered by false ones. Do you think a
-> tool is useless if it produces a few false positives? Of course, it'd
-> be a problem if it's too many, but otherwise, I think it'd be a great
-> tool if the advantage > the risk.
-> 
-> Don't get me wrong here. It doesn't mean DEPT is perfect for now. The
-> performance should be improved and false alarms that appear should be
-> removed, of course. I'm talking about the direction.
-> 
-> For now, there's no tool to track wait/event itself in Linux kernel -
-> a subset of the functionality exists tho. DEPT is the 1st try for that
-> purpose and can be a useful tool by the right direction.
-> 
-> I know what you are concerning about. I bet it's false positives that
-> are going to bother you once merged. I'll insist that DEPT shouldn't be
-> used as a mandatory testing tool until considered stable enough. But
-> what about ones who would take the advantage use DEPT. Why don't you
-> think of folks who will take the advantage from the hints about
-> dependency of synchronization esp. when their subsystem requires very
-> complicated synchronization? Should a tool be useful only in a final
-> testing stage? What about the usefulness during development stage?
-> 
-> It's worth noting DEPT works with any wait/event so any lockups e.g.
-> even by HW-SW interface, retry logic or the like can be detected by DEPT
-> once all waits and events are tagged properly. I believe the advantage
-> by that is much higher than the bad side facing false alarms. It's just
-> my opinion. I'm goning to respect the majority opinion.
+> This appears to be a kernel bug, so to fix it I've sent the patch
+> "ext4: reject the 'commit' option on ext2 filesystems"
+> (https://lore.kernel.org/r/20220510183232.172615-1-ebiggers@kernel.org).
 
-s/take advantage/have the benefit/g
+Thanks, great to know that.
 
-	Byungchul
+> 
+> I didn't notice this earlier because it's not reproducible with
+> CONFIG_EXT2_FS=y.  But it is reproducible with CONFIG_EXT2_FS=n and
+> CONFIG_EXT4_USE_FOR_EXT2=y.
+
+Yes, I tested with this config. I'll remind this failure in next fstests
+announcement, Thanks a lot!
+
+Thanks,
+Zorro
+
+> 
+> - Eric
+> 
+
