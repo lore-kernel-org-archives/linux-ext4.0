@@ -2,83 +2,65 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BDA69C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 12 May 2022 05:48:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F156C433F5
+	for <linux-ext4@archiver.kernel.org>; Thu, 12 May 2022 07:54:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1349973AbiELFs5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 12 May 2022 01:48:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47260 "EHLO
+        id S1351256AbiELHyt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 12 May 2022 03:54:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52266 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241110AbiELFs5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2022 01:48:57 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45FF133361
-        for <linux-ext4@vger.kernel.org>; Wed, 11 May 2022 22:48:55 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DDC0E61CEB
-        for <linux-ext4@vger.kernel.org>; Thu, 12 May 2022 05:48:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9E30C34100;
-        Thu, 12 May 2022 05:48:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1652334534;
-        bh=d08puB5fh8hsuQ35H3WmEybfW309kt4JfYm4wR3DdCI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=FQ49KXR5PTPy0h8HyvgwYK4024ceZHItRofouxcJ+5L8lFGZxOGyONCFg0DYXie9y
-         IGbGmEaZVViRdK5Tu93KLwmIiIoK7qie1PmNm7IsuyIJeMGN+23c2w79lwV/GCvTfQ
-         DubIYXKytnaAgtL+tKFlqzHlo+taC3uBpCrGfepRjxEc4KwUnxeUx9Zk6FlOXXV/Ni
-         igZE33iAYb0vHdHld1BJ7HiIYFEsRh+mLd0puAEkg1nTyHZUvWuvPh/usab+vUCEcd
-         mMEVah3l9TlotcamEY1okYWpY3EYpPXcPpMjvRQ9DTeMgw36icUSRjxYJtYeWMBqc3
-         oo2+cgbmXiZ2g==
-Date:   Wed, 11 May 2022 22:48:52 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        kernel@collabora.com
-Subject: Re: [PATCH v4 06/10] ext4: Log error when lookup of encoded dentry
- fails
-Message-ID: <YnyfxNBxFy0LZfJ7@sol.localdomain>
-References: <20220511193146.27526-1-krisman@collabora.com>
- <20220511193146.27526-7-krisman@collabora.com>
+        with ESMTP id S1348169AbiELHys (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 May 2022 03:54:48 -0400
+Received: from out30-56.freemail.mail.aliyun.com (out30-56.freemail.mail.aliyun.com [115.124.30.56])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1BAF945067;
+        Thu, 12 May 2022 00:54:46 -0700 (PDT)
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04394;MF=yang.lee@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0VCzpi4s_1652342074;
+Received: from localhost(mailfrom:yang.lee@linux.alibaba.com fp:SMTPD_---0VCzpi4s_1652342074)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Thu, 12 May 2022 15:54:34 +0800
+From:   Yang Li <yang.lee@linux.alibaba.com>
+To:     tytso@mit.edu
+Cc:     jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Yang Li <yang.lee@linux.alibaba.com>,
+        Abaci Robot <abaci@linux.alibaba.com>
+Subject: [PATCH -next] fs: Fix jbd2_journal_try_to_free_buffers() kernel-doc comment
+Date:   Thu, 12 May 2022 15:54:32 +0800
+Message-Id: <20220512075432.31763-1-yang.lee@linux.alibaba.com>
+X-Mailer: git-send-email 2.20.1.7.g153144c
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220511193146.27526-7-krisman@collabora.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, May 11, 2022 at 03:31:42PM -0400, Gabriel Krisman Bertazi wrote:
-> If the volume is in strict mode, ext4_ci_compare can report a broken
-> encoding name.  This will not trigger on a bad lookup, which is caught
-> earlier, only if the actual disk name is bad.
-> 
-> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
-> 
-> ---
-> 
-> Changes since v1:
->   - reword error message "file in directory" -> "filename" (Eric)
-> ---
->  fs/ext4/namei.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index cebbcabf0ff0..708811525411 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -1458,6 +1458,9 @@ static bool ext4_match(struct inode *parent,
->  			 * only case where it happens is on a disk
->  			 * corruption or ENOMEM.
->  			 */
-> +			if (ret == -EINVAL)
-> +				EXT4_ERROR_INODE(parent,
-> +						 "Bad encoded filename");
+Add the description of @folio and remove @page in function kernel-doc
+comment to remove warnings found by running scripts/kernel-doc, which
+is caused by using 'make W=1'.
 
-This message is still quite vague; perhaps it should be more specific about what
-a "bad" filename is?  Maybe something like: "Directory contains filename that is
-not valid UTF-8" (or whatever the encoding being enforced is).
+fs/jbd2/transaction.c:2149: warning: Function parameter or member
+'folio' not described in 'jbd2_journal_try_to_free_buffers'
+fs/jbd2/transaction.c:2149: warning: Excess function parameter 'page'
+description in 'jbd2_journal_try_to_free_buffers'
 
-- Eric
+Reported-by: Abaci Robot <abaci@linux.alibaba.com>
+Signed-off-by: Yang Li <yang.lee@linux.alibaba.com>
+---
+ fs/jbd2/transaction.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index e49bb0938376..e9c308ae475f 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2114,7 +2114,7 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
+ /**
+  * jbd2_journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+- * @page: to try and free
++ * @folio: Folio to detach data from.
+  *
+  * For all the buffers on this page,
+  * if they are fully written out ordered data, move them onto BUF_CLEAN
+-- 
+2.20.1.7.g153144c
+
