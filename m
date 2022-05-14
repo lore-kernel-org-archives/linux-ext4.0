@@ -2,68 +2,124 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17F0BC433FE
-	for <linux-ext4@archiver.kernel.org>; Sat, 14 May 2022 02:57:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DEDBBC433EF
+	for <linux-ext4@archiver.kernel.org>; Sat, 14 May 2022 03:37:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231455AbiENC5N (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 13 May 2022 22:57:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33182 "EHLO
+        id S231580AbiENDhu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 13 May 2022 23:37:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59490 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231523AbiENC4X (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 13 May 2022 22:56:23 -0400
+        with ESMTP id S231400AbiENDhs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 13 May 2022 23:37:48 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9AA8B321D66
-        for <linux-ext4@vger.kernel.org>; Fri, 13 May 2022 18:52:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9D46057995
+        for <linux-ext4@vger.kernel.org>; Fri, 13 May 2022 20:37:46 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 24E1qBtt022837
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 24E3be03031120
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 13 May 2022 21:52:12 -0400
+        Fri, 13 May 2022 23:37:41 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1652493132; bh=cvtH10wIW/qllaw6YhvAWlxdl4Ldk6y+ev2akrrJW/M=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=Zmg8m4qssGm0xR+cmcIwDS9Nv51Q4JMHOr/ELYenmWjcxYK5AMbd1Jdsdkf+cpnZZ
-         B/uqFwv9PIyT3JwQZ8Jms5w66EOsAT33rMl0e131/ANaku25z7/MiXdAOMw9i1gmQS
-         HmPt3UHAU41FJVpZW3cqtKAgdOYOboU793hKzhK09+CfWtSrzdpvnrq/rp9xW0q/hD
-         fZKZ+ivm4pyifG3MFBQ1nyfoP4vNA1NoiU8RJTHGD1Wi/CVbtFDfniNihESiz8jKm2
-         LF3n31SHKhkag7e/Xmw+/GkwwesJUFc6ubugWClKViGfKaSVYd0wp/pZXERS3+Hk/9
-         jElxS5TaWsQ4Q==
+        t=1652499462; bh=9r9Oag9qMJS5d8Wu2qxoPjfVImpOuyYcCj1VUaDcA0k=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To;
+        b=BEkc/XPI0wdUF/xDZweHc+avlXjVjBjcdiwlw+djDsfXtPNgm1LTqCDarK1AHFKjH
+         7vjwGDXrD6akSZai/f3/zc6T8XzCiY971xxljly6zvwa8TtrBf6iuLXmtmVRmHG0Jf
+         PpIKQAVs5gjFidBAh+d+IG+GXfWh8X+cpv8MDbwPN4N397pT6ic+D0hSN8QzwKN3a/
+         eK8W9uiapIMitNZlMuAeOcwsKPYZnrHnVjWpBJ6LhW/Mdn323I4cBsW0rTySMI5hIF
+         cXGe9JwpU0b3UDbXiS46ByFL81tcYkskKb/gWg7LqwSoVAnZorYpF5M3jpZhJRtfGi
+         DEfOm9IRl4cYg==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 4B61F15C3F2A; Fri, 13 May 2022 21:52:11 -0400 (EDT)
+        id 3457F15C3F2A; Fri, 13 May 2022 23:37:40 -0400 (EDT)
+Date:   Fri, 13 May 2022 23:37:40 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     linux-ext4@vger.kernel.org,
-        Dmitry Monakhov <dmtrmonakhov@yandex-team.ru>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: mark group as trimmed only if it was fully scanned
-Date:   Fri, 13 May 2022 21:52:10 -0400
-Message-Id: <165249310227.638202.3921167990549958733.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <1650214995-860245-1-git-send-email-dmtrmonakhov@yandex-team.ru>
-References: <1650214995-860245-1-git-send-email-dmtrmonakhov@yandex-team.ru>
+To:     Nguyen Dinh Phi <phind.uet@gmail.com>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        syzbot+c7358a3cd05ee786eb31@syzkaller.appspotmail.com,
+        linux-ext4@vger.kernel.org, harshadshirwadkar@gmail.com
+Subject: Re: [PATCH] ext4: Fix block validation on non-journal fs in
+ __ext4_iget()
+Message-ID: <Yn8kBKV7bZXCIDsB@mit.edu>
+References: <20220420192312.1655305-1-phind.uet@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220420192312.1655305-1-phind.uet@gmail.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, 17 Apr 2022 20:03:15 +0300, Dmitry Monakhov wrote:
-> Otherwise nonaligned fstrim calls will works inconveniently for iterative
-> scanners, for example:
+On Thu, Apr 21, 2022 at 03:23:12AM +0800, Nguyen Dinh Phi wrote:
+> Syzbot report following KERNEL BUG:
+> 	kernel BUG at fs/ext4/extents_status.c:899!
+> 	....
 > 
-> // trim [0,16MB] for group-1, but mark full group as trimmed
-> fstrim  -o $((1024*1024*128)) -l $((1024*1024*16)) ./m
-> // handle [16MB,16MB] for group-1, do nothing because group already has the flag.
-> fstrim  -o $((1024*1024*144)) -l $((1024*1024*16)) ./m
+> The reason is fast commit recovery path will skip block validation in
+> __ext4_iget(), it allows syzbot be able to mount a corrupted non-journal
+> filesystem and cause kernel BUG when accessing it.
 > 
-> [...]
+> Fix it by adding a condition checking.
 
-Applied, thanks!
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 560e56b42829..66c86d85081e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4951,7 +4951,7 @@ struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
+>  		goto bad_inode;
+>  	} else if (!ext4_has_inline_data(inode)) {
+>  		/* validate the block references in the inode */
+> -		if (!(EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY) &&
+> +		if (!(journal && EXT4_SB(sb)->s_mount_state & EXT4_FC_REPLAY) &&
 
-[1/1] ext4: mark group as trimmed only if it was fully scanned
-      commit: 326118d762e2eaaec580fcc151f853a96f3ad71a
+This isn't the right fix.  It papers over the problem and fixes the
+specific syzkaller fuzzed image, but there are other corrupted file
+system images which will cause problems.
 
-Best regards,
--- 
-Theodore Ts'o <tytso@mit.edu>
+What the syzkaller fuzzed file system image did was to set the
+EXT4_FC_REPLAY_BIT bit the on_disk superblock field s_state, which
+then gets copied to sbi->s_mount_state:
+
+	sbi->s_mount_state = le16_to_cpu(es->s_state);
+
+... and then hilarity ensues.
+
+The root cause is that we are using EXT4_FC_REPLAY bit in
+sbi->s_mount_state to indicate whether we are in the middle of a fast
+commit replay.  This *should* have been done using a bit in
+s_mount_flags (e.g., EXT4_MF_FC_REPLAY) via the
+ext4_{set,clear,test}_mount_flag() inline functions.
+
+The previous paragraph describes the correct long-term fix, but the
+trivial/hacky fix which is easy to backport to LTS stable kernels is
+something like this:
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 4b0ea8df1f5c..f7ae53d986f1 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4889,7 +4889,7 @@ static int __ext4_fill_super(struct fs_context *fc, struct super_block *sb)
+ 					sbi->s_inodes_per_block;
+ 	sbi->s_desc_per_block = blocksize / EXT4_DESC_SIZE(sb);
+ 	sbi->s_sbh = bh;
+-	sbi->s_mount_state = le16_to_cpu(es->s_state);
++	sbi->s_mount_state = le16_to_cpu(es->s_state) & ~EXT4_FC_REPLAY;
+ 	sbi->s_addr_per_block_bits = ilog2(EXT4_ADDR_PER_BLOCK(sb));
+ 	sbi->s_desc_per_block_bits = ilog2(EXT4_DESC_PER_BLOCK(sb));
+ 
+@@ -6452,7 +6452,8 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
+ 				if (err)
+ 					goto restore_opts;
+ 			}
+-			sbi->s_mount_state = le16_to_cpu(es->s_state);
++			sbi->s_mount_state = (le16_to_cpu(es->s_state) &
++					      ~EXT4_FC_REPLAY);
+ 
+ 			err = ext4_setup_super(sb, es, 0);
+ 			if (err)
+
+(The first hunk is sufficient to suppress the syzkaller failure, but
+for completeness sake we need catch the case where the journal
+contains a maliciously modified superblock, which then is copied to
+the active superblock, after which hilarity once again ensues.)
+
+    	   	       	     	   	    	 - Ted
