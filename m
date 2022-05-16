@@ -2,97 +2,168 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 672D7C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 May 2022 09:31:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 224CFC433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 16 May 2022 11:26:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233451AbiEPJa5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 May 2022 05:30:57 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50664 "EHLO
+        id S235421AbiEPL0n (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 16 May 2022 07:26:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48220 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229725AbiEPJa4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2022 05:30:56 -0400
-Received: from mail-lj1-x229.google.com (mail-lj1-x229.google.com [IPv6:2a00:1450:4864:20::229])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 633DF2612C
-        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2022 02:30:54 -0700 (PDT)
-Received: by mail-lj1-x229.google.com with SMTP id m23so17401048ljc.0
-        for <linux-ext4@vger.kernel.org>; Mon, 16 May 2022 02:30:54 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=88YPtanQoCewrklAQjIZKZmT3p6n1PFuQ/LT13ahwDg=;
-        b=mHyVl9f/YQTlAcAJOVq0azTfxsFX8FfKd92+Ih9VatVpWXxvYiqnKy82fQo96gKOwi
-         Bm5Ld6RGQ5cWTQ0At5lnjgiAIUSZNoAwKfLjfsz0wa7nKLtqxQ7SxU/XLl4VaK7OXZ+2
-         Zl3rHou0cn2EOAmp08S3NohXj+MjxmngclFHDQgTlZjRLWkz+RNJzu3C6yhg/BLQk+p5
-         fxIQ7t0+ASEx1YTPH4BNsa1KkRAGzqD1y+8bTKAypV6oXt+kEdWDq4Ptou/qFTEOxRyF
-         NGcqsHTAMnc/FDXeVa0kvz+GixXHetj6jtwaKjP3NJ2MTS9BL7sTr+4OaKGhLLYGt2Xo
-         RQ3g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=88YPtanQoCewrklAQjIZKZmT3p6n1PFuQ/LT13ahwDg=;
-        b=T8PFf79gxrCxP57YCNZzCZIw6PF2nZLYNVIhTprrXeZRzA/+EWR+TzMmtjqo5/tp+A
-         hksiWzDbcLGPjdQXz4GXDaITrGcMum6x5yoSxid31WxM1XGKrSvapGuWw7+HkRri9wUl
-         7fOL3TegAhTGvs4AKDEvtqsVWd/JZvalHj/PRdi8y75YDutMYDx0ioLQeCh9yq9WGoO4
-         unC9g/hNEZrgCCN01rXqniSilA9k7UdoFkpJYoyVUE2scR/aB/0VfbuTqkTp1hf8yjZa
-         QlBxmKitMuD3uaqPdVHN1XtOo1go41HSMkEA1NziIjWUZQ+MtAThuasTPWtYttEvR/7J
-         21gA==
-X-Gm-Message-State: AOAM531bvsc8JkiOAzrPrl/0bgp7pDiZdfUugIezz28uFrQo5LBswm/s
-        UryBQiTk2DpdjS/PUWXA7vxQ+3AoFLTkHx+hm7BY2kKigSfwiQ==
-X-Google-Smtp-Source: ABdhPJzrnRTB5EIvIEKOr3KToJbIGgJn1S8lP+zgRzMIoyndCbw8SfgodSrY4r6BS9pG8L40URTTo1URgojb0Tpg1IM=
-X-Received: by 2002:a2e:bf01:0:b0:247:dfe7:62dc with SMTP id
- c1-20020a2ebf01000000b00247dfe762dcmr10900672ljr.365.1652693451090; Mon, 16
- May 2022 02:30:51 -0700 (PDT)
+        with ESMTP id S232136AbiEPL0l (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2022 07:26:41 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98D4DD138;
+        Mon, 16 May 2022 04:26:40 -0700 (PDT)
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id B700421FCA;
+        Mon, 16 May 2022 11:26:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1652700398; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=wQ91wwKDsTLcXTrXFJlbO/2mmoxPVjMJojxTQ41h7Hc=;
+        b=16cR0LVy6NxPyYvuWNsnkXOGOJ86wvxAT4t8nuTsO31gWLaMu+5NVW9LFgqs3E/njvetMu
+        ffGwDNmh2ianR0AeNNEn5VcEQOCWsi/X7gXcJo8YheiXGPwW6FhYlKaOL6iL9xKvnbEet8
+        +brB7kR+ViF8/sSeBPm2dD1iFf932kw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1652700398;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=wQ91wwKDsTLcXTrXFJlbO/2mmoxPVjMJojxTQ41h7Hc=;
+        b=IZtJ2aWsW9hqZwb7LesSV2MSxdvamK3PFNUvz3E6RBk4xOyrnyrV1S8c2dqIrBNu4UJ2/O
+        uF4l9b/N88BVKEBA==
+Received: from quack3.suse.cz (unknown [10.100.224.230])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by relay2.suse.de (Postfix) with ESMTPS id 73BBD2C142;
+        Mon, 16 May 2022 11:26:38 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id ED87EA062F; Mon, 16 May 2022 13:26:37 +0200 (CEST)
+Date:   Mon, 16 May 2022 13:26:37 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Ye Bin <yebin10@huawei.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jack@suse.cz
+Subject: Re: [PATCH -next v3] ext4: fix bug_on in ext4_writepages
+Message-ID: <20220516112637.ysx7shlqcs5anvp3@quack3.lan>
+References: <20220516012752.17241-1-yebin10@huawei.com>
 MIME-Version: 1.0
-From:   "Lakshmipathi.G" <lakshmipathi.g@gmail.com>
-Date:   Mon, 16 May 2022 15:00:14 +0530
-Message-ID: <CAKuJGC-uO-ywctcRH-i0UUfvzX3Yvep0kpSVi+FQXJjWgYMtdA@mail.gmail.com>
-Subject: fast_commit option not recognized/supported by e2fsck?
-To:     linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220516012752.17241-1-yebin10@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
-Seems like I can't use the new fast_commit option.
+On Mon 16-05-22 09:27:52, Ye Bin wrote:
+> we got issue as follows:
+> EXT4-fs error (device loop0): ext4_mb_generate_buddy:1141: group 0, block bitmap and bg descriptor inconsistent: 25 vs 31513 free cls
+> ------------[ cut here ]------------
+> kernel BUG at fs/ext4/inode.c:2708!
+> invalid opcode: 0000 [#1] PREEMPT SMP KASAN PTI
+> CPU: 2 PID: 2147 Comm: rep Not tainted 5.18.0-rc2-next-20220413+ #155
+> RIP: 0010:ext4_writepages+0x1977/0x1c10
+> RSP: 0018:ffff88811d3e7880 EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: 0000000000000001 RCX: ffff88811c098000
+> RDX: 0000000000000000 RSI: ffff88811c098000 RDI: 0000000000000002
+> RBP: ffff888128140f50 R08: ffffffffb1ff6387 R09: 0000000000000000
+> R10: 0000000000000007 R11: ffffed10250281ea R12: 0000000000000001
+> R13: 00000000000000a4 R14: ffff88811d3e7bb8 R15: ffff888128141028
+> FS:  00007f443aed9740(0000) GS:ffff8883aef00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000020007200 CR3: 000000011c2a4000 CR4: 00000000000006e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  <TASK>
+>  do_writepages+0x130/0x3a0
+>  filemap_fdatawrite_wbc+0x83/0xa0
+>  filemap_flush+0xab/0xe0
+>  ext4_alloc_da_blocks+0x51/0x120
+>  __ext4_ioctl+0x1534/0x3210
+>  __x64_sys_ioctl+0x12c/0x170
+>  do_syscall_64+0x3b/0x90
+> 
+> It may happen as follows:
+> 1. write inline_data inode
+> vfs_write
+>   new_sync_write
+>     ext4_file_write_iter
+>       ext4_buffered_write_iter
+>         generic_perform_write
+>           ext4_da_write_begin
+>             ext4_da_write_inline_data_begin -> If inline data size too
+>             small will allocate block to write, then mapping will has
+>             dirty page
+>                 ext4_da_convert_inline_data_to_extent ->clear EXT4_STATE_MAY_INLINE_DATA
+> 2. fallocate
+> do_vfs_ioctl
+>   ioctl_preallocate
+>     vfs_fallocate
+>       ext4_fallocate
+>         ext4_convert_inline_data
+>           ext4_convert_inline_data_nolock
+>             ext4_map_blocks -> fail will goto restore data
+>             ext4_restore_inline_data
+>               ext4_create_inline_data
+>               ext4_write_inline_data
+>               ext4_set_inode_state -> set inode EXT4_STATE_MAY_INLINE_DATA
+> 3. writepages
+> __ext4_ioctl
+>   ext4_alloc_da_blocks
+>     filemap_flush
+>       filemap_fdatawrite_wbc
+>         do_writepages
+>           ext4_writepages
+>             if (ext4_has_inline_data(inode))
+>               BUG_ON(ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA))
+> 
+> The root cause of this issue is we destory inline data until call ext4_writepages
+> under delay allocation mode. But there maybe already covert from inline to extent.
+> To solved this issue, we call filemap_flush firstly.
+> 
+> Signed-off-by: Ye Bin <yebin10@huawei.com>
 
-Steps:
-$ apt-get install gcc make bison -y && wget
-https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git/snapshot/e2fsprogs-1.46.4.tar.gz
-tar -xvf e2fsprogs-1.46.4.tar.gz && cd e2fsprogs-1.46.4 && ./configure
-&& make -j2 && sudo make install
-$ sudo tune2fs -O fast_commit /dev/nvme0n1p2
-# and verified flags with
-$ sudo tune2fs -l /dev/nvme0n1p2 | grep fast_commit
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-fast_commit filetype needs_recovery extent 64bit flex_bg sparse_super
-large_file huge_file dir_nlink extra_isize metadata_csum
-$ e2fsck -V
-e2fsck 1.46.4 (18-Aug-2021)
-Using EXT2FS Library version 1.46.4, 18-Aug-2021
-$ uname -a
-Linux db 5.13.0-1022-aws #24~20.04.1-Ubuntu SMP Thu Apr 7 22:14:11 UTC
-2022 aarch64 aarch64 aarch64 GNU/Linux
+Thanks for the patch. It looks good now so feel free to add:
 
-Now I did a reboot and the system hangs. It shows the following error
-message. Any thoughts on what's going wrong here? thanks!
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-```
-Begin: Will now check root file system ... fsck from util-linux 2.34
-[/usr/sbin/fsck.ext4 (1) -- /dev/nvme0n1p2] fsck.ext4 -a -C0 /dev/nvme0n1p2
-/dev/nvme0n1p2 has unsupported feature(s): fast_commit
-e2fsck: Get a newer version of e2fsck!
+Just one small comment below:
 
-/dev/nvme0n1p2: ********** WARNING: Filesystem still has errors **********
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 6d253edebf9f..79a7d5d700f7 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -2002,6 +2002,12 @@ int ext4_convert_inline_data(struct inode *inode)
+>  	if (!ext4_has_inline_data(inode)) {
+>  		ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+>  		return 0;
+> +	} else if (!ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)) {
 
-fsck exited with status code 12
-done.
-Failure: File system check of the root filesystem failed
-The root filesystem on /dev/nvme0n1p2 requires a manual fsck
-```
+Can we perhaps add here a comment like:
 
+		/*
+		 * Inode has inline data but EXT4_STATE_MAY_INLINE_DATA is
+		 * cleared. This means we are in the middle of moving of
+		 * inline data to delay allocated block. Just force
+		 * writeout here to finish conversion.
+		 */
 
-----
-Cheers,
-Lakshmipathi.G
-http://www.giis.co.in https://www.webminal.org
+								Honza
+
+> +		error = filemap_flush(inode->i_mapping);
+> +		if (error)
+> +			return error;
+> +		if (!ext4_has_inline_data(inode))
+> +			return 0;
+>  	}
+>  
+>  	needed_blocks = ext4_writepage_trans_blocks(inode);
+> -- 
+> 2.31.1
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
