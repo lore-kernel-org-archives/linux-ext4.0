@@ -2,174 +2,182 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9896BC433F5
-	for <linux-ext4@archiver.kernel.org>; Mon, 16 May 2022 23:15:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A042CC433FE
+	for <linux-ext4@archiver.kernel.org>; Tue, 17 May 2022 06:01:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239422AbiEPXPb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 16 May 2022 19:15:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44638 "EHLO
+        id S232852AbiEQGBV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 17 May 2022 02:01:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44930 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1350284AbiEPXPP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 16 May 2022 19:15:15 -0400
-Received: from NAM11-DM6-obe.outbound.protection.outlook.com (mail-dm6nam11on2047.outbound.protection.outlook.com [40.107.223.47])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC0B846B2B;
-        Mon, 16 May 2022 16:15:14 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=P1pnwNVd/vd6yD+RlpvDmUMVDteM3Vvio0h4v7cQGe7RWhqOEkY8kwDdw2BAdBGct+rtRxWBQ+TOV12x8etNqWaDd/5QiCvmdsoryVlBhqMq6uDujw/k+PVn7yJdfpnCCC1kkggWfv1k324KKtX3chWAjtFVXoakbV/C/TY/RJt+SzqChQ6yzmSqPjkBvX+iZXcXCVh1myQnuVu5vUeh4XGDPIxeN8BvjvlgbKVyg/jvNvKwf/2JUgojiNGaPZtkRXeTVS5QIspZ+t+7VH42m2mdrBfr24mQQLjWH8wCpdwh7dF5XayEykRxGObmjCHwc/oCFOcGbEKMSK21dTFSRw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=Ds2C6hKBCPm3LMFGvWFrTQmYNyEijOJ3/DIUhvifx8M=;
- b=GDQLkC6St/MwUk9t4qd3gcej/gJjSxB+seeDQmzvOPNxaDAY9vah8pRTdi7bYTeWLk0GCLt13ikB7UuFzrwVx4yQlW0rtldbhhAIsKmpVq/xZr7JNTMKmUktdi6xhSBm7TClGi9ZNvsMmzeQsnc4Q/BsODDzdQklmuo/EbDr23w9Pkk9NfjpBzC0MBa5zlVFFRZfTrY+vSoB1tlSD5ZqHwBu7uAk61aZDQMWD7aeKYRs6GRJynGIzyLDRtMFdgUaVCribk4+MX7jLn9o2C6budItRA7lAUHs6jElHjVCJuZk0KIRDnjrG7A8nw1EQzE3LwZiIcCr4VGIa1Fp1HaNbA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass (sender ip is
- 165.204.84.17) smtp.rcpttodomain=nvidia.com smtp.mailfrom=amd.com; dmarc=pass
- (p=quarantine sp=quarantine pct=100) action=none header.from=amd.com;
- dkim=none (message not signed); arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=amd.com; s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=Ds2C6hKBCPm3LMFGvWFrTQmYNyEijOJ3/DIUhvifx8M=;
- b=MvY5hrCIREeMeUOihUkvQqp4JKXVxGRAJUdzLgUgHkBlzI2TAOGWLjMStmJlmbtEq1R+xJUjZ//w16G1WWaMGZO5K7imOXddfoXXzJy6NNTlCmB9wFG1ZnizQjBgFpZ90g7n5A8CoDpsa1xrMwczOj8xnfxpi+znTCZZtKRm4Vg=
-Received: from BN9PR03CA0717.namprd03.prod.outlook.com (2603:10b6:408:ef::32)
- by IA1PR12MB6305.namprd12.prod.outlook.com (2603:10b6:208:3e7::16) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5250.18; Mon, 16 May
- 2022 23:15:05 +0000
-Received: from BN8NAM11FT041.eop-nam11.prod.protection.outlook.com
- (2603:10b6:408:ef:cafe::9a) by BN9PR03CA0717.outlook.office365.com
- (2603:10b6:408:ef::32) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5250.14 via Frontend
- Transport; Mon, 16 May 2022 23:15:05 +0000
-X-MS-Exchange-Authentication-Results: spf=pass (sender IP is 165.204.84.17)
- smtp.mailfrom=amd.com; dkim=none (message not signed)
- header.d=none;dmarc=pass action=none header.from=amd.com;
-Received-SPF: Pass (protection.outlook.com: domain of amd.com designates
- 165.204.84.17 as permitted sender) receiver=protection.outlook.com;
- client-ip=165.204.84.17; helo=SATLEXMB04.amd.com;
-Received: from SATLEXMB04.amd.com (165.204.84.17) by
- BN8NAM11FT041.mail.protection.outlook.com (10.13.177.18) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.20.5250.13 via Frontend Transport; Mon, 16 May 2022 23:15:05 +0000
-Received: from alex-MS-7B09.amd.com (10.180.168.240) by SATLEXMB04.amd.com
- (10.181.40.145) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Mon, 16 May
- 2022 18:15:03 -0500
-From:   Alex Sierra <alex.sierra@amd.com>
-To:     <jgg@nvidia.com>
-CC:     <david@redhat.com>, <Felix.Kuehling@amd.com>, <linux-mm@kvack.org>,
-        <rcampbell@nvidia.com>, <linux-ext4@vger.kernel.org>,
-        <linux-xfs@vger.kernel.org>, <amd-gfx@lists.freedesktop.org>,
-        <dri-devel@lists.freedesktop.org>, <hch@lst.de>,
-        <jglisse@redhat.com>, <apopple@nvidia.com>, <willy@infradead.org>,
-        <akpm@linux-foundation.org>
-Subject: [PATCH v2 10/13] tools: update test_hmm script to support SP config
-Date:   Mon, 16 May 2022 18:14:29 -0500
-Message-ID: <20220516231432.20200-11-alex.sierra@amd.com>
-X-Mailer: git-send-email 2.32.0
-In-Reply-To: <20220516231432.20200-1-alex.sierra@amd.com>
-References: <20220516231432.20200-1-alex.sierra@amd.com>
+        with ESMTP id S230367AbiEQGBU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 May 2022 02:01:20 -0400
+Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 91C09B7E8;
+        Mon, 16 May 2022 23:01:18 -0700 (PDT)
+Received: from dggpeml500020.china.huawei.com (unknown [172.30.72.57])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4L2QT86wC9zhZG4;
+        Tue, 17 May 2022 14:00:28 +0800 (CST)
+Received: from [10.174.177.174] (10.174.177.174) by
+ dggpeml500020.china.huawei.com (7.185.36.88) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Tue, 17 May 2022 14:01:16 +0800
+Message-ID: <297c1735-fb99-57be-addb-2bad7ef94bf1@huawei.com>
+Date:   Tue, 17 May 2022 14:01:15 +0800
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
+ Thunderbird/91.8.1
+Subject: Re: [PATCH v3] ext4: fix race condition between ext4_write and
+ ext4_convert_inline_data
+To:     <linux-ext4@vger.kernel.org>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
+        <linux-kernel@vger.kernel.org>, <yi.zhang@huawei.com>,
+        <yebin10@huawei.com>, <yukuai3@huawei.com>,
+        <stable@vger.kernel.org>, Hulk Robot <hulkci@huawei.com>,
+        Baokun Li <libaokun1@huawei.com>
+References: <20220428134031.4153381-1-libaokun1@huawei.com>
+From:   "libaokun (A)" <libaokun1@huawei.com>
+In-Reply-To: <20220428134031.4153381-1-libaokun1@huawei.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-Originating-IP: [10.180.168.240]
-X-ClientProxiedBy: SATLEXMB03.amd.com (10.181.40.144) To SATLEXMB04.amd.com
- (10.181.40.145)
-X-EOPAttributedMessage: 0
-X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 1f54dd1b-7e43-4712-cf66-08da3791e995
-X-MS-TrafficTypeDiagnostic: IA1PR12MB6305:EE_
-X-Microsoft-Antispam-PRVS: <IA1PR12MB6305237B2DA6CE8D7E1D0C2EFDCF9@IA1PR12MB6305.namprd12.prod.outlook.com>
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;
-X-Microsoft-Antispam-Message-Info: 8c4pZ1gq6MhFIE8irMsc3thW1QW2qz2d/eYN4IpjVMrlWpByJ455oIryNvDeqNmlVpioB7Ni9noo8VISHxtfKABH0Er/VvWQREGM3Jz0/5ymJiPmCEsW5XtmqWzgVa8BPagff1VXEpDXbOI7S/EliQUg0S3N7HXtNkOJpTrWyJKKSPKxC9tay/r5LZzC9prr1wEEB4gNL/UBsGxU4zk4oVzBtmgpko51AoNoQBtjkwECF/7lea0+lNEK7GqhYurdwpLET7p1MLiZpkCsG0JAg3jE46tO8rpg1Jr29xAmAm438ZpVsBxI45jSFlnDWsP7sH8TB7P4eVOYoGTLf8z94rWnSC/P70avMaOOZqDb1SXAeLaNpjA6Bxfi1MXTw7v8rZS6+jzFYdd9nGHb9QNrYTYbxp9NhFslW8aEbLznZ5a5FXZeLaDeyBnz2m8hYEgkYOgp5AX/5gFdro/d1AOJuFyvz060ISGDwDW9LaXpxLePkDNCRknyWjEptlpgm7ObS1+6RsHzLFoLFbLDvKpIvYS1wbW0bUPCPrRr/zRJcQ4o3gbbiholK1hj13B/3okKwfmEXYaLfLfe7ymVWEsKEsEY0fGqMBrIrz0V1z/uJgpXskWUC/O/I8PkH/VMg+ywPXRi4RSCrd1VMEDILwVpwEcW/MAlxgS9AgliIwIT37O1e4ReeOTU5WUos8OMS8DiVX+0y9TLiCxXj63hzRK42Q==
-X-Forefront-Antispam-Report: CIP:165.204.84.17;CTRY:US;LANG:en;SCL:1;SRV:;IPV:CAL;SFV:NSPM;H:SATLEXMB04.amd.com;PTR:InfoDomainNonexistent;CAT:NONE;SFS:(13230001)(4636009)(40470700004)(46966006)(36840700001)(508600001)(83380400001)(81166007)(316002)(7696005)(8936002)(36756003)(6666004)(2906002)(8676002)(1076003)(26005)(86362001)(2616005)(336012)(47076005)(426003)(16526019)(40460700003)(5660300002)(186003)(4326008)(6916009)(70206006)(82310400005)(7416002)(54906003)(44832011)(36860700001)(70586007)(356005)(36900700001);DIR:OUT;SFP:1101;
-X-OriginatorOrg: amd.com
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 16 May 2022 23:15:05.4416
- (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 1f54dd1b-7e43-4712-cf66-08da3791e995
-X-MS-Exchange-CrossTenant-Id: 3dd8961f-e488-4e60-8e11-a82d994e183d
-X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=3dd8961f-e488-4e60-8e11-a82d994e183d;Ip=[165.204.84.17];Helo=[SATLEXMB04.amd.com]
-X-MS-Exchange-CrossTenant-AuthSource: BN8NAM11FT041.eop-nam11.prod.protection.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Anonymous
-X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: IA1PR12MB6305
+X-Originating-IP: [10.174.177.174]
+X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
+ dggpeml500020.china.huawei.com (7.185.36.88)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Add two more parameters to set spm_addr_dev0 & spm_addr_dev1
-addresses. These two parameters configure the start SP
-addresses for each device in test_hmm driver.
-Consequently, this configures zone device type as coherent.
+ping.
 
-Signed-off-by: Alex Sierra <alex.sierra@amd.com>
-Acked-by: Felix Kuehling <Felix.Kuehling@amd.com>
-Reviewed-by: Alistair Popple <apopple@nvidia.com>
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- tools/testing/selftests/vm/test_hmm.sh | 24 +++++++++++++++++++++---
- 1 file changed, 21 insertions(+), 3 deletions(-)
+在 2022/4/28 21:40, Baokun Li 写道:
+> Hulk Robot reported a BUG_ON:
+>   ==================================================================
+>   EXT4-fs error (device loop3): ext4_mb_generate_buddy:805: group 0,
+>   block bitmap and bg descriptor inconsistent: 25 vs 31513 free clusters
+>   kernel BUG at fs/ext4/ext4_jbd2.c:53!
+>   invalid opcode: 0000 [#1] SMP KASAN PTI
+>   CPU: 0 PID: 25371 Comm: syz-executor.3 Not tainted 5.10.0+ #1
+>   RIP: 0010:ext4_put_nojournal fs/ext4/ext4_jbd2.c:53 [inline]
+>   RIP: 0010:__ext4_journal_stop+0x10e/0x110 fs/ext4/ext4_jbd2.c:116
+>   [...]
+>   Call Trace:
+>    ext4_write_inline_data_end+0x59a/0x730 fs/ext4/inline.c:795
+>    generic_perform_write+0x279/0x3c0 mm/filemap.c:3344
+>    ext4_buffered_write_iter+0x2e3/0x3d0 fs/ext4/file.c:270
+>    ext4_file_write_iter+0x30a/0x11c0 fs/ext4/file.c:520
+>    do_iter_readv_writev+0x339/0x3c0 fs/read_write.c:732
+>    do_iter_write+0x107/0x430 fs/read_write.c:861
+>    vfs_writev fs/read_write.c:934 [inline]
+>    do_pwritev+0x1e5/0x380 fs/read_write.c:1031
+>   [...]
+>   ==================================================================
+>
+> Above issue may happen as follows:
+>             cpu1                     cpu2
+> __________________________|__________________________
+> do_pwritev
+>   vfs_writev
+>    do_iter_write
+>     ext4_file_write_iter
+>      ext4_buffered_write_iter
+>       generic_perform_write
+>        ext4_da_write_begin
+>                             vfs_fallocate
+>                              ext4_fallocate
+>                               ext4_convert_inline_data
+>                                ext4_convert_inline_data_nolock
+>                                 ext4_destroy_inline_data_nolock
+>                                  clear EXT4_STATE_MAY_INLINE_DATA
+>                                 ext4_map_blocks
+>                                  ext4_ext_map_blocks
+>                                   ext4_mb_new_blocks
+>                                    ext4_mb_regular_allocator
+>                                     ext4_mb_good_group_nolock
+>                                      ext4_mb_init_group
+>                                       ext4_mb_init_cache
+>                                        ext4_mb_generate_buddy  --> error
+>         ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)
+>                                  ext4_restore_inline_data
+>                                   set EXT4_STATE_MAY_INLINE_DATA
+>         ext4_block_write_begin
+>        ext4_da_write_end
+>         ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA)
+>         ext4_write_inline_data_end
+>          handle=NULL
+>          ext4_journal_stop(handle)
+>           __ext4_journal_stop
+>            ext4_put_nojournal(handle)
+>             ref_cnt = (unsigned long)handle
+>             BUG_ON(ref_cnt == 0)  ---> BUG_ON
+>
+> The lock held by ext4_convert_inline_data is xattr_sem, but the lock
+> held by generic_perform_write is i_rwsem. Therefore, the two locks can
+> be concurrent.
+>
+> To solve above issue, we add inode_lock() for ext4_convert_inline_data().
+> At the same time, move ext4_convert_inline_data() in front of
+> ext4_punch_hole(), remove similar handling from ext4_punch_hole().
+>
+> Fixes: 0c8d414f163f ("ext4: let fallocate handle inline data correctly")
+> Cc: stable@vger.kernel.org
+> Reported-by: Hulk Robot <hulkci@huawei.com>
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
+> ---
+> V1->V2:
+> 	Increase the range of the inode_lock.
+> V2->V3:
+> 	Move the lock outside the ext4_convert_inline_data().
+> 	And reorganize ext4_fallocate().
+>
+>   fs/ext4/extents.c | 10 ++++++----
+>   fs/ext4/inode.c   |  9 ---------
+>   2 files changed, 6 insertions(+), 13 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index e473fde6b64b..474479ce76e0 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4693,15 +4693,17 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>   		     FALLOC_FL_INSERT_RANGE))
+>   		return -EOPNOTSUPP;
+>   
+> +	inode_lock(inode);
+> +	ret = ext4_convert_inline_data(inode);
+> +	inode_unlock(inode);
+> +	if (ret)
+> +		goto exit;
+> +
+>   	if (mode & FALLOC_FL_PUNCH_HOLE) {
+>   		ret = ext4_punch_hole(file, offset, len);
+>   		goto exit;
+>   	}
+>   
+> -	ret = ext4_convert_inline_data(inode);
+> -	if (ret)
+> -		goto exit;
+> -
+>   	if (mode & FALLOC_FL_COLLAPSE_RANGE) {
+>   		ret = ext4_collapse_range(file, offset, len);
+>   		goto exit;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 646ece9b3455..4779673d733e 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3967,15 +3967,6 @@ int ext4_punch_hole(struct file *file, loff_t offset, loff_t length)
+>   
+>   	trace_ext4_punch_hole(inode, offset, length, 0);
+>   
+> -	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+> -	if (ext4_has_inline_data(inode)) {
+> -		filemap_invalidate_lock(mapping);
+> -		ret = ext4_convert_inline_data(inode);
+> -		filemap_invalidate_unlock(mapping);
+> -		if (ret)
+> -			return ret;
+> -	}
+> -
+>   	/*
+>   	 * Write out all dirty pages to avoid race conditions
+>   	 * Then release them.
 
-diff --git a/tools/testing/selftests/vm/test_hmm.sh b/tools/testing/selftests/vm/test_hmm.sh
-index 0647b525a625..539c9371e592 100755
---- a/tools/testing/selftests/vm/test_hmm.sh
-+++ b/tools/testing/selftests/vm/test_hmm.sh
-@@ -40,11 +40,26 @@ check_test_requirements()
- 
- load_driver()
- {
--	modprobe $DRIVER > /dev/null 2>&1
-+	if [ $# -eq 0 ]; then
-+		modprobe $DRIVER > /dev/null 2>&1
-+	else
-+		if [ $# -eq 2 ]; then
-+			modprobe $DRIVER spm_addr_dev0=$1 spm_addr_dev1=$2
-+				> /dev/null 2>&1
-+		else
-+			echo "Missing module parameters. Make sure pass"\
-+			"spm_addr_dev0 and spm_addr_dev1"
-+			usage
-+		fi
-+	fi
- 	if [ $? == 0 ]; then
- 		major=$(awk "\$2==\"HMM_DMIRROR\" {print \$1}" /proc/devices)
- 		mknod /dev/hmm_dmirror0 c $major 0
- 		mknod /dev/hmm_dmirror1 c $major 1
-+		if [ $# -eq 2 ]; then
-+			mknod /dev/hmm_dmirror2 c $major 2
-+			mknod /dev/hmm_dmirror3 c $major 3
-+		fi
- 	fi
- }
- 
-@@ -58,7 +73,7 @@ run_smoke()
- {
- 	echo "Running smoke test. Note, this test provides basic coverage."
- 
--	load_driver
-+	load_driver $1 $2
- 	$(dirname "${BASH_SOURCE[0]}")/hmm-tests
- 	unload_driver
- }
-@@ -75,6 +90,9 @@ usage()
- 	echo "# Smoke testing"
- 	echo "./${TEST_NAME}.sh smoke"
- 	echo
-+	echo "# Smoke testing with SPM enabled"
-+	echo "./${TEST_NAME}.sh smoke <spm_addr_dev0> <spm_addr_dev1>"
-+	echo
- 	exit 0
- }
- 
-@@ -84,7 +102,7 @@ function run_test()
- 		usage
- 	else
- 		if [ "$1" = "smoke" ]; then
--			run_smoke
-+			run_smoke $2 $3
- 		else
- 			usage
- 		fi
--- 
-2.32.0
 
