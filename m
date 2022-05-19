@@ -2,40 +2,41 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19C86C433FE
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 21:24:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D568C433FE
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 21:24:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242961AbiESVYe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 May 2022 17:24:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56922 "EHLO
+        id S245175AbiESVYk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 May 2022 17:24:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56968 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245175AbiESVY2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 17:24:28 -0400
+        with ESMTP id S245174AbiESVYe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 17:24:34 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 41B0EED8C5
-        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 14:24:27 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4714AED8C5
+        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 14:24:34 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id E6A6A1F45F78
+        with ESMTPSA id EDE691F45F99
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1652995466;
-        bh=4aprNls1SIrgCGEknan+1QCNSFzZMfaiFkY311lbaUE=;
+        s=mail; t=1652995473;
+        bh=n36NzGnXFuZBQyLINpfVhMRK9nBSM6nyts/SKCy4wzM=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=CdLJ3EH/R8kH5XGpI1nmoLA1vvT4Nnb5wGKg+awNGoFswzJVpWnNnKWaYYxl3N72D
-         Xk2hwjVb+mjLFKxqCl7TirLD0AWI+prsAKYxojlOQCmz+E58wTRNVRs8cUaSGUMKKe
-         e6yDA2bD2D5nvCCQQsefwILcSvnPdH9w5XhHWoQAtIJPf9zZzs040cx/aF1M9sGf4u
-         0MUTVZVQUlpIJ/XZSTEap5dv6OMxMdQ6fzHs7M/Bbew1h11GRsItVKgYvduoPARt2W
-         xL1A40DJjEcspoC6+nJhL4YC/RXCvFk0lgBfJSqWaD99S3R1m7V/1zUBCxPZu98T9S
-         p07MczN/we8jw==
+        b=m57SytYlEwhPdcab1KEpVPRwn1a1TDYapeVyAn3I1coKDcrrsPDKknqGBaVSesFJY
+         QsDYsAAUIz7UMSAQFigwMjTKVRqChPpFERR/Huowy5aR5n3Brc5F/uvln0TsBHkOoq
+         UiwCN0jZqoJL0QRZUwLHMatZd7u3LppvBpV0VseVLoSlKN7HqiITmlL7FTSWfMREdH
+         UhBkNwKR3CgRKt9NquU854n8ZtIU9BRxHtyl0X6EOj7qo3K5P8BWO+E62QKmBSas3I
+         O6yNZluYGcenYB9d+DeCgO4ls+L1/1CAN8WPcOHl8qJ6anP34+5VCVV2yhRJBBmcOU
+         MpaDo/X0vcOrg==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
         ebiggers@kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com, Eric Biggers <ebiggers@google.com>
-Subject: [PATCH v8 6/8] ext4: Log error when lookup of encoded dentry fails
-Date:   Thu, 19 May 2022 17:23:57 -0400
-Message-Id: <20220519212359.19442-7-krisman@collabora.com>
+        kernel@collabora.com, Eric Biggers <ebiggers@google.com>,
+        Chao Yu <chao@kernel.org>
+Subject: [PATCH v8 8/8] f2fs: Move CONFIG_UNICODE defguards into the code flow
+Date:   Thu, 19 May 2022 17:23:59 -0400
+Message-Id: <20220519212359.19442-9-krisman@collabora.com>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220519212359.19442-1-krisman@collabora.com>
 References: <20220519212359.19442-1-krisman@collabora.com>
@@ -45,38 +46,94 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If the volume is in strict mode, ext4_ci_compare can report a broken
-encoding name.  This will not trigger on a bad lookup, which is caught
-earlier, only if the actual disk name is bad.
+Instead of a bunch of ifdefs, make the unicode built checks part of the
+code flow where possible, as requested by Torvalds.
 
 Reviewed-by: Eric Biggers <ebiggers@google.com>
+Reviewed-by: Chao Yu <chao@kernel.org>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
 ---
-
-changes since v4:
-  - Reword error message (Eric)
-
-Changes since v1:
-  - reword error message "file in directory" -> "filename" (Eric)
+Changes since v4:
+  - Drop stub removal for !CONFIG_UNICODE case (eric)
 ---
- fs/ext4/namei.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/f2fs/namei.c | 11 +++++------
+ fs/f2fs/super.c |  8 ++++----
+ 2 files changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index eaf383740965..708c241b23ec 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1406,6 +1406,9 @@ static bool ext4_match(struct inode *parent,
- 			 * only case where it happens is on a disk
- 			 * corruption or ENOMEM.
- 			 */
-+			if (ret == -EINVAL)
-+				EXT4_ERROR_INODE(parent,
-+					"Directory contains filename that is invalid UTF-8");
- 			return false;
- 		}
- 		return ret;
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 5f213f05556d..8567a9045df1 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -561,8 +561,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 		goto out_iput;
+ 	}
+ out_splice:
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	if (!inode && IS_CASEFOLDED(dir)) {
++	if (IS_ENABLED(CONFIG_UNICODE) && !inode && IS_CASEFOLDED(dir)) {
+ 		/* Eventually we want to call d_add_ci(dentry, NULL)
+ 		 * for negative dentries in the encoding case as
+ 		 * well.  For now, prevent the negative dentry
+@@ -571,7 +570,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 		trace_f2fs_lookup_end(dir, dentry, ino, err);
+ 		return NULL;
+ 	}
+-#endif
++
+ 	new = d_splice_alias(inode, dentry);
+ 	err = PTR_ERR_OR_ZERO(new);
+ 	trace_f2fs_lookup_end(dir, dentry, ino, !new ? -ENOENT : err);
+@@ -622,16 +621,16 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
+ 		goto fail;
+ 	}
+ 	f2fs_delete_entry(de, page, dir, inode);
+-#if IS_ENABLED(CONFIG_UNICODE)
++
+ 	/* VFS negative dentries are incompatible with Encoding and
+ 	 * Case-insensitiveness. Eventually we'll want avoid
+ 	 * invalidating the dentries here, alongside with returning the
+ 	 * negative dentries at f2fs_lookup(), when it is better
+ 	 * supported by the VFS for the CI case.
+ 	 */
+-	if (IS_CASEFOLDED(dir))
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
+ 		d_invalidate(dentry);
+-#endif
++
+ 	f2fs_unlock_op(sbi);
+ 
+ 	if (IS_DIRSYNC(dir))
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index baefd398ec1a..b17bd7a70d53 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -283,7 +283,7 @@ struct kmem_cache *f2fs_cf_name_slab;
+ static int __init f2fs_create_casefold_cache(void)
+ {
+ 	f2fs_cf_name_slab = f2fs_kmem_cache_create("f2fs_casefolded_name",
+-							F2FS_NAME_LEN);
++						   F2FS_NAME_LEN);
+ 	if (!f2fs_cf_name_slab)
+ 		return -ENOMEM;
+ 	return 0;
+@@ -1259,13 +1259,13 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
+ 		return -EINVAL;
+ 	}
+ #endif
+-#if !IS_ENABLED(CONFIG_UNICODE)
+-	if (f2fs_sb_has_casefold(sbi)) {
++
++	if (!IS_ENABLED(CONFIG_UNICODE) && f2fs_sb_has_casefold(sbi)) {
+ 		f2fs_err(sbi,
+ 			"Filesystem with casefold feature cannot be mounted without CONFIG_UNICODE");
+ 		return -EINVAL;
+ 	}
+-#endif
++
+ 	/*
+ 	 * The BLKZONED feature indicates that the drive was formatted with
+ 	 * zone alignment optimization. This is optional for host-aware
 -- 
 2.36.1
 
