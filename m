@@ -2,84 +2,135 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9978FC433F5
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 01:29:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E43DC433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 01:41:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232458AbiESB30 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 18 May 2022 21:29:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52136 "EHLO
+        id S229601AbiESBlH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 18 May 2022 21:41:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45536 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229542AbiESB3Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2022 21:29:24 -0400
-Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0CF618CCE1;
-        Wed, 18 May 2022 18:29:22 -0700 (PDT)
-Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 24J1T6ph002793
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 18 May 2022 21:29:07 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1652923748; bh=OwjLTMn2PuGFeAIsLetixKvIq5c7/uD5XORSp3PLcxI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=PhSf84hB76c30vwFs++nRxvshBAzCAOfTgpdj2TlminIgdxF1wxGVGwHd3GnRwDBD
-         jB2gFvtfv5oy8ega6ruzfn8LPD2jRU00mjegcycBzMZqQiSgx40hBEllP65zpfB6+L
-         83Nsi0kWkw+CmlHEcxWotqQfaRCabrqqn9hY477EYWoO0u9aCo3qJtX86uGxMkoeJ8
-         QitxdpR088NPWOctu53JVa6JJZ8qzjJAJOQ0dN88MRSTLZEE/VWGf9JTYRvWiYA5Lw
-         roaTuwAd0M6dr9wirqanNdefpe+3OKNTo5aHScke9fmIXIANMX9/rw0n5c51bNN8BC
-         eLXTQakBd9STA==
-Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 38B7A15C3EC0; Wed, 18 May 2022 21:29:06 -0400 (EDT)
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Baokun Li <libaokun1@huawei.com>, linux-ext4@vger.kernel.org
-Cc:     "Theodore Ts'o" <tytso@mit.edu>, yebin10@huawei.com,
-        yukuai3@huawei.com, yi.zhang@huawei.com, jack@suse.cz,
-        adilger.kernel@dilger.ca, Hulk Robot <hulkci@huawei.com>,
-        stable@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3] ext4: fix race condition between ext4_write and ext4_convert_inline_data
-Date:   Wed, 18 May 2022 21:29:04 -0400
-Message-Id: <165292370259.1197022.17166433087491869557.b4-ty@mit.edu>
-X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220428134031.4153381-1-libaokun1@huawei.com>
-References: <20220428134031.4153381-1-libaokun1@huawei.com>
+        with ESMTP id S229589AbiESBlF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 May 2022 21:41:05 -0400
+Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7A8312A82
+        for <linux-ext4@vger.kernel.org>; Wed, 18 May 2022 18:41:04 -0700 (PDT)
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        (Authenticated sender: krisman)
+        with ESMTPSA id 3D1BF1F4542F
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
+        s=mail; t=1652924463;
+        bh=VFIxEIWt6o/B0gqn09S6ezHtaQkwGSBs7ym4N8kFX2Y=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=UJpJCzCvrRcCQppUfSQn6L2Zi2WA5UCJZEU38RN1KetFo8DhhY+LAkLE5xR1ZhQgb
+         +2FuTmIJz0BHK0UFgdqbYc4MAxiitDdItbGgmiZbrkwn4MIv+/qYYGzeoDV/xjiVxw
+         QYYBRGztRXXb6LXzJOscZ6A8Z1MaFQlveBJH2oxzF8mb+RlkxiAOqatiO5MTJz66dF
+         0zUUapQx56gEV2n5H32KFREBCkAwS0lSpTWQ8BDeIkFWA5W5SFSSfydUiQ1qgHz7WE
+         7BoaTWF1SvKt8fZPyjxaQcc2N89bCZM1qfkvW68as/xsY6PQOLkLhQelSE+FXPR+YI
+         Scop/rEy4viDw==
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
+        ebiggers@kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        kernel@collabora.com, Eric Biggers <ebiggers@google.com>
+Subject: [PATCH v6 1/8] ext4: Simplify the handling of cached insensitive names
+Date:   Wed, 18 May 2022 21:40:37 -0400
+Message-Id: <20220519014044.508099-2-krisman@collabora.com>
+X-Mailer: git-send-email 2.36.1
+In-Reply-To: <20220519014044.508099-1-krisman@collabora.com>
+References: <20220519014044.508099-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 28 Apr 2022 21:40:31 +0800, Baokun Li wrote:
-> Hulk Robot reported a BUG_ON:
->  ==================================================================
->  EXT4-fs error (device loop3): ext4_mb_generate_buddy:805: group 0,
->  block bitmap and bg descriptor inconsistent: 25 vs 31513 free clusters
->  kernel BUG at fs/ext4/ext4_jbd2.c:53!
->  invalid opcode: 0000 [#1] SMP KASAN PTI
->  CPU: 0 PID: 25371 Comm: syz-executor.3 Not tainted 5.10.0+ #1
->  RIP: 0010:ext4_put_nojournal fs/ext4/ext4_jbd2.c:53 [inline]
->  RIP: 0010:__ext4_journal_stop+0x10e/0x110 fs/ext4/ext4_jbd2.c:116
->  [...]
->  Call Trace:
->   ext4_write_inline_data_end+0x59a/0x730 fs/ext4/inline.c:795
->   generic_perform_write+0x279/0x3c0 mm/filemap.c:3344
->   ext4_buffered_write_iter+0x2e3/0x3d0 fs/ext4/file.c:270
->   ext4_file_write_iter+0x30a/0x11c0 fs/ext4/file.c:520
->   do_iter_readv_writev+0x339/0x3c0 fs/read_write.c:732
->   do_iter_write+0x107/0x430 fs/read_write.c:861
->   vfs_writev fs/read_write.c:934 [inline]
->   do_pwritev+0x1e5/0x380 fs/read_write.c:1031
->  [...]
->  ==================================================================
-> 
-> [...]
+Keeping it as qstr avoids the unnecessary conversion in ext4_match
 
-Applied, thanks!
+Reviewed-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
-[1/1] ext4: fix race condition between ext4_write and ext4_convert_inline_data
-      commit: f87c7a4b084afc13190cbb263538e444cb2b392a
+---
+Changes since v1:
+  - Simplify hunk (eric)
+---
+ fs/ext4/ext4.h  |  2 +-
+ fs/ext4/namei.c | 23 +++++++++++------------
+ 2 files changed, 12 insertions(+), 13 deletions(-)
 
-Best regards,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a743b1e3b89e..93a28fcb2e22 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2490,7 +2490,7 @@ struct ext4_filename {
+ 	struct fscrypt_str crypto_buf;
+ #endif
+ #if IS_ENABLED(CONFIG_UNICODE)
+-	struct fscrypt_str cf_name;
++	struct qstr cf_name;
+ #endif
+ };
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 767b4bfe39c3..206fcf8fdc16 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1373,7 +1373,8 @@ static int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
+ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 				  struct ext4_filename *name)
+ {
+-	struct fscrypt_str *cf_name = &name->cf_name;
++	struct qstr *cf_name = &name->cf_name;
++	unsigned char *buf;
+ 	struct dx_hash_info *hinfo = &name->hinfo;
+ 	int len;
+ 
+@@ -1383,18 +1384,18 @@ int ext4_fname_setup_ci_filename(struct inode *dir, const struct qstr *iname,
+ 		return 0;
+ 	}
+ 
+-	cf_name->name = kmalloc(EXT4_NAME_LEN, GFP_NOFS);
+-	if (!cf_name->name)
++	buf = kmalloc(EXT4_NAME_LEN, GFP_NOFS);
++	if (!buf)
+ 		return -ENOMEM;
+ 
+-	len = utf8_casefold(dir->i_sb->s_encoding,
+-			    iname, cf_name->name,
+-			    EXT4_NAME_LEN);
++	len = utf8_casefold(dir->i_sb->s_encoding, iname, buf, EXT4_NAME_LEN);
+ 	if (len <= 0) {
+-		kfree(cf_name->name);
+-		cf_name->name = NULL;
++		kfree(buf);
++		buf = NULL;
+ 	}
++	cf_name->name = buf;
+ 	cf_name->len = (unsigned) len;
++
+ 	if (!IS_ENCRYPTED(dir))
+ 		return 0;
+ 
+@@ -1432,8 +1433,6 @@ static bool ext4_match(struct inode *parent,
+ 	if (parent->i_sb->s_encoding && IS_CASEFOLDED(parent) &&
+ 	    (!IS_ENCRYPTED(parent) || fscrypt_has_encryption_key(parent))) {
+ 		if (fname->cf_name.name) {
+-			struct qstr cf = {.name = fname->cf_name.name,
+-					  .len = fname->cf_name.len};
+ 			if (IS_ENCRYPTED(parent)) {
+ 				if (fname->hinfo.hash != EXT4_DIRENT_HASH(de) ||
+ 					fname->hinfo.minor_hash !=
+@@ -1442,8 +1441,8 @@ static bool ext4_match(struct inode *parent,
+ 					return false;
+ 				}
+ 			}
+-			return !ext4_ci_compare(parent, &cf, de->name,
+-							de->name_len, true);
++			return !ext4_ci_compare(parent, &fname->cf_name,
++						de->name, de->name_len, true);
+ 		}
+ 		return !ext4_ci_compare(parent, fname->usr_fname, de->name,
+ 						de->name_len, false);
 -- 
-Theodore Ts'o <tytso@mit.edu>
+2.36.1
+
