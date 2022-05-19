@@ -2,41 +2,40 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40C16C433EF
-	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 21:24:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CCE19C433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 19 May 2022 21:24:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245173AbiESVYZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 May 2022 17:24:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56886 "EHLO
+        id S238128AbiESVYe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 May 2022 17:24:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56944 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242760AbiESVYY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 17:24:24 -0400
+        with ESMTP id S241079AbiESVYc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 17:24:32 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 663D3ED787
-        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 14:24:23 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B12DAED8F0
+        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 14:24:30 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 0AC261F45F91
+        with ESMTPSA id 6107F1F45F74
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1652995462;
-        bh=jAFHaCj9kXj9NwSFkTcFpMMwrHxSAIrFCPKDhiLECPU=;
+        s=mail; t=1652995469;
+        bh=S6queVANKLkR6rGNVZjZSlibWPKGEIm13teUWj2MnUc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WRWz1RyImDy/yIznboFdep5kxE2tPVH/UJG4rLuSewSGbgaWjZl8ufilxeZ+25HL2
-         N9Z7yP8GnnSMQN5GFLvIRcYbkvXa1pFfj9UfAT8KmXqgnXekYEzqbAIz8fIuGsgsUB
-         TaDzhgTTD1YehbpgI/MXE0pR876kzrVQszLCCg2X0hQ0Xb121uXzYxU13eVVN3D26f
-         oFoXoABFac3xHTIVKUa7JDb7kn3B/gufoMAZPH/K09gBztDQyAuSwWViTcNfgD9HLB
-         QObF3spd7oyVYwR56OR1iDiMyiJN4s3dGaGI0X9wArNiY8ssUuLJfgGpo4QfCiM/VE
-         Hn4SlUewQjpXw==
+        b=ILMEZO5tqFHa32A7CL4nY01QPtLA7O5LgvfZ+e41+huPlXpi+kQ2s7Q5b+PBL7J9F
+         Fy2dtvbOLHOrJD6zKeI1hBHTSQr5dlbYUo3HdVximPazv0YrUHzAbcp3Gi+KuSVOeJ
+         x8Xd6GcyGlaHQg7L4jzjMp2vWX0eqxkn6IrugdFhecl5kLILV0lzUUEKFwHtmIk7md
+         GSBWUcT98Ubte6rIHihA4I5vqzJDp/SnlpVe+BbwPVA3MA088w/fmq3kfCEZ1iyzQC
+         d89E2Gl67uedNZDf07Dp1Zu+uoAZP5DvHbIR/b383WO33l8s/1OFQS7rP5GcACzCGl
+         usxDvokHpUUqA==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
         ebiggers@kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com, Chao Yu <chao@kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-Subject: [PATCH v8 5/8] f2fs: Reuse generic_ci_match for ci comparisons
-Date:   Thu, 19 May 2022 17:23:56 -0400
-Message-Id: <20220519212359.19442-6-krisman@collabora.com>
+        kernel@collabora.com, Eric Biggers <ebiggers@google.com>
+Subject: [PATCH v8 7/8] ext4: Move CONFIG_UNICODE defguards into the code flow
+Date:   Thu, 19 May 2022 17:23:58 -0400
+Message-Id: <20220519212359.19442-8-krisman@collabora.com>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220519212359.19442-1-krisman@collabora.com>
 References: <20220519212359.19442-1-krisman@collabora.com>
@@ -46,97 +45,201 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that ci_match is part of libfs, make f2fs reuse it instead of having
-a different implementation.
+Instead of a bunch of ifdefs, make the unicode built checks part of the
+code flow where possible, as requested by Torvalds.
 
-Reviewed-by: Chao Yu <chao@kernel.org>
 Reviewed-by: Eric Biggers <ebiggers@google.com>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 
 ---
-Changes since v3:
-  - Drop cast (eric)
-  - fix unused variable iff !CONFIG_UNICODE (lkp)
+Changes since v5:
+  - Drop err variable (eric)
+Changes since v4:
+  - Create stub for !CONFIG_UNICODE case (eric)
 ---
- fs/f2fs/dir.c | 58 ++++-----------------------------------------------
- 1 file changed, 4 insertions(+), 54 deletions(-)
+ fs/ext4/ext4.h  | 47 +++++++++++++++++++++++------------------------
+ fs/ext4/namei.c | 15 ++++++---------
+ fs/ext4/super.c |  4 +---
+ 3 files changed, 30 insertions(+), 36 deletions(-)
 
-diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
-index 167a04074a2e..4e4b2b190188 100644
---- a/fs/f2fs/dir.c
-+++ b/fs/f2fs/dir.c
-@@ -217,58 +217,6 @@ static struct f2fs_dir_entry *find_in_block(struct inode *dir,
- 	return f2fs_find_target_dentry(&d, fname, max_slots);
- }
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--/*
-- * Test whether a case-insensitive directory entry matches the filename
-- * being searched for.
-- *
-- * Returns 1 for a match, 0 for no match, and -errno on an error.
-- */
--static int f2fs_match_ci_name(const struct inode *dir, const struct qstr *name,
--			       const u8 *de_name, u32 de_name_len)
--{
--	const struct super_block *sb = dir->i_sb;
--	const struct unicode_map *um = sb->s_encoding;
--	struct fscrypt_str decrypted_name = FSTR_INIT(NULL, de_name_len);
--	struct qstr entry = QSTR_INIT(de_name, de_name_len);
--	int res;
--
--	if (IS_ENCRYPTED(dir)) {
--		const struct fscrypt_str encrypted_name =
--			FSTR_INIT((u8 *)de_name, de_name_len);
--
--		if (WARN_ON_ONCE(!fscrypt_has_encryption_key(dir)))
--			return -EINVAL;
--
--		decrypted_name.name = kmalloc(de_name_len, GFP_KERNEL);
--		if (!decrypted_name.name)
--			return -ENOMEM;
--		res = fscrypt_fname_disk_to_usr(dir, 0, 0, &encrypted_name,
--						&decrypted_name);
--		if (res < 0)
--			goto out;
--		entry.name = decrypted_name.name;
--		entry.len = decrypted_name.len;
--	}
--
--	res = utf8_strncasecmp_folded(um, name, &entry);
--	/*
--	 * In strict mode, ignore invalid names.  In non-strict mode,
--	 * fall back to treating them as opaque byte sequences.
--	 */
--	if (res < 0 && !sb_has_strict_encoding(sb)) {
--		res = name->len == entry.len &&
--				memcmp(name->name, entry.name, name->len) == 0;
--	} else {
--		/* utf8_strncasecmp_folded returns 0 on match */
--		res = (res == 0);
--	}
--out:
--	kfree(decrypted_name.name);
--	return res;
--}
--#endif /* CONFIG_UNICODE */
--
- static inline int f2fs_match_name(const struct inode *dir,
- 				   const struct f2fs_filename *fname,
- 				   const u8 *de_name, u32 de_name_len)
-@@ -277,8 +225,10 @@ static inline int f2fs_match_name(const struct inode *dir,
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 93a28fcb2e22..4bc3649e3385 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2727,8 +2727,24 @@ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
  
  #if IS_ENABLED(CONFIG_UNICODE)
- 	if (fname->cf_name.name)
--		return f2fs_match_ci_name(dir, &fname->cf_name,
--					  de_name, de_name_len);
-+		return generic_ci_match(dir, fname->usr_fname,
-+					&fname->cf_name,
-+					de_name, de_name_len);
+ extern int ext4_fname_setup_ci_filename(struct inode *dir,
+-					 const struct qstr *iname,
+-					 struct ext4_filename *fname);
++					const struct qstr *iname,
++					struct ext4_filename *fname);
 +
++static inline void ext4_fname_free_ci_filename(struct ext4_filename *fname)
++{
++	kfree(fname->cf_name.name);
++	fname->cf_name.name = NULL;
++}
++#else
++static inline int ext4_fname_setup_ci_filename(struct inode *dir,
++					       const struct qstr *iname,
++					       struct ext4_filename *fname)
++{
++	return 0;
++}
++static inline void ext4_fname_free_ci_filename(struct ext4_filename *fname)
++{
++}
  #endif
- 	f.usr_fname = fname->usr_fname;
- 	f.disk_name = fname->disk_name;
+ 
+ #ifdef CONFIG_FS_ENCRYPTION
+@@ -2758,10 +2774,7 @@ static inline int ext4_fname_setup_filename(struct inode *dir,
+ 
+ 	ext4_fname_from_fscrypt_name(fname, &name);
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	err = ext4_fname_setup_ci_filename(dir, iname, fname);
+-#endif
+-	return err;
++	return ext4_fname_setup_ci_filename(dir, iname, fname);
+ }
+ 
+ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+@@ -2777,10 +2790,7 @@ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+ 
+ 	ext4_fname_from_fscrypt_name(fname, &name);
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	err = ext4_fname_setup_ci_filename(dir, &dentry->d_name, fname);
+-#endif
+-	return err;
++	return ext4_fname_setup_ci_filename(dir, &dentry->d_name, fname);
+ }
+ 
+ static inline void ext4_fname_free_filename(struct ext4_filename *fname)
+@@ -2794,10 +2804,7 @@ static inline void ext4_fname_free_filename(struct ext4_filename *fname)
+ 	fname->usr_fname = NULL;
+ 	fname->disk_name.name = NULL;
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	kfree(fname->cf_name.name);
+-	fname->cf_name.name = NULL;
+-#endif
++	ext4_fname_free_ci_filename(fname);
+ }
+ #else /* !CONFIG_FS_ENCRYPTION */
+ static inline int ext4_fname_setup_filename(struct inode *dir,
+@@ -2805,16 +2812,11 @@ static inline int ext4_fname_setup_filename(struct inode *dir,
+ 					    int lookup,
+ 					    struct ext4_filename *fname)
+ {
+-	int err = 0;
+ 	fname->usr_fname = iname;
+ 	fname->disk_name.name = (unsigned char *) iname->name;
+ 	fname->disk_name.len = iname->len;
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	err = ext4_fname_setup_ci_filename(dir, iname, fname);
+-#endif
+-
+-	return err;
++	return ext4_fname_setup_ci_filename(dir, iname, fname);
+ }
+ 
+ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+@@ -2826,10 +2828,7 @@ static inline int ext4_fname_prepare_lookup(struct inode *dir,
+ 
+ static inline void ext4_fname_free_filename(struct ext4_filename *fname)
+ {
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	kfree(fname->cf_name.name);
+-	fname->cf_name.name = NULL;
+-#endif
++	ext4_fname_free_ci_filename(fname);
+ }
+ #endif /* !CONFIG_FS_ENCRYPTION */
+ 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 708c241b23ec..6a46851675d2 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1765,8 +1765,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 		}
+ 	}
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	if (!inode && IS_CASEFOLDED(dir)) {
++	if (IS_ENABLED(CONFIG_UNICODE) && !inode && IS_CASEFOLDED(dir)) {
+ 		/* Eventually we want to call d_add_ci(dentry, NULL)
+ 		 * for negative dentries in the encoding case as
+ 		 * well.  For now, prevent the negative dentry
+@@ -1774,7 +1773,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 		 */
+ 		return NULL;
+ 	}
+-#endif
++
+ 	return d_splice_alias(inode, dentry);
+ }
+ 
+@@ -3091,16 +3090,14 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_fc_track_unlink(handle, dentry);
+ 	retval = ext4_mark_inode_dirty(handle, dir);
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+ 	/* VFS negative dentries are incompatible with Encoding and
+ 	 * Case-insensitiveness. Eventually we'll want avoid
+ 	 * invalidating the dentries here, alongside with returning the
+ 	 * negative dentries at ext4_lookup(), when it is better
+ 	 * supported by the VFS for the CI case.
+ 	 */
+-	if (IS_CASEFOLDED(dir))
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
+ 		d_invalidate(dentry);
+-#endif
+ 
+ end_rmdir:
+ 	brelse(bh);
+@@ -3196,16 +3193,16 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	retval = __ext4_unlink(handle, dir, &dentry->d_name, d_inode(dentry));
+ 	if (!retval)
+ 		ext4_fc_track_unlink(handle, dentry);
+-#if IS_ENABLED(CONFIG_UNICODE)
++
+ 	/* VFS negative dentries are incompatible with Encoding and
+ 	 * Case-insensitiveness. Eventually we'll want avoid
+ 	 * invalidating the dentries here, alongside with returning the
+ 	 * negative dentries at ext4_lookup(), when it is  better
+ 	 * supported by the VFS for the CI case.
+ 	 */
+-	if (IS_CASEFOLDED(dir))
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
+ 		d_invalidate(dentry);
+-#endif
++
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+ 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 1847b46af808..fa0004459dd6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3645,14 +3645,12 @@ int ext4_feature_set_ok(struct super_block *sb, int readonly)
+ 		return 0;
+ 	}
+ 
+-#if !IS_ENABLED(CONFIG_UNICODE)
+-	if (ext4_has_feature_casefold(sb)) {
++	if (!IS_ENABLED(CONFIG_UNICODE) && ext4_has_feature_casefold(sb)) {
+ 		ext4_msg(sb, KERN_ERR,
+ 			 "Filesystem with casefold feature cannot be "
+ 			 "mounted without CONFIG_UNICODE");
+ 		return 0;
+ 	}
+-#endif
+ 
+ 	if (readonly)
+ 		return 1;
 -- 
 2.36.1
 
