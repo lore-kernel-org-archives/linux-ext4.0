@@ -2,116 +2,149 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25471C43217
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 May 2022 03:27:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC65AC433F5
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 May 2022 04:24:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345093AbiETD1p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 May 2022 23:27:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42286 "EHLO
+        id S242636AbiETEYN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 20 May 2022 00:24:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49618 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230117AbiETD1o (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 23:27:44 -0400
-Received: from mail105.syd.optusnet.com.au (mail105.syd.optusnet.com.au [211.29.132.249])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 314C78DDF6;
-        Thu, 19 May 2022 20:27:42 -0700 (PDT)
-Received: from dread.disaster.area (pa49-181-2-147.pa.nsw.optusnet.com.au [49.181.2.147])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 4126E10E68AE;
-        Fri, 20 May 2022 13:27:41 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92.3)
-        (envelope-from <david@fromorbit.com>)
-        id 1nrtIh-00E6GN-MT; Fri, 20 May 2022 13:27:39 +1000
-Date:   Fri, 20 May 2022 13:27:39 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Eric Biggers <ebiggers@kernel.org>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>
-Subject: Re: [RFC PATCH v2 1/7] statx: add I/O alignment information
-Message-ID: <20220520032739.GB1098723@dread.disaster.area>
-References: <20220518235011.153058-1-ebiggers@kernel.org>
- <20220518235011.153058-2-ebiggers@kernel.org>
- <YobNXbYnhBiqniTH@magnolia>
+        with ESMTP id S242612AbiETEYL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 20 May 2022 00:24:11 -0400
+Received: from mail-pf1-x432.google.com (mail-pf1-x432.google.com [IPv6:2607:f8b0:4864:20::432])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0926F146775
+        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 21:24:11 -0700 (PDT)
+Received: by mail-pf1-x432.google.com with SMTP id u15so6738072pfi.3
+        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 21:24:11 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=/Pi+8cfH6DfsGEdcum04TfEtI+zPbFA5e5bZDARN49U=;
+        b=XT7M+hbhbVT8LLYnLtiurNtqa3Cw5FmvF0lYvklLwy6rC3qS4suvilT8yExDqKcy2R
+         nBGgdKmDuKfkzGzGiQ+qFDzEirpXGm/OeqOCvyjzmh1ulT17RgGZ2uQGuc+0It50xvoo
+         Xz+DB2fgRn1Ir0VeT41lKHz0V80H5b5k4Y6BBF0X6BynvIK6wqSJWaA3yHpdUmkxbN+K
+         jR1H8qnl13/cQv0snptAPy0S3f1QxlFHZOR0ZsIYFWipCI9orejGfon58t2oggYQGJ2K
+         DPyTwDXGb1Yu5BouiKLwYAQ1VHGD+Hczhs0KIYVF0M6c4lGlTG/WrSA+h8KWZGohgnOx
+         ySgA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=/Pi+8cfH6DfsGEdcum04TfEtI+zPbFA5e5bZDARN49U=;
+        b=MjIkMKNifwmVY+QKslwJILV1LFhjWKEyFNbtByRX+DweirOtYe4ITqacOg9c3UCJ37
+         Dq4T0XvY8FlyMcIlRLPUDFou1osZP+MaIRWkAGy5KYzSzd/CBoEU10vV32P66m8E+z+w
+         OMzi83gnmceFiM1EhGEnkusFFKhyyfptGtX7qYkpnEVR/u1hyErgpKe2AG9jPZTgcxiC
+         ZWzTMWccVwbqsSHgF8Upu00CnlMe9DtyFctt95Dvdjn66vFDeDD/NX5xDOThTaqO091J
+         bLY6UHGaS9HZF4YtyYH0NPhknvU5Ul7WNhS1hYxqdoaquz8NN0U2pLGjeRe60Y5/odA+
+         JBrw==
+X-Gm-Message-State: AOAM5300I/RMbRZlfkoBMZZWHaykXoT2egigAExugj4QMWt3BvVfuq9L
+        KGMQfmrj4tc+W2W2RNhcN4c=
+X-Google-Smtp-Source: ABdhPJz0I5qwTXD3R8612WGynsRfsrvEvWt/3bRm1eiOjUZiyrmOBh4+IYk+7GwWZhd2o9eZBhoRnA==
+X-Received: by 2002:a65:6205:0:b0:3f5:d436:5446 with SMTP id d5-20020a656205000000b003f5d4365446mr6694645pgv.532.1653020650414;
+        Thu, 19 May 2022 21:24:10 -0700 (PDT)
+Received: from localhost ([2406:7400:63:532d:c4bb:97f7:b03d:2c53])
+        by smtp.gmail.com with ESMTPSA id b67-20020a636746000000b003f5eb31fc4bsm4321585pgc.11.2022.05.19.21.24.09
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 19 May 2022 21:24:10 -0700 (PDT)
+Date:   Fri, 20 May 2022 09:54:05 +0530
+From:   Ritesh Harjani <ritesh.list@gmail.com>
+To:     Zhang Yi <yi.zhang@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, yukuai3@huawei.com
+Subject: Re: [PATCH v2] ext4: fix warning when submitting superblock in
+ ext4_commit_super()
+Message-ID: <20220520042405.xncu55ceekgrzhyu@riteshh-domain>
+References: <20220520023216.3065073-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <YobNXbYnhBiqniTH@magnolia>
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.4 cv=VuxAv86n c=1 sm=1 tr=0 ts=62870aad
-        a=ivVLWpVy4j68lT4lJFbQgw==:117 a=ivVLWpVy4j68lT4lJFbQgw==:17
-        a=kj9zAlcOel0A:10 a=oZkIemNP1mAA:10 a=1XWaLZrsAAAA:8 a=VwQbUJbxAAAA:8
-        a=7-415B0cAAAA:8 a=-h69JAkiF4VdWyV60hkA:9 a=CjuIK1q_8ugA:10
-        a=AjGcO6oz07-iQ99wixmX:22 a=biEYGPWJfzWAr4FL6Ov7:22
+In-Reply-To: <20220520023216.3065073-1-yi.zhang@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, May 19, 2022 at 04:06:05PM -0700, Darrick J. Wong wrote:
-> On Wed, May 18, 2022 at 04:50:05PM -0700, Eric Biggers wrote:
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > Traditionally, the conditions for when DIO (direct I/O) is supported
-> > were fairly simple: filesystems either supported DIO aligned to the
-> > block device's logical block size, or didn't support DIO at all.
-> > 
-> > However, due to filesystem features that have been added over time (e.g,
-> > data journalling, inline data, encryption, verity, compression,
-> > checkpoint disabling, log-structured mode), the conditions for when DIO
-> > is allowed on a file have gotten increasingly complex.  Whether a
-> > particular file supports DIO, and with what alignment, can depend on
-> > various file attributes and filesystem mount options, as well as which
-> > block device(s) the file's data is located on.
-> > 
-> > XFS has an ioctl XFS_IOC_DIOINFO which exposes this information to
-> > applications.  However, as discussed
-> > (https://lore.kernel.org/linux-fsdevel/20220120071215.123274-1-ebiggers@kernel.org/T/#u),
-> > this ioctl is rarely used and not known to be used outside of
-> > XFS-specific code.  It also was never intended to indicate when a file
-> > doesn't support DIO at all, and it only exposes the minimum I/O
-> > alignment, not the optimal I/O alignment which has been requested too.
-> > 
-> > Therefore, let's expose this information via statx().  Add the
-> > STATX_IOALIGN flag and three fields associated with it:
-> > 
-> > * stx_mem_align_dio: the alignment (in bytes) required for user memory
-> >   buffers for DIO, or 0 if DIO is not supported on the file.
-> > 
-> > * stx_offset_align_dio: the alignment (in bytes) required for file
-> >   offsets and I/O segment lengths for DIO, or 0 if DIO is not supported
-> >   on the file.  This will only be nonzero if stx_mem_align_dio is
-> >   nonzero, and vice versa.
-> > 
-> > * stx_offset_align_optimal: the alignment (in bytes) suggested for file
-> >   offsets and I/O segment lengths to get optimal performance.  This
-> >   applies to both DIO and buffered I/O.  It differs from stx_blocksize
-> >   in that stx_offset_align_optimal will contain the real optimum I/O
-> >   size, which may be a large value.  In contrast, for compatibility
-> >   reasons stx_blocksize is the minimum size needed to avoid page cache
-> >   read/write/modify cycles, which may be much smaller than the optimum
-> >   I/O size.  For more details about the motivation for this field, see
-> >   https://lore.kernel.org/r/20220210040304.GM59729@dread.disaster.area
-> 
-> Hmm.  So I guess this is supposed to be the filesystem's best guess at
-> the IO size that will minimize RMW cycles in the entire stack?  i.e. if
-> the user does not want RMW of pagecache pages, of file allocation units
-> (if COW is enabled), of RAID stripes, or in the storage itself, then it
-> should ensure that all IOs are aligned to this value?
-> 
-> I guess that means for XFS it's effectively max(pagesize, i_blocksize,
-> bdev io_opt, sb_width, and (pretend XFS can reflink the realtime volume)
-> the rt extent size)?  I didn't see a manpage update for statx(2) but
-> that's mostly what I'm interested in. :)
+On 22/05/20 10:32AM, Zhang Yi wrote:
+> We have already check the io_error and uptodate flag before submitting
+> the superblock buffer, and re-set the uptodate flag if it has been
+> failed to write out. But it was lockless and could be raced by another
+> ext4_commit_super(), and finally trigger '!uptodate' WARNING when
+> marking buffer dirty. Fix it by submit buffer directly.
+>
+> Reported-by: Hulk Robot <hulkci@huawei.com>
+> Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+> ---
+> v2->v1:
+>  - Add clear_buffer_dirty() before submit_bh().
 
-Yup, xfs_stat_blksize() should give a good idea of what we should
-do. It will end up being pretty much that, except without the need
-to a mount option to turn on the sunit/swidth return, and always
-taking into consideration extent size hints rather than just doing
-that for RT inodes...
+Thanks for the patch.
 
-Cheers,
+Reviewed lock_buffer()/unlock_buffer(), get_bh/put_bh() and other possible error
+paths, looks good to me.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Feel free to add -
+
+Reviewed-by: Ritesh Harjani <ritesh.list@gmail.com>
+
+-ritesh
+
+>
+>  fs/ext4/super.c | 22 ++++++++++++++++------
+>  1 file changed, 16 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 1466fbdbc8e3..9f6892665be4 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -6002,7 +6002,6 @@ static void ext4_update_super(struct super_block *sb)
+>  static int ext4_commit_super(struct super_block *sb)
+>  {
+>  	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
+> -	int error = 0;
+>
+>  	if (!sbh)
+>  		return -EINVAL;
+> @@ -6011,6 +6010,13 @@ static int ext4_commit_super(struct super_block *sb)
+>
+>  	ext4_update_super(sb);
+>
+> +	lock_buffer(sbh);
+> +	/* Buffer got discarded which means block device got invalidated */
+> +	if (!buffer_mapped(sbh)) {
+> +		unlock_buffer(sbh);
+> +		return -EIO;
+> +	}
+> +
+>  	if (buffer_write_io_error(sbh) || !buffer_uptodate(sbh)) {
+>  		/*
+>  		 * Oh, dear.  A previous attempt to write the
+> @@ -6025,17 +6031,21 @@ static int ext4_commit_super(struct super_block *sb)
+>  		clear_buffer_write_io_error(sbh);
+>  		set_buffer_uptodate(sbh);
+>  	}
+> -	BUFFER_TRACE(sbh, "marking dirty");
+> -	mark_buffer_dirty(sbh);
+> -	error = __sync_dirty_buffer(sbh,
+> -		REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0));
+> +	get_bh(sbh);
+> +	/* Clear potential dirty bit if it was journalled update */
+> +	clear_buffer_dirty(sbh);
+> +	sbh->b_end_io = end_buffer_write_sync;
+> +	submit_bh(REQ_OP_WRITE,
+> +		  REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0), sbh);
+> +	wait_on_buffer(sbh);
+>  	if (buffer_write_io_error(sbh)) {
+>  		ext4_msg(sb, KERN_ERR, "I/O error while writing "
+>  		       "superblock");
+>  		clear_buffer_write_io_error(sbh);
+>  		set_buffer_uptodate(sbh);
+> +		return -EIO;
+>  	}
+> -	return error;
+> +	return 0;
+>  }
+>
+>  /*
+> --
+> 2.31.1
+>
