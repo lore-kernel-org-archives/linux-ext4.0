@@ -2,113 +2,60 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D021C433EF
-	for <linux-ext4@archiver.kernel.org>; Fri, 20 May 2022 02:18:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DD79C433FE
+	for <linux-ext4@archiver.kernel.org>; Fri, 20 May 2022 02:23:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241253AbiETCSo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 19 May 2022 22:18:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38292 "EHLO
+        id S1344720AbiETCXA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 19 May 2022 22:23:00 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48294 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230375AbiETCSk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 22:18:40 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D124D12E327
-        for <linux-ext4@vger.kernel.org>; Thu, 19 May 2022 19:18:39 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.54])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4L49LQ14GmzQkGM;
-        Fri, 20 May 2022 10:15:42 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
- (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
+        with ESMTP id S238831AbiETCW6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 19 May 2022 22:22:58 -0400
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0638D1312B0;
+        Thu, 19 May 2022 19:22:57 -0700 (PDT)
+Received: from canpemm500009.china.huawei.com (unknown [172.30.72.53])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4L49T850zgz1JCH4;
+        Fri, 20 May 2022 10:21:32 +0800 (CST)
+Received: from huawei.com (10.113.189.238) by canpemm500009.china.huawei.com
+ (7.192.105.203) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Fri, 20 May
- 2022 10:18:37 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <yi.zhang@huawei.com>,
-        <yukuai3@huawei.com>
-Subject: [PATCH v2] ext4: fix warning when submitting superblock in ext4_commit_super()
-Date:   Fri, 20 May 2022 10:32:16 +0800
-Message-ID: <20220520023216.3065073-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.31.1
+ 2022 10:22:55 +0800
+From:   Wang Jianjian <wangjianjian3@huawei.com>
+To:     <linux-ext4@vger.kernel.org>, <linux-doc@vger.kernel.org>
+Subject: [PATCH 1/2] ext4: Fix incorrect comment
+Date:   Fri, 20 May 2022 10:22:54 +0800
+Message-ID: <20220520022255.2120576-1-wangjianjian3@huawei.com>
+X-Mailer: git-send-email 2.32.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7BIT
 Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems704-chm.china.huawei.com (10.3.19.181) To
- canpemm500005.china.huawei.com (7.192.104.229)
+X-Originating-IP: [10.113.189.238]
+X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
+ canpemm500009.china.huawei.com (7.192.105.203)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We have already check the io_error and uptodate flag before submitting
-the superblock buffer, and re-set the uptodate flag if it has been
-failed to write out. But it was lockless and could be raced by another
-ext4_commit_super(), and finally trigger '!uptodate' WARNING when
-marking buffer dirty. Fix it by submit buffer directly.
-
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
+Signed-off-by: Wang Jianjian <wangjianjian3@huawei.com>
 ---
-v2->v1:
- - Add clear_buffer_dirty() before submit_bh().
+ fs/ext4/page-io.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- fs/ext4/super.c | 22 ++++++++++++++++------
- 1 file changed, 16 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1466fbdbc8e3..9f6892665be4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6002,7 +6002,6 @@ static void ext4_update_super(struct super_block *sb)
- static int ext4_commit_super(struct super_block *sb)
- {
- 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
--	int error = 0;
- 
- 	if (!sbh)
- 		return -EINVAL;
-@@ -6011,6 +6010,13 @@ static int ext4_commit_super(struct super_block *sb)
- 
- 	ext4_update_super(sb);
- 
-+	lock_buffer(sbh);
-+	/* Buffer got discarded which means block device got invalidated */
-+	if (!buffer_mapped(sbh)) {
-+		unlock_buffer(sbh);
-+		return -EIO;
-+	}
-+
- 	if (buffer_write_io_error(sbh) || !buffer_uptodate(sbh)) {
- 		/*
- 		 * Oh, dear.  A previous attempt to write the
-@@ -6025,17 +6031,21 @@ static int ext4_commit_super(struct super_block *sb)
- 		clear_buffer_write_io_error(sbh);
- 		set_buffer_uptodate(sbh);
- 	}
--	BUFFER_TRACE(sbh, "marking dirty");
--	mark_buffer_dirty(sbh);
--	error = __sync_dirty_buffer(sbh,
--		REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0));
-+	get_bh(sbh);
-+	/* Clear potential dirty bit if it was journalled update */
-+	clear_buffer_dirty(sbh);
-+	sbh->b_end_io = end_buffer_write_sync;
-+	submit_bh(REQ_OP_WRITE,
-+		  REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0), sbh);
-+	wait_on_buffer(sbh);
- 	if (buffer_write_io_error(sbh)) {
- 		ext4_msg(sb, KERN_ERR, "I/O error while writing "
- 		       "superblock");
- 		clear_buffer_write_io_error(sbh);
- 		set_buffer_uptodate(sbh);
-+		return -EIO;
- 	}
--	return error;
-+	return 0;
- }
- 
- /*
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index 8385939eeb48..97fa7b4c645f 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -465,7 +465,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+ 	/*
+ 	 * In the first loop we prepare and mark buffers to submit. We have to
+ 	 * mark all buffers in the page before submitting so that
+-	 * end_page_writeback() cannot be called from ext4_end_io_end() when IO
++	 * end_page_writeback() cannot be called from ext4_end_bio() when IO
+ 	 * on the first buffer finishes and we are still working on submitting
+ 	 * the second buffer.
+ 	 */
 -- 
-2.31.1
+2.32.0
 
