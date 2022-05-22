@@ -2,109 +2,67 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 05CEFC433F5
-	for <linux-ext4@archiver.kernel.org>; Sat, 21 May 2022 17:52:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0837BC433FE
+	for <linux-ext4@archiver.kernel.org>; Sun, 22 May 2022 02:32:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348101AbiEURwr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 21 May 2022 13:52:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34674 "EHLO
+        id S234230AbiEVCcG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 21 May 2022 22:32:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35692 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241739AbiEURwp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 May 2022 13:52:45 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0AEC27CEE
-        for <linux-ext4@vger.kernel.org>; Sat, 21 May 2022 10:52:44 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id DEB4FB80945
-        for <linux-ext4@vger.kernel.org>; Sat, 21 May 2022 17:52:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id A6DC6C385A5
-        for <linux-ext4@vger.kernel.org>; Sat, 21 May 2022 17:52:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1653155561;
-        bh=EL7vlilwKkZP+ev6301V5h8RvfrqpPRuzPXUvcAY6Sc=;
-        h=From:To:Subject:Date:From;
-        b=P33NYfw3aM83myF8iGQtCcsWVmmtRKYdCnK3L0yokOdUzT3q4eoyx9UihU2trGuZK
-         PLORB0llC620sefnyquvLqW8osppmWUAVCq0gvlrOt02ds7uiWTx5xhQ2E0iDGJjxy
-         3T8Z6UxWSEhgGjakWBA7DN9nFysOv48EdD4cK72hBVLyo+obPLvN1/tKRvGNYokLfa
-         2g+s5srPgTPrl6GkLqyGrA6Nl0lL6Fal7rnv16oFAHXkB4m4921dKVJN17UScnjKHG
-         /jFsTT87DM2yirhiiCHV5JljPCtwMBIEPIVVUL3r3aZbz4Xpxxkw4KO50K81yZZcaU
-         nu+faYRudauBg==
-Received: by aws-us-west-2-korg-bugzilla-1.web.codeaurora.org (Postfix, from userid 48)
-        id 894B5CC13B0; Sat, 21 May 2022 17:52:41 +0000 (UTC)
-From:   bugzilla-daemon@kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 216012] New: Data loss on VirtualBox VMs
-Date:   Sat, 21 May 2022 17:52:41 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: high
-X-Bugzilla-Who: aathan_kernel@memeplex.com
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression
-Message-ID: <bug-216012-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        with ESMTP id S229650AbiEVCcF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 21 May 2022 22:32:05 -0400
+Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E745A34647;
+        Sat, 21 May 2022 19:32:02 -0700 (PDT)
+Received: from cwcc.thunk.org (pool-108-7-220-252.bstnma.fios.verizon.net [108.7.220.252])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 24M2VmPC006110
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Sat, 21 May 2022 22:31:49 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
+        t=1653186710; bh=IzQhsbhHWeNT5Ib9P4izdH+zZDT7w5Gp6o7vfD6cqEc=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References;
+        b=PHsazClU2hpGX3E/Jqyg4YIKR3tKIuWheXKFB2zMUyCNojVe6TaGuh30JWM/79gC5
+         1dfAW06QBPBcjcAXNsMaFwe7q0sSkpuJrML6VkAqzTgIbU6n7jtQYHS4L+Eb9NFRjC
+         6mkTaDEOqTyMNuRS1x/j1i9mWYvmQkpUJWwDmVwGSmel6gm6NkYvDIXIcBlmTBqmhn
+         tZgMq2u+yvm38mivsNTKVS2Xu6S9n/IoyNftK9BpcuTnZqfFkANLJgIVa0xrGH8BV7
+         EJ4AVdcjLmUbLXtTh9z0Sx7sD1WVTcubLULsPP1QGa2oGVqOtDE4bi+PxgJ9Oz/dRZ
+         CXHMCovyuY32g==
+Received: by cwcc.thunk.org (Postfix, from userid 15806)
+        id 9030715C3EC0; Sat, 21 May 2022 22:31:48 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org
+Subject: Re: [PATCH v4] ext4: only allow test_dummy_encryption when supported
+Date:   Sat, 21 May 2022 22:31:47 -0400
+Message-Id: <165318668323.1718738.16352700096125589456.b4-ty@mit.edu>
+X-Mailer: git-send-email 2.31.0
+In-Reply-To: <20220519204437.61645-1-ebiggers@kernel.org>
+References: <20220519204437.61645-1-ebiggers@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=3D216012
+On Thu, 19 May 2022 13:44:37 -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Make the test_dummy_encryption mount option require that the encrypt
+> feature flag be already enabled on the filesystem, rather than
+> automatically enabling it.  Practically, this means that "-O encrypt"
+> will need to be included in MKFS_OPTIONS when running xfstests with the
+> test_dummy_encryption mount option.  (ext4/053 also needs an update.)
+> 
+> [...]
 
-            Bug ID: 216012
-           Summary: Data loss on VirtualBox VMs
-           Product: File System
-           Version: 2.5
-    Kernel Version: Linux ubuntu 5.13.0-35-generic #40-Ubuntu SMP Mon Mar
-                    7 08:03:10 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux
-          Hardware: Intel
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: aathan_kernel@memeplex.com
-        Regression: No
+I've replaced the older version of the commit with this one, thanks!
 
-From recent kernel and/or vbox versions forward, I've started to experience
-data loss and/or filesystem corruption on a regular enough basis that I've
-enabled fsck on every reboot. Mac OSX hosted VM.
+[1/1] ext4: only allow test_dummy_encryption when supported
+      commit: d177c151d74881536aa6b58f450c70fd5a7b6c1a
 
-It's not clear to me what the source of the problem is, but it may not be e=
-xt4
-itself vs some element of the block device drivers and/or related hypervisor
-facilities.
-
-
-Message from syslogd@ubuntu at May 21 15:56:49 ...
- kernel:[1958392.548682] EXT4-fs (dm-0): failed to convert unwritten extent=
-s to
-written extents -- potential data loss!  (inode 259291, error -30)
-
-Message from syslogd@ubuntu at May 21 15:56:50 ...
- kernel:[1958392.830326] EXT4-fs (dm-0): failed to convert unwritten extent=
-s to
-written extents -- potential data loss!  (inode 262111, error -30)
-
---=20
-You may reply to this email to add a comment.
-
-You are receiving this mail because:
-You are watching the assignee of the bug.=
+Best regards,
+-- 
+Theodore Ts'o <tytso@mit.edu>
