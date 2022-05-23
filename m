@@ -2,89 +2,156 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93CACC43219
-	for <linux-ext4@archiver.kernel.org>; Mon, 23 May 2022 07:24:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8015C433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 23 May 2022 09:29:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229680AbiEWHY2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 23 May 2022 03:24:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59854 "EHLO
+        id S232903AbiEWJ3O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 23 May 2022 05:29:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33464 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230201AbiEWHYN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2022 03:24:13 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D85083B003;
-        Mon, 23 May 2022 00:18:28 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S232889AbiEWJ3M (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 23 May 2022 05:29:12 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E5414927C;
+        Mon, 23 May 2022 02:29:11 -0700 (PDT)
+Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
+        by smtp-out1.suse.de (Postfix) with ESMTP id 48DE121A57;
+        Mon, 23 May 2022 09:29:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1653298150; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=yKSiy0ipOYVbqRPh0+sMS6w58vGVnmR5krmIKhBhvCo=;
+        b=rhER0KTpLC+kN7FEVjQD6D5ygjKKlG/FidSbAufFle/t6d05K+2srPjx2V5Ec/NWBqGhss
+        lklFclXZMR8sHsK0D1N7g1+tqpbbb3NC9Wuf6obFB/NFdR26vGPNTLq1U2UcvMQ1iRLBrK
+        JiOeSW48sRlLrIuWLgCeycrkMzd8J/g=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1653298150;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=yKSiy0ipOYVbqRPh0+sMS6w58vGVnmR5krmIKhBhvCo=;
+        b=00foDO6puATmPZsCtmjAr17KPhXXoPethprIX1ioU1ZZc6K2o0pA+ZbMOs5OQmWH7FPwwt
+        fFvBdQO7vYv8jvDA==
+Received: from quack3.suse.cz (unknown [10.100.224.230])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id CE450611BC;
-        Mon, 23 May 2022 07:07:53 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4775C385A9;
-        Mon, 23 May 2022 07:07:52 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1653289673;
-        bh=hdwEg4ZhM324vxQXS0bV+GABy7LdsT+hi9juPKa4LYM=;
-        h=Date:From:To:Cc:Subject:From;
-        b=Hv1ZewV5rrt82CTBH3ka/CyAsOJFk2s7vSWR+pYA5dTCAr3bgcPvRT+ysVO4Y3wqm
-         sPAznzO3uOWGDrxGeH0y34f2P0RwqZRPfuoriNxhfbmLFAioSzIRBPb9Ug//48eukM
-         YgQvVSqHWznxnJONdWqSGk9Pza3YnxcTxOa5DX3ID5Ke2zHQq9Qha3RiFUCAqGoaI1
-         w78SHOPmTRb2000Gbqj5LaM6h8oAsc5Drdl+k4+PfYj4vrVTMxJMM36NEmVRgEKuFu
-         EpPlgFj+KX+U0lJOBbq/cbS4qPbzfD2PABa1IOY4GZ0Vvxf6k80y7GjEa2YIFj20iw
-         wi6Xf9R1rsyrQ==
-Date:   Mon, 23 May 2022 00:07:51 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [GIT PULL] fscrypt updates for 5.19
-Message-ID: <Yosyx2FYZOIOWs9g@sol.localdomain>
+        by relay2.suse.de (Postfix) with ESMTPS id DF7B12C141;
+        Mon, 23 May 2022 09:29:09 +0000 (UTC)
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 671CEA0632; Mon, 23 May 2022 11:29:08 +0200 (CEST)
+Date:   Mon, 23 May 2022 11:29:08 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Baokun Li <libaokun1@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, ritesh.list@gmail.com,
+        linux-kernel@vger.kernel.org, yi.zhang@huawei.com,
+        yebin10@huawei.com, yukuai3@huawei.com,
+        Hulk Robot <hulkci@huawei.com>
+Subject: Re: [PATCH 1/2] ext4: fix bug_on ext4_mb_use_inode_pa
+Message-ID: <20220523092908.2ghn2fvps5dfhyz3@quack3.lan>
+References: <20220521134217.312071-1-libaokun1@huawei.com>
+ <20220521134217.312071-2-libaokun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <20220521134217.312071-2-libaokun1@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The following changes since commit ce522ba9ef7e2d9fb22a39eb3371c0c64e2a433e:
+On Sat 21-05-22 21:42:16, Baokun Li wrote:
+> Hulk Robot reported a BUG_ON:
+> ==================================================================
+> kernel BUG at fs/ext4/mballoc.c:3211!
+> [...]
+> RIP: 0010:ext4_mb_mark_diskspace_used.cold+0x85/0x136f
+> [...]
+> Call Trace:
+>  ext4_mb_new_blocks+0x9df/0x5d30
+>  ext4_ext_map_blocks+0x1803/0x4d80
+>  ext4_map_blocks+0x3a4/0x1a10
+>  ext4_writepages+0x126d/0x2c30
+>  do_writepages+0x7f/0x1b0
+>  __filemap_fdatawrite_range+0x285/0x3b0
+>  file_write_and_wait_range+0xb1/0x140
+>  ext4_sync_file+0x1aa/0xca0
+>  vfs_fsync_range+0xfb/0x260
+>  do_fsync+0x48/0xa0
+> [...]
+> ==================================================================
+> 
+> Above issue may happen as follows:
+> -------------------------------------
+> do_fsync
+>  vfs_fsync_range
+>   ext4_sync_file
+>    file_write_and_wait_range
+>     __filemap_fdatawrite_range
+>      do_writepages
+>       ext4_writepages
+>        mpage_map_and_submit_extent
+>         mpage_map_one_extent
+>          ext4_map_blocks
+>           ext4_mb_new_blocks
+>            ext4_mb_normalize_request
+>             >>> start + size <= ac->ac_o_ex.fe_logical
+>            ext4_mb_regular_allocator
+>             ext4_mb_simple_scan_group
+>              ext4_mb_use_best_found
+>               ext4_mb_new_preallocation
+>                ext4_mb_new_inode_pa
+>                 ext4_mb_use_inode_pa
+>                  >>> set ac->ac_b_ex.fe_len <= 0
+>            ext4_mb_mark_diskspace_used
+>             >>> BUG_ON(ac->ac_b_ex.fe_len <= 0);
+> 
+> we can easily reproduce this problem with the following commands:
+> 	`fallocate -l100M disk`
+> 	`mkfs.ext4 -b 1024 -g 256 disk`
+> 	`mount disk /mnt`
+> 	`fsstress -d /mnt -l 0 -n 1000 -p 1`
+> 
+> The size must be smaller than or equal to EXT4_BLOCKS_PER_GROUP.
+> Therefore, "start + size <= ac->ac_o_ex.fe_logical" may occur
+> when the size is truncated. So start should be the start position of
+> the group where ac_o_ex.fe_logical is located after alignment.
+> In addition, when the value of fe_logical or EXT4_BLOCKS_PER_GROUP
+> is very large, the value calculated by start_off is more accurate.
+> 
+> Fixes: cd648b8a8fd5 ("ext4: trim allocation requests to group size")
+> Reported-by: Hulk Robot <hulkci@huawei.com>
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
 
-  Linux 5.18-rc2 (2022-04-10 14:21:36 -1000)
+Looks good. I'd just phrase the comment below a bit differently:
 
-are available in the Git repository at:
+> +	/*
+> +	 * Because size must be less than or equal to
+> +	 * EXT4_BLOCKS_PER_GROUP, start should be the start position of
+> +	 * the group where ac_o_ex.fe_logical is located after alignment.
+> +	 * In addition, when the value of fe_logical or
+> +	 * EXT4_BLOCKS_PER_GROUP is very large, the value calculated
+> +	 * by start_off is more accurate.
+> +	 */
+> +	start = max(start, round_down(ac->ac_o_ex.fe_logical,
+> +			EXT4_BLOCKS_PER_GROUP(ac->ac_sb)));
+> +
 
-  https://git.kernel.org/pub/scm/fs/fscrypt/fscrypt.git tags/fscrypt-for-linus
+Can we make the comment like:
 
-for you to fetch changes up to 218d921b581eadf312c8ef0e09113b111f104eeb:
+	/*
+	 * For tiny groups (smaller than 8MB) the chosen allocation
+	 * alignment may be larger than group size. Make sure the alignment
+	 * does not move allocation to a different group which makes mballoc
+	 * fail assertions later.
+	 */
 
-  fscrypt: add new helper functions for test_dummy_encryption (2022-05-09 16:18:54 -0700)
+With that feel free to add:
 
-----------------------------------------------------------------
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Some cleanups for fs/crypto/:
+								Honza
 
-- Split up the misleadingly-named FS_CRYPTO_BLOCK_SIZE constant.
-
-- Consistently report the encryption implementation that is being used.
-
-- Add helper functions for the test_dummy_encryption mount option that
-  work properly with the new mount API.  ext4 and f2fs will use these.
-
-----------------------------------------------------------------
-Eric Biggers (4):
-      fscrypt: split up FS_CRYPTO_BLOCK_SIZE
-      fscrypt: log when starting to use inline encryption
-      fscrypt: factor out fscrypt_policy_to_key_spec()
-      fscrypt: add new helper functions for test_dummy_encryption
-
- fs/crypto/crypto.c          |  10 ++--
- fs/crypto/fname.c           |  11 +++-
- fs/crypto/fscrypt_private.h |  10 +++-
- fs/crypto/inline_crypt.c    |  33 ++++++++++-
- fs/crypto/keyring.c         |  64 +++++++++++++++++----
- fs/crypto/keysetup.c        |  22 ++------
- fs/crypto/policy.c          | 132 ++++++++++++++++++++++++++------------------
- fs/ubifs/ubifs.h            |   2 +-
- include/linux/fscrypt.h     |  51 ++++++++++++++++-
- 9 files changed, 238 insertions(+), 97 deletions(-)
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
