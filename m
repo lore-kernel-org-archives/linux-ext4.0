@@ -2,72 +2,98 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8410FC433F5
-	for <linux-ext4@archiver.kernel.org>; Wed, 25 May 2022 02:52:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6135C433F5
+	for <linux-ext4@archiver.kernel.org>; Wed, 25 May 2022 04:31:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243702AbiEYCwM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 24 May 2022 22:52:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45734 "EHLO
+        id S235738AbiEYEbK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 25 May 2022 00:31:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50436 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243699AbiEYCwL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 24 May 2022 22:52:11 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E556B32059
-        for <linux-ext4@vger.kernel.org>; Tue, 24 May 2022 19:52:09 -0700 (PDT)
-Received: from kwepemi100002.china.huawei.com (unknown [172.30.72.56])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4L7FtP3ysDzbbZn;
-        Wed, 25 May 2022 10:50:37 +0800 (CST)
-Received: from kwepemm600016.china.huawei.com (7.193.23.20) by
- kwepemi100002.china.huawei.com (7.221.188.188) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2375.24; Wed, 25 May 2022 10:52:07 +0800
-Received: from huawei.com (10.175.101.6) by kwepemm600016.china.huawei.com
- (7.193.23.20) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 25 May
- 2022 10:52:07 +0800
-From:   Shuqi Zhang <zhangshuqi3@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <adilger.kernel@dilger.ca>, <tytso@mit.edu>,
-        <zhangshuqi3@huawei.com>
-Subject: [PATCH] ext4: Use kmemdup() to replace kmalloc + memcpy
-Date:   Wed, 25 May 2022 11:01:20 +0800
-Message-ID: <20220525030120.803330-1-zhangshuqi3@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S230048AbiEYEbI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 25 May 2022 00:31:08 -0400
+Received: from mail-pf1-x42f.google.com (mail-pf1-x42f.google.com [IPv6:2607:f8b0:4864:20::42f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1258EC0C
+        for <linux-ext4@vger.kernel.org>; Tue, 24 May 2022 21:31:06 -0700 (PDT)
+Received: by mail-pf1-x42f.google.com with SMTP id j6so18179360pfe.13
+        for <linux-ext4@vger.kernel.org>; Tue, 24 May 2022 21:31:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=5x7MUMdEyFirTSYVzSr3Vrb0PAT7cLfbzo8HjZ4wCWw=;
+        b=dvIqBDBBbvPN09MNLVuqUtkhrKvhuezKj3WCgsja8rsaQX/QBdEsLYl+cjeBmvffaa
+         J//bEhKxllEgde0/bxVUhI51eUGJ5IzzLIAJGC+dOQkmiWiORxqT+BjeWGZfZp2IUPd/
+         z8gigkaX0Y5LbTqBLBBR8rLm/8EmORyz6reNZj2mcLsXrNq9+p9LpBwmaKErieaP7hO8
+         GzVjesDSGLFlGWMTcNLMRVYTRjdLPVLQaFVjVuHBQCMrG46NL+i/W06i2TbEsur3xL/g
+         KLkccjk2XXKU4jVT5Z6a+KndlY/JBtfWtAlYieDkDJ2Zqi7b1TD6va9/yjB0ASrFiw/A
+         BYPg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=5x7MUMdEyFirTSYVzSr3Vrb0PAT7cLfbzo8HjZ4wCWw=;
+        b=RTPkHzQmD40Meok1BxMLs+EiV13q0xT9sNkUlPMlXBnN9d7OMY91fuuetmnzu5zgtY
+         Er9p8a8QqzVHckiiwUNwEpKXBFjW0d2hRTzcY3aOtZhE/3vYl5htI5WoVmzQMfYEM5p1
+         WmNxHyWBV50byHwhS1Ecngc8WnvMEAHFnvz5JVzLUaaeg+kkCN2tnLpUnXV4ywhNqy1W
+         O3yRKqDRPNE82VlEA7i5YVq7U6rqUg7UvksLjxWAtewjgpnKPNbXWY/hQSrwlFHvt6CP
+         uikaapGlGiqbrWv36J/tCnX5FHv8Whfla66QGqoYa96EUbN0z327h4lqELKcQ7qEfKtp
+         44iA==
+X-Gm-Message-State: AOAM530D/rXXV9DkPr9Ep/M2OBpRcfi45sFmIF5g5XQ4BwRxRGev8+yV
+        p1EIwcISlCpyRt3e826/Ris=
+X-Google-Smtp-Source: ABdhPJyeormJk0+q02LeKLD7rVmnerGWyzwNH7AFutmya629H9LmhhpGaFk2K8t8R/Wv6FWeViHOFw==
+X-Received: by 2002:a63:680a:0:b0:3c2:7c45:c0ab with SMTP id d10-20020a63680a000000b003c27c45c0abmr27412916pgc.63.1653453065571;
+        Tue, 24 May 2022 21:31:05 -0700 (PDT)
+Received: from localhost ([2406:7400:63:4576:a782:286b:de51:79ce])
+        by smtp.gmail.com with ESMTPSA id a5-20020a170902ecc500b0015e8d4eb1b6sm8225348plh.0.2022.05.24.21.31.04
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 24 May 2022 21:31:05 -0700 (PDT)
+Date:   Wed, 25 May 2022 10:01:00 +0530
+From:   Ritesh Harjani <ritesh.list@gmail.com>
+To:     Shuqi Zhang <zhangshuqi3@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca, tytso@mit.edu
+Subject: Re: [PATCH] ext4: Use kmemdup() to replace kmalloc + memcpy
+Message-ID: <20220525043100.qi7m2yve6r4htb2x@riteshh-domain>
+References: <20220525030120.803330-1-zhangshuqi3@huawei.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.101.6]
-X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
- kwepemm600016.china.huawei.com (7.193.23.20)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220525030120.803330-1-zhangshuqi3@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Replace kmalloc + memcpy with kmemdup()
+On 22/05/25 11:01AM, Shuqi Zhang wrote:
+> Replace kmalloc + memcpy with kmemdup()
 
-Signed-off-by: Shuqi Zhang <zhangshuqi3@huawei.com>
----
- fs/ext4/xattr.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Thanks for the patch. A straight forward conversion.
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 042325349098..564e28a1aa94 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1895,11 +1895,10 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 
- 			unlock_buffer(bs->bh);
- 			ea_bdebug(bs->bh, "cloning");
--			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
-+			s->base = kmemdup(BHDR(bs->bh), bs->bh->b_size, GFP_NOFS);
- 			error = -ENOMEM;
- 			if (s->base == NULL)
- 				goto cleanup;
--			memcpy(s->base, BHDR(bs->bh), bs->bh->b_size);
- 			s->first = ENTRY(header(s->base)+1);
- 			header(s->base)->h_refcount = cpu_to_le32(1);
- 			s->here = ENTRY(s->base + offset);
--- 
-2.31.1
+Looks good to me. Feel free to add -
 
+Reviewed-by: Ritesh Harjani <ritesh.list@gmail.com>
+
+>
+> Signed-off-by: Shuqi Zhang <zhangshuqi3@huawei.com>
+> ---
+>  fs/ext4/xattr.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 042325349098..564e28a1aa94 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -1895,11 +1895,10 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>
+>  			unlock_buffer(bs->bh);
+>  			ea_bdebug(bs->bh, "cloning");
+> -			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
+> +			s->base = kmemdup(BHDR(bs->bh), bs->bh->b_size, GFP_NOFS);
+>  			error = -ENOMEM;
+>  			if (s->base == NULL)
+>  				goto cleanup;
+> -			memcpy(s->base, BHDR(bs->bh), bs->bh->b_size);
+>  			s->first = ENTRY(header(s->base)+1);
+>  			header(s->base)->h_refcount = cpu_to_le32(1);
+>  			s->here = ENTRY(s->base + offset);
+> --
+> 2.31.1
+>
