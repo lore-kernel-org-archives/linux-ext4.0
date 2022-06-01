@@ -2,40 +2,40 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF8D1C433EF
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jun 2022 20:48:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E7A1CCA479
+	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jun 2022 20:48:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229932AbiFAUsn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Jun 2022 16:48:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44698 "EHLO
+        id S230118AbiFAUso (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Jun 2022 16:48:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35764 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230118AbiFAUsE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2022 16:48:04 -0400
+        with ESMTP id S230216AbiFAUsO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2022 16:48:14 -0400
 Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B38FB27D0FC;
-        Wed,  1 Jun 2022 13:45:02 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F125825A820;
+        Wed,  1 Jun 2022 13:45:17 -0700 (PDT)
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 452BA1F4394C
+        with ESMTPSA id 5801E1F439CE
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1654116299;
-        bh=QTM2y9smEdZYIXwJ+bdg4VmJ/jF3wm5qE0XMmetiWjI=;
+        s=mail; t=1654116306;
+        bh=zjpVlfAXrXnU0rpRBkZ+HN/BTZ7hL7eHUnAgHGTfavg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=h49m/n59xKW6nHMlGcysHhGPofAz4PIP4jPDzNTN5t/SXgwxQzoXD+JA4xeKsdIcF
-         rj91KVJ2PHVbc7qaUMJlIkNSzvUondrn5ruu7RjUJmi0U+gUGXTnGqMCSUOPdXusQw
-         4YISWMPtAnr2tBjDtxZ4wzwW6lwxqntdoLwGikCm6F7jCPJfSy8Iq86u7RsH3hIBy1
-         QfVXz9rdefOGp/+pVNlVXkgLYqY6w9mbp54ylf5yvT66uV7QgY/QFNmaglf8gbUyzp
-         t5YNb6ZaP+86W6bU6Udke+DIAggSSWXaf27AN9sER6taAVcuH8uKbvQG4ajbIFSfKH
-         iXElV95hPBWFg==
+        b=ZZGw7BwF4X0XYqwVzi375rxpQiLfsc8cdhxMWbsAwinPEp5HxvjrNxuxHCIecSbne
+         CetTasRpb0JKPWKbZZ/j6R5T3Hyjeg3EfWqY3O+/MV3vfmf/jqsgPspKDCubfUX339
+         TxVa5Htk5No9SiHm1hSALFw/MARMYcvE11+yI27MCxlS4ovgcZecK7APviG5EZA4T5
+         q6gIB+w1hOKzeXFgD/VzWgG8zESBzDsm/JAYeSD/BNnx3zbcF8xw+zl4gQdHYKtjy8
+         85qBSaYBdgtLOMO5ADyg3SI5mXXT2a/15dlgD5sZtGD9mbLkMYT/w6WL6WtN069qHV
+         H6VKY7/egyQWQ==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     viro@zeniv.linux.org.uk, tytso@mit.edu, jaegeuk@kernel.org
 Cc:     ebiggers@kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com
-Subject: [PATCH RFC 5/7] libfs: Merge encrypted_ci_dentry_ops and ci_dentry_ops
-Date:   Wed,  1 Jun 2022 16:44:35 -0400
-Message-Id: <20220601204437.676872-6-krisman@collabora.com>
+Subject: [PATCH RFC 7/7] f2fs: Enable negative dentries on case-insensitive lookup
+Date:   Wed,  1 Jun 2022 16:44:37 -0400
+Message-Id: <20220601204437.676872-8-krisman@collabora.com>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220601204437.676872-1-krisman@collabora.com>
 References: <20220601204437.676872-1-krisman@collabora.com>
@@ -45,97 +45,57 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that casefold needs d_revalidate and calls fscrypt_d_revalidate
-itself, generic_encrypt_ci_dentry_ops and generic_ci_dentry_ops are now
-equivalent.  Merge them together and simplify the setup code.
+Instead of invalidating negative dentries during case-insensitive
+lookups, mark them as such and let them be added to the dcache.
+d_ci_revalidate is able to properly filter them out if necessary based
+on the dentry casefold flag.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 ---
- fs/libfs.c | 44 +++++++++++++-------------------------------
- 1 file changed, 13 insertions(+), 31 deletions(-)
+ fs/f2fs/namei.c | 23 ++---------------------
+ 1 file changed, 2 insertions(+), 21 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index fe22738291e4..9d91f471203a 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1477,7 +1477,7 @@ static inline int generic_ci_d_revalidate(struct dentry *dentry,
- 	return fscrypt_d_revalidate(dentry, flags);
- }
- 
--static const struct dentry_operations generic_ci_dentry_ops = {
-+static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
- 	.d_hash = generic_ci_d_hash,
- 	.d_compare = generic_ci_d_compare,
- 	.d_revalidate_name = generic_ci_d_revalidate,
-@@ -1490,26 +1490,20 @@ static const struct dentry_operations generic_encrypted_dentry_ops = {
- };
- #endif
- 
--#if defined(CONFIG_FS_ENCRYPTION) && IS_ENABLED(CONFIG_UNICODE)
--static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
--	.d_hash = generic_ci_d_hash,
--	.d_compare = generic_ci_d_compare,
--	.d_revalidate_name = generic_ci_d_revalidate,
--};
--#endif
--
- /**
-  * generic_set_encrypted_ci_d_ops - helper for setting d_ops for given dentry
-  * @dentry:	dentry to set ops on
-  *
-- * Casefolded directories need d_hash and d_compare set, so that the dentries
-- * contained in them are handled case-insensitively.  Note that these operations
-- * are needed on the parent directory rather than on the dentries in it, and
-- * while the casefolding flag can be toggled on and off on an empty directory,
-- * dentry_operations can't be changed later.  As a result, if the filesystem has
-- * casefolding support enabled at all, we have to give all dentries the
-- * casefolding operations even if their inode doesn't have the casefolding flag
-- * currently (and thus the casefolding ops would be no-ops for now).
-+ * Casefolded directories need d_hash, d_compare and d_revalidate set, so
-+ * that the dentries contained in them are handled case-insensitively,
-+ * but implement support for fs_encryption.  Note that these operations
-+ * are needed on the parent directory rather than on the dentries in it,
-+ * and while the casefolding flag can be toggled on and off on an empty
-+ * directory, dentry_operations can't be changed later.  As a result, if
-+ * the filesystem has casefolding support enabled at all, we have to
-+ * give all dentries the casefolding operations even if their inode
-+ * doesn't have the casefolding flag currently (and thus the casefolding
-+ * ops would be no-ops for now).
-  *
-  * Encryption works differently in that the only dentry operation it needs is
-  * d_revalidate, which it only needs on dentries that have the no-key name flag.
-@@ -1522,29 +1516,17 @@ static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
-  */
- void generic_set_encrypted_ci_d_ops(struct dentry *dentry)
- {
--#ifdef CONFIG_FS_ENCRYPTION
--	bool needs_encrypt_ops = dentry->d_flags & DCACHE_NOKEY_NAME;
--#endif
- #if IS_ENABLED(CONFIG_UNICODE)
--	bool needs_ci_ops = dentry->d_sb->s_encoding;
--#endif
--#if defined(CONFIG_FS_ENCRYPTION) && IS_ENABLED(CONFIG_UNICODE)
--	if (needs_encrypt_ops && needs_ci_ops) {
-+	if (dentry->d_sb->s_encoding) {
- 		d_set_d_op(dentry, &generic_encrypted_ci_dentry_ops);
- 		return;
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 5ed79b29999f..6e970a6c3623 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -562,17 +562,8 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+ 		goto out_iput;
  	}
- #endif
- #ifdef CONFIG_FS_ENCRYPTION
--	if (needs_encrypt_ops) {
-+	if (dentry->d_flags & DCACHE_NOKEY_NAME) {
- 		d_set_d_op(dentry, &generic_encrypted_dentry_ops);
- 		return;
- 	}
- #endif
+ out_splice:
 -#if IS_ENABLED(CONFIG_UNICODE)
--	if (needs_ci_ops) {
--		d_set_d_op(dentry, &generic_ci_dentry_ops);
--		return;
+-	if (!inode && IS_CASEFOLDED(dir)) {
+-		/* Eventually we want to call d_add_ci(dentry, NULL)
+-		 * for negative dentries in the encoding case as
+-		 * well.  For now, prevent the negative dentry
+-		 * from being cached.
+-		 */
+-		trace_f2fs_lookup_end(dir, dentry, ino, err);
+-		return NULL;
 -	}
 -#endif
- }
- EXPORT_SYMBOL(generic_set_encrypted_ci_d_ops);
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
++		d_set_casefold_lookup(dentry);
+ 	new = d_splice_alias(inode, dentry);
+ 	err = PTR_ERR_OR_ZERO(new);
+ 	trace_f2fs_lookup_end(dir, dentry, ino, !new ? -ENOENT : err);
+@@ -623,16 +614,6 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
+ 		goto fail;
+ 	}
+ 	f2fs_delete_entry(de, page, dir, inode);
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at f2fs_lookup(), when it is better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
+ 	f2fs_unlock_op(sbi);
+ 
+ 	if (IS_DIRSYNC(dir))
 -- 
 2.36.1
 
