@@ -2,119 +2,78 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 67045C43334
-	for <linux-ext4@archiver.kernel.org>; Wed,  1 Jun 2022 20:48:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15EF8C43334
+	for <linux-ext4@archiver.kernel.org>; Thu,  2 Jun 2022 02:06:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230129AbiFAUsr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 1 Jun 2022 16:48:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34854 "EHLO
+        id S233224AbiFBCGS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 1 Jun 2022 22:06:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40096 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230135AbiFAUsF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2022 16:48:05 -0400
-Received: from bhuna.collabora.co.uk (bhuna.collabora.co.uk [46.235.227.227])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F372C27F8B2;
-        Wed,  1 Jun 2022 13:45:08 -0700 (PDT)
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id E34211F4398A
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1654116303;
-        bh=EYpe7jq8IZWr8tink05axuBf87GgQR+c3mze25uRf3I=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Gu2U+x1xr9c68jrHWXNn9eK1h9sFH7RfO+WWdoaw+vkefkr38W4doINXmEvoPn1hF
-         HJfJBJPf9iSbKwIETQtwBHyaJieDSdQi1hcifoJVebxIlltN3BT5yN/ftwK3zBajJV
-         m37KAbWpRVzhxtbWir2I1V70xgAx5OVPomi6LYsh3/w/1c257PBAeWSORU0JSj6kPm
-         Vwo31RfttlP7sa2Y1fPWWM7wOX9JNlEHiUdsQPn3SiyRQAYU1f7NtG7ZqN5wIaD1X4
-         S4yvqr7NkQy7u1+NwemQVm0aWqY2s0QthVcsV6y8UeMPCk/sT/DyB6bcrq+CzuIJy5
-         SOei/Uj4PJ/4A==
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     viro@zeniv.linux.org.uk, tytso@mit.edu, jaegeuk@kernel.org
-Cc:     ebiggers@kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        Gabriel Krisman Bertazi <krisman@collabora.com>,
-        kernel@collabora.com
-Subject: [PATCH RFC 6/7] ext4: Enable negative dentries on case-insensitive lookup
-Date:   Wed,  1 Jun 2022 16:44:36 -0400
-Message-Id: <20220601204437.676872-7-krisman@collabora.com>
-X-Mailer: git-send-email 2.36.1
-In-Reply-To: <20220601204437.676872-1-krisman@collabora.com>
-References: <20220601204437.676872-1-krisman@collabora.com>
+        with ESMTP id S233218AbiFBCGR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jun 2022 22:06:17 -0400
+Received: from mail-oa1-x2f.google.com (mail-oa1-x2f.google.com [IPv6:2001:4860:4864:20::2f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 25822E2757
+        for <linux-ext4@vger.kernel.org>; Wed,  1 Jun 2022 19:06:16 -0700 (PDT)
+Received: by mail-oa1-x2f.google.com with SMTP id 586e51a60fabf-f2bb84f9edso5049716fac.10
+        for <linux-ext4@vger.kernel.org>; Wed, 01 Jun 2022 19:06:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=ofscGzSt/rOGc75JQamSRJX+pWAVfplRsnOQmqxQuNY=;
+        b=jred40wDBvxtaBko/+wNrBxqydxoofWL56zUvbNimaXPhyrU6i0bkk4axP9s+KZnF3
+         ATrsIo0HuWQwVEb9++2W9PymsMNZRfqeUTsmOFa4OtFi3Mmo5i5fpXzKZSTlvIqJuVim
+         KWAfbMk+ms23ClNl5ppiJrZc61VCQ2ht7ojQezaOAgMfqSVfwc2YVPrVmY9WLBUU/hLX
+         7ZPwdx12z/mIZHA2vkm6jfek9bBbQme9fKlWbGeVpaMB0jG3rBVFAvIyuUfAOdekGM/q
+         BSQk2oCBVi5ZeTaDhreiD9NRrDO4Wn/IIlgJQ0pvV/yP22FCHcNw8nnL9nsEsMXhf75w
+         vjCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=ofscGzSt/rOGc75JQamSRJX+pWAVfplRsnOQmqxQuNY=;
+        b=0wq65Lu+KTonqP9kBJI8kWUY4WLTJS6jgLqPUjqecO4OnmMLUhSutBa/vJqaYwb1cV
+         P8nJo4WjKCeEDh8/uJcyNoZZinaNMwvmV+N/FIBDnlvweL+R4hNZ0blI+0X3Pf3dUbBN
+         ilgd1LNdn8wbeMM2wDVgiKzzVqu/tgeMA6DzIxiowPHPw+R5+a337BroZFEkPZT7iOOa
+         GPFeX6pVSdWT1HJkr+xwemz5FWTd0NVnDDh1PxLJlD1DYkeMc3b5xKrzJ23j3Fj6Ltb0
+         hMMhVnLqkyz8vauJdbVIC2Ni2eUj3u/UCzVx0CRaYnajkEHH3GyV3TPfQn/JII4JchON
+         Vbpg==
+X-Gm-Message-State: AOAM530/PjjJvrkhV9eVtiYcqL553Qm+AJ2gRh6JQpStmOjStwgCr8Bt
+        P8ab2frnW6pvYVDjVM9NuGfNJLYdsMhbnz/oaew=
+X-Google-Smtp-Source: ABdhPJw+m7+F83eMLufvoySFWVv3PwEM1m3YcCixs/km9HE5twJ80K+b3FvNceS5yiaqEiLiwGuKBxqMxyPx68ksB/A=
+X-Received: by 2002:a05:6870:d211:b0:f2:91f4:3dfb with SMTP id
+ g17-20020a056870d21100b000f291f43dfbmr1468502oac.226.1654135575500; Wed, 01
+ Jun 2022 19:06:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAFDdnB1Rq3vNe_qt_0u+inzOuL4vrGhgbOoQZKBwfBktni=Npw@mail.gmail.com>
+ <YpLLTkje/QUYPP9z@mit.edu> <YpNk4bQlRKmgDw8E@mit.edu> <CAFDdnB0a3mfcoY7rg5N4dO13qMeSsV+PkA2YHeerEOFRv8484Q@mail.gmail.com>
+ <YpQixl+ljcC1VHNU@mit.edu> <CAFDdnB1WxrqddeLJwjsqqgoij1q_QGa=SBs-i=j31W2QbksJ=Q@mail.gmail.com>
+ <YpVeeKRH1bycP7P1@mit.edu> <YpVxYchs1wScNRDw@mit.edu>
+In-Reply-To: <YpVxYchs1wScNRDw@mit.edu>
+From:   "Stephen E. Baker" <baker.stephen.e@gmail.com>
+Date:   Wed, 1 Jun 2022 22:06:04 -0400
+Message-ID: <CAFDdnB1KJVSXXzXKOc+T+g1Qewr11AS4f9tFJqSMLvfpiX-5Lg@mail.gmail.com>
+Subject: Re: simplify ext4_sb_read_encoding regression
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     adilger.kernel@dilger.ca, hch@lst.de, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Instead of invalidating negative dentries during case-insensitive
-lookups, mark them as such and let them be added to the dcache.
-d_ci_revalidate is able to properly filter them out if necessary based
-on the dentry casefold flag.
+On Mon, May 30, 2022 at 9:37 PM Theodore Ts'o <tytso@mit.edu> wrote:
+> > I don't know what to tell you.  I took your config, stripped out all
+> > of the modules, and enabled CONFIG_HYPERVISOR_GUEST,
+> > CONFIG_VIRTIO_MENU, and CONFIG_VIRTIO_BLK, and build a 5.16 kernel.
+>
+Maybe a silly question, but how do I enable CONFIG_HYPERVISOR_GUEST with
+this config.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
----
- fs/ext4/namei.c | 35 ++++-------------------------------
- 1 file changed, 4 insertions(+), 31 deletions(-)
+I run:
+ARCH=arm64 CROSS_TOOLCHAIN=aarch64-unknown-linux- make menuconfig
+and search for HYPERVISOR_GUEST, it reads:
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 767b4bfe39c3..783ba0b186c1 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1800,16 +1800,9 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 		}
- 	}
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--	if (!inode && IS_CASEFOLDED(dir)) {
--		/* Eventually we want to call d_add_ci(dentry, NULL)
--		 * for negative dentries in the encoding case as
--		 * well.  For now, prevent the negative dentry
--		 * from being cached.
--		 */
--		return NULL;
--	}
--#endif
-+	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
-+		d_set_casefold_lookup(dentry);
-+
- 	return d_splice_alias(inode, dentry);
- }
- 
-@@ -3126,17 +3119,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	ext4_fc_track_unlink(handle, dentry);
- 	retval = ext4_mark_inode_dirty(handle, dir);
- 
--#if IS_ENABLED(CONFIG_UNICODE)
--	/* VFS negative dentries are incompatible with Encoding and
--	 * Case-insensitiveness. Eventually we'll want avoid
--	 * invalidating the dentries here, alongside with returning the
--	 * negative dentries at ext4_lookup(), when it is better
--	 * supported by the VFS for the CI case.
--	 */
--	if (IS_CASEFOLDED(dir))
--		d_invalidate(dentry);
--#endif
--
- end_rmdir:
- 	brelse(bh);
- 	if (handle)
-@@ -3231,16 +3213,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	retval = __ext4_unlink(handle, dir, &dentry->d_name, d_inode(dentry));
- 	if (!retval)
- 		ext4_fc_track_unlink(handle, dentry);
--#if IS_ENABLED(CONFIG_UNICODE)
--	/* VFS negative dentries are incompatible with Encoding and
--	 * Case-insensitiveness. Eventually we'll want avoid
--	 * invalidating the dentries here, alongside with returning the
--	 * negative dentries at ext4_lookup(), when it is  better
--	 * supported by the VFS for the CI case.
--	 */
--	if (IS_CASEFOLDED(dir))
--		d_invalidate(dentry);
--#endif
-+
- 	if (handle)
- 		ext4_journal_stop(handle);
- 
--- 
-2.36.1
+Symbol: HYPERVISOR_GUEST [=HYPERVISOR_GUEST]
+Type  : unknown
 
+With no option to go to or select it.
