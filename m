@@ -2,39 +2,39 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0AC3CCA485
-	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jun 2022 19:39:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5473BCCA47B
+	for <linux-ext4@archiver.kernel.org>; Sun,  5 Jun 2022 19:39:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1351543AbiFETjN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 5 Jun 2022 15:39:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42552 "EHLO
+        id S1351566AbiFETjP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 5 Jun 2022 15:39:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42636 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347193AbiFETjJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jun 2022 15:39:09 -0400
+        with ESMTP id S245092AbiFETjM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Jun 2022 15:39:12 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F43E12082;
-        Sun,  5 Jun 2022 12:39:08 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EB7339694;
+        Sun,  5 Jun 2022 12:39:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=qbG5jYA5/B/9NK52X0Zwpy+RVhS8Khdm3bEIuVIcSSs=; b=dOOkwE/qwu6ai6SUG6KU2Tcj1b
-        tYf86pT1eVKho3dRG7hvwfX/ICj+XRb4tRZDY8EXwKCl7ilsNUd9anX0RT70ecMt1/vbB4uTsJa03
-        6G9046ewtZLLSDSY86dJSRTdn3qjPyrzchTDI7Vi8EL0DNHGZ/8j/SWIP6c9Huez/h5GoE/7d8YU3
-        sKyP6kBMp9MY/fjj7QQgCy9/z7ux3TGP37ac4Purw7SgOVkW3wBetmcl1SZADajRYm/kr0rUaF6vt
-        VdvVDgkAGQvgMjThr4db/KHBEvWcsMQrBgqzAprcRIAtIkegr3AoYkWgpMhBM6RcwtgML5fjs8gL0
-        j/U8tA5A==;
+        bh=W0H1cUQxatSgPZ6f11mLW4N05/pdthUaWOiji2r395Q=; b=vuZO7CSb7H6HQ4un97k5YqfJpv
+        WRg4mesPevoGA4XIOIVE2ut/fbhfu85CTaveBcVULnFub7Mfq5oIGpDukf0GFFOtdms/yjo0srNbQ
+        qAmlTagDosQ/iwYURVheI7Qn+0e+JiM35saYHuorbgNvOmwFZTGBSMX9gPqyPwtmqTCUpQrgxt08L
+        zl+fZroMOE3CbrwEnxjVw9xWa9I9OBtn3/LlANUrlXOhUPAwmGVpiC8vKuDk0hB0q5d8Esreir30M
+        qp+56a/8G270ZD18zh3VnRwQbfUZOj9Qy+FiUOVDgrzK9OgPFG3nJ+7PP+FJ4hse3IB4PQ0w6ecGA
+        OfEX515Q==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nxw5Q-009wsR-MI; Sun, 05 Jun 2022 19:38:56 +0000
+        id 1nxw5Q-009wsV-Qh; Sun, 05 Jun 2022 19:38:56 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
         linux-nilfs@vger.kernel.org
-Subject: [PATCH 02/10] buffer: Convert clean_bdev_aliases() to use filemap_get_folios()
-Date:   Sun,  5 Jun 2022 20:38:46 +0100
-Message-Id: <20220605193854.2371230-3-willy@infradead.org>
+Subject: [PATCH 04/10] ext4: Convert mpage_map_and_submit_buffers() to use filemap_get_folios()
+Date:   Sun,  5 Jun 2022 20:38:48 +0100
+Message-Id: <20220605193854.2371230-5-willy@infradead.org>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220605193854.2371230-1-willy@infradead.org>
 References: <20220605193854.2371230-1-willy@infradead.org>
@@ -44,73 +44,65 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use a folio throughout this function.
+The called functions all use pages, so just convert back to a page.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/buffer.c | 26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
+ fs/ext4/inode.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 898c7f301b1b..276769d3715a 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1604,7 +1604,7 @@ void clean_bdev_aliases(struct block_device *bdev, sector_t block, sector_t len)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 32a7f5e024d6..1aaea53e67b5 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2314,8 +2314,8 @@ static int mpage_process_page(struct mpage_da_data *mpd, struct page *page,
+  */
+ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
  {
- 	struct inode *bd_inode = bdev->bd_inode;
- 	struct address_space *bd_mapping = bd_inode->i_mapping;
 -	struct pagevec pvec;
+-	int nr_pages, i;
 +	struct folio_batch fbatch;
- 	pgoff_t index = block >> (PAGE_SHIFT - bd_inode->i_blkbits);
- 	pgoff_t end;
- 	int i, count;
-@@ -1612,24 +1612,24 @@ void clean_bdev_aliases(struct block_device *bdev, sector_t block, sector_t len)
- 	struct buffer_head *head;
++	unsigned nr, i;
+ 	struct inode *inode = mpd->inode;
+ 	int bpp_bits = PAGE_SHIFT - inode->i_blkbits;
+ 	pgoff_t start, end;
+@@ -2329,14 +2329,13 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 	lblk = start << bpp_bits;
+ 	pblock = mpd->map.m_pblk;
  
- 	end = (block + len - 1) >> (PAGE_SHIFT - bd_inode->i_blkbits);
 -	pagevec_init(&pvec);
--	while (pagevec_lookup_range(&pvec, bd_mapping, &index, end)) {
--		count = pagevec_count(&pvec);
 +	folio_batch_init(&fbatch);
-+	while (filemap_get_folios(bd_mapping, &index, end, &fbatch)) {
-+		count = folio_batch_count(&fbatch);
- 		for (i = 0; i < count; i++) {
+ 	while (start <= end) {
+-		nr_pages = pagevec_lookup_range(&pvec, inode->i_mapping,
+-						&start, end);
+-		if (nr_pages == 0)
++		nr = filemap_get_folios(inode->i_mapping, &start, end, &fbatch);
++		if (nr == 0)
+ 			break;
+-		for (i = 0; i < nr_pages; i++) {
 -			struct page *page = pvec.pages[i];
-+			struct folio *folio = fbatch.folios[i];
++		for (i = 0; i < nr; i++) {
++			struct page *page = &fbatch.folios[i]->page;
  
--			if (!page_has_buffers(page))
-+			if (!folio_buffers(folio))
- 				continue;
- 			/*
--			 * We use page lock instead of bd_mapping->private_lock
-+			 * We use folio lock instead of bd_mapping->private_lock
- 			 * to pin buffers here since we can afford to sleep and
- 			 * it scales better than a global spinlock lock.
- 			 */
--			lock_page(page);
--			/* Recheck when the page is locked which pins bhs */
--			if (!page_has_buffers(page))
-+			folio_lock(folio);
-+			/* Recheck when the folio is locked which pins bhs */
-+			head = folio_buffers(folio);
-+			if (!head)
- 				goto unlock_page;
--			head = page_buffers(page);
- 			bh = head;
- 			do {
- 				if (!buffer_mapped(bh) || (bh->b_blocknr < block))
-@@ -1643,9 +1643,9 @@ void clean_bdev_aliases(struct block_device *bdev, sector_t block, sector_t len)
- 				bh = bh->b_this_page;
- 			} while (bh != head);
- unlock_page:
--			unlock_page(page);
-+			folio_unlock(folio);
+ 			err = mpage_process_page(mpd, page, &lblk, &pblock,
+ 						 &map_bh);
+@@ -2352,14 +2351,14 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 			if (err < 0)
+ 				goto out;
  		}
 -		pagevec_release(&pvec);
 +		folio_batch_release(&fbatch);
- 		cond_resched();
- 		/* End of range already reached? */
- 		if (index > end || !index)
+ 	}
+ 	/* Extent fully mapped and matches with page boundary. We are done. */
+ 	mpd->map.m_len = 0;
+ 	mpd->map.m_flags = 0;
+ 	return 0;
+ out:
+-	pagevec_release(&pvec);
++	folio_batch_release(&fbatch);
+ 	return err;
+ }
+ 
 -- 
 2.35.1
 
