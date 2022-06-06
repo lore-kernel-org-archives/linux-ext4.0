@@ -2,99 +2,157 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A702C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 20:51:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A16C2C43334
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 23:12:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234895AbiFFUv1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jun 2022 16:51:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35680 "EHLO
+        id S235215AbiFFXMD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jun 2022 19:12:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45070 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234818AbiFFUss (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 16:48:48 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0808F14085C;
-        Mon,  6 Jun 2022 13:41:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=xi6bfdZ9kew/Ht/n6wJe844q1fNiFHAUuQwBybhvWV8=; b=SPlA9TQH81xoMoIY10n2YxKfFT
-        FsYePoVkMqprqpv6ZpSb8LgcBJlPTx6ZiQnv9+DpcX1C8BhCoh731GzGv3vwXqOhVgpjWqAcZ9x5Q
-        yXSG40C4z1zTwsHq25TqavEFM/aIkrZ74keXov/lJSFAeAlVFO92OjNCITHAZeey74UYtElj1IkQ9
-        igzOLTZbXbr/H/xrC6wuD1gd2dEhozUsRpbKST11t4x3padiQWXP0MH6RjFWVF6lx2GnIIN77FMNF
-        eqfhiP3IbavqdfjHnrPmIl/jNgL2ME2jYU2bFfEUdA0P2115AUzGiBLzXrUZQ116ZbPHL/l6z5/G3
-        D9YuFHRg==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nyJWx-00B19m-P8; Mon, 06 Jun 2022 20:40:55 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     linux-fsdevel@vger.kernel.org
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-aio@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-mm@kvack.org,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        linux-mtd@lists.infradead.org,
-        virtualization@lists.linux-foundation.org
-Subject: [PATCH 15/20] balloon: Convert to migrate_folio
-Date:   Mon,  6 Jun 2022 21:40:45 +0100
-Message-Id: <20220606204050.2625949-16-willy@infradead.org>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220606204050.2625949-1-willy@infradead.org>
-References: <20220606204050.2625949-1-willy@infradead.org>
+        with ESMTP id S232334AbiFFXMC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 19:12:02 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B284CC9ECA;
+        Mon,  6 Jun 2022 16:12:01 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 46FE3B81C1E;
+        Mon,  6 Jun 2022 23:12:00 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B99BAC385A9;
+        Mon,  6 Jun 2022 23:11:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1654557118;
+        bh=os+VNrxZ18hzpoZQbhF28dYaPUqeEW+gxHjeRa9iGag=;
+        h=From:To:Cc:Subject:Date:From;
+        b=EHIWTo20rJbhfy9yJ1iKii9XkbAPDx+ruYaSZ8LLPWUCdyOIXSkCK9JVZF0OSk41e
+         jvo516e6jO1hykde+nHeDw6Jq/dv6YFTExIVME03gI8PxYo72no+Mh+HLYKFXTsbHp
+         2Qy0tMkt9l4qa1+nRilqvJs/6zCQKf+y4fAJmQyf6LVhf2WPqFuFJf4qn7ght/qvNp
+         TNbwR0GYzpRW79SgKlThZ9NkWfC94eVQsY3t7sKB8YPXi6/0d8fkXSN1qiAdLZs7dY
+         O70P3e1gFIccFvcgynaPHaNqFkvm+mThBHysrXfVQK41Ys3eBGOlml8OXkwI/7WXsR
+         L2ZkEr8iSxzQQ==
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     stable@vger.kernel.org
+Cc:     linux-ext4@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>,
+        Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 5.15] ext4: only allow test_dummy_encryption when supported
+Date:   Mon,  6 Jun 2022 16:11:49 -0700
+Message-Id: <20220606231149.165759-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.36.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This is little more than changing the types over; there's no real work
-being done in this function.
+From: Eric Biggers <ebiggers@google.com>
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+commit 5f41fdaea63ddf96d921ab36b2af4a90ccdb5744 upstream.
+
+Make the test_dummy_encryption mount option require that the encrypt
+feature flag be already enabled on the filesystem, rather than
+automatically enabling it.  Practically, this means that "-O encrypt"
+will need to be included in MKFS_OPTIONS when running xfstests with the
+test_dummy_encryption mount option.  (ext4/053 also needs an update.)
+
+Moreover, as long as the preconditions for test_dummy_encryption are
+being tightened anyway, take the opportunity to start rejecting it when
+!CONFIG_FS_ENCRYPTION rather than ignoring it.
+
+The motivation for requiring the encrypt feature flag is that:
+
+- Having the filesystem auto-enable feature flags is problematic, as it
+  bypasses the usual sanity checks.  The specific issue which came up
+  recently is that in kernel versions where ext4 supports casefold but
+  not encrypt+casefold (v5.1 through v5.10), the kernel will happily add
+  the encrypt flag to a filesystem that has the casefold flag, making it
+  unmountable -- but only for subsequent mounts, not the initial one.
+  This confused the casefold support detection in xfstests, causing
+  generic/556 to fail rather than be skipped.
+
+- The xfstests-bld test runners (kvm-xfstests et al.) already use the
+  required mkfs flag, so they will not be affected by this change.  Only
+  users of test_dummy_encryption alone will be affected.  But, this
+  option has always been for testing only, so it should be fine to
+  require that the few users of this option update their test scripts.
+
+- f2fs already requires it (for its equivalent feature flag).
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+Reviewed-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+Link: https://lore.kernel.org/r/20220519204437.61645-1-ebiggers@kernel.org
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- mm/balloon_compaction.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ fs/ext4/ext4.h  |  6 ------
+ fs/ext4/super.c | 18 ++++++++++--------
+ 2 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/mm/balloon_compaction.c b/mm/balloon_compaction.c
-index 4b8eab4b3f45..3f75b876ad76 100644
---- a/mm/balloon_compaction.c
-+++ b/mm/balloon_compaction.c
-@@ -230,11 +230,10 @@ static void balloon_page_putback(struct page *page)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a0a9878578949..2d84030d7b7fc 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1435,12 +1435,6 @@ struct ext4_super_block {
  
+ #ifdef __KERNEL__
  
- /* move_to_new_page() counterpart for a ballooned page */
--static int balloon_page_migrate(struct address_space *mapping,
--		struct page *newpage, struct page *page,
--		enum migrate_mode mode)
-+static int balloon_migrate_folio(struct address_space *mapping,
-+		struct folio *dst, struct folio *src, enum migrate_mode mode)
- {
--	struct balloon_dev_info *balloon = balloon_page_device(page);
-+	struct balloon_dev_info *balloon = balloon_page_device(&src->page);
+-#ifdef CONFIG_FS_ENCRYPTION
+-#define DUMMY_ENCRYPTION_ENABLED(sbi) ((sbi)->s_dummy_enc_policy.policy != NULL)
+-#else
+-#define DUMMY_ENCRYPTION_ENABLED(sbi) (0)
+-#endif
+-
+ /* Number of quota types we support */
+ #define EXT4_MAXQUOTAS 3
  
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d12f11c6fbf25..de7b0897f3d4b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2058,6 +2058,12 @@ static int ext4_set_test_dummy_encryption(struct super_block *sb,
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int err;
+ 
++	if (!ext4_has_feature_encrypt(sb)) {
++		ext4_msg(sb, KERN_WARNING,
++			 "test_dummy_encryption requires encrypt feature");
++		return -1;
++	}
++
  	/*
- 	 * We can not easily support the no copy case here so ignore it as it
-@@ -244,14 +243,14 @@ static int balloon_page_migrate(struct address_space *mapping,
- 	if (mode == MIGRATE_SYNC_NO_COPY)
- 		return -EINVAL;
- 
--	VM_BUG_ON_PAGE(!PageLocked(page), page);
--	VM_BUG_ON_PAGE(!PageLocked(newpage), newpage);
-+	VM_BUG_ON_FOLIO(!folio_test_locked(src), src);
-+	VM_BUG_ON_FOLIO(!folio_test_locked(dst), dst);
- 
--	return balloon->migratepage(balloon, newpage, page, mode);
-+	return balloon->migratepage(balloon, &dst->page, &src->page, mode);
+ 	 * This mount option is just for testing, and it's not worthwhile to
+ 	 * implement the extra complexity (e.g. RCU protection) that would be
+@@ -2085,11 +2091,13 @@ static int ext4_set_test_dummy_encryption(struct super_block *sb,
+ 		return -1;
+ 	}
+ 	ext4_msg(sb, KERN_WARNING, "Test dummy encryption mode enabled");
++	return 1;
+ #else
+ 	ext4_msg(sb, KERN_WARNING,
+-		 "Test dummy encryption mount option ignored");
++		 "test_dummy_encryption option not supported");
++	return -1;
++
+ #endif
+-	return 1;
  }
  
- const struct address_space_operations balloon_aops = {
--	.migratepage = balloon_page_migrate,
-+	.migrate_folio = balloon_migrate_folio,
- 	.isolate_page = balloon_page_isolate,
- 	.putback_page = balloon_page_putback,
- };
+ struct ext4_parsed_options {
+@@ -4783,12 +4791,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount_wq;
+ 	}
+ 
+-	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !sb_rdonly(sb) &&
+-	    !ext4_has_feature_encrypt(sb)) {
+-		ext4_set_feature_encrypt(sb);
+-		ext4_commit_super(sb);
+-	}
+-
+ 	/*
+ 	 * Get the # of file system overhead blocks from the
+ 	 * superblock if present.
+
+base-commit: 207ca688162d4d77129981a8b4352114b97a52b5
 -- 
-2.35.1
+2.36.1
 
