@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56946C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 20:47:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 815C2CCA473
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 20:47:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234416AbiFFUr3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jun 2022 16:47:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46748 "EHLO
+        id S234441AbiFFUrj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jun 2022 16:47:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46420 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234195AbiFFUrQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 16:47:16 -0400
+        with ESMTP id S234317AbiFFUrV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 16:47:21 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBC7AAFB3B;
-        Mon,  6 Jun 2022 13:40:59 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F36313CA13;
+        Mon,  6 Jun 2022 13:41:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=jShwzeL+5O6p6+KB8AXJd8QTjTM3rLlLO0YNnyhkzoU=; b=j8WB6rbesWftHu8QIJhuNjLLRv
-        8UGF1DKSTdZLPDZ0Kov24duPgp8KMpi6m8VEsqm5e1sZdIO0hAb54JNjAbS00XQgXdsCx8+PvicwO
-        rYdGhK7Gy6I6AX03/exLoIxL+gMZQDduaqInpnkGl13x/6LHcmOMXo+u8SO/crNY4L5fIgFOEe3TY
-        clMZRMy11m0K44+Yi9a6EjLXZgw7NLEoTTdV/oEJbaeKVMorPM13Ba1mk7M/T/X6/bkJL+qWpRRnS
-        1wANzqWwYhqp/CK739JNy4OmGeFkTAhy3sEt9IXLj+oIA+NjHnNm9hNBqc/doCVMUizMtdR2GOaOc
-        gaaqEAJA==;
+        bh=2zqEa9EzjfvcCB/R36xszZ4AMZtdcV59XiMVDc9jTyM=; b=U+BqaoSQWdsShi/y8CPTtTig63
+        HCMa7+gIZx7Yyb6cusLNuXKWsG06WN8xz/erKBPWuYizRThCX0iiljqhNcZd2weflUVCtiqE770D/
+        Vb15aA5PxUQlAGcLo3M0XEH41Q/fMFbQWUysBrY6PEG35YJKOueNndbkU/J8qu3X5pGzhsOP7ol4W
+        F3RaDu2I/zP67juMsLCzxygZBIwXjKCl86d9jfX6rvdn+U142VP0hON97WCqvsixaBkAVbsODa0Rm
+        STrW9jc4kjH9X53B35Fdz629pIYD4+nkkWKOdWUlig7kbghCKRcjBc7pf8npYNE/LtOnrV8sVT0Vs
+        SEGqa5Hg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nyJWy-00B19u-3f; Mon, 06 Jun 2022 20:40:56 +0000
+        id 1nyJWx-00B19i-Jy; Mon, 06 Jun 2022 20:40:55 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -37,9 +37,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
         linux-mtd@lists.infradead.org,
         virtualization@lists.linux-foundation.org
-Subject: [PATCH 19/20] fs: Remove aops->migratepage()
-Date:   Mon,  6 Jun 2022 21:40:49 +0100
-Message-Id: <20220606204050.2625949-20-willy@infradead.org>
+Subject: [PATCH 13/20] aio: Convert to migrate_folio
+Date:   Mon,  6 Jun 2022 21:40:43 +0100
+Message-Id: <20220606204050.2625949-14-willy@infradead.org>
 X-Mailer: git-send-email 2.31.1
 In-Reply-To: <20220606204050.2625949-1-willy@infradead.org>
 References: <20220606204050.2625949-1-willy@infradead.org>
@@ -49,79 +49,97 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-With all users converted to migrate_folio(), remove this operation.
+Use a folio throughout this function.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- include/linux/fs.h |  2 --
- mm/compaction.c    |  5 ++---
- mm/migrate.c       | 10 +---------
- 3 files changed, 3 insertions(+), 14 deletions(-)
+ fs/aio.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5737c92ed286..95347cc035ae 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -367,8 +367,6 @@ struct address_space_operations {
- 	 */
- 	int (*migrate_folio)(struct address_space *, struct folio *dst,
- 			struct folio *src, enum migrate_mode);
--	int (*migratepage) (struct address_space *,
--			struct page *, struct page *, enum migrate_mode);
- 	bool (*isolate_page)(struct page *, isolate_mode_t);
- 	void (*putback_page)(struct page *);
- 	int (*launder_folio)(struct folio *);
-diff --git a/mm/compaction.c b/mm/compaction.c
-index db34b459e5d9..f0dc62159c0e 100644
---- a/mm/compaction.c
-+++ b/mm/compaction.c
-@@ -1034,7 +1034,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+diff --git a/fs/aio.c b/fs/aio.c
+index 3c249b938632..a1911e86859c 100644
+--- a/fs/aio.c
++++ b/fs/aio.c
+@@ -400,8 +400,8 @@ static const struct file_operations aio_ring_fops = {
+ };
  
- 			/*
- 			 * Only pages without mappings or that have a
--			 * ->migratepage callback are possible to migrate
-+			 * ->migrate_folio callback are possible to migrate
- 			 * without blocking. However, we can be racing with
- 			 * truncation so it's necessary to lock the page
- 			 * to stabilise the mapping as truncation holds
-@@ -1046,8 +1046,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
- 
- 			mapping = page_mapping(page);
- 			migrate_dirty = !mapping ||
--					mapping->a_ops->migrate_folio ||
--					mapping->a_ops->migratepage;
-+					mapping->a_ops->migrate_folio;
- 			unlock_page(page);
- 			if (!migrate_dirty)
- 				goto isolate_fail_put;
-diff --git a/mm/migrate.c b/mm/migrate.c
-index a8edd226c72d..c5560430dce4 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -911,9 +911,6 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
- 			 */
- 			rc = mapping->a_ops->migrate_folio(mapping, dst, src,
- 								mode);
--		else if (mapping->a_ops->migratepage)
--			rc = mapping->a_ops->migratepage(mapping, &dst->page,
--							&src->page, mode);
- 		else
- 			rc = fallback_migrate_folio(mapping, dst, src, mode);
- 	} else {
-@@ -928,12 +925,7 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
- 			goto out;
- 		}
- 
--		if (mapping->a_ops->migrate_folio)
--			rc = mapping->a_ops->migrate_folio(mapping, dst, src,
--								mode);
--		else
--			rc = mapping->a_ops->migratepage(mapping, &dst->page,
--							&src->page, mode);
-+		rc = mapping->a_ops->migrate_folio(mapping, dst, src, mode);
- 		WARN_ON_ONCE(rc == MIGRATEPAGE_SUCCESS &&
- 				!folio_test_isolated(src));
+ #if IS_ENABLED(CONFIG_MIGRATION)
+-static int aio_migratepage(struct address_space *mapping, struct page *new,
+-			struct page *old, enum migrate_mode mode)
++static int aio_migrate_folio(struct address_space *mapping, struct folio *dst,
++			struct folio *src, enum migrate_mode mode)
+ {
+ 	struct kioctx *ctx;
+ 	unsigned long flags;
+@@ -435,10 +435,10 @@ static int aio_migratepage(struct address_space *mapping, struct page *new,
+ 		goto out;
  	}
+ 
+-	idx = old->index;
++	idx = src->index;
+ 	if (idx < (pgoff_t)ctx->nr_pages) {
+-		/* Make sure the old page hasn't already been changed */
+-		if (ctx->ring_pages[idx] != old)
++		/* Make sure the old folio hasn't already been changed */
++		if (ctx->ring_pages[idx] != &src->page)
+ 			rc = -EAGAIN;
+ 	} else
+ 		rc = -EINVAL;
+@@ -447,27 +447,27 @@ static int aio_migratepage(struct address_space *mapping, struct page *new,
+ 		goto out_unlock;
+ 
+ 	/* Writeback must be complete */
+-	BUG_ON(PageWriteback(old));
+-	get_page(new);
++	BUG_ON(folio_test_writeback(src));
++	folio_get(dst);
+ 
+-	rc = migrate_page_move_mapping(mapping, new, old, 1);
++	rc = folio_migrate_mapping(mapping, dst, src, 1);
+ 	if (rc != MIGRATEPAGE_SUCCESS) {
+-		put_page(new);
++		folio_put(dst);
+ 		goto out_unlock;
+ 	}
+ 
+ 	/* Take completion_lock to prevent other writes to the ring buffer
+-	 * while the old page is copied to the new.  This prevents new
++	 * while the old folio is copied to the new.  This prevents new
+ 	 * events from being lost.
+ 	 */
+ 	spin_lock_irqsave(&ctx->completion_lock, flags);
+-	migrate_page_copy(new, old);
+-	BUG_ON(ctx->ring_pages[idx] != old);
+-	ctx->ring_pages[idx] = new;
++	folio_migrate_copy(dst, src);
++	BUG_ON(ctx->ring_pages[idx] != &src->page);
++	ctx->ring_pages[idx] = &dst->page;
+ 	spin_unlock_irqrestore(&ctx->completion_lock, flags);
+ 
+-	/* The old page is no longer accessible. */
+-	put_page(old);
++	/* The old folio is no longer accessible. */
++	folio_put(src);
+ 
+ out_unlock:
+ 	mutex_unlock(&ctx->ring_lock);
+@@ -475,13 +475,13 @@ static int aio_migratepage(struct address_space *mapping, struct page *new,
+ 	spin_unlock(&mapping->private_lock);
+ 	return rc;
+ }
++#else
++#define aio_migrate_folio NULL
+ #endif
+ 
+ static const struct address_space_operations aio_ctx_aops = {
+ 	.dirty_folio	= noop_dirty_folio,
+-#if IS_ENABLED(CONFIG_MIGRATION)
+-	.migratepage	= aio_migratepage,
+-#endif
++	.migrate_folio	= aio_migrate_folio,
+ };
+ 
+ static int aio_setup_ring(struct kioctx *ctx, unsigned int nr_events)
 -- 
 2.35.1
 
