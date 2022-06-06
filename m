@@ -2,117 +2,120 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CEC7FC43334
-	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 15:53:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43914CCA482
+	for <linux-ext4@archiver.kernel.org>; Mon,  6 Jun 2022 20:47:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241319AbiFFPxR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 6 Jun 2022 11:53:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40578 "EHLO
+        id S234513AbiFFUrY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 6 Jun 2022 16:47:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50030 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241315AbiFFPxQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 11:53:16 -0400
-Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C9FF227352
-        for <linux-ext4@vger.kernel.org>; Mon,  6 Jun 2022 08:53:15 -0700 (PDT)
-Received: by mail-pg1-x52d.google.com with SMTP id e66so13208593pgc.8
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Jun 2022 08:53:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance-com.20210112.gappssmtp.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=Hc9viEeZffCjBHu/ML1+/iUUNsF5FvYmtO3dN3G4Vlw=;
-        b=ewoiGIcHnngJ8XnuyY2jIwN2ChspJyDD06xIEttXPId2yo5q8lZvjdkMTP+UBe/weY
-         2llWNBnVcx8AlKWfV8HzQcmwXUEEikJ6isuAKerjkF7h7HoyqdjSRO8xEM4H0svFPCf1
-         YYm/fQbB+1omnCmLIouQIUX9Ms1HRCmablN5JxKM2E0SJsjvbAVKaeap3hqgS77EgLyC
-         RbMeDFbVuSMNqfLaNukLhoRg+UMftSUB7u6b7/k+cvy2G1g1/8y1t5FayjUYqgdxe+/1
-         FO2YAHgEgvE9y56lNV9ndYqXYVAT5MDoRJjtwsVEm28OmUKzAGFEjQ56U+S7KyUeuOj5
-         Adlw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=Hc9viEeZffCjBHu/ML1+/iUUNsF5FvYmtO3dN3G4Vlw=;
-        b=tLGgSFB85KXRgS3A+PVAu71odv2noFjX3xaeCtNaZdNck+QNtXYIaBeDBER0epXq07
-         m3zb4Tur6LSqb/BMM9oss3skl0qKdYOnQ1K7KNGTpRTqSXjnqhTVf34pTZozR9oNRs2N
-         p/W3BNlqS4nFdk2EjwjBGv6f1TrTWSUs0tYWZjnV8gj0+upinCLOmMT4M6d3Er2+aklV
-         RonxX47LGdHNXyv8XGEmVAd0YzmANpwfb6k0cBYN4K46ZtXTpDfPgg4r+JDFRwQS8baU
-         Gs+kF34RjKlgG1FkdNjDEV1zZl4WUYonb896KujlfH84jYRsTdSvS0EPaSEDiCkYV5Z4
-         TZTg==
-X-Gm-Message-State: AOAM531NJD6SLxUK0B8FkGivmVbgDaIKKI19BwOPU4kpwg3eWTR0AeXe
-        nOYTBVgP9rOXclrEw4Qutq2YDw==
-X-Google-Smtp-Source: ABdhPJx0gfs2uBVwDAH9+sv20TF8wBI/O1vbv568hmncRBiTUr/Kng5zHTKiMHbRtDfNJDlNJgm/yA==
-X-Received: by 2002:a05:6a00:98b:b0:51b:d730:c58 with SMTP id u11-20020a056a00098b00b0051bd7300c58mr21079020pfg.23.1654530794513;
-        Mon, 06 Jun 2022 08:53:14 -0700 (PDT)
-Received: from C02GD5ZHMD6R.bytedance.net ([139.177.225.255])
-        by smtp.gmail.com with ESMTPSA id 65-20020a620444000000b0050dc76281dcsm10962951pfe.182.2022.06.06.08.53.12
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 06 Jun 2022 08:53:14 -0700 (PDT)
-From:   Jinke Han <hanjinke.666@bytedance.com>
-X-Google-Original-From: Jinke Han <hnajinke.666@bytedance>
-To:     tytso@mit.edu, adilger.kernel@dilger.ca
-Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        lei.rao@intel.com, hanjinke <hanjinke.666@bytedance.com>
-Subject: [PATCH] ext4: reuse order and buddy in mb_mark_used when buddy split
-Date:   Mon,  6 Jun 2022 23:53:05 +0800
-Message-Id: <20220606155305.74146-1-hanjinke.666@bytedance.com>
-X-Mailer: git-send-email 2.32.0 (Apple Git-132)
+        with ESMTP id S234482AbiFFUqs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jun 2022 16:46:48 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 20CD513B8F2;
+        Mon,  6 Jun 2022 13:40:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=dRkMHaR981UE2djNCVPW4MUdY2rPYJAa6UnQ1arpxn4=; b=VhRq5mA6U/Le0FhZhCp9BX9vX0
+        eEJWByASrVCSrm9WetxXqV0UXZBjF0SuYe4mFnGXMFsUgOilHz8p+squ/1rM4gM36CwhSe5BBEQp6
+        i1dQyrlxzSUP+hK9Ax4brjnRi7zxuvpEv+ymkWeCRkQK8HkgmO0y7Vc+lYVUA7Hlj90Pkf8iPWxqv
+        CYXqz3bl8ul96I36GIcF4ldupbg1VWOjM55w+RuDYjPUC/TOKQiKqMH+XKBjwoHp0p03NK+LpBfPw
+        iNV++FmUm87jwl9SX46KBPV+Ri5X6qeVBMjICnW8mirhgRNBkbRKdvNkLwdTh42fXKSQ5I7volu41
+        cllWb9Yg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1nyJWw-00B19O-PM; Mon, 06 Jun 2022 20:40:54 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-aio@kvack.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-mtd@lists.infradead.org,
+        virtualization@lists.linux-foundation.org
+Subject: [PATCH 03/20] mm/migrate: Convert writeout() to take a folio
+Date:   Mon,  6 Jun 2022 21:40:33 +0100
+Message-Id: <20220606204050.2625949-4-willy@infradead.org>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220606204050.2625949-1-willy@infradead.org>
+References: <20220606204050.2625949-1-willy@infradead.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: hanjinke <hanjinke.666@bytedance.com>
+Use a folio throughout this function.
 
-After each buddy split, mb_mark_used will search the proper order
-for the block which may consume some loop in mb_find_order_for_block.
-In fact, we can reuse the oder and buddy generated by the buddy split.
-
-Reviewed by: lei.rao@intel.com
-Signed-off-by: hanjinke <hanjinke.666@bytedance.com>
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/ext4/mballoc.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ mm/migrate.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 9f12f29bc346..c7ac6b269dd8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1933,6 +1933,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 	unsigned ret = 0;
- 	int len0 = len;
- 	void *buddy;
-+	bool split = false;
+diff --git a/mm/migrate.c b/mm/migrate.c
+index d772ce63d7e2..f19246c12fe9 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -762,11 +762,10 @@ int buffer_migrate_page_norefs(struct address_space *mapping,
+ #endif
  
- 	BUG_ON(start + len > (e4b->bd_sb->s_blocksize << 3));
- 	BUG_ON(e4b->bd_group != ex->fe_group);
-@@ -1957,12 +1958,16 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
+ /*
+- * Writeback a page to clean the dirty state
++ * Writeback a folio to clean the dirty state
+  */
+-static int writeout(struct address_space *mapping, struct page *page)
++static int writeout(struct address_space *mapping, struct folio *folio)
+ {
+-	struct folio *folio = page_folio(page);
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_NONE,
+ 		.nr_to_write = 1,
+@@ -780,25 +779,25 @@ static int writeout(struct address_space *mapping, struct page *page)
+ 		/* No write method for the address space */
+ 		return -EINVAL;
  
- 	/* let's maintain buddy itself */
- 	while (len) {
--		ord = mb_find_order_for_block(e4b, start);
-+		if (!split)
-+			ord = mb_find_order_for_block(e4b, start);
+-	if (!clear_page_dirty_for_io(page))
++	if (!folio_clear_dirty_for_io(folio))
+ 		/* Someone else already triggered a write */
+ 		return -EAGAIN;
  
- 		if (((start >> ord) << ord) == start && len >= (1 << ord)) {
- 			/* the whole chunk may be allocated at once! */
- 			mlen = 1 << ord;
--			buddy = mb_find_buddy(e4b, ord, &max);
-+			if (!split)
-+				buddy = mb_find_buddy(e4b, ord, &max);
-+			else
-+				split = false;
- 			BUG_ON((start >> ord) >= max);
- 			mb_set_bit(start >> ord, buddy);
- 			e4b->bd_info->bb_counters[ord]--;
-@@ -1989,6 +1994,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 		mb_clear_bit(cur + 1, buddy);
- 		e4b->bd_info->bb_counters[ord]++;
- 		e4b->bd_info->bb_counters[ord]++;
-+		split = true;
+ 	/*
+-	 * A dirty page may imply that the underlying filesystem has
+-	 * the page on some queue. So the page must be clean for
+-	 * migration. Writeout may mean we loose the lock and the
+-	 * page state is no longer what we checked for earlier.
++	 * A dirty folio may imply that the underlying filesystem has
++	 * the folio on some queue. So the folio must be clean for
++	 * migration. Writeout may mean we lose the lock and the
++	 * folio state is no longer what we checked for earlier.
+ 	 * At this point we know that the migration attempt cannot
+ 	 * be successful.
+ 	 */
+ 	remove_migration_ptes(folio, folio, false);
+ 
+-	rc = mapping->a_ops->writepage(page, &wbc);
++	rc = mapping->a_ops->writepage(&folio->page, &wbc);
+ 
+ 	if (rc != AOP_WRITEPAGE_ACTIVATE)
+ 		/* unlocked. Relock */
+-		lock_page(page);
++		folio_lock(folio);
+ 
+ 	return (rc < 0) ? -EIO : -EAGAIN;
+ }
+@@ -818,7 +817,7 @@ static int fallback_migrate_folio(struct address_space *mapping,
+ 		default:
+ 			return -EBUSY;
+ 		}
+-		return writeout(mapping, &src->page);
++		return writeout(mapping, src);
  	}
- 	mb_set_largest_free_order(e4b->bd_sb, e4b->bd_info);
  
+ 	/*
 -- 
-2.20.1
+2.35.1
 
