@@ -2,61 +2,57 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A250CCA482
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 09:05:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E311C433EF
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 09:23:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233939AbiFHJFV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Jun 2022 05:05:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60626 "EHLO
+        id S234770AbiFHJXK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Jun 2022 05:23:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47984 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233299AbiFHJCj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 05:02:39 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4646712C960;
-        Wed,  8 Jun 2022 01:22:06 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=Szf0A6CRm0TBzxMXL1+4gkRAFMANtEnQnq4pU3N3BDY=; b=bYF6iw7wjd0y+Z+F/STcPCdMi7
-        QSbSyR1GVcGFHB6mUBGkUCvisiY89ZNNX0/Xw7TDYYqDhHEMDOkqpQ78YG7sV4Im0du6F72Z2caY2
-        H1v0O8XuuqPMcgOMYc4Efb1MkS92YKtPUeCLJbq9RGFmaygkN6erKP+/0UYxlGLIp8l92hgq4KJ31
-        kF5IB4FI7Rq0HgNYKMpkwaCRGuxqr9lQsYWHvQqZ+Vswy62VOxb0dtM/TNE4n9Rus3hm4P1v786GN
-        Bu2U9oHHaP3qDEJtlCQFZ55nYDw8n8UvwKtVqn7mGlBP2GXKaLdhKDC9jgMMNKOZ33JSqYzDxDfna
-        Md/gh56g==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nyqnR-00Bqhf-Qd; Wed, 08 Jun 2022 08:12:09 +0000
-Date:   Wed, 8 Jun 2022 01:12:09 -0700
-From:   Christoph Hellwig <hch@infradead.org>
-To:     "Matthew Wilcox (Oracle)" <willy@infradead.org>
-Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-aio@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, linux-xfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        ocfs2-devel@oss.oracle.com, linux-mtd@lists.infradead.org,
-        virtualization@lists.linux-foundation.org
-Subject: Re: [PATCH 04/20] mm/migrate: Convert buffer_migrate_page() to
- buffer_migrate_folio()
-Message-ID: <YqBZ2fWTyU9cbyR+@infradead.org>
-References: <20220606204050.2625949-1-willy@infradead.org>
- <20220606204050.2625949-5-willy@infradead.org>
+        with ESMTP id S234769AbiFHJWb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 05:22:31 -0400
+X-Greylist: delayed 2215 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 08 Jun 2022 01:43:18 PDT
+Received: from mail.puregrowthonline.pl (mail.puregrowthonline.pl [51.38.124.91])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 561A01116F3
+        for <linux-ext4@vger.kernel.org>; Wed,  8 Jun 2022 01:43:18 -0700 (PDT)
+Received: by mail.puregrowthonline.pl (Postfix, from userid 1002)
+        id AD18BA2B4C; Wed,  8 Jun 2022 08:05:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=puregrowthonline.pl;
+        s=mail; t=1654675561;
+        bh=CSKXLMgcdpWkXuTgJn5+jsCVobtU9JEF4vCnS5z6McM=;
+        h=Date:From:To:Subject:From;
+        b=OkHfGmVDUcImdmSz+LGNTMH+sWIy+3KP3MTFecY50BLbnTqVsieEYiuJO+VFIxcWE
+         uXAgyRzGTgP4szWs5CeumYxT9nj9fc+yEPzTZKOx9d+u1i8NOhe6cLV4pVEqvlPkv7
+         /1az/RvTSIUp8OSdmB1Eh2Z0DGPq9iOfQzm9twZi2rQ9cRaSLp+qXlNOoyG7G3nq9N
+         VNLlPmkTgB8XK6XfWgfvEmjKY3DQigh3zgBN4rHZ2kRJ3FIJhgjEFXfTEKpGNvdeoD
+         M7NcK/xWf2uX9k0ak3BPQEK8+K4WlTZJPZnUolt5z8Y/S5Lwfnn1aShxQfQ27wDAF9
+         ExJfbaPyyygvQ==
+Received: by mail.puregrowthonline.pl for <linux-ext4@vger.kernel.org>; Wed,  8 Jun 2022 08:05:19 GMT
+Message-ID: <20220608064500-0.1.41.cy6w.0.z1rrloht2k@puregrowthonline.pl>
+Date:   Wed,  8 Jun 2022 08:05:19 GMT
+From:   "Wiktor Nurek" <wiktor.nurek@puregrowthonline.pl>
+To:     <linux-ext4@vger.kernel.org>
+Subject: =?UTF-8?Q?Nap=C5=82yw_Klient=C3=B3w_ze_strony?=
+X-Mailer: mail.puregrowthonline.pl
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220606204050.2625949-5-willy@infradead.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Jun 06, 2022 at 09:40:34PM +0100, Matthew Wilcox (Oracle) wrote:
-> Use a folio throughout __buffer_migrate_folio(), add kernel-doc for
-> buffer_migrate_folio() and buffer_migrate_folio_norefs(), move their
-> declarations to buffer.h and switch all filesystems that have wired
-> them up.
+Dzie=C5=84 dobry,
 
-Looks good:
+chcia=C5=82bym poinformowa=C4=87 Pa=C5=84stwa o mo=C5=BCliwo=C5=9Bci pozy=
+skania nowych zlece=C5=84 ze strony www.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Widzimy zainteresowanie potencjalnych Klient=C3=B3w Pa=C5=84stwa firm=C4=85=
+, dlatego ch=C4=99tnie pomo=C5=BCemy Pa=C5=84stwu dotrze=C4=87 z ofert=C4=
+=85 do wi=C4=99kszego grona odbiorc=C3=B3w poprzez efektywne metody pozyc=
+jonowania strony w Google.
+
+Czy m=C3=B3g=C5=82bym liczy=C4=87 na kontakt zwrotny?
+
+
+Pozdrawiam serdecznie,
+Wiktor Nurek
