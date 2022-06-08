@@ -2,30 +2,30 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D60DAC43334
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 15:12:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 87796C43334
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 15:12:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243643AbiFHPMr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Jun 2022 11:12:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52910 "EHLO
+        id S243805AbiFHPMt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Jun 2022 11:12:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55516 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242484AbiFHPLx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 11:11:53 -0400
+        with ESMTP id S242454AbiFHPLq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 11:11:46 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9EB0C4A0948;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 973184A0032;
         Wed,  8 Jun 2022 08:03:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=3fQqNRsX2k9U5g+9eAzNLqy1rB1a5hC9OuR/TIVAv1c=; b=BzgCA3dtIfrrNOFOqZw+rQudkD
-        nQHTv0fThp0cTrpRot0mmwRsAJIVnWEYdCMHR9+BI2vGiioilWMA0f5/jrc3m/9O4FeZRtFwrPPEc
-        CRfaG1TVqvJZrjE8U7i8Qn0EyWZ+Huymk4p+kP5MwP0AvEE0aparXlmBO+8OO8YLNJ/O8TNmYzM1V
-        BXTwncOLifnP30UapOFmT9Bg5IFrHfXxgFF0f3vKoRKkVZZE0LLbqRMWs/kl31OrOiRyD/mlQMkWG
-        nU/8onyZGsVXhJq4qZ+wDdd8mdRf0/qTyqE2iJ8XwE6Cg7sqF/OMB+hYJd6qhVzvrxdp3ZngOZ9qD
-        bKJsjzIg==;
+        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+        Content-Description:In-Reply-To:References;
+        bh=C8q0R+e/rBy0+WV0269yeWJ3JYLa6mvxcMU049tzAMQ=; b=CS/ArOOFgUazhgBuVIhXoz92Iz
+        tLP1+UzjBKtIQ7Dy/5NVLgAnvWWvYfAukTChPBXBJHel7m/rRcIG1jTO3m2SVgS4dQ2RCnrpnI/2B
+        9iKrigIdgG1UysTmv8VlwqX324N8NrztRT9jaBzDbk+mLDdYbNW5pr4mZOlj2VneHAgPoio17IYwj
+        m/4vzv2MBPDQc303p8MvgJU+5ViW9y/S2mis6sPjvcMV3XgTzYLKOwdVsPPuf7dw1p/zkAkFsZwEO
+        lx/oyhsuVa0FzBkMKs3shdhPr6iBtAans8vQe+2EUQiQ7GyfqEuQkKrwSdQNjedKZMBZwIoJM8JrF
+        UgeRmSEA==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1nyxCu-00CjFO-89; Wed, 08 Jun 2022 15:02:52 +0000
+        id 1nyxCt-00CjFE-KF; Wed, 08 Jun 2022 15:02:51 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -36,88 +36,101 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
         linux-mtd@lists.infradead.org,
-        virtualization@lists.linux-foundation.org,
-        Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v2 05/19] mm/migrate: Convert writeout() to take a folio
-Date:   Wed,  8 Jun 2022 16:02:35 +0100
-Message-Id: <20220608150249.3033815-6-willy@infradead.org>
+        virtualization@lists.linux-foundation.org
+Subject: [PATCH v2 00/19] Convert aops->migratepage to aops->migrate_folio
+Date:   Wed,  8 Jun 2022 16:02:30 +0100
+Message-Id: <20220608150249.3033815-1-willy@infradead.org>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220608150249.3033815-1-willy@infradead.org>
-References: <20220608150249.3033815-1-willy@infradead.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Use a folio throughout this function.
+We're getting to the last aops that take a struct page.  The only
+remaining ones are ->writepage, ->write_begin, ->write_end and
+->error_remove_page.
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- mm/migrate.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+Changes from v1:
+ - Remove ->isolate_page from secretmem
+ - Split the movable_operations from address_space_operations
+ - Drop the conversions of balloon, zsmalloc and z3fold
+ - Fix the build errors with hugetlbfs
+ - Fix the kerneldoc errors
+ - Fix the ;; typo
 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index 1878de817a01..6b6fec26f4d0 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -761,11 +761,10 @@ int buffer_migrate_page_norefs(struct address_space *mapping,
- #endif
- 
- /*
-- * Writeback a page to clean the dirty state
-+ * Writeback a folio to clean the dirty state
-  */
--static int writeout(struct address_space *mapping, struct page *page)
-+static int writeout(struct address_space *mapping, struct folio *folio)
- {
--	struct folio *folio = page_folio(page);
- 	struct writeback_control wbc = {
- 		.sync_mode = WB_SYNC_NONE,
- 		.nr_to_write = 1,
-@@ -779,25 +778,25 @@ static int writeout(struct address_space *mapping, struct page *page)
- 		/* No write method for the address space */
- 		return -EINVAL;
- 
--	if (!clear_page_dirty_for_io(page))
-+	if (!folio_clear_dirty_for_io(folio))
- 		/* Someone else already triggered a write */
- 		return -EAGAIN;
- 
- 	/*
--	 * A dirty page may imply that the underlying filesystem has
--	 * the page on some queue. So the page must be clean for
--	 * migration. Writeout may mean we loose the lock and the
--	 * page state is no longer what we checked for earlier.
-+	 * A dirty folio may imply that the underlying filesystem has
-+	 * the folio on some queue. So the folio must be clean for
-+	 * migration. Writeout may mean we lose the lock and the
-+	 * folio state is no longer what we checked for earlier.
- 	 * At this point we know that the migration attempt cannot
- 	 * be successful.
- 	 */
- 	remove_migration_ptes(folio, folio, false);
- 
--	rc = mapping->a_ops->writepage(page, &wbc);
-+	rc = mapping->a_ops->writepage(&folio->page, &wbc);
- 
- 	if (rc != AOP_WRITEPAGE_ACTIVATE)
- 		/* unlocked. Relock */
--		lock_page(page);
-+		folio_lock(folio);
- 
- 	return (rc < 0) ? -EIO : -EAGAIN;
- }
-@@ -817,7 +816,7 @@ static int fallback_migrate_folio(struct address_space *mapping,
- 		default:
- 			return -EBUSY;
- 		}
--		return writeout(mapping, &src->page);
-+		return writeout(mapping, src);
- 	}
- 
- 	/*
+Matthew Wilcox (Oracle) (19):
+  secretmem: Remove isolate_page
+  mm: Convert all PageMovable users to movable_operations
+  fs: Add aops->migrate_folio
+  mm/migrate: Convert fallback_migrate_page() to
+    fallback_migrate_folio()
+  mm/migrate: Convert writeout() to take a folio
+  mm/migrate: Convert buffer_migrate_page() to buffer_migrate_folio()
+  mm/migrate: Convert expected_page_refs() to folio_expected_refs()
+  btrfs: Convert btree_migratepage to migrate_folio
+  nfs: Convert to migrate_folio
+  mm/migrate: Convert migrate_page() to migrate_folio()
+  mm/migrate: Add filemap_migrate_folio()
+  btrfs: Convert btrfs_migratepage to migrate_folio
+  ubifs: Convert to filemap_migrate_folio()
+  f2fs: Convert to filemap_migrate_folio()
+  aio: Convert to migrate_folio
+  hugetlb: Convert to migrate_folio
+  secretmem: Convert to migrate_folio
+  fs: Remove aops->migratepage()
+  mm/folio-compat: Remove migration compatibility functions
+
+ Documentation/filesystems/locking.rst       |   5 +-
+ Documentation/filesystems/vfs.rst           |  13 +-
+ Documentation/vm/page_migration.rst         |  33 +--
+ arch/powerpc/platforms/pseries/cmm.c        |  60 +----
+ block/fops.c                                |   2 +-
+ drivers/gpu/drm/i915/gem/i915_gem_userptr.c |   4 +-
+ drivers/misc/vmw_balloon.c                  |  61 +----
+ drivers/virtio/virtio_balloon.c             |  47 +---
+ fs/aio.c                                    |  36 +--
+ fs/btrfs/disk-io.c                          |  22 +-
+ fs/btrfs/inode.c                            |  26 +--
+ fs/ext2/inode.c                             |   4 +-
+ fs/ext4/inode.c                             |   4 +-
+ fs/f2fs/checkpoint.c                        |   4 +-
+ fs/f2fs/data.c                              |  40 +---
+ fs/f2fs/f2fs.h                              |   4 -
+ fs/f2fs/node.c                              |   4 +-
+ fs/gfs2/aops.c                              |   2 +-
+ fs/hugetlbfs/inode.c                        |  23 +-
+ fs/iomap/buffered-io.c                      |  25 --
+ fs/nfs/file.c                               |   4 +-
+ fs/nfs/internal.h                           |   6 +-
+ fs/nfs/write.c                              |  16 +-
+ fs/ntfs/aops.c                              |   6 +-
+ fs/ocfs2/aops.c                             |   2 +-
+ fs/ubifs/file.c                             |  29 +--
+ fs/xfs/xfs_aops.c                           |   2 +-
+ fs/zonefs/super.c                           |   2 +-
+ include/linux/balloon_compaction.h          |   6 +-
+ include/linux/buffer_head.h                 |  10 +
+ include/linux/fs.h                          |  20 +-
+ include/linux/iomap.h                       |   6 -
+ include/linux/migrate.h                     |  48 ++--
+ include/linux/page-flags.h                  |   2 +-
+ include/linux/pagemap.h                     |   6 +
+ include/uapi/linux/magic.h                  |   4 -
+ mm/balloon_compaction.c                     |  10 +-
+ mm/compaction.c                             |  34 ++-
+ mm/folio-compat.c                           |  22 --
+ mm/ksm.c                                    |   2 +-
+ mm/migrate.c                                | 238 ++++++++++++--------
+ mm/migrate_device.c                         |   3 +-
+ mm/secretmem.c                              |  13 +-
+ mm/shmem.c                                  |   2 +-
+ mm/swap_state.c                             |   2 +-
+ mm/util.c                                   |   4 +-
+ mm/z3fold.c                                 |  82 +------
+ mm/zsmalloc.c                               | 102 ++-------
+ 48 files changed, 367 insertions(+), 735 deletions(-)
+
 -- 
 2.35.1
 
