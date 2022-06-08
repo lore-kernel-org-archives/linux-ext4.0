@@ -2,99 +2,114 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D726CCA485
-	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 15:11:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BBC9ACCA47B
+	for <linux-ext4@archiver.kernel.org>; Wed,  8 Jun 2022 15:12:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243228AbiFHPLH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 8 Jun 2022 11:11:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56376 "EHLO
+        id S243638AbiFHPMC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 8 Jun 2022 11:12:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52824 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243265AbiFHPKr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 11:10:47 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FC8948E55D
-        for <linux-ext4@vger.kernel.org>; Wed,  8 Jun 2022 08:02:25 -0700 (PDT)
-Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 59EBA1F915;
-        Wed,  8 Jun 2022 15:02:24 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1654700544; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=vZw2vcn0vJw8g7bjT9eagIVv0xnfGM2x1rhYxp19zxY=;
-        b=pBk5iqbwz/WAO/y9hf5SNZXTu5Qdp2MZV9OCfch+xGLy7DJ+SAyYTAWchmAWFMoKrDmiOc
-        QyjVXdRPrn1iyiXftGSKYJeErHoBInzmX2zbaYbaPvBj1jgXfiFV0T0ZFNfnISp3ksgXsx
-        Rr7kToD+BEzOHAzqheX4uKc9hKQ6Lg4=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1654700544;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=vZw2vcn0vJw8g7bjT9eagIVv0xnfGM2x1rhYxp19zxY=;
-        b=auX5T0UvD5fGIu7XtqxXMn8Er/a1g4+NtBalHgXY5sf7u+rJ0xnFfj++OLMCUs732Vbo0z
-        wqOYs5uOv10PlADw==
-Received: from quack3.suse.cz (unknown [10.163.28.18])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 4AA852C141;
-        Wed,  8 Jun 2022 15:02:24 +0000 (UTC)
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id EB05EA06E2; Wed,  8 Jun 2022 17:02:23 +0200 (CEST)
-Date:   Wed, 8 Jun 2022 17:02:23 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Ritesh Harjani <ritesh.list@gmail.com>
-Cc:     Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 0/2] ext4: Fix possible fs corruption due to xattr races
-Message-ID: <20220608150223.7mp6v3pinxgoyzv5@quack3.lan>
-References: <20220606142215.17962-1-jack@suse.cz>
- <20220608045100.uacl5c6usi7kl7gw@riteshh-domain>
- <20220608095425.nptskml5splta2qd@quack3.lan>
+        with ESMTP id S242279AbiFHPLp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jun 2022 11:11:45 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A598A49B3E7;
+        Wed,  8 Jun 2022 08:03:14 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=QtCpoMtKxHZJjZ0zPsproZBlL3YauaUrqZHnxvuWLJc=; b=h1JJSDwi8sTy0t0Nv3IdyI/SSp
+        jIF5pVOj06evVaP6sUZABnjlIHzpvlc6aJOURe5UCkHnW3iI3QP4xuoymAKnzwHaD8MtjzeYqIepM
+        2Ts3fRtS1qfeNFFYMc3nNHdcseIK1Vy47ZmaV51+uXh6fNAnQeRAvvdhoGqHWjTFkPzF0v9O7acf2
+        xq4M713rzitxm3iOxcMIjCepwumvPeE3Jns/IcE3r6mlBV3OO8XJT8WSjSePKvPOSJ3+fKFPOWi4P
+        sRSqkPvbSbV6mgnrsExhzcPOl2ztfXK38fZitzA3s6knKBMiAmpJwGCXnWQovlCajyK2bKysaYFsQ
+        IcGOq5Vg==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1nyxCv-00CjFo-BL; Wed, 08 Jun 2022 15:02:53 +0000
+From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-aio@kvack.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-mtd@lists.infradead.org,
+        virtualization@lists.linux-foundation.org,
+        Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v2 18/19] fs: Remove aops->migratepage()
+Date:   Wed,  8 Jun 2022 16:02:48 +0100
+Message-Id: <20220608150249.3033815-19-willy@infradead.org>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <20220608150249.3033815-1-willy@infradead.org>
+References: <20220608150249.3033815-1-willy@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20220608095425.nptskml5splta2qd@quack3.lan>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 08-06-22 11:54:25, Jan Kara wrote:
-> On Wed 08-06-22 10:21:00, Ritesh Harjani wrote:
-> > On 22/06/06 04:28PM, Jan Kara wrote:
-> > > Hello,
-> > >
-> > > I've tracked down the culprit of the jbd2 assertion Ritesh reported to me. In
-> > 
-> > Hello Jan,
-> > 
-> > Thanks for working on the problem and identifying the race.
-> > 
-> > > the end it does not have much to do with jbd2 but rather points to a subtle
-> > > race in xattr code between xattr block reuse and xattr block freeing that can
-> > > result in fs corruption during journal replay. See patch 2/2 for more details.
-> > > These patches fix the problem. I have to say I'm not too happy with the special
-> > 
-> > So while I was still reviewing this patch-set, I thought of giving a try with some
-> > stress test for xattrs (given that this is some sort of race which is not always
-> > easy to track down).
-> > 
-> > So it seems it is easy to recreate the crash with stress-ng xattr test (even
-> > with your patches included).
-> > 	stress-ng --xattr 16 --timeout=10000s
-> > 
-> > Hope this might help further narrow down the problem.
-> 
-> Drat. I was actually running "stress-ng --xattr
-> <some-number-I-dont-remember>" to test my patches and it
-> didn't reproduce the crash for me within 5 minutes or so. Let me try harder
-> and thanks for the testing!
+With all users converted to migrate_folio(), remove this operation.
 
-Indeed, I forgot to enable JBD2_DEBUG in my kernel config and so the
-assertion was not triggering for me. Now I can reproduce the issue even
-with my patches (although it takes longer to reproduce) so I'm digging more
-into it.
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/fs.h | 2 --
+ mm/compaction.c    | 5 ++---
+ mm/migrate.c       | 3 ---
+ 3 files changed, 2 insertions(+), 8 deletions(-)
 
-							Honza
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9e6b17da4e11..7e06919b8f60 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -367,8 +367,6 @@ struct address_space_operations {
+ 	 */
+ 	int (*migrate_folio)(struct address_space *, struct folio *dst,
+ 			struct folio *src, enum migrate_mode);
+-	int (*migratepage) (struct address_space *,
+-			struct page *, struct page *, enum migrate_mode);
+ 	int (*launder_folio)(struct folio *);
+ 	bool (*is_partially_uptodate) (struct folio *, size_t from,
+ 			size_t count);
+diff --git a/mm/compaction.c b/mm/compaction.c
+index 458f49f9ab09..a2c53fcf933e 100644
+--- a/mm/compaction.c
++++ b/mm/compaction.c
+@@ -1031,7 +1031,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+ 
+ 			/*
+ 			 * Only pages without mappings or that have a
+-			 * ->migratepage callback are possible to migrate
++			 * ->migrate_folio callback are possible to migrate
+ 			 * without blocking. However, we can be racing with
+ 			 * truncation so it's necessary to lock the page
+ 			 * to stabilise the mapping as truncation holds
+@@ -1043,8 +1043,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+ 
+ 			mapping = page_mapping(page);
+ 			migrate_dirty = !mapping ||
+-					mapping->a_ops->migrate_folio ||
+-					mapping->a_ops->migratepage;
++					mapping->a_ops->migrate_folio;
+ 			unlock_page(page);
+ 			if (!migrate_dirty)
+ 				goto isolate_fail_put;
+diff --git a/mm/migrate.c b/mm/migrate.c
+index bed0de86f3ae..767e41800d15 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -909,9 +909,6 @@ static int move_to_new_folio(struct folio *dst, struct folio *src,
+ 			 */
+ 			rc = mapping->a_ops->migrate_folio(mapping, dst, src,
+ 								mode);
+-		else if (mapping->a_ops->migratepage)
+-			rc = mapping->a_ops->migratepage(mapping, &dst->page,
+-							&src->page, mode);
+ 		else
+ 			rc = fallback_migrate_folio(mapping, dst, src, mode);
+ 	} else {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.35.1
+
