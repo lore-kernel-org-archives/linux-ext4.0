@@ -2,102 +2,73 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D7AEC43334
-	for <linux-ext4@archiver.kernel.org>; Sat, 11 Jun 2022 12:51:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 953E6C43334
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jun 2022 05:38:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233357AbiFKMvW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 11 Jun 2022 08:51:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57420 "EHLO
+        id S232269AbiFMFio (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Jun 2022 01:38:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48708 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233328AbiFKMvV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Jun 2022 08:51:21 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8415AD9
-        for <linux-ext4@vger.kernel.org>; Sat, 11 Jun 2022 05:51:20 -0700 (PDT)
-Received: from canpemm500005.china.huawei.com (unknown [172.30.72.53])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4LKyMT4MM0zgYSK;
-        Sat, 11 Jun 2022 20:49:25 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by canpemm500005.china.huawei.com
- (7.192.104.229) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Sat, 11 Jun
- 2022 20:51:18 +0800
-From:   Zhang Yi <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <yi.zhang@huawei.com>, <yukuai3@huawei.com>
-Subject: [PATCH] jbd2: fix outstanding credits assert in jbd2_journal_commit_transaction()
-Date:   Sat, 11 Jun 2022 21:04:26 +0800
-Message-ID: <20220611130426.2013258-1-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.31.1
+        with ESMTP id S235910AbiFMFi3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2022 01:38:29 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 595F15FD9;
+        Sun, 12 Jun 2022 22:37:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=4iGKXCdzOSBsnfT6PGZIBueRKnuIrW79kSxrD8/D1F8=; b=uG9AbDJFexhlocyTyg+u6QlAcS
+        jLR0WwJwLc8R94lZ9B+cgiQgZWVTwWDfzpDN6WNFTjR+boyCwOLrj5CwUXutcpi/4NTV3Sg/cjoOi
+        hL5MGvekXsVnmFWTvNr/RNN4MgLaLV8ltHN76cLX3aImpifyv6JdE6LegXbGct3LgrJEEjWjanKz7
+        FBeWsxWYPCIOxECEToVhO9OXdggtbDGKwcTG2/7ZE/9uoSyWZ2yQL19ZGLZ5lXK6MadXjMX8DR/lX
+        ispGKTd8K4aMvDpiFl3uYXsvFo3GcNKByDM/OqwWrM4f8VDUS7TfcNJvLK0g91cSwll0ugbulHdIV
+        GaaRcHnQ==;
+Received: from [2001:4bb8:180:36f6:f125:c38b:d3d6:ae6c] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1o0clK-001V3f-Up; Mon, 13 Jun 2022 05:37:19 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.com>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>
+Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+        ntfs3@lists.linux.dev
+Subject: remove the nobh helpers v2
+Date:   Mon, 13 Jun 2022 07:37:09 +0200
+Message-Id: <20220613053715.2394147-1-hch@lst.de>
+X-Mailer: git-send-email 2.30.2
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
- canpemm500005.china.huawei.com (7.192.104.229)
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We catch an assert problem in jbd2_journal_commit_transaction() when
-doing fsstress and request falut injection tests. The problem is
-happened in a race condition between jbd2_journal_commit_transaction()
-and ext4_end_io_end(). Firstly, ext4_writepages() writeback dirty pages
-and start reserved handle, and then the journal was aborted due to some
-previous metadata IO error, jbd2_journal_abort() start to commit current
-running transaction, the committing procedure could be raced by
-ext4_end_io_end() and lead to subtract j_reserved_credits twice from
-commit_transaction->t_outstanding_credits, finally the
-t_outstanding_credits is mistakenly smaller than t_nr_buffers and
-trigger assert.
+Hi all,
 
-kjournald2           kworker
+this series (against the pagecache for-next branch) removes the nobh
+helpers which are a variant of the "normal" buffer head helpers with
+special tradeoffs for machines with a lot of highmem, and thus rather
+obsolete.  They pass xfstests, or in case of jfs at least get as far
+as the baseline.
 
-jbd2_journal_commit_transaction()
- write_unlock(&journal->j_state_lock);
- atomic_sub(j_reserved_credits, t_outstanding_credits); //sub once
+This might not be as nice as an actual iomap conversion, but already
+removes some hairy code in the way of removing ->writepage.
 
-     	             jbd2_journal_start_reserved()
-     	              start_this_handle()  //detect aborted journal
-     	              jbd2_journal_free_reserved()  //get running transaction
-                       read_lock(&journal->j_state_lock)
-     	                __jbd2_journal_unreserve_handle()
-     	               atomic_sub(j_reserved_credits, t_outstanding_credits);
-                       //sub again
-                       read_unlock(&journal->j_state_lock);
+Changes since v1:
+ - handle non-resident data in ->writepages in ntfs3 properly
 
- journal->j_running_transaction = NULL;
- J_ASSERT(t_nr_buffers <= t_outstanding_credits) //bomb!!!
-
-Fix this issue by using journal->j_state_lock to protect the subtraction
-in jbd2_journal_commit_transaction().
-
-Fixes: 96f1e0974575 ("jbd2: avoid long hold times of j_state_lock while committing a transaction")
-Signed-off-by: Zhang Yi <yi.zhang@huawei.com>
----
- fs/jbd2/commit.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index eb315e81f1a6..af1a9191368c 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -553,13 +553,13 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	 */
- 	jbd2_journal_switch_revoke_table(journal);
- 
-+	write_lock(&journal->j_state_lock);
- 	/*
- 	 * Reserved credits cannot be claimed anymore, free them
- 	 */
- 	atomic_sub(atomic_read(&journal->j_reserved_credits),
- 		   &commit_transaction->t_outstanding_credits);
- 
--	write_lock(&journal->j_state_lock);
- 	trace_jbd2_commit_flushing(journal, commit_transaction);
- 	stats.run.rs_flushing = jiffies;
- 	stats.run.rs_locked = jbd2_time_diff(stats.run.rs_locked,
--- 
-2.31.1
-
+Diffstat:
+ Documentation/filesystems/ext2.rst |    2 
+ fs/buffer.c                        |  324 -------------------------------------
+ fs/ext2/ext2.h                     |    1 
+ fs/ext2/inode.c                    |   51 -----
+ fs/ext2/namei.c                    |   10 -
+ fs/ext2/super.c                    |    6 
+ fs/jfs/inode.c                     |   18 +-
+ fs/mpage.c                         |   47 -----
+ fs/ntfs3/inode.c                   |    8 
+ include/linux/buffer_head.h        |    8 
+ include/linux/mpage.h              |    2 
+ 11 files changed, 32 insertions(+), 445 deletions(-)
