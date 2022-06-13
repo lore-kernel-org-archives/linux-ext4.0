@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 336B1C433EF
-	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jun 2022 05:38:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25040CCA47E
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jun 2022 05:38:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233472AbiFMFip (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Jun 2022 01:38:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47026 "EHLO
+        id S234793AbiFMFis (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Jun 2022 01:38:48 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48884 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236018AbiFMFib (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2022 01:38:31 -0400
+        with ESMTP id S236259AbiFMFie (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2022 01:38:34 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 596BA767C;
-        Sun, 12 Jun 2022 22:37:30 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1771CDEEE;
+        Sun, 12 Jun 2022 22:37:35 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=CLA3sGNXlgyLMg7MIwf9+GfWzvmPKDOQaSo1VOl4s4U=; b=MWZf8oilMV43pwthuLM897u65h
-        +P85CVIc8ITZBoxAbou+fHoRYkagriXP+CF+d5/luNWeVSmDbrY1Wp7ze+tBpgSB/k2cq4+y7xT8Y
-        2pT4k+z5PxasjDW2zxrZSkPXNXvbOpK1JAJ9WccTarRyAiUDlyRUjq+FzGWph+ijT2trEtAuOO4ks
-        aO6eI+pco7ypXRiWzKtSZ0otecYXwQUjfJ0j0vTiAS74OTY/b2wADN1Li4fV39mRjtBf7I/JsaNKk
-        KDn4AHnrfigeC/su6parwBpX8+VHdRJjTxc8RrJKgVKAOehpvuw6gwfj66uZOZsZoiehQ/W/zT6HK
-        IBdwXy4A==;
+        bh=K+predawl+Ila3dPGVYFT5NacLX1HaZEbg5tUiWazqU=; b=eDPlG0UbmzyklaGEINPCabiDGf
+        1Jjd0CJYKMzJlaR1Ug+gnzTSAIrt51TaRwtYsFLGq7RSU9ONSUxFotL7yohjVWux0vTSL+2xK3jmJ
+        vAIqxO2Uov9qfVMHceVibiBO0zynWRYLfNH/DsTF3EeXePRG8AtJXCbPbWZG9nOSujF7B8OGyfD0Y
+        WpZJ4HPLJpGHKTOws9Ru3LlWmntOg0B8cn0qbUmwZJZArZDZMymGINsEt6hfP9llq4VJMEqDSL0II
+        Lm7ARRauKZKX5EbMWGJn/AYbB5roJYgqekcFzY+loMJjKqKBdaLh7dbJ+u2nIKZ6Ud24N0jHt2bA6
+        igJHdpVQ==;
 Received: from [2001:4bb8:180:36f6:f125:c38b:d3d6:ae6c] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1o0clQ-001V4T-6M; Mon, 13 Jun 2022 05:37:24 +0000
+        id 1o0clV-001V5L-EN; Mon, 13 Jun 2022 05:37:29 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.com>,
         Dave Kleikamp <shaggy@kernel.org>,
@@ -34,9 +34,9 @@ To:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.com>,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         ntfs3@lists.linux.dev, Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/6] ext2: remove nobh support
-Date:   Mon, 13 Jun 2022 07:37:11 +0200
-Message-Id: <20220613053715.2394147-3-hch@lst.de>
+Subject: [PATCH 4/6] fs: remove the nobh helpers
+Date:   Mon, 13 Jun 2022 07:37:13 +0200
+Message-Id: <20220613053715.2394147-5-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220613053715.2394147-1-hch@lst.de>
 References: <20220613053715.2394147-1-hch@lst.de>
@@ -47,197 +47,440 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The nobh mode is an obscure feature to save lowlevel for large memory
-32-bit configurations while trading for much slower performance and
-has been long obsolete.  Remove it.
+All callers are gone, so remove the now dead code.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- Documentation/filesystems/ext2.rst |  2 --
- fs/ext2/ext2.h                     |  1 -
- fs/ext2/inode.c                    | 51 ++----------------------------
- fs/ext2/namei.c                    | 10 ++----
- fs/ext2/super.c                    |  6 ++--
- 5 files changed, 7 insertions(+), 63 deletions(-)
+ fs/buffer.c                 | 324 ------------------------------------
+ fs/mpage.c                  |  25 +--
+ include/linux/buffer_head.h |   8 -
+ include/linux/mpage.h       |   2 -
+ 4 files changed, 1 insertion(+), 358 deletions(-)
 
-diff --git a/Documentation/filesystems/ext2.rst b/Documentation/filesystems/ext2.rst
-index 154101cf0e4f5..92aae683e16a7 100644
---- a/Documentation/filesystems/ext2.rst
-+++ b/Documentation/filesystems/ext2.rst
-@@ -59,8 +59,6 @@ acl				Enable POSIX Access Control Lists support
- 				(requires CONFIG_EXT2_FS_POSIX_ACL).
- noacl				Don't support POSIX ACLs.
- 
--nobh				Do not attach buffer_heads to file pagecache.
--
- quota, usrquota			Enable user disk quota support
- 				(requires CONFIG_QUOTA).
- 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index d4f306aa5aceb..28de11a22e5f6 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -795,7 +795,6 @@ extern const struct file_operations ext2_file_operations;
- /* inode.c */
- extern void ext2_set_file_ops(struct inode *inode);
- extern const struct address_space_operations ext2_aops;
--extern const struct address_space_operations ext2_nobh_aops;
- extern const struct iomap_ops ext2_iomap_ops;
- 
- /* namei.c */
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 58a9d061f17d1..c5229033baf05 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -908,25 +908,6 @@ static int ext2_write_end(struct file *file, struct address_space *mapping,
- 	return ret;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index ce9844d7c10fa..5717d1881d2fa 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2537,330 +2537,6 @@ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
  }
+ EXPORT_SYMBOL(block_page_mkwrite);
  
--static int
--ext2_nobh_write_begin(struct file *file, struct address_space *mapping,
--		loff_t pos, unsigned len, struct page **pagep, void **fsdata)
+-/*
+- * nobh_write_begin()'s prereads are special: the buffer_heads are freed
+- * immediately, while under the page lock.  So it needs a special end_io
+- * handler which does not touch the bh after unlocking it.
+- */
+-static void end_buffer_read_nobh(struct buffer_head *bh, int uptodate)
 -{
--	int ret;
+-	__end_buffer_read_notouch(bh, uptodate);
+-}
 -
--	ret = nobh_write_begin(mapping, pos, len, pagep, fsdata,
--			       ext2_get_block);
--	if (ret < 0)
--		ext2_write_failed(mapping, pos + len);
+-/*
+- * Attach the singly-linked list of buffers created by nobh_write_begin, to
+- * the page (converting it to circular linked list and taking care of page
+- * dirty races).
+- */
+-static void attach_nobh_buffers(struct page *page, struct buffer_head *head)
+-{
+-	struct buffer_head *bh;
+-
+-	BUG_ON(!PageLocked(page));
+-
+-	spin_lock(&page->mapping->private_lock);
+-	bh = head;
+-	do {
+-		if (PageDirty(page))
+-			set_buffer_dirty(bh);
+-		if (!bh->b_this_page)
+-			bh->b_this_page = head;
+-		bh = bh->b_this_page;
+-	} while (bh != head);
+-	attach_page_private(page, head);
+-	spin_unlock(&page->mapping->private_lock);
+-}
+-
+-/*
+- * On entry, the page is fully not uptodate.
+- * On exit the page is fully uptodate in the areas outside (from,to)
+- * The filesystem needs to handle block truncation upon failure.
+- */
+-int nobh_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
+-			struct page **pagep, void **fsdata,
+-			get_block_t *get_block)
+-{
+-	struct inode *inode = mapping->host;
+-	const unsigned blkbits = inode->i_blkbits;
+-	const unsigned blocksize = 1 << blkbits;
+-	struct buffer_head *head, *bh;
+-	struct page *page;
+-	pgoff_t index;
+-	unsigned from, to;
+-	unsigned block_in_page;
+-	unsigned block_start, block_end;
+-	sector_t block_in_file;
+-	int nr_reads = 0;
+-	int ret = 0;
+-	int is_mapped_to_disk = 1;
+-
+-	index = pos >> PAGE_SHIFT;
+-	from = pos & (PAGE_SIZE - 1);
+-	to = from + len;
+-
+-	page = grab_cache_page_write_begin(mapping, index);
+-	if (!page)
+-		return -ENOMEM;
+-	*pagep = page;
+-	*fsdata = NULL;
+-
+-	if (page_has_buffers(page)) {
+-		ret = __block_write_begin(page, pos, len, get_block);
+-		if (unlikely(ret))
+-			goto out_release;
+-		return ret;
+-	}
+-
+-	if (PageMappedToDisk(page))
+-		return 0;
+-
+-	/*
+-	 * Allocate buffers so that we can keep track of state, and potentially
+-	 * attach them to the page if an error occurs. In the common case of
+-	 * no error, they will just be freed again without ever being attached
+-	 * to the page (which is all OK, because we're under the page lock).
+-	 *
+-	 * Be careful: the buffer linked list is a NULL terminated one, rather
+-	 * than the circular one we're used to.
+-	 */
+-	head = alloc_page_buffers(page, blocksize, false);
+-	if (!head) {
+-		ret = -ENOMEM;
+-		goto out_release;
+-	}
+-
+-	block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
+-
+-	/*
+-	 * We loop across all blocks in the page, whether or not they are
+-	 * part of the affected region.  This is so we can discover if the
+-	 * page is fully mapped-to-disk.
+-	 */
+-	for (block_start = 0, block_in_page = 0, bh = head;
+-		  block_start < PAGE_SIZE;
+-		  block_in_page++, block_start += blocksize, bh = bh->b_this_page) {
+-		int create;
+-
+-		block_end = block_start + blocksize;
+-		bh->b_state = 0;
+-		create = 1;
+-		if (block_start >= to)
+-			create = 0;
+-		ret = get_block(inode, block_in_file + block_in_page,
+-					bh, create);
+-		if (ret)
+-			goto failed;
+-		if (!buffer_mapped(bh))
+-			is_mapped_to_disk = 0;
+-		if (buffer_new(bh))
+-			clean_bdev_bh_alias(bh);
+-		if (PageUptodate(page)) {
+-			set_buffer_uptodate(bh);
+-			continue;
+-		}
+-		if (buffer_new(bh) || !buffer_mapped(bh)) {
+-			zero_user_segments(page, block_start, from,
+-							to, block_end);
+-			continue;
+-		}
+-		if (buffer_uptodate(bh))
+-			continue;	/* reiserfs does this */
+-		if (block_start < from || block_end > to) {
+-			lock_buffer(bh);
+-			bh->b_end_io = end_buffer_read_nobh;
+-			submit_bh(REQ_OP_READ, 0, bh);
+-			nr_reads++;
+-		}
+-	}
+-
+-	if (nr_reads) {
+-		/*
+-		 * The page is locked, so these buffers are protected from
+-		 * any VM or truncate activity.  Hence we don't need to care
+-		 * for the buffer_head refcounts.
+-		 */
+-		for (bh = head; bh; bh = bh->b_this_page) {
+-			wait_on_buffer(bh);
+-			if (!buffer_uptodate(bh))
+-				ret = -EIO;
+-		}
+-		if (ret)
+-			goto failed;
+-	}
+-
+-	if (is_mapped_to_disk)
+-		SetPageMappedToDisk(page);
+-
+-	*fsdata = head; /* to be released by nobh_write_end */
+-
+-	return 0;
+-
+-failed:
+-	BUG_ON(!ret);
+-	/*
+-	 * Error recovery is a bit difficult. We need to zero out blocks that
+-	 * were newly allocated, and dirty them to ensure they get written out.
+-	 * Buffers need to be attached to the page at this point, otherwise
+-	 * the handling of potential IO errors during writeout would be hard
+-	 * (could try doing synchronous writeout, but what if that fails too?)
+-	 */
+-	attach_nobh_buffers(page, head);
+-	page_zero_new_buffers(page, from, to);
+-
+-out_release:
+-	unlock_page(page);
+-	put_page(page);
+-	*pagep = NULL;
+-
 -	return ret;
 -}
+-EXPORT_SYMBOL(nobh_write_begin);
 -
--static int ext2_nobh_writepage(struct page *page,
+-int nobh_write_end(struct file *file, struct address_space *mapping,
+-			loff_t pos, unsigned len, unsigned copied,
+-			struct page *page, void *fsdata)
+-{
+-	struct inode *inode = page->mapping->host;
+-	struct buffer_head *head = fsdata;
+-	struct buffer_head *bh;
+-	BUG_ON(fsdata != NULL && page_has_buffers(page));
+-
+-	if (unlikely(copied < len) && head)
+-		attach_nobh_buffers(page, head);
+-	if (page_has_buffers(page))
+-		return generic_write_end(file, mapping, pos, len,
+-					copied, page, fsdata);
+-
+-	SetPageUptodate(page);
+-	set_page_dirty(page);
+-	if (pos+copied > inode->i_size) {
+-		i_size_write(inode, pos+copied);
+-		mark_inode_dirty(inode);
+-	}
+-
+-	unlock_page(page);
+-	put_page(page);
+-
+-	while (head) {
+-		bh = head;
+-		head = head->b_this_page;
+-		free_buffer_head(bh);
+-	}
+-
+-	return copied;
+-}
+-EXPORT_SYMBOL(nobh_write_end);
+-
+-/*
+- * nobh_writepage() - based on block_full_write_page() except
+- * that it tries to operate without attaching bufferheads to
+- * the page.
+- */
+-int nobh_writepage(struct page *page, get_block_t *get_block,
 -			struct writeback_control *wbc)
 -{
--	return nobh_writepage(page, ext2_get_block, wbc);
--}
+-	struct inode * const inode = page->mapping->host;
+-	loff_t i_size = i_size_read(inode);
+-	const pgoff_t end_index = i_size >> PAGE_SHIFT;
+-	unsigned offset;
+-	int ret;
 -
- static sector_t ext2_bmap(struct address_space *mapping, sector_t block)
+-	/* Is the page fully inside i_size? */
+-	if (page->index < end_index)
+-		goto out;
+-
+-	/* Is the page fully outside i_size? (truncate in progress) */
+-	offset = i_size & (PAGE_SIZE-1);
+-	if (page->index >= end_index+1 || !offset) {
+-		unlock_page(page);
+-		return 0; /* don't care */
+-	}
+-
+-	/*
+-	 * The page straddles i_size.  It must be zeroed out on each and every
+-	 * writepage invocation because it may be mmapped.  "A file is mapped
+-	 * in multiples of the page size.  For a file that is not a multiple of
+-	 * the  page size, the remaining memory is zeroed when mapped, and
+-	 * writes to that region are not written out to the file."
+-	 */
+-	zero_user_segment(page, offset, PAGE_SIZE);
+-out:
+-	ret = mpage_writepage(page, get_block, wbc);
+-	if (ret == -EAGAIN)
+-		ret = __block_write_full_page(inode, page, get_block, wbc,
+-					      end_buffer_async_write);
+-	return ret;
+-}
+-EXPORT_SYMBOL(nobh_writepage);
+-
+-int nobh_truncate_page(struct address_space *mapping,
+-			loff_t from, get_block_t *get_block)
+-{
+-	pgoff_t index = from >> PAGE_SHIFT;
+-	struct inode *inode = mapping->host;
+-	unsigned blocksize = i_blocksize(inode);
+-	struct folio *folio;
+-	struct buffer_head map_bh;
+-	size_t offset;
+-	sector_t iblock;
+-	int err;
+-
+-	/* Block boundary? Nothing to do */
+-	if (!(from & (blocksize - 1)))
+-		return 0;
+-
+-	folio = __filemap_get_folio(mapping, index, FGP_LOCK | FGP_CREAT,
+-			mapping_gfp_mask(mapping));
+-	err = -ENOMEM;
+-	if (!folio)
+-		goto out;
+-
+-	if (folio_buffers(folio))
+-		goto has_buffers;
+-
+-	iblock = from >> inode->i_blkbits;
+-	map_bh.b_size = blocksize;
+-	map_bh.b_state = 0;
+-	err = get_block(inode, iblock, &map_bh, 0);
+-	if (err)
+-		goto unlock;
+-	/* unmapped? It's a hole - nothing to do */
+-	if (!buffer_mapped(&map_bh))
+-		goto unlock;
+-
+-	/* Ok, it's mapped. Make sure it's up-to-date */
+-	if (!folio_test_uptodate(folio)) {
+-		err = mapping->a_ops->read_folio(NULL, folio);
+-		if (err) {
+-			folio_put(folio);
+-			goto out;
+-		}
+-		folio_lock(folio);
+-		if (!folio_test_uptodate(folio)) {
+-			err = -EIO;
+-			goto unlock;
+-		}
+-		if (folio_buffers(folio))
+-			goto has_buffers;
+-	}
+-	offset = offset_in_folio(folio, from);
+-	folio_zero_segment(folio, offset, round_up(offset, blocksize));
+-	folio_mark_dirty(folio);
+-	err = 0;
+-
+-unlock:
+-	folio_unlock(folio);
+-	folio_put(folio);
+-out:
+-	return err;
+-
+-has_buffers:
+-	folio_unlock(folio);
+-	folio_put(folio);
+-	return block_truncate_page(mapping, from, get_block);
+-}
+-EXPORT_SYMBOL(nobh_truncate_page);
+-
+ int block_truncate_page(struct address_space *mapping,
+ 			loff_t from, get_block_t *get_block)
  {
- 	return generic_block_bmap(mapping,block,ext2_get_block);
-@@ -978,21 +959,6 @@ const struct address_space_operations ext2_aops = {
- 	.error_remove_page	= generic_error_remove_page,
+diff --git a/fs/mpage.c b/fs/mpage.c
+index 0d25f44f5707c..31a97a0acf5f5 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -402,7 +402,6 @@ struct mpage_data {
+ 	struct bio *bio;
+ 	sector_t last_block_in_bio;
+ 	get_block_t *get_block;
+-	unsigned use_writepage;
  };
  
--const struct address_space_operations ext2_nobh_aops = {
--	.dirty_folio		= block_dirty_folio,
--	.invalidate_folio	= block_invalidate_folio,
--	.read_folio		= ext2_read_folio,
--	.readahead		= ext2_readahead,
--	.writepage		= ext2_nobh_writepage,
--	.write_begin		= ext2_nobh_write_begin,
--	.write_end		= nobh_write_end,
--	.bmap			= ext2_bmap,
--	.direct_IO		= ext2_direct_IO,
--	.writepages		= ext2_writepages,
--	.migrate_folio		= buffer_migrate_folio,
--	.error_remove_page	= generic_error_remove_page,
--};
--
- static const struct address_space_operations ext2_dax_aops = {
- 	.writepages		= ext2_dax_writepages,
- 	.direct_IO		= noop_direct_IO,
-@@ -1298,13 +1264,10 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+ /*
+@@ -622,15 +621,10 @@ static int __mpage_writepage(struct page *page, struct writeback_control *wbc,
+ 	if (bio)
+ 		bio = mpage_bio_submit(bio);
  
- 	inode_dio_wait(inode);
+-	if (mpd->use_writepage) {
+-		ret = mapping->a_ops->writepage(page, wbc);
+-	} else {
+-		ret = -EAGAIN;
+-		goto out;
+-	}
+ 	/*
+ 	 * The caller has a ref on the inode, so *mapping is stable
+ 	 */
++	ret = mapping->a_ops->writepage(page, wbc);
+ 	mapping_set_error(mapping, ret);
+ out:
+ 	mpd->bio = bio;
+@@ -672,7 +666,6 @@ mpage_writepages(struct address_space *mapping,
+ 			.bio = NULL,
+ 			.last_block_in_bio = 0,
+ 			.get_block = get_block,
+-			.use_writepage = 1,
+ 		};
  
--	if (IS_DAX(inode)) {
-+	if (IS_DAX(inode))
- 		error = dax_zero_range(inode, newsize,
- 				       PAGE_ALIGN(newsize) - newsize, NULL,
- 				       &ext2_iomap_ops);
--	} else if (test_opt(inode->i_sb, NOBH))
--		error = nobh_truncate_page(inode->i_mapping,
--				newsize, ext2_get_block);
- 	else
- 		error = block_truncate_page(inode->i_mapping,
- 				newsize, ext2_get_block);
-@@ -1396,8 +1359,6 @@ void ext2_set_file_ops(struct inode *inode)
- 	inode->i_fop = &ext2_file_operations;
- 	if (IS_DAX(inode))
- 		inode->i_mapping->a_ops = &ext2_dax_aops;
--	else if (test_opt(inode->i_sb, NOBH))
--		inode->i_mapping->a_ops = &ext2_nobh_aops;
- 	else
- 		inode->i_mapping->a_ops = &ext2_aops;
+ 		ret = write_cache_pages(mapping, wbc, __mpage_writepage, &mpd);
+@@ -683,19 +676,3 @@ mpage_writepages(struct address_space *mapping,
+ 	return ret;
  }
-@@ -1497,10 +1458,7 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
- 	} else if (S_ISDIR(inode->i_mode)) {
- 		inode->i_op = &ext2_dir_inode_operations;
- 		inode->i_fop = &ext2_dir_operations;
--		if (test_opt(inode->i_sb, NOBH))
--			inode->i_mapping->a_ops = &ext2_nobh_aops;
--		else
--			inode->i_mapping->a_ops = &ext2_aops;
-+		inode->i_mapping->a_ops = &ext2_aops;
- 	} else if (S_ISLNK(inode->i_mode)) {
- 		if (ext2_inode_is_fast_symlink(inode)) {
- 			inode->i_link = (char *)ei->i_data;
-@@ -1510,10 +1468,7 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
- 		} else {
- 			inode->i_op = &ext2_symlink_inode_operations;
- 			inode_nohighmem(inode);
--			if (test_opt(inode->i_sb, NOBH))
--				inode->i_mapping->a_ops = &ext2_nobh_aops;
--			else
--				inode->i_mapping->a_ops = &ext2_aops;
-+			inode->i_mapping->a_ops = &ext2_aops;
- 		}
- 	} else {
- 		inode->i_op = &ext2_special_inode_operations;
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 5f6b7560eb3f3..5fd9a22d2b70c 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -178,10 +178,7 @@ static int ext2_symlink (struct user_namespace * mnt_userns, struct inode * dir,
- 		/* slow symlink */
- 		inode->i_op = &ext2_symlink_inode_operations;
- 		inode_nohighmem(inode);
--		if (test_opt(inode->i_sb, NOBH))
--			inode->i_mapping->a_ops = &ext2_nobh_aops;
--		else
--			inode->i_mapping->a_ops = &ext2_aops;
-+		inode->i_mapping->a_ops = &ext2_aops;
- 		err = page_symlink(inode, symname, l);
- 		if (err)
- 			goto out_fail;
-@@ -247,10 +244,7 @@ static int ext2_mkdir(struct user_namespace * mnt_userns,
- 
- 	inode->i_op = &ext2_dir_inode_operations;
- 	inode->i_fop = &ext2_dir_operations;
--	if (test_opt(inode->i_sb, NOBH))
--		inode->i_mapping->a_ops = &ext2_nobh_aops;
--	else
--		inode->i_mapping->a_ops = &ext2_aops;
-+	inode->i_mapping->a_ops = &ext2_aops;
- 
- 	inode_inc_link_count(inode);
- 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index f6a19f6d9f6d5..a1c1263c07ab3 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -296,9 +296,6 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
- 		seq_puts(seq, ",noacl");
- #endif
- 
--	if (test_opt(sb, NOBH))
--		seq_puts(seq, ",nobh");
+ EXPORT_SYMBOL(mpage_writepages);
 -
- 	if (test_opt(sb, USRQUOTA))
- 		seq_puts(seq, ",usrquota");
+-int mpage_writepage(struct page *page, get_block_t get_block,
+-	struct writeback_control *wbc)
+-{
+-	struct mpage_data mpd = {
+-		.bio = NULL,
+-		.last_block_in_bio = 0,
+-		.get_block = get_block,
+-		.use_writepage = 0,
+-	};
+-	int ret = __mpage_writepage(page, wbc, &mpd);
+-	if (mpd.bio)
+-		mpage_bio_submit(mpd.bio);
+-	return ret;
+-}
+-EXPORT_SYMBOL(mpage_writepage);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index b0366c89d6a4d..61afb81cfdaea 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -258,14 +258,6 @@ static inline vm_fault_t block_page_mkwrite_return(int err)
+ }
+ sector_t generic_block_bmap(struct address_space *, sector_t, get_block_t *);
+ int block_truncate_page(struct address_space *, loff_t, get_block_t *);
+-int nobh_write_begin(struct address_space *, loff_t, unsigned len,
+-				struct page **, void **, get_block_t*);
+-int nobh_write_end(struct file *, struct address_space *,
+-				loff_t, unsigned, unsigned,
+-				struct page *, void *);
+-int nobh_truncate_page(struct address_space *, loff_t, get_block_t *);
+-int nobh_writepage(struct page *page, get_block_t *get_block,
+-                        struct writeback_control *wbc);
  
-@@ -551,7 +548,8 @@ static int parse_options(char *options, struct super_block *sb,
- 			clear_opt (opts->s_mount_opt, OLDALLOC);
- 			break;
- 		case Opt_nobh:
--			set_opt (opts->s_mount_opt, NOBH);
-+			ext2_msg(sb, KERN_INFO,
-+				"nobh option not supported");
- 			break;
- #ifdef CONFIG_EXT2_FS_XATTR
- 		case Opt_user_xattr:
+ #ifdef CONFIG_MIGRATION
+ extern int buffer_migrate_folio(struct address_space *,
+diff --git a/include/linux/mpage.h b/include/linux/mpage.h
+index 43986f7ec4dd3..1bdc39daac0a3 100644
+--- a/include/linux/mpage.h
++++ b/include/linux/mpage.h
+@@ -19,7 +19,5 @@ void mpage_readahead(struct readahead_control *, get_block_t get_block);
+ int mpage_read_folio(struct folio *folio, get_block_t get_block);
+ int mpage_writepages(struct address_space *mapping,
+ 		struct writeback_control *wbc, get_block_t get_block);
+-int mpage_writepage(struct page *page, get_block_t *get_block,
+-		struct writeback_control *wbc);
+ 
+ #endif
 -- 
 2.30.2
 
