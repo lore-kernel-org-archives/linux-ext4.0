@@ -2,31 +2,31 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 55EA6CCA47E
-	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jun 2022 05:38:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B114BC433EF
+	for <linux-ext4@archiver.kernel.org>; Mon, 13 Jun 2022 05:39:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235319AbiFMFiy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 13 Jun 2022 01:38:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46758 "EHLO
+        id S235656AbiFMFi6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 13 Jun 2022 01:38:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48802 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236746AbiFMFih (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2022 01:38:37 -0400
+        with ESMTP id S236104AbiFMFid (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Jun 2022 01:38:33 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5065C1263C;
-        Sun, 12 Jun 2022 22:37:38 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C8EB9FC0;
+        Sun, 12 Jun 2022 22:37:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=Zp2A2WsdHhKodTSMNz93mFV0bupP5ggkN3XKeFjb+k0=; b=TkFyl6H75fM8c9tKEtfeL1KjsG
-        CaJ7Oa0Qby+KbEh93MbSGeNt6+Hb0Lsv4whlxvXNFQru8rZdWgVQPCWbmlNxFDK/doxGYWpgCjkIL
-        FLoWBjKj8yg5+LWJwsn1xbEpvaKsIcE/n//P51Nh0sVCcD74niLAOC9BL7tfa+CpEE4KGhniOxYlu
-        korHNvCyxqqp1We7PbToGW9NGxeC6/ymAX43zRsxTYdeEX4ESxpkpstlYzG5NSojl0Ndkcmjojn6h
-        1yVZl0stpkYwXy3332y+rRPyZmpO8UQu0QDJCe7Ldx6GgbaIjPwdXs3UPLTipev2ydkLedaXeggZl
-        ss3HGNUA==;
+        bh=+wB/nqOESlmBKGsPGGPvPk+1JR7GdqX/FHAB3WXgdkI=; b=GgvoeVQPdRkCIkuIXOuXZNK6Pp
+        jjhDh27mjZPk6mpG4OIjrjTYa5AqdNMcp40vsyWIn6lLM0KiVi6X2sQ1fSH97/7IIip/x7WRQ5MYX
+        sfCfnjRbPOvI/qfNj5p/o3dHUubDG+h234+ilkGjpXaERdO5cid9rc0VhO0zBrW+ut2Ku03JzleXg
+        JK0IXWsEOutO5b5XanEZ+XC8S7cKwEAjxfEi6gAYc4kaO7Jaljg3rmyfGrg2RLWTHiPkEpJqM/txF
+        vTBhmi0u5zTBa1BTxzvHR9kJBye6Xr/sQZj4MktxRXnxVczCdtvA3A81XIxZojmipgY5nhvX1bD5w
+        5aNm4mpA==;
 Received: from [2001:4bb8:180:36f6:f125:c38b:d3d6:ae6c] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1o0cla-001V6O-Kt; Mon, 13 Jun 2022 05:37:35 +0000
+        id 1o0clS-001V4u-RK; Mon, 13 Jun 2022 05:37:27 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.com>,
         Dave Kleikamp <shaggy@kernel.org>,
@@ -34,9 +34,9 @@ To:     Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.com>,
 Cc:     linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
         ntfs3@lists.linux.dev
-Subject: [PATCH 6/6] fs: remove the NULL get_block case in mpage_writepages
-Date:   Mon, 13 Jun 2022 07:37:15 +0200
-Message-Id: <20220613053715.2394147-7-hch@lst.de>
+Subject: [PATCH 3/6] jfs: stop using the nobh helper
+Date:   Mon, 13 Jun 2022 07:37:12 +0200
+Message-Id: <20220613053715.2394147-4-hch@lst.de>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20220613053715.2394147-1-hch@lst.de>
 References: <20220613053715.2394147-1-hch@lst.de>
@@ -47,58 +47,65 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-No one calls mpage_writepages with a NULL get_block paramter, so remove
-support for that case.
+The nobh mode is an obscure feature to save lowlevel for large memory
+32-bit configurations while trading for much slower performance and
+has been long obsolete.  Switch to the regular buffer head based helpers
+instead.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/mpage.c | 22 ++++++----------------
- 1 file changed, 6 insertions(+), 16 deletions(-)
+ fs/jfs/inode.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
 
-diff --git a/fs/mpage.c b/fs/mpage.c
-index a354ef2b4b4eb..e4cf881634a6a 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -636,8 +636,6 @@ static int __mpage_writepage(struct page *page, struct writeback_control *wbc,
-  * @mapping: address space structure to write
-  * @wbc: subtract the number of written pages from *@wbc->nr_to_write
-  * @get_block: the filesystem's block mapper function.
-- *             If this is NULL then use a_ops->writepage.  Otherwise, go
-- *             direct-to-BIO.
-  *
-  * This is a library function, which implements the writepages()
-  * address_space_operation.
-@@ -654,24 +652,16 @@ int
- mpage_writepages(struct address_space *mapping,
- 		struct writeback_control *wbc, get_block_t get_block)
+diff --git a/fs/jfs/inode.c b/fs/jfs/inode.c
+index 259326556ada6..d1ec920aa030a 100644
+--- a/fs/jfs/inode.c
++++ b/fs/jfs/inode.c
+@@ -301,13 +301,25 @@ static int jfs_write_begin(struct file *file, struct address_space *mapping,
  {
-+	struct mpage_data mpd = {
-+		.get_block	= get_block,
-+	};
- 	struct blk_plug plug;
  	int ret;
  
- 	blk_start_plug(&plug);
--
--	if (!get_block)
--		ret = generic_writepages(mapping, wbc);
--	else {
--		struct mpage_data mpd = {
--			.bio = NULL,
--			.last_block_in_bio = 0,
--			.get_block = get_block,
--		};
--
--		ret = write_cache_pages(mapping, wbc, __mpage_writepage, &mpd);
--		if (mpd.bio)
--			mpage_bio_submit(mpd.bio);
--	}
-+	ret = write_cache_pages(mapping, wbc, __mpage_writepage, &mpd);
-+	if (mpd.bio)
-+		mpage_bio_submit(mpd.bio);
- 	blk_finish_plug(&plug);
+-	ret = nobh_write_begin(mapping, pos, len, pagep, fsdata, jfs_get_block);
++	ret = block_write_begin(mapping, pos, len, pagep, jfs_get_block);
+ 	if (unlikely(ret))
+ 		jfs_write_failed(mapping, pos + len);
+ 
  	return ret;
  }
+ 
++static int jfs_write_end(struct file *file, struct address_space *mapping,
++		loff_t pos, unsigned len, unsigned copied, struct page *page,
++		void *fsdata)
++{
++	int ret;
++
++	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
++	if (ret < len)
++		jfs_write_failed(mapping, pos + len);
++	return ret;
++}
++
+ static sector_t jfs_bmap(struct address_space *mapping, sector_t block)
+ {
+ 	return generic_block_bmap(mapping, block, jfs_get_block);
+@@ -346,7 +358,7 @@ const struct address_space_operations jfs_aops = {
+ 	.writepage	= jfs_writepage,
+ 	.writepages	= jfs_writepages,
+ 	.write_begin	= jfs_write_begin,
+-	.write_end	= nobh_write_end,
++	.write_end	= jfs_write_end,
+ 	.bmap		= jfs_bmap,
+ 	.direct_IO	= jfs_direct_IO,
+ };
+@@ -399,7 +411,7 @@ void jfs_truncate(struct inode *ip)
+ {
+ 	jfs_info("jfs_truncate: size = 0x%lx", (ulong) ip->i_size);
+ 
+-	nobh_truncate_page(ip->i_mapping, ip->i_size, jfs_get_block);
++	block_truncate_page(ip->i_mapping, ip->i_size, jfs_get_block);
+ 
+ 	IWRITE_LOCK(ip, RDWRLOCK_NORMAL);
+ 	jfs_truncate_nolock(ip, ip->i_size);
 -- 
 2.30.2
 
