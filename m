@@ -2,143 +2,187 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD025C43334
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 016F5C43334
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356525AbiFNQGW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Jun 2022 12:06:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46810 "EHLO
+        id S1350666AbiFNQG2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Jun 2022 12:06:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46832 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354455AbiFNQGL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 12:06:11 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B524541639
-        for <linux-ext4@vger.kernel.org>; Tue, 14 Jun 2022 09:06:06 -0700 (PDT)
+        with ESMTP id S1356374AbiFNQGM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 12:06:12 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF19855A4
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Jun 2022 09:06:11 -0700 (PDT)
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 14F4F1F9A9;
+        by smtp-out1.suse.de (Postfix) with ESMTP id 0B87321BBC;
         Tue, 14 Jun 2022 16:06:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1655222765; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=QfvpzBTSY2CcQQ5fmdXCkwtL4YvnafHwxH5ik6bxfQ8=;
-        b=aUlR7gxd4gxIt/ij2kc8yF438nGzXOKflHIkErTByY4Z8GF+iPPUqPMzWGPYEn8SCsUdhF
-        AS9KcQwnyjSGFss5Wxes+mWNlLq0xHMdUjNE0J5UPGxO9Sf1dKvNmLURvHQTa/RsTiB41L
-        8GPFcLs2iI/ou7uOpOyaEund7OgGLWM=
+        bh=SdGi0v44l1Vyl1G8V+8Irrfhuz+9JYlV2kXdeUXVjbg=;
+        b=CpsesqgfkATbFMvB69aITjYK27+trPTmjo/3ui4KBAx6pDbPXtOtws8zBqBt4ONPOjoqID
+        Hta//pHxYithTbd+M0RRiwEAhTZFPqWkhSzIWToWKPKbPTMpfkC3bZebZKOBDZQ02CByxZ
+        vNSC9KFGkgVte2N1ujqF9iaw6U8j5xQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1655222765;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=QfvpzBTSY2CcQQ5fmdXCkwtL4YvnafHwxH5ik6bxfQ8=;
-        b=dPVxupHydhXpkopHhlCkNUGwaiW6RCFevg5pGch2fKKpFMJ7neVpAo/Sm/2LVsJTNifo1/
-        oJyR4aCkr0J6fMBw==
+        bh=SdGi0v44l1Vyl1G8V+8Irrfhuz+9JYlV2kXdeUXVjbg=;
+        b=ErCOaBZULvNK3Mv/b8Ec/lJsacKDHPlYkdQb4ktZjgXn9cfnCgeEh5NQda26YmkVl0sgcR
+        P3QeoviLWzcLm0AQ==
 Received: from quack3.suse.cz (unknown [10.163.28.18])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 081072C14F;
-        Tue, 14 Jun 2022 16:06:05 +0000 (UTC)
+        by relay2.suse.de (Postfix) with ESMTPS id EE4BD2C14B;
+        Tue, 14 Jun 2022 16:06:04 +0000 (UTC)
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 05169A063D; Tue, 14 Jun 2022 18:06:04 +0200 (CEST)
+        id E3106A063A; Tue, 14 Jun 2022 18:06:03 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Ritesh Harjani <ritesh.list@gmail.com>, Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/10] mbcache: Remove mb_cache_entry_delete()
-Date:   Tue, 14 Jun 2022 18:05:23 +0200
-Message-Id: <20220614160603.20566-9-jack@suse.cz>
+Subject: [PATCH 06/10] ext2: Factor our freeing of xattr block reference
+Date:   Tue, 14 Jun 2022 18:05:20 +0200
+Message-Id: <20220614160603.20566-6-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20220614124146.21594-1-jack@suse.cz>
 References: <20220614124146.21594-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2893; h=from:subject; bh=V4ETyThY8DgRS5cO3vwUiJUVd0xX30ITCRAr6jJt5a0=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLHCYjDl2LxH14cxwfWQVYayjicRqEovy/Q8cz2R cXrmZruJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixwgAKCRCcnaoHP2RA2W/rB/ 9rUdPh0LxlRKKZk4VfkH2QQd5WZ4fd4Kyi5F2HCLWMly0ShWdBrK/F5W2P99bushv1zHef/J3Svl6R Ug3WoPvy3WE/d+pXDO+XMbhltG3nZlfwtcDo6tx9O6ehtywbZqzRC0Cg5720JDUyVNjE8CajcI7qAV oMNlA/TqULVtMCqnIEnnY3lPuGZvmZ0v/XyhNi6EeN2egQDWzxsl68ZxIDQga0B/MuiNh4akEqLLz7 8zvS3Rd1Hb+A5er0IgRU2toVsQvz6eNC5waQGv5qsR5x3MK91SpusxnzcuBUuU3ACA6yU3oPp589lZ Wd0NVO/BmVJdfP3QZ2bMvY5Esu/QEu
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3790; h=from:subject; bh=uLup5gvdgoCBkRvzhhYah0h0Ckm+2JpPC82iA9WgAXo=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLHAKQYFJXKVBN7DA8a6tELmmRzg7SQzNZf0Nk6X LmFlpB6JATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixwAAKCRCcnaoHP2RA2U3gCA DMSR07tvxts1B++Cv9pK//SpXfMJUzVusvUZ+3wPod3Yf1cymM82CMqHeRvz0JRRcuRnGGE60LiHHp U1j4ujllA+Obn02sg3GITgPxIAker0eQ2ERb/Y5q+oKu14zUem8KFzV3w/nCKa8GkfTVjqmnNRyI8x /WJjiqPphSBWJcyPR7IqLdZZyoKAM5Li0beBCN/ue+Ce/KADuzgbo1YtieAsFq8ebqoa3RzudUYk+O amRM74BHyk8Oi5zJ00PXLLLaE8gaSt0GpDCJ4a81qbmjkQWPt6vaj7+QRoQ2PNdHJvJzdKu+ugueKy a8o5zfkhdOcg/yMxb9P2mRAvijYH15
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Nobody uses mb_cache_entry_delete() anymore. Remove it.
+Free of xattr block reference is opencode in two places. Factor it out
+into a separate function and use it.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/mbcache.c            | 41 ++---------------------------------------
- include/linux/mbcache.h |  1 -
- 2 files changed, 2 insertions(+), 40 deletions(-)
+ fs/ext2/xattr.c | 90 +++++++++++++++++++++----------------------------
+ 1 file changed, 38 insertions(+), 52 deletions(-)
 
-diff --git a/fs/mbcache.c b/fs/mbcache.c
-index 1ae66b2c75f4..c7b28a4e96da 100644
---- a/fs/mbcache.c
-+++ b/fs/mbcache.c
-@@ -11,7 +11,7 @@
- /*
-  * Mbcache is a simple key-value store. Keys need not be unique, however
-  * key-value pairs are expected to be unique (we use this fact in
-- * mb_cache_entry_delete()).
-+ * mb_cache_entry_try_delete()).
-  *
-  * Ext2 and ext4 use this cache for deduplication of extended attribute blocks.
-  * Ext4 also uses it for deduplication of xattr values stored in inodes.
-@@ -230,44 +230,7 @@ struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 key,
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 841fa6d9d744..9885294993ef 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -651,6 +651,42 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	return error;
  }
- EXPORT_SYMBOL(mb_cache_entry_get);
  
--/* mb_cache_entry_delete - try to remove a cache entry
-- * @cache - cache we work with
-- * @key - key
-- * @value - value
-- *
-- * Remove entry from cache @cache with key @key and value @value.
-- */
--void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 value)
--{
--	struct hlist_bl_node *node;
--	struct hlist_bl_head *head;
--	struct mb_cache_entry *entry;
++static void ext2_xattr_release_block(struct inode *inode,
++				     struct buffer_head *bh)
++{
++	struct mb_cache *ea_block_cache = EA_BLOCK_CACHE(inode);
++
++	lock_buffer(bh);
++	if (HDR(bh)->h_refcount == cpu_to_le32(1)) {
++		__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
++
++		/*
++		 * This must happen under buffer lock for
++		 * ext2_xattr_set2() to reliably detect freed block
++		 */
++		mb_cache_entry_delete(ea_block_cache, hash,
++				      bh->b_blocknr);
++		/* Free the old block. */
++		ea_bdebug(bh, "freeing");
++		ext2_free_blocks(inode, bh->b_blocknr, 1);
++		/* We let our caller release bh, so we
++		 * need to duplicate the buffer before. */
++		get_bh(bh);
++		bforget(bh);
++		unlock_buffer(bh);
++	} else {
++		/* Decrement the refcount only. */
++		le32_add_cpu(&HDR(bh)->h_refcount, -1);
++		dquot_free_block(inode, 1);
++		mark_buffer_dirty(bh);
++		unlock_buffer(bh);
++		ea_bdebug(bh, "refcount now=%d",
++			le32_to_cpu(HDR(bh)->h_refcount));
++		if (IS_SYNC(inode))
++			sync_dirty_buffer(bh);
++	}
++}
++
+ /*
+  * Second half of ext2_xattr_set(): Update the file system.
+  */
+@@ -747,34 +783,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 		 * If there was an old block and we are no longer using it,
+ 		 * release the old block.
+ 		 */
+-		lock_buffer(old_bh);
+-		if (HDR(old_bh)->h_refcount == cpu_to_le32(1)) {
+-			__u32 hash = le32_to_cpu(HDR(old_bh)->h_hash);
 -
--	head = mb_cache_entry_head(cache, key);
--	hlist_bl_lock(head);
--	hlist_bl_for_each_entry(entry, node, head, e_hash_list) {
--		if (entry->e_key == key && entry->e_value == value) {
--			/* We keep hash list reference to keep entry alive */
--			hlist_bl_del_init(&entry->e_hash_list);
--			hlist_bl_unlock(head);
--			spin_lock(&cache->c_list_lock);
--			if (!list_empty(&entry->e_list)) {
--				list_del_init(&entry->e_list);
--				if (!WARN_ONCE(cache->c_entry_count == 0,
--		"mbcache: attempt to decrement c_entry_count past zero"))
--					cache->c_entry_count--;
--				atomic_dec(&entry->e_refcnt);
--			}
--			spin_unlock(&cache->c_list_lock);
--			mb_cache_entry_put(cache, entry);
--			return;
+-			/*
+-			 * This must happen under buffer lock for
+-			 * ext2_xattr_set2() to reliably detect freed block
+-			 */
+-			mb_cache_entry_delete(ea_block_cache, hash,
+-					      old_bh->b_blocknr);
+-			/* Free the old block. */
+-			ea_bdebug(old_bh, "freeing");
+-			ext2_free_blocks(inode, old_bh->b_blocknr, 1);
+-			mark_inode_dirty(inode);
+-			/* We let our caller release old_bh, so we
+-			 * need to duplicate the buffer before. */
+-			get_bh(old_bh);
+-			bforget(old_bh);
+-		} else {
+-			/* Decrement the refcount only. */
+-			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
+-			dquot_free_block_nodirty(inode, 1);
+-			mark_inode_dirty(inode);
+-			mark_buffer_dirty(old_bh);
+-			ea_bdebug(old_bh, "refcount now=%d",
+-				le32_to_cpu(HDR(old_bh)->h_refcount));
 -		}
--	}
--	hlist_bl_unlock(head);
--}
--EXPORT_SYMBOL(mb_cache_entry_delete);
--
--/* mb_cache_entry_try_delete - try to remove a cache entry
-+/* mb_cache_entry_try_delete - remove a cache entry
-  * @cache - cache we work with
-  * @key - key
-  * @value - value
-diff --git a/include/linux/mbcache.h b/include/linux/mbcache.h
-index 1176fdfb8d53..3b25c3004ea9 100644
---- a/include/linux/mbcache.h
-+++ b/include/linux/mbcache.h
-@@ -47,7 +47,6 @@ static inline int mb_cache_entry_put(struct mb_cache *cache,
+-		unlock_buffer(old_bh);
++		ext2_xattr_release_block(inode, old_bh);
+ 	}
  
- struct mb_cache_entry *mb_cache_entry_try_delete(struct mb_cache *cache,
- 						 u32 key, u64 value);
--void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 value);
- struct mb_cache_entry *mb_cache_entry_get(struct mb_cache *cache, u32 key,
- 					  u64 value);
- struct mb_cache_entry *mb_cache_entry_find_first(struct mb_cache *cache,
+ cleanup:
+@@ -828,30 +837,7 @@ ext2_xattr_delete_inode(struct inode *inode)
+ 			EXT2_I(inode)->i_file_acl);
+ 		goto cleanup;
+ 	}
+-	lock_buffer(bh);
+-	if (HDR(bh)->h_refcount == cpu_to_le32(1)) {
+-		__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
+-
+-		/*
+-		 * This must happen under buffer lock for ext2_xattr_set2() to
+-		 * reliably detect freed block
+-		 */
+-		mb_cache_entry_delete(EA_BLOCK_CACHE(inode), hash,
+-				      bh->b_blocknr);
+-		ext2_free_blocks(inode, EXT2_I(inode)->i_file_acl, 1);
+-		get_bh(bh);
+-		bforget(bh);
+-		unlock_buffer(bh);
+-	} else {
+-		le32_add_cpu(&HDR(bh)->h_refcount, -1);
+-		ea_bdebug(bh, "refcount now=%d",
+-			le32_to_cpu(HDR(bh)->h_refcount));
+-		unlock_buffer(bh);
+-		mark_buffer_dirty(bh);
+-		if (IS_SYNC(inode))
+-			sync_dirty_buffer(bh);
+-		dquot_free_block_nodirty(inode, 1);
+-	}
++	ext2_xattr_release_block(inode, bh);
+ 	EXT2_I(inode)->i_file_acl = 0;
+ 
+ cleanup:
 -- 
 2.35.3
 
