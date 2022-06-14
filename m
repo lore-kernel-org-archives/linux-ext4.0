@@ -2,166 +2,130 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51F5ECCA47A
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29117C433EF
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356502AbiFNQGR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Jun 2022 12:06:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46798 "EHLO
+        id S1344072AbiFNQGS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Jun 2022 12:06:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46802 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344072AbiFNQGK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 12:06:10 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF89C3E5C4;
-        Tue, 14 Jun 2022 09:06:05 -0700 (PDT)
+        with ESMTP id S1344196AbiFNQGL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 12:06:11 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E1E655A4
+        for <linux-ext4@vger.kernel.org>; Tue, 14 Jun 2022 09:06:06 -0700 (PDT)
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out1.suse.de (Postfix) with ESMTP id 4648821BA9;
+        by smtp-out2.suse.de (Postfix) with ESMTP id E32601F97F;
         Tue, 14 Jun 2022 16:06:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1655222764; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=oywNUz5AJxJGQS/S4TwqmPZC3zYUkQpZ1pG7Zrgrw/I=;
-        b=ANvzpgu/y8K/FVhWu0CwFxMfZIgZI/pmpVEk+5dlqzsYDEnCqNEbh/jF2Hq/mab2jHN7An
-        coZlfjBENvF2IM2gNczksk08WTNctOOnE/SLn+Gix5Dww7c150y3ewCNEiaGbyNocPZTPZ
-        h/OAYjra66OLF5q2rP4KxkmZoALzVc8=
+        bh=0+HeRgliFnI7kAcv2KClYtB9VZSxdr7UpvMJX25764c=;
+        b=Uch9qhaT62yRaNl4+khe50ZUQHmhZcHhyvuaCLE61sTPgj8rtUkuaaNTSXM7QCklp4U2qx
+        MOmNOERiy/IP2a97Q4F2cRMZeiYWDaqi1x7zWPqbbX6AE1ldLEuULLMjS5M3K0tU9JTjyJ
+        /GVp8wj+h0SS1tbEGx7WbaRoN+omTP8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1655222764;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=oywNUz5AJxJGQS/S4TwqmPZC3zYUkQpZ1pG7Zrgrw/I=;
-        b=8L47UKkxCjTp7G00c9QE6sAWKDUanJwjaMJKyYxOL4x4saMxDRqYlMAm9oxk81elhgC4cc
-        4cRDfFHVBHJDNODA==
+        bh=0+HeRgliFnI7kAcv2KClYtB9VZSxdr7UpvMJX25764c=;
+        b=CIPf90nV2dgkkkVzx6MWN3Pe5/aWJ+gqU000X9VVNYqgmgjk6P2C0woX/FXMWVDkwIk7sb
+        WaOtIVD2tp2NG1BA==
 Received: from quack3.suse.cz (unknown [10.163.28.18])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 274F72C142;
+        by relay2.suse.de (Postfix) with ESMTPS id CF8F02C143;
         Tue, 14 Jun 2022 16:06:04 +0000 (UTC)
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id CD0E0A0637; Tue, 14 Jun 2022 18:06:03 +0200 (CEST)
+        id EA7C6A063B; Tue, 14 Jun 2022 18:06:03 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
-        Ritesh Harjani <ritesh.list@gmail.com>,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-Subject: [PATCH 03/10] ext4: Remove EA inode entry from mbcache on inode eviction
-Date:   Tue, 14 Jun 2022 18:05:17 +0200
-Message-Id: <20220614160603.20566-3-jack@suse.cz>
+        Ritesh Harjani <ritesh.list@gmail.com>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 07/10] ext2: Unindent codeblock in ext2_xattr_set()
+Date:   Tue, 14 Jun 2022 18:05:21 +0200
+Message-Id: <20220614160603.20566-7-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20220614124146.21594-1-jack@suse.cz>
 References: <20220614124146.21594-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3631; h=from:subject; bh=Rqg6o/lSmRio+PHAlM3U8k5/eMarefy35m+9vLzUtIQ=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLG9CsXqqv3TVjFtV/DNyhvcL5aF8/fhLz5l684F 4sbPCiSJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixvQAKCRCcnaoHP2RA2UnGCA C2uqDyFFtkDTMG66iQaG8RYD/TzxpLFkUb1ZgTZsJTCl+9FF+B5+NQSm++rnlR6JSnzcwk9K5RwJAn uiO93Gz6jawpjwBty7/Hdjf/ABSXWPBVLFWgt77jqRWSM2xROgV9d5BuHGp7M2Z4eQH+PajmLhGzNV hum50+ekuDjX8qkbQvLMG1gbF6+SIM8r47YRyHmg//alOlDuMhg2c8ecJN9IJctLeoiX9fqmFRUTsT OPFBhHc7SyS5Cdth1n14Xi/UIVDdTb5n3zqpisDJ5iba9hwT/ApvDHHGG/xSFMNeJY8WSYVXTbOQ9K cXUtve9gRoqQF76LxLBPtlOFnVwUHA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2157; h=from:subject; bh=EFa0XGQF6PxxB+yAjFv5mou0hxbLh72QSoo8aAWEb3o=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLHAOQcZCUA8ow5cnar5Mt4gQlyTw2mts/RYkpym Sdb9f3OJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixwAAKCRCcnaoHP2RA2frFCA CFN7JaSf6fJFmAIb8dZA5MBuUO+6FVZoh9cj7sjfpEkApSp9veBN5QG4OAQWtbIyUOEbXfkTTFC0bG QC+PHzuMT9QlBzga+5zo+bdrEnVFDgD/4LP7WVo+l+3D7RugJhpJ4H6QjbasBkzQFc3ERH7ajpTDLV ViwL8vVpInqzGAETA26mYXFv2l7P4bcFBc7x//4WLF1JdIwWzLIaahrkLz949x7rlZal11vNdr4hHw t2+4SOK/IygXvwlBiwz9aFgqJrS/GfMNe7TICMiDRhVMbUInkBfuzfKbJx4Ni/rnmJYBVFln6wuGOR ZWWjCQnkTQPSjyDZlNMCGIj+S36l51
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Currently we remove EA inode from mbcache as soon as its xattr refcount
-drops to zero. However there can be pending attempts to reuse the inode
-and thus refcount handling code has to handle the situation when
-refcount increases from zero anyway. So save some work and just keep EA
-inode in mbcache until it is getting evicted. At that moment we are sure
-following iget() of EA inode will fail anyway (or wait for eviction to
-finish and load things from the disk again) and so removing mbcache
-entry at that moment is fine and simplifies the code a bit.
+Replace one else in ext2_xattr_set() with a goto. This makes following
+code changes simpler to follow. No functional changes.
 
-CC: stable@vger.kernel.org
-Fixes: 82939d7999df ("ext4: convert to mbcache2")
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |  2 ++
- fs/ext4/xattr.c | 24 ++++++++----------------
- fs/ext4/xattr.h |  1 +
- 3 files changed, 11 insertions(+), 16 deletions(-)
+ fs/ext2/xattr.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3dce7d058985..7450ee734262 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -177,6 +177,8 @@ void ext4_evict_inode(struct inode *inode)
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 9885294993ef..37ce495eb279 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -517,7 +517,8 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
+ 	/* Here we know that we can set the new attribute. */
  
- 	trace_ext4_evict_inode(inode);
- 
-+	if (EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL)
-+		ext4_evict_ea_inode(inode);
- 	if (inode->i_nlink) {
- 		/*
- 		 * When journalling data dirty buffers are tracked only in the
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 042325349098..7fc40fb1e6b3 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -436,6 +436,14 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 	return err;
- }
- 
-+/* Remove entry from mbcache when EA inode is getting evicted */
-+void ext4_evict_ea_inode(struct inode *inode)
-+{
-+	if (EA_INODE_CACHE(inode))
-+		mb_cache_entry_delete(EA_INODE_CACHE(inode),
-+			ext4_xattr_inode_get_hash(inode), inode->i_ino);
-+}
+ 	if (header) {
+-		/* assert(header == HDR(bh)); */
++		int offset;
 +
- static int
- ext4_xattr_inode_verify_hashes(struct inode *ea_inode,
- 			       struct ext4_xattr_entry *entry, void *buffer,
-@@ -976,10 +984,8 @@ int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
- static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 				       int ref_change)
- {
--	struct mb_cache *ea_inode_cache = EA_INODE_CACHE(ea_inode);
- 	struct ext4_iloc iloc;
- 	s64 ref_count;
--	u32 hash;
- 	int ret;
+ 		lock_buffer(bh);
+ 		if (header->h_refcount == cpu_to_le32(1)) {
+ 			__u32 hash = le32_to_cpu(header->h_hash);
+@@ -531,22 +532,20 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
+ 					      bh->b_blocknr);
  
- 	inode_lock(ea_inode);
-@@ -1002,14 +1008,6 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 
- 			set_nlink(ea_inode, 1);
- 			ext4_orphan_del(handle, ea_inode);
+ 			/* keep the buffer locked while modifying it. */
+-		} else {
+-			int offset;
 -
--			if (ea_inode_cache) {
--				hash = ext4_xattr_inode_get_hash(ea_inode);
--				mb_cache_entry_create(ea_inode_cache,
--						      GFP_NOFS, hash,
--						      ea_inode->i_ino,
--						      true /* reusable */);
--			}
+-			unlock_buffer(bh);
+-			ea_bdebug(bh, "cloning");
+-			header = kmemdup(HDR(bh), bh->b_size, GFP_KERNEL);
+-			error = -ENOMEM;
+-			if (header == NULL)
+-				goto cleanup;
+-			header->h_refcount = cpu_to_le32(1);
+-
+-			offset = (char *)here - bh->b_data;
+-			here = ENTRY((char *)header + offset);
+-			offset = (char *)last - bh->b_data;
+-			last = ENTRY((char *)header + offset);
++			goto update_block;
  		}
++		unlock_buffer(bh);
++		ea_bdebug(bh, "cloning");
++		header = kmemdup(HDR(bh), bh->b_size, GFP_KERNEL);
++		error = -ENOMEM;
++		if (header == NULL)
++			goto cleanup;
++		header->h_refcount = cpu_to_le32(1);
++
++		offset = (char *)here - bh->b_data;
++		here = ENTRY((char *)header + offset);
++		offset = (char *)last - bh->b_data;
++		last = ENTRY((char *)header + offset);
  	} else {
- 		WARN_ONCE(ref_count < 0, "EA inode %lu ref_count=%lld",
-@@ -1022,12 +1020,6 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 
- 			clear_nlink(ea_inode);
- 			ext4_orphan_add(handle, ea_inode);
--
--			if (ea_inode_cache) {
--				hash = ext4_xattr_inode_get_hash(ea_inode);
--				mb_cache_entry_delete(ea_inode_cache, hash,
--						      ea_inode->i_ino);
--			}
- 		}
+ 		/* Allocate a buffer where we construct the new block. */
+ 		header = kzalloc(sb->s_blocksize, GFP_KERNEL);
+@@ -559,6 +558,7 @@ ext2_xattr_set(struct inode *inode, int name_index, const char *name,
+ 		last = here = ENTRY(header+1);
  	}
  
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 77efb9a627ad..060b7a2f485c 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -178,6 +178,7 @@ extern void ext4_xattr_inode_array_free(struct ext4_xattr_inode_array *array);
++update_block:
+ 	/* Iff we are modifying the block in-place, bh is locked here. */
  
- extern int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 			    struct ext4_inode *raw_inode, handle_t *handle);
-+extern void ext4_evict_ea_inode(struct inode *inode);
- 
- extern const struct xattr_handler *ext4_xattr_handlers[];
- 
+ 	if (not_found) {
 -- 
 2.35.3
 
