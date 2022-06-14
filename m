@@ -2,177 +2,105 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5593C3F2D4
-	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E381CCCA47A
+	for <linux-ext4@archiver.kernel.org>; Tue, 14 Jun 2022 16:06:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356261AbiFNQGM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Jun 2022 12:06:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46774 "EHLO
+        id S1356489AbiFNQGO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 14 Jun 2022 12:06:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46788 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235750AbiFNQGK (ORCPT
+        with ESMTP id S237013AbiFNQGK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 12:06:10 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAC703B2AD;
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F068D3EB89;
         Tue, 14 Jun 2022 09:06:05 -0700 (PDT)
 Received: from relay2.suse.de (relay2.suse.de [149.44.160.134])
-        by smtp-out2.suse.de (Postfix) with ESMTP id 4441E1F930;
+        by smtp-out1.suse.de (Postfix) with ESMTP id 402CF21B8C;
         Tue, 14 Jun 2022 16:06:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
         t=1655222764; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=NzQF6jjl6sCzOady0+DskTyshd/ZX+tm+xLmhj2laP4=;
-        b=ak+/nY4UWnbOzs7Mt4yg7wX82E5loTyl3SP7VJ09LiEGq17YFgvMlIjLPPn7Y3GvPQd111
-        OfGRvUGdZ2xqCfiaAjaNRaLMOsop2UmjJLxbc1owaAq1vggPMk5Dy0OAtI2na0uQCbyPxg
-        udWKERRMSfX/uV3+nPCKcvM/IKjywt4=
+        bh=1vkU/jSyn+kFPvBeQW7f228kBQrxyjZzDCIvwGO/yKY=;
+        b=sdXevBRXWa7OTRPXWJLNLcEzV77eEsmBQ6tMZdQ20OSxo6gAzhxcFPeZYxyHtwAVCrDzNC
+        pj6HVm6uf4D9KTe+iCM0+Ozyd7Ts9vf2YIQYaF/GM27S/EqGOMzv7wV5t2dYCgFa8/U6gU
+        MB69iCdlK/qARuu+mhD2S605DXgv7is=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
         s=susede2_ed25519; t=1655222764;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=NzQF6jjl6sCzOady0+DskTyshd/ZX+tm+xLmhj2laP4=;
-        b=sFPbqA6iYLK1Vo5BvVIizbhLrHvs2Ru0tioBrzMMrxGpX/W4FfHH6BVhe7c/j09gbAnhdL
-        RGWQqh45V2KmVhAw==
+        bh=1vkU/jSyn+kFPvBeQW7f228kBQrxyjZzDCIvwGO/yKY=;
+        b=7k7PODh0AjVVNwymgp++zLz62rkr8grba9aQRO34jWTZo9987WLZcbGZRg2xtBAdOixSQP
+        bYPuDvBwIJcWfsBw==
 Received: from quack3.suse.cz (unknown [10.163.28.18])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by relay2.suse.de (Postfix) with ESMTPS id 2F0C12C149;
+        by relay2.suse.de (Postfix) with ESMTPS id 2B1A62C146;
         Tue, 14 Jun 2022 16:06:04 +0000 (UTC)
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id D4B6CA0638; Tue, 14 Jun 2022 18:06:03 +0200 (CEST)
+        id BFC93A0634; Tue, 14 Jun 2022 18:06:03 +0200 (CEST)
 From:   Jan Kara <jack@suse.cz>
 To:     Ted Tso <tytso@mit.edu>
 Cc:     <linux-ext4@vger.kernel.org>,
         Ritesh Harjani <ritesh.list@gmail.com>,
         Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-Subject: [PATCH 04/10] ext4: Unindent codeblock in ext4_xattr_block_set()
-Date:   Tue, 14 Jun 2022 18:05:18 +0200
-Message-Id: <20220614160603.20566-4-jack@suse.cz>
+Subject: [PATCH 01/10] mbcache: Don't reclaim used entries
+Date:   Tue, 14 Jun 2022 18:05:15 +0200
+Message-Id: <20220614160603.20566-1-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
 In-Reply-To: <20220614124146.21594-1-jack@suse.cz>
 References: <20220614124146.21594-1-jack@suse.cz>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3820; h=from:subject; bh=b0Q0FRkazKsuzkM3//e3DZoWquWYEbbD0gLdIO8gLP0=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLG+OXP8x1Ee+UnOh+iY/DD0U5ajIub+6GepdrsG goG9uEeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixvgAKCRCcnaoHP2RA2RNqCA CNqrcESS9f7nTyjR06py40v2AB9LgNfpxoCfNWHANy8nZfU291RmhzDyTUOjG7UihVdto2wgD/BqtL t8+qCab7Y0UWzyS7x0A5FgNXvD/UHBpVmfJOFDHjn5+Ki4zga1VRSh2IRpu1cwqtr63Bh6PTImuZ5z Tn9yprQo81r/xrVvP0O0NNWGkFGT/Hc6Eazoa6T51i7CTt/cFF6SoXPqy0q0o2STvWL5eZm2G5XBrP FPkwSS9W1iqKBbNWfXclwBP/16fKBkZmfshTp8l+xufdiMYHgjWtVJKVIadGfgLYWUL8rD1BACseQG AJUp1yvPhJhVE31X0nP+q6OI8xnXCn
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1590; h=from:subject; bh=UQ7BhRBWvrAq3UlI+B+lJRwHJqv6fPllDg3HzQWNAMc=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBiqLG7Q5AoQNYCuzZdIzBlGvZi6ZuSgVGldNtRaRH4 I/MHtBeJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCYqixuwAKCRCcnaoHP2RA2eUwCA Do6wrrtcT5upau8lWWFThbrVyWyeZMBKDYiI6JQswu+Q+sBOjTL5aHr0dcVeg46K3txhE0scRP/PVW Px1O+6TtOQO+Jq+SimjMYhOaU1ME/0vH/38hp4AslalP+7KoBkXpnIaVkDEaaBbDpVCu4Ph+DOIQ/g u7K5L+Tvj6C/T7KMxHhKsu19881CIP0d1EAZmV/VxJioD4/3RYEHPRmRluR9P+ZP2R/XEX3sEVtmwN 8csSB27UXQ2J1AehHOpy1SsvHOu96X+bUVQnmyTLQX+0X6NrOYMHz8EBEMuh3O4MDqeVzWAaTyrZXF Mk7iS2zPzIawtT7jjZe9aJA75vWXbJ
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Remove unnecessary else (and thus indentation level) from a code block
-in ext4_xattr_block_set(). It will also make following code changes
-easier. No functional changes.
+Do not reclaim entries that are currently used by somebody from a
+shrinker. Firstly, these entries are likely useful. Secondly, we will
+need to keep such entries to protect pending increment of xattr block
+refcount.
 
 CC: stable@vger.kernel.org
 Fixes: 82939d7999df ("ext4: convert to mbcache2")
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/xattr.c | 79 ++++++++++++++++++++++++-------------------------
- 1 file changed, 39 insertions(+), 40 deletions(-)
+ fs/mbcache.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 7fc40fb1e6b3..aadfae53d055 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1850,6 +1850,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
- 	if (s->base) {
-+		int offset = (char *)s->here - bs->bh->b_data;
-+
- 		BUFFER_TRACE(bs->bh, "get_write_access");
- 		error = ext4_journal_get_write_access(handle, sb, bs->bh,
- 						      EXT4_JTR_NONE);
-@@ -1882,50 +1884,47 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			if (error)
- 				goto cleanup;
- 			goto inserted;
--		} else {
--			int offset = (char *)s->here - bs->bh->b_data;
+diff --git a/fs/mbcache.c b/fs/mbcache.c
+index 97c54d3a2227..cfc28129fb6f 100644
+--- a/fs/mbcache.c
++++ b/fs/mbcache.c
+@@ -288,7 +288,7 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
+ 	while (nr_to_scan-- && !list_empty(&cache->c_list)) {
+ 		entry = list_first_entry(&cache->c_list,
+ 					 struct mb_cache_entry, e_list);
+-		if (entry->e_referenced) {
++		if (entry->e_referenced || atomic_read(&entry->e_refcnt) > 2) {
+ 			entry->e_referenced = 0;
+ 			list_move_tail(&entry->e_list, &cache->c_list);
+ 			continue;
+@@ -302,6 +302,14 @@ static unsigned long mb_cache_shrink(struct mb_cache *cache,
+ 		spin_unlock(&cache->c_list_lock);
+ 		head = mb_cache_entry_head(cache, entry->e_key);
+ 		hlist_bl_lock(head);
++		/* Now a reliable check if the entry didn't get used... */
++		if (atomic_read(&entry->e_refcnt) > 2) {
++			hlist_bl_unlock(head);
++			spin_lock(&cache->c_list_lock);
++			list_add_tail(&entry->e_list, &cache->c_list);
++			cache->c_entry_count++;
++			continue;
 +		}
-+		unlock_buffer(bs->bh);
-+		ea_bdebug(bs->bh, "cloning");
-+		s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
-+		error = -ENOMEM;
-+		if (s->base == NULL)
-+			goto cleanup;
-+		memcpy(s->base, BHDR(bs->bh), bs->bh->b_size);
-+		s->first = ENTRY(header(s->base)+1);
-+		header(s->base)->h_refcount = cpu_to_le32(1);
-+		s->here = ENTRY(s->base + offset);
-+		s->end = s->base + bs->bh->b_size;
- 
--			unlock_buffer(bs->bh);
--			ea_bdebug(bs->bh, "cloning");
--			s->base = kmalloc(bs->bh->b_size, GFP_NOFS);
--			error = -ENOMEM;
--			if (s->base == NULL)
-+		/*
-+		 * If existing entry points to an xattr inode, we need
-+		 * to prevent ext4_xattr_set_entry() from decrementing
-+		 * ref count on it because the reference belongs to the
-+		 * original block. In this case, make the entry look
-+		 * like it has an empty value.
-+		 */
-+		if (!s->not_found && s->here->e_value_inum) {
-+			ea_ino = le32_to_cpu(s->here->e_value_inum);
-+			error = ext4_xattr_inode_iget(inode, ea_ino,
-+				      le32_to_cpu(s->here->e_hash),
-+				      &tmp_inode);
-+			if (error)
- 				goto cleanup;
--			memcpy(s->base, BHDR(bs->bh), bs->bh->b_size);
--			s->first = ENTRY(header(s->base)+1);
--			header(s->base)->h_refcount = cpu_to_le32(1);
--			s->here = ENTRY(s->base + offset);
--			s->end = s->base + bs->bh->b_size;
- 
--			/*
--			 * If existing entry points to an xattr inode, we need
--			 * to prevent ext4_xattr_set_entry() from decrementing
--			 * ref count on it because the reference belongs to the
--			 * original block. In this case, make the entry look
--			 * like it has an empty value.
--			 */
--			if (!s->not_found && s->here->e_value_inum) {
--				ea_ino = le32_to_cpu(s->here->e_value_inum);
--				error = ext4_xattr_inode_iget(inode, ea_ino,
--					      le32_to_cpu(s->here->e_hash),
--					      &tmp_inode);
--				if (error)
--					goto cleanup;
--
--				if (!ext4_test_inode_state(tmp_inode,
--						EXT4_STATE_LUSTRE_EA_INODE)) {
--					/*
--					 * Defer quota free call for previous
--					 * inode until success is guaranteed.
--					 */
--					old_ea_inode_quota = le32_to_cpu(
--							s->here->e_value_size);
--				}
--				iput(tmp_inode);
--
--				s->here->e_value_inum = 0;
--				s->here->e_value_size = 0;
-+			if (!ext4_test_inode_state(tmp_inode,
-+					EXT4_STATE_LUSTRE_EA_INODE)) {
-+				/*
-+				 * Defer quota free call for previous
-+				 * inode until success is guaranteed.
-+				 */
-+				old_ea_inode_quota = le32_to_cpu(
-+						s->here->e_value_size);
- 			}
-+			iput(tmp_inode);
-+
-+			s->here->e_value_inum = 0;
-+			s->here->e_value_size = 0;
- 		}
- 	} else {
- 		/* Allocate a buffer where we construct the new block. */
+ 		if (!hlist_bl_unhashed(&entry->e_hash_list)) {
+ 			hlist_bl_del_init(&entry->e_hash_list);
+ 			atomic_dec(&entry->e_refcnt);
 -- 
 2.35.3
 
