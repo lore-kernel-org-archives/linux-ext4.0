@@ -2,162 +2,242 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CFB3C43334
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jun 2022 03:54:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F624C433EF
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jun 2022 04:03:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243804AbiFODyy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 14 Jun 2022 23:54:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36394 "EHLO
+        id S240563AbiFOEDw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Jun 2022 00:03:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43940 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1353953AbiFODyQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Jun 2022 23:54:16 -0400
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0BF0C13EBA;
-        Tue, 14 Jun 2022 20:53:38 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.53])
-        by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4LNBG74LpWzjY6D;
-        Wed, 15 Jun 2022 11:52:31 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Wed, 15 Jun
- 2022 11:53:35 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
-        <enwlinux@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yebin10@huawei.com>, <yukuai3@huawei.com>,
-        <libaokun1@huawei.com>, Hulk Robot <hulkci@huawei.com>
-Subject: [PATCH v2 2/4] ext4: fix use-after-free in ext4_xattr_set_entry
-Date:   Wed, 15 Jun 2022 12:06:28 +0800
-Message-ID: <20220615040630.808783-3-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220615040630.808783-1-libaokun1@huawei.com>
-References: <20220615040630.808783-1-libaokun1@huawei.com>
+        with ESMTP id S239252AbiFOEDv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2022 00:03:51 -0400
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC9AC2A729;
+        Tue, 14 Jun 2022 21:03:49 -0700 (PDT)
+Received: from canpemm500010.china.huawei.com (unknown [172.30.72.55])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4LNBSt1GLjz1K9ry;
+        Wed, 15 Jun 2022 12:01:50 +0800 (CST)
+Received: from [10.174.178.185] (10.174.178.185) by
+ canpemm500010.china.huawei.com (7.192.105.118) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.24; Wed, 15 Jun 2022 12:03:41 +0800
+Subject: Re: [PATCH -next] ext4: Fix warning in ext4_da_release_space
+To:     Eric Whitney <enwlinux@gmail.com>
+References: <20220520025540.3189247-1-yebin10@huawei.com>
+ <62A6E461.9060209@huawei.com>
+ <YqktdYsCv7abgQB2@debian-BULLSEYE-live-builder-AMD64>
+CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <jack@suse.cz>
+From:   yebin <yebin10@huawei.com>
+Message-ID: <62A95A1D.9080302@huawei.com>
+Date:   Wed, 15 Jun 2022 12:03:41 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:38.0) Gecko/20100101
+ Thunderbird/38.1.0
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
- dggpeml500021.china.huawei.com (7.185.36.21)
+In-Reply-To: <YqktdYsCv7abgQB2@debian-BULLSEYE-live-builder-AMD64>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.174.178.185]
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ canpemm500010.china.huawei.com (7.192.105.118)
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hulk Robot reported a issue:
-==================================================================
-BUG: KASAN: use-after-free in ext4_xattr_set_entry+0x18ab/0x3500
-Write of size 4105 at addr ffff8881675ef5f4 by task syz-executor.0/7092
 
-CPU: 1 PID: 7092 Comm: syz-executor.0 Not tainted 4.19.90-dirty #17
-Call Trace:
-[...]
- memcpy+0x34/0x50 mm/kasan/kasan.c:303
- ext4_xattr_set_entry+0x18ab/0x3500 fs/ext4/xattr.c:1747
- ext4_xattr_ibody_inline_set+0x86/0x2a0 fs/ext4/xattr.c:2205
- ext4_xattr_set_handle+0x940/0x1300 fs/ext4/xattr.c:2386
- ext4_xattr_set+0x1da/0x300 fs/ext4/xattr.c:2498
- __vfs_setxattr+0x112/0x170 fs/xattr.c:149
- __vfs_setxattr_noperm+0x11b/0x2a0 fs/xattr.c:180
- __vfs_setxattr_locked+0x17b/0x250 fs/xattr.c:238
- vfs_setxattr+0xed/0x270 fs/xattr.c:255
- setxattr+0x235/0x330 fs/xattr.c:520
- path_setxattr+0x176/0x190 fs/xattr.c:539
- __do_sys_lsetxattr fs/xattr.c:561 [inline]
- __se_sys_lsetxattr fs/xattr.c:557 [inline]
- __x64_sys_lsetxattr+0xc2/0x160 fs/xattr.c:557
- do_syscall_64+0xdf/0x530 arch/x86/entry/common.c:298
- entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x459fe9
-RSP: 002b:00007fa5e54b4c08 EFLAGS: 00000246 ORIG_RAX: 00000000000000bd
-RAX: ffffffffffffffda RBX: 000000000051bf60 RCX: 0000000000459fe9
-RDX: 00000000200003c0 RSI: 0000000020000180 RDI: 0000000020000140
-RBP: 000000000051bf60 R08: 0000000000000001 R09: 0000000000000000
-R10: 0000000000001009 R11: 0000000000000246 R12: 0000000000000000
-R13: 00007ffc73c93fc0 R14: 000000000051bf60 R15: 00007fa5e54b4d80
-[...]
-==================================================================
 
-Above issue may happen as follows:
--------------------------------------
-ext4_xattr_set
-  ext4_xattr_set_handle
-    ext4_xattr_ibody_find
-      >> s->end < s->base
-      >> no EXT4_STATE_XATTR
-      >> xattr_check_inode is not executed
-    ext4_xattr_ibody_set
-      ext4_xattr_set_entry
-       >> size_t min_offs = s->end - s->base
-       >> UAF in memcpy
-
-we can easily reproduce this problem with the following commands:
-    mkfs.ext4 -F /dev/sda
-    mount -o debug_want_extra_isize=128 /dev/sda /mnt
-    touch /mnt/file
-    setfattr -n user.cat -v `seq -s z 4096|tr -d '[:digit:]'` /mnt/file
-
-In ext4_xattr_ibody_find, we have the following assignment logic:
-  header = IHDR(inode, raw_inode)
-         = raw_inode + EXT4_GOOD_OLD_INODE_SIZE + i_extra_isize
-  is->s.base = IFIRST(header)
-             = header + sizeof(struct ext4_xattr_ibody_header)
-  is->s.end = raw_inode + s_inode_size
-
-In ext4_xattr_set_entry
-  min_offs = s->end - s->base
-           = s_inode_size - EXT4_GOOD_OLD_INODE_SIZE - i_extra_isize -
-	     sizeof(struct ext4_xattr_ibody_header)
-  last = s->first
-  free = min_offs - ((void *)last - s->base) - sizeof(__u32)
-       = s_inode_size - EXT4_GOOD_OLD_INODE_SIZE - i_extra_isize -
-         sizeof(struct ext4_xattr_ibody_header) - sizeof(__u32)
-
-In the calculation formula, all values except s_inode_size and
-i_extra_size are fixed values. When i_extra_size is the maximum value
-s_inode_size - EXT4_GOOD_OLD_INODE_SIZE, min_offs is -4 and free is -8.
-The value overflows. As a result, the preceding issue is triggered when
-memcpy is executed.
-
-   EXT4_GOOD_OLD_INODE_SIZE  extra_isize  header   entry   pad   data
-|---------------------------|------------|------|---------|---|--------|
-
-As shown above, when adding an xattr to an inode, we must ensure that the
-inode_size is not less than EXT4_GOOD_OLD_INODE_SIZE + extra_isize + pad.
-
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
----
- fs/ext4/xattr.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 042325349098..c95f9fd747b6 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2176,8 +2176,9 @@ int ext4_xattr_ibody_find(struct inode *inode, struct ext4_xattr_info *i,
- 	struct ext4_inode *raw_inode;
- 	int error;
- 
--	if (EXT4_I(inode)->i_extra_isize == 0)
-+	if (!EXT4_INODE_HAVE_XATTR_SPACE(inode))
- 		return 0;
-+
- 	raw_inode = ext4_raw_inode(&is->iloc);
- 	header = IHDR(inode, raw_inode);
- 	is->s.base = is->s.first = IFIRST(header);
-@@ -2205,8 +2206,9 @@ int ext4_xattr_ibody_set(handle_t *handle, struct inode *inode,
- 	struct ext4_xattr_search *s = &is->s;
- 	int error;
- 
--	if (EXT4_I(inode)->i_extra_isize == 0)
-+	if (!EXT4_INODE_HAVE_XATTR_SPACE(inode))
- 		return -ENOSPC;
-+
- 	error = ext4_xattr_set_entry(i, s, handle, inode, false /* is_block */);
- 	if (error)
- 		return error;
--- 
-2.31.1
+On 2022/6/15 8:53, Eric Whitney wrote:
+> * yebin <yebin10@huawei.com>:
+>> ping...
+>>
+>> On 2022/5/20 10:55, Ye Bin wrote:
+>>> We got issue as follows:
+>>> WARNING: CPU: 2 PID: 1936 at fs/ext4/inode.c:1511 ext4_da_release_space+0x1b9/0x266
+>>> Modules linked in:
+>>> CPU: 2 PID: 1936 Comm: dd Not tainted 5.10.0+ #344
+>>> RIP: 0010:ext4_da_release_space+0x1b9/0x266
+>>> RSP: 0018:ffff888127307848 EFLAGS: 00010292
+>>> RAX: 0000000000000000 RBX: 0000000000000001 RCX: ffffffff843f67cc
+>>> RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffffed1024e60ed9
+>>> RBP: ffff888124dc8140 R08: 0000000000000083 R09: ffffed1075da6d23
+>>> R10: ffff8883aed36917 R11: ffffed1075da6d22 R12: ffff888124dc83f0
+>>> R13: ffff888124dc844c R14: ffff888124dc8168 R15: 000000000000000c
+>>> FS:  00007f6b7247d740(0000) GS:ffff8883aed00000(0000) knlGS:0000000000000000
+>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>> CR2: 00007ffc1a0b7dd8 CR3: 00000001065ce000 CR4: 00000000000006e0
+>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+>>> Call Trace:
+>>>    ext4_es_remove_extent+0x187/0x230
+>>>    mpage_release_unused_pages+0x3af/0x470
+>>>    ext4_writepages+0xb9b/0x1160
+>>>    do_writepages+0xbb/0x1e0
+>>>    __filemap_fdatawrite_range+0x1b1/0x1f0
+>>>    file_write_and_wait_range+0x80/0xe0
+>>>    ext4_sync_file+0x13d/0x800
+>>>    vfs_fsync_range+0x75/0x140
+>>>    do_fsync+0x4d/0x90
+>>>    __x64_sys_fsync+0x1d/0x30
+>>>    do_syscall_64+0x33/0x40
+>>>    entry_SYSCALL_64_after_hwframe+0x44/0xa9
+>>>
+>>> Above issue may happens as follows:
+>>> 	process1                        process2
+>>> ext4_da_write_begin
+>>>     ext4_da_reserve_space
+>>>       ext4_es_insert_delayed_block[1/1]
+>>>                                       ext4_da_write_begin
+>>> 				      ext4_es_insert_delayed_block[0/1]
+>>> ext4_writepages
+>>>     ****Delayed block allocation failed****
+>>>     mpage_release_unused_pages
+>>>       ext4_es_remove_extent[1/1]
+>>>         ext4_da_release_space [reserved 0]
+>>>
+>>> ext4_da_write_begin
+>>>     ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)
+>>>      ->As there exist [0, 1] extent, so will return true
+>>>                                      ext4_writepages
+>>> 				   ****Delayed block allocation failed****
+>>>                                        mpage_release_unused_pages
+>>> 				       ext4_es_remove_extent[0/1]
+>>> 				         ext4_da_release_space [reserved 1]
+>>> 					   ei->i_reserved_data_blocks [1->0]
+>>>
+>>>     ext4_es_insert_delayed_block[1/1]
+>>>
+>>> ext4_writepages
+>>>     ****Delayed block allocation failed****
+>>>     mpage_release_unused_pages
+>>>     ext4_es_remove_extent[1/1]
+>>>      ext4_da_release_space [reserved 1]
+>>>       ei->i_reserved_data_blocks[0, -1]
+>>>       ->As ei->i_reserved_data_blocks already is zero but to_free is 1,
+>>>       will trigger warning.
+>>>
+>>> To solve above issue, introduce i_clu_lock to protect insert delayed
+>>> block and remove block under cluster delay allocate mode.
+>>>
+>>> Signed-off-by: Ye Bin <yebin10@huawei.com>
+>>> ---
+>>>    fs/ext4/ext4.h           |  3 +++
+>>>    fs/ext4/extents_status.c |  5 +++++
+>>>    fs/ext4/inode.c          | 11 +++++++++--
+>>>    fs/ext4/super.c          |  1 +
+>>>    4 files changed, 18 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>>> index bcd3b9bf8069..47c88ac4d4a8 100644
+>>> --- a/fs/ext4/ext4.h
+>>> +++ b/fs/ext4/ext4.h
+>>> @@ -1169,6 +1169,9 @@ struct ext4_inode_info {
+>>>    	__u32 i_csum_seed;
+>>>    	kprojid_t i_projid;
+>>> +
+>>> +	/* Protect concurrent add cluster delayed block and remove block */
+>>> +	struct mutex i_clu_lock;
+>>>    };
+>>>    /*
+>>> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+>>> index 9a3a8996aacf..dd679014db98 100644
+>>> --- a/fs/ext4/extents_status.c
+>>> +++ b/fs/ext4/extents_status.c
+>>> @@ -1433,6 +1433,7 @@ static int __es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>>>    int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>>>    			  ext4_lblk_t len)
+>>>    {
+>>> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+>>>    	ext4_lblk_t end;
+>>>    	int err = 0;
+>>>    	int reserved = 0;
+>>> @@ -1455,9 +1456,13 @@ int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+>>>    	 * so that we are sure __es_shrink() is done with the inode before it
+>>>    	 * is reclaimed.
+>>>    	 */
+>>> +	if (sbi->s_cluster_ratio != 1)
+>>> +		mutex_lock(&EXT4_I(inode)->i_clu_lock);
+>>>    	write_lock(&EXT4_I(inode)->i_es_lock);
+>>>    	err = __es_remove_extent(inode, lblk, end, &reserved);
+>>>    	write_unlock(&EXT4_I(inode)->i_es_lock);
+>>> +	if (sbi->s_cluster_ratio != 1)
+>>> +		mutex_unlock(&EXT4_I(inode)->i_clu_lock);
+>>>    	ext4_es_print_tree(inode);
+>>>    	ext4_da_release_space(inode, reserved);
+>>>    	return err;
+>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>> index 01c9e4f743ba..1109d77ad60b 100644
+>>> --- a/fs/ext4/inode.c
+>>> +++ b/fs/ext4/inode.c
+>>> @@ -1649,17 +1649,22 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
+>>>    			goto errout;
+>>>    		reserved = true;
+>>>    	} else {   /* bigalloc */
+>>> +		mutex_lock(&EXT4_I(inode)->i_clu_lock);
+>>>    		if (!ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)) {
+>>>    			if (!ext4_es_scan_clu(inode,
+>>>    					      &ext4_es_is_mapped, lblk)) {
+>>>    				ret = ext4_clu_mapped(inode,
+>>>    						      EXT4_B2C(sbi, lblk));
+>>> -				if (ret < 0)
+>>> +				if (ret < 0) {
+>>> +					mutex_unlock(&EXT4_I(inode)->i_clu_lock);
+>>>    					goto errout;
+>>> +				}
+>>>    				if (ret == 0) {
+>>>    					ret = ext4_da_reserve_space(inode);
+>>> -					if (ret != 0)   /* ENOSPC */
+>>> +					if (ret != 0) {   /* ENOSPC */
+>>> +						mutex_unlock(&EXT4_I(inode)->i_clu_lock);
+>>>    						goto errout;
+>>> +					}
+>>>    					reserved = true;
+>>>    				} else {
+>>>    					allocated = true;
+>>> @@ -1671,6 +1676,8 @@ static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
+>>>    	}
+>>>    	ret = ext4_es_insert_delayed_block(inode, lblk, allocated);
+>>> +	if (sbi->s_cluster_ratio != 1)
+>>> +		mutex_unlock(&EXT4_I(inode)->i_clu_lock);
+>>>    	if (ret && reserved)
+>>>    		ext4_da_release_space(inode, 1);
+>>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>>> index c5021ca0a28a..aa6f2a68bf41 100644
+>>> --- a/fs/ext4/super.c
+>>> +++ b/fs/ext4/super.c
+>>> @@ -1347,6 +1347,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+>>>    	INIT_WORK(&ei->i_rsv_conversion_work, ext4_end_io_rsv_work);
+>>>    	ext4_fc_init_inode(&ei->vfs_inode);
+>>>    	mutex_init(&ei->i_fc_lock);
+>>> +	mutex_init(&ei->i_clu_lock);
+>>>    	return &ei->vfs_inode;
+>>>    }
+> As you have reported, it looks like there is potential for a race between
+> mpage_release_unused_pages and ext4_insert_delayed_block when running on a
+> bigalloc file system in rare circumstances.  There should have been locking
+> in mpage_release_unused_pages to avoid this.  The locking was missed when new
+> code was added to ext4_insert_delayed_block to handle bigalloc delayed block
+> accounting.
+>
+> I have a solution that addresses that omission and is simpler than your
+> proposed fix.  It does not require adding a new lock.  I'm putting that
+> patch through the usual testing cycles, plus new stress testing to verify that
+> no lock dependency problems exist.  It looks good so far, and I expect to post
+> it tomorrow.  If you would be willing to test that patch, we would welcome
+> it.  As you have not chosen to explain how you've triggered the race, you
+> are in a better position to determine whether the patch will successfully
+> address it.
+I've provided a way to reproduce.
+> It's important to understand that the delayed block allocation failures
+> you have noted in your call graphs are far more important events than the
+> block accounting errors that occur due to the race.  The delayed block
+> allocation failures represent data loss for the user, and they should really
+> never happen.  That's why we'd like to understand how you triggered the race,
+> whether by fuzzing or some other method.  Depending on what was done, there
+> may be a need to harden the code.
+>
+> Eric
+> .
+>
 
