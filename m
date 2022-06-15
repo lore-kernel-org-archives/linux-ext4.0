@@ -2,66 +2,60 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 914B5CCA473
-	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jun 2022 08:11:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C56F7CCA47F
+	for <linux-ext4@archiver.kernel.org>; Wed, 15 Jun 2022 08:14:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242935AbiFOILs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Jun 2022 04:11:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47242 "EHLO
+        id S238834AbiFOIOT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 15 Jun 2022 04:14:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50270 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236475AbiFOILr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2022 04:11:47 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [145.40.73.55])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8B402AE02;
-        Wed, 15 Jun 2022 01:11:46 -0700 (PDT)
+        with ESMTP id S1343909AbiFOIOS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2022 04:14:18 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E140921E0B;
+        Wed, 15 Jun 2022 01:14:17 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 4C4FCCE1D62;
-        Wed, 15 Jun 2022 08:11:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 353B6C34115;
-        Wed, 15 Jun 2022 08:11:38 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7D27A61949;
+        Wed, 15 Jun 2022 08:14:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D82B7C34115;
+        Wed, 15 Jun 2022 08:14:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1655280703;
-        bh=G8h+IDpJR0CvhZVQBHmA8xXUGMUALrZIeamkPUOOwAc=;
+        s=k20201202; t=1655280856;
+        bh=k+3SUrAPzRklM1OSV+O/gZAPfDFx88kiFdDt9TP8wi0=;
         h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-        b=J6Y3XOcwoC/TgUHQEi+SmCxARb6tPwZNqAYZg5XUTUI3Q/ll5OApOdFtKbROVKu0J
-         G3wBk9/2zrpVCGzGGdhz1ESbgkoh73YGsKSRIOJUxvsHV+/K5Zd6avT4WMepRjY9H4
-         wamp6FUhQPTuGWEhQiYvx6IJuRvj3n1pbZp2ZHUm41s47toXZ4TP69nqNoX31VqQXs
-         PJkwswu6LBuH667SA02KF13mHrfORzWm/2zDlI2HgW90bjJCTh4CmOq+CyWlVyareR
-         TNZ8wmpjenOnCxxJfBdf7GMJYbuk/uABYuIiv48owX1ckCCiZaFExYBEBPHV4h2PdO
-         DbPuKfjHUQGOA==
-Message-ID: <5fdec03e-efb6-554b-55b3-49e7e7f2be5e@kernel.org>
-Date:   Wed, 15 Jun 2022 16:11:36 +0800
+        b=t5unw6qXFjXOZXP3wCnQaVCCZRKnjr3Y7yDD2CCdvPV0FgCG0ZLsOu91d+vP0jN8z
+         fmsHRt4/NdxKkEzsf/E6WIZCC7GTcM6NfrbhS9Dz053s2pzeGosoG4/R//xZBa9aDV
+         eFh8WtHkVtDTZ2VE/hmqF/sZ1gr8DjkHI9ZAl5d+elWRdNudKVDbMD2ohPrjCQPuvo
+         V4oVDwMuUanM4M3NjQvbKBGCN+3dpLTTVSGBr5OEIvX34y2mvIQT8c9GxIzABbihT9
+         bLKhsokce4riUp5mQRw77bqwDdnJ3CEi+CEiZVVeIyEwtpdO+AUGC5cMmTspYWtUqZ
+         C8r+3BE454s5A==
+Message-ID: <c4db5f98-6b00-99e6-ecf2-63372f20c516@kernel.org>
+Date:   Wed, 15 Jun 2022 16:14:12 +0800
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101
  Thunderbird/91.10.0
-Subject: Re: [f2fs-dev] [PATCH v2 14/19] f2fs: Convert to
- filemap_migrate_folio()
+Subject: Re: [f2fs-dev] [PATCH 05/10] f2fs: Convert
+ f2fs_invalidate_compress_pages() to use filemap_get_folios()
 Content-Language: en-US
 To:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         linux-fsdevel@vger.kernel.org
-Cc:     linux-aio@kvack.org, linux-nfs@vger.kernel.org,
-        cluster-devel@redhat.com, linux-ntfs-dev@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-block@vger.kernel.org, linux-mm@kvack.org,
-        linux-mtd@lists.infradead.org, ocfs2-devel@oss.oracle.com,
-        linux-ext4@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org
-References: <20220608150249.3033815-1-willy@infradead.org>
- <20220608150249.3033815-15-willy@infradead.org>
+Cc:     linux-nilfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-ext4@vger.kernel.org
+References: <20220605193854.2371230-1-willy@infradead.org>
+ <20220605193854.2371230-6-willy@infradead.org>
 From:   Chao Yu <chao@kernel.org>
-In-Reply-To: <20220608150249.3033815-15-willy@infradead.org>
+In-Reply-To: <20220605193854.2371230-6-willy@infradead.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2022/6/8 23:02, Matthew Wilcox (Oracle) wrote:
-> filemap_migrate_folio() fits f2fs's needs perfectly.
+On 2022/6/6 3:38, Matthew Wilcox (Oracle) wrote:
+> Convert this function to use folios throughout.
 > 
 > Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 
