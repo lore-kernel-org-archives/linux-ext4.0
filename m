@@ -2,72 +2,112 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8DBB5CCA473
-	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jun 2022 02:01:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88CAFC433EF
+	for <linux-ext4@archiver.kernel.org>; Thu, 16 Jun 2022 04:00:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1357901AbiFPCBF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 15 Jun 2022 22:01:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37366 "EHLO
+        id S1358484AbiFPEAS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 16 Jun 2022 00:00:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46076 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1357778AbiFPCBA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jun 2022 22:01:00 -0400
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0D1845933D;
-        Wed, 15 Jun 2022 19:00:59 -0700 (PDT)
-Received: from dggpeml500021.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4LNlg64Tz1zSh1j;
-        Thu, 16 Jun 2022 09:57:38 +0800 (CST)
-Received: from huawei.com (10.175.127.227) by dggpeml500021.china.huawei.com
- (7.185.36.21) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.24; Thu, 16 Jun
- 2022 10:00:56 +0800
-From:   Baokun Li <libaokun1@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <ritesh.list@gmail.com>, <lczerner@redhat.com>,
-        <enwlinux@gmail.com>, <linux-kernel@vger.kernel.org>,
-        <yi.zhang@huawei.com>, <yebin10@huawei.com>, <yukuai3@huawei.com>,
-        <libaokun1@huawei.com>
-Subject: [PATCH v3 3/4] ext4: correct max_inline_xattr_value_size computing
-Date:   Thu, 16 Jun 2022 10:13:57 +0800
-Message-ID: <20220616021358.2504451-4-libaokun1@huawei.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <20220616021358.2504451-1-libaokun1@huawei.com>
+        with ESMTP id S229450AbiFPEAQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jun 2022 00:00:16 -0400
+Received: from mail-pg1-x52c.google.com (mail-pg1-x52c.google.com [IPv6:2607:f8b0:4864:20::52c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5698C56C00;
+        Wed, 15 Jun 2022 21:00:13 -0700 (PDT)
+Received: by mail-pg1-x52c.google.com with SMTP id g186so159951pgc.1;
+        Wed, 15 Jun 2022 21:00:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=1kp6HmlDswuyD1yvOBrLR/PtmpgG1dVILvU7RfuoSLs=;
+        b=Cd9oqlKOGtgVvEYO1IeARwR1WHNfphEHFpUaKkenlPNdiifbRub1Ur1ju76SbjHkri
+         Am787V0AxfnfexSJHdYXiI21CP+uV2vVW9Z4/MGDWk7p6/v3cnebiK/WZ4B0CO1CFz1Z
+         JOATogBa1rXy0jfSxCXtwxe5tV87eZLBfV4sq9PeySDW0RbBr8DEcZwyYiBqDrlTYQWy
+         MIlN49mtE5VhPPSJYJL+YxJS4/1sLzwzlgvjfe9CUXEOZKZkvHxGPnO+bCuXvsDEBjlJ
+         1AV1IJ6MS3v2nRYUc8pOwrSC/m+KI9xqXsoZ/8sF2d3PL/mAXXp1Oqq+QU1aeavBznmT
+         ni8Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=1kp6HmlDswuyD1yvOBrLR/PtmpgG1dVILvU7RfuoSLs=;
+        b=weKavhv+WVBNZ9U+13+LhUmm9PiDGjtGjxYWhwByj0TwNTh2tsBaAvitqk3O4iWeBs
+         g48Wh+NZONgQd9UD9x4yQfMA+eGbDPW7g9E13IZMSJ7cXw4SP2B3u9K+gwMQAozSR59y
+         EVoIcVEKyyUrqvDY1QyDvlszEX31/ZQ/SlUtyewl8SaHyf2IuY8PZ9rYBN3DhfU5TpvR
+         6sNhBrujuLuzYEN1n0x604gvkj3Onetjjlp9oKdhJjDiH3ZeL6nUBCFw3NEiVXKxPryH
+         Ix/gK2jrOOn4iMpvgr/rN/Wstpy3xd4bJKl0Qeq8tR3+B3L8+ulFD3JVoa8czq1j60nv
+         9Tlw==
+X-Gm-Message-State: AJIora8o9KMi/ij4OrBKjb750ntuT1okDa3ARU87KPLlu0oymxV8M8Q9
+        wM8ML197KV/Kjf7R7P6216E=
+X-Google-Smtp-Source: AGRyM1vvMovBLxxtCVtFY48ijVII2qBXZhyDOM44esoAIGlU56YRuzeWv+3Zt3cZBDH2x4nSUIQpIA==
+X-Received: by 2002:a05:6a00:813:b0:51c:17b2:60cf with SMTP id m19-20020a056a00081300b0051c17b260cfmr2914896pfk.70.1655352012796;
+        Wed, 15 Jun 2022 21:00:12 -0700 (PDT)
+Received: from localhost ([2406:7400:63:5d34:e6c2:4c64:12ae:aa11])
+        by smtp.gmail.com with ESMTPSA id ms24-20020a17090b235800b001e270cc443dsm2639739pjb.46.2022.06.15.21.00.11
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 15 Jun 2022 21:00:12 -0700 (PDT)
+Date:   Thu, 16 Jun 2022 09:30:07 +0530
+From:   Ritesh Harjani <ritesh.list@gmail.com>
+To:     Baokun Li <libaokun1@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, lczerner@redhat.com,
+        enwlinux@gmail.com, linux-kernel@vger.kernel.org,
+        yi.zhang@huawei.com, yebin10@huawei.com, yukuai3@huawei.com
+Subject: Re: [PATCH v3 1/4] ext4: add EXT4_INODE_HAS_XATTR_SPACE macro in
+ xattr.h
+Message-ID: <20220616040007.e4uehjuluet2mmk2@riteshh-domain>
 References: <20220616021358.2504451-1-libaokun1@huawei.com>
+ <20220616021358.2504451-2-libaokun1@huawei.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7BIT
-Content-Type:   text/plain; charset=US-ASCII
-X-Originating-IP: [10.175.127.227]
-X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
- dggpeml500021.china.huawei.com (7.185.36.21)
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220616021358.2504451-2-libaokun1@huawei.com>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If the ext4 inode does not have xattr space, 0 is returned in the
-get_max_inline_xattr_value_size function. Otherwise, the function returns
-a negative value when the inode does not contain EXT4_STATE_XATTR.
+On 22/06/16 10:13AM, Baokun Li wrote:
+> When adding an xattr to an inode, we must ensure that the inode_size is
+> not less than EXT4_GOOD_OLD_INODE_SIZE + extra_isize + pad. Otherwise,
+> the end position may be greater than the start position, resulting in UAF.
+>
+> Signed-off-by: Baokun Li <libaokun1@huawei.com>
+> ---
+>  fs/ext4/xattr.h | 13 +++++++++++++
+>  1 file changed, 13 insertions(+)
+>
+> diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+> index 77efb9a627ad..f885f362add4 100644
+> --- a/fs/ext4/xattr.h
+> +++ b/fs/ext4/xattr.h
+> @@ -95,6 +95,19 @@ struct ext4_xattr_entry {
+>
+>  #define EXT4_ZERO_XATTR_VALUE ((void *)-1)
+>
+> +/*
+> + * If we want to add an xattr to the inode, we should make sure that
+> + * i_extra_isize is not 0 and that the inode size is not less than
+> + * EXT4_GOOD_OLD_INODE_SIZE + extra_isize + pad.
+> + *   EXT4_GOOD_OLD_INODE_SIZE   extra_isize header   entry   pad  data
+> + * |--------------------------|------------|------|---------|---|-------|
+> + */
 
-Signed-off-by: Baokun Li <libaokun1@huawei.com>
----
- fs/ext4/inline.c | 3 +++
- 1 file changed, 3 insertions(+)
+Thanks for adding the visual :)
+Looks good to me. Feel free to add -
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index cff52ff6549d..da5de43623dd 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -35,6 +35,9 @@ static int get_max_inline_xattr_value_size(struct inode *inode,
- 	struct ext4_inode *raw_inode;
- 	int free, min_offs;
- 
-+	if (!EXT4_INODE_HAS_XATTR_SPACE(inode))
-+		return 0;
-+
- 	min_offs = EXT4_SB(inode->i_sb)->s_inode_size -
- 			EXT4_GOOD_OLD_INODE_SIZE -
- 			EXT4_I(inode)->i_extra_isize -
--- 
-2.31.1
+Reviewed-by: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
 
+
+> +#define EXT4_INODE_HAS_XATTR_SPACE(inode)				\
+> +	((EXT4_I(inode)->i_extra_isize != 0) &&				\
+> +	 (EXT4_GOOD_OLD_INODE_SIZE + EXT4_I(inode)->i_extra_isize +	\
+> +	  sizeof(struct ext4_xattr_ibody_header) + EXT4_XATTR_PAD <=	\
+> +	  EXT4_INODE_SIZE((inode)->i_sb)))
+> +
+>  struct ext4_xattr_info {
+>  	const char *name;
+>  	const void *value;
+> --
+> 2.31.1
+>
