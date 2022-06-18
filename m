@@ -2,45 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87DF6C433EF
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jun 2022 02:59:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E03E2C433EF
+	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jun 2022 02:59:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238117AbiFRC7T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 17 Jun 2022 22:59:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35910 "EHLO
+        id S238227AbiFRC7X (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 17 Jun 2022 22:59:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238004AbiFRC7R (ORCPT
+        with ESMTP id S238030AbiFRC7R (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jun 2022 22:59:17 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 22EC26C0EF;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93D066C0F2;
         Fri, 17 Jun 2022 19:59:16 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 25I2x6BT024034
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 25I2x6V1024048
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Fri, 17 Jun 2022 22:59:08 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1655521148; bh=BRqgLdHljqKpZjJgp3EqbU/vGhT+05lRwXWHMn2SqUI=;
+        t=1655521148; bh=7ehJo/pUgDFBbuPJrCHggKe5cRKzTV+zfJhvkxy29Rw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References;
-        b=OIDsf4GJgl4nSDq+tmMnEda6VPwuEf2cpcwMXLtgq5JBXeWufkz/mAKO/L+PoCaL4
-         NkN1ZpDP0hmTMzYvxiEXk+HLxO/OK0iMyeFRwAz3pfRsfeXzTUht1MJ0qRDsGvm3x8
-         y2yXHtFttOTR4xkJRf5TS/3EMSvIYx3Sh6b2bsBFRGDJhdqslI7axnW0dnshxVOVlE
-         PsIEwau6kaWD8Ce9qpsgFVQQiPDW0XAmCarKXhWtjh2WQ7t9ryCnqvqq+qMZe4D5cn
-         5PvWYujp51m6t4TePMuwVC9hwHejycwJhxcLrcQqeAuBlR5LbFLdz8qCaSB9N8LZzs
-         ICcQpKoh0oaLA==
+        b=aaJMIPJPPzxyRyqs3LGWIAFySMdDO84p4mdC5/3pvjwS1Eqq4+EZ0rCVIf6E8a2K8
+         FOMfxueXav2qg4rkfbTEYimYR7CgMzWuyUZDpZVz3A+/ylMNNZZVoXK8heVsuFG5Qw
+         eXR/RPXJygNw1Mq3/3o7CNvmig/2diOnR4PBz+1Ke8SB8TzTZTgoVPuz6sppvmTVkK
+         K/c+azMA8EAyGG9TClIBP9VRHdUX/+96L+5XlBHarQxkqZjSzbX0iA2Bp1aIvnYhUq
+         umBEaEAqiXdlCUV5ptZkABEWzIcD5g7CyaWqNOjSuClrnHub+MhgchzdD4B0cVZyQ5
+         5YvKwALeODeRQ==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id 4B9E515C42F4; Fri, 17 Jun 2022 22:59:06 -0400 (EDT)
+        id 4A19D15C42F3; Fri, 17 Jun 2022 22:59:06 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Xiang wangx <wangxiang@cdjrlc.com>
+To:     adilger.kernel@dilger.ca,
+        Ding Xiang <dingxiang@cmss.chinamobile.com>
 Cc:     "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] fs/ext4: Fix syntax errors in comments
-Date:   Fri, 17 Jun 2022 22:59:02 -0400
-Message-Id: <165552108974.634564.10372518530279275547.b4-ty@mit.edu>
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: change variable "count" to signed integer
+Date:   Fri, 17 Jun 2022 22:59:01 -0400
+Message-Id: <165552108974.634564.2634497659089601268.b4-ty@mit.edu>
 X-Mailer: git-send-email 2.31.0
-In-Reply-To: <20220605091503.12513-1-wangxiang@cdjrlc.com>
-References: <20220605091503.12513-1-wangxiang@cdjrlc.com>
+In-Reply-To: <20220530100047.537598-1-dingxiang@cmss.chinamobile.com>
+References: <20220530100047.537598-1-dingxiang@cmss.chinamobile.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -48,15 +49,16 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, 5 Jun 2022 17:15:03 +0800, Xiang wangx wrote:
-> Delete the redundant word 'need'.
+On Mon, 30 May 2022 18:00:47 +0800, Ding Xiang wrote:
+> Since dx_make_map() may return -EFSCORRUPTED now,
+> so change "count" to signed integer.
 > 
 > 
 
 Applied, thanks!
 
-[1/1] fs/ext4: Fix syntax errors in comments
-      commit: 729e657ab8d41efc2eadbb686193e888660b6253
+[1/1] ext4: change variable "count" to signed integer
+      commit: fefb759df063599ad483422eb07ef8e14c612cc2
 
 Best regards,
 -- 
