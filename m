@@ -2,121 +2,124 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CFDAEC433EF
-	for <linux-ext4@archiver.kernel.org>; Sat, 18 Jun 2022 22:22:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 886DFC43334
+	for <linux-ext4@archiver.kernel.org>; Sun, 19 Jun 2022 00:30:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232089AbiFRWWb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 18 Jun 2022 18:22:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38376 "EHLO
+        id S232536AbiFSAa5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 18 Jun 2022 20:30:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231506AbiFRWWa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jun 2022 18:22:30 -0400
+        with ESMTP id S232520AbiFSAa4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jun 2022 20:30:56 -0400
 Received: from outgoing.mit.edu (outgoing-auth-1.mit.edu [18.9.28.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0B93110FFD;
-        Sat, 18 Jun 2022 15:22:26 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 401C6B482;
+        Sat, 18 Jun 2022 17:30:54 -0700 (PDT)
 Received: from cwcc.thunk.org (pool-173-48-118-63.bstnma.fios.verizon.net [173.48.118.63])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 25IMM0lH021854
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id 25J0UnXF012112
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sat, 18 Jun 2022 18:22:02 -0400
+        Sat, 18 Jun 2022 20:30:50 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=outgoing;
-        t=1655590923; bh=YrhDLwaCTlOrkF9IQHmzP4ZWIpSzEsV/ZK9FqdnlmMI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To;
-        b=mRMGaJ66wKbsram2GYoiclVP8dJmHU8fr1LMeMO2Py7Uom+4zYY42vJjfsTEsO5tm
-         sTq0/8hBDWuA3MZMGnMv4HdEfgnu5iLkV5YRM+FXFyQhf7fTM6/Ay+PVkhrUBSeFIR
-         CtLqWwa3V+seP9fCFQXuzqC9ZV4y+fEq7QYFOXCU8xSYpqzLiGoQzNmDt+RUZgGSJ4
-         bLUFg6GfYMK1uHKOmcleK5DsovEZ/lJCaZlEDt1dT6VeCNSAkRBLSFCy8mMgwdcwCs
-         kADM6YvyNwwFGMVaL4D3oa+jClOjpuCirLmI+ILm0JLMkbp1KICkiknyOZwBiVxucE
-         Da3uBjz7ob3tQ==
+        t=1655598651; bh=OpWQhaxI18E55DXpbcycgp3dTrJ631pLL69VZtGcPhc=;
+        h=Date:From:To:Cc:Subject;
+        b=NPX44t24cHMaAendlviGOKsNBvJ6YHwkF7lfXr9tzV4XEckWK1/jXUcszcXSGQbX5
+         +SPqQO40+oeaOhVaJ+krz6Cau+unq6lC7weGUsjBZrz5UFp8H7srN0gvXQeu5+oqC6
+         59/orNGQJi871SWC1aY5FM0InzUJZLjMV709Tf/pXPYZwrEZ7vPIjN048BJh/pFVCu
+         Be1XaHyUahI+f3bmoAplfsTM7J8jS2DhYgvSlSuAq9A/Ke0NuMQYIwtqVZBcpbIKPk
+         25KpNkYTEk5BGe3la9OfZGacNjXu7VTgrDd73HYL/qxNCgOk552V+DP98SuM6wfWTE
+         R+Lh7aw4EaqJA==
 Received: by cwcc.thunk.org (Postfix, from userid 15806)
-        id A6E3E15C430A; Sat, 18 Jun 2022 18:22:00 -0400 (EDT)
-Date:   Sat, 18 Jun 2022 18:22:00 -0400
+        id 64A3B15C430A; Sat, 18 Jun 2022 20:30:49 -0400 (EDT)
+Date:   Sat, 18 Jun 2022 20:30:49 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Dan Carpenter <dan.carpenter@oracle.com>
-Cc:     adilger.kernel@dilger.ca,
-        Ding Xiang <dingxiang@cmss.chinamobile.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
-Subject: Re: [PATCH] ext4: change variable "count" to signed integer
-Message-ID: <Yq5QCJI7qC80AtxL@mit.edu>
-References: <20220530100047.537598-1-dingxiang@cmss.chinamobile.com>
- <165552108974.634564.2634497659089601268.b4-ty@mit.edu>
- <Yq2bzesQ5H+DrA47@kili>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] ext4 fixes for 5.19-rc3
+Message-ID: <Yq5uOVSUci3fv+Mw@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <Yq2bzesQ5H+DrA47@kili>
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sat, Jun 18, 2022 at 12:33:01PM +0300, Dan Carpenter wrote:
-> On Fri, Jun 17, 2022 at 10:59:01PM -0400, Theodore Ts'o wrote:
-> > On Mon, 30 May 2022 18:00:47 +0800, Ding Xiang wrote:
-> > > Since dx_make_map() may return -EFSCORRUPTED now,
-> > > so change "count" to signed integer.
-> > > 
-> > > 
-> > 
-> > Applied, thanks!
-> > 
-> > [1/1] ext4: change variable "count" to signed integer
-> >       commit: fefb759df063599ad483422eb07ef8e14c612cc2
-> > 
-> 
-> There was some kind of process error here...
-> 
-> 1) That commit somehow never made it to linux-next.
+The following changes since commit b13baccc3850ca8b8cccbf8ed9912dbaa0fdf7f3:
 
-That's I only pushed it out Friday night (US/Eastern), and Stephen
-Rothwell creates new linux-next release based on snapshots taken
-Monday through Friday in the Morning (AU/Canberra time).
+  Linux 5.19-rc2 (2022-06-12 16:11:37 -0700)
 
-Things have been crazy busy, so a last set of ext4 backports only
-happened Friday starting around 10pm localtime.  (Yes, I have no
-life.)
+are available in the Git repository at:
 
+  https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-> 2) No Fixes tag.  Presumably Greg searches for Fixes tags before he back
-> ports patches.  The original commit 46c116b920eb ("ext4: verify dir
-> block before splitting it") has been back ported to stable already.
+for you to fetch changes up to 1f3ddff3755915a2b38de92d53508594de432d3d:
 
-I did add a Fixes tag in what is in the ext4 tree.  I don't always
-mention when I've rewritten since that requries manual editing of the
-"b4 ty" generated acknowledgement.
+  ext4: fix a doubled word "need" in a comment (2022-06-18 19:36:20 -0400)
 
-In the ideal world when I rewrite the one-line snapshot, at the *very*
-least it should show up in the Applied/thanks.  Maybe something like
-this:
+----------------------------------------------------------------
+Fix a variety of bugs, many of which were found by folks using fuzzing
+or error injection.  Also fix up how test_dummy_encryption mount
+option is handled for the new mount API.  Finally, fix/cleanup a
+number of comments and ext4 Documentation files.
 
-[1/1] ext4: change variable "count" to signed integer
-      commit: fefb759df063599ad483422eb07ef8e14c612cc2
-      rewritten summary: ext4: make variable "count" signed
+----------------------------------------------------------------
+Baokun Li (2):
+      ext4: fix bug_on ext4_mb_use_inode_pa
+      ext4: correct the judgment of BUG in ext4_mb_normalize_request
 
-... and if the commit description is rewritten, maybe the "b4 ty"
-e-mail should mention it.  (Very often I end up rewriting commit
-descriptions, especially when the original poster's first language is
-not English.)
+Ding Xiang (1):
+      ext4: make variable "count" signed
 
-For the record, this is what is in the ext4 tree that I plan to push
-to Linus is:
+Eric Biggers (1):
+      ext4: fix up test_dummy_encryption handling for new mount API
 
-commit fefb759df063599ad483422eb07ef8e14c612cc2
-Author: Ding Xiang <dingxiang@cmss.chinamobile.com>
-Date:   Mon May 30 18:00:47 2022 +0800
+Jan Kara (1):
+      ext4: improve write performance with disabled delalloc
 
-    ext4: make variable "count" signed
-    
-    Since dx_make_map() may return -EFSCORRUPTED now, so change "count" to
-    be a signed integer so we can correct check for an error code returned
-    by dx_make_map().
-    
-    Fixes: 46c116b920eb ("ext4: verify dir block before splitting it")
-    Signed-off-by: Ding Xiang <dingxiang@cmss.chinamobile.com>
-    Link: https://lore.kernel.org/r/20220530100047.537598-1-dingxiang@cmss.chinamobile.com
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Shuqi Zhang (1):
+      ext4: use kmemdup() to replace kmalloc + memcpy
 
-Cheers,
+Wang Jianjian (2):
+      ext4: fix incorrect comment in ext4_bio_write_page()
+      ext4, doc: remove unnecessary escaping
 
-					- Ted
+Xiang wangx (1):
+      ext4: fix a doubled word "need" in a comment
+
+Yang Li (1):
+      fs: fix jbd2_journal_try_to_free_buffers() kernel-doc comment
+
+Ye Bin (1):
+      ext4: fix super block checksum incorrect after mount
+
+Zhang Yi (2):
+      ext4: fix warning when submitting superblock in ext4_commit_super()
+      ext4: add reserved GDT blocks check
+
+ Documentation/filesystems/ext4/attributes.rst     |  68 +++---
+ Documentation/filesystems/ext4/bigalloc.rst       |   2 +-
+ Documentation/filesystems/ext4/bitmaps.rst        |   6 +-
+ Documentation/filesystems/ext4/blockgroup.rst     |  30 +--
+ Documentation/filesystems/ext4/blockmap.rst       |   2 +-
+ Documentation/filesystems/ext4/checksums.rst      |  26 +--
+ Documentation/filesystems/ext4/directory.rst      | 166 +++++++-------
+ Documentation/filesystems/ext4/eainode.rst        |  10 +-
+ Documentation/filesystems/ext4/group_descr.rst    | 126 +++++------
+ Documentation/filesystems/ext4/ifork.rst          |  60 +++---
+ Documentation/filesystems/ext4/inlinedata.rst     |   8 +-
+ Documentation/filesystems/ext4/inodes.rst         | 306 +++++++++++++-------------
+ Documentation/filesystems/ext4/journal.rst        | 214 +++++++++---------
+ Documentation/filesystems/ext4/mmp.rst            |  36 ++--
+ Documentation/filesystems/ext4/overview.rst       |   2 +-
+ Documentation/filesystems/ext4/special_inodes.rst |   8 +-
+ Documentation/filesystems/ext4/super.rst          | 550 +++++++++++++++++++++++------------------------
+ fs/ext4/inode.c                                   |   2 +-
+ fs/ext4/mballoc.c                                 |  26 ++-
+ fs/ext4/migrate.c                                 |   2 +-
+ fs/ext4/namei.c                                   |   3 +-
+ fs/ext4/page-io.c                                 |   2 +-
+ fs/ext4/resize.c                                  |  10 +
+ fs/ext4/super.c                                   | 172 ++++++++-------
+ fs/ext4/xattr.c                                   |   3 +-
+ fs/jbd2/transaction.c                             |   2 +-
+ 26 files changed, 947 insertions(+), 895 deletions(-)
