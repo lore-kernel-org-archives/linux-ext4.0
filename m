@@ -2,46 +2,46 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 841D3CCA485
-	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jun 2022 21:00:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88F11C43334
+	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jun 2022 21:00:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1355641AbiFUVAw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Jun 2022 17:00:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38748 "EHLO
+        id S1355230AbiFUVAy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Jun 2022 17:00:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39070 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355235AbiFUVAO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2022 17:00:14 -0400
+        with ESMTP id S1355328AbiFUU7p (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2022 16:59:45 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 56DE6344C4;
-        Tue, 21 Jun 2022 13:52:44 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 51556340C9;
+        Tue, 21 Jun 2022 13:52:36 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id BCC3361881;
-        Tue, 21 Jun 2022 20:51:46 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9C4E8C3411C;
-        Tue, 21 Jun 2022 20:51:45 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6BE5F61893;
+        Tue, 21 Jun 2022 20:51:37 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4A4CEC36AE2;
+        Tue, 21 Jun 2022 20:51:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1655844706;
-        bh=XIk2J1gwcd7XJHv894ZIdf00+0Y3ANgJMs96oc1C6pg=;
+        s=k20201202; t=1655844696;
+        bh=ahhHecnHNXXMCHKTA9J5Q6T/wQoSo9VNzGdQC+/DFNc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vL1SLCH/DLHVrbEZllIy7vEW7vCajm8fmm7HjPbCleXH7U0xedKnRiQBwKJVVWycS
-         irIktt0V8XHJfVr+du64t+Gn7wKr4rXSwo65KHCD/Kj89/ITfBtNmyOLHNnuDcnbYX
-         cSafiHZETLB4JqwLRG9pe/e2QtqqTZ4Gl4d+xbVmJ8v3Lk/fxSdClEPze6ASqYaZ08
-         XGjveFph8sg2H0z4l0uUKm4vq0QPuw+e6AowFQvfKMQrx/cDYb6b/NsxC1V8g1ZFC/
-         /ePOcdn/LvjVekH74HdoHu29CBMs6pY/5C3KkfXCa4eG1QZNc45trlpFbJ64vs3l34
-         puVrB9HLV5Ekw==
+        b=J7SqcTq0YAPm6IOEMbZq1w8nX8UjKVK1Yz6rIm0Wku08nRhIfLzDFCvCjqRdN/7xS
+         QvJoWwYATb0ZJG+DGh36HjtB6ZtJ1dE93oaHxKarkjtpD0EJztGylbApqNslzSJys5
+         EcuT6BUeNmgMgKoyfMbFS1RmwXYBgZydAjKTfneNGUjSvjR4z7Xj4R6wdE4H2N8/gg
+         bacssJ7fBt0R0oRJTohbnRQRm94emaL/uGMUS9F78jwBEt90mZtYklaaCxLpjBA3sW
+         w8WSWxaZXvKSO5fCb39G3iCGADDRvM6I886xo3cmfHbQGqwNmnec659Zhzm199QE7v
+         vO0OUIrwvsFTw==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, adilger.kernel@dilger.ca,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 4/5] ext4: improve write performance with disabled delalloc
-Date:   Tue, 21 Jun 2022 16:51:38 -0400
-Message-Id: <20220621205140.250968-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 5/7] ext4: improve write performance with disabled delalloc
+Date:   Tue, 21 Jun 2022 16:51:27 -0400
+Message-Id: <20220621205130.250874-5-sashal@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220621205140.250968-1-sashal@kernel.org>
-References: <20220621205140.250968-1-sashal@kernel.org>
+In-Reply-To: <20220621205130.250874-1-sashal@kernel.org>
+References: <20220621205130.250874-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -76,10 +76,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b2d52d4366a1..af3379a6f8c1 100644
+index 76c887108df3..997279814b6f 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -838,7 +838,7 @@ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
+@@ -839,7 +839,7 @@ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
  	ext4_debug("ext4_get_block_unwritten: inode %lu, create flag %d\n",
  		   inode->i_ino, create);
  	return _ext4_get_block(inode, iblock, bh_result,
