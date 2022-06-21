@@ -2,47 +2,47 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7FE9CCA485
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1B6ECCA487
 	for <linux-ext4@archiver.kernel.org>; Tue, 21 Jun 2022 21:01:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1356391AbiFUVAB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 21 Jun 2022 17:00:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38380 "EHLO
+        id S1356408AbiFUVAG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 21 Jun 2022 17:00:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38980 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1355634AbiFUU6s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2022 16:58:48 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 55D862F3A3;
-        Tue, 21 Jun 2022 13:51:33 -0700 (PDT)
+        with ESMTP id S1355772AbiFUU67 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Jun 2022 16:58:59 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2FA592F3B1;
+        Tue, 21 Jun 2022 13:51:41 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id DBC4D61874;
-        Tue, 21 Jun 2022 20:50:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE5A0C341C5;
-        Tue, 21 Jun 2022 20:50:39 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id A6444B81B31;
+        Tue, 21 Jun 2022 20:51:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BDBC3C36AE5;
+        Tue, 21 Jun 2022 20:51:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1655844640;
-        bh=n2+txuHaV0luaEh0g/RCXVIJELBEjdQC7YwHKghk+XA=;
+        s=k20201202; t=1655844699;
+        bh=/dsJUZBO8NycqZTVjAkJb1HLromYytPVjT/q+n/KWX0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Y0z9IYEUhml9fk+rIzLaED4+Wvelq92+1VLC2ji+RtMnzVROk5+l7QV01vlrU6JWt
-         6vYTL09uJXFTg6tHKBy22pcUJ08M+Mz1D9g/Xvsj9AtcX2rBRVcO2QcLIsuUx1Sf4u
-         U/oe6ljZU/V62Cn9/7q70SJYTUBSDNVImehPGZ/0Kks3+mpMU+nyekPKjIza6kmPM9
-         yZJAslYzDbTzYQEtSxP8Doj39E0zzdG93He0E4nEMYbo+0hQZwnqwvCKFTnsTMHPEM
-         wS0PH/2MrzUv9SduSg9Yb7E/xYZl+YnwRDmyylE/IcLU4fPFf6Hu1NvuBzaoPPxalq
-         e5KYlL5rOxMSw==
+        b=Lu3qylz7wifdfAF7uDwQOAi7i1t3MF1pVhqXY0Mnn0JJmwl+6PIrjYrt3Bb15L4vE
+         u8BqB14pT5cShtXeXk1qDIZHY3GbgCeMgsBFNzLe+VvTUYFbvPL/FSo4Eg/jgs/3Oe
+         ArDEw8GG68nHjwnJx2fYi+Jd1eSaZiW3TEn7vJKX7M7jtcFxskAoLwLPqysm+UYuw8
+         gQdnrsjgCcHXOFmwPs555UjKe9wIlfTJ9nsoRnPS25zu7KlBr5KHyaUpV5Mv8NcPfO
+         1TEe+OsE/3GfgaxBhgHxK0SsYbF4cavhvHSv3S/NVxlpZZiYt+JQNcmtCjMAY0UH0S
+         QNO4kTO2Eo8EA==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Baokun Li <libaokun1@huawei.com>,
         Ritesh Harjani <ritesh.list@gmail.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.17 20/20] ext4: correct the judgment of BUG in ext4_mb_normalize_request
-Date:   Tue, 21 Jun 2022 16:50:10 -0400
-Message-Id: <20220621205010.250185-20-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 7/7] ext4: correct the judgment of BUG in ext4_mb_normalize_request
+Date:   Tue, 21 Jun 2022 16:51:29 -0400
+Message-Id: <20220621205130.250874-7-sashal@kernel.org>
 X-Mailer: git-send-email 2.35.1
-In-Reply-To: <20220621205010.250185-1-sashal@kernel.org>
-References: <20220621205010.250185-1-sashal@kernel.org>
+In-Reply-To: <20220621205130.250874-1-sashal@kernel.org>
+References: <20220621205130.250874-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -71,10 +71,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 16 insertions(+), 1 deletion(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 47a560d60d3e..1f328a5e2e3d 100644
+index db8243627b08..0f7cbb59419b 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -4171,7 +4171,22 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+@@ -3242,7 +3242,22 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
  	}
  	rcu_read_unlock();
  
