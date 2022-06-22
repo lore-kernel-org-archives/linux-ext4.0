@@ -2,44 +2,44 @@ Return-Path: <linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDF8CCCA47F
-	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jun 2022 19:47:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F30E2CCA47E
+	for <linux-ext4@archiver.kernel.org>; Wed, 22 Jun 2022 19:47:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1376565AbiFVTrD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 22 Jun 2022 15:47:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56072 "EHLO
+        id S1359717AbiFVTrF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 22 Jun 2022 15:47:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56140 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1376529AbiFVTq2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2022 15:46:28 -0400
-Received: from madras.collabora.co.uk (madras.collabora.co.uk [IPv6:2a00:1098:0:82:1000:25:2eeb:e5ab])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8DD363FD96;
-        Wed, 22 Jun 2022 12:46:27 -0700 (PDT)
+        with ESMTP id S1376561AbiFVTqf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Jun 2022 15:46:35 -0400
+Received: from madras.collabora.co.uk (madras.collabora.co.uk [46.235.227.172])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06E3C3FDAF;
+        Wed, 22 Jun 2022 12:46:34 -0700 (PDT)
 Received: from localhost (mtl.collabora.ca [66.171.169.34])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
         (No client certificate requested)
         (Authenticated sender: krisman)
-        by madras.collabora.co.uk (Postfix) with ESMTPSA id 2E82D66016F3;
-        Wed, 22 Jun 2022 20:46:26 +0100 (BST)
+        by madras.collabora.co.uk (Postfix) with ESMTPSA id 9A60F6601792;
+        Wed, 22 Jun 2022 20:46:32 +0100 (BST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=collabora.com;
-        s=mail; t=1655927186;
-        bh=NSq4T8R/1LjZv5IrK3mdyn3xE+5FT2PzLu7hjGyXJ8I=;
+        s=mail; t=1655927192;
+        bh=jr1PLvBeYw9L3vR6W9Tgk30AQ9z5XsfAJUVUW45rF34=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AUR+/OEvMPXYmzpyw/GFzzW5OiytNveWhrXb2oYJeS9fEZ0LnRb8yh6MfmRs9tEAb
-         Id+mlGvra+nHetd3FS22lYbDCH0WGAPrzXsS6hvZaS+yGy1od5zt2u/77M2/JMBwzA
-         HTjyWE6dySUG6yDZF4AWU5gPGAgfYtoe2gVHNc3qYJHmd3591VXef+9Relpb5HZKjq
-         mOnOl3dCSKl1dyC+vIRKnRgI0R84ZDjftOKWP467LPbR2kSAC12cxaO3H/2YF1zF+r
-         862dIo+COp+HkW6oq338S/otfs2MQSfBHpmyFKhyYIVdFYf+/HgdVNaPBaFwbpI93w
-         qQM1yas2MV+wA==
+        b=m/VJuWpysiUHcNoftR+IAL2jTM48H9JDP013vw9p8nw7Ir3kM366MRfaqa8S+krJ2
+         JggwS+CQinefuG67Hu89cWIlkPQHWQQDXOisj0o2RXBpkmlSIAJW7GDJGfTPixaBDy
+         pJYTnz3lkT/zLF/YFnsKnDU3x13MtsJTgvPE4PD2Z07/XrED3HBHHdR9cwWjSQm76d
+         3mgVs5t5fWvKaGJt4L7kj+KcIzSGOO4S349Ztpkq8R39CfPLF4QOEcgds//+l0SueZ
+         HgMZrkKaqCMu6XWk/v5fHxwK270wCu8UxMUQ6y4jTIqkbW3Gk35JOo1GXol/aeNGKu
+         UGqHXPkuFop/Q==
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     viro@zeniv.linux.org.uk, tytso@mit.edu, jaegeuk@kernel.org
 Cc:     ebiggers@kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Gabriel Krisman Bertazi <krisman@collabora.com>,
         kernel@collabora.com
-Subject: [PATCH 4/7] libfs: Support revalidation of encrypted case-insensitive dentries
-Date:   Wed, 22 Jun 2022 15:46:00 -0400
-Message-Id: <20220622194603.102655-5-krisman@collabora.com>
+Subject: [PATCH 6/7] ext4: Enable negative dentries on case-insensitive lookup
+Date:   Wed, 22 Jun 2022 15:46:02 -0400
+Message-Id: <20220622194603.102655-7-krisman@collabora.com>
 X-Mailer: git-send-email 2.36.1
 In-Reply-To: <20220622194603.102655-1-krisman@collabora.com>
 References: <20220622194603.102655-1-krisman@collabora.com>
@@ -49,49 +49,75 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Preserve the existing behavior for encrypted directories, by rejecting
-negative dentries of encrypted+casefolded directories.  This allows
-generic_ci_d_revalidate to be used by filesystems with both features
-enabled, as long as the directory is either casefolded or encrypted, but
-not both at the same time.
+Instead of invalidating negative dentries during case-insensitive
+lookups, mark them as such and let them be added to the dcache.
+d_ci_revalidate is able to properly filter them out if necessary based
+on the dentry casefold flag.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
 ---
- fs/libfs.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c | 35 ++++-------------------------------
+ 1 file changed, 4 insertions(+), 31 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index de43f3f585f1..e4da68ebd618 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1461,6 +1461,9 @@ static inline int generic_ci_d_revalidate(struct dentry *dentry,
- 		const struct inode *dir = READ_ONCE(parent->d_inode);
- 
- 		if (dir && needs_casefold(dir)) {
-+			if (IS_ENCRYPTED(dir))
-+				return 0;
-+
- 			if (!d_is_casefold_lookup(dentry))
- 				return 0;
- 
-@@ -1470,7 +1473,8 @@ static inline int generic_ci_d_revalidate(struct dentry *dentry,
- 				return 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index db4ba99d1ceb..9908ad6cb071 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1823,16 +1823,9 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
  		}
  	}
--	return 1;
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	if (!inode && IS_CASEFOLDED(dir)) {
+-		/* Eventually we want to call d_add_ci(dentry, NULL)
+-		 * for negative dentries in the encoding case as
+-		 * well.  For now, prevent the negative dentry
+-		 * from being cached.
+-		 */
+-		return NULL;
+-	}
+-#endif
++	if (IS_ENABLED(CONFIG_UNICODE) && IS_CASEFOLDED(dir))
++		d_set_casefold_lookup(dentry);
 +
-+	return fscrypt_d_revalidate(dentry, flags);
+ 	return d_splice_alias(inode, dentry);
  }
  
- static const struct dentry_operations generic_ci_dentry_ops = {
-@@ -1490,7 +1494,7 @@ static const struct dentry_operations generic_encrypted_dentry_ops = {
- static const struct dentry_operations generic_encrypted_ci_dentry_ops = {
- 	.d_hash = generic_ci_d_hash,
- 	.d_compare = generic_ci_d_compare,
--	.d_revalidate = fscrypt_d_revalidate,
-+	.d_revalidate_name = generic_ci_d_revalidate,
- };
- #endif
+@@ -3153,17 +3146,6 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_fc_track_unlink(handle, dentry);
+ 	retval = ext4_mark_inode_dirty(handle, dir);
+ 
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
+-
+ end_rmdir:
+ 	brelse(bh);
+ 	if (handle)
+@@ -3258,16 +3240,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	retval = __ext4_unlink(handle, dir, &dentry->d_name, d_inode(dentry));
+ 	if (!retval)
+ 		ext4_fc_track_unlink(handle, dentry);
+-#if IS_ENABLED(CONFIG_UNICODE)
+-	/* VFS negative dentries are incompatible with Encoding and
+-	 * Case-insensitiveness. Eventually we'll want avoid
+-	 * invalidating the dentries here, alongside with returning the
+-	 * negative dentries at ext4_lookup(), when it is  better
+-	 * supported by the VFS for the CI case.
+-	 */
+-	if (IS_CASEFOLDED(dir))
+-		d_invalidate(dentry);
+-#endif
++
+ 	if (handle)
+ 		ext4_journal_stop(handle);
  
 -- 
 2.36.1
